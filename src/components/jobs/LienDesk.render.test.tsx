@@ -1478,7 +1478,12 @@ describe('LienDesk affidavits (v2.3412)', () => {
     await settle()
     expect(screen.getByRole('tab', { name: /Lien affidavits · 1/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Needs the property facts · 1' })).toBeTruthy()
-    expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
+    // The row's gates as five marks on its chip line (v2.7335): on a computer the strip stands in for the *missing …* words, which live in its title and the marks' titles.
+    const strip = document.querySelector('[data-lien-gate-marks]') as HTMLElement
+    expect(strip.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, notice')
+    expect(Array.from(strip.querySelectorAll('[data-lien-gate-mark]')).map((m) => `${m.getAttribute('data-lien-gate-mark')}:${m.getAttribute('data-state')}`)).toEqual(['owner:open', 'legal:open', 'contractor:ok', 'notice:open', 'homestead:ok'])
+    expect(strip.querySelector('[data-lien-gate-mark="owner"]')?.getAttribute('title')).toBe('owner — Missing owner')
+    expect(screen.queryByText(/missing owner, legal, notice/)).toBeNull()
     const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
     // v2.7187: the desk's own timeline names the step the paper is on, as its To do row does (*the property record is not complete*).
     expect(timeline.textContent).toContain('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, the notice missing.')
@@ -1496,6 +1501,23 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(onOpenEditJob).not.toHaveBeenCalled()
     fireEvent.click(screen.getByTestId('lien-paper-property-discard'))
     expect(screen.getByRole('button', { name: /Send the notice first ›/ })).toBeTruthy()
+  })
+
+  it('on a phone the gate marks keep the missing words beside them, since a phone has no hover (v2.7335)', async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+      await settle()
+      expect(document.querySelector('[data-lien-gate-marks]')?.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, notice')
+      expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
+    } finally {
+      window.matchMedia = before
+    }
   })
 
   it('the pane says which months the affidavit claims, and a missed month is worked but unsecured (v2.3681)', () => {
@@ -1568,7 +1590,9 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     await settle()
     expect(d.affidavits.entries[0]!.pile).toBe('needs_property')
     expect(document.body.textContent).toContain("Nobody has answered whether this home is the owner's homestead. Answer yes or no on the property record")
-    expect(document.body.textContent).toContain('missing the homestead answer')
+    // The row's hold rides the gate strip's title on a computer (v2.7335), and its homestead mark is the open one.
+    expect(document.querySelector('[data-lien-gate-marks]')?.getAttribute('title')).toBe('4 of 5 clear · missing the homestead answer')
+    expect(document.querySelector('[data-lien-gate-mark="homestead"]')?.getAttribute('data-state')).toBe('open')
     expect(document.body.textContent).toContain('Blocked until every gate above is clear.')
     // The hold changes the pile, never the words: the paper is the same short form, with no homestead notice on it.
     expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('short')
@@ -1606,7 +1630,8 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     await settle()
     expect(d.affidavits.entries[0]!.pile).toBe('needs_property')
     expect(document.body.textContent).toContain("Public property — a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond. Talk to the attorney.")
-    expect(document.body.textContent).toContain('missing a private owner')
+    expect(document.querySelector('[data-lien-gate-marks]')?.getAttribute('title')).toBe('4 of 5 clear · missing a private owner')
+    expect(document.querySelector('[data-lien-gate-mark="owner"]')?.getAttribute('title')).toBe('owner — Missing a private owner')
     expect(document.body.textContent).toContain('Blocked until every gate above is clear.')
     // The paper names the owner, never the attention line.
     expect(paper().textContent).toContain('The owner or reputed owner is SAMPLE CITY OF')
@@ -1655,7 +1680,8 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     await settle()
     expect(d.affidavits.entries[0]!.pile).toBe('needs_property')
     expect(document.body.textContent).toContain('The general contractor has no address on its customer record. The affidavit gives its last known address (§ 53.054) — Lowbeck Contracting')
-    expect(document.body.textContent).toContain("missing the GC's address")
+    expect(document.querySelector('[data-lien-gate-marks]')?.getAttribute('title')).toBe("4 of 5 clear · missing the GC's address")
+    expect(document.querySelector('[data-lien-gate-mark="contractor"]')?.getAttribute('data-state')).toBe('open')
     expect(document.body.textContent).toContain('Blocked until every gate above is clear.')
     // The hold changes the pile, never the words: the paper still names the GC, with a blank where its address goes.
     expect(paper().textContent).toContain('Claimant did so under a contract with Lowbeck Contracting')
