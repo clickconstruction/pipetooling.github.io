@@ -22,6 +22,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
 import { boxCode } from './labels'
 import type { BoxPatch } from './editBox'
+import { cleanBoxLine } from './boxLine'
 import { codeLookup, stickerFactsOf, type CodeLookup, type StickerFacts } from './stickers'
 import type { PhotoNote, PhotoStatus } from './photo'
 import { loadPartPriceRows } from './partPrices'
@@ -99,19 +100,19 @@ export function getVersion(): number {
 // ---------------------------------------------------------------------------
 
 export type PlaceRow = { id: string; job_id: string; name: string; created_at: string }
-export type ContainerRow = { id: string; job_id: string; label: string; kind: ContainerKind; where_note: string; place_id: string | null; lat: number | null; lng: number | null; retired_at: string | null; created_at: string }
+export type ContainerRow = { id: string; job_id: string; label: string; kind: ContainerKind; where_note: string; description?: string | null; place_id: string | null; lat: number | null; lng: number | null; retired_at: string | null; created_at: string }
 type MoveRow = { id: string; container_id: string; from_place_id: string | null; to_place_id: string | null; by_name: string; at: string }
 export type MovementRow = { id: string; job_id: string; part_id: string | null; part_name: string; manufacturer: string | null; quantity: number; reason: MovementReason; from_container_id: string | null; to_container_id: string | null; note: string; source: string | null; item_id: string | null; by_user_id: string | null; by_name: string; at: string }
 type PhotoRow = { id: string; job_id: string; container_id: string; by_user_id: string | null; by_name: string; words: string; file_name: string; taken_at: string; bytes: number; width: number; height: number; status: PhotoStatus; storage_path: string | null; drive_file_id: string | null; filed_at: string | null; fail_why: string | null }
 
 export const PLACE_COLS = 'id, job_id, name, created_at'
-export const CONTAINER_COLS = 'id, job_id, label, kind, where_note, place_id, lat, lng, retired_at, created_at'
+export const CONTAINER_COLS = 'id, job_id, label, kind, where_note, description, place_id, lat, lng, retired_at, created_at'
 const MOVE_COLS = 'id, container_id, from_place_id, to_place_id, by_name, at'
 export const MOVEMENT_COLS = 'id, job_id, part_id, part_name, manufacturer, quantity, reason, from_container_id, to_container_id, note, source, item_id, by_user_id, by_name, at'
 const PHOTO_COLS = 'id, job_id, container_id, by_user_id, by_name, words, file_name, taken_at, bytes, width, height, status, storage_path, drive_file_id, filed_at, fail_why'
 
 export const placeOf = (r: PlaceRow): Place => ({ id: r.id, jobId: r.job_id, name: r.name, createdAt: r.created_at })
-export const containerOf = (r: ContainerRow): Container => ({ id: r.id, jobId: r.job_id, label: r.label, kind: r.kind, where: r.where_note ?? '', locationId: r.place_id, lat: r.lat, lng: r.lng, retiredAt: r.retired_at, createdAt: r.created_at })
+export const containerOf = (r: ContainerRow): Container => ({ id: r.id, jobId: r.job_id, label: r.label, kind: r.kind, where: r.where_note ?? '', said: r.description ?? '', locationId: r.place_id, lat: r.lat, lng: r.lng, retiredAt: r.retired_at, createdAt: r.created_at })
 const moveOf = (r: MoveRow, jobId: string): ContainerMove => ({ id: r.id, jobId, containerId: r.container_id, fromLocationId: r.from_place_id, toLocationId: r.to_place_id, byName: r.by_name ?? '', at: r.at })
 export const movementOf = (r: MovementRow): Movement => ({ id: r.id, jobId: r.job_id, partId: r.part_id, partName: r.part_name, manufacturer: r.manufacturer, quantity: r.quantity, reason: r.reason, fromContainerId: r.from_container_id, toContainerId: r.to_container_id, note: r.note ?? '', byUserId: r.by_user_id, byName: r.by_name ?? '', at: r.at, source: r.source, itemId: r.item_id })
 const photoOf = (r: PhotoRow): PhotoNote => ({ id: r.id, jobId: r.job_id, containerId: r.container_id, fileName: r.file_name, byUserId: r.by_user_id, byName: r.by_name ?? '', at: r.taken_at, bytes: r.bytes ?? 0, width: r.width ?? 0, height: r.height ?? 0, status: r.status, driveFileId: r.drive_file_id, storagePath: r.storage_path, words: r.words ?? '', failWhy: r.fail_why })
@@ -488,11 +489,12 @@ export function addPlace(input: { jobId: string; name: string; byUserId?: string
   return c.places.find((p) => p.id === id)!
 }
 
-export function addContainer(input: { jobId: string; label: string; kind: ContainerKind; where: string; locationId?: string | null; byUserId?: string | null }): Container {
+export function addContainer(input: { jobId: string; label: string; kind: ContainerKind; where: string; /** What is in it, in the person's own words (punch list #351); nothing said sends no column. */ said?: string | null; locationId?: string | null; byUserId?: string | null }): Container {
   const c = cacheOf(input.jobId)
   const id = newId()
   const label = input.label.trim()
-  commit(input.jobId, `The ${input.kind} ${label}`, [{ table: 'job_containers', op: 'insert', id, row: { id, job_id: input.jobId, label, kind: input.kind, where_note: input.where.trim(), place_id: input.locationId ?? null, created_by: input.byUserId ?? null } }])
+  const said = cleanBoxLine(input.said)
+  commit(input.jobId, `The ${input.kind} ${label}`, [{ table: 'job_containers', op: 'insert', id, row: { id, job_id: input.jobId, label, kind: input.kind, where_note: input.where.trim(), ...(said ? { description: said } : {}), place_id: input.locationId ?? null, created_by: input.byUserId ?? null } }])
   return c.containers.find((x) => x.id === id)!
 }
 
@@ -535,10 +537,22 @@ export function editContainer(containerId: string, patch: BoxPatch): void {
     if (patch.label !== undefined) row.label = patch.label
     if (patch.kind !== undefined) row.kind = patch.kind
     if (patch.where !== undefined) row.where_note = patch.where
+    // What is in it (punch list #351): the person's words, or null when they were cleared and the app writes the line again.
+    if (patch.said !== undefined) row.description = cleanBoxLine(patch.said) || null
     if (Object.keys(row).length === 0) return
     commit(jobId, patch.label !== undefined ? `Renaming ${box.label}` : `The change to ${box.label}`, [{ table: 'job_containers', op: 'update', id: containerId, row }])
     return
   }
+}
+
+/**
+ * What is in a box, in a person's own words (punch list #351, PR 2): **Say it better** on the box's screen, and the
+ * words typed into a name on the sticker sheet, whose box the database makes. Null hands the line back to the app.
+ * Sent under the job, so a box this phone has not read yet (one a sticker just made) still gets its line, and a press
+ * made with no signal is kept and sent later like any other.
+ */
+export function sayBoxLine(jobId: string, containerId: string, label: string, said: string | null): void {
+  commit(jobId, `The line on ${label}`, [{ table: 'job_containers', op: 'update', id: containerId, row: { description: cleanBoxLine(said) || null } }])
 }
 
 /** The job's Unsorted row, made on first use: where a delivery lands until a crew puts it away. */

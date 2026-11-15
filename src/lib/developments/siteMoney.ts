@@ -175,7 +175,7 @@ function datesFor(job: MemberJob, inp: SiteMoneyInputs): MoneyDates {
   const held = billHeldDay(expected)
   const due: MoneyDue | null =
     held?.onCalendar && expected
-      ? { ymd: held.ymd, daysPast: held.daysLate, daysTo: Math.max(0, daysBetweenYmd(inp.todayYmd, held.ymd) ?? 0), basis: calendarBasisWords(expected.lateness, expected.calendarOwn, expected.ownDue != null) }
+      ? { ymd: held.ymd, daysPast: held.daysLate, daysTo: Math.max(0, daysBetweenYmd(inp.todayYmd, held.ymd) ?? 0), basis: calendarBasisWords(expected.lateness, expected.calendarOwn, expected.ownDue != null, expected.calendar) }
       : null
   const lienBy = lienByForJob(job.last_work_date, '')
   const lien = lienBy.ymd ? { ymd: lienBy.ymd, daysLeft: daysBetweenYmd(inp.todayYmd, lienBy.ymd), kindAssumed: lienBy.kindAssumed } : null

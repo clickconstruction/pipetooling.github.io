@@ -92,6 +92,9 @@ import { accountQuietWords, jobAccountsLine, jobWindowMoneyLine, type JobWindowS
 import { stripStateWord } from '../../lib/jobs/jobAccountStrip'
 import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
 import { JobWindowThread, JobWindowWho, PhoneFold, PhoneRow, PhoneSectionTitle } from './JobWindowPhoneSections'
+import { JobWindowMoreSheet } from './JobWindowMoreSheet'
+import { watchSmallPresses } from './jobWindowPressPad'
+import { CREW_FOLD_TITLES, crewBlockLabel, crewFolds, crewQuietLine, crewSheetRows, keepCrewFolds, lastNoteWords, readCrewFolds, type CrewFoldKey, type CrewNoteSource } from '../../lib/jobs/jobWindowCrewPhone'
 import { foldCountWords, keepPhoneFolds, nextOnSite, NOTHING_SCHEDULED, OPEN_THE_CALENDAR, PHONE_FOLDS, readPhoneFolds, waitingOnWords, type PhoneFoldKey } from '../../lib/jobs/jobWindowPhoneSections'
 import type { JobThreadStampKind } from '../../lib/jobThreadNoteStampBody'
 import { JobWindowActionBar, JobWindowNoteSheet } from './JobWindowActionBar'
@@ -597,6 +600,8 @@ export type JobDetailAddLinkTarget = {
 }
 
 /** The phone's one-line rows (punch list #355): a label, the words, and the act in blue words at the end. */
+/** ⋯ and ✕ at the right of the crew's title on a phone: 44 px each, as the tabbed window's. */
+const crewPinStyle: CSSProperties = { width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, margin: 0, border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1, cursor: 'pointer', borderRadius: 10 }
 const phoneLineRow: CSSProperties = { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.25rem 0.4rem', minHeight: 44, padding: '0.5rem 0', borderTop: '1px solid var(--border)', fontSize: '0.9375rem' }
 const phoneLineDoor: CSSProperties = { display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.25rem 0.4rem', minWidth: 0, padding: 0, border: 'none', background: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'inherit' }
 const phoneLineLabel: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)' }
@@ -1183,6 +1188,21 @@ export default function DetailJobModal({
   // the composer's Arrived / Leaving chips move onto the bar (the tabbed window's, for a viewer on
   // the crew) and Note opens the composer as a sheet over the keyboard.
   const phoneCrewBar = !paneMode && narrowViewport
+  // Punch list #355, direction C, the crew half (v2.7355): the plain window on a phone reads in PR B's order. The name
+  // first with the status and ⋯ over ✕, then Where · Photos · Who · What's happening, the rest folded under More on this
+  // job. `phoneShape` is either window on a phone; `phoneCrew` is the plain one.
+  const phoneCrew = phoneCrewBar
+  const phoneShape = phonePane || phoneCrew
+  const [crewFoldsOpen, setCrewFoldsOpen] = useState<Set<CrewFoldKey>>(() => readCrewFolds())
+  const toggleCrewFold = (key: CrewFoldKey) =>
+    setCrewFoldsOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      keepCrewFolds(next)
+      return next
+    })
+  const [crewSheetOpen, setCrewSheetOpen] = useState(false)
   const [noteSheetOpen, setNoteSheetOpen] = useState(false)
   const jobDetailDateBandStyle = useMemo(
     (): CSSProperties =>
@@ -1700,6 +1720,28 @@ export default function DetailJobModal({
 
   useBodyScrollLock(open && narrowViewport)
 
+  // The crew's window on a phone: every press under 40 px in the body gets the unseen 44 px pad the tabbed window's
+  // body has (v2.7309), marked by `watchSmallPresses` and drawn by the rule beside the body; nothing moves.
+  const crewBodyRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!open || !phoneCrew) return
+    const body = crewBodyRef.current
+    if (!body) return
+    return watchSmallPresses(body)
+  }, [open, phoneCrew])
+
+  // A feed inside a fold is laid out hidden, so its own jump to the newest entry lands nowhere: when the fold opens,
+  // on either window's phone, the list goes to its newest entry, as it does on a desk.
+  const notesFoldOpen = phoneCrew ? crewFoldsOpen.has('notes') : phonePane && phoneFolds.has('activity')
+  const notesLoading = threadNotes.loading
+  useEffect(() => {
+    if (!open || !notesFoldOpen || notesLoading) return
+    const frame = requestAnimationFrame(() => {
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-phone-fold] [data-activity-scroll]'))) el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open, notesFoldOpen, notesLoading])
+
   if (!open) return null
 
   // v2.3615: Their journey — the What-customers-see strips for this job's customer, narrowed to this job. Office roles
@@ -1792,6 +1834,39 @@ export default function DetailJobModal({
               </div>
     ) : null
 
+  // The crew's window on a phone (punch list #355, the crew half): the title's words, the ⋯ rows, and the newest note.
+  const crewStatus = phoneCrew && limitedJob?.status ? (JOB_STEPPER_LABELS[limitedJob.status as JobStepperStatus] ?? limitedJob.status) : null
+  const crewQuiet = phoneCrew ? crewQuietLine({ number: modalTitleParts.num, customer: detailJob?.customer_name }) : []
+  const crewRows = phoneCrew ? crewSheetRows(sheetDoors) : []
+  const crewLastNote = phoneCrew
+    ? lastNoteWords(
+        threadNotes.activity.flatMap((item): CrewNoteSource[] =>
+          item.kind === 'note'
+            ? [{ kind: 'note', body: item.note.body, author: item.note.author?.name ?? null, at: item.note.created_at }]
+            : item.kind === 'report'
+              ? [{ kind: 'report', template: item.report.template_name, author: item.report.created_by_name, at: item.report.created_at }]
+              : [],
+        ),
+        new Date().toISOString(),
+      )
+    : null
+  const crewHasAccounts = Boolean(jobAccountStripEntries && jobAccountStripEntries.length > 0)
+  const crewFoldKeys = phoneCrew ? crewFolds({ accounts: crewHasAccounts, parts: showMaterialsCostSection }) : []
+  /** A fold under More on this job in the crew's window; drawn only for the folds this viewer gets. */
+  const crewFold = (key: CrewFoldKey, node: ReactNode, count?: string): ReactNode =>
+    crewFoldKeys.includes(key) ? (
+      <PhoneFold key={key} title={CREW_FOLD_TITLES[key]} count={count} open={crewFoldsOpen.has(key)} onToggle={() => toggleCrewFold(key)}>
+        {node}
+      </PhoneFold>
+    ) : null
+  /** Last note's blue words: the Notes and reports fold opens for this look and comes into view. */
+  const openCrewNotes = () => {
+    setCrewFoldsOpen((prev) => new Set(prev).add('notes'))
+    requestAnimationFrame(() => document.querySelector(`[data-phone-fold="${CREW_FOLD_TITLES.notes}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
+  }
+  /** The notes and reports: the crew's own fold in the plain window, the Activity fold in the tabbed one, the panel itself on a desk. */
+  const notesFold = (node: ReactNode, count?: string): ReactNode => (phoneCrew ? crewFold('notes', node, count) : fold('activity', node, count))
+
   // Backdrop-close fires only for a click on the backdrop itself (`target ===
   // currentTarget`). The satellite modals further down (Reports, Job Calendar,
   // Schedule, paid-email) render their own fixed overlays as siblings of the
@@ -1816,6 +1891,8 @@ export default function DetailJobModal({
               // plain browsers, so desktop keeps the plain 1rem.
               padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
               ...(narrowViewport ? { overscrollBehavior: 'contain' as const } : {}),
+              // The crew's window on a phone fills the screen, as the tabbed window does (punch list #355, the crew half).
+              ...(phoneCrew ? { padding: 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)', alignItems: 'stretch' as const } : {}),
             }
       }
       onClick={(e) => !paneMode && e.target === e.currentTarget && onClose()}
@@ -1826,7 +1903,7 @@ export default function DetailJobModal({
         aria-labelledby="detail-job-modal-title"
         style={{
           background: 'var(--surface)',
-          borderRadius: 8,
+          borderRadius: phoneCrew ? 0 : 8,
           // Pane mode: the Job window's scroll container already pads 1.25rem —
           // padding here too doubled the whitespace under the tab bar (v2.1677).
           // The phone's crew bar: the body inside pads itself, so the bar can run edge to edge.
@@ -1847,16 +1924,51 @@ export default function DetailJobModal({
                 boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
                 // The phone's crew bar: the card fills the padded box, so the bar sits at the foot
                 // of the screen even on a short job.
-                ...(phoneCrewBar ? { display: 'flex', flexDirection: 'column' as const, height: 'min(90vh, 100%)' } : {}),
+                ...(phoneCrewBar ? { display: 'flex', flexDirection: 'column' as const, height: '100%', maxHeight: '100%', maxWidth: 'none', boxShadow: 'none' } : {}),
               }),
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* On a phone the plain window's body scrolls on its own under the crew bar (punch list #189, PR 4). */}
-        <div style={phoneCrewBar ? { flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '1.25rem' } : undefined}>
+        {phoneCrew ? (
+          <style>{`
+            .crew-window-body [data-press-pad] { position: relative; }
+            .crew-window-body [data-press-pad]::after { content: ''; position: absolute; top: calc(-1 * var(--press-pad-y, 0px)); bottom: calc(-1 * var(--press-pad-y, 0px)); left: calc(-1 * var(--press-pad-x, 0px)); right: calc(-1 * var(--press-pad-x, 0px)); }
+          `}</style>
+        ) : null}
+        <div ref={crewBodyRef} className={phoneCrew ? 'crew-window-body' : undefined} style={phoneCrewBar ? { flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 0.9rem 1.25rem' } : undefined}>
+        {phoneCrew ? (
+          <div data-testid="crew-window-head" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem', paddingBottom: '0.25rem' }}>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: '0.45rem' }}>
+              <h2 id="detail-job-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-strong)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem 0.5rem', minWidth: 0 }}>
+                <span style={{ wordBreak: 'break-word', minWidth: 0 }}>{modalTitleParts.name}</span>
+                {crewStatus ? (
+                  <span data-testid="crew-window-status" style={{ padding: '0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {crewStatus}
+                  </span>
+                ) : null}
+              </h2>
+              {crewQuiet.length ? (
+                <div data-testid="crew-window-quiet-line" style={{ marginTop: '0.2rem', fontSize: '0.8125rem', color: 'var(--text-muted)', wordBreak: 'break-word' }}>
+                  {crewQuiet.join(' · ')}
+                </div>
+              ) : null}
+            </div>
+            <div data-navtrack="job-window" data-navbuttons="" onClickCapture={recordViewerNavClick} style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+              {crewRows.length ? (
+                <button type="button" onClick={() => setCrewSheetOpen(true)} title="More on this job" aria-label="More on this job" aria-haspopup="dialog" style={{ ...crewPinStyle, fontSize: '1.5rem', letterSpacing: 1 }}>
+                  ⋯
+                </button>
+              ) : null}
+              <button type="button" onClick={onClose} title="Close" aria-label="Close job detail" style={crewPinStyle}>
+                ✕
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div
           style={{
-            display: 'flex',
+            display: phoneCrew ? 'none' : 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             // Wrap so on narrow screens the action row drops BELOW the title
@@ -1866,7 +1978,7 @@ export default function DetailJobModal({
             width: '100%',
           }}
         >
-          {paneTitleHidden ? null : (
+          {paneTitleHidden || phoneCrew ? null : (
           <h2
             id="detail-job-modal-title"
             style={{
@@ -2262,7 +2374,7 @@ export default function DetailJobModal({
           <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem' }}>{renderAccountManChip(accountManDisplay)}</div>
         ) : null}
 
-        {phonePane && !paneBodyHidden ? <PhoneSectionTitle first>Where</PhoneSectionTitle> : null}
+        {(phonePane && !paneBodyHidden) || phoneCrew ? <PhoneSectionTitle first>Where</PhoneSectionTitle> : null}
         {/* Option B photo header (v2.1529): Street View leads as a slim banner with the
             address pinned on it; when there's no imagery (or still loading with nothing
             to show yet) the address falls back to a plain map-link row. */}
@@ -2402,7 +2514,7 @@ export default function DetailJobModal({
           <div style={bandSlim ? { display: 'none' } : { marginTop: '0.6rem' }}>
             <JobPaintedMapsStrip
               jobId={jobId}
-              addCentred={phonePane}
+              addCentred={phoneShape}
               developmentId={detailJob?.development_id ?? null}
               jobLabel={(fullJob ?? limitedJob)?.job_name ?? null}
               developmentLabel={detailJob ? ('development_name' in detailJob ? detailJob.development_name : (detailJob.development?.name ?? null)) : null}
@@ -2417,8 +2529,8 @@ export default function DetailJobModal({
           <div style={bandSlim ? { display: 'none' } : { marginTop: '0.75rem' }}>
             <JobPhotosStrip
               jobId={jobId}
-              banner={phonePane}
-              onAddPhoto={phonePane && fullJob ? () => setPhotosWindowOpen(true) : undefined}
+              banner={phoneShape}
+              onAddPhoto={phoneShape && (fullJob ?? limitedJob) ? () => setPhotosWindowOpen(true) : undefined}
               rev={photosRev}
               driveLink={(fullJob ?? limitedJob)?.google_drive_link}
               picturesLink={(fullJob ?? limitedJob)?.job_pictures_link}
@@ -2448,14 +2560,16 @@ export default function DetailJobModal({
         <div style={paneBodyHidden ? { display: 'none' } : undefined}>
         {showTopBand ? (
           <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {phonePane && detailJob ? (
+            {phoneShape && detailJob ? (
               <>
                 <PhoneSectionTitle>Who</PhoneSectionTitle>
                 <JobWindowWho
                   name={detailJob.customer_name?.trim() ?? ''}
                   phone={detailJob.customer_phone?.trim() ?? ''}
                   email={detailJob.customer_email?.trim() ?? ''}
-                  customerId={'customer_id' in detailJob ? (detailJob.customer_id ?? null) : null}
+                  // The crew's window: no email row for a helper or a sub, and the portal press is the office's.
+                  emailRow={!(phoneCrew && isSubcontractorLikeRole(authRole as UserRole))}
+                  customerId={phoneCrew ? null : 'customer_id' in detailJob ? (detailJob.customer_id ?? null) : null}
                   gcName={(() => {
                     const gc = ('gc_customer_name' in detailJob ? detailJob.gc_customer_name : (detailJob.gcCustomer?.name ?? null))?.trim() ?? ''
                     return gc.toLowerCase() === (detailJob.customer_name?.trim() ?? '').toLowerCase() ? '' : gc
@@ -2492,7 +2606,7 @@ export default function DetailJobModal({
                 />
               </>
             ) : null}
-            <div style={phonePane ? { display: 'none' } : { display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+            <div style={phoneShape ? { display: 'none' } : { display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
               {detailJob ? (
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <DetailJobModalCustomerPanel
@@ -2529,7 +2643,7 @@ export default function DetailJobModal({
                 />
               </div>
             </div>
-            {!phonePane && jobId ? (
+            {!phoneShape && jobId ? (
               <JobAccountsStrip
                 jobId={jobId}
                 jobLabel={modalTitle}
@@ -2539,7 +2653,7 @@ export default function DetailJobModal({
                 onSheetOpenChange={setJobAccountSheetOpen}
               />
             ) : null}
-            {scheduleContext && !phonePane ? (
+            {scheduleContext && !phoneShape ? (
               <div
                 style={{
                   minWidth: 0,
@@ -2613,8 +2727,31 @@ export default function DetailJobModal({
             </>
           )
         })() : null}
-        {/* v2.6585 (punch list #255): the job's target in hours, for any job: the expected hours, else the labor budget, else none yet. */}
-        {jobId ? <JobTargetLine jobId={jobId} row={phonePane} /> : null}
+        {phoneCrew && (scheduleContext || crewLastNote) ? (
+          <>
+            <PhoneSectionTitle>What's happening</PhoneSectionTitle>
+            {scheduleContext ? (() => {
+              const block = nextOnSite([{ work_date: scheduleContext.workDate, time_start: scheduleContext.timeStart, time_end: scheduleContext.timeEnd }], '0000-00-00')
+              return block ? (
+                <PhoneRow
+                  testId="crew-window-block"
+                  label={crewBlockLabel(scheduleContext.workDate, todayYmdInAppTz())}
+                  value={
+                    <>
+                      {block.day}
+                      <span style={{ display: 'block' }}>{block.hours}</span>
+                    </>
+                  }
+                  sub={scheduleContext.note?.trim() || undefined}
+                />
+              ) : null
+            })() : null}
+            {crewLastNote ? <PhoneRow testId="crew-window-last-note" label="Last note" value={crewLastNote.value} sub={crewLastNote.sub} act="Read the notes" onAct={openCrewNotes} /> : null}
+          </>
+        ) : null}
+        {/* v2.6585 (punch list #255): the job's target in hours, for any job: the expected hours, else the labor budget, else none yet.
+            The crew's window on a phone leaves it out: none of its roles sets the hours (punch list #355, the crew half). */}
+        {jobId && !phoneCrew ? <JobTargetLine jobId={jobId} row={phonePane} /> : null}
         {/* v2.5946 (punch list #185): the job's review ask, the stars and the words, and I called on a low one. */}
         {jobId ? <JobReviewLine jobId={jobId} /> : null}
 
@@ -2698,7 +2835,7 @@ export default function DetailJobModal({
               }}
             />
           ) : null}
-          {phonePane ? <PhoneSectionTitle>More on this job</PhoneSectionTitle> : null}
+          {phoneShape ? <PhoneSectionTitle>More on this job</PhoneSectionTitle> : null}
           {/* Questions on this job (punch list #208 PR 4b): the job's own log under Where it stands, with Ask the estimators and Ask Dispatch. */}
           {fullJob && jobId
             ? fold(
@@ -2708,8 +2845,7 @@ export default function DetailJobModal({
                 </div>,
               )
             : null}
-          {fold(
-            'activity',
+          {notesFold(
           <JobThreadNotesPanel
             activity={threadNotes.activity}
             loading={threadNotes.loading}
@@ -3149,7 +3285,35 @@ export default function DetailJobModal({
           })()
         ) : null}
 
-        {!loading && !error && limitedJob ? (
+        {!loading && !error && limitedJob && phoneCrew ? (
+          <div data-testid="crew-window-folds">
+            {crewFold('plans', <DetailJobModalPlans job={{ id: limitedJob.id, job_name: limitedJob.job_name, hcp_number: limitedJob.hcp_number, job_plans_link: limitedJob.job_plans_link }} />)}
+            {jobId
+              ? crewFold(
+                  'accounts',
+                  <JobAccountsStrip jobId={jobId} jobLabel={modalTitle} jobAddress={mapsAddressLine || null} entries={jobAccountStripEntries} onChanged={jobAccountStrips.reload} onSheetOpenChange={setJobAccountSheetOpen} />,
+                )
+              : null}
+            {crewFold(
+              'parts',
+              <>
+                <JobDetailMaterialsCostSection loading={materialsSnapshotLoading} snapshot={materialsSnapshot} canExpand={canExpandJobDetailMaterials(authRole)} billedMaterials={[]} />
+                {showJobDetailJobTotal(authRole) ? (
+                  <div style={{ marginTop: '1rem' }}>
+                    <DetailRow label="Job Total" noBottomMargin centered>
+                      {limitedJob.revenue != null ? formatCurrency(Number(limitedJob.revenue)) : '—'}
+                    </DetailRow>
+                  </div>
+                ) : null}
+              </>,
+            )}
+            {showWorkflowLink && limitedJob.project_id ? (
+              <Link to={`/workflows/${limitedJob.project_id}`} style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 10, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}>
+                Open project workflow ›
+              </Link>
+            ) : null}
+          </div>
+        ) : !loading && !error && limitedJob ? (
           <div style={{ marginTop: '1rem' }}>
             {showWorkflowLink && limitedJob.project_id ? (
               <div style={{ marginBottom: '0.75rem' }}>
@@ -3231,7 +3395,7 @@ export default function DetailJobModal({
         <div
           style={{
             marginTop: '1rem',
-            display: paneMode ? 'none' : 'flex',
+            display: paneMode || phoneCrew ? 'none' : 'flex',
             justifyContent: 'flex-end',
             width: '100%',
           }}
@@ -3257,6 +3421,7 @@ export default function DetailJobModal({
         {phoneCrewBar ? <JobWindowActionBar buttons={crewBar} onPress={onCrewBarPress} safeAreaBottom={false} /> : null}
         {/* The Note sheet on a phone, in either window: outside the pane's hidden body, so the tabbed
             window's Note opens it from any tab. */}
+        {phoneCrew && crewSheetOpen ? <JobWindowMoreSheet title={modalTitleParts.name} rows={crewRows} onPress={(key) => (key === 'legend' ? undefined : sheetPress(key))} onClose={() => setCrewSheetOpen(false)} /> : null}
         {narrowViewport ? (
           <JobWindowNoteSheet
             open={noteSheetOpen}
@@ -3507,6 +3672,15 @@ export default function DetailJobModal({
       {photosWindowOpen && fullJob ? (
         <JobPhotosWindowLazy
           job={{ id: fullJob.id, hcp_number: fullJob.hcp_number, click_number: fullJob.click_number, job_name: fullJob.job_name, job_address: fullJob.job_address, google_drive_link: fullJob.google_drive_link, job_pictures_link: fullJob.job_pictures_link }}
+          onClose={() => {
+            setPhotosWindowOpen(false)
+            setPhotosRev((r) => r + 1)
+          }}
+        />
+      ) : photosWindowOpen && limitedJob ? (
+        // The crew's window (punch list #355, the crew half): the banner's Add a photo opens the same window on the limited row.
+        <JobPhotosWindowLazy
+          job={{ id: limitedJob.id, hcp_number: limitedJob.hcp_number, click_number: null, job_name: limitedJob.job_name, job_address: limitedJob.job_address, google_drive_link: limitedJob.google_drive_link, job_pictures_link: limitedJob.job_pictures_link }}
           onClose={() => {
             setPhotosWindowOpen(false)
             setPhotosRev((r) => r + 1)

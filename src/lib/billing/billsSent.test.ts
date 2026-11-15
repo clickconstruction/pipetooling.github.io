@@ -19,6 +19,8 @@ import {
   billsSentRecord,
   billsSentRecordHtml,
   billsSentRecordPath,
+  byHandDayOffered,
+  byHandDayPicks,
   byHandFiling,
   byHandProblem,
   billsSentSumWords,
@@ -293,7 +295,7 @@ describe('billsSentGaps (PR 2)', () => {
     const data = input([], { unsent })
     const gaps = billsSentGaps(data, billsSentLines(data))
     expect(gaps.open).toHaveLength(1)
-    expect(gaps.open[0]).toMatchObject({ billId: BILL_A, jobWords: 'J1412 · Sable Ridge Lot 14', jobTo: `/jobs?edit=${JOB_A}`, payer: 'Sable Ridge Builders', amount: 4860, paid: false, billedWords: 'Billed Mon, Nov 9 at 3:26 PM.' })
+    expect(gaps.open[0]).toMatchObject({ billId: BILL_A, jobWords: 'J1412 · Sable Ridge Lot 14', jobTo: `/jobs?edit=${JOB_A}`, payer: 'Sable Ridge Builders', amount: 4860, paid: false, billedWords: 'Billed Mon, Nov 9 at 3:26 PM.', billedYmd: '2026-11-09' })
     expect(gaps.paid.map((g) => g.billId)).toEqual([BILL_B])
     expect(billsSentGapHeading(1)).toBe('1 bill is billed with no send on record')
     expect(billsSentGapHeading(3)).toBe('3 bills are billed with no send on record')
@@ -475,6 +477,23 @@ describe('billsSent — a record made by hand (PR 6)', () => {
     expect(byHandProblem({ ...draft, wentOnYmd: '' }, '2026-11-12')).toBe('Pick the day the bill went.')
     expect(byHandProblem({ ...draft, wentOnYmd: '2026-11-13' }, '2026-11-12')).toBe('The day cannot be after today.')
     expect(byHandProblem(draft, '2026-11-12')).toBe('')
+  })
+
+  it('opens the day on the day the bill was made, with Today one press away (R1)', () => {
+    // A bill weeks old opens on its own day, never on today's.
+    expect(byHandDayOffered('2026-10-22', '2026-11-13')).toBe('2026-10-22')
+    expect(byHandDayPicks('2026-10-22', '2026-11-13')).toEqual([
+      { ymd: '2026-10-22', label: 'Thu, Oct 22 · the day it was billed', short: 'Thu, Oct 22 · billed' },
+      { ymd: '2026-11-13', label: 'Today', short: 'Today' },
+    ])
+    // A bill made today has one day to offer.
+    expect(byHandDayOffered('2026-11-13', '2026-11-13')).toBe('2026-11-13')
+    expect(byHandDayPicks('2026-11-13', '2026-11-13')).toEqual([{ ymd: '2026-11-13', label: 'Today', short: 'Today' }])
+    // A stamp that does not read, or one after today, leaves today.
+    expect(byHandDayOffered('', '2026-11-13')).toBe('2026-11-13')
+    expect(byHandDayOffered('2026-11-14', '2026-11-13')).toBe('2026-11-13')
+    expect(byHandDayPicks('', '2026-11-13')).toEqual([{ ymd: '2026-11-13', label: 'Today', short: 'Today' }])
+    expect(byHandDayPicks('2026-11-14', '2026-11-13')).toEqual([{ ymd: '2026-11-13', label: 'Today', short: 'Today' }])
   })
 
   it('files one sent copy with no addresses, the bill as its source and what was said', () => {

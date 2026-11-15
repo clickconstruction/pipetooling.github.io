@@ -25,7 +25,7 @@
  * measured from too, so with no accepted day the due day and the lateness read one clock.
  */
 import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayModel, type ExpectedPayPaceInput, type ExpectedPayRowInput, type ExpectedPaySource, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
-import { BILL_OWN_DUE_WORDS, asPayCalendarRead, dueDayFor, expectedFromDue, payCalendarWords, recordFor, recordWords, type BillOwnDue, type PayCalendar, type PayCalendarArg, type PayCalendarLateness, type PayCalendarRecord } from './payCalendar'
+import { BILL_OWN_DUE_WORDS, asPayCalendarRead, dueDayFor, expectedFromDue, payCalendarWords, payTermsNoun, paysDaysAfter, recordFor, recordWords, type BillOwnDue, type PayCalendar, type PayCalendarArg, type PayCalendarLateness, type PayCalendarRecord } from './payCalendar'
 
 export type BilledPaySource = ExpectedPaySource | 'terms'
 
@@ -144,7 +144,9 @@ export function billedPayModel(
   if (sinceExpected == null) return plain(base)
   const late = sinceExpected > 0
   const daysLate = Math.max(0, sinceExpected)
-  const lands = lateness && lateness.medianDays > 0 ? `lands ~${lateness.medianDays}d after their pay day` : 'their pay calendar'
+  // Terms in days after the bill (punch list #341, PR 5) have a due day and no pay day, and are terms, not a calendar.
+  const daysAfter = paysDaysAfter(calendar)
+  const lands = lateness && lateness.medianDays > 0 ? `lands ~${lateness.medianDays}d after their ${daysAfter ? 'due day' : 'pay day'}` : `their ${payTermsNoun(calendar)}`
   const due = `due ${formatYmdMonthDay(dueYmd)}`
   const label = late ? `${daysLate}d past expected · ${due}` : daysPastDue > 0 ? `${daysPastDue}d past due · ${lands}` : `Due ${formatYmdMonthDay(dueYmd)} · ${lands}`
   const who = (input.payerName ?? '').trim() || 'This customer'
@@ -153,7 +155,7 @@ export function billedPayModel(
   const billedYmd = billedReferenceYmd(input)
   const opening = clock.from === 'accepted' ? `${billedYmd ? `Billed ${formatYmdMonthDay(billedYmd)}. ` : ''}They accepted it ${formatYmdMonthDay(clock.ymd)}, and the calendar counts from that day.` : `Billed ${formatYmdMonthDay(refYmd)}.`
   // A job's own calendar says so: the same payer can read two sets of days on two rows, and the hover is where the reason is.
-  const whose = calendarOwn ? `This job is on its own calendar${clause}` : `${who} pays on a calendar${clause}`
+  const whose = calendarOwn ? `This job is on its own ${daysAfter ? 'terms' : 'calendar'}${clause}` : daysAfter ? `${who} pays a set number of days after a bill${clause}` : `${who} pays on a calendar${clause}`
   const title = `${opening} ${whose}: ${payCalendarWords(calendar)} Due ${formatYmdMonthDay(dueYmd)}.${floor} ${recordWords(record, who)}${expectedYmd !== dueYmd ? ` Expected about ${formatYmdMonthDay(expectedYmd)}.` : ''}`
   return {
     expectedYmd,

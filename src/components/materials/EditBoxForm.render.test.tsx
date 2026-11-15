@@ -82,17 +82,18 @@ describe('EditBoxForm', () => {
     expect(editContainer).not.toHaveBeenCalled()
   })
 
-  it('holds a new name to the rule and moves words typed after it to the where line (punch list #351)', () => {
+  it('holds a new name to the rule and moves words typed after it to What is in it (punch list #351)', () => {
     const onSaved = vi.fn()
     renderWithProviders(<EditBoxForm container={site[0]!} containers={site} siteBoxes={[...site, box({ id: 'c9', jobId: 'j2', label: 'R80' })]} {...who} onSaved={onSaved} />)
     fireEvent.change(screen.getByLabelText('Its name'), { target: { value: 'r80' } })
     expect(screen.getByRole('alert').textContent).toBe('R80 is already on this site. Pick another name.')
     fireEvent.change(screen.getByLabelText('Its name'), { target: { value: 'concrete mix' } })
-    expect(screen.getByRole('alert').textContent).toBe('A name is one to three letters and a number from 1 to 999, like R76. Words about what is inside go on the where line.')
+    expect(screen.getByRole('alert').textContent).toBe('A name is one to three letters and a number from 1 to 999, like R76. Words about what is inside go in What is in it.')
     fireEvent.change(screen.getByLabelText('Its name'), { target: { value: 'r76 toilets' } })
-    expect(screen.getByTestId('edit-box-moved-note').textContent).toBe('“Toilets” goes on the where line for now. Soon it will be the box’s own line.')
+    expect(screen.getByTestId('edit-box-moved-note').textContent).toBe('“Toilets” moved to What is in it.')
+    expect((screen.getByLabelText('What is in it') as HTMLInputElement).value).toBe('Toilets')
     fireEvent.click(screen.getByRole('button', { name: 'Rename to R76' }))
-    expect(editContainer).toHaveBeenCalledWith('c1', { label: 'R76', where: 'Toilets' })
+    expect(editContainer).toHaveBeenCalledWith('c1', { label: 'R76', said: 'Toilets' })
     expect(onSaved).toHaveBeenCalledWith('R70 NO CONTAINER is now R76. Its printed label still opens it.')
   })
 })

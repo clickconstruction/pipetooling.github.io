@@ -45,11 +45,12 @@ import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
 import { stepperKeeps, stepperTyped } from '../../lib/materials/stepperInput'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
-import { addPressLabel, boxNameVerdict, movedWordsNote, nextFreeName, siteBoxesFor, whereWithWords, type SiteBox } from '../../lib/materials/boxName'
+import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor, type SiteBox } from '../../lib/materials/boxName'
+import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, BOX_LINE_SAID_NOTE, addedLineVerdict, boxLineFromParts, boxLineOf, boxLinePressLabel, boxLineSavedWords, boxLineVerdict, lineFieldValue, nameWordsNote, sayItBetterPress, sayItBetterSub, sayItBetterTitle, type BoxLine } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
-import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, pinContainer, resolveBoxCode, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, pinContainer, resolveBoxCode, retireContainer, sayBoxLine, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { BOX_KIND_CHOICES, BOX_WHERE_MAX, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import BoxTabs from '../materials/BoxTabs'
@@ -131,6 +132,8 @@ type Sheet =
   | { kind: 'add-container'; moveAfter: { line: ContainerLine; qty: number; from: Container } | null }
   | { kind: 'retire'; container: Container }
   | { kind: 'edit-box'; container: Container }
+  /** Say it better (punch list #351, PR 2): a person's own words for what is in the box. */
+  | { kind: 'say-line'; container: Container }
   | { kind: 'pick-job' }
   | { kind: 'move-box'; container: Container }
   | { kind: 'places' }
@@ -411,7 +414,10 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                 {boxHits.slice(0, 8).map((c) => (
                   <button key={c.id} type="button" onClick={() => { setQuery(''); setView({ kind: 'container', id: c.id }) }} style={{ ...card, display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', font: 'inherit', textAlign: 'left', minHeight: TOUCH_MIN, color: 'var(--text-strong)', padding: '0.5rem 0.75rem' }}>
                     <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span>
-                    <span style={muted}>{boxKindWords(c.kind).toLowerCase()} · {placeName(places, c.locationId)}</span>
+                    <span style={{ display: 'grid', minWidth: 0 }}>
+                      {boxLineOf(c, lines).text ? <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-testid="on-site-hit-line">{boxLineOf(c, lines).text}</span> : null}
+                      <span style={muted}>{boxKindWords(c.kind).toLowerCase()} · {placeName(places, c.locationId)}</span>
+                    </span>
                     <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-faint)', fontSize: '1.3rem', lineHeight: 1 }}>›</span>
                   </button>
                 ))}
@@ -491,6 +497,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                 const due = c.kind !== 'unsorted' && countIsDue(last, now)
                 const cannot = ls.reduce((s, l) => s + l.cannotFindSinceCount, 0)
                 const parts = ls.filter((l) => l.onHand > 0).length
+                // What is in it (punch list #351, PR 2): a person's words, or the app's line from the parts, which already says how many.
+                const line = c.kind === 'unsorted' ? ({ text: '', by: 'none' } as BoxLine) : boxLineOf(c, lines)
                 return (
                   <button key={c.id} type="button" onClick={() => setView({ kind: 'container', id: c.id })} style={{ ...card, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'var(--text-strong)', borderColor: due || cannot ? 'var(--text-amber-800)' : 'var(--border)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)', minHeight: TOUCH_MIN, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -500,9 +508,10 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                       <span style={{ ...muted, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', fontWeight: 600 }}>{c.kind === 'unsorted' ? 'delivered' : boxKindWords(c.kind).toLowerCase()}</span>
                       {c.where ? <span style={muted}>{c.where}</span> : null}
                     </div>
+                    {line.text ? <div style={{ fontWeight: 600, marginTop: '0.15rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-testid="on-site-box-row-line" data-by={line.by}>{line.text}</div> : null}
                     <div style={{ ...muted, marginTop: '0.15rem' }}>
-                      <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{parts} {parts === 1 ? 'part' : 'parts'}</b>
-                      {c.kind === 'unsorted' ? <> · put them in a cage</> : <> · <span style={due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : undefined}>{lastCountWords(last, now)}</span></>}
+                      {line.by === 'app' ? null : <><b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{parts} {parts === 1 ? 'part' : 'parts'}</b> · </>}
+                      {c.kind === 'unsorted' ? <>put them in a cage</> : <span style={due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : undefined}>{lastCountWords(last, now)}</span>}
                       {cannot > 0 ? <> · <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{cannot} can't find</span></> : null}
                     </div>
                     </div>
@@ -613,9 +622,21 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const others = containers.filter((c) => c.id !== container.id && c.kind !== 'unsorted')
   const unsorted = container.kind === 'unsorted'
   const touched = ls.reduce<{ at: string; by: string } | null>((best, l) => (l.lastTouchedAt && (!best || l.lastTouchedAt > best.at) ? { at: l.lastTouchedAt, by: l.lastTouchedBy ?? '' } : best), null)
+  const boxLineNow = boxLineOf(container, lines)
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }}>
       {header}
+      {/* What is in it (punch list #351, PR 2): the app's line from the parts until a person says it better. Never Unsorted, the app's own row. */}
+      {container.kind !== 'unsorted' ? (
+        <div style={{ display: 'grid', gap: '0.2rem' }} data-testid="on-site-box-line" data-by={boxLineNow.by}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {boxLineNow.text ? <span style={{ fontWeight: 600, fontSize: '1.05rem', minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span> : null}
+            {boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : null}
+            <button type="button" style={{ ...chip, marginLeft: boxLineNow.text ? 'auto' : 0, flex: 'none' }} aria-label={`${sayItBetterPress(boxLineNow)}: ${sayItBetterTitle(container)}`} onClick={() => setSheet({ kind: 'say-line', container })}>{sayItBetterPress(boxLineNow)}</button>
+          </div>
+          {boxLineNow.by === 'person' ? <span style={muted}>{BOX_LINE_SAID_NOTE}</span> : null}
+        </div>
+      ) : null}
       {container.kind !== 'unsorted' ? (
         <div style={{ display: 'grid', gap: '0.35rem', ...muted }}>
           <span>At <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{placeName(places, container.locationId)}</b>{container.where ? `, ${container.where}` : ''}{container.lat != null ? ' · pinned on the map' : ''}</span>
@@ -719,6 +740,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       {pinSheet}
       {stickerSheet}
       {sheet?.kind === 'move-box' ? <MoveBoxSheet jobId={jobId} container={sheet.container} places={places} byName={byName} onClose={() => setSheet(null)} onMoved={(name) => { setSheet(null); showToast(`${sheet.container.label} is now at ${name}.`, 'success') }} /> : null}
+      {sheet?.kind === 'say-line' ? <SayLineSheet container={containers.find((c) => c.id === sheet.container.id) ?? sheet.container} line={boxLineOf(containers.find((c) => c.id === sheet.container.id) ?? sheet.container, lines)} appLine={boxLineFromParts(linesOf(lines, sheet.container.id))} onClose={() => setSheet(null)} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} /> : null}
       {sheet?.kind === 'edit-box' ? (
         <Sheet title={editBoxTitle(sheet.container)} onClose={() => setSheet(null)}>
           <BoxTabs touch container={sheet.container} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
@@ -867,7 +889,7 @@ function AddPartSheet({ container, names, searchParts, onClose, onAdd }: { conta
 
 /**
  * Add a container (punch list #351, PR 1): the name is offered from the site's boxes and holds to the rule in
- * `boxName.ts`; words typed after it are split off and ride the where line until PR 2 gives them a line of their own.
+ * `boxName.ts`; words typed after it are split off and land on **What is in it**, the box's own line (`boxLine.ts`).
  * How it sits opens on the kind this phone added last.
  */
 function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobId: string; siteBoxes: ReadonlyArray<SiteBox>; places: Place[]; onClose: () => void; onMade: (c: Container) => void }) {
@@ -879,19 +901,23 @@ function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobI
   const [newPlace, setNewPlace] = useState('')
   const verdict = boxNameVerdict(typed ?? '', siteBoxes)
   const shown = typed ?? nextFreeName(siteBoxes) ?? ''
-  const whereSaved = verdict.ok ? whereWithWords(where, verdict.words) : where.trim()
+  /** What was typed into **What is in it**; null while untouched, when the words typed after the name stand in it. */
+  const [lineTyped, setLineTyped] = useState<string | null>(null)
+  const line = addedLineVerdict(lineTyped, verdict.words)
+  const wordsNote = verdict.ok ? nameWordsNote(verdict.words, lineTyped) : null
+  const whereSaved = where.trim()
   const longWhere = whereSaved.length > BOX_WHERE_MAX
-  const dead = !verdict.ok || longWhere
+  const dead = !verdict.ok || longWhere || !line.ok
   const add = () => {
-    if (!verdict.ok || longWhere) return
+    if (!verdict.ok || longWhere || !line.ok) return
     const loc = newPlace.trim() ? addPlace({ jobId, name: newPlace }).id : placeId
     rememberBoxKind(kind)
-    onMade(addContainer({ jobId, label: verdict.name, kind, where: whereSaved, locationId: loc }))
+    onMade(addContainer({ jobId, label: verdict.name, kind, where: whereSaved, said: line.said, locationId: loc }))
   }
   return (
     <Sheet title="Add a container" sub="The next free name on this site is ready. Change it only if the paint says something else." onClose={onClose}>
       <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>Its name<input type="text" value={shown} onChange={(e) => setTyped(e.target.value)} placeholder="R1" aria-label="Its name" autoCapitalize="characters" autoComplete="off" style={{ ...input, fontSize: '1.4rem', fontWeight: 800, textTransform: 'uppercase' }} /></label>
-      <p data-testid="add-box-say" role={verdict.ok ? undefined : 'alert'} style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: !verdict.ok ? 'var(--text-red-700)' : verdict.tone === 'wait' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{verdict.say}{verdict.ok && verdict.words ? ` ${movedWordsNote(verdict.words)}` : ''}</p>
+      <p data-testid="add-box-say" role={verdict.ok ? undefined : 'alert'} style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: !verdict.ok ? 'var(--text-red-700)' : verdict.tone === 'wait' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{verdict.say}{wordsNote ? ` ${wordsNote}` : ''}</p>
       <div style={{ display: 'grid', gap: '0.25rem' }}>
         <span style={{ fontWeight: 600 }}>How it sits</span>
         <div role="group" aria-label="How it sits" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.35rem' }}>
@@ -900,6 +926,9 @@ function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobI
           ))}
         </div>
       </div>
+      {/* What is in it (punch list #351, PR 2): never asked for. Words typed after the name stand here until the field is touched. */}
+      <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input type="text" value={lineFieldValue(lineTyped, verdict.words)} onChange={(e) => setLineTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder="You can say later" aria-label={BOX_LINE_FIELD_LABEL} style={input} data-testid="add-box-line" /></label>
+      {line.ok ? (line.said ? null : <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: 'var(--text-muted)' }}>{BOX_LINE_LATER_NOTE}</p>) : <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{line.words}</p>}
       <div style={{ display: 'grid', gap: '0.35rem' }}>
         <span style={{ fontWeight: 600 }}>Which place on site</span>
         {places.length > 0 ? (
@@ -914,6 +943,30 @@ function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobI
       <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>Where exactly, if it helps<input type="text" value={where} onChange={(e) => setWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={input} /></label>
       {longWhere ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>The where line holds {BOX_WHERE_MAX} characters. This one is {whereSaved.length}.</p> : null}
       <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52, ...dis(dead) }} disabled={dead} onClick={add}>{addPressLabel(verdict)}</button>
+    </Sheet>
+  )
+}
+
+/**
+ * Say it better (punch list #351, PR 2): a person's own words for what is in a box, over the line the app writes from
+ * its parts. Cleared words hand the line back to the app. The rules and every word are `boxLine.ts`; the write is the
+ * store's `sayBoxLine`, kept and sent later when there is no signal.
+ */
+function SayLineSheet({ container, line, appLine, onClose, onSaved }: { container: Container; line: BoxLine; /** The app's own line from the parts, shown in the empty field: what the box reads when the words are cleared. */ appLine: string; onClose: () => void; onSaved: (words: string) => void }) {
+  const [typed, setTyped] = useState(container.said ?? '')
+  const verdict = boxLineVerdict(container, typed)
+  const save = () => {
+    if (!verdict.ok) return
+    sayBoxLine(container.jobId, container.id, container.label, verdict.said)
+    onSaved(boxLineSavedWords(container, verdict.said))
+  }
+  return (
+    <Sheet title={sayItBetterTitle(container)} sub={sayItBetterSub(line)} onClose={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); save() }} style={{ display: 'grid', gap: '0.75rem' }} data-testid="say-line-form">
+        <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input type="text" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder={appLine || 'PVC fittings, mixed'} aria-label={BOX_LINE_FIELD_LABEL} style={input} /></label>
+        {!verdict.ok && verdict.words ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{verdict.words}</p> : null}
+        <button type="submit" style={{ ...btnPrimary, ...btnBlock, minHeight: 52, ...dis(!verdict.ok) }} disabled={!verdict.ok}>{boxLinePressLabel(container, typed)}</button>
+      </form>
     </Sheet>
   )
 }

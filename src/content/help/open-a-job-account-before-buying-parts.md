@@ -52,7 +52,9 @@ A new job saves, and the contract question is answered. Then a second question a
 
 Pressed it by mistake? Open the job and tap the {{chip:gray|not needed}} chip. **Change this…** marks the account opened or takes a new reason. **Take the mark off** puts the house back to none yet. The two presses are for the office.
 
-An older job may read *Marked not needed when the job was made. No reason was given.* That answer came from one press, before the question asked why.
+Under the reason, the sheet says who marked it and the day. The line reads *Marked by Tess on Nov 13, 2026.* Changing the reason names whoever changed it.
+
+An older job may read *Marked not needed when the job was made. No reason was given.* That answer came from one press, before the question asked why. An older answer shows its day and no name.
 
 Another job at the same address may already have an open account at a house. Then a teal band offers to carry it over: {{chip:green|Same Ferguson account · JA-4114}}. It copies the reference, how it was opened and the rep. So the office never asks Curly twice for one property.
 

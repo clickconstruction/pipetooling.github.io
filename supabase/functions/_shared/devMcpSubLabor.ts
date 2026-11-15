@@ -11,13 +11,16 @@
 //   remove — the Edit window's Delete: the sheet row deleted, its lines with it. Held here while the sheet carries a
 //            payment, which the screen would delete without a trace.
 // plan_sub_labor_payment → apply_sub_labor_payment, two actions:
-//   record — Make Payment (useSubLaborLedger.recordLaborJobPayment): one people_labor_job_payments row.
+//   record — the Record payment window (useSubLaborLedger.recordSubSending → record_sub_sending): one sending with
+//            its number, and its one line on the sheet with how it was sent and that method's own number (punch
+//            list #347). Up to what the sheet still owes: what is past a sheet is the window's to place.
 //   remove — the payment's Remove with a reason (remove_labor_job_payment), which keeps a trace and a 30-day Undo.
 //
-// A sheet has no column for a note, for a span of days or for where its days came from, and a payment has none for a
-// method, a reference or a bank row. So a day and the stated mark ride in the line's own words, the note and the span
-// on the job's activity, and the method and reference in the payment's memo. The bank row is read, never written: the
-// plan says whether it is already allocated to a job as cost, where the same dollars would then count twice.
+// A sheet has no column for a note, for a span of days or for where its days came from. So a day and the stated mark
+// ride in the line's own words, and the note and the span on the job's activity. A payment carries its method and
+// that method's number in their own columns, and its note is the memo. The bank row is read, never written: the plan
+// says whether it is already allocated to a job as cost, where the same dollars would then count twice. Match on the
+// Subs Ledger or on Banking is what ties a payment to its bank line.
 //
 // No wrapper RPC and no migration: the dry run is this server's read of the job, the person, the job's sheets with
 // their lines and payments, and the bank row, hashed with the payload. Pure: no env reads, no network; the test runs a
@@ -220,13 +223,29 @@ export function subLaborInput(verb: SubLaborVerb, input: Json, todayYmd: string)
   return { ok: true, p, target: sheetId, planHash: hash.planHash }
 }
 
-export type SheetPaymentRecord = { action: 'record'; sheet_id: string; amount: number; paid_on: string; method?: string; reference?: string; note?: string; mercury_transaction_id?: string; hidden_from_sub?: true; duplicate_ok?: true }
+/** How a payment was sent: the Record payment window's chips, as `people_labor_job_payments.method` stores them (src/lib/subWorkOrders/subPaymentWindow.ts). */
+export const SHEET_PAY_METHODS = ['check', 'zelle', 'mercury', 'cashapp', 'apple_pay', 'cash', 'client_direct', 'other'] as const
+export type SheetPayMethod = (typeof SHEET_PAY_METHODS)[number]
+export const SHEET_PAY_METHOD_LABEL: Record<SheetPayMethod, string> = { check: 'Check', zelle: 'Zelle', mercury: 'Mercury', cashapp: 'Cash App', apple_pay: 'Apple Pay', cash: 'Cash', client_direct: 'Client direct', other: 'Other' }
+/** The methods whose chip opens a box for a number of its own: a check number, a Cash App id, a confirmation. */
+export const SHEET_PAY_METHODS_WITH_REF: readonly SheetPayMethod[] = ['check', 'zelle', 'mercury', 'cashapp']
+/** The door behind the Record payment window (migration 20261114020000): the sending, its rows and any credit, in one statement. */
+export const SHEET_SENDING_RPC = 'record_sub_sending'
+const METHOD_LIST = SHEET_PAY_METHODS.map((m) => SHEET_PAY_METHOD_LABEL[m]).join(', ')
+const methodKey = (v: string): string => v.toLowerCase().replace(/[^a-z]/g, '')
+/** A method as asked, by its stored key or its chip's words in any case. Null when it is none of the chips. */
+export function sheetPayMethodFrom(asked: string): SheetPayMethod | null {
+  const want = methodKey(asked)
+  return SHEET_PAY_METHODS.find((m) => methodKey(m) === want || methodKey(SHEET_PAY_METHOD_LABEL[m]) === want) ?? null
+}
+
+export type SheetPaymentRecord = { action: 'record'; sheet_id: string; amount: number; paid_on: string; method?: SheetPayMethod; reference?: string; note?: string; mercury_transaction_id?: string; hidden_from_sub?: true; duplicate_ok?: true }
 export type SheetPaymentRemove = { action: 'remove'; payment_id: string; reason: string }
 export type SubLaborPaymentPayload = SheetPaymentRecord | SheetPaymentRemove
 export type SubLaborPaymentInput = { ok: true; p: SubLaborPaymentPayload; target: string; planHash: string | null } | { ok: false; error: string }
 
 const PAYMENT_SHAPE =
-  `needs payment — { action?: 'record', sheet_id (a people_labor_jobs.id — plan_sub_labor lists a job's sheets), amount (dollars paid, more than 0), paid_on (YYYY-MM-DD, the day it was sent, never ahead of today), method? (ACH, Check, Zelle, Cash, …), reference? (a check number, a confirmation), note?, mercury_transaction_id? (the bank row that paid it: read and checked, never written), hidden_from_sub? (true hides the memo on their portal; the amount always shows), duplicate_ok? (true when the sheet really was paid the same amount twice on one day) } ` +
+  `needs payment — { action?: 'record', sheet_id (a people_labor_jobs.id — plan_sub_labor lists a job's sheets), amount (dollars paid, more than 0), paid_on (YYYY-MM-DD, the day it was sent, never ahead of today), method? (how it was sent, one of the Record payment window's chips: ${METHOD_LIST}), reference? (that method's own number: a check number, a Cash App id, a confirmation), note? (the memo, the one text of a payment the sub reads), mercury_transaction_id? (the bank row that paid it: read and checked, never written), hidden_from_sub? (true hides the memo on their portal; the amount always shows), duplicate_ok? (true when the sheet really was paid the same amount twice on one day) } ` +
   `| { action: 'remove', payment_id (a people_labor_job_payments.id), reason }`
 
 /** plan_sub_labor_payment / apply_sub_labor_payment's input, shaped. */
@@ -254,12 +273,20 @@ export function subLaborPaymentInput(verb: SubLaborPaymentVerb, input: Json, tod
   const paidOn = str('paid_on')
   if (!validYmd(paidOn)) return { ok: false, error: `${verb}: paid_on is YYYY-MM-DD, the day the money was sent.` }
   if (paidOn > todayYmd) return { ok: false, error: `${verb}: paid_on ${paidOn} is ahead of today (${todayYmd}). A payment is recorded once it has been sent.` }
-  const words: { method?: string; reference?: string; note?: string } = {}
-  for (const [k, max] of [['method', 40], ['reference', 80], ['note', 160]] as const) {
+  const words: { method?: SheetPayMethod; reference?: string; note?: string } = {}
+  const askedMethod = str('method')
+  if (askedMethod) {
+    const method = sheetPayMethodFrom(askedMethod)
+    if (!method) return { ok: false, error: `${verb}: method is how it was sent, one of the Record payment window's chips: ${METHOD_LIST}. A transfer out of the Mercury account is Mercury. Anything else is Other, with the word in note.` }
+    words.method = method
+  }
+  for (const [k, max] of [['reference', 80], ['note', 160]] as const) {
     const v = str(k)
     if (v.length > max) return { ok: false, error: `${verb}: ${k} is under ${max} characters.` }
     if (v) words[k] = v
   }
+  if (words.reference && !words.method) return { ok: false, error: `${verb}: reference is a method's own number (a check number, a Cash App id, a confirmation), so it needs method. Words that belong to no method go in note.` }
+  if (words.reference && words.method && !SHEET_PAY_METHODS_WITH_REF.includes(words.method)) return { ok: false, error: `${verb}: ${SHEET_PAY_METHOD_LABEL[words.method]} carries no number of its own in the window. Put "${words.reference}" in note.` }
   const bank = str('mercury_transaction_id').toLowerCase()
   if (bank && !UUID_RE.test(bank)) return { ok: false, error: `${verb}: mercury_transaction_id is a mercury_transactions.id (read_rows on mercury_transactions finds the row by amount and day).` }
   const p: SheetPaymentRecord = { action: 'record', sheet_id: sheetId, amount, paid_on: paidOn, ...words, ...(bank ? { mercury_transaction_id: bank } : {}), ...(src.hidden_from_sub === true ? { hidden_from_sub: true as const } : {}), ...(src.duplicate_ok === true ? { duplicate_ok: true as const } : {}) }
@@ -273,7 +300,7 @@ export type LaborPersonRow = { id: string; name: string | null; kind: string | n
 export type LaborUserRow = { id: string; name: string | null; email: string | null; role: string | null; archived_at: string | null; is_sample: boolean | null; is_digital_twin: boolean | null }
 export type SheetRow = { id: string; master_user_id: string | null; assigned_to_name: string | null; address: string | null; job_number: string | null; job_ledger_id: string | null; labor_rate: number | string | null; distance_miles: number | string | null; job_date: string | null; created_at: string | null; stage: string | null; step_id: string | null }
 export type SheetItemRow = { id: string; job_id: string; fixture: string | null; count: number | string | null; hrs_per_unit: number | string | null; is_fixed: boolean | null; labor_rate: number | string | null; direct_labor_amount: number | string | null; sequence_order: number | null }
-export type SheetPayRow = { id: string; job_id: string; amount: number | string; memo: string | null; payment_date: string | null; hidden_from_sub: boolean | null; sequence_order: number | null; created_at: string | null }
+export type SheetPayRow = { id: string; job_id: string; amount: number | string; memo: string | null; payment_date: string | null; hidden_from_sub: boolean | null; sequence_order: number | null; created_at: string | null; method?: string | null; method_ref?: string | null; sending_id?: string | null }
 export type SheetAssigneeRow = { labor_job_id: string; person_id: string }
 export type LaborSettingRow = { key: string; value_num: number | null }
 /** A bank row's split onto a job, with the row itself embedded (the Job window's own read). */
@@ -285,7 +312,7 @@ export const LABOR_PERSON_COLS = 'id,name,kind,email,end_date,archived_at,accoun
 export const LABOR_USER_COLS = 'id,name,email,role,archived_at,is_sample,is_digital_twin'
 export const SHEET_COLS = 'id,master_user_id,assigned_to_name,address,job_number,job_ledger_id,labor_rate,distance_miles,job_date,created_at,stage,step_id'
 export const SHEET_ITEM_COLS = 'id,job_id,fixture,count,hrs_per_unit,is_fixed,labor_rate,direct_labor_amount,sequence_order'
-export const SHEET_PAY_COLS = 'id,job_id,amount,memo,payment_date,hidden_from_sub,sequence_order,created_at'
+export const SHEET_PAY_COLS = 'id,job_id,amount,memo,payment_date,hidden_from_sub,sequence_order,created_at,method,method_ref,sending_id'
 export const BANK_LINE_SELECT = 'id,amount,note,job_id,mercury_transaction_id,mercury_transactions(posted_at,counterparty_name,amount)'
 export const LABOR_BANK_COLS = 'id,amount,posted_at,status,kind,counterparty_name'
 
@@ -924,48 +951,117 @@ export type SubLaborPaymentWorld = {
   bankAllocations: BankAllocationRow[]
   /** The sheet's job's allocated bank rows, for a payment that names no bank row. */
   bankLines: BankLineRow[]
+  /** Who a record's sending is to, by the Pay view's rule. Null for a remove. */
+  sentTo: SheetSentTo | null
+}
+
+/** Who a sheet's sending is to: the roster person, when the sheet's sub is one person on the roster. */
+export type SheetSentTo = { person_id: string | null; name: string; reads: string }
+
+/**
+ * Whose a sheet is, as the Pay view rules it (`sheetParties` over `isRosterSub`, then `sendingSheetsFrom`): a person
+ * on it is a sub when they are not on the roster, or are a roster sub with no login or a subcontractor's login.
+ * Anyone else is a teammate riding along. A sheet with no sub is crew pay and its sending names nobody. A sheet with
+ * one sub who is on the roster names that person; any other sheet names nobody, and such a sub can hold no credit.
+ */
+export function sheetSentTo(sheet: Pick<SheetRow, 'assigned_to_name'>, assignees: readonly SheetAssigneeRow[], people: readonly LaborPersonRow[], users: readonly Pick<LaborUserRow, 'id' | 'role'>[]): SheetSentTo {
+  const roleOf = new Map(users.map((u) => [u.id, (u.role ?? '').trim()]))
+  const isSub = (p: LaborPersonRow | undefined): boolean => !p || (p.kind === 'sub' && (!p.account_user_id || ['', 'subcontractor'].includes(roleOf.get(p.account_user_id) ?? '')))
+  const byId = new Map(people.map((p) => [p.id, p]))
+  const typed = sheetNames(sheet)
+  const on: Array<{ id: string | null; name: string; person: LaborPersonRow | undefined }> = assignees.length
+    ? assignees.map((a) => ({ id: a.person_id, name: (byId.get(a.person_id)?.name ?? '').trim(), person: byId.get(a.person_id) }))
+    : typed.map((name) => {
+        const person = people.find((p) => (p.name ?? '').trim().toLowerCase() === name.toLowerCase())
+        return { id: person?.id ?? null, name: (person?.name ?? '').trim() || name, person }
+      })
+  const subs = on.filter((x) => isSub(x.person))
+  const label = (list: typeof on): string => list.map((x) => x.name).filter(Boolean).join(LABOR_ASSIGNED_DELIMITER) || (sheet.assigned_to_name ?? '').trim() || 'nobody named'
+  if (subs.length === 0) return { person_id: null, name: label(on), reads: 'a crew pay sheet: nobody on it is a sub, so the sending names no person' }
+  const one = subs.length === 1 ? subs[0]! : null
+  if (one?.id) return { person_id: one.id, name: label(subs), reads: `${label(subs)}, the sheet's one sub, on the roster` }
+  return { person_id: null, name: label(subs), reads: subs.length > 1 ? `${subs.length} subs share the sheet, so the sending names no one person` : `${label(subs)} is not on the roster, so the sending names no person` }
 }
 
 export async function readSubLaborPaymentWorld(reads: SubLaborReads, p: SubLaborPaymentPayload): Promise<SubLaborPaymentWorld> {
   const payment = p.action === 'remove' ? (((await reads.rows('people_labor_job_payments', `select=${SHEET_PAY_COLS}&id=eq.${p.payment_id}`))[0] as unknown as SheetPayRow | undefined) ?? null) : null
   const sheetId = p.action === 'record' ? p.sheet_id : payment?.job_id ?? null
   const bankAsked = p.action === 'record' ? p.mercury_transaction_id ?? null : null
-  const empty: SubLaborPaymentWorld = { payment, sheet: null, job: null, items: [], payments: [], bank: null, bankAsked, bankAllocations: [], bankLines: [] }
+  const empty: SubLaborPaymentWorld = { payment, sheet: null, job: null, items: [], payments: [], bank: null, bankAsked, bankAllocations: [], bankLines: [], sentTo: null }
   if (!sheetId) return empty
   const sheet = ((await reads.rows('people_labor_jobs', `select=${SHEET_COLS}&id=eq.${sheetId}`))[0] as unknown as SheetRow | undefined) ?? null
   if (!sheet) return empty
   const jobId = sheet.job_ledger_id
-  const [items, payments, jobs, banks, bankAllocations, bankLines] = await Promise.all([
+  const [items, payments, jobs, banks, bankAllocations, bankLines, sentTo] = await Promise.all([
     reads.rows('people_labor_job_items', `select=${SHEET_ITEM_COLS}&job_id=eq.${sheet.id}&order=sequence_order.asc&limit=1000`),
     reads.rows('people_labor_job_payments', `select=${SHEET_PAY_COLS}&job_id=eq.${sheet.id}&order=sequence_order.asc&limit=1000`),
     jobId ? reads.rows('jobs_ledger', `select=${LABOR_JOB_COLS}&id=eq.${jobId}`) : Promise.resolve([]),
     bankAsked ? reads.rows('mercury_transactions', `select=${LABOR_BANK_COLS}&id=eq.${bankAsked}`) : Promise.resolve([]),
     bankAsked ? reads.rows('mercury_transaction_job_allocations', `select=${BANK_ALLOCATION_SELECT}&mercury_transaction_id=eq.${bankAsked}&limit=200`) : Promise.resolve([]),
     jobId && p.action === 'record' && !bankAsked ? reads.rows('mercury_transaction_job_allocations', `select=${BANK_LINE_SELECT}&job_id=eq.${jobId}&limit=1000`) : Promise.resolve([]),
+    p.action === 'record' ? readSheetSentTo(reads, sheet) : Promise.resolve(null),
   ])
-  return { payment, sheet, job: (jobs[0] as unknown as LaborJobRow | undefined) ?? null, items: items as unknown as SheetItemRow[], payments: payments as unknown as SheetPayRow[], bank: (banks[0] as unknown as BankRow | undefined) ?? null, bankAsked, bankAllocations: bankAllocations as unknown as BankAllocationRow[], bankLines: bankLines as unknown as BankLineRow[] }
+  return { payment, sheet, job: (jobs[0] as unknown as LaborJobRow | undefined) ?? null, items: items as unknown as SheetItemRow[], payments: payments as unknown as SheetPayRow[], bank: (banks[0] as unknown as BankRow | undefined) ?? null, bankAsked, bankAllocations: bankAllocations as unknown as BankAllocationRow[], bankLines: bankLines as unknown as BankLineRow[], sentTo }
 }
 
-/** The memo a payment carries, where the sub reads it: the method, the reference, the note. Null when none was given, as the window leaves it. */
-export function sheetPaymentMemo(p: Pick<SheetPaymentRecord, 'method' | 'reference' | 'note'>): string | null {
-  const memo = [p.method ?? '', p.reference ? `ref ${p.reference}` : '', p.note ?? ''].filter(Boolean).join(' · ')
+/** The people on a sheet, read for `sheetSentTo`: its assignee rows, or the names typed on it when it has none. */
+export async function readSheetSentTo(reads: SubLaborReads, sheet: SheetRow): Promise<SheetSentTo> {
+  const assignees = (await reads.rows('people_labor_job_assignees', `select=labor_job_id,person_id&labor_job_id=eq.${sheet.id}&limit=200`)) as unknown as SheetAssigneeRow[]
+  let people: LaborPersonRow[]
+  if (assignees.length) people = await rowsIn<LaborPersonRow>(reads, 'people', LABOR_PERSON_COLS, 'id', assignees.map((a) => a.person_id))
+  // A typed name is matched whole, in any case. One that holds a wildcard is read as nobody on the roster.
+  else people = (await Promise.all(sheetNames(sheet).filter((name) => !/[%_*\\]/.test(name)).map((name) => reads.rows('people', `select=${LABOR_PERSON_COLS}&name=ilike.${encodeURIComponent(name)}&limit=5`)))).flat() as unknown as LaborPersonRow[]
+  const accounts = [...new Set(people.map((p) => p.account_user_id).filter((id): id is string => !!id))]
+  const users = accounts.length ? await rowsIn<LaborUserRow>(reads, 'users', LABOR_USER_COLS, 'id', accounts) : []
+  return sheetSentTo(sheet, assignees, uniqueById(people), users)
+}
+
+/** The memo a payment carries, where the sub reads it: the note alone, as the window's memo box. The method and its number have their own columns. Null when none was given. */
+export function sheetPaymentMemo(p: Pick<SheetPaymentRecord, 'note'>): string | null {
+  const memo = (p.note ?? '').trim()
   return memo ? memo.slice(0, MEMO_MAX) : null
 }
 
-/** The row Make Payment inserts (`recordLaborJobPayment`), after the sheet's last; `hidden_from_sub` rides on the row when asked, as a restored payment carries it. */
+/** What `record_sub_sending` is called with, as the Record payment window calls it (`recordSubSending`): one line, no credit. */
+export function sheetSendingArgs(p: SheetPaymentRecord, world: Pick<SubLaborPaymentWorld, 'sentTo'>): Json {
+  return {
+    p_person_id: world.sentTo?.person_id ?? null,
+    p_lines: [{ job_id: p.sheet_id, amount: p.amount }],
+    p_credit: 0,
+    p_payment_date: p.paid_on,
+    p_method: p.method ?? null,
+    p_method_ref: p.method ? (p.reference ?? null) : null,
+    p_memo: sheetPaymentMemo(p),
+    p_hidden_from_sub: p.hidden_from_sub === true,
+  }
+}
+
+/** The payment row that call writes on the sheet, after its last: what the plan reads back. */
 export function sheetPaymentInsertRow(p: SheetPaymentRecord, world: Pick<SubLaborPaymentWorld, 'payments'>): Json {
   const next = world.payments.length ? world.payments.reduce((m, r) => Math.max(m, Number(r.sequence_order ?? 0)), 0) + 1 : 0
-  return { job_id: p.sheet_id, amount: p.amount, memo: sheetPaymentMemo(p), sequence_order: next, payment_date: p.paid_on, ...(p.hidden_from_sub ? { hidden_from_sub: true } : {}) }
+  return { job_id: p.sheet_id, amount: p.amount, memo: sheetPaymentMemo(p), sequence_order: next, payment_date: p.paid_on, hidden_from_sub: p.hidden_from_sub === true, method: p.method ?? null, method_ref: p.method ? (p.reference ?? null) : null }
+}
+
+/** `Check 1187`: how a payment was sent, as the ledger's How paid column reads. '' when no method was picked. */
+export function sheetPayHowWords(row: { method?: string | null; method_ref?: string | null }): string {
+  const m = (row.method ?? '').trim()
+  if (!m) return ''
+  const label = m === 'credit' ? 'From credit' : (SHEET_PAY_METHOD_LABEL[m as SheetPayMethod] ?? m)
+  return [label, (row.method_ref ?? '').trim()].filter(Boolean).join(' ')
 }
 
 function paymentCard(row: SheetPayRow): Json {
-  return { id: row.id, amount: cents(row.amount) / 100, kind: Number(row.amount) < 0 ? 'backcharge' : 'payment', paid_on: row.payment_date ? String(row.payment_date).slice(0, 10) : null, memo: has(row.memo) ? row.memo : null, hidden_from_sub: row.hidden_from_sub === true, typed_in_on: row.created_at ? String(row.created_at).slice(0, 10) : null }
+  const how = sheetPayHowWords(row)
+  return { id: row.id, amount: cents(row.amount) / 100, kind: Number(row.amount) < 0 ? 'backcharge' : 'payment', paid_on: row.payment_date ? String(row.payment_date).slice(0, 10) : null, ...(how ? { how_paid: how } : {}), memo: has(row.memo) ? row.memo : null, hidden_from_sub: row.hidden_from_sub === true, ...(row.sending_id ? { sending_id: row.sending_id } : {}), typed_in_on: row.created_at ? String(row.created_at).slice(0, 10) : null }
 }
 
 const allocationJobLabel = (a: BankAllocationRow): string => (a.jobs_ledger ? laborJobLabel(a.jobs_ledger) : `job ${a.job_id}`)
 
+const PAST_THE_SHEET = 'The Record payment window places what is sent past a sheet on their other open sheets or keeps it as their credit; the seat records one sheet\'s line.'
+
 const PAYMENT_DOES_NOT = [
-  'It ties no bank row to the payment: a sheet payment has no column for one. The bank row is read for this plan and written nowhere; put what identifies it in reference.',
+  'It matches no bank row. The bank row is read for this plan and written nowhere: Match on the Subs Ledger, or on Banking → Ledger, ties the payment to its bank line and ticks it.',
+  'It places nothing past the sheet. Money sent past what a sheet owes goes on their other open sheets or is kept as their credit in the Record payment window, and paying from a credit is that window\'s press too.',
   'It moves no allocation. plan_cost_batch moves a bank row off a job.',
   'It sends nothing. The sub sees the amount on their portal when they have one.',
   'It records no backcharge, and moves no payment to another sheet: those are the payment window\'s own presses.',
@@ -1012,7 +1108,11 @@ export function subLaborPaymentDryRun(p: SubLaborPaymentPayload, world: SubLabor
   const amount = cents(p.amount)
   const twin = world.payments.find((r) => cents(r.amount) === amount && String(r.payment_date ?? '').slice(0, 10) === p.paid_on)
   if (twin && !p.duplicate_ok) return { ok: false, refused: `This sheet already holds a payment of ${laborDollars(amount)} dated ${p.paid_on} (${twin.id}). A second row for the same money pays it twice. Pass duplicate_ok: true only when ${who} was paid the same amount twice that day.` }
+  // The window never puts more on a sheet than it owes: the rest goes to their other sheets or is kept as a credit.
+  if (owed > 0 && now.open <= 0) return { ok: false, refused: `This sheet for ${who} has nothing left to pay: it owes ${laborDollars(owed)} and holds ${laborDollars(now.paid)} paid${now.backcharged ? ` and ${laborDollars(now.backcharged)} back-charged` : ''}. ${PAST_THE_SHEET}` }
+  if (owed > 0 && amount > now.open) return { ok: false, refused: `${laborDollars(amount)} is ${laborDollars(amount - now.open)} more than this sheet still owes ${who} (${laborDollars(now.open)}). ${PAST_THE_SHEET} Record up to ${laborDollars(now.open)} here.` }
   const row = sheetPaymentInsertRow(p, world)
+  const sentTo = world.sentTo ?? { person_id: null, name: who, reads: 'the people on the sheet were not read' }
   const after = sheetBalance(owed, [...world.payments, { amount: p.amount }])
   const warnings: string[] = []
   let bankRow: Json | null = null
@@ -1025,7 +1125,7 @@ export function subLaborPaymentDryRun(p: SubLaborPaymentPayload, world: SubLabor
     if (out <= 0) return { ok: false, refused: `That bank row is ${laborDollars(cents(bank.amount))}: money in, not a payment out to a sub.` }
     if ((bank.status ?? '') === 'failed') return { ok: false, refused: 'The bank returned that payment. A returned payment did not pay the sheet.' }
     const posted = (bank.posted_at ?? '').slice(0, 10)
-    bankRow = { id: bank.id, amount_out: out / 100, posted_on: posted || null, paid_to: (bank.counterparty_name ?? '').trim() || null, kind: bank.kind, status: bank.status, written: 'nowhere — the payment has no column for a bank row' }
+    bankRow = { id: bank.id, amount_out: out / 100, posted_on: posted || null, paid_to: (bank.counterparty_name ?? '').trim() || null, kind: bank.kind, status: bank.status, written: 'nowhere — Match on the Subs Ledger or on Banking ties a payment to its bank line' }
     if (out !== amount) warnings.push(`The bank row is ${laborDollars(out)} out and this payment ${laborDollars(amount)}. That is right when one bank row paid several sheets or one sheet was paid in several rows; say which in note.`)
     if (posted && Math.abs(dayMs(posted) - dayMs(p.paid_on)) > 10 * 86_400_000) warnings.push(`The bank row posted ${posted} and the payment is dated ${p.paid_on}, more than ten days apart.`)
     if (!payeeReadsLike(bank.counterparty_name, sheetNames(sheet)) && has(bank.counterparty_name)) warnings.push(`The bank row was paid to ${bank.counterparty_name!.trim()}, which does not read like ${who}.`)
@@ -1039,21 +1139,25 @@ export function subLaborPaymentDryRun(p: SubLaborPaymentPayload, world: SubLabor
     if (mayCountTwice.length) warnings.push(`${label} carries ${mayCountTwice.length === 1 ? 'a bank row' : `${mayCountTwice.length} bank rows`} allocated as cost that may be this same payment (may_count_twice). If one is, its dollars count twice: as a card charge and as this sheet's sub labor. Name the row as mercury_transaction_id to check it. ${TWICE_FIX}`)
     else warnings.push('No bank row was named, so nothing was checked against Banking. Pass mercury_transaction_id (the row that paid it) and the plan says whether that row is already allocated to a job as cost.')
   }
-  if (after.open < 0 && owed > 0) warnings.push(`The sheet owes ${laborDollars(owed)} and would hold ${laborDollars(after.paid)} paid: overpaid by ${laborDollars(-after.open)}.`)
+  if (!p.method) warnings.push(`No method was named, so the Subs Ledger's How paid reads blank for this payment. method is one of ${METHOD_LIST}.`)
   if (owed === 0) warnings.push('The sheet has no priced line, so the Pay ledger reads what was paid as what was owed.')
   if (row.memo && !p.hidden_from_sub) warnings.push(`The memo "${String(row.memo)}" shows to ${who} on their portal. hidden_from_sub: true hides it; the amount always shows.`)
   return {
     ok: true,
     reply: {
       ...base,
-      records: row,
+      records: {
+        sending: { to: sentTo.name, person_id: sentTo.person_id, who_reads: sentTo.reads, sent: p.amount, lines: 1, credit_kept: 0, number: 'minted on apply, never reused' },
+        payment: row,
+        how_paid: sheetPayHowWords(row as { method?: string | null; method_ref?: string | null }) || null,
+      },
       after: { paid: after.paid / 100, ...(after.backcharged ? { backcharged: after.backcharged / 100 } : {}), open: after.open / 100, reads: paidWords(after.open) },
       bank_row: bankRow,
       counts_twice: countsTwice,
       ...(p.mercury_transaction_id ? {} : { may_count_twice: mayCountTwice }),
       job_profit: 'unchanged — a sheet counts on its job for what it owes, paid or not. Only the balance owed to the sub moves.',
-      door: `one row into people_labor_job_payments as you, as Make Payment writes it (Jobs → Subs → Pay)${p.hidden_from_sub ? ', its memo hidden from the sub as the payment window\'s switch hides one' : ''}`,
-      sets_off: ['the sheet\'s balance moves wherever the app shows what a sub is owed, the Pay ledger first', 'the sub\'s portal shows the payment with its date'],
+      door: `${SHEET_SENDING_RPC} as you, the Record payment window's own door (Jobs → Subs → Pay): one sending with its one line on this sheet${p.hidden_from_sub ? ', its memo hidden from the sub as the window\'s switch hides one' : ''}`,
+      sets_off: ['the sheet\'s balance moves wherever the app shows what a sub is owed, the Pay ledger first', 'the Subs Ledger shows the line with how it was paid and its sending\'s number, not yet checked against the bank', 'the sub\'s portal shows the payment with its date'],
       does_not: PAYMENT_DOES_NOT,
       ...(warnings.length ? { warnings } : {}),
     },
@@ -1064,6 +1168,6 @@ export function subLaborPaymentDryRun(p: SubLaborPaymentPayload, world: SubLabor
 export function subLaborPaymentAppliedWords(p: SubLaborPaymentPayload, who: string, result: { ok: true; detail: Json; after: { paid: number; open: number } | null } | { ok: false; error: string }): Json {
   if (!result.ok) return { action: p.action, sheet_of: who, ok: false, error: result.error }
   const after = result.after ? { paid: result.after.paid, open: result.after.open, reads: result.after.open === 0 ? 'paid in full' : result.after.open < 0 ? `overpaid by ${laborDollars(cents(-result.after.open))}` : `${laborDollars(cents(result.after.open))} still owed` } : null
-  const next = p.action === 'record' ? `${who}'s sheet carries the payment. plan_sub_labor_payment { action: 'remove', payment_id, reason } takes it off again with a trace.` : `The payment is off ${who}'s sheet, kept on its trace. Undo in the app restores it within 30 days.`
+  const next = p.action === 'record' ? `${who}'s sheet carries the payment, under its sending's number. plan_sub_labor_payment { action: 'remove', payment_id, reason } takes it off again with a trace.` : `The payment is off ${who}'s sheet, kept on its trace. Undo in the app restores it within 30 days.`
   return { action: p.action, sheet_of: who, ok: true, ...result.detail, ...(after ? { after } : {}), next }
 }

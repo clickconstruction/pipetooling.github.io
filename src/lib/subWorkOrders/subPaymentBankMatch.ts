@@ -35,13 +35,18 @@ export type BankRow = {
   note?: string | null
   external_memo?: string | null
   status?: string | null
+  /** Mercury's kind. A transfer between the company's own accounts paid nobody. */
+  kind?: string | null
   duplicate_of_transaction_id?: string | null
 }
+
+/** Mercury's kind for money moved between the company's own accounts (`mercuryVisualsFlows.INTERNAL_TRANSFER_KIND`). */
+export const OWN_ACCOUNT_TRANSFER_KIND = 'internalTransfer'
 
 const cents = (n: number): number => Math.round(n * 100)
 const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-/** The rows that are real money out: below zero, not a duplicate, not failed or cancelled. Banking reads a row the same way. */
+/** The rows that are real money out to someone: below zero, not a duplicate, not failed or cancelled, not a transfer between the company's own accounts. Banking reads a row the same way. */
 export function bankLinesFromRows(rows: readonly BankRow[]): BankLine[] {
   const out: BankLine[] = []
   for (const r of rows) {
@@ -50,6 +55,7 @@ export function bankLinesFromRows(rows: readonly BankRow[]): BankLine[] {
     if (r.duplicate_of_transaction_id) continue
     const status = (r.status ?? '').toLowerCase()
     if (status === 'failed' || status === 'cancelled') continue
+    if (r.kind === OWN_ACCOUNT_TRANSFER_KIND) continue
     const at = r.posted_at ?? r.created_at ?? ''
     out.push({ id: r.id, amount: Math.round(-amount * 100) / 100, ymd: at ? calendarYmdInAppTzFromIso(at) : '', payee: (r.counterparty_name ?? '').trim(), memo: (r.note ?? r.external_memo ?? '').trim() })
   }

@@ -5,19 +5,20 @@
  * picked and *Put 0147 on R76* places the sticker through `place_sticker`. **It is a new box**: the box is made in
  * the same call, named by the site's next free name under #351's rule with the sticker's number beside it (the
  * owner's change to call 7, 2026-11-14: never the number as the name), the kind asked as Add a container asks it,
- * the place optional. The database's verdicts are said in words: someone else took the sticker first (who and when,
+ * the place optional, and what is in it on its own line (#351's PR 2), where words typed after the name land. The database's verdicts are said in words: someone else took the sticker first (who and when,
  * with the box to open), a sticker on a box of a job the person is not on, a lost one, a name the rule refuses. It
  * needs signal: the press is dead and says so without one, never an outbox press, since two phones may hold the same
  * blank sticker and only the database can say who was first. The words and the order are `lib/materials/stickerPlace.ts`.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { boxNameVerdict, movedWordsNote, nextFreeName, whereWithWords, type SiteBox } from '../../lib/materials/boxName'
+import { boxNameVerdict, nextFreeName, type SiteBox } from '../../lib/materials/boxName'
+import { BOX_LINE_FIELD_LABEL, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, addedLineVerdict, lineFieldValue, nameWordsNote } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { BOX_KIND_CHOICES, BOX_WHERE_MAX, boxKindWords, type BoxKindChoice } from '../../lib/materials/editBox'
 import { containerLines, placeName, type Container, type ContainerLine, type Place } from '../../lib/materials/onSite'
 import type { OnSiteFindJob } from '../../lib/materials/onSiteFind'
 import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
-import { newId } from '../../lib/materials/onSiteStore'
+import { newId, sayBoxLine } from '../../lib/materials/onSiteStore'
 import { fetchSiteMaterials } from '../../lib/materials/siteMaterialsRead'
 import {
   defaultBranch,
@@ -82,6 +83,8 @@ type Props = {
   /** The press landed, or a taken sticker's box is to be opened: the tab says it and opens the box. */
   onDone: (outcome: PlaceOutcome) => void
   place?: typeof placeSticker
+  /** The new box's line, sent after the database made the box (punch list #351): the store's own press, so it waits for signal like any other. */
+  sayLine?: typeof sayBoxLine
   readSite?: typeof fetchSiteMaterials
   readStickers?: typeof fetchStickersOnBoxes
   /** The phone has signal; a test hands one. */
@@ -89,7 +92,7 @@ type Props = {
   now?: () => string
 }
 
-export default function StickerNewSheet({ sticker, jobId, jobs, containers, lines, places, siteJobIds, siteBoxes, stickersByBox, onClose, onChangeJob, onDone, place = placeSticker, readSite = fetchSiteMaterials, readStickers = fetchStickersOnBoxes, online = () => typeof navigator === 'undefined' || navigator.onLine !== false, now = () => new Date().toISOString() }: Props) {
+export default function StickerNewSheet({ sticker, jobId, jobs, containers, lines, places, siteJobIds, siteBoxes, stickersByBox, onClose, onChangeJob, onDone, place = placeSticker, sayLine = sayBoxLine, readSite = fetchSiteMaterials, readStickers = fetchStickersOnBoxes, online = () => typeof navigator === 'undefined' || navigator.onLine !== false, now = () => new Date().toISOString() }: Props) {
   const number = stickerNumberWords(sticker.number)
   const job = jobs.find((j) => j.id === jobId) ?? null
   const jobLabel = job ? onSiteJobWords(job) : 'this job'
@@ -143,7 +146,11 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
   const [placeId, setPlaceId] = useState<string | null>(places[0]?.id ?? null)
   const verdict = boxNameVerdict(typed ?? '', siteBoxes)
   const shown = typed ?? nextFreeName(siteBoxes) ?? ''
-  const whereSaved = verdict.ok ? whereWithWords(where, verdict.words) : where.trim()
+  /** What was typed into **What is in it** (punch list #351, PR 2); null while untouched, when the words typed after the name stand in it. */
+  const [lineTyped, setLineTyped] = useState<string | null>(null)
+  const newLine = addedLineVerdict(lineTyped, verdict.words)
+  const wordsNote = verdict.ok ? nameWordsNote(verdict.words, lineTyped) : null
+  const whereSaved = where.trim()
   const longWhere = whereSaved.length > BOX_WHERE_MAX
   /** The new box's id, cut once: a second press after a lost answer is the same box, so the database answers *already*. */
   const newBoxIdRef = useRef<string>(newId())
@@ -163,7 +170,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
   /** A verdict the sheet keeps on screen: someone else took the sticker, it is out of reach, or it was lost. */
   const [said, setSaid] = useState<PlaceOutcome | null>(null)
 
-  const run = async (request: PlaceRequest, boxLabel: string) => {
+  const run = async (request: PlaceRequest, boxLabel: string, said: string | null = null) => {
     if (busy) return
     setBusy(true)
     setFailure(null)
@@ -172,6 +179,9 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
       const outcome = placeOutcome(answer, { jobIds: jobs.map((j) => j.id), boxLabel, number: sticker.number, now: now() })
       if (outcome.kind === 'placed' || outcome.kind === 'created' || outcome.kind === 'already') {
         if (request.kind === 'new') rememberBoxKind(request.boxKind)
+        // The database made the box, and its line is the box's own press after it (punch list #351): kept and sent
+        // later when the signal drops between the two, so words typed into the name are never lost.
+        if (request.kind === 'new' && said && outcome.containerId === request.containerId) sayLine(request.jobId, request.containerId, boxLabel, said)
         onDone(outcome)
       } else setSaid(outcome)
     } catch (e) {
@@ -183,7 +193,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
 
   const otherJob = placingVerdict({ sticker, hereJobId: jobId, runJobName: (() => { const j = sticker.runJobId ? jobs.find((x) => x.id === sticker.runJobId) : null; return j ? onSiteJobWords(j) : null })(), now: now() })
   const knownDead = !picked || busy || !hasSignal
-  const newDead = !verdict.ok || longWhere || busy || !hasSignal
+  const newDead = !verdict.ok || longWhere || !newLine.ok || busy || !hasSignal
 
   if (said) {
     const open = said.containerId && said.jobId && jobs.some((j) => j.id === said.jobId)
@@ -204,7 +214,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
             {picked ? placePressLabel(sticker.number, picked.container.label) : `Put ${number} on a box`}
           </button>
         ) : (
-          <button type="button" style={{ ...btnPrimary, ...dis(newDead) }} disabled={newDead} onClick={() => { if (verdict.ok) void run({ kind: 'new', stickerId: sticker.id, containerId: newBoxIdRef.current, jobId, label: verdict.name, boxKind: kind, where: whereSaved, placeId }, verdict.name) }} data-testid="sticker-place-new">
+          <button type="button" style={{ ...btnPrimary, ...dis(newDead) }} disabled={newDead} onClick={() => { if (verdict.ok && newLine.ok) void run({ kind: 'new', stickerId: sticker.id, containerId: newBoxIdRef.current, jobId, label: verdict.name, boxKind: kind, where: whereSaved, placeId }, verdict.name, newLine.said) }} data-testid="sticker-place-new">
             {verdict.ok ? newBoxPressLabel(verdict.name) : newBoxPressLabel(null)}
           </button>
         )}
@@ -254,7 +264,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
             <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>Its name<input type="text" value={shown} onChange={(e) => setTyped(e.target.value)} placeholder="R1" aria-label="Its name" autoCapitalize="characters" autoComplete="off" style={{ ...input, fontSize: '1.4rem', fontWeight: 800, textTransform: 'uppercase' }} data-testid="sticker-new-name" /></label>
             <span style={{ ...btn, cursor: 'default', borderStyle: 'dashed', fontVariantNumeric: 'tabular-nums' }} title="The sticker on it" data-testid="sticker-beside-name">Sticker {number}</span>
           </div>
-          <p data-testid="sticker-new-say" role={verdict.ok ? undefined : 'alert'} style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: !verdict.ok ? 'var(--text-red-700)' : verdict.tone === 'wait' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{verdict.say}{verdict.ok && verdict.words ? ` ${movedWordsNote(verdict.words)}` : ''}</p>
+          <p data-testid="sticker-new-say" role={verdict.ok ? undefined : 'alert'} style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: !verdict.ok ? 'var(--text-red-700)' : verdict.tone === 'wait' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{verdict.say}{wordsNote ? ` ${wordsNote}` : ''}</p>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
             <span style={{ fontWeight: 600 }}>How it sits</span>
             <div role="group" aria-label="How it sits" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.35rem' }}>
@@ -263,6 +273,8 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
               ))}
             </div>
           </div>
+          <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input type="text" value={lineFieldValue(lineTyped, verdict.words)} onChange={(e) => setLineTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder="You can say later" aria-label={BOX_LINE_FIELD_LABEL} style={input} data-testid="sticker-new-line" /></label>
+          {newLine.ok ? (newLine.said ? null : <p style={{ ...muted, margin: 0 }}>{BOX_LINE_LATER_NOTE}</p>) : <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{newLine.words}</p>}
           {places.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.35rem' }}>
               <span style={{ fontWeight: 600 }}>Which place on site</span>

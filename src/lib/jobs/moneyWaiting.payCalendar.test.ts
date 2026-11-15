@@ -144,6 +144,20 @@ describe('Money waiting for a payer on a Pay calendar', () => {
     expect(moneyWaitingBasis(m.rows[0]!, m.companyMedianDays)).toBe('a bill’s own due day')
   })
 
+  it('judges a payer whose terms are days after the bill by each bill’s own due day (punch list #341, PR 5)', () => {
+    // 45 days after the bill: Lot 4 in Sep 28 is due Nov 12, Lot 5 in Oct 5 is due Nov 19, Lot 6 in Nov 3 is due Dec 18.
+    const calendars = { payCalendars: indexPayCalendars([calRow('lark', { calendar: { ...PAY_CALENDAR_DEFAULT, daysAfter: 45 } })]) }
+    const m = buildMoneyWaiting(LARK_ROWS, { ...speeds(), receipts: {} }, '2026-11-22', calendars)!
+    const row = m.rows[0]!
+    expect(row.bills.map((b) => [b.jobName, b.tone, b.calendar?.dueYmd, b.calendar?.daysPastExpected])).toEqual([
+      ['Lot 4', 'warn', '2026-11-12', 10],
+      ['Lot 5', 'warn', '2026-11-19', 3],
+      ['Lot 6', 'ok', '2026-12-18', 0],
+    ])
+    expect(moneyWaitingLead(row)).toBe('10d past expected')
+    expect(moneyWaitingBasis(row, m.companyMedianDays)).toBe('pay terms · no payment on record yet')
+  })
+
   it('says so when a calendar payer has no payment on record', () => {
     const data = { ...speeds(), receipts: {} }
     const m = buildMoneyWaiting(LARK_ROWS, data, TODAY, { payCalendars: indexPayCalendars([calRow('lark')]) })!

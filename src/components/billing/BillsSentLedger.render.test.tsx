@@ -10,6 +10,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BillsSentCopy, BillsSentInput } from '../../lib/billing/billsSent'
 import type { BillHandWay } from '../../lib/billing/billHandWays'
 import { BillsSentLedger } from './BillsSentLedger'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, wayCalls: [] as unknown[][], wayRefuse: null as null | Error, refuse: null as null | Error, fail: null as null | Error, phone: false }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
@@ -264,7 +265,19 @@ describe('BillsSentLedger', () => {
     const picker = screen.getByRole('group', { name: 'How the bill went' })
     expect(within(picker).getAllByRole('button').map((b) => b.textContent)).toEqual(['Handed over', 'Mailed', 'Emailed from a person\u2019s own mailbox', 'Sent from Housecall Pro'])
     fireEvent.click(within(picker).getByRole('button', { name: 'Handed over' }))
-    fireEvent.change(screen.getByLabelText('The day it went'), { target: { value: '2026-11-09' } })
+    // R1: the day opens on the day the bill was made, and Today is one press away.
+    const day = screen.getByLabelText('The day it went') as HTMLInputElement
+    expect(day.value).toBe('2026-11-09')
+    const days = screen.getByRole('group', { name: 'Days one press away' })
+    const billed = within(days).getByRole('button', { name: 'Mon, Nov 9 · the day it was billed' })
+    const todayPress = within(days).getByRole('button', { name: 'Today' })
+    expect(billed.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(todayPress)
+    expect(day.value).toBe(todayYmdInAppTz())
+    expect(todayPress.getAttribute('aria-pressed')).toBe('true')
+    expect(billed.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(billed)
+    expect(day.value).toBe('2026-11-09')
     expect(save.disabled).toBe(false)
     // A refusal says its reason and keeps the form.
     io.refuse = Object.assign(new Error('new row violates row-level security policy for table "sent_documents"'), { code: '42501' })

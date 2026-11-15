@@ -14,7 +14,7 @@ import {
 import { daysBetweenYmd, formatYmdMonthDay, type PromisedPayDate } from './jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import type { ArCustomerRow } from './arCustomerRollup'
-import { calendarBillWords, payCalendarWords, payerCalendarLead } from './jobs/payCalendar'
+import { calendarBillWords, payCalendarWords, payTermsNoun, payerCalendarLead } from './jobs/payCalendar'
 import type { ArLineItem } from './arModalLineItems'
 
 export type ArChasePillKind = 'dispute' | 'broken' | 'promised' | 'snoozed' | 'quiet' | 'ask'
@@ -137,7 +137,7 @@ export function arCallOpener(row: ArCustomerRow): string {
   }
   if (row.calendar) {
     // The line can read one job's own calendar (punch list #341, PR 3): the words say whose.
-    const whose = row.calendarOwn ? 'a job’s own pay calendar' : 'their pay calendar'
+    const whose = row.calendarOwn ? `a job’s own ${payTermsNoun(row.calendar)}` : `their ${payTermsNoun(row.calendar)}`
     if (late.length === 0) return `Nothing past its expected day on ${whose}. ${total}`
     const worst = late.reduce((a, b) => ((b.calendar?.daysPastExpected ?? 0) > (a.calendar?.daysPastExpected ?? 0) ? b : a))
     const words = worst.calendar ? calendarBillWords(worst.calendar) : `${worst.waitDays}d waiting`
@@ -160,7 +160,7 @@ export function arCallOpener(row: ArCustomerRow): string {
 export function buildArCallSummary(row: ArCustomerRow, linesByJob: Map<string, ArLineItem[]> | null): string {
   const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const out: string[] = [`${row.name} — ${money(row.open)} open on ${row.bills.length} bill${row.bills.length === 1 ? '' : 's'}`]
-  if (row.calendar) out.push(`${payerCalendarLead(null, row.calendarOwn === true)} ${payCalendarWords(row.calendar)}`)
+  if (row.calendar) out.push(`${payerCalendarLead(null, row.calendarOwn === true, row.calendar)} ${payCalendarWords(row.calendar)}`)
   else if (row.ownMedianDays != null) out.push(`Usually pays in ~${row.ownMedianDays}d.`)
   out.push('')
   for (const b of row.bills) {

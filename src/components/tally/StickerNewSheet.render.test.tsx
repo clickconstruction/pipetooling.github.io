@@ -13,7 +13,7 @@ import type { Container, ContainerLine, Place } from '../../lib/materials/onSite
 import type { StickerFacts } from '../../lib/materials/stickers'
 import type { SiteMaterialsRows } from '../../lib/materials/siteMaterialsReport'
 
-vi.mock('../../lib/materials/onSiteStore', () => ({ newId: () => 'new-box-1' }))
+vi.mock('../../lib/materials/onSiteStore', () => ({ newId: () => 'new-box-1', sayBoxLine: vi.fn() }))
 
 import StickerNewSheet from './StickerNewSheet'
 
@@ -187,6 +187,35 @@ describe('StickerNewSheet · a new box', () => {
     expect((screen.getByTestId('sticker-place-new') as HTMLButtonElement).disabled).toBe(true)
     fireEvent.change(name, { target: { value: 'R80 TOILETS' } })
     expect((screen.getByTestId('sticker-place-new') as HTMLButtonElement).textContent).toBe('Save box R80')
+  })
+
+  it('words typed after the name stand in What is in it, and are sent as the new box’s line once the database made it (punch list #351, PR 2)', async () => {
+    const sayLine = vi.fn()
+    const place = vi.fn(async () => ({ ok: true as const, already: false, created: true, containerId: 'new-box-1', sticker: { ...onR76, containerId: 'new-box-1', containerLabel: 'R80' } }))
+    const { onDone } = mount({ place, sayLine })
+    fireEvent.click(screen.getByTestId('sticker-branch-new'))
+    fireEvent.change(screen.getByTestId('sticker-new-name'), { target: { value: 'R80 TOILETS' } })
+    expect(screen.getByTestId('sticker-new-say').textContent).toBe('The name is R80. “Toilets” moved to What is in it.')
+    expect((screen.getByTestId('sticker-new-line') as HTMLInputElement).value).toBe('Toilets')
+    fireEvent.click(screen.getByTestId('sticker-place-new'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    // The words are on no where line any more, and the line follows the box.
+    expect(place).toHaveBeenCalledWith(expect.objectContaining({ kind: 'new', label: 'R80', where: '' }))
+    expect(sayLine).toHaveBeenCalledWith('job-a', 'new-box-1', 'R80', 'Toilets')
+  })
+
+  it('a new box nobody described sends no line, and a line past 80 characters is a dead press with the count', async () => {
+    const sayLine = vi.fn()
+    const place = vi.fn(async () => ({ ok: true as const, already: false, created: true, containerId: 'new-box-1', sticker: { ...onR76, containerId: 'new-box-1', containerLabel: 'R77' } }))
+    const { onDone } = mount({ place, sayLine })
+    fireEvent.click(screen.getByTestId('sticker-branch-new'))
+    fireEvent.change(screen.getByTestId('sticker-new-line'), { target: { value: 'x'.repeat(81) } })
+    expect((screen.getByTestId('sticker-place-new') as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('The line holds 80 characters. This one is 81.')).toBeTruthy()
+    fireEvent.change(screen.getByTestId('sticker-new-line'), { target: { value: '' } })
+    fireEvent.click(screen.getByTestId('sticker-place-new'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(sayLine).not.toHaveBeenCalled()
   })
 
   it('Change under the job hands the job picker up, and Close closes', () => {

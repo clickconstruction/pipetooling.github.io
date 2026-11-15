@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Container, Place } from './onSite'
-import { BOX_NAME_MAX, BOX_WHERE_MAX, boxDraftOf, boxKindWords, boxPlaceChange, boxPlaceDraftOf, cleanBoxName, editBoxMovedNote, editBoxPlan, editBoxPressLabel, editBoxTitle, editBoxVerdict, editedBoxWords, renameLabelNote, savedBoxWords } from './editBox'
+import { BOX_NAME_MAX, BOX_WHERE_MAX, boxDraftOf, boxKindWords, boxPlaceChange, boxPlaceDraftOf, cleanBoxName, editBoxLineShown, editBoxMovedNote, editBoxPlan, editBoxPressLabel, editBoxTitle, editBoxVerdict, editedBoxWords, renameLabelNote, savedBoxWords } from './editBox'
 
 const box = (over: Partial<Container> = {}): Container => ({ id: 'c1', jobId: 'j1', label: 'R70 NO CONTAINER', kind: 'cage', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T12:00:00Z', ...over })
 
@@ -13,14 +13,35 @@ describe('editBoxVerdict', () => {
     expect(editBoxVerdict(site, 'c1', { label: ' r70 ', kind: 'loose', where: '  on a pallet   by the door ' })).toEqual({ ok: true, patch: { label: 'R70', kind: 'loose', where: 'on a pallet by the door' }, renamed: true, movedWords: '' })
   })
 
-  it('holds a new name to the rule and moves its words to the where line (punch list #351)', () => {
-    expect(editBoxVerdict(site, 'c1', { label: 'r76 toilets', kind: 'cage', where: '' })).toEqual({ ok: true, patch: { label: 'R76', where: 'Toilets' }, renamed: true, movedWords: 'Toilets' })
-    expect(editBoxVerdict(site, 'c1', { label: 'R76 TOILETS', kind: 'cage', where: 'by the door' })).toMatchObject({ ok: true, patch: { label: 'R76', where: 'by the door · Toilets' } })
+  it('holds a new name to the rule and moves its words to the box’s own line (punch list #351)', () => {
+    expect(editBoxVerdict(site, 'c1', { label: 'r76 toilets', kind: 'cage', where: '' })).toEqual({ ok: true, patch: { label: 'R76', said: 'Toilets' }, renamed: true, movedWords: 'Toilets' })
+    expect(editBoxVerdict(site, 'c1', { label: 'R76 TOILETS', kind: 'cage', where: 'by the door' })).toMatchObject({ ok: true, patch: { label: 'R76', where: 'by the door', said: 'Toilets' } })
+    // A line typed in the same window wins over the name's words.
+    expect(editBoxVerdict(site, 'c1', { label: 'R76 TOILETS', kind: 'cage', where: '', said: 'Kohler toilets' })).toMatchObject({ ok: true, patch: { label: 'R76', said: 'Kohler toilets' }, movedWords: 'Toilets' })
     expect(editBoxVerdict(site, 'c1', { label: 'G24B', kind: 'cage', where: '' })).toMatchObject({ ok: true, patch: { label: 'G24B' } })
     expect(editBoxVerdict(site, 'c1', { label: 'R', kind: 'cage', where: '' })).toMatchObject({ ok: true, patch: { label: 'R74' } })
-    expect(editBoxVerdict(site, 'c1', { label: 'concrete mix', kind: 'cage', where: '' })).toEqual({ ok: false, reason: 'bad-name', words: 'A name is one to three letters and a number from 1 to 999, like R76. Words about what is inside go on the where line.' })
+    expect(editBoxVerdict(site, 'c1', { label: 'concrete mix', kind: 'cage', where: '' })).toEqual({ ok: false, reason: 'bad-name', words: 'A name is one to three letters and a number from 1 to 999, like R76. Words about what is inside go in What is in it.' })
     expect(editBoxVerdict(site, 'c1', { label: 'T8678', kind: 'cage', where: '' })).toEqual({ ok: false, reason: 'bad-name', words: 'A number runs from 1 to 999. T8678 cannot be a name.' })
     expect(editBoxVerdict(site, 'c1', { label: 'X'.repeat(BOX_NAME_MAX), kind: 'cage', where: '' })).toMatchObject({ ok: false, reason: 'bad-name' })
+  })
+
+  it('saves a person’s words for what is in it, and hands the line back to the app when they are cleared (punch list #351, PR 2)', () => {
+    expect(editBoxVerdict(site, 'c1', { label: 'R70 NO CONTAINER', kind: 'cage', where: '', said: '  PVC fittings,  mixed ' })).toEqual({ ok: true, patch: { said: 'PVC fittings, mixed' }, renamed: false, movedWords: '' })
+    const said = [{ ...site[0]!, said: 'PVC fittings, mixed' }, ...site.slice(1)]
+    expect(editBoxVerdict(said, 'c1', { label: 'R70 NO CONTAINER', kind: 'cage', where: '', said: '' })).toEqual({ ok: true, patch: { said: null }, renamed: false, movedWords: '' })
+    expect(editBoxVerdict(said, 'c1', { label: 'R70 NO CONTAINER', kind: 'cage', where: '', said: 'PVC fittings, mixed' })).toEqual({ ok: false, reason: 'same', words: '' })
+    expect(editBoxVerdict(said, 'c1', { label: 'R70 NO CONTAINER', kind: 'cage', where: '' })).toEqual({ ok: false, reason: 'same', words: '' })
+    expect(editBoxVerdict(site, 'c1', { label: 'R70 NO CONTAINER', kind: 'cage', where: '', said: 'z'.repeat(81) })).toEqual({ ok: false, reason: 'long-line', words: 'The line holds 80 characters. This one is 81.' })
+    expect(editedBoxWords(site[0]!, { said: 'Toilets' })).toBe('R70 NO CONTAINER reads “Toilets” now.')
+    expect(editedBoxWords(site[0]!, { said: null })).toBe('R70 NO CONTAINER’s line is from its parts again.')
+  })
+
+  it('shows in the line field the person’s typing, else a new name’s words, else the box’s own, and never an old name’s words', () => {
+    const b = { label: 'R70 NO CONTAINER', said: 'Pallet of pipe' }
+    expect(editBoxLineShown(b, { label: 'R70 NO CONTAINER', kind: 'cage', where: '' })).toBe('Pallet of pipe')
+    expect(editBoxLineShown(b, { label: 'r76 toilets', kind: 'cage', where: '' })).toBe('Toilets')
+    expect(editBoxLineShown(b, { label: 'r76 toilets', kind: 'cage', where: '', said: 'Lavs' })).toBe('Lavs')
+    expect(editBoxLineShown({ label: 'R70 NO CONTAINER' }, { label: 'R70 NO CONTAINER', kind: 'cage', where: '' })).toBe('')
   })
 
   it('leaves an old name alone while only the kind or the where line changes', () => {
@@ -51,7 +72,8 @@ describe('editBoxVerdict', () => {
   it('holds the database’s own limits', () => {
     expect(editBoxVerdict(site, 'c1', { label: '  ', kind: 'cage', where: '' })).toMatchObject({ ok: false, reason: 'no-name', words: 'Give it a name.' })
     expect(editBoxVerdict(site, 'c1', { label: 'R70', kind: 'cage', where: 'y'.repeat(BOX_WHERE_MAX + 1) })).toEqual({ ok: false, reason: 'long-where', words: 'The where line holds 120 characters. This one is 121.' })
-    expect(editBoxVerdict(site, 'c1', { label: 'R70 TOILETS', kind: 'cage', where: 'y'.repeat(BOX_WHERE_MAX - 5) })).toMatchObject({ ok: false, reason: 'long-where' })
+    // Words typed after a name no longer ride the where line (punch list #351, PR 2), so they cannot overfill it.
+    expect(editBoxVerdict(site, 'c1', { label: 'R70 TOILETS', kind: 'cage', where: 'y'.repeat(BOX_WHERE_MAX - 5) })).toMatchObject({ ok: true, patch: { label: 'R70', said: 'Toilets' } })
   })
 
   it('never changes Unsorted, a retired box or a box that is not there', () => {
@@ -73,7 +95,8 @@ describe('the words', () => {
     expect(editBoxPressLabel(box(), { label: 'toilets', kind: 'cage', where: '' })).toBe('Rename')
     expect(editBoxPressLabel(box(), { label: 'R70 NO CONTAINER', kind: 'loose', where: '' })).toBe('Save R70 NO CONTAINER')
     expect(editBoxPressLabel(box(), { label: ' ', kind: 'cage', where: '' })).toBe('Save')
-    expect(editBoxMovedNote({ ok: true, movedWords: 'Toilets' })).toBe('“Toilets” goes on the where line for now. Soon it will be the box’s own line.')
+    expect(editBoxMovedNote({ ok: true, movedWords: 'Toilets' })).toBe('“Toilets” moved to What is in it.')
+    expect(editBoxMovedNote({ ok: true, movedWords: 'Toilets' }, { said: 'Lavs' })).toBe('“Toilets” is not part of the name. What is in it holds what you typed there.')
     expect(editBoxMovedNote({ ok: true, movedWords: '' })).toBeNull()
     expect(editBoxMovedNote({ ok: false })).toBeNull()
   })
@@ -121,7 +144,7 @@ describe('the place in the window (v2.7199)', () => {
     expect(editBoxPlan(site, places, 'c1', same, boxPlaceDraftOf(here))).toEqual({ ok: false, words: '' })
     expect(editBoxPlan(site, places, 'c1', same, { placeId: 'p2', newPlace: '' })).toEqual({ ok: true, patch: {}, place: { kind: 'known', placeId: 'p2', name: 'Yard' }, movedWords: '' })
     expect(editBoxPlan(site, places, 'c1', { ...same, label: 'r70' }, boxPlaceDraftOf(here))).toEqual({ ok: true, patch: { label: 'R70' }, place: null, movedWords: '' })
-    expect(editBoxPlan(site, places, 'c1', { ...same, label: 'r70 toilets' }, boxPlaceDraftOf(here))).toEqual({ ok: true, patch: { label: 'R70', where: 'Toilets' }, place: null, movedWords: 'Toilets' })
+    expect(editBoxPlan(site, places, 'c1', { ...same, label: 'r70 toilets' }, boxPlaceDraftOf(here))).toEqual({ ok: true, patch: { label: 'R70', said: 'Toilets' }, place: null, movedWords: 'Toilets' })
     expect(editBoxPlan(site, places, 'c1', { ...same, label: 'r70' }, { placeId: 'p1', newPlace: 'Dock' })).toEqual({ ok: true, patch: { label: 'R70' }, place: { kind: 'new', name: 'Dock' }, movedWords: '' })
     expect(editBoxPlan(site, places, 'c1', { ...same, label: 'r71' }, { placeId: 'p2', newPlace: '' })).toEqual({ ok: false, words: 'R71 is already on this job. Pick another name.' })
   })

@@ -150,8 +150,9 @@ Do this when you know how a bill in the yellow box went out.
 1. Press **Say how it went…** on the bill's row.
 2. Press the chip that says how the bill went. The pressed chip turns dark.
 3. Type who the bill went to. Add an address if you have one.
-4. Pick the day the bill went.
-5. Press {{button:blue|Record how it went}}.
+4. Check the day the bill went. The form offers the day the bill was made.
+5. Press **Today** under the date if the bill went today. You can also pick any earlier day.
+6. Press {{button:blue|Record how it went}}.
 
 The bill leaves the yellow box. The bill now has a line on the day you picked.
 

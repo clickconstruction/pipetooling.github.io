@@ -2,7 +2,7 @@
 name: "A job's own pay terms: the override is built, the door to it is hidden, and four kinds of terms have no home"
 number: 341
 group: gated
-status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · Taunya's *build the entire PR train* 2026-11-15 · PR 3, the job's own record, built that day (v2.7339) on the card's first pick for call 2 · PR 4, one bill's own due day, built that day (v2.7341, migration 20261115170000) as carded, call 3 unanswered · PR 5 is next
+status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · Taunya's *build the entire PR train* 2026-11-15 · PR 3, the job's own record, built that day (v2.7339) on the card's first pick for call 2 · PR 4, one bill's own due day, built that day (v2.7341, migration 20261115170000) as carded, call 3 unanswered · PR 5, a number of days after the bill, built that day (v2.7343, migration 20261115190000) as carded, call 4 unanswered · the train is built
 summary: >
   The owner asked what it would take to set one job's payment terms so they win over its GC's or its
   customer's. Most of it shipped with the Pay calendar (#323): a job can carry its own calendar, or
@@ -12,11 +12,11 @@ summary: >
   sheet. No row says a job is on its own calendar, and a job switched off has no door back. Past
   that, four kinds of terms have no home: one bill due on a named date, a number of days after the
   bill, a real date for pay when paid, and dated draws not yet billed.
-next: PR 5, a number of days after the bill, on the card's plan since call 4 is unanswered. The owner can still change calls 2 and 3. Someone sets the first real calendars, since none is set, and the first real save on a job is the live walk.
-size: M as a train of five (S · S · S · M · M); left: PR 5 (M)
-blocker: none for the build. PR 5 carries a migration. The live walk waits on the first real calendar.
-opinion: Taunya picked the whole train, so PRs 4 and 5 are built as carded; the owner's calls 2 to 4 stay open and each fragment says which pick it stood on
-ver: v2.7036 · v2.7039 · v2.7040 · v2.7127 · v2.7151 · v2.7153 · v2.7339 · v2.7341
+next: someone sets the first real calendars, since none is set: the first real save on a job, on a bill and of terms in days is the live walk. The owner can still change calls 2 to 4, and each fragment says how. The morning run (`messages-nudge-dispatch`) reads neither a bill's own day nor terms in days: it wants both added to its own selects and then a deploy, on Taunya's go.
+size: M as a train of five (S · S · S · M · M); built. Left: the live walk (XS), and the morning run's two reads with its deploy (XS)
+blocker: the first real calendar. Only the owner knows which jobs are on their own terms and what each contract says.
+opinion: set one real calendar on the biggest GC job and walk it; nothing more to build here until that says something reads wrong
+ver: v2.7036 · v2.7039 · v2.7040 · v2.7127 · v2.7151 · v2.7153 · v2.7339 · v2.7341 · v2.7343
 ---
 
 # A job's own pay terms (#341)
@@ -99,7 +99,7 @@ Who may set it: the office roles, checked again on the server (`can_write_paymen
 
 | The contract says | Today |
 |---|---|
-| Paid a number of days after the bill, or after it is approved | No home. #323 left it out on purpose for a payer, since the measured pace is the better guess. A big job with a new contract has no pace of its own. |
+| Paid a number of days after the bill, or after it is approved | Since v2.7343, the window's second answer under *How they pay*, counted from the day the bill was accepted. #323 had left it out on purpose for a payer, since the measured pace is the better guess. |
 | Pay when paid, with a real date | The tick only. Nothing records the day the owner paid the GC. |
 | Retainage released on its own date | Since v2.7341 the release bill takes its own due day. Nothing marks a bill as a retainage release, so the office sets the day. |
 | One bill due on a named date | Since v2.7341, *This bill is due on…* under a billed row's dates (`invoice_due_days`). Before, *They said* was the nearest thing, kept per job. |
@@ -260,10 +260,17 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
   one reads it. **Built as carded with call 3 unanswered**: the owner's first pick was to wait,
   and nothing reads differently until a day is set.
 - **Not walked:** a real save. No calendar and no bill's own day is set on prod, so the first one
-  set is the live walk. PRs 3 and 4 are held by kernel tests, render smokes and the SQL bed.
-- **Left for a deploy:** the morning run (`messages-nudge-dispatch`) does not read a bill's own
-  day yet.
-- PR 5 is next, as carded.
+  set is the live walk.
+- **PR 5, a number of days after the bill**, built 2026-11-15 (v2.7343, migration
+  `20261115190000`): `payer_pay_calendars.days_after`, the window's first choice *How they pay*,
+  and the kernel's second shape (`PayCalendar.daysAfter`): due that many days after the bill is
+  accepted, with no cutoff. **Built as carded with call 4 unanswered**: the owner said that if no
+  big job pays this way it is never built, and nothing reads differently until someone picks it.
+- **Left for a deploy:** the morning run (`messages-nudge-dispatch`) reads neither a bill's own
+  day nor terms in days yet. It wants a deploy on Taunya's go.
+- **What is left is the live walk.** Three things have never been saved for real: a calendar on
+  a job, a due day on one bill, and terms in days. Each is held by kernel tests, render smokes
+  and the SQL bed.
 
 ## How to verify
 

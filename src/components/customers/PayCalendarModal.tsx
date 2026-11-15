@@ -32,7 +32,8 @@ import { payCalendarLabelStyle } from './payCalendarFieldStyles'
 /**
  * Pay calendar · <payer> (punch list #323): the day bills must be in by, the day they pay, and
  * how many months later. Three choices and a note, for a payer who pays on a set day of the
- * month. The window says the calendar back in plain dates before it is saved, and replays the
+ * month. Since punch list #341's PR 5 the first choice is how they pay, and the other answer is a
+ * number of days after the bill is accepted (`PayCalendarFields`). The window says the calendar back in plain dates before it is saved, and replays the
  * payer's measured payments against what is typed: the contract says when a bill is due, the
  * record says when it lands. Opened through `usePayCalendarModal`. The save goes through
  * `set_payer_pay_calendar`, which decides who may and stamps who did.
@@ -330,7 +331,7 @@ export default function PayCalendarModal({
           Pay calendar · {payerName}
         </h2>
         <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          For a payer who pays on a set day of the month. Leave it unset for one who pays some days after each bill.
+          For a payer whose contract says when they pay: a set day of the month, or a number of days after the bill. Leave it unset for one with no such terms.
         </p>
 
         {loadError ? (

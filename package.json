@@ -143,6 +143,7 @@
     "test:pg:on-my-way": "bash scripts/pgtest-on-my-way.sh",
     "test:pg:tech-bio": "bash scripts/pgtest-tech-bio.sh",
     "test:pg:supply-house-move-window": "bash scripts/pgtest-supply-house-move-window.sh",
+    "test:pg:job-account-not-needed-stamp": "bash scripts/pgtest-job-account-not-needed-stamp.sh",
     "test:pg:walk-kit": "bash scripts/pgtest-walk-kit.sh",
     "test:pg:bed-apply": "bash scripts/pgtest-bed-apply.sh",
     "test:pg:lien-release-sign": "bash scripts/pgtest-lien-release-sign.sh",

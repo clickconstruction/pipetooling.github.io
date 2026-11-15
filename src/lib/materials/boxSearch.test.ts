@@ -20,13 +20,22 @@ describe('boxDoors', () => {
     const doors = boxDoors({ jobs, containers, lines, places, forField: false })
     expect(doors.map((d) => d.label)).toEqual(['A1 · cage', 'B7 · box', 'Unsorted · delivered'])
     const a1 = doors[0]!
-    expect(a1.where).toBe('972 · Oak Hollow Bldg C · Building A · level 2 · north stair')
+    expect(a1.where).toBe('3/4" copper 90 · 972 · Oak Hollow Bldg C · Building A · level 2 · north stair')
     expect(a1.words).toContain('3/4" copper 90')
     expect(a1.words).toContain('nibco')
     // a job the list does not know reads by its id
     expect(doors[2]!.where).toBe('job j2')
     // B7's valve was all used, so it is not a word of the box any more
     expect(doors[1]!.words).not.toContain('1/2" ball valve')
+  })
+
+  it('answers to what a person said is in it, and reads that line first (punch list #351)', () => {
+    const said = [box('r76', 'j1', 'R76', 'loose', { said: 'Kohler toilets' }), box('b7', 'j1', 'B7', 'box')]
+    const doors = boxDoors({ jobs, containers: said, lines, places, forField: true })
+    expect(doors[0]!.words).toContain('kohler toilets')
+    expect(doors[0]!.where).toBe('Kohler toilets · 972 · Oak Hollow Bldg C')
+    // An empty box nobody described has no line to read.
+    expect(doors[1]!.where).toBe('972 · Oak Hollow Bldg C')
   })
 
   it('sends the office to the materials page with the phone screen a second press, and a crew straight to the box', () => {

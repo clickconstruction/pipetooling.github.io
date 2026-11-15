@@ -108,7 +108,7 @@ export default function PayCalendarLine({
   const calendar = rows.find((r) => r.jobId == null)?.calendar ?? null
   if (!calendar && !canSet) return null
   return (
-    <button type="button" className="payCalendarPress" data-testid="pay-calendar-line" title={calendar ? payCalendarWords(calendar) : 'For a payer who pays on a set day of the month'} onClick={open} style={style}>
+    <button type="button" className="payCalendarPress" data-testid="pay-calendar-line" title={calendar ? payCalendarWords(calendar) : 'For a payer whose contract says when they pay: a set day of the month, or a number of days after the bill'} onClick={open} style={style}>
       {calendar ? payCalendarShort(calendar) : 'Set a pay calendar…'}
     </button>
   )
