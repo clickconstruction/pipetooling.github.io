@@ -468,6 +468,11 @@ describe('LienDesk', () => {
       await settle()
       expect(shape()).toEqual(['views', 'break', 'papers', 'pile-break', 'right'])
       expect((document.querySelector('[data-lien-desk-pile-break]') as HTMLElement).style.flexBasis).toBe('100%')
+      // v2.7322: on a computer the bar's row gap is 0 and the lines sit 6 px apart by the items' block margins in index.css, so a 0-height break on a line of its own costs no gap of its own; the bar's padding is 1 px over the title line and 3 under the pile line, under those margins.
+      expect((document.querySelector('[data-lien-desk-pile-break]') as HTMLElement).style.height).toBe('0px')
+      expect((document.querySelector('[data-lien-desk-header-break]') as HTMLElement).style.height).toBe('0px')
+      expect((document.querySelector('.lienDeskTitleBar') as HTMLElement).style.rowGap).toBe('0')
+      expect((document.querySelector('.lienDeskTitleBar') as HTMLElement).style.padding).toBe('1px 1.25rem 3px')
       expect(names(document.querySelector('[data-lien-desk-right]')!)).toEqual(['An owner asked for records ›', '§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
       fireEvent.click(screen.getByTestId('lien-owner-records-door'))
       expect(onOpenOwnerRecords).toHaveBeenCalledTimes(4)
@@ -857,6 +862,10 @@ describe('LienDesk', () => {
       const more = bar.querySelector('[data-lien-desk-more="door"]') as HTMLButtonElement
       expect(more.getAttribute('aria-label')).toBe('More')
       expect(more.style.height).toBe('44px')
+      // v2.7322 trimmed the computer's bar; a phone keeps its own rows: the 0.4rem row gap, its own padding, and no break on To do.
+      expect(bar.style.rowGap).toBe('0.4rem')
+      expect(bar.style.padding).toBe('0.15rem 0.6rem 0.5rem')
+      expect(bar.querySelector('[data-lien-desk-header-break]')).toBeNull()
       // None of the doors is in the bar any more.
       expect(within(bar).queryByTestId('lien-rules-door')).toBeNull()
       expect(within(bar).queryByTestId('lien-owner-records-door')).toBeNull()

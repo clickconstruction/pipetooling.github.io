@@ -161,7 +161,7 @@ import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
 import LienDeskJobScreen from './LienDeskJobScreen'
 import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../../lib/jobs/lienDeskPhoneMore'
-import { lienDeskPileLineFit, lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineFit, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
+import { LIEN_DESK_TITLE_BAR_ROW_GAP_PX, lienDeskPileLineFit, lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineFit, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
 import { DeskLegendCard } from '../help/LegendCard'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
@@ -3955,7 +3955,8 @@ export default function LienDesk({
     <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
       <div style={panelStyle} data-lien-desk-panel="page">
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
-        <div ref={titleBarRef} className="lienDeskTitleBar" data-lien-pane-open={paneOpenPhone ? paneOpenPhone.kind : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? '0.4rem' : '0.45rem', borderBottom: '1px solid var(--border)' }}>
+        {/* v2.7322 (the owner's three boxes of 2026-11-15): on a computer the lines sit 6 px apart by the items' own 3 px block margins (`.lienDeskTitleBar > *` in index.css, `LIEN_DESK_TITLE_BAR_ROW_GAP_PX`) and the bar's row gap is 0, since a 0-height break on a line of its own took the old 7.2 px row gap twice; the bar's padding is 1 px over and 3 under, so with those margins the way back sits 4 px under the page's own 8, as close under the app's nav as the Jobs page's tabs, and the pile line 6 px over the border. A phone keeps its own rows. */}
+        <div ref={titleBarRef} className="lienDeskTitleBar" data-lien-pane-open={paneOpenPhone ? paneOpenPhone.kind : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '1px 1.25rem 3px', rowGap: isMobile ? '0.4rem' : 0, borderBottom: '1px solid var(--border)' }}>
           {/* The page's way back (punch list #182), before the title; stacked, an open notice's door back is the list. */}
           {noticeOpenStacked ? (
             <button type="button" onClick={onShowList} data-lien-desk-notices aria-label="Back to the notices" style={{ ...btn('plain'), display: 'inline-flex', alignItems: 'center', gap: 6, height: isMobile ? 44 : 30, marginRight: 8 }}>
@@ -4030,9 +4031,9 @@ export default function LienDesk({
               ))}
             </div>
           ) : null}
-          {/* The pile chips: in the header on a computer, one span so the pile line can be measured (v2.7311); on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). */}
+          {/* The pile chips: in the header on a computer, one span so the pile line can be measured (v2.7311); on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). The span's own wrapped rows keep the bar's 6 px (v2.7322), since the bar's row gap is 0 now. */}
           {!isMobile && (kind === 'retainage' || kind === 'affidavit') && (kind === 'retainage' ? retPileChips : affPileChips).length > 0 ? (
-            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
+            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
           ) : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *show every pile*. */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door (on every view's second line since v2.7311) and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
