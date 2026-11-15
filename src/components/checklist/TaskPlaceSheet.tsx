@@ -6,6 +6,9 @@ import { visibleBand } from '../../lib/visibleBand'
 import { requestMyLocation, type MyFix } from '../../lib/materials/myLocation'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { ADD_TASK_PICKER_Z } from '../../lib/windowLayers'
+import { loadPaintedMapsEvery, type Landed, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
+import { PAINT_SWATCH } from '../paintedMap/paintedMapLook'
+import { TASK_PLACE_WAY_WORDS, waysNearPlace } from '../../lib/tasks/taskPlaceWay'
 import {
   TASK_PLACE_NAME_MAX,
   TASK_PLACE_START_WAIT_MS,
@@ -30,6 +33,8 @@ type Props = {
   onClose: () => void
   /** The sheet's layer. Over Add a task unless the window that opens it sits higher, as a roadmap task's does. */
   zIndex?: number
+  /** The painted maps to pick the way in from (punch list #345). Read on the press, never before. For a smoke. */
+  loadWays?: () => Promise<Landed<PaintedMapWhole[]>>
 }
 
 /**
@@ -41,8 +46,13 @@ type Props = {
  * The phone is asked where it is on that one press and at no other time. What comes back is shown
  * on the map before anything is kept, with how sure the phone is, and a reading too wide to trust
  * asks for the ring instead of being taken (`taskPlaceFixWords`).
+ *
+ * **Add the way in** (punch list #345, step 5): a place can carry the painted map that leads to it.
+ * The press reads the painted maps the giver can open and offers the ones that come within a mile
+ * of the ring, nearest first. Whoever gets the task can then open that map. Nothing is read until
+ * the press, so a place with no way in costs what it cost before.
  */
-export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TASK_PICKER_Z }: Props) {
+export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TASK_PICKER_Z, loadWays = loadPaintedMapsEvery }: Props) {
   // The sheet fills the part of the page that shows (punch list #348): with the keyboard on the place's name an iPhone
   // slides the page, and a sheet pinned to the page lost its title and Cancel off the top of the screen.
   const shows = visibleBand(useVisualViewportBox())
@@ -54,6 +64,10 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
   const [name, setName] = useState(initial?.name ?? '')
   // Nowhere to open, and no reading coming: the map opens wide so the giver can still drag to the spot.
   const [openWide, setOpenWide] = useState(false)
+  // The way in: the painted map this place carries, and the list it is picked from.
+  const [way, setWay] = useState<{ id: string; name: string | null } | null>(initial?.mapId ? { id: initial.mapId, name: initial.mapName ?? null } : null)
+  const [picking, setPicking] = useState(false)
+  const [maps, setMaps] = useState<{ kind: 'unread' } | { kind: 'reading' } | { kind: 'read'; wholes: PaintedMapWhole[] } | { kind: 'failed'; words: string }>({ kind: 'unread' })
   const isTopmost = useModalStackEntry()
 
   useEffect(() => {
@@ -102,8 +116,21 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
 
   const use = () => {
     if (!ring || !ready) return
-    onUse({ lat: ring.lat, lng: ring.lng, name: cleanTaskPlaceName(name), accuracyM })
+    onUse({ lat: ring.lat, lng: ring.lng, name: cleanTaskPlaceName(name), accuracyM, ...(way ? { mapId: way.id, mapName: way.name } : {}) })
   }
+
+  const pickWay = () => {
+    setPicking(true)
+    if (maps.kind === 'read' || maps.kind === 'reading') return
+    setMaps({ kind: 'reading' })
+    void loadWays().then(
+      (res) => setMaps(res.ok ? { kind: 'read', wholes: res.value } : { kind: 'failed', words: res.error || TASK_PLACE_WAY_WORDS.failed }),
+      () => setMaps({ kind: 'failed', words: TASK_PLACE_WAY_WORDS.failed }),
+    )
+  }
+  // Offered against the ring as it is now: drag the map and the list follows.
+  const offered = maps.kind === 'read' && ring ? waysNearPlace(ring, maps.wholes) : []
+  const wayName = way ? (way.name ?? (maps.kind === 'read' ? (maps.wholes.find((w) => w.map.id === way.id)?.map.name ?? null) : null)) : null
 
   return createPortal(
     <div
@@ -188,6 +215,57 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
               style={{ minHeight: 44, padding: '0.5rem 0.6rem', fontSize: '1rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', boxSizing: 'border-box', width: '100%' }}
             />
           </label>
+          {picking ? (
+            <div data-task-place-ways style={{ display: 'grid', gap: '0.4rem', maxHeight: 190, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                <b style={{ fontSize: '0.875rem' }}>{TASK_PLACE_WAY_WORDS.head}</b>
+                <button type="button" onClick={() => setPicking(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: '0.875rem', fontFamily: 'inherit', padding: 0, minHeight: 32 }}>
+                  Close the list
+                </button>
+              </div>
+              {maps.kind === 'reading' ? <p role="status" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{TASK_PLACE_WAY_WORDS.reading}</p> : null}
+              {maps.kind === 'failed' ? <p role="alert" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>{maps.words}</p> : null}
+              {maps.kind === 'read' && offered.length === 0 ? <p role="status" data-task-place-ways-none style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{TASK_PLACE_WAY_WORDS.none}</p> : null}
+              {offered.map((w) => {
+                const on = way?.id === w.id
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => {
+                      setWay({ id: w.id, name: w.name })
+                      setPicking(false)
+                    }}
+                    style={{ display: 'grid', gap: '0.1rem', textAlign: 'left', padding: '0.45rem 0.6rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: on ? '#2563eb' : 'var(--border)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+                      <span aria-hidden style={PAINT_SWATCH} />
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.name}</span>
+                    </span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)' }}>{[w.summary, w.near].filter(Boolean).join(' · ')}</span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : way ? (
+            <div data-task-place-way style={{ display: 'grid', gap: '0.15rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, fontSize: '0.9375rem', fontWeight: 700 }}>
+                <span aria-hidden style={PAINT_SWATCH} />
+                <button type="button" onClick={pickWay} title="Press to pick another map" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', textAlign: 'left', minHeight: 32 }}>
+                  {wayName ?? 'A painted map'}
+                </button>
+                <button type="button" onClick={() => setWay(null)} aria-label="Take the way in off this place" title="Take the way in off this place" style={{ marginLeft: 'auto', flex: 'none', minWidth: 36, minHeight: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  ✕
+                </button>
+              </div>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{TASK_PLACE_WAY_WORDS.opens}</span>
+            </div>
+          ) : (
+            <button type="button" data-task-place-way-add onClick={pickWay} disabled={!ready} style={{ justifySelf: 'start', background: 'none', border: 'none', padding: 0, minHeight: 32, cursor: ready ? 'pointer' : 'default', color: ready ? 'var(--text-link)' : 'var(--text-muted)', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'inherit' }}>
+              ＋ {TASK_PLACE_WAY_WORDS.add}
+            </button>
+          )}
           <button
             type="button"
             onClick={use}

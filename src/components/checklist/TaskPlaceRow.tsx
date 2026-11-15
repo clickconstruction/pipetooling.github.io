@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { loadRecentTaskPlaces } from '../../lib/tasks/taskPlaceIo'
 import { TASK_PLACE_UNNAMED, taskPlaceSheetStart, type TaskPlace, type TaskPlaceDraft } from '../../lib/tasks/taskPlace'
+import { loadPaintedMap } from '../../lib/paintedMap/paintedMapIo'
+import { PAINT_COLOR } from '../paintedMap/paintedMapLook'
 import { TaskPlaceSheet } from './TaskPlaceSheet'
 
 type Props = {
@@ -16,6 +18,22 @@ type Props = {
   variant?: 'field' | 'shelf'
   /** The layer of the Where is it? sheet, for a window that sits above Add a task. */
   sheetZIndex?: number
+  /** The name of the painted map a place carries (punch list #345), for the chip's title. For a smoke. */
+  loadWayName?: (mapId: string) => Promise<string | null>
+}
+
+/** The painted map's name, or null when it is gone or cannot be read. The chip stands without it. */
+async function readWayName(mapId: string): Promise<string | null> {
+  const res = await loadPaintedMap(mapId)
+  return res.ok && res.value ? res.value.map.name : null
+}
+
+/** The paint's stroke on a chip: this place brings the painted way to it. */
+const wayMark = { width: 14, height: 4, borderRadius: 2, background: PAINT_COLOR, flex: 'none' as const, boxShadow: '0 0 0 1px rgba(255,255,255,0.85)' }
+
+/** A place as a chip hands it to the task: its point, its name, and the way in when it has one. */
+function chipDraft(p: TaskPlace): TaskPlaceDraft {
+  return { lat: p.lat, lng: p.lng, name: p.name, accuracyM: p.accuracyM, ...(p.mapId ? { mapId: p.mapId } : {}) }
 }
 
 const chipBase = {
@@ -51,12 +69,33 @@ function sameChip(value: TaskPlaceDraft | null, place: TaskPlace): boolean {
  * The chips are read from the tasks themselves (`loadRecentTaskPlaces`): there is no list of places
  * to keep, and a place is offered because a task has it. A place set in this window and not yet
  * saved shows as its own chip, lit.
+ *
+ * A place can carry the painted map that leads to it (punch list #345, step 5), set in the Where is
+ * it? sheet. A chip whose place has one wears the paint's stroke, and pressing it brings the way in
+ * along with the place.
  */
-export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex }: Props) {
+export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex, loadWayName = readWayName }: Props) {
   const [offered, setOffered] = useState<TaskPlace[]>([])
   const [sheetOpen, setSheetOpen] = useState(false)
   // Read with the row, not with the sheet: one cached settings read, there before ＋ New place is pressed.
   const office = useOfficeAnchor(true)
+  // The name of the way in a loaded place carries, read once for the chip's title and the sheet.
+  const [wayNames, setWayNames] = useState<Record<string, string>>({})
+  const wayId = value?.mapId ?? null
+  const wayNameKnown = value?.mapName ?? (wayId ? wayNames[wayId] : null) ?? null
+  useEffect(() => {
+    if (!wayId || wayNameKnown) return
+    let cancelled = false
+    void loadWayName(wayId).then(
+      (name) => {
+        if (!cancelled && name) setWayNames((m) => ({ ...m, [wayId]: name }))
+      },
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [wayId, wayNameKnown, loadWayName])
 
   useEffect(() => {
     let cancelled = false
@@ -75,7 +114,7 @@ export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex }
   const sheet = sheetOpen ? (
     <TaskPlaceSheet
       start={start}
-      initial={value && !onAChip ? value : null}
+      initial={value && !onAChip ? { ...value, mapName: wayNameKnown } : null}
       {...(sheetZIndex != null ? { zIndex: sheetZIndex } : {})}
       onClose={() => setSheetOpen(false)}
       onUse={(place) => {
@@ -101,9 +140,10 @@ export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex }
           </button>
           {value && !onAChip ? (
             <>
-              <button type="button" aria-pressed="true" title="Press to move this place" onClick={() => setSheetOpen(true)} style={{ ...shelfChipOn, ...shelfChip }}>
+              <button type="button" aria-pressed="true" title={wayId ? `Press to move this place. The way in: ${wayNameKnown ?? 'a painted map'}` : 'Press to move this place'} onClick={() => setSheetOpen(true)} style={{ ...shelfChipOn, ...shelfChip }}>
                 <span aria-hidden style={dot} />
                 {ownName}
+                {wayId ? <span aria-hidden data-task-place-way-mark style={wayMark} /> : null}
               </button>
               <button
                 type="button"
@@ -123,11 +163,13 @@ export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex }
                 key={`${p.name}|${p.lat}|${p.lng}`}
                 type="button"
                 aria-pressed={on}
-                onClick={() => onChange(on ? null : { lat: p.lat, lng: p.lng, name: p.name, accuracyM: p.accuracyM })}
+                onClick={() => onChange(on ? null : chipDraft(p))}
+                title={p.mapId ? 'This place brings its painted way in' : undefined}
                 style={{ ...(on ? shelfChipOn : chipOff), ...shelfChip }}
               >
                 <span aria-hidden style={dot} />
                 {p.name}
+                {p.mapId ? <span aria-hidden data-task-place-way-mark style={wayMark} /> : null}
               </button>
             )
           })}
@@ -144,9 +186,10 @@ export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex }
       </span>
       <div role="group" aria-labelledby="task-place-label" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {value && !onAChip ? (
-          <button type="button" aria-pressed="true" title="Press to move this place" onClick={() => setSheetOpen(true)} style={chipOn}>
+          <button type="button" aria-pressed="true" title={wayId ? `Press to move this place. The way in: ${wayNameKnown ?? 'a painted map'}` : 'Press to move this place'} onClick={() => setSheetOpen(true)} style={chipOn}>
             <span aria-hidden style={dot} />
             {ownName}
+            {wayId ? <span aria-hidden data-task-place-way-mark style={wayMark} /> : null}
           </button>
         ) : null}
         {offered.map((p) => {
@@ -156,11 +199,13 @@ export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex }
               key={`${p.name}|${p.lat}|${p.lng}`}
               type="button"
               aria-pressed={on}
-              onClick={() => onChange(on ? null : { lat: p.lat, lng: p.lng, name: p.name, accuracyM: p.accuracyM })}
+              onClick={() => onChange(on ? null : chipDraft(p))}
+              title={p.mapId ? 'This place brings its painted way in' : undefined}
               style={on ? chipOn : chipOff}
             >
               <span aria-hidden style={dot} />
               {p.name}
+              {p.mapId ? <span aria-hidden data-task-place-way-mark style={wayMark} /> : null}
             </button>
           )
         })}
@@ -173,7 +218,7 @@ export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex }
         </button>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', alignItems: 'baseline', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-        <span>{value ? 'The person sees this place on the task, with directions.' : 'Where the work is. Leave it out for a task with no place.'}</span>
+        <span>{value ? (wayId ? 'The person sees this place on the task, with the painted way in.' : 'The person sees this place on the task, with directions.') : 'Where the work is. Leave it out for a task with no place.'}</span>
         {value ? (
           <button
             type="button"
