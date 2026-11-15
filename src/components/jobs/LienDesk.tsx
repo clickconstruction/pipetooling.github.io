@@ -177,6 +177,8 @@ import LienPenSignaturePane from './LienPenSignaturePane'
 import { buildLienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
+import { bringLienFooterUp } from './lienFooterFocus'
+import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
@@ -499,6 +501,8 @@ export default function LienDesk({
   const [paneScrolled, setPaneScrolled] = useState(false)
   // The page labels stick under the strip while their page scrolls (v2.4726): the strip's height is measured, since its chips can wrap.
   const stripRef = useRef<HTMLDivElement | null>(null)
+  // The notice pane's footer (v2.7321): the band's press brings it up when the footer's own press is the next move and needs reading first.
+  const noticeFooterRef = useRef<HTMLDivElement | null>(null)
   const [stripH, setStripH] = useState(0)
   const [litPage, setLitPage] = useState<string | null>(null)
   useEffect(() => {
@@ -2412,6 +2416,81 @@ export default function LienDesk({
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
   // The leader on a phone, on a notice waiting on him (v2.4881): three lines and two buttons; everything else under Details.
   const simpleApprove = Boolean(isMobile && leader && selected && selected.pile === 'awaiting')
+  // The band's press (v2.7321): the kernel's act in this viewer's words. The leader signs what the office sends for approval;
+  // the office waits on him once it is sent. A send the gates hold goes to the gate that holds it, as the footer's primary does.
+  const noticeFirstBlocker = gates.find((g) => g.tone === 'blocker') ?? null
+  const bandAct: LienNextAct | null = (() => {
+    if (!selected || !timeline) return null
+    const kernel = timeline.next.act
+    if (kernel.kind !== 'footer') return null
+    // Another paper is the next step: the press opens it where its own presses are.
+    if (timeline.next.kind === 'affidavit') return { kind: 'footer', label: 'Open it on Lien affidavits ›' }
+    if (timeline.next.kind === 'retainage') return { kind: 'footer', label: 'Open it on Retainage notices ›' }
+    if (timeline.next.kind !== 'notice') return null
+    const waitOnLeader: LienNextAct = { kind: 'none', waiting: null, words: `Waiting on ${leaderName || 'the leader'}` }
+    switch (selected.pile) {
+      case 'to_draft':
+        if (!ready) return noticeFirstBlocker ? { kind: 'footer', label: `Go to gate ${noticeFirstBlocker.n} ›` } : kernel
+        return leader ? { kind: 'footer', label: 'Sign and approve ›' } : office ? kernel : waitOnLeader
+      case 'awaiting':
+        return leader ? { kind: 'footer', label: 'Sign and approve ›' } : waitOnLeader
+      case 'held':
+        return leader ? { kind: 'footer', label: 'Release the hold and approve ›' } : office ? { kind: 'footer', label: 'Back to draft ›' } : waitOnLeader
+      case 'ready':
+      case 'printed':
+        return office ? kernel : waitOnLeader
+      default:
+        return kernel
+    }
+  })()
+  /** The band's doors, each the one a gate row, the footer or the desk's own tabs already hold. */
+  const onBandAct = (act: LienNextActDoor) => {
+    if (!selected) return
+    const jobId = selected.jobId
+    const fix = (focus: 'owner' | 'legal' | 'homestead_answer') => (office && data?.jobsById[jobId] ? setPaneFix({ jobId, focus }) : onOpenEditJob(jobId, 'property-record'))
+    const footer = () => bringLienFooterUp(noticeFooterRef.current)
+    switch (act) {
+      case 'gate:owner':
+        return fix('owner')
+      case 'gate:legal':
+        return fix('legal')
+      case 'gate:homestead':
+        return fix('homestead_answer')
+      case 'gate:contractor':
+        return onOpenCustomerRecord && selected.gcCustomerId ? onOpenCustomerRecord(selected.gcCustomerId) : onOpenEditJob(jobId)
+      case 'gate:notice':
+        // The notice is this pane: a late notice goes the way a drafted one does.
+        return !ready && noticeFirstBlocker ? pickGate(noticeFirstBlocker.key) : office && !busy ? sendToLeader() : footer()
+      case 'retainage':
+        setKind('retainage')
+        setRetSelectedJobId(jobId)
+        return
+      case 'serve':
+      case 'release':
+        return (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)
+      case 'legal_desk':
+        return onOpenLegalDesk ? onOpenLegalDesk() : footer()
+      case 'footer':
+        if (timeline?.next.kind === 'affidavit') {
+          // The affidavit is the next paper: its own pane holds the press.
+          setKind('affidavit')
+          setAffSelectedJobId(jobId)
+          return
+        }
+        if (timeline?.next.kind === 'retainage') {
+          setKind('retainage')
+          setRetSelectedJobId(jobId)
+          return
+        }
+        if (busy) return footer()
+        if (selected.pile === 'to_draft' && !ready) return noticeFirstBlocker ? pickGate(noticeFirstBlocker.key) : footer()
+        if (selected.pile === 'to_draft') return office && !leader ? sendToLeader() : footer()
+        if (selected.pile === 'awaiting' && leader) return approve()
+        if (selected.pile === 'held') return leader ? approve() : office ? pullBack() : footer()
+        if ((selected.pile === 'ready' || selected.pile === 'printed') && office) return setRunOpen(true)
+        return footer()
+    }
+  }
   const pane = selected ? (
     <div
       ref={paneRef}
@@ -2503,7 +2582,7 @@ export default function LienDesk({
       <div data-lien-pane-body="path" style={{ display: 'grid', gap: '0.6rem' }}>
       {timeline ? (
         <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
-          <LienTimelineStrip timeline={timeline} switchOutside={!isMobile} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
+          <LienTimelineStrip timeline={timeline} switchOutside={!isMobile} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} onAct={onBandAct} act={bandAct} />
         </div>
       ) : null}
       {timeline && stopOpen != null ? (
@@ -3207,6 +3286,10 @@ export default function LienDesk({
         onShowNotices={(jobId) => {
           setKind('notice')
           setSelectedJobId(jobId)
+        }}
+        onShowRetainage={(jobId) => {
+          setKind('retainage')
+          setRetSelectedJobId(jobId)
         }}
         onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
         footerEl={affFooterEl}
@@ -3989,7 +4072,7 @@ export default function LienDesk({
   const paneFooter =
     kind === 'affidavit' ? <div ref={setAffFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="affidavit" />
     : kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" />
-    : kind === 'notice' && footer ? <div data-lien-desk-footer="notice" style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div>
+    : kind === 'notice' && footer ? <div ref={noticeFooterRef} className="lienDeskFooterSlot" data-lien-desk-footer="notice" style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div>
     : null
   const paneColumn = (node: ReactNode) => (footerHome.column ? <div data-lien-desk-pane-column style={footerHome.column}>{node}{paneFooter}</div> : node)
   return (

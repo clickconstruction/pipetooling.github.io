@@ -6,6 +6,7 @@ export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
 import { DATED_FROM_BILL_WORDS } from './lienBillMonths'
 import { lienActFor } from './lienActWords'
+import { lienNextActFor, type LienNextAct } from './lienNextAct'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import { LAST_DAY_BY_HAND_LATER_HOURS_WORDS, LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { workMonthShort } from './forecastWorkMonths'
@@ -144,6 +145,8 @@ export interface LienTimelineNext {
   tone: 'red' | 'amber' | 'green' | 'quiet'
   /** An affidavit step only (v2.7187, punch list #335, row 2): where the paper stands on the desk, so the window knows which door the step is behind. */
   affidavitState?: LienTimelineAffidavitState
+  /** What pressing the band does (v2.7321, `lienNextActFor`): a door the pane maps to its own, or none when the move is not ours. */
+  act: LienNextAct
 }
 
 export interface LienTimeline {
@@ -647,7 +650,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   }
 
   // Next on the path.
-  let next: LienTimelineNext
+  let next: Omit<LienTimelineNext, 'act'>
   const openKeys = openMonths.map((m) => m.key)
   if (releasedAt) {
     next = { kind: 'none', words: `Released ${lienDateWords(releasedAt, todayYmd)} — the clock stopped.`, aside: '', date: releasedAt, daysLeft: null, tone: 'green' }
@@ -713,8 +716,10 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     : ''
 
   const waitingOn = waitingOnFor(steps, next, input, paidBy, todayYmd)
+  // The band's press (v2.7321): decided from the same facts as the words, so the two cannot part.
+  const act = lienNextActFor({ next, waitingOn, noticeState: input.noticeState, missingKeys: input.affidavit?.missingKeys ?? [], paid: input.paid })
 
-  return { steps: folded, next, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
+  return { steps: folded, next: { ...next, act }, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
 }
 
 function moneyWords(n: number): string {
@@ -832,7 +837,7 @@ function affidavitWaitWords(a: LienTimelineInput['affidavit']): string {
 }
 
 /** Who we wait on, and for what (v2.3877): a live demand letter first, else whatever Next on the path names. */
-function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimelineNext, input: LienTimelineInput, paidBy: LienTimelineMove, todayYmd: string): LienTimelineWaitingOn | null {
+function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: Omit<LienTimelineNext, 'act'>, input: LienTimelineInput, paidBy: LienTimelineMove, todayYmd: string): LienTimelineWaitingOn | null {
   const d = steps.find((s) => s.kind === 'demand')
   if (d && d.state === 'due') {
     const l = [...(input.demandLetters ?? [])].filter((x) => x.sentAt).sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0]!

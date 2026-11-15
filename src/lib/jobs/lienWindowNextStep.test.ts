@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LienTimelineNext } from './lienTimeline'
 import { lienNextStepDaysWords, lienWindowNextStep } from './lienWindowNextStep'
 
-const next = (over: Partial<LienTimelineNext>): LienTimelineNext => ({ kind: 'notice', words: 'Send the § 53.056 notice by Oct 15.', aside: '', date: '2026-10-15', daysLeft: 10, tone: 'amber', ...over })
+const next = (over: Partial<LienTimelineNext>): LienTimelineNext => ({ kind: 'notice', words: 'Send the § 53.056 notice by Oct 15.', aside: '', date: '2026-10-15', daysLeft: 10, tone: 'amber', act: { kind: 'footer', label: 'Send for approval ›' }, ...over })
 
 describe('lienWindowNextStep', () => {
   it('a notice and a retainage notice are worked on the Lien desk, on this job', () => {
