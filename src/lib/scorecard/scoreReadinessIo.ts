@@ -6,7 +6,7 @@
  */
 import { supabase } from '../supabase'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
-import { laborCompleteness, type LaborCompleteness, type ReadinessLaborRow } from './scoreReadiness'
+import { laborCompleteness, pricedLaborOf, type LaborCompleteness, type ReadinessLaborRow } from './scoreReadiness'
 
 type EstimateRow = { id: string; bid_id: string; labor_rate: number | null }
 type LaborRow = ReadinessLaborRow & { cost_estimate_id: string }
@@ -45,6 +45,35 @@ export async function loadLaborCompleteness(bidIds: readonly string[]): Promise<
   for (const bidId of bidIds) {
     const e = estimateByBid.get(bidId)
     out.set(bidId, laborCompleteness(e ? (byEstimate.get(e.id) ?? []) : [], e?.labor_rate ?? null))
+  }
+  return out
+}
+
+export type PricedLabor = { rowsTotal: number; rowsWithHours: number }
+
+/**
+ * The labor count kept with each bid's priced margin (`bids.priced_labor_rows_*`, v2.7370), by bid id: only the bids
+ * whose stamp carries one. Its own read, failing soft to none, so a database that does not have the columns yet (the
+ * client reaches prod before the push) leaves every bid judged as before instead of failing the read beside it.
+ */
+export async function loadPricedLabor(bidIds: readonly string[]): Promise<Map<string, PricedLabor>> {
+  const out = new Map<string, PricedLabor>()
+  if (bidIds.length === 0) return out
+  try {
+    const rows = await fetchAllRowsChunkedIn<{ id: string; priced_labor_rows_total: number | null; priced_labor_rows_with_hours: number | null }, string>(
+      [...bidIds],
+      async (chunk, from, to) => {
+        const { data, error } = await supabase.from('bids').select('id, priced_labor_rows_total, priced_labor_rows_with_hours' as never).in('id', chunk).order('id').range(from, to)
+        return { data: data as unknown as Array<{ id: string; priced_labor_rows_total: number | null; priced_labor_rows_with_hours: number | null }> | null, error }
+      },
+      'score readiness priced labor',
+    )
+    for (const r of rows) {
+      const kept = pricedLaborOf(r)
+      if (kept) out.set(r.id, kept)
+    }
+  } catch {
+    /* judged by the Labor tab as it stands */
   }
   return out
 }

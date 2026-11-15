@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { bidScoreReadiness, bidsToJudge, laborCompleteness, scoreHoldTitle, SCORE_HOLD_CHIP } from './scoreReadiness'
-import { estimateHoldWords } from './estimatorScore'
+import { bidScoreReadiness, bidsToJudge, laborCompleteness, pricedLaborOf, scoreHoldTitle, SCORE_HOLD_CHIP } from './scoreReadiness'
+import { estimateHoldWords, scoreBid } from './estimatorScore'
+import { buildHurdle } from './hurdle'
 
 const row = (h: number, kind = 'fixture') => ({ kind, rough_in_hrs_per_unit: h, top_out_hrs_per_unit: 0, trim_set_hrs_per_unit: 0 })
 
@@ -79,6 +80,42 @@ describe('bidScoreReadiness', () => {
       { ...priced, labor: null },
     ]
     for (const c of cases) expect(bidScoreReadiness({ ...c, sent: true }).kind === 'hold').toBe(estimateHoldWords(c) != null)
+  })
+})
+
+describe('the labor count kept with the stamp (v2.7370)', () => {
+  const priced = { pricedRevenueUsd: 21000, pricedCostUsd: 9000, pricedUncostedUsd: 0 }
+  const filledSince = laborCompleteness([row(1), row(2), row(3)], 80)
+  const kept = { rowsTotal: 3, rowsWithHours: 1 }
+
+  it('a sent bid is judged by the labor its kept cost was made with, not by hours filled in since', () => {
+    const r = bidScoreReadiness({ ...priced, labor: filledSince, sent: true, pricedLabor: kept })
+    expect(r).toMatchObject({ kind: 'hold', reason: 'labor' })
+    if (r.kind !== 'hold') throw new Error('held')
+    expect(r.words).toBe('Labor not estimated: 1 of 3 rows had hours. This bid went out with little or no labor in its cost, so it cannot be scored.')
+    // And the other way: estimated when it went out, rows cleared since.
+    expect(bidScoreReadiness({ ...priced, labor: laborCompleteness([row(0)], 80), sent: true, pricedLabor: { rowsTotal: 3, rowsWithHours: 3 } })).toEqual({ kind: 'ready' })
+  })
+
+  it('a bid still on the desk is judged by the Labor tab as it stands', () => {
+    expect(bidScoreReadiness({ ...priced, labor: filledSince, sent: false, pricedLabor: kept })).toEqual({ kind: 'ready' })
+  })
+
+  it('a stamp older than the count is judged as before', () => {
+    expect(bidScoreReadiness({ ...priced, labor: filledSince, sent: true, pricedLabor: null })).toEqual({ kind: 'ready' })
+    expect(pricedLaborOf({ priced_labor_rows_total: null, priced_labor_rows_with_hours: null })).toBeNull()
+    expect(pricedLaborOf({})).toBeNull()
+    expect(pricedLaborOf({ priced_labor_rows_total: 3, priced_labor_rows_with_hours: 1 })).toEqual(kept)
+  })
+
+  it('the Scores tab holds the same bid with the same reason', () => {
+    expect(estimateHoldWords({ ...priced, labor: filledSince, sentYmd: '2026-11-01', pricedLabor: kept })).toBe('Labor not estimated when it went out: 1 of 3 rows had hours. The priced cost has little or no labor in it.')
+    expect(estimateHoldWords({ ...priced, labor: filledSince, sentYmd: null, pricedLabor: kept })).toBeNull()
+    expect(estimateHoldWords({ ...priced, labor: filledSince, sentYmd: '2026-11-01', pricedLabor: { rowsTotal: 0, rowsWithHours: 0 } })).toBe('Labor not estimated when it went out: the Labor tab had no rows. The priced cost has little or no labor in it.')
+    const hurdle = buildHurdle({ overheadUsd: 12_000, paidFieldHours: 1_000, windowDays: 56, setting: { targetProfitPerHourUsd: 25 } })
+    const awarded = scoreBid({ bidId: 'b', bidNumber: '1', projectName: 'P', customerName: null, estimatorName: null, accountManagerName: null, outcome: 'won', outcomeYmd: '2026-11-05', sentYmd: '2026-11-01', ...priced, labor: filledSince, pricedLabor: kept, awardedHours: 100, job: null }, hurdle, '2026-11-15')
+    expect(awarded.kind).toBe('held')
+    expect(awarded.needsEstimate).toBe(true)
   })
 })
 

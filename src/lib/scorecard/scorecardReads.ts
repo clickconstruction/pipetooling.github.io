@@ -341,6 +341,24 @@ async function loadEstimatorScore(db: SupabaseClient<Database>, args: { fromYmd:
   }
   const bidIds = bids.map((b) => b.id)
 
+  // The labor count kept with each stamp (v2.7370). Its own read, failing soft to none, so a database without the
+  // columns yet leaves every bid judged by the Labor tab as it stands, as before.
+  const keptByBid = new Map<string, { rowsTotal: number; rowsWithHours: number }>()
+  try {
+    const keptRows = await fetchAllRowsChunkedIn(
+      bidIds,
+      async (chunk, from, to) => {
+        const { data, error } = await db.from('bids').select('id, priced_labor_rows_total, priced_labor_rows_with_hours' as never).in('id', chunk).order('id').range(from, to)
+        return { data: data as unknown as Array<{ id: string; priced_labor_rows_total: number | null; priced_labor_rows_with_hours: number | null }> | null, error }
+      },
+      'scorecard kept labor',
+      { chunkSize: 200 },
+    )
+    for (const r of keptRows) if (r.priced_labor_rows_total != null && r.priced_labor_rows_with_hours != null) keptByBid.set(r.id, { rowsTotal: Number(r.priced_labor_rows_total), rowsWithHours: Number(r.priced_labor_rows_with_hours) })
+  } catch {
+    /* no kept counts: judged as before */
+  }
+
   const linked = bidIds.length
     ? (((await withSupabaseRetry(
         async () => db.from('jobs_ledger').select('id, revenue, pct_complete, status, bid_id, hcp_number, click_number, job_name, invoices:jobs_ledger_invoices(status, amount), materials:jobs_ledger_materials(amount, created_at, description)').in('bid_id', bidIds),
@@ -433,6 +451,7 @@ async function loadEstimatorScore(db: SupabaseClient<Database>, args: { fromYmd:
       pricedCostUsd: b.priced_cost_usd,
       pricedUncostedUsd: b.priced_uncosted_usd,
       labor: laborByBid.get(b.id) ?? null,
+      pricedLabor: keptByBid.get(b.id) ?? null,
       awardedHours: budget?.awarded_labor_hours ?? hoursByBid.get(b.id) ?? null,
       job: job
         ? { jobId: job.id, label: jobLabelOf(job), status: job.status, finished: job.status === 'billed' || job.status === 'paid', closedYmd: closedByJob.get(job.id) ?? null, actualGrossProfitUsd: actualByJob.get(job.id) ?? null }
