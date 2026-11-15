@@ -161,5 +161,5 @@ Left by the two that were built:
 
 - **Banking's Sorting tab** reads no sub payments. The Match press is on the Ledger tab alone, which the controller and the developer open.
 - **A bank line that two old payments add up to** is offered on neither side. The database takes that match and both sides show it once made.
-- **The press has not been walked on prod.** The Banking side was read on the live data, 76 bank lines offered a payment, and nothing was pressed: a ZZ test payment was refused to the session as a prod write. `match_sub_payment` has run on its migration's bed only.
+- **Walked on prod, 2026-11-15, from Banking's side.** One ZZ payment of $10.79 on the Claude Test Sub's sheet, recorded from the dev seat as sending 1 (the first sending on prod), was matched to a card charge of the same amount from Banking → Ledger: the line read *paid Claude Test Sub · sending 1*, the match row and the tick landed together, **undo** cleared both, and the payment was removed with its trace. The Subs Ledger's own picker calls the same two functions and was not pressed.
 - **The dev seat places nothing past a sheet.** An amount past what a sheet owes is refused there. Filling their other sheets, keeping a credit and paying from a credit stay the window's presses.
