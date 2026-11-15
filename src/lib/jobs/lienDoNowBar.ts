@@ -10,7 +10,7 @@
 import { lienBoardDots, type LienBoard, type LienBoardTile, type LienBoardTileDestination, type LienBoardTileKey } from './lienBoard'
 
 export type LienDoNowBarPart = {
-  key: LienBoardTileKey
+  key: LienBoardTileKey | 'risk'
   /** The figure and its words, as one label: *21 by tomorrow*. */
   words: string
   tone: LienBoardTile['tone']
@@ -21,10 +21,15 @@ export type LienDoNowBarPart = {
 /** The way back to the picture, on the pinned bar. */
 export const LIEN_DO_NOW_UP_WORDS = '↑ The Board'
 
-export function lienDoNowBarParts(board: Pick<LienBoard, 'tiles' | 'dayWords'>): LienDoNowBarPart[] {
+export function lienDoNowBarParts(board: Pick<LienBoard, 'tiles' | 'dayWords'> & { atRisk?: number }): LienDoNowBarPart[] {
   const dots = lienBoardDots(board)
   return board.tiles
     .map((tile, i) => ({ tile, dot: dots[i]! }))
     .filter(({ tile }) => tile.key !== 'unpaid' && tile.figure !== '0')
-    .map(({ tile, dot }) => ({ key: tile.key, words: `${dot.figure} ${dot.words}`, tone: tile.tone, destination: tile.destination }))
+    .flatMap(({ tile, dot }): LienDoNowBarPart[] => {
+      const part: LienDoNowBarPart = { key: tile.key, words: `${dot.figure} ${dot.words}`, tone: tile.tone, destination: tile.destination }
+      // The day tile's red line rides beside its count (v2.7371), short, with the line's own press.
+      const risk = tile.lineDestination && board.atRisk ? [{ key: 'risk' as const, words: `${board.atRisk} will not make ${board.dayWords ?? 'it'}`, tone: 'red' as const, destination: tile.lineDestination }] : []
+      return [part, ...risk]
+    })
 }

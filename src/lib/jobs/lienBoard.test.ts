@@ -21,7 +21,11 @@ import {
   lienBoardPick,
   lienBoardPickWords,
   lienBoardRetainageLine,
+  lienBoardRiskPapers,
+  lienBoardRiskPhrase,
+  lienBoardRiskPick,
   lienBoardRowInPick,
+  lienBoardRowRisk,
   lienBoardStageBins,
   lienBoardTip,
   lienBoardUrgency,
@@ -350,5 +354,65 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
   })
   it('the words constant holds every bin name once', () => {
     expect(Object.keys(LIEN_BOARD_WORDS).sort()).toEqual(['awaiting', 'filed', 'held', 'in_mail', 'missed', 'needs_owner', 'needs_property', 'ready', 'sent', 'to_send'])
+  })
+})
+
+describe('the papers that will not make their day, as one rule for the tile, the chips and the list (v2.7371)', () => {
+  const board = () =>
+    build({
+      notices: [notice('1', 'to_draft'), notice('2', 'awaiting'), notice('3', 'to_draft', { earliestDeadline: '2026-12-15', daysLeft: 30 }), notice('4', 'sent'), notice('7', 'printed', { item: { id: 'i7', status: 'approved', fields: {}, months: [], voided_at: null, printed_at: '2026-11-14T10:00:00Z' } as unknown as LienDeskEntry['item'] })],
+      affidavits: [affidavit('5', 'ready', { deadline: '2026-11-16', daysLeft: 1 }), affidavit('6', 'to_draft', { deadline: '2026-11-16', daysLeft: 1 }), affidavit('1', 'ready', { deadline: '2026-11-16', daysLeft: 1 })],
+    })
+
+  it('the day tile’s red line is a press of its own, and only while a paper is at risk', () => {
+    expect(board().tiles[0]!.lineDestination).toEqual({ kind: 'risk' })
+    expect(board().tiles[0]!.destination).toBeNull()
+    const calm = build({ affidavits: [affidavit('5', 'ready', { deadline: '2026-11-16', daysLeft: 1 })] })
+    expect(calm.tiles[0]!.line).toBeNull()
+    expect(calm.tiles[0]!.lineDestination).toBeNull()
+    expect(board().tiles.slice(1).every((t) => !t.lineDestination)).toBe(true)
+  })
+
+  it('the papers are keyed by their kind and job, each with the stages it still has to pass', () => {
+    const papers = lienBoardRiskPapers(board())
+    // Job 1's notice (3 stages), job 2's (2) and job 6's affidavit (3) will not make tomorrow. Job 1's ready affidavit will.
+    expect([...papers.entries()].sort()).toEqual([['affidavit:6', 3], ['notice:1', 3], ['notice:2', 2]])
+    expect(papers.size).toBe(board().atRisk)
+  })
+
+  it('a To do row reads its own paper: the notice row of job 1 is at risk, its affidavit row is not', () => {
+    const papers = lienBoardRiskPapers(board())
+    expect(lienBoardRowRisk(papers, { key: 'notice:1', kind: 'notice', jobId: '1' })).toBe(3)
+    expect(lienBoardRowRisk(papers, { key: 'affidavit:1', kind: 'affidavit', jobId: '1' })).toBeNull()
+    expect(lienBoardRowRisk(papers, { key: 'affidavit:6', kind: 'affidavit', jobId: '6' })).toBe(3)
+    // A reminder, a served copy and a returned envelope ride on the job's key in another form: never at risk here.
+    expect(lienBoardRowRisk(papers, { key: 'courtesy:1', kind: 'notice', jobId: '1' })).toBeNull()
+    expect(lienBoardRowRisk(papers, { key: 'serve:6', kind: 'affidavit', jobId: '6' })).toBeNull()
+    expect(lienBoardRowRisk(papers, { key: 'mail:p1', kind: 'notice', jobId: '1' })).toBeNull()
+    expect(lienBoardRowRisk(papers, { key: 'retainage:1', kind: 'retainage', jobId: '1' })).toBeNull()
+    // A run row stands for several notices and takes the longest road among them.
+    expect(lienBoardRowRisk(papers, { key: 'run:gc1', kind: 'notice', jobId: null, jobs: [{ jobId: '7' }, { jobId: '2' }, { jobId: '1' }] })).toBe(3)
+    expect(lienBoardRowRisk(papers, { key: 'run:printed', kind: 'notice', jobId: null, jobs: [{ jobId: '7' }] })).toBeNull()
+  })
+
+  it('a press on the line is a pick of those papers, with no bin lit, and the list says so in the tile’s words', () => {
+    const pick = lienBoardRiskPick(board())
+    expect(pick.bins).toEqual([])
+    expect(pick.count).toBe(3)
+    expect([...pick.papers!].sort()).toEqual(['affidavit:6', 'notice:1', 'notice:2'])
+    expect(lienBoardPickWords(pick, 3)).toEqual({ head: 'Showing 3 rows that will not make tomorrow as they stand.', clear: 'Show every row' })
+    expect(plainWordsFailures(lienBoardPickWords(pick, 3).head)).toEqual([])
+    // The row's own paper decides: job 1's notice row is in, its affidavit row is out.
+    expect(lienBoardRowInPick(pick, { jobId: '1', gcId: 'gc1', kind: 'notice' })).toBe(true)
+    expect(lienBoardRowInPick(pick, { jobId: '1', gcId: 'gc1', kind: 'affidavit' })).toBe(false)
+    expect(lienBoardRowInPick(pick, { jobId: '5', gcId: 'gc1', kind: 'affidavit' })).toBe(false)
+    expect(lienBoardRowInPick(pick, { jobId: null, gcId: null, kind: 'notice', jobs: [{ jobId: '7' }, { jobId: '2' }] })).toBe(true)
+    expect(lienBoardRowInPick(pick, { jobId: null, gcId: null, kind: 'notice', jobs: [{ jobId: '7' }] })).toBe(false)
+  })
+
+  it('the phrase is the tile’s, for one paper and for many', () => {
+    expect(lienBoardRiskPhrase('tomorrow', 3)).toBe('will not make tomorrow as they stand')
+    expect(lienBoardRiskPhrase('Monday', 1)).toBe('will not make Monday as it stands')
+    expect(lienBoardRiskPhrase(null, 2)).toBe('will not make their day as they stand')
   })
 })
