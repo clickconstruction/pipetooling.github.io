@@ -1,6 +1,7 @@
 /**
  * The job window on a phone (punch list #355, PR A): the name first with ⋯ and ✕ stacked at the right, one tab
- * strip that scrolls sideways, the header scrolling away with the page and a ✕ floating in its place, every door
+ * strip that scrolls sideways, the header scrolling away with the page and coming back with a ✕ at the strip's right
+ * on a scroll up (v2.7300), every door
  * of the old icon row as a named row in the ⋯ sheet, and the money tiles and the job accounts as one line each
  * ending in their act. Pure: the rows, the words and the scroll rule; the screens are `JobWindowModal` and
  * `DetailJobModal` in pane mode.
@@ -14,9 +15,9 @@ import type { JobWindowVerb } from './jobWindowBar'
 // ---------------------------------------------------------------------------
 
 export type HeaderScrollState = {
-  /** The title row and the strip have scrolled off the top: the ✕ floats where the ✕ sat. */
+  /** The title row and the strip have scrolled off the top: no ✕ is drawn until the strip is pinned again. */
   headGone: boolean
-  /** The reader is scrolling back up with the strip off screen: the strip is drawn again at the top. */
+  /** The reader is scrolling back up with the strip off screen: the strip is drawn again at the top, the ✕ at its right. */
   stripPinned: boolean
 }
 

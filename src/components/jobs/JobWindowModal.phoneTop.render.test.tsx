@@ -156,4 +156,32 @@ describe('JobWindowModal · the top on a phone', () => {
     fireEvent.click(within(screen.getByTestId('job-window-head')).getByRole('button', { name: 'Close job window' }))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
+
+  it('scrolled down, no ✕ floats over the job; scrolled back up, the strip pins with a ✕ at its right that closes the window (v2.7300)', async () => {
+    const onClose = vi.fn()
+    renderWindowAs('assistant', job(), onClose)
+    await settle()
+    const body = document.querySelector('.job-window-body') as HTMLElement
+    const row = screen.getByTestId('job-window-strip-row')
+    expect(row.style.position).toBe('')
+    // jsdom lays nothing out, so the head ends at 0 and any scroll is past it.
+    body.scrollTop = 300
+    fireEvent.scroll(body)
+    expect(screen.queryByTestId('job-window-float-close')).toBeNull()
+    expect(screen.queryByTestId('job-window-strip-close')).toBeNull()
+    expect(within(row).queryByRole('button', { name: 'Close job window' })).toBeNull()
+    body.scrollTop = 200
+    fireEvent.scroll(body)
+    expect(row.style.position).toBe('sticky')
+    const strip = screen.getByRole('tablist', { name: 'Job window tabs' })
+    expect(strip.hasAttribute('data-pinned')).toBe(true)
+    const close = within(row).getByRole('button', { name: 'Close job window' })
+    expect(close.getAttribute('data-testid')).toBe('job-window-strip-close')
+    expect(parseFloat(String(close.style.width))).toBe(44)
+    expect(parseFloat(String(close.style.height))).toBe(44)
+    // The ✕ stands beside the strip, not inside it, so the strip's edge fade never dims it.
+    expect(strip.contains(close)).toBe(false)
+    fireEvent.click(close)
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
 })

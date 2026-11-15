@@ -495,32 +495,6 @@ export function JobWindowModal({
           </div>
         ) : null}
         {!phone && legendOpen ? <DeskLegendCard legend={JOB_WINDOW_LEGEND} phone={false} onClose={() => setLegendOpen(false)} style={{ margin: '0.6rem 0.9rem 0', flexShrink: 0 }} /> : null}
-        {/* The phone's ✕ floats where the ✕ sat, one press down from the corner, once the header has scrolled away. */}
-        {phone && headState.headGone ? (
-          <button
-            type="button"
-            onClick={requestClose}
-            title="Close"
-            aria-label="Close job window"
-            data-testid="job-window-float-close"
-            style={{
-              ...phonePinStyle,
-              position: 'absolute',
-              top: 'calc(52px + env(safe-area-inset-top, 0px))',
-              right: 10,
-              width: 38,
-              height: 38,
-              borderRadius: '50%',
-              background: 'var(--surface)',
-              border: '1px solid var(--border-strong)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-              zIndex: 3,
-            }}
-          >
-            ✕
-          </button>
-        ) : null}
-
         {/* Top padding stays slimmer than the sides: the tab bar's own bottom
             padding already separates it from the title (v2.1679). */}
         <div
@@ -559,32 +533,51 @@ export function JobWindowModal({
             </div>
           ) : null}
           {phone ? (
+            /* The strip's row: the tabs scrolling sideways, and, while the row is pinned at the top, the ✕ at its right
+               (v2.7300). The ✕ used to float one press down from the corner the whole way down, over whatever had
+               scrolled under it, so a tap on a line's ⋯ or a cost closed the window; now it goes with the strip and
+               comes back with it, in its own square, over nothing. */
             <div
-              ref={stripRef}
-              className="job-window-tabs"
-              role="tablist"
-              aria-label="Job window tabs"
-              data-navtrack="job-window"
-              data-navbuttons=""
-              onClickCapture={recordViewerNavClick}
-              data-pinned={headState.stripPinned ? '' : undefined}
+              data-testid="job-window-strip-row"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.15rem',
                 margin: '0 -0.9rem',
-                padding: '0.25rem 0.9rem',
                 borderBottom: '1px solid var(--border)',
                 background: 'var(--surface)',
-                overflowX: 'auto',
-                scrollbarWidth: 'none',
-                WebkitMaskImage: 'linear-gradient(90deg, #000 calc(100% - 28px), transparent)',
-                maskImage: 'linear-gradient(90deg, #000 calc(100% - 28px), transparent)',
                 // Drawn again at the top while the reader scrolls back up past it: sticky pulls it into view.
                 ...(headState.stripPinned ? { position: 'sticky', top: 0, zIndex: 2 } : {}),
               }}
             >
-              {tabButtons(tabButtonStyle)}
+              <div
+                ref={stripRef}
+                className="job-window-tabs"
+                role="tablist"
+                aria-label="Job window tabs"
+                data-navtrack="job-window"
+                data-navbuttons=""
+                onClickCapture={recordViewerNavClick}
+                data-pinned={headState.stripPinned ? '' : undefined}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.15rem',
+                  flex: 1,
+                  minWidth: 0,
+                  padding: '0.25rem 0.9rem',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                  WebkitMaskImage: 'linear-gradient(90deg, #000 calc(100% - 28px), transparent)',
+                  maskImage: 'linear-gradient(90deg, #000 calc(100% - 28px), transparent)',
+                }}
+              >
+                {tabButtons(tabButtonStyle)}
+              </div>
+              {headState.stripPinned ? (
+                <button type="button" onClick={requestClose} title="Close" aria-label="Close job window" data-testid="job-window-strip-close" style={{ ...phonePinStyle, flexShrink: 0, marginRight: '0.45rem' }}>
+                  ✕
+                </button>
+              ) : null}
             </div>
           ) : null}
           {phone && legendOpen ? <DeskLegendCard legend={JOB_WINDOW_LEGEND} phone onClose={() => setLegendOpen(false)} style={{ margin: '0.6rem 0 0', flexShrink: 0 }} /> : null}
