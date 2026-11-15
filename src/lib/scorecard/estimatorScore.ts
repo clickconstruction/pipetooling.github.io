@@ -1,0 +1,241 @@
+/**
+ * The estimator score (team scorecard, design spike 2026-11-15): gross profit won at or above the
+ * hurdle, corrected to what the job actually made when it finishes. The estimator and the account
+ * manager share one number: a bid counts for both, never on two boards. The rule, in order:
+ *
+ * - A bid counts on award, for its priced gross profit (`bids.priced_revenue_usd − priced_cost_usd`,
+ *   frozen at send), only when that profit over the award's labor hours clears the hurdle.
+ * - Awarded under the hurdle, it counts zero, and stays at zero even if the crew later beats the
+ *   hurdle. The crew's actuals still flow to the field score, because the crew did the work.
+ * - While the job is open, the estimate stands. Once the job is billed or paid, the actual gross
+ *   profit replaces it, so the number moves by the variance, on the day of the first Billed move.
+ * - A proposal out with no answer counts zero; it is listed with its days out so someone can call.
+ * - A bid with no priced stamp, no labor estimated or rows uncosted cannot be judged; it is held with
+ *   the words an estimator can act on, and listed as the desk's work before it can be scored.
+ *
+ * The period's number is a flow: what was added at award in the period, plus how far the jobs that
+ * closed in the period moved their bids. Pure. The loader passes the rows.
+ */
+import { clearsHurdle, usdPerHour, type Hurdle } from './hurdle'
+
+export type EstimatorBidInput = {
+  bidId: string
+  bidNumber: string | null
+  projectName: string | null
+  customerName: string | null
+  estimatorName: string | null
+  accountManagerName: string | null
+  outcome: 'won' | 'lost' | 'started_or_complete' | null
+  /** The day the outcome was set, YYYY-MM-DD; the award day for a won bid. */
+  outcomeYmd: string | null
+  sentYmd: string | null
+  pricedRevenueUsd: number | null
+  pricedCostUsd: number | null
+  /** Rows the stamp could not cost; a stamp with any is a partial margin. */
+  pricedUncostedUsd: number | null
+  /** The bid's labor estimate as `bid_estimate_breakdown` reads it; null when it could not be read. */
+  labor: { usable: boolean; rowsWithHours: number; rowsTotal: number; rateSet: boolean } | null
+  /** The award's labor hours (`job_budgets.awarded_labor_hours`), or the bid's own labor total when no job is linked yet. */
+  awardedHours: number | null
+  job: null | {
+    jobId: string
+    label: string
+    status: string | null
+    /** Billed or paid. */
+    finished: boolean
+    /** The day of the first Billed (or Paid) move, YYYY-MM-DD; null when the events carry none. */
+    closedYmd: string | null
+    /** Revenue − team labor at the burden − subs − parts, all time; null while the read is out or when it failed. */
+    actualGrossProfitUsd: number | null
+  }
+}
+
+export type EstimatorRowKind = 'counted' | 'closed' | 'under_hurdle' | 'held' | 'waiting'
+
+export type EstimatorRow = EstimatorBidInput & {
+  kind: EstimatorRowKind
+  expectedGrossProfitUsd: number | null
+  expectedPerHourUsd: number | null
+  clearsAtAward: boolean | null
+  /** What this bid adds to the number today: the estimate while open, the actual once closed, zero under the hurdle. */
+  countedUsd: number
+  /** Actual − expected once closed; null otherwise. */
+  adjustmentUsd: number | null
+  /** Days a proposal has been out, for the waiting list. */
+  daysOut: number | null
+  note: string | null
+  /** The estimate itself cannot be judged (no labor, rows uncosted): the desk's work before the bid can score. */
+  needsEstimate: boolean
+}
+
+export type EstimatorPersonLine = { name: string; countedUsd: number; bids: number; closed: number }
+
+/** A proposal out longer than this is the Bid Board's to close, not the score's to list. */
+export const STALE_PROPOSAL_DAYS = 120
+
+export type EstimatorScore = {
+  fromYmd: string
+  toYmd: string
+  /** Additions at award in the period + the closeouts' adjustments in the period. */
+  countedUsd: number
+  /** Σ expected over the bids awarded in the period: what award added. */
+  additionsUsd: number
+  /** Σ (actual − expected) over the bids whose jobs closed in the period: how far the actuals moved the number. */
+  adjustmentsUsd: number
+  /** Σ expected over the counted bids still open: the part of the number that can still move. */
+  openAtEstimateUsd: number
+  /** Bids awarded above the hurdle in the period, newest first. */
+  awarded: EstimatorRow[]
+  /** Bids whose jobs closed in the period, whatever their award day. */
+  closeouts: EstimatorRow[]
+  underHurdle: EstimatorRow[]
+  held: EstimatorRow[]
+  /** Proposals out that can be judged: a priced stamp, hours, and sent within the stale limit. */
+  waiting: EstimatorRow[]
+  /** Priced bids the desk must finish before they can score: awarded in the period or out and fresh, with the reason. */
+  toFinish: EstimatorRow[]
+  /** Proposals out with no priced stamp at all. */
+  waitingUnpriced: number
+  /** Proposals out past the stale limit with no answer. */
+  waitingStale: number
+  /** Of the priced bids in play (awarded in the period, or out and fresh), how many can be judged: the ramp's figure. */
+  coverage: { judged: number; total: number }
+  /** Nothing has scored yet and there are priced bids in play: the card shows coverage until the first judged bid. */
+  ramp: boolean
+  people: EstimatorPersonLine[]
+  verdict: string
+}
+
+const usd0 = (n: number): string => `${n < 0 ? '−' : ''}$${Math.round(Math.abs(n)).toLocaleString('en-US')}`
+
+const daysBetween = (a: string, b: string): number => {
+  const d = (s: string) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)))
+  return Math.round((d(b) - d(a)) / 86_400_000)
+}
+
+/** The breakdown's own bar for the hours (nine rows in ten), the rate aside: the company crew rate stands in when none is typed. */
+export const LABOR_ROWS_WITH_HOURS_MIN = 0.9
+export function laborHoursEstimated(l: NonNullable<EstimatorBidInput['labor']>): boolean {
+  return l.rowsTotal > 0 && l.rowsWithHours / l.rowsTotal >= LABOR_ROWS_WITH_HOURS_MIN
+}
+
+/**
+ * Why a priced bid still cannot be judged: its labor was never estimated (hours on few rows, no rate), so the priced cost
+ * has no labor in it; or rows went uncosted, so the margin is partial. Null when the estimate stands.
+ */
+export function estimateHoldWords(b: Pick<EstimatorBidInput, 'labor' | 'pricedUncostedUsd' | 'pricedRevenueUsd' | 'pricedCostUsd'>): string | null {
+  if (b.pricedRevenueUsd == null || b.pricedCostUsd == null) return null
+  if (b.labor && !laborHoursEstimated(b.labor)) {
+    const rows = `${b.labor.rowsWithHours} of ${b.labor.rowsTotal} rows ${b.labor.rowsWithHours === 1 ? 'has' : 'have'} hours`
+    return `Labor not estimated: ${rows}. The priced cost has little or no labor in it.`
+  }
+  if (b.pricedUncostedUsd != null && b.pricedUncostedUsd > 0) return `$${Math.round(b.pricedUncostedUsd).toLocaleString('en-US')} of rows uncosted at send: the priced margin is partial.`
+  return null
+}
+
+export function scoreBid(b: EstimatorBidInput, hurdle: Hurdle, todayYmd: string): EstimatorRow {
+  const awarded = b.outcome === 'won' || b.outcome === 'started_or_complete'
+  const priced = b.pricedRevenueUsd != null && b.pricedCostUsd != null
+  const expected = priced ? (b.pricedRevenueUsd as number) - (b.pricedCostUsd as number) : null
+  const estimateHold = estimateHoldWords(b)
+  const perHour = estimateHold == null && expected != null && b.awardedHours != null && b.awardedHours > 0 ? expected / b.awardedHours : null
+  const clears = clearsHurdle(perHour, hurdle)
+  const base = { ...b, expectedGrossProfitUsd: expected, expectedPerHourUsd: perHour, clearsAtAward: clears, countedUsd: 0, adjustmentUsd: null as number | null, daysOut: null as number | null, note: null as string | null, needsEstimate: estimateHold != null }
+
+  if (!awarded) {
+    if (b.outcome === 'lost' || !b.sentYmd) return { ...base, kind: 'held', note: b.outcome === 'lost' ? 'Lost.' : 'Not sent.' }
+    const daysOut = daysBetween(b.sentYmd, todayYmd)
+    const note = estimateHold ?? (perHour == null ? 'Priced with no stamp or no hours: cannot tell whether it clears.' : clears ? null : `Priced under the hurdle at ${usdPerHour(perHour)}.`)
+    return { ...base, kind: 'waiting', daysOut, note }
+  }
+  if (expected == null) return { ...base, kind: 'held', note: 'No priced stamp on the bid: its margin was never frozen at send.' }
+  if (estimateHold) return { ...base, kind: 'held', note: estimateHold }
+  if (perHour == null) return { ...base, kind: 'held', note: 'No labor hours at award: nothing to divide the profit by.' }
+  if (clears === null) return { ...base, kind: 'held', note: 'No hurdle yet.' }
+  if (!clears) return { ...base, kind: 'under_hurdle', note: `Awarded under the hurdle at ${usdPerHour(perHour)}: counts zero, and stays there.` }
+  if (b.job?.finished) {
+    if (b.job.actualGrossProfitUsd == null) return { ...base, kind: 'counted', countedUsd: expected, note: 'Finished; the actual is still being read.' }
+    const actual = b.job.actualGrossProfitUsd
+    return { ...base, kind: 'closed', countedUsd: actual, adjustmentUsd: actual - expected, note: b.job.closedYmd ? null : 'Finished with no Billed move on record: the closeout is undated.' }
+  }
+  return { ...base, kind: 'counted', countedUsd: expected, note: b.job ? null : 'Won, no job linked yet: counted on the bid’s own hours.' }
+}
+
+export function buildEstimatorScore(args: { bids: readonly EstimatorBidInput[]; hurdle: Hurdle; fromYmd: string; toYmd: string; todayYmd: string }): EstimatorScore {
+  const rows = args.bids.map((b) => scoreBid(b, args.hurdle, args.todayYmd))
+  const inPeriod = (ymd: string | null) => ymd != null && ymd >= args.fromYmd && ymd <= args.toYmd
+  const byAward = (a: EstimatorRow, b: EstimatorRow) => (b.outcomeYmd ?? '').localeCompare(a.outcomeYmd ?? '')
+  const isAwarded = (r: EstimatorRow) => r.outcome === 'won' || r.outcome === 'started_or_complete'
+
+  const awarded = rows.filter((r) => (r.kind === 'counted' || r.kind === 'closed') && inPeriod(r.outcomeYmd)).sort(byAward)
+  // A closeout with no dated Billed move lands with its award, so an undated job still corrects the number once.
+  const closeouts = rows
+    .filter((r) => r.kind === 'closed' && (r.job?.closedYmd ? inPeriod(r.job.closedYmd) : inPeriod(r.outcomeYmd)))
+    .sort((a, b) => (b.job?.closedYmd ?? b.outcomeYmd ?? '').localeCompare(a.job?.closedYmd ?? a.outcomeYmd ?? ''))
+  const underHurdle = rows.filter((r) => r.kind === 'under_hurdle' && inPeriod(r.outcomeYmd)).sort(byAward)
+  const held = rows.filter((r) => r.kind === 'held' && isAwarded(r) && inPeriod(r.outcomeYmd)).sort(byAward)
+
+  const out = rows.filter((r) => r.kind === 'waiting')
+  const waitingStale = out.filter((r) => (r.daysOut ?? 0) > STALE_PROPOSAL_DAYS).length
+  const fresh = out.filter((r) => (r.daysOut ?? 0) <= STALE_PROPOSAL_DAYS)
+  const waitingUnpriced = fresh.filter((r) => r.expectedGrossProfitUsd == null).length
+  const waiting = fresh.filter((r) => r.expectedPerHourUsd != null).sort((a, b) => (b.daysOut ?? 0) - (a.daysOut ?? 0))
+  const toFinish = [...held.filter((r) => r.needsEstimate), ...fresh.filter((r) => r.needsEstimate).sort((a, b) => (b.daysOut ?? 0) - (a.daysOut ?? 0))]
+  const inPlay = rows.filter((r) => r.expectedGrossProfitUsd != null && ((isAwarded(r) && inPeriod(r.outcomeYmd)) || (r.kind === 'waiting' && (r.daysOut ?? 0) <= STALE_PROPOSAL_DAYS)))
+  const coverage = { judged: inPlay.filter((r) => r.expectedPerHourUsd != null).length, total: inPlay.length }
+  const ramp = awarded.length === 0 && closeouts.length === 0 && underHurdle.length === 0 && coverage.total > 0
+
+  const additionsUsd = awarded.reduce((s, r) => s + (r.expectedGrossProfitUsd ?? 0), 0)
+  const adjustmentsUsd = closeouts.reduce((s, r) => s + (r.adjustmentUsd ?? 0), 0)
+  const countedUsd = additionsUsd + adjustmentsUsd
+  const openAtEstimateUsd = awarded.filter((r) => r.kind === 'counted').reduce((s, r) => s + r.countedUsd, 0)
+
+  const byPerson = new Map<string, EstimatorPersonLine>()
+  const credit = (r: EstimatorRow, usd: number, closed: boolean) => {
+    for (const name of new Set([r.estimatorName, r.accountManagerName].filter((n): n is string => !!n))) {
+      const line = byPerson.get(name) ?? { name, countedUsd: 0, bids: 0, closed: 0 }
+      line.countedUsd += usd
+      if (!closed) line.bids += 1
+      else line.closed += 1
+      byPerson.set(name, line)
+    }
+  }
+  for (const r of awarded) credit(r, r.expectedGrossProfitUsd ?? 0, false)
+  for (const r of closeouts) credit(r, r.adjustmentUsd ?? 0, true)
+  const people = [...byPerson.values()].sort((a, b) => b.countedUsd - a.countedUsd || a.name.localeCompare(b.name))
+
+  return {
+    fromYmd: args.fromYmd,
+    toYmd: args.toYmd,
+    countedUsd,
+    additionsUsd,
+    adjustmentsUsd,
+    openAtEstimateUsd,
+    awarded,
+    closeouts,
+    underHurdle,
+    held,
+    waiting,
+    toFinish,
+    waitingUnpriced,
+    waitingStale,
+    coverage,
+    ramp,
+    people,
+    verdict: ramp ? rampWords({ coverage, toFinish }) : estimatorVerdictWords({ countedUsd, awarded, closeouts, underHurdle, adjustmentsUsd }),
+  }
+}
+
+export function rampWords(s: { coverage: { judged: number; total: number }; toFinish: readonly unknown[] }): string {
+  const first = s.coverage.judged === 0 ? 'The score starts when a judged bid is awarded.' : `${s.coverage.judged} can be judged; the score starts when one of them is awarded.`
+  return s.toFinish.length > 0 ? `${first} ${s.toFinish.length} ${s.toFinish.length === 1 ? 'needs its' : 'need their'} Labor tab finished.` : first
+}
+
+export function estimatorVerdictWords(s: Pick<EstimatorScore, 'countedUsd' | 'awarded' | 'closeouts' | 'underHurdle' | 'adjustmentsUsd'>): string {
+  if (s.awarded.length === 0 && s.underHurdle.length === 0 && s.closeouts.length === 0) return 'No bids awarded or closed in the period.'
+  const parts: string[] = []
+  if (s.awarded.length > 0) parts.push(`${usd0(s.awarded.reduce((t, r) => t + (r.expectedGrossProfitUsd ?? 0), 0))} of gross profit won above the hurdle on ${s.awarded.length} ${s.awarded.length === 1 ? 'bid' : 'bids'}.`)
+  if (s.closeouts.length > 0) parts.push(`${s.closeouts.length} ${s.closeouts.length === 1 ? 'job' : 'jobs'} closed and moved it by ${usd0(s.adjustmentsUsd)}.`)
+  if (s.underHurdle.length > 0) parts.push(`${s.underHurdle.length} awarded under the hurdle ${s.underHurdle.length === 1 ? 'counts' : 'count'} zero.`)
+  return parts.join(' ')
+}
