@@ -1,61 +1,128 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lien desk To do: four ways</title>
+<title>Lien desk To do with the Board: today and three ways</title>
 <style>
   :root {
     --bg: #0f172a; --surface: #1e293b; --surface-2: #172033; --border: #334155; --border-strong: #475569;
     --text: #f1f5f9; --muted: #94a3b8; --faint: #64748b;
     --red: #f87171; --red-bg: #45191d; --amber: #fbbf24; --amber-bg: #3d2f0d; --green: #4ade80; --green-bg: #133322;
-    --blue: #2563eb; --blue-soft: #1e3a6e; --blue-text: #93c5fd;
+    --blue: #2563eb; --blue-soft: #1e3a6e; --blue-text: #93c5fd; --violet: #c4b5fd; --violet-bg: #2e2350; --brown: #fbbf24;
   }
   :root[data-theme="light"] {
     --bg: #f8fafc; --surface: #ffffff; --surface-2: #f1f5f9; --border: #e2e8f0; --border-strong: #cbd5e1;
     --text: #0f172a; --muted: #475569; --faint: #94a3b8;
     --red: #b91c1c; --red-bg: #fee2e2; --amber: #92400e; --amber-bg: #fef3c7; --green: #166534; --green-bg: #dcfce7;
-    --blue: #2563eb; --blue-soft: #dbeafe; --blue-text: #1d4ed8;
+    --blue: #2563eb; --blue-soft: #dbeafe; --blue-text: #1d4ed8; --violet: #6d28d9; --violet-bg: #ede9fe; --brown: #92400e;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  .page { max-width: 1120px; margin: 0 auto; padding: 20px 16px 60px; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 20px 16px 80px; }
   h1 { font-size: 1.25rem; margin: 0 0 4px; }
-  .lead { color: var(--muted); margin: 0 0 16px; max-width: 70ch; }
-  .picker { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; position: sticky; top: 0; background: var(--bg); padding: 10px 0; z-index: 2; border-bottom: 1px solid var(--border); }
+  .lead { color: var(--muted); margin: 0 0 12px; max-width: 78ch; }
+  .picker { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; top: 0; background: var(--bg); padding: 10px 0; z-index: 3; border-bottom: 1px solid var(--border); }
   .picker button { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); padding: 7px 12px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
   .picker button[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
   .picker .theme { margin-left: auto; font-weight: 500; color: var(--muted); }
-  .what { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin: 12px 0 18px; color: var(--muted); }
+  .what { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin: 12px 0 14px; color: var(--muted); }
   .what b { color: var(--text); }
   .what ul { margin: 6px 0 0; padding-left: 18px; }
-  .sample { font-size: 0.8rem; color: var(--faint); margin-top: 6px; }
+  .sample { font-size: 0.8rem; color: var(--faint); margin-top: 10px; }
+  section.option { display: none; }
+  section.option.on { display: block; }
 
   .desk { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); padding: 14px; }
-  .strip { display: grid; grid-template-columns: 110px repeat(4, 1fr); gap: 6px; margin-bottom: 14px; font-size: 0.82rem; }
-  .strip .lane { color: var(--faint); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.7rem; align-self: center; }
-  .strip .cell { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; display: flex; justify-content: space-between; gap: 8px; background: var(--surface); }
-  .strip .cell.zero { color: var(--faint); }
-  .strip .cell b { font-variant-numeric: tabular-nums; }
-  .strip .cell.hot { border-color: var(--red); }
+  .screen { height: 860px; display: grid; grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; padding-bottom: 0; }
+  .screen .list { overflow-y: auto; min-height: 0; padding-top: 8px; border-top: 1px solid var(--border); }
+  .fold-line { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; color: var(--red); font-size: 0.82rem; font-weight: 600; }
+  .fold-line::before, .fold-line::after { content: ''; flex: 1; border-top: 2px dashed var(--red); }
 
-  .group-head { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 6px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
-  .group-head.red { color: var(--red); }
+  /* ── the Board ── */
+  .board { display: grid; gap: 12px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .tile { display: grid; gap: 3px; align-content: start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); min-width: 0; }
+  .tile .fig { font-size: 1.4rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile.red .fig { color: var(--red); } .tile.violet .fig { color: var(--violet); } .tile.brown .fig { color: var(--brown); } .tile.green .fig { color: var(--green); }
+  .tile .w { font-size: 0.8rem; font-weight: 600; }
+  .tile .s { font-size: 0.77rem; color: var(--muted); }
+  .tile .s.red { color: var(--red); } .tile .s.green { color: var(--green); }
+  .tile.pressed { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+  .tile .door { font-size: 0.72rem; font-weight: 700; color: var(--blue-text); }
+  .cols2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); column-gap: 30px; }
+  .colhead { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; margin: 0 0 8px; }
+  .colhead.not { color: var(--blue-text); } .colhead.aff { color: var(--red); }
+  .ncol { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(96px, 0.42fr) 12px; column-gap: 12px; row-gap: 24px; align-items: start; }
+  .acol { display: grid; row-gap: 24px; align-content: start; }
+  .bin { position: relative; display: grid; gap: 6px; padding: 7px 9px 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); min-width: 0; z-index: 1; scroll-margin-top: 130px; }
+  .bin.flow + .bin.flow::before, .acol .bin + .bin::before { content: '↓'; position: absolute; top: -23px; left: 50%; transform: translateX(-50%); color: var(--faint); font-size: 14px; line-height: 20px; }
+  .bin.beside { border-style: dashed; }
+  .bin.lit { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+  .bin.picked { background: var(--blue-soft); }
+  .binhead { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 0; border: 0; background: none; font: inherit; font-size: 0.8rem; font-weight: 700; color: var(--text); text-align: left; cursor: pointer; }
+  .binhead:hover span { text-decoration: underline; text-underline-offset: 3px; }
+  .binhead b { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .binhead b.zero { color: var(--faint); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; min-height: 22px; align-items: center; }
+  .chips .none { color: var(--faint); font-size: 0.78rem; }
+  .bchip { display: inline-flex; align-items: center; padding: 1px 7px; border: 1px solid; border-radius: 6px; font-size: 0.72rem; font-weight: 700; line-height: 18px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .bchip.r { color: var(--red); border-color: var(--red); background: var(--red-bg); }
+  .bchip.q { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); }
+  .bchip.v { color: var(--violet); border-color: var(--violet); background: var(--violet-bg); }
+  .bchip.g { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+  .bchip.out { color: var(--faint); border-color: var(--faint); border-style: dashed; background: transparent; }
+  .bchip.chg { color: var(--amber); border-color: var(--amber); background: var(--amber-bg); }
+  .bchip.on { box-shadow: 0 0 0 2px var(--blue); }
+  .cross { grid-column: 2 / 4; grid-row: 1 / 6; align-self: stretch; margin: 18px 0 30px -12px; border-right: 1.5px dashed var(--border-strong); border-bottom: 1.5px dashed var(--border-strong); position: relative; pointer-events: none; }
+  .cross::before { content: ''; position: absolute; top: 0; right: -30px; width: 30px; border-top: 1.5px dashed var(--border-strong); }
+  .cross::after { content: '›'; position: absolute; top: -13px; right: -31px; color: var(--faint); font-size: 18px; line-height: 24px; }
+  .retain { color: var(--muted); font-size: 0.8rem; padding: 0 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; color: var(--muted); font-size: 0.78rem; }
+
+  /* ── the bar between the Board and the list ── */
+  .bar { position: sticky; top: 58px; z-index: 2; display: flex; align-items: center; gap: 12px; margin: 12px -14px 0; padding: 8px 14px; background: var(--surface-2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .bar .find { flex: 1; min-width: 0; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar .nums, .bar .up { display: none; }
+  .bar.stuck { box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.35); }
+  .bar.stuck .nums { display: inline; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+  .bar.stuck .up { display: inline-block; }
+  .bar .nums b { font-variant-numeric: tabular-nums; color: var(--text); } .bar .nums b.r { color: var(--red); } .bar .nums b.v { color: var(--violet); }
+  .screen .bar { position: static; }
+  .showing { margin: 10px 0 0; font-size: 0.85rem; color: var(--muted); }
+  .showing b { color: var(--text); }
+  .link { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--blue-text); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ── the list ── */
+  .group-head { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 6px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); scroll-margin-top: 120px; }
+  .group-head.red { color: var(--red); } .group-head.violet { color: var(--violet); }
   .group-head .sum { margin-left: auto; font-variant-numeric: tabular-nums; letter-spacing: 0; text-transform: none; font-size: 0.85rem; }
   .group-head .hint { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); font-size: 0.8rem; }
+  .band { margin: 18px 0 2px; padding: 6px 10px; border-radius: 8px; background: var(--red-bg); color: var(--red); font-weight: 700; display: flex; gap: 10px; align-items: baseline; }
+  .band.calm { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+  .band .sum { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .group-head.flash { animation: flash 1.2s ease-out; }
+  @keyframes flash { 0%, 40% { background: var(--blue-soft); box-shadow: 0 0 0 6px var(--blue-soft); } 100% { background: transparent; box-shadow: none; } }
 
-  .row { display: grid; grid-template-columns: 96px minmax(0, 1.5fr) minmax(0, 1.6fr) 96px 150px auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 6px; }
-  .row.today { grid-template-columns: 96px minmax(0, 1.6fr) minmax(0, 1.6fr) 150px auto; }
+  .row { display: grid; grid-template-columns: 84px minmax(0, 1fr) 84px 136px 178px; column-gap: 12px; row-gap: 2px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 6px; }
   .row .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .state { color: var(--muted); min-width: 0; }
-  .row .state .line2 { display: block; font-size: 0.82rem; color: var(--faint); }
+  .row .state { grid-column: 2 / 5; grid-row: 2; color: var(--muted); min-width: 0; font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+  .row .act { grid-column: 5; grid-row: 1 / 3; justify-self: end; display: flex; gap: 6px; align-items: center; }
+  .row .act .btn, details.batch > summary > .btn { white-space: normal; text-align: center; line-height: 1.2; }
+  .row.today .act .btn { white-space: nowrap; }
   .row .money { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .row .due { color: var(--red); font-weight: 600; white-space: nowrap; font-size: 0.9rem; }
+  .row .due { color: var(--red); font-weight: 600; white-space: nowrap; font-size: 0.88rem; }
   .row .due.calm { color: var(--muted); font-weight: 500; }
-  .chip { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 0.74rem; font-weight: 700; white-space: nowrap; }
+  .row.today { grid-template-columns: 84px minmax(0, 1.2fr) 70px minmax(0, 1.4fr) 136px auto; padding: 7px 12px; }
+  .row.today .state { grid-column: auto; grid-row: auto; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row.today .act { grid-column: auto; grid-row: auto; }
+  .dots { color: var(--red); font-size: 0.72rem; font-weight: 700; white-space: nowrap; letter-spacing: 1px; }
+  .dots.calm { color: var(--faint); }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 0.74rem; font-weight: 700; white-space: nowrap; justify-self: start; }
   .chip.aff { background: var(--red-bg); color: var(--red); }
   .chip.not { background: var(--blue-soft); color: var(--blue-text); }
-  .chip.ret { background: var(--amber-bg); color: var(--amber); }
+  .chip.run { background: var(--amber-bg); color: var(--amber); }
   .tag { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 0.72rem; font-weight: 600; line-height: 18px; white-space: nowrap; }
   .tag.ok { background: var(--green-bg); color: var(--green); }
   .tag.none { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
@@ -63,38 +130,35 @@
   .tag.bad { background: var(--red-bg); color: var(--red); }
   .btn { border: 0; border-radius: 8px; padding: 7px 12px; font: inherit; font-weight: 600; background: var(--blue); color: #fff; white-space: nowrap; cursor: pointer; }
   .btn.plain { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
-  .btn.none { background: transparent; color: var(--faint); border: 1px dashed var(--border); cursor: default; font-weight: 500; }
+  .btn.small { padding: 5px 10px; font-size: 0.85rem; }
+  .btn.dead { background: var(--surface-2); color: var(--faint); border: 1px solid var(--border); cursor: default; }
+  .nopress { color: var(--faint); font-size: 0.82rem; text-align: right; }
 
   details.batch { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); margin-bottom: 6px; }
-  details.batch > summary { list-style: none; display: grid; grid-template-columns: 96px minmax(0, 1fr) 110px 150px auto; gap: 12px; align-items: center; padding: 12px; cursor: pointer; }
+  details.batch > summary { list-style: none; display: grid; grid-template-columns: 84px minmax(0, 1fr) 84px 136px 178px; gap: 12px; align-items: center; padding: 10px 12px; cursor: pointer; }
   details.batch > summary::-webkit-details-marker { display: none; }
-  details.batch > summary .title { font-weight: 700; }
+  details.batch > summary .title { font-weight: 700; min-width: 0; }
   details.batch > summary .title small { display: block; font-weight: 500; color: var(--muted); font-size: 0.83rem; }
+  details.batch > summary .money { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  details.batch > summary .due { color: var(--red); font-weight: 600; white-space: nowrap; font-size: 0.88rem; }
+  details.batch > summary .due.calm { color: var(--muted); font-weight: 500; }
+  details.batch > summary > .btn, details.batch > summary > .nopress { justify-self: end; }
   details.batch .inside { border-top: 1px solid var(--border); padding: 6px 12px 10px; }
-  details.batch .line { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.5fr) 96px; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; align-items: center; }
+  details.batch .line { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.6fr) 84px; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; align-items: center; }
   details.batch .line:last-child { border-bottom: 0; }
   details.batch .line .money { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-  details.batch .more { color: var(--faint); font-size: 0.85rem; padding-top: 6px; }
   .caret { color: var(--faint); font-weight: 500; font-size: 0.82rem; }
-
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .col { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--bg); }
-  .col h3 { margin: 0 0 2px; font-size: 0.95rem; }
-  .col p { margin: 0 0 8px; color: var(--muted); font-size: 0.85rem; }
-  .col .row { grid-template-columns: minmax(0, 1fr) 80px auto; }
-  .col .row .state { grid-column: 1 / -1; order: 5; }
-
 
   /* ── D: one run ── */
   .states { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 12px; font-size: 0.85rem; color: var(--muted); }
   .states button { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); padding: 4px 10px; border-radius: 999px; font: inherit; font-size: 0.82rem; cursor: pointer; }
   .states button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
-  .runhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .runhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 14px 0 10px; }
   .runhead h2 { margin: 0; font-size: 1.05rem; }
   .runhead .tot { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; }
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
-  .step { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; background: var(--surface); color: var(--muted); }
-  .step b { display: block; color: var(--text); }
+  .step { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; background: var(--surface); color: var(--muted); font-size: 0.88rem; }
+  .step b { display: block; color: var(--text); font-size: 0.95rem; }
   .step.now { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
   .step.done b::after { content: '  ✓'; color: var(--green); }
   .step.wait { opacity: 0.6; }
@@ -104,13 +168,13 @@
   .card h3 .n { color: var(--red); }
   .card h3 .right { margin-left: auto; font-variant-numeric: tabular-nums; }
   .card > p { margin: 0 0 10px; color: var(--muted); font-size: 0.88rem; }
-  .ask { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) 84px auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px dashed var(--border); }
-  .ask .who { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ask { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr) 72px 252px; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px dashed var(--border); }
+  .ask .who { font-weight: 600; min-width: 0; }
+  .ask .who .bchip { margin-right: 4px; }
+  .ask .who i { display: block; font-style: normal; margin-bottom: 3px; }
   .ask .q small { display: block; color: var(--faint); font-size: 0.82rem; }
   .ask .money { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
   .ask .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-  .btn.small { padding: 5px 10px; font-size: 0.85rem; }
-  .btn.dead { background: var(--surface-2); color: var(--faint); border: 1px solid var(--border); cursor: default; }
   .meter { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin: 6px 0 2px; }
   .meter i { display: block; height: 100%; background: var(--green); }
   .fresh { border: 1px solid var(--amber); background: var(--amber-bg); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
@@ -118,18 +182,16 @@
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .tally { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 0.88rem; padding: 4px 2px 0; }
   .tally b { color: var(--text); font-variant-numeric: tabular-nums; }
-  #opt-d [data-in] { display: none; }
-  #opt-d[data-state="before"] [data-in~="before"], #opt-d[data-state="ready"] [data-in~="ready"], #opt-d[data-state="after"] [data-in~="after"] { display: block; }
-  #opt-d[data-state="before"] span[data-in~="before"], #opt-d[data-state="ready"] span[data-in~="ready"], #opt-d[data-state="after"] span[data-in~="after"] { display: inline; }
-  @media (max-width: 760px) { .steps, .two { grid-template-columns: 1fr; } .ask { grid-template-columns: 1fr auto; } .ask .q, .ask .acts { grid-column: 1 / -1; justify-content: flex-start; } }
-  section.option { display: none; }
-  section.option.on { display: block; }
+
   @media (max-width: 760px) {
-    .strip { grid-template-columns: 1fr 1fr; }
-    .strip .lane { grid-column: 1 / -1; }
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .cols2 { grid-template-columns: 1fr; row-gap: 18px; }
+    .cross { display: none; }
+    .steps, .two { grid-template-columns: 1fr; }
     .row, .row.today, details.batch > summary { grid-template-columns: 1fr auto; }
-    .row .state, details.batch > summary .title { grid-column: 1 / -1; }
-    .cols { grid-template-columns: 1fr; }
+    .row .state, .row.today .state, details.batch > summary .title { grid-column: 1 / -1; grid-row: auto; white-space: normal; }
+    .row .act { grid-column: 1 / -1; grid-row: auto; justify-self: start; }
+    .ask { grid-template-columns: 1fr auto; } .ask .q, .ask .acts { grid-column: 1 / -1; justify-content: flex-start; }
     details.batch .line { grid-template-columns: 1fr auto; }
     details.batch .line span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
   }
@@ -137,312 +199,371 @@
 </head>
 <body>
 <div class="page">
-  <h1>Lien desk · To do: four ways to draw Needs you now</h1>
-  <p class="lead">The same day's work drawn five times: as it is today, and four options. Press a tab to compare. Nothing here is built.</p>
+  <h1>Lien desk · To do with the Board: today and three ways</h1>
+  <p class="lead">The Board is now the top of To do. This is the same day's work drawn four times, each with the Board in place. B, A and D build on each other: B is the first two steps of A, and A is the first half of D. Nothing here is built.</p>
 
   <div class="picker" role="group" aria-label="Which drawing">
     <button data-show="today" aria-pressed="false">Today</button>
-    <button data-show="a" aria-pressed="false">A · By the next act</button>
-    <button data-show="b" aria-pressed="false">B · Same list, clearer rows</button>
-    <button data-show="c" aria-pressed="false">C · Ready and held</button>
-    <button data-show="d" aria-pressed="true">D · One run</button>
+    <button data-show="b" aria-pressed="true">B · One page, clearer rows</button>
+    <button data-show="a" aria-pressed="false">A · The list follows the Board</button>
+    <button data-show="d" aria-pressed="false">D · One run</button>
     <button class="theme" id="theme">Light / dark</button>
   </div>
 
   <!-- ───────────── TODAY ───────────── -->
   <section class="option" id="opt-today">
-    <div class="what"><b>Today.</b> One row a paper, grouped and ordered by the day alone. Rows that share a day fall in no order that means anything.
+    <div class="what"><b>Today.</b> The Board takes most of the screen, and it should: it is the picture of the month. The list is pinned in what is left under it.
       <ul>
-        <li>A held $240 paper sits above a ready $9,400 one.</li>
-        <li>The hold reads "the property record is not complete". The real reason is one click away.</li>
-        <li>No row says whether a notice went, or that none is needed.</li>
-        <li>Twelve rows carry the same button.</li>
+        <li>The list is its own scroller, about three rows tall. On a smaller window it starts below the bottom of the screen.</li>
+        <li>The Board orders the papers by stage. The list orders the same papers by day. One desk says it twice, in two orders.</li>
+        <li>Ten rows read the same and carry the same button. No row carries dollars.</li>
+        <li>The held paper reads "the property record is not complete". Its one question is a press away.</li>
+      </ul>
+    </div>
+    <div class="desk screen">
+      <div data-board="before"></div>
+      <div class="bar"><span class="find">⌕ Find a job, a GC, an address or an owner</span></div>
+      <div class="list" data-list="today"></div>
+    </div>
+    <div class="fold-line">the bottom of the screen</div>
+  </section>
+
+  <!-- ───────────── B ───────────── -->
+  <section class="option on" id="opt-b">
+    <div class="what"><b>B · One page, clearer rows.</b> The Board stays whole. The Board and the list scroll as one page, so the list gets the whole screen as you move down.
+      <ul>
+        <li>Scroll down: the find box pins to the top with the Board's numbers and a way back, <b>↑ The Board</b>.</li>
+        <li>Press a bin's name: the list narrows to that bin and comes up to you.</li>
+        <li>Every row carries dollars. Every affidavit says where its notice stands. A held paper names its one question, on the row and on its button.</li>
+        <li>Within a day: ready before held, then the largest first.</li>
+        <li>The smallest change. The list still runs by day, and ten rows still carry the same button.</li>
       </ul>
     </div>
     <div class="desk">
-      <div class="group-head red">Needs you now · 14</div>
-      <div class="row today"><span class="chip aff">Affidavit ①</span><span class="title">1077 · ZZ Locks</span><span class="state">Affidavit · the property record is not complete</span><span class="due">Nov 16 · 2 days left</span><button class="btn">Fix the property</button></div>
-      <div class="row today"><span class="chip aff">Affidavit ✓</span><span class="title">1052 · ZZ Service Visit, 12 Sample Rd</span><span class="state">Affidavit approved · ready to file</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row today"><span class="chip aff">Affidavit ✓</span><span class="title">1090 · ZZ Marlow</span><span class="state">Affidavit approved · ready to file</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row today"><span class="chip aff">Affidavit ①</span><span class="title">1068 · ZZ Service Visit, 40 County Rd</span><span class="state">Affidavit approved · ready to file</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row today"><span class="chip aff">Affidavit ✓</span><span class="title">1031 · ZZ Marlow (Hilltop)</span><span class="state">Affidavit approved · ready to file</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row today"><span class="chip aff">Affidavit ①</span><span class="title">1083 · ZZ Builders, Mission Drains</span><span class="state">Affidavit approved · ready to file</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row today"><span class="chip aff">Affidavit ✓</span><span class="title">1024 · ZZ Marlow, main house</span><span class="state">Affidavit approved · ready to file</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="more" style="color:var(--faint);padding:6px 4px">… six more rows that read the same, then the notices.</div>
+      <div data-board="before"></div>
+      <div class="bar"><span class="find">⌕ Find a job, a GC, an address or an owner</span><span class="nums"><b class="r">21</b> by tomorrow · <b class="v">2</b> waiting · <b>4</b> in the run</span><button class="btn plain small up">↑ The Board</button></div>
+      <div class="showing" hidden>Showing <b class="n"></b> in <b class="l"></b>. <button class="link" data-clear>Show every row</button></div>
+      <div class="list" data-list="b"></div>
     </div>
   </section>
 
   <!-- ───────────── A ───────────── -->
   <section class="option" id="opt-a">
-    <div class="what"><b>A · By the next act.</b> The list follows the strip above it, stage by stage. Papers that share one act and one day fold into a batch row.
+    <div class="what"><b>A · The list follows the Board.</b> One page, as in B. Under the Board the list is drawn in the Board's own order: one group for each bin, under the bin's own name.
       <ul>
-        <li>Fourteen rows become five. Open a batch to see its jobs.</li>
-        <li>A held paper names its one question, and its button answers it.</li>
-        <li>Every affidavit says where its notice stands.</li>
-        <li>Dollars on every row and every batch.</li>
+        <li>Press a bin's name and the page goes to its group. The picture and the list say one thing, once.</li>
+        <li>Papers that share one act fold into one row with a total and one button. Sixteen rows become seven.</li>
+        <li>Tomorrow's papers come first. Everything later folds under one line.</li>
+        <li>The rows are B's rows: dollars, the notice line, the named question.</li>
       </ul>
     </div>
     <div class="desk">
-      <div class="strip">
-        <span class="lane">Notices</span><span class="cell">Find the owner <b>0</b></span><span class="cell">Draft notice <b>3</b></span><span class="cell">Approve <b>2</b></span><span class="cell">Send the run <b>4 printed</b></span>
-        <span class="lane">Affidavits</span><span class="cell hot">Answer a question <b>1</b></span><span class="cell zero">Draft affidavit <b>0</b></span><span class="cell zero">Approve <b>0</b></span><span class="cell hot">File it <b>12</b></span>
-      </div>
-
-      <div class="group-head red">Answer a question · 1 <span class="hint">an affidavit waits on a fact only a person knows</span><span class="sum">$240</span></div>
-      <div class="row">
-        <span class="chip aff">Affidavit</span>
-        <span class="title">1077 · ZZ Locks</span>
-        <span class="state">Is this home the owner's homestead?<span class="line2"><span class="tag none">No notice needed · contracted with the owner</span></span></span>
-        <span class="money">$240</span>
-        <span class="due">Nov 16 · 2 days left</span>
-        <button class="btn">Answer the homestead question</button>
-      </div>
-
-      <div class="group-head red">Print, sign and file · 12 affidavits <span class="hint">one stack, one trip to the notary and the clerk</span><span class="sum">$41,300</span></div>
-      <details class="batch" open>
-        <summary>
-          <span class="chip aff">Affidavits</span>
-          <span class="title">12 affidavits approved and ready to file<small>10 clean · 2 flagged "ask the attorney first" <span class="caret">· show the jobs ▾</span></small></span>
-          <span class="money" style="text-align:right;font-weight:700">$41,300</span>
-          <span class="due">Nov 16 · 2 days left</span>
-          <button class="btn">Print 12 affidavits</button>
-        </summary>
-        <div class="inside">
-          <div class="line"><span>1024 · ZZ Marlow, main house</span><span><span class="tag ok">Notice sent Sep 22 and Oct 14</span></span><span class="money">$9,400</span></div>
-          <div class="line"><span>1031 · ZZ Marlow (Hilltop)</span><span><span class="tag ok">Notice sent Sep 22</span></span><span class="money">$6,100</span></div>
-          <div class="line"><span>1083 · ZZ Builders, Mission Drains</span><span><span class="tag ok">Notice sent Oct 14</span> <span class="tag warn">Ask the attorney first</span></span><span class="money">$2,900</span></div>
-          <div class="line"><span>1068 · ZZ Service Visit, 40 County Rd</span><span><span class="tag ok">Notice sent Oct 14</span> <span class="tag warn">Ask the attorney first</span></span><span class="money">$2,650</span></div>
-          <div class="line"><span>1052 · ZZ Service Visit, 12 Sample Rd</span><span><span class="tag ok">Notice sent Oct 14</span></span><span class="money">$610</span></div>
-          <div class="more">… and 7 more, largest first.</div>
-        </div>
-      </details>
-
-      <div class="group-head">Only you can approve · 2 notices<span class="sum">$3,480</span></div>
-      <details class="batch">
-        <summary>
-          <span class="chip not">Notices</span>
-          <span class="title">2 notices waiting on your approval<small>ZZ Builders · September work <span class="caret">· show the jobs ▸</span></small></span>
-          <span class="money" style="text-align:right;font-weight:700">$3,480</span>
-          <span class="due">Nov 16 · 2 days left</span>
-          <button class="btn">Approve 2</button>
-        </summary>
-        <div class="inside">
-          <div class="line"><span>1101 · ZZ Builders, lot 7</span><span>September 2026</span><span class="money">$2,280</span></div>
-          <div class="line"><span>1104 · ZZ Builders, lot 9</span><span>September 2026</span><span class="money">$1,200</span></div>
-        </div>
-      </details>
-
-      <div class="group-head">Draft notice · 3<span class="sum">$5,150</span></div>
-      <details class="batch">
-        <summary>
-          <span class="chip not">Notices</span>
-          <span class="title">3 notices to draft<small>September work · the owner is on each record <span class="caret">· show the jobs ▸</span></small></span>
-          <span class="money" style="text-align:right;font-weight:700">$5,150</span>
-          <span class="due">Nov 16 · 2 days left</span>
-          <button class="btn">Draft 3 notices</button>
-        </summary>
-        <div class="inside">
-          <div class="line"><span>1110 · ZZ Oak Hollow</span><span>September 2026</span><span class="money">$2,900</span></div>
-          <div class="line"><span>1112 · ZZ Marlow, guest house</span><span>September 2026</span><span class="money">$1,350</span></div>
-          <div class="line"><span>1115 · ZZ Service Visit, 8 Elm Ct</span><span>September 2026</span><span class="money">$900</span></div>
-        </div>
-      </details>
-
-      <div class="group-head">In the mail · 4 printed<span class="sum">$7,020</span></div>
-      <div class="row">
-        <span class="chip not">Notices</span>
-        <span class="title">4 notices printed Nov 13</span>
-        <span class="state">Mailed? Type each envelope's number.<span class="line2">Not mailing them? Take the run back.</span></span>
-        <span class="money">$7,020</span>
-        <span class="due">Nov 16 · 2 days left</span>
-        <button class="btn">Record the mailing</button>
-      </div>
+      <div data-board="before"></div>
+      <div class="bar"><span class="find">⌕ Find a job, a GC, an address or an owner</span><span class="nums"><b class="r">21</b> by tomorrow · <b class="v">2</b> waiting · <b>4</b> in the run</span><button class="btn plain small up">↑ The Board</button></div>
+      <div class="list" data-list="a"></div>
     </div>
   </section>
-
-  <!-- ───────────── B ───────────── -->
-  <section class="option" id="opt-b">
-    <div class="what"><b>B · Same list, clearer rows.</b> One row a paper, as today. The rows carry more, and the order means something.
-      <ul>
-        <li>Within a day: ready before held, then the largest first.</li>
-        <li>Dollars on every row.</li>
-        <li>A held paper names its one question on the row and on the button.</li>
-        <li>Every affidavit says where its notice stands.</li>
-        <li>The smallest change. Twelve rows still carry the same button.</li>
-      </ul>
-    </div>
-    <div class="desk">
-      <div class="group-head red">Needs you now · 14 <span class="sum">$41,540</span></div>
-      <div class="row"><span class="chip aff">Affidavit</span><span class="title">1024 · ZZ Marlow, main house</span><span class="state">Approved · ready to file<span class="line2"><span class="tag ok">Notice sent Sep 22 and Oct 14</span></span></span><span class="money">$9,400</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row"><span class="chip aff">Affidavit</span><span class="title">1031 · ZZ Marlow (Hilltop)</span><span class="state">Approved · ready to file<span class="line2"><span class="tag ok">Notice sent Sep 22</span></span></span><span class="money">$6,100</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row"><span class="chip aff">Affidavit</span><span class="title">1083 · ZZ Builders, Mission Drains</span><span class="state">Approved · ready to file<span class="line2"><span class="tag ok">Notice sent Oct 14</span> <span class="tag warn">Ask the attorney first</span></span></span><span class="money">$2,900</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row"><span class="chip aff">Affidavit</span><span class="title">1068 · ZZ Service Visit, 40 County Rd</span><span class="state">Approved · ready to file<span class="line2"><span class="tag ok">Notice sent Oct 14</span> <span class="tag warn">Ask the attorney first</span></span></span><span class="money">$2,650</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="row"><span class="chip aff">Affidavit</span><span class="title">1052 · ZZ Service Visit, 12 Sample Rd</span><span class="state">Approved · ready to file<span class="line2"><span class="tag ok">Notice sent Oct 14</span></span></span><span class="money">$610</span><span class="due">Nov 16 · 2 days left</span><button class="btn">File the affidavit</button></div>
-      <div class="more" style="color:var(--faint);padding:6px 4px">… seven more ready affidavits, largest first, then the notices. The held paper comes last:</div>
-      <div class="row"><span class="chip aff">Affidavit</span><span class="title">1077 · ZZ Locks</span><span class="state">Held · is this home the owner's homestead?<span class="line2"><span class="tag none">No notice needed · contracted with the owner</span></span></span><span class="money">$240</span><span class="due">Nov 16 · 2 days left</span><button class="btn">Answer the homestead question</button></div>
-    </div>
-  </section>
-
-  <!-- ───────────── C ───────────── -->
-  <section class="option" id="opt-c">
-    <div class="what"><b>C · Ready and held.</b> Two columns. The left is work you can press now. The right is work waiting on an answer, with who can give it.
-      <ul>
-        <li>The ready side folds into batches, as in A.</li>
-        <li>The held side shows one question a row, so a hold is never mistaken for work.</li>
-        <li>Costs the most width. On a phone the two columns stack.</li>
-      </ul>
-    </div>
-    <div class="desk">
-      <div class="cols">
-        <div class="col">
-          <h3>Ready · press and go</h3>
-          <p>18 papers in 3 batches · $53,970 · all by Nov 16</p>
-          <div class="row"><span class="title">12 affidavits to print, sign and file</span><span class="money">$41,300</span><button class="btn">Print 12</button><span class="state"><span class="tag ok">10 clean</span> <span class="tag warn">2 flagged: ask the attorney first</span></span></div>
-          <div class="row"><span class="title">3 notices to draft</span><span class="money">$5,150</span><button class="btn">Draft 3</button><span class="state">September work · the owner is on each record</span></div>
-          <div class="row"><span class="title">4 notices printed Nov 13</span><span class="money">$7,020</span><button class="btn">Record the mailing</button><span class="state">Mailed? Type each envelope's number.</span></div>
-        </div>
-        <div class="col">
-          <h3>Held · waiting on an answer</h3>
-          <p>3 papers · $3,720 · each names who can settle it</p>
-          <div class="row"><span class="title">1077 · ZZ Locks</span><span class="money">$240</span><button class="btn">Answer</button><span class="state"><b>You or the office:</b> is this home the owner's homestead? <span class="tag none">No notice needed · contracted with the owner</span></span></div>
-          <div class="row"><span class="title">1101 · ZZ Builders, lot 7</span><span class="money">$2,280</span><button class="btn">Approve</button><span class="state"><b>You:</b> the notice waits on your approval.</span></div>
-          <div class="row"><span class="title">1104 · ZZ Builders, lot 9</span><span class="money">$1,200</span><button class="btn">Approve</button><span class="state"><b>You:</b> the notice waits on your approval.</span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
 
   <!-- ───────────── D ───────────── -->
-  <section class="option on" id="opt-d" data-state="before">
-    <div class="what"><b>D · One run.</b> The list becomes three steps in order: get every paper right, print them all at once, then mail and file them together.
+  <section class="option" id="opt-d" data-state="before">
+    <div class="what"><b>D · One run.</b> The Board's first tile is the run: every paper due by tomorrow. Under the Board the list becomes three steps in order: get every paper right, print them all at once, then mail and file them together.
       <ul>
-        <li>The print stays locked until every open question is settled or its paper is left out of this run.</li>
-        <li>One stuck paper never holds the batch: each question has a "Leave out" choice.</li>
-        <li>After the print, a paper whose record changed says so, with what changed.</li>
-        <li>Printed, mailed and filed counts sit side by side, so the run can be checked against itself.</li>
+        <li>Step 1 is the tile's own red line, written out. "8 will not make tomorrow as they stand" becomes six questions, each with its button.</li>
+        <li>The print stays locked until every question is settled or its paper is left out. One stuck paper never holds the run.</li>
+        <li>The chips move on the Board as the run moves. Press the three states below and watch <b>In the run</b>.</li>
+        <li>After the print, a paper whose record changed turns amber on the Board and says what changed.</li>
       </ul>
     </div>
     <div class="states" role="group" aria-label="Where the run stands">
       See it:
-      <button data-state="before" aria-pressed="true">Before · 4 to settle</button>
+      <button data-state="before" aria-pressed="true">Before · 6 to settle</button>
       <button data-state="ready" aria-pressed="false">Ready to print</button>
       <button data-state="after" aria-pressed="false">After the print</button>
     </div>
     <div class="desk">
-      <div class="runhead">
-        <h2>This run · papers due Mon Nov 16</h2>
-        <span class="tag bad">2 days left</span>
-        <span class="tot"><span data-in="before">19 papers · $53,970</span><span data-in="ready after">18 papers · $53,730 · 1 left out</span></span>
-      </div>
-      <div class="steps">
-        <div class="step now" data-in="before"><b>1 · Get it right</b>4 to settle · 15 of 19 papers are right</div>
-        <div class="step done" data-in="ready after"><b>1 · Get it right</b><span data-in="ready">18 right · 1 left out of this run</span><span data-in="after">18 right · 1 left out of this run</span></div>
-        <div class="step wait" data-in="before"><b>2 · Print the run</b>Locked until step 1 reads zero</div>
-        <div class="step now" data-in="ready"><b>2 · Print the run</b>18 papers, one stack</div>
-        <div class="step done" data-in="after"><b>2 · Print the run</b>Printed Sat Nov 14, 10:02 AM</div>
-        <div class="step wait" data-in="before ready"><b>3 · Out the door</b>Mail and file, each in one trip</div>
-        <div class="step now" data-in="after"><b>3 · Out the door</b>0 of 7 mailed · 0 of 11 filed</div>
-      </div>
-
-      <!-- step 1, open -->
-      <div class="card" data-in="before">
-        <h3><span>1 · Get it right</span> <span class="n">4 to settle</span><span class="right">$9,520 waits on these</span></h3>
-        <p>Each line is one question. Settle it, or leave its paper out of this run.</p>
-        <div class="meter"><i style="width:79%"></i></div>
-        <div class="ask">
-          <span class="who">1077 · ZZ Locks</span>
-          <span class="q">Is this home the owner's homestead?<small>Affidavit · no notice needed, contracted with the owner</small></span>
-          <span class="money">$240</span>
-          <span class="acts"><button class="btn small">Yes</button><button class="btn small">No</button><button class="btn small plain">Leave out</button></span>
-        </div>
-        <div class="ask">
-          <span class="who">1083 · ZZ Builders, Mission Drains</span>
-          <span class="q">Ask the attorney first: no copy to the original contractor is on record for August.<small>Affidavit · notice sent Oct 14</small></span>
-          <span class="money">$2,900</span>
-          <span class="acts"><button class="btn small">The attorney says go</button><button class="btn small plain">Leave out</button></span>
-        </div>
-        <div class="ask">
-          <span class="who">1110 · ZZ Oak Hollow</span>
-          <span class="q">Its month is the month the job was typed in. What was the last day of work?<small>Notice · September 2026</small></span>
-          <span class="money">$2,900</span>
-          <span class="acts"><button class="btn small">Set the day</button><button class="btn small plain">Leave out</button></span>
-        </div>
-        <div class="ask">
-          <span class="who">2 notices · ZZ Builders</span>
-          <span class="q">Waiting on your approval.<small>Notices · September 2026 · lots 7 and 9</small></span>
-          <span class="money">$3,480</span>
-          <span class="acts"><button class="btn small">Approve 2</button><button class="btn small plain">Leave out</button></span>
-        </div>
-        <details class="batch" style="margin-top:10px">
-          <summary style="grid-template-columns:1fr auto"><span class="title">15 papers are right<small>11 affidavits · 4 notices <span class="caret">· show them ▸</span></small></span><span class="money" style="font-weight:700">$44,450</span></summary>
-          <div class="inside">
-            <div class="line"><span>1024 · ZZ Marlow, main house</span><span><span class="tag ok">Notice sent Sep 22 and Oct 14</span></span><span class="money">$9,400</span></div>
-            <div class="line"><span>1031 · ZZ Marlow (Hilltop)</span><span><span class="tag ok">Notice sent Sep 22</span></span><span class="money">$6,100</span></div>
-            <div class="more">… and 13 more, largest first.</div>
-          </div>
-        </details>
-      </div>
-
-      <!-- step 2, locked -->
-      <div class="card locked" data-in="before">
-        <h3><span>2 · Print the run</span><span class="right">19 papers · $53,970</span></h3>
-        <p>Locked. 4 questions are open above. Settle each, or leave its paper out.</p>
-        <button class="btn dead">Print the run</button>
-      </div>
-
-      <!-- step 2, ready -->
-      <div class="card" data-in="ready" style="border-color:var(--blue)">
-        <h3><span>2 · Print the run</span><span class="right">18 papers · $53,730</span></h3>
-        <p>Every paper in the run is right as of Sat Nov 14, 9:58 AM. One stack, in this order: the help sheet, 7 notices by contractor, 11 affidavits by county clerk.</p>
-        <button class="btn">Print the run · 18 papers</button>
-        <div class="tally" style="margin-top:10px"><span><b>1</b> left out: 1077 · ZZ Locks, the homestead question is open · <u>put it back</u></span></div>
-      </div>
-
-      <!-- after the print -->
-      <div data-in="after">
-        <div class="fresh"><b>1 paper changed since it was printed.</b> 1052 · ZZ Service Visit, 12 Sample Rd: a $300 payment came in at 1:40 PM. Its affidavit says $610 and the record now says $310.
-          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn small">Reprint this one</button><button class="btn small plain">It stands as printed</button><button class="btn small plain">Take it out of the run</button></div>
-        </div>
-        <div class="two">
-          <div class="card">
-            <h3><span>3a · Mail</span><span class="right">7 notices · 14 envelopes</span></h3>
-            <p>One trip to the counter. Type each envelope's number from the receipt.</p>
-            <div class="meter"><i style="width:0%"></i></div>
-            <div class="tally"><span><b>0</b> of 14 numbers typed</span><span>last day <b>Mon Nov 16</b></span></div>
-            <div style="margin-top:10px"><button class="btn">Record the mailing</button></div>
-          </div>
-          <div class="card">
-            <h3><span>3b · File</span><span class="right">11 affidavits · 3 clerks</span></h3>
-            <p>Signed before a notary first. Then one stop a clerk.</p>
-            <div class="ask" style="grid-template-columns:1fr auto auto"><span class="who">Marlow County clerk</span><span class="money">8</span><button class="btn small plain">Record the filing</button></div>
-            <div class="ask" style="grid-template-columns:1fr auto auto"><span class="who">Hill County clerk</span><span class="money">2</span><button class="btn small plain">Record the filing</button></div>
-            <div class="ask" style="grid-template-columns:1fr auto auto"><span class="who">Oak County clerk</span><span class="money">1</span><button class="btn small plain">Record the filing</button></div>
-            <div class="tally" style="margin-top:8px"><span>Then a copy to each owner within five days · <b>0</b> of 11 served</span></div>
-          </div>
-        </div>
-        <div class="tally"><span>Printed <b>18</b></span><span>Mailed <b>0</b> of 7</span><span>Filed <b>0</b> of 11</span><span>Left out <b>1</b></span><span>Changed since printed <b>1</b></span></div>
-      </div>
+      <div data-board="d"></div>
+      <div class="bar"><span class="find">⌕ Find a job, a GC, an address or an owner</span><span class="nums" data-d-nums></span><button class="btn plain small up">↑ The Board</button></div>
+      <div class="list" data-list="d"></div>
     </div>
   </section>
 
-  <p class="sample">Sample jobs and sample figures. No live record is drawn here.</p>
+  <p class="sample">Ready and held, the two columns of the first mock-up's C, is gone: the Board's bins already split what is ready from what waits on a fact. Sample jobs and sample figures. No live record is drawn here.</p>
 </div>
 <script>
-  const buttons = document.querySelectorAll('.picker button[data-show]')
+  // ── sample jobs (ZZ names, made-up figures) ──
+  const JOBS = {
+    1024: ['ZZ Marlow, main house', 9400], 1031: ['ZZ Marlow (Hilltop)', 6100], 1044: ['ZZ Oak Hollow, barn', 5200], 1047: ['ZZ Builders, lot 3', 4150],
+    1083: ['ZZ Builders, Mission Drains', 2900], 1068: ['ZZ Service Visit, 40 County Rd', 2650], 1049: ['ZZ Cedar Row, unit B', 1800], 1055: ['ZZ Service Visit, 2 Mill Ln', 1240],
+    1058: ['ZZ Marlow, pool house', 880], 1052: ['ZZ Service Visit, 12 Sample Rd', 610], 1077: ['ZZ Locks', 240], 1118: ['ZZ Cedar Row', 1900], 1110: ['ZZ Oak Hollow', 2900],
+    1112: ['ZZ Marlow, guest house', 1350], 1115: ['ZZ Service Visit, 8 Elm Ct', 900], 1101: ['ZZ Builders, lot 7', 2280], 1104: ['ZZ Builders, lot 9', 1200],
+    1091: ['ZZ Builders, lot 1', 2600], 1093: ['ZZ Builders, lot 2', 1980], 1095: ['ZZ Pine St duplex, east', 1440], 1097: ['ZZ Pine St duplex, west', 1000],
+    1121: ['ZZ Pine St, shop', 1100], 1123: ['ZZ Service Visit, 5 Lake Dr', 700], 1126: ['ZZ Marlow, stables', 2000], 1128: ['ZZ Oak Hollow, well house', 1500],
+    1130: ['ZZ Builders, lot 12', 3300], 1133: ['ZZ Service Visit, 9 Hill Rd', 1450], 1040: ['ZZ Old Mill', 900],
+  }
+  const NOTICE = { 1024: 'Notice sent Sep 22 and Oct 14', 1031: 'Notice sent Sep 22', 1044: 'Notice sent Oct 14', 1047: 'Notice sent Oct 14', 1083: 'Notice sent Oct 14', 1068: 'Notice sent Oct 14', 1049: 'Notice sent Sep 22', 1055: 'No notice needed · contracted with the owner', 1058: 'Notice sent Oct 14', 1052: 'Notice sent Oct 14', 1130: 'Notice sent Oct 14', 1133: 'Notice sent Oct 14' }
+  const READY_NOW = [1024, 1031, 1044, 1047, 1083, 1068, 1049, 1055, 1058, 1052] // largest first
+  const money = (n) => '$' + n.toLocaleString('en-US')
+  const nm = (id) => id + ' · ' + JOBS[id][0]
+  const sum = (ids) => ids.reduce((t, id) => t + JOBS[id][1], 0)
+  const NOW = 'Nov 16 · 1 day left'
+  const LATER = 'Dec 15 · 30 days left'
+
+  // ── the Board ──
+  const R = 'r', Q = 'q', V = 'v'
+  function boardModel(state) {
+    const readyChips = [...[1024, 1031, 1044, 1047, 1049, 1052, 1055, 1058, 1068, 1083].map((id) => [id, state === 'after' && id === 1052 ? 'chg' : R, state === 'after' && id === 1052 ? '≠' : '']), [1130, Q], [1133, Q]]
+    if (state === 'before') return {
+      tiles: [
+        { tone: 'red', fig: '21', w: 'by tomorrow · 11 to file · 10 to send', s: '8 will not make tomorrow as they stand.', sTone: 'red' },
+        { tone: 'violet', fig: '2', w: 'waiting on the leader' },
+        { tone: 'brown', fig: '4', w: 'in the run', s: 'Type the tracking numbers.' },
+        { tone: '', fig: '$63,670', w: 'unpaid on the desk' },
+      ],
+      n: [['n_owner', 'Needs the owner', [[1118, R, '!'], [1121, Q]]], ['n_send', 'To send', [[1110, R, '!'], [1112, R, '!'], [1115, R, '!'], [1123, Q]]], ['n_await', 'Awaiting approval', [[1101, V], [1104, V]]], ['n_run', 'In the run', [[1091, R], [1093, R], [1095, R], [1097, R]]], ['n_sent', 'Sent', []]],
+      a: [['a_facts', 'Needs the property facts', [[1077, R, '!'], [1118, Q], [1121, Q]]], ['a_send', 'To send', [[1126, Q], [1128, Q]]], ['a_await', 'Awaiting approval', []], ['a_ready', 'Ready to file', readyChips, 'lit'], ['a_filed', 'Filed · Served', []]],
+    }
+    const run = [[1101, R], [1104, R], [1110, R], [1112, R], [1115, R], [1118, R], [1091, R], [1093, R], [1095, R], [1097, R]]
+    return {
+      tiles: state === 'ready' ? [
+        { tone: 'red', fig: '20', w: 'by tomorrow · 10 to file · 10 to send', s: 'Every paper is right. 1 left out.', sTone: 'green' },
+        { tone: 'violet', fig: '0', w: 'waiting on the leader' },
+        { tone: 'brown', fig: '10', w: 'in the run', s: '6 to print · 4 printed Nov 13.' },
+        { tone: '', fig: '$63,670', w: 'unpaid on the desk' },
+      ] : [
+        { tone: 'red', fig: '20', w: 'by tomorrow · 10 to file · 10 to mail', s: 'Printed today, 10:02 AM. 1 changed since.', sTone: 'red' },
+        { tone: 'violet', fig: '0', w: 'waiting on the leader' },
+        { tone: 'brown', fig: '10', w: 'in the run', s: 'Type the tracking numbers.' },
+        { tone: '', fig: '$63,370', w: 'unpaid on the desk' },
+      ],
+      n: [['n_owner', 'Needs the owner', [[1121, Q]]], ['n_send', 'To send', [[1123, Q]]], ['n_await', 'Awaiting approval', []], ['n_run', 'In the run', run, 'lit'], ['n_sent', 'Sent', []]],
+      a: [['a_facts', 'Needs the property facts', [[1077, 'out', 'left out'], [1118, Q], [1121, Q]]], ['a_send', 'To send', [[1126, Q], [1128, Q]]], ['a_await', 'Awaiting approval', []], ['a_ready', 'Ready to file', readyChips, 'lit'], ['a_filed', 'Filed · Served', []]],
+    }
+  }
+  const chipHTML = ([id, tone, mark]) => `<span class="bchip ${tone}" data-job="${id}" title="${JOBS[id][0]}">${id}${mark ? ' ' + mark : ''}</span>`
+  const binHTML = ([key, label, chips, flag], i, flow) => `<div class="bin ${flow ? 'flow' : ''} ${flag || ''}" data-bin="${key}" ${flow ? `style="grid-column:1;grid-row:${i + 1}"` : ''}><button class="binhead" data-pick="${key}" data-label="${label}"><span>${label}</span><b class="${chips.length ? '' : 'zero'}">${chips.length}</b></button><div class="chips">${chips.length ? chips.map(chipHTML).join('') : '<span class="none">none</span>'}</div></div>`
+  function boardHTML(state, opts = {}) {
+    const m = boardModel(state)
+    const tiles = m.tiles.map((t, i) => `<div class="tile ${t.tone} ${opts.run && i === 0 ? 'pressed' : ''}"><span class="fig">${t.fig}</span><span class="w">${t.w}</span>${t.s ? `<span class="s ${t.sTone || ''}">${t.s}</span>` : ''}${opts.run && i === 0 ? '<span class="door">This is the run ↓</span>' : ''}</div>`).join('')
+    return `<div class="board">
+      <div class="tiles">${tiles}</div>
+      <div class="cols2">
+        <div><div class="colhead not">Monthly notices</div>
+          <div class="ncol">${m.n.map((b, i) => binHTML(b, i, true)).join('')}
+            <div class="bin beside" data-bin="n_missed" style="grid-column:2;grid-row:1"><button class="binhead" data-pick="n_missed" data-label="Missed"><span>Missed</span><b>1</b></button><div class="chips">${chipHTML([1040, Q])}</div></div>
+            <div class="cross"></div>
+          </div>
+        </div>
+        <div><div class="colhead aff">Lien affidavits</div><div class="acol">${m.a.map((b, i) => binHTML(b, i, false)).join('')}</div></div>
+      </div>
+      <div class="retain">Retainage · 1 to send</div>
+    </div>`
+  }
+
+  // ── the papers on the list ──
+  const P = []
+  READY_NOW.forEach((id) => P.push({ k: 'aff', id, bin: 'a_ready', when: 'now', mark: id === 1083 ? '①' : '✓', today: ['Affidavit approved · ready to file', 'File the affidavit'], state: 'Approved · ready to file', tags: [[NOTICE[id].startsWith('No') ? 'none' : 'ok', NOTICE[id]], ...(id === 1083 ? [['warn', 'Ask the attorney first']] : [])], btn: 'File the affidavit' }))
+  P.push({ k: 'run', ids: [1091, 1093, 1095, 1097], title: '4 notices printed Nov 13', bin: 'n_run', when: 'now', today: ['Mailed? Type each envelope’s number. Not mailing them? Take the run back.', 'Record the mailing'], state: 'Mailed? Type each envelope’s number. Not mailing them? <button class="link">Take the run back</button>', tags: [], btn: 'Record the mailing' })
+  ;[1112, 1115].forEach((id) => P.push({ k: 'not', id, bin: 'n_send', when: 'now', today: ['Notice to send', 'Open the notice'], state: 'Written · not yet sent for approval', tags: [['none', 'September 2026']], btn: 'Open the notice' }))
+  P.push({ k: 'not', id: 1110, bin: 'n_send', when: 'now', held: true, today: ['Notice to send', 'Open the notice'], state: 'Held · its month is the month the job was typed in. What was the last day of work?', tags: [], btn: 'Set the day' })
+  P.push({ k: 'not', id: 1118, bin: 'n_owner', when: 'now', held: true, today: ['Needs the owner of record', 'Find the owner'], state: 'Held · who is the owner of record?', tags: [['none', 'September 2026']], btn: 'Find the owner' })
+  P.push({ k: 'aff', id: 1077, bin: 'a_facts', when: 'now', held: true, mark: '①', today: ['Affidavit · the property record is not complete', 'Fix the property'], state: 'Held · is this home the owner’s homestead?', tags: [['none', NOTICE[1055]]], btn: 'Answer the homestead question' })
+  ;[1130, 1133].forEach((id) => P.push({ k: 'aff', id, bin: 'a_ready', when: 'later', mark: '✓', today: ['Affidavit approved · ready to file', 'File the affidavit'], state: 'Approved · ready to file', tags: [['ok', NOTICE[id]]], btn: 'File the affidavit' }))
+  ;[1126, 1128].forEach((id) => P.push({ k: 'aff', id, bin: 'a_send', when: 'later', mark: '✓', today: ['Affidavit to send', 'Open the affidavit'], state: 'Written · not yet sent for approval', tags: [['ok', 'Notice sent Oct 14']], btn: 'Open the affidavit' }))
+  P.push({ k: 'not', id: 1123, bin: 'n_send', when: 'later', today: ['Notice to send', 'Open the notice'], state: 'Written · not yet sent for approval', tags: [['none', 'October 2026']], btn: 'Open the notice' })
+  P.push({ k: 'not', id: 1121, bin: 'n_owner', when: 'later', held: true, today: ['Needs the owner of record', 'Find the owner'], state: 'Held · who is the owner of record?', tags: [['none', 'October 2026']], btn: 'Find the owner' })
+  ;[1118, 1121].forEach((id) => P.push({ k: 'aff', id, bin: 'a_facts', when: 'later', held: true, mark: '②', today: ['Affidavit · the property record is not complete', 'Fix the property'], state: 'Held · waits on the owner of record, the same question as its notice', tags: [['none', 'No notice on record']], btn: 'Find the owner' }))
+  ;[1101, 1104].forEach((id) => P.push({ k: 'not', id, bin: 'n_await', when: 'wait', today: ['Waiting on the leader · since Nov 12', null], state: 'Waiting on the leader · since Nov 12', tags: [['none', 'September 2026']], btn: null }))
+
+  const KIND = { aff: 'Affidavit', not: 'Notice', run: 'Run' }
+  const idsOf = (p) => (p.ids || [p.id]).join(' ')
+  const amtOf = (p) => sum(p.ids || [p.id])
+  const dueOf = (p) => (p.when === 'later' ? `<span class="due calm">${LATER}</span>` : `<span class="due">${NOW}</span>`)
+  const tagsHTML = (tags) => tags.map(([c, t]) => `<span class="tag ${c}">${t}</span>`).join(' ')
+  const todayRow = (p) => `<div class="row today" data-bin="${p.bin}" data-jobs="${idsOf(p)}"><span class="chip ${p.k}">${KIND[p.k]}${p.mark ? ' ' + p.mark : ''}</span><span class="title">${p.title || nm(p.id)}</span><span class="dots ${p.when === 'later' ? 'calm' : ''}">${p.k === 'run' ? '' : p.bin === 'a_ready' ? '●●●● 4/4' : p.held ? '●○○○ 1/4' : p.when === 'wait' ? '●●●○ 3/4' : '●●○○ 2/4'}</span><span class="state">${p.today[0]}</span>${dueOf(p)}<span class="act">${p.today[1] ? `<button class="btn">${p.today[1]}</button>` : '<button class="btn plain">Open</button>'}</span></div>`
+  const clearRow = (p) => `<div class="row" data-bin="${p.bin}" data-jobs="${idsOf(p)}"><span class="chip ${p.k}">${KIND[p.k]}</span><span class="title">${p.title || nm(p.id)}</span><span class="money">${money(amtOf(p))}</span>${dueOf(p)}<span class="act">${p.btn ? `<button class="btn">${p.btn}</button>` : '<span class="nopress">Only the leader can approve</span>'}</span><span class="state">${p.state} ${tagsHTML(p.tags)}</span></div>`
+  const byKey = (a, b) => (a.k === b.k ? (a.id || 0) - (b.id || 0) : ['aff', 'not', 'run'].indexOf(a.k) - ['aff', 'not', 'run'].indexOf(b.k))
+  const of = (when) => P.filter((p) => p.when === when)
+
+  function listToday() {
+    return `<div class="group-head red" style="margin-top:4px">Needs you now · ${of('now').length}</div>${[...of('now')].sort(byKey).map(todayRow).join('')}
+      <div class="group-head">Coming up · ${of('later').length}</div>${[...of('later')].sort(byKey).map(todayRow).join('')}
+      <div class="group-head">Waiting on the leader · 2</div>${of('wait').map(todayRow).join('')}`
+  }
+  function listB() {
+    const now = of('now'), ready = now.filter((p) => !p.held), held = now.filter((p) => p.held)
+    return `<div class="group-head red">Needs you now · ${now.length} <span class="hint">ready first, largest first · then what is held</span><span class="sum">${money(now.reduce((t, p) => t + amtOf(p), 0))}</span></div>${ready.map(clearRow).join('')}${held.map(clearRow).join('')}
+      <div class="group-head">Coming up · ${of('later').length}<span class="sum">${money([...new Set(of('later').map((p) => p.id))].filter((id) => id !== 1118).reduce((t, id) => t + JOBS[id][1], 0))}</span></div>${of('later').map(clearRow).join('')}
+      <div class="group-head violet">Waiting on the leader · 2<span class="sum">${money(3480)}</span></div>${of('wait').map(clearRow).join('')}`
+  }
+  const gh = (key, label, n, total, hint) => `<div class="group-head" id="a-${key}">${label} · ${n}${hint ? ` <span class="hint">${hint}</span>` : ''}<span class="sum">${money(total)}</span></div>`
+  const pick = (id) => P.find((p) => p.id === id && p.when === 'now')
+  function listA() {
+    const ready = READY_NOW
+    return `<div class="band">By tomorrow · 21 papers <span class="sum">${money(52720)}</span></div>
+      ${gh('n_owner', 'Needs the owner', 1, 1900, 'notice')}${clearRow(pick(1118))}
+      ${gh('n_send', 'To send', 3, 5150, 'notices')}${clearRow(pick(1110))}
+      <details class="batch" data-jobs="1112 1115"><summary><span class="chip not">Notices</span><span class="title">2 notices written, not yet sent for approval<small>September 2026 <span class="caret">· show the jobs ▸</span></small></span><span class="money">${money(2250)}</span><span class="due">${NOW}</span><button class="btn">Send 2 for approval</button></summary>
+        <div class="inside">${[1112, 1115].map((id) => `<div class="line"><span>${nm(id)}</span><span>September 2026</span><span class="money">${money(JOBS[id][1])}</span></div>`).join('')}</div></details>
+      ${gh('n_await', 'Awaiting approval', 2, 3480, 'notices')}
+      <details class="batch" data-jobs="1101 1104"><summary><span class="chip not">Notices</span><span class="title">2 notices waiting on the leader<small>ZZ Builders · since Nov 12 <span class="caret">· show the jobs ▸</span></small></span><span class="money">${money(3480)}</span><span class="due">${NOW}</span><span class="nopress">Only the leader can approve</span></summary>
+        <div class="inside">${[1101, 1104].map((id) => `<div class="line"><span>${nm(id)}</span><span>September 2026</span><span class="money">${money(JOBS[id][1])}</span></div>`).join('')}</div></details>
+      ${gh('n_run', 'In the run', 4, 7020, 'notices')}${clearRow(P.find((p) => p.k === 'run'))}
+      ${gh('a_facts', 'Needs the property facts', 1, 240, 'affidavit')}${clearRow(pick(1077))}
+      ${gh('a_ready', 'Ready to file', 10, sum(ready), 'affidavits · one stack, one trip to the notary and the clerk')}
+      <details class="batch" open data-jobs="${ready.join(' ')}"><summary><span class="chip aff">Affidavits</span><span class="title">10 affidavits approved and ready to file<small>9 clean · 1 flagged “ask the attorney first” <span class="caret">· the jobs ▾</span></small></span><span class="money">${money(sum(ready))}</span><span class="due">${NOW}</span><button class="btn">Print 10 affidavits</button></summary>
+        <div class="inside">${ready.map((id) => `<div class="line" data-jobs="${id}"><span>${nm(id)}</span><span>${tagsHTML([[NOTICE[id].startsWith('No') ? 'none' : 'ok', NOTICE[id]], ...(id === 1083 ? [['warn', 'Ask the attorney first']] : [])])}</span><span class="money">${money(JOBS[id][1])}</span></div>`).join('')}</div></details>
+      <div class="band calm">Later · 8 papers · Dec 15 <span class="sum">${money(10050)}</span></div>
+      <details class="batch"><summary style="grid-template-columns:minmax(0,1fr) auto"><span class="title">Nothing here is due for 30 days<small>Needs the owner 1 · To send 3 · Needs the property facts 2 · Ready to file 2 <span class="caret">· show them ▸</span></small></span><span class="caret">in the same groups</span></summary>
+        <div class="inside">${of('later').map((p) => `<div class="line"><span>${nm(p.id)}</span><span>${KIND[p.k]} · ${p.state}</span><span class="money">${money(JOBS[p.id][1])}</span></div>`).join('')}</div></details>`
+  }
+
+  // ── D: the run under the Board ──
+  function listD(state) {
+    const ask = (who, q, small, amt, acts) => `<div class="ask"><span class="who">${who}</span><span class="q">${q}<small>${small}</small></span><span class="money">${money(amt)}</span><span class="acts">${acts}<button class="btn small plain">Leave out</button></span></div>`
+    const head = `<div class="runhead"><h2>This run · papers due Mon Nov 16</h2><span class="tag bad">1 day left</span><span class="tot">${state === 'before' ? '21 papers · $52,720' : '20 papers · $52,480 · 1 left out'}</span></div>`
+    const steps = state === 'before'
+      ? `<div class="step now"><b>1 · Get it right</b>6 to settle · 13 of 21 papers are right</div><div class="step wait"><b>2 · Print the run</b>Locked until step 1 reads zero</div><div class="step wait"><b>3 · Out the door</b>Mail and file, each in one trip</div>`
+      : state === 'ready'
+        ? `<div class="step done"><b>1 · Get it right</b>20 right · 1 left out of this run</div><div class="step now"><b>2 · Print the run</b>16 papers, one stack</div><div class="step wait"><b>3 · Out the door</b>Mail and file, each in one trip</div>`
+        : `<div class="step done"><b>1 · Get it right</b>20 right · 1 left out of this run</div><div class="step done"><b>2 · Print the run</b>Printed Sun Nov 15, 10:02 AM</div><div class="step now"><b>3 · Out the door</b>0 of 10 mailed · 0 of 10 filed</div>`
+    let body = ''
+    if (state === 'before') body = `
+      <div class="card">
+        <h3><span>1 · Get it right</span> <span class="n">6 to settle</span><span class="right">$13,670 waits on these</span></h3>
+        <p>Each line is one question, and it holds the papers whose chips it shows. Settle it, or leave its paper out of this run.</p>
+        <div class="meter"><i style="width:62%"></i></div>
+        ${ask(`<i>${chipHTML([1077, R, '!'])}</i>ZZ Locks`, 'Is this home the owner’s homestead?', 'Affidavit · no notice needed, contracted with the owner', 240, '<button class="btn small">Yes</button><button class="btn small">No</button>')}
+        ${ask(`<i>${chipHTML([1118, R, '!'])}</i>ZZ Cedar Row`, 'Who is the owner of record?', 'Notice · September 2026', 1900, '<button class="btn small">Find the owner</button>')}
+        ${ask(`<i>${chipHTML([1110, R, '!'])}</i>ZZ Oak Hollow`, 'Its month is the month the job was typed in. What was the last day of work?', 'Notice · September 2026', 2900, '<button class="btn small">Set the day</button>')}
+        ${ask(`<i>${chipHTML([1083, R])}</i>ZZ Builders, Mission Drains`, 'Ask the attorney first: no copy to the original contractor is on record for August.', 'Affidavit · notice sent Oct 14', 2900, '<button class="btn small">The attorney says go</button>')}
+        ${ask(`<i>${chipHTML([1112, R, '!'])}${chipHTML([1115, R, '!'])}</i>2 notices`, 'Written, and not yet sent for approval.', 'Notices · September 2026', 2250, '<button class="btn small">Send 2 for approval</button>')}
+        ${ask(`<i>${chipHTML([1101, V])}${chipHTML([1104, V])}</i>ZZ Builders`, 'Waiting on the leader since Nov 12. Only the leader can approve.', 'Notices · September 2026 · lots 7 and 9', 3480, '')}
+        <details class="batch" style="margin-top:10px"><summary style="grid-template-columns:minmax(0,1fr) auto"><span class="title">13 papers are right<small>9 affidavits ready to file · 4 notices printed Nov 13 <span class="caret">· show them ▸</span></small></span><span class="money">$39,050</span></summary>
+          <div class="inside"><div class="line"><span>${nm(1024)}</span><span><span class="tag ok">${NOTICE[1024]}</span></span><span class="money">$9,400</span></div><div class="line"><span>${nm(1031)}</span><span><span class="tag ok">${NOTICE[1031]}</span></span><span class="money">$6,100</span></div><div class="line"><span style="color:var(--faint)">… and 11 more, largest first.</span><span></span><span></span></div></div></details>
+      </div>
+      <div class="card locked"><h3><span>2 · Print the run</span><span class="right">17 papers to print</span></h3><p>Locked. 6 questions are open above. Settle each, or leave its paper out.</p><button class="btn dead">Print the run</button></div>`
+    if (state === 'ready') body = `
+      <div class="card" style="border-color:var(--blue)">
+        <h3><span>2 · Print the run</span><span class="right">16 papers · $45,460</span></h3>
+        <p>Every paper in the run is right as of Sun Nov 15, 9:58 AM. One stack, in this order: the help sheet, 6 notices by contractor, 10 affidavits by county clerk. The 4 notices printed Nov 13 are already in the run.</p>
+        <button class="btn">Print the run · 16 papers</button>
+        <div class="tally" style="margin-top:10px"><span><b>1</b> left out: ${chipHTML([1077, 'out'])} ZZ Locks, the homestead question is open · <button class="link">put it back</button></span></div>
+      </div>`
+    if (state === 'after') body = `
+      <div class="fresh"><b>1 paper changed since it was printed.</b> ${chipHTML([1052, 'chg', '≠'])} ZZ Service Visit, 12 Sample Rd: a $300 payment came in at 1:40 PM. Its affidavit says $610 and the record now says $310.
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn small">Reprint this one</button><button class="btn small plain">It stands as printed</button><button class="btn small plain">Take it out of the run</button></div>
+      </div>
+      <div class="two">
+        <div class="card"><h3><span>3a · Mail</span><span class="right">10 notices · 20 envelopes</span></h3><p>One trip to the counter. Type each envelope’s number from the receipt, or scan it.</p><div class="meter"><i style="width:0%"></i></div><div class="tally"><span><b>0</b> of 20 numbers typed</span><span>last day <b>Mon Nov 16</b></span></div><div style="margin-top:10px"><button class="btn">Record the mailing</button></div></div>
+        <div class="card"><h3><span>3b · File</span><span class="right">10 affidavits · 3 clerks</span></h3><p>Signed before a notary first. Then one stop a clerk.</p>
+          <div class="ask" style="grid-template-columns:1fr auto auto"><span class="who">Marlow County clerk</span><span class="money">6</span><button class="btn small plain">Record the filing</button></div>
+          <div class="ask" style="grid-template-columns:1fr auto auto"><span class="who">Hill County clerk</span><span class="money">3</span><button class="btn small plain">Record the filing</button></div>
+          <div class="ask" style="grid-template-columns:1fr auto auto"><span class="who">Oak County clerk</span><span class="money">1</span><button class="btn small plain">Record the filing</button></div>
+          <div class="tally" style="margin-top:8px"><span>Then a copy to each owner within five days · <b>0</b> of 10 served</span></div></div>
+      </div>
+      <div class="tally"><span>Printed <b>20</b></span><span>Mailed <b>0</b> of 10</span><span>Filed <b>0</b> of 10</span><span>Left out <b>1</b></span><span>Changed since printed <b>1</b></span></div>`
+    const later = `<div class="band calm" style="margin-top:16px">Not in this run · 8 papers · Dec 15 <span class="sum">${money(10050)}</span></div>`
+    return head + `<div class="steps">${steps}</div>` + body + later
+  }
+
+  // ── draw ──
+  const $ = (s, el = document) => el.querySelector(s)
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)]
+  $$('[data-board="before"]').forEach((el) => { el.innerHTML = boardHTML('before') })
+  $('[data-list="today"]').innerHTML = listToday()
+  $('[data-list="b"]').innerHTML = listB()
+  $('[data-list="a"]').innerHTML = listA()
+  const dSection = $('#opt-d')
+  function drawD(state) {
+    dSection.dataset.state = state
+    $('[data-board="d"]', dSection).innerHTML = boardHTML(state, { run: true })
+    $('[data-list="d"]', dSection).innerHTML = listD(state)
+    $('[data-d-nums]', dSection).innerHTML = state === 'before' ? '<b class="r">6</b> to settle · step 1 of 3' : state === 'ready' ? '<b>16</b> to print · step 2 of 3' : '<b>0</b> of 10 mailed · <b>0</b> of 10 filed · step 3 of 3'
+  }
+  drawD('before')
+
+  // tabs, D's states, the theme
+  const picker = $('.picker')
+  const buttons = $$('.picker button[data-show]')
   buttons.forEach((b) => b.addEventListener('click', () => {
     buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
-    document.querySelectorAll('section.option').forEach((s) => s.classList.toggle('on', s.id === 'opt-' + b.dataset.show))
+    $$('section.option').forEach((s) => s.classList.toggle('on', s.id === 'opt-' + b.dataset.show))
+    window.scrollTo({ top: 0 })
+    onScroll()
   }))
-  const dSection = document.getElementById('opt-d')
-  const stateButtons = document.querySelectorAll('.states button[data-state]')
+  const stateButtons = $$('.states button[data-state]')
   stateButtons.forEach((b) => b.addEventListener('click', () => {
     stateButtons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
-    dSection.dataset.state = b.dataset.state
+    drawD(b.dataset.state)
   }))
-  document.getElementById('theme').addEventListener('click', () => {
+  $('#theme').addEventListener('click', () => {
     const root = document.documentElement
     root.dataset.theme = root.dataset.theme === 'light' ? '' : 'light'
+  })
+
+  // a link can open on a drawing: #today, #a, #d, #d-ready, #d-after, with -dark for the dark theme
+  const want = location.hash.slice(1).split('-')
+  if (want.includes('dark')) document.documentElement.dataset.theme = ''
+  setTimeout(() => {
+    buttons.find((b) => b.dataset.show === want[0])?.click()
+    stateButtons.find((b) => b.dataset.state === want[1])?.click()
+  })
+
+  // the bar pins under the tabs once the Board is out of view
+  function onScroll() {
+    const top = picker.offsetHeight
+    $$('.bar').forEach((bar) => {
+      if (bar.closest('.screen')) return
+      bar.style.top = top + 'px'
+      bar.classList.toggle('stuck', bar.offsetParent !== null && bar.getBoundingClientRect().top <= top + 1 && window.scrollY > 0)
+    })
+  }
+  window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('resize', onScroll)
+  onScroll()
+
+  // a pressed bin: Today and B narrow the list, A goes to the bin's group
+  function narrow(sec, key, label) {
+    const next = sec.dataset.pick === key ? '' : key
+    sec.dataset.pick = next
+    $$('.bin', sec).forEach((b) => b.classList.toggle('picked', !!next && b.dataset.bin === next))
+    const list = $('.list', sec)
+    let shown = 0
+    $$('.row', list).forEach((r) => { const on = !next || r.dataset.bin === next; r.hidden = !on; if (on) shown++ })
+    $$('.group-head', list).forEach((h) => { h.hidden = !!next })
+    const line = $('.showing', sec)
+    if (line) {
+      line.hidden = !next
+      $('.n', line).textContent = shown === 0 ? 'no rows' : shown + (shown === 1 ? ' row' : ' rows')
+      $('.l', line).textContent = label
+    }
+    if (sec.id === 'opt-today') list.scrollTop = 0
+    else if (next) window.scrollTo({ top: $('.bar', sec).getBoundingClientRect().top + window.scrollY - picker.offsetHeight, behavior: 'smooth' })
+  }
+  document.addEventListener('click', (ev) => {
+    const sec = ev.target.closest('section.option')
+    if (!sec) return
+    const head = ev.target.closest('[data-pick]')
+    if (head) {
+      if (sec.id === 'opt-today' || sec.id === 'opt-b') narrow(sec, head.dataset.pick, head.dataset.label)
+      if (sec.id === 'opt-a') {
+        const g = document.getElementById('a-' + head.dataset.pick)
+        $$('.bin', sec).forEach((b) => b.classList.toggle('picked', !!g && b.dataset.bin === head.dataset.pick))
+        if (g) { g.scrollIntoView({ behavior: 'smooth', block: 'start' }); g.classList.remove('flash'); void g.offsetWidth; g.classList.add('flash') }
+      }
+      return
+    }
+    if (ev.target.closest('[data-clear]')) narrow(sec, sec.dataset.pick, '')
+    if (ev.target.closest('.up')) window.scrollTo({ top: $('.desk', sec).getBoundingClientRect().top + window.scrollY - picker.offsetHeight - 8, behavior: 'smooth' })
+  })
+
+  // a row under the pointer lights its chips on the Board
+  document.addEventListener('mouseover', (ev) => {
+    const sec = ev.target.closest('section.option')
+    if (!sec) return
+    const row = ev.target.closest('.list [data-jobs]')
+    const ids = row ? row.dataset.jobs.split(' ') : []
+    $$('.board .bchip', sec).forEach((c) => c.classList.toggle('on', ids.includes(c.dataset.job)))
   })
 </script>
 </body>
