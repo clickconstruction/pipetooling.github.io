@@ -92,11 +92,12 @@ import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { buildLienBoard, lienBoardPick, lienBoardRowInPick, lienBoardStageBins, type LienBoardBinKey } from '../../lib/jobs/lienBoard'
+import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardPick, lienBoardRowInPick, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
 import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
 import LienBoard from './LienBoard'
+import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
 import { LienStepRow } from './LienDeskSteps'
@@ -271,6 +272,8 @@ export type LienDeskProps = {
   layout?: 'columns' | 'stacked'
   /** Stacked: a press on a notice asks the page to open it (a new history entry), with the pile the list is narrowed to. */
   onOpenNotice?: (jobId: string, pile: LienDeskPile | null) => void
+  /** A zoom from the Board or a job number (v2.7333) onto a paper: the page writes the address as an entry of its own, so Back returns to To do at the Board. Absent, the desk only changes its view. */
+  onZoomAddress?: (address: { kind: 'notice' | 'affidavit'; job: string; pile: LienDeskPile | null }) => void
   /** Stacked: ← Notices on an open notice asks the page for the list (back one entry when the notice came from it). */
   onShowList?: () => void
   /** The page's way back, drawn before the title. */
@@ -406,6 +409,7 @@ export default function LienDesk({
   onOpenCustomerRecord,
   layout = 'columns',
   onOpenNotice,
+  onZoomAddress,
   onShowList,
   backDoor = null,
   onAddressChange,
@@ -1051,6 +1055,70 @@ export default function LienDesk({
         setPromiseOpen(true)
       }
     }
+  }
+  /**
+   * A chip's press on the Board, or a job number's anywhere on the desk (v2.7333): the desk's own door for the paper's
+   * stage. The property record and the run open over To do, so closing them is the way back; a paper opens through the
+   * page's address as an entry of its own (`onZoomAddress`), so Back returns to To do at the Board. Nothing is written.
+   */
+  const zoomTo = (chip: LienBoardChip) => {
+    const d = chip.destination
+    setMobileListShown(false)
+    if (d.kind === 'property') {
+      // The office fixes the record over the desk; anyone else reads the paper, whose gates name the line.
+      if (office) setPaneFix({ jobId: d.jobId, focus: d.focus })
+      else zoomTo({ ...chip, destination: { kind: 'paper', tab: chip.kind === 'notice' ? 'notices' : 'affidavits', jobId: d.jobId } })
+    } else if (d.kind === 'run') {
+      setRunTakeBack(false)
+      setRunOpen(true)
+    } else if (d.kind === 'lienWindow') {
+      ;(onOpenLienAffidavit ?? onOpenLienInstruments)(d.jobId)
+    } else if (d.tab === 'affidavits') {
+      onZoomAddress?.({ kind: 'affidavit', job: d.jobId, pile: null })
+      setKind('affidavit')
+      setAffPile(null)
+      setAffHeldOnlyPicked(false)
+      setAffSelectedJobId(d.jobId)
+    } else {
+      const pile = chip.kind === 'notice' ? (chip.pile as LienDeskPile) : null
+      doorPickedJobId.current = d.jobId
+      setCalendarJobFilter(null)
+      if (stacked && onOpenNotice) onOpenNotice(d.jobId, pile)
+      else {
+        onZoomAddress?.({ kind: 'notice', job: d.jobId, pile })
+        setKind('notice')
+        setPile(pile)
+        setSelectedJobId(d.jobId)
+      }
+    }
+  }
+  /** A job number's zoom: the job's chip in that column (the notice's first for `either`); a job not on the Board opens as the job. */
+  const zoomJob = (jobId: string, kind: LienBoardKind | 'either') => {
+    const chip = board ? lienBoardChipFor(board, jobId, kind) : null
+    if (chip) zoomTo(chip)
+    else onOpenJob?.(jobId)
+  }
+  /** The number's press and hover words for a list row, or null for a job not on the Board. */
+  const zoomFor = (jobId: string, kind: LienBoardKind | 'either') => {
+    const chip = board ? lienBoardChipFor(board, jobId, kind) : null
+    return chip ? { press: () => zoomTo(chip), words: lienBoardDoorWords(chip.destination) } : null
+  }
+  /** A list row's label with its number as the zoom (v2.7333): the row is a button, so the number is a focusable span that keeps the click. */
+  const listLabel = (jobId: string, kind: LienBoardKind, marked: boolean) => {
+    const label = jobLabel(data?.jobsById[jobId], jobId)
+    const zoom = zoomFor(jobId, kind)
+    const { number, name } = splitLienJobLabel(label)
+    const words = (t: string) => (marked ? <LienFindMarked text={t} words={findWords} /> : t)
+    if (!zoom || !name) return <strong>{words(label)}</strong>
+    return (
+      <strong>
+        <span role="link" tabIndex={0} className="lienJobDoor" data-lien-list-zoom={jobId} title={zoom.words} onClick={(ev) => { ev.stopPropagation(); zoom.press() }} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); zoom.press() } }} style={{ borderRadius: 3 }}>
+          {words(number)}
+        </span>
+        {' · '}
+        {words(name)}
+      </strong>
+    )
   }
   const pickKind = async (next: PropertyKind) => {
     if (!address || kindBusy) return
@@ -2023,7 +2091,7 @@ export default function LienDesk({
                 >
                   <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
                   <span style={{ minWidth: 0 }}>
-                    <strong><LienFindMarked text={jobLabel(j, e.jobId)} words={findWords} /></strong>
+                    {listLabel(e.jobId, 'notice', true)}
                     {g?.name ? <span style={{ color: 'var(--text-muted)' }}> · GC <LienFindMarked text={g.name} words={findWords} /></span> : null}
                   </span>
                   <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.openBalance)}</span>
@@ -3129,7 +3197,7 @@ export default function LienDesk({
                 >
                   <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
                   <span style={{ minWidth: 0 }}>
-                    <strong>{jobLabel(j, e.jobId)}</strong>
+                    {listLabel(e.jobId, 'affidavit', false)}
                     <span style={{ color: 'var(--text-muted)' }}> · {e.isSub ? `GC ${g?.name ?? ''}` : 'with the owner'}</span>
                   </span>
                   <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.openBalance)}</span>
@@ -4154,9 +4222,9 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={(d) => { if (d.kind === 'run') { if (office) { setRunTakeBack(false); setRunOpen(true) } } else pickBoardBins(lienBoardStageBins(board, d.stage)) }} /> : <div />}
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={(d) => { if (d.kind === 'run') { if (office) { setRunTakeBack(false); setRunOpen(true) } } else pickBoardBins(lienBoardStageBins(board, d.stage)) }} /> : <div />}
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
-            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} foldsOpen={finding} waitingOn={nextUpWaitingOn} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
@@ -4168,6 +4236,7 @@ export default function LienDesk({
               onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)}
               onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
               onOpenJobWindow={onOpenJob}
+              onZoomJob={(jobId) => zoomJob(jobId, 'either')}
               onOpenEditJob={(jobId) => onOpenEditJob(jobId, 'property-record')}
               onChanged={(what) => {
                 onChanged()

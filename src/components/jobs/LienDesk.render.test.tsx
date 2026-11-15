@@ -932,6 +932,81 @@ describe('LienDesk', () => {
     }
   })
 
+  it('a chip is a zoom (v2.7333): each destination kind opens its own door, and the job number on a To do row and a By paper row is the same press', async () => {
+    const onOpenLienInstruments = vi.fn()
+    const onZoomAddress = vi.fn()
+    const chip = (jobId: string, kind: 'notice' | 'affidavit') => document.querySelector(`[data-lien-board-chip="${jobId}"][data-kind="${kind}"]`) as HTMLButtonElement
+    // Needs the owner → the property record, opened at the owner, over To do.
+    let desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [], true)} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
+    await settle()
+    expect(chip('j650', 'notice').getAttribute('title')).toContain('Open the property record at the owner')
+    fireEvent.click(chip('j650', 'notice'))
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+    expect(onZoomAddress).not.toHaveBeenCalled()
+    desk.unmount()
+    // The same press on the To do row's number; the name keeps the job's door.
+    const onOpenJob = vi.fn()
+    desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [], true)} initialKind="next" onOpenJob={onOpenJob} onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    const zoom = screen.getByTestId('lien-next-up-zoom-j650')
+    expect(zoom.textContent).toBe('650')
+    expect(zoom.getAttribute('title')).toBe('Open the property record at the owner')
+    fireEvent.click(zoom)
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('lien-next-up-job-j650'))
+    expect(onOpenJob).toHaveBeenCalledWith('j650')
+    desk.unmount()
+    // To send → the notice on By paper, as an entry of its own through the page.
+    desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
+    await settle()
+    expect(chip('j650', 'notice').getAttribute('title')).toContain('Open the notice')
+    fireEvent.click(chip('j650', 'notice'))
+    await settle()
+    expect(onZoomAddress).toHaveBeenCalledWith({ kind: 'notice', job: 'j650', pile: 'to_draft' })
+    expect(screen.getByRole('tab', { name: /^By paper/ }).getAttribute('aria-selected')).toBe('true')
+    expect(Array.from(document.querySelectorAll('button[aria-current="true"]')).some((b) => (b.textContent ?? '').includes('650'))).toBe(true)
+    desk.unmount()
+    // In the mail → the run on that envelope.
+    const printed = { id: 'it-p', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T14:20:00Z', approval_mode: 'manual', printed_at: '2026-09-14T15:00:00Z', created_at: '2026-09-14T14:00:00Z', voided_at: null, sent_at: null, sent_filing_id: null, hold_reason: null, hold_until: null, hold_note: null } as unknown as LienDeskItemRow
+    desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [printed], true)} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
+    await settle()
+    expect(chip('j650', 'notice').getAttribute('title')).toContain('Open the run on this envelope')
+    fireEvent.click(chip('j650', 'notice'))
+    expect(await screen.findByRole('dialog', { name: /Record the mailing|Send the run/ })).toBeTruthy()
+    desk.unmount()
+    // Ready to file → the affidavit pane; Filed → the job's Lien window.
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: true, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: true, has_legal: true, homestead: false, desk_item_id: 'it-a', desk_status: 'approved' }
+    const affItem = (status: string, over: Record<string, unknown> = {}) => ({ id: 'it-a', job_id: 'j650', kind: 'affidavit', months: [], status, fields: {}, created_at: '2026-09-10T14:00:00Z', voided_at: null, sent_at: null, ...over }) as unknown as LienDeskItemRow
+    const withAff = (status: string, over: Record<string, unknown> = {}) => {
+      const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [], true)
+      d.affidavitRows = [affRow]
+      d.affidavits = buildLienAffidavitQueue([affRow], [affItem(status, over)], TODAY)
+      return d
+    }
+    desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withAff('approved')} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
+    await settle()
+    expect(chip('j650', 'affidavit').closest('[data-lien-board-bin]')!.getAttribute('data-lien-board-bin')).toBe('affidavit:ready')
+    fireEvent.click(chip('j650', 'affidavit'))
+    await settle()
+    expect(onZoomAddress).toHaveBeenLastCalledWith({ kind: 'affidavit', job: 'j650', pile: null })
+    expect(screen.getByRole('tab', { name: /Lien affidavits/ }).getAttribute('aria-selected')).toBe('true')
+    expect(Array.from(document.querySelectorAll('button[aria-current="true"]')).some((b) => (b.textContent ?? '').includes('650'))).toBe(true)
+    desk.unmount()
+    desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withAff('sent', { sent_at: '2026-09-12T14:00:00Z' })} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
+    await settle()
+    expect(chip('j650', 'affidavit').closest('[data-lien-board-bin]')!.getAttribute('data-lien-board-bin')).toBe('affidavit:filed')
+    fireEvent.click(chip('j650', 'affidavit'))
+    expect(onOpenLienInstruments).toHaveBeenCalledWith('j650')
+    desk.unmount()
+    // On By paper the list row's number is the same zoom; the row's own press still selects.
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [], true)} initialKind="notice" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    const listZoom = document.querySelector('[data-lien-list-zoom="j650"]') as HTMLElement
+    expect(listZoom.getAttribute('title')).toBe('Open the property record at the owner')
+    fireEvent.click(listZoom)
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+  })
+
   it('the Lien desk title is a door (v2.7332): from By paper it opens To do with the Board brought into view', async () => {
     const brought: Element[] = []
     const before = Element.prototype.scrollIntoView

@@ -200,6 +200,8 @@ export default function LienDeskPage() {
   // and ← Notices return to the list; a notice reached by a link goes to the list in its own place.
   const openedFromList = Boolean((location.state as { fromList?: boolean } | null)?.fromList)
   const onOpenNotice = useCallback((jobId: string, pile: LienDeskPile | null) => navigate(lienDeskHref({ kind: 'notice', job: jobId, pile }), { state: { fromList: true } }), [navigate])
+  // A zoom from the Board or a job number (v2.7333): the paper is an entry of its own, so Back returns to To do at the Board.
+  const onZoomAddress = useCallback((a: { kind: 'notice' | 'affidavit'; job: string; pile: LienDeskPile | null }) => navigate(lienDeskHref({ kind: a.kind, job: a.job, pile: a.pile }), { state: { fromBoard: true } }), [navigate])
   const onShowList = useCallback(() => {
     if (openedFromList) navigate(-1)
     else navigate(lienDeskHref({ kind: 'notice', pile: address.pile }), { replace: true })
@@ -282,6 +284,7 @@ export default function LienDeskPage() {
       <LienDesk
         layout={isMobile ? 'stacked' : 'columns'}
         onOpenNotice={onOpenNotice}
+        onZoomAddress={onZoomAddress}
         onShowList={onShowList}
         backDoor={backDoor}
         onAddressChange={onAddressChange}

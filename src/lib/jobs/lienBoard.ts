@@ -603,3 +603,29 @@ export function lienBoardPickWords(pick: LienBoardPick, shown: number): { head: 
   const noun = shown === 1 ? 'row' : 'rows'
   return { head: `Showing ${shown} ${noun} in ${pick.label}.`, clear: 'Show every row' }
 }
+
+/** The chip a job number stands for (v2.7333): the job's chip in that column, or in either, the notice's first. Null when the job is not on the Board. */
+export function lienBoardChipFor(board: Pick<LienBoard, 'notices' | 'affidavits'>, jobId: string, kind: LienBoardKind | 'either'): LienBoardChip | null {
+  const columns = kind === 'notice' ? [board.notices] : kind === 'affidavit' ? [board.affidavits] : [board.notices, board.affidavits]
+  for (const bins of columns) {
+    for (const b of bins) {
+      const chip = b.chips.find((c) => c.jobId === jobId)
+      if (chip) return chip
+    }
+  }
+  return null
+}
+
+/** The hover's words on a chip or a job number: where its press goes. */
+export function lienBoardDoorWords(d: LienBoardDestination): string {
+  switch (d.kind) {
+    case 'property':
+      return d.focus === 'owner' ? 'Open the property record at the owner' : d.focus === 'legal' ? 'Open the property record at the legal description' : 'Open the property record at the homestead question'
+    case 'paper':
+      return d.tab === 'notices' ? 'Open the notice' : 'Open the affidavit'
+    case 'run':
+      return 'Open the run on this envelope'
+    case 'lienWindow':
+      return 'Open the job’s Lien window'
+  }
+}
