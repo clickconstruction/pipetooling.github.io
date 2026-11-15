@@ -56,7 +56,10 @@ import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintSt
 import StickerRunsFold from '../materials/StickerRunsFold'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { BoxWindow } from '../materials/BoxTabs'
-import { boxKindWords, editBoxTitle } from '../../lib/materials/editBox'
+import { BOX_KIND_CHOICES, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
+import { addPressLabel, boxNameVerdict, movedWordsNote, nextFreeName, siteBoxesFor, whereWithWords } from '../../lib/materials/boxName'
+import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
+import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
@@ -576,9 +579,14 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
     setLabelParams((p) => { const n = new URLSearchParams(p); n.delete('label'); n.delete('manifest'); return n }, { replace: true })
   }, [labelParams, setLabelParams])
   const [adding, setAdding] = useState(false)
-  const [newLabel, setNewLabel] = useState('')
-  /** A stencil a live box on the job already carries: the press is dead and the line under it says why. */
-  const stencilTaken = containers.some((c) => !c.retiredAt && c.label.toLowerCase() === newLabel.trim().toLowerCase())
+  /** What was typed into the new box's name (punch list #351); null while the site's next free name stands in the field. */
+  const [newTyped, setNewTyped] = useState<string | null>(null)
+  const [newKind, setNewKind] = useState<BoxKindChoice>(() => readLastBoxKind())
+  // The site's boxes for the name rule: the other jobs' from one read, this job's from the store, retired ones too.
+  const siteNames = useSiteBoxNames(jobId)
+  const siteBoxes = siteBoxesFor(jobId, siteNames.rows, listContainers(jobId))
+  const nameVerdict = boxNameVerdict(newTyped ?? '', siteBoxes)
+  const newShown = newTyped ?? nextFreeName(siteBoxes) ?? ''
   const [newWhere, setNewWhere] = useState('')
   const [newPlaceId, setNewPlaceId] = useState<string>('')
   const [newPlaceName, setNewPlaceName] = useState('')
@@ -645,12 +653,13 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           </div>
       {adding ? (
         <div style={{ ...sec, padding: '0.75rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'end', flexWrap: 'wrap' }}>
-          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>The stencil<input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="A1" aria-label="The stencil" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', fontWeight: 800, textTransform: 'uppercase', width: 90, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Its name<input value={newShown} onChange={(e) => setNewTyped(e.target.value)} placeholder="R1" aria-label="Its name" autoCapitalize="characters" autoComplete="off" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', fontWeight: 800, textTransform: 'uppercase', width: 150, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>How it sits<select value={newKind} onChange={(e) => setNewKind(e.target.value as BoxKindChoice)} aria-label="How it sits" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }}>{BOX_KIND_CHOICES.map((k) => <option key={k} value={k}>{boxKindWords(k)}</option>)}</select></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Which place<select value={newPlaceId} onChange={(e) => { setNewPlaceId(e.target.value); setNewPlaceName('') }} aria-label="Which place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: 220 }}><option value="">No place yet</option>{places.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Or a new place<input value={newPlaceName} onChange={(e) => setNewPlaceName(e.target.value)} placeholder="Laydown yard" aria-label="A new place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Where exactly<input value={newWhere} onChange={(e) => setNewWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
-          <button type="button" style={btnPrimary} disabled={!newLabel.trim() || stencilTaken} onClick={() => { const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; addContainer({ jobId, label: newLabel.trim().toUpperCase(), kind: 'cage', where: newWhere, locationId: loc }); setNewLabel(''); setNewWhere(''); setNewPlaceName(''); setAdding(false); showToast(`${newLabel.trim().toUpperCase()} added.`, 'success') }}>Add {newLabel.trim().toUpperCase() || 'it'}</button>
-          <span style={muted}>{stencilTaken ? `${newLabel.trim().toUpperCase()} is already a box on this job. Pick another stencil.` : 'A cage, unless the crew says otherwise on their phone.'}</span>
+          <button type="button" style={{ ...btnPrimary, ...(nameVerdict.ok ? {} : { opacity: 0.45, cursor: 'default' }) }} disabled={!nameVerdict.ok} onClick={() => { if (!nameVerdict.ok) return; const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; rememberBoxKind(newKind); addContainer({ jobId, label: nameVerdict.name, kind: newKind, where: whereWithWords(newWhere, nameVerdict.words), locationId: loc }); setNewTyped(null); setNewWhere(''); setNewPlaceName(''); setAdding(false); showToast(`${nameVerdict.name} added.`, 'success') }}>{addPressLabel(nameVerdict)}</button>
+          <span data-testid="materials-add-say" role={nameVerdict.ok ? undefined : 'alert'} style={{ ...muted, flex: '1 1 100%', ...(nameVerdict.ok ? (nameVerdict.tone === 'wait' ? { color: 'var(--text-amber-800)' } : {}) : { color: 'var(--text-red-700)' }) }}>{nameVerdict.say}{nameVerdict.ok && nameVerdict.words ? ` ${movedWordsNote(nameVerdict.words)}` : ''}</span>
         </div>
       ) : null}
           {(
@@ -1002,7 +1011,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
       {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} /> : null}
-      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

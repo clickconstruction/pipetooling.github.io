@@ -343,6 +343,10 @@ const CONTAINER_ACTIONS = ['add', 'move', 'retire', 'bring_back'] as const
 const CONTAINER_KINDS = ['cage', 'box', 'loose'] as const
 /** `job_containers.label`'s own limit, and `job_material_movements.part_name`'s (src/lib/materials/editBox.ts BOX_NAME_MAX, partRename.ts PART_NAME_MAX). */
 const BOX_NAME_MAX = 24
+/** A box's name (punch list #351): one to three letters, a number from 1 to 999, one letter after it allowed — src/lib/materials/boxName.ts BOX_NAME_RULE and the database's box_name_words, which the seat says before the ask leaves. */
+const BOX_NAME_RULE = /^([A-Z]{1,3})([1-9][0-9]{0,2})([A-Z])?$/
+const BOX_NAME_RULE_WORDS = 'A name is one to three letters and a number from 1 to 999, like R76, and one of a kind across the site.'
+const boxNameHolds = (label: string) => label.length <= BOX_NAME_MAX && BOX_NAME_RULE.test(label.trim().replace(/\s+/g, ' ').toUpperCase())
 const PART_NAME_MAX = 160
 const MOVEMENT_REASONS = ['moved', 'used', 'returned', 'taken', 'cannot_find', 'damaged'] as const
 const ON_SITE_LINES_MAX = 200
@@ -1062,7 +1066,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_container' || verb === 'apply_container') {
     const container = obj(input.container)
-    const shape = `${verb} needs container — { job_id (a jobs_ledger.id — find_job), action: add | move | retire | bring_back (add when left out), agent_label (the robot's name as the row shows it, under 80); add: label (the stencil on the box, A1 or B7, under 24), kind (cage | box | loose), where? (where exactly, in the crew's words, under 120), place? (the place on site, under 80 — made when the job has none of that name); move: container (a label or an id), place (made when missing); retire: container (an empty one — a box with parts in it is refused, as on the phone); bring_back: container (a retired box's label or id, as read_on_site lists it under retired); at? (an ISO timestamp with its offset for a move or a retire that happened earlier) }.`
+    const shape = `${verb} needs container — { job_id (a jobs_ledger.id — find_job), action: add | move | retire | bring_back (add when left out), agent_label (the robot's name as the row shows it, under 80); add: label (the box's name: one to three letters and a number from 1 to 999, R76 or G24B, one of a kind across the site — read_on_site lists the site's boxes), kind (cage | box | loose), where? (where exactly, in the crew's words, under 120), place? (the place on site, under 80 — made when the job has none of that name); move: container (a label or an id), place (made when missing); retire: container (an empty one — a box with parts in it is refused, as on the phone); bring_back: container (a retired box's label or id, as read_on_site lists it under retired); at? (an ISO timestamp with its offset for a move or a retire that happened earlier) }.`
     if (!container) return { ok: false, error: shape }
     const str = (k: string) => (typeof container[k] === 'string' ? (container[k] as string).trim() : '')
     const action = str('action') || 'add'
@@ -1074,7 +1078,8 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (action === 'add') {
       const label = str('label')
       const kind = str('kind').toLowerCase()
-      if (!label || label.length > 24 || !(CONTAINER_KINDS as readonly string[]).includes(kind)) return { ok: false, error: shape }
+      if (!label || !(CONTAINER_KINDS as readonly string[]).includes(kind)) return { ok: false, error: shape }
+      if (!boxNameHolds(label)) return { ok: false, error: `${verb}: ${label} is not a name. ${BOX_NAME_RULE_WORDS}` }
       p.label = label
       p.kind = kind
       const where = str('where')
@@ -1173,7 +1178,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_container_edit' || verb === 'apply_container_edit') {
     const edit = obj(input.edit)
-    const shape = `${verb} needs edit — { job_id (a jobs_ledger.id — find_job), agent_label (the robot's name as the box's history shows it, under 80), container (the live box: its name as it reads now, or its id — read_on_site lists them), and at least one of: label (the new name, 1 to ${BOX_NAME_MAX} characters, saved in capitals; no other live box of the job may carry it), kind (cage | box | loose — a pallet, or a thing too big for a box, is loose), where (where exactly, in the crew's words, under 120; "" clears the line) }. A key left out stays as it is. The box's place on site is plan_container with action move; Unsorted is never changed.`
+    const shape = `${verb} needs edit — { job_id (a jobs_ledger.id — find_job), agent_label (the robot's name as the box's history shows it, under 80), container (the live box: its name as it reads now, or its id — read_on_site lists them), and at least one of: label (the new name: one to three letters and a number from 1 to 999, R76 or G24B, saved in capitals; no other live box of the site may carry it), kind (cage | box | loose — a pallet, or a thing too big for a box, is loose), where (where exactly, in the crew's words, under 120; "" clears the line) }. A key left out stays as it is. The box's place on site is plan_container with action move; Unsorted is never changed.`
     if (!edit) return { ok: false, error: shape }
     const str = (k: string) => (typeof edit[k] === 'string' ? (edit[k] as string).trim().replace(/\s+/g, ' ') : '')
     const jobId = str('job_id')
@@ -1185,7 +1190,8 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
       if (edit[key] === undefined) continue
       if (typeof edit[key] !== 'string') return { ok: false, error: shape }
       const value = key === 'kind' ? str(key).toLowerCase() : str(key)
-      if (key === 'label' && (!value || value.length > BOX_NAME_MAX)) return { ok: false, error: shape }
+      if (key === 'label' && !value) return { ok: false, error: shape }
+      if (key === 'label' && !boxNameHolds(value)) return { ok: false, error: `${verb}: ${value} is not a name. ${BOX_NAME_RULE_WORDS}` }
       if (key === 'kind' && !(CONTAINER_KINDS as readonly string[]).includes(value)) return { ok: false, error: shape }
       if (key === 'where' && value.length > 120) return { ok: false, error: shape }
       p[key] = value

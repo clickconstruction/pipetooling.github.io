@@ -9,8 +9,13 @@
  * say so. The database keeps the old name, the new one, who and when by itself (`job_container_names`, the
  * trigger of `20261113020000_box_stickers.sql`).
  *
+ * Since punch list #351 (PR 1) a new name holds to the box-name rule (`boxName.ts`): letters and a number, one of a kind
+ * across the site, with words typed after it moved to the where line until PR 2 gives them a line of their own. A box's
+ * old name stays as it is until the name itself is changed.
+ *
  * Pure rules and words only. The write is `editContainer` in `onSiteStore.ts`.
  */
+import { BOX_NAME_RULE_WORDS, BOX_NUMBER_MAX, movedWordsNote, nameTakenBy, nextFreeName, readTypedName, whereWithWords, type SiteBox } from './boxName'
 import type { Container, ContainerKind, Place } from './onSite'
 
 /** `job_containers.label`'s own limit. */
@@ -56,31 +61,52 @@ const nameKey = (label: string) => label.trim().toLowerCase()
 export type BoxPatch = { label?: string; kind?: BoxKindChoice; where?: string }
 
 export type EditBoxVerdict =
-  | { ok: true; patch: BoxPatch; renamed: boolean }
-  | { ok: false; reason: 'gone' | 'unsorted' | 'retired' | 'no-name' | 'long-name' | 'taken' | 'long-where' | 'same'; words: string }
+  | { ok: true; patch: BoxPatch; renamed: boolean; /** Words typed after the new name, moved to the where line (punch list #351). */ movedWords: string }
+  | { ok: false; reason: 'gone' | 'unsorted' | 'retired' | 'no-name' | 'bad-name' | 'taken' | 'long-where' | 'same'; words: string }
 
 /**
  * Whether the draft can be saved, and the words when it cannot. `same` carries no words: nothing was changed
- * yet, so the press is dead and there is nothing to say.
+ * yet, so the press is dead and there is nothing to say. A name typed over the box's own holds to the rule
+ * (`boxName.ts`): `R76 TOILETS` renames the box R76 and puts *Toilets* on the where line, `R` alone takes the next
+ * free R name, and words alone are refused with the rule, since a box in Edit has a name already. The box's old
+ * name is never judged while it stands. `siteBoxes` is every box of the site when the screen has read them, so a
+ * name a live box on another job of the site carries is refused too; without them the job's own boxes are the check.
  */
-export function editBoxVerdict(containers: ReadonlyArray<Container>, id: string, draft: BoxDraft): EditBoxVerdict {
+export function editBoxVerdict(containers: ReadonlyArray<Container>, id: string, draft: BoxDraft, siteBoxes?: ReadonlyArray<SiteBox>): EditBoxVerdict {
   const box = containers.find((c) => c.id === id)
   if (!box) return { ok: false, reason: 'gone', words: 'That box is not on this job.' }
   if (box.kind === 'unsorted') return { ok: false, reason: 'unsorted', words: 'Unsorted is the app’s own row. It cannot be changed.' }
   if (box.retiredAt) return { ok: false, reason: 'retired', words: `${box.label} is retired. Bring it back first.` }
-  const label = cleanBoxName(draft.label)
-  const where = cleanBoxWhere(draft.where)
-  if (!label) return { ok: false, reason: 'no-name', words: 'Give it a name.' }
-  if (label.length > BOX_NAME_MAX) return { ok: false, reason: 'long-name', words: `A name holds ${BOX_NAME_MAX} characters. This one is ${label.length}.` }
-  const clash = containers.find((c) => c.id !== id && c.jobId === box.jobId && !c.retiredAt && nameKey(c.label) === nameKey(label))
-  if (clash) return { ok: false, reason: 'taken', words: `${label} is already on this job. Pick another name.` }
+  const typed = cleanBoxName(draft.label)
+  if (!typed) return { ok: false, reason: 'no-name', words: 'Give it a name.' }
+  let label = box.label
+  let movedWords = ''
+  if (typed !== box.label) {
+    const read = readTypedName(typed)
+    if (read.kind === 'name') {
+      label = read.name
+      movedWords = read.words
+    } else if (read.kind === 'letters') {
+      const next = nextFreeName(siteBoxes ?? containers, read.letters)
+      if (!next) return { ok: false, reason: 'bad-name', words: `Every ${read.letters} number up to ${BOX_NUMBER_MAX} is taken on this site. Pick other letters.` }
+      label = next
+    } else if (read.kind === 'big-number') {
+      return { ok: false, reason: 'bad-name', words: `A number runs from 1 to ${BOX_NUMBER_MAX}. ${read.typed} cannot be a name.` }
+    } else {
+      return { ok: false, reason: 'bad-name', words: `${BOX_NAME_RULE_WORDS} Words about what is inside go on the where line.` }
+    }
+    const clash = containers.find((c) => c.id !== id && c.jobId === box.jobId && !c.retiredAt && nameKey(c.label) === nameKey(label))
+    if (clash) return { ok: false, reason: 'taken', words: `${label} is already on this job. Pick another name.` }
+    if (siteBoxes && nameTakenBy(siteBoxes, label, id)) return { ok: false, reason: 'taken', words: `${label} is already on this site. Pick another name.` }
+  }
+  const where = cleanBoxWhere(whereWithWords(draft.where, movedWords))
   if (where.length > BOX_WHERE_MAX) return { ok: false, reason: 'long-where', words: `The where line holds ${BOX_WHERE_MAX} characters. This one is ${where.length}.` }
   const patch: BoxPatch = {}
   if (label !== box.label) patch.label = label
   if (draft.kind !== box.kind && (BOX_KIND_CHOICES as readonly string[]).includes(draft.kind)) patch.kind = draft.kind as BoxKindChoice
   if (where !== box.where) patch.where = where
   if (Object.keys(patch).length === 0) return { ok: false, reason: 'same', words: '' }
-  return { ok: true, patch, renamed: patch.label !== undefined }
+  return { ok: true, patch, renamed: patch.label !== undefined, movedWords }
 }
 
 /** The sheet's title: *Edit G70*. */
@@ -91,11 +117,20 @@ export function editBoxTitle(c: Pick<Container, 'label'>): string {
 /** The one line under the title, so a rename is not used to start a box over. */
 export const EDIT_BOX_HINT = 'Same things inside? Rename it. Different things? Retire it and add a new one.'
 
-/** The press: *Rename to G70* when the name changes, *Save G70* otherwise. */
+/** The press: *Rename to G70* when the name changes (the name alone, its words split off), *Save G70* otherwise. */
 export function editBoxPressLabel(box: Pick<Container, 'label'>, draft: BoxDraft): string {
-  const label = cleanBoxName(draft.label)
-  if (!label) return 'Save'
-  return label !== box.label ? `Rename to ${label}` : `Save ${label}`
+  const typed = cleanBoxName(draft.label)
+  if (!typed) return 'Save'
+  if (typed === box.label) return `Save ${box.label}`
+  const read = readTypedName(typed)
+  if (read.kind === 'name') return `Rename to ${read.name}`
+  if (read.kind === 'letters') return `Rename to the next ${read.letters} name`
+  return 'Rename'
+}
+
+/** Under the name while words were typed after it: where they go (punch list #351, until PR 2 gives them a line). */
+export function editBoxMovedNote(verdict: { ok: true; movedWords: string } | { ok: false }): string | null {
+  return verdict.ok && verdict.movedWords ? movedWordsNote(verdict.movedWords) : null
 }
 
 /** Under the name while it differs: what happens to a label that is already stuck on. */
@@ -145,12 +180,12 @@ export function boxPlaceChange(box: Pick<Container, 'locationId'>, places: Reado
 
 /** What the whole window would do: the box's own fields, the place, both or nothing. */
 export type EditBoxPlan =
-  | { ok: true; patch: BoxPatch; place: Extract<BoxPlaceChange, { kind: 'known' | 'new' }> | null }
+  | { ok: true; patch: BoxPatch; place: Extract<BoxPlaceChange, { kind: 'known' | 'new' }> | null; movedWords: string }
   | { ok: false; words: string }
 
 /** The verdict on the fields and the place together. Nothing changed is a quiet no, as in `editBoxVerdict`. */
-export function editBoxPlan(containers: ReadonlyArray<Container>, places: ReadonlyArray<Place>, id: string, draft: BoxDraft, placeDraft: BoxPlaceDraft): EditBoxPlan {
-  const verdict = editBoxVerdict(containers, id, draft)
+export function editBoxPlan(containers: ReadonlyArray<Container>, places: ReadonlyArray<Place>, id: string, draft: BoxDraft, placeDraft: BoxPlaceDraft, siteBoxes?: ReadonlyArray<SiteBox>): EditBoxPlan {
+  const verdict = editBoxVerdict(containers, id, draft, siteBoxes)
   if (!verdict.ok && verdict.reason !== 'same') return { ok: false, words: verdict.words }
   const box = containers.find((c) => c.id === id)
   const change = box ? boxPlaceChange(box, places, placeDraft) : ({ kind: 'none' } as const)
@@ -158,7 +193,7 @@ export function editBoxPlan(containers: ReadonlyArray<Container>, places: Readon
   const place = change.kind === 'none' ? null : change
   const patch = verdict.ok ? verdict.patch : {}
   if (!verdict.ok && !place) return { ok: false, words: '' }
-  return { ok: true, patch, place }
+  return { ok: true, patch, place, movedWords: verdict.ok ? verdict.movedWords : '' }
 }
 
 /** The toast for the whole window: the fields' own words, and where the box stands now when it moved. */

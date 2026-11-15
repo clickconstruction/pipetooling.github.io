@@ -45,6 +45,7 @@ vi.mock('../../hooks/useOnSiteStore', () => ({
 vi.mock('../../hooks/useOnSiteSites', () => ({
   useOnSiteSites: () => ({ siteOfJob: new Map([['ja', 'dev1'], ['jb', 'dev1']]), siteNames: new Map([['dev1', 'ZZ Test Ridge']]), loaded: true, failed: null, retry: () => {} }),
 }))
+vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
 vi.mock('../../hooks/usePartTies', () => ({ usePartTies: () => ({ ties: [], available: false, failed: null, retry: () => {}, answer: async () => {}, undo: async () => {} }) }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')

@@ -109,8 +109,8 @@ purpose; the exact figures are in the session's notes, outside the repo.
 stick, scan, type two digits of its stencil, press its row. That is about 20 seconds on the phone
 against today's minute, because nothing is typed but the digits and nothing is made. A hundred
 boxes are under an hour for one person, walking included (an estimate until someone does it). Each
-new box after that is the same scan and **A new box**, with the sticker's number as its name until
-someone types a better one.
+new box after that is the same scan and **A new box**, with the site's next free name as its name and the
+sticker's number shown beside it (#351's rule, 2026-11-14).
 
 **Where a person would get stuck, and what the design does about each:**
 
@@ -190,8 +190,8 @@ is new**:
 - **A box already here**: the site's boxes with no sticker first, a search box on top. Type `76`,
   press the row, **Put 0147 on R76**. Two presses and two digits. The box keeps its name, its
   lines, its counts, its photos and its old label.
-- **A new box**: the name is filled in with the sticker's number, with the site's next stencil as a
-  second press (`R97`), the kind and the place remembered from the last box. **Save box 0147**, then
+- **A new box**: the name is filled in with the site's next free name (`R97`, the rule of #351 since
+  2026-11-14), with the sticker's number shown beside it, the kind and the place remembered from the last box. **Save box 0147**, then
   the box's own screen, where **Add a part** and **Photo** are as today. One press when the defaults
   are right.
 
@@ -338,7 +338,7 @@ Each is one spot on the mock-up, today beside the suggestion. **Grace took all s
 on 2026-11-12**, so the Recommended column is the design: a sticker is its own code, the number is
 company-wide with no prefix, a run prints on Brother tape first, a known box takes any blank sticker,
 the walk gets the camera in the app, the office, a primary and a superintendent print a run, and a
-new box is named by its sticker's number.
+new box is named by its sticker's number — changed on 2026-11-14 by #351's call 7: the site's next free name, the sticker's number beside it.
 
 | Call | Recommended, and taken | Also possible, not taken |
 |---|---|---|
@@ -348,7 +348,7 @@ new box is named by its sticker's number.
 | 4 · the known boxes | Any blank sticker, matched on the phone; old labels keep working | A named label printed for each known box |
 | 5 · the walk | The camera in the app, with a no-scan press (PR 5) | The phone's own camera only |
 | 6 · who prints a run | The office, a primary, a superintendent | Anyone on the job |
-| 7 · a new box's name | The sticker's number until someone types one | Ask for a name every time |
+| 7 · a new box's name | The sticker's number until someone types one; since 2026-11-14 (#351, call 7) the site's next free name, with the sticker's number shown beside it | Ask for a name every time |
 
 ## How to verify
 

@@ -6,7 +6,8 @@
  */
 import { useState, type CSSProperties } from 'react'
 import type { Container, Place } from '../../lib/materials/onSite'
-import { BOX_KIND_CHOICES, BOX_NAME_MAX, BOX_WHERE_MAX, EDIT_BOX_HINT, PLACE_NAME_MAX, boxDraftOf, boxKindWords, boxPlaceDraftOf, cleanBoxName, editBoxPlan, editBoxPressLabel, renameLabelNote, savedBoxWords, type BoxDraft, type BoxPlaceDraft } from '../../lib/materials/editBox'
+import { BOX_KIND_CHOICES, BOX_NAME_MAX, BOX_WHERE_MAX, EDIT_BOX_HINT, PLACE_NAME_MAX, boxDraftOf, boxKindWords, boxPlaceDraftOf, cleanBoxName, editBoxMovedNote, editBoxPlan, editBoxPressLabel, renameLabelNote, savedBoxWords, type BoxDraft, type BoxPlaceDraft } from '../../lib/materials/editBox'
+import type { SiteBox } from '../../lib/materials/boxName'
 import { addPlace, editContainer, moveContainer } from '../../lib/materials/onSiteStore'
 
 const BLUE = '#2563eb'
@@ -18,6 +19,8 @@ type Props = {
   container: Container
   /** Every container of the box's job, so a name a live box carries is refused before the press. */
   containers: ReadonlyArray<Container>
+  /** Every box of the job's site when the screen has read them (punch list #351): a name is one of a kind across the site. */
+  siteBoxes?: ReadonlyArray<SiteBox>
   /** The job's places, for **Which place on site**. */
   places: ReadonlyArray<Place>
   /** Who moves the box, kept on the move as the phone's Move box keeps it. */
@@ -28,11 +31,12 @@ type Props = {
   onSaved: (words: string) => void
 }
 
-export default function EditBoxForm({ container, containers, places, byName, byUserId, touch = false, onSaved }: Props) {
+export default function EditBoxForm({ container, containers, siteBoxes, places, byName, byUserId, touch = false, onSaved }: Props) {
   const [draft, setDraft] = useState<BoxDraft>(() => boxDraftOf(container))
   const h = touch ? 48 : 38
   const [placeDraft, setPlaceDraft] = useState<BoxPlaceDraft>(() => boxPlaceDraftOf(container))
-  const plan = editBoxPlan(containers, places, container.id, draft, placeDraft)
+  const plan = editBoxPlan(containers, places, container.id, draft, placeDraft, siteBoxes)
+  const movedNote = editBoxMovedNote(plan)
   const renaming = cleanBoxName(draft.label) !== container.label && cleanBoxName(draft.label) !== ''
   const save = () => {
     if (!plan.ok) return
@@ -52,6 +56,7 @@ export default function EditBoxForm({ container, containers, places, byName, byU
         <input type="text" value={draft.label} maxLength={BOX_NAME_MAX + 8} onChange={(e) => setDraft({ ...draft, label: e.target.value })} aria-label="Its name" autoCapitalize="characters" autoComplete="off" style={{ ...field(h), fontSize: '1.3rem', fontWeight: 800, textTransform: 'uppercase' }} />
       </label>
       {renaming && plan.ok && plan.patch.label !== undefined ? <p style={note} data-testid="edit-box-label-note">{renameLabelNote(container)}</p> : null}
+      {movedNote ? <p style={note} data-testid="edit-box-moved-note">{movedNote}</p> : null}
       <div style={{ display: 'grid', gap: '0.25rem' }}>
         <span style={{ fontWeight: 600 }}>How it sits</span>
         <div role="group" aria-label="How it sits" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.35rem' }}>

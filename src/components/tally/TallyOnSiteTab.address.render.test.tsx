@@ -40,6 +40,7 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ loaded: true, loading: false, error: null, raw: null, retry: () => {} }), useOnSiteStoreVersion: () => 0 }))
 vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords: () => ({ coords: new Map() }) }))
+vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
 vi.mock('../../hooks/useOnSiteDeskJobs', () => ({ useOnSiteDeskJobs: () => ({ jobs: [], rows: [], loading: false, loaded: false, error: null, raw: null, retry: () => {} }) }))
 vi.mock('../../lib/materials/shortRequestIo', () => ({ sendShortRequest: vi.fn() }))
 
