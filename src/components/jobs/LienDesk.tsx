@@ -48,6 +48,7 @@ import {
 } from '../../lib/jobs/lienDeskIo'
 import { addJobPaymentPromise } from '../../lib/jobs/paymentChaseIo'
 import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { penWordApproval } from '../../lib/jobs/lienPenRecord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
 import { lienCodeRefusalWords, lienCodeSignerFrom, lienCodeStatusStale, lienOtherScreen, type LienCodeStatusRead } from '../../lib/jobs/lienCodeSigner'
@@ -449,6 +450,8 @@ export default function LienDesk({
   const [byHandOpen, setByHandOpen] = useState(false)
   // He signed the paper ▸ (the pen train, PR 2): the office writes down the leader's pen signature on a ready, unsigned notice.
   const [penOpen, setPenOpen] = useState(false)
+  // The pen door on the draft footer (v2.7297): the draft just saved, so the pane has a row to bind the record to before the desk re-reads.
+  const [penDraft, setPenDraft] = useState<{ id: string; fields: unknown } | null>(null)
   /** Counsel's sign-off ask on a sent notice (#41 PR 3). */
   const [signoffOpen, setSignoffOpen] = useState(false)
   const [signoffText, setSignoffText] = useState('')
@@ -1088,6 +1091,8 @@ export default function LienDesk({
     setReleaseId(storedRelease)
     setWordOpen(false)
     setByHandOpen(false)
+    setPenOpen(false)
+    setPenDraft(null)
     setHoldOpen(null)
     setDetailsOpen(false)
     setNotYetOpen(false)
@@ -3273,17 +3278,30 @@ export default function LienDesk({
 
   // Record a notice that already went out (#35 PR 2) — the desk passes its own claim and months; the pane writes one filing per covered job and the desk re-reads.
   // The pen pane (the pen train, PR 2) sits where the footer sits, like the by-hand pane: the one notice, its leader, the print day.
+  // v2.7297: from the draft footer the pane binds to the draft just saved (`penDraft`) until the desk re-reads it, and the
+  // record approves the notice on his word, since the office may not approve as the leader.
+  const penItem = item ?? (penDraft ? { id: penDraft.id, fields: penDraft.fields, status: 'drafted' as const, printed_at: null } : null)
+  const penApproves = penItem != null && (penItem.status === 'drafted' || penItem.status === 'awaiting_approval')
   const penPane =
-    selected && penOpen && item ? (
+    selected && penOpen && penItem ? (
       <LienPenSignaturePane
         leader={{ userId: job?.master_user_id ?? null, name: leaderName }}
         recorder={{ userId: authUserId, name: authName }}
-        notices={[{ itemId: item.id, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', label: jobLabel(job, selected.jobId), amount: claimed.claim, fields: item.fields }]}
-        printedYmd={(item as { printed_at?: string | null }).printed_at ? calendarYmdInAppTzFromIso((item as { printed_at?: string | null }).printed_at as string) : null}
+        notices={[{ itemId: penItem.id, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', label: jobLabel(job, selected.jobId), amount: claimed.claim, fields: penItem.fields }]}
+        printedYmd={(penItem as { printed_at?: string | null }).printed_at ? calendarYmdInAppTzFromIso((penItem as { printed_at?: string | null }).printed_at as string) : null}
         todayYmd={todayYmd}
         onClose={() => setPenOpen(false)}
-        onRecorded={(_recorded, words) => {
+        onRecorded={(recorded, words) => {
           setPenOpen(false)
+          const first = recorded[0]
+          if (penApproves && first) {
+            void run(
+              'Approve on the signed paper',
+              () => sendLienDeskItemOnWord(first.itemId, penWordApproval({ how: first.how, dayWords: demandDate(calendarYmdInAppTzFromIso(first.signedAtIso)), recorderName: authName.trim() || null })),
+              `${words} Approved on his signed paper — it is in the run.`,
+            )
+            return
+          }
           showToast(words)
           onChanged()
         }}
@@ -3483,6 +3501,8 @@ export default function LienDesk({
         <>
           {byHandPane ? (
             byHandPane
+          ) : penPane ? (
+            penPane
           ) : wordOpen ? (
             <LienWordRecordRow
               note={wordNote}
@@ -3536,6 +3556,12 @@ export default function LienDesk({
                 {canSendOnWord(authRole) && !blocked ? (
                   <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
                     The leader said to send it…
+                  </button>
+                ) : null}
+                {canSendOnWord(authRole) && !blocked && monthsList.length > 0 ? (
+                  // v2.7297: the pen door on the draft too — the paper printed and he signed it; the record approves the notice on his word.
+                  <button type="button" onClick={() => void run('He signed the paper', async () => { const id = await ensureDraft(); setPenDraft({ id, fields: draftFields() }); setPenOpen(true) })} disabled={busy} style={btn('plain', busy)} data-lien-desk-pen title="He signed the printed paper with a pen: write down who, when and how you know, add the signed page, and it is approved on the record and goes in the run">
+                    He signed the paper…
                   </button>
                 ) : null}
                 {blocked ? (

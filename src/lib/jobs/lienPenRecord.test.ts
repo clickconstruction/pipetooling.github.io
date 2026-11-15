@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { penPageExtension, penPageFileProblem, penPagePath, penRecordProblems, penRecordedWords, penSignedAtIso, penWitnessHowWithPage } from './lienPenRecord'
+import { penPageExtension, penPageFileProblem, penPagePath, penRecordProblems, penRecordedWords, penSignedAtIso, penWitnessHowWithPage, penWordApproval } from './lienPenRecord'
 
 describe('recording a pen signature (the pen train, PR 2)', () => {
   it('the day the office typed becomes noon in the app’s calendar, so it reads the same day everywhere', () => {
@@ -38,5 +38,13 @@ describe('recording a pen signature (the pen train, PR 2)', () => {
     expect(penRecordProblems({ ...ok, ymd: '' })).toEqual(['Type the day he signed.'])
     expect(penRecordProblems({ ...ok, ticked: 0, leaderName: ' ' })).toEqual(['The job has no leader to name. Set the job’s master first.', 'Tick at least one notice.'])
     expect(penRecordProblems({ ...ok, printedYmd: null, ymd: '2026-01-01' })).toEqual([])
+  })
+})
+
+describe('the pen record as the draft’s approval (v2.7297)', () => {
+  it('writes the note from the record and approves in person, whoever saw the pen', () => {
+    expect(penWordApproval({ how: 'watched', dayWords: 'November 14', recorderName: 'Robert' })).toEqual({ note: 'He signed the printed paper with a pen November 14. Written down by Robert, who watched him sign.', channel: 'in_person' })
+    expect(penWordApproval({ how: 'told', dayWords: 'November 14', recorderName: null }).note).toBe('He signed the printed paper with a pen November 14. Written down by the office, who was told by him that he had signed.')
+    expect(penWordApproval({ how: 'page', dayWords: 'November 12', recorderName: 'Wendi' }).channel).toBe('in_person')
   })
 })

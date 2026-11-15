@@ -99,13 +99,16 @@ vi.mock('../../lib/sent/sentCopiesIo', async () => {
   return { ...actual, fileSentCopy: (filing: { kind: string; title: string; how: string; jobIds?: ReadonlyArray<string> }, body: { html: string }) => fileCopyMock(filing, body) }
 })
 const signMock = vi.fn()
+// The pen door on the draft (v2.7297): the record, then the approval on his word.
+const penMock = vi.fn()
+const wordMock = vi.fn(async () => undefined)
 const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
 // An affidavit sent for approval tells the leader too (punch list #305, v2.7180): one call for every paper of one press.
 const tellAffMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellAffMock(papers), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
+  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellAffMock(papers), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])) }
 })
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
@@ -115,6 +118,10 @@ vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
     return { ok: true, signedAtIso: '2026-10-09T19:14:00Z' }
   },
   lienSignCodeStatus: async () => codeState.status,
+  recordLienPenSignature: async (args: { itemId: string; how: string; signedAtIso: string }) => {
+    penMock(args)
+    return { ok: true, signedAtIso: args.signedAtIso, how: args.how, pagePath: null }
+  },
   signLienDeskItemWithCode: async (args: Record<string, unknown>) => {
     codeState.signs.push(args)
     return codeState.answer
@@ -2401,6 +2408,41 @@ describe('LienDesk · the pay page lines are typed in place (v2.4724)', () => {
       payPageState.rows = []
       payPageState.assets = {}
     }
+  })
+})
+
+describe('LienDesk · the pen door on the draft (v2.7297)', () => {
+  it('the office’s draft footer offers He signed the paper…; the press saves the draft, the pane records his pen signature, and the record approves the notice on his word in person', async () => {
+    penMock.mockClear()
+    wordMock.mockClear()
+    saveDraftMock.mockClear()
+    const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
+    d.jobsById.j650 = { ...d.jobsById.j650!, master_user_id: 'u-malachi' } as NonNullable<typeof d.jobsById.j650>
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={d} />)
+    await settle()
+    const door = document.querySelector('[data-lien-desk-pen]') as HTMLButtonElement | null
+    expect(door?.textContent).toBe('He signed the paper…')
+    fireEvent.click(door!)
+    const pane = await screen.findByTestId('lien-pen-pane')
+    expect(saveDraftMock).toHaveBeenCalledTimes(1)
+    expect(pane.textContent).toContain('Malachi Whites')
+    // The draft's door is the by-hand door's neighbour, not a second signing line: the word row stays closed.
+    expect(screen.queryByRole('button', { name: /Approve on his word/ })).toBeNull()
+    fireEvent.click(screen.getByTestId('lien-pen-record'))
+    await waitFor(() => expect(wordMock).toHaveBeenCalledTimes(1))
+    expect(penMock.mock.calls[0]?.[0]).toMatchObject({ itemId: 'it-new', how: 'watched' })
+    const [itemId, word] = wordMock.mock.calls[0] as unknown as [string, { note: string; channel: string }]
+    expect(itemId).toBe('it-new')
+    expect(word.channel).toBe('in_person')
+    expect(word.note).toMatch(/^He signed the printed paper with a pen .+\. Written down by Robert, who watched him sign\.$/)
+    expect(screen.queryByTestId('lien-pen-pane')).toBeNull()
+  })
+
+  it('a leader’s own draft footer has no pen door: his name waits in cursive and Sign and approve ▸ places it', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-pen]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sign and approve ▸' })).toBeTruthy()
   })
 })
 
