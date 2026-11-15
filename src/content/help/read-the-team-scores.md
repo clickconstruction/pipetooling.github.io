@@ -69,6 +69,10 @@ The same line stands at the top of **Share with a teammate**. It stands again un
 
 On the Bid Board, a priced bid that cannot be scored carries {{chip:yellow|Can’t be scored}} beside the GC. Hover it to read the reason. On a bid not sent yet, press the chip to open its Labor tab. A bid already sent keeps the margin it went out at, so its chip only says why.
 
+## Where the numbers are worked out
+
+The server works out both scores. It prices every hour at the person's wage and sends back hours and dollars by job. Nobody's wage comes to your browser. Under **The hurdle**, the tab says where it read the scores.
+
 ## What the words mean
 
 - **Won at award.** What the bids awarded in the window added, at their estimates.

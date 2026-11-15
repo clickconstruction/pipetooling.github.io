@@ -19,8 +19,9 @@ vi.mock('../lib/supabase', () => {
 })
 const team = vi.fn()
 vi.mock('../utils/teamLabor', () => ({ fetchTeamLaborBreakdownForJob: (_sb: unknown, jobId: string) => team(jobId) }))
-vi.mock('../lib/fetchJobMaterialsCostSnapshot', () => ({
-  fetchJobMaterialsCostSnapshot: async () => ({ mercuryAllocLines: [], cardExclusions: undefined, cardFuelTxIds: new Set(), supplyInvoiceLines: [{ invoiceDate: '2026-09-02', allocatedAmount: 6_000, supplyHouseName: 'Ferguson', invoiceNumber: 'F-1' }], tallyPartLines: [], mercuryFetchFailed: false }),
+// The reads take the client since #360 PR 4; the hook's loader binds the app's.
+vi.mock('../lib/jobMaterialsCostSnapshotReads', () => ({
+  readJobMaterialsCostSnapshot: async () => ({ mercuryAllocLines: [], cardExclusions: undefined, cardFuelTxIds: new Set(), supplyInvoiceLines: [{ invoiceDate: '2026-09-02', allocatedAmount: 6_000, supplyHouseName: 'Ferguson', invoiceNumber: 'F-1' }], tallyPartLines: [], mercuryFetchFailed: false }),
 }))
 
 import { loadJobChargesTimelineInputs, type JobChargesTimelineJob } from './useJobChargesTimelineInputs'

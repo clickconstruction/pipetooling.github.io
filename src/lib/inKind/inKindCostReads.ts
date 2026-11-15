@@ -1,0 +1,16 @@
+/**
+ * The in-kind lines put on one job, with the client passed in (punch list #360, PR 4), so a job's costs can be read
+ * as the service role on the edge; `inKindIo.ts` binds the app's client. The office's read: anyone else gets none.
+ */
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import { IN_KIND_COST_SELECT, inKindCostLines, type InKindCostLine } from './inKindCost'
+
+export async function readInKindCostLinesForJob(db: SupabaseClient<Database>, jobId: string): Promise<InKindCostLine[]> {
+  const rows = await withSupabaseRetry(
+    () => db.from('in_kind_lines').select(IN_KIND_COST_SELECT).eq('cost_job_id', jobId).is('removed_at', null).gt('amount', 0).order('given_on', { ascending: true }).limit(1000),
+    'read what was given in kind on this job',
+  )
+  return inKindCostLines(rows as unknown as Parameters<typeof inKindCostLines>[0])
+}

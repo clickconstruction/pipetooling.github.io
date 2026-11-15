@@ -2,14 +2,12 @@
 name: "Team scorecard: two numbers, one formula each, against the hurdle"
 number: 360
 group: ready
-status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · PR 3 (v2.7361) the owner sets the target on the Bid Board's Pricing rules · next PR 4, `team_scores`
+status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · PR 3 (v2.7361) the owner sets the target on the Bid Board's Pricing rules · PR 4 (v2.7365) the scores are read by the edge function `team-scores`, Taunya's pick · next PR 5, the estimator's own row
 next: >
-  PR 4 needs a call before it is built (see The train, item 4): the loader's arithmetic is the
-  Overhead page's pool and the Costs tab's charge events, and the code's own rule is no SQL copy of
-  them. The pick is between an edge function that runs the same TypeScript as the service role, a
-  SQL function for the wage-priced hours alone, or leaving the read in the browser behind today's
-  gate. PR 5 follows that call. The owner's four calls are unanswered and block none of this.
-size: M as a train of five (M · S · S · M · S); PRs 1 to 3 shipped
+  PR 5: the estimator's own row on the phone, answered by team-scores to someone outside the
+  scoreboard's gate, and a closeout's adjustment named on the bid. With it, the labor count kept
+  with the priced margin at send. The owner's four calls are unanswered and block none of this.
+size: M as a train of five (M · S · S · M · S); PRs 1 to 4 shipped
 blocker: none; the estimators' number stays a ramp until a priced bid with labor hours is awarded
 summary: >
   A prompt from outside the company proposed four team scores for a plumbing shop. The owner
@@ -58,10 +56,7 @@ Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Lo
 1. ~~**The Scores tab**~~ v2.7325.
 2. ~~**The estimating desk's feedback**~~ v2.7347: the Pricing workbench, its share window and the Cover Letter's Mark sent say when the bid cannot be scored, the Bid Board row carries the chip, and 16 old awards got `bids.outcome_at` from their linked job's creation. Left for PR 4: a sent bid's margin is frozen without its labor count, so hours filled after the send make it read as judged.
 3. ~~**The target on the Bid Board's Pricing rules**~~ v2.7361: **The score's target** under the difficulty price list, the owner's own insert and update policies on `scorecard_hurdle_v1`, and the tab's door (`/bids?tab=bid-board&rules=1`).
-4. **`team_scores(p_from, p_to)`**, planned as a SECURITY DEFINER function with the loader's arithmetic, so the gate can widen without a wage leaving the database. **Not built: it needs a call first** (found 2026-11-15). The loader's arithmetic is not one function's worth. The hurdle is the Overhead page's pool: office and bid sessions at the office wage (`overheadDailyLabor.ts`) plus office parts by day (`overheadOfficePartsReads.ts`: Mercury allocations less internal transfers, supply-house allocations, tally parts through an RPC). The field score adds earned revenue, card charges, supply invoices and sub sheets by job. A closed job's actual is the Costs tab's own charge events (`useJobChargesTimelineInputs.ts`). `overheadPoolSnapshotReads.ts` says why none of it is in SQL: *no SQL re-implementation, no second kernel to drift (the August 2026 correctness train's whole lesson)*. Three ways on:
-   - **An edge function** that runs the same TypeScript as the service role, as the Bridge's weekly sheet does (the overhead reads already take a client). One implementation, a deploy on Taunya's go, and it has to fit the edge upload limit (#359). My pick.
-   - **A SQL function for the wage-priced hours alone** (hours and labor by job, the pool's labor), proved equal to the browser on prod, with the rest left in the browser. Small, but it is a second copy of the session pricing, and an estimator still could not be given the hurdle.
-   - **Leave the read in the browser** behind today's gate, and skip PR 5's phone row until someone outside the gate needs a score.
-5. **The estimator's own row on the phone**, and a closeout's adjustment named on the bid. Both need the hurdle and a closed job's actual without the wages behind them, so both wait on item 4's call. Also for item 4: a sent bid's priced margin is kept without its labor count, so hours filled after a send make the bid read as judged.
+4. ~~**`team_scores`**~~ v2.7365, as an edge function and not the SQL function first planned. The loader's arithmetic is the Overhead page's pool and the Costs tab's charge events, and `overheadPoolSnapshotReads.ts` says why none of it is in SQL: *no SQL re-implementation, no second kernel to drift*. Taunya picked the edge function on 2026-11-15 over a SQL function for the wage-priced hours alone and over leaving the read in the browser. `team-scores` runs the app's own `readScorecard` as the service role and answers with hours and dollars by job; seven reads now take a client; two database functions answer the service role. The tab falls back to the browser's read only while the function is not deployed.
+5. **The estimator's own row on the phone**, and a closeout's adjustment named on the bid. Both need the hurdle and a closed job's actual without the wages behind them, which `team-scores` can now answer. With it: a sent bid's priced margin is kept without its labor count, so hours filled after a send make the bid read as judged.
 
 Separate card, the owner's call: job actuals at the burden factor on the Costs tab and the burn.

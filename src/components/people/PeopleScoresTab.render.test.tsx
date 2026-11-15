@@ -14,7 +14,8 @@ import { buildEstimatorScore, type EstimatorBidInput } from '../../lib/scorecard
 import type { ScorecardRead } from '../../lib/scorecard/loadScorecard'
 
 let read: ScorecardRead | null = null
-vi.mock('../../hooks/useScorecard', () => ({ useScorecard: () => ({ read, loading: false, error: null, reload: vi.fn() }) }))
+const scoresSource = vi.hoisted(() => ({ value: 'server' as 'server' | 'browser' }))
+vi.mock('../../hooks/useScorecard', () => ({ useScorecard: () => ({ read, source: scoresSource.value, loading: false, error: null, reload: vi.fn() }) }))
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: 'dev', user: { id: 'dev' }, profileName: 'Dev' }) }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -98,6 +99,8 @@ describe('PeopleScoresTab', () => {
     expect(screen.getAllByTestId('closeout-row')).toHaveLength(1)
     expect(screen.getAllByTestId('waiting-row')).toHaveLength(1)
     expect(screen.getByTestId('scores-rule').textContent).toContain('Break-even is $22/h')
+    // #360 PR 4: the read was made on the server, and the tab says so.
+    expect(screen.getByTestId('scores-source').textContent).toBe('Read on the server. The hours and the dollars come to this page; nobody’s wage does.')
     // #360 PR 3: the target is set on the Bid Board's Pricing rules; the tab carries the door, not a form.
     expect(screen.queryByRole('button', { name: 'Save the target' })).toBeNull()
     expect(screen.getByTestId('scores-target-door').textContent).toBe('The owner sets the target on the Bid Board, under Pricing rules. Open Pricing rules')
