@@ -194,6 +194,27 @@ import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrect
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
 import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, lienOwnerIsPublic, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
+import { lienGateMarks, lienGateStripShows, type LienGateStripShape } from '../../lib/jobs/lienGateMarks'
+import { LienGateMarkStrip } from './LienGateMarkStrip'
+
+/**
+ * SPIKE FLAGS (the owner's ask of 2026-11-15, design spike): localStorage `gateMarks=open|all` draws the five gate marks on each
+ * affidavit list row — `open` only on rows with an open gate, `all` on every row; `gateWords=fold` drops the row's
+ * *missing …* words into the marks' tooltips; `gatePhone=words` keeps the words and drops the strip on a phone;
+ * `gatePlace=inline` puts the strip on the chip line instead of a line of its own.
+ * Nothing shows without the flag.
+ */
+function lienGateSpikeFlags(): { shape: LienGateStripShape | null; foldWords: boolean; phoneWords: boolean; inline: boolean } {
+  const read = (k: string): string | null => {
+    try {
+      return typeof window === 'undefined' ? null : window.localStorage.getItem(k)
+    } catch {
+      return null
+    }
+  }
+  const shape = read('gateMarks')
+  return { shape: shape === 'open' ? 'open-only' : shape === 'all' ? 'always' : null, foldWords: read('gateWords') === 'fold', phoneWords: read('gatePhone') === 'words', inline: read('gatePlace') === 'inline' }
+}
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -3131,6 +3152,10 @@ export default function LienDesk({
               const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
               const sel = e.jobId === affSelected?.jobId
               const missing = e.gates.filter((x) => !x.ok).map((x) => affidavitGateMissingWord(x.key))
+              const spike = lienGateSpikeFlags()
+              const marks = lienGateMarks(e.gates, e.isSub)
+              const stripOn = spike.shape != null && lienGateStripShows(marks, spike.shape) && !(isMobile && spike.phoneWords)
+              const wordsOn = spike.shape == null || !spike.foldWords || (isMobile && spike.phoneWords) || !stripOn
               return (
                 <button
                   key={e.jobId}
@@ -3158,9 +3183,15 @@ export default function LienDesk({
                       return <span style={tone} data-lien-affidavit-pile={pile}>{pile} · {AFFIDAVIT_PILE_WORDS[pile].short}</span>
                     })()}
                     <span>last work {workMonthShort(e.lastMonth)}</span>
-                    {missing.length ? <span>· missing {missing.join(', ')}</span> : null}
+                    {stripOn && spike.inline ? <LienGateMarkStrip marks={marks} /> : null}
+                    {wordsOn && missing.length ? <span>· missing {missing.join(', ')}</span> : null}
                     <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
                   </span>
+                  {stripOn && !spike.inline ? (
+                    <span style={{ gridColumn: '2 / 4', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      <LienGateMarkStrip marks={marks} />
+                    </span>
+                  ) : null}
                 </button>
               )
             })}
