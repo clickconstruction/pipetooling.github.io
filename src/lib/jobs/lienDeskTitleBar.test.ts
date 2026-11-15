@@ -55,7 +55,7 @@ describe('the title line read off the bar (v2.7277)', () => {
 
   it('reads the width inside the padding and every part where it sits, a missing one as 0', () => {
     const office = bar({ bar: 1252, back: 90, title: 100, views: 278, run: 270, door: 199, presses: 231 }, line)
-    office.style.padding = '11.2px 20px 9.6px'
+    office.style.padding = '1px 20px 3px' // the bar's padding since v2.7322; the reader counts the sides alone, so the width is the same as under the old 11.2 and 9.6
     office.style.columnGap = '14.4px'
     document.body.append(office)
     const read = readLienDeskTitleLine(office)!
@@ -128,7 +128,7 @@ describe('the pile line read off the bar (v2.7311)', () => {
 
   it('reads the width inside the padding, the papers, the piles span and the right span, a missing one as 0, and the bar’s column gap', () => {
     const office = bar({ bar: 1392, papers: 423, piles: 427, right: 199, door: 199 })
-    office.style.padding = '11.2px 20px 9.6px'
+    office.style.padding = '1px 20px 3px' // the bar's padding since v2.7322; the reader counts the sides alone, so the width is the same as under the old 11.2 and 9.6
     office.style.columnGap = '14.4px'
     document.body.append(office)
     const read = readLienDeskPileLine(office)!

@@ -468,6 +468,11 @@ describe('LienDesk', () => {
       await settle()
       expect(shape()).toEqual(['views', 'break', 'papers', 'pile-break', 'right'])
       expect((document.querySelector('[data-lien-desk-pile-break]') as HTMLElement).style.flexBasis).toBe('100%')
+      // v2.7322: on a computer the bar's row gap is 0 and the lines sit 6 px apart by the items' block margins in index.css, so a 0-height break on a line of its own costs no gap of its own; the bar's padding is 1 px over the title line and 3 under the pile line, under those margins.
+      expect((document.querySelector('[data-lien-desk-pile-break]') as HTMLElement).style.height).toBe('0px')
+      expect((document.querySelector('[data-lien-desk-header-break]') as HTMLElement).style.height).toBe('0px')
+      expect((document.querySelector('.lienDeskTitleBar') as HTMLElement).style.rowGap).toBe('0')
+      expect((document.querySelector('.lienDeskTitleBar') as HTMLElement).style.padding).toBe('1px 1.25rem 3px')
       expect(names(document.querySelector('[data-lien-desk-right]')!)).toEqual(['An owner asked for records ›', '§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
       fireEvent.click(screen.getByTestId('lien-owner-records-door'))
       expect(onOpenOwnerRecords).toHaveBeenCalledTimes(4)
@@ -856,6 +861,10 @@ describe('LienDesk', () => {
       const more = bar.querySelector('[data-lien-desk-more="door"]') as HTMLButtonElement
       expect(more.getAttribute('aria-label')).toBe('More')
       expect(more.style.height).toBe('44px')
+      // v2.7322 trimmed the computer's bar; a phone keeps its own rows: the 0.4rem row gap, its own padding, and no break on To do.
+      expect(bar.style.rowGap).toBe('0.4rem')
+      expect(bar.style.padding).toBe('0.15rem 0.6rem 0.5rem')
+      expect(bar.querySelector('[data-lien-desk-header-break]')).toBeNull()
       // None of the doors is in the bar any more.
       expect(within(bar).queryByTestId('lien-rules-door')).toBeNull()
       expect(within(bar).queryByTestId('lien-owner-records-door')).toBeNull()
@@ -1365,7 +1374,7 @@ describe('LienDesk affidavits (v2.3412)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="affidavit" />)
     await settle()
     expect(screen.getByRole('tab', { name: /Lien affidavits · 1/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Needs the property facts/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: 'Needs the property facts · 1' })).toBeTruthy()
     expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
     const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
     // v2.7187: the desk's own timeline names the step the paper is on, as its To do row does (*the property record is not complete*).
@@ -2377,7 +2386,7 @@ describe('LienDesk retainage (v2.3753)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
     await settle()
     expect(screen.getByRole('tab', { name: /Retainage notices · 1/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: 'To draft · 1' })).toBeTruthy()
     const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
     expect(list.textContent).toContain('complete Sep 3')
     expect(list.textContent).toContain('not yet in a § 53.056 claim')
@@ -2401,7 +2410,7 @@ describe('LienDesk retainage (v2.3753)', () => {
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
     await settle()
-    expect(screen.getByRole('button', { name: /Clock not started/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: 'Clock not started · 1' })).toBeTruthy()
     expect(screen.getByText(/§ 53\.057 · clock not started/)).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: /Set the day our contract ended/ }))
     expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
@@ -3443,5 +3452,94 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('type')
     expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi')
     expect(document.querySelector('[data-lien-sign-code-row]')).toBeNull()
+  })
+})
+
+describe('LienDesk · Lien affidavits and Retainage notices stack their pile titles like Monthly notices (the owner’s ask of 2026-11-15)', () => {
+  const affRow = (partial: Partial<LienAffidavitRow> = {}): LienAffidavitRow => ({ job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null, ...partial })
+  const retRow = (partial: Partial<LienRetainageRow> = {}): LienRetainageRow => ({ job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null, ...partial })
+  const twoPiles = () => {
+    const d = data([], [], true)
+    d.jobsById.j651 = { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'Palomino Trail' }
+    d.affidavitRows = [affRow(), affRow({ job_id: 'j651', last_month: '2026-08', deadline: '2026-11-16', noticed: true, has_owner: true, has_legal: true, property_kind: 'non_residential', has_contractor_address: true })]
+    d.affidavits = buildLienAffidavitQueue(d.affidavitRows, [], TODAY)
+    d.retainageRows = [retRow({ contract_ended_on: null, contract_ended_how: null, deadline: null }), retRow({ job_id: 'j651' })]
+    d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
+    return d
+  }
+  const heads = () => [...document.querySelectorAll<HTMLElement>('[data-lien-pile-head]')]
+
+  for (const [kind, listHook, first, second] of [
+    ['affidavit', '[data-lien-affidavit-list]', 'needs_property', 'to_draft'],
+    ['retainage', '[data-lien-retainage-list]', 'clock_not_started', 'to_draft'],
+  ] as const) {
+    it(`${kind}: one sticky title per pile with rows, its count at the right, stacked at both ends; a press on a later title scrolls to it and lights it`, async () => {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={twoPiles()} initialKind={kind} />)
+      await settle()
+      const list = document.querySelector(listHook) as HTMLElement & { scrollTo: (o: unknown) => void }
+      expect(list.style.position).toBe('relative')
+      expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([first, second])
+      for (const [i, h] of heads().entries()) {
+        expect(h.className).toBe('lienPileHead')
+        // 24 px a title since v2.7323 (30 when v2.7316 shipped): the owner's ask that the bars sit closer with the words as they are.
+        expect(h.style.top).toBe(`${i * 24}px`)
+        expect(h.style.bottom).toBe(`${(1 - i) * 24}px`)
+        expect(h.style.height).toBe('24px')
+        expect(h.querySelector(`[data-lien-pile-count="${h.getAttribute('data-lien-pile-head')}"]`)!.textContent).toBe('1')
+      }
+      // No flat caption is left over.
+      expect(list.querySelectorAll('.lienPileHead').length).toBe(2)
+      expect(list.querySelector(`[data-lien-pile-rows="${second}"]`)!.textContent).toContain('651 · Palomino Trail')
+      expect(heads()[0]!.getAttribute('data-on')).toBe('yes')
+      expect(heads()[1]!.getAttribute('data-on')).toBe('no')
+      const scrollTo = vi.fn()
+      list.scrollTo = scrollTo
+      fireEvent.click(within(heads()[1]!).getByTitle('Go to this pile'))
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+      expect(heads()[1]!.getAttribute('data-on')).toBe('yes')
+      expect(heads()[0]!.getAttribute('data-on')).toBe('no')
+      // No pile is picked, so no title offers the way back.
+      expect(document.querySelector('[data-lien-pile-all]')).toBeNull()
+    })
+
+    it(`${kind}: a pile chip narrows the list to that pile's title and rows, the title offers show every pile, and a find keeps every title with its count`, async () => {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={twoPiles()} initialKind={kind} />)
+      await settle()
+      fireEvent.click(screen.getByRole('button', { name: 'To draft · 1' }))
+      expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([second])
+      expect(heads()[0]!.style.top).toBe('0px')
+      expect(heads()[0]!.style.bottom).toBe('0px')
+      expect(document.querySelector(`[data-lien-pile-rows="${first}"]`)).toBeNull()
+      fireEvent.click(document.querySelector('[data-lien-pile-all]') as HTMLElement)
+      expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([first, second])
+      // A find that empties a pile keeps its title, greyed, counting the matches of the pile's total.
+      fireEvent.change(screen.getByTestId('lien-desk-find-input'), { target: { value: '651' } })
+      expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([first, second])
+      expect(heads()[0]!.getAttribute('data-empty')).toBe('yes')
+      expect(heads()[0]!.querySelector('[data-lien-pile-count]')!.textContent).toBe('0 of 1')
+      expect(heads()[1]!.getAttribute('data-empty')).toBeNull()
+      expect(heads()[1]!.querySelector('[data-lien-pile-count]')!.textContent).toBe('1 of 1')
+    })
+  }
+
+  it('on a phone each title pins alone at the top, a thumb tall, on both lists', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      for (const kind of ['affidavit', 'retainage'] as const) {
+        const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={twoPiles()} initialKind={kind} layout="stacked" />)
+        await settle()
+        expect(heads()).toHaveLength(2)
+        for (const h of heads()) {
+          expect(h.style.top).toBe('0px')
+          expect(h.style.bottom).toBe('auto')
+          expect(h.style.height).toBe('40px')
+          expect(h.style.fontSize).toBe('0.75rem')
+        }
+        view.unmount()
+      }
+    } finally {
+      window.matchMedia = before
+    }
   })
 })
