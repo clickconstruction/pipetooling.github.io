@@ -348,7 +348,8 @@ export default function LienDeskAffidavitPane({
   const contractorGcId = entry.gcCustomerId
   const contractorDoor = onFixContractor && contractorGcId ? () => onFixContractor(contractorGcId) : null
   // The facts each gate row shows after its label (v2.7313): the record's own values, and the last notice to the owner's day.
-  const lastOwnerSend = lienAffidavitOwnerSends(data.filingsByJob[entry.jobId] ?? []).at(-1)
+  const ownerSends = lienAffidavitOwnerSends(data.filingsByJob[entry.jobId] ?? [])
+  const lastOwnerSend = ownerSends[ownerSends.length - 1]
   const gateFacts: LienGateRowFacts = { isSub: entry.isSub, ownerName, county: property.county, legalDescription: property.legalDescription, gcName: gc?.name, gcAddress: gc?.address, noticeSentWords: lastOwnerSend ? `sent ${formatYmdMonthDay(lastOwnerSend.sentOn)}` : '' }
 
   // ---------- footer ----------
