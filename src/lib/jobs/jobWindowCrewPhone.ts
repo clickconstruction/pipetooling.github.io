@@ -1,11 +1,13 @@
 /**
  * The crew's job window on a phone (punch list #355, direction C, the crew half, v2.7355): the plain window that
  * helpers, the superintendent, subs and estimators open, drawn in the order PR B gave the tabbed window's Job tab.
- * The name first with the status, then Where · Photos · Who · What's happening, and the rest folded under More on
- * this job. Pure: the quiet line, the scheduled block's label, the newest note as a row, the ⋯ sheet's rows and the
- * folds; the screen is `DetailJobModal` outside pane mode.
+ * The name first with the status, then Where · Photos · Who · Today's work · What's happening, and the rest folded
+ * under More on this job. Pure: the quiet line, the open stage's card, the scheduled block's label, the newest note
+ * as a row, the ⋯ sheet's rows and the folds; the screen is `DetailJobModal` outside pane mode.
  */
 import { whenWords } from '../messages/thread'
+import { defaultOpenLine, jobPercentFromLines, lineIsDone } from '../reports/lineProgressReport'
+import { stageEffectivePct, type StageProgressRow } from '../reports/stageProgressReport'
 import { jobWindowSheetRows, type JobWindowSheetDoors, type JobWindowSheetRow } from './jobWindowPhone'
 
 // ---------------------------------------------------------------------------
@@ -67,24 +69,75 @@ export function crewSheetRows(doors: JobWindowSheetDoors): JobWindowSheetRow[] {
 }
 
 // ---------------------------------------------------------------------------
-// More on this job: the crew's folds, remembered per device
+// Today's work: the open stage (v2.7376)
 // ---------------------------------------------------------------------------
 
-export type CrewFoldKey = 'notes' | 'plans' | 'accounts' | 'parts'
+export type CrewStageCard = {
+  /** The stage the crew is on, or *Every stage is done*. */
+  title: string
+  /** *Rough In done · Top Out 40% · Trim Set not started*; a long job reads *3 of 8 done · Trim Set open*. */
+  line: string
+  /** The job by its stages, 0 to 100: the bar. */
+  pct: number
+  allDone: boolean
+}
+
+/** Past this many stages the line counts the done ones instead of naming each. */
+export const STAGE_LINE_MAX = 4
+
+/**
+ * The open stage as a card, from the job's stages as the report form reads them (`list_job_stage_progress`). The
+ * open stage is the one the report form opens on by itself: the first stage in order not yet done, else the first
+ * any-time line not done. Null for a job with fewer than two stages: it has no stage to be on, and its one line is
+ * the bid's price, not a word the crew uses.
+ */
+export function crewStageCard(rows: readonly StageProgressRow[] | null | undefined): CrewStageCard | null {
+  if (!rows || rows.length < 2) return null
+  const open = defaultOpenLine(rows)
+  const done = rows.filter((r) => lineIsDone(r, {}))
+  const pct = jobPercentFromLines(rows, {})
+  if (!open) return { title: 'Every stage is done', line: `${rows.length} of ${rows.length} done`, pct: 100, allDone: true }
+  const word = (r: StageProgressRow): string => {
+    if (lineIsDone(r, {})) return `${r.name} done`
+    const at = stageEffectivePct(r)
+    if (at > 0) return `${r.name} ${at}%`
+    return r === open ? `${r.name} open` : `${r.name} not started`
+  }
+  const line = rows.length <= STAGE_LINE_MAX ? rows.map(word).join(' · ') : `${done.length} of ${rows.length} done · ${word(open)}`
+  return { title: open.name, line, pct, allDone: false }
+}
+
+/** The Materials on site fold's quiet words: *2 containers · 14 lines*, *nothing yet* for a site with none, '' before the read lands. */
+export function crewMaterialsWords(input: { loaded: boolean; containers: number; lines: number }): string {
+  if (!input.loaded) return ''
+  if (input.containers === 0) return 'nothing yet'
+  return `${input.containers} ${input.containers === 1 ? 'container' : 'containers'} · ${input.lines} ${input.lines === 1 ? 'line' : 'lines'}`
+}
+
+// ---------------------------------------------------------------------------
+// The crew's folds, remembered per device
+// ---------------------------------------------------------------------------
+
+export type CrewFoldKey = 'notes' | 'plans' | 'materials' | 'accounts' | 'parts'
 
 export const CREW_FOLD_TITLES: Record<CrewFoldKey, string> = {
   notes: 'Notes and reports',
   plans: 'Plans',
+  materials: 'Materials on site',
   accounts: 'Job accounts',
   parts: 'Parts cost',
 }
 
+/** Today's work's two folds, under the open stage and its checklists: everyone on the crew gets both. */
+export const CREW_WORK_FOLDS: readonly CrewFoldKey[] = ['plans', 'materials']
+
 /**
- * The folds this viewer gets, in order. Notes and Plans are everyone's; Job accounts is drawn once the job has a
+ * More on this job's folds for this viewer, in order. Notes is everyone's; Job accounts is drawn once the job has a
  * supply house on its list; Parts cost is for the roles that read it today (the superintendent and the estimators).
+ * Plans moved up into Today's work in v2.7376.
  */
 export function crewFolds(input: { accounts: boolean; parts: boolean }): CrewFoldKey[] {
-  const keys: CrewFoldKey[] = ['notes', 'plans']
+  const keys: CrewFoldKey[] = ['notes']
   if (input.accounts) keys.push('accounts')
   if (input.parts) keys.push('parts')
   return keys

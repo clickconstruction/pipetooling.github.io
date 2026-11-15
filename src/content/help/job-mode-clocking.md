@@ -89,8 +89,11 @@ Then the window runs in sections.
 - **Where** shows the street photo with the address on it. You tap the address to open it in Maps. Painted maps sit under the photo, then **＋ Paint a map**.
 - **Photos** is a row of pictures you flick sideways. **Add a photo** is the first tile. It opens the camera.
 - **Who** names the customer. The phone number is written out. You tap the number to call. The square beside the number copies it.
+- **Today's work** shows the stage the job is on. A bar under it shows how far the job has come. Each stage with a checklist is a press. **Plans** and **Materials on site** are folds. Each fold says what it holds beside its name. A job with no stages shows the two folds alone.
 - **What's happening** shows the block you opened the job from, with its hours on their own line. **Last note** shows the newest note or report, who wrote it and when.
-- **More on this job** holds the rest in folds. **Notes and reports** holds every note and the note box. **Plans** holds the plans. A superintendent also gets **Parts cost**. You tap a fold to open it. The phone remembers which folds you left open.
+- **More on this job** holds the rest in folds. **Notes and reports** holds every note and the note box. A superintendent also gets **Parts cost**. You tap a fold to open it. The phone remembers which folds you left open.
+
+In the **Materials on site** fold, {{button:blue|Open Materials on site}} takes you to the job's containers. See [keep track of the material on site](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site).
 
 Masters and primaries open the tabbed window instead. On a phone the tabbed window's bar carries {{button:green|Arrived}} or {{button:outline-amber|Leaving}} when you are on the job's crew. {{button:outline|Note}} on that bar opens the same note box. See [the bar at the bottom](/help/job-window-tabs#on-a-phone-the-bar-at-the-bottom).
 

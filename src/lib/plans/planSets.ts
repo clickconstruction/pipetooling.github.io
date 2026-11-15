@@ -138,6 +138,16 @@ export function shortDayWords(iso: string | null | undefined): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+/**
+ * The current set as a fold's quiet words on a phone (punch list #355, Today's work): *Permit set · came Oct 20*,
+ * or *none yet* for a part with no current set. Short, since it shares the fold's line with its title.
+ */
+export function currentSetFoldWords(current: Pick<PlanSetRow, 'kind' | 'came_at'> | null | undefined): string {
+  if (!current) return 'none yet'
+  const came = shortDayWords(current.came_at)
+  return came ? `${kindLabel(current.kind)} · came ${came}` : kindLabel(current.kind)
+}
+
 /** The set's own line: *Permit set · the GC · dated Oct 14, 2026*, or *· came Oct 20* when no date is on the sheets. */
 export function setLineWords(s: Pick<PlanSetRow, 'kind' | 'source' | 'dated' | 'came_at'>): string {
   const when = s.dated ? `dated ${planSetDateWords(s.dated) ?? s.dated}` : `came ${shortDayWords(s.came_at)}`

@@ -46,7 +46,7 @@ export interface OpenStageChecklistAsk {
   questionId?: string | null
 }
 
-export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null, openStage = null }: { jobId: string | null | undefined; io?: StageChecklistSheetIo; rev?: number; plansUrl?: string | null; openStage?: OpenStageChecklistAsk | null }) {
+export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null, openStage = null, label: showLabel = true }: { jobId: string | null | undefined; io?: StageChecklistSheetIo; rev?: number; plansUrl?: string | null; openStage?: OpenStageChecklistAsk | null; /** False under a section that already names it: Today's work on the crew's window (punch list #355). */ label?: boolean }) {
   const { user, profileName, role } = useAuth()
   const read = useJobStageChecklists(jobId, io, rev, asksMayAuthor(role))
   const [open, setOpen] = useState<JobStageChecklist | null>(null)
@@ -70,7 +70,7 @@ export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null, op
   const current = open ? rows.find((r) => r.fixtureId === open.fixtureId) ?? open : null
   return (
     <div data-job-stage-checklists style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>
-      <span style={label}>Stage checklists</span>
+      {showLabel ? <span style={label}>Stage checklists</span> : null}
       {listed.map((r) => (
         <button key={r.fixtureId} type="button" style={row} onClick={() => setOpen(r)} aria-label={`${r.name} checklist: ${stageChecklistLine(r.state) || emptyWords(r)}`} data-stage-checklist-row={r.state.standing}>
           <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>

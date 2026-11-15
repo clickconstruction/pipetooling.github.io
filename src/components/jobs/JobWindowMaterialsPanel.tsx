@@ -22,7 +22,13 @@ const chip = (tone: 'amber' | 'red' | 'green' | 'blue' | 'dim'): CSSProperties =
   ...(tone === 'amber' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderColor: 'var(--text-amber-800)' } : tone === 'red' ? { background: 'var(--bg-red-100)', color: 'var(--text-red-700)', borderColor: 'var(--text-red-700)' } : tone === 'green' ? { background: 'var(--bg-green-100)', color: 'var(--text-green-700)', borderColor: 'var(--text-green-700)' } : tone === 'blue' ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderColor: 'var(--text-blue-700)' } : { color: 'var(--text-muted)', borderColor: 'var(--border)' }),
 })
 
-export default function JobWindowMaterialsPanel({ jobId, onBeforeNavigate }: { jobId: string; onBeforeNavigate?: () => void }) {
+/**
+ * `door` is where the press leads: the office's page (Jobs → Materials) by default, or, for the crew's job window
+ * (punch list #355, Today's work), the Tally's On site tab on this job, which is the crew's own screen for the
+ * boxes. The crew's door leaves the money and the credits out: they are the office's reads.
+ */
+export default function JobWindowMaterialsPanel({ jobId, onBeforeNavigate, door = 'desk' }: { jobId: string; onBeforeNavigate?: () => void; door?: 'desk' | 'tally' }) {
+  const crew = door === 'tally'
   const navigate = useNavigate()
   const load = useOnSiteJob(jobId)
   const movements = listMovements(jobId)
@@ -34,15 +40,15 @@ export default function JobWindowMaterialsPanel({ jobId, onBeforeNavigate }: { j
       {!load.loaded ? (
         <p style={{ margin: 0, color: 'var(--text-muted)' }}>{load.error ?? 'Loading…'}</p>
       ) : sum.containers === 0 ? (
-        <p style={{ margin: 0, color: 'var(--text-muted)' }}>Nothing on this site yet. Open the materials page to add the containers, or a crew adds them from the tally.</p>
+        <p style={{ margin: 0, color: 'var(--text-muted)' }}>{crew ? 'Nothing on this site yet. Add the first container from Materials on site.' : 'Nothing on this site yet. Open the materials page to add the containers, or a crew adds them from the tally.'}</p>
       ) : (
         <>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             <span style={chip('dim')}>{sum.containers} {sum.containers === 1 ? 'container' : 'containers'}</span>
             <span style={chip('dim')}>{sum.onSiteLines} lines on site</span>
             {sum.stale.length ? <span style={chip('amber')}>{staleWords(sum.stale)}</span> : <span style={chip('green')}>counts fresh</span>}
-            {sum.missingLines ? <span style={chip('red')}>{sum.missingLines} missing this week · {money(sum.missingMoneyWeek)}{sum.missingUnpricedLines > 0 ? ` · ${sum.missingUnpricedLines} with no price` : ''}</span> : <span style={chip('green')}>nothing missing this week</span>}
-            {sum.credits ? <span style={chip('blue')}>{sum.credits} credit{sum.credits === 1 ? '' : 's'} due</span> : null}
+            {sum.missingLines ? <span style={chip('red')}>{sum.missingLines} missing this week{crew ? '' : ` · ${money(sum.missingMoneyWeek)}${sum.missingUnpricedLines > 0 ? ` · ${sum.missingUnpricedLines} with no price` : ''}`}</span> : <span style={chip('green')}>nothing missing this week</span>}
+            {sum.credits && !crew ? <span style={chip('blue')}>{sum.credits} credit{sum.credits === 1 ? '' : 's'} due</span> : null}
           </div>
           {last ? (
             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-700)' }}>
@@ -51,8 +57,8 @@ export default function JobWindowMaterialsPanel({ jobId, onBeforeNavigate }: { j
           ) : null}
         </>
       )}
-      <button type="button" onClick={() => { onBeforeNavigate?.(); navigate(`/jobs?tab=materials&job=${jobId}`) }} style={{ justifySelf: 'start', minHeight: 40, padding: '0 0.9rem', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>
-        Open the materials page
+      <button type="button" data-testid="job-window-materials-door" onClick={() => { onBeforeNavigate?.(); navigate(crew ? `/tally?tab=on-site&job=${jobId}` : `/jobs?tab=materials&job=${jobId}`) }} style={{ justifySelf: 'start', minHeight: crew ? 44 : 40, padding: '0 0.9rem', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>
+        {crew ? 'Open Materials on site' : 'Open the materials page'}
       </button>
     </div>
   )
