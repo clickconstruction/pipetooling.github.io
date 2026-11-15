@@ -95,7 +95,7 @@ import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardRowInPick, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
+import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardPickWords, lienBoardRowInPick, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind, type LienBoardTileDestination } from '../../lib/jobs/lienBoard'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
@@ -116,7 +116,10 @@ import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
-import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame } from '../../lib/jobs/lienDoNowFrame'
+import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../../lib/jobs/lienDoNowFrame'
+import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
+import LienDoNowBar from './LienDoNowBar'
+import { useLienDoNowRoom } from './useLienDoNowRoom'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
@@ -933,19 +936,45 @@ export default function LienDesk({
   // same holds wherever the Board's columns stack (the 768 px tablet, 2026-11-15): the Board is then taller than
   // the screen, so the page scrolls as one and the list is not its own scroller.
   const [boardStacked, setBoardStacked] = useState(false)
-  const doNow = lienDoNowFrame(oneColumn || boardStacked)
   const doNowRef = useRef<HTMLDivElement | null>(null)
+  // A computer too, wherever the Board leaves the list too little room (v2.7367, punch list #362 step 1): measured
+  // on 2026-11-15, the list had 91 px under the Board at 1440 x 900. There the find box pins as the list comes up
+  // (`LienDoNowBar`), with the Board's numbers and the way back; a screen tall enough for both keeps the Board put.
+  const doNowRoom = useLienDoNowRoom(doNowRef, kind === 'next' && Boolean(board))
+  const doNow = lienDoNowFrame(oneColumn || boardStacked, doNowRoom)
+  // The bar pins on the wide desk only: a phone and the stacked desk keep their find box in the page, as before.
+  const doNowBarPins = doNow.mode === 'one-page' && !oneColumn && !boardStacked
+  const doNowBarParts = useMemo(() => (board ? lienDoNowBarParts(board) : []), [board])
   // There a pressed bin also brings its rows up, since the Board fills the screen and the narrowed list is under it.
   const [pickBringsRows, setPickBringsRows] = useState(0)
   const pickBoardBins = useCallback((bins: LienBoardBinKey[] | null) => {
     setBoardBins((prev) => (bins && prev && prev.join('|') === bins.join('|') ? null : bins))
     if (bins) setPickBringsRows((n) => n + 1)
   }, [])
+  // A tile's press, and the same count's press on the pinned find box (v2.7367): the run, or the stage on both columns.
+  const openBoardTile = (d: LienBoardTileDestination) => {
+    if (d.kind === 'run') {
+      if (office) {
+        setRunTakeBack(false)
+        setRunOpen(true)
+      }
+    } else if (board) pickBoardBins(lienBoardStageBins(board, d.stage))
+  }
   useEffect(() => {
     if (pickBringsRows === 0 || doNow.mode !== 'one-page') return
-    const rows = doNowRef.current?.querySelector<HTMLElement>(LIEN_DO_NOW_ROWS_SELECTOR)
-    rows?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
-  }, [pickBringsRows, doNow.mode])
+    const scroller = doNowRef.current
+    if (!scroller) return
+    if (!doNowBarPins) {
+      scroller.querySelector<HTMLElement>(LIEN_DO_NOW_ROWS_SELECTOR)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+      return
+    }
+    // Where the find box pins, the page goes to the Board's bottom edge: the narrowed list starts right under the bar.
+    const boardEl = scroller.querySelector<HTMLElement>('[data-lien-board]')
+    if (!boardEl) return
+    const top = lienDoNowListTop({ boardBottom: boardEl.getBoundingClientRect().bottom, scrollerTop: scroller.getBoundingClientRect().top, scrollTop: scroller.scrollTop })
+    if (typeof scroller.scrollTo === 'function') scroller.scrollTo({ top, behavior: 'smooth' })
+    else scroller.scrollTop = top
+  }, [pickBringsRows, doNow.mode, doNowBarPins])
   // The title is a door (v2.7332): from any view it opens To do scrolled to the Board.
   const [boardBring, setBoardBring] = useState(0)
   useEffect(() => {
@@ -4462,8 +4491,10 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={(d) => { if (d.kind === 'run') { if (office) { setRunTakeBack(false); setRunOpen(true) } } else pickBoardBins(lienBoardStageBins(board, d.stage)) }} /> : <div />}
-            <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} /> : <div />}
+            <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)}>
+              <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
+            </LienDoNowBar>
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>
           ) : kind === 'calendar' ? (
