@@ -631,6 +631,42 @@ describe('LienDesk', () => {
     }
   })
 
+  it('To do on a computer is one page where the Board leaves the list too little room, the find box pinning with the way back; a pressed bin brings the page to the list (v2.7367, punch list #362 step 1)', async () => {
+    // jsdom lays nothing out: give the frame a laptop's 751 px, the Board its 614 and the find box's bar its 47.
+    const heightOf = (el: HTMLElement) => (el.hasAttribute('data-lien-do-now') ? 751 : el.hasAttribute('data-lien-board') ? 614 : el.hasAttribute('data-lien-do-now-bar') ? 47 : 0)
+    const client = Object.getOwnPropertyDescriptor(Element.prototype, 'clientHeight')
+    const offset = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')
+    Object.defineProperty(Element.prototype, 'clientHeight', { configurable: true, get(this: HTMLElement) { return heightOf(this) } })
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return heightOf(this) } })
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
+      await settle()
+      const frame = document.querySelector('[data-lien-do-now]') as HTMLElement
+      const list = document.querySelector('[data-lien-next-up="list"]') as HTMLElement
+      const bar = document.querySelector('[data-lien-do-now-bar]') as HTMLElement
+      expect(frame.getAttribute('data-lien-do-now')).toBe('one-page')
+      expect(frame.style.overflowY).toBe('auto')
+      // One thing scrolls: the list is not its own scroller, and the find box is inside the bar that pins.
+      expect(list.getAttribute('data-scrolls')).toBe('no')
+      expect(bar.getAttribute('data-pins')).toBe('yes')
+      expect(bar.style.position).toBe('sticky')
+      expect(bar.querySelector('[data-testid="lien-desk-find-input"]')).not.toBeNull()
+      expect(frame.contains(bar)).toBe(true)
+      // A pressed bin brings the page to the Board's bottom edge, where the list starts under the pinned bar.
+      const scrolled: unknown[] = []
+      frame.scrollTo = ((o: unknown) => { scrolled.push(o) }) as typeof frame.scrollTo
+      const boardEl = frame.querySelector('[data-lien-board]') as HTMLElement
+      frame.getBoundingClientRect = () => ({ top: 140, bottom: 891, left: 0, right: 1400, width: 1400, height: 751, x: 0, y: 140, toJSON: () => ({}) })
+      boardEl.getBoundingClientRect = () => ({ top: 140, bottom: 754, left: 0, right: 1400, width: 1400, height: 614, x: 0, y: 140, toJSON: () => ({}) })
+      fireEvent.click(frame.querySelector('button[data-lien-board-bin-head="notice:to_send"]') as HTMLButtonElement)
+      await settle()
+      expect(scrolled).toEqual([{ top: 614, behavior: 'smooth' }])
+    } finally {
+      if (client) Object.defineProperty(Element.prototype, 'clientHeight', client)
+      if (offset) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', offset)
+    }
+  })
+
   it('To do is the first tab (punch list #82; Next up until v2.4630): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()

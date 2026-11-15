@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { qrSquares, qrSquaresFromPath, tapeStripLayout } from './tapeStrip'
+import { qrSquares, qrSquaresFromPath, tapeAddressLines, tapeStripBlock, tapeStripLayout, tapeStripLines } from './tapeStrip'
 
 describe('tapeStripLayout', () => {
   it('gives the code a whole number of dots a square, as tall as the tape prints', () => {
@@ -18,11 +18,58 @@ describe('tapeStripLayout', () => {
     expect(small.qrTop).toBe(6)
   })
 
-  it('keeps the words inside the strip', () => {
+  it('keeps the stencil and the lines under it inside the strip', () => {
     for (const dots of [112, 128]) {
       const l = tapeStripLayout(dots, 25)
+      expect(l.stencilPx + l.codePx * 1.2 + l.codePx * 1.2 + 6).toBeLessThanOrEqual(dots)
       expect(l.stencilPx + l.codePx * 1.2 + l.wordsPx * 1.2 + 6).toBeLessThanOrEqual(dots)
     }
+  })
+})
+
+describe('the lines under the stencil (Taunya’s ask of 2026-11-15)', () => {
+  it('breaks the address after /B/, so the link is no wider than its code', () => {
+    expect(tapeAddressLines('PRTS.CO/B/849F-DB0B')).toEqual(['PRTS.CO/B/', '849F-DB0B'])
+    expect(tapeAddressLines('prts.co/b/849f-db0b')).toEqual(['prts.co/b/', '849f-db0b'])
+    // the two lines read back as the address that was printed on one
+    expect(tapeAddressLines('PRTS.CO/B/849F-DB0B').join('')).toBe('PRTS.CO/B/849F-DB0B')
+    // the test strip's address carries no code and stays whole
+    expect(tapeAddressLines('PRTS.CO/B')).toEqual(['PRTS.CO/B'])
+    expect(tapeAddressLines('PRTS.CO/B/')).toEqual(['PRTS.CO/B/'])
+  })
+
+  it('a box’s strip has the two lines of its address and no line of words', () => {
+    expect(tapeStripLines('PRTS.CO/B/849F-DB0B')).toEqual([{ text: 'PRTS.CO/B/', kind: 'code' }, { text: '849F-DB0B', kind: 'code' }])
+    expect(tapeStripLines('PRTS.CO/B/849F-DB0B', '')).toHaveLength(2)
+    expect(tapeStripLines('PRTS.CO/B/849F-DB0B').some((line) => /scan/i.test(line.text))).toBe(false)
+    // the test strip keeps its own words, so nobody takes it for a sticker
+    expect(tapeStripLines('PRTS.CO/B', 'Test strip')).toEqual([{ text: 'PRTS.CO/B', kind: 'code' }, { text: 'Test strip', kind: 'words' }])
+  })
+
+  it('sets the code under the first line in the same type, the block centred and inside the tape', () => {
+    for (const dots of [112, 128]) {
+      const l = tapeStripLayout(dots, 25)
+      const block = tapeStripBlock(l, tapeStripLines('PRTS.CO/B/849F-DB0B'))
+      const [first, code] = block.lines
+      expect(first!.px).toBe(l.codePx)
+      expect(code!.px).toBe(l.codePx)
+      // the stencil's capitals start inside the tape, and the code's line ends inside it
+      expect(block.stencilBaseline - l.stencilPx * 0.78).toBeGreaterThanOrEqual(0)
+      expect(first!.baseline).toBeGreaterThan(block.stencilBaseline + first!.px)
+      expect(code!.baseline - first!.baseline).toBeGreaterThanOrEqual(code!.px)
+      expect(code!.baseline + code!.px * 0.25).toBeLessThanOrEqual(dots)
+      // centred: the room over the stencil and under the code differ by less than a line
+      const over = block.stencilBaseline - l.stencilPx * 0.78
+      const under = dots - code!.baseline
+      expect(Math.abs(over - under)).toBeLessThan(l.codePx)
+    }
+  })
+
+  it('the test strip sits where it sat: its address, then its words a line under', () => {
+    const l = tapeStripLayout(128, 25)
+    const block = tapeStripBlock(l, tapeStripLines('PRTS.CO/B', 'Test strip'))
+    expect(block.stencilBaseline).toBe(72)
+    expect(block.lines.map((line) => [line.kind, line.px, line.baseline])).toEqual([['code', 17, 96], ['words', 13, 112]])
   })
 })
 

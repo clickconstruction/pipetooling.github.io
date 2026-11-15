@@ -12,7 +12,7 @@ import type { BillHandWay } from '../../lib/billing/billHandWays'
 import { BillsSentLedger } from './BillsSentLedger'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
-const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, wayCalls: [] as unknown[][], wayRefuse: null as null | Error, refuse: null as null | Error, fail: null as null | Error, phone: false }))
+const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, wayCalls: [] as unknown[][], wayRefuse: null as null | Error, refuse: null as null | Error, refuseBill: null as null | string, fail: null as null | Error, phone: false }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'master_technician', user: { id: 'u1' } })
@@ -45,8 +45,9 @@ vi.mock('../../lib/billing/billsSentIo', () => ({
     io.wayCalls.push(['move', moves])
     io.ways = (io.ways as Array<{ id: string }>).map((w) => ({ ...w, ...(moves.find((m) => m.id === w.id) ? { sortOrder: moves.find((m) => m.id === w.id)!.sortOrder } : {}) }))
   },
-  recordBillByHand: async (filing: unknown) => {
+  recordBillByHand: async (filing: { source?: { id?: string } }) => {
     if (io.refuse) throw io.refuse
+    if (io.refuseBill && filing.source?.id === io.refuseBill) throw Object.assign(new Error('new row violates row-level security policy for table "sent_documents"'), { code: '42501' })
     io.filed.push(filing)
   },
 }))
@@ -99,6 +100,7 @@ beforeEach(() => {
   io.wayCalls = []
   io.wayRefuse = null
   io.refuse = null
+  io.refuseBill = null
   io.fail = null
   io.phone = false
 })
@@ -291,6 +293,50 @@ describe('BillsSentLedger', () => {
     await waitFor(() => expect(io.filed).toHaveLength(1))
     expect(io.filed[0]).toMatchObject({ kind: 'bill_by_hand', how: 'hand', recipientName: 'Sable Ridge Builders', source: { table: 'jobs_ledger_invoices', id: GAP }, sourceSnapshot: { how: 'handed', went_on: '2026-11-09' } })
     await waitFor(() => expect(io.asks.length).toBeGreaterThan(asksBefore))
+  })
+
+  it('records several bills to one person in one press, and names the one that was refused (R2)', async () => {
+    const A = 'dddddddd-4444-4444-8444-44444444444a'
+    const B = 'dddddddd-4444-4444-8444-44444444444b'
+    const C = 'dddddddd-4444-4444-8444-44444444444c'
+    const OTHER_JOB = 'aaaaaaaa-9999-4999-8999-999999999992'
+    const base = data([copy({})])
+    const unsent = [
+      { billId: A, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' },
+      { billId: B, jobId: JOB, amount: 2260, status: 'billed', billedAtIso: '2026-11-06T16:31:00.000Z' },
+      { billId: C, jobId: JOB, amount: 6125, status: 'billed', billedAtIso: '2026-10-22T20:40:00.000Z' },
+      { billId: 'dddddddd-4444-4444-8444-44444444444d', jobId: OTHER_JOB, amount: 900, status: 'billed', billedAtIso: '2026-10-20T20:40:00.000Z' },
+    ]
+    io.data = { ...base, jobs: new Map([...base.jobs, [OTHER_JOB, { id: OTHER_JOB, hcp_number: '1398', click_number: null, job_name: 'Larkfield Clinic', job_address: '', customer_name: 'Larkfield Construction' }]]), unsent }
+    renderWithProviders(<BillsSentLedger />)
+    const rows = await screen.findAllByTestId('bills-sent-gap')
+    expect(rows).toHaveLength(4)
+    // The newest bill's form lists the same customer's two other bills, and never another customer's.
+    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Say how it went…' }))
+    const others = screen.getByTestId('bills-sent-by-hand-others')
+    expect(others.textContent).toContain('2 more bills to Sable Ridge Builders have no send on record.')
+    const boxes = within(others).getAllByRole('checkbox') as HTMLInputElement[]
+    expect(boxes.map((b) => b.checked)).toEqual([false, false])
+    expect(others.textContent).not.toContain('Larkfield')
+    fireEvent.click(within(screen.getByRole('group', { name: 'How the bill went' })).getByRole('button', { name: 'Mailed' }))
+    // One bill until one is ticked. Then the button counts what it will record.
+    expect(screen.getByRole('button', { name: 'Record how it went' })).toBeTruthy()
+    fireEvent.click(boxes[0]!)
+    fireEvent.click(boxes[1]!)
+    const go = screen.getByRole('button', { name: 'Record how 3 bills went' }) as HTMLButtonElement
+    // One of the three is refused. The other two save, each its own record, on the day and to the person the form says.
+    io.refuseBill = B
+    fireEvent.click(go)
+    await waitFor(() => expect(io.filed).toHaveLength(2))
+    expect((io.filed as Array<{ source: { id: string } }>).map((f) => f.source.id)).toEqual([A, C])
+    expect(io.filed[1]).toMatchObject({ kind: 'bill_by_hand', how: 'mail', recipientName: 'Sable Ridge Builders', sourceSnapshot: { how: 'mailed', went_on: '2026-11-09' } })
+    await screen.findByText('Recorded 2 bills. 1 did not record.')
+    // The refused bill stays on the strip, named with its reason.
+    expect(screen.getByTestId('bills-sent-not-recorded-head').textContent).toBe('1 bill did not record. It stays here with the reason.')
+    const stayed = screen.getAllByTestId('bills-sent-not-recorded')
+    expect(stayed).toHaveLength(1)
+    expect(stayed[0]!.textContent).toBe('The record was not saved. You don\'t have access to this record.')
+    expect(stayed[0]!.closest('[data-testid="bills-sent-gap"]')?.textContent).toContain('Billed Fri, Nov 6')
   })
 
   const GAP_BILL = 'dddddddd-4444-4444-8444-444444444444'

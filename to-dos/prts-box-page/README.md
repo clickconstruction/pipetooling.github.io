@@ -116,7 +116,7 @@ What a web app cannot do, so the design does not try: Brother's b-PAC kit is Win
 
 **The experience, step by step.**
 
-*At the desk, the first time.* Jobs → Materials → Labels. Above the labels, two chips: **Sheet** and **Tape**. Press Tape and the preview turns into one strip per box: the QR on the left, the stencil large beside it, the code with its dash and the words *Scan for what is inside* underneath. Tick the boxes to print or keep them all. Press **Print 6 tape labels**. The browser's print window opens. Pick the Brother printer, pick the 24 mm paper, set margins to none, press Print. The printer prints the strips one after another and cuts between them. The chip the office picked is remembered on that computer.
+*At the desk, the first time.* Jobs → Materials → Labels. Above the labels, two chips: **Sheet** and **Tape**. Press Tape and the preview turns into one strip per box: the QR on the left, the stencil large beside it, the code with its dash underneath (since v2.7373 on its own line under `PRTS.CO/B/`, and the words *Scan for what is inside* are gone, at Taunya's ask of 2026-11-15). Tick the boxes to print or keep them all. Press **Print 6 tape labels**. The browser's print window opens. Pick the Brother printer, pick the 24 mm paper, set margins to none, press Print. The printer prints the strips one after another and cuts between them. The chip the office picked is remembered on that computer.
 
 *At the desk, every time after.* Press Tape is already on. Press **Print N tape labels**, press Print. The browser remembers the printer and the paper for the site, so the print window opens ready. Two presses from the page to the tape.
 

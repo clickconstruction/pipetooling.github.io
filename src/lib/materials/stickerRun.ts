@@ -3,7 +3,7 @@
  * sticker prints, for a run of stickers minted before their boxes. A sticker is a code to scan and a number to read
  * (`stickers.ts`); `mint_sticker_run` inserts the run as the caller and its triggers number the block and make the
  * stickers (`20261113020000_box_stickers.sql`). The strip is the tape label's own: the QR of `HTTPS://PRTS.CO/B/<CODE>`,
- * the number where a box's stencil goes, the dashed address and *Scan for what is inside*. Pure: the reads and the
+ * the number where a box's stencil goes and the dashed address on two lines. Pure: the reads and the
  * mint are `stickerRunsIo.ts`, the window `PrintStickersModal.tsx`, the fold `StickerRunsFold.tsx`.
  */
 import { countedLabel } from '../batchWords'
@@ -11,7 +11,7 @@ import { isOfficeRole } from '../doorRoles'
 import { csvEscapeField } from '../bids/bidCsvExport'
 import { BOX_LINK_HOST, BOX_LINK_SCHEME, dashedCode } from './labels'
 import { stickerNumberWords, stickerRangeWords, stickerRunCounts, type StickerCountRow, type StickerRunCounts } from './stickers'
-import { clampTapeCopies, TAPE_COPIES_MAX, TAPE_WORDS } from './tapeLabel'
+import { clampTapeCopies, TAPE_COPIES_MAX } from './tapeLabel'
 
 /** The press on the job's On site strip and the Materials strip, and the window's title. */
 export const PRINT_STICKERS_LABEL = 'Print blank stickers'
@@ -173,11 +173,12 @@ export type StickerStrip = {
   id: string
   /** Large: the number as printed, `0147`. */
   stencil: string
-  /** Under it: `PRTS.CO/B/4F2A-9C18`. */
+  /** Under it, on two lines: `PRTS.CO/B/` and `4F2A-9C18`. */
   address: string
   /** What the QR carries: `HTTPS://PRTS.CO/B/4F2A9C18`. */
   value: string
-  words: string
+  /** A line of words under the address; the test strip alone has one. */
+  words?: string
 }
 
 /** The address the QR carries for a code, as `boxUrl` builds a box's: the scheme, the short host and the code, in capitals. */
@@ -191,7 +192,7 @@ export function stickerAddressWords(code: string): string {
 }
 
 export function stickerStrip(s: MintedSticker): StickerStrip {
-  return { id: s.id, stencil: stickerNumberWords(s.number), address: stickerAddressWords(s.code), value: stickerUrl(s.code), words: TAPE_WORDS }
+  return { id: s.id, stencil: stickerNumberWords(s.number), address: stickerAddressWords(s.code), value: stickerUrl(s.code) }
 }
 
 /**

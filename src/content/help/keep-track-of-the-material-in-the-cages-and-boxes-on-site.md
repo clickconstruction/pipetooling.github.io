@@ -126,7 +126,7 @@ Under the boxes, a line counts the job's stickers not yet on a box. Scan one to 
 
 ## Print a tape label
 
-The Labels window asks first what the labels print on. Pick **Brother tape** for the P-touch, or **Paper sheet** for any printer. Each box becomes one strip of tape with the QR, the stencil and the code.
+The Labels window asks first what the labels print on. Pick **Brother tape** for the P-touch, or **Paper sheet** for any printer. Each box becomes one strip of tape with the QR, the stencil and the code. The address prints under the stencil on two lines. The second line is the box's code. A short name makes a short strip, so a run uses less tape.
 
 A label prints the letter and number alone. A box named G12 COPPER 90 prints as G12, so the label stays true when the box holds something else. A name with no letter and number prints whole. A line under the boxes says which labels print shorter.
 

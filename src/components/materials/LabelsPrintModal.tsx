@@ -2,8 +2,9 @@
  * Print labels (punch list #209; its own file since v2.6801, punch list #294): the window the office prints a job's
  * box labels from, portalled to <body> and printed alone at full size (`printRootCss`, v2.6432). Two formats, remembered
  * on the device: **Sheet**, one Letter page per box with the stencil, the QR and the ruled lines to write on; **Tape**,
- * one strip per box at the tape's size for a Brother P-touch through the printer's own driver, the QR, the stencil, the
- * code with its dash and *Scan for what is inside*. A tick leaves a box out; the press names its count. **Export the
+ * one strip per box at the tape's size for a Brother P-touch through the printer's own driver, the QR, the stencil and
+ * the address on two lines, `PRTS.CO/B/` then the code with its dash (Taunya's ask of 2026-11-15: no line of words
+ * under it, and a strip as short as its name allows). A tick leaves a box out; the press names its count. **Export the
  * labels as a CSV** (v2.6800) writes one row per box for Brother's P-touch Editor.
  *
  * Since punch list #304 the window's first choice is what the labels print on, named: **Paper sheet** or **Brother
@@ -40,7 +41,8 @@ import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink
 import { formatErrorMessage } from '../../utils/errorHandling'
 import TapeStripBitmap from './TapeStripBitmap'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
-import { LABEL_OUTPUTS, TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, TAPE_WORDS, clampTapeCopies, isTapeWidth, labelCountWords, repeatEach, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
+import { LABEL_OUTPUTS, TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, labelCountWords, longestNameChars, repeatEach, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
+import { tapeAddressLines } from '../../lib/materials/tapeStrip'
 
 const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
@@ -91,7 +93,6 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   }, [testOnly])
   const tape = format === 'tape'
   const copies = tape ? copiesState : 1
-  const layout = tapeLayout(width)
   // Straight to the P-touch over USB (v2.6865): where the browser can, tape goes that way unless the print window is asked for.
   const usbHere = useMemo(() => ptouchUsbAvailable(), [])
   const [viaWindow, setViaWindow] = useState(false)
@@ -155,6 +156,9 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   /** What each label prints in large type (v2.7195): the letters and number alone, read against every box of the job so two labels never read the same. */
   const printNames = useMemo(() => labelPrintNames(containers), [containers])
   const shortNote = shortenedLabelsNote(printed, printNames)
+  /** The print window cuts every strip of a run to one length: what the run's longest name needs. */
+  const nameChars = longestNameChars(printed.map((c) => labelPrintName(printNames, c)))
+  const layout = tapeLayout(width, nameChars)
   /** The ticked boxes, or the first alone, sent to the printer one strip at a time. A strip that fails stops the run and says how many went. */
   const printDirect = async (test: boolean) => {
     if (!link || dead) return
@@ -215,7 +219,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   return createPortal(
     <div className="on-site-labels" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
       {/* Printing draws the labels alone at full size. The window sits on <body> (a portal) and print takes everything else on <body> out of the layout (lib/printRoot.ts), so the page behind can neither show on the paper nor shrink it, and every label prints (v2.6432). The tape's rules come after, so its @page wins. */}
-      <style>{`${printRootCss('on-site-labels')} @media print { .on-site-labels-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-labels-chrome, .on-site-labels-pick { display: none !important; } .on-site-labels-list { display: block !important; } .on-site-label { break-inside: avoid; page-break-inside: avoid; border-radius: 0 !important; } .on-site-label + .on-site-label { break-before: page; page-break-before: always; } .on-site-tape-copy { display: grid !important; } }${tape ? ` ${tapePrintCss(width, 'on-site-tape')}` : ''}`}</style>
+      <style>{`${printRootCss('on-site-labels')} @media print { .on-site-labels-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-labels-chrome, .on-site-labels-pick { display: none !important; } .on-site-labels-list { display: block !important; } .on-site-label { break-inside: avoid; page-break-inside: avoid; border-radius: 0 !important; } .on-site-label + .on-site-label { break-before: page; page-break-before: always; } .on-site-tape-copy { display: grid !important; } }${tape ? ` ${tapePrintCss(width, 'on-site-tape', nameChars)}` : ''}`}</style>
       <div role="dialog" aria-modal="true" aria-label={one ? `Print the label for ${one.label}` : 'Print labels'} className="on-site-labels-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="on-site-labels-chrome" style={{ display: 'grid', gap: '0.6rem', marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
@@ -334,7 +338,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
             const kind = c.kind === 'box' ? 'box' : c.kind === 'cage' ? 'cage' : 'pile'
             if (direct) {
               // The strip at the printer's own dots: what is on the screen is what prints.
-              return <TapeStripBitmap key={c.id} id={c.id} stencil={labelPrintName(printNames, c)} address={boxAddressWords(c.id).toUpperCase()} value={boxUrl(c.id)} words={TAPE_WORDS} dots={ptouchTapeDots(width) ?? 128} onDrawn={onStripDrawn} />
+              return <TapeStripBitmap key={c.id} id={c.id} stencil={labelPrintName(printNames, c)} address={boxAddressWords(c.id).toUpperCase()} value={boxUrl(c.id)} dots={ptouchTapeDots(width) ?? 128} onDrawn={onStripDrawn} />
             }
             if (tape) {
               const strip = (copy: number) => (
@@ -342,8 +346,9 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
                   <QRCodeSVG value={boxUrl(c.id)} size={96} level="M" bgColor="#ffffff" fgColor="#000000" marginSize={4} style={{ width: `${layout.qrMm}mm`, height: `${layout.qrMm}mm`, display: 'block' }} />
                   <div style={{ minWidth: 0, display: 'grid', alignContent: 'center' }}>
                     <div style={{ fontSize: `${layout.stencilMm}mm`, lineHeight: 1, fontWeight: 900, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelPrintName(printNames, c)}</div>
-                    <div style={{ fontSize: `${layout.codeMm}mm`, lineHeight: 1.1, fontFamily: 'ui-monospace, Menlo, monospace', marginTop: `${layout.padMm}mm` }}>{boxAddressWords(c.id).toUpperCase()}</div>
-                    <div style={{ fontSize: `${layout.wordsMm}mm`, lineHeight: 1.1 }}>{TAPE_WORDS}</div>
+                    {tapeAddressLines(boxAddressWords(c.id).toUpperCase()).map((line, i) => (
+                      <div key={line} data-testid="labels-tape-address-line" style={{ fontSize: `${layout.codeMm}mm`, lineHeight: 1.1, fontFamily: 'ui-monospace, Menlo, monospace', whiteSpace: 'nowrap', ...(i === 0 ? { marginTop: `${layout.padMm}mm` } : {}) }}>{line}</div>
+                    ))}
                   </div>
                 </div>
               )

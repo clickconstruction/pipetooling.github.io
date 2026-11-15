@@ -35,6 +35,7 @@
  * went. The bill's number stays on the bill's record, where the whole line leads.
  */
 import { appTzWallTimeMs, companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
+import { batchOutcomeWords, countedLabel, type BatchOutcome } from '../batchWords'
 import { escapeCsvField } from '../domTableToCsv'
 import { formatCurrency } from '../format'
 import { canReadSentCopies, sentKindWords, type SentCopy, type SentFiling } from '../sent/sentCopies'
@@ -1059,6 +1060,32 @@ export function byHandDayPicks(billedYmd: string, todayYmd: string): ByHandDayPi
   }
   picks.push({ ymd: todayYmd, label: 'Today', short: 'Today' })
   return picks
+}
+
+/**
+ * The other bills with no send on record for the same person as the form's bill (punch list #340, R2), in the
+ * strip's own order. The form offers them to tick, so bills handed over together are recorded in one press, each
+ * with its own record. The person is the customer's name as the strip writes it; a bill with no name has no others.
+ */
+export function byHandOthers(gap: Pick<BillsSentGap, 'billId' | 'payer'>, gaps: ReadonlyArray<BillsSentGap>): BillsSentGap[] {
+  const who = gap.payer.trim().toLowerCase()
+  if (!who) return []
+  return gaps.filter((g) => g.billId !== gap.billId && g.payer.trim().toLowerCase() === who)
+}
+
+/** Over the bills to tick: *2 more bills to Harlan Voss have no send on record.* */
+export function byHandOthersHeading(n: number, payer: string): string {
+  return n === 1 ? `1 more bill to ${payer} has no send on record.` : `${n} more bills to ${payer} have no send on record.`
+}
+
+/** The form's button, counting what it will record: *Record how it went* for one bill, *Record how 3 bills went* for more. */
+export function byHandRecordLabel(n: number): string {
+  return n <= 1 ? 'Record how it went' : `${countedLabel('Record how', n, 'bill')} went`
+}
+
+/** After a press that recorded several bills: what took and what did not, in the batch's own words. */
+export function byHandOutcome(done: number, failed: number): BatchOutcome {
+  return batchOutcomeWords({ verb: 'record', past: 'recorded', done, failed, noun: 'bill' })
 }
 
 /** What the form still needs, as one sentence; '' when the record can be saved. */
