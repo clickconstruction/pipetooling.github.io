@@ -50,7 +50,7 @@ A new job saves, and the contract question is answered. Then a second question a
 
 **None needed…** asks why first. Tap a reason such as {{chip:gray|Service call}}, or type your own. Then press {{button:blue|Mark 3 houses not needed}}. Every house reads not needed with that reason, so nothing signals.
 
-Pressed it by mistake? Open the job and tap the {{chip:gray|not needed}} chip. **Change this…** marks the account opened or takes a new reason. **Take the mark off** puts the house back to none yet. Both are for the office.
+Pressed it by mistake? Open the job and tap the {{chip:gray|not needed}} chip. **Change this…** marks the account opened or takes a new reason. **Take the mark off** puts the house back to none yet. The two presses are for the office.
 
 An older job may read *Marked not needed when the job was made. No reason was given.* That answer came from one press, before the question asked why.
 
