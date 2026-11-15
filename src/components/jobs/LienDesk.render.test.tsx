@@ -621,6 +621,31 @@ describe('LienDesk', () => {
     expect(document.querySelector('[data-lien-next-up-remind]')).toBeNull()
   })
 
+  it('a chip on the Board, pointed at, says which job it is before any press: its name, address, customer and GC, and where its notice stands (v2.7381)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
+    await settle()
+    const chip = document.querySelector('[data-lien-board-chip="j650"]') as HTMLElement
+    expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull()
+    fireEvent.mouseEnter(chip)
+    const card = document.querySelector('[data-lien-board-chip-card]') as HTMLElement
+    expect(card.querySelector('[data-lien-board-card-title]')!.textContent).toBe('650 · AXO Schertz')
+    expect(Array.from(card.querySelectorAll('[data-lien-board-card-fact]')).map((f) => [f.getAttribute('data-lien-board-card-fact'), f.textContent])).toEqual([
+      ['address', '1204 Elwick Rd, Schertz, TX'],
+      ['customer', 'AXO Schertz'],
+      ['gc', 'Lowbeck Contracting'],
+    ])
+    // Its status is the Board's own: the column, the bin, and the one thing to know as its To do row says it.
+    const status = card.querySelector('[data-lien-board-card-status]') as HTMLElement
+    expect(status.textContent).toContain('Monthly noticeNeeds the owner')
+    expect(card.querySelector('[data-lien-board-card-detail]')!.textContent).toBe((document.querySelector('[data-lien-next-up-row="notice:j650"] [data-lien-next-up-detail]') as HTMLElement).textContent!.replace(/^ · /, ''))
+    expect(card.querySelector('[data-lien-board-card-door]')!.textContent).toMatch(/^Press to open /)
+    // Pointing opens nothing: To do is still the view, with no window over it.
+    expect(document.querySelector('[data-lien-do-now]')).not.toBeNull()
+    expect(screen.queryByTestId('lien-paper-property-window')).toBeNull()
+    fireEvent.mouseLeave(chip)
+    await waitFor(() => expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull())
+  })
+
   it('To do on a computer pins the Board and scrolls the list; stacked, the Board and the list scroll as one page and a pressed bin brings its rows up (punch list #352, PR 0; the Board since v2.7332)', async () => {
     const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
@@ -1076,7 +1101,8 @@ describe('LienDesk', () => {
     // Needs the owner → the property record, opened at the owner, over To do.
     let desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [], true)} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
     await settle()
-    expect(chip('j650', 'notice').getAttribute('title')).toContain('Open the property record at the owner')
+    // The chip's name still says where its press goes; since v2.7381 the card says it on hover, in place of the browser's tip.
+    expect(chip('j650', 'notice').getAttribute('aria-label')).toContain('Open the property record at the owner')
     fireEvent.click(chip('j650', 'notice'))
     expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
     expect(onZoomAddress).not.toHaveBeenCalled()
@@ -1096,7 +1122,7 @@ describe('LienDesk', () => {
     // To send → the notice on By paper, as an entry of its own through the page.
     desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
     await settle()
-    expect(chip('j650', 'notice').getAttribute('title')).toContain('Open the notice')
+    expect(chip('j650', 'notice').getAttribute('aria-label')).toContain('Open the notice')
     fireEvent.click(chip('j650', 'notice'))
     await settle()
     expect(onZoomAddress).toHaveBeenCalledWith({ kind: 'notice', job: 'j650', pile: 'to_draft' })
@@ -1107,7 +1133,7 @@ describe('LienDesk', () => {
     const printed = { id: 'it-p', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T14:20:00Z', approval_mode: 'manual', printed_at: '2026-09-14T15:00:00Z', created_at: '2026-09-14T14:00:00Z', voided_at: null, sent_at: null, sent_filing_id: null, hold_reason: null, hold_until: null, hold_note: null } as unknown as LienDeskItemRow
     desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [printed], true)} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
     await settle()
-    expect(chip('j650', 'notice').getAttribute('title')).toContain('Open the run on this envelope')
+    expect(chip('j650', 'notice').getAttribute('aria-label')).toContain('Open the run on this envelope')
     fireEvent.click(chip('j650', 'notice'))
     expect(await screen.findByRole('dialog', { name: /Record the mailing|Send the run/ })).toBeTruthy()
     desk.unmount()

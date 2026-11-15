@@ -119,6 +119,7 @@ import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../../lib/jobs/lienDoNowFrame'
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
+import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienReminderOutcome, lienReminderPlan, lienReminderWords } from '../../lib/jobs/lienLeaderReminder'
 import LienDoNowBar from './LienDoNowBar'
 import { useLienDoNowRoom } from './useLienDoNowRoom'
@@ -949,6 +950,18 @@ export default function LienDesk({
       return lienAffidavitNoticeTag({ isSub: entry.isSub, noticed: Boolean(entry.gates.find((g) => g.key === 'notice')?.ok), sentOn: lienAffidavitOwnerSends(data.filingsByJob[row.jobId]).map((send) => send.sentOn) })
     },
     [data],
+  )
+  // A chip pointed at says which job it is before the press takes anyone anywhere (v2.7381, Taunya's ask of 2026-11-15):
+  // the job's name, address and customer, and its paper's status, with the one thing to know as its To do row says it.
+  const chipCardFor = useCallback(
+    (chip: LienBoardChip) => {
+      if (!data || !board) return null
+      const job = data.jobsById[chip.jobId]
+      const gcId = chip.gcId ?? job?.gc_customer_id ?? null
+      const row = nextUpRows.find((r) => r.key === `${chip.kind}:${chip.jobId}`)
+      return lienBoardChipCard(chip, board, { todayYmd, jobName: job?.job_name, address: job?.job_address, customer: job?.customer_name, gc: gcId ? data.gcsById[gcId]?.name : null, detail: row ? (row.detail ?? row.sub) : null })
+    },
+    [data, board, nextUpRows, todayYmd],
   )
   const riskLabel = useCallback(
     (n: number) => {
@@ -4583,7 +4596,7 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} /> : <div />}
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} /> : <div />}
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>

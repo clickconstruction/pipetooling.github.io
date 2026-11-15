@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -36,9 +36,19 @@ A chip is a job's number. Its colour says how soon its day is.
 - Purple means the paper waits on the leader.
 - Grey means the day is later.
 
-A chip with a red mark after its number will not make its day as it stands. It has more stages to pass than working days left. Point at a chip to read the job's name, its GC and what it owes.
+A chip with a red mark after its number will not make its day as it stands. It has more stages to pass than working days left.
 
 A job that needs its owner stands in both columns. Point at either chip and both light up. One press on the owner clears both.
+
+## Point at a chip
+
+A chip is only a number. Point at it and a card opens beside it. Nothing is pressed yet.
+
+The card says which job it is. It gives the job's name, its address and its customer. It names the GC when the GC is not the customer.
+
+Then it says where the paper stands. It names the column and the bin, like *Monthly notice* and **To send**. It gives the one thing to know, the day and how long is left. It says when the paper will not make its day, and what the job still owes. A job with a paper in the other column says where that one stands too.
+
+The last line says where a press will take you. Move the pointer away and the card goes. The Tab key reaches a chip and opens its card the same way. A phone has no pointer, so it shows no card.
 
 ## Press a chip
 
