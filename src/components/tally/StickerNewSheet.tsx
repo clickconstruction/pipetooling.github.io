@@ -127,7 +127,10 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
     return m
   }, [stickersByBox, otherStickers])
   const boxes: MatchBox[] = useMemo(() => matchBoxes({ hereJobId: jobId, jobs: [hereJob, ...(Array.isArray(others) ? others : [])], stickersByBox: byBox }), [jobId, hereJob, others, byBox])
-  const [branch, setBranch] = useState<StickerBranch>(() => defaultBranch(matchBoxes({ hereJobId: jobId, jobs: [hereJob], stickersByBox })))
+  /** The branch pressed; until a press the sheet opens on whichever fits the boxes as they load (the store's rows land a moment after the sheet mounts). */
+  const [branchPick, setBranchPick] = useState<StickerBranch | null>(null)
+  const branch: StickerBranch = branchPick ?? defaultBranch(boxes)
+  const setBranch = setBranchPick
   const [query, setQuery] = useState('')
   const [pickedId, setPickedId] = useState<string | null>(null)
   const list = useMemo(() => matchList(boxes, query), [boxes, query])
