@@ -113,13 +113,13 @@ describe('RecordQuestions on a job', () => {
 })
 
 describe('RecordQuestions on a bid', () => {
-  it('draws the bid title, no mark, and the empty state with its press', async () => {
+  it('draws the bid title, no mark, and none yet beside the presses with no second empty line (v2.7326)', async () => {
     const io = makeIo([])
     renderWithProviders(<RecordQuestions record={{ kind: 'bid', bid: BID }} role="estimator" io={io} />)
     expect(await screen.findByText('Questions on this bid')).toBeTruthy()
     expect(io.read).toHaveBeenCalledWith({ kind: 'bid', id: 'b1' }, null)
     await waitFor(() => expect(screen.getByTestId('record-questions-meta').textContent).toBe('none yet'))
-    expect(screen.getByText(/Nothing asked about this bid yet\./)).toBeTruthy()
+    expect(screen.queryByText(/Nothing asked about this bid yet\./)).toBeNull()
     expect(screen.queryByTestId('question-asked-on')).toBeNull()
     fireEvent.click(screen.getAllByRole('button', { name: 'Ask the estimators' })[0]!)
     const sheet = await screen.findByRole('dialog', { name: 'Ask a question' })
