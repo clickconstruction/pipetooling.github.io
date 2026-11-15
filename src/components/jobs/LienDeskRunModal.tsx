@@ -35,6 +35,7 @@ import LienRunEnvelopeGlyph from './LienRunEnvelopeGlyph'
 import { runEnvelopeChip, runEnvelopeStage, type RunEnvelopeStageState } from '../../lib/jobs/runEnvelopeStage'
 import { lienRunBatchPlans, lienRunChecklistRows, lienRunFootWords, lienRunSheetHtml, LIEN_RUN_SHEET_CSS, type LienRunRow, type LienRunTickPrinted } from '../../lib/jobs/lienRunChecklist'
 import LienRunChecklist from './LienRunChecklist'
+import LienRunScanPress from './LienRunScanPress'
 import { lienRunMailCode } from '../../lib/jobs/lienHelpGuideCode'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { runLaneOfEnvelope, runStageLabels, type RunLane } from '../../lib/jobs/runEnvelopeStage'
@@ -850,6 +851,8 @@ export default function LienDeskRunModal({
             onMarkPrinted={markPrintedByHand}
             onOpenSign={(row) => setPenOpen(`item:${row.itemId}`)}
             onTracking={trackingFor}
+            // Scan › on a phone (v2.7331): the camera reads the receipt's barcode into this envelope's box; a refusal leaves typing as it was.
+            besideBox={isMobile ? (row, key) => <LienRunScanPress label={`${row.label} — ${key === 'owner' ? 'owner' : 'GC'}`} onRead={(value) => trackingFor(row, key, value)} /> : undefined}
             paneFor={(row) => (penOpen === `item:${row.itemId}` ? penPaneFor(penOpen, true) : null)}
             focusMailItemId={focusMailItemId}
           />
