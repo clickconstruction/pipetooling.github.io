@@ -282,6 +282,24 @@ describe('PayCalendarModal', () => {
       // Switching back to the payer shows the payer's own calendar, untouched.
     })
 
+    it('scores the job’s side on that job’s own payments once it has two, and says whose record it is until then (punch list #341, PR 3)', async () => {
+      // Two of the four payments were for this job, and both landed by the 10th. The payer's side reads all four.
+      io.loadPayerReceipts.mockResolvedValue(RECEIPTS.map((r, i) => (i === 0 || i === 3 ? { ...r, jobId: 'job-2' } : { ...r, jobId: 'job-9' })))
+      open({ job: JOB })
+      await waitFor(() => expect(record()).toContain('Their last 4 payments landed 0 to 14 days after the due day.'))
+      expect(record()).toContain('Their record against this.')
+      fireEvent.click(scope('Only 1412 · Larkfield retail shell'))
+      expect(record()).toBe('This job’s record against this. This job’s last 2 payments landed 0 to 6 days after the due day. Usually about 3. 1 of 2 were on time.')
+    })
+
+    it('says the record is the payer’s on other jobs while the job has no payment of its own', async () => {
+      io.loadPayerReceipts.mockResolvedValue(RECEIPTS.map((r) => ({ ...r, jobId: 'job-9' })))
+      open({ job: JOB })
+      await waitFor(() => expect(record()).toContain('Their last 4 payments'))
+      fireEvent.click(scope('Only 1412 · Larkfield retail shell'))
+      expect(record()).toBe('Their record against this. No payment on this job yet. The record is Larkfield Construction’s on other jobs. Their last 4 payments landed 0 to 14 days after the due day. Usually about 6. 1 of 4 were on time.')
+    })
+
     it('switches the calendar off for the job', async () => {
       io.loadPayerPayCalendars.mockResolvedValue([STORED])
       const { onClose } = open({ job: JOB })

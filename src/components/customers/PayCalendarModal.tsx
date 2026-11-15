@@ -15,12 +15,12 @@ import {
   PAY_CALENDAR_CLAUSE_MAX,
   PAY_CALENDAR_DEFAULT,
   PAY_CALENDAR_WORDS_MAX,
-  latenessAgainst,
-  latenessWords,
   payCalendarPreview,
   payCalendarShort,
   payCalendarWords,
   normalizePayCalendar,
+  recordFor,
+  recordWords,
   type PayCalendar,
   type PayCalendarReceipt,
   type PayCalendarRow,
@@ -203,12 +203,13 @@ export default function PayCalendarModal({
 
   const todayYmd = todayYmdInAppTz()
   const preview = useMemo(() => payCalendarPreview(form, todayYmd), [form, todayYmd])
-  const lateness = useMemo(() => latenessAgainst(receipts, form), [receipts, form])
   const ready = canSet && loaded && !loadError && !saving
   const onJob = scope === 'job' && hasJob
   const editable = ready && !(onJob && jobOff)
   const set = (patch: Partial<PayCalendar>) => setForm((f) => ({ ...f, ...patch }))
   const stored = onJob ? jobRow : payerRow
+  // On a job's side the record is that job's own payments once it has two (punch list #341, PR 3); until then, and on the payer's side, the payer's.
+  const record = useMemo(() => recordFor(receipts, { calendar: form, from: onJob && jobId ? 'job' : 'payer', payerCalendar: payerRow?.calendar ?? null, jobId: onJob ? jobId : null }), [receipts, form, onJob, jobId, payerRow])
 
   const finish = (line: string, tone: 'success' | 'warning' | 'error') => {
     showToast(line, tone)
@@ -378,8 +379,8 @@ export default function PayCalendarModal({
               {preview ? <div>{preview.dayLate}</div> : null}
             </div>
             <div data-testid="pay-calendar-record" style={{ ...boxStyle, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
-              <span style={{ fontWeight: 700 }}>Their record against this. </span>
-              {loaded ? latenessWords(lateness) : 'Reading their payments…'}
+              <span style={{ fontWeight: 700 }}>{record?.of === 'job' ? 'This job’s record against this. ' : 'Their record against this. '}</span>
+              {loaded ? recordWords(record, payerName) : 'Reading their payments…'}
             </div>
           </>
         )}

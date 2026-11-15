@@ -73,6 +73,7 @@ describe('invoiceLedgerRow — open bill', () => {
       dueYmd: over.dueYmd ?? '2026-12-10',
       daysPastDue: over.daysPastDue ?? 0,
       lateness: null,
+      record: null,
       calendar: null,
       calendarOwn: false,
       clockYmd: '2026-11-03',

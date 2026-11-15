@@ -10,7 +10,7 @@ import {
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
 import { buildMoneyWaiting, moneyWaitingBasis, moneyWaitingInKindLine, moneyWaitingLead, openBillsForCustomers, type MoneyWaitingRow, type OpenBill, type OpenBillTone } from '../../lib/jobs/moneyWaiting'
-import { calendarBillWords, payCalendarWords, type PayCalendarIndex } from '../../lib/jobs/payCalendar'
+import { calendarBillWords, payCalendarWords, payerCalendarLead, type PayCalendarIndex } from '../../lib/jobs/payCalendar'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { buildPaySpeedsPayerFocus, type PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
@@ -638,7 +638,7 @@ export default function PaySpeedsBreakdownModal({
                         aria-expanded={expanded}
                         title={
                           (c.calendar && c.pastExpectedDays != null
-                            ? `${c.name} pays on a calendar. ${payCalendarWords(c.calendar)} A bill of theirs is ${c.pastExpectedDays}d past the day it was expected`
+                            ? `${payerCalendarLead(c.name, c.calendarOwn === true)} ${payCalendarWords(c.calendar)} A bill of theirs is ${c.pastExpectedDays}d past the day it was expected`
                             : `${c.name} — oldest open bill has waited ${c.oldestWaitDays}d (` +
                               (c.ownMedianDays != null ? `they usually pay in ~${c.ownMedianDays}d` : `no history of their own — company pays in ~${money.companyMedianDays}d`) +
                               ')') +

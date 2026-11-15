@@ -2,7 +2,7 @@
 name: "A job's own pay terms: the override is built, the door to it is hidden, and four kinds of terms have no home"
 number: 341
 group: gated
-status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · PRs 3 to 5 wait on the owner's calls
+status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · Taunya's *build the entire PR train* 2026-11-15 · PR 3, the job's own record, built that day (v2.7339) on the card's first pick for call 2 · PRs 4 and 5 are next
 summary: >
   The owner asked what it would take to set one job's payment terms so they win over its GC's or its
   customer's. Most of it shipped with the Pay calendar (#323): a job can carry its own calendar, or
@@ -12,11 +12,11 @@ summary: >
   sheet. No row says a job is on its own calendar, and a job switched off has no door back. Past
   that, four kinds of terms have no home: one bill due on a named date, a number of days after the
   bill, a real date for pay when paid, and dated draws not yet billed.
-next: the owner's calls 2 to 4. Someone sets the first real calendars, since none is set, and the first real save on a job is the live walk.
-size: M as a train of five (S · S · S · M · M); left: PR 3 (S), PR 4 (M), PR 5 (M)
-blocker: the owner's word. PRs 4 and 5 each carry a migration and wait on calls 3 and 4.
-opinion: build PR 3 next, it is small and keeps a new job's due day honest; hold PRs 4 and 5 until a real contract needs them
-ver: v2.7036 · v2.7039 · v2.7040 · v2.7127 · v2.7151 · v2.7153
+next: PR 4, one bill's own due day, then PR 5, a number of days after the bill, each on the card's plan since calls 3 and 4 are unanswered. The owner can still change call 2. Someone sets the first real calendars, since none is set, and the first real save on a job is the live walk.
+size: M as a train of five (S · S · S · M · M); left: PR 4 (M), PR 5 (M)
+blocker: none for the build. PRs 4 and 5 each carry a migration. The live walk waits on the first real calendar.
+opinion: Taunya picked the whole train, so PRs 4 and 5 are built as carded; the owner's calls 2 to 4 stay open and each fragment says which pick it stood on
+ver: v2.7036 · v2.7039 · v2.7040 · v2.7127 · v2.7151 · v2.7153 · v2.7339
 ---
 
 # A job's own pay terms (#341)
@@ -120,19 +120,18 @@ Who may set it: the office roles, checked again on the server (`can_write_paymen
 | Cutoffs coming | `cutoffsComing.ts` | Yes, on its own line. The line names the payer and not the job. |
 | The job window's bills | `useJobBilledExpectedPay.ts` | Yes |
 | Call mode, and the count of calls beside it | `paymentChase.ts` | Yes |
-| Money waiting and the Pay speeds window's bills | `moneyWaiting.ts` | Yes for each bill. The payer's summary line reads the payer's alone. |
-| Dashboard Accounts Receivable | `arCustomerRollup.ts` | Yes for each bill. The customer's summary line reads the payer's alone. |
+| Money waiting and the Pay speeds window's bills | `moneyWaiting.ts` | Yes for each bill. Since v2.7339 the payer's summary line reads its bills. |
+| Dashboard Accounts Receivable | `arCustomerRollup.ts` | Yes for each bill. Since v2.7339 the customer's summary line reads its bills. |
 | Lien runway and the Lien desk | `lienCalendarRows.ts` | Yes |
 | Bill Customer's cutoff line | `BillCustomerPayCutoffLine.tsx` | Yes |
 
 Two things do not follow the job:
 
-- **The record.** The lateness under a due day replays the payer's payments on **all** their jobs
-  through this job's calendar. A big job on its own terms borrows a record made under other terms.
-  See gap 4.
-- **The two summary lines** named in the table. A payer with no calendar of their own, and one job
-  that has one, reads as a pace payer on its summary line while that job's bill is judged by its
-  due day.
+- **The record**, until v2.7339. The lateness under a due day replayed the payer's payments on
+  **all** their jobs through this job's calendar. A job on its own calendar is now scored on its
+  own payments once it has two. See gap 4.
+- **The two summary lines** named in the table, until v2.7339. Each now reads the calendar of the
+  bill furthest past its day.
 
 Screens that read **no** calendar yet, the payer's or the job's. None of this is new:
 
@@ -248,9 +247,15 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
   live rows with made-up calendar reads and every write refused.
 - **Moved from PR 2 to PR 3:** the two summary lines in Money waiting and Accounts Receivable.
   They rest on whose record scores a job, which is call 2.
+- **PR 3, the job's own record**, built 2026-11-15 on Taunya's *build the entire PR train*
+  (v2.7339). A job on its own calendar is scored on that job's payments once it has two
+  (`recordFor`, `JOB_RECORD_MIN_PAYMENTS`), on its payer's until then, and the line under its due
+  day says which. The Pay calendar window says it on the job's side. The two summary lines read
+  their bills (`payerCalendarSummary`). It stands on **the first pick for call 2**, which the
+  owner has not answered: the fragment says how to put it back.
 - **Not walked:** a real save. No calendar is set on prod, so the first one set on a job is the
-  live walk.
-- PRs 3 to 5 wait on the calls below.
+  live walk. PR 3 is held by kernel tests alone.
+- PRs 4 and 5 are next, as carded.
 
 ## How to verify
 
