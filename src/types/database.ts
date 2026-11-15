@@ -20628,6 +20628,7 @@ export type Database = {
           code: string | null
           created_at: string
           created_by: string | null
+          description: string | null
           id: string
           job_id: string
           kind: string
@@ -20642,6 +20643,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
           id?: string
           job_id: string
           kind: string
@@ -20656,6 +20658,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
           id?: string
           job_id?: string
           kind?: string
