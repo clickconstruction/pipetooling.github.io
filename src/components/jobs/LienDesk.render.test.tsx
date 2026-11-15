@@ -575,7 +575,8 @@ describe('LienDesk', () => {
     const run = document.querySelector('[data-lien-next-up-row="run:printed"]') as HTMLElement
     expect(run.textContent).toContain('2 notices printed Sep 14')
     expect(document.querySelectorAll('[data-lien-next-up-act="add_tracking"]').length).toBe(0)
-    expect(screen.getByTestId('lien-step-count-notice-4').textContent).toBe('2 printed')
+    // The Board (v2.7332) counts them in In the mail, where the rail's fourth rung did.
+    expect(document.querySelector('[data-lien-board-bin="notice:in_mail"] [data-lien-board-count]')!.textContent).toBe('2')
     fireEvent.click(within(run).getByRole('button', { name: 'Take back…' }))
     await settle()
     expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('Take back the run?')
@@ -591,7 +592,7 @@ describe('LienDesk', () => {
     expect(screen.getByRole('tab', { name: /^To do/ }).textContent).toBe('To do · 0')
   })
 
-  it('To do on a computer pins the month and scrolls the list; stacked, the month and the list scroll as one page and a pressed zone brings its rows up (punch list #352, PR 0)', async () => {
+  it('To do on a computer pins the Board and scrolls the list; stacked, the Board and the list scroll as one page and a pressed bin brings its rows up (punch list #352, PR 0; the Board since v2.7332)', async () => {
     const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
     const frame = () => document.querySelector('[data-lien-do-now]') as HTMLElement
@@ -615,11 +616,11 @@ describe('LienDesk', () => {
       expect(list().getAttribute('data-scrolls')).toBe('no')
       expect(list().style.overflowY).toBe('visible')
       expect(frame().contains(list())).toBe(true)
-      // Opening the desk brings no rows up (the view tabs bring their own picked tab into view); a pressed zone does.
+      // Opening the desk brings no rows up (the view tabs bring their own picked tab into view); a pressed bin does.
       const rowsBrought = () => brought.filter((el) => el.matches('[data-lien-next-up-group], [data-lien-next-up="empty"]'))
       expect(rowsBrought()).toHaveLength(0)
-      const zone = frame().querySelector('[data-testid="lien-month-bar"] button[data-testid^="lien-month-zone-"]') as HTMLButtonElement
-      fireEvent.click(zone)
+      const bin = frame().querySelector('button[data-lien-board-bin-head="notice:to_send"]') as HTMLButtonElement
+      fireEvent.click(bin)
       await settle()
       expect(rowsBrought()).toHaveLength(1)
       expect(frame().contains(rowsBrought()[0]!)).toBe(true)
@@ -965,14 +966,28 @@ describe('LienDesk', () => {
     }
   })
 
-  it('on a phone the lien month is one line and the step rails one folded row; a computer keeps the bar and the rails (punch list #352, PR 2)', async () => {
+  it('the Board tops To do (v2.7332): two columns and four tiles on a computer, stacked on a phone, no month bar and no rails; a pressed bin narrows the list and Show every row puts it back', async () => {
     const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
-    expect(screen.getByTestId('lien-month-bar').getAttribute('data-layout')).toBeNull()
-    expect(screen.queryByTestId('lien-month-line')).toBeNull()
-    expect(document.querySelectorAll('[data-testid^="lien-month-zone-"][data-state]')).toHaveLength(5)
-    expect(screen.queryByTestId('lien-step-rails-fold')).toBeNull()
-    expect(screen.getByTestId('lien-step-rails').getAttribute('data-folded')).toBeNull()
+    expect(screen.queryByTestId('lien-month-bar')).toBeNull()
+    expect(screen.queryByTestId('lien-step-rails')).toBeNull()
+    const board = document.querySelector('[data-lien-board]') as HTMLElement
+    expect(board.getAttribute('data-lien-board-layout')).toBe('columns')
+    expect(board.querySelectorAll('[data-lien-board-tile]')).toHaveLength(4)
+    expect(Array.from(board.querySelectorAll('[data-lien-board-column="notice"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_owner', 'to_send', 'awaiting', 'in_mail', 'sent'])
+    expect(Array.from(board.querySelectorAll('[data-lien-board-column="affidavit"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_property', 'to_send', 'awaiting', 'ready', 'filed'])
+    // J650 is one chip in the notice column, and its bin is lit as the busiest.
+    const chip = board.querySelector('[data-lien-board-chip="j650"][data-kind="notice"]') as HTMLElement
+    const bin = chip.closest('[data-lien-board-bin]') as HTMLElement
+    expect(bin.getAttribute('data-lit')).toBe('yes')
+    const binLabel = bin.querySelector('[data-lien-board-bin-head] > span')!.textContent!
+    // A pressed bin narrows the list under the Board to its jobs; the line says so; Show every row puts it back.
+    fireEvent.click(within(bin).getByRole('button', { name: new RegExp(`^${binLabel}`) }))
+    expect(bin.getAttribute('data-picked')).toBe('yes')
+    expect(screen.getByText(`Showing 1 row in ${binLabel}.`)).toBeTruthy()
+    expect(document.querySelectorAll('[data-lien-next-up-row]')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Show every row' }))
+    expect(document.querySelector('[data-lien-board-pick]')).toBeNull()
     desk.unmount()
 
     const before = window.matchMedia
@@ -980,17 +995,31 @@ describe('LienDesk', () => {
     try {
       renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" />)
       await settle()
-      expect(screen.getByTestId('lien-month-bar').getAttribute('data-layout')).toBe('line')
-      const line = screen.getByTestId('lien-month-line')
-      expect(screen.getByTestId('lien-month-line-head').textContent!.length).toBeGreaterThan(0)
-      // No zone card is drawn until the line is pressed; then all five are, in a sheet.
-      expect(document.querySelectorAll('[data-testid^="lien-month-zone-"][data-state]')).toHaveLength(0)
-      expect(screen.getByTestId('lien-step-rails').getAttribute('data-folded')).toBe('yes')
-      fireEvent.click(line)
-      const sheet = screen.getByRole('dialog', { name: 'The lien month' })
-      expect(sheet.querySelectorAll('[data-testid^="lien-month-zone-"][data-state]')).toHaveLength(5)
+      const phone = document.querySelector('[data-lien-board]') as HTMLElement
+      expect(phone.getAttribute('data-lien-board-layout')).toBe('stacked')
+      // Stacked, the crossing arrow is not drawn.
+      expect(phone.querySelectorAll('[data-lien-board-arrow][data-kind="cross"]')).toHaveLength(0)
     } finally {
       window.matchMedia = before
+    }
+  })
+
+  it('the Lien desk title is a door (v2.7332): from By paper it opens To do with the Board brought into view', async () => {
+    const brought: Element[] = []
+    const before = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element) { brought.push(this) }
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="notice" />)
+      await settle()
+      expect(document.querySelector('[data-lien-board]')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Lien desk: open To do at the Board' }))
+      await settle()
+      expect(screen.getByRole('tab', { name: /^To do/ }).getAttribute('aria-selected')).toBe('true')
+      const board = document.querySelector('[data-lien-board]') as HTMLElement
+      expect(board).toBeTruthy()
+      expect(brought.some((el) => el === board)).toBe(true)
+    } finally {
+      Element.prototype.scrollIntoView = before
     }
   })
 

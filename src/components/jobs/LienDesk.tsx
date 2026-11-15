@@ -79,8 +79,6 @@ import LienCourtesyWindow from './LienCourtesyWindow'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { COURTESY_BUTTON, COURTESY_FROM_DAY, COURTESY_RECORD_AGAIN_BUTTON, PROMISE_BUTTON, courtesyFooterSentence, courtesyMaySend, courtesyOutcomeWords, courtesyUnrecordedWords, type CourtesyFacts, type CourtesyPromise, type CourtesyRecord, type CourtesySent } from '../../lib/jobs/lienCourtesyNotice'
 import { courtesyByJobFrom } from '../../lib/jobs/lienCourtesyDesk'
-import { buildLienReminders, LIEN_REMINDERS_EMPTY } from '../../lib/jobs/lienReminders'
-import { lienNoticeTimeline, lienTimelineTodayWords, type LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
 import { loadCourtesyRecipients, sendCourtesyNotice, writeCourtesyRecord, type CourtesyRecipient } from '../../lib/jobs/lienCourtesyIo'
 import { payLinkDisplay } from '../../lib/billing/payLink'
 import type { LienDeskItemRow } from '../../lib/jobs/lienDesk'
@@ -97,12 +95,11 @@ import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
-import { lienMonthLineDue } from '../../lib/jobs/lienMonthLine'
+import { buildLienBoard, lienBoardPick, lienBoardRowInPick, lienBoardStageBins, type LienBoardBinKey } from '../../lib/jobs/lienBoard'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
 import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
-import { LienMonthBar } from './LienMonthBar'
+import LienBoard from './LienBoard'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
 import { LienStepRow } from './LienDeskSteps'
@@ -299,6 +296,12 @@ const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'read
 const isLeader = isLienLeader
 const isOffice = isLienOffice
 const canSendOnWord = canSendLienOnWord
+
+/** The job's number alone, as the Board's chips read it (v2.7332). */
+function jobNumberOf(j: LienDeskJob | undefined, jobId: string): string {
+  if (!j) return jobId.slice(0, 8)
+  return effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
+}
 
 function jobLabel(j: LienDeskJob | undefined, jobId: string): string {
   if (!j) return jobId.slice(0, 8)
@@ -810,42 +813,7 @@ export default function LienDesk({
   const courtesyByJob = useMemo(() => (data ? courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob, paymentsByJob: data.paymentsByJob, promisesByJob: data.promisesByJob, repliedAtByJob: data.courtesyRepliedAtByJob }) : {}), [data, todayYmd])
   // To do (punch list #82; Next up until v2.4630, Do now until v2.7207): the queues this desk already holds, folded into one ordered list. No read of its own.
   // The REMINDERS strip (punch list #262): every sent notice's rung from the two statuses above; the To do rail draws its counts, a rung pressed lists its names. No read of its own.
-  const reminders = useMemo(() => (data ? buildLienReminders({ courtesyByJob, letterTwoByJob: data.letterTwoByJob, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : LIEN_REMINDERS_EMPTY), [data, courtesyByJob])
-  // One sent notice's dated timeline for the step brief (PR 2 of #274): day 0 from the letter's clock, the affidavit's day, the one courtesy, the letter, the payments since the notice, today. Nothing read here.
-  const timelineFor = useCallback(
-    (jobId: string): ReadonlyArray<LienTimelineRow> | null => {
-      if (!data) return null
-      const two = data.letterTwoByJob[jobId]
-      if (!two || !two.clock) return null
-      const courtesy = courtesyByJob[jobId]
-      const aff = data.affidavits.entries.find((e) => e.jobId === jobId)
-      const entry = data.queue.entries.find((e) => e.jobId === jobId)
-      const day0 = calendarYmdInAppTzFromIso(two.clock.at)
-      const openBalance = entry?.openBalance ?? aff?.openBalance ?? 0
-      const payments = (data.paymentsByJob?.[jobId] ?? []).filter((p) => p.paidOn && p.paidOn >= day0).map((p) => ({ ymd: p.paidOn as string, amount: p.amount }))
-      const paidInFull = openBalance <= 0.005 && payments.length > 0
-      return lienNoticeTimeline({
-        todayYmd,
-        day0: { ymd: day0, why: two.clock.why },
-        lienDay: courtesy?.lienDay ?? aff?.deadline ?? null,
-        courtesySentYmd: courtesy?.lastSentAt ? calendarYmdInAppTzFromIso(courtesy.lastSentAt) : null,
-        courtesyHeld: courtesy?.state === 'held' ? courtesy.reason.replace(/\s—.*$/, '') : null,
-        letter: { state: two.state === 'paid' || two.state === 'gc_authorized' || two.state === 'owner_called' ? 'closed' : two.state, sentYmd: two.letterTwo?.sentAt ? calendarYmdInAppTzFromIso(two.letterTwo.sentAt) : null, inFlightWords: two.state === 'in_flight' ? two.words : undefined },
-        payments,
-        openBalance,
-        // The notice's own claim at mailing is not on the desk's rows; the mailed row names no amount rather than today's remainder.
-        claim: null,
-        affidavitFiled: aff?.pile === 'filed',
-        todayWords: lienTimelineTodayWords({ courtesyState: courtesy?.state ?? 'none', courtesyReason: courtesy?.reason, letterState: two.state, paidInFull, waitingForAnswer: courtesy?.waitingForAnswer }),
-        // Paying it down (PR 3 of #274): the pause's end and their promise, from the courtesy's own reading.
-        pauseUntil: courtesy?.paying?.until ?? null,
-        promisedYmd: courtesy?.paying?.promisedYmd ?? null,
-        promisedAmount: courtesy?.paying?.promise?.amount ?? null,
-      })
-    },
-    [data, courtesyByJob, todayYmd],
-  )
-  // Filed affidavits not yet served (§ 53.055): To do's record-service rows, and the lien month's copies to mail.
+  // Filed affidavits not yet served (§ 53.055): To do's record-service rows.
   const serveDue = useMemo(
     () =>
       data
@@ -881,24 +849,61 @@ export default function LienDesk({
   }, [data, authRole, authUserId, todayYmd, leaderNameFor, courtesyByJob, serveDue])
   // Whether this viewer is the leader a row's job waits on (v2.6734): the step tiles and the step card say *you* only then.
   const leadsRow = (row: LienNextUpRow): boolean => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (jobId) => data?.jobsById[jobId]?.master_user_id ?? null }, row.jobId)
-  // The lien month (punch list #235, PR 2): the five zones over the same book To do reads, drawn as the bar above the list; a pressed zone narrows the list to its work.
-  const lienMonth = useMemo(() => (data ? buildLienMonth({ todayYmd, notices: data.queue.entries, affidavits: data.affidavits.entries, courtesyByJob, serveDue, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : null), [data, todayYmd, courtesyByJob, serveDue])
-  const [monthZone, setMonthZone] = useState<LienMonthZoneKey | null>(null)
-  // To do on a phone scrolls the month, the find box and the list as one page (punch list #352, PR 0): under five
-  // stacked month cards a list that took what was left got a window 26 px tall, and no row could be reached.
-  const doNow = lienDoNowFrame(oneColumn)
+  // The Board (v2.7332, the owner's ask of 2026-11-15): the month as one picture over the list, in the place of The lien
+  // month strip (punch list #235) and Steps of each paper (v2.4631). The leader the tiles name is the master most of the
+  // desk's jobs wait on; a pressed bin narrows the list under the Board to its jobs, as a pressed rung did.
+  const boardLeaderName = useMemo(() => {
+    if (!data || !leaderNameFor) return null
+    const tally = new Map<string, number>()
+    for (const e of [...data.queue.entries, ...data.affidavits.entries]) {
+      const id = data.jobsById[e.jobId]?.master_user_id
+      if (id) tally.set(id, (tally.get(id) ?? 0) + 1)
+    }
+    const top = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+    return top ? leaderNameFor(top)?.trim() || null : null
+  }, [data, leaderNameFor])
+  const board = useMemo(
+    () =>
+      data
+        ? buildLienBoard({
+            todayYmd,
+            notices: data.queue.entries,
+            affidavits: data.affidavits.entries,
+            retainage: data.retainage.entries,
+            jobNumber: (jobId) => jobNumberOf(data.jobsById[jobId], jobId),
+            jobName: (jobId) => (data.jobsById[jobId]?.job_name ?? '').trim(),
+            gcName: (gcId) => data.gcsById[gcId]?.name ?? '',
+            leaderName: boardLeaderName,
+          })
+        : null,
+    [data, todayYmd, boardLeaderName],
+  )
+  const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
+  const boardPick = useMemo(() => (board && boardBins ? lienBoardPick(board, boardBins) : null), [board, boardBins])
+  // To do on a phone scrolls the Board, the find box and the list as one page (punch list #352, PR 0): under five
+  // stacked month cards a list that took what was left got a window 26 px tall, and no row could be reached. The
+  // same holds wherever the Board's columns stack (the 768 px tablet, 2026-11-15): the Board is then taller than
+  // the screen, so the page scrolls as one and the list is not its own scroller.
+  const [boardStacked, setBoardStacked] = useState(false)
+  const doNow = lienDoNowFrame(oneColumn || boardStacked)
   const doNowRef = useRef<HTMLDivElement | null>(null)
-  // There a pressed zone also brings its rows up, since the cards fill the screen and the narrowed list is under them.
-  const [zoneBringsRows, setZoneBringsRows] = useState(0)
-  const pickMonthZone = useCallback((key: LienMonthZoneKey | null) => {
-    setMonthZone(key)
-    if (key) setZoneBringsRows((n) => n + 1)
+  // There a pressed bin also brings its rows up, since the Board fills the screen and the narrowed list is under it.
+  const [pickBringsRows, setPickBringsRows] = useState(0)
+  const pickBoardBins = useCallback((bins: LienBoardBinKey[] | null) => {
+    setBoardBins((prev) => (bins && prev && prev.join('|') === bins.join('|') ? null : bins))
+    if (bins) setPickBringsRows((n) => n + 1)
   }, [])
   useEffect(() => {
-    if (zoneBringsRows === 0 || doNow.mode !== 'one-page') return
+    if (pickBringsRows === 0 || doNow.mode !== 'one-page') return
     const rows = doNowRef.current?.querySelector<HTMLElement>(LIEN_DO_NOW_ROWS_SELECTOR)
     rows?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
-  }, [zoneBringsRows, doNow.mode])
+  }, [pickBringsRows, doNow.mode])
+  // The title is a door (v2.7332): from any view it opens To do scrolled to the Board.
+  const [boardBring, setBoardBring] = useState(0)
+  useEffect(() => {
+    if (boardBring === 0 || kind !== 'next') return
+    doNowRef.current?.querySelector<HTMLElement>('[data-lien-board]')?.scrollIntoView?.({ block: 'start' })
+  }, [boardBring, kind])
   // The office's waiting rows (punch list #101 PR 3) close the list under the leader's name when they share one.
   const nextUpWaitingOn = useMemo(() => {
     if (!data || !leaderNameFor) return null
@@ -933,10 +938,7 @@ export default function LienDesk({
         : nextUpRows,
     [nextUpRows, finding, findWords, findFactsFor],
   )
-  const nextUpRowsShown = useMemo(() => {
-    const zone = monthZone && lienMonth ? lienMonth.zones.find((z) => z.key === monthZone) : null
-    return zone ? nextUpRowsFound.filter((r) => lienMonthZoneHasRow(zone, r)) : nextUpRowsFound
-  }, [nextUpRowsFound, monthZone, lienMonth])
+  const nextUpRowsShown = useMemo(() => (boardPick ? nextUpRowsFound.filter((r) => lienBoardRowInPick(boardPick, r)) : nextUpRowsFound), [nextUpRowsFound, boardPick])
   const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
     if (!data || !row.jobId) return null
     const rowJob = data.jobsById[row.jobId]
@@ -4165,10 +4167,12 @@ export default function LienDesk({
           ) : backDoor}
           <h2
             // On a phone the title shares its line with the way back and More (punch list #352, PR 1); the rows under it get the card's width.
-            style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}
+            style={{ margin: 0, fontSize: '1.125rem', ...(isMobile ? { flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}
             title="Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow."
           >
-            ⏱ Lien desk
+            <button type="button" className="lienDeskTitleDoor" data-lien-desk-title aria-label="Lien desk: open To do at the Board" onClick={() => { setKind('next'); setBoardBring((n) => n + 1) }}>
+              ⏱ Lien desk
+            </button>
           </h2>
           {isMobile ? (
             <button type="button" data-lien-desk-more="door" aria-haspopup="dialog" aria-expanded={moreOpen} aria-label={moreButton.label} onClick={() => setMoreOpen(true)} style={{ position: 'relative', flex: 'none', width: 44, height: 44, display: 'inline-grid', placeItems: 'center', border: 'none', borderRadius: 10, background: 'transparent', color: 'var(--text-700)', font: 'inherit', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer' }}>
@@ -4345,9 +4349,9 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {lienMonth ? <LienMonthBar month={lienMonth} on={monthZone} onPick={pickMonthZone} isMobile={isMobile} shown={nextUpRowsShown.length} total={nextUpRowsFound.length} due={isMobile ? lienMonthLineDue(lienMonth, nextUpRows) : null} /> : <div />}
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={(d) => { if (d.kind === 'run') { if (office) { setRunTakeBack(false); setRunOpen(true) } } else pickBoardBins(lienBoardStageBins(board, d.stage)) }} /> : <div />}
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
-            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
+            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} foldsOpen={finding} waitingOn={nextUpWaitingOn} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
