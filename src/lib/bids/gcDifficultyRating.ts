@@ -14,6 +14,7 @@ import {
   difficultyPointsWords,
   difficultyRungSentence,
   difficultyScale,
+  difficultyScaleHasPoints,
   difficultyTotalPoints,
   difficultyUnratedWords,
   type DifficultyCarry,
@@ -26,6 +27,8 @@ export type GcDifficultyRating = {
   customerId: string
   criteriaVersionId: string
   picks: DifficultyPicks
+  /** A bills scale's words (PR 3): read from the bills with the numbers behind it, or By hand: with the reason. */
+  pickReasons: Record<string, string>
   note: string
   ratedByName: string
   ratedAt: string
@@ -88,7 +91,11 @@ export const GC_DIFFICULTY_WORDS = {
   saved: (points: number) => `Rated ${difficultyPointsWords(points)}.`,
   earlier: 'Earlier ratings',
   cannotRate: 'The office rates a GC. You can read the rating here.',
-  billsLine: 'Read from their bills in the next part. Nothing to pick here.',
+  setByHand: 'Set by hand…',
+  byHandLabel: 'Why the bills do not tell it',
+  byHandUse: 'Use this',
+  byHandClear: 'Read from the bills again',
+  byHandNoReason: 'Say why. A point set by hand needs a reason.',
   noNote: 'Say what happened. A rating with no reason is the problem this card fixes.',
   noPick: 'Pick at least one sentence.',
   noVersion: 'No criteria are published yet. A dev publishes them in Settings → Difficulty criteria.',
@@ -168,12 +175,28 @@ export function gcDifficultyHistoryLine(r: GcDifficultyRating, versions: readonl
   return [r.ratedAt.slice(0, 10), r.ratedByName.trim() || null, points != null ? difficultyPointsWords(points) : GC_DIFFICULTY_WORDS.versionGone, r.note.trim() || null].filter(Boolean).join(' · ')
 }
 
-/** Only picked scales are a person's to save; a bills scale's entry is dropped until PR 3 reads it. */
-export function gcDifficultyPicksToSave(picks: DifficultyPicks, body: DifficultyCriteriaBody): DifficultyPicks {
+/**
+ * What a save carries: a picked scale's pick when the version has that rung, and a bills scale's point only with its
+ * words (PR 3), which the database holds the same way.
+ */
+export function gcDifficultyPicksToSave(picks: DifficultyPicks, body: DifficultyCriteriaBody, reasons: Record<string, string> = {}): { picks: DifficultyPicks; reasons: Record<string, string> } {
   const out: DifficultyPicks = {}
+  const outReasons: Record<string, string> = {}
   for (const [k, p] of Object.entries(picks)) {
     const s = difficultyScale(body, k)
-    if (s && s.source === 'picked' && s.rungs.some((r) => r.points === p)) out[k] = p
+    if (!s || !difficultyScaleHasPoints(s, p)) continue
+    if (s.source === 'picked') out[k] = p
+    else if ((reasons[k] ?? '').trim() !== '') {
+      out[k] = p
+      outReasons[k] = reasons[k]!.trim()
+    }
   }
-  return out
+  return { picks: out, reasons: outReasons }
+}
+
+/** The bills scale's pick the rating that stands holds, with its words; null when it holds none. */
+export function gcDifficultyStoredBillsPick(standing: GcDifficultyStanding | null, key: string): { points: number; reason: string } | null {
+  const points = standing?.rating.picks[key]
+  if (points == null) return null
+  return { points, reason: standing?.rating.pickReasons[key] ?? '' }
 }

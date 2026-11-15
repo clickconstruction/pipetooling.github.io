@@ -28,7 +28,7 @@ sections:
 
 > **Every line range in this map is as of `a05cef4c4`.** Ranges rot with each commit — search the symbol named beside the range, and regenerate the facts with `npm run map -- <file>` before trusting a number.
 
-> **v2.7279 (after `mapped_at`) — the GC's difficulty chip on the title line:** `BidsPricingTab.tsx` reads `useGcDifficultyStandings` for the open bid's GC and portals `GcDifficultyChip` (*Rated N points*, read only) into the *Bids like this* slot beside its chips (`docs/recent-features/v2.7279.md`, punch list #357; the cost lines come in PR 4).
+> **v2.7279 (after `mapped_at`) — the GC's difficulty chip on the title line:** `BidsPricingTab.tsx` reads `useGcDifficultyStandings` for the open bid's GC and draws `GcDifficultyChip` (*Rated N points*, read only) on the title line beside the *Bids like this* slot, since v2.7296 outside the Workbench block so a bid with nothing to price shows it (`docs/recent-features/v2.7279.md`, `v2.7296.md`, punch list #357; the cost lines come in PR 4).
 
 > **v2.6225 (after `mapped_at`) — the robot's price beside hers on the Workbench grid:** `BidsPricingTab.tsx` calls `useRobotFixtures` for the open bid, and on every grid row a robot pull landed it draws a grey *robot $412* reference beside her price, a **robot's price** chip (with **Use my book** in its title) on a row her book could not price, and **Price N robot rows at the robot's prices** (`price_robot_fixtures`) above the P0 lock chip when rows landed before a price book was picked (`docs/recent-features/v2.6225.md`).
 

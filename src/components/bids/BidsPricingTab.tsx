@@ -2457,6 +2457,8 @@ export function BidsPricingTab({
                     effective revenue and margin) are derived further down, inside the Workbench block,
                     so that block portals the chips into this slot. */}
                 <span ref={setBidsLikeThisSlot} style={{ display: 'inline-flex', alignItems: 'center' }} />
+                {/* GC difficulty (punch list #357 PR 2, moved here in PR 3): the GC's rating, read only, drawn whether or not there is anything to price. */}
+                {selectedBidForPricing.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(selectedBidForPricing.customer_id)} customerId={selectedBidForPricing.customer_id} /> : null}
                 <BidFlowStrip
                   variant="inline"
                   expanded={flowFold.expanded}
@@ -3550,7 +3552,6 @@ export function BidsPricingTab({
                               gcCustomerId={selectedBidForPricing?.customer_id ?? null}
                               gcName={selectedBidForPricing?.customers?.name ?? null}
                             />
-                            {selectedBidForPricing?.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(selectedBidForPricing.customer_id)} customerId={selectedBidForPricing.customer_id} /> : null}
                           </>,
                           bidsLikeThisSlot,
                         )

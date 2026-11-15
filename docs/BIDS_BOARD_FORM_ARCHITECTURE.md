@@ -12,7 +12,7 @@ audience: Developers, AI Agents
 last_updated: 2026-11-11
 ---
 
-> **v2.7279 (after `mapped_at`) — the GC's difficulty chip:** `BidsBidBoardTab.tsx` reads `useGcDifficultyStandings(true)` once and draws `GcDifficultyChip` (*Rated N points*, or *Rate them* for the office) beside the GC's name in the list row, the opened row's GC/Builder fact and the phone card, never on a row whose GC lines list several GCs (`docs/recent-features/v2.7279.md`, punch list #357).
+> **v2.7279 (after `mapped_at`) — the GC's difficulty chip:** `BidsBidBoardTab.tsx` reads `useGcDifficultyStandings(true)` once and draws `GcDifficultyChip` (*Rated N points*) beside the GC's name in the list row, the opened row's GC/Builder fact and the phone card, *Rate them* for the office on the opened row only since v2.7296 (`docs/recent-features/v2.7279.md`, `v2.7296.md`, punch list #357).
 
 > **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `BidFormModal.tsx` draws `BidCountSourcesField` (new) under the CountTooling Plans field of a saved bid — one row per `bid_count_sources` project (`countSourceLabel`, *first* / *combined*, imported by whom and when, Open ↗, × → Remove / Keep) — and `BidsBidBoardTab.tsx` adds one CountTooling chip per project beyond the bid's own link through `useBidCountSourcesByBid` / `useBidBoardScope` (`docs/recent-features/v2.5520.md`, the combine train's last PR).
 

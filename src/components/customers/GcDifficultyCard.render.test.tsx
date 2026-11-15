@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DIFFICULTY_CRITERIA_V1 } from '../../lib/bids/difficultyCriteria'
 import { GC_DIFFICULTY_WORDS as W, type DifficultyVersionLite, type GcDifficultyRating } from '../../lib/bids/gcDifficultyRating'
 import type { GcDifficultyIo } from '../../lib/bids/gcDifficultyRatingIo'
+import type { DifficultyPayingInputs } from '../../lib/bids/difficultyPaying'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import GcDifficultyCard from './GcDifficultyCard'
 
@@ -28,13 +29,18 @@ const V1: DifficultyVersionLite = { id: 'v1', version: 1, body: DIFFICULTY_CRITE
 const field = DIFFICULTY_CRITERIA_V1.scales[1]!
 const V2: DifficultyVersionLite = { id: 'v2', version: 2, body: { scales: [DIFFICULTY_CRITERIA_V1.scales[0]!, { ...field, max: 2, rungs: field.rungs.slice(0, 3) }, DIFFICULTY_CRITERIA_V1.scales[2]!] } }
 
-const RATED: GcDifficultyRating = { id: 'r1', customerId: 'c1', criteriaVersionId: 'v1', picks: { field: 3, office: 1 }, note: 'Moved us from C to A.', ratedByName: 'Robert', ratedAt: '2026-11-14T20:00:00Z' }
+const RATED: GcDifficultyRating = { id: 'r1', customerId: 'c1', criteriaVersionId: 'v1', picks: { field: 3, office: 1 }, pickReasons: {}, note: 'Moved us from C to A.', ratedByName: 'Robert', ratedAt: '2026-11-14T20:00:00Z' }
 
-function fakeIo(ratings: GcDifficultyRating[] = [], versions: DifficultyVersionLite[] = [V1], over: Partial<GcDifficultyIo> = {}): GcDifficultyIo {
+/** Seven bills, paid in 52 days: a Paying point by the default rule. */
+const PAYING: DifficultyPayingInputs = { readable: true, own: { medianDays: 52, samples: 7 }, receipts: [], gcPace: { medianDays: 35, payers: 9 }, calendar: null, todayYmd: '2026-11-14' }
+const TOO_FEW: DifficultyPayingInputs = { ...PAYING, own: { medianDays: 52, samples: 2 } }
+
+function fakeIo(ratings: GcDifficultyRating[] = [], versions: DifficultyVersionLite[] = [V1], over: Partial<GcDifficultyIo> = {}, paying: DifficultyPayingInputs = TOO_FEW): GcDifficultyIo {
   return {
     loadVersions: vi.fn(async () => ({ versions, published: versions[0] ?? null })),
     loadRatings: vi.fn(async () => ratings),
-    saveRating: vi.fn(async (customerId, criteriaVersionId, picks, note) => ({ id: 'r-new', customerId, criteriaVersionId, picks, note, ratedByName: 'Micah', ratedAt: '2026-11-15T00:00:00Z' })),
+    loadPaying: vi.fn(async () => paying),
+    saveRating: vi.fn(async (customerId, criteriaVersionId, picks, note, reasons = {}) => ({ id: 'r-new', customerId, criteriaVersionId, picks, pickReasons: reasons, note, ratedByName: 'Micah', ratedAt: '2026-11-15T00:00:00Z' })),
     ...over,
   }
 }
@@ -54,7 +60,7 @@ describe('GcDifficultyCard', () => {
     expect(press.disabled).toBe(true)
     expect(press.title).toBe(W.noPick)
     expect((card().getByRole('radio', { name: 'Paying: 1 point' }) as HTMLInputElement).disabled).toBe(true)
-    expect(card().getByText(W.billsLine)).toBeTruthy()
+    expect((await screen.findByTestId('gc-difficulty-paying-words')).textContent).toBe('2 bills on record, fewer than the 3 the read needs. No point.')
 
     fireEvent.click(card().getByRole('radio', { name: 'Field and superintendent: 2 points' }))
     fireEvent.click(card().getByRole('radio', { name: 'Their office: 1 point' }))
@@ -66,7 +72,7 @@ describe('GcDifficultyCard', () => {
     expect(press3.disabled).toBe(false)
 
     fireEvent.click(press3)
-    await waitFor(() => expect(io.saveRating).toHaveBeenCalledWith('c1', 'v1', { field: 2, office: 1 }, 'Phase 1: the super moved us from building C to A.'))
+    await waitFor(() => expect(io.saveRating).toHaveBeenCalledWith('c1', 'v1', { field: 2, office: 1 }, 'Phase 1: the super moved us from building C to A.', {}))
     expect(await screen.findByText(W.saved(3))).toBeTruthy()
     expect(screen.getByTestId('gc-difficulty-chip').textContent).toBe('Rated 3 points')
     expect(card().getByText('Rated by Micah on 2026-11-15 under criteria version 1.')).toBeTruthy()
@@ -104,6 +110,52 @@ describe('GcDifficultyCard', () => {
     expect(total()).toBe('1 point on every new bid to them.')
     fireEvent.click(card().getByRole('button', { name: `${W.earlier} (1)` }))
     expect(within(screen.getByTestId('gc-difficulty-earlier')).getByText('2026-10-01 · Robert · 1 point · First job.')).toBeTruthy()
+  })
+
+  it('the Paying point is read from the bills with its words, counts in the total, and goes into the save with its reason', async () => {
+    const io = fakeIo([], [V1], {}, PAYING)
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="controller" io={io} />)
+    expect((await screen.findByTestId('gc-difficulty-paying-words')).textContent).toBe('Paid in 52 days, the median of 7 bills. The GC pace is 35 days.')
+    expect(screen.getByTestId('gc-difficulty-paying-drift').textContent).toBe('Their bills read 1 point now. The rating that stands has no Paying point yet. Save to read it in.')
+    expect((card().getByRole('radio', { name: 'Paying: 1 point' }) as HTMLInputElement).checked).toBe(true)
+    expect(total()).toBe('1 point on every new bid to them.')
+    fireEvent.click(card().getByRole('radio', { name: 'Their office: 2 points' }))
+    fireEvent.change(card().getByLabelText(W.noteLabel), { target: { value: 'Every bill is a fight.' } })
+    fireEvent.click(card().getByRole('button', { name: W.save(3) }))
+    await waitFor(() => expect(io.saveRating).toHaveBeenCalledTimes(1))
+    const [, , picks, , reasons] = (io.saveRating as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, Record<string, number>, string, Record<string, string>]
+    expect(picks).toEqual({ office: 2, paying: 1 })
+    expect(reasons).toEqual({ paying: 'Read from their bills: Paid in 52 days, the median of 7 bills. The GC pace is 35 days.' })
+  })
+
+  it('the office sets the Paying point by hand with a reason; the save carries By hand', async () => {
+    const io = fakeIo([], [V1], {}, PAYING)
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="dev" io={io} />)
+    fireEvent.click(await card().findByRole('button', { name: W.setByHand }))
+    const use = card().getByRole('button', { name: W.byHandUse }) as HTMLButtonElement
+    expect(use.disabled).toBe(true)
+    fireEvent.click(card().getByRole('radio', { name: 'By hand: 0 points' }))
+    fireEvent.change(card().getByLabelText(W.byHandLabel), { target: { value: 'They pay us first every month.' } })
+    fireEvent.click(use)
+    expect(screen.getByTestId('gc-difficulty-paying-by-hand').textContent).toContain('Set by hand to 0 points: They pay us first every month.')
+    expect(screen.queryByTestId('gc-difficulty-paying-drift')).toBeNull()
+    expect(total()).toBe('0 points on every new bid to them.')
+    fireEvent.click(card().getByRole('radio', { name: 'Field and superintendent: 1 point' }))
+    fireEvent.change(card().getByLabelText(W.noteLabel), { target: { value: 'Small surprises only.' } })
+    fireEvent.click(card().getByRole('button', { name: W.save(1) }))
+    await waitFor(() => expect(io.saveRating).toHaveBeenCalledTimes(1))
+    const [, , picks, , reasons] = (io.saveRating as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, Record<string, number>, string, Record<string, string>]
+    expect(picks).toEqual({ field: 1, paying: 0 })
+    expect(reasons).toEqual({ paying: 'By hand: They pay us first every month.' })
+  })
+
+  it('a rated GC whose bills now read a point says so and wakes the press', async () => {
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="dev" io={fakeIo([RATED], [V1], {}, PAYING)} />)
+    expect((await screen.findByTestId('gc-difficulty-paying-drift')).textContent).toBe('Their bills read 1 point now. The rating that stands has no Paying point yet. Save to read it in.')
+    expect(total()).toBe('5 points on every new bid to them.')
+    const press = card().getByRole('button', { name: W.save(5) }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(press.title).toBe(W.noNote)
   })
 
   it('a failed read says so and offers to try again', async () => {
