@@ -69,7 +69,7 @@ export function gcDifficultyStanding(rating: GcDifficultyRating, versions: reado
         .filter((s) => total?.rated.includes(s.key))
         .map((s) => ({ key: s.key, name: s.name, points: rating.picks[s.key]!, sentence: difficultyRungSentence(version.body, s.key, rating.picks[s.key]!) ?? '' }))
     : []
-  const carry = published && version && published.version > version.version ? carryDifficultyPicks(rating.picks, published.body) : null
+  const carry = published && version && published.version > version.version ? carryDifficultyPicks(rating.picks, published.body, 'gc') : null
   return { customerId: rating.customerId, rating, version, points: total?.points ?? 0, sentences, carry, publishedVersion: published }
 }
 

@@ -61,7 +61,7 @@ describe('BidDifficultyStrip', () => {
     expect(screen.getByText('about +$6,857 on the price at 30%')).toBeTruthy()
     fireEvent.click(chip)
     const fold = within(screen.getByTestId('bid-difficulty-fold'))
-    expect(fold.getByTestId('bid-difficulty-line-field').textContent).toBe('Field and superintendent 2 · $3,840 · 10% of 480 field hours at $80: the order of work changes after we mobilize.')
+    expect(fold.getByTestId('bid-difficulty-line-field').textContent).toBe('Field and superintendent 2 · $3,840 · 10% of 480 field hours at $80: The order of work changes after we mobilize.')
     expect(fold.getByText('Rated by Robert on 2026-11-14 under criteria version 1.')).toBeTruthy()
     expect(fold.getByText('priced by Micah on 2026-11-15 · price list version 1 · 2026-11-15 by the app')).toBeTruthy()
     expect((fold.getByRole('link', { name: W.openRating }) as HTMLAnchorElement).getAttribute('href')).toBe('/customers/c1#gc-difficulty')

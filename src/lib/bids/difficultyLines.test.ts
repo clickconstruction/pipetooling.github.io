@@ -82,6 +82,8 @@ describe('difficultyLines (punch list #357, PR 4)', () => {
     expect(d.lines.map((l) => l.amount)).toEqual([467.78, 1225.78, 306.44])
     expect(d.lines[1]!.hours).toBe(15.32)
     expect(difficultyCapWords(d)).toBe('The lines came to $6,265; the price list holds them to $2,000, 31.9% of that, so each shrank by the same share.')
+    // PR 6: a capped line's words say what the cap left, so the words and the dollars agree on the Labor tab's row.
+    expect(d.lines[1]!.words).toBe('10% of 480 field hours at $80, held to $1,226 by the cap')
     expect(difficultyCapWords(difficultyLines(canvas()))).toBeNull()
   })
 
@@ -91,8 +93,15 @@ describe('difficultyLines (punch list #357, PR 4)', () => {
     expect(difficultyStripWords({ points: 1, total: 960 })).toBe('Difficulty · 1 point · +$960 in cost')
     expect(difficultyOnPriceWords(d.total, 30)).toBe('about +$8,951 on the price at 30%')
     expect(difficultyOnPriceWords(d.total, null)).toBeNull()
-    expect(difficultyLineWords(d.lines[1]!)).toBe('Field and superintendent 2 · $3,840 · 10% of 480 field hours at $80: the order of work changes after we mobilize, or the site is not ready when they call us out.')
+    expect(difficultyLineWords(d.lines[1]!)).toBe('Field and superintendent 2 · $3,840 · 10% of 480 field hours at $80: The order of work changes after we mobilize, or the site is not ready when they call us out.')
     expect(difficultyRowDescription(d.lines[2]!)).toBe('Difficulty · Their office 1 · 12 office hours at $80')
     expect(difficultyLinesToStore(d)[2]).toEqual({ key: 'office', name: 'Their office', points: 1, hours: 12, rate: 80, amount: 960, sentence: d.lines[2]!.sentence, words: '12 office hours at $80' })
+  })
+
+  it('the site scale (PR 6) is a percent of the bid’s field hours at its labor rate, like the field scale', () => {
+    const d = difficultyLines(canvas({ scales: [{ key: 'site', name: 'The site', points: 2, sentence: 'Work in phases, or every trip is a lift.' }] }))
+    // 4% a point × 2 = 8% of 480 hours = 38.4 hours at $80
+    expect(d.lines).toEqual([{ key: 'site', name: 'The site', points: 2, hours: 38.4, rate: 80, amount: 3072, sentence: 'Work in phases, or every trip is a lift.', words: '8% of 480 field hours at $80' }])
+    expect(difficultyLineWords(d.lines[0]!)).toBe('The site 2 · $3,072 · 8% of 480 field hours at $80: Work in phases, or every trip is a lift.')
   })
 })

@@ -66,6 +66,32 @@ describe('bidDifficulty (punch list #357, PR 4)', () => {
     expect(bidDifficultyStale(pin(), same)).toEqual({ kind: 'reworded', words: 'Rated again since this was priced, 3 points both times, by Robert on 2026-11-14.' })
   })
 
+  it('PR 6: the bid’s own picks moving is stale too, and the GC’s points are compared without them', () => {
+    const words = 'The site was picked since this was priced: 1 point now, unrated when priced.'
+    expect(bidDifficultyStale(pin(), standing(), words, ['site'])).toEqual({ kind: 'bid', words })
+    // A pin priced with the GC's 3 points and a site point reads 4; the GC rated again at 3 is the same, not lower.
+    const withSite = pin({ picks: { field: 2, office: 1, site: 1 }, points: 4 })
+    const again = standing(rating({ id: 'r3' }))
+    expect(bidDifficultyStale(withSite, again, null, ['site'])).toEqual({ kind: 'reworded', words: 'Rated again since this was priced, 3 points both times, by Robert on 2026-11-14.' })
+    // The GC's own change wins over the site's.
+    expect(bidDifficultyStale(withSite, again, words, ['site'])!.kind).toBe('reworded')
+  })
+
+  it('PR 6: a bid to a GC nobody rated is pinned on its own picks, and a rating since says so', () => {
+    const own = difficultyLines({ scales: [{ key: 'site', name: 'The site', points: 1, sentence: 'An occupied building, or no room to stage.' }], price: DIFFICULTY_PRICE_V1, fieldHours: 480, laborRate: 80, ownCost: 114266, carried: 172400, payingMedianDays: null, payingReason: null })
+    const p = bidDifficultyPinFor({ bidId: 'b1', costEstimateId: 'ce1', standing: null, bidPicks: { site: 1 }, publishedVersionId: 'v2', priceVersionId: 'p1', lines: own, fieldHours: 480, laborRate: 80, ownCost: 114266, carried: 172400, rowIds: ['o1'] })
+    expect(p).toMatchObject({ ratingId: null, criteriaVersionId: 'v2', picks: { site: 1 }, points: 1, totalUsd: 1536 })
+    const pinned: BidDifficulty = { ...p, id: 'pin2', pricedByName: 'Micah', pricedAt: '2026-11-15T10:00:00Z' }
+    expect(bidDifficultyStale(pinned, null, null, ['site'])).toBeNull()
+    expect(bidDifficultyStale(pinned, standing(), null, ['site'])).toEqual({ kind: 'higher', words: 'Rated since this was priced: 3 points, by Robert on 2026-11-14.' })
+    // With a rating, the pin carries the GC's picks and the bid's together.
+    expect(bidDifficultyPinFor({ bidId: 'b1', costEstimateId: 'ce1', standing: standing(), bidPicks: { site: 2 }, publishedVersionId: 'v2', priceVersionId: 'p1', lines: lines(), fieldHours: 480, laborRate: 80, ownCost: 1, carried: 1, rowIds: [] })).toMatchObject({ ratingId: 'r1', criteriaVersionId: 'v1', picks: { field: 2, office: 1, site: 2 } })
+  })
+
+  it('a reason keeps the letter it was typed with', () => {
+    expect(bidDifficultyRemovedWords({ key: 'office', name: 'Their office', amount: 960, reason: 'ZZ walk: taken off to see the row go.', byName: 'Robert', at: '2026-11-20T10:00:00Z' })).toBe('Their office · $960 taken off by Robert on 2026-11-20: ZZ walk: taken off to see the row go.')
+  })
+
   it('taking a line off: the line out, the rest kept, the removal recorded with who and why', () => {
     const next = bidDifficultyAfterTakeOff(pin(), 'office', 'their office on this one is the good one', 'Robert', '2026-11-20T10:00:00Z')!
     expect(next.rowIndex).toBe(1)

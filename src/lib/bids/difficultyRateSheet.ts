@@ -10,6 +10,7 @@
  * Pure: no React, no supabase. `difficultyRateSheetIo.ts` reads; `DifficultyRateSheet.tsx` draws.
  */
 import { difficultyPointsWords, difficultyRungSentence, type DifficultyCriteriaBody, type DifficultyPicks } from './difficultyCriteria'
+import { bidRatedScales } from './bidDifficultyPicks'
 import { difficultyCapWords, difficultyLines, difficultySkippedWords, type DifficultyLines, type DifficultyRatedScale } from './difficultyLines'
 import { difficultyPayingByHandOf, difficultyPayingMedianOf, difficultyPayingWords, type DifficultyPayingRead } from './difficultyPaying'
 import type { DifficultyPriceList } from './difficultyPrice'
@@ -26,6 +27,8 @@ export const RATE_SHEET_WORDS = {
   notNow: 'Not now',
   cannotRate: 'The price list does not let you rate a GC. You can read the rating here.',
   askNotePlaceholder: (job: string) => `On ${job.trim() || 'the job'}: what happened`,
+  savedBidOnly: 'Saved on this bid.',
+  nothingChanged: 'Nothing changed since the rating that stands.',
 } as const
 
 /** "Bid b512 · Riverside Lofts" over the title; the parts that exist. */
@@ -78,11 +81,13 @@ export function rateSheetBidNumbers(args: {
   return { fieldHours, laborRate, ownCost, carried, marginPct, source: revenue > 0 ? 'priced' : 'estimate' }
 }
 
-/** The picks on screen as the lines kernel reads them: each picked scale of the GC, in the criteria's order. */
-export function rateSheetScales(picks: DifficultyPicks, body: DifficultyCriteriaBody): DifficultyRatedScale[] {
-  return body.scales
-    .filter((s) => s.scope === 'gc' && picks[s.key] != null)
-    .map((s) => ({ key: s.key, name: s.name, points: picks[s.key]!, sentence: difficultyRungSentence(body, s.key, picks[s.key]!) ?? '' }))
+/**
+ * The picks on screen as the lines kernel reads them: each picked scale of the GC, then the bid's own (PR 6, the
+ * site), in the criteria's order.
+ */
+export function rateSheetScales(picks: DifficultyPicks, body: DifficultyCriteriaBody, bidPicks: DifficultyPicks = {}): DifficultyRatedScale[] {
+  const of = (s: DifficultyCriteriaBody['scales'][number], from: DifficultyPicks): DifficultyRatedScale => ({ key: s.key, name: s.name, points: from[s.key]!, sentence: difficultyRungSentence(body, s.key, from[s.key]!) ?? '' })
+  return [...body.scales.filter((s) => s.scope === 'gc' && picks[s.key] != null).map((s) => of(s, picks)), ...bidRatedScales(bidPicks, body)]
 }
 
 export type RateSheetConsequence = {
@@ -116,8 +121,10 @@ export function rateSheetConsequence(args: {
   payingReason: string | null
   /** A sheet opened with no bid (the end-of-job ask): the points apply to bids to come. */
   hasBid: boolean
+  /** The bid's own picks on screen (PR 6); none from the ask. */
+  bidPicks?: DifficultyPicks
 }): RateSheetConsequence {
-  const scales = rateSheetScales(args.picks, args.body)
+  const scales = rateSheetScales(args.picks, args.body, args.hasBid ? args.bidPicks : undefined)
   const points = scales.reduce((n, s) => n + s.points, 0)
   if (!args.hasBid) return { head: difficultyPointsWords(points), detail: RATE_SHEET_WORDS.noBid, notes: [], lines: null }
   if (!args.numbers) return { head: difficultyPointsWords(points), detail: RATE_SHEET_WORDS.notCosted, notes: [], lines: null }
@@ -175,4 +182,17 @@ export function rateSheetGcRecordWords(r: RateSheetGcRecord | null): string | nu
   const head = `Bids like this: won ${r.won} of ${r.total} to them`
   if (r.lowPct == null || r.highPct == null) return `${head}.`
   return r.lowPct === r.highPct ? `${head}, at ${r.lowPct}%.` : `${head}, at ${r.lowPct} to ${r.highPct}%.`
+}
+
+/**
+ * What Save does (PR 6): the GC's rating when the person touched it, the bid's own picks when they moved, or both.
+ * From a bid the rating is touched when a pick differs from the one that stands (or, with none standing, when a GC
+ * scale is picked); from the ask it always is, since the same picks with what happened is a rating. The GC's rules
+ * (a pick and a reason) bind only when the rating is being saved.
+ */
+export function rateSheetSavePlan(args: { fromAsk: boolean; hasStanding: boolean; gcChanged: boolean; gcPicked: boolean; gcProblems: readonly string[]; bidChanged: boolean; noPickWords: string }): { rating: boolean; bidPicks: boolean; dead: boolean; why: string | null } {
+  const rating = args.fromAsk || (args.hasStanding ? args.gcChanged : args.gcPicked)
+  if (rating && args.gcProblems.length > 0) return { rating, bidPicks: args.bidChanged, dead: true, why: args.gcProblems[0] ?? null }
+  if (!rating && !args.bidChanged) return { rating, bidPicks: false, dead: true, why: args.hasStanding ? RATE_SHEET_WORDS.nothingChanged : args.noPickWords }
+  return { rating, bidPicks: args.bidChanged, dead: false, why: null }
 }
