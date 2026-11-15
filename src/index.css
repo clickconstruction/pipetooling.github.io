@@ -6976,3 +6976,14 @@ button.developmentCountChip:focus-visible {
   -webkit-mask-image: none;
   mask-image: none;
 }
+
+/* The affidavit pane's gate rows (v2.7313): every row is a press that opens the fact's own record; its words underline on hover and its door sits at the end. */
+.lienGateRow { display: flex; gap: 0.5rem; align-items: baseline; width: 100%; border: none; background: none; padding: 0.1rem 0; margin: 0; font: inherit; font-size: 0.8125rem; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
+.lienGateRow:disabled { cursor: default; }
+.lienGateRow > span:first-child { flex: none; }
+.lienGateWords { flex: 1 1 auto; min-width: 0; }
+.lienGateRow:not(:disabled):hover .lienGateWords, .lienGateRow:focus-visible .lienGateWords { text-decoration: underline; text-underline-offset: 3px; }
+.lienGateRow:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.lienGateDoor { flex: none; font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+.lienGateDoor[data-open='no'] { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 4px; color: var(--text-700); background: var(--surface); }
+@media (hover: hover) { .lienGateDoor[data-open='yes'] { opacity: 0.55; } .lienGateRow:hover .lienGateDoor[data-open='yes'], .lienGateRow:focus-visible .lienGateDoor[data-open='yes'] { opacity: 1; } }
