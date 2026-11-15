@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { lienBoardBinsShown, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
+import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 
 /**
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
@@ -91,7 +91,8 @@ export function lienBoardArrowPaths(arrows: ReadonlyArray<LienBoardArrow>, boxes
 
 function Chip({ chip, lit, onChip, onHover }: { chip: LienBoardChip; lit: boolean; onChip?: (chip: LienBoardChip) => void; onHover: (pairKey: string | null) => void }) {
   const tone = TONE[chip.urgency]
-  const title = [chip.tip, lienBoardUrgencyWords(chip.urgency), chip.atRisk ? 'will not make its day as it stands' : ''].filter(Boolean).join(' · ')
+  // The hover: the job's name, its GC and its money, how soon its day is, the risk, and where the press goes (v2.7333).
+  const title = [chip.tip, lienBoardUrgencyWords(chip.urgency), chip.atRisk ? 'will not make its day as it stands' : '', onChip ? lienBoardDoorWords(chip.destination) : ''].filter(Boolean).join(' · ')
   const style: CSSProperties = { color: tone.fg, background: tone.bg, borderColor: tone.border }
   const hover = chip.pairKey ? { onMouseEnter: () => onHover(chip.pairKey), onMouseLeave: () => onHover(null), onFocus: () => onHover(chip.pairKey), onBlur: () => onHover(null) } : {}
   const body = (
