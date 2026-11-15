@@ -18,6 +18,7 @@
  * pdf-lib convention. `pdfRectToScreen` / `screenRectToPdf` convert for the
  * studio and the overlay.
  */
+import type { FormValues } from './formValues.ts'
 
 export type FormBoxType = 'text' | 'digits' | 'checkbox' | 'signature' | 'date' | 'constant'
 /** Who fills a box (Contract Forms PR 7): the person signing, or the office afterwards (I-9 Section 2). */
@@ -84,8 +85,8 @@ export type FormSchema = {
   oneOfs: FormOneOf[]
 }
 
-/** What the signer typed / ticked, keyed by box key. Checkboxes are booleans. */
-export type FormValues = Record<string, string | boolean>
+/** What the signer typed / ticked: in formValues.ts (punch list #359), so the hours statement's form takes it without this file; re-exported here. */
+export type { FormValues } from './formValues.ts'
 
 export type FormValidationError = { key: string; message: string }
 

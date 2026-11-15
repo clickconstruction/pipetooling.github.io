@@ -6,8 +6,7 @@
  * vitest (`src/lib/jobs/lienWaiverEmailCard.test.ts`).
  */
 import { portalAccountCardHtml } from './portalAccountCard.ts'
-import { GC_CUSTOMER_EMAIL_FROM_NAME } from './gcCustomerEmails.ts'
-import { PORTAL_COMPANY } from './portalCompany.ts'
+import { GC_CUSTOMER_EMAIL_FROM_NAME, PORTAL_COMPANY } from './portalCompany.ts'
 
 /**
  * The name the waiver email is from. GC mode's billing job (`jobs_ledger.billing_only`) sends as our GC

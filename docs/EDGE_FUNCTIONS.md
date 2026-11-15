@@ -6886,7 +6886,7 @@ npm run check:edge-drift -- --full   # reads every deployed function (the daily 
 # stays under 4.5 MB of raw source (UPLOAD_CEILING_BYTES in scripts/lib/edgeUploadGraph.mjs, v2.7256):
 # the deploy uploads each file a relative import names, a type-only import too, and refuses 5 MB with
 # HTTP 413, so a PR that takes a function past 4.5 MB fails with that function's biggest files, and every
-# run prints the five biggest (dev-mcp 3.75 MB and customer-portal 1.64 MB on 2026-11-14, v2.7291). `node scripts/lib/edgeUploadGraph.mjs
+# run prints the five biggest (dev-mcp 3.70 MB and customer-portal 1.64 MB on 2026-11-14, v2.7292). `node scripts/lib/edgeUploadGraph.mjs
 # <slug>` lists one function's upload.
 npm run check:edge-bundles
 ```
