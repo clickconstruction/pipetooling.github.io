@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: gated
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · the owner leaned to D, not yet picked · nothing built
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction and B was refined the same day · the owner leaned to D, not yet picked · nothing built
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -13,8 +13,8 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: Build B, which needs no pick (one page, then the clearer rows). Then the pick between stopping at A and going on to D.
-size: L as a train of seven (S · S · M · M · M · S · M) for D; B is the first two, A the first three
+next: Build B in three small steps (one page, the order of the groups, the clearer rows). Then the pick between stopping at A and going on to D.
+size: L as a train of eight (S · S · S · M · M · M · S · M) for D; B is the first three, A the first four
 blocker: None for B. For D's single print, whether notices and affidavits can come out of one print run.
 ver: v2.4583 · v2.6515 · v2.7247
 ---
@@ -42,6 +42,10 @@ was an unanswered homestead question. The row said neither.
 Taunya, 2026-11-15, with the Board landed (v2.7332) and a screenshot of the list as a strip under it:
 the Board "takes up most of the screen but is the most important pane", so redo the mock-ups with it
 in place. The first mock-up drew the list alone, under the step strip the Board replaced.
+
+Taunya, later the same day, on the redrawn mock-up: "I like the idea of B but waiting on the leader
+should be below needs you above coming up to make it more actionable", and she asked that B be refined
+by asking whether it is the best we can do. What that changed is under B below.
 
 ## What exists today
 
@@ -72,19 +76,40 @@ in place. The first mock-up drew the list alone, under the step strip the Board 
 
 Each keeps the Board whole and is the start of the next.
 
-- **B · One page, clearer rows.** The Board and the list scroll as one page. Once the Board is out of
-  view the find box pins to the top with the Board's numbers and **↑ The Board**. A pressed bin narrows
-  the list, as today, and brings it up. The rows carry dollars, the notice line on every affidavit
-  (*Notice sent Oct 14*, *No notice needed · contracted with the owner*, *No notice on record*) and the
-  held paper's one question on the row and on its button; within a day, ready before held, then largest
-  first. The smallest change: the list still runs by day and ten rows still carry the same button.
+- **B · One page, clearer rows.** Taunya's direction. The Board and the list scroll as one page. Once
+  the Board is out of view the find box pins to the top with the Board's numbers and **↑ The Board**.
+  The groups run *Needs you now*, *Waiting on the leader*, *Coming up*. What asking "is this the best
+  we can do" changed:
+  - **The papers that will not make their day come first** inside Needs you now, under the tile's own
+    words (*Will not make tomorrow as they stand*), the longest road first; the rest read *On track*,
+    largest first. This turns the first drawing's "ready before held" around: a paper that needs a
+    fact needs it today to ride with the rest, which is the owner's "get it accurate, then print".
+    The rule is the Board's own (`lienBoardAtRisk`, the **!** chips), so the tile, the chips and the
+    list agree.
+  - **Waiting on the leader is a group a person can act on**: each row says when it was sent for
+    approval and how long it has waited, and the head carries **Remind the leader of N**, which sends
+    again what the approval went with (`tellLeaderOfLienApproval`, the push and the email).
+  - **One vocabulary.** A row starts with its bin's name (*Ready to file*, *To send*, *Needs the
+    owner*, *Needs the property facts*, *In the run*, *Awaiting approval*), then the one thing to
+    know. A paper that waits on a fact asks its one question, on the row and on its button.
+  - **The head carries the day**, as the phone's list does (`lienPhoneGroups`), so no row repeats it.
+    The row is two lines and no job name or state is cut off, which today's one line does at 950 px.
+    The four step dots leave the desktop row: the bin's name says the stage.
+  - **The Board's numbers are presses**: the tile's red line narrows the list to the papers that will
+    not make their day, the waiting tile to the approvals, and the pinned find box carries the same
+    presses. What the list is narrowed to reads on the pinned line, with **Show every row**.
+  - **One press for the ten**: *On track* carries **Print the N affidavits**, a door to the batch
+    print that exists. The ten rows stay, each with its own button; folding them is A.
+
+  Every row carries dollars, and every affidavit says where its notice stands (*Notice sent Oct 14*,
+  *No notice needed · contracted with the owner*, *No notice on record*).
 - **A · The list follows the Board.** Under the Board the list is drawn in the Board's order: one group
   for each bin, under the bin's name, tomorrow's papers first and everything later under one line. A
   pressed bin goes to its group. Papers that share one act fold into a batch row with a total and one
   button (*10 affidavits ready to file · Print 10*), so sixteen rows become seven.
 - **D · One run.** The owner's way of working, opened from the Board's first tile (*21 by tomorrow*),
   as three steps in order under the Board:
-  1. **Get it right.** The tile's red line, *8 will not make tomorrow as they stand*, written out as one
+  1. **Get it right.** The tile’s red line, *7 will not make tomorrow as they stand*, written out as one
      checklist counting down: an unanswered homestead question, a missing owner or GC address, a month
      dated from when the job was typed in, a notice written and not sent for approval, an approval
      waiting, an *ask the attorney first* flag. Each is one question with the chips it holds, its own
@@ -108,17 +133,21 @@ go further toward the batch; D is that. He has not picked between A and D.
 ## A train for D
 
 1. **One page** (S): To do scrolls as one page wherever the Board leaves the list too little room, and
-   the find box pins with the Board's numbers and the way back. B's first half.
-2. **The clearer rows** (S): the named hold from `gateAct`, the notice line on every affidavit row,
-   dollars on the desktop row, and within a day ready before held, then largest first. B's second half.
-3. **The list by bin** (M): the groups under the Board's own names and the batch rows. This is A.
-4. **The checklist** (M): step 1 as a kernel over the desk's queues, every open question with its
+   the find box pins with the Board's numbers, each a press, the line that says what the list is
+   narrowed to, and the way back.
+2. **The order** (S): *Waiting on the leader* between *Needs you now* and *Coming up* with its reminder
+   press; inside Needs you now, the papers the Board marks **!** first, then the rest largest first;
+   the tile's red line as a press. Kernel work in `lienNextUp.ts` over `lienBoard.ts`.
+3. **The clearer rows** (S): the bin's name first, the one question from `gateAct`, the notice line on
+   every affidavit row, dollars on the desktop row, the day on the head. With step 2 this is B.
+4. **The list by bin** (M): the groups under the Board's own names and the batch rows. This is A.
+5. **The checklist** (M): step 1 as a kernel over the desk's queues, every open question with its
    button and a *Leave out* that the run remembers.
-5. **The gate and the one print** (M): step 2. Needs the answer below on printing notices and
+6. **The gate and the one print** (M): step 2. Needs the answer below on printing notices and
    affidavits together.
-6. **Changed since printed** (S): a fingerprint of each paper's sworn fields at print, compared on
+7. **Changed since printed** (S): a fingerprint of each paper's sworn fields at print, compared on
    every read after.
-7. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
+8. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
 
 ## Open questions
 

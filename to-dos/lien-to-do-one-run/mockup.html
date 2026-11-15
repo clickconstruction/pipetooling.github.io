@@ -50,6 +50,7 @@
   .tile .s { font-size: 0.77rem; color: var(--muted); }
   .tile .s.red { color: var(--red); } .tile .s.green { color: var(--green); }
   .tile.pressed { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+  .tlink { border: 0; background: none; padding: 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
   .tile .door { font-size: 0.72rem; font-weight: 700; color: var(--blue-text); }
   .cols2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); column-gap: 30px; }
   .colhead { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; margin: 0 0 8px; }
@@ -90,7 +91,8 @@
   .bar.stuck .up { display: inline-block; }
   .bar .nums b { font-variant-numeric: tabular-nums; color: var(--text); } .bar .nums b.r { color: var(--red); } .bar .nums b.v { color: var(--violet); }
   .screen .bar { position: static; }
-  .showing { margin: 10px 0 0; font-size: 0.85rem; color: var(--muted); }
+  .showing { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+  .bar .showing:not([hidden]) ~ .nums { display: none; }
   .showing b { color: var(--text); }
   .link { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--blue-text); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
@@ -99,16 +101,26 @@
   .group-head.red { color: var(--red); } .group-head.violet { color: var(--violet); }
   .group-head .sum { margin-left: auto; font-variant-numeric: tabular-nums; letter-spacing: 0; text-transform: none; font-size: 0.85rem; }
   .group-head .hint { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); font-size: 0.8rem; }
+  .group-head .hint.red { color: var(--red); font-weight: 600; }
+  .group-head .btn { margin-left: auto; text-transform: none; letter-spacing: 0; align-self: center; }
+  .group-head .btn + .sum { margin-left: 0; }
+  .sub-head { display: flex; align-items: center; gap: 10px; margin: 10px 0 6px; min-height: 28px; font-size: 0.82rem; font-weight: 700; color: var(--text); }
+  .sub-head.red { color: var(--red); }
+  .sub-head .hint { font-weight: 500; color: var(--faint); font-size: 0.8rem; }
+  .sub-head .btn { margin-left: auto; }
   .band { margin: 18px 0 2px; padding: 6px 10px; border-radius: 8px; background: var(--red-bg); color: var(--red); font-weight: 700; display: flex; gap: 10px; align-items: baseline; }
   .band.calm { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
   .band .sum { margin-left: auto; font-variant-numeric: tabular-nums; }
   .group-head.flash { animation: flash 1.2s ease-out; }
   @keyframes flash { 0%, 40% { background: var(--blue-soft); box-shadow: 0 0 0 6px var(--blue-soft); } 100% { background: transparent; box-shadow: none; } }
 
-  .row { display: grid; grid-template-columns: 84px minmax(0, 1fr) 84px 136px 178px; column-gap: 12px; row-gap: 2px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 6px; }
+  .row { display: grid; grid-template-columns: 84px minmax(0, 1fr) 84px 178px; column-gap: 12px; row-gap: 2px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 6px; }
   .row .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .state { grid-column: 2 / 5; grid-row: 2; color: var(--muted); min-width: 0; font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
-  .row .act { grid-column: 5; grid-row: 1 / 3; justify-self: end; display: flex; gap: 6px; align-items: center; }
+  .row .state { grid-column: 2 / 4; grid-row: 2; color: var(--muted); min-width: 0; font-size: 0.88rem; line-height: 1.6; }
+  .row .state .due { margin-right: 8px; }
+  .row.risk { border-left: 3px solid var(--red); }
+  .binname { color: var(--text); font-weight: 600; }
+  .row .act { grid-column: 4; grid-row: 1 / 3; justify-self: end; display: flex; gap: 6px; align-items: center; }
   .row .act .btn, details.batch > summary > .btn { white-space: normal; text-align: center; line-height: 1.2; }
   .row.today .act .btn { white-space: nowrap; }
   .row .money { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -135,7 +147,7 @@
   .nopress { color: var(--faint); font-size: 0.82rem; text-align: right; }
 
   details.batch { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); margin-bottom: 6px; }
-  details.batch > summary { list-style: none; display: grid; grid-template-columns: 84px minmax(0, 1fr) 84px 136px 178px; gap: 12px; align-items: center; padding: 10px 12px; cursor: pointer; }
+  details.batch > summary { list-style: none; display: grid; grid-template-columns: 84px minmax(0, 1fr) 84px 178px; gap: 12px; align-items: center; padding: 10px 12px; cursor: pointer; }
   details.batch > summary::-webkit-details-marker { display: none; }
   details.batch > summary .title { font-weight: 700; min-width: 0; }
   details.batch > summary .title small { display: block; font-weight: 500; color: var(--muted); font-size: 0.83rem; }
@@ -191,6 +203,13 @@
     .row, .row.today, details.batch > summary { grid-template-columns: 1fr auto; }
     .row .state, .row.today .state, details.batch > summary .title { grid-column: 1 / -1; grid-row: auto; white-space: normal; }
     .row .act { grid-column: 1 / -1; grid-row: auto; justify-self: start; }
+    .row:not(.today) { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .row .title { white-space: normal; }
+    .row .act { order: 9; }
+    .row.today .dots { display: none; }
+    .bar { flex-wrap: wrap; }
+    .bar .find { flex-basis: 100%; }
+    .group-head, .sub-head { flex-wrap: wrap; }
     .ask { grid-template-columns: 1fr auto; } .ask .q, .ask .acts { grid-column: 1 / -1; justify-content: flex-start; }
     details.batch .line { grid-template-columns: 1fr auto; }
     details.batch .line span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
@@ -200,7 +219,7 @@
 <body>
 <div class="page">
   <h1>Lien desk · To do with the Board: today and three ways</h1>
-  <p class="lead">The Board is now the top of To do. This is the same day's work drawn four times, each with the Board in place. B, A and D build on each other: B is the first two steps of A, and A is the first half of D. Nothing here is built.</p>
+  <p class="lead">The Board is now the top of To do. This is the same day's work drawn four times, each with the Board in place. B, A and D build on each other: B is the start of A, and A is the first half of D. Taunya picked the direction of B, and B is drawn here after one round of asking whether it is the best we can do. Nothing here is built.</p>
 
   <div class="picker" role="group" aria-label="Which drawing">
     <button data-show="today" aria-pressed="false">Today</button>
@@ -232,17 +251,17 @@
   <section class="option on" id="opt-b">
     <div class="what"><b>B · One page, clearer rows.</b> The Board stays whole. The Board and the list scroll as one page, so the list gets the whole screen as you move down.
       <ul>
-        <li>Scroll down: the find box pins to the top with the Board's numbers and a way back, <b>↑ The Board</b>.</li>
-        <li>Press a bin's name: the list narrows to that bin and comes up to you.</li>
-        <li>Every row carries dollars. Every affidavit says where its notice stands. A held paper names its one question, on the row and on its button.</li>
-        <li>Within a day: ready before held, then the largest first.</li>
-        <li>The smallest change. The list still runs by day, and ten rows still carry the same button.</li>
+        <li><b>Waiting on the leader</b> sits right under <b>Needs you now</b>, above Coming up. Each row says how long it has waited, and one press reminds the leader of all of them.</li>
+        <li>Inside Needs you now, the papers that will not make their day come first, under the tile's own words. They are the Board's <b>!</b> chips. The rest are on track.</li>
+        <li>Every row starts with its bin's name, so the list and the Board use the same words. A paper that waits on a fact asks its one question, on the row and on its button.</li>
+        <li>The head carries the day, so no row repeats it and no job name is cut off. Every row carries dollars. Every affidavit says where its notice stands.</li>
+        <li>The Board's numbers are presses: the tile's red line, the waiting tile, and the same numbers on the pinned find box. Scroll down to see it pin, with <b>↑ The Board</b>.</li>
+        <li>One press prints the ten ready affidavits. The ten rows stay, each with its own button.</li>
       </ul>
     </div>
     <div class="desk">
-      <div data-board="before"></div>
-      <div class="bar"><span class="find">⌕ Find a job, a GC, an address or an owner</span><span class="nums"><b class="r">21</b> by tomorrow · <b class="v">2</b> waiting · <b>4</b> in the run</span><button class="btn plain small up">↑ The Board</button></div>
-      <div class="showing" hidden>Showing <b class="n"></b> in <b class="l"></b>. <button class="link" data-clear>Show every row</button></div>
+      <div data-board="b"></div>
+      <div class="bar"><span class="find">⌕ Find a job, a GC, an address or an owner</span><span class="showing" hidden>Showing <b class="n"></b> <span class="l"></span>. <button class="link" data-clear>Show every row</button></span><span class="nums"><b class="r">21</b> by tomorrow · <button class="link" data-pick="risk" data-phrase="that <b>will not make tomorrow as they stand</b>">7 will not make it</button> · <button class="link" data-pick="await" data-phrase="in <b>Awaiting approval</b>">2 waiting</button> · <button class="link" data-pick="n_run" data-label="In the run">4 in the run</button></span><button class="btn plain small up">↑ The Board</button></div>
       <div class="list" data-list="b"></div>
     </div>
   </section>
@@ -254,7 +273,7 @@
         <li>Press a bin's name and the page goes to its group. The picture and the list say one thing, once.</li>
         <li>Papers that share one act fold into one row with a total and one button. Sixteen rows become seven.</li>
         <li>Tomorrow's papers come first. Everything later folds under one line.</li>
-        <li>The rows are B's rows: dollars, the notice line, the named question.</li>
+        <li>The rows are B's rows: dollars, the notice line, the one question.</li>
       </ul>
     </div>
     <div class="desk">
@@ -268,7 +287,7 @@
   <section class="option" id="opt-d" data-state="before">
     <div class="what"><b>D · One run.</b> The Board's first tile is the run: every paper due by tomorrow. Under the Board the list becomes three steps in order: get every paper right, print them all at once, then mail and file them together.
       <ul>
-        <li>Step 1 is the tile's own red line, written out. "8 will not make tomorrow as they stand" becomes six questions, each with its button.</li>
+        <li>Step 1 is the tile's own red line, written out. The seven papers that will not make tomorrow, and one flagged for the attorney, become six questions.</li>
         <li>The print stays locked until every question is settled or its paper is left out. One stuck paper never holds the run.</li>
         <li>The chips move on the Board as the run moves. Press the three states below and watch <b>In the run</b>.</li>
         <li>After the print, a paper whose record changed turns amber on the Board and says what changed.</li>
@@ -314,12 +333,12 @@
     const readyChips = [...[1024, 1031, 1044, 1047, 1049, 1052, 1055, 1058, 1068, 1083].map((id) => [id, state === 'after' && id === 1052 ? 'chg' : R, state === 'after' && id === 1052 ? '≠' : '']), [1130, Q], [1133, Q]]
     if (state === 'before') return {
       tiles: [
-        { tone: 'red', fig: '21', w: 'by tomorrow · 11 to file · 10 to send', s: '8 will not make tomorrow as they stand.', sTone: 'red' },
+        { tone: 'red', fig: '21', w: 'by tomorrow · 11 to file · 10 to send', s: '7 will not make tomorrow as they stand.', sTone: 'red' },
         { tone: 'violet', fig: '2', w: 'waiting on the leader' },
         { tone: 'brown', fig: '4', w: 'in the run', s: 'Type the tracking numbers.' },
         { tone: '', fig: '$63,670', w: 'unpaid on the desk' },
       ],
-      n: [['n_owner', 'Needs the owner', [[1118, R, '!'], [1121, Q]]], ['n_send', 'To send', [[1110, R, '!'], [1112, R, '!'], [1115, R, '!'], [1123, Q]]], ['n_await', 'Awaiting approval', [[1101, V], [1104, V]]], ['n_run', 'In the run', [[1091, R], [1093, R], [1095, R], [1097, R]]], ['n_sent', 'Sent', []]],
+      n: [['n_owner', 'Needs the owner', [[1118, R, '!'], [1121, Q]]], ['n_send', 'To send', [[1110, R, '!'], [1112, R, '!'], [1115, R, '!'], [1123, Q]]], ['n_await', 'Awaiting approval', [[1101, V, '!'], [1104, V, '!']]], ['n_run', 'In the run', [[1091, R], [1093, R], [1095, R], [1097, R]]], ['n_sent', 'Sent', []]],
       a: [['a_facts', 'Needs the property facts', [[1077, R, '!'], [1118, Q], [1121, Q]]], ['a_send', 'To send', [[1126, Q], [1128, Q]]], ['a_await', 'Awaiting approval', []], ['a_ready', 'Ready to file', readyChips, 'lit'], ['a_filed', 'Filed · Served', []]],
     }
     const run = [[1101, R], [1104, R], [1110, R], [1112, R], [1115, R], [1118, R], [1091, R], [1093, R], [1095, R], [1097, R]]
@@ -343,7 +362,9 @@
   const binHTML = ([key, label, chips, flag], i, flow) => `<div class="bin ${flow ? 'flow' : ''} ${flag || ''}" data-bin="${key}" ${flow ? `style="grid-column:1;grid-row:${i + 1}"` : ''}><button class="binhead" data-pick="${key}" data-label="${label}"><span>${label}</span><b class="${chips.length ? '' : 'zero'}">${chips.length}</b></button><div class="chips">${chips.length ? chips.map(chipHTML).join('') : '<span class="none">none</span>'}</div></div>`
   function boardHTML(state, opts = {}) {
     const m = boardModel(state)
-    const tiles = m.tiles.map((t, i) => `<div class="tile ${t.tone} ${opts.run && i === 0 ? 'pressed' : ''}"><span class="fig">${t.fig}</span><span class="w">${t.w}</span>${t.s ? `<span class="s ${t.sTone || ''}">${t.s}</span>` : ''}${opts.run && i === 0 ? '<span class="door">This is the run ↓</span>' : ''}</div>`).join('')
+    const sLine = (t, i) => (opts.press && i === 0 ? `<button class="s ${t.sTone || ''} tlink" data-pick="risk" data-phrase="that <b>will not make tomorrow as they stand</b>">${t.s}</button>` : `<span class="s ${t.sTone || ''}">${t.s}</span>`)
+    const wLine = (t, i) => (opts.press && i === 1 ? `<button class="w tlink" data-pick="await" data-phrase="in <b>Awaiting approval</b>">${t.w}</button>` : `<span class="w">${t.w}</span>`)
+    const tiles = m.tiles.map((t, i) => `<div class="tile ${t.tone} ${opts.run && i === 0 ? 'pressed' : ''}"><span class="fig">${t.fig}</span>${wLine(t, i)}${t.s ? sLine(t, i) : ''}${opts.run && i === 0 ? '<span class="door">This is the run ↓</span>' : ''}</div>`).join('')
     return `<div class="board">
       <div class="tiles">${tiles}</div>
       <div class="cols2">
@@ -361,18 +382,19 @@
 
   // ── the papers on the list ──
   const P = []
-  READY_NOW.forEach((id) => P.push({ k: 'aff', id, bin: 'a_ready', when: 'now', mark: id === 1083 ? '①' : '✓', today: ['Affidavit approved · ready to file', 'File the affidavit'], state: 'Approved · ready to file', tags: [[NOTICE[id].startsWith('No') ? 'none' : 'ok', NOTICE[id]], ...(id === 1083 ? [['warn', 'Ask the attorney first']] : [])], btn: 'File the affidavit' }))
-  P.push({ k: 'run', ids: [1091, 1093, 1095, 1097], title: '4 notices printed Nov 13', bin: 'n_run', when: 'now', today: ['Mailed? Type each envelope’s number. Not mailing them? Take the run back.', 'Record the mailing'], state: 'Mailed? Type each envelope’s number. Not mailing them? <button class="link">Take the run back</button>', tags: [], btn: 'Record the mailing' })
-  ;[1112, 1115].forEach((id) => P.push({ k: 'not', id, bin: 'n_send', when: 'now', today: ['Notice to send', 'Open the notice'], state: 'Written · not yet sent for approval', tags: [['none', 'September 2026']], btn: 'Open the notice' }))
-  P.push({ k: 'not', id: 1110, bin: 'n_send', when: 'now', held: true, today: ['Notice to send', 'Open the notice'], state: 'Held · its month is the month the job was typed in. What was the last day of work?', tags: [], btn: 'Set the day' })
-  P.push({ k: 'not', id: 1118, bin: 'n_owner', when: 'now', held: true, today: ['Needs the owner of record', 'Find the owner'], state: 'Held · who is the owner of record?', tags: [['none', 'September 2026']], btn: 'Find the owner' })
-  P.push({ k: 'aff', id: 1077, bin: 'a_facts', when: 'now', held: true, mark: '①', today: ['Affidavit · the property record is not complete', 'Fix the property'], state: 'Held · is this home the owner’s homestead?', tags: [['none', NOTICE[1055]]], btn: 'Answer the homestead question' })
-  ;[1130, 1133].forEach((id) => P.push({ k: 'aff', id, bin: 'a_ready', when: 'later', mark: '✓', today: ['Affidavit approved · ready to file', 'File the affidavit'], state: 'Approved · ready to file', tags: [['ok', NOTICE[id]]], btn: 'File the affidavit' }))
-  ;[1126, 1128].forEach((id) => P.push({ k: 'aff', id, bin: 'a_send', when: 'later', mark: '✓', today: ['Affidavit to send', 'Open the affidavit'], state: 'Written · not yet sent for approval', tags: [['ok', 'Notice sent Oct 14']], btn: 'Open the affidavit' }))
-  P.push({ k: 'not', id: 1123, bin: 'n_send', when: 'later', today: ['Notice to send', 'Open the notice'], state: 'Written · not yet sent for approval', tags: [['none', 'October 2026']], btn: 'Open the notice' })
-  P.push({ k: 'not', id: 1121, bin: 'n_owner', when: 'later', held: true, today: ['Needs the owner of record', 'Find the owner'], state: 'Held · who is the owner of record?', tags: [['none', 'October 2026']], btn: 'Find the owner' })
-  ;[1118, 1121].forEach((id) => P.push({ k: 'aff', id, bin: 'a_facts', when: 'later', held: true, mark: '②', today: ['Affidavit · the property record is not complete', 'Fix the property'], state: 'Held · waits on the owner of record, the same question as its notice', tags: [['none', 'No notice on record']], btn: 'Find the owner' }))
-  ;[1101, 1104].forEach((id) => P.push({ k: 'not', id, bin: 'n_await', when: 'wait', today: ['Waiting on the leader · since Nov 12', null], state: 'Waiting on the leader · since Nov 12', tags: [['none', 'September 2026']], btn: null }))
+  const BIN = { n_owner: 'Needs the owner', n_send: 'To send', n_await: 'Awaiting approval', n_run: 'In the run', a_facts: 'Needs the property facts', a_send: 'To send', a_ready: 'Ready to file' }
+  READY_NOW.forEach((id) => P.push({ k: 'aff', id, bin: 'a_ready', when: 'now', mark: id === 1083 ? '①' : '✓', today: ['Affidavit approved · ready to file', 'File the affidavit'], detail: '', tags: [[NOTICE[id].startsWith('No notice') ? 'none' : 'ok', NOTICE[id]], ...(id === 1083 ? [['warn', 'Ask the attorney first']] : [])], btn: 'File the affidavit' }))
+  P.push({ k: 'run', ids: [1091, 1093, 1095, 1097], title: '4 notices printed Nov 13', bin: 'n_run', when: 'now', today: ['Mailed? Type each envelope’s number. Not mailing them? Take the run back.', 'Record the mailing'], detail: 'Mailed? Type each envelope’s number. Not mailing them? <button class="link">Take the run back</button>', tags: [], btn: 'Record the mailing' })
+  ;[1112, 1115].forEach((id) => P.push({ k: 'not', id, bin: 'n_send', when: 'now', risk: true, today: ['Notice to send', 'Open the notice'], detail: 'Written, not yet sent for approval', tags: [['none', 'September 2026']], btn: 'Open the notice' }))
+  P.push({ k: 'not', id: 1110, bin: 'n_send', when: 'now', risk: true, held: true, today: ['Notice to send', 'Open the notice'], detail: 'Its month is the month the job was typed in. What was the last day of work?', tags: [], btn: 'Set the day' })
+  P.push({ k: 'not', id: 1118, bin: 'n_owner', when: 'now', risk: true, held: true, today: ['Needs the owner of record', 'Find the owner'], detail: 'Who is the owner of record?', tags: [['none', 'September 2026']], btn: 'Find the owner' })
+  P.push({ k: 'aff', id: 1077, bin: 'a_facts', when: 'now', risk: true, held: true, mark: '①', today: ['Affidavit · the property record is not complete', 'Fix the property'], detail: 'Is this home the owner’s homestead?', tags: [['none', NOTICE[1055]]], btn: 'Answer the homestead question' })
+  ;[1130, 1133].forEach((id) => P.push({ k: 'aff', id, bin: 'a_ready', when: 'later', mark: '✓', today: ['Affidavit approved · ready to file', 'File the affidavit'], detail: '', tags: [['ok', NOTICE[id]]], btn: 'File the affidavit' }))
+  ;[1126, 1128].forEach((id) => P.push({ k: 'aff', id, bin: 'a_send', when: 'later', mark: '✓', today: ['Affidavit to send', 'Open the affidavit'], detail: 'Written, not yet sent for approval', tags: [['ok', 'Notice sent Oct 14']], btn: 'Open the affidavit' }))
+  P.push({ k: 'not', id: 1123, bin: 'n_send', when: 'later', today: ['Notice to send', 'Open the notice'], detail: 'Written, not yet sent for approval', tags: [['none', 'October 2026']], btn: 'Open the notice' })
+  P.push({ k: 'not', id: 1121, bin: 'n_owner', when: 'later', held: true, today: ['Needs the owner of record', 'Find the owner'], detail: 'Who is the owner of record?', tags: [['none', 'October 2026']], btn: 'Find the owner' })
+  ;[1118, 1121].forEach((id) => P.push({ k: 'aff', id, bin: 'a_facts', when: 'later', held: true, mark: '②', today: ['Affidavit · the property record is not complete', 'Fix the property'], detail: 'Waits on the owner of record, the same question as its notice', tags: [['none', 'No notice on record']], btn: 'Find the owner' }))
+  ;[1101, 1104].forEach((id) => P.push({ k: 'not', id, bin: 'n_await', when: 'wait', risk: true, today: ['Waiting on the leader · since Nov 12', null], detail: 'Sent for approval Nov 12 · waiting 3 days', tags: [['none', 'September 2026']], btn: null }))
 
   const KIND = { aff: 'Affidavit', not: 'Notice', run: 'Run' }
   const idsOf = (p) => (p.ids || [p.id]).join(' ')
@@ -380,7 +402,8 @@
   const dueOf = (p) => (p.when === 'later' ? `<span class="due calm">${LATER}</span>` : `<span class="due">${NOW}</span>`)
   const tagsHTML = (tags) => tags.map(([c, t]) => `<span class="tag ${c}">${t}</span>`).join(' ')
   const todayRow = (p) => `<div class="row today" data-bin="${p.bin}" data-jobs="${idsOf(p)}"><span class="chip ${p.k}">${KIND[p.k]}${p.mark ? ' ' + p.mark : ''}</span><span class="title">${p.title || nm(p.id)}</span><span class="dots ${p.when === 'later' ? 'calm' : ''}">${p.k === 'run' ? '' : p.bin === 'a_ready' ? '●●●● 4/4' : p.held ? '●○○○ 1/4' : p.when === 'wait' ? '●●●○ 3/4' : '●●○○ 2/4'}</span><span class="state">${p.today[0]}</span>${dueOf(p)}<span class="act">${p.today[1] ? `<button class="btn">${p.today[1]}</button>` : '<button class="btn plain">Open</button>'}</span></div>`
-  const clearRow = (p) => `<div class="row" data-bin="${p.bin}" data-jobs="${idsOf(p)}"><span class="chip ${p.k}">${KIND[p.k]}</span><span class="title">${p.title || nm(p.id)}</span><span class="money">${money(amtOf(p))}</span>${dueOf(p)}<span class="act">${p.btn ? `<button class="btn">${p.btn}</button>` : '<span class="nopress">Only the leader can approve</span>'}</span><span class="state">${p.state} ${tagsHTML(p.tags)}</span></div>`
+  // B's row: the bin's name first, then the one thing to know; the day only where the head does not carry it
+  const clearRow = (p, o = {}) => `<div class="row ${p.risk && p.when === 'now' ? 'risk' : ''}" data-bin="${p.bin}" data-risk="${p.risk ? 1 : ''}" data-jobs="${idsOf(p)}"><span class="chip ${p.k}">${KIND[p.k]}</span><span class="title">${p.title || nm(p.id)}</span><span class="money">${money(amtOf(p))}</span><span class="act">${p.btn ? `<button class="btn">${p.btn}</button>` : '<button class="btn plain">Open</button>'}</span><span class="state">${o.due ? dueOf(p) : ''}${o.bin === false ? '' : `<span class="binname">${BIN[p.bin]}</span>${p.detail ? ' · ' : ' '}`}${p.detail} ${tagsHTML(p.tags)}</span></div>`
   const byKey = (a, b) => (a.k === b.k ? (a.id || 0) - (b.id || 0) : ['aff', 'not', 'run'].indexOf(a.k) - ['aff', 'not', 'run'].indexOf(b.k))
   const of = (when) => P.filter((p) => p.when === when)
 
@@ -390,31 +413,37 @@
       <div class="group-head">Waiting on the leader · 2</div>${of('wait').map(todayRow).join('')}`
   }
   function listB() {
-    const now = of('now'), ready = now.filter((p) => !p.held), held = now.filter((p) => p.held)
-    return `<div class="group-head red">Needs you now · ${now.length} <span class="hint">ready first, largest first · then what is held</span><span class="sum">${money(now.reduce((t, p) => t + amtOf(p), 0))}</span></div>${ready.map(clearRow).join('')}${held.map(clearRow).join('')}
-      <div class="group-head">Coming up · ${of('later').length}<span class="sum">${money([...new Set(of('later').map((p) => p.id))].filter((id) => id !== 1118).reduce((t, id) => t + JOBS[id][1], 0))}</span></div>${of('later').map(clearRow).join('')}
-      <div class="group-head violet">Waiting on the leader · 2<span class="sum">${money(3480)}</span></div>${of('wait').map(clearRow).join('')}`
+    const now = of('now')
+    const risk = [1118, 1077, 1110, 1112, 1115].map((id) => now.find((p) => p.id === id))
+    const ok = now.filter((p) => !p.risk)
+    const total = (list) => money(list.reduce((t, p) => t + amtOf(p), 0))
+    const sub = (cls, words, hint, press) => `<div class="sub-head ${cls}">${words}${hint ? ` <span class="hint">${hint}</span>` : ''}${press || ''}</div>`
+    return `<div class="group-head red">Needs you now · ${now.length} <span class="hint red">due Mon Nov 16 · 1 day left</span><span class="sum">${total(now)}</span></div>
+      ${sub('red', `Will not make tomorrow as they stand · ${risk.length}`, 'the Board’s ! chips · the longest road first')}${risk.map((p) => clearRow(p)).join('')}
+      ${sub('', `On track · ${ok.length}`, 'largest first', '<button class="btn plain small">Print the 10 affidavits</button>')}${ok.map((p) => clearRow(p)).join('')}
+      <div class="group-head violet">Waiting on the leader · 2 <span class="hint">will not make tomorrow as they stand</span><button class="btn plain small">Remind the leader of 2</button><span class="sum">${money(3480)}</span></div>${of('wait').map((p) => clearRow(p, { due: true })).join('')}
+      <div class="group-head">Coming up · ${of('later').length} <span class="hint">due Tue Dec 15 · 30 days left</span><span class="sum">${money(10050)}</span></div>${of('later').map((p) => clearRow(p)).join('')}`
   }
   const gh = (key, label, n, total, hint) => `<div class="group-head" id="a-${key}">${label} · ${n}${hint ? ` <span class="hint">${hint}</span>` : ''}<span class="sum">${money(total)}</span></div>`
   const pick = (id) => P.find((p) => p.id === id && p.when === 'now')
   function listA() {
     const ready = READY_NOW
-    return `<div class="band">By tomorrow · 21 papers <span class="sum">${money(52720)}</span></div>
-      ${gh('n_owner', 'Needs the owner', 1, 1900, 'notice')}${clearRow(pick(1118))}
-      ${gh('n_send', 'To send', 3, 5150, 'notices')}${clearRow(pick(1110))}
-      <details class="batch" data-jobs="1112 1115"><summary><span class="chip not">Notices</span><span class="title">2 notices written, not yet sent for approval<small>September 2026 <span class="caret">· show the jobs ▸</span></small></span><span class="money">${money(2250)}</span><span class="due">${NOW}</span><button class="btn">Send 2 for approval</button></summary>
+    return `<div class="band">By tomorrow · 21 papers · due Mon Nov 16 <span class="sum">${money(52720)}</span></div>
+      ${gh('n_owner', 'Needs the owner', 1, 1900, 'notice')}${clearRow(pick(1118), { bin: false })}
+      ${gh('n_send', 'To send', 3, 5150, 'notices')}${clearRow(pick(1110), { bin: false })}
+      <details class="batch" data-jobs="1112 1115"><summary><span class="chip not">Notices</span><span class="title">2 notices written, not yet sent for approval<small>September 2026 <span class="caret">· show the jobs ▸</span></small></span><span class="money">${money(2250)}</span><button class="btn">Send 2 for approval</button></summary>
         <div class="inside">${[1112, 1115].map((id) => `<div class="line"><span>${nm(id)}</span><span>September 2026</span><span class="money">${money(JOBS[id][1])}</span></div>`).join('')}</div></details>
       ${gh('n_await', 'Awaiting approval', 2, 3480, 'notices')}
-      <details class="batch" data-jobs="1101 1104"><summary><span class="chip not">Notices</span><span class="title">2 notices waiting on the leader<small>ZZ Builders · since Nov 12 <span class="caret">· show the jobs ▸</span></small></span><span class="money">${money(3480)}</span><span class="due">${NOW}</span><span class="nopress">Only the leader can approve</span></summary>
+      <details class="batch" data-jobs="1101 1104"><summary><span class="chip not">Notices</span><span class="title">2 notices waiting on the leader<small>ZZ Builders · since Nov 12 <span class="caret">· show the jobs ▸</span></small></span><span class="money">${money(3480)}</span><span class="nopress">Only the leader can approve</span></summary>
         <div class="inside">${[1101, 1104].map((id) => `<div class="line"><span>${nm(id)}</span><span>September 2026</span><span class="money">${money(JOBS[id][1])}</span></div>`).join('')}</div></details>
-      ${gh('n_run', 'In the run', 4, 7020, 'notices')}${clearRow(P.find((p) => p.k === 'run'))}
-      ${gh('a_facts', 'Needs the property facts', 1, 240, 'affidavit')}${clearRow(pick(1077))}
+      ${gh('n_run', 'In the run', 4, 7020, 'notices')}${clearRow(P.find((p) => p.k === 'run'), { bin: false })}
+      ${gh('a_facts', 'Needs the property facts', 1, 240, 'affidavit')}${clearRow(pick(1077), { bin: false })}
       ${gh('a_ready', 'Ready to file', 10, sum(ready), 'affidavits · one stack, one trip to the notary and the clerk')}
-      <details class="batch" open data-jobs="${ready.join(' ')}"><summary><span class="chip aff">Affidavits</span><span class="title">10 affidavits approved and ready to file<small>9 clean · 1 flagged “ask the attorney first” <span class="caret">· the jobs ▾</span></small></span><span class="money">${money(sum(ready))}</span><span class="due">${NOW}</span><button class="btn">Print 10 affidavits</button></summary>
-        <div class="inside">${ready.map((id) => `<div class="line" data-jobs="${id}"><span>${nm(id)}</span><span>${tagsHTML([[NOTICE[id].startsWith('No') ? 'none' : 'ok', NOTICE[id]], ...(id === 1083 ? [['warn', 'Ask the attorney first']] : [])])}</span><span class="money">${money(JOBS[id][1])}</span></div>`).join('')}</div></details>
+      <details class="batch" open data-jobs="${ready.join(' ')}"><summary><span class="chip aff">Affidavits</span><span class="title">10 affidavits approved and ready to file<small>9 clean · 1 flagged “ask the attorney first” <span class="caret">· the jobs ▾</span></small></span><span class="money">${money(sum(ready))}</span><button class="btn">Print 10 affidavits</button></summary>
+        <div class="inside">${ready.map((id) => `<div class="line" data-jobs="${id}"><span>${nm(id)}</span><span>${tagsHTML([[NOTICE[id].startsWith('No notice') ? 'none' : 'ok', NOTICE[id]], ...(id === 1083 ? [['warn', 'Ask the attorney first']] : [])])}</span><span class="money">${money(JOBS[id][1])}</span></div>`).join('')}</div></details>
       <div class="band calm">Later · 8 papers · Dec 15 <span class="sum">${money(10050)}</span></div>
       <details class="batch"><summary style="grid-template-columns:minmax(0,1fr) auto"><span class="title">Nothing here is due for 30 days<small>Needs the owner 1 · To send 3 · Needs the property facts 2 · Ready to file 2 <span class="caret">· show them ▸</span></small></span><span class="caret">in the same groups</span></summary>
-        <div class="inside">${of('later').map((p) => `<div class="line"><span>${nm(p.id)}</span><span>${KIND[p.k]} · ${p.state}</span><span class="money">${money(JOBS[p.id][1])}</span></div>`).join('')}</div></details>`
+        <div class="inside">${of('later').map((p) => `<div class="line"><span>${nm(p.id)}</span><span>${KIND[p.k]} · ${BIN[p.bin]}</span><span class="money">${money(JOBS[p.id][1])}</span></div>`).join('')}</div></details>`
   }
 
   // ── D: the run under the Board ──
@@ -437,7 +466,7 @@
         ${ask(`<i>${chipHTML([1110, R, '!'])}</i>ZZ Oak Hollow`, 'Its month is the month the job was typed in. What was the last day of work?', 'Notice · September 2026', 2900, '<button class="btn small">Set the day</button>')}
         ${ask(`<i>${chipHTML([1083, R])}</i>ZZ Builders, Mission Drains`, 'Ask the attorney first: no copy to the original contractor is on record for August.', 'Affidavit · notice sent Oct 14', 2900, '<button class="btn small">The attorney says go</button>')}
         ${ask(`<i>${chipHTML([1112, R, '!'])}${chipHTML([1115, R, '!'])}</i>2 notices`, 'Written, and not yet sent for approval.', 'Notices · September 2026', 2250, '<button class="btn small">Send 2 for approval</button>')}
-        ${ask(`<i>${chipHTML([1101, V])}${chipHTML([1104, V])}</i>ZZ Builders`, 'Waiting on the leader since Nov 12. Only the leader can approve.', 'Notices · September 2026 · lots 7 and 9', 3480, '')}
+        ${ask(`<i>${chipHTML([1101, V, '!'])}${chipHTML([1104, V, '!'])}</i>ZZ Builders`, 'Waiting on the leader since Nov 12. Only the leader can approve.', 'Notices · September 2026 · lots 7 and 9', 3480, '')}
         <details class="batch" style="margin-top:10px"><summary style="grid-template-columns:minmax(0,1fr) auto"><span class="title">13 papers are right<small>9 affidavits ready to file · 4 notices printed Nov 13 <span class="caret">· show them ▸</span></small></span><span class="money">$39,050</span></summary>
           <div class="inside"><div class="line"><span>${nm(1024)}</span><span><span class="tag ok">${NOTICE[1024]}</span></span><span class="money">$9,400</span></div><div class="line"><span>${nm(1031)}</span><span><span class="tag ok">${NOTICE[1031]}</span></span><span class="money">$6,100</span></div><div class="line"><span style="color:var(--faint)">… and 11 more, largest first.</span><span></span><span></span></div></div></details>
       </div>
@@ -470,6 +499,7 @@
   const $ = (s, el = document) => el.querySelector(s)
   const $$ = (s, el = document) => [...el.querySelectorAll(s)]
   $$('[data-board="before"]').forEach((el) => { el.innerHTML = boardHTML('before') })
+  $('[data-board="b"]').innerHTML = boardHTML('before', { press: true })
   $('[data-list="today"]').innerHTML = listToday()
   $('[data-list="b"]').innerHTML = listB()
   $('[data-list="a"]').innerHTML = listA()
@@ -523,19 +553,20 @@
   onScroll()
 
   // a pressed bin: Today and B narrow the list, A goes to the bin's group
-  function narrow(sec, key, label) {
+  const hit = (key, bin, risk) => (key === 'risk' ? risk === '1' : key === 'await' ? /_await$/.test(bin) : bin === key)
+  function narrow(sec, key, phrase) {
     const next = sec.dataset.pick === key ? '' : key
     sec.dataset.pick = next
-    $$('.bin', sec).forEach((b) => b.classList.toggle('picked', !!next && b.dataset.bin === next))
+    $$('.bin', sec).forEach((b) => b.classList.toggle('picked', !!next && next !== 'risk' && hit(next, b.dataset.bin)))
     const list = $('.list', sec)
     let shown = 0
-    $$('.row', list).forEach((r) => { const on = !next || r.dataset.bin === next; r.hidden = !on; if (on) shown++ })
-    $$('.group-head', list).forEach((h) => { h.hidden = !!next })
+    $$('.row', list).forEach((r) => { const on = !next || hit(next, r.dataset.bin, r.dataset.risk); r.hidden = !on; if (on) shown++ })
+    $$('.group-head, .sub-head', list).forEach((h) => { h.hidden = !!next })
     const line = $('.showing', sec)
     if (line) {
       line.hidden = !next
       $('.n', line).textContent = shown === 0 ? 'no rows' : shown + (shown === 1 ? ' row' : ' rows')
-      $('.l', line).textContent = label
+      $('.l', line).innerHTML = phrase
     }
     if (sec.id === 'opt-today') list.scrollTop = 0
     else if (next) window.scrollTo({ top: $('.bar', sec).getBoundingClientRect().top + window.scrollY - picker.offsetHeight, behavior: 'smooth' })
@@ -545,7 +576,7 @@
     if (!sec) return
     const head = ev.target.closest('[data-pick]')
     if (head) {
-      if (sec.id === 'opt-today' || sec.id === 'opt-b') narrow(sec, head.dataset.pick, head.dataset.label)
+      if (sec.id === 'opt-today' || sec.id === 'opt-b') narrow(sec, head.dataset.pick, head.dataset.phrase || 'in <b>' + head.dataset.label + '</b>')
       if (sec.id === 'opt-a') {
         const g = document.getElementById('a-' + head.dataset.pick)
         $$('.bin', sec).forEach((b) => b.classList.toggle('picked', !!g && b.dataset.bin === head.dataset.pick))
