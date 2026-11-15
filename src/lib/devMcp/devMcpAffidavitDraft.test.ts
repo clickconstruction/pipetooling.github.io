@@ -86,7 +86,7 @@ const refusal = (w: AffidavitDraftWorld) => {
 }
 
 describe('the verbs — in the table, on the server, in the docs', () => {
-  it('is a pair that names no RPC, declared and handled by the server at 0.87.0', () => {
+  it('is a pair that names no RPC, declared and handled by the server at 0.88.0', () => {
     expect(AFFIDAVIT_DRAFT_VERBS).toEqual(['plan_affidavit_draft', 'apply_affidavit_draft'])
     for (const v of AFFIDAVIT_DRAFT_VERBS) {
       expect(isAffidavitDraftVerb(v)).toBe(true)
@@ -98,7 +98,7 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     expect(isAffidavitDraftVerb('plan_notice_by_hand')).toBe(false)
     expect(planVerbFor('apply_affidavit_draft')).toBe('plan_affidavit_draft')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(109)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.87.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.88.0'")
     expect(SERVER).toContain('Writes are one hundred and nine verbs and nothing else:')
     expect(SERVER).toContain('plan_affidavit_draft → apply_affidavit_draft (a lien affidavit drafted on the Lien desk as its Affidavits pane saves one')
     expect(README).toContain('`plan_affidavit_draft(affidavit)` · `apply_affidavit_draft(affidavit, plan_hash)`')
@@ -233,6 +233,15 @@ describe('affidavitDraftDryRun — the pane’s draft, and what the seat refuses
     const billed = planned(world({ row: windowRow({ month_source: 'bill', last_month: '2026-08', deadline: '2026-11-16' }), job: { ...world().job!, first_work_date: null, last_work_date: null, lien_last_work_on: null } }))
     expect(insertedFields(billed.write).monthsDatedFromCreation).toBe(true)
     expect((billed.reply.desk as Record<string, unknown>).last_work_month_from).toContain('the job’s bill')
+    expect(billed.reply.month_checked).toBeUndefined()
+    // That month confirmed on the Lien desk (v2.7280): the plan names the check; a check on another month is not this month's.
+    const check = { lien_month_checked_month: '2026-08', lien_month_checked_at: '2026-11-14T17:00:00Z', lien_month_checked_by_name: 'Robert', lien_month_check_note: 'The owner, Nov 14: the work was done in August.' }
+    const checked = planned(world({ row: windowRow({ month_source: 'bill', last_month: '2026-08', deadline: '2026-11-16' }), job: { ...world().job!, first_work_date: null, last_work_date: null, lien_last_work_on: null, ...check } }))
+    expect((checked.reply.desk as Record<string, unknown>).last_work_month_from).toBe('the job’s bill, since it has no approved hours, confirmed as the month the work was done by Robert')
+    expect(checked.reply.month_checked).toMatchObject({ month: '2026-08', by: 'Robert', at: '2026-11-14T17:00:00Z', note: 'The owner, Nov 14: the work was done in August.' })
+    expect(String((checked.reply.month_checked as Record<string, unknown>).says)).toContain('August 2026, checked by Robert on 2026-11-14')
+    const other = planned(world({ row: windowRow({ month_source: 'bill', last_month: '2026-09', deadline: '2026-12-15' }), job: { ...world().job!, first_work_date: null, last_work_date: null, lien_last_work_on: null, ...check } }))
+    expect(other.reply.month_checked).toBeUndefined()
     const blank = planned(world({ filings: [{ ...NOTICE, months_covered: ['2026-10'] }] }))
     expect((blank.reply.paper_today as Record<string, unknown>).months_it_names).toBeNull()
     expect(String(blank.reply.no_month)).toContain('prints a blank')

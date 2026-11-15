@@ -26,6 +26,8 @@ import { lienAffidavitNoticesWords, lienAffidavitOwnerSends, lienAffidavitSwornM
 import { lienAffidavitNoticeCheck, lienNoticeCheckEmptyLines, lienNoticeCheckLines } from './gcKernels/lib/jobs/lienAffidavitNoticeCheck.ts'
 import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue } from './gcKernels/lib/jobs/lienNoticeOwed.ts'
 import { parseLienAffidavitMonthsByHand } from './gcKernels/lib/jobs/lienAffidavitMonthsByHand.ts'
+import { lienMonthCheckedFor, lienMonthCheckedSheetRow, parseLienMonthCheck } from './gcKernels/lib/jobs/lienMonthCheck.ts'
+import { lienStandInSourceOf } from './gcKernels/lib/jobs/lienBillMonths.ts'
 import { describeNoticeMonths } from './gcKernels/lib/jobs/lienNoticeMonthWords.ts'
 import { correctedClaim } from './gcKernels/lib/jobs/lienClaimCorrection.ts'
 import { LIEN_AFFIDAVIT_SHORT_FORM_MARK, lienAffidavitFormForItem } from './gcKernels/lib/jobs/lienAffidavitForm.ts'
@@ -100,8 +102,15 @@ export type AffidavitDraftJob = {
   first_work_date?: string | null
   last_work_date?: string | null
   lien_last_work_on?: string | null
+  /** The stand-in month a person confirmed (v2.7280, `lienMonthCheck.ts`); absent until the migration is on prod, when the job is read again without the columns. */
+  lien_month_checked_month?: string | null
+  lien_month_checked_at?: string | null
+  lien_month_checked_by_name?: string | null
+  lien_month_check_note?: string | null
 }
 export const AFFIDAVIT_DRAFT_JOB_COLS = 'id,job_name,job_address,hcp_number,click_number,customer_address_id,gc_customer_id,master_user_id,service_type_id,first_work_date,last_work_date,lien_last_work_on'
+/** The same with the month check's columns (v2.7280): read first, and the list above when they are not on prod yet. */
+export const AFFIDAVIT_DRAFT_JOB_COLS_WITH_MONTH_CHECK = `${AFFIDAVIT_DRAFT_JOB_COLS},lien_month_checked_month,lien_month_checked_at,lien_month_checked_by_name,lien_month_check_note`
 
 export type AffidavitDraftWorld = {
   job: AffidavitDraftJob | null
@@ -138,7 +147,9 @@ function parseIssuer(valueText: unknown): LienNoticeIssuer | null {
 
 export async function readAffidavitDraftWorld(reads: AffidavitDraftReads, p: AffidavitDraftPayload): Promise<AffidavitDraftWorld> {
   const empty: AffidavitDraftWorld = { job: null, row: null, items: [], address: null, ownerOverride: null, gc: null, correctionOff: null, monthsByHand: null, filings: [], signer: null, issuer: null, serviceTypeName: '' }
-  const job = ((await reads.rows('jobs_ledger', `select=${AFFIDAVIT_DRAFT_JOB_COLS}&id=eq.${p.job_id}`))[0] as AffidavitDraftJob | undefined) ?? null
+  // The month check's columns (v2.7280) ride along once their migration is on prod; until then the job is read without them.
+  const jobRows = await reads.rows('jobs_ledger', `select=${AFFIDAVIT_DRAFT_JOB_COLS_WITH_MONTH_CHECK}&id=eq.${p.job_id}`).catch(() => reads.rows('jobs_ledger', `select=${AFFIDAVIT_DRAFT_JOB_COLS}&id=eq.${p.job_id}`))
+  const job = (jobRows[0] as AffidavitDraftJob | undefined) ?? null
   if (!job) return empty
   const windowRow = (await reads.windows(AFFIDAVIT_DRAFT_WINDOW_DAYS)).find((r) => str(r.job_id).toLowerCase() === job.id.toLowerCase())
   const row = windowRow ? ({ ...windowRow, open_balance: num(windowRow.open_balance) } as unknown as LienAffidavitRow) : null
@@ -246,7 +257,11 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
   const claim = cents(claimed.claim)
   const beyondDesk = entry.daysLeft > AFFIDAVIT_DESK_LEAD_DAYS
   // A job with no approved hours is dated from its bill when it has one (v2.7224), else from the day it was made.
-  const monthSource = entry.lastMonthByHand ? 'the last day of work set by hand' : entry.lastMonthFromBill ? 'the job’s bill, since it has no approved hours' : entry.lastMonthFromCreation ? 'the month the job was made, since it has no approved hours' : 'the approved clock hours'
+  // The stand-in month a person confirmed on the Lien desk (v2.7280): the plan names the check, as the pane, the Lien window and the help sheet do.
+  const monthChecked = lienMonthCheckedFor({ source: lienStandInSourceOf(entry.lastMonthFromCreation, entry.lastMonthFromBill), month: entry.lastMonth, check: parseLienMonthCheck(job) })
+  const monthCheckRow = monthChecked ? lienMonthCheckedSheetRow(monthChecked, (ymd: string) => ymd) : null
+  const standInSource = entry.lastMonthByHand ? 'the last day of work set by hand' : entry.lastMonthFromBill ? 'the job’s bill, since it has no approved hours' : entry.lastMonthFromCreation ? 'the month the job was made, since it has no approved hours' : 'the approved clock hours'
+  const monthSource = monthChecked ? `${standInSource}, confirmed as the month the work was done${monthChecked.byName ? ` by ${monthChecked.byName}` : ''}` : standInSource
   return {
     ok: true,
     write,
@@ -274,6 +289,7 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
       ...(entry.isSub && !noticeWords ? { no_notice_day: 'No send to the owner is on record with its day, so the paper prints a blank where the notice goes.' } : {}),
       ...(askFirst.length > 0 ? { ask_the_attorney_before_this_is_filed: askFirst } : {}),
       ...(noticeDue ? { notice_still_due: lienAffidavitNoticeDueLine(noticeDue, (ymd: string) => ymd) } : {}),
+      ...(monthChecked && monthCheckRow ? { month_checked: { month: monthChecked.month, by: monthChecked.byName || null, at: monthChecked.at || null, note: monthChecked.note || null, says: `${monthCheckRow.words} No clock moved and no paper changed; the stand-in flag is quiet on the desk, the Lien window, the help sheet and the notice record.` } } : {}),
       ...(world.monthsByHand ? { months_set_by_hand: { months: world.monthsByHand.months, reason: world.monthsByHand.reason, set_by: world.monthsByHand.setByName, set_at: world.monthsByHand.setAt, says: 'The paper names these months in place of the ones the recorded notices name. The attorney line still reads each against the record.' } } : {}),
       writes: standing ? { refreshes_the_draft: String(standing.id) } : { a_new_draft: true },
       draft: { months, fields },

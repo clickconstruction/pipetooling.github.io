@@ -396,6 +396,8 @@ export function lienNoticeRecord(input: {
   workEnd?: string | null
   /** The paper's month is a stand-in, from a bill or the job's creation (v2.7224): the record says so first and never reads *On record*. */
   monthStandIn?: LienStandInSource | null
+  /** A person confirmed that month (v2.7280, `lienMonthCheckedSheetRow`): the flag goes, and a note line names the check. */
+  monthCheck?: { lead: string; words: string } | null
 }): LienNoticeRecord | null {
   if (!input.isSub) return null
   const filings = input.filings ?? []
@@ -423,12 +425,15 @@ export function lienNoticeRecord(input: {
   if (outside.length > 0) lines.push({ state: 'note', lead: 'Left off the paper.', words: `${describeNoticeMonths(outside)} ${outside.length === 1 ? 'is' : 'are'} on the notice but outside this job’s work dates.` })
   const unnamed = span.filter((m) => !noticed.includes(m))
   if (unnamed.length > 0) lines.push({ state: 'note', lead: 'No notice.', words: `This job’s work dates take in ${describeNoticeMonths(unnamed)}. No notice on record names ${unnamed.length === 1 ? 'it' : 'them'}.` })
+  // The stand-in month a person confirmed (v2.7280): the record names the check where the flag was.
+  if (input.monthCheck) lines.push({ state: 'note', lead: input.monthCheck.lead, words: input.monthCheck.words })
 
+  const standIn = input.monthCheck ? null : input.monthStandIn
   return {
     notices,
     months,
-    flags: [lienStandInFlag(input.monthStandIn), ...lienNoticeCheckLines(check)].filter(Boolean),
-    flagsShort: [lienStandInLine(input.monthStandIn), ...lienNoticeCheckShortLines(check)].filter(Boolean),
+    flags: [lienStandInFlag(standIn), ...lienNoticeCheckLines(check)].filter(Boolean),
+    flagsShort: [lienStandInLine(standIn), ...lienNoticeCheckShortLines(check)].filter(Boolean),
     lines,
     gaps: lienNoticeRecordGaps(notices),
     voided: filings.filter((f) => f.kind === 'notice_53_056' && Boolean(f.voided_at)).length,

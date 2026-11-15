@@ -120,6 +120,7 @@ import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/
 import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
 import { lienNoticeNamedMonths, lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
 import { lienAffidavitMonthsByHandCheck } from '../../lib/jobs/lienAffidavitMonthsByHand'
+import { lienMonthCheckedFor, lienMonthCheckedSheetRow, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
 import { addMonthsToLienNotice } from '../../lib/jobs/lienNoticeOwedIo'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
@@ -1784,9 +1785,12 @@ export default function LienDesk({
       const noticeLines = lienNoticeCheckLines(noticeCheck)
       // A month from a bill or the job's creation (v2.7224) is flagged on both sheets, never held: neither reads On record for it.
       const monthStandIn = lienStandInSourceOf(e.lastMonthFromCreation, e.lastMonthFromBill)
+      // A stand-in month a person confirmed (v2.7280): the sheet's row reads ✓ and the record names the check where the flag was.
+      const monthChecked = lienMonthCheckedFor({ source: monthStandIn, month: e.lastMonth, check: parseLienMonthCheck(job) })
+      const monthCheck = monthChecked ? lienMonthCheckedSheetRow(monthChecked, formatYmdMonthDay) : null
       // The notice record (punch list #322): the same months and the same rows, read against the paper's own two sentences.
-      const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd, monthStandIn })
-      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn, monthsByHand: byHand ? lienAffidavitMonthsByHandCheck(byHand, formatYmdMonthDay) : null }
+      const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd, monthStandIn, monthCheck })
+      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn, monthsByHand: byHand ? lienAffidavitMonthsByHandCheck(byHand, formatYmdMonthDay) : null, monthCheck }
       return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
   }, [data, affShown, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
@@ -3181,6 +3185,7 @@ export default function LienDesk({
           setKind('notice')
           setSelectedJobId(jobId)
         }}
+        onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
         footerEl={affFooterEl}
       />
     ) : (
