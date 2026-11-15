@@ -2,7 +2,7 @@
 name: "Bills sent: the office adds to and edits the list under How the bill went"
 number: 340
 group: close
-status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166, migration `20261114060000` pushed 2026-11-14 · PR 3 (the chips and the window) in v2.7167 · Taunya picked Build all three for calls 6 to 8 on 2026-11-15 · R1 (the day offers the day the bill was made) in v2.7349 · R2 (several bills to one person at once) in v2.7350 · left: R3 and a walk on the live page
+status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166, migration `20261114060000` pushed 2026-11-14 · PR 3 (the chips and the window) in v2.7167 · Taunya picked Build all three for calls 6 to 8 on 2026-11-15 · R1 (the day offers the day the bill was made) in v2.7349 · R2 (several bills to one person at once) in v2.7350 · R3 (the form reads the record back) in v2.7351 · left: a walk on the live page
 summary: >
   Bills sent has one form, Say how it went…, with a list of four fixed ways a bill can go. The
   owner asked that the people who open the page can add to that list and edit it, and to be shown
@@ -11,11 +11,11 @@ summary: >
   off and never deleted, and every way counts under Recorded by hand. The mock-up draws the form
   as it is, three ways to edit the list from where the person stands, and three separate fixes to
   the form itself. I suggest the chips.
-next: R3, its own small PR. Then walk the page live: add a way, record a bill with it, rename it, and read the older line.
-size: M as a train of three (S · M · M), then up to three small ones for the form's own fixes (S each)
+next: Walk the page live. Add a way, record a bill with it, rename it, and read the older line. Open the form on an old bill and read its day, its other bills and the line above the button.
+size: M as a train of three (S · M · M), then three small ones for the form's own fixes (S each); left: the live walk (S)
 blocker: None. The table is on the database since 2026-11-14; PR 3 draws the chips and the two presses.
-opinion: finish R3, then walk it live
-ver: v2.7145 · v2.7166 · v2.7167 · v2.7349 · v2.7350
+opinion: walk it live, then retire the card
+ver: v2.7145 · v2.7166 · v2.7167 · v2.7349 · v2.7350 · v2.7351
 ---
 
 # Bills sent: the list under *How the bill went* (#340)
@@ -110,7 +110,7 @@ Three fixes the screenshot suggests. None needs the list to change and none need
 
 - **R1 · The day offers the day the bill was made.** Today the date offers today, on a bill that may be weeks old, and a record cannot be changed once saved. Offer the billed day, with **Today** one press away. **Built, v2.7349.**
 - **R2 · Several bills to one person at once.** The form lists that person's other bills with no send on record, to tick. The button counts what it will record (`batchWords`), each bill gets its own record, and a bill that fails is named with its reason while the rest save. **Built, v2.7350.**
-- **R3 · The form reads the record back.** Above the button, the sentence the record will say: the day, the way, the person, the recorder. It replaces the small grey line.
+- **R3 · The form reads the record back.** Above the button, the sentence the record will say: the day, the way, the person, the recorder. It replaces the small grey line. **Built, v2.7351.**
 
 ## The train
 
@@ -121,7 +121,7 @@ Three fixes the screenshot suggests. None needs the list to change and none need
 | 3 | **The editor**, as the owner picked: the chips with **＋ Add a way** and **Edit list**, the window, the kernel that words each refusal, the screen's tests, the guide's new section, the glossary line. **Built, v2.7167** | M | none |
 | 4 | **R1**, the day offers the day the bill was made. `byHandDayOffered` and `byHandDayPicks`. **Built, v2.7349** | S | none |
 | 5 | **R2**, several bills to one person at once. `byHandOthers`, `byHandRecordLabel`, `byHandOutcome`; a refused bill stays on the strip with its reason. **Built, v2.7350** | S | none |
-| 6 | R3, alone | S | none |
+| 6 | **R3**, the form reads the record back. `byHandReadBack`, with the recorder's name from the sign-in. **Built, v2.7351** | S | none |
 
 PR 2's client reads a table only the migration creates, so it is pushed right after the merge and merges when the person who pushes is at hand.
 
@@ -144,7 +144,7 @@ The owner's, a word each:
 5. **Is 12 the right cap?** **12.** Taken as suggested.
 6. **R1, the day offers the day the bill was made?** **Yes.** Taunya picked Build all three, 2026-11-15. Built in v2.7349.
 7. **R2, several bills to one person at once?** **Yes.** Taunya picked Build all three, 2026-11-15. Built in v2.7350.
-8. **R3, the form reads the record back?** **Yes.** Taunya picked Build all three, 2026-11-15. Not built yet.
+8. **R3, the form reads the record back?** **Yes.** Taunya picked Build all three, 2026-11-15. Built in v2.7351.
 
 ## Not drawn
 

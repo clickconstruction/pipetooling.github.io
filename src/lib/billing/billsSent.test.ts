@@ -26,6 +26,8 @@ import {
   byHandOthersHeading,
   byHandOutcome,
   byHandProblem,
+  byHandReadBack,
+  byHandReadBackLead,
   byHandRecordLabel,
   billsSentSumWords,
   billsSentTiles,
@@ -517,6 +519,21 @@ describe('billsSent — a record made by hand (PR 6)', () => {
     expect(byHandOutcome(3, 0)).toEqual({ line: 'Recorded 3 bills.', head: null, tone: 'success' })
     expect(byHandOutcome(2, 1)).toEqual({ line: 'Recorded 2 bills. 1 did not record.', head: '1 bill did not record. It stays here with the reason.', tone: 'warning' })
     expect(byHandOutcome(0, 2)).toEqual({ line: 'Nothing recorded. 2 did not record.', head: '2 bills did not record. They stay here with the reason.', tone: 'error' })
+  })
+
+  it('reads the record back before the press: the day, the way, the person, the recorder (R3)', () => {
+    expect(byHandReadBack(draft, '2026-11-13', ' Priya ')).toBe('Mon, Nov 9 · Handed over · to Hal Jensen, on site · recorded by hand by Priya on Fri, Nov 13.')
+    // The way's words are the list's own, as the record will keep them.
+    const ways = [{ id: 'w1', key: 'mailed', label: 'Mailed, first class', sentHow: 'mail' as const, sortOrder: 1, retiredAtIso: null, retiredByName: '', createdByName: '', createdAtIso: '' }]
+    expect(byHandReadBack({ ...draft, how: 'mailed' }, '2026-11-13', 'Priya', ways)).toBe('Mon, Nov 9 · Mailed, first class · to Hal Jensen, on site · recorded by hand by Priya on Fri, Nov 13.')
+    // A name that has not read yet is left out, never guessed.
+    expect(byHandReadBack(draft, '2026-11-13', '')).toBe('Mon, Nov 9 · Handed over · to Hal Jensen, on site · recorded by hand on Fri, Nov 13.')
+    // Nothing is read back while the form lacks something.
+    expect(byHandReadBack({ ...draft, how: '' }, '2026-11-13', 'Priya')).toBe('')
+    expect(byHandReadBack({ ...draft, toWhom: ' ' }, '2026-11-13', 'Priya')).toBe('')
+    expect(byHandReadBack({ ...draft, wentOnYmd: '2026-11-14' }, '2026-11-13', 'Priya')).toBe('')
+    expect(byHandReadBackLead(1)).toBe('The record will read:')
+    expect(byHandReadBackLead(3)).toBe('Each record will read:')
   })
 
   it('files one sent copy with no addresses, the bill as its source and what was said', () => {
