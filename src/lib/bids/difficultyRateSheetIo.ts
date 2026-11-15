@@ -7,6 +7,8 @@
 import { supabase } from '../supabase'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
 import { supabaseBidDifficultyIo } from './bidDifficultyIo'
+import { supabaseBidDifficultyPicksIo } from './bidDifficultyPicksIo'
+import type { DifficultyPicks } from './difficultyCriteria'
 import { supabaseGcDifficultyIo, type GcDifficultyIo } from './gcDifficultyRatingIo'
 import { laborRowHours } from './laborRowHours'
 
@@ -32,6 +34,9 @@ export type RateSheetBidRead = {
 
 export interface RateSheetIo extends GcDifficultyIo {
   loadBid(bid: RateSheetBid): Promise<RateSheetBidRead>
+  /** The bid's own picks as stored (PR 6, the site); absent reads as none. */
+  loadBidPicks?(bidId: string): Promise<DifficultyPicks>
+  saveBidPicks?(bidId: string, criteriaVersionId: string, picks: DifficultyPicks): Promise<DifficultyPicks>
 }
 
 type LaborRow = Parameters<typeof laborRowHours>[0]
@@ -57,8 +62,11 @@ async function loadHistory(serviceTypeId: string | null): Promise<BidPricingHist
 
 export function supabaseRateSheetIo(): RateSheetIo {
   const pins = supabaseBidDifficultyIo()
+  const own = supabaseBidDifficultyPicksIo()
   return {
     ...supabaseGcDifficultyIo(),
+    loadBidPicks: async (bidId) => (await own.load(bidId))?.picks ?? {},
+    saveBidPicks: async (bidId, criteriaVersionId, picks) => (await own.save(bidId, criteriaVersionId, picks)).picks,
     async loadBid(bid) {
       const [pin, estimate, history] = await Promise.all([pins.load(bid.id).catch(() => null), loadEstimate(bid.id).catch(() => null), loadHistory(bid.serviceTypeId).catch(() => null)])
       return { pin: pin ? { fieldHours: pin.fieldHours, laborRate: pin.laborRate, ownCostUsd: pin.ownCostUsd, carriedUsd: pin.carriedUsd } : null, estimate, history }

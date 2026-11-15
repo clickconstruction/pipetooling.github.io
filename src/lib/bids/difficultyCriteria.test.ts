@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   DIFFICULTY_CRITERIA_V1,
+  DIFFICULTY_CRITERIA_V2,
   carryDifficultyPicks,
   difficultyCriteriaProblems,
   difficultyMaxPoints,
@@ -48,6 +49,22 @@ describe('difficultyCriteria', () => {
     expect(m).not.toBeNull()
     expect(JSON.parse(m![1]!)).toEqual(DIFFICULTY_CRITERIA_V1)
     expect(difficultyCriteriaProblems(DIFFICULTY_CRITERIA_V1)).toEqual([])
+  })
+
+  it('version 2 in the kernel is the JSON the site-scale migration publishes: version 1 and the site scale on the bid', () => {
+    const sql = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261116030000_difficulty_site_scale.sql'), 'utf8')
+    const m = /\$json\$(\{.*?\})\$json\$/s.exec(sql)
+    expect(m).not.toBeNull()
+    expect(JSON.parse(m![1]!)).toEqual(DIFFICULTY_CRITERIA_V2)
+    expect(difficultyCriteriaProblems(DIFFICULTY_CRITERIA_V2)).toEqual([])
+    expect(DIFFICULTY_CRITERIA_V2.scales.slice(0, 3)).toEqual(DIFFICULTY_CRITERIA_V1.scales)
+    expect(DIFFICULTY_CRITERIA_V2.scales.filter((s) => s.scope === 'bid').map((s) => s.key)).toEqual(['site'])
+  })
+
+  it('a GC’s rating carries to the GC’s scales only: the site scale never reads as unrated on the GC', () => {
+    expect(carryDifficultyPicks({ paying: 1, field: 2, office: 1 }, DIFFICULTY_CRITERIA_V2).unrated).toEqual(['site'])
+    expect(carryDifficultyPicks({ paying: 1, field: 2, office: 1 }, DIFFICULTY_CRITERIA_V2, 'gc').unrated).toEqual([])
+    expect(carryDifficultyPicks({ field: 2 }, DIFFICULTY_CRITERIA_V2, 'gc').unrated).toEqual(['paying', 'office'])
   })
 
   it('parses a row body leniently and refuses what is not a body', () => {

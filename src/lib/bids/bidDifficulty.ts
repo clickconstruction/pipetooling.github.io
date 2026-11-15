@@ -79,16 +79,25 @@ export function bidDifficultyAmountOnRows(rows: ReadonlyArray<{ id: string; roug
   return round2(rows.filter((r) => ids.has(r.id)).reduce((n, r) => n + (Number(r.rough_in) || 0) + (Number(r.top_out) || 0) + (Number(r.trim_set) || 0), 0))
 }
 
-export type BidDifficultyStale = { kind: 'higher' | 'lower' | 'reworded'; words: string } | null
+export type BidDifficultyStale = { kind: 'higher' | 'lower' | 'reworded' | 'bid'; words: string } | null
 
 /**
  * Whether the GC's standing rating is a different rating from the one the bid was priced with: "rated higher since
- * this was priced" (the owner's line), lower, or the same points under new words. Null when the pin is the standing
- * rating or there is no pin.
+ * this was priced" (the owner's line), lower, or the same points under new words. Since PR 6, also whether the bid's
+ * own picks moved (`bidPicksWords`), and whether a bid priced on its own picks alone is to a GC rated since. Null
+ * when the pin is what stands, or there is no pin.
  */
-export function bidDifficultyStale(pin: BidDifficulty | null, standing: GcDifficultyStanding | null): BidDifficultyStale {
-  if (!pin || !standing || !pin.ratingId || pin.ratingId === standing.rating.id) return null
-  const was = pin.points
+export function bidDifficultyStale(pin: BidDifficulty | null, standing: GcDifficultyStanding | null, bidPicksWords: string | null = null, bidScaleKeys: readonly string[] = []): BidDifficultyStale {
+  if (!pin) return null
+  // The bid's own picks (PR 6, the site) moved since it was priced: `bidPicksStaleWords` says how.
+  const own: BidDifficultyStale = bidPicksWords ? { kind: 'bid', words: bidPicksWords } : null
+  // A bid priced on its own picks alone, to a GC rated since: the rating is new to it.
+  if (standing && !pin.ratingId) return { kind: 'higher', words: `Rated since this was priced: ${standing.points} point${standing.points === 1 ? '' : 's'}${standing.rating.ratedByName.trim() ? `, by ${standing.rating.ratedByName.trim()}` : ''} on ${standing.rating.ratedAt.slice(0, 10)}.` }
+  if (!standing || !pin.ratingId || pin.ratingId === standing.rating.id) return own
+  // The GC's part of what was priced: the pin's points less the bid's own scales, which the rating never held. After
+  // a take-off the pin's points are its remaining lines'; before one they are every rated scale's.
+  const ownPoints = pin.removed.length > 0 ? pin.lines.filter((l) => bidScaleKeys.includes(l.key)).reduce((n, l) => n + l.points, 0) : bidScaleKeys.reduce((n, k) => n + (pin.picks[k] ?? 0), 0)
+  const was = pin.points - ownPoints
   const now = standing.points
   const by = standing.rating.ratedByName.trim()
   const when = standing.rating.ratedAt.slice(0, 10)
@@ -127,7 +136,7 @@ export function bidDifficultyRemovedWords(r: BidDifficultyRemoved): string {
   const money = `$${Math.round(r.amount).toLocaleString('en-US')}`
   const day = r.at.slice(0, 10)
   const reason = r.reason.trim()
-  return `${r.name} · ${money} taken off${r.byName ? ` by ${r.byName}` : ''} on ${day}${reason ? `: ${reason.charAt(0).toLowerCase()}${reason.slice(1)}` : ''}`
+  return `${r.name} · ${money} taken off${r.byName ? ` by ${r.byName}` : ''} on ${day}${reason ? `: ${reason}` : ''}`
 }
 
 /** What the pin becomes after one line is taken off: that line out, the rest and the total kept. */
@@ -146,14 +155,29 @@ export function bidDifficultyAfterTakeOff(pin: BidDifficulty, key: string, reaso
 }
 
 /** The pin a fresh write makes, before the database stamps it. */
-export function bidDifficultyPinFor(args: { bidId: string; costEstimateId: string; standing: GcDifficultyStanding; priceVersionId: string; lines: DifficultyLines; fieldHours: number; laborRate: number; ownCost: number; carried: number; rowIds: string[] }): Omit<BidDifficulty, 'id' | 'pricedByName' | 'pricedAt'> {
+export function bidDifficultyPinFor(args: {
+  bidId: string
+  costEstimateId: string
+  /** The GC's standing rating; null for a bid priced on its own picks alone (PR 6). */
+  standing: GcDifficultyStanding | null
+  /** The bid's own picks and the published version they were read under (PR 6). */
+  bidPicks?: Record<string, number>
+  publishedVersionId?: string | null
+  priceVersionId: string
+  lines: DifficultyLines
+  fieldHours: number
+  laborRate: number
+  ownCost: number
+  carried: number
+  rowIds: string[]
+}): Omit<BidDifficulty, 'id' | 'pricedByName' | 'pricedAt'> {
   return {
     bidId: args.bidId,
     costEstimateId: args.costEstimateId,
-    ratingId: args.standing.rating.id,
-    criteriaVersionId: args.standing.rating.criteriaVersionId,
+    ratingId: args.standing?.rating.id ?? null,
+    criteriaVersionId: args.standing?.rating.criteriaVersionId ?? args.publishedVersionId ?? null,
     priceVersionId: args.priceVersionId,
-    picks: { ...args.standing.rating.picks },
+    picks: { ...(args.standing?.rating.picks ?? {}), ...(args.bidPicks ?? {}) },
     lines: args.lines.lines.map(({ key, name, points, hours, rate, amount, sentence, words }) => ({ key, name, points, hours, rate, amount, sentence, words })),
     rowIds: args.rowIds,
     removed: [],

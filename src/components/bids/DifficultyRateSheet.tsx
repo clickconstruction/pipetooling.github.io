@@ -31,7 +31,8 @@ import {
   type GcDifficultyRating,
   type GcDifficultyStanding,
 } from '../../lib/bids/gcDifficultyRating'
-import { RATE_SHEET_WORDS as S, rateSheetBidNumbers, rateSheetConsequence, rateSheetGcRecord, rateSheetGcRecordWords, rateSheetOverTitle, rateSheetPayingWords } from '../../lib/bids/difficultyRateSheet'
+import { BID_PICK_WORDS, bidPicksUnder, difficultyBidScales } from '../../lib/bids/bidDifficultyPicks'
+import { RATE_SHEET_WORDS as S, rateSheetBidNumbers, rateSheetConsequence, rateSheetGcRecord, rateSheetGcRecordWords, rateSheetOverTitle, rateSheetPayingWords, rateSheetSavePlan } from '../../lib/bids/difficultyRateSheet'
 import { supabaseRateSheetIo, type RateSheetBid, type RateSheetBidRead, type RateSheetIo } from '../../lib/bids/difficultyRateSheetIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { PhoneSheet } from '../PhoneSheet'
@@ -78,6 +79,9 @@ export default function DifficultyRateSheet({ customerId, customerName, bid = nu
   const [picks, setPicks] = useState<DifficultyPicks>({})
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
+  /** PR 6: the bid's own picks (the site), as stored and as on screen. */
+  const [bidPicksStored, setBidPicksStored] = useState<DifficultyPicks>({})
+  const [bidPicks, setBidPicks] = useState<DifficultyPicks>({})
   const canRate = difficultyCanRate(price, role)
 
   const load = useCallback(async () => {
@@ -125,6 +129,13 @@ export default function DifficultyRateSheet({ customerId, customerName, bid = nu
       .catch(() => {
         if (live) setBidRead({ pin: null, estimate: null, history: null })
       })
+    io.loadBidPicks?.(bid.id)
+      .then((p) => {
+        if (!live) return
+        setBidPicksStored(p)
+        setBidPicks(p)
+      })
+      .catch(() => {})
     return () => {
       live = false
     }
@@ -138,21 +149,27 @@ export default function DifficultyRateSheet({ customerId, customerName, bid = nu
   }, [ratings, versions, published])
 
   const body = published?.body ?? null
+  // The bid's own scales draw only from a bid, and only when the published version has one.
+  const bidScales = bid ? difficultyBidScales(body) : []
+  const bidPicksNow = useMemo(() => (bidScales.length > 0 ? bidPicksUnder(bidPicks, body) : {}), [bidScales.length, bidPicks, body])
+  const bidPicksWere = useMemo(() => (bidScales.length > 0 ? bidPicksUnder(bidPicksStored, body) : {}), [bidScales.length, bidPicksStored, body])
+  const bidChanged = bidScales.some((sc) => bidPicksNow[sc.key] !== bidPicksWere[sc.key])
   const payingScale = body?.scales.find((s) => s.key === DIFFICULTY_PAYING_KEY && s.source === 'bills') ?? null
   const storedPaying = gcDifficultyStoredBillsPick(standing, DIFFICULTY_PAYING_KEY)
   const storedByHand = storedPaying ? difficultyPayingByHandOf(storedPaying.reason) : null
   const payingPick = payingScale ? difficultyPayingPick(paying, storedPaying && storedByHand != null ? { points: storedPaying.points, reason: storedByHand } : null) : null
   const allPicks: DifficultyPicks = useMemo(() => (payingPick ? { ...picks, [DIFFICULTY_PAYING_KEY]: payingPick.points } : picks), [picks, payingPick])
-  const total = body ? difficultyTotalPoints(allPicks, body, 'gc').points : 0
+  const total = (body ? difficultyTotalPoints(allPicks, body, 'gc').points : 0) + Object.values(bidPicksNow).reduce((n, p) => n + p, 0)
   const problems = gcDifficultyDraftProblems(allPicks, note, body)
   const changed = gcDifficultyPicksChanged(allPicks, standing)
-  // From a bid, the press wakes only on a change. From the ask, the same picks with what happened on this job is a rating too.
-  const unchanged = !ask && !changed && standing != null
-  const dead = saving || problems.length > 0 || unchanged
+  // From a bid, the rating is saved only on a change; from the ask, the same picks with what happened on this job is a
+  // rating too. The bid's own picks save on their own, with no reason asked (PR 6).
+  const plan = rateSheetSavePlan({ fromAsk: ask != null, hasStanding: standing != null, gcChanged: changed, gcPicked: Object.keys(picks).length > 0, gcProblems: problems, bidChanged, noPickWords: W.noPick })
+  const dead = saving || plan.dead
   const carryLine = standing ? gcDifficultyCarryLine(standing) : null
 
   const numbers = bid && bidRead ? rateSheetBidNumbers({ pin: bidRead.pin, stamp: { revenueUsd: bid.pricedRevenueUsd, costUsd: bid.pricedCostUsd, difficultyUsd: bid.pricedDifficultyUsd }, bidValue: bid.bidValue, estimate: bidRead.estimate }) : null
-  const consequence = body ? rateSheetConsequence({ picks: allPicks, body, price: price ?? DIFFICULTY_PRICE_V1, numbers, payingReason: payingPick?.reason ?? null, hasBid: bid != null }) : null
+  const consequence = body ? rateSheetConsequence({ picks: allPicks, body, price: price ?? DIFFICULTY_PRICE_V1, numbers, payingReason: payingPick?.reason ?? null, hasBid: bid != null, bidPicks: bidPicksNow }) : null
   const recordWords = bid ? rateSheetGcRecordWords(rateSheetGcRecord(bidRead?.history ?? null, customerId)) : null
   const overTitle = rateSheetOverTitle(bid ? { label: bid.label, project: bid.project } : null)
 
@@ -160,11 +177,17 @@ export default function DifficultyRateSheet({ customerId, customerName, bid = nu
     if (dead || !published || !body) return
     setSaving(true)
     try {
-      const reasons: Record<string, string> = payingPick ? { [DIFFICULTY_PAYING_KEY]: payingPick.reason } : {}
-      const toSave = gcDifficultyPicksToSave(allPicks, body, reasons)
-      const saved = await io.saveRating(customerId, published.id, toSave.picks, note.trim(), toSave.reasons)
-      showToast(W.saved(difficultyTotalPoints(saved.picks, body, 'gc').points), 'success')
-      onSaved?.(saved)
+      // The bid's own picks first: a refusal there leaves the rating unsaved, never a rating with half of what was picked.
+      if (plan.bidPicks && bid && io.saveBidPicks) setBidPicksStored(await io.saveBidPicks(bid.id, published.id, bidPicksNow))
+      if (plan.rating) {
+        const reasons: Record<string, string> = payingPick ? { [DIFFICULTY_PAYING_KEY]: payingPick.reason } : {}
+        const toSave = gcDifficultyPicksToSave(allPicks, body, reasons)
+        const saved = await io.saveRating(customerId, published.id, toSave.picks, note.trim(), toSave.reasons)
+        showToast(W.saved(difficultyTotalPoints(saved.picks, body, 'gc').points), 'success')
+        onSaved?.(saved)
+      } else {
+        showToast(S.savedBidOnly, 'success')
+      }
       onClose()
     } catch (e) {
       showToast(formatErrorMessage(e, 'The rating was not saved.'), 'error')
@@ -210,6 +233,14 @@ export default function DifficultyRateSheet({ customerId, customerName, bid = nu
         {carryLine ? <p style={AMBER}>{carryLine}</p> : null}
         {!canRate && body ? <p style={MUTED}>{S.cannotRate}</p> : null}
         {body ? <DifficultyScalesPicker body={body} picks={allPicks} scope="gc" readOnly={!canRate} groupName={`rate-sheet-${customerId}`} onPick={(key, points) => setPicks((p) => ({ ...p, [key]: points }))} billsLine={billsLine} /> : null}
+        {body && bidScales.length > 0 ? (
+          <section data-testid="rate-sheet-bid-picks" aria-label={BID_PICK_WORDS.sheetHead} style={{ display: 'grid', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+            <p style={MUTED}>
+              <b style={{ color: 'var(--text-strong)' }}>{BID_PICK_WORDS.sheetHead}.</b> {BID_PICK_WORDS.lead}
+            </p>
+            <DifficultyScalesPicker body={body} picks={bidPicksNow} scope="bid" readOnly={!canRate} groupName={`rate-sheet-bid-${bid?.id ?? ''}`} onPick={(key, points) => setBidPicks((p) => ({ ...p, [key]: points }))} />
+          </section>
+        ) : null}
         {canRate && body ? (
           <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
             {W.noteLabel}
@@ -248,7 +279,7 @@ export default function DifficultyRateSheet({ customerId, customerName, bid = nu
             onClick={() => void save()}
             disabled={dead}
             aria-disabled={dead}
-            title={problems[0] ?? (unchanged ? 'Nothing changed since the rating that stands.' : undefined)}
+            title={plan.why ?? undefined}
             style={{ ...FOOT_BTN, border: 0, background: dead ? DEAD_PRESS_FILL : '#2563eb', color: dead ? DEAD_PRESS_TEXT : '#fff', cursor: dead ? 'default' : 'pointer' }}
           >
             {saving ? 'Saving…' : W.save(total)}

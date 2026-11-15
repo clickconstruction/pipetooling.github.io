@@ -2,7 +2,7 @@
 title: rate how a GC is to work with
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc rating, difficulty, difficult gc, how they are to work with, rate them, rated, points, field and superintendent, their office, paying, read from the bills, set by hand, pay speed, late bills, what happened, bid board chip, workbench chip, customer page, phone sheet, rate from a bid, master, end of a job, ready to bill, not now, rate gcs after a job
+keywords: gc rating, difficulty, difficult gc, how they are to work with, rate them, rated, points, field and superintendent, their office, paying, read from the bills, set by hand, pay speed, late bills, what happened, bid board chip, workbench chip, customer page, phone sheet, rate from a bid, master, end of a job, ready to bill, not now, rate gcs after a job, what the rating did, hours past, rate them again, the site, on this bid
 ---
 
 Some GCs cost more to work for. The super changes the order of work after we mobilize. Pay apps come back twice. The office waits a week for an answer. Before, a master asked the estimator to add money to the price with no reason attached. Now the GC is rated once, on its record, in sentences. Every new bid to them reads the rating.
@@ -62,6 +62,8 @@ The dollars are this bid's own. They come from its field hours, its labor rate a
 
 The save is the same rating as the card's. The newest rating stands. Press **Open their record** to see the earlier ratings or to set Paying by hand.
 
+Under the GC's scales the sheet shows **On this bid**. That is the site. It is picked on the bid, because the site is the job's and not the GC's. A site pick saves by itself. It needs no reason, and it leaves the GC's rating as it stands.
+
 ## The ask at the end of a job
 
 When a job with a GC moves to **Ready to Bill**, the master on the job is asked once. The job's window shows a line at the top.
@@ -81,6 +83,20 @@ A GC that someone rated after the job was done is not asked about.
 The points add up at the foot of the card. {{chip:yellow|Rated 3 points}} shows beside the GC's name on the Bid Board and on the Workbench. Hover the chip to read the sentences behind the points. On the Bid Board, press it to rate from that bid. On the Workbench, press it to open the card.
 
 What a point costs is the Bid Board's price list. When the Pricing tab first costs a bid to them, the points become cost lines on the Labor tab. See [set what difficulty costs](/help/set-what-difficulty-costs).
+
+## What the rating did
+
+Under the rating, the card **What the rating did** shows how the guess held. It counts the bids to them since they were first rated. It says how many were won and lost. It adds up the difficulty cost priced into those bids.
+
+The office also reads the hours. For each job from those bids, the card compares the hours clocked with the hours priced. The hours priced are the bid's field hours plus its field and site lines.
+
+:::example The card on a rated GC
+3 bids to them since they were rated on 2026-11-14: 1 won, 1 lost, 1 waiting on an answer.
+Difficulty priced in: $6,420 on 2 bids.
+Hours ran 16 hours past the hours priced on 1 of 2 jobs. Rate them again? {{button:outline|Rate them again}}
+:::
+
+When hours ran past, press {{button:outline|Rate them again}}. It takes you to the rating above. Press **Show the jobs** to read each job's hours.
 
 ## Rate again
 
