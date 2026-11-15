@@ -39,6 +39,7 @@ import PeopleUtilizationTab from '../components/people/PeopleUtilizationTab'
 import PeopleSpendingTab from '../components/people/PeopleSpendingTab'
 import { canOpenSpending } from '../lib/people/spendingAccess'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
+import { PeopleScoresTab } from '../components/people/PeopleScoresTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
 import PeoplePayLedgerView from '../components/people/PeoplePayLedgerView'
 import PayRunPaymentsView from '../components/people/PayRunPaymentsView'
@@ -1896,6 +1897,8 @@ export default function People() {
     review: canSeeReview,
     // The superintendents' scoreboard (punch list #234 PR 4): a dev and a pay-approved master; the read carries labor dollars.
     scoreboard: canSeeScoreboard,
+    // Scores (team scorecard, design spike 2026-11-15): the field and estimating numbers; the read carries wages, so the scoreboard's gate.
+    scores: canSeeScoreboard,
     activity: canSeeActivity,
     feedback: isDev,
   }
@@ -2724,6 +2727,7 @@ export default function People() {
       ) : null}
 
       {activeTab === 'scoreboard' && canSeeScoreboard && <PeopleScoreboardTab />}
+      {activeTab === 'scores' && canSeeScoreboard && <PeopleScoresTab />}
       {/* 'hr' follows Scoreboard's pattern: no URL gate (isDev resolves async), render-site gated. */}
       {activeTab === 'hr' && isDev && <PeopleHrTab />}
       {/* 'person' (v2.2710): the Person Desk as a page; gate mirrors canOpenPersonDesk (office roles). */}
