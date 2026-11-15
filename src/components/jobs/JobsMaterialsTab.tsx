@@ -39,6 +39,8 @@ import { countedLabel } from '../../lib/batchWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
+import { DESK_PICK_PLACEHOLDER, deskPickOptions } from '../../lib/materials/deskJobPick'
+import { SearchableSelect } from '../SearchableSelect'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
 import { groupDeskBySite, sitePartRows, spellingsWords } from '../../lib/materials/siteRollup'
 import { tieCanon } from '../../lib/materials/partTies'
@@ -160,7 +162,8 @@ function BookPricesLine() {
 }
 
 export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null }: Props) {
-  const openJobRef = useRef<HTMLSelectElement>(null)
+  /** The Open a job pick's wrapper: the empty state's press puts the focus on its trigger. */
+  const openJobRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   useOnSiteStoreVersion()
   const { showToast } = useToastContext()
@@ -269,7 +272,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
             <thead><tr><th style={{ ...th, minWidth: 240 }}>Job</th><th style={{ ...th, ...num }}>Containers</th><th style={{ ...th, ...num }}>On site, lines</th><th style={{ ...th, ...num }}>Missing this week</th><th style={th}>Counts</th><th style={{ ...th, ...num }}>Credits due</th>{rowDoors ? <th style={th} aria-label="Doors"></th> : null}</tr></thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.focus() }} tail="below, then add its first container." /></td></tr>
+                <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.querySelector('button')?.focus() }} tail="below, then add its first container." /></td></tr>
               ) : groups.flatMap((g, gi) => {
                 const jobRow = (r: (typeof rows)[number], under: boolean) => r.failed ? (
                   <tr key={r.id} data-job-not-loaded={r.id} style={{ background: 'var(--bg-amber-100)' }}>
@@ -338,13 +341,25 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
         </div>
         {driveBackfill ? <DriveFolderBackfill jobs={jobs.map(withLinks)} onFoldersMade={onFoldersMade} onOpenJobDetail={onOpenJobDetail} showToast={showToast} /> : null}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            Open a job
-            <select ref={openJobRef} aria-label="Open a job" defaultValue="" onChange={(e) => { if (e.target.value) setJob(e.target.value) }} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', padding: '0 0.5rem', maxWidth: 360 }}>
-              <option value="">Choose…</option>
-              {jobs.map((j) => <option key={j.id} value={j.id}>{jobLabel(j, j.id)}</option>)}
-            </select>
-          </label>
+          {/* v2.7310: a searchable list in place of the native select, which could only scroll; the jobs with a box first. */}
+          <span style={muted}>Open a job</span>
+          <div ref={openJobRef} data-testid="materials-open-job" style={{ minWidth: 0, width: 'min(100%, 420px)' }}>
+            <SearchableSelect
+              value=""
+              onChange={(v) => { if (v) setJob(v) }}
+              options={deskPickOptions(jobs, rows.map((r) => r.id))}
+              placeholder="Choose…"
+              listAriaLabel="Open a job"
+              searchPlaceholder={DESK_PICK_PLACEHOLDER}
+              listMaxHeightPx={360}
+              fillViewportHeight
+              listMinWidthPx={320}
+              listOptionPadding="0.4rem 0.6rem"
+              listOptionFontSize="0.85rem"
+              triggerMinHeightPx={36}
+              triggerStyle={{ font: 'inherit', padding: '0 0.5rem' }}
+            />
+          </div>
         </div>
       </div>
     )
