@@ -1059,6 +1059,55 @@ export type Database = {
           },
         ]
       }
+      bid_difficulty_picks: {
+        Row: {
+          bid_id: string
+          criteria_version_id: string
+          picked_at: string
+          picked_by: string | null
+          picked_by_name: string
+          picks: Json
+        }
+        Insert: {
+          bid_id: string
+          criteria_version_id: string
+          picked_at?: string
+          picked_by?: string | null
+          picked_by_name?: string
+          picks?: Json
+        }
+        Update: {
+          bid_id?: string
+          criteria_version_id?: string
+          picked_at?: string
+          picked_by?: string | null
+          picked_by_name?: string
+          picks?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_difficulty_picks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_picks_criteria_version_id_fkey"
+            columns: ["criteria_version_id"]
+            isOneToOne: false
+            referencedRelation: "difficulty_criteria_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_picks_picked_by_fkey"
+            columns: ["picked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_estimators_extra_users: {
         Row: {
           added_at: string
@@ -14003,6 +14052,65 @@ export type Database = {
             columns: ["written_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_difficulty_asks: {
+        Row: {
+          answered_rating_id: string | null
+          asked_user_id: string
+          created_at: string
+          customer_id: string
+          dismissed_at: string | null
+          id: string
+          job_id: string
+        }
+        Insert: {
+          answered_rating_id?: string | null
+          asked_user_id?: string
+          created_at?: string
+          customer_id: string
+          dismissed_at?: string | null
+          id?: string
+          job_id: string
+        }
+        Update: {
+          answered_rating_id?: string | null
+          asked_user_id?: string
+          created_at?: string
+          customer_id?: string
+          dismissed_at?: string | null
+          id?: string
+          job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_difficulty_asks_answered_rating_id_fkey"
+            columns: ["answered_rating_id"]
+            isOneToOne: false
+            referencedRelation: "gc_difficulty_ratings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_difficulty_asks_asked_user_id_fkey"
+            columns: ["asked_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_difficulty_asks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_difficulty_asks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -44039,6 +44147,18 @@ export type Database = {
           p_user_agent: string
         }
         Returns: string
+      }
+      gc_difficulty_open_asks: {
+        Args: never
+        Returns: {
+          click_number: string
+          closed_at: string
+          customer_id: string
+          customer_name: string
+          hcp_number: string
+          job_id: string
+          job_name: string
+        }[]
       }
       gc_draft_change_order: {
         Args: { p_draft: Json; p_project_id: string }
