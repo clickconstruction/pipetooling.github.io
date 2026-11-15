@@ -31,6 +31,8 @@ import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { BidsDirectCostsSection } from './BidsDirectCostsSection'
 import { directCostHandlersByKind } from '../../lib/bids/directCostHandlers'
+import { BID_DIFFICULTY_WORDS } from '../../lib/bids/bidDifficulty'
+import { supabaseBidDifficultyIo } from '../../lib/bids/bidDifficultyIo'
 import { BidsLaborBookPanel } from './BidsLaborBookPanel'
 import { asLaborEntryKind, asLaborUnit, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
 import { bookSummaryWords, laborBookForTrade, laborBookRights, robotHoursOf, type CalibrationProposal } from '../../lib/bids/laborEntryProvenance'
@@ -645,6 +647,27 @@ export function BidsLaborTab({
     )
   }
 
+  // GC difficulty (punch list #357 PR 4): the Other rows the bid's pin wrote are drawn as difficulty rows, read only.
+  // Fail-soft: a read that fails draws them as plain Other rows.
+  const [difficultyRowIds, setDifficultyRowIds] = useState<ReadonlySet<string>>(() => new Set())
+  const costEstimateIdForPin = costEstimate?.id ?? null
+  useEffect(() => {
+    setDifficultyRowIds(new Set())
+    if (!costEstimateIdForPin) return
+    let live = true
+    supabaseBidDifficultyIo()
+      .loadByCostEstimate(costEstimateIdForPin)
+      .then((pin) => {
+        if (live) setDifficultyRowIds(new Set(pin?.rowIds ?? []))
+      })
+      .catch(() => {
+        if (live) setDifficultyRowIds(new Set())
+      })
+    return () => {
+      live = false
+    }
+  }, [costEstimateIdForPin, otherRows.length])
+
   // The direct-cost list (v2.3295), five tables behind one factory: field edits update state
   // (persisted by the debounced save effect); add/remove hit the DB immediately.
   const directCostHandlers = directCostHandlersByKind(supabase, {
@@ -1193,6 +1216,7 @@ export function BidsLaborTab({
                   cellA11y={cellA11y}
                   cellSaveStyle={cellSaveStyle}
                   driving={laborDrivingLine}
+                  locked={difficultyRowIds.size > 0 ? { ids: difficultyRowIds, chip: BID_DIFFICULTY_WORDS.laborChip, title: BID_DIFFICULTY_WORDS.laborChipTitle } : null}
                 />
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

@@ -43,7 +43,7 @@ import {
   type GcDifficultyStanding,
 } from '../../lib/bids/gcDifficultyRating'
 import { supabaseGcDifficultyIo, type GcDifficultyIo } from '../../lib/bids/gcDifficultyRatingIo'
-import { isOfficeRole } from '../../lib/doorRoles'
+import { difficultyCanRate, difficultyPayingRuleOf, type DifficultyPriceList } from '../../lib/bids/difficultyPrice'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import DifficultyScalesPicker from '../bids/DifficultyScalesPicker'
 import GcDifficultyChip from '../bids/GcDifficultyChip'
@@ -70,7 +70,9 @@ type ByHand = { points: number; reason: string }
 
 export default function GcDifficultyCard({ customerId, customerName, role, io = DEFAULT_IO }: { customerId: string; customerName: string; role: UserRole | null | undefined; io?: GcDifficultyIo }) {
   const { showToast } = useToastContext()
-  const canRate = isOfficeRole(role)
+  const [price, setPrice] = useState<DifficultyPriceList | null>(null)
+  // #357 PR 4: the Bid Board's price list says who may rate; version 1's answer until it is read.
+  const canRate = difficultyCanRate(price, role)
   const [versions, setVersions] = useState<DifficultyVersionLite[] | null>(null)
   const [published, setPublished] = useState<DifficultyVersionLite | null>(null)
   const [ratings, setRatings] = useState<GcDifficultyRating[] | null>(null)
@@ -104,11 +106,20 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
     } catch (e) {
       setFailed(formatErrorMessage(e, 'The rating could not be read.'))
     }
-    // The bills read fails on its own: the scale then says it could not be read.
+    // The price list fails on its own (version 1's rule then), and so does the bills read: the scale then says it
+    // could not be read.
+    let list: DifficultyPriceList | null = null
     try {
-      setPaying(readDifficultyPaying(await io.loadPaying(customerId)))
+      list = io.loadPrice ? await io.loadPrice() : null
     } catch {
-      setPaying(readDifficultyPaying({ readable: false, own: null, receipts: [], gcPace: null, calendar: null, todayYmd: '' }))
+      list = null
+    }
+    setPrice(list)
+    const rule = list ? difficultyPayingRuleOf(list) : undefined
+    try {
+      setPaying(readDifficultyPaying(await io.loadPaying(customerId), rule))
+    } catch {
+      setPaying(readDifficultyPaying({ readable: false, own: null, receipts: [], gcPace: null, calendar: null, todayYmd: '' }, rule))
     }
   }, [io, customerId])
 
