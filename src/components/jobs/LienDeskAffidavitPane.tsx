@@ -22,7 +22,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
 import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
-import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, monthFromBill, monthIsStandIn } from '../../lib/jobs/lienDesk'
+import { holdUntilFor, isLienLeader, isLienOffice, monthFromBill, monthIsStandIn } from '../../lib/jobs/lienDesk'
 import { lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
 import { LIEN_MONTH_FLAG_DOOR_WORDS, LIEN_MONTH_CHECK_CANCEL_WORDS, LIEN_MONTH_CHECK_CHANGE_WORDS, LIEN_MONTH_CHECK_NOTE_HINT, LIEN_MONTH_CHECK_SAVES_WORDS, LIEN_MONTH_SET_LAST_DAY_WORDS, lienMonthAskWords, lienMonthCheckProblem, lienMonthCheckState, lienMonthCheckedRowWords, lienMonthCheckedWords, lienMonthConfirmWords, lienMonthName, lienMonthQuestion, lienMonthYesWords, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
 import { saveLienMonthCheck } from '../../lib/jobs/lienMonthCheckIo'
@@ -31,6 +31,8 @@ import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLien
 import { lienAffidavitToldWords } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
+import { lienFooter } from '../../lib/jobs/lienFooterMenu'
+import { LienFootMenu } from './LienFootMenu'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
@@ -145,7 +147,6 @@ export default function LienDeskAffidavitPane({
   const { showToast } = useToastContext()
   const leader = isLienLeader(authRole)
   const office = isLienOffice(authRole)
-  const canWord = canSendLienOnWord(authRole)
   const [busy, setBusy] = useState(false)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
@@ -355,6 +356,7 @@ export default function LienDeskAffidavitPane({
   const forfeit = <span style={{ color: 'var(--text-red-600)' }}>The lien right on {label} ends {demandDate(entry.deadline)}.</span>
   if (entry.pile === 'needs_property' || entry.pile === 'to_draft') {
     const blocked = !entry.ready
+    const foot = lienFooter({ role: authRole, paper: 'affidavit', leaderName, blocked, route: policy === 'send' && !promise ? 'run' : 'leader' })
     footer = wordOpen ? (
       <LienWordRecordRow
         note={wordNote}
@@ -375,17 +377,19 @@ export default function LienDeskAffidavitPane({
       <>
         {/* The last work month's own notice is still due (punch list #353, part 2): a line, not a gate. The owner and the attorney decide the paper. */}
         {noticeDue ? <div data-lien-affidavit-notice-due style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>{lienAffidavitNoticeDueLine(noticeDue, formatYmdMonthDay)}</div> : null}
-        {/* The line matches the press on screen (v2.7308): the leader's own okay, else where the paper goes and why. Each press names whose okay it is. */}
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {blocked ? `Blocked until every gate above is clear.` : leader ? press.approveLine : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between filing and their word.` : press.askLine} {forfeit}
+        {/* One press per footer (v2.7324): the leader's own okay with the notary line, or the office's ask with one line on his phone; his word waits behind He already okayed it ▾. The line says what the press on screen will do. */}
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-affidavit-foot-line>
+          {blocked ? `Blocked until every gate above is clear.` : leader ? foot.primary?.line : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between filing and their word.` : foot.primary?.line} {forfeit}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ flex: 1 }} />
-          {canWord ? <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)} title={press.onWordTitle} data-lien-affidavit-on-word>{press.onWord}</button> : null}
+          {foot.menus.map((m) => (
+            <LienFootMenu key={m.key} menu={m} disabled={busy} style={btn('plain', busy)} onPick={(k) => { if (k === 'word') { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) } }} />
+          ))}
           {leader ? (
-            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)} title={press.approveLine} data-lien-affidavit-approve>{press.approve}</button>
+            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)} title={foot.primary?.line} data-lien-affidavit-approve>{press.approve}</button>
           ) : (
-            <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)} title={press.askLine} data-lien-affidavit-ask>{press.ask}</button>
+            <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)} title={foot.primary?.line} data-lien-affidavit-ask>{press.ask}</button>
           )}
         </div>
       </>

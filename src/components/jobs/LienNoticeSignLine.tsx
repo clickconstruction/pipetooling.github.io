@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import SignaturePad from 'signature_pad'
 import { ESTIMATE_ACCEPT_SIGNATURE_FONT } from '../estimates/EstimateAcceptTypedSignatureLine'
 import { SIGNATURE_INK_COLOR, SIGNATURE_PAPER_COLOR } from '../contracts/SignatureTypeOrDrawInput'
@@ -25,6 +25,8 @@ export type LienNoticeSignLineMode = 'type' | 'draw' | 'code'
 
 export type LienNoticeSignLineHandle = {
   mode: LienNoticeSignLineMode
+  /** The host's menu picks a way (v2.7324): the line switches and clears. */
+  setMode: (mode: LienNoticeSignLineMode) => void
   /** True when drawing and nothing is on the line yet, or typing a code with fewer than four digits; never true when pressing. */
   isEmpty: () => boolean
   /** The drawing as a PNG data URL, or null when empty or not drawing. */
@@ -76,10 +78,21 @@ export const LienNoticeSignLine = forwardRef<
     codeProblem?: string | null
     disabled?: boolean
     compact?: boolean
+    /** The way the line opens on (v2.7324): the draft footer's menu remembers his pick; unset, the line picks as before. */
+    initialMode?: LienNoticeSignLineMode
+    /** False when the host's menu is the way between modes (v2.7324): no Draw instead / Press instead link on the line. */
+    ownToggle?: boolean
+    /** Every mode the line lands on, the first included, so the host's state line can say what reaches the paper. */
+    onModeChange?: (mode: LienNoticeSignLineMode) => void
   }
->(function LienNoticeSignLine({ printedName, under, signedLabel, allowPress = true, codeSigner = null, codeProblem = null, disabled = false, compact = false }, ref) {
+>(function LienNoticeSignLine({ printedName, under, signedLabel, allowPress = true, codeSigner = null, codeProblem = null, disabled = false, compact = false, initialMode, ownToggle = true, onModeChange }, ref) {
   const codeReady = codeSigner?.status === 'ready'
-  const [mode, setMode] = useState<LienNoticeSignLineMode>(codeSigner ? (codeReady ? 'code' : 'draw') : allowPress ? 'type' : 'draw')
+  const [mode, setMode] = useState<LienNoticeSignLineMode>(initialMode ?? (codeSigner ? (codeReady ? 'code' : 'draw') : allowPress ? 'type' : 'draw'))
+  const tellMode = useRef(onModeChange)
+  tellMode.current = onModeChange
+  useEffect(() => {
+    tellMode.current?.(mode)
+  }, [mode])
   const [code, setCode] = useState('')
   const [started, setStarted] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -134,6 +147,11 @@ export const LienNoticeSignLine = forwardRef<
     ref,
     () => ({
       mode,
+      setMode: (m) => {
+        setMode(m)
+        setStarted(false)
+        setCode('')
+      },
       isEmpty: () => (mode === 'draw' ? (padRef.current?.isEmpty() ?? true) : mode === 'code' ? !LIEN_SIGN_CODE_RE.test(code) : false),
       toDataURL: () => {
         if (mode !== 'draw') return null
@@ -238,7 +256,7 @@ export const LienNoticeSignLine = forwardRef<
               Clear
             </button>
           ) : null}
-          {canToggle ? (
+          {canToggle && ownToggle ? (
             <button type="button" disabled={disabled} onClick={() => { setMode((m) => (m === 'draw' ? (codeSigner ? 'code' : 'type') : 'draw')); setStarted(false); setCode('') }} style={linkBtn} data-testid="lien-sign-line-toggle">
               {toggleLabel}
             </button>
