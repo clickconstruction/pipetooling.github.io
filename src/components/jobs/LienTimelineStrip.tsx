@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep, type LienTimelineStepKind } from '../../lib/jobs/lienTimeline'
+import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { windowsAxis } from '../../lib/jobs/lienWindowsAxis'
 import { setLienTimelineView, useLienTimelineView, type LienTimelineView, type LienTimelineViewScope } from '../../hooks/useLienTimelineView'
@@ -31,6 +32,12 @@ import { setLienTimelineView, useLienTimelineView, type LienTimelineView, type L
  * step that cannot happen, the today line only across bar rows, an axis of at least three
  * months, a legend of only the marks drawn, and the papers that follow a filing as one quiet
  * sentence. The Job History box fixes the calendar and hides the switch.
+ *
+ * The band is a press (v2.7321): one row — a tone mark, the next words in bold, and at the right the
+ * act's press (*Find the owner ›*, *Send for approval ›*) when the move is ours, else a quiet *Waiting
+ * on the owner* tag. The press is drawn only when the host hands over `onAct`, so the History tab and
+ * the Lien window read the same row with no press. The *Waiting on* words ride in the press's title,
+ * and beside the words only when the move is not ours. The mini row keeps its one quiet line.
  */
 
 export type LienTimelineLayout = 'auto' | 'row' | 'list' | 'mini'
@@ -82,7 +89,14 @@ function verdictBg(tone: LienTimeline['next']['tone']): string {
   return tone === 'red' ? 'var(--bg-red-tint)' : tone === 'amber' ? 'var(--bg-amber-tint)' : tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)'
 }
 
+/** The band's mark per tone (v2.7321): the nodes' own marks, so red reads ✗, amber !, green ✓, quiet a dot. */
+function verdictMark(tone: LienTimeline['next']['tone']): string {
+  return tone === 'red' ? '✗' : tone === 'amber' ? '!' : tone === 'green' ? '✓' : '·'
+}
+
 const LABEL: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }
+/** Read by a screen reader, drawn to nobody. */
+const HIDDEN: CSSProperties = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }
 
 /** One stop's node, exported for the stop window's folded dots (v2.4806). */
 export function LienTimelineNode({ s, size }: { s: LienTimelineStep; size: number }) {
@@ -244,10 +258,14 @@ export type LienTimelineStripProps = {
   lit?: string | null
   /** What blocks the lit stop (v2.4806): a red chip under it — *✗ owner of record missing*. */
   blocked?: { key: string; words: string } | null
+  /** The band's press (v2.7321): the host maps the kernel's act to its own door. Without it the band is words alone. */
+  onAct?: (act: LienNextActDoor) => void
+  /** The host's own act in the kernel's place (v2.7321): the leader approves what the office sends for approval; the office waits on him. */
+  act?: LienNextAct | null
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, viewScope = 'window', nextDoor, onChangeLastWork, onOpenStep, lit = null, blocked = null, style }: LienTimelineStripProps) {
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, viewScope = 'window', nextDoor, onChangeLastWork, onOpenStep, lit = null, blocked = null, onAct, act: actProp, style }: LienTimelineStripProps) {
   const { steps, todayIndex, kindUnknown } = timeline
   const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
   const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
@@ -311,13 +329,12 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
   // The verdict band (v2.4652): Next on the path, its aside and Waiting on, ABOVE the drawing on the
   // row, the list and the calendar. The mini row keeps the one quiet line under its rail.
   const mini = layout === 'mini'
-  const waitLine = withNext && !mini && waiting ? (
-    <div data-lien-timeline-waiting style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem' }}>
-      <span style={LABEL}>Waiting on</span>
-      <strong style={{ color: 'var(--text-strong)' }}>{waiting.who}</strong>
-      <span style={{ color: 'var(--text-muted)' }}>— {waiting.words}</span>
-    </div>
-  ) : null
+  // The band's act (v2.7321): the host's own when it hands one over, else the kernel's; a press only with a handler.
+  const act: LienNextAct = actProp ?? next.act
+  const ours = waiting != null && (waiting.who === 'us' || waiting.who === 'the office')
+  const pressable = onAct != null && act.kind !== 'none'
+  // Whose move, for the quiet tag: the host's words, the act's move in this voice, else the kernel's Waiting on when it is not ours.
+  const waitingTag = act.kind === 'none' ? act.words ?? (act.waiting ? `Waiting on ${moveLook(act.waiting, voice).word}` : waiting && !ours ? `Waiting on ${waiting.who}` : '') : ''
   const nextWords = (
     <div data-lien-timeline-next style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem', paddingTop: mini ? '0.35rem' : 0 }}>
       <span style={LABEL}>Next on the path</span>
@@ -327,13 +344,42 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
       {kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>{LIEN_KIND_UNKNOWN_WORDS}</span> : null}
     </div>
   )
+  // The verdict as one row (v2.7321): the mark, the words, then the press or the tag at the right. The old label-and-sentence rows are the mini row's alone.
+  const verdictWords = (
+    <div data-lien-timeline-next style={{ display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.45rem', alignItems: 'baseline', fontSize: '0.8125rem', minWidth: 0, flex: '1 1 16rem' }}>
+      {/* The label is read, not seen (v2.7321): a screen reader still hears what the row is. */}
+      <span style={HIDDEN}>Next on the path</span>
+      <strong style={{ color: nextColor(next.tone), fontSize: '0.9rem', lineHeight: 1.3 }}>
+        {/* The mark leads the words inside one run, so a narrow band wraps the words after it and never strands it on a line of its own. */}
+        <span aria-hidden data-lien-timeline-mark style={{ fontWeight: 800, marginRight: '0.4em' }}>{verdictMark(next.tone)}</span>
+        {next.words}
+      </strong>
+      {next.aside ? <span style={{ color: 'var(--text-muted)' }}>{next.aside}</span> : null}
+      {/* Whose move and for what: beside the words when the move is not ours, or when no press can carry it in its title (the History tab, the Lien window). */}
+      {waiting && (!ours || !pressable) ? <span data-lien-timeline-waiting style={{ color: 'var(--text-muted)' }}>Waiting on {waiting.who} — {waiting.words}</span> : null}
+      {view === 'windows' && timeline.windowsAside ? <span data-lien-timeline-windows-aside style={{ color: 'var(--text-muted)' }}>{timeline.windowsAside}</span> : null}
+      {kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>{LIEN_KIND_UNKNOWN_WORDS}</span> : null}
+    </div>
+  )
+  const verdictRight = pressable ? (
+    <button
+      type="button"
+      data-lien-timeline-act={act.kind}
+      onClick={() => onAct(act.kind as LienNextActDoor)}
+      title={waiting && ours ? `Waiting on ${waiting.who} — ${waiting.words}` : undefined}
+      style={{ flex: 'none', marginLeft: 'auto', border: `1px solid ${nextColor(next.tone)}`, borderRadius: 999, background: 'var(--surface)', color: nextColor(next.tone), font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, lineHeight: 1.2, padding: '0.3rem 0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+    >
+      {(act as { label: string }).label}
+    </button>
+  ) : waitingTag ? (
+    <span data-lien-timeline-waiting-tag title={waiting && !ours ? waiting.words : undefined} style={{ flex: 'none', marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.2rem 0.6rem', background: 'var(--surface)', whiteSpace: 'nowrap' }}>
+      {waitingTag}
+    </span>
+  ) : null
   const nextLine = !withNext ? null : mini ? nextWords : (
-    <div data-lien-timeline-verdict data-tone={next.tone} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 1rem', flexWrap: 'wrap', padding: '0.5rem 0.7rem', marginBottom: '0.55rem', border: '1px solid var(--border)', borderRadius: 8, background: verdictBg(next.tone) }}>
-      <div style={{ display: 'grid', gap: '0.25rem', flex: '1 1 18rem', minWidth: 0 }}>
-        {nextWords}
-        {waitLine}
-      </div>
-      {nextDoor ? <div data-lien-timeline-verdict-door style={{ flex: 'none', marginLeft: 'auto' }}>{nextDoor}</div> : null}
+    <div data-lien-timeline-verdict data-tone={next.tone} data-lien-timeline-verdict-act={act.kind} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 1rem', flexWrap: 'wrap', padding: '0.5rem 0.7rem', marginBottom: '0.55rem', border: '1px solid var(--border)', borderRadius: 8, background: verdictBg(next.tone) }}>
+      {verdictWords}
+      {nextDoor ? <div data-lien-timeline-verdict-door style={{ flex: 'none', marginLeft: 'auto' }}>{nextDoor}</div> : verdictRight}
     </div>
   )
 

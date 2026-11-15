@@ -13,6 +13,8 @@ import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkM
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
+import { bringLienFooterUp } from './lienFooterFocus'
+import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
@@ -99,6 +101,7 @@ export default function LienDeskAffidavitPane({
   onOpenLienAffidavit,
   onOpenLegalDesk,
   onShowNotices,
+  onShowRetainage,
   onOpenLastWork,
   footerEl,
   ownerCall = null,
@@ -131,6 +134,8 @@ export default function LienDeskAffidavitPane({
   onOpenLegalDesk?: () => void
   /** Switch the desk to the notices kind on this job (the notice gate's door). */
   onShowNotices: (jobId: string) => void
+  /** Switch the desk to the retainage kind on this job (v2.7321): the band's door when the § 53.057 notice is the next step. */
+  onShowRetainage?: (jobId: string) => void
   /** The stand-in month's second press (v2.7280): today's door, the last day of work set by hand, which moves every clock. Absent, the question keeps the words alone. */
   onOpenLastWork?: (jobId: string) => void
   /** The desk's footer strip — the pane portals its footer there, so the desk keeps one strip and never re-renders for it (v2.3753). */
@@ -350,6 +355,61 @@ export default function LienDeskAffidavitPane({
   const contractorGcId = entry.gcCustomerId
   const contractorDoor = onFixContractor && contractorGcId ? () => onFixContractor(contractorGcId) : null
 
+  // The band's press (v2.7321): the kernel's act in this viewer's words. The leader approves what the office sends for approval;
+  // the office waits on him once it is sent, and takes a held paper back to draft. A paper the gates hold keeps the gate's door.
+  const bandAct: LienNextAct | null = (() => {
+    const kernel = timeline.next.act
+    if (kernel.kind !== 'footer') return null
+    // Another paper is the next step: the press opens it where its own presses are.
+    if (timeline.next.kind === 'retainage') return { kind: 'footer', label: 'Open it on Retainage notices ›' }
+    if (timeline.next.kind !== 'affidavit') return { kind: 'footer', label: 'Open it on Monthly notices ›' }
+    const waitOnLeader: LienNextAct = { kind: 'none', waiting: null, words: `Waiting on ${leaderName || 'the leader'}` }
+    switch (entry.pile) {
+      case 'to_draft':
+        return leader ? { kind: 'footer', label: press.approve.replace(/ ▸$/, ' ›') } : office ? kernel : waitOnLeader
+      case 'awaiting':
+        return leader ? kernel : waitOnLeader
+      case 'held':
+        return leader ? { kind: 'footer', label: 'Release the hold and approve ›' } : office ? { kind: 'footer', label: 'Back to draft ›' } : waitOnLeader
+      case 'ready':
+        return office ? kernel : waitOnLeader
+      default:
+        return kernel
+    }
+  })()
+  /** The band's doors, each the one the footer or a gate row already holds. */
+  const onBandAct = (act: LienNextActDoor) => {
+    const fix = (focus: 'owner' | 'legal' | 'homestead_answer') => (onFixProperty ? onFixProperty(entry.jobId, focus) : onOpenEditJob(entry.jobId))
+    switch (act) {
+      case 'gate:owner':
+        return fix('owner')
+      case 'gate:legal':
+        return fix('legal')
+      case 'gate:homestead':
+        return fix('homestead_answer')
+      case 'gate:contractor':
+        return contractorDoor ? contractorDoor() : onOpenEditJob(entry.jobId)
+      case 'gate:notice':
+        return onShowNotices(entry.jobId)
+      case 'retainage':
+        return onShowRetainage ? onShowRetainage(entry.jobId) : onOpenEditJob(entry.jobId)
+      case 'serve':
+      case 'release':
+        return onOpenLienAffidavit(entry.jobId)
+      case 'legal_desk':
+        return onOpenLegalDesk ? onOpenLegalDesk() : bringLienFooterUp(footerEl)
+      case 'footer':
+        if (timeline.next.kind === 'retainage') return onShowRetainage ? onShowRetainage(entry.jobId) : onOpenEditJob(entry.jobId)
+        if (timeline.next.kind !== 'affidavit') return onShowNotices(entry.jobId)
+        if (busy) return bringLienFooterUp(footerEl)
+        if ((entry.pile === 'to_draft' || entry.pile === 'needs_property') && entry.ready) return leader ? approve() : office ? submit() : bringLienFooterUp(footerEl)
+        if (entry.pile === 'awaiting' && leader) return approve()
+        if (entry.pile === 'held') return leader ? approve() : office ? pullBack() : bringLienFooterUp(footerEl)
+        if (entry.pile === 'ready' && office) return onOpenLienAffidavit(entry.jobId)
+        return bringLienFooterUp(footerEl)
+    }
+  }
+
   // ---------- footer ----------
   let footer: React.ReactNode = null
   const forfeit = <span style={{ color: 'var(--text-red-600)' }}>The lien right on {label} ends {demandDate(entry.deadline)}.</span>
@@ -455,7 +515,7 @@ export default function LienDeskAffidavitPane({
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{entry.isSub ? `· GC ${gc?.name ?? ''}` : '· contracted with the owner'} {job?.job_address ? `· ${job.job_address}` : ''}</span>
       </div>
       <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
-        <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
+        <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} onAct={onBandAct} act={bandAct} />
         {stopOpen != null ? (
           <LienStopPaperWindow
             steps={timeline.steps}
