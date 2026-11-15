@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LABEL_OUTPUTS, TAPE_COPIES_MAX, clampTapeCopies, repeatEach, TAPE_TEST_STRIP_LABEL, TAPE_WIDTH_DEFAULT, isTapeWidth, labelCountWords, longestNameChars, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps } from './tapeLabel'
+import { LABEL_OUTPUTS, TAPE_COPIES_MAX, clampTapeCopies, repeatEach, TAPE_TEST_STRIP_LABEL, TAPE_WIDTH_DEFAULT, isTapeWidth, labelCountWords, longestNameChars, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeStoppedWords, tapeSetupSteps } from './tapeLabel'
 
 describe('the tape label (v2.6801)', () => {
   it('lays the strip out inside the tape with a QR that leaves its quiet zone', () => {
@@ -88,6 +88,8 @@ describe('the tape label (v2.6801)', () => {
     expect(tapeSentWords(1, 1)).toBe('1 tape label printed.')
     expect(tapeSentWords(6, 6)).toBe('6 tape labels printed.')
     expect(tapeSentWords(2, 6, 'The printer\u2019s cover is open.')).toBe('2 of 6 printed, then the printer stopped: The printer\u2019s cover is open.')
+    // Stop printing: the person stopped it, so no reason and no printer to blame
+    expect(tapeStoppedWords(7, 455)).toBe('7 of 455 printed, then you stopped the run.')
   })
 
   it('copies of each keeps a box’s strips together and names the total (v2.6878)', () => {

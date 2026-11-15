@@ -131,6 +131,11 @@ export function tapeSentWords(done: number, total: number, reason?: string): str
   return `${done} of ${total} printed, then the printer stopped: ${reason}`
 }
 
+/** After **Stop printing**: how many strips went before the run was stopped. Nothing is wrong, so it names no reason. */
+export function tapeStoppedWords(done: number, total: number): string {
+  return `${done} of ${total} printed, then you stopped the run.`
+}
+
 /** The press that prints the first ticked box alone, so a wrong paper size costs one strip and not a run. */
 export const TAPE_TEST_STRIP_LABEL = 'Print 1 test strip'
 

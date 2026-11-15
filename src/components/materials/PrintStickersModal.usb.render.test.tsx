@@ -108,6 +108,37 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('29 of 0101 to 0130, 2 strips each. 58 strips.')
   })
 
+  it('Stop printing ends the run with one more strip, and the press is the rest (Taunya, 2026-11-15)', async () => {
+    usb.granted = true
+    let go: () => void = () => {}
+    const held = new Promise<void>((r) => { go = r })
+    usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void, stopAsked?: () => boolean) => {
+      onLabel?.(1); onLabel?.(2); onLabel?.(3)
+      await held
+      // the strip after the stop is the run's last: fed out and cut, and nothing more is sent
+      if (stopAsked?.()) { onLabel?.(4); return }
+      labels.forEach((_, i) => onLabel?.(i + 1))
+    })
+    setup()
+    await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '30' }))
+    fireEvent.click(screen.getByTestId('stickers-copies-more'))
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-progress').textContent).toBe('Printing 4 of 60…'))
+    // an earlier test's window closed its printer on the way out
+    usb.close.mockClear()
+    fireEvent.click(screen.getByTestId('stickers-stop'))
+    expect(screen.getByTestId('stickers-stop').textContent).toBe('Stopping…')
+    expect(screen.getByTestId('stickers-progress').textContent).toBe('Stopping. One more strip prints, so the printer can cut the tape.')
+    go()
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('2 of 30 stickers printed, then you stopped the run.'))
+    // nothing went wrong: the printer stays connected, no red line, and the press is the rest
+    expect(usb.close).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('stickers-slip')).toBeNull()
+    expect(screen.queryByTestId('stickers-stop')).toBeNull()
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print the rest, 0103 to 0130')
+  })
+
   it('tape the sticker is not laid out for holds the press and says what to load', async () => {
     usb.granted = true
     usb.status = { tapeMm: 12, statusType: 0, phase: 0, errors: [] }

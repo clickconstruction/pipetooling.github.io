@@ -22,7 +22,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { helpGuideHref } from '../../lib/helpGuideAnchors'
 import { readTapeCopies, readTapePrintedDay, readTapeWidth, writeTapeCopies, writeTapePrintedDay, writeTapeWidth } from '../../lib/materials/labelPrefs'
 import { downloadFile } from '../../lib/materials/photoShare'
-import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, PTOUCH_STRIP_INSIDE, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
+import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
 import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
 import {
   lastRunWords,
@@ -43,6 +43,7 @@ import {
   stickersCsvFileName,
   stickersCsvText,
   stickersSentWords,
+  stickersStoppedWords,
   stickerStrip,
   type MintedRun,
   type MintedSticker,
@@ -148,6 +149,10 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const [slip, setSlip] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [sentWords, setSentWords] = useState<string | null>(null)
+  /** Stop printing was pressed: the loop reads the ref before each strip, the press reads the state. */
+  const stopRef = useRef(false)
+  const [stopping, setStopping] = useState(false)
+  const askStop = () => { stopRef.current = true; setStopping(true) }
   /** Each strip as raster lines, as its canvas drew it; `drawnVersion` ticks so the auto print can wait for the whole run. */
   const stripsRef = useRef(new Map<string, Uint8Array[]>())
   const [drawnVersion, setDrawnVersion] = useState(0)
@@ -200,14 +205,22 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     setSlip(null)
     setSentWords(null)
     setProgress({ done: 0, total: labels.length })
+    stopRef.current = false
+    setStopping(false)
     let done = 0
     try {
-      await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length }) })
+      await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length }) }, () => stopRef.current)
       const today = todayYmdInAppTz()
       writeTapePrintedDay(today)
       setTapeDay(today)
-      // The run stays on the page once printed, so the press prints it again as the fold's Reprint would.
-      if (!test) setSentWords(stickersSentWords(done, toPrint.length, copies))
+      if (!test && done < labels.length) {
+        // Stop printing was pressed (Taunya, 2026-11-15): the printer fed the last strip out and cut it, and the press prints the rest.
+        setSentWords(stickersStoppedWords(done, toPrint.length, copies))
+        setPrinting(restAfterStop(printing, done, copies))
+      } else if (!test) {
+        // The run stays on the page once printed, so the press prints it again as the fold's Reprint would.
+        setSentWords(stickersSentWords(done, toPrint.length, copies))
+      }
     } catch (e) {
       const inside = done > 0 && done < labels.length ? ` ${PTOUCH_STRIP_INSIDE}` : ''
       if (test) setSlip(`${formatErrorMessage(e, PTOUCH_NOT_ANSWERING)}${inside}`)
@@ -220,6 +233,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     } finally {
       setUsbBusy(null)
       setProgress(null)
+      setStopping(false)
     }
   }
   /**
@@ -402,7 +416,13 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
         <div className="on-site-stickers-chrome" style={{ position: 'sticky', bottom: '-1rem', margin: '0.75rem -1.25rem -1rem', padding: '0.6rem 1.25rem 0.8rem', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'grid', gap: '0.4rem' }} data-testid="stickers-foot">
           {slip ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="stickers-slip">{slip}</div> : null}
           {minting ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-minting">{STICKER_MINTING}</div> : null}
-          {progress ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-progress">{tapeProgressWords(progress.done, progress.total)}</div> : null}
+          {progress ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <span role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-progress">{stopping ? PTOUCH_STOPPING : tapeProgressWords(progress.done, progress.total)}</span>
+              {/* A run can be stopped (Taunya, 2026-11-15): the strip after the one printing is sent as the run's last, fed out and cut. */}
+              {progress.total > 1 ? <button type="button" disabled={stopping} aria-disabled={stopping} style={{ ...btn, minHeight: 32, ...(stopping ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}) }} onClick={askStop} data-testid="stickers-stop">{stopping ? PTOUCH_STOPPING_LABEL : PTOUCH_STOP_LABEL}</button> : null}
+            </div>
+          ) : null}
           {sentWords && !progress ? <div role="status" style={{ color: 'var(--text-green-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-sent">{sentWords}</div> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {direct && !link ? (

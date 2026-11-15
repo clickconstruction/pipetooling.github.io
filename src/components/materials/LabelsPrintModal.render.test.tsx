@@ -225,4 +225,36 @@ describe('LabelsPrintModal', () => {
     fireEvent.click(screen.getByTestId('labels-output-sheet'))
     expect(screen.queryByTestId('labels-copies')).toBeNull()
   })
+
+  it('a range is picked by its two ends, and two boxes need none (Taunya, 2026-11-15)', () => {
+    setup()
+    // two boxes: a chip each is quicker than a range
+    expect(screen.queryByTestId('labels-range')).toBeNull()
+    cleanup()
+    const C2 = 'c2c2c2c2-0000-4000-8000-000000000002'
+    const D4 = 'd4d4d4d4-0000-4000-8000-000000000004'
+    const four = [...containers, container(C2, 'C2', 'box'), container(D4, 'D4', 'box')]
+    renderWithProviders(<LabelsPrintModal jobLabel="Oak Hollow Apartments Building C" containers={four} lines={lines} places={places} only={null} onClose={() => {}} print={vi.fn()} />)
+    const pressed = () => screen.getAllByTestId('labels-pick').map((c) => c.getAttribute('aria-pressed'))
+    const from = screen.getByTestId('labels-range-from') as HTMLSelectElement
+    const to = screen.getByTestId('labels-range-to') as HTMLSelectElement
+    // every box is ticked: the ends read the first and the last
+    expect(from.value).toBe(A1)
+    expect(to.value).toBe(D4)
+    expect(Array.from(from.options).map((o) => o.textContent)).toEqual(['A1', 'B3', 'C2', 'D4'])
+    fireEvent.change(from, { target: { value: B3 } })
+    expect(pressed()).toEqual(['false', 'true', 'true', 'true'])
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 3 labels')
+    fireEvent.change(to, { target: { value: C2 } })
+    expect(pressed()).toEqual(['false', 'true', 'true', 'false'])
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 2 labels')
+    // a chip still leaves one box out, and the ends follow the ticks
+    fireEvent.click(screen.getAllByTestId('labels-pick')[1]!)
+    expect((screen.getByTestId('labels-range-from') as HTMLSelectElement).value).toBe(C2)
+    // None: the ends read Pick a box, and an end picked runs to the list's far end
+    fireEvent.click(screen.getByRole('button', { name: 'None' }))
+    expect((screen.getByTestId('labels-range-from') as HTMLSelectElement).value).toBe('')
+    fireEvent.change(screen.getByTestId('labels-range-to'), { target: { value: B3 } })
+    expect(pressed()).toEqual(['true', 'true', 'false', 'false'])
+  })
 })
