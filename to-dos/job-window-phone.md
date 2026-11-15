@@ -1,8 +1,8 @@
 ---
 name: "The job window on a phone"
 number: 355
-group: ready
-status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day · the six other tabs built, v2.7281 to v2.7285 · C shown to Taunya 2026-11-15 as three roles beside the live window · her pick the same day: build the crew half, the crew lead's tabs wait · the crew's window in B's order built as v2.7355 the same day
+group: waiting
+status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day · the six other tabs built, v2.7281 to v2.7285 · C shown to Taunya 2026-11-15 as three roles beside the live window · her pick the same day: build the crew half, the crew lead's tabs wait · the crew's window in B's order built as v2.7355 the same day · the crew reads their job's row (v2.7375) and Today's work is on the crew's window (v2.7376), both 2026-11-15
 summary: >
   The owner opened a job on his iPhone and did not like how it reads: the tab row wraps onto two
   lines, the top is eight small icons, and the Job tab runs six and a half screens before the bar.
@@ -17,10 +17,10 @@ summary: >
   the right and every door goes behind ⋯. A, B and the six other tabs are built. C was shown on
   2026-11-15 and split on Taunya's word: the crew's plain window gets B's order now, and the crew
   lead's tabs shaped by role wait for a month of tab counts.
-next: build Today's work on the crew's window (the open stage, its checklist, the plans, materials on site as one section) once v2.7375's read rule is pushed (it opens the job's row to its crew, which Plans and the customer's number wait on), walked at 375 px as the sample superintendent before it opens; tell Taunya when it is live, and ask her the sub's two questions.
-size: L as a train (S for A · M for B · L for C, of which the crew half is M); the next step is M
+next: on 2026-12-14 read a month of tab counts (`ui_nav_clicks`, by role) and say whether a master tech works the tabbed window from a phone, which is what the crew lead's tabs wait on; before then, ask Taunya the sub's two questions (does a sub see the customer's number or our lead's, and is a Your pay row drawn), which the sub's own rows wait on.
+size: L as a train (S for A · M for B · L for C, of which the crew half is M, built); what is left is M to L, and waits
 blocker: none
-opinion: A, B, the six other tabs and the crew's window in B's order are built (v2.7355); Today's work is next; the crew lead's tabs wait for the count
+opinion: A, B, the six other tabs and the crew half of C are built (v2.7355, v2.7375, v2.7376); the crew lead's tabs wait for a month of tab counts, and the sub's own rows for Taunya's two answers
 mockup: job-window-phone-directions.html
 ---
 
@@ -624,7 +624,11 @@ or our lead's, and whether a *Your pay* row is drawn before the sub pay work lan
    each icon on the desk pane. The phone is untouched.
 4. **C, the crew half** (M), picked 2026-11-15. The plain window on a phone in B's order: **built,
    v2.7355** (`docs/recent-features/v2.7355.md`), with Job accounts folded instead of dropped and
-   the email row kept for the superintendent and the estimators. Then Today's work on it, its own PR.
+   the email row kept for the superintendent and the estimators. Then **v2.7375**: the crew reads the
+   row of a job they are on before their first clock-in, which Plans, the customer's number and
+   materials on site waited on. Then Today's work on it: **built, v2.7376**
+   (`docs/recent-features/v2.7376.md`), the open stage as a card with the job's bar, the stage
+   checklists, Plans and Materials on site, fourth on the crew's phone.
 5. **C, the crew lead's tabs** (M to L), only when a month of tab counts says a master tech works
    the tabbed window from a phone: `JobWindowPhone`, the role kernel for tabs and bar.
 
