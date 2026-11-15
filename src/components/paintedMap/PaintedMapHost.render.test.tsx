@@ -38,7 +38,7 @@ vi.mock('./PaintedMapWindow', () => ({
   ),
 }))
 
-import { openPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
+import { openPaintedMap, paintPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { PaintedMapHost } from './PaintedMapHost'
 
 const walked = (): WalkState => {
@@ -105,6 +105,22 @@ describe('PaintedMapHost', () => {
     expect(screen.getByTestId('window').textContent).toContain('map m1 kept:no at:9 Other Road')
     fireEvent.click(screen.getByRole('button', { name: 'close' }))
     expect(screen.queryByTestId('window')).toBeNull()
+  })
+
+  it('answers a paint with the new map\'s window and no sheet, and tells the caller when it closes', () => {
+    render(<PaintedMapHost />)
+    const closed = vi.fn()
+    act(() => void paintPaintedMap({ id: 'task-map', name: 'Dig the trench', words: '', home: { jobId: null, developmentId: null }, first: 'line' }, closed))
+    expect(screen.queryByTestId('sheet')).toBeNull()
+    expect(screen.getByTestId('window').textContent).toContain('new task-map')
+    expect(closed).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'close' }))
+    expect(screen.queryByTestId('window')).toBeNull()
+    expect(closed).toHaveBeenCalledTimes(1)
+  })
+
+  it('a paint with nobody listening says so to the caller', () => {
+    expect(paintPaintedMap({ id: 'x', name: 'N', words: '', home: {} })).toBe(false)
   })
 
   it('says a walk is still on the phone, and opens it paused with the map it was for', () => {

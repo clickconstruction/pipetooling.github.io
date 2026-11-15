@@ -498,6 +498,7 @@ export function ChecklistItemEditModal({
         onPlace={setPlace}
         map={taskMap}
         onMap={setTaskMap}
+        mapWords={form.title}
         spotPhoto={spotPhoto}
         onSpotPhoto={setSpotPhoto}
         busy={saving}
