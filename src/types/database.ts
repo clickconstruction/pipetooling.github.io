@@ -30320,6 +30320,7 @@ export type Database = {
         Row: {
           clause: string
           cutoff_day: number | null
+          days_after: number | null
           id: string
           job_id: string | null
           months_after: number
@@ -30334,6 +30335,7 @@ export type Database = {
         Insert: {
           clause?: string
           cutoff_day?: number | null
+          days_after?: number | null
           id?: string
           job_id?: string | null
           months_after?: number
@@ -30348,6 +30350,7 @@ export type Database = {
         Update: {
           clause?: string
           cutoff_day?: number | null
+          days_after?: number | null
           id?: string
           job_id?: string | null
           months_after?: number
