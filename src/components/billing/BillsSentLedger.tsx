@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useAuth } from '../../hooks/useAuth'
 import {
   BILLS_SENT_GAP_LABEL,
   BILLS_SENT_PATH,
@@ -35,6 +36,8 @@ import {
   byHandOthersHeading,
   byHandOutcome,
   byHandProblem,
+  byHandReadBack,
+  byHandReadBackLead,
   byHandRecordLabel,
   type BillsSentByHandDraft,
   type BillsSentChip,
@@ -310,6 +313,7 @@ function dayPick(picked: boolean, phone: boolean): CSSProperties {
     minHeight: phone ? 40 : undefined,
     borderRadius: 999,
     cursor: 'pointer',
+    whiteSpace: 'nowrap',
     fontWeight: picked ? 700 : 500,
     border: `1px solid ${picked ? 'var(--text-strong)' : 'var(--border-strong)'}`,
     background: picked ? 'var(--text-strong)' : 'var(--surface)',
@@ -326,10 +330,14 @@ function dayPick(picked: boolean, phone: boolean): CSSProperties {
  * R2: the person's other bills with no send on record are listed to tick. The button counts what it will record,
  * each bill gets its own record, and the press keeps going past a bill that is refused: the rest save, and the
  * refused bill stays on the strip with its reason (`onRan`).
+ *
+ * R3: above the button the form reads the record back, the day, the way, the person and the recorder, so the person
+ * sees the sentence before a press that cannot be undone. Until the form is whole, that place says what is missing.
  */
 function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: BillsSentGap; others: BillsSentGap[]; waysCtl: BillHandWaysCtl; onSaved: () => void; onRan: (ran: string[], failed: ByHandFailure[]) => void; onClose: () => void }) {
   const phone = useIsMobile()
   const { showToast } = useToastContext()
+  const { profileName } = useAuth()
   const today = todayYmdInAppTz()
   const [draft, setDraft] = useState<BillsSentByHandDraft>(() => ({ how: '', toWhom: gap.payer, wentOnYmd: byHandDayOffered(gap.billedYmd, today), note: '' }))
   const [saving, setSaving] = useState(false)
@@ -338,6 +346,7 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
   const problem = byHandProblem(draft, today, ways)
   // A bill recorded since it was ticked has left the strip, and its tick with it.
   const also = others.filter((g) => ticked.has(g.billId))
+  const readBack = byHandReadBack(draft, today, profileName ?? '', ways)
   const save = async () => {
     if (problem || saving) return
     setSaving(true)
@@ -396,8 +405,8 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
         </label>
         <div role="group" aria-label="Days one press away" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
           {byHandDayPicks(gap.billedYmd, today).map((p) => (
-            <button key={p.ymd} type="button" aria-pressed={draft.wentOnYmd === p.ymd} onClick={() => setDraft((d) => ({ ...d, wentOnYmd: p.ymd }))} style={dayPick(draft.wentOnYmd === p.ymd, phone)}>
-              {phone ? p.short : p.label}
+            <button key={p.ymd} type="button" aria-pressed={draft.wentOnYmd === p.ymd} title={p.label === p.short ? undefined : p.label} onClick={() => setDraft((d) => ({ ...d, wentOnYmd: p.ymd }))} style={dayPick(draft.wentOnYmd === p.ymd, phone)}>
+              {p.short}
             </button>
           ))}
         </div>
@@ -426,6 +435,16 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
           ))}
         </div>
       ) : null}
+      <div data-testid="bills-sent-by-hand-will" style={{ gridColumn: '1 / -1', minWidth: 0, padding: '0.45rem 0.55rem', borderRadius: 6, border: '1px dashed var(--border-strong)', fontSize: '0.8125rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
+        {readBack ? (
+          <>
+            <b style={{ color: 'var(--text-strong)' }}>{byHandReadBackLead(1 + also.length)}</b> {readBack}
+          </>
+        ) : (
+          problem
+        )}
+        <span style={{ display: 'block', marginTop: '0.15rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{phone ? 'It cannot be changed once saved.' : 'It is your word, with your name. It cannot be changed once saved.'}</span>
+      </div>
       <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <button
           type="button"
@@ -438,7 +457,6 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
         <button type="button" onClick={onClose} style={phone ? phoneButton : press}>
           Cancel
         </button>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{problem || 'The record says it is your word, with your name. It cannot be changed once saved.'}</span>
       </div>
     </div>
   )

@@ -108,6 +108,64 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('29 of 0101 to 0130, 2 strips each. 58 strips.')
   })
 
+  it('Stop printing ends the run with one more strip, and the press is the rest (Taunya, 2026-11-15)', async () => {
+    usb.granted = true
+    let go: () => void = () => {}
+    const held = new Promise<void>((r) => { go = r })
+    usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void, stopAsked?: () => boolean) => {
+      onLabel?.(1); onLabel?.(2); onLabel?.(3)
+      await held
+      // the strip after the stop is the run's last: fed out and cut, and nothing more is sent
+      if (stopAsked?.()) { onLabel?.(4); return }
+      labels.forEach((_, i) => onLabel?.(i + 1))
+    })
+    setup()
+    await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '30' }))
+    fireEvent.click(screen.getByTestId('stickers-copies-more'))
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-progress').textContent).toBe('Printing 4 of 60 · 0102, strip 2 of 2'))
+    // an earlier test's window closed its printer on the way out
+    usb.close.mockClear()
+    fireEvent.click(screen.getByTestId('stickers-stop'))
+    expect(screen.getByTestId('stickers-stop').textContent).toBe('Stopping…')
+    expect(screen.getByTestId('stickers-progress').textContent).toBe('Stopping. One more strip prints, so the printer can cut the tape.')
+    go()
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('2 of 30 stickers printed, then you stopped the run.'))
+    // nothing went wrong: the printer stays connected, no red line, and the press is the rest
+    expect(usb.close).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('stickers-slip')).toBeNull()
+    expect(screen.queryByTestId('stickers-stop')).toBeNull()
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print the rest, 0103 to 0130')
+    expect(screen.getByTestId('stickers-range-count').textContent).toBe('28 of 30 stickers')
+  })
+
+  it('a range of the run on the page is picked by its two ends, and the press names it (Taunya, 2026-11-15)', async () => {
+    usb.granted = true
+    setup()
+    await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+    // before a run is made there are no numbers to pick from
+    expect(screen.queryByTestId('stickers-range')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '30' }))
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('30 stickers printed.'))
+    const from = screen.getByTestId('stickers-range-from') as HTMLSelectElement
+    const to = screen.getByTestId('stickers-range-to') as HTMLSelectElement
+    expect(from.value).toBe('s-101')
+    expect(to.value).toBe('s-130')
+    expect(Array.from(from.options).slice(0, 3).map((o) => o.textContent)).toEqual(['0101', '0102', '0103'])
+    expect(screen.getByTestId('stickers-range-count').textContent).toBe('30 of 30 stickers')
+    fireEvent.change(from, { target: { value: 's-103' } })
+    fireEvent.change(to, { target: { value: 's-110' } })
+    expect(screen.getByTestId('stickers-range-count').textContent).toBe('8 of 30 stickers')
+    // a picked range is not the rest of a stopped run, and the press says which stickers it is
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 8 stickers, 0103 to 0110')
+    usb.print.mockClear()
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('8 stickers printed.'))
+    expect((usb.print.mock.calls[0]![0] as unknown[]).length).toBe(8)
+  })
+
   it('tape the sticker is not laid out for holds the press and says what to load', async () => {
     usb.granted = true
     usb.status = { tapeMm: 12, statusType: 0, phase: 0, errors: [] }

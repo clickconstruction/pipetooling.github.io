@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DIFFICULTY_CRITERIA_V1 } from './difficultyCriteria'
+import { DIFFICULTY_CRITERIA_V1, DIFFICULTY_CRITERIA_V2 } from './difficultyCriteria'
 import { DIFFICULTY_PRICE_V1 } from './difficultyPrice'
 import { readDifficultyPaying } from './difficultyPaying'
 import {
@@ -10,6 +10,7 @@ import {
   rateSheetGcRecordWords,
   rateSheetOverTitle,
   rateSheetPayingWords,
+  rateSheetSavePlan,
   rateSheetScales,
 } from './difficultyRateSheet'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
@@ -136,5 +137,37 @@ describe('rateSheetGcRecord', () => {
     expect(rateSheetGcRecord(rows, 'nobody')).toBeNull()
     expect(rateSheetGcRecord(null, 'gc')).toBeNull()
     expect(rateSheetGcRecordWords(null)).toBeNull()
+  })
+})
+
+describe('the bid’s own picks on the sheet (PR 6)', () => {
+  const numbers = { fieldHours: 480, laborRate: 80, ownCost: 70_000, carried: 100_000, marginPct: 30, source: 'priced' as const }
+  it('prices the site with the GC’s picks, from a bid only', () => {
+    expect(rateSheetScales({ field: 2 }, DIFFICULTY_CRITERIA_V2, { site: 1 }).map((s) => `${s.key} ${s.points}`)).toEqual(['field 2', 'site 1'])
+    const c = rateSheetConsequence({ picks: { field: 2 }, body: DIFFICULTY_CRITERIA_V2, price, numbers, payingReason: null, hasBid: true, bidPicks: { site: 1 } })
+    // field 2 = 48 h, site 1 = 4% of 480 = 19.2 h, at $80
+    expect(c.head).toBe('3 points · about +$5,376 in cost')
+    expect(c.detail).toBe('67.2 field hours. About +$7,680 on the price at 30%.')
+    const ask = rateSheetConsequence({ picks: { field: 2 }, body: DIFFICULTY_CRITERIA_V2, price, numbers: null, payingReason: null, hasBid: false, bidPicks: { site: 1 } })
+    expect(ask.head).toBe('2 points')
+  })
+
+  describe('rateSheetSavePlan', () => {
+    const base = { fromAsk: false, hasStanding: true, gcChanged: false, gcPicked: true, gcProblems: [] as string[], bidChanged: false, noPickWords: 'Pick at least one sentence.' }
+    it('nothing moved: dead, and says so', () => {
+      expect(rateSheetSavePlan(base)).toEqual({ rating: false, bidPicks: false, dead: true, why: RATE_SHEET_WORDS.nothingChanged })
+      expect(rateSheetSavePlan({ ...base, hasStanding: false, gcPicked: false })).toMatchObject({ dead: true, why: 'Pick at least one sentence.' })
+    })
+    it('only the site moved: saves the bid’s picks, and the GC’s rules do not bind', () => {
+      expect(rateSheetSavePlan({ ...base, bidChanged: true, gcProblems: ['Say what happened.'] })).toEqual({ rating: false, bidPicks: true, dead: false, why: null })
+    })
+    it('the rating moved: its rules bind, and the site rides along', () => {
+      expect(rateSheetSavePlan({ ...base, gcChanged: true, bidChanged: true, gcProblems: ['Say what happened.'] })).toEqual({ rating: true, bidPicks: true, dead: true, why: 'Say what happened.' })
+      expect(rateSheetSavePlan({ ...base, gcChanged: true, bidChanged: true })).toEqual({ rating: true, bidPicks: true, dead: false, why: null })
+    })
+    it('from the ask the rating is always saved', () => {
+      expect(rateSheetSavePlan({ ...base, fromAsk: true })).toEqual({ rating: true, bidPicks: false, dead: false, why: null })
+      expect(rateSheetSavePlan({ ...base, fromAsk: true, gcProblems: ['Say what happened.'] }).dead).toBe(true)
+    })
   })
 })

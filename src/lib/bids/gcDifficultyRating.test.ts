@@ -76,8 +76,9 @@ describe('gcDifficultyRating', () => {
     const s = gcDifficultyStanding(rating(), [V1, V2], V2)
     expect(s.points).toBe(4)
     expect(s.carry?.picks).toEqual({ office: 1 })
-    expect(s.carry?.unrated).toEqual(['paying', 'field', 'site'])
-    expect(gcDifficultyCarryLine(s)).toBe('Rated under version 1; version 2 is published. Paying, Field and superintendent, The site are unrated under this version. A pick from an older version did not carry: its rung is gone.')
+    // The site is picked on the bid (PR 6): it is never the GC's rating that is missing it.
+    expect(s.carry?.unrated).toEqual(['paying', 'field'])
+    expect(gcDifficultyCarryLine(s)).toBe('Rated under version 1; version 2 is published. Paying, Field and superintendent are unrated under this version. A pick from an older version did not carry: its rung is gone.')
     expect(gcDifficultyOpeningPicks(s)).toEqual({ office: 1 })
   })
 

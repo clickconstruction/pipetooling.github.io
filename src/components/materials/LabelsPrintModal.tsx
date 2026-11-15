@@ -22,6 +22,12 @@
  * box with more than one side; its strips print together, 1 1 2 2), the strips, then the presses in a foot that
  * stays at the window's bottom. A connected printer is one line, and the print window's switch sits with the setup.
  * Since v2.6881 a run's strips share one blank lead-in (`chainsToNext`), where every strip threw an inch away.
+ *
+ * Since v2.7374 (Taunya's ask of 2026-11-15) a run over USB has **Stop printing** beside its progress: the strip after
+ * the press is sent as the run's last, fed out and cut (`endsTheRun`), and the progress line names the box and the
+ * strip. A run that ends part way, by the press or by the printer, unticks the boxes that are done and remembers the
+ * one part way through its copies, so the press prints the rest and nothing twice. **From** and **to**, with a count,
+ * tick a range of boxes by its two ends. The rules are `lib/materials/labelPick.ts`.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -36,13 +42,14 @@ import { helpGuideHref } from '../../lib/helpGuideAnchors'
 import { linesOf, type Container, type ContainerLine } from '../../lib/materials/onSite'
 import { downloadFile } from '../../lib/materials/photoShare'
 import { printRootCss } from '../../lib/printRoot'
-import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NEEDS_BROWSER, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, PTOUCH_STRIP_INSIDE, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
+import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NEEDS_BROWSER, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
 import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import TapeStripBitmap from './TapeStripBitmap'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
-import { LABEL_OUTPUTS, TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, labelCountWords, longestNameChars, repeatEach, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
+import { LABEL_OUTPUTS, TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, labelCountWords, longestNameChars, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps, tapeStoppedWords, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { tapeAddressLines } from '../../lib/materials/tapeStrip'
+import { LABEL_RANGE_FROM, LABEL_RANGE_TO, afterStop, leftAfterRangePick, partialThatHolds, rangeCountWords, restCountWords, runStrips, stoppedDetailWords, tickedRange, type PartialBox, type RunStrip } from '../../lib/materials/labelPick'
 
 const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
@@ -77,6 +84,9 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   const [copiesState, setCopiesState] = useState<number>(() => readTapeCopies())
   const setCopies = (n: number) => { const c = clampTapeCopies(n); setCopiesState(c); writeTapeCopies(c) }
   const shown = candidates.filter((c) => !left.has(c.id))
+  const candidateIds = useMemo(() => candidates.map((c) => c.id), [candidates])
+  /** The first and the last ticked box: what the two ends of the range read. */
+  const range = tickedRange(candidateIds, left)
   const toggle = (id: string) => setLeft((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
   /** The day this computer last sent tape to the print window; null until it has (punch list #304). */
   const [tapeDay, setTapeDay] = useState<string | null>(() => readTapePrintedDay())
@@ -110,8 +120,17 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   const [link, setLink] = useState<PtouchLink | null>(null)
   const [usbBusy, setUsbBusy] = useState<null | 'connecting' | 'printing'>(null)
   const [usbSlip, setUsbSlip] = useState<string | null>(null)
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  /** The run as it goes: how many strips are out, and the run's strips so the line can name the box printing. */
+  const [progress, setProgress] = useState<{ done: number; total: number; strips: RunStrip[] } | null>(null)
   const [sentWords, setSentWords] = useState<string | null>(null)
+  /** After a run that ended part way: which boxes are done, which is part way and what the press does now, on a line of its own. */
+  const [restWords, setRestWords] = useState<string | null>(null)
+  /** The one box a stopped run left part way through its copies; the next press prints only what it is missing. */
+  const [partialState, setPartial] = useState<PartialBox | null>(null)
+  /** Stop printing was pressed: the loop reads the ref before each strip, the press reads the state. */
+  const stopRef = useRef(false)
+  const [stopping, setStopping] = useState(false)
+  const askStop = () => { stopRef.current = true; setStopping(true) }
   /** Each ticked box's strip as raster lines, as its canvas drew them. */
   const stripsRef = useRef(new Map<string, Uint8Array[]>())
   const onStripDrawn = useCallback((id: string, drawn: Uint8Array[] | null) => {
@@ -147,7 +166,12 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
     }
   }
   const tapeFits = link != null && ptouchTapeFits(link.status)
-  const pressLabel = tape ? tapePressLabel(shown.length * copies) : sheetPressLabel(shown.length)
+  const shownIds = shown.map((c) => c.id)
+  /** A part-way box counts only straight to the printer, while it is ticked and the copies are what they were. */
+  const partial = direct ? partialThatHolds(partialState, shownIds, copies) : null
+  /** The strips the press prints straight to the printer, in order. */
+  const plan = runStrips(shownIds, copies, partial)
+  const pressLabel = tape ? tapePressLabel(direct ? plan.length : shown.length * copies) : sheetPressLabel(shown.length)
   const dead = shown.length === 0 || usbBusy != null || (direct && link != null && !tapeFits)
   /** A computer that printed tape opens on tape, the choice folded to one line. */
   const settled = tape && tapeDay != null && !choosing
@@ -156,39 +180,69 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   /** What each label prints in large type (v2.7195): the letters and number alone, read against every box of the job so two labels never read the same. */
   const printNames = useMemo(() => labelPrintNames(containers), [containers])
   const shortNote = shortenedLabelsNote(printed, printNames)
+  /** The strip going out now, for the progress line: its box's name and which of the box's copies. */
+  const progressStrip = progress ? progress.strips[Math.min(progress.done, progress.strips.length - 1)] : undefined
+  const progressBox = progressStrip ? candidates.find((c) => c.id === progressStrip.id) : undefined
+  const progressAt = progressStrip && progressBox ? { name: labelPrintName(printNames, progressBox), copy: progressStrip.copy, copies } : null
   /** The print window cuts every strip of a run to one length: what the run's longest name needs. */
   const nameChars = longestNameChars(printed.map((c) => labelPrintName(printNames, c)))
   const layout = tapeLayout(width, nameChars)
   /** The ticked boxes, or the first alone, sent to the printer one strip at a time. A strip that fails stops the run and says how many went. */
   const printDirect = async (test: boolean) => {
     if (!link || dead) return
-    const boxes = test ? shown.slice(0, 1) : shown
-    const drawn = boxes.map((c) => stripsRef.current.get(c.id)).filter((l): l is Uint8Array[] => l != null)
-    if (drawn.length !== boxes.length) { setUsbSlip('The strips are still being drawn. Press it again.'); return }
-    // A box's copies go together, 1 1 2 2 3 3; the test strip is one strip whatever the count.
-    const labels = test ? drawn : repeatEach(drawn, copies)
+    // A box's copies go together, 1 1 2 2 3 3, and a box a stopped run left part way prints only what it is missing; the test strip is one strip whatever the count.
+    const strips: RunStrip[] = test ? shownIds.slice(0, 1).map((id) => ({ id, copy: 1 })) : plan
+    const labels = strips.map((s) => stripsRef.current.get(s.id)).filter((l): l is Uint8Array[] => l != null)
+    if (labels.length !== strips.length) { setUsbSlip('The strips are still being drawn. Press it again.'); return }
     setUsbBusy('printing')
     setUsbSlip(null)
     setSentWords(null)
-    setProgress({ done: 0, total: labels.length })
+    setRestWords(null)
+    setProgress({ done: 0, total: labels.length, strips: test ? [] : strips })
+    stopRef.current = false
+    setStopping(false)
     let done = 0
+    /**
+     * A run that ends part way, by the press or by the printer: the boxes whose last copy went come off the pick, the
+     * one part way is remembered, and the words say so. The next press prints the rest and nothing twice.
+     */
+    const keepTheRest = (): string => {
+      if (test || done >= labels.length) return ''
+      const { wholeIds, partial: now } = afterStop(strips, done, copies)
+      if (wholeIds.length > 0) setLeft((s) => new Set([...s, ...wholeIds]))
+      // A stop before the part-way box was reached leaves it as it was.
+      const kept = now ?? (partial && !wholeIds.includes(partial.id) ? partial : null)
+      setPartial(kept)
+      const nameOf = (id: string) => { const c = shown.find((b) => b.id === id); return c ? labelPrintName(printNames, c) : '' }
+      return stoppedDetailWords(wholeIds.map(nameOf), kept ? { name: nameOf(kept.id), toGo: kept.copies - kept.done, copies: kept.copies } : null, labels.length - done)
+    }
     try {
-      await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length }) })
+      await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length, strips: test ? [] : strips }) }, () => stopRef.current)
       const today = todayYmdInAppTz()
       writeTapePrintedDay(today)
       setTapeDay(today)
       setChoosing(false)
-      setSentWords(tapeSentWords(done, labels.length))
+      // Stop printing was pressed: the printer fed the last strip out and cut it, so nothing is left inside.
+      if (done < labels.length) {
+        setSentWords(tapeStoppedWords(done, labels.length))
+        setRestWords(keepTheRest() || null)
+      } else {
+        setSentWords(tapeSentWords(done, labels.length))
+        if (!test) setPartial(null)
+      }
     } catch (e) {
       // A run that stops part way leaves its last printed strip short of the cutter: the strips share one lead-in (v2.6881).
       const inside = done > 0 && done < labels.length ? ` ${PTOUCH_STRIP_INSIDE}` : ''
       setUsbSlip(`${tapeSentWords(done, labels.length, formatErrorMessage(e, PTOUCH_NOT_ANSWERING))}${inside}`)
+      // What is kept reads on its own line under the printer's reason, which is long enough alone.
+      setRestWords(keepTheRest() || null)
       // A printer that stopped answering needs connecting again.
       void link.close()
       setLink(null)
     } finally {
       setUsbBusy(null)
       setProgress(null)
+      setStopping(false)
     }
   }
   const run = (test: boolean) => {
@@ -225,7 +279,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
             <div style={{ flex: '1 1 auto', minWidth: 0 }}>
               <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{one ? `Label · ${one.label}` : `Labels · ${jl}`}</h2>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} data-testid="labels-count-words">{labelCountWords(format, shown.length, one != null, copies)}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} data-testid="labels-count-words">{partial ? restCountWords(shown.length, plan.length) : labelCountWords(format, shown.length, one != null, copies)}</span>
             </div>
             <button type="button" style={{ ...btn, flex: '0 0 auto' }} onClick={onClose}>Close</button>
           </div>
@@ -310,7 +364,9 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }} role="group" aria-label="Boxes to print">
                 {candidates.map((c) => {
                   const on = !left.has(c.id)
-                  return <button key={c.id} type="button" aria-pressed={on} style={{ ...chip(on), maxWidth: '100%' }} title={boxChipWords(c, lines)} onClick={() => toggle(c.id)} data-testid="labels-pick"><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{boxChipWords(c, lines)}</span></button>
+                  /* A box a stopped run left part way: still ticked, drawn with a dashed edge, and its title says what it is owed. */
+                  const part = on && partial?.id === c.id ? partial : null
+                  return <button key={c.id} type="button" aria-pressed={on} style={{ ...(part ? { ...chip(false), borderStyle: 'dashed', borderWidth: 2, borderColor: 'var(--text-strong)' } : chip(on)), maxWidth: '100%' }} title={part ? `${boxChipWords(c, lines)} · ${part.copies - part.done} of its ${part.copies} strips to go` : boxChipWords(c, lines)} onClick={() => toggle(c.id)} data-testid="labels-pick" data-part={part ? 'true' : undefined}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{boxChipWords(c, lines)}</span></button>
                 })}
                 {/* As the manifest window has: one new cage's label without unticking the rest. */}
                 <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.75rem' }}>
@@ -319,6 +375,21 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
                 </span>
               </div>
             )}
+            {candidates.length > 2 ? (
+              /* A range by its two ends (Taunya, 2026-11-15): with ninety boxes, G6 to G91 is two picks where it was eighty-six presses. */
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }} role="group" aria-label="A range of boxes" data-testid="labels-range">
+                {(['from', 'to'] as const).map((end) => (
+                  <label key={end} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
+                    {end === 'from' ? LABEL_RANGE_FROM : LABEL_RANGE_TO}
+                    <select value={(end === 'from' ? range?.fromId : range?.toId) ?? ''} disabled={usbBusy != null} onChange={(e) => setLeft((s) => leftAfterRangePick(candidateIds, s, end, e.target.value))} style={{ minHeight: 32, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: '14rem' }} data-testid={`labels-range-${end}`}>
+                      {range ? null : <option value="" disabled>Pick a box</option>}
+                      {candidates.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                    </select>
+                  </label>
+                ))}
+                <span style={{ color: 'var(--text-muted)' }} data-testid="labels-range-count">{rangeCountWords(candidateIds, left)}</span>
+              </div>
+            ) : null}
             {tape ? (
               /* A box has more than one side (the owner, 2026-11-10): strips of each, its copies printed together. */
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }} role="group" aria-label={TAPE_COPIES_LABEL}>
@@ -389,8 +460,15 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
         {/* The press is the last thing done, so it is the last thing in the window, and it stays in reach while the strips scroll (v2.6878). A sticky box is held inside its parent's content box, so `bottom` gives back the window's own bottom padding. */}
         <div className="on-site-labels-chrome" style={{ position: 'sticky', bottom: '-1rem', margin: '0.75rem -1.25rem -1rem', padding: '0.6rem 1.25rem 0.8rem', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'grid', gap: '0.4rem' }} data-testid="labels-foot">
           {usbSlip ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="labels-usb-slip">{usbSlip}</div> : null}
-          {progress ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-usb-progress">{tapeProgressWords(progress.done, progress.total)}</div> : null}
+          {progress ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <span role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-usb-progress">{stopping ? PTOUCH_STOPPING : tapeProgressWords(progress.done, progress.total, progressAt)}</span>
+              {/* A run can be stopped (Taunya, 2026-11-15): the strip after the one printing is sent as the run's last, fed out and cut. */}
+              {progress.total > 1 ? <button type="button" disabled={stopping} aria-disabled={stopping} style={{ ...btn, minHeight: 32, ...(stopping ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}) }} onClick={askStop} data-testid="labels-stop">{stopping ? PTOUCH_STOPPING_LABEL : PTOUCH_STOP_LABEL}</button> : null}
+            </div>
+          ) : null}
           {sentWords && !progress ? <div role="status" style={{ color: 'var(--text-green-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-usb-sent">{sentWords}</div> : null}
+          {restWords && !progress ? <div role="status" style={{ color: 'var(--text-strong)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-rest">{restWords}</div> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {direct && !link ? (
               /* Not connected yet: the press is the connection, since a print with no printer does nothing. */

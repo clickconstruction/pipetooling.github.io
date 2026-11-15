@@ -17,7 +17,7 @@ summary: >
   the right and every door goes behind ⋯. A, B and the six other tabs are built. C was shown on
   2026-11-15 and split on Taunya's word: the crew's plain window gets B's order now, and the crew
   lead's tabs shaped by role wait for a month of tab counts.
-next: build Today's work on the crew's window (the open stage, its checklist, the plans, materials on site as one section), with the Plans read that fails for the superintendent fixed first, walked at 375 px as the sample superintendent before it opens; tell Taunya when it is live, and ask her the sub's two questions.
+next: build Today's work on the crew's window (the open stage, its checklist, the plans, materials on site as one section) once v2.7375's read rule is pushed (it opens the job's row to its crew, which Plans and the customer's number wait on), walked at 375 px as the sample superintendent before it opens; tell Taunya when it is live, and ask her the sub's two questions.
 size: L as a train (S for A · M for B · L for C, of which the crew half is M); the next step is M
 blocker: none
 opinion: A, B, the six other tabs and the crew's window in B's order are built (v2.7355); Today's work is next; the crew lead's tabs wait for the count
@@ -588,8 +588,12 @@ dev account's. The table has no column for the screen size.
   whether it is.
 
 **Found on the walk, not part of C.** The plain window's Plans section answered *Could not read the
-job. Try again* for the sample superintendent on a job he is on the crew of. Seen once, on a window
-opened from the pane and not from a Dashboard tap; the Today's work PR confirms it and fixes it.
+job. Try again* for the sample superintendent on a job he is on the crew of. Confirmed and wider
+than Plans: a helper, a superintendent or an estimator on a crew read no row of the job until their
+first clock-in there, so the window also had no customer, no number and no status on a first visit
+(on working jobs, 20 of the helpers' 58 crew rows and 13 of the superintendents' 23). **v2.7375**
+(`docs/recent-features/v2.7375.md`) opens the job's row to its crew with one read rule, ahead of
+Today's work.
 
 **Hers to say, when the sub's window is drawn for real:** whether a sub sees the customer's number
 or our lead's, and whether a *Your pay* row is drawn before the sub pay work lands.

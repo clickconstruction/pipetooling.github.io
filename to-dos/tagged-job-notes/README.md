@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: gated
-status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · call 1 settled by her · nothing built · waits on her picks on the other seven
+status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · calls 1 and 7 settled by her · nothing built · calls 2 to 6 and 8 stand as drawn, shown to her twice, and wait on her word
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,9 +11,9 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: Taunya's picks on calls 2 to 8, call 7 first because it changed after her first look. Then PR 1, the kernel, which needs none of them but call 4.
+next: Taunya's word that calls 2 to 6 and 8 stand as drawn. Then PR 1, the kernel, which needs none of them but call 4.
 size: L as a train of six (S · M · M · M · S · S)
-blocker: Taunya's picks on calls 2 to 8.
+blocker: Taunya's word on calls 2 to 6 and 8.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
 ---
 
@@ -46,7 +46,9 @@ changed:
 
 - **Open the job › is gone.** The job's name on the card is the door to the job.
 - **Call 1 is settled** as drawn: the section in Jobs and the Needs you line.
-- **Call 7 changed.** The asker now learns of an answer by a count, not by a push alone.
+- **Call 7 changed.** The asker now learns of an answer by a count, not by a push alone. Asked
+  whether an answer should count above Jobs for the asker until they see it, she said "Yes, count
+  it" the same day.
 - **A question back is one tap.** The answer box carries the @ button, the asker first in its list.
 - **The crew's path is drawn**: the Needs you line opens the same list as a window.
 - **Smaller:** the oldest tag is on top, the section folds and shows three, and the press reads
@@ -243,7 +245,7 @@ the app; an email for them can follow.
 
 ### Call 7 · Telling the asker
 
-**Pick, changed after her first look: the answer counts above Jobs for the asker until they have
+**Settled by Taunya, 2026-11-15 ("Yes, count it"): the answer counts above Jobs for the asker until they have
 seen it, then clears by itself. A push too, and a You asked fold under the section.**
 
 - The first pick was a push and the fold, with no count. It leans on pushes being switched on.

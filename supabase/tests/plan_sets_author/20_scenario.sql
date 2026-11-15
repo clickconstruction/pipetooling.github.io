@@ -137,6 +137,9 @@ SELECT psa.same('and back', psa.try($q$UPDATE public.plan_sets SET job_id = '000
 -- Hal, a helper on job A's crew: the predicate answers for him though the team table hides his own crew row.
 SELECT psa.sign_in('00000000-0000-0000-0000-00000239a003');
 SELECT psa.same('Hal reads no crew row of his own', (SELECT count(*) FROM public.jobs_ledger_team_members WHERE user_id = '00000000-0000-0000-0000-00000239a003')::text, '0');
+-- The job's own row (punch list #355, 20261116020000): the crew reads it with no clock session behind them.
+SELECT psa.same('Hal reads the row of the job he is on', (SELECT count(*) FROM public.jobs_ledger WHERE id = '00000000-0000-0000-0000-00000239b001')::text, '1');
+SELECT psa.same('and not the row of a job he is not on', (SELECT count(*) FROM public.jobs_ledger WHERE id = '00000000-0000-0000-0000-00000239b002')::text, '0');
 SELECT psa.same('yet the predicate answers true for Hal on his job', public.plan_set_crew_on_job('00000000-0000-0000-0000-00000239b001', '00000000-0000-0000-0000-00000239c001')::text, 'true');
 SELECT psa.same('and false for a job he is not on', public.plan_set_crew_on_job('00000000-0000-0000-0000-00000239b002', '00000000-0000-0000-0000-00000239c002')::text, 'false');
 SELECT psa.same('and false for his job under another part', public.plan_set_crew_on_job('00000000-0000-0000-0000-00000239b001', '00000000-0000-0000-0000-00000239c002')::text, 'false');

@@ -33,6 +33,17 @@ describe('lienDoNowBarParts', () => {
     expect(parts.map((p) => p.words)).toEqual(['4 by Monday'])
   })
 
+  it('the day tile’s red line rides beside its count, short, with the line’s own press (v2.7371)', () => {
+    const parts = lienDoNowBarParts({
+      ...board([tile({ key: 'by_day', figure: '21', label: 'by tomorrow · 10 to file · 11 to send', tone: 'red', line: '8 will not make tomorrow as they stand.', lineDestination: { kind: 'risk' } }), tile({ key: 'unpaid', figure: '$900', label: 'unpaid on the desk' })]),
+      atRisk: 8,
+    })
+    expect(parts.map((p) => [p.key, p.words, p.destination])).toEqual([
+      ['by_day', '21 by tomorrow', null],
+      ['risk', '8 will not make tomorrow', { kind: 'risk' }],
+    ])
+  })
+
   it('is empty on an empty desk', () => {
     const parts = lienDoNowBarParts(board([tile({ key: 'by_day', figure: '0', label: 'nothing dated' }), tile({ key: 'unpaid', figure: '$0', label: 'unpaid on the desk' })], null))
     expect(parts).toEqual([])

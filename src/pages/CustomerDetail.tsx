@@ -27,6 +27,7 @@ import { canResearchPermits } from '../lib/research/permitResearch'
 import { CustomerPermitNamesCard } from '../components/customers/CustomerPermitNamesCard'
 import CustomerInKindCard from '../components/inKind/CustomerInKindCard'
 import GcDifficultyCard from '../components/customers/GcDifficultyCard'
+import GcDifficultyFeedbackCard from '../components/customers/GcDifficultyFeedbackCard'
 import InKindChip from '../components/inKind/InKindChip'
 import { useInKindStandings } from '../hooks/useInKindStandings'
 import { collectedInKindWords, openBalanceInKindChip, openIsAllInKind, paysInInKindWords } from '../lib/inKind/customerInKindStrip'
@@ -566,7 +567,11 @@ export default function CustomerDetail() {
 
           {/* v2.7279: How they are to work with — the GC's difficulty rating (punch list #357 PR 2). The office rates, estimators read; a commercial customer, or any with a bid or a GC job. */}
           {customerId && (isOfficeRole(myRole) || myRole === 'estimator') && (data.customer.customer_type === 'commercial' || data.bids.length > 0 || data.gcJobCount > 0) ? (
-            <GcDifficultyCard customerId={customerId} customerName={data.customer.name ?? ''} role={myRole} />
+            <>
+              <GcDifficultyCard customerId={customerId} customerName={data.customer.name ?? ''} role={myRole} />
+              {/* #357 PR 6: What the rating did. The office reads the hours on the jobs; an estimator reads the bids. */}
+              <GcDifficultyFeedbackCard customerId={customerId} withHours={isOfficeRole(myRole)} />
+            </>
           ) : null}
 
           {/* v2.4301: Agreements — the signed papers on file for their jobs and the jobs each covers. Office roles only. */}

@@ -14007,6 +14007,65 @@ export type Database = {
           },
         ]
       }
+      gc_difficulty_asks: {
+        Row: {
+          answered_rating_id: string | null
+          asked_user_id: string
+          created_at: string
+          customer_id: string
+          dismissed_at: string | null
+          id: string
+          job_id: string
+        }
+        Insert: {
+          answered_rating_id?: string | null
+          asked_user_id?: string
+          created_at?: string
+          customer_id: string
+          dismissed_at?: string | null
+          id?: string
+          job_id: string
+        }
+        Update: {
+          answered_rating_id?: string | null
+          asked_user_id?: string
+          created_at?: string
+          customer_id?: string
+          dismissed_at?: string | null
+          id?: string
+          job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_difficulty_asks_answered_rating_id_fkey"
+            columns: ["answered_rating_id"]
+            isOneToOne: false
+            referencedRelation: "gc_difficulty_ratings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_difficulty_asks_asked_user_id_fkey"
+            columns: ["asked_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_difficulty_asks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_difficulty_asks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_difficulty_ratings: {
         Row: {
           created_at: string
@@ -44039,6 +44098,18 @@ export type Database = {
           p_user_agent: string
         }
         Returns: string
+      }
+      gc_difficulty_open_asks: {
+        Args: never
+        Returns: {
+          click_number: string
+          closed_at: string
+          customer_id: string
+          customer_name: string
+          hcp_number: string
+          job_id: string
+          job_name: string
+        }[]
       }
       gc_draft_change_order: {
         Args: { p_draft: Json; p_project_id: string }

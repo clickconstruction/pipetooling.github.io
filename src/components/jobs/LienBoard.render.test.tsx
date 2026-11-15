@@ -218,4 +218,22 @@ describe('LienBoard', () => {
     expect(screen.getByRole('button', { name: 'Only my bins' })).toBeTruthy()
     expect(section.querySelector('[data-lien-board-approve]')).toBeNull()
   })
+
+  it('the day tile’s red line is a press of its own that hands the desk its door; with no desk to hand it to, it is words (v2.7371)', () => {
+    const b = board({ notices: [notice('3', 'to_draft', { earliestDeadline: '2026-11-16', daysLeft: 1 })], affidavits: [affidavit('8', 'ready', { deadline: '2026-11-16', daysLeft: 1 })] })
+    expect(b.atRisk).toBeGreaterThan(0)
+    const onTile = vi.fn()
+    const view = render(<LienBoard board={b} isMobile={false} onTile={onTile} columnsOnly />)
+    const tile = document.querySelector('[data-lien-board-tile="by_day"]') as HTMLElement
+    const line = tile.querySelector('[data-lien-board-tile-line]') as HTMLButtonElement
+    // The tile itself only reads; the line under its count is the press.
+    expect(tile.tagName).toBe('DIV')
+    expect(line.tagName).toBe('BUTTON')
+    expect(line.textContent).toMatch(/will not make tomorrow as (it stands|they stand)\.$/)
+    fireEvent.click(line)
+    expect(onTile).toHaveBeenCalledWith({ kind: 'risk' })
+    view.unmount()
+    render(<LienBoard board={b} isMobile={false} columnsOnly />)
+    expect((document.querySelector('[data-lien-board-tile="by_day"] [data-lien-board-tile-line]') as HTMLElement).tagName).toBe('SPAN')
+  })
 })

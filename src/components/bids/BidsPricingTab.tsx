@@ -112,6 +112,8 @@ import { bidDifficultyAmountOnRows } from '../../lib/bids/bidDifficulty'
 import { difficultyPriceVersionWords } from '../../lib/bids/difficultyPrice'
 import BidDifficultyStrip from './BidDifficultyStrip'
 import BidScoreHoldLine from './BidScoreHoldLine'
+import BidSitePick from './BidSitePick'
+import { useBidDifficultyPicks } from '../../hooks/useBidDifficultyPicks'
 import { bidScoreReadiness, laborCompleteness } from '../../lib/scorecard/scoreReadiness'
 import type {
   CostEstimate,
@@ -2402,7 +2404,9 @@ export function BidsPricingTab({
   // v2.5671: nothing to stamp while the open price loads — the strip still holds the price you left.
   const derivedNow = selectedBidForPricing && !pricesLoading ? derivePricingWorkbench() : null
   // #357 PR 4: the GC's rating as cost lines, pinned on the bid; written once the numbers are settled (`ready`).
-  const bidDifficulty = useBidDifficulty({ bidId: selectedBidForPricing?.id ?? null, standing: difficultyStanding, price: difficultyPrice, ready: derivedNow != null, latest: bidDifficultyLatestRef, reload: reloadPricingForBid, onWrote: armPricedMarginStamp })
+  // #357 PR 6: the bid's own picks (the site), priced with the GC's rating into the same lines.
+  const bidOwnPicks = useBidDifficultyPicks(selectedBidForPricing?.id ?? null)
+  const bidDifficulty = useBidDifficulty({ bidId: selectedBidForPricing?.id ?? null, standing: difficultyStanding, bidPicks: bidOwnPicks.picks, published: bidOwnPicks.published, price: difficultyPrice, ready: derivedNow != null, latest: bidDifficultyLatestRef, reload: reloadPricingForBid, onWrote: armPricedMarginStamp })
   // Of the cost, the difficulty lines' dollars (the Other rows the pin names), which the stamp keeps apart.
   const difficultyCostNow = bidDifficulty.pin ? bidDifficultyAmountOnRows(pricingOtherRows, bidDifficulty.pin.rowIds) : 0
   const pricedStampLatest: PricedMarginStampLatest | null = pricedMarginStampOnScreen({
@@ -3460,8 +3464,22 @@ export function BidsPricingTab({
                               sent={!!selectedBidForPricing.bid_date_sent}
                               priceVersionWords={difficultyPrice ? difficultyPriceVersionWords(difficultyPrice) : null}
                               byName={profileName ?? ''}
-                              onReadIn={bidDifficulty.readIn}
+                              onReadIn={() => bidDifficulty.readIn()}
                               onTakeOff={(key, reason) => bidDifficulty.takeOff(key, reason, profileName ?? '')}
+                            />
+                          ) : null}
+                          {selectedBidForPricing ? (
+                            // #357 PR 6: the site, picked on this bid. A pick is read into the lines at once where the Workbench may write them.
+                            <BidSitePick
+                              bidId={selectedBidForPricing.id}
+                              body={bidOwnPicks.published?.body ?? null}
+                              picks={bidOwnPicks.picks}
+                              sent={!!selectedBidForPricing.bid_date_sent}
+                              onPick={async (key, points) => {
+                                const next = await bidOwnPicks.pick(key, points)
+                                const now = bidDifficultyLatestRef.current
+                                if (now && now.bidId === selectedBidForPricing.id && now.mayWrite && !now.sent && now.fieldHours > 0 && now.laborRate > 0) await bidDifficulty.readIn(next)
+                              }}
                             />
                           ) : null}
                           {laborCountsOutOfStep({ countRows: pricingCountRows, laborRows: pricingLaborRows }) ? (

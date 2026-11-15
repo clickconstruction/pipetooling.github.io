@@ -90,6 +90,31 @@ export const DIFFICULTY_CRITERIA_V1: DifficultyCriteriaBody = {
   ],
 }
 
+/** The site, the one scale picked on the bid: the site is the job's, not the GC's (the owner's call 1 of 2026-11-14). */
+export const DIFFICULTY_SITE_KEY = 'site'
+
+/**
+ * Version 2, published by `20261116030000_difficulty_site_scale.sql` (PR 6): version 1's three scales and the site
+ * scale on the bid. The test holds the migration's JSON equal to this.
+ */
+export const DIFFICULTY_CRITERIA_V2: DifficultyCriteriaBody = {
+  scales: [
+    ...DIFFICULTY_CRITERIA_V1.scales,
+    {
+      key: DIFFICULTY_SITE_KEY,
+      name: 'The site',
+      scope: 'bid',
+      source: 'picked',
+      max: 2,
+      rungs: [
+        { points: 0, sentence: 'Open ground with room to stage.' },
+        { points: 1, sentence: 'An occupied building, or no room to stage.' },
+        { points: 2, sentence: 'Work in phases, or every trip is a lift.' },
+      ],
+    },
+  ],
+}
+
 const isRecord = (v: unknown): v is Record<string, unknown> => v != null && typeof v === 'object' && !Array.isArray(v)
 
 const asInt = (v: unknown): number | null => {
@@ -231,8 +256,9 @@ export type DifficultyCarry = {
 /**
  * The carry-over rule: a pick moves to a newer version only when its scale key and its points value still exist
  * there. Nothing is recomputed from old words onto new words. `from` is not read: the rule is about what `to` holds.
+ * With a `scope`, only that scope's scales can read as unrated.
  */
-export function carryDifficultyPicks(picks: DifficultyPicks, to: DifficultyCriteriaBody): DifficultyCarry {
+export function carryDifficultyPicks(picks: DifficultyPicks, to: DifficultyCriteriaBody, scope?: DifficultyScope): DifficultyCarry {
   const out: DifficultyPicks = {}
   const kept: string[] = []
   const dropped: DifficultyCarry['dropped'] = []
@@ -245,7 +271,8 @@ export function carryDifficultyPicks(picks: DifficultyPicks, to: DifficultyCrite
       kept.push(key)
     }
   }
-  const unrated = to.scales.filter((s) => out[s.key] == null).map((s) => s.key)
+  // A GC's rating answers for the GC's scales only: a scale picked on the bid (PR 6) is never the rating's to carry.
+  const unrated = to.scales.filter((s) => (scope == null || s.scope === scope) && out[s.key] == null).map((s) => s.key)
   return { picks: out, kept, dropped, unrated }
 }
 

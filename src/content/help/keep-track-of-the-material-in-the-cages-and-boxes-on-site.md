@@ -134,11 +134,13 @@ The app prints straight to the P-touch from Chrome or Edge on a computer. There 
 
 Once it is connected, the window names the printer and the tape inside it. Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**. The strips print one at a time and the printer cuts each one. A run wastes one blank square of tape at its start, however many strips it holds. Print strips together to save tape.
 
+While a run prints, the window names the box and the strip, as in G2, strip 2 of 5. Press **Stop printing** to end a run early. One more strip prints, so the printer can cut the tape. The boxes that are done are unticked, and the window names them. A box that was part way keeps its place, and only its missing strips print. Press the print press again to print the rest. If the printer stops by itself, the window keeps the rest the same way.
+
 Safari and Firefox cannot reach a USB printer. There the Brother tape choice says Needs Chrome or Edge. Press **Copy the link to this page** and paste it into Chrome or Edge. Brother makes no printer driver for a Mac, so the print window cannot print tape on one.
 
 On Windows with Brother's driver, you can press **Use the print window instead**. After the first print it sits under **Printer setup**. In the print window, pick the P-touch and the paper that matches your tape, 18 mm or 24 mm.
 
-Untick a box to leave it out. **None** clears them all and **Every box** picks them all again. That is the quick way to print one new cage's strip.
+Untick a box to leave it out. **None** clears them all and **Every box** picks them all again. That is the quick way to print one new cage's strip. For a run of boxes in a row, pick the first box in **From** and the last box in **to**. Every box between the two is ticked. A count beside them says how many boxes that is.
 
 A box with more than one side needs more than one strip. Set **Copies of each** with the minus and plus presses. With 2, the strips come out as 1, 1, 2, 2, 3, 3. The print press names the total, as in **Print 6 tape labels**. The test strip is always one strip. The presses sit at the bottom of the window and stay in reach as you scroll.
 

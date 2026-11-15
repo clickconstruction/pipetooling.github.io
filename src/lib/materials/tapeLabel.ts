@@ -120,15 +120,25 @@ export function tapeSetupSteps(widthMm: TapeWidthMm, direct = false): string[] {
 export const TAPE_VIA_WINDOW_LABEL = 'Use the print window instead'
 export const TAPE_VIA_USB_LABEL = 'Print straight to the P-touch'
 
-/** While the strips go out one at a time: `Printing 2 of 6…`. */
-export function tapeProgressWords(done: number, total: number): string {
-  return `Printing ${Math.min(done + 1, total)} of ${total}\u2026`
+/**
+ * While the strips go out one at a time: `Printing 2 of 6…`. With the strip's box it says where the run is, so the
+ * strip in the hand has a name: `Printing 7 of 455 · G2, strip 2 of 5`, or `Printing 7 of 91 · G7` at one strip each.
+ */
+export function tapeProgressWords(done: number, total: number, at?: { name: string; copy: number; copies: number } | null): string {
+  const head = `Printing ${Math.min(done + 1, total)} of ${total}`
+  if (!at) return `${head}\u2026`
+  return at.copies > 1 ? `${head} \u00b7 ${at.name}, strip ${at.copy} of ${at.copies}` : `${head} \u00b7 ${at.name}`
 }
 
 /** After a run: every strip went, or how many did before the printer stopped, with its reason. */
 export function tapeSentWords(done: number, total: number, reason?: string): string {
   if (!reason) return done === 1 ? '1 tape label printed.' : `${done} tape labels printed.`
   return `${done} of ${total} printed, then the printer stopped: ${reason}`
+}
+
+/** After **Stop printing**: how many strips went before the run was stopped. Nothing is wrong, so it names no reason. */
+export function tapeStoppedWords(done: number, total: number): string {
+  return `${done} of ${total} printed, then you stopped the run.`
 }
 
 /** The press that prints the first ticked box alone, so a wrong paper size costs one strip and not a run. */

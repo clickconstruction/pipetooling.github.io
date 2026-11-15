@@ -1044,7 +1044,7 @@ export function byHandDayOffered(billedYmd: string, todayYmd: string): string {
   return YMD.test(billedYmd) && billedYmd <= todayYmd ? billedYmd : todayYmd
 }
 
-/** A day one press away under the form's date. `short` is the phone's label. */
+/** A day one press away under the form's date. `short` is the chip's words, on one line in the date's narrow column; `label` is its tip. */
 export interface ByHandDayPick {
   ymd: string
   label: string
@@ -1086,6 +1086,24 @@ export function byHandRecordLabel(n: number): string {
 /** After a press that recorded several bills: what took and what did not, in the batch's own words. */
 export function byHandOutcome(done: number, failed: number): BatchOutcome {
   return batchOutcomeWords({ verb: 'record', past: 'recorded', done, failed, noun: 'bill' })
+}
+
+/**
+ * The record read back before the press (punch list #340, R3): the day, the way, the person and the recorder, in
+ * the order a line on the list says them. *Mon, Nov 9 · Handed over · to Harlan Voss · recorded by hand by Priya on
+ * Fri, Nov 13.* A record cannot be changed once saved, so the person reads it first. '' while the form still lacks
+ * something (`byHandProblem` then says what). `byName` is the recorder's name as the stamp will write it.
+ */
+export function byHandReadBack(draft: BillsSentByHandDraft, todayYmd: string, byName: string, ways: ReadonlyArray<BillHandWay> = BILL_HAND_WAYS_BUILT_IN): string {
+  if (byHandProblem(draft, todayYmd, ways)) return ''
+  const way = ways.find((w) => w.key === draft.how)?.label ?? 'Recorded by hand'
+  const by = byName.trim()
+  return [formatWorkDateYmdWeekdayShortFriendly(draft.wentOnYmd), way, `to ${draft.toWhom.trim()}`, `recorded by hand${by ? ` by ${by}` : ''} on ${formatWorkDateYmdWeekdayShortFriendly(todayYmd)}.`].join(' · ')
+}
+
+/** Before the read-back: *The record will read:*, or *Each record will read:* when the press records several. */
+export function byHandReadBackLead(n: number): string {
+  return n <= 1 ? 'The record will read:' : 'Each record will read:'
 }
 
 /** What the form still needs, as one sentence; '' when the record can be saved. */
