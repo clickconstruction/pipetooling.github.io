@@ -4341,6 +4341,17 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPileHeadBtn .n { margin-left: auto; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 /* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
 .lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
+/* The list's find box as a quiet line (v2.7315): no pill — the ⌕ and the words on the list's own background with one hairline under them,
+   which turns blue while the box has the focus; the / key shows only while the column is hovered or the box has the focus, so the shortcut
+   stays findable without a badge on every list. A phone draws no key at all. */
+.lienFind { border-bottom: 1px solid var(--border); background: transparent; transition: border-color 120ms; }
+.lienFind:focus-within { border-bottom-color: var(--border-blue); }
+.lienFind:focus-within .lienFindGlyph { color: var(--text-strong) !important; }
+.lienFind input::placeholder { color: var(--text-muted); opacity: 1; }
+.lienFind input::-webkit-search-cancel-button { display: none; }
+.lienFindKey { opacity: 0; transition: opacity 120ms; }
+[data-lien-desk-find-column]:hover .lienFindKey, .lienFind:hover .lienFindKey, .lienFind:focus-within .lienFindKey { opacity: 1; }
+.lienFindClear:hover, .lienFindClear:focus-visible { background: var(--bg-subtle) !important; color: var(--text-strong) !important; outline: none; }
 /* A stop's title on the lien timeline as a door to its paper (v2.4793): the label's own type, a dotted underline, blue on hover. */
 .lienStopDoor { background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline dotted var(--border-strong); text-underline-offset: 3px; }
 .lienStopDoor:hover, .lienStopDoor:focus-visible { color: var(--text-link) !important; text-decoration-color: var(--text-link); outline: none; }
@@ -6988,3 +6999,14 @@ button.developmentCountChip:focus-visible {
 .lienStripChip:focus-visible {
   text-decoration: underline;
 }
+
+/* The affidavit pane's gate rows (v2.7313): every row is a press that opens the fact's own record; its words underline on hover and its door sits at the end. */
+.lienGateRow { display: flex; gap: 0.5rem; align-items: baseline; width: 100%; border: none; background: none; padding: 0.1rem 0; margin: 0; font: inherit; font-size: 0.8125rem; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
+.lienGateRow:disabled { cursor: default; }
+.lienGateRow > span:first-child { flex: none; }
+.lienGateWords { flex: 1 1 auto; min-width: 0; }
+.lienGateRow:not(:disabled):hover .lienGateWords, .lienGateRow:focus-visible .lienGateWords { text-decoration: underline; text-underline-offset: 3px; }
+.lienGateRow:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.lienGateDoor { flex: none; font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+.lienGateDoor[data-open='no'] { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 4px; color: var(--text-700); background: var(--surface); }
+@media (hover: hover) { .lienGateDoor[data-open='yes'] { opacity: 0.55; } .lienGateRow:hover .lienGateDoor[data-open='yes'], .lienGateRow:focus-visible .lienGateDoor[data-open='yes'] { opacity: 1; } }
