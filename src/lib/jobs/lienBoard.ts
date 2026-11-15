@@ -72,6 +72,8 @@ export type LienBoardChip = {
   openBalance: number
   /** The desk's pile the chip came from, for the stage's own words. */
   pile: LienDeskPile | LienAffidavitPile
+  /** The job's GC, for a run row that stands for a GC's notices; null without one. */
+  gcId: string | null
 }
 
 export type LienBoardBin = {
@@ -103,7 +105,7 @@ export type LienBoardTile = {
   destination: LienBoardTileDestination | null
 }
 
-export type LienBoardTileDestination = { kind: 'bin'; bin: LienBoardBinKey } | { kind: 'run' } | { kind: 'paper'; tab: 'notices' }
+export type LienBoardTileDestination = { kind: 'stage'; stage: 'awaiting' } | { kind: 'run' }
 
 /** A job in both columns for one reason, cleared by one door. */
 export type LienBoardPair = { key: string; jobId: string; reason: 'owner'; destination: LienBoardDestination }
@@ -381,6 +383,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       pairKey: pairKeyByJob.get(e.jobId) ?? null,
       openBalance: e.openBalance,
       pile: e.pile,
+      gcId: e.gcCustomerId,
     }
   })
   const affidavits: LienBoardChip[] = input.affidavits.map((e) => {
@@ -404,6 +407,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       pairKey: stage === 'needs_property' ? pairKeyByJob.get(e.jobId) ?? null : null,
       openBalance: e.openBalance,
       pile: e.pile,
+      gcId: e.gcCustomerId,
     }
   })
   return { notices, affidavits, pairs }
@@ -476,7 +480,7 @@ function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, aff
         label: `waiting on ${leader}`,
         line: waiting.length === 0 ? `Nothing waits on ${leader}.` : null,
         tone: waiting.length > 0 ? 'violet' : 'quiet',
-        destination: waiting.length > 0 ? { kind: 'bin', bin: 'notice:awaiting' } : null,
+        destination: waiting.length > 0 ? { kind: 'stage', stage: 'awaiting' } : null,
       },
       {
         key: 'in_mail',
@@ -553,4 +557,49 @@ export function lienBoardForLeader(board: Pick<LienBoard, 'notices' | 'affidavit
   const late = chips.filter((c) => c.daysLeft != null && c.daysLeft < 0).length
   const press = batchWords({ verb: 'Approve', ready: chips.length - late, held: late, heldWhy: { one: 'is past its day', many: 'are past their day' }, noun: 'paper' })
   return { bins, press, chips }
+}
+
+/** A pressed bin, or a tile's stage across both columns: what the list under the Board is narrowed to. */
+export type LienBoardPick = {
+  bins: LienBoardBinKey[]
+  /** The bins' name: *To send*, or *Awaiting approval* for the stage on both columns. */
+  label: string
+  /** The jobs in those bins. */
+  jobIds: ReadonlySet<string>
+  /** The GCs whose notices stand in those bins, for a run row that names a GC and no job. */
+  gcIds: ReadonlySet<string>
+  /** How many chips the bins hold. */
+  count: number
+}
+
+/** The pick for one bin, or for a stage on both columns (`bins` as the tile names it). */
+export function lienBoardPick(board: Pick<LienBoard, 'notices' | 'affidavits'>, bins: ReadonlyArray<LienBoardBinKey>): LienBoardPick {
+  const picked = [...board.notices, ...board.affidavits].filter((b) => bins.includes(b.key))
+  const chips = picked.flatMap((b) => b.chips)
+  const labels = [...new Set(picked.map((b) => b.label))]
+  return {
+    bins: picked.map((b) => b.key),
+    label: labels.join(' · '),
+    jobIds: new Set(chips.map((c) => c.jobId)),
+    gcIds: new Set(chips.map((c) => c.gcId).filter((g): g is string => Boolean(g))),
+    count: chips.length,
+  }
+}
+
+/** The bins a stage names on both columns, for a tile's press. */
+export function lienBoardStageBins(board: Pick<LienBoard, 'notices' | 'affidavits'>, stage: LienBoardNoticeStage | LienBoardAffidavitStage): LienBoardBinKey[] {
+  return [...board.notices, ...board.affidavits].filter((b) => b.stage === stage).map((b) => b.key)
+}
+
+/** Whether a To do row is in the pick: its job is, or it is a run row for a GC whose notices are, or a run row listing one of the jobs. */
+export function lienBoardRowInPick(pick: LienBoardPick, row: { jobId: string | null; gcId: string | null; jobs?: ReadonlyArray<{ jobId: string }> }): boolean {
+  if (row.jobId) return pick.jobIds.has(row.jobId)
+  if (row.jobs?.some((j) => pick.jobIds.has(j.jobId))) return true
+  return Boolean(row.gcId && pick.gcIds.has(row.gcId))
+}
+
+/** The line under the Board while a bin is pressed: what the list shows, and the press that puts it back. */
+export function lienBoardPickWords(pick: LienBoardPick, shown: number): { head: string; clear: string } {
+  const noun = shown === 1 ? 'row' : 'rows'
+  return { head: `Showing ${shown} ${noun} in ${pick.label}.`, clear: 'Show every row' }
 }

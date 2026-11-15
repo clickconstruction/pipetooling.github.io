@@ -16,7 +16,11 @@ import {
   lienBoardDots,
   lienBoardForLeader,
   lienBoardLitBin,
+  lienBoardPick,
+  lienBoardPickWords,
   lienBoardRetainageLine,
+  lienBoardRowInPick,
+  lienBoardStageBins,
   lienBoardTip,
   lienBoardUrgency,
   lienBoardWorkingDaysLeft,
@@ -184,7 +188,7 @@ describe('buildLienBoard — the chips', () => {
   it('carries the job number, the day, what it owes and a hover of the job’s name, its GC and its money', () => {
     const board = build({ notices: [notice('650', 'to_draft', { openBalance: 12345 })] })
     const chip = bin(board, 'notice:to_send').chips[0]!
-    expect(chip).toMatchObject({ jobId: '650', label: 'JP650', dueYmd: '2026-11-16', daysLeft: 1, openBalance: 12345, pile: 'to_draft', tip: 'Job 650 · GC gc1 · $12,345' })
+    expect(chip).toMatchObject({ jobId: '650', label: 'JP650', dueYmd: '2026-11-16', daysLeft: 1, openBalance: 12345, pile: 'to_draft', gcId: 'gc1', tip: 'Job 650 · GC gc1 · $12,345' })
     expect(lienBoardTip({ jobName: 'AXO Schertz', gcName: '', openBalance: 0 })).toBe('AXO Schertz')
     expect(lienBoardTip({ jobName: '', gcName: 'Byrne', openBalance: 500 })).toBe('Byrne · $500')
   })
@@ -225,7 +229,7 @@ describe('buildLienBoard — the tiles', () => {
       notices: [notice('1', 'awaiting', { openBalance: 100 }), notice('2', 'printed', { openBalance: 200, item: item('i2', 'approved', { printed_at: '2026-11-14T10:00:00Z' }) }), notice('3', 'ready', { openBalance: 300, item: item('i3', 'approved') })],
       affidavits: [affidavit('1', 'awaiting', { openBalance: 100 }), affidavit('4', 'to_draft', { openBalance: 1000 })],
     })
-    expect(board.tiles[1]).toMatchObject({ key: 'waiting', figure: '2', label: 'waiting on Malachi', line: null, tone: 'violet', destination: { kind: 'bin', bin: 'notice:awaiting' } })
+    expect(board.tiles[1]).toMatchObject({ key: 'waiting', figure: '2', label: 'waiting on Malachi', line: null, tone: 'violet', destination: { kind: 'stage', stage: 'awaiting' } })
     expect(board.tiles[2]).toMatchObject({ key: 'in_mail', figure: '2', label: 'in the mail', line: 'Type the tracking number.', tone: 'amber', destination: { kind: 'run' } })
     expect(board.tiles[3]).toMatchObject({ key: 'unpaid', figure: '$1,600', label: 'unpaid on the desk', tone: 'quiet', destination: null })
     const quiet = build({ notices: [notice('3', 'ready', { item: item('i3', 'approved') })], leaderName: null })
@@ -294,6 +298,27 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     expect(none.press.dead).toBe(true)
     expect(none.chips).toEqual([])
     if (view.press.foot) expect(plainWordsFailures(view.press.foot)).toEqual([])
+  })
+  it('a pressed bin narrows the list to its jobs, a run row for one of their GCs, and the words say what shows (the picture and the queue)', () => {
+    const board = build({ notices: [notice('1', 'to_draft'), notice('2', 'to_draft', { gcCustomerId: 'gc9' }), notice('3', 'awaiting')], affidavits: [affidavit('4', 'awaiting'), affidavit('5', 'ready')] })
+    const pick = lienBoardPick(board, ['notice:to_send'])
+    expect(pick).toMatchObject({ bins: ['notice:to_send'], label: 'To send', count: 2 })
+    expect([...pick.jobIds]).toEqual(['1', '2'])
+    expect([...pick.gcIds]).toEqual(['gc1', 'gc9'])
+    expect(lienBoardRowInPick(pick, { jobId: '1', gcId: 'gc1' })).toBe(true)
+    expect(lienBoardRowInPick(pick, { jobId: '3', gcId: 'gc1' })).toBe(false)
+    // A GC's run row names no job; it is in when one of its notices is. A printed run row lists its jobs.
+    expect(lienBoardRowInPick(pick, { jobId: null, gcId: 'gc9' })).toBe(true)
+    expect(lienBoardRowInPick(pick, { jobId: null, gcId: null, jobs: [{ jobId: '2' }] })).toBe(true)
+    expect(lienBoardRowInPick(pick, { jobId: null, gcId: null })).toBe(false)
+    // A tile's stage is both columns' bins of that name.
+    expect(lienBoardStageBins(board, 'awaiting')).toEqual(['notice:awaiting', 'affidavit:awaiting'])
+    const both = lienBoardPick(board, lienBoardStageBins(board, 'awaiting'))
+    expect(both).toMatchObject({ label: 'Awaiting approval', count: 2 })
+    expect([...both.jobIds]).toEqual(['3', '4'])
+    expect(lienBoardPickWords(pick, 2)).toEqual({ head: 'Showing 2 rows in To send.', clear: 'Show every row' })
+    expect(lienBoardPickWords(pick, 1).head).toBe('Showing 1 row in To send.')
+    expect(plainWordsFailures(lienBoardPickWords(both, 2).head)).toEqual([])
   })
   it('the words constant holds every bin name once', () => {
     expect(Object.keys(LIEN_BOARD_WORDS).sort()).toEqual(['awaiting', 'filed', 'held', 'in_mail', 'missed', 'needs_owner', 'needs_property', 'ready', 'sent', 'to_send'])
