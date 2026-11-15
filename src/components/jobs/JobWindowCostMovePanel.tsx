@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useOptionalAuth } from '../../hooks/useAuth'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { countedLabel } from '../../lib/batchWords'
@@ -57,6 +58,9 @@ export function JobWindowCostMovePanel({ job, onOverlayOpenChange }: JobWindowCo
   const [moving, setMoving] = useState(false)
   const [applied, setApplied] = useState<CostMoveApplied | null>(null)
   const [batchesRefresh, setBatchesRefresh] = useState(0)
+  // Punch list #355 G (v2.7285): on a phone the panel folds behind Move cost rows… and draws nothing until opened.
+  const phone = useNarrowViewport640()
+  const [unfolded, setUnfolded] = useState(false)
 
   // The rows, read as the dev on first sight of the tab and again after a batch or on Read again.
   useEffect(() => {
@@ -127,6 +131,20 @@ export function JobWindowCostMovePanel({ job, onOverlayOpenChange }: JobWindowCo
   }, [])
 
   if (!isDev) return null
+
+  if (phone && !unfolded) {
+    return (
+      <section aria-labelledby="job-cost-move" style={wrap} data-cost-move-folded="">
+        <button type="button" onClick={() => setUnfolded(true)} aria-expanded={false} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minHeight: 44, padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', font: 'inherit', fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)', textAlign: 'left', cursor: 'pointer' }}>
+          <span id="job-cost-move" style={{ minWidth: 0 }}>
+            Move cost rows…
+            <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>every cost row by stream, tick and move · devs</span>
+          </span>
+          <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-faint)' }}>›</span>
+        </button>
+      </section>
+    )
+  }
 
   return (
     <section aria-labelledby="job-cost-move" style={wrap}>

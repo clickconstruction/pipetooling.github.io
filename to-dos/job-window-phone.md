@@ -527,12 +527,12 @@ order.
    checklists one row per stage with its standing; the folders' Add ▾ sheet (Take a photo · Choose a file ·
    Open in Google Drive); the AIA and Test report windows' fields 16 px and the Test report's cards stacked;
    the Lien window and View bill measured on a job with paper and a bill, fixed in the same PR when small.
-3. **E** (M): Edit on a phone: the stages as rows; the status rail off the tab; the fact rows 44 px, the
+3. **E** (M, **built, v2.7283**): Edit on a phone: the stages as rows; the status rail off the tab; the fact rows 44 px, the
    whole row the press, grouped under The people, The paper, The folders, Charging the customer; fields 16 px.
-4. **F** (M): Bill on a phone: the money first, Make a bill, the bills and payments, the line items last as
+4. **F** (M, **built, v2.7284**): Bill on a phone: the money first, Make a bill, the bills and payments, the line items last as
    cards with the count and the price live and Remove and Move behind ⋯; Add ▾ carrying the desk's title row;
    fields 16 px. The desk's order stays.
-5. **G** (M): Costs on a phone: the four numbers first, the chart folded, Where the money went as rows with a
+5. **G** (M, **built, v2.7285**): Costs on a phone: the four numbers first, the chart folded, Where the money went as rows with a
    bar each, the dev's cost-move panel folded; fields 16 px.
 
 ### The questions for the owner, pass 3
