@@ -972,6 +972,14 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     const why = 'Nothing to claim: the job owes $0 now. The paper says $2,400.'
+    // Paid rows fold under one line at the foot of the checklist (v2.7353); the heading counts the live ones.
+    expect(screen.queryByTestId('run-check-it2')).toBeNull()
+    expect(screen.getByTestId('run-check').querySelector('h3')?.textContent).toBe('The checklist 1 printed · 0 signed · 0 mailed of 1')
+    expect(screen.getByTestId('run-paid-fold-toggle').textContent).toBe('1 paid notice · nothing to send ▾')
+    // No close is offered when the host hands the window none.
+    expect(screen.queryByTestId('run-close-paid')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-paid-fold-toggle'))
+    expect(screen.queryByTestId('run-check-close-it2')).toBeNull()
     expect(screen.getByTestId('run-check-held-it2').textContent).toBe(`Held · ${why}`)
     expect(screen.getByTestId('run-foot-status').textContent).toContain('1 to sign · 1 held')
     const press = screen.getByTestId('run-mark-signed') as HTMLButtonElement
@@ -987,6 +995,71 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     fireEvent.click(press)
     expect(screen.getByLabelText('650 · AXO Schertz signed with a pen')).toBeTruthy()
     expect(screen.queryByLabelText('651 · Paid since signed with a pen')).toBeNull()
+  })
+
+  it('Close N paid notices (v2.7353): the fold’s press asks first, closes what it can, and names the one that did not', async () => {
+    const at = '2026-10-07T16:00:00Z'
+    const leader = { userId: 'u-rob', name: 'Robert Douglas' }
+    const paid = (itemId: string, n: string) => notice({ itemId, jobId: `j${n}`, label: `${n} · Paid since`, jobNumber: n, printedAt: at, signature: null, leader, amount: 0, fields: { ...notice().fields, claimAmount: '2400.00' }, recipients: [{ key: 'owner', label: 'Owner of record', name: `Owner ${n}`, address: `${n} Other St`, email: '', method: 'certified_mail', tracking: '' }] })
+    const asked: string[][] = []
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ printedAt: at, signature: null, leader }), paid('it2', '651'), paid('it3', '652'), paid('it4', '653')]}
+        issuer={null}
+        todayYmd="2026-10-08"
+        userId="u1"
+        viewer={{ userId: 'u-taunya', name: 'Taunya' }}
+        onClose={() => {}}
+        onRecorded={() => {}}
+        onClosePaid={async (ids) => {
+          asked.push(ids)
+          // One row at a time closes; the batch closes all but 653, which moved meanwhile.
+          return ids.length === 1 ? { closed: ids, failed: [] } : { closed: ids.filter((id) => id !== 'it4'), failed: [{ itemId: 'it4', why: 'It was sent or closed already.' }] }
+        }}
+      />,
+    )
+    await settle()
+    expect(screen.getByTestId('run-paid-fold-toggle').textContent).toBe('3 paid notices · nothing to send ▾')
+    const press = screen.getByTestId('run-close-paid') as HTMLButtonElement
+    expect(press.textContent).toBe('Close 3 paid notices…')
+    // The press only asks: nothing is written until the confirm's own press.
+    fireEvent.click(press)
+    const confirm = screen.getByTestId('run-close-paid-confirm')
+    expect(confirm.textContent).toContain('Close the 3 paid notices?')
+    expect(confirm.textContent).toContain('651 · Paid since, 652 · Paid since, 653 · Paid since')
+    expect(confirm.textContent).toContain('These jobs owe $0 now, so nothing is mailed.')
+    expect(confirm.textContent).toContain('The copies that printed stay in each job’s Documents, filed as printed.')
+    expect(confirm.textContent).toContain('Closing does not record a mailing. Leave a notice that went out.')
+    expect(asked).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Keep them here' }))
+    expect(screen.queryByTestId('run-close-paid-confirm')).toBeNull()
+    expect(asked).toEqual([])
+    // One row's own Close…: the confirm is about that notice alone.
+    fireEvent.click(screen.getByTestId('run-paid-fold-toggle'))
+    fireEvent.click(screen.getByTestId('run-check-close-it2'))
+    expect(screen.getByTestId('run-close-paid-confirm').textContent).toContain('Close the paid notice?')
+    expect(screen.getByTestId('run-close-paid-yes').textContent).toBe('Close 1 paid notice')
+    fireEvent.click(screen.getByTestId('run-close-paid-yes'))
+    await settle()
+    expect(asked).toEqual([['it2']])
+    expect(screen.getByTestId('run-closed-paid').textContent).toBe('Closed 1 paid notice. Nothing was mailed.')
+    expect(screen.queryByTestId('run-check-it2')).toBeNull()
+    expect(screen.getByTestId('run-paid-fold-toggle').textContent).toBe('2 paid notices · nothing to send ▴')
+    // The batch: it closes 652, and 653 stays on the screen with its reason.
+    fireEvent.click(screen.getByTestId('run-close-paid'))
+    expect(screen.getByTestId('run-close-paid-yes').textContent).toBe('Close 2 paid notices')
+    fireEvent.click(screen.getByTestId('run-close-paid-yes'))
+    await settle()
+    expect(asked).toEqual([['it2'], ['it3', 'it4']])
+    expect(screen.getByTestId('run-closed-paid').textContent).toBe('Closed 1 paid notice. Nothing was mailed.')
+    const failed = screen.getByTestId('run-close-paid-failed')
+    expect(failed.textContent).toContain('1 paid notice did not close. It stays here with the reason.')
+    expect(failed.textContent).toContain('653 · Paid since: It was sent or closed already.')
+    expect(screen.queryByTestId('run-check-it3')).toBeNull()
+    expect(screen.getByTestId('run-check-it4')).toBeTruthy()
+    // The live notice was never asked about, and its row is as it was.
+    expect(screen.getByTestId('run-check-sign-it1').textContent).toBe('Signed ▸')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('1 to sign · 1 held')
   })
 
   it('Mark N signed ▸ opens one pen pane over every printed, unsigned notice of the leader; the record ticks each row', async () => {

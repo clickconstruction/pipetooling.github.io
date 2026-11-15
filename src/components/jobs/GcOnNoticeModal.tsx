@@ -31,7 +31,7 @@ import {
   gcNoticeSavedRun,
   type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
-import { markLienDeskItemsPrinted, takeBackLienDeskItems, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
+import { closePaidLienDeskItems, markLienDeskItemsPrinted, takeBackLienDeskItems, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
 import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
 import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
 import { leaderPresent, type LienWordChannel } from '../../lib/jobs/lienWord'
@@ -1262,6 +1262,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             refetch()
             onChanged()
             return n
+          }}
+          onClosePaid={async (ids) => {
+            const out = await closePaidLienDeskItems(ids, { userId: authUserId, userName: authName || null })
+            refetch()
+            onChanged()
+            return out
           }}
           onRecorded={() => {
             // A recorded run is mailed: there is nothing left to undo.
