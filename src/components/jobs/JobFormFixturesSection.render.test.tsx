@@ -79,11 +79,26 @@ describe('JobFormFixturesSection on a phone (v2.4312)', () => {
       const line = within(cell).getByTestId('line-numbers')
       expect(line.contains(countField(i))).toBe(true)
       expect(line.contains(priceField(i))).toBe(true)
-      expect(within(line).getByRole('button', { name: 'Remove line item' })).toBeTruthy()
+      // Punch list #355 F (v2.7284): the ⋯ at the line's end holds Move up, Move down and Remove; no trash, no ▲▼ on a phone.
+      const more = within(line).getByRole('button', { name: /^More for / })
+      expect(more.style.width).toBe('40px')
+      expect(within(line).queryByRole('button', { name: 'Remove line item' })).toBeNull()
       expect(nameField(i).compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      // ▲▼ stand beside the name and the line under it, in the same cell.
-      expect(within(cell).getByRole('button', { name: 'Move line item up' })).toBeTruthy()
+      expect(within(cell).queryByRole('button', { name: 'Move line item up' })).toBeNull()
     }
+  })
+
+  it('a line’s ⋯ opens a sheet of Move up, Move down and Remove this line, the move that cannot land dead (v2.7284)', () => {
+    narrowMatches = true
+    renderSection()
+    const first = within(nameField(0).closest('td') as HTMLTableCellElement).getByRole('button', { name: /^More for / })
+    act(() => { first.click() })
+    const sheet = screen.getByRole('dialog', { name: /^More for / })
+    const rows = within(sheet).getAllByRole('menuitem')
+    expect(rows.map((r) => r.textContent?.trim())).toEqual(['▲ Move up', '▼ Move down', 'Remove this line'])
+    expect((rows[0] as HTMLButtonElement).disabled).toBe(true)
+    expect((rows[1] as HTMLButtonElement).disabled).toBe(false)
+    for (const r of rows) expect(parseFloat(String(r.style.minHeight))).toBeGreaterThanOrEqual(48)
   })
 
   it('focusing a name leaves the layout alone', () => {

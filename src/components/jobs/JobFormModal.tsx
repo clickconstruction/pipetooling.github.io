@@ -2739,6 +2739,7 @@ export default function JobFormModal({
       }}
     >
       <div
+        data-job-form-embedded={embedded ? '' : undefined}
         style={
           embedded
             ? undefined
@@ -2756,6 +2757,8 @@ export default function JobFormModal({
         }
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Punch list #355 E (v2.7283): a field under 16 px makes an iPhone zoom the page on focus; the embedded form's fields are 16 px on a phone, Edit, Bill and Costs alike. */}
+        {embedded ? <style>{`@media (max-width: 640px) { [data-job-form-embedded] input:not([type=checkbox]):not([type=radio]):not([type=range]), [data-job-form-embedded] select, [data-job-form-embedded] textarea { font-size: 16px !important; } }`}</style> : null}
         <div style={!embedded || embeddedRegion === 'edit' ? undefined : { display: 'none' }}>
         <JobFormHeaderRow
           mode={mode}
@@ -2846,7 +2849,8 @@ export default function JobFormModal({
                   flag. v2.3238: it sits right under the Stages read-out, where the
                   job's state is read, instead of above the footer at the very bottom
                   of the Edit tab (Grace). This fragment renders in the Edit region only. */}
-              <div ref={focusFieldFlash === 'status' ? focusFieldRef : undefined} data-job-form-focus={focusFieldFlash === 'status' ? 'status' : undefined} style={{ margin: '0 0 0.25rem', ...(focusFieldFlash === 'status' ? FOCUS_FIELD_RING : {}) }}>
+              {/* Punch list #355 E (v2.7283): on a phone the rail leaves the tab; the bar's Status ▾ is the same stepper. */}
+              <div ref={focusFieldFlash === 'status' ? focusFieldRef : undefined} data-job-form-focus={focusFieldFlash === 'status' ? 'status' : undefined} style={{ margin: '0 0 0.25rem', ...(focusFieldFlash === 'status' ? FOCUS_FIELD_RING : {}), ...(embedded && narrowViewport ? { display: 'none' } : {}) }}>
                 <JobStatusStepper
                   job={{
                     id: editing.id,
@@ -3077,6 +3081,8 @@ export default function JobFormModal({
               bar, segments + break-off, invoices, payments, labor + parts
               cost. */}
           <div style={{ display: !embedded || embeddedRegion === 'bill' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
+          {/* Punch list #355 F (v2.7284): on a phone the money card, Make a bill, the bills and the payments come first and the line items last; the desk keeps its order. */}
+          <div data-job-form-lines="" style={embedded && narrowViewport ? { order: 9 } : undefined}>
           <JobFormFixturesSection
             fixtures={fixtures}
             riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} onChanged={refreshHazmatIncidents} onBillSeparately={(row) => void billHazmatFeeSeparately(row)} billSeparatelyBusyId={billingFeeSeparatelyId} /> : null}
@@ -3103,6 +3109,7 @@ export default function JobFormModal({
             payerTags={billToParty === 'split' ? { customerName: customerName.trim() || null, gcName: gcNameForPayerTags } : null}
             isProject={kindRead.kind === 'project'}
           />
+          </div>
           {/* Job window (v2.1687): no divider and no "Billing" title — the Bill
               tab reads as ONE section from Line Items down. The standalone/New
               Job form keeps both (it has no tab to say "Bill" for it). */}
