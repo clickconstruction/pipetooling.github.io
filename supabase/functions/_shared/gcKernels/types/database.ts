@@ -6013,6 +6013,11 @@ export type Database = {
           lien_last_work_on: string | null
           lien_last_work_set_at: string | null
           lien_last_work_set_by: string | null
+          lien_month_check_note: string
+          lien_month_checked_at: string | null
+          lien_month_checked_by: string | null
+          lien_month_checked_by_name: string
+          lien_month_checked_month: string | null
           lien_payment_bond: string
           lien_retainage_held: number | null
           master_user_id: string
@@ -6091,6 +6096,11 @@ export type Database = {
           lien_last_work_on?: string | null
           lien_last_work_set_at?: string | null
           lien_last_work_set_by?: string | null
+          lien_month_check_note?: string
+          lien_month_checked_at?: string | null
+          lien_month_checked_by?: string | null
+          lien_month_checked_by_name?: string
+          lien_month_checked_month?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id: string
@@ -6169,6 +6179,11 @@ export type Database = {
           lien_last_work_on?: string | null
           lien_last_work_set_at?: string | null
           lien_last_work_set_by?: string | null
+          lien_month_check_note?: string
+          lien_month_checked_at?: string | null
+          lien_month_checked_by?: string | null
+          lien_month_checked_by_name?: string
+          lien_month_checked_month?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id?: string
@@ -6269,6 +6284,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_lien_last_work_set_by_fkey"
             columns: ["lien_last_work_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_lien_month_checked_by_fkey"
+            columns: ["lien_month_checked_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
