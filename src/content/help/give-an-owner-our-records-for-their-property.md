@@ -12,7 +12,7 @@ The packet is for one owner and one property. It never shows another owner's job
 ## Open it
 
 1. Open the [Lien desk](/lien-desk).
-2. Press {{button:outline|An owner asked for records ›}} on the desk's title line, just before § Rules.
+2. Press {{button:outline|An owner asked for records ›}}. It ends the desk's second row, at the right. On **By paper** that row holds the papers and the piles too. On a phone it is a row of {{button:outline|⋯}}.
 3. Pick the owner. Type a name, an address or a GC to narrow the list.
 
 The list holds the owners of jobs with a notice on the desk. An owner asks after a notice has reached them.

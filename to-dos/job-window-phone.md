@@ -562,6 +562,9 @@ order.
    **Built, v2.7281 to v2.7285.** The viewport sweep after them (375 to 440 px, landscape, iPad, both
    themes) found one tap trap: A's floating ✕ sat over the right edge of whatever had scrolled under
    it. **v2.7300** takes it off: the ✕ goes with the tabs and comes back at the pinned strip's right.
+   The sweep's other find, 86 presses under 40 px that predate the pass (the rows' blue acts, the
+   pencils, Print, the draw chips), **v2.7309** pads: an unseen 44 px square around each, measured
+   as the body changes, and the History range select at 16 px and 40 px tall.
 4. **C** (L), only when a master tech works from a phone or the tab count says the office's
    phone use is real: `JobWindowPhone`, the role kernel for tabs and bar, the crew lead's Today's
    work.

@@ -136,3 +136,25 @@ export function jobAccountsLine(entries: ReadonlyArray<{ houseName: string; stat
   const text = entries.length ? entries.map((e) => `${e.houseName} ${e.stateWord}`).join(' · ') : 'None yet'
   return { text, act: canAdd ? (entries.length ? 'Add another' : 'Add job account') : null }
 }
+
+// ---------------------------------------------------------------------------
+// The hit-area pad (v2.7309)
+// ---------------------------------------------------------------------------
+
+/** The square a thumb lands on, and the size under which a press gets a pad. */
+export const PRESS_TARGET = 44
+export const PRESS_SMALL = 40
+
+export type PressPad = { x: number; y: number }
+
+/**
+ * How far a press's hit area grows on each side so a thumb's square covers it: nothing on a side already 40 px or
+ * more, else half the way to 44, rounded up. A press 20 px tall gets 12 px above and below; a 23 px square gets
+ * 11 px all round. Null when the press is a thumb's size both ways, or not drawn at all.
+ */
+export function pressPad(size: { width: number; height: number }): PressPad | null {
+  if (size.width <= 0 || size.height <= 0) return null
+  const grow = (n: number) => (n >= PRESS_SMALL ? 0 : Math.ceil((PRESS_TARGET - n) / 2))
+  const pad = { x: grow(size.width), y: grow(size.height) }
+  return pad.x || pad.y ? pad : null
+}
