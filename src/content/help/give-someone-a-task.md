@@ -61,8 +61,14 @@ No map near the spot yet? [Paint one first](/help/paint-a-map#start-a-map), then
 Some work is a line and not a spot, like a trench or a run of pipe. A task can carry a painted map for that. It needs no place.
 
 1. In the row called **Where**, tap **Map**. **A map for this task** opens.
-2. Tap a map. The newest maps come first. With a place on the task, the nearest maps come first.
+2. Pick a map that is painted, or paint a new one.
 3. The map shows under the row, with a picture of its line.
+
+To pick one, tap a map in the list. The newest maps come first. With a place on the task, the nearest maps come first.
+
+To paint one, tap {{button:blue|Draw it by hand}} or {{button:outline|Walk or drive it}}. The painting window opens over the task. Paint the line and save it. Close the window and the map is on the task.
+
+A map painted this way is named after the task. It is on no job. The office can put it on a job later.
 
 The sentence at the bottom then says *with a map*. Tap the map's name to open it. Tap the ✕ beside it to take the map off the task. The map itself stays where it is.
 
@@ -70,7 +76,7 @@ Whoever gets the task can open the map, even on a job they are not on the crew o
 
 A map you pick this way stays when you change the place. A way in that came with a place leaves with that place.
 
-No painted map yet? [Paint one first](/help/paint-a-map#start-a-map), then tap **Map** again.
+[Paint a map](/help/paint-a-map#start-a-map) shows how painting works.
 
 :::example A place in two taps
 "Grease the pump bearings" → tap {{chip:blue|Pump house}} → Send. The person sees the place on the task, with directions. [Find where a task is](/help/check-off-my-daily-tasks#find-where-a-task-is) shows their side.
