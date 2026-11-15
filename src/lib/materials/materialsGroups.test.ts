@@ -48,10 +48,12 @@ describe('materialsGroupsFor', () => {
 })
 
 describe('materialsPressesFor', () => {
-  it('offers both presses to every role that opens On site', () => {
-    for (const role of ['dev', 'controller', 'estimator', 'primary', 'superintendent']) {
-      expect(materialsPressesFor(role)).toEqual(['scan-label', 'print-labels'])
+  it('offers Scan a label and Print labels to every role that opens On site, and Print blank stickers to the roles that may mint a run', () => {
+    for (const role of ['dev', 'controller', 'primary', 'superintendent']) {
+      expect(materialsPressesFor(role)).toEqual(['scan-label', 'print-labels', 'print-stickers'])
     }
+    // An estimator opens On site and prints labels, and prints no run (the card's call 6: the office, a primary, a superintendent).
+    expect(materialsPressesFor('estimator')).toEqual(['scan-label', 'print-labels'])
     expect(materialsPressesFor('helpers')).toEqual([])
   })
 })

@@ -660,6 +660,7 @@ export default function AiaG702G703Modal({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      data-aia-modal=""
       style={{
         position: 'fixed',
         inset: 0,
@@ -675,6 +676,8 @@ export default function AiaG702G703Modal({
         if (e.key === 'Escape') void requestClose()
       }}
     >
+      {/* Punch list #355 H (v2.7282): a field under 16 px makes an iPhone zoom the page on focus. */}
+      <style>{`@media (max-width: 640px) { [data-aia-modal] input, [data-aia-modal] select, [data-aia-modal] textarea { font-size: 16px !important; } }`}</style>
       <div
         style={{
           background: 'var(--surface)',

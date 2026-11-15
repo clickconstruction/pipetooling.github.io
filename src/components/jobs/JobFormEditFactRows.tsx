@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { JobFormLienContractRow } from './JobFormLienContractRow'
 import { JobFormChargingRow } from './JobFormChargingRow'
 import { isJobFormFactRow, type JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
@@ -220,6 +221,17 @@ type JobFormEditFactRowsProps = {
  * mode only — the New Job form keeps the classic always-open form, since
  * first entry is typing-first.
  */
+/** A group's title over its rows on a phone (punch list #355 E, v2.7283): the people, the folders, the customer, the GC and the site, the paper. */
+const groupTitle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, margin: '0 -0.6rem', padding: '0.7rem 0.6rem 0.3rem', borderTop: '6px solid var(--bg-subtle)', fontSize: '0.9375rem', fontWeight: 800, color: 'var(--text-strong)' }
+function FactGroupTitle({ children, first = false }: { children: string; first?: boolean }) {
+  return (
+    <div data-fact-group={children} style={first ? { ...groupTitle, borderTop: 'none', paddingTop: '0.5rem' } : groupTitle}>
+      <span aria-hidden style={{ width: 4, height: 16, borderRadius: 2, background: '#2563eb', flex: 'none' }} />
+      {children}
+    </div>
+  )
+}
+
 export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const {
     users,
@@ -299,6 +311,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
 
   const prefixMap = useLedgerPrefixMap()
 
+  // Punch list #355 E (v2.7283): on a phone the rows read under group titles.
+  const phone = useNarrowViewport640()
   const [openRows, setOpenRows] = useState<Set<RowKey>>(() => new Set(customerExpandedGate ? ['customer'] : []))
   /** v2.3401: the add-as-property sheet is open under the Property record row. */
   const [addingProperty, setAddingProperty] = useState(false)
@@ -506,6 +520,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         background: 'var(--surface)',
       }}
     >
+      {phone ? <FactGroupTitle first>The people</FactGroupTitle> : null}
       <JobFormFactRow
         label="Account man"
         labelIcon={<AccountManIcon size={13} />}
@@ -542,6 +557,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       {/* Folders sit above the customer block (owner call, v2.1702) — the
           Drive links are what crews reach for most. */}
+      {phone ? <FactGroupTitle>The folders</FactGroupTitle> : null}
       <JobFormFactRow
         label="Folders"
         value={null}
@@ -595,6 +611,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         </div>
         <CustomerAndJobFoldersLink />
       </JobFormFactRow>
+      {phone ? <FactGroupTitle>The customer</FactGroupTitle> : null}
       <JobFormFactRow
         label="Customer"
         labelIcon={<CustomerContactCardIcon size={12} style={{ flexShrink: 0 }} />}
@@ -1103,6 +1120,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           </p>
         ) : null}
       </JobFormFactRow>
+      {phone ? <FactGroupTitle>The GC and the site</FactGroupTitle> : null}
       <JobFormFactRow
         label="GC/Builder"
         labelIcon={<GcHardHatIcon size={12} style={{ flexShrink: 0 }} />}
@@ -1235,6 +1253,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           showLabel={false}
         />
       </JobFormFactRow>
+      {phone ? <FactGroupTitle>The paper</FactGroupTitle> : null}
       <JobFormFactRow
         label="Plans"
         value={null}

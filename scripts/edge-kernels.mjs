@@ -279,6 +279,8 @@ export const ENTRIES = {
   'lib/jobs/lienNoticeOwed.ts': { values: [], types: [] },
   // The months set by hand (v2.7270, punch list #356 part 2): the row's shape, read by the seat's plan_affidavit_draft.
   'lib/jobs/lienAffidavitMonthsByHand.ts': { values: [], types: [] },
+  // The stand-in month confirmed by a person (v2.7280, punch list #358): the job row's check, named by the seat's plan_affidavit_draft.
+  'lib/jobs/lienMonthCheck.ts': { values: [], types: [] },
   'lib/jobs/lienClaimCorrection.ts': { values: [], types: [] },
   'lib/jobs/lienProperty.ts': { values: [], types: [] },
   'lib/jobs/lienAffidavitForm.ts': { values: [], types: [] },

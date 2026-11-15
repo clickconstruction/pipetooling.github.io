@@ -173,6 +173,7 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
           onOpenJobDetail={(id) => jobDetailModal?.openJobDetail({ jobId: id })}
           driveBackfill={false}
           rowDoors={{ onLabels }}
+          role={role}
         />
       ) : (
         <div style={sec}>

@@ -70,6 +70,12 @@ export type LienDeskJob = {
   lien_last_work_note?: string | null
   lien_last_work_set_at?: string | null
   lien_last_work_set_by?: string | null
+  /** The stand-in month a person confirmed (v2.7280, `lienMonthCheck.ts`), with who, when and the note; absent until the migration is on prod, when the jobs read falls back to the list without them. */
+  lien_month_checked_month?: string | null
+  lien_month_checked_at?: string | null
+  lien_month_checked_by?: string | null
+  lien_month_checked_by_name?: string | null
+  lien_month_check_note?: string | null
   /** Unpaid subcontract retainage the GC holds (v2.3753); null = not recorded. */
   lien_retainage_held?: number | null
   lien_payment_bond?: string | null
@@ -84,6 +90,9 @@ export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, jo
 
 /** The desk's columns with the first work day (v2.6061): read first, and the list above when the column is not on prod yet. */
 export const LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY = `${LIEN_DESK_JOB_COLUMNS}, first_work_date`
+
+/** Those columns with the stand-in month's check (v2.7280): read first, and the list above when the check's columns are not on prod yet. */
+export const LIEN_DESK_JOB_COLUMNS_WITH_MONTH_CHECK = `${LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY}, lien_month_checked_month, lien_month_checked_at, lien_month_checked_by, lien_month_checked_by_name, lien_month_check_note`
 
 
 export type LienDeskGc = {
@@ -217,24 +226,35 @@ export function useLienDeskData(
         const jobsRead: LienDeskJob[] = []
         for (const chunk of chunkIds(jobIdsRead)) {
           if (chunk.length === 0) continue
-          // The first work day (v2.6061) rides along once its migration is on prod; until then the columns without it, so the desk never goes dark on a client that landed first.
+          // The month check (v2.7280) and the first work day (v2.6061) ride along once their migrations are on prod; until then the columns without each, so the desk never goes dark on a client that landed first.
           const part = await withSupabaseRetry(
             () =>
               supabase
                 .from('jobs_ledger')
-                .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY))
+                .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_MONTH_CHECK))
                 .in('id', chunk),
             'lien desk: jobs',
-          ).catch(() =>
-            withSupabaseRetry(
-              () =>
-                supabase
-                  .from('jobs_ledger')
-                  .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS))
-                  .in('id', chunk),
-              'lien desk: jobs (without the first work day)',
-            ),
           )
+            .catch(() =>
+              withSupabaseRetry(
+                () =>
+                  supabase
+                    .from('jobs_ledger')
+                    .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY))
+                    .in('id', chunk),
+                'lien desk: jobs (without the month check)',
+              ),
+            )
+            .catch(() =>
+              withSupabaseRetry(
+                () =>
+                  supabase
+                    .from('jobs_ledger')
+                    .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS))
+                    .in('id', chunk),
+                'lien desk: jobs (without the first work day)',
+              ),
+            )
           jobsRead.push(...((part ?? []) as LienDeskJob[]))
         }
         // ZZ test jobs (punch list #61, PR 3) leave every list here, by the joined rows' own names; and (v2.7253) so does every job an open in-kind deal pays.

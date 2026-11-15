@@ -1,5 +1,6 @@
 import { isMaterialsOfficeRole, materialsTabsFor, type MaterialsTab } from './materialsTabs'
 import { shortLinesBadgeWords } from './missingWeekWords'
+import { canMintStickers } from './stickerRun'
 
 /**
  * The Materials page's strip in three named groups (punch list #304, the owner's idea of
@@ -57,19 +58,21 @@ export function materialsGroupsFor(role: string | null | undefined): MaterialsGr
   return MATERIALS_GROUPS.map((key) => ({ key, word: MATERIALS_GROUP_WORDS[key], tabs: tabs.filter((t) => GROUP_OF[t] === key) })).filter((g) => g.tabs.length > 0)
 }
 
-export type MaterialsPress = 'print-labels' | 'scan-label'
+export type MaterialsPress = 'print-labels' | 'scan-label' | 'print-stickers'
 
 export const MATERIALS_PRESS_LABELS: Record<MaterialsPress, string> = {
   'print-labels': 'Print labels',
   'scan-label': 'Scan a label',
+  'print-stickers': 'Print blank stickers',
 }
 
 /**
- * The presses at the right end of On site's row, in order: Scan a label, then Print labels (the owner, 2026-11-10). Whoever may open a job's boxes may print its labels (the card's call
- * 3): a label shows a stencil and a code, no money.
+ * The presses at the right end of On site's row, in order: Scan a label, then Print labels (the owner, 2026-11-10), then Print blank stickers (punch list #329, v2.7272). Whoever may open a job's boxes may print its labels (the card's call
+ * 3): a label shows a stencil and a code, no money. A run of stickers is the office's, a primary's or a superintendent's (`sticker_can_mint`, the card's call 6), so the press is theirs alone.
  */
 export function materialsPressesFor(role: string | null | undefined): MaterialsPress[] {
-  return materialsTabsFor(role).includes('on-site') ? ['scan-label', 'print-labels'] : []
+  if (!materialsTabsFor(role).includes('on-site')) return []
+  return canMintStickers(role) ? ['scan-label', 'print-labels', 'print-stickers'] : ['scan-label', 'print-labels']
 }
 
 export type MaterialsBadge = { text: string; tone: 'amber' | 'red' }

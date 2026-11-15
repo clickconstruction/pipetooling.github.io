@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirm the stand-in month</title>
+<style>
+  :root { --text: #1f2937; --muted: #6b7280; --border: #e5e7eb; --surface: #fff; --bg: #f3f4f6; --amber-bg: #fef3c7; --amber: #92400e; --amber-border: #f59e0b; --green: #166534; --green-bg: #dcfce7; --blue: #2563eb; --red: #b91c1c; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--text); font: 15px/1.45 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 24px; max-width: 760px; }
+  h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 32px 0 10px; }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; max-width: 760px; }
+  .box { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; display: grid; gap: 7px; margin-top: 10px; }
+  .boxhead { font-weight: 700; font-size: 15px; }
+  .sub { font-size: 13px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: auto 1fr auto; gap: 5px 14px; font-size: 14px; align-items: baseline; }
+  .grid b { font-weight: 700; }
+  .lien { color: var(--green); font-weight: 600; font-size: 13px; }
+  .flag { background: var(--amber-bg); color: var(--amber); border-radius: 6px; padding: 7px 10px; font-size: 13.5px; display: grid; gap: 8px; }
+  .quiet { background: #f9fafb; color: var(--muted); border-radius: 6px; padding: 7px 10px; font-size: 13.5px; }
+  .presses { display: flex; flex-wrap: wrap; gap: 8px; }
+  .press { display: inline-block; padding: 5px 11px; border-radius: 7px; border: 1px solid #c9ccd3; background: var(--surface); color: #374151; font-weight: 600; font-size: 13px; }
+  .press.amber { background: var(--amber); border-color: var(--amber); color: #fff; }
+  .press.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .ask { display: grid; gap: 7px; border: 1px solid var(--amber-border); background: var(--amber-bg); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; }
+  .ask input { font: inherit; padding: 6px 8px; border: 1px solid #c9ccd3; border-radius: 6px; background: #fff; width: 100%; box-sizing: border-box; }
+  .sheet { font-family: Georgia, "Times New Roman", serif; font-size: 14px; border: 1px solid #999; padding: 12px 14px; background: #fff; max-width: 760px; }
+  .sheet .row { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 4px 0; border-top: 1px dotted #bbb; }
+  .sheet .row:first-child { border-top: none; }
+  .ok { color: var(--green); font-weight: 700; }
+  .warn { color: var(--amber); font-weight: 700; }
+  .flow { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 760px; }
+  .step { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 10px 14px; display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+  .n { width: 24px; height: 24px; border-radius: 50%; background: #e0e7ff; color: #3730a3; font-weight: 700; display: grid; place-items: center; font-size: 13px; }
+  .step .t { font-weight: 700; }
+  .fork { margin-left: 38px; display: grid; gap: 8px; }
+  .fork .step { border-style: dashed; }
+  .note { color: var(--muted); font-size: 13px; margin-top: 8px; max-width: 760px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: #e5e7eb; color: #374151; margin-left: 8px; vertical-align: middle; }
+  .tag.now { background: #fee2e2; color: var(--red); }
+  .tag.new { background: #dbeafe; color: #1e40af; }
+  .winline { font-size: 12.5px; color: var(--amber); margin-top: 4px; }
+  .winline.quiet { color: var(--muted); }
+</style>
+</head>
+<body>
+<h1>Confirm the stand-in month</h1>
+<p class="lead">A job with no clock hours and no last day set by hand takes its lien month from its bill. The desk flags that month as a stand-in on every paper. Today the only way to clear the flag is to type a last day of work, which also moves every clock. This draws a second door: a person confirms the month is right, and the flag turns quiet. Made-up names and amounts throughout.</p>
+
+<h2>A · The affidavit pane today <span class="tag now">as it is</span></h2>
+<div class="frame">
+  <div class="sub">742 · Service Visit — 18 Sample Ln · GC Ridgeway Builders · $1,049 open · residential</div>
+  <div class="box">
+    <div class="boxhead">Months the affidavit claims <span class="sub" style="font-weight:400">The lien covers the months a § 53.056 notice went out for. It must state each month the work was performed.</span></div>
+    <div class="grid"><b>Aug 2026</b><span class="sub">dated from the bill · no clock hours · notice sent Oct 14</span><span class="lien">on the lien</span></div>
+    <div class="flag">The month comes from the bill, not from recorded work. Set the last day of work on the job if the work ran in another month.</div>
+    <div class="sub">The affidavit names Aug 2026.</div>
+  </div>
+  <p class="note">The same amber line reads on the Lien window's affidavit tab, and the batch help sheet adds a <b>Work month.</b> row marked ⚠, which sends the signer to the attorney first.</p>
+</div>
+
+<h2>B · The pane with the press <span class="tag new">proposed</span></h2>
+<div class="frame">
+  <div class="box">
+    <div class="boxhead">Months the affidavit claims</div>
+    <div class="grid"><b>Aug 2026</b><span class="sub">dated from the bill · no clock hours · notice sent Oct 14</span><span class="lien">on the lien</span></div>
+    <div class="flag">
+      <span>The month comes from the bill, not from recorded work. Is August the month the work was done?</span>
+      <div class="presses"><span class="press amber">Yes, August is right ›</span><span class="press">Set the last day of work ›</span></div>
+    </div>
+    <div class="sub">The affidavit names Aug 2026.</div>
+  </div>
+  <p class="note">Two doors, one question. The second is today's door, the last day of work in the Lien window, which moves the clocks. The first keeps the clocks and asks one thing:</p>
+  <div class="ask">
+    <b>Who said August is the month, and when?</b>
+    <input value="The owner, Nov 14: the work was done in August; the job came in from the earlier system." readonly>
+    <div class="presses"><span class="press primary">Confirm August</span><span class="press">Cancel</span></div>
+    <span class="sub">Saved on the job with your name and the day. It changes no date and no paper. It takes the flag off.</span>
+  </div>
+</div>
+
+<h2>C · After the press <span class="tag new">proposed</span></h2>
+<div class="frame">
+  <div class="box">
+    <div class="boxhead">Months the affidavit claims</div>
+    <div class="grid"><b>Aug 2026</b><span class="sub">from the bill · checked Nov 14 · notice sent Oct 14</span><span class="lien">on the lien</span></div>
+    <div class="quiet">August checked · Robert · Nov 14 · <i>The owner, Nov 14: the work was done in August; the job came in from the earlier system.</i> &nbsp;<span class="press" style="padding:1px 8px;font-size:12px">Change ›</span></div>
+    <div class="sub">The affidavit names Aug 2026.</div>
+  </div>
+  <p class="note">The Lien window's affidavit tab reads the same quiet line in place of its amber one:</p>
+  <div class="winline">⚠ The month comes from the bill, not from recorded work. Set the last day of work on the job if the work ran in another month. <span class="tag now">before</span></div>
+  <div class="winline quiet">✓ August checked · Robert · Nov 14 · the owner's word <span class="tag new">after</span></div>
+</div>
+
+<h2>D · The help sheet that prints in front of the batch</h2>
+<div class="sheet">
+  <div class="row"><span class="ok">✓</span><span><b>Owner.</b> Pat Sample. A private owner, not a city, a county, a school or the State.</span></div>
+  <div class="row"><span class="ok">✓</span><span><b>Homestead.</b> The property record is not marked a homestead.</span></div>
+  <div class="row"><span class="ok">✓</span><span><b>Notices.</b> A notice went on time for every month sworn: August 2026. It went to the owner and to Ridgeway Builders.</span></div>
+  <div class="row"><span class="warn">!</span><span><b>Work month.</b> The month comes from the bill, not from recorded work. Set the last day of work on the job if the work ran in another month. <span class="tag now">before</span></span></div>
+  <div class="row"><span class="ok">✓</span><span><b>Work month.</b> August 2026, checked by Robert on Nov 14: the owner, Nov 14, the work was done in August. <span class="tag new">after</span></span></div>
+</div>
+<p class="note">Before, the ⚠ row puts <b>Ask the attorney first</b> over the signer's check for every imported job. After, a checked month is a ✓ row like the others, and the notice record's first flag line goes with it. A month that is <i>not</i> checked keeps the ⚠ row exactly as today.</p>
+
+<h2>E · Its place in the flow</h2>
+<div class="flow">
+  <div class="step"><span class="n">1</span><div><div class="t">The job comes in with no clock hours</div><div class="sub">From the earlier system, or typed in after the fact. Its bill carries the day it was typed.</div></div></div>
+  <div class="step"><span class="n">2</span><div><div class="t">The desk dates it from the bill</div><div class="sub">The lien month is the bill's month. The pane, the Lien window, the help sheet and the notice record all flag it: <i>The month comes from the bill, not from recorded work.</i></div></div></div>
+  <div class="step"><span class="n">3</span><div><div class="t">A person answers the flag, one of two ways</div></div></div>
+  <div class="fork">
+    <div class="step"><span class="n">a</span><div><div class="t">The month is wrong → Set the last day of work <span class="tag">today's door</span></div><div class="sub">A day and a reason on the job. Every clock moves to that month: the notice days, the affidavit day, the year to sue. A paper already approved may fall off the desk, and the desk may read Lien gone.</div></div></div>
+    <div class="step"><span class="n">b</span><div><div class="t">The month is right → Confirm it <span class="tag new">the new door</span></div><div class="sub">Who said so and when, on the job. No clock moves and no paper changes. The flag turns quiet on every surface, and the help sheet's row reads ✓.</div></div></div>
+  </div>
+  <div class="step"><span class="n">4</span><div><div class="t">The paper prints and files with the batch</div><div class="sub">The signer reads a sheet with no ⚠ on the work month, so nothing on that row sends them to the attorney.</div></div></div>
+</div>
+
+<h2>What it would take</h2>
+<p class="note">One record on the job (a checked-at, who and the note; three columns on the job or one small table), one pure kernel that answers <i>flagged · checked · from hours</i> with the words for each surface, the press and the one-line ask on the pane, the quiet line on the Lien window's tab, the help sheet's ✓ row, the notice record's line, a guide paragraph, and the dev seat's <code>plan_affidavit_draft</code> reply naming it. A day set by hand later clears the check, since the month changed. One PR.</p>
+</body>
+</html>

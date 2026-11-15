@@ -48,6 +48,9 @@ vi.mock('../../lib/jobs/lienClaimCorrectionIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienClaimCorrectionIo')>('../../lib/jobs/lienClaimCorrectionIo')
   return { ...actual, saveLienClaimCorrection: (...args: unknown[]) => saveClaimMock(...args), clearLienClaimCorrection: (...args: unknown[]) => clearClaimMock(...args), lookLienClaimCorrection: vi.fn() }
 })
+// The stand-in month's check (v2.7280): the write is a seam; the kernel has its own tests.
+const saveMonthCheckMock = vi.fn()
+vi.mock('../../lib/jobs/lienMonthCheckIo', () => ({ saveLienMonthCheck: (...args: unknown[]) => saveMonthCheckMock(...args), clearLienMonthCheck: vi.fn() }))
 const savePropertyKindMock = vi.fn()
 const payPageRefresh = vi.fn()
 const payPageState: { rows: Array<{ invoiceId: string; label: string; description: string; openAmount: number; payable: boolean }>; assets: Record<string, { svg: string; png: string | null }>; bills: LienClaimBill[]; job: JobWithDetails | null; loading: boolean; refresh: () => void } = { rows: [], assets: {}, bills: [], job: null, loading: false, refresh: payPageRefresh }
@@ -177,6 +180,8 @@ beforeEach(() => {
   saveClaimMock.mockResolvedValue(undefined)
   clearClaimMock.mockReset()
   clearClaimMock.mockResolvedValue(undefined)
+  saveMonthCheckMock.mockReset()
+  saveMonthCheckMock.mockResolvedValue(undefined)
   payPageState.rows = []
   payPageState.bills = []
   payPageState.job = null
@@ -1132,6 +1137,42 @@ describe('LienDesk · the demand letter on the panes’ strips (v2.3880, punch l
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
     await settle()
     expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="demand"]')?.textContent).toContain('reply by Sep 22')
+  })
+
+  it('a month dated from the bill asks whether it is right, with two presses; the ask saves who said so; a confirmed month reads a quiet line with Change › (v2.7280, punch list #358)', async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-08', deadline: '2026-11-16', is_sub: true, noticed: true, filed: false, open_balance: 1_049, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null, month_source: 'bill' }
+    const d = data([], [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    const onOpenCalendarLastWork = vi.fn()
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" initialJobId="j650" onOpenCalendarLastWork={onOpenCalendarLastWork} />)
+    await settle()
+    expect(document.querySelector('[data-lien-affidavit-month-stand-in]')!.textContent).toContain('The month comes from the bill, not from recorded work. Is August the month the work was done?')
+    // The second press is today's door, the last day of work, which moves every clock.
+    fireEvent.click(screen.getByRole('button', { name: 'Set the last day of work ›' }))
+    expect(onOpenCalendarLastWork).toHaveBeenCalledWith('j650')
+    // The first opens the one-line ask; the confirm is dead until who said so is typed.
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, August is right ›' }))
+    const confirm = screen.getByRole('button', { name: 'Confirm August' }) as HTMLButtonElement
+    expect(confirm.disabled).toBe(true)
+    expect(document.querySelector('[data-lien-affidavit-month-check-ask]')!.textContent).toContain('It changes no date and no paper. It takes the flag off.')
+    fireEvent.change(screen.getByLabelText('Who said August is the month, and when?'), { target: { value: 'The owner, Nov 14: the work was done in August.' } })
+    expect(confirm.disabled).toBe(false)
+    fireEvent.click(confirm)
+    await waitFor(() => expect(saveMonthCheckMock).toHaveBeenCalledWith(expect.objectContaining({ jobId: 'j650', month: '2026-08', note: 'The owner, Nov 14: the work was done in August.', userId: 'u-taunya', userName: 'Taunya' })))
+    desk.unmount()
+
+    // Confirmed: the quiet line in the flag's place, the grid's words, and Change › reopens the ask with the note.
+    const checked = data([], [], true)
+    checked.affidavitRows = [affRow]
+    checked.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    checked.jobsById = { j650: { ...checked.jobsById.j650!, lien_month_checked_month: '2026-08', lien_month_checked_at: '2026-11-14T17:00:00Z', lien_month_checked_by_name: 'Robert', lien_month_check_note: 'The owner, Nov 14: the work was done in August.' } }
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={checked} initialKind="affidavit" initialJobId="j650" />)
+    await settle()
+    expect(document.querySelector('[data-lien-affidavit-month-stand-in]')).toBeNull()
+    expect(document.querySelector('[data-lien-affidavit-month-checked]')!.textContent).toContain('August checked · Robert · Nov 14 · The owner, Nov 14: the work was done in August.')
+    fireEvent.click(document.querySelector<HTMLButtonElement>('[data-lien-affidavit-month-change]')!)
+    expect((screen.getByLabelText('Who said August is the month, and when?') as HTMLInputElement).value).toBe('The owner, Nov 14: the work was done in August.')
   })
 })
 

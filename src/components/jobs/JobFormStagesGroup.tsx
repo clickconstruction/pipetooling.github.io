@@ -7,6 +7,7 @@
  * kind switch — order and kind are set on Bill; this tab reads them.
  */
 import { useState } from 'react'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { stageSpanShort, type StagePlan, type StagePlanRow } from '../../lib/jobs/stagePlan'
 import { StageKindBadge } from './StageKindControls'
@@ -53,6 +54,8 @@ const TONE: Record<'green' | 'blue' | 'plain' | 'muted', { color: string; backgr
 
 export function JobFormStagesGroup({ plan, gcName, sharesWithGc, onToggleShared, onSeeAsCustomer, onGoToBill, defaultOpen }: JobFormStagesGroupProps) {
   const [open, setOpen] = useState(defaultOpen ?? plan.orderCount > 0)
+  // Punch list #355 E (v2.7283): on a phone each stage row stands 44 px and the presses 40 px.
+  const phone = useNarrowViewport640()
   const gc = gcName?.trim() || 'the GC'
   const orders = plan.rows.filter((r) => r.kind === 'order')
   const anys = plan.rows.filter((r) => r.kind === 'any')
@@ -63,10 +66,10 @@ export function JobFormStagesGroup({ plan, gcName, sharesWithGc, onToggleShared,
     const s = standing(r)
     const sub = r.kind === 'order' ? `${r.drawNumber != null ? `draw ${r.drawNumber} · ` : 'no draw · '}$${formatCurrency(r.amount)}` : `$${formatCurrency(r.amount)}`
     return (
-      <div key={r.fixtureId} data-testid={`stages-group-row-${r.kind}`} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: r.badge === 'live' ? 'var(--bg-blue-tint)' : 'var(--surface)' }}>
+      <div key={r.fixtureId} data-testid={`stages-group-row-${r.kind}`} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minHeight: phone ? 44 : undefined, padding: phone ? '0.5rem 0.6rem' : '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: r.badge === 'live' ? 'var(--bg-blue-tint)' : 'var(--surface)' }}>
         <StageKindBadge row={r} size={24} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
+          <div style={{ fontSize: phone ? '0.9375rem' : '0.8125rem', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{sub}</div>
         </div>
         <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '0.1rem 0.5rem', borderRadius: 999, whiteSpace: 'nowrap', ...TONE[s.tone] }}>{s.text}</span>
@@ -77,7 +80,7 @@ export function JobFormStagesGroup({ plan, gcName, sharesWithGc, onToggleShared,
           aria-label={r.sharedWithGc ? `Shown to ${gc} — hide ${r.name}` : `Hidden from ${gc} — show ${r.name}`}
           title={r.sharedWithGc ? `${gc} sees this stage on their portal · click to hide` : `${gc} does not see this stage · click to show`}
           onClick={() => onToggleShared(r.fixtureId, !r.sharedWithGc)}
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 24, borderRadius: 999, border: `1px solid ${r.sharedWithGc ? 'var(--border-strong)' : 'var(--border)'}`, background: r.sharedWithGc ? 'var(--bg-200)' : 'transparent', color: r.sharedWithGc ? 'var(--text-700)' : 'var(--text-faint)', cursor: 'pointer', flexShrink: 0 }}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: phone ? 40 : 28, height: phone ? 32 : 24, borderRadius: 999, border: `1px solid ${r.sharedWithGc ? 'var(--border-strong)' : 'var(--border)'}`, background: r.sharedWithGc ? 'var(--bg-200)' : 'transparent', color: r.sharedWithGc ? 'var(--text-700)' : 'var(--text-faint)', cursor: 'pointer', flexShrink: 0 }}
         >
           <EyeIcon variant={r.sharedWithGc ? 'open' : 'crossed'} />
         </button>
@@ -129,11 +132,11 @@ export function JobFormStagesGroup({ plan, gcName, sharesWithGc, onToggleShared,
             <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>Stage dates are not shared with {gc} yet — turn on the switch under GC/Builder and the eyes take effect.</div>
           ) : null}
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-            <button type="button" onClick={onSeeAsCustomer} style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+            <button type="button" onClick={onSeeAsCustomer} style={{ minHeight: phone ? 40 : undefined, padding: phone ? '0 0.9rem' : '0.35rem 0.75rem', fontSize: phone ? '0.875rem' : '0.75rem', fontWeight: 600, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
               See it as the customer
             </button>
             {onGoToBill ? (
-              <button type="button" onClick={onGoToBill} style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, background: 'transparent', color: 'var(--text-link)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}>
+              <button type="button" onClick={onGoToBill} style={{ minHeight: phone ? 40 : undefined, padding: phone ? '0 0.9rem' : '0.35rem 0.75rem', fontSize: phone ? '0.875rem' : '0.75rem', fontWeight: 600, background: 'transparent', color: 'var(--text-link)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}>
                 Set stages on Bill →
               </button>
             ) : null}

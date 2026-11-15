@@ -152,6 +152,21 @@ describe('JobWindowModal · the Job tab’s sections on a phone', () => {
     expect(screen.getByRole('button', { name: /Paint a map/ })).toBeTruthy()
   })
 
+  it('the Edit tab on a phone (E, v2.7283): the rows read under group titles at 44 px with a chevron, and the status rail is off the tab', async () => {
+    renderWindow(job())
+    await settle()
+    await screen.findByTestId('job-window-who')
+    fireEvent.click(screen.getByRole('tab', { name: 'Edit' }))
+    await waitFor(() => expect(document.querySelector('[data-fact-group="The people"]')).not.toBeNull())
+    expect(Array.from(document.querySelectorAll('[data-fact-group]')).map((g) => g.getAttribute('data-fact-group'))).toEqual(['The people', 'The folders', 'The customer', 'The GC and the site', 'The paper'])
+    const team = document.querySelector<HTMLElement>('[data-fact-row="Team"]')
+    expect(team).not.toBeNull()
+    expect(parseFloat(String(team?.style.minHeight))).toBe(44)
+    // The rail's wrapper is hidden on a phone: the bar's Status ▾ is the same stepper.
+    const rail = document.querySelector<HTMLElement>('[data-job-form-focus], [data-testid="job-status-stepper"]')
+    if (rail) expect(rail.closest('div[style*="display: none"]')).not.toBeNull()
+  })
+
   it('More on this job: six folds, closed, and an opened one is remembered on this phone', async () => {
     renderWindow(job())
     await settle()
