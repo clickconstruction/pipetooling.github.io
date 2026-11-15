@@ -5,6 +5,13 @@ import { LIEN_FIND_PLACEHOLDER, lienFindCountWords, lienFindParts, type LienFind
  * The find box at the top of the Lien desk's list (v2.4721): one box on every list, narrowing
  * as you type. `/` focuses it from anywhere on the desk (never from another field), Esc clears
  * it while it has the focus, × clears it on a phone. Controlled: the desk owns the words.
+ *
+ * A quiet line, not a pill (v2.7315, the owner's ask of 2026-11-15): no border and no fill at
+ * rest, the ⌕ and the words in the list's muted ink on the list's own background, flush with
+ * the rows' text, and one hairline under it — the only thing between it and the first pile
+ * head. The focus wakes the glyph and turns the hairline blue; nothing moves. The `/` key
+ * shows only while the column is hovered or the box has the focus (`.lienFind` in index.css).
+ * The line is as tall as the pill and its margins were, so the pile heads under it stay put.
  */
 type Props = {
   value: string
@@ -35,11 +42,13 @@ export default function LienDeskFindBox({ value, onChange, matched, isMobile }: 
 
   return (
     <div
+      className="lienFind"
       data-testid="lien-desk-find"
       data-finding={finding ? 'yes' : 'no'}
-      style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0.5rem 0.75rem 0.35rem', padding: '4px 8px 4px 9px', border: '1px solid var(--border-strong)', borderRadius: 9, background: 'var(--surface)', ...(isMobile ? { minHeight: 44, boxSizing: 'border-box' } : null) }}
+      data-lien-find-quiet
+      style={{ display: 'flex', alignItems: 'center', gap: 6, boxSizing: 'border-box', ...(isMobile ? { minHeight: 44, padding: '11px 0.9rem' } : { height: 47, padding: '0 0.9rem' }) }}
     >
-      <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1 }}>⌕</span>
+      <span aria-hidden="true" className="lienFindGlyph" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1 }}>⌕</span>
       <input
         ref={ref}
         type="search"
@@ -61,12 +70,12 @@ export default function LienDeskFindBox({ value, onChange, matched, isMobile }: 
       {finding ? (
         <>
           <span data-testid="lien-desk-find-count" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{lienFindCountWords(matched)}</span>
-          <button type="button" onClick={() => { onChange(''); ref.current?.focus() }} aria-label="Clear the find" data-testid="lien-desk-find-clear" style={{ border: 'none', background: 'var(--bg-subtle)', color: 'var(--text-muted)', borderRadius: 999, width: isMobile ? 34 : 20, height: isMobile ? 34 : 20, fontSize: isMobile ? '1.1rem' : '0.8rem', cursor: 'pointer', lineHeight: 1, padding: 0, flex: 'none' }}>
+          <button type="button" className="lienFindClear" onClick={() => { onChange(''); ref.current?.focus() }} aria-label="Clear the find" data-testid="lien-desk-find-clear" style={{ border: 'none', background: 'none', color: 'var(--text-muted)', borderRadius: 999, width: isMobile ? 34 : 20, height: isMobile ? 34 : 20, fontSize: isMobile ? '1.1rem' : '0.8rem', cursor: 'pointer', lineHeight: 1, padding: 0, flex: 'none' }}>
             ×
           </button>
         </>
       ) : isMobile ? null : (
-        <span style={kbd} aria-hidden="true">/</span>
+        <span className="lienFindKey" style={kbd} aria-hidden="true">/</span>
       )}
     </div>
   )
