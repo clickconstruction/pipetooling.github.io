@@ -847,6 +847,38 @@ describe('LienDesk', () => {
     expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
   })
 
+  it('the scrolled strip says only what is out of view and every chip is a press (v2.7318): one red owner chip opens the property record at the owner, no Can\u2019t go out yet, and no next chip while it repeats the blocker', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    const pane = document.querySelector('[data-lien-desk-pane]') as HTMLElement
+    expect(document.querySelector('[data-lien-desk-strip]')).toBeNull()
+    fireEvent.scroll(pane, { target: { scrollTop: 300 } })
+    const strip = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+    expect(strip).toBeTruthy()
+    const chips = Array.from(strip.querySelectorAll<HTMLElement>('[data-lien-strip-chip]'))
+    // The blocker is red, the unknown kind an amber check; the months and the claim are quiet presses.
+    expect(chips.map((c) => c.textContent)).toEqual(['Owner of record missing \u203a', 'Property kind unknown \u203a', 'Jun + Jul + Aug \u203a', 'Claim $33,500 \u203a'])
+    expect(chips.map((c) => c.getAttribute('data-tone'))).toEqual(['red', 'amber', 'quiet', 'quiet'])
+    expect(chips.every((c) => c.tagName === 'BUTTON')).toBe(true)
+    expect(strip.textContent).not.toContain("Can't go out yet")
+    // The timeline's *Find the owner, then send\u2026* says what the owner chip says, so the strip carries no next chip.
+    expect(strip.querySelector('[data-lien-desk-strip-next]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show gates \u25b4' })).toBeTruthy()
+    fireEvent.click(strip.querySelector('[data-lien-strip-chip="gate:owner"]') as HTMLElement)
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+  })
+
+  it('the scrolled strip on a ready notice (v2.7318): one green Ready to go out \u203a, no red chip, and the next chip stays since it adds the day', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    fireEvent.scroll(document.querySelector('[data-lien-desk-pane]') as HTMLElement, { target: { scrollTop: 300 } })
+    const strip = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+    expect((strip.querySelector('[data-lien-strip-chip="ready"]') as HTMLElement).textContent).toBe('Ready to go out \u203a')
+    expect(strip.querySelectorAll('[data-lien-strip-chip^="gate:"]').length).toBe(0)
+    // The next chip keeps the timeline's own tone (red: due tomorrow) and its words, with the door mark.
+    expect(strip.querySelector('[data-lien-desk-strip-next]')?.textContent).toMatch(/^Draft the Jun( \+ \w+)* notice \u2014 tomorrow \u203a$/)
+  })
+
   it('a phone\u2019s header is one row with More; the doors it held are rows of the sheet and open what they open on a computer (punch list #352, PR 1)', { timeout: 30000 }, async () => {
     // A computer keeps its header: the doors are in the bar and there is no More.
     const onOpenOwnerRecords = vi.fn()

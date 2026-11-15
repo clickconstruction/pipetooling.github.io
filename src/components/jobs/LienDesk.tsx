@@ -182,6 +182,7 @@ import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { lienStripChips, type LienStripChipAct, type LienStripChipTone } from '../../lib/jobs/lienStripChips'
 import { buildLienDeskGates, lienSentGatesFold, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence, lienGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -2380,6 +2381,50 @@ export default function LienDesk({
     return <LienPaneHead section={paneHeads[i]!} index={i} count={paneHeads.length} stripHeight={paneStripH} lit={(litSection ?? paneHeads[0]?.key) === key} onGo={() => goToSection(key)} phone={isMobile} />
   }
 
+  // The scrolled strip's chips (v2.7318, the owner's rule of 2026-11-15 on JP372): only what the reader cannot see from where
+  // they are, and every chip a press to the door the gate box already has. The kernel words them; this wires each act.
+  const stripChips = selected
+    ? lienStripChips({
+        gates,
+        monthWords: monthsList.map(workMonthShort).join(' + '),
+        next: timeline ? { kind: timeline.next.kind, words: timeline.next.words, tone: timeline.next.tone } : null,
+        claimWords: formatUsdNoCents(claimed.claim),
+        claimByHand: claimed.corrected,
+        wordingWords: wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : '',
+        fold: gatesFold,
+      })
+    : []
+  const scrollPaneTo = (selector: string) => paneRef.current?.querySelector(selector)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+  const pressStripChip = (act: LienStripChipAct) => {
+    if (!selected) return
+    if (act === 'top') paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    else if (act === 'ready') {
+      // Down to the footer, whose primary is the send; a phone's folded footer opens so the press is on the screen.
+      setFootFolded(false)
+      const host = paneRef.current
+      host?.scrollTo?.({ top: host.scrollHeight, behavior: 'smooth' })
+      // preventScroll: the page around the desk must not move with the focus (it slid the title bar off the top on the first live press).
+      window.setTimeout(() => (host?.closest('[aria-label="Lien desk"]') ?? document).querySelector<HTMLButtonElement>('[data-lien-desk-next] .lienFootActions button:last-of-type')?.focus?.({ preventScroll: true }), 80)
+    } else if (act === 'gate:owner') {
+      if (office) setPaneFix({ jobId: selected.jobId, focus: 'owner' })
+      else pickGate('owner')
+    } else if (act === 'gate:gc') onOpenEditJob(selected.jobId)
+    // The month grid heads its section, so the section's own landing (the head under the strip) puts the grid in view; a plain scrollIntoView lost it under the stacked heads.
+    else if (act === 'gate:months' || act === 'months') goToSection('months')
+    else if (act === 'gate:kind' || act === 'gate:billed') pickGate(act === 'gate:kind' ? 'kind' : 'billed')
+    else if (act === 'claim') scrollPaneTo('[data-lien-claim-box], [data-lien-claim-editor]')
+    else if (act === 'wording') scrollPaneTo('[data-lien-desk-send-line]')
+    else if (act === 'next') goToSection('path')
+  }
+  const stripChipStyle = (tone: LienStripChipTone): React.CSSProperties =>
+    tone === 'red'
+      ? chip('var(--bg-red-tint)', 'var(--text-red-600)')
+      : tone === 'amber'
+        ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)')
+        : tone === 'green'
+          ? chip('var(--bg-green-tint)', 'var(--text-green-800)')
+          : chip('var(--bg-subtle)', 'var(--text-700)')
+
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
   // The leader on a phone, on a notice waiting on him (v2.4881): three lines and two buttons; everything else under Details.
@@ -2406,28 +2451,23 @@ export default function LienDesk({
           style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
         >
           <strong>{jobLabel(job, selected.jobId)}</strong>
-          {gatesFold ? (
-            <span style={chip('var(--bg-subtle)', 'var(--text-700)')} data-lien-strip-sent>{gatesFold.head}</span>
-          ) : (
-            <>
-              <span style={chip(gateVerdict.ready ? 'var(--bg-green-tint)' : 'var(--bg-red-tint)', gateVerdict.ready ? 'var(--text-green-800)' : 'var(--text-red-600)')}>{gateVerdict.ready ? '✓' : '✗'} {gateVerdict.headline}</span>
-              {gates.filter((g) => g.tone !== 'ok').map((g) => (
-                <span key={g.key} style={chip(g.tone === 'blocker' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', g.tone === 'blocker' ? 'var(--text-red-600)' : 'var(--text-amber-800)')} title={g.title}>
-                  {g.n} · {g.label}: {g.value}
-                </span>
-              ))}
-            </>
-          )}
-          <span style={{ color: 'var(--text-muted)' }}>{monthsList.length ? monthsList.map(workMonthShort).join(' + ') : 'no months'}</span>
-          {timeline ? (
-            <span data-lien-desk-strip-next style={chip(timeline.next.tone === 'red' ? 'var(--bg-red-tint)' : timeline.next.tone === 'amber' ? 'var(--bg-amber-tint)' : timeline.next.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', timeline.next.tone === 'red' ? 'var(--text-red-600)' : timeline.next.tone === 'amber' ? 'var(--text-amber-800)' : timeline.next.tone === 'green' ? 'var(--text-green-800)' : 'var(--text-700)')} title="Next on the path">
-              {timeline.next.words}
-            </span>
-          ) : null}
-          <span style={{ color: 'var(--text-muted)' }}>
-            Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(claimed.claim)}</strong>{claimed.corrected ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>set by hand</span> : null}
-          </span>
-          {wordingDiff.length ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>{wordingLineText(wordingDiff, wordingEditedBy)}</span> : null}
+          {/* Every chip is a press (v2.7318): a red one opens its gate's door, the green one goes to the send, the quiet ones to their sections; the Sent chip goes back up. */}
+          {stripChips.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              className="lienStripChip"
+              data-lien-strip-chip={c.key}
+              data-tone={c.tone}
+              data-lien-desk-strip-next={c.key === 'next' ? true : undefined}
+              data-lien-strip-sent={c.key === 'sent' ? true : undefined}
+              title={c.title}
+              onClick={() => pressStripChip(c.act)}
+              style={stripChipStyle(c.tone)}
+            >
+              {c.words}
+            </button>
+          ))}
           <span style={{ flex: 1 }} />
           <button type="button" onClick={() => paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })} style={linkBtn}>
             Show gates ▴
