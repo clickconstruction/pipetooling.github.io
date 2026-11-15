@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -203,6 +203,12 @@ A development's page lists its own maps first. Each lot's maps come after, with 
 Press {{button:outline|Directions to the start}} to open the phone's maps app at the start of the first line. A maps app can route to a gate on a road. It cannot follow a painted line.
 
 Press {{button:outline|From above}} or {{button:outline|Streets}} to change the picture under the line.
+
+### On a task
+
+A task's place can carry the painted map that leads to it. The person who gets the task sees the line on the task and opens the map from there.
+
+[Give someone a task](/help/give-someone-a-task#add-the-way-in) shows how to add it. Whoever gets the task can open the map, even on a job they are not on the crew of.
 
 ## Change a map
 
