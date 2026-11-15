@@ -5,6 +5,7 @@ import { lienStepCard, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/
 import { lienPhoneGroups, lienPhoneStepWords, type LienPhoneGroup } from '../../lib/jobs/lienPhoneRows'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
+import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { LienStepCardView, LienStepMark, useLienStepCard } from './LienDeskSteps'
 
 /**
@@ -71,6 +72,7 @@ export default function LienDeskNextUp({
   scrolls = true,
   amountFor,
   onOpenRow,
+  zoomFor,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -99,6 +101,8 @@ export default function LienDeskNextUp({
   amountFor?: (row: LienNextUpRow) => number | null
   /** A phone: a tap on a row, its name or its dots opens the job as its own screen (punch list #352, PR 4). Absent, the name is the job's door and the dots open the step card. */
   onOpenRow?: (row: LienNextUpRow) => void
+  /** The job's number as a zoom (v2.7333): the press to the right place for the paper's stage, with its hover words; null for a job not on the Board. Absent, the number and the name are one door to the job. */
+  zoomFor?: (row: LienNextUpRow) => { press: () => void; words: string } | null
 }) {
   const card = useLienStepCard(isMobile)
   // The row whose card is open, for the card's own button.
@@ -119,6 +123,22 @@ export default function LienDeskNextUp({
   const title = (r: LienNextUpRow, style: CSSProperties) => {
     const jobId = r.jobId
     if (!jobId || !onOpenJob) return <span style={style} title={r.title}>{markTitle ? markTitle(r.title) : r.title}</span>
+    // The number is a zoom (v2.7333): the same press as the job's chip on the Board; the name stays the job's door.
+    const zoom = !isMobile && zoomFor ? zoomFor(r) : null
+    const split = zoom ? splitLienJobLabel(r.title) : null
+    if (zoom && split && split.name) {
+      return (
+        <span style={{ ...style, display: 'inline-flex', alignItems: 'baseline', gap: 0, minWidth: 0, maxWidth: '100%' }}>
+          <button type="button" className="lienJobDoor" data-testid={`lien-next-up-zoom-${jobId}`} title={zoom.words} onClick={(ev) => { ev.stopPropagation(); zoom.press() }} style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', borderRadius: 3, flex: 'none' }}>
+            {markTitle ? markTitle(split.number) : split.number}
+          </button>
+          <span aria-hidden="true" style={{ flex: 'none' }}>{' · '}</span>
+          <button type="button" className="lienJobDoor" data-testid={`lien-next-up-job-${jobId}`} title={LIEN_JOB_DOOR_TITLE} onClick={(ev) => { ev.stopPropagation(); onOpenJob(jobId) }} style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {markTitle ? markTitle(split.name) : split.name}
+          </button>
+        </span>
+      )
+    }
     return (
       <button
         type="button"

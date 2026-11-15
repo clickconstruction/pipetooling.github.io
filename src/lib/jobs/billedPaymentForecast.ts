@@ -158,7 +158,7 @@ export function buildBilledPaymentForecast(
       todayYmd,
       promises?.[job.id] ?? null,
       paceInputFor(pace ?? null, { payerId, jobId: job.id, sentFromHere: sentFromHereOf(r.inv) }, paySpeeds),
-      calendarSourceFor(payCalendars, { payerId, jobId: job.id }),
+      calendarSourceFor(payCalendars, { payerId, jobId: job.id, invoiceId: r.inv.id }),
     )
     // A promise is bucketed by when the money usually lands after the date
     // this customer gives, not by the date itself (Their Word PR 3).

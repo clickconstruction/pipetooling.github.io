@@ -492,6 +492,14 @@ describe('the pen (v2.4153)', () => {
     fireEvent.click(within(screen.getByTestId('lien-cal-phone')).getByText('Rilvo'))
     expect(phone.onOpen).toHaveBeenCalledWith('a')
   })
+  it('with onZoomJob the number is the zoom to the job’s stage on the Board (v2.7333), and the Job window door steps aside', () => {
+    const onOpenJobWindow = vi.fn()
+    const onZoomJob = vi.fn()
+    mount({ onOpenJobWindow, onZoomJob })
+    fireEvent.click(screen.getAllByTestId('lien-cal-job-no')[0]!)
+    expect(onZoomJob).toHaveBeenCalledWith('a')
+    expect(onOpenJobWindow).not.toHaveBeenCalled()
+  })
 
   it('with no door for the job, the number is plain and nothing about the row changes', () => {
     mount()

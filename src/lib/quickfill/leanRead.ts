@@ -20,7 +20,7 @@ import { daysBetweenYmd, type PromisedPayDate } from '../jobs/billedExpectedPay'
 import { payClockFor } from '../jobs/billedDuePay'
 import { listPayer } from '../jobs/billToParty'
 import { effectiveInvoiceEstBillDate } from '../jobs/invoiceBilling'
-import { calendarFor, dueDayFor, payCalendarMonthDay, type PayCalendarIndex } from '../jobs/payCalendar'
+import { calendarSourceFor, dueDayFor, payCalendarMonthDay, type PayCalendarIndex } from '../jobs/payCalendar'
 import type { StageRow } from '../jobsStagesBoard'
 import { arLastTouchLine } from '../arCustomerChase'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -101,7 +101,13 @@ export function leanDueByBill(rows: ReadonlyArray<StageRow>, calendars: LeanCale
     if (r.kind === 'job') continue
     const payerId = listPayer(r.job, r.inv).id
     if (!payerId) continue
-    const cal = calendarFor(calendars.payCalendars, { payerId, jobId: r.job.id })
+    const read = calendarSourceFor(calendars.payCalendars, { payerId, jobId: r.job.id, invoiceId: r.inv.id })
+    // A bill with its own due day reads that day, whatever calendar its payer holds (punch list #341, PR 4).
+    if (read.ownDue) {
+      out.set(r.inv.id, read.ownDue.dueYmd)
+      continue
+    }
+    const cal = read.calendar
     if (!cal) continue
     const clock = payClockFor({ billedAtIso: r.inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(r.inv), customerId: payerId, acceptedYmd: calendars.acceptedByInvoice?.get(r.inv.id) ?? null })
     const dueYmd = clock ? dueDayFor(clock.ymd, cal) : null

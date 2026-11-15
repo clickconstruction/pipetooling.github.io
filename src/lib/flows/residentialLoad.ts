@@ -12,7 +12,7 @@ import { isSettledRemainder, openRemainder } from '../billing/billTruth'
 import type { PaySpeedData, PromisedPayDate } from '../jobs/billedExpectedPay'
 import { billHeldDay, billedPayModel } from '../jobs/billedDuePay'
 import { paySpeedPayer } from '../jobs/billToParty'
-import { calendarFor, type PayCalendarIndex } from '../jobs/payCalendar'
+import { calendarSourceFor, type PayCalendarIndex } from '../jobs/payCalendar'
 import { attributeJobPayments, isSentBill } from '../jobs/paymentAttribution'
 import { jobReportPreviewLine } from '../jobReportsTimeline'
 import type { PeopleLaborJobItemLike } from '../peopleLaborJobItemLineCost'
@@ -246,7 +246,7 @@ export function paidRounds(rows: ResidentialRows, jobId: string, now: Date): Rou
               today,
               rows.promisedPay?.[jobId] ?? null,
               null,
-              calendarFor(rows.payCalendars, { payerId: payer.id, jobId }),
+              calendarSourceFor(rows.payCalendars, { payerId: payer.id, jobId, invoiceId: inv.id }),
             ),
           )?.ymd ?? null
         : null

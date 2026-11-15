@@ -33,6 +33,7 @@
     --new: #c4b5fd; --new-tint: #2a2350;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
   .wrap { max-width: 1240px; margin: 0 auto; }
   header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
@@ -134,6 +135,18 @@
   .t .q b { color: var(--text-strong); }
   .t .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .t .acts .box { flex: 1 1 260px; min-width: 0; }
+  .t .acts .composer { flex: 1 1 260px; min-width: 0; margin: 0; }
+  .t .acts .composer .names { max-height: 156px; }
+  .cleared { font-size: 13px; color: var(--text-700); overflow-wrap: anywhere; }
+  .cleared .ok { color: var(--text-green-700); font-weight: 700; }
+  .foldbtn { margin-left: auto; font: inherit; font-size: 12px; font-weight: 600; color: var(--text-link); background: none; border: none; cursor: pointer; padding: 0; }
+  .again { font: inherit; font-size: 12.5px; color: var(--text-link); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; }
+  .newmark { display: inline-block; background: #2563eb; color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 1px 7px; vertical-align: middle; }
+  .changed { margin-top: 16px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--new); border-radius: 0 10px 10px 0; padding: 10px 14px; max-width: 110ch; font-size: 13px; }
+  .changed h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--new); margin: 0 0 4px; }
+  .changed ul { margin: 0; padding-left: 18px; }
+  .changed li { margin: 2px 0; }
+  .side { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 18px 0 0; }
   .btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; white-space: nowrap; }
   .lnk { font-size: 12.5px; color: var(--text-link); text-decoration: none; white-space: nowrap; }
   .fold { padding: 9px 14px; font-size: 13px; color: var(--text-700); display: grid; gap: 5px; }
@@ -228,6 +241,18 @@
       <p>Subs, email, tags in reports, estimates and bids, tagging a whole group, and any reminder for a tag nobody answers. Each can follow once the first version has been used for a few weeks.</p>
     </div>
   </div>
+  <div class="changed">
+    <h3>Changed after Taunya's first look, 2026-11-15</h3>
+    <ul>
+      <li><b>Open the job › is gone.</b> Her call: the job's name on the card is already that link.</li>
+      <li><b>Where it lands is settled.</b> She picked the section in Jobs and the Needs you line, and not Messages or the checklist.</li>
+      <li><b>The asker now learns of an answer without a push.</b> An answer counts above Jobs for the asker until they see it. Section 4 draws it. This changes call 7.</li>
+      <li><b>A question back is one tap.</b> Each answer box has the @ button, with the person who asked first in its list.</li>
+      <li><b>The crew's path is drawn.</b> The fourth phone in section 5 is a person with no Jobs link.</li>
+      <li><b>The section in section 2 now works.</b> Answer one or press No reply needed and watch the red number drop.</li>
+      <li><b>Smaller:</b> the oldest tag is on top, the section folds, and the press reads <b>No reply needed</b>, the words Messages already uses.</li>
+    </ul>
+  </div>
 </section>
 
 <!-- ============================================================ 1 -->
@@ -260,15 +285,15 @@
         <div class="n"><span class="num">31</span><span class="txt"><span class="when">Mon 12:00 PM (20d)</span> <b>Dana</b> | on going</span></div>
         <div class="n"><span class="num">32</span><span class="txt"><span class="when">Sun 10:04 AM (today)</span> <b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet <span class="at">@Dana Whitlock</span><span class="wait">waiting on Dana · 2 min</span></span></div>
       </div>
-      <div class="composer">
-        <div class="willtag" id="demoWill"></div>
+      <div class="composer" id="demoBox">
+        <div class="willtag"></div>
         <div class="box">
-          <input id="demoInput" value="" placeholder="Add a note to Cedar Bluff Lofts…  try typing @ch" aria-label="Note text" autocomplete="off">
-          <button class="atbtn" id="demoAt" type="button" aria-label="Tag a teammate" title="Tag a teammate">@</button>
-          <button class="post" id="demoPost" type="button">Post</button>
-          <button class="x" id="demoClear" type="button" aria-label="Clear the note">×</button>
+          <input value="" placeholder="Add a note to Cedar Bluff Lofts…  try typing @ch" aria-label="Note text" autocomplete="off">
+          <button class="atbtn" data-at type="button" aria-label="Tag a teammate" title="Tag a teammate">@</button>
+          <button class="post" data-post type="button">Post</button>
+          <button class="x" data-clear type="button" aria-label="Clear the note">×</button>
         </div>
-        <div class="names" id="demoNames" role="listbox" aria-label="Teammates" hidden></div>
+        <div class="names" role="listbox" aria-label="Teammates" hidden></div>
       </div>
       <p class="hint">Arrow keys and Enter pick a name. Esc closes the list and leaves the words alone.</p>
     </div>
@@ -303,7 +328,7 @@
 
 <!-- ============================================================ 2 -->
 <h2 id="lands">2 · Where it lands <small>Dana's screen, two tags waiting on her</small></h2>
-<p class="lede">A red count above <b>Jobs</b>, drawn like the one above <b>Messages</b>. Pressing Jobs opens the Pipeline with <b>Tagged job notes</b> at the top. The section is there only while something waits on you or on someone you tagged.</p>
+<p class="lede">A red count above <b>Jobs</b>, drawn like the one above <b>Messages</b>. Pressing Jobs opens the Pipeline with <b>Tagged job notes</b> at the top. The section is there only while something waits on you or on someone you tagged. <b>It works here:</b> answer one, or press <b>No reply needed</b>, and watch both red numbers.</p>
 
 <div class="frame sug" style="margin-top:14px">
   <div class="scroll"><div class="desk">
@@ -311,7 +336,7 @@
       <span class="brand">PipeTooling</span>
       <a href="#lands">Dashboard</a>
       <a href="#lands">Estimates</a>
-      <a href="#lands" class="on">Jobs<span class="badge" title="2 job notes tagged you">2</span></a>
+      <a href="#lands" class="on">Jobs<span class="badge" data-tagcount title="Job notes that tagged you">2</span></a>
       <a href="#lands">Schedule</a>
       <a href="#lands">Projects</a>
       <a href="#lands">Bids</a>
@@ -319,40 +344,48 @@
       <a href="#lands">Messages<span class="badge" title="5 customers waiting on us">5</span></a>
     </div>
 
-    <div class="sec">
-      <h4>Tagged job notes <span class="badge inl">2</span> <span class="sub">waiting on you · an answer or Done clears one</span></h4>
+    <div class="sec" id="landSec">
+      <h4>Tagged job notes <span class="badge inl" data-tagcount>2</span> <span class="sub" id="landSub">waiting on you, oldest first · an answer or No reply needed clears one</span><button class="foldbtn" id="landFold" type="button" aria-expanded="true">Fold ▴</button></h4>
 
-      <div class="t">
-        <div class="l1"><span class="jobname">Cedar Bluff Lofts</span><span class="chipk">Project</span><span class="jobmeta">J1482 · Ridgeway Builders</span><span class="age">today 10:04 AM</span></div>
-        <div class="q"><b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet <span class="at me">@Dana Whitlock</span></div>
-        <div class="acts">
-          <div class="box"><input value="" placeholder="Answer Marcus on the job's notes…" aria-label="Answer on Cedar Bluff Lofts"><button class="post" type="button">Post</button></div>
-          <button class="btn" type="button">Done, no reply</button>
-          <a class="lnk" href="#lands">Open the job ›</a>
+      <div id="landBody">
+        <div class="t" data-card="tanner">
+          <div class="l1"><span class="jobname">Tanner residence, water heater</span><span class="jobmeta">J1497 · Joel Tanner</span><span class="age late">Wed 3:40 PM · 4d</span></div>
+          <div class="q"><b>Luis</b> | <span class="at me">@Dana Whitlock</span> homeowner wants the bill split in two, half now and half at the final. Can we?</div>
+          <div class="acts">
+            <div class="composer">
+              <div class="willtag"></div>
+              <div class="box"><input value="" placeholder="Answer Luis on the job's notes…" aria-label="Answer on Tanner residence" autocomplete="off"><button class="atbtn" data-at type="button" aria-label="Tag a teammate in the answer" title="Tag a teammate in the answer">@</button><button class="post" data-post type="button">Post</button></div>
+              <div class="names" role="listbox" aria-label="Teammates" hidden></div>
+            </div>
+            <button class="btn" data-done type="button">No reply needed</button>
+          </div>
         </div>
-      </div>
 
-      <div class="t">
-        <div class="l1"><span class="jobname">Tanner residence, water heater</span><span class="jobmeta">J1497 · Joel Tanner</span><span class="age late">Fri 3:40 PM · 2d</span></div>
-        <div class="q"><b>Luis</b> | <span class="at me">@Dana Whitlock</span> homeowner wants the bill split in two, half now and half at the final. Can we?</div>
-        <div class="acts">
-          <div class="box"><input value="" placeholder="Answer Luis on the job's notes…" aria-label="Answer on Tanner residence"><button class="post" type="button">Post</button></div>
-          <button class="btn" type="button">Done, no reply</button>
-          <a class="lnk" href="#lands">Open the job ›</a>
+        <div class="t" data-card="cedar">
+          <div class="l1"><span class="jobname">Cedar Bluff Lofts</span><span class="chipk">Project</span><span class="jobmeta">J1482 · Ridgeway Builders</span><span class="age">today 10:04 AM</span></div>
+          <div class="q"><b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet <span class="at me">@Dana Whitlock</span></div>
+          <div class="acts">
+            <div class="composer">
+              <div class="willtag"></div>
+              <div class="box"><input value="" placeholder="Answer Marcus on the job's notes…" aria-label="Answer on Cedar Bluff Lofts" autocomplete="off"><button class="atbtn" data-at type="button" aria-label="Tag a teammate in the answer" title="Tag a teammate in the answer">@</button><button class="post" data-post type="button">Post</button></div>
+              <div class="names" role="listbox" aria-label="Teammates" hidden></div>
+            </div>
+            <button class="btn" data-done type="button">No reply needed</button>
+          </div>
         </div>
-      </div>
 
-      <div class="fold">
-        <div class="hd">You asked · 2 <span class="tag grey">no count</span></div>
-        <div><span class="jobname">Oak Hollow Clinic</span> <span class="jobmeta">J1466</span> · you tagged <span class="at">@Luis Ortega</span> · <span class="wait late" style="display:inline">no answer yet · 3d</span></div>
-        <div><span class="jobname">Cedar Bluff Lofts</span> <span class="jobmeta">J1482</span> · <b>Chris Bell</b> answered 1h ago: "Permit is posted on the door." · <span class="wait ok" style="display:inline">answered</span></div>
+        <div class="fold">
+          <div class="hd">You asked · 2</div>
+          <div><span class="jobname">Oak Hollow Clinic</span> <span class="jobmeta">J1466</span> · you tagged <span class="at">@Luis Ortega</span> · <span class="wait late" style="display:inline">no answer yet · 5d</span></div>
+          <div><span class="jobname">Cedar Bluff Lofts</span> <span class="jobmeta">J1482</span> · <b>Chris Bell</b> answered 1h ago: "Permit is posted on the door." · <span class="wait ok" style="display:inline">answered</span></div>
+        </div>
       </div>
     </div>
 
     <div class="board">The Pipeline's stages follow below, as they are today. On a row, a note that tags you wears the amber chip, and one you sent wears the grey line under it.</div>
   </div></div>
 </div>
-<p class="say" style="margin-top:10px">The answer box posts a plain note on that job, the same as typing in the row. It clears the tag and tells Marcus. <b>Done, no reply</b> clears it without a note, for a tag that needed reading only.</p>
+<p class="say" style="margin-top:10px">The job's name is the door to the job, so the card has no second link. The answer box posts a plain note on that job, the same as typing in the row. It clears the tag and tells the person who asked. The <b>@</b> in it offers that person first, for a question back. <b>No reply needed</b> clears a tag without a note. With more than three waiting, the section shows three and a <b>Show the rest</b> press, and <b>Fold</b> shuts it to its one line. <button class="again" id="landAgain" type="button">Put both tags back</button></p>
 
 <!-- ============================================================ 3 -->
 <h2 id="others">3 · The other places she named <small>and where each one falls short</small></h2>
@@ -366,7 +399,7 @@
         <div class="line"><span class="dot" style="background:var(--border-strong)"></span><span>1 time card to approve</span><span class="go">Open ›</span></div>
       </div>
     </div></div>
-    <p class="verdict"><b>Yes, as the second door.</b> The field has no Pipeline: a superintendent's Jobs page hides it, and the crew has no Jobs link at all. They open the app on the Dashboard. This line opens the same list, so nobody is tagged into a place they never look.</p>
+    <p class="verdict"><b>Yes, as the second door. Taunya's pick.</b> The field has no Pipeline: a superintendent's Jobs page hides it, and the crew has no Jobs link at all. They open the app on the Dashboard. This line opens the same list as a window, so nobody is tagged into a place they never look. Section 5 draws it on a crew phone.</p>
   </div>
 
   <div class="col">
@@ -398,17 +431,44 @@
 <!-- ============================================================ 4 -->
 <h2 id="life">4 · What clears the count <small>the life of one tag</small></h2>
 <p class="lede">Taunya's words were "so a user knows what they need to respond to". So the count is what still waits on an answer, and reading alone does not clear it. The Messages count already works this way.</p>
-<div class="life">
-  <div><div class="st red">Waiting · counted</div>From the post until the tagged person acts. Shows in their section, above Jobs and on the Dashboard line. The sender's note says <i>waiting on Dana</i>.</div>
+<p class="side">The person who is tagged</p>
+<div class="life" style="margin-top:6px">
+  <div><div class="st red">Waiting · counted</div>From the post until the tagged person acts. Shows in their section, above Jobs and on the Dashboard line. The asker's note says <i>waiting on Dana</i>.</div>
   <div><div class="st gry">Opened · still counted</div>Opening the row or the job changes nothing. A tag read on a phone in a truck is still owed an answer at the desk.</div>
-  <div><div class="st grn">Answered · cleared</div>The tagged person posts any note on that job, from the section or from the row. The sender gets a push and sees <i>answered</i> under You asked.</div>
-  <div><div class="st grn">Done, no reply · cleared</div>One press, no note. The sender sees <i>Dana marked it done</i>. For a tag that only needed reading.</div>
+  <div><div class="st grn">Answered · cleared</div>The tagged person posts any note on that job, from the section or from the row. On the job, the grey line under the question turns to <i>answered by Dana</i>.</div>
+  <div><div class="st grn">No reply needed · cleared</div>One press, no note. The asker sees <i>Dana: no reply needed</i>. For a tag that only needed reading.</div>
   <div><div class="st amb">Nobody answers</div>It stays, and its age turns amber after two working days on both screens. The first version sends no reminder and never expires a tag by itself.</div>
+</div>
+
+<p class="side">The person who asked <span class="tag">changed</span></p>
+<div class="two" style="margin-top:6px">
+  <div class="col sug">
+    <div class="frame clip"><div class="mini">
+      <div class="appbar" style="border-radius:10px; border:1px solid var(--border); padding:10px 14px 8px">
+        <span class="brand">PipeTooling</span>
+        <a href="#life">Dashboard</a>
+        <a href="#life" class="on">Jobs<span class="badge" title="1 answer you have not seen">1</span></a>
+        <a href="#life">Schedule</a>
+      </div>
+      <div class="card">
+        <div class="ttl">You asked · 1</div>
+        <div><span class="jobname">Cedar Bluff Lofts</span> <span class="jobmeta">J1482</span> · <b>Dana Whitlock</b> answered just now: "Yes, it came Friday. It is on the job." <span class="newmark">new</span></div>
+      </div>
+    </div></div>
+    <p class="say">Marcus's screen when Dana's answer lands. The answer counts above <b>Jobs</b> until this line has been on his screen, then the number clears by itself. Nothing to press.</p>
+  </div>
+  <div class="col">
+    <div class="note" style="margin-top:0">
+      <b>Why the change.</b> My first pick told the asker by push alone. Most of the office works at a desk, and I could not read how many people have pushes switched on. The table that says so is closed to the dev seat. A count that needs no push is the safer way for an answer to reach the person who asked.<br><br>
+      <b>One rule each.</b> A question clears when you answer it. An answer clears when you see it.<br><br>
+      <b>Not a loop.</b> An answer is not a new tag. Marcus owes nothing, and Dana is not asked to clear anything again. If her answer is a question back, she picks his name with the <b>@</b>, and then it is a tag.
+    </div>
+  </div>
 </div>
 
 <!-- ============================================================ 5 -->
 <h2 id="phone">5 · On a phone <small>375 wide</small></h2>
-<p class="lede">The same three things on a phone: the list above the keyboard, the count where the Messages count already sits, and the section as cards.</p>
+<p class="lede">The same on a phone: the list above the keyboard, the count where the Messages count already sits, the section as cards, and the path of a person on the crew, who has no Jobs link.</p>
 <div class="phones">
   <div class="phone">
     <div class="bar"><span class="menu">☰<span class="badge">2</span></span><span>Jobs</span></div>
@@ -447,7 +507,7 @@
       <a href="#phone">Bids</a>
       <a href="#phone"><span>Messages</span><span class="badge inl">5</span></a>
     </div>
-    <div class="cap2" style="padding-top:10px">Today a phone shows the Messages count only inside the open menu. The tag count sits beside Jobs the same way, and one thing is new: the count rides on the menu button too, so it is seen with the menu shut.</div>
+    <div class="cap2" style="padding-top:10px">Today a phone shows the Messages count only inside the open menu. The tag count sits beside Jobs the same way, and one thing is new: the count rides on the menu button too, so it is seen with the menu shut. That is for people who have a Jobs link. The crew's menu has no Jobs, so their button carries no number.</div>
     <div class="body">
       <div class="push">
         <div class="app">PipeTooling <span>now</span></div>
@@ -464,25 +524,47 @@
       <div class="sec" style="margin:0">
         <h4>Tagged job notes <span class="badge inl">2</span></h4>
         <div class="t">
-          <div class="l1"><span class="jobname">Cedar Bluff Lofts</span><span class="age">10:04 AM</span></div>
-          <div class="q"><b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet <span class="at me">@Dana Whitlock</span></div>
+          <div class="l1"><span class="jobname">Tanner residence</span><span class="age late">Wed · 4d</span></div>
+          <div class="q"><b>Luis</b> | <span class="at me">@Dana Whitlock</span> homeowner wants the bill split in two, half now and half at the final. Can we?</div>
           <div class="acts">
-            <div class="box"><input value="" placeholder="Answer Marcus…" aria-label="Answer, phone"><button class="post" type="button">Post</button></div>
-            <button class="btn" type="button">Done, no reply</button>
-            <a class="lnk" href="#phone">Open the job ›</a>
+            <div class="box"><input value="" placeholder="Answer Luis…" aria-label="Answer, phone" readonly><button class="atbtn" type="button" tabindex="-1">@</button><button class="post" type="button" tabindex="-1">Post</button></div>
+            <button class="btn" type="button" tabindex="-1">No reply needed</button>
           </div>
         </div>
         <div class="t">
-          <div class="l1"><span class="jobname">Tanner residence</span><span class="age late">Fri · 2d</span></div>
-          <div class="q"><b>Luis</b> | <span class="at me">@Dana Whitlock</span> homeowner wants the bill split in two…</div>
+          <div class="l1"><span class="jobname">Cedar Bluff Lofts</span><span class="age">10:04 AM</span></div>
+          <div class="q"><b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet <span class="at me">@Dana Whitlock</span></div>
           <div class="acts">
-            <div class="box"><input value="" placeholder="Answer Luis…" aria-label="Answer, phone, second"><button class="post" type="button">Post</button></div>
-            <button class="btn" type="button">Done, no reply</button>
+            <div class="box"><input value="" placeholder="Answer Marcus…" aria-label="Answer, phone, second" readonly><button class="atbtn" type="button" tabindex="-1">@</button><button class="post" type="button" tabindex="-1">Post</button></div>
+            <button class="btn" type="button" tabindex="-1">No reply needed</button>
           </div>
         </div>
         <div class="fold"><div class="hd">You asked · 2 ›</div></div>
       </div>
     </div>
+    <div class="cap2">The office on a phone. The job's name opens the job. The oldest tag is on top.</div>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span class="menu">☰</span><span>Dashboard</span></div>
+    <div class="body">
+      <div class="card">
+        <div class="ttl">Needs you</div>
+        <div class="line"><span class="dot"></span><span><b>1 job note tagged you</b><br><span class="jobmeta">Cedar Bluff Lofts</span></span><span class="go">Open ›</span></div>
+      </div>
+      <div class="sec" style="margin:0; box-shadow:0 10px 28px rgba(0,0,0,.22)">
+        <h4>Tagged job notes <span class="badge inl">1</span><span class="foldbtn" aria-hidden="true">✕</span></h4>
+        <div class="t">
+          <div class="l1"><span class="jobname">Cedar Bluff Lofts</span><span class="age">11:20 AM</span></div>
+          <div class="q"><b>Dana</b> | <span class="at me">@Chris Alvarez</span> is the meter set still on for Tuesday?</div>
+          <div class="acts">
+            <div class="box"><input value="" placeholder="Answer Dana…" aria-label="Answer, crew phone" readonly><button class="atbtn" type="button" tabindex="-1">@</button><button class="post" type="button" tabindex="-1">Post</button></div>
+            <button class="btn" type="button" tabindex="-1">No reply needed</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cap2">Chris Alvarez, on the crew. He has no Jobs link and no Pipeline. The Needs you line opens the same list as a window, and so does the push. He answers there, and the answer goes on the job's notes. The job's name opens the job as he sees it.</div>
   </div>
 </div>
 
@@ -491,13 +573,13 @@
 <table class="calls">
   <thead><tr><th>Call</th><th>My pick</th><th>The other way</th></tr></thead>
   <tbody>
-    <tr><td>1 · Where it lands</td><td class="mine" data-h="My pick">Tagged job notes at the top of the Pipeline with the count above Jobs, and one line on the Dashboard's Needs you card.</td><td data-h="The other way">A lane in Messages, or a task on the checklist. Section 3 says why not.</td></tr>
-    <tr><td>2 · What clears it</td><td class="mine" data-h="My pick">An answer on the job, or Done, no reply. Opening does not.</td><td data-h="The other way">Opening clears it, like an unread mail. Simpler, but a tag read in passing is then lost.</td></tr>
+    <tr><td>1 · Where it lands</td><td class="mine" data-h="My pick">Tagged job notes at the top of the Pipeline with the count above Jobs, and one line on the Dashboard's Needs you card, which opens the same list as a window. <b>Settled: Taunya's pick, 2026-11-15.</b></td><td data-h="The other way">A lane in Messages, or a task on the checklist. Section 3 says why not.</td></tr>
+    <tr><td>2 · What clears it</td><td class="mine" data-h="My pick">An answer on the job, or No reply needed. Opening does not.</td><td data-h="The other way">Opening clears it, like an unread mail. Simpler, but a tag read in passing is then lost.</td></tr>
     <tr><td>3 · Nobody answers</td><td class="mine" data-h="My pick">It stays and turns amber after two working days. No reminder, no expiry.</td><td data-h="The other way">A second push after two days, or the tag falls off after two weeks.</td></tr>
     <tr><td>4 · Picking the name</td><td class="mine" data-h="My pick">A list under the box on @ or the @ button, the job's crew first. Only a picked name is a tag.</td><td data-h="The other way">The app reads @word from the text. Fails on two people named Chris and on "arrive @ 8:45".</td></tr>
     <tr><td>5 · Who can be tagged</td><td class="mine" data-h="My pick">Anyone with a login who can open that job: the office and the job's crew. Not subs, not people who left, and not an estimator, who cannot open a job today.</td><td data-h="The other way">Subs too. They see only their own jobs through their own pages, so it needs its own design.</td></tr>
     <tr><td>6 · A push</td><td class="mine" data-h="My pick">Yes, one push per tag, under the notice switches a person already has. No email.</td><td data-h="The other way">The count only. Cheaper, but the crew is not looking at the header all day.</td></tr>
-    <tr><td>7 · Telling the sender</td><td class="mine" data-h="My pick">A push on the answer and the You asked fold. No count for the sender.</td><td data-h="The other way">The answer tags the sender back, which they must then clear. Two people end up clearing each other.</td></tr>
+    <tr><td>7 · Telling the asker</td><td class="mine" data-h="My pick"><b>Changed.</b> The answer counts above Jobs for the asker until they see it, then clears by itself. A push too, and the You asked fold. A question back is a tag, picked with the @ in the answer box.</td><td data-h="The other way">A push and the fold only, with no count. That was my first pick. It leans on pushes being switched on, which I could not read.</td></tr>
     <tr><td>8 · Other note boxes</td><td class="mine" data-h="My pick">The Pipeline row first, then the job window, Job Mode and Quickfill, which share one box. Reports, estimates and bids later.</td><td data-h="The other way">Every box at once. A bigger first PR with more to walk.</td></tr>
   </tbody>
 </table>
@@ -514,8 +596,129 @@
     })
   })
 
-  // The working note box. Made-up people only.
-  var PEOPLE = [
+  // The note boxes. Made-up people only. One function wires the Pipeline row's box and each answer box.
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] }) }
+  function initials(n) { return n.split(' ').map(function (w) { return w[0] }).join('').slice(0, 2) }
+  // A first name two people share is written whole, so the line says which Chris.
+  function who(names, people) {
+    return names.map(function (n) {
+      var first = n.split(' ')[0]
+      var shared = people.filter(function (p) { return p.name.split(' ')[0] === first }).length > 1
+      return esc(shared ? n : first)
+    }).join(' and ')
+  }
+
+  function wire(el, people, onPost) {
+    var input = el.querySelector('input')
+    var list = el.querySelector('.names')
+    var will = el.querySelector('.willtag')
+    var picked = []
+    var shown = []
+    var sel = 0
+
+    function caret() { return input.selectionStart == null ? input.value.length : input.selectionStart }
+    function query() {
+      var m = /(^|\s)@([A-Za-z]*)$/.exec(input.value.slice(0, caret()))
+      return m ? m[2].toLowerCase() : null
+    }
+    function matches(q) {
+      return people.filter(function (p) {
+        if (picked.indexOf(p.name) >= 0) return false
+        return p.name.toLowerCase().split(' ').some(function (w) { return w.indexOf(q) === 0 })
+      })
+    }
+    function pickable() { return shown.filter(function (p) { return !p.off }) }
+    function draw() {
+      var q = query()
+      if (q == null) { list.hidden = true; return }
+      shown = matches(q)
+      if (shown.length === 0) { list.innerHTML = '<div class="grp">Nobody by that name can open this job</div>'; list.hidden = false; return }
+      if (sel >= pickable().length) sel = 0
+      var html = '', grp = '', i = 0
+      shown.forEach(function (p) {
+        if (p.grp !== grp) { grp = p.grp; html += '<div class="grp">' + esc(grp) + '</div>' }
+        var inner = '<span class="av">' + initials(p.name) + '</span><span class="who">' + esc(p.name) + '</span><span class="what">' + esc(p.what) + '</span>'
+        if (p.off) { html += '<div class="p off">' + inner + '</div>'; return }
+        html += '<div class="p" role="option" data-name="' + esc(p.name) + '" aria-selected="' + (i === sel) + '">' + inner + '</div>'
+        i += 1
+      })
+      list.innerHTML = html
+      list.hidden = false
+    }
+    function drawWill() {
+      will.innerHTML = picked.length === 0 ? '' : 'Will tag: ' + picked.map(function (n) {
+        return '<span class="at">@' + esc(n) + '<button type="button" data-off="' + esc(n) + '" aria-label="Take ' + esc(n) + ' off">×</button></span>'
+      }).join(' ')
+    }
+    function pick(name) {
+      var pos = caret()
+      var before = input.value.slice(0, pos).replace(/(^|\s)@([A-Za-z]*)$/, '$1@' + name + ' ')
+      input.value = before + input.value.slice(pos)
+      picked.push(name)
+      list.hidden = true
+      sel = 0
+      drawWill()
+      input.focus()
+      input.setSelectionRange(before.length, before.length)
+    }
+    function clear() { input.value = ''; picked = []; list.hidden = true; drawWill() }
+    function post() {
+      var body = input.value.trim()
+      if (!body) return
+      var html = esc(body)
+      var live = picked.filter(function (n) { return body.indexOf('@' + n) >= 0 })
+      live.forEach(function (n) { html = html.split('@' + esc(n)).join('<span class="at">@' + esc(n) + '</span>') })
+      clear()
+      onPost(html, live)
+    }
+
+    input.addEventListener('input', function () { sel = 0; draw() })
+    input.addEventListener('click', draw)
+    input.addEventListener('keydown', function (e) {
+      var open = !list.hidden
+      var can = pickable()
+      if (open && can.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault()
+        sel = (sel + (e.key === 'ArrowDown' ? 1 : can.length - 1)) % can.length
+        draw()
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (open && can.length) pick(can[sel].name)
+        else post()
+      } else if (e.key === 'Escape' && open) {
+        list.hidden = true
+      }
+    })
+    list.addEventListener('mousedown', function (e) {
+      var row = e.target.closest('[data-name]')
+      if (!row) return
+      e.preventDefault()
+      pick(row.getAttribute('data-name'))
+    })
+    will.addEventListener('click', function (e) {
+      var off = e.target.getAttribute && e.target.getAttribute('data-off')
+      if (!off) return
+      picked = picked.filter(function (n) { return n !== off })
+      input.value = input.value.split('@' + off + ' ').join('').split('@' + off).join('')
+      drawWill()
+    })
+    el.querySelector('[data-at]').addEventListener('click', function () {
+      var v = input.value
+      input.value = v + (v && !/\s$/.test(v) ? ' ' : '') + '@'
+      input.focus()
+      input.setSelectionRange(input.value.length, input.value.length)
+      sel = 0
+      draw()
+    })
+    el.querySelector('[data-post]').addEventListener('click', post)
+    var x = el.querySelector('[data-clear]')
+    if (x) x.addEventListener('click', clear)
+    document.addEventListener('click', function (e) { if (!el.contains(e.target)) list.hidden = true })
+    return { clear: clear }
+  }
+
+  // 1 · The Pipeline row's box.
+  var ROW = [
     { name: 'Luis Ortega', what: 'superintendent · on this job', grp: 'On this job' },
     { name: 'Chris Alvarez', what: 'crew · on this job', grp: 'On this job' },
     { name: 'Chris Bell', what: 'office', grp: 'Office' },
@@ -523,125 +726,74 @@
     { name: 'Priya Nair', what: 'estimator · cannot open jobs', grp: 'Cannot be tagged here', off: true },
     { name: 'Chuck Kessler', what: 'sub · not in the first version', grp: 'Cannot be tagged here', off: true },
   ]
-  var input = document.getElementById('demoInput')
-  var list = document.getElementById('demoNames')
-  var will = document.getElementById('demoWill')
   var notes = document.getElementById('demoNotes')
-  var picked = []
-  var shown = []
-  var sel = 0
   var next = 33
-
-  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] }) }
-  function initials(n) { return n.split(' ').map(function (w) { return w[0] }).join('').slice(0, 2) }
-  function query() {
-    var before = input.value.slice(0, input.selectionStart == null ? input.value.length : input.selectionStart)
-    var m = /(^|\s)@([A-Za-z]*)$/.exec(before)
-    return m ? m[2].toLowerCase() : null
-  }
-  function matches(q) {
-    return PEOPLE.filter(function (p) {
-      if (picked.indexOf(p.name) >= 0) return false
-      return p.name.toLowerCase().split(' ').some(function (w) { return w.indexOf(q) === 0 })
-    })
-  }
-  function draw() {
-    var q = query()
-    if (q == null) { list.hidden = true; return }
-    shown = matches(q)
-    if (shown.length === 0) { list.innerHTML = '<div class="grp">Nobody by that name can open this job</div>'; list.hidden = false; return }
-    var pickable = shown.filter(function (p) { return !p.off })
-    if (sel >= pickable.length) sel = 0
-    var html = '', grp = '', i = 0
-    shown.forEach(function (p) {
-      if (p.grp !== grp) { grp = p.grp; html += '<div class="grp">' + esc(grp) + '</div>' }
-      if (p.off) { html += '<div class="p off"><span class="av">' + initials(p.name) + '</span><span class="who">' + esc(p.name) + '</span><span class="what">' + esc(p.what) + '</span></div>'; return }
-      html += '<div class="p" role="option" data-name="' + esc(p.name) + '" aria-selected="' + (i === sel) + '"><span class="av">' + initials(p.name) + '</span><span class="who">' + esc(p.name) + '</span><span class="what">' + esc(p.what) + '</span></div>'
-      i += 1
-    })
-    list.innerHTML = html
-    list.hidden = false
-  }
-  function drawWill() {
-    will.innerHTML = picked.length === 0 ? '' : 'Will tag: ' + picked.map(function (n) {
-      return '<span class="at">@' + esc(n) + '<button type="button" data-off="' + esc(n) + '" aria-label="Take ' + esc(n) + ' off">×</button></span>'
-    }).join(' ')
-  }
-  function pick(name) {
-    var pos = input.selectionStart == null ? input.value.length : input.selectionStart
-    var before = input.value.slice(0, pos).replace(/(^|\s)@([A-Za-z]*)$/, '$1@' + name + ' ')
-    input.value = before + input.value.slice(pos)
-    picked.push(name)
-    list.hidden = true
-    sel = 0
-    drawWill()
-    input.focus()
-    input.setSelectionRange(before.length, before.length)
-  }
-  function post() {
-    var body = input.value.trim()
-    if (!body) return
-    var html = esc(body)
-    var live = picked.filter(function (n) { return body.indexOf('@' + n) >= 0 })
-    live.forEach(function (n) { html = html.split('@' + esc(n)).join('<span class="at">@' + esc(n) + '</span>') })
-    var wait = live.length ? '<span class="wait">waiting on ' + live.map(function (n) {
-      // A first name two people share is written whole, so the line says which Chris.
-      var first = n.split(' ')[0]
-      var shared = PEOPLE.filter(function (p) { return p.name.split(' ')[0] === first }).length > 1
-      return esc(shared ? n : first)
-    }).join(' and ') + ' · just now</span>' : ''
+  wire(document.getElementById('demoBox'), ROW, function (html, live) {
+    var wait = live.length ? '<span class="wait">waiting on ' + who(live, ROW) + ' · just now</span>' : ''
     var row = document.createElement('div')
     row.className = 'n'
     row.innerHTML = '<span class="num">' + next + '</span><span class="txt"><span class="when">Sun 10:06 AM (today)</span> <b>You</b> | ' + html + wait + '</span>'
     next += 1
     notes.appendChild(row)
     notes.scrollTop = notes.scrollHeight
-    input.value = ''
-    picked = []
-    list.hidden = true
-    drawWill()
+  })
+
+  // 2 · The section. An answer or No reply needed clears a tag, and both red numbers follow.
+  var CARDS = {
+    tanner: [
+      { name: 'Luis Ortega', what: 'superintendent', grp: 'Asked you' },
+      { name: 'Chris Alvarez', what: 'crew', grp: 'On this job' },
+      { name: 'Marcus Hale', what: 'office', grp: 'Office' },
+      { name: 'Chris Bell', what: 'office', grp: 'Office' },
+    ],
+    cedar: [
+      { name: 'Marcus Hale', what: 'office', grp: 'Asked you' },
+      { name: 'Luis Ortega', what: 'superintendent', grp: 'On this job' },
+      { name: 'Chris Alvarez', what: 'crew', grp: 'On this job' },
+      { name: 'Chris Bell', what: 'office', grp: 'Office' },
+    ],
   }
-  input.addEventListener('input', function () { sel = 0; draw() })
-  input.addEventListener('click', draw)
-  input.addEventListener('keydown', function (e) {
-    var open = !list.hidden
-    var pickable = shown.filter(function (p) { return !p.off })
-    if (open && pickable.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      e.preventDefault()
-      sel = (sel + (e.key === 'ArrowDown' ? 1 : pickable.length - 1)) % pickable.length
-      draw()
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (open && pickable.length) pick(pickable[sel].name)
-      else post()
-    } else if (e.key === 'Escape' && open) {
-      list.hidden = true
+  var sub = document.getElementById('landSub')
+  var subWords = sub.textContent
+  var waiting = 2
+  var boxes = []
+  function setCount(n) {
+    waiting = n
+    document.querySelectorAll('[data-tagcount]').forEach(function (b) { b.textContent = String(n); b.hidden = n === 0 })
+    sub.textContent = n === 0 ? 'Nothing waiting on you' : subWords
+  }
+  document.querySelectorAll('#landSec [data-card]').forEach(function (card) {
+    var people = CARDS[card.getAttribute('data-card')]
+    var asker = people[0].name.split(' ')[0]
+    var acts = card.querySelector('.acts')
+    function cleared(words) {
+      var line = document.createElement('div')
+      line.className = 'cleared'
+      line.innerHTML = words
+      acts.hidden = true
+      card.appendChild(line)
+      setCount(waiting - 1)
     }
+    boxes.push(wire(card.querySelector('.composer'), people, function (html, live) {
+      cleared('<b>You</b> | ' + html + '<br><span class="ok">Answered.</span> It is on the job\'s notes and ' + asker + ' is told.' + (live.length ? ' It now waits on ' + who(live, people) + '.' : ''))
+    }))
+    card.querySelector('[data-done]').addEventListener('click', function () {
+      cleared('<span class="ok">No reply needed.</span> ' + asker + ' sees that you pressed it. No note was added to the job.')
+    })
   })
-  list.addEventListener('mousedown', function (e) {
-    var row = e.target.closest('[data-name]')
-    if (!row) return
-    e.preventDefault()
-    pick(row.getAttribute('data-name'))
+  document.getElementById('landAgain').addEventListener('click', function () {
+    document.querySelectorAll('#landSec .cleared').forEach(function (c) { c.remove() })
+    document.querySelectorAll('#landSec .acts').forEach(function (a) { a.hidden = false })
+    boxes.forEach(function (b) { b.clear() })
+    setCount(2)
   })
-  will.addEventListener('click', function (e) {
-    var off = e.target.getAttribute && e.target.getAttribute('data-off')
-    if (!off) return
-    picked = picked.filter(function (n) { return n !== off })
-    input.value = input.value.split('@' + off + ' ').join('').split('@' + off).join('')
-    drawWill()
+  var fold = document.getElementById('landFold')
+  fold.addEventListener('click', function () {
+    var body = document.getElementById('landBody')
+    body.hidden = !body.hidden
+    fold.setAttribute('aria-expanded', String(!body.hidden))
+    fold.textContent = body.hidden ? 'Open ▾' : 'Fold ▴'
   })
-  document.getElementById('demoAt').addEventListener('click', function () {
-    var v = input.value
-    input.value = v + (v && !/\s$/.test(v) ? ' ' : '') + '@'
-    input.focus()
-    input.setSelectionRange(input.value.length, input.value.length)
-    sel = 0
-    draw()
-  })
-  document.getElementById('demoPost').addEventListener('click', post)
-  document.getElementById('demoClear').addEventListener('click', function () { input.value = ''; picked = []; list.hidden = true; drawWill() })
-  document.addEventListener('click', function (e) { if (!e.target.closest('.composer')) list.hidden = true })
 })()
 </script>
 </body>

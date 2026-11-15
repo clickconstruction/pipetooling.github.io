@@ -61,7 +61,7 @@ export function RoadmapTaskPlaceSection({ taskId, canEdit, userId, nameOf }: Pro
         {place ? (
           <>
             <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{place.name}</div>
-            <TaskPlaceBlock place={place} placedByName={place.setBy ? nameOf(place.setBy) : null} photoUrl={photoUrl} />
+            <TaskPlaceBlock place={place} placedByName={place.setBy ? nameOf(place.setBy) : null} photoUrl={photoUrl} canOpenWay={false} />
           </>
         ) : photoUrl ? (
           <TaskSpotPhotoView url={photoUrl} />

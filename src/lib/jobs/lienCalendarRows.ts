@@ -66,7 +66,7 @@ export function lienRunwayForJob(job: JobWithDetails, inv: JobsLedgerInvoice | n
           deps.todayYmd,
           deps.promisedPayDates?.[job.id] ?? null,
           paceInputFor(deps.paceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, deps.paySpeeds),
-          calendarSourceFor(deps.payCalendars, { payerId: payer.id, jobId: job.id }),
+          calendarSourceFor(deps.payCalendars, { payerId: payer.id, jobId: job.id, invoiceId: inv.id }),
         )
       : null
   return buildLienPayRunway({
