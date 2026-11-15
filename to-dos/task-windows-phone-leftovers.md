@@ -2,7 +2,7 @@
 name: "Tasks on a phone: what the New task walk left"
 number: 348
 group: close
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 open as #8003, #8008, #8009 and #8012 · rows 9 and 10 built in v2.7203 on the owner's word *Yes, build both* · left: a walk of two sheets on a phone, and Grace's two notes
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · left: a walk of two sheets on a phone, and Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -11,10 +11,10 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: The five PRs merge. Then someone at a phone opens a Messages sheet and the Dispatch job picker with the keyboard up, to see each stay on screen. Grace's two notes wait on her word.
+next: Someone at a phone opens a Messages sheet and the Dispatch job picker with the keyboard up, to see each stay on screen. Grace's two notes wait on her word.
 size: M as five small PRs (S · S · XS · S · S), built; left: a walk on a phone
 blocker: a person at a phone for the walk, and Grace's word for her two notes.
-ver: v2.7155 · v2.7203
+ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203
 opinion: close it after the walk — every row that could be built is built, and the two sheets left unwalked take the same two numbers the walked ones do
 mockup: not required — each row is a fix to a screen that exists, found on a walk
 ---
