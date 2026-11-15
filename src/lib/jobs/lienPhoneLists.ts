@@ -10,7 +10,15 @@
  */
 import type { CSSProperties } from 'react'
 
-export const LIEN_PILE_HEAD_H = 30
+/**
+ * One title bar on a computer (v2.7323, the owner's ask of 2026-11-15: the bars sit closer, the words as they are).
+ * The tallest line in any bar is the pane head's 0.78rem fact: at the bar's line-height of 1.2 its box is 15 px, and
+ * 24 keeps 4 px of air over and under it (23 is the floor; the pixel over it keeps the air at 4 when the box rounds).
+ * The pane's section heads and its page labels read this same number (`LIEN_PANE_HEAD_H`), so the bars that sit
+ * beside each other at the top of the desk match; `.lienPileHead` in index.css carries it as the base height.
+ */
+export const LIEN_PILE_HEAD_H = 24
+/** A phone's title is a thumb tall: a tap rule, well over the text floor above, so it does not follow it. */
 export const LIEN_PILE_HEAD_H_PHONE = 40
 
 export function lienPileHeadHeight(phone: boolean): number {

@@ -58,8 +58,8 @@ export type LienFooterInput = {
 export type LienFooter = {
   primary: LienFooterPrimary | null
   menus: LienFooterMenu[]
-  /** The quiet links left of the presses: Save draft and Already mailed? Record it… (a notice, for the office). */
-  links: Array<'save' | 'by_hand'>
+  /** The quiet link left of the presses: Already mailed? Record it… (a notice, for the office). Save draft went in v2.7327: the draft saves itself. */
+  links: Array<'by_hand'>
 }
 
 export const LIEN_FOOTER_OKAYED_LABEL = 'He already okayed it ▾'
@@ -90,7 +90,7 @@ export function lienFooter(input: LienFooterInput): LienFooter {
   const { role, paper, blocked } = input
   const press = lienLeaderPressWords(input.leaderName, paper)
   const leader = isLienLeader(role)
-  const links: LienFooter['links'] = paper === 'notice' && isLienOffice(role) ? ['save', 'by_hand'] : []
+  const links: LienFooter['links'] = paper === 'notice' && isLienOffice(role) ? ['by_hand'] : []
   if (blocked) return { primary: null, menus: [], links }
 
   let primary: LienFooterPrimary

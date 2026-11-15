@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { LienJobHeading } from './LienJobNumber'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
@@ -12,6 +12,9 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/job
 import { holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import { contractEndedWords, paymentBondWords, retainageDeadlineWords, type LienRetainageEntry } from '../../lib/jobs/lienDeskRetainage'
 import { useJobRetainage } from '../../hooks/useJobRetainage'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { useLienPaneHeads } from './useLienPaneHeads'
+import { lienRetainagePaneSections, lienRetainageWindowWords } from '../../lib/jobs/lienAffidavitPaneSections'
 import { retainageReleaseWords, retainageSourceWords } from '../../lib/ar/retainageHeld'
 import { holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
@@ -50,8 +53,6 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
   opacity: disabled ? 0.55 : 1,
   whiteSpace: 'nowrap',
 })
-const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
-const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
 export default function LienDeskRetainagePane({
   entry,
@@ -185,6 +186,12 @@ export default function LienDeskRetainagePane({
   const hold = (reason: 'promised' | 'call_first') => run('Hold', async () => void (item && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, entry.deadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the window closes.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
 
+  // The pane's stacked heads (v2.7320, the owner's ask of 2026-11-15): the notice pane's grey bars over the gates, the § 53.056 claim and the paper, where two boxes wore a tiny caption.
+  const isMobile = useIsMobile()
+  const paneRef = useRef<HTMLDivElement | null>(null)
+  const paneHeads = lienRetainagePaneSections({ gates: entry.gates, endedWords, retainageWords: formatUsdNoCents(entry.retainageHeld), inClaim: entry.inClaim, pages: 2 })
+  const heads = useLienPaneHeads({ paneRef, sections: paneHeads, phone: isMobile })
+
   // ---------- footer ----------
   let footer: React.ReactNode = null
   const fuse = entry.deadline ? <span style={{ color: 'var(--text-red-600)' }}>The § 53.057 window on {label} closes {demandDate(entry.deadline)}.</span> : null
@@ -290,15 +297,23 @@ export default function LienDeskRetainagePane({
   return (
     <>
     {footerEl && footer ? createPortal(footer, footerEl) : null}
-    <div style={{ padding: '0.9rem 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }} data-lien-retainage-pane>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
+    <div
+      ref={paneRef}
+      data-lien-retainage-pane
+      data-lien-pane-phone={isMobile ? 'yes' : undefined}
+      onScroll={heads.onScroll}
+      // The pane is the scrolling box its heads stick in (v2.7320), the notice pane's shape: its gutter is the pane's padding, which the heads cancel to run across; a phone holds the one column to the pane's width.
+      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0, ...(isMobile ? { gridTemplateColumns: 'minmax(0, 1fr)' } : null) }}
+    >
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? '0.6rem' : '0.9rem' }}>
         <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>· GC {gc?.name ?? ''} {job?.job_address ? `· ${job.job_address}` : ''}</span>
         <span style={tone}>§ 53.057 · {retainageDeadlineWords(entry, formatYmdMonthDay)}</span>
         <span style={chip(entry.paymentBond === 'yes' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', entry.paymentBond === 'yes' ? 'var(--text-amber-800)' : 'var(--text-muted)')}>{paymentBondWords(entry.paymentBond)}</span>
       </div>
-      <div style={boxStyle}>
-        <div style={boxHead}>Before this notice can go (§ 53.057 · 30 days from the day our contract on the job ended · {endedWords})</div>
+      {heads.head('gates')}
+      <div data-lien-pane-body="gates" data-lien-retainage-gates style={{ display: 'grid', gap: '0.35rem' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-retainage-window>{lienRetainageWindowWords(endedWords)}</div>
         <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.8125rem' }}>
           {entry.gates.map((g) => (
             <div key={g.key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -336,8 +351,8 @@ export default function LienDeskRetainagePane({
           </div>
         ) : null}
       </div>
-      <div style={{ ...boxStyle, background: entry.inClaim ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', borderColor: entry.inClaim ? 'var(--border-green)' : 'var(--border-amber)' }} data-lien-retainage-in-claim={entry.inClaim ? 'yes' : 'no'}>
-        <div style={boxHead}>{entry.inClaim ? 'Already inside a § 53.056 claim' : 'Not yet inside a § 53.056 claim'}</div>
+      {heads.head('claim')}
+      <div data-lien-pane-body="claim" data-lien-retainage-in-claim={entry.inClaim ? 'yes' : 'no'} style={{ display: 'grid', gap: '0.35rem' }}>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
           {entry.inClaim
             ? 'A recorded monthly notice on this job named this retainage in its claim, so the owner may already withhold it from the original contractor (§ 53.081(b)). This form is belt and suspenders — counsel says send it inside the 30 days anyway.'
@@ -349,6 +364,8 @@ export default function LienDeskRetainagePane({
           </div>
         ) : null}
       </div>
+      {heads.head('paper')}
+      <div data-lien-pane-body="paper" style={{ display: 'grid', gap: '0.7rem', paddingBottom: '0.9rem' }}>
       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Page 1 of 2 · cover letter (counsel's retainage rules, 2026-09-22)</div>
       <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
@@ -356,6 +373,7 @@ export default function LienDeskRetainagePane({
       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Page 2 of 2 · the form, as § 53.057(a-2) prescribes it</div>
       <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
+      </div>
       </div>
     </div>
     </>

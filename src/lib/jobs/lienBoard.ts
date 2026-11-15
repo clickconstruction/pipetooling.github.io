@@ -12,9 +12,8 @@
  * walks through it. Every line a person reads keeps to `plainWords.ts`; the `·` in a tile's label
  * is the desk's own mark, as on every pile chip, never glue inside a sentence.
  *
- * Two names wait on sibling PRs (2026-11-15): *To send* for the To draft pile (PR 8186 renames it) and
- * *In the mail* for the approved and printed notices (the run-checklist session renames Printed to
- * *In the run*). `LIEN_BOARD_WORDS` holds both, so the swap is one line when they land.
+ * Two names follow main's piles (2026-11-15): *To send* for the `to_draft` pile (v2.7327) and *In the run* for the
+ * approved and printed notices (v2.7328). `LIEN_BOARD_WORDS` holds both.
  */
 import { batchWords, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
@@ -152,7 +151,7 @@ export const LIEN_BOARD_WORDS = {
   needs_property: 'Needs the property facts',
   to_send: 'To send',
   awaiting: 'Awaiting approval',
-  in_mail: 'In the mail',
+  in_mail: 'In the run',
   sent: 'Sent',
   ready: 'Ready to file',
   filed: 'Filed · Served',
@@ -172,7 +171,7 @@ export const LIEN_BOARD_DAY_DAYS = 1
 /** A chip inside this many days is amber. */
 export const LIEN_BOARD_WEEK_DAYS = 7
 
-/** The stages still to pass before a notice is in the mail with its number on record. */
+/** The stages still to pass before a notice is mailed with its number on record. */
 const NOTICE_STEPS_LEFT: Record<LienBoardNoticeStage, number> = { needs_owner: 4, to_send: 3, awaiting: 2, in_mail: 1, sent: 0, held: 2, missed: 0 }
 /** The stages still to pass before an affidavit is filed. */
 const AFFIDAVIT_STEPS_LEFT: Record<LienBoardAffidavitStage, number> = { needs_property: 4, to_send: 3, awaiting: 2, ready: 1, filed: 0, held: 2, missed: 0 }
@@ -486,7 +485,7 @@ function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, aff
         key: 'in_mail',
         figure: String(printed + ready),
         label: LIEN_BOARD_WORDS.in_mail.toLowerCase(),
-        line: printed > 0 ? `Type the tracking ${plural(printed, 'number', 'numbers')}.` : ready > 0 ? `Print the run.` : 'Nothing is in the mail.',
+        line: printed > 0 ? `Type the tracking ${plural(printed, 'number', 'numbers')}.` : ready > 0 ? `Print the run.` : 'Nothing is in the run.',
         tone: printed + ready > 0 ? 'amber' : 'quiet',
         destination: printed + ready > 0 ? { kind: 'run' } : null,
       },

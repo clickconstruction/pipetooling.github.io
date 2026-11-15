@@ -11,7 +11,7 @@ import type { LienNextUpRow } from '../../lib/jobs/lienNextUp'
 afterEach(cleanup)
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
-  key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · AXO Schertz', sub: 'Notice to draft', dueOn: '2026-10-09', daysLeft: 4, severity: 'red', group: 'now', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' }, ...over,
+  key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · AXO Schertz', sub: 'Notice to send', dueOn: '2026-10-09', daysLeft: 4, severity: 'red', group: 'now', action: 'draft', button: 'Open the notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' }, ...over,
 })
 
 describe('LienDeskNextUp', () => {
@@ -30,7 +30,7 @@ describe('LienDeskNextUp', () => {
     expect(first.textContent).toContain('Notice')
     expect(first.textContent).toContain('650 · AXO Schertz')
     expect(first.textContent).toContain('Oct 9 · 4 days left')
-    fireEvent.click(within(first).getByRole('button', { name: 'Draft notice' }))
+    fireEvent.click(within(first).getByRole('button', { name: 'Open the notice' }))
     expect(onAct).toHaveBeenCalledTimes(1)
     expect(onAct.mock.calls[0]![0].key).toBe('notice:j1')
     fireEvent.click(within(now).getByRole('button', { name: 'Send the run' }))
@@ -50,7 +50,7 @@ describe('LienDeskNextUp', () => {
     expect((document.querySelector('[data-lien-next-up="empty"]') as HTMLElement).textContent).toContain('Nothing needs you right now.')
     view.unmount()
     render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile onAct={() => {}} />)
-    const press = screen.getByRole('button', { name: 'Draft notice' }) as HTMLButtonElement
+    const press = screen.getByRole('button', { name: 'Open the notice' }) as HTMLButtonElement
     expect(press.style.width).toBe('')
     expect(press.style.minHeight).toBe('40px')
   })
@@ -79,7 +79,7 @@ describe('LienDeskNextUp', () => {
     render(<LienDeskNextUp rows={[row({ action: 'approve', button: null })]} loading={false} isMobile onAct={() => {}} />)
     expect(document.querySelector('[data-lien-next-up-step-words]')!.textContent).toBe('Approve · leader')
     cleanup()
-    render(<LienDeskNextUp rows={[row({ action: 'draft', button: 'Draft notice' })]} loading={false} isMobile={false} onAct={() => {}} />)
+    render(<LienDeskNextUp rows={[row({ action: 'draft', button: 'Open the notice' })]} loading={false} isMobile={false} onAct={() => {}} />)
     expect(screen.queryByTestId('lien-step-row')).toBeNull()
     expect(screen.getByTestId('lien-step-mark')).toBeTruthy()
     // A computer's row has its own column for the state and no step words beside the dots.
@@ -190,7 +190,7 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
     expect(on.row).toHaveBeenCalledTimes(3)
     expect(screen.queryByTestId('lien-step-card')).toBeNull()
     // The row's own press and its chip do what they did, and do not open the screen.
-    fireEvent.click(screen.getByRole('button', { name: 'Draft notice' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open the notice' }))
     expect(on.act).toHaveBeenCalledWith(r)
     fireEvent.click(screen.getByTestId('lien-next-up-paper-j1-notice'))
     expect(on.paper).toHaveBeenCalledWith(r)
@@ -276,7 +276,7 @@ describe('LienDeskNextUp · the chip as a door to the paper (v2.4632)', () => {
       row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner' }),
       row({ key: 'notice:j2', jobId: 'j2', title: '651 · AXO Schertz II', action: 'approve', button: 'Approve' }),
       row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
-      row({ key: 'retainage:j3', jobId: 'j3', kind: 'retainage', title: '700 · Retainage', action: 'draft', button: 'Draft notice', target: { open: 'retainage', jobId: 'j3' } }),
+      row({ key: 'retainage:j3', jobId: 'j3', kind: 'retainage', title: '700 · Retainage', action: 'draft', button: 'Open the notice', target: { open: 'retainage', jobId: 'j3' } }),
     ]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenPaper={onOpenPaper} gapsFor={(r) => (r.jobId === 'j1' ? 1 : 0)} />)
     const door = screen.getByTestId('lien-next-up-paper-j1-notice')
@@ -309,7 +309,7 @@ describe('LienDeskNextUp · the printed run (punch list #101)', () => {
   it('one row tagged Run, two buttons, its jobs folded until pressed, each a door to its job', () => {
     const onAct = vi.fn()
     const onOpenJob = vi.fn()
-    render(<LienDeskNextUp rows={[run]} loading={false} isMobile={false} onAct={onAct} onOpenJob={onOpenJob} ready={{ notice: 19 }} printed={{ notice: 19 }} onOpenRun={() => {}} />)
+    render(<LienDeskNextUp rows={[run]} loading={false} isMobile={false} onAct={onAct} onOpenJob={onOpenJob} />)
     const el = document.querySelector('[data-lien-next-up-row="run:printed"]') as HTMLElement
     expect(el.textContent).toContain('Run')
     expect(el.textContent).toContain('19 notices printed Oct 7')
@@ -414,7 +414,7 @@ describe('LienDeskNextUp · the doors beside a row whose notice on record still 
     expect(onAct.mock.calls[0]![0].target).toEqual({ open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] })
     fireEvent.click(within(el).getByRole('button', { name: 'The last day of work is wrong' }))
     expect(onAct.mock.calls[1]![0].target).toEqual({ open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true })
-    fireEvent.click(within(el).getByRole('button', { name: 'Draft notice' }))
+    fireEvent.click(within(el).getByRole('button', { name: 'Open the notice' }))
     expect(onAct.mock.calls[2]![0].target).toEqual({ open: 'notices', jobId: 'j1', pile: 'to_draft' })
     expect(el.querySelectorAll('[data-lien-next-up-door]')).toHaveLength(2)
   })
