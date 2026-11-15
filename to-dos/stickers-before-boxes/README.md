@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · PRs 2 to 6 not built
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PRs 3 to 6 not built
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,10 +14,10 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: PR 2 (print a run) in its own session once Grace says to build again, then PR 3 and a stop to walk the site.
-size: L as a train of six (M · M · M · S · M · S); left: PRs 2 to 6 (M · M · S · M · S), PRs 2 and 3 close the loop
-blocker: Grace's go for PR 2. Her rule of 2026-11-13 holds new screens back while sessions run on Opus 5.5; they only finish what is open.
-ver: v2.7072
+next: PR 3 (the first scan) once PR 2 and #351's PR 1 have both merged, then a stop to walk the site, then PRs 4 to 6.
+size: L as a train of six (M · M · M · S · M · S); left: PRs 3 to 6 (M · S · M · S), PR 3 closes the loop
+blocker: PR 3 waits for PR 2 and #351's PR 1 to merge, by the owner's order of 2026-11-14.
+ver: v2.7272
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -405,5 +405,27 @@ before PR 2.
 
 2026-11-13, later: **the Rename of PR 4 is built on its own** as v2.7179, on the owner's ask after a look at a real site's names. **Edit** on a box changes its name, its kind and its where line (`editBox.ts`, `EditBoxForm.tsx`, `editContainer`). PR 4 keeps the rest: the *Renamed from* line, the sticker's own presses and *Empty it and start over*.
 
-**PR 2 waits on Grace's go.** Her rule of 2026-11-13: while sessions run on Opus 5.5 they build no
+**PR 2 waited on Grace's go.** Her rule of 2026-11-13: while sessions run on Opus 5.5 they build no
 new screens. They only get what is open onto main, and write what should change on a card.
+
+2026-11-14: **the owner opened PRs 2 and 3.** Micah's words were *Yes, as picked*, to a plan that said: PR 2 now,
+PR 3 after PR 2 and #351's PR 1 have both merged, then a stop to walk the site, then PRs 4 to 6. He also changed
+call 7: a new box made from a blank sticker takes the site's next free name under punch list #351's rule, with the
+sticker's number shown beside it (PR 3's and #351's business).
+
+2026-11-14: **PR 2, print a run, is built** as v2.7272. **Print blank stickers** sits beside Print labels on the
+job's On site strip and at the right end of the Materials tabs, for the office, a primary and a superintendent, dead
+with the trigger's words for the rest. It asks how many (30 · 60 · 100 · 200 or a typed 1 to 500), **Copies of each**
+and the tape width, says where the last run the caller can see ended and which job new boxes go on, and one press
+mints the run through `mint_sticker_run` and prints the strips on Brother tape as soon as they are drawn: the QR, the
+number large, the dashed address, *Scan for what is inside*, over the labels window's own USB route, chained behind
+one lead-in, or the print window. **Print 1 test strip** prints 0000 and mints nothing. A run that stops part way
+says how many stickers went and the press becomes *Print the rest, 0163 to 0300*. The job's **Runs** fold lists each
+run with its range, its count, how many are on boxes and not used, who printed and when, with **Reprint** and **Print
+the rest**. **Export the stickers as a CSV** writes the run for Brother's editor. The words are
+`src/lib/materials/stickerRun.ts`; the reads and the mint `stickerRunsIo.ts`; the window `PrintStickersModal.tsx`.
+
+What PR 2 changed from the design, said plainly: the press names the count, not the range, because the numbers are
+given by the mint under its lock and a range shown ahead could be another session's; the run's title carries the range
+once it exists. *Print 0163 again* for one damaged sticker is not its own press: Reprint prints the run, Print the rest
+the blank ones. The phone's On site tab has no press yet, and *Move the unused ones to another job* waits.

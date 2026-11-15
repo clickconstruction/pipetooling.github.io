@@ -46,6 +46,8 @@ import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienD
 import { buildLienTimelineFromWindow, lienCourtesyFromItems, type LienWindowDeskAffidavit, type LienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
 import type { LienAffidavitGateKey } from '../../lib/jobs/lienDeskAffidavits'
 import { readLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
+import { readLienAffidavitMonthsByHandForJob } from '../../lib/jobs/lienAffidavitMonthsByHandIo'
+import type { LienAffidavitMonthsByHand } from '../../lib/jobs/lienAffidavitMonthsByHand'
 import { readLienAffidavitForm } from '../../lib/jobs/lienDeskIo'
 import type { LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
 import type { LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
@@ -329,6 +331,24 @@ export default function LienInstrumentsModal({
   // The claim set by hand on the job (`job_lien_claim_corrections`): the desk carries it to the notice and the affidavit, and the window's papers
   // never read it. Null while the read is out, and the filing tabs wait for it: a sworn amount is not drawn and then changed.
   const [claimRead, setClaimRead] = useState<{ correction: LienClaimCorrection | null; failed: boolean } | null>(null)
+  // The months set by hand (v2.7270, `job_lien_affidavit_months`): the paper names them in place of the record's. A failed read (the table not pushed yet) reads as none.
+  const [monthsByHand, setMonthsByHand] = useState<LienAffidavitMonthsByHand | null>(null)
+  useEffect(() => {
+    setMonthsByHand(null)
+    if (!open || !job) return
+    let cancelled = false
+    readLienAffidavitMonthsByHandForJob(job.id).then(
+      (m) => {
+        if (!cancelled) setMonthsByHand(m)
+      },
+      () => {
+        if (!cancelled) setMonthsByHand(null)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [open, job])
   useEffect(() => {
     setClaimRead(null)
     if (!open || !job) return
@@ -1143,6 +1163,7 @@ export default function LienInstrumentsModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="lien-instruments-title"
+      data-lien-window=""
       style={{
         position: 'fixed',
         inset: 0,
@@ -1156,6 +1177,8 @@ export default function LienInstrumentsModal({
       }}
       onClick={onClose}
     >
+      {/* Punch list #355 H (v2.7282): a field under 16 px makes an iPhone zoom the page on focus. */}
+      <style>{`@media (max-width: 640px) { [data-lien-window] input, [data-lien-window] select, [data-lien-window] textarea { font-size: 16px !important; } }`}</style>
       <div
         style={{
           background: 'var(--surface)',
@@ -1842,6 +1865,7 @@ export default function LienInstrumentsModal({
             originalContractorAddressRead={originalContractorAddressRead}
             claimCorrection={claimRead.correction}
             claimCorrectionUnread={claimRead.failed}
+            monthsByHand={monthsByHand}
             ownerEmail={(jobOwnerRow?.owner_email ?? '').trim()}
             originalContractorEmail={isSub ? gcEmail : ''}
             onChanged={() => {

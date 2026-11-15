@@ -18,7 +18,7 @@ afterEach(cleanup)
 const notice = (over: Partial<LienDeskEntry> & { jobId: string }): LienDeskEntry => ({
   customerId: null, gcCustomerId: 'gc1', openBalance: 1000, hasOwner: true, propertyKind: 'non_residential',
   months: [{ key: '2026-08', approvedHours: 10, deadline: '2026-11-16', daysLeft: 9, noticed: false, fromCreation: false }],
-  datedFromCreation: false, dueMonths: ['2026-08'], missedMonths: [], missedUnrecorded: [], earliestDeadline: '2026-11-16', daysLeft: 9, severity: 'amber', item: null, policy: 'ask', pile: 'to_draft', ...over,
+  datedFromCreation: false, dueMonths: ['2026-08'], missedMonths: [], missedUnrecorded: [], affidavitDay: null, affidavitDaysLeft: null, earliestDeadline: '2026-11-16', daysLeft: 9, severity: 'amber', item: null, policy: 'ask', pile: 'to_draft', ...over,
 })
 const affidavit = (over: Partial<LienAffidavitEntry> & { jobId: string }): LienAffidavitEntry => ({
   isSub: true, lastMonth: '2026-07', lastMonthFromCreation: false, deadline: '2026-11-16', daysLeft: 9, severity: 'amber', openBalance: 1000, customerId: null, gcCustomerId: 'gc1', propertyKind: 'non_residential', gates: [], ready: true, item: null, pile: 'ready', ...over,

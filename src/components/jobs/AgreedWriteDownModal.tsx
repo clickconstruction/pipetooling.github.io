@@ -40,7 +40,7 @@ function writeDownAmountInputStyle(inactive: boolean, omitTopMargin = false) {
     width: '100%',
     marginTop: omitTopMargin ? 0 : '0.35rem',
     padding: '0.5rem 0.65rem',
-    border: `1px solid ${inactive ? '#cbd5e1' : 'var(--border-strong)'}`,
+    border: '1px solid var(--border-strong)',
     borderRadius: 6,
     fontSize: '0.9375rem',
     boxSizing: 'border-box' as const,

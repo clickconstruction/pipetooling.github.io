@@ -23,7 +23,9 @@ import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affi
 import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, monthFromBill, monthIsStandIn } from '../../lib/jobs/lienDesk'
-import { lienStandInFlag, lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
+import { lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
+import { LIEN_MONTH_FLAG_DOOR_WORDS, LIEN_MONTH_CHECK_CANCEL_WORDS, LIEN_MONTH_CHECK_CHANGE_WORDS, LIEN_MONTH_CHECK_NOTE_HINT, LIEN_MONTH_CHECK_SAVES_WORDS, LIEN_MONTH_SET_LAST_DAY_WORDS, lienMonthAskWords, lienMonthCheckProblem, lienMonthCheckState, lienMonthCheckedRowWords, lienMonthCheckedWords, lienMonthConfirmWords, lienMonthName, lienMonthQuestion, lienMonthYesWords, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
+import { saveLienMonthCheck } from '../../lib/jobs/lienMonthCheckIo'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitToldWords } from '../../lib/jobs/lienAffidavitApprovalTell'
@@ -32,7 +34,9 @@ import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
-import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue } from '../../lib/jobs/lienNoticeOwed'
+import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue, lienNoticeNamedMonths } from '../../lib/jobs/lienNoticeOwed'
+import { clearLienAffidavitMonthsByHand, saveLienAffidavitMonthsByHand } from '../../lib/jobs/lienAffidavitMonthsByHandIo'
+import LienAffidavitMonthsByHandEditor from './LienAffidavitMonthsByHandEditor'
 import { HOMESTEAD_QUESTION_DOOR } from '../../lib/customers/homesteadAnswer'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitSubmitOutcome } from '../../lib/jobs/lienAffidavitBatch'
@@ -94,6 +98,7 @@ export default function LienDeskAffidavitPane({
   onOpenLienAffidavit,
   onOpenLegalDesk,
   onShowNotices,
+  onOpenLastWork,
   footerEl,
   ownerCall = null,
   bond = 'unknown',
@@ -125,6 +130,8 @@ export default function LienDeskAffidavitPane({
   onOpenLegalDesk?: () => void
   /** Switch the desk to the notices kind on this job (the notice gate's door). */
   onShowNotices: (jobId: string) => void
+  /** The stand-in month's second press (v2.7280): today's door, the last day of work set by hand, which moves every clock. Absent, the question keeps the words alone. */
+  onOpenLastWork?: (jobId: string) => void
   /** The desk's footer strip — the pane portals its footer there, so the desk keeps one strip and never re-renders for it (v2.3753). */
   footerEl: HTMLElement | null
   /** The owner's answers on the sent notice (v2.3767) — counsel's pile comes from them. */
@@ -147,6 +154,9 @@ export default function LienDeskAffidavitPane({
   const [stopOpen, setStopOpen] = useState<number | null>(null)
   // Redraw on the short form (punch list #305): the press asks once before it takes the paper back to a draft.
   const [redrawOpen, setRedrawOpen] = useState(false)
+  // The stand-in month's ask (v2.7280, punch list #358): who said the month is right, and when; open from Yes, August is right › and from Change ›.
+  const [checkOpen, setCheckOpen] = useState(false)
+  const [checkNote, setCheckNote] = useState('')
 
   const job = data.jobsById[entry.jobId]
   const gc = entry.gcCustomerId ? data.gcsById[entry.gcCustomerId] : undefined
@@ -177,6 +187,8 @@ export default function LienDeskAffidavitPane({
   // The claim set by hand (v2.3682) carries to the affidavit: it swears to the app's balance less the correction.
   const correction = data.claimCorrectionsByJob[entry.jobId] ?? null
   const claimed = correctedClaim(entry.openBalance, correction)
+  // The months set by hand (v2.7270, punch list #356 part 2): the paper names these in place of the record's.
+  const byHand = data.affidavitMonthsByJob[entry.jobId] ?? null
   // A paper keeps the form it was drafted on (punch list #305): an affidavit drafted before the short form stays on the earlier one until someone redraws it.
   const form = lienAffidavitFormForItem(entry.item)
 
@@ -198,19 +210,25 @@ export default function LienDeskAffidavitPane({
         form,
         filings: data.filingsByJob[entry.jobId] ?? [],
         homestead: property.homestead,
+        monthsByHand: byHand?.months ?? null,
       }),
-    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd, form, data.filingsByJob],
+    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd, form, data.filingsByJob, byHand],
   )
+  // The job's own work months and the notice's (punch list #356): what the editor offers, and what the check reads.
+  const workMonthKeys = useMemo(() => lienAffidavitWorkMonths({ isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd }), [entry.isSub, job, entry.lastMonth, todayYmd])
+  const namedMonthKeys = useMemo(() => lienNoticeNamedMonths(data.filingsByJob[entry.jobId] ?? []), [data.filingsByJob, entry.jobId])
   // The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold.
   const noticeCheck = useMemo(() => {
     const filings = data.filingsByJob[entry.jobId] ?? []
-    const facts = { isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd }
-    return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ ...facts, filings }), filings, work: lienAffidavitWorkMonths(facts) })
-  }, [data.filingsByJob, entry.jobId, entry.isSub, entry.propertyKind, entry.lastMonth, job, todayYmd])
+    const facts = { isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd, monthsByHand: byHand?.months ?? null }
+    return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ ...facts, filings }), filings, work: workMonthKeys })
+  }, [data.filingsByJob, entry.jobId, entry.isSub, entry.propertyKind, entry.lastMonth, job, todayYmd, byHand, workMonthKeys])
   const noticeCheckLines = lienNoticeCheckLines(noticeCheck)
   // The last work month's own § 53.056 notice still due and not recorded (punch list #353, part 2): said above Send for approval.
   const noticeDue = useMemo(() => lienLastMonthNoticeDue({ isSub: entry.isSub, lastMonth: entry.lastMonth, propertyKind: entry.propertyKind, filings: data.filingsByJob[entry.jobId] ?? [], todayYmd }), [entry.isSub, entry.lastMonth, entry.propertyKind, data.filingsByJob, entry.jobId, todayYmd])
-  const standInFlag = lienStandInFlag(lienStandInSourceOf(entry.lastMonthFromCreation, entry.lastMonthFromBill))
+  // The stand-in month (v2.7224) and where it stands (v2.7280): a question with two doors, or the quiet line once a person confirmed it. Never a hold.
+  const monthState = lienMonthCheckState({ source: lienStandInSourceOf(entry.lastMonthFromCreation, entry.lastMonthFromBill), month: entry.lastMonth, check: parseLienMonthCheck(job) })
+  const monthChecked = monthState.kind === 'checked' ? monthState.check : null
   const docHtml = useMemo(
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),
     [fields, issuer, job, entry.lastMonth, todayYmd],
@@ -301,6 +319,18 @@ export default function LienDeskAffidavitPane({
   const approve = () => run('Approve', async () => void (await approveLienDeskItem(item ? item.id : await ensureDraft())), 'Approved — ready to file.')
   const hold = (reason: 'promised' | 'call_first') => run('Hold', async () => void (item && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, entry.deadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the window closes.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
+  // Confirm the stand-in month (v2.7280): one update on the job, with who and when. No clock moves and no paper changes; the desk's reload reads the check back.
+  const confirmMonth = () =>
+    monthState.kind === 'none'
+      ? undefined
+      : run(
+          'Confirm the month',
+          async () => {
+            await saveLienMonthCheck({ jobId: entry.jobId, month: monthState.month, note: checkNote, userId: authUserId, userName: authName })
+            setCheckOpen(false)
+          },
+          `${lienMonthName(monthState.month)} is checked. No date moved and no paper changed.`,
+        )
   // The earlier form to the short one, on purpose: back to a draft that carries the short form's mark, in one write, so whoever approves it reads the paper that will be filed.
   const redrawShort = () =>
     run(
@@ -456,9 +486,42 @@ export default function LienDeskAffidavitPane({
             </div>
           ))}
         </div>
-        {/* A month from a bill or the job's creation (v2.7224): a flag with the door, never a hold. */}
-        {standInFlag ? (
-          <div data-lien-affidavit-month-stand-in style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>{standInFlag}</div>
+        {/* A month from a bill or the job's creation (v2.7224): a question with two doors (v2.7280), never a hold. Confirmed, the quiet line with Change ›. */}
+        {monthState.kind !== 'none' && checkOpen ? (
+          <div data-lien-affidavit-month-check-ask style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.65rem', display: 'grid', gap: '0.4rem' }}>
+            <strong>{lienMonthAskWords(monthState.month)}</strong>
+            <input
+              type="text"
+              value={checkNote}
+              onChange={(e) => setCheckNote(e.target.value)}
+              placeholder={LIEN_MONTH_CHECK_NOTE_HINT}
+              aria-label={lienMonthAskWords(monthState.month)}
+              autoFocus
+              style={{ font: 'inherit', padding: '5px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', width: '100%', boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button type="button" data-lien-affidavit-month-confirm onClick={confirmMonth} disabled={busy || Boolean(lienMonthCheckProblem(checkNote))} style={btn('primary', busy || Boolean(lienMonthCheckProblem(checkNote)))}>{lienMonthConfirmWords(monthState.month)}</button>
+              <button type="button" onClick={() => setCheckOpen(false)} style={btn('plain')}>{LIEN_MONTH_CHECK_CANCEL_WORDS}</button>
+            </div>
+            <span style={{ color: 'var(--text-muted)' }}>{LIEN_MONTH_CHECK_SAVES_WORDS}</span>
+          </div>
+        ) : monthState.kind === 'checked' ? (
+          <div data-lien-affidavit-month-checked style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.35rem 0.55rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ flex: 1, minWidth: 0 }}>{lienMonthCheckedWords(monthState.check, formatYmdMonthDay)}</span>
+            {office ? <button type="button" data-lien-affidavit-month-change onClick={() => { setCheckNote(monthState.check.note); setCheckOpen(true) }} disabled={busy} style={{ ...btn('plain', busy), padding: '1px 8px', fontSize: '0.72rem' }}>{LIEN_MONTH_CHECK_CHANGE_WORDS}</button> : null}
+          </div>
+        ) : monthState.kind === 'flag' ? (
+          <div data-lien-affidavit-month-stand-in style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem', display: 'grid', gap: '0.4rem' }}>
+            <span>{lienMonthQuestion(monthState.source, monthState.month)}</span>
+            {office ? (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button type="button" data-lien-affidavit-month-yes onClick={() => { setCheckNote(''); setCheckOpen(true) }} disabled={busy} style={btn('amber', busy)}>{lienMonthYesWords(monthState.month)}</button>
+                {onOpenLastWork ? <button type="button" data-lien-affidavit-month-last-work onClick={() => onOpenLastWork(entry.jobId)} disabled={busy} style={btn('plain', busy)}>{LIEN_MONTH_SET_LAST_DAY_WORDS}</button> : null}
+              </div>
+            ) : (
+              <span>{LIEN_MONTH_FLAG_DOOR_WORDS}</span>
+            )}
+          </div>
         ) : null}
         {noticeCheckLines.length > 0 ? (
           <div data-lien-affidavit-notice-check style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem', display: 'grid', gap: '0.15rem' }}>
@@ -523,7 +586,8 @@ export default function LienDeskAffidavitPane({
                 .map((r) => (
                   <div key={r.key} style={{ display: 'contents' }}>
                     <strong>{workMonthLabel(r.key)}</strong>
-                    <span style={{ minWidth: 0 }}>{r.words}</span>
+                    {/* A confirmed stand-in month (v2.7280) reads *from the bill · checked Nov 14* where it read *dated from the bill · no clock hours*. */}
+                    <span style={{ minWidth: 0 }}>{monthChecked && r.key === monthChecked.month ? lienMonthCheckedRowWords(r.words, monthChecked, formatYmdMonthDay) : r.words}</span>
                     <span style={tone(r.status)}>{word(r.status)}</span>
                   </div>
                 ))}
@@ -541,6 +605,19 @@ export default function LienDeskAffidavitPane({
                   ))}
                 </div>
               </div>
+            ) : null}
+            {/* The months set by hand (v2.7270): the line that says what is set, or the press that opens the editor; a sub job only. */}
+            {entry.isSub ? (
+              <LienAffidavitMonthsByHandEditor
+                key={byHand ? `${byHand.setAt}:${byHand.months.join(',')}` : 'none'}
+                current={byHand}
+                work={workMonthKeys}
+                named={namedMonthKeys}
+                canEdit={office}
+                busy={busy}
+                onSave={(input) => run('Set the months by hand', async () => void (await saveLienAffidavitMonthsByHand({ jobId: entry.jobId, months: input.months, reason: input.reason, userId: authUserId, userName: authName })), 'The paper names the months set by hand.')}
+                onClear={() => run('Clear the months set by hand', async () => void (await clearLienAffidavitMonthsByHand(entry.jobId)), 'Back to the months the record names.')}
+              />
             ) : null}
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {affidavitMonthsSentence(rows, workMonthLabel)}

@@ -312,7 +312,7 @@ export function JobActivityView({
                   fontWeight: 600,
                   borderRadius: 999,
                   cursor: 'pointer',
-                  border: `1px solid ${active ? '#2563eb' : '#d1d5db'}`,
+                  border: `1px solid ${active ? '#2563eb' : 'var(--border-strong)'}`,
                   background: active ? '#2563eb' : 'var(--surface)',
                   color: active ? '#fff' : 'var(--text-muted)',
                 }}

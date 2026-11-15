@@ -166,11 +166,12 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
   // A press target a thumb can hit on a phone; the desk keeps the row tight.
   const touch: CSSProperties = isMobile ? { minHeight: 44 } : {}
 
-  // A ready stage folds to one line on a phone, once, when the rows first read; the desk shows every row.
+  // On a phone every stage folds to one line with its standing on the row (punch list #355 H, v2.7282; a ready stage
+  // alone until then), once, when the rows first read; the desk shows every row.
   useEffect(() => {
     if (folded || !read.rows) return
     const first: Record<string, boolean> = {}
-    for (const r of stages) first[r.fixtureId] = isMobile && r.state.standing === 'ready'
+    for (const r of stages) first[r.fixtureId] = isMobile
     // A tap on a stage's name can land before this runs (the rows paint, the tap lands, then React runs the
     // effect), so the first fold goes under what is there instead of replacing it: a tap is never undone.
     setFolded((f) => ({ ...first, ...(f ?? {}) }))
@@ -615,7 +616,7 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
             return (
               <div key={stage.fixtureId} data-testid="job-documents-checklist-stage" data-standing={stage.state.standing}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button type="button" style={documentsLinkButton} aria-expanded={!isFolded} onClick={() => setFolded((f) => ({ ...(f ?? {}), [stage.fixtureId]: !isFolded }))}>
+                  <button type="button" style={{ ...documentsLinkButton, ...(isMobile ? { minHeight: 44, flex: 1, textDecoration: 'none' } : {}) }} aria-expanded={!isFolded} onClick={() => setFolded((f) => ({ ...(f ?? {}), [stage.fixtureId]: !isFolded }))}>
                     {stage.name}
                   </button>
                   <span style={{ ...documentsChip, marginLeft: 0, ...chipTone[chip.tone] }} data-checklist-stage-chip={filedRecord ? 'filed' : amendingRecord ? 'amending' : 'open'}>

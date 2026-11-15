@@ -8,7 +8,6 @@ import {
   buildLienDeskQueue,
   parseLienNoticePolicy,
   summarizeLienDeskForNeedsYou,
-  LIEN_DESK_LEAD_DAYS,
   type LienDeskItemRow,
   type LienDeskNeedsYou,
   type LienDeskQueue,
@@ -19,6 +18,7 @@ import {
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
+import { LIEN_DESK_STARTED_READ_DAYS, lienDeskKeepNoticeRows, lienDeskKeepRows } from '../lib/jobs/lienDeskStarted'
 import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
 import { lastCourtesyAtByJob } from '../lib/jobs/lienCourtesyReply'
 import { readCourtesyOwnerContacts, readCourtesyRepliesByJob, type CourtesyReplySource } from '../lib/jobs/lienCourtesyReplyIo'
@@ -30,6 +30,8 @@ import { lienDeskBatches } from '../lib/jobs/gcOnNotice'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { parseLienClaimCorrection } from '../lib/jobs/lienClaimCorrectionIo'
 import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
+import { readLienAffidavitMonthsByHand } from '../lib/jobs/lienAffidavitMonthsByHandIo'
+import type { LienAffidavitMonthsByHand } from '../lib/jobs/lienAffidavitMonthsByHand'
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
@@ -68,6 +70,12 @@ export type LienDeskJob = {
   lien_last_work_note?: string | null
   lien_last_work_set_at?: string | null
   lien_last_work_set_by?: string | null
+  /** The stand-in month a person confirmed (v2.7280, `lienMonthCheck.ts`), with who, when and the note; absent until the migration is on prod, when the jobs read falls back to the list without them. */
+  lien_month_checked_month?: string | null
+  lien_month_checked_at?: string | null
+  lien_month_checked_by?: string | null
+  lien_month_checked_by_name?: string | null
+  lien_month_check_note?: string | null
   /** Unpaid subcontract retainage the GC holds (v2.3753); null = not recorded. */
   lien_retainage_held?: number | null
   lien_payment_bond?: string | null
@@ -82,6 +90,9 @@ export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, jo
 
 /** The desk's columns with the first work day (v2.6061): read first, and the list above when the column is not on prod yet. */
 export const LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY = `${LIEN_DESK_JOB_COLUMNS}, first_work_date`
+
+/** Those columns with the stand-in month's check (v2.7280): read first, and the list above when the check's columns are not on prod yet. */
+export const LIEN_DESK_JOB_COLUMNS_WITH_MONTH_CHECK = `${LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY}, lien_month_checked_month, lien_month_checked_at, lien_month_checked_by, lien_month_checked_by_name, lien_month_check_note`
 
 
 export type LienDeskGc = {
@@ -119,6 +130,8 @@ export type LienDeskData = {
   gcsHeldBefore: ReadonlySet<string>
   /** The claim set by hand per job (v2.3682) — empty when none, or when the table is not there yet. */
   claimCorrectionsByJob: Record<string, LienClaimCorrection>
+  /** The months set by hand per job (v2.7270, `job_lien_affidavit_months`): the paper names these in place of the record's. Empty in light mode, and when the read failed. */
+  affidavitMonthsByJob: Record<string, LienAffidavitMonthsByHand>
   /** The payments on every job with a sent notice, with their day (PR 2 of #274): the step brief's timeline draws each as a row. Absent in light mode or when the read failed. */
   paymentsByJob?: Record<string, Array<{ amount: number; paidOn: string | null }>>
   /** The job's affidavits and releases of record (v2.3761) — the timeline's tail; empty in light mode. */
@@ -181,49 +194,67 @@ export function useLienDeskData(
     setLoading(true)
     void (async () => {
       try {
+        // The three readers are asked further ahead than the desk's lead (v2.7261, punch list #354), and the rows past the
+        // lead are kept only on a job with a started paper of that kind (`lienDeskStarted.ts`), so a drafted, held or
+        // approved paper due in six weeks is on the desk and nothing else past thirty days is.
         const [rowsRaw, itemsRaw, affRaw, retRaw] = await Promise.all([
-          withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: due months'),
+          withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: due months'),
           withSupabaseRetry(
             () => supabase.from('job_lien_desk_items').select('*').is('voided_at', null).order('created_at', { ascending: false }),
             'lien desk: items',
           ),
-          withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: affidavit windows').catch(() => []),
+          withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: affidavit windows').catch(() => []),
           // The retainage reader (v2.3753) — empty until its migration is pushed, so the client can ship first.
-          withSupabaseRetry(() => supabase.rpc('list_lien_retainage_windows' as never, { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: retainage windows').catch(() => []),
+          withSupabaseRetry(() => supabase.rpc('list_lien_retainage_windows' as never, { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: retainage windows').catch(() => []),
         ])
         if (cancelled) return
-        const rowsRead = ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
-          ...r,
-          approved_hours: Number(r.approved_hours) || 0,
-          open_balance: Number(r.open_balance) || 0,
-        }))
         const itemsRead = (itemsRaw ?? []) as LienDeskItemRow[]
-        const affidavitRowsRead = ((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 }))
-        const retainageRowsRead = ((retRaw ?? []) as unknown as LienRetainageRow[]).map((r) => ({ ...r, retainage_held: Number(r.retainage_held) || 0, open_balance: Number(r.open_balance) || 0 }))
+        const rowsRead = lienDeskKeepNoticeRows(
+          ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
+            ...r,
+            approved_hours: Number(r.approved_hours) || 0,
+            open_balance: Number(r.open_balance) || 0,
+          })),
+          itemsRead,
+          todayYmd,
+        )
+        const affidavitRowsRead = lienDeskKeepRows(((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 })), itemsRead, 'affidavit', todayYmd)
+        const retainageRowsRead = lienDeskKeepRows(((retRaw ?? []) as unknown as LienRetainageRow[]).map((r) => ({ ...r, retainage_held: Number(r.retainage_held) || 0, open_balance: Number(r.open_balance) || 0 })), itemsRead, 'retainage_53_057', todayYmd)
         const jobIdsRead = [...new Set([...rowsRead.map((r) => r.job_id), ...itemsRead.map((i) => i.job_id), ...affidavitRowsRead.map((r) => r.job_id), ...retainageRowsRead.map((r) => r.job_id)])]
 
         // The GCs' standing rules come with the jobs; everything else is the desk's own detail.
         const jobsRead: LienDeskJob[] = []
         for (const chunk of chunkIds(jobIdsRead)) {
           if (chunk.length === 0) continue
-          // The first work day (v2.6061) rides along once its migration is on prod; until then the columns without it, so the desk never goes dark on a client that landed first.
+          // The month check (v2.7280) and the first work day (v2.6061) ride along once their migrations are on prod; until then the columns without each, so the desk never goes dark on a client that landed first.
           const part = await withSupabaseRetry(
             () =>
               supabase
                 .from('jobs_ledger')
-                .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY))
+                .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_MONTH_CHECK))
                 .in('id', chunk),
             'lien desk: jobs',
-          ).catch(() =>
-            withSupabaseRetry(
-              () =>
-                supabase
-                  .from('jobs_ledger')
-                  .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS))
-                  .in('id', chunk),
-              'lien desk: jobs (without the first work day)',
-            ),
           )
+            .catch(() =>
+              withSupabaseRetry(
+                () =>
+                  supabase
+                    .from('jobs_ledger')
+                    .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY))
+                    .in('id', chunk),
+                'lien desk: jobs (without the month check)',
+              ),
+            )
+            .catch(() =>
+              withSupabaseRetry(
+                () =>
+                  supabase
+                    .from('jobs_ledger')
+                    .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS))
+                    .in('id', chunk),
+                'lien desk: jobs (without the first work day)',
+              ),
+            )
           jobsRead.push(...((part ?? []) as LienDeskJob[]))
         }
         // ZZ test jobs (punch list #61, PR 3) leave every list here, by the joined rows' own names; and (v2.7253) so does every job an open in-kind deal pays.
@@ -323,7 +354,11 @@ export function useLienDeskData(
             for (const list of Object.values(paymentsByJob)) list.sort((a, b) => (a.paidOn ?? '') < (b.paidOn ?? '') ? -1 : 1)
           }
         }
-        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, queueJobs)
+        // The affidavit's day per job (v2.7273, punch list #335, row 4): a closed notice window is a lien lost only once that day
+        // has passed too, and the Dashboard's closed-window line tells the two apart. Read in light mode too, so the Dashboard and the desk agree.
+        const affidavitDayByJob: Record<string, string> = {}
+        for (const r of affidavitRows) affidavitDayByJob[r.job_id] = r.deadline
+        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, queueJobs, affidavitDayByJob)
         const gcNames: Record<string, string> = {}
         for (const g of Object.values(gcsById)) gcNames[g.id] = g.name
         const summaryWithBatches = summarizeLienDeskForNeedsYou(queue)
@@ -423,6 +458,12 @@ export function useLienDeskData(
           gcsWithPriorNotice = new Set((priorNoticeRows as unknown[]).map(gcOf).filter((v): v is string => Boolean(v)))
           gcsHeldBefore = new Set((heldRows as unknown[]).map(gcOf).filter((v): v is string => Boolean(v)))
         }
+        // The months set by hand per job (v2.7270): the affidavit pane, the help sheet and the papers read them. A failed read (the table not pushed yet) leaves none, never the desk dark.
+        let affidavitMonthsByJob: Record<string, LienAffidavitMonthsByHand> = {}
+        if (!light && jobIds.length) {
+          affidavitMonthsByJob = await readLienAffidavitMonthsByHand(jobIds).catch(() => ({}))
+          if (cancelled) return
+        }
         // The claim set by hand per job (v2.3682) — loaded in light mode too (v2.3684): one indexed select, and the Stages board's Collections line reads it.
         if (jobIds.length) {
           const correctionRows = await withSupabaseRetry(() => supabase.from('job_lien_claim_corrections').select('*').in('job_id', jobIds), 'lien desk: claim corrections').catch(() => [])
@@ -474,6 +515,7 @@ export function useLienDeskData(
           gcsWithPriorNotice,
           gcsHeldBefore,
           claimCorrectionsByJob,
+          affidavitMonthsByJob,
           filingsByJob,
           demandLettersByJob,
           mailPiecesByFiling,
@@ -500,7 +542,7 @@ export function useLienDeskData(
             promisesByJob: {},
             gcsWithPriorNotice: new Set(),
             gcsHeldBefore: new Set(),
-            claimCorrectionsByJob: {}, filingsByJob: {},
+            claimCorrectionsByJob: {}, affidavitMonthsByJob: {}, filingsByJob: {},
           })
       } finally {
         if (!cancelled) setLoading(false)

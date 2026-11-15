@@ -639,7 +639,7 @@ export default function PeoplePayStubsTab({
                         fontSize: '0.9375rem',
                         background: 'var(--surface)',
                         color: forecastDisabled ? 'var(--text-faint)' : 'var(--text-700)',
-                        border: `1px solid ${forecastDisabled ? '#e5e7eb' : '#d1d5db'}`,
+                        border: `1px solid ${forecastDisabled ? 'var(--border)' : 'var(--border-strong)'}`,
                         borderRadius: 6,
                         cursor: forecastDisabled ? 'not-allowed' : 'pointer',
                         fontWeight: 500,

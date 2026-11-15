@@ -72,6 +72,8 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouSecondaryDoor({ key: 'bulk-delete' }, 'snooze')).toEqual({ kind: 'nudge', nudge: 'bulk-delete', action: 'snooze' })
     expect(needsYouSecondaryDoor({ key: 'robot-asleep' }, 'dismiss')).toEqual({ kind: 'nudge', nudge: 'robot-asleep', action: 'dismiss' })
     expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'missed')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&pile=missed' })
+    // The late-notice line (v2.7273) opens the same lens: the desk drafts the late notice from the closed month's row.
+    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'late-notice')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&pile=missed' })
     expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'letter-two')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&pile=sent' })
     expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'snooze')).toBeNull()
     expect(needsYouSecondaryDoor({ key: 'tally-self' }, 'snooze')).toBeNull()

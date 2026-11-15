@@ -54,6 +54,8 @@ import { lienWindowLastMonth } from '../../lib/jobs/lienTimelineDesk'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, type LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
 import { claimSplit, claimSplitWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
+import { lienAffidavitMonthsByHandWords, type LienAffidavitMonthsByHand } from '../../lib/jobs/lienAffidavitMonthsByHand'
+import { lienMonthCheckedFor, lienMonthCheckedSheetRow, lienMonthCheckedWords, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
@@ -110,6 +112,7 @@ export default function LienFilingTabs({
   workMonths,
   claimCorrection = null,
   claimCorrectionUnread = false,
+  monthsByHand = null,
   affidavitForm = 'short',
   affidavitFormUnread = false,
   onClose,
@@ -146,6 +149,8 @@ export default function LienFilingTabs({
   claimCorrection?: LienClaimCorrection | null
   /** The correction's read failed: the papers carry the bills' figure and the tab says to check the desk first. */
   claimCorrectionUnread?: boolean
+  /** The months set by hand on the job (v2.7270, `job_lien_affidavit_months`): the paper names these in place of the record's, and the tab says so. */
+  monthsByHand?: LienAffidavitMonthsByHand | null
   /** The form the job's affidavit was drafted on (punch list #305, `lienAffidavitForm.ts`): a paper approved on the earlier form prints on it. Absent, the short form. */
   affidavitForm?: LienAffidavitForm
   /** That read failed: the tab draws the earlier form and says to check the desk first. */
@@ -271,8 +276,10 @@ export default function LienFilingTabs({
       // The short form names the months and the sends of the notices recorded on the job.
       filings: live,
       homestead: property.homestead,
+      // The months set by hand (v2.7270) stand in for the record's.
+      monthsByHand: monthsByHand?.months ?? null,
     })
-  }, [property, signerNameFallback, affidavitIssuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
+  }, [property, signerNameFallback, affidavitIssuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live, monthsByHand])
 
   const releaseFields: ReleaseOfRecordFields = useMemo(
     () => ({
@@ -372,8 +379,8 @@ export default function LienFilingTabs({
   // The months the paper swears: the notice check and the notice record (punch list #322) both read them.
   const swornMonths = useMemo(() => {
     const days = workDays ?? job
-    return lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
-  }, [workDays, job, workMonths, isSub, live])
+    return lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live, monthsByHand: monthsByHand?.months ?? null })
+  }, [workDays, job, workMonths, isSub, live, monthsByHand])
   // The job's own work months ride along (punch list #356), so a paper that swears none while a notice is on record says why.
   const workMonthKeys = useMemo(() => {
     const days = workDays ?? job
@@ -386,7 +393,14 @@ export default function LienFilingTabs({
     const last = lienWindowLastMonth({ workMonths, job: { created_at: job.created_at ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null } })
     return lienStandInSourceOf(last.fromCreation, last.fromBill)
   }, [workDays, job, workMonths])
-  const standInFlag = lienStandInFlag(monthStandIn)
+  // That month confirmed by a person (v2.7280, the Lien desk's pane): the flag turns quiet here, on the help sheet and on the notice record. Read off the job row with the columns' absence tolerated.
+  const monthChecked = useMemo(() => {
+    const days = workDays ?? job
+    const last = lienWindowLastMonth({ workMonths, job: { created_at: job.created_at ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null } })
+    return lienMonthCheckedFor({ source: monthStandIn, month: last.lastMonth, check: parseLienMonthCheck(job) })
+  }, [workDays, job, workMonths, monthStandIn])
+  const monthCheck = useMemo(() => (monthChecked ? lienMonthCheckedSheetRow(monthChecked, formatYmdMonthDay) : null), [monthChecked])
+  const standInFlag = monthChecked ? '' : lienStandInFlag(monthStandIn)
   const monthMatchWarning =
     isSub && liveNotices.length > 0 && clock.workMonth && !liveNotices.some((f) => (f.months_covered ?? []).includes(clock.workMonth))
       ? affidavitFields.form === 'short'
@@ -439,12 +453,12 @@ export default function LienFilingTabs({
         claimWords: demandMoney(affidavitFields.unpaidAmount),
         fields: affidavitFields,
         // What the sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
-        checked: { propertyKind: property.propertyKind, homestead: property.homestead, noticeLines: noticeCheckLines, monthStandIn },
+        checked: { propertyKind: property.propertyKind, homestead: property.homestead, noticeLines: noticeCheckLines, monthStandIn, monthCheck },
         // The clerk as Settings hold it, and who to ask: the job's lien leader, or the dev (changes 9 and 10).
         clerk: lienClerkFor(issuer?.countyClerksText, affidavitFields.county),
         ask: askFor(job.master_user_id ?? null),
       }),
-    [jobNumber, job.job_name, job.master_user_id, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines, monthStandIn, issuer?.countyClerksText, askFor],
+    [jobNumber, job.job_name, job.master_user_id, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines, monthStandIn, monthCheck, issuer?.countyClerksText, askFor],
   )
 
   // The notice's help sheet (punch list #314): the notice's own facts, the two addresses its copies go to, and the last day to mail.
@@ -470,8 +484,8 @@ export default function LienFilingTabs({
   // Null on a job contracted with the owner, which owes no monthly notice.
   const [noticeRecordOn, setNoticeRecordOn] = useLienNoticeRecordChoice()
   const noticeRecord = useMemo(
-    () => lienNoticeRecord({ isSub, propertyKind: property.propertyKind, swornMonths, filings, paperMonthsWords: affidavitFields.workMonthsWords ?? '', paperNoticesWords: affidavitFields.noticesSentWords ?? '', workStart: affidavitFields.workStart, workEnd: affidavitFields.workEnd, monthStandIn }),
-    [isSub, property.propertyKind, swornMonths, filings, affidavitFields.workMonthsWords, affidavitFields.noticesSentWords, affidavitFields.workStart, affidavitFields.workEnd, monthStandIn],
+    () => lienNoticeRecord({ isSub, propertyKind: property.propertyKind, swornMonths, filings, paperMonthsWords: affidavitFields.workMonthsWords ?? '', paperNoticesWords: affidavitFields.noticesSentWords ?? '', workStart: affidavitFields.workStart, workEnd: affidavitFields.workEnd, monthStandIn, monthCheck }),
+    [isSub, property.propertyKind, swornMonths, filings, affidavitFields.workMonthsWords, affidavitFields.noticesSentWords, affidavitFields.workStart, affidavitFields.workEnd, monthStandIn, monthCheck],
   )
 
   const printDoc = useCallback(() => {
@@ -1187,6 +1201,10 @@ export default function LienFilingTabs({
             ))}
             {monthMatchWarning ? <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem' }}>⚠ {monthMatchWarning}</div> : null}
             {standInFlag ? <div data-lien-window-month-stand-in style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem' }}>⚠ {standInFlag}</div> : null}
+            {/* The stand-in month a person confirmed (v2.7280): the quiet line in the amber one's place; the Lien desk's pane sets and changes it. */}
+            {monthChecked ? <div data-lien-window-month-checked style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>✓ {lienMonthCheckedWords(monthChecked, formatYmdMonthDay)}</div> : null}
+            {/* The months set by hand (v2.7270): the paper names them in place of the record's; the Lien desk's pane sets and clears them. */}
+            {monthsByHand ? <div data-lien-window-months-by-hand style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem' }}>⚠ {lienAffidavitMonthsByHandWords(monthsByHand, formatYmdMonthDay)} · set on the Lien desk</div> : null}
             {/* The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold. */}
             {noticeCheckLines.length > 0 ? (
               <div data-lien-window-notice-check style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem', display: 'grid', gap: '0.1rem' }}>

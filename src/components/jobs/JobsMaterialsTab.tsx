@@ -52,6 +52,9 @@ import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
+import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintStickersModal'
+import StickerRunsFold from '../materials/StickerRunsFold'
+import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { BoxWindow } from '../materials/BoxTabs'
 import { BOX_KIND_CHOICES, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import { addPressLabel, boxNameVerdict, movedWordsNote, nextFreeName, siteBoxesFor, whereWithWords } from '../../lib/materials/boxName'
@@ -72,6 +75,8 @@ type Props = {
   driveBackfill?: boolean
   /** A row's doors on the desk (the Materials page's mount): Labels for the job's boxes, and the job on the phone screen. */
   rowDoors?: { onLabels: (jobId: string) => void }
+  /** The signed-in role (punch list #329, v2.7272): Print blank stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
+  role?: string | null
 }
 
 const BLUE = '#2563eb'
@@ -151,7 +156,7 @@ function BookPricesLine() {
   )
 }
 
-export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors }: Props) {
+export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null }: Props) {
   const openJobRef = useRef<HTMLSelectElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   useOnSiteStoreVersion()
@@ -342,7 +347,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     )
   }
 
-  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} />
+  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} />
 }
 
 type ToastTone = 'success' | 'info' | 'warning' | 'error'
@@ -423,7 +428,7 @@ function DriveFolderBackfill({ jobs, onFoldersMade, onOpenJobDetail, showToast }
   )
 }
 
-function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast }: { jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void }) {
+function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role }: { jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null }) {
   const now = new Date()
   const containers = listContainers(jobId).filter((c) => !c.retiredAt)
   const movements = listMovements(jobId)
@@ -558,6 +563,11 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
   /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
   const [manifestOpen, setManifestOpen] = useState<{ only: string | null } | null>(null)
+  /** Print blank stickers (punch list #329, v2.7272): a new run, or a run the fold hands back to print again. */
+  const [stickersOpen, setStickersOpen] = useState<{ run: StickerRunToPrint | null } | null>(null)
+  /** Ticks when a run is minted here, so the Runs fold reads again. */
+  const [runsKey, setRunsKey] = useState(0)
+  const canMint = canMintStickers(role)
   const [labelParams, setLabelParams] = useSearchParams()
   useEffect(() => {
     const id = labelParams.get('label')
@@ -636,6 +646,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto' }} role="group" aria-label="This site's boxes">
               <button type="button" aria-expanded={adding} style={materialsPressStyle(32)} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container"><MaterialsPressGlyph kind="add" />Add a container</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })} data-testid="materials-print-labels"><MaterialsPressGlyph kind="print-labels" dead={boxCount === 0} />Print labels</button>
+              {/* Stickers before boxes (punch list #329, v2.7272): a run of blank stickers for this job, live for the roles the database lets mint and dead with the reason for the rest. */}
+              <button type="button" style={{ ...materialsPressStyle(32), ...(canMint ? {} : materialsPressDead) }} disabled={!canMint} aria-disabled={!canMint} title={canMint ? 'A run of stickers to stick on boxes before they are in the app: a code to scan and a number to read' : STICKER_MINT_WHO} aria-label={canMint ? undefined : `${PRINT_STICKERS_LABEL}. ${STICKER_MINT_WHO}`} onClick={() => setStickersOpen({ run: null })} data-testid="materials-print-stickers"><MaterialsPressGlyph kind="print-stickers" dead={!canMint} />{PRINT_STICKERS_LABEL}</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })} data-testid="materials-print-manifest"><MaterialsPressGlyph kind="manifest" dead={boxCount === 0} />Print the manifest</button>
             </span>
           </div>
@@ -708,6 +720,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           )}
           {/* The way back from a retire (v2.6406): the fold lists retired boxes with Bring back, or the reason a stencil is taken. */}
           <RetiredBoxesFold containers={listContainers(jobId)} stamp={(iso) => <Stamp iso={iso} inline />} onBringBack={(c) => { const v = unretireVerdict(listContainers(jobId), c.id); if (!v.ok) { showToast(v.words, 'warning'); return } unretireContainer(c.id); showToast(broughtBackWords(c), 'success') }} />
+          {/* Runs of blank stickers printed for this job (punch list #329, v2.7272): each with its range, its counts, who and when, and Reprint / Print the rest. */}
+          <StickerRunsFold jobId={jobId} refreshKey={runsKey} onPrint={(run, stickers, title) => setStickersOpen({ run: { run, stickers, title } })} />
         </div>
       ) : null}
 
@@ -996,6 +1010,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         </div>
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
+      {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} /> : null}
       {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
