@@ -60,7 +60,7 @@ export function lienLastMonthNoticeDue(f: { isSub: boolean; lastMonth: string | 
 
 /** The affidavit pane's line above *Send for approval*, and the dev seat's `notice_still_due`: a line, not a gate. */
 export function lienAffidavitNoticeDueLine(due: LienLastMonthNoticeDue, formatDay: (ymd: string) => string): string {
-  return `${describeNoticeMonths([due.month])}'s notice is still due, by ${formatDay(due.dueOn)}. The paper will not name that month until the notice is recorded.`
+  return `${describeNoticeMonths([due.month])}'s notice is still due, by ${formatDay(due.dueOn)}. The paper names that month from the last day on site. Record the notice, and the month has one behind it.`
 }
 
 /** A recorded notice, as much of it as the record's correction reads. */
