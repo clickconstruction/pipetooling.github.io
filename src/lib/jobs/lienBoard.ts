@@ -694,6 +694,19 @@ export function lienBoardChipFor(board: Pick<LienBoard, 'notices' | 'affidavits'
   return null
 }
 
+/**
+ * The bin a To do row's paper stands in, by the bin's own name (v2.7372, punch list #362 step 3): the row starts with
+ * it, so the list and the Board use one set of words. A row is its job's notice or affidavit, or a run row, which
+ * stands in the notices' mail bin. A reminder, a served copy, a returned envelope and a retainage row have no bin.
+ */
+export function lienBoardRowStage(board: Pick<LienBoard, 'notices' | 'affidavits'>, row: { key: string; kind: string; jobId: string | null; jobs?: ReadonlyArray<{ jobId: string }> }): string | null {
+  if (row.key.startsWith('run:')) return board.notices.find((b) => b.stage === 'in_mail')?.label ?? null
+  if (!row.jobId || (row.kind !== 'notice' && row.kind !== 'affidavit') || row.key !== `${row.kind}:${row.jobId}`) return null
+  const chip = lienBoardChipFor(board, row.jobId, row.kind)
+  if (!chip) return null
+  return [...board.notices, ...board.affidavits].find((b) => b.key === chip.bin)?.label ?? null
+}
+
 /** The hover's words on a chip or a job number: where its press goes. */
 export function lienBoardDoorWords(d: LienBoardDestination): string {
   switch (d.kind) {

@@ -26,6 +26,7 @@ import {
   lienBoardRiskPick,
   lienBoardRowInPick,
   lienBoardRowRisk,
+  lienBoardRowStage,
   lienBoardStageBins,
   lienBoardTip,
   lienBoardUrgency,
@@ -414,5 +415,35 @@ describe('the papers that will not make their day, as one rule for the tile, the
     expect(lienBoardRiskPhrase('tomorrow', 3)).toBe('will not make tomorrow as they stand')
     expect(lienBoardRiskPhrase('Monday', 1)).toBe('will not make Monday as it stands')
     expect(lienBoardRiskPhrase(null, 2)).toBe('will not make their day as they stand')
+  })
+})
+
+describe('a To do row’s stage, in the Board’s own words (v2.7372)', () => {
+  const board = () =>
+    build({
+      notices: [notice('1', 'needs_owner'), notice('2', 'to_draft'), notice('3', 'awaiting'), notice('7', 'printed', { item: { id: 'i7', status: 'approved', fields: {}, months: [], voided_at: null, printed_at: '2026-11-14T10:00:00Z' } as unknown as LienDeskEntry['item'] })],
+      affidavits: [affidavit('5', 'ready', { deadline: '2026-11-16', daysLeft: 1 }), affidavit('6', 'needs_property', { gates: [gate('owner', true), gate('legal', false)] }), affidavit('2', 'to_draft')],
+    })
+
+  it('a row is named by the bin its paper stands in', () => {
+    const b = board()
+    const stage = (key: string, kind: string, jobId: string | null, jobs?: Array<{ jobId: string }>) => lienBoardRowStage(b, { key, kind, jobId, jobs })
+    expect(stage('notice:1', 'notice', '1')).toBe(LIEN_BOARD_WORDS.needs_owner)
+    expect(stage('notice:2', 'notice', '2')).toBe('To send')
+    expect(stage('notice:3', 'notice', '3')).toBe('Awaiting approval')
+    expect(stage('affidavit:5', 'affidavit', '5')).toBe('Ready to file')
+    expect(stage('affidavit:6', 'affidavit', '6')).toBe('Needs the property facts')
+    // Job 2 has a notice to send and an affidavit to send: each row reads its own column.
+    expect(stage('affidavit:2', 'affidavit', '2')).toBe('To send')
+    // A run row stands in the notices' mail bin, whatever it lists.
+    expect(stage('run:printed', 'notice', null, [{ jobId: '7' }])).toBe(b.notices.find((x) => x.stage === 'in_mail')!.label)
+  })
+
+  it('a row with no bin of its own has no stage', () => {
+    const b = board()
+    expect(lienBoardRowStage(b, { key: 'courtesy:1', kind: 'notice', jobId: '1' })).toBeNull()
+    expect(lienBoardRowStage(b, { key: 'serve:5', kind: 'affidavit', jobId: '5' })).toBeNull()
+    expect(lienBoardRowStage(b, { key: 'retainage:1', kind: 'retainage', jobId: '1' })).toBeNull()
+    expect(lienBoardRowStage(b, { key: 'notice:99', kind: 'notice', jobId: '99' })).toBeNull()
   })
 })
