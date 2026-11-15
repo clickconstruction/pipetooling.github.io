@@ -4,6 +4,7 @@ import {
   PTOUCH_LINE_BYTES,
   cmdAutoCut,
   chainsToNext,
+  endsTheRun,
   cmdChainToNext,
   cmdFeedAndCutAfter,
   cmdInit,
@@ -144,6 +145,17 @@ describe('the words and the sizes', () => {
     // 363 lines is about 51 mm: about 5.3 seconds with the lead-in and the cut
     expect(labelPrintMs(363)).toBeGreaterThan(4500)
     expect(labelPrintMs(363)).toBeLessThan(6500)
+  })
+
+  it('a run asked to stop makes its next label the last, fed out and cut (Taunya’s ask of 2026-11-15)', () => {
+    // nobody asked: only the run's own last label ends it
+    expect([0, 1, 2].map((n) => endsTheRun(n, 3, false))).toEqual([false, false, true])
+    // asked while the first of 455 prints: the second ends the run, and to the printer it is a run of two
+    expect(endsTheRun(1, 455, true)).toBe(true)
+    expect(endsTheRun(1, 455, true)).toBe(!chainsToNext(1, 2))
+    // asked during the last label changes nothing
+    expect(endsTheRun(2, 3, true)).toBe(true)
+    expect(endsTheRun(0, 1, false)).toBe(true)
   })
 
   it('a run chains every label but its last, so the strips share one lead-in', () => {
