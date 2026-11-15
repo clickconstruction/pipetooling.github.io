@@ -206,6 +206,12 @@ describe('LienBoard', () => {
     rerender(<LienBoard board={none} isMobile={false} leader={{ view: lienBoardForLeader(none), mine: true, onToggleMine, onApprove }} />)
     expect((section.querySelector('[data-lien-board-approve]') as HTMLButtonElement).disabled).toBe(true)
     expect(section.querySelector('[data-lien-board-approve]')!.textContent).toBe('Approve ▸')
+    expect(section.textContent).not.toContain('Nothing waits on you.')
+    // A leader whose bins are empty, as a dev reading another master's jobs: the bins say none, and the line says why the press is dead.
+    const empty = board({ notices: [notice('1', 'awaiting')], affidavits: [] })
+    rerender(<LienBoard board={empty} isMobile={false} leader={{ view: lienBoardForLeader(empty, { leads: () => false }), mine: true, onToggleMine, onApprove }} />)
+    expect(section.textContent).toContain('Nothing waits on you.')
+    expect(section.querySelector('[data-lien-board-approve]')!.textContent).toBe('Approve')
     // Every bin: the whole Board with the switch back, no press.
     rerender(<LienBoard board={b} isMobile={false} leader={{ view: lienBoardForLeader(b), mine: false, onToggleMine, onApprove }} />)
     expect(section.querySelectorAll('[data-lien-board-bin]').length).toBeGreaterThan(2)

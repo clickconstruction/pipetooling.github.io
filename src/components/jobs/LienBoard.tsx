@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { EmptyState } from '../EmptyState'
 import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardLeaderView, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 
 /**
@@ -279,7 +280,7 @@ export default function LienBoard({
       {leader ? (
         <div data-lien-board-leader-bar style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
           <span style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>{mine ? 'Only the bins that wait on you.' : 'Every bin.'}</span>
-          <button type="button" data-lien-board-mine aria-pressed={mine} onClick={leader.onToggleMine} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', minHeight: isMobile ? 32 : undefined }}>
+          <button type="button" data-lien-board-mine aria-pressed={mine} onClick={leader.onToggleMine} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', minHeight: isMobile ? 40 : undefined }}>
             {mine ? 'Every bin' : 'Only my bins'}
           </button>
         </div>
@@ -309,6 +310,7 @@ export default function LienBoard({
       </div>
       {leader && mine ? (
         <div data-lien-board-leader style={{ display: 'grid', gap: 6, padding: '2px 0' }}>
+          {leader.view.chips.length === 0 && leader.view.held.length === 0 ? <EmptyState compact main="Nothing waits on you." /> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <button type="button" data-lien-board-approve disabled={leader.view.press.dead || leader.busy} onClick={leader.onApprove} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '6px 14px', borderRadius: 7, border: 'none', background: leader.view.press.dead || leader.busy ? 'var(--bg-muted)' : LIT, color: leader.view.press.dead || leader.busy ? 'var(--text-muted)' : '#fff', cursor: leader.view.press.dead || leader.busy ? 'default' : 'pointer', minHeight: isMobile ? 40 : undefined }}>
               {leader.busy ? 'Approving…' : leader.view.press.button}
