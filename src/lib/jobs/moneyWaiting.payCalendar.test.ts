@@ -98,6 +98,37 @@ describe('Money waiting for a payer on a Pay calendar', () => {
     expect(bills.find((b) => b.jobName === 'Lot 4')?.tone).toBe('late')
   })
 
+  it("reads the payer's summary line from its bills: a job on its own calendar that is past its day (punch list #341, PR 3)", () => {
+    // Larkfield has no calendar of its own. Lot 4 does: in by the 25th, paid the 30th of the next month. In Sep 28, due Nov 30.
+    const own = { ...PAY_CALENDAR_DEFAULT, cutoffDay: 25, payDay: 30 }
+    const calendars = { payCalendars: indexPayCalendars([calRow('lark', { jobId: 'j-Lot 4', calendar: own })]) }
+    const early = buildMoneyWaiting([LARK_ROWS[0]!], speeds(), TODAY, calendars)!
+    // Not yet due, however long it has waited: the payer is on pace.
+    expect(early.rows).toEqual([])
+    const m = buildMoneyWaiting([LARK_ROWS[0]!], speeds(), '2026-12-09', calendars)!
+    const row = m.rows[0]!
+    expect(row.bills[0]).toMatchObject({ tone: 'warn', calendar: { dueYmd: '2026-11-30', daysPastExpected: 9, of: { own: true, record: { of: 'borrowed', jobPayments: 0 } } } })
+    // Before PR 3 this line read "72d waiting" against "usually ~41d", with the bill beside it judged by its due day.
+    expect(row).toMatchObject({ calendar: own, calendarOwn: true, pastExpectedDays: 9 })
+    expect(moneyWaitingLead(row)).toBe('9d past expected')
+    expect(moneyWaitingBasis(row, m.companyMedianDays)).toBe('a job’s own pay calendar · lands by the pay day')
+  })
+
+  it("scores a job's own bill on that job's payments once it has two", () => {
+    const own = { ...PAY_CALENDAR_DEFAULT, cutoffDay: 25, payDay: 30 }
+    const calendars = { payCalendars: indexPayCalendars([calRow('lark'), calRow('lark', { jobId: 'j-Lot 4', calendar: own })]) }
+    const onLot4 = (billedYmd: string, paidYmd: string): PayReceipt => ({ ...receipt(billedYmd, paidYmd), jobId: 'j-Lot 4' })
+    // Lot 4's own two payments each landed 12 days after the 30th.
+    const data = { ...speeds(), receipts: { lark: [...LARK_RECEIPTS, onLot4('2026-07-20', '2026-09-11'), onLot4('2026-08-20', '2026-10-12')] } }
+    const row = buildMoneyWaiting(LARK_ROWS, data, '2026-12-15', calendars)!.rows[0]!
+    const lot4 = row.bills.find((b) => b.jobName === 'Lot 4')!
+    expect(lot4.calendar).toMatchObject({ dueYmd: '2026-11-30', expectedYmd: '2026-12-12', daysPastExpected: 3, of: { own: true, record: { of: 'job', jobPayments: 2 } } })
+    // The payer's own bills still read the payer's calendar and every payment of theirs.
+    expect(row.bills.find((b) => b.jobName === 'Lot 5')?.calendar?.of).toMatchObject({ own: false, record: { of: 'payer' } })
+    // The line reads the bill furthest past its day, which is the payer's own Lot 5 here.
+    expect(row).toMatchObject({ calendar: PAY_CALENDAR_DEFAULT, calendarOwn: false })
+  })
+
   it('says so when a calendar payer has no payment on record', () => {
     const data = { ...speeds(), receipts: {} }
     const m = buildMoneyWaiting(LARK_ROWS, data, TODAY, { payCalendars: indexPayCalendars([calRow('lark')]) })!

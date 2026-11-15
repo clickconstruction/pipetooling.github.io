@@ -201,6 +201,8 @@ import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrect
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
 import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, lienOwnerIsPublic, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
+import { lienGateMarks, lienGateRowParts } from '../../lib/jobs/lienGateMarks'
+import { LienGateMarkStrip } from './LienGateMarkStrip'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -3363,6 +3365,8 @@ export default function LienDesk({
               const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
               const sel = e.jobId === affSelected?.jobId
               const missing = e.gates.filter((x) => !x.ok).map((x) => affidavitGateMissingWord(x.key))
+              // The pane's five gates as marks on the chip line (v2.7335): in the two early piles, after *last work*; the words stay where the strip is not drawn and on a phone, which has no hover.
+              const gateParts = lienGateRowParts(e.pile, isMobile)
               return (
                 <button
                   key={e.jobId}
@@ -3390,7 +3394,8 @@ export default function LienDesk({
                       return <span style={tone} data-lien-affidavit-pile={pile}>{pile} · {AFFIDAVIT_PILE_WORDS[pile].short}</span>
                     })()}
                     <span>last work {workMonthShort(e.lastMonth)}</span>
-                    {missing.length ? <span>· missing {missing.join(', ')}</span> : null}
+                    {gateParts.strip ? <LienGateMarkStrip marks={lienGateMarks(e.gates, e.isSub)} /> : null}
+                    {gateParts.words && missing.length ? <span>· missing {missing.join(', ')}</span> : null}
                     <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
                   </span>
                 </button>

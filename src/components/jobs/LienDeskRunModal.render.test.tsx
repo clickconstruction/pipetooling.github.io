@@ -961,6 +961,34 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     expect(screen.queryByRole('button', { name: /^Print the packet/ })).toBeNull()
   })
 
+  it('a printed notice whose job was paid since is held on its row (v2.7337): the foot and Mark N signed leave it out, and its own Signed and Mailed are closed', async () => {
+    const at = '2026-10-07T16:00:00Z'
+    const leader = { userId: 'u-rob', name: 'Robert Douglas' }
+    const two = [
+      notice({ printedAt: at, signature: null, leader }),
+      // The paper says $2,400; the job's open balance is $0 today.
+      notice({ itemId: 'it2', jobId: 'j651', label: '651 · Paid since', jobNumber: '651', printedAt: at, signature: null, leader, amount: 0, fields: { ...notice().fields, claimAmount: '2400.00' }, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] }),
+    ]
+    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    const why = 'Nothing to claim: the job owes $0 now. The paper says $2,400.'
+    expect(screen.getByTestId('run-check-held-it2').textContent).toBe(`Held · ${why}`)
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('1 to sign · 1 held')
+    const press = screen.getByTestId('run-mark-signed') as HTMLButtonElement
+    expect(press.textContent).toBe('Mark 1 signed · 1 waits ▸')
+    expect(press.title).toBe(`651 · Paid since: ${why}`)
+    // The live row keeps its doors; the paid one has no Signed press and a closed Mailed box.
+    expect(screen.getByTestId('run-check-sign-it1').textContent).toBe('Signed ▸')
+    expect(screen.getByTestId('run-check-sign-it2').textContent).toBe('nothing to sign')
+    const box = screen.getByLabelText('651 · Paid since — owner tracking') as HTMLInputElement
+    expect(box.disabled).toBe(true)
+    expect(box.placeholder).toBe('nothing to mail')
+    expect((screen.getByLabelText('650 · AXO Schertz — owner tracking') as HTMLInputElement).disabled).toBe(false)
+    fireEvent.click(press)
+    expect(screen.getByLabelText('650 · AXO Schertz signed with a pen')).toBeTruthy()
+    expect(screen.queryByLabelText('651 · Paid since signed with a pen')).toBeNull()
+  })
+
   it('Mark N signed ▸ opens one pen pane over every printed, unsigned notice of the leader; the record ticks each row', async () => {
     const at = '2026-10-07T16:00:00Z'
     const two = [

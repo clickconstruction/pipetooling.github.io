@@ -2,18 +2,17 @@
 name: "Lien desk: a started paper stays on the desk, whatever its day"
 number: 354
 group: ready
-status: written 2026-11-14 from a Lien desk session · the owner chose this shape, then parked it for its own session · built 2026-11-14 as v2.7261, one PR
+status: written 2026-11-14 from a Lien desk session · the owner chose this shape, then parked it for its own session · built 2026-11-14 as v2.7261, one PR (#8116), on main
 summary: >
   The Lien desk lists what is due within 30 days, and builds every list from the readers' rows
   alone. A paper someone already drafted, sent for approval, approved or held drops off every list
   while its day is further out. Three affidavits drafted on 2026-11-14 for a Dec 15 day showed in
   their jobs' Lien windows and nowhere on the desk. The fix keeps any started paper on the desk
   without widening the window for every job.
-next: Retire the card once v2.7261 is on main and the office has seen a started paper on the desk.
+next: Retire the card once the office has seen a started paper on the desk.
 size: S
-ver: v2.7261
+ver: v2.7247 · v2.7261
 blocker: none
-ver: v2.7247
 ---
 
 # Lien desk: a started paper stays on the desk, whatever its day (#354)

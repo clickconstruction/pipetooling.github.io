@@ -5,6 +5,11 @@
  *
  * The code is handed out once and the table keeps only its hash. So the device that made a link
  * remembers it, to show it again, and any other device makes a link of its own.
+ *
+ * **Text it…** (v2.7338): for the office team, on a map that is on a job, the link goes to the job's
+ * customer from the company's number. The press opens the customer's own box on Text in place
+ * (`ContractTextDoor`), with the map's name and the link in it. Nothing is sent in the press: the
+ * box's send window is the confirm (`lib/paintedMap/paintedMapText.ts`).
  */
 import { QRCodeSVG } from 'qrcode.react'
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
@@ -15,6 +20,11 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PAINTED_MAP_SHARE_WORDS, linkDayWords, linkEndsWords, linkOpenedWords, paintedMapLinkOpen, paintedMapLinkUrl, type PaintedMapLinkRow } from '../../lib/paintedMap/paintedMapLink'
 import type { NumberedPlace, PaintedLine } from '../../lib/paintedMap/paintedMap'
 import { endPaintedMapLinks, loadPaintedMapLinks, mintPaintedMapLink, rememberPaintedMapLink, rememberedPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
+import { PAINTED_MAP_TEXT_WORDS, paintedMapTextDoor, paintedMapTextWords, type PaintedMapTextJob } from '../../lib/paintedMap/paintedMapText'
+import { loadPaintedMapTextJob } from '../../lib/paintedMap/paintedMapTextIo'
+import type { ReplyIo } from '../../lib/messages/replyIo'
+import type { Contact } from '../../lib/contacts/kernel'
+import { ContractTextDoor } from '../jobs/ContractTextDoor'
 import { PaintedMapCopies } from './PaintedMapCopies'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -27,6 +37,13 @@ type Props = {
   onClose: () => void
   /** Where links point. The app's own address by default. */
   origin?: string
+  /** Text it…: the office team writes to a customer (`jobBoxOffered`). Left out, the sheet offers no text. */
+  mayText?: boolean
+  /** The job the map is on, for Text it…. Left out, the copy's job is used. */
+  jobId?: string | null
+  /** For a smoke: the job's read, and the customer's box's contact and sends. */
+  loadJob?: (jobId: string) => Promise<PaintedMapTextJob | null>
+  textBox?: { load?: (customerId: string) => Promise<Contact>; io?: ReplyIo }
 }
 
 const press: CSSProperties = { minHeight: 48, padding: '0 0.9rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer' }
@@ -35,7 +52,7 @@ const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color:
 const rowPress: CSSProperties = { display: 'grid', gap: '0.1rem', width: '100%', textAlign: 'left', padding: '0.55rem 0.7rem', borderRadius: 9, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer' }
 const note: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.45rem 0.6rem' }
 
-export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, origin = typeof window !== 'undefined' ? window.location.origin : '' }: Props) {
+export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, origin = typeof window !== 'undefined' ? window.location.origin : '', mayText = false, jobId, loadJob = loadPaintedMapTextJob, textBox }: Props) {
   const isTopmost = useModalStackEntry()
   const [mine, setMine] = useState<{ code: string; endsOn: string | null } | null>(() => rememberedPaintedMapLink(mapId))
   const [links, setLinks] = useState<PaintedMapLinkRow[] | null>(null)
@@ -44,6 +61,9 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
   const [said, setSaid] = useState<string | null>(null)
   const [showCode, setShowCode] = useState(false)
   const [ending, setEnding] = useState(false)
+  /** Text it…: closed, reading the job, or the customer's box open on it. */
+  const [texting, setTexting] = useState<{ kind: 'closed' } | { kind: 'opening' } | { kind: 'open'; job: PaintedMapTextJob }>({ kind: 'closed' })
+  const textDoor = paintedMapTextDoor({ office: mayText, jobId: jobId === undefined ? (whole?.map.jobId ?? null) : jobId })
 
   const readLinks = useCallback(async () => {
     const res = await loadPaintedMapLinks(mapId)
@@ -123,6 +143,27 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
     }
   }
 
+  const textIt = async (textJobId: string) => {
+    if (texting.kind !== 'closed') {
+      setTexting({ kind: 'closed' })
+      return
+    }
+    setError(null)
+    setSaid(null)
+    setTexting({ kind: 'opening' })
+    try {
+      const job = await loadJob(textJobId)
+      if (job) setTexting({ kind: 'open', job })
+      else {
+        setTexting({ kind: 'closed' })
+        setError(PAINTED_MAP_TEXT_WORDS.jobGone)
+      }
+    } catch (e) {
+      setTexting({ kind: 'closed' })
+      setError(formatErrorMessage(e, PAINTED_MAP_TEXT_WORDS.jobGone))
+    }
+  }
+
   const end = async () => {
     setEnding(false)
     if (busy) return
@@ -134,6 +175,7 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
       rememberPaintedMapLink(mapId, null)
       setMine(null)
       setShowCode(false)
+      setTexting({ kind: 'closed' })
       setSaid(n === 1 ? 'The link is ended. Anyone who opens it now reads that the map is no longer shared.' : `${n} links are ended. Anyone who opens one now reads that the map is no longer shared.`)
       await readLinks()
     } catch (e) {
@@ -172,6 +214,33 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
                 <button type="button" style={{ ...bluePress, minHeight: 52 }} onClick={() => void copy()}>
                   Copy the link
                 </button>
+                {textDoor.kind === 'offered' ? (
+                  <button type="button" data-painted-share-text style={rowPress} aria-expanded={texting.kind !== 'closed'} disabled={texting.kind === 'opening'} onClick={() => void textIt(textDoor.jobId)}>
+                    {texting.kind === 'opening' ? PAINTED_MAP_TEXT_WORDS.opening : PAINTED_MAP_TEXT_WORDS.press}
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)' }}>{PAINTED_MAP_TEXT_WORDS.pressSub}</span>
+                  </button>
+                ) : null}
+                {textDoor.kind === 'no-job' ? (
+                  <p data-painted-share-text-none style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {textDoor.words}
+                  </p>
+                ) : null}
+                {texting.kind === 'open' ? (
+                  <ContractTextDoor
+                    title={PAINTED_MAP_TEXT_WORDS.head}
+                    jobId={texting.job.id}
+                    jobName={texting.job.name}
+                    jobStatus={texting.job.status}
+                    customerId={texting.job.customerId}
+                    typedPhone=""
+                    words={paintedMapTextWords(mapName, url)}
+                    onClose={() => setTexting({ kind: 'closed' })}
+                    // The box's own toast says whether the text went or waits: the door only closes.
+                    onSent={() => setTexting({ kind: 'closed' })}
+                    {...(textBox?.load ? { load: textBox.load } : {})}
+                    {...(textBox?.io ? { io: textBox.io } : {})}
+                  />
+                ) : null}
                 {canShare ? (
                   <button type="button" style={rowPress} onClick={() => void sendAnotherWay()}>
                     Send it another way…
