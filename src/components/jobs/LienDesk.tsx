@@ -150,8 +150,8 @@ import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, 
 import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
-import LienPaneHead from './LienPaneHead'
-import { LIEN_PANE_HEAD_H, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection, type LienPaneSectionKey } from '../../lib/jobs/lienPaneSections'
+import { LIEN_PANE_HEAD_H, lienPaneSections } from '../../lib/jobs/lienPaneSections'
+import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from '../../lib/jobs/lienPhonePane'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
@@ -166,7 +166,7 @@ import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
 import LienDeskJobScreen from './LienDeskJobScreen'
 import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../../lib/jobs/lienDeskPhoneMore'
-import { lienDeskPileLineFit, lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineFit, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
+import { LIEN_DESK_TITLE_BAR_ROW_GAP_PX, lienDeskPileLineFit, lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineFit, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
 import { DeskLegendCard } from '../help/LegendCard'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
@@ -183,6 +183,7 @@ import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { lienStripChips, type LienStripChipAct, type LienStripChipTone } from '../../lib/jobs/lienStripChips'
 import { buildLienDeskGates, lienSentGatesFold, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence, lienGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -511,8 +512,6 @@ export default function LienDesk({
     setStripH(paneScrolled ? stripRef.current?.offsetHeight ?? 0 : 0)
   }, [paneScrolled, selectedJobId])
   const paneRef = useRef<HTMLDivElement | null>(null)
-  // The pane's stacked heads (v2.4733): which section the reader is in; they stack under the pinned strip, whose height v2.4726 measures (`stripH`, 0 while it is not pinned).
-  const [litSection, setLitSection] = useState<LienPaneSectionKey | null>(null)
   // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
   const [activeGate, setActiveGate] = useState<{ key: LienGateKey; at: number } | null>(null)
   useEffect(() => {
@@ -1103,7 +1102,6 @@ export default function LienDesk({
   useEffect(() => {
     setCheckedMonths(null)
     setCoverNote(selected?.item ? selected.item.cover_note : true)
-    setLitSection(null)
     setHousesInLetter(parseLienDeskDraftFields(selected?.item?.fields)?.housesInLetter !== false)
     const storedRelease = parseLienDeskDraftFields(selected?.item?.fields)?.releaseId ?? null
     releaseIdRef.current = storedRelease
@@ -2403,50 +2401,56 @@ export default function LienDesk({
         money: formatUsdNoCents,
       })
     : []
-  const paneStripH = stripH
-  const relightPane = (host: HTMLElement) => {
-    const bodies = paneHeads
-      .map((h) => ({ key: h.key, el: host.querySelector<HTMLElement>(`[data-lien-pane-body="${h.key}"]`) }))
-      .filter((b): b is { key: LienPaneSectionKey; el: HTMLElement } => b.el != null)
-      .map((b) => ({ key: b.key, offsetTop: b.el.offsetTop }))
-    const next = litLienPaneSection(bodies, host.scrollTop, host.scrollTop > STRIP_COLLAPSE_PX ? stripH : 0, isMobile)
-    setLitSection((prev) => (prev === next ? prev : next))
+  // The heads' wiring is shared with the affidavit and retainage panes since v2.7320 (`useLienPaneHeads`): which section is lit from the pane's scroll, the press that lands a section under its own head, and the head itself. The strip's height is v2.4726's `stripH`, 0 while it is not pinned.
+  const {
+    head: paneHead,
+    goTo: goToSection,
+    relight: relightPane,
+  } = useLienPaneHeads({ paneRef, sections: paneHeads, phone: isMobile, strip: { height: stripH, pinned: paneScrolled, foldPx: STRIP_COLLAPSE_PX, measure: () => stripRef.current?.getBoundingClientRect().height || stripH }, resetKey: selected?.jobId ?? null })
+
+  // The scrolled strip's chips (v2.7318, the owner's rule of 2026-11-15 on JP372): only what the reader cannot see from where
+  // they are, and every chip a press to the door the gate box already has. The kernel words them; this wires each act.
+  const stripChips = selected
+    ? lienStripChips({
+        gates,
+        monthWords: monthsList.map(workMonthShort).join(' + '),
+        next: timeline ? { kind: timeline.next.kind, words: timeline.next.words, tone: timeline.next.tone } : null,
+        claimWords: formatUsdNoCents(claimed.claim),
+        claimByHand: claimed.corrected,
+        wordingWords: wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : '',
+        fold: gatesFold,
+      })
+    : []
+  const scrollPaneTo = (selector: string) => paneRef.current?.querySelector(selector)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+  const pressStripChip = (act: LienStripChipAct) => {
+    if (!selected) return
+    if (act === 'top') paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    else if (act === 'ready') {
+      // Down to the footer, whose primary is the send; a phone's folded footer opens so the press is on the screen.
+      setFootFolded(false)
+      const host = paneRef.current
+      host?.scrollTo?.({ top: host.scrollHeight, behavior: 'smooth' })
+      // preventScroll: the page around the desk must not move with the focus (it slid the title bar off the top on the first live press).
+      window.setTimeout(() => (host?.closest('[aria-label="Lien desk"]') ?? document).querySelector<HTMLButtonElement>('[data-lien-desk-next] .lienFootActions button:last-of-type')?.focus?.({ preventScroll: true }), 80)
+    } else if (act === 'gate:owner') {
+      if (office) setPaneFix({ jobId: selected.jobId, focus: 'owner' })
+      else pickGate('owner')
+    } else if (act === 'gate:gc') onOpenEditJob(selected.jobId)
+    // The month grid heads its section, so the section's own landing (the head under the strip) puts the grid in view; a plain scrollIntoView lost it under the stacked heads.
+    else if (act === 'gate:months' || act === 'months') goToSection('months')
+    else if (act === 'gate:kind' || act === 'gate:billed') pickGate(act === 'gate:kind' ? 'kind' : 'billed')
+    else if (act === 'claim') scrollPaneTo('[data-lien-claim-box], [data-lien-claim-editor]')
+    else if (act === 'wording') scrollPaneTo('[data-lien-desk-send-line]')
+    else if (act === 'next') goToSection('path')
   }
-  const goToSection = (key: LienPaneSectionKey) => {
-    const host = paneRef.current
-    const i = paneHeads.findIndex((h) => h.key === key)
-    const body = host?.querySelector<HTMLElement>(`[data-lien-pane-body="${key}"]`)
-    if (!host || !body || i < 0) return
-    const scroll = (top: number, smooth: boolean) => {
-      if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
-      else host.scrollTop = top
-    }
-    const measured = () => stripRef.current?.getBoundingClientRect().height || stripH
-    const plain = lienPaneSectionScrollTop(body.offsetTop, i, 0, isMobile)
-    if (plain <= STRIP_COLLAPSE_PX) {
-      scroll(plain, true)
-      setLitSection(key)
-      return
-    }
-    if (paneScrolled) {
-      // The strip is pinned already: its height is on the page to read.
-      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured(), isMobile), true)
-      setLitSection(key)
-      return
-    }
-    // The strip will pin at the landing but is not on the page yet, so its height is a guess (the first live press
-    // landed 15 px short on a wrapped strip). Step just past the fold so it mounts, read it, then land exactly.
-    scroll(STRIP_COLLAPSE_PX + 1, false)
-    window.setTimeout(() => {
-      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured(), isMobile), true)
-      setLitSection(key)
-    }, 80)
-  }
-  const paneHead = (key: LienPaneSectionKey) => {
-    const i = paneHeads.findIndex((h) => h.key === key)
-    if (i < 0) return null
-    return <LienPaneHead section={paneHeads[i]!} index={i} count={paneHeads.length} stripHeight={paneStripH} lit={(litSection ?? paneHeads[0]?.key) === key} onGo={() => goToSection(key)} phone={isMobile} />
-  }
+  const stripChipStyle = (tone: LienStripChipTone): React.CSSProperties =>
+    tone === 'red'
+      ? chip('var(--bg-red-tint)', 'var(--text-red-600)')
+      : tone === 'amber'
+        ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)')
+        : tone === 'green'
+          ? chip('var(--bg-green-tint)', 'var(--text-green-800)')
+          : chip('var(--bg-subtle)', 'var(--text-700)')
 
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
@@ -2474,28 +2478,23 @@ export default function LienDesk({
           style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
         >
           <strong>{jobLabel(job, selected.jobId)}</strong>
-          {gatesFold ? (
-            <span style={chip('var(--bg-subtle)', 'var(--text-700)')} data-lien-strip-sent>{gatesFold.head}</span>
-          ) : (
-            <>
-              <span style={chip(gateVerdict.ready ? 'var(--bg-green-tint)' : 'var(--bg-red-tint)', gateVerdict.ready ? 'var(--text-green-800)' : 'var(--text-red-600)')}>{gateVerdict.ready ? '✓' : '✗'} {gateVerdict.headline}</span>
-              {gates.filter((g) => g.tone !== 'ok').map((g) => (
-                <span key={g.key} style={chip(g.tone === 'blocker' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', g.tone === 'blocker' ? 'var(--text-red-600)' : 'var(--text-amber-800)')} title={g.title}>
-                  {g.n} · {g.label}: {g.value}
-                </span>
-              ))}
-            </>
-          )}
-          <span style={{ color: 'var(--text-muted)' }}>{monthsList.length ? monthsList.map(workMonthShort).join(' + ') : 'no months'}</span>
-          {timeline ? (
-            <span data-lien-desk-strip-next style={chip(timeline.next.tone === 'red' ? 'var(--bg-red-tint)' : timeline.next.tone === 'amber' ? 'var(--bg-amber-tint)' : timeline.next.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', timeline.next.tone === 'red' ? 'var(--text-red-600)' : timeline.next.tone === 'amber' ? 'var(--text-amber-800)' : timeline.next.tone === 'green' ? 'var(--text-green-800)' : 'var(--text-700)')} title="Next on the path">
-              {timeline.next.words}
-            </span>
-          ) : null}
-          <span style={{ color: 'var(--text-muted)' }}>
-            Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(claimed.claim)}</strong>{claimed.corrected ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>set by hand</span> : null}
-          </span>
-          {wordingDiff.length ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>{wordingLineText(wordingDiff, wordingEditedBy)}</span> : null}
+          {/* Every chip is a press (v2.7318): a red one opens its gate's door, the green one goes to the send, the quiet ones to their sections; the Sent chip goes back up. */}
+          {stripChips.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              className="lienStripChip"
+              data-lien-strip-chip={c.key}
+              data-tone={c.tone}
+              data-lien-desk-strip-next={c.key === 'next' ? true : undefined}
+              data-lien-strip-sent={c.key === 'sent' ? true : undefined}
+              title={c.title}
+              onClick={() => pressStripChip(c.act)}
+              style={stripChipStyle(c.tone)}
+            >
+              {c.words}
+            </button>
+          ))}
           <span style={{ flex: 1 }} />
           <button type="button" onClick={() => paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })} style={linkBtn}>
             Show gates ▴
@@ -4040,7 +4039,8 @@ export default function LienDesk({
     <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
       <div style={panelStyle} data-lien-desk-panel="page">
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
-        <div ref={titleBarRef} className="lienDeskTitleBar" data-lien-pane-open={paneOpenPhone ? paneOpenPhone.kind : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? '0.4rem' : '0.45rem', borderBottom: '1px solid var(--border)' }}>
+        {/* v2.7322 (the owner's three boxes of 2026-11-15): on a computer the lines sit 6 px apart by the items' own 3 px block margins (`.lienDeskTitleBar > *` in index.css, `LIEN_DESK_TITLE_BAR_ROW_GAP_PX`) and the bar's row gap is 0, since a 0-height break on a line of its own took the old 7.2 px row gap twice; the bar's padding is 1 px over and 3 under, so with those margins the way back sits 4 px under the page's own 8, as close under the app's nav as the Jobs page's tabs, and the pile line 6 px over the border. A phone keeps its own rows. */}
+        <div ref={titleBarRef} className="lienDeskTitleBar" data-lien-pane-open={paneOpenPhone ? paneOpenPhone.kind : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '1px 1.25rem 3px', rowGap: isMobile ? '0.4rem' : 0, borderBottom: '1px solid var(--border)' }}>
           {/* The page's way back (punch list #182), before the title; stacked, an open notice's door back is the list. */}
           {noticeOpenStacked ? (
             <button type="button" onClick={onShowList} data-lien-desk-notices aria-label="Back to the notices" style={{ ...btn('plain'), display: 'inline-flex', alignItems: 'center', gap: 6, height: isMobile ? 44 : 30, marginRight: 8 }}>
@@ -4113,9 +4113,9 @@ export default function LienDesk({
               ))}
             </div>
           ) : null}
-          {/* The pile chips: in the header on a computer, one span so the pile line can be measured (v2.7311); on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). */}
+          {/* The pile chips: in the header on a computer, one span so the pile line can be measured (v2.7311); on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). The span's own wrapped rows keep the bar's 6 px (v2.7322), since the bar's row gap is 0 now. */}
           {!isMobile && (kind === 'retainage' || kind === 'affidavit') && (kind === 'retainage' ? retPileChips : affPileChips).length > 0 ? (
-            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
+            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
           ) : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *show every pile*. */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door (on every view's second line since v2.7311) and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
