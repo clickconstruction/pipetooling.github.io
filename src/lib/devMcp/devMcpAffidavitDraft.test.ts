@@ -205,8 +205,8 @@ describe('affidavitDraftDryRun — the pane’s draft, and what the seat refuses
   it('reads back what the paper would say today: the notice’s months inside the work span, the send to the owner, the claim', () => {
     const dry = planned(world())
     const paper = dry.reply.paper_today as Record<string, unknown>
-    // The span runs from the first clock day to the day set by hand, so all four noticed months are inside it; September is not noticed.
-    expect(paper.months_it_names).toBe('April, June, July and August 2026')
+    // The span runs from the first clock day to the day set by hand, so all four noticed months are inside it; September, the last day's month, is named beside them (v2.7302).
+    expect(paper.months_it_names).toBe('April, June, July, August and September 2026')
     expect(paper.notice_to_the_owner).toBe('certified mail on September 22, 2026')
     expect(paper.claim).toBe(1200)
     expect(paper.owner).toBe('Pat Sample')
@@ -242,14 +242,13 @@ describe('affidavitDraftDryRun — the pane’s draft, and what the seat refuses
     expect(String((checked.reply.month_checked as Record<string, unknown>).says)).toContain('August 2026, checked by Robert on 2026-11-14')
     const other = planned(world({ row: windowRow({ month_source: 'bill', last_month: '2026-09', deadline: '2026-12-15' }), job: { ...world().job!, first_work_date: null, last_work_date: null, lien_last_work_on: null, ...check } }))
     expect(other.reply.month_checked).toBeUndefined()
-    const blank = planned(world({ filings: [{ ...NOTICE, months_covered: ['2026-10'] }] }))
-    expect((blank.reply.paper_today as Record<string, unknown>).months_it_names).toBeNull()
-    expect(String(blank.reply.no_month)).toContain('prints a blank')
-    // The reason rides in front of it (punch list #356): the job's work months and the notice's months, side by side.
-    expect(String(blank.reply.no_month)).toContain('No recorded notice names a month this job was worked.')
-    expect(String(blank.reply.no_month)).toContain('The notice on record names October 2026.')
+    // A notice that names none of the job's months (v2.7302): the paper still names the last day's month, and the ask lines say its notice is not on record.
+    const earlier = planned(world({ filings: [{ ...NOTICE, months_covered: ['2026-10'] }] }))
+    expect((earlier.reply.paper_today as Record<string, unknown>).months_it_names).toBe('September 2026')
+    expect(earlier.reply.no_month).toBeUndefined()
+    expect(earlier.reply.ask_the_attorney_before_this_is_filed).toContain("The owner's notice went after its date, or is not on record, for September 2026.")
     // The last work month's own notice is still due (punch list #353, part 2): September on a house closes Nov 16.
-    expect(String(planned(world()).reply.notice_still_due)).toBe("September 2026's notice is still due, by 2026-11-16. The paper will not name that month until the notice is recorded.")
+    expect(String(planned(world()).reply.notice_still_due)).toBe("September 2026's notice is still due, by 2026-11-16. The paper names that month from the last day on site. Record the notice, and the month has one behind it.")
     expect(planned(world({ filings: [{ ...NOTICE, months_covered: [...NOTICE.months_covered, '2026-09'] }] })).reply.notice_still_due).toBeUndefined()
   })
 
