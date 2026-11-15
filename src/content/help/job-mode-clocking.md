@@ -82,6 +82,16 @@ You tap {{button:outline|Job detail}} on the card, or a job on My Schedule. The 
 - {{button:blue|Leave report}} opens the phone's camera, then the field report form for this job. Each shot goes with the report into the customer's Drive folder. See [take photos for a report](/help/take-photos-for-a-report) and [file and review field reports](/help/reports).
 - {{button:outline|Note}} opens a note box at the bottom of the screen, with the keyboard under it. You type the note. You press {{button:blue|Save}}. The note lands on the job's thread and the box closes.
 
+Above the bar the window reads from the top down. The job's name comes first, with its status beside it. The job's number and the customer sit on a quiet line under the name. At the right, **⋯** opens a short list of doors, like **Share the job**. **✕** under it closes the window.
+
+Then the window runs in sections.
+
+- **Where** shows the street photo with the address on it. You tap the address to open it in Maps. Painted maps sit under the photo, then **＋ Paint a map**.
+- **Photos** is a row of pictures you flick sideways. **Add a photo** is the first tile. It opens the camera.
+- **Who** names the customer. The phone number is written out. You tap the number to call. The square beside the number copies it.
+- **What's happening** shows the block you opened the job from, with its hours on their own line. **Last note** shows the newest note or report, who wrote it and when.
+- **More on this job** holds the rest in folds. **Notes and reports** holds every note and the note box. **Plans** holds the plans. A superintendent also gets **Parts cost**. You tap a fold to open it. The phone remembers which folds you left open.
+
 Masters and primaries open the tabbed window instead. On a phone the tabbed window's bar carries {{button:green|Arrived}} or {{button:outline-amber|Leaving}} when you are on the job's crew. {{button:outline|Note}} on that bar opens the same note box. See [the bar at the bottom](/help/job-window-tabs#on-a-phone-the-bar-at-the-bottom).
 
 On a computer neither window has a bar. Arrived, Leaving and Post note sit under the note box as before.

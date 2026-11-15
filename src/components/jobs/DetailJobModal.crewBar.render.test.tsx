@@ -12,6 +12,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import DetailJobModal from './DetailJobModal'
 import { UpdateFocusOpenerBridgeProvider } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { JOB_WINDOW_BAR_MIN_HEIGHT } from '../../lib/jobs/jobWindowBar'
+import { CREW_FOLDS_KEY } from '../../lib/jobs/jobWindowCrewPhone'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 /** What the window wrote to the job's thread: the press the outbox sent (punch list #163 PR 3), as the RPC read it. */
@@ -82,6 +83,8 @@ beforeAll(() => {
 afterEach(() => {
   narrowMatches = false
   notesInserted.length = 0
+  // The phone remembers its open folds; each test starts with them closed.
+  localStorage.removeItem(CREW_FOLDS_KEY)
 })
 
 const assigned = [
@@ -129,7 +132,10 @@ describe('DetailJobModal · the crew bar on a phone', () => {
     expect(screen.getAllByRole('button', { name: /^(Arrived|Leaving)$/ })).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'Post arrived at job note' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Post leaving job note' })).toBeNull()
-    // Post note stays in the composer for a long note typed there.
+    // Post note stays in the composer for a long note typed there; on a phone the composer is under Notes and reports
+    // (punch list #355, the crew half), folded until it is opened.
+    expect(screen.queryByRole('button', { name: 'Post note' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Notes and reports' }))
     expect(screen.getByRole('button', { name: 'Post note' })).toBeTruthy()
   })
 
@@ -164,9 +170,12 @@ describe('DetailJobModal · the crew bar on a phone', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Note' })).toBeNull())
     // One press on this job's thread, with the words as typed, sent through the outbox's RPC (the server sets the author).
     expect(notesInserted).toEqual([{ kind: 'job_note', job_id: 'job-1', body: 'Dana wants the old heater hauled off.' }])
-    const posted = await screen.findByText('Dana wants the old heater hauled off.')
-    expect(posted.closest('li')).not.toBeNull()
+    // The note joins the activity, and it is the Last note row at the top of What's happening.
+    const posted = await screen.findAllByText('Dana wants the old heater hauled off.')
+    expect(posted.some((el) => el.closest('li') !== null)).toBe(true)
+    expect(within(await screen.findByTestId('crew-window-last-note')).getByText('Dana wants the old heater hauled off.')).toBeTruthy()
     // The draft the composer and the sheet share is empty again.
+    fireEvent.click(screen.getByRole('button', { name: /^Notes and reports/ }))
     expect((screen.getByRole('textbox', { name: 'Add a note' }) as HTMLTextAreaElement).value).toBe('')
   })
 
