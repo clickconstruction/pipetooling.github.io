@@ -34,7 +34,8 @@ import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
-import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
+import { lienAffidavitOwnerSends, lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
+import { lienGateRow, type LienGateRowFacts } from '../../lib/jobs/lienGateRow'
 import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue, lienNoticeNamedMonths } from '../../lib/jobs/lienNoticeOwed'
 import { clearLienAffidavitMonthsByHand, saveLienAffidavitMonthsByHand } from '../../lib/jobs/lienAffidavitMonthsByHandIo'
 import LienAffidavitMonthsByHandEditor from './LienAffidavitMonthsByHandEditor'
@@ -349,6 +350,10 @@ export default function LienDeskAffidavitPane({
   // The door on the contractor's-address gate (punch list #305): the GC's own customer record.
   const contractorGcId = entry.gcCustomerId
   const contractorDoor = onFixContractor && contractorGcId ? () => onFixContractor(contractorGcId) : null
+  // The facts each gate row shows after its label (v2.7313): the record's own values, and the last notice to the owner's day.
+  const ownerSends = lienAffidavitOwnerSends(data.filingsByJob[entry.jobId] ?? [])
+  const lastOwnerSend = ownerSends[ownerSends.length - 1]
+  const gateFacts: LienGateRowFacts = { isSub: entry.isSub, ownerName, county: property.county, legalDescription: property.legalDescription, gcName: gc?.name, gcAddress: gc?.address, noticeSentWords: lastOwnerSend ? `sent ${formatYmdMonthDay(lastOwnerSend.sentOn)}` : '' }
 
   // ---------- footer ----------
   let footer: React.ReactNode = null
@@ -478,17 +483,37 @@ export default function LienDeskAffidavitPane({
       </div>
       <div style={boxStyle}>
         <div style={boxHead}>Before this affidavit can be generated (§ 53.052 · window from {workMonthLabel(entry.lastMonth)}, {entry.lastMonthFromCreation ? (entry.lastMonthFromBill ? 'the month of the bill, since the job has no clock hours' : 'the month the job was created — it has no clock hours') : 'the last month worked'})</div>
-        <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.8125rem' }}>
-          {entry.gates.map((g) => (
-            <div key={g.key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, color: g.ok ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{g.ok ? '✓' : '✗'}</span>
-              <span>{g.label}{g.key === 'owner' && ownerName ? ` — ${ownerName}` : ''}{g.key === 'legal' && property.county ? ` — ${property.county}` : ''}{g.key === 'contractor' && entry.isSub && gc?.name ? ` — ${gc.name}` : ''}</span>
-              {!g.ok && (g.key === 'owner' || g.key === 'legal') ? <button type="button" onClick={() => (onFixProperty ? onFixProperty(entry.jobId, g.key === 'owner' ? 'owner' : 'legal') : onOpenEditJob(entry.jobId))} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>{onFixProperty ? 'Fill in the record ›' : 'Property record ›'}</button> : null}
-              {!g.ok && g.key === 'homestead_answer' ? <button type="button" data-lien-affidavit-homestead-door onClick={() => (onFixProperty ? onFixProperty(entry.jobId, 'homestead_answer') : onOpenEditJob(entry.jobId))} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>{HOMESTEAD_QUESTION_DOOR}</button> : null}
-              {!g.ok && g.key === 'contractor' && contractorDoor ? <button type="button" data-lien-affidavit-contractor-door onClick={contractorDoor} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Add the address ›</button> : null}
-              {!g.ok && g.key === 'notice' ? <button type="button" onClick={() => onShowNotices(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Send the notice first ›</button> : null}
-            </div>
-          ))}
+        {/* Every row is a press (v2.7313, `lienGateRow`): it opens the fact's own home at the right line. A failed gate keeps its named door; a passed one shows its fact and ends in Change ›. */}
+        <div style={{ display: 'grid', gap: '0.15rem' }}>
+          {entry.gates.map((g) => {
+            const row = lienGateRow(g, gateFacts, { property: Boolean(onFixProperty), contractor: Boolean(contractorDoor) })
+            const open =
+              row.door === 'property_owner' || row.door === 'property_legal' || row.door === 'property_homestead'
+                ? () => (onFixProperty ? onFixProperty(entry.jobId, row.door === 'property_owner' ? 'owner' : row.door === 'property_legal' ? 'legal' : 'homestead_answer') : onOpenEditJob(entry.jobId))
+                : row.door === 'contractor' && contractorDoor
+                  ? contractorDoor
+                  : row.door === 'notices'
+                    ? () => onShowNotices(entry.jobId)
+                    : null
+            return (
+              <button
+                key={g.key}
+                type="button"
+                className="lienGateRow"
+                onClick={open ?? undefined}
+                disabled={!open}
+                title={row.title || undefined}
+                data-lien-gate-row={g.key}
+                data-lien-gate-ok={g.ok ? 'yes' : 'no'}
+                {...(!g.ok && g.key === 'homestead_answer' ? { 'data-lien-affidavit-homestead-door': '' } : {})}
+                {...(!g.ok && g.key === 'contractor' && contractorDoor ? { 'data-lien-affidavit-contractor-door': '' } : {})}
+              >
+                <span aria-hidden="true" style={{ fontWeight: 700, color: g.ok ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{g.ok ? '✓' : '✗'}</span>
+                <span className="lienGateWords">{g.label}{row.fact ? ` — ${row.fact}` : ''}</span>
+                {open ? <span className="lienGateDoor" data-open={g.ok ? 'yes' : 'no'}>{row.doorWords}</span> : null}
+              </button>
+            )
+          })}
         </div>
         {/* A month from a bill or the job's creation (v2.7224): a question with two doors (v2.7280), never a hold. Confirmed, the quiet line with Change ›. */}
         {monthState.kind !== 'none' && checkOpen ? (

@@ -1375,11 +1375,11 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(timeline.textContent).toContain('Property kind not set: residential dates shown, the earlier ones. Commercial would be a month later.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
     // v2.4724: the door opens the property record in a window over the desk, not Edit Job.
-    fireEvent.click(screen.getAllByRole('button', { name: 'Fill in the record ›' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: /Fill in the record ›/ })[0]!)
     expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
     expect(onOpenEditJob).not.toHaveBeenCalled()
     fireEvent.click(screen.getByTestId('lien-paper-property-discard'))
-    expect(screen.getByRole('button', { name: 'Send the notice first ›' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Send the notice first ›/ })).toBeTruthy()
   })
 
   it('the pane says which months the affidavit claims, and a missed month is worked but unsecured (v2.3681)', () => {
@@ -1457,7 +1457,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('short')
     expect(paper().querySelector('[data-top-notice]')).toBeNull()
     const door = document.querySelector('[data-lien-affidavit-homestead-door]') as HTMLElement
-    expect(door.textContent).toBe('Answer it ›')
+    expect(door.textContent).toContain('Answer it ›')
     fireEvent.click(door)
     await settle()
     const question = document.querySelector('[data-homestead-question]') as HTMLElement
@@ -1494,7 +1494,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     // The paper names the owner, never the attention line.
     expect(paper().textContent).toContain('The owner or reputed owner is SAMPLE CITY OF')
     expect(paper().textContent).not.toContain('ATTN REAL ESTATE MANAGER')
-    expect(screen.queryByRole('button', { name: 'Fill in the record ›' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Fill in the record ›/ })).toBeNull()
   })
 
   it('a sworn month whose notice went late, with no copy to the contractor, is flagged for the attorney and holds nothing (punch list #314)', async () => {
@@ -1544,6 +1544,28 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(paper().textContent).toContain('Claimant did so under a contract with Lowbeck Contracting')
     fireEvent.click(document.querySelector('[data-lien-affidavit-contractor-door]') as HTMLElement)
     expect(onOpenCustomerRecord).toHaveBeenCalledWith('lowbeck')
+  })
+
+  it('every gate row is a press (v2.7313): a passed owner row ends in Change › and opens the property window, the notice row ends in See it › and opens Monthly notices', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([])} initialKind="affidavit" />)
+    await settle()
+    const owner = document.querySelector('[data-lien-gate-row="owner"]') as HTMLButtonElement
+    expect(owner.getAttribute('data-lien-gate-ok')).toBe('yes')
+    expect(owner.textContent).toContain('Change ›')
+    expect(owner.title).toBe('Opens the property record at the owner of record')
+    // A failed gate's chips are gone from a passed row: the row itself is the press.
+    expect(screen.queryByRole('button', { name: /Fill in the record ›/ })).toBeNull()
+    const noticeRow = document.querySelector('[data-lien-gate-row="notice"]') as HTMLButtonElement
+    expect(noticeRow.textContent).toContain('sent Aug 14')
+    expect(noticeRow.textContent).toContain('See it ›')
+    fireEvent.click(owner)
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('lien-paper-property-discard'))
+    fireEvent.click(noticeRow)
+    await settle()
+    // The desk is on Monthly notices for the job now, so the affidavit's gate list is gone.
+    expect(document.querySelector('[data-lien-gate-row="owner"]')).toBeNull()
+    expect(screen.getByRole('tab', { name: /Monthly notices/ })).toBeTruthy()
   })
 
   it('the address gate offers no door to a role that cannot edit the record, and none without the page’s handler', async () => {
