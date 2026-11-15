@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls open
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PRs 7 to 10 not built
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,7 +14,7 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: the owner's six calls on section 10 (a run that names its boxes), then its PRs 7 to 10 on his go; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
+next: PR 7 (the run carries names, section 10) in its own session, then 8, 9, 10 in order; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
 size: L as a train of six (M · M · M · S · M · S); left: PRs 4 to 6 (S · M · S)
 blocker: PRs 4 to 6 wait for the walk of the site, by the owner's order of 2026-11-14.
 ver: v2.7298
@@ -430,10 +430,11 @@ new box is named by its sticker's number — changed on 2026-11-14 by #351's cal
 
 ## The owner's calls on section 10
 
-Six, each one spot on `mockup-named-runs.html`, my pick first. Open on 2026-11-15: the owner said
-*fold them in* to the second pass and has not yet taken the calls.
+Six, each one spot on `mockup-named-runs.html`, my pick first. **The owner took all six as recommended
+on 2026-11-15**, in his words *Yes, as picked*, after *fold them in* on the second pass. The Recommended
+column is the design.
 
-| Call | Recommended | Also possible |
+| Call | Recommended, and taken | Also possible, not taken |
 |---|---|---|
 | 1 · the number on a named strip | Kept, printed small before the address | Left off a named strip |
 | 2 · names the site already has | A notice: their stickers go on those boxes | A refusal |
@@ -551,5 +552,5 @@ foot of the window draws the run's strips through the printer's own drawing, the
 design: one typed Names field open on the site's next free name, the box rule as the maximum, the letter after the
 number as twins, the name large and the number small on the strip, the first scan reading the name off the sticker,
 **These are on boxes** placing a range in one press, the number receding on the screens, and the trade against call
-2 said out loud. The owner asked *is this the best we can do*, took the second pass with *fold them in*, and the six
-calls under *The owner's calls on section 10* wait on him. Nothing of section 10 is built.
+2 said out loud. The owner asked *is this the best we can do*, took the second pass with *fold them in*, and then **took the six
+calls as picked** the same day (*Yes, as picked*). Nothing of section 10 is built; PR 7 is next, in its own session.
