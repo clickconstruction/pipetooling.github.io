@@ -2,7 +2,7 @@
 name: "GC difficulty rating: the GC is rated once, and the points become cost lines on every new bid to them"
 number: 357
 group: ready
-status: designed 2026-11-14 with the owner on a canvas, the calls settled the same day · building as a train of six, one PR merged, pushed and walked live before the next is cut · PR 1 (the criteria, versioned, and the dev's editor) merged as v2.7275 (#8129), pushed and walked live the same day · PR 2 (the rating on the GC's record, the chips) on claude/357-pr2-rating
+status: designed 2026-11-14 with the owner on a canvas, the calls settled the same day · building as a train of six, one PR merged, pushed and walked live before the next is cut · PR 1 (the criteria, versioned, and the dev's editor) merged as v2.7275 (#8129), pushed and walked live the same day · PR 2 (the rating on the GC's record, the chips) merged as v2.7279 (#8134), pushed and walked live the same day · PR 3 (Paying read from the bills) on claude/357-pr3-paying
 mockup: the canvas, five screens — https://claude.ai/artifact/JRUZqLEPwTHHdJNCWFEgVd
 summary: >
   The company loses bids because a master in the field asks the estimator to add twenty or fifty
@@ -12,10 +12,10 @@ summary: >
   the office owns. Paying is read from the GC's bills, never picked. The criteria are the dev's and
   versioned; the price list is the owner's and the controller's and versioned; a rating and a priced
   bid pin to the versions they were made under, so a new version never moves old points or old lines.
-next: PR 2 merged, pushed and walked live, then PR 3, the paying scale read from the bills.
+next: PR 3 merged, pushed and walked live, then PR 4, the price list and the lines.
 size: L as a train of six (M · M · S · L · M · M)
 blocker: none; the owner settled the calls on 2026-11-14 and said build it.
-ver: v2.7275 (PR 1)
+ver: v2.7275 (PR 1) · v2.7279 (PR 2)
 opinion: build — the owner's calls are settled and every PR stands on its own
 ---
 
@@ -53,8 +53,8 @@ Each PR is merged before the next is cut. After each merge: `supabase db push`, 
 | PR | What | Touches | State |
 |---|---|---|---|
 | 1 | **Criteria infrastructure.** The criteria table with its seed; the kernels `src/lib/bids/difficultyCriteria.ts` (the shape, validation, carry-over, total points) and `difficultyEditor.ts` (draft edits as pure operations); the dev's Settings card to edit the draft and publish, with a preview of the GC card. No price effect. | migration `20261114090000_difficulty_criteria_versions.sql`, `src/lib/bids/difficultyCriteria*.ts`, `difficultyEditor*.ts`, `difficultyCriteriaIo.ts`, `difficultyCriteriaWords.ts`, `src/components/settings/DifficultyCriteriaCard.tsx`, `src/components/bids/DifficultyScalesPicker.tsx`, `settingsGroups.ts`, `Settings.tsx`, guide `change-the-difficulty-criteria` | merged as v2.7275 (#8129), pushed and walked live 2026-11-14 |
-| 2 | **The rating.** The ratings table; the card *How they are to work with* on the customer's page beside *Pays in kind*, drawn from the published version; a read-only *Rated N points* chip on the Workbench strip and in the Bid Board's GC column, *Rate them* where none. | migration, `gcDifficultyRating*.ts`, `CustomerDetail.tsx`, `BidsBidBoardTab.tsx`, `BidsPricingTab.tsx`, guide `rate-how-a-gc-is-to-work-with` | building on claude/357-pr2-rating (v2.7279, migration `20261114110000_gc_difficulty_ratings.sql`) |
-| 3 | **The paying scale from bills.** A reader over the pay-speed data and the price list's thresholds, shown on the card with the numbers behind it; fewer bills than the minimum means no point and says so; a by-hand override with a reason. | `difficultyPaying.ts` over `billedExpectedPay.ts` and `payPace.ts`, the card | after 2 |
+| 2 | **The rating.** The ratings table; the card *How they are to work with* on the customer's page beside *Pays in kind*, drawn from the published version; a read-only *Rated N points* chip on the Workbench strip and in the Bid Board's GC column, *Rate them* where none. | migration, `gcDifficultyRating*.ts`, `CustomerDetail.tsx`, `BidsBidBoardTab.tsx`, `BidsPricingTab.tsx`, guide `rate-how-a-gc-is-to-work-with` | merged as v2.7279 (#8134), pushed and walked live 2026-11-14 |
+| 3 | **The paying scale from bills.** A reader over the pay-speed data and the price list's thresholds, shown on the card with the numbers behind it; fewer bills than the minimum means no point and says so; a by-hand override with a reason. | migration `20261115010000_gc_difficulty_pick_reasons.sql`, `difficultyPaying*.ts`, `difficultyPayingIo.ts` over `billedExpectedPay.ts`, `payPace.ts` and `payCalendar.ts`, the card | building on claude/357-pr3-paying (v2.7296) |
 | 4 | **The price list and the lines.** The *Pricing rules* door on the Bid Board with its versioned sheet (the owner and the controller edit, estimators read); `difficultyLines.ts` turning a rating, a price version and the bid's field hours, labor rate and price into the lines; when a bid to a rated GC is first priced the engine writes them as direct-cost rows of a new kind on the Labor tab, and the Workbench strip reads *Difficulty · N points · +$X in cost* with the fold of sentences; take a line off this bid with a reason; the stamp at send keeps the difficulty cost apart (`bids.priced_difficulty_usd`); the *rated higher since this was priced* line with its press; *Bids like this* unchanged. | two migrations, `difficultyPrice*.ts`, `difficultyLines*.ts`, `useBidPricingEngine.ts`, `BidsLaborTab.tsx`, `BidsPricingTab.tsx`, `BidsBidBoardTab.tsx`, `pricedMargin.ts`, guide `set-what-difficulty-costs` | after 3 |
 | 5 | **The master's door.** The phone sheet from a bid row (390 px, 44 px rungs, the paying scale locked, the consequence in dollars before Save, with *Bids like this* for this GC); the end-of-job ask: when a job with a rated or unrated GC closes, the master on it is asked the same sheet once. | `DifficultyRateSheet.tsx`, the bid row's door, the job close hook, the masters' part of the rating guide | after 4 |
 | 6 | **The site scale and the feedback.** Criteria version 2 adds the site scale on the bid, priced from the Bid Board's site percent; the card *What the rating did* on the GC's record (bids since rated, won, difficulty priced in, hours past the estimate) with the nudge when hours burn past the lines. | migration (version 2 published by the dev), `difficultyFeedback.ts`, the GC card | after 5 |
@@ -65,4 +65,4 @@ Signed in as the dev on clicktooling.com. Make a `ZZ Test` GC customer and a `ZZ
 
 ## Where it stands
 
-PR 1 is live (v2.7275). PR 2 is being built.
+PR 1 (v2.7275) and PR 2 (v2.7279) are live. PR 3 is being built. The ZZ Test GC *ZZ Test Walk 2026-11-08* carries a 3-point rating as the fixture for the later walks; it is deleted at the end of the train.

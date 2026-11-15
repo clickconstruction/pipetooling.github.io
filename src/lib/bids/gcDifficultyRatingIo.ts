@@ -8,12 +8,14 @@ import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { parseDifficultyCriteriaBody, type DifficultyPicks } from './difficultyCriteria'
 import { gcDifficultyStandings, type DifficultyVersionLite, type GcDifficultyRating, type GcDifficultyStanding } from './gcDifficultyRating'
+import { loadDifficultyPayingInputs } from './difficultyPayingIo'
+import type { DifficultyPayingInputs } from './difficultyPaying'
 
 export const GC_DIFFICULTY_CHANGED_EVENT = 'gc-difficulty-changed'
 
-const COLS = 'id, customer_id, criteria_version_id, picks, note, rated_by_name, rated_at'
+const COLS = 'id, customer_id, criteria_version_id, picks, pick_reasons, note, rated_by_name, rated_at'
 
-type RawRow = { id: string; customer_id: string; criteria_version_id: string; picks: unknown; note: string | null; rated_by_name: string | null; rated_at: string }
+type RawRow = { id: string; customer_id: string; criteria_version_id: string; picks: unknown; pick_reasons?: unknown; note: string | null; rated_by_name: string | null; rated_at: string }
 type Result = { data: RawRow[] | null; error: unknown }
 
 const TABLE = 'gc_difficulty_ratings' as never
@@ -24,7 +26,11 @@ function rowFrom(raw: RawRow): GcDifficultyRating {
   if (raw.picks != null && typeof raw.picks === 'object' && !Array.isArray(raw.picks)) {
     for (const [k, v] of Object.entries(raw.picks as Record<string, unknown>)) if (typeof v === 'number' && Number.isInteger(v)) picks[k] = v
   }
-  return { id: raw.id, customerId: raw.customer_id, criteriaVersionId: raw.criteria_version_id, picks, note: raw.note ?? '', ratedByName: raw.rated_by_name ?? '', ratedAt: raw.rated_at }
+  const pickReasons: Record<string, string> = {}
+  if (raw.pick_reasons != null && typeof raw.pick_reasons === 'object' && !Array.isArray(raw.pick_reasons)) {
+    for (const [k, v] of Object.entries(raw.pick_reasons as Record<string, unknown>)) if (typeof v === 'string') pickReasons[k] = v
+  }
+  return { id: raw.id, customerId: raw.customer_id, criteriaVersionId: raw.criteria_version_id, picks, pickReasons, note: raw.note ?? '', ratedByName: raw.rated_by_name ?? '', ratedAt: raw.rated_at }
 }
 
 export interface GcDifficultyIo {
@@ -32,8 +38,10 @@ export interface GcDifficultyIo {
   loadVersions(): Promise<{ versions: DifficultyVersionLite[]; published: DifficultyVersionLite | null }>
   /** A customer's ratings, newest first. */
   loadRatings(customerId: string): Promise<GcDifficultyRating[]>
-  /** Writes a new rating; the database stamps who and when and holds the picks to the version. */
-  saveRating(customerId: string, criteriaVersionId: string, picks: DifficultyPicks, note: string): Promise<GcDifficultyRating>
+  /** Writes a new rating; the database stamps who and when and holds the picks to the version. A bills scale's pick carries its words. */
+  saveRating(customerId: string, criteriaVersionId: string, picks: DifficultyPicks, note: string, reasons?: Record<string, string>): Promise<GcDifficultyRating>
+  /** The numbers behind the Paying scale for this GC (PR 3). */
+  loadPaying(customerId: string): Promise<DifficultyPayingInputs>
 }
 
 type VersionRaw = { id: string; version: number; status: string; body: unknown }
@@ -53,8 +61,9 @@ export function supabaseGcDifficultyIo(): GcDifficultyIo {
       checkSupabaseError(result as never, 'read the GC’s rating')
       return (result.data ?? []).map(rowFrom)
     },
-    async saveRating(customerId, criteriaVersionId, picks, note) {
-      const row = { customer_id: customerId, criteria_version_id: criteriaVersionId, picks, note } as never
+    loadPaying: loadDifficultyPayingInputs,
+    async saveRating(customerId, criteriaVersionId, picks, note, reasons = {}) {
+      const row = { customer_id: customerId, criteria_version_id: criteriaVersionId, picks, pick_reasons: reasons, note } as never
       const result = (await supabase.from(TABLE).insert(row).select(COLS)) as unknown as Result
       checkSupabaseError(result as never, 'save the rating')
       const saved = result.data?.[0]

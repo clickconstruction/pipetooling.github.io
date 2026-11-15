@@ -13,6 +13,7 @@ import {
   gcDifficultyRatedByWords,
   gcDifficultyStanding,
   gcDifficultyStandings,
+  gcDifficultyStoredBillsPick,
   gcDifficultyTotalWords,
   newestRatingByCustomer,
   type DifficultyVersionLite,
@@ -40,6 +41,7 @@ const rating = (p: Partial<GcDifficultyRating> = {}): GcDifficultyRating => ({
   customerId: 'c1',
   criteriaVersionId: 'v1',
   picks: { field: 3, office: 1 },
+  pickReasons: {},
   note: 'Moved us from building C to A after the rough was staged.',
   ratedByName: 'Robert',
   ratedAt: '2026-11-14T20:00:00Z',
@@ -91,7 +93,10 @@ describe('gcDifficultyRating', () => {
     expect(gcDifficultyDraftProblems({}, '', V1.body)).toEqual([GC_DIFFICULTY_WORDS.noPick, GC_DIFFICULTY_WORDS.noNote])
     expect(gcDifficultyDraftProblems({ paying: 1 }, 'x', V1.body)).toEqual([GC_DIFFICULTY_WORDS.noPick])
     expect(gcDifficultyDraftProblems({ field: 2 }, 'The super moved us.', V1.body)).toEqual([])
-    expect(gcDifficultyPicksToSave({ field: 2, paying: 1, office: 9, gone: 1 }, V1.body)).toEqual({ field: 2 })
+    expect(gcDifficultyPicksToSave({ field: 2, paying: 1, office: 9, gone: 1 }, V1.body)).toEqual({ picks: { field: 2 }, reasons: {} })
+    expect(gcDifficultyPicksToSave({ field: 2, paying: 1 }, V1.body, { paying: ' Read from their bills: paid in 52 days. ', field: 'ignored' })).toEqual({ picks: { field: 2, paying: 1 }, reasons: { paying: 'Read from their bills: paid in 52 days.' } })
+    expect(gcDifficultyStoredBillsPick(gcDifficultyStanding(rating({ picks: { paying: 1, field: 2 }, pickReasons: { paying: 'By hand: slow.' } }), [V1], V1), 'paying')).toEqual({ points: 1, reason: 'By hand: slow.' })
+    expect(gcDifficultyStoredBillsPick(null, 'paying')).toBeNull()
   })
 
   it('the press wakes only when the picks differ from the rating that stands', () => {

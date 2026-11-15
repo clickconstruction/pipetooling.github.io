@@ -361,7 +361,7 @@ export function BidsBidBoardTab({
   const [replyBookOpen, setReplyBookOpen] = useState(false)
   const replyBook = useBidReplyBook(authUser?.id)
   const narrowViewport = useNarrowViewport660()
-  // GC difficulty (punch list #357 PR 2): the rated GCs, for the chip beside the GC's name; Rate them for the office.
+  // GC difficulty (punch list #357 PR 2): the rated GCs, for the chip beside the GC's name; Rate them for the office on the opened row only (PR 3: twenty links on one screen was loud).
   const gcDifficulty = useGcDifficultyStandings(true)
   const canRateGc = isOfficeRole(useOptionalAuth()?.role)
   // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.
@@ -1507,7 +1507,7 @@ export function BidsBidBoardTab({
               ) : (
                 '-'
               )}
-              {bid.customer_id && !gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} /> : null}
+              {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} /> : null}
               {bidDevelopmentName(bid) ? (
                 <span
                   title="Development for this bid"
@@ -1763,7 +1763,7 @@ export function BidsBidBoardTab({
               {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
             </button>
           ) : null}
-          {bid.customer_id && !gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} /> : null}
+          {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} /> : null}
           {estNorm ? <span>{gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? '' : '· '}{estNorm.name || estNorm.email}</span> : null}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             · {renderBidBoardBidValue(bid)}

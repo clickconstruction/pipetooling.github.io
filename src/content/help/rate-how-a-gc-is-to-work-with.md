@@ -2,7 +2,7 @@
 title: rate how a GC is to work with
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc rating, difficulty, difficult gc, how they are to work with, rate them, rated, points, field and superintendent, their office, paying, what happened, bid board chip, workbench chip, customer page
+keywords: gc rating, difficulty, difficult gc, how they are to work with, rate them, rated, points, field and superintendent, their office, paying, read from the bills, set by hand, pay speed, late bills, what happened, bid board chip, workbench chip, customer page
 ---
 
 Some GCs cost more to work for. The super changes the order of work after we mobilize. Pay apps come back twice. The office waits a week for an answer. Before, a master asked the estimator to add money to the price with no reason attached. Now the GC is rated once, on its record, in sentences. Every new bid to them reads the rating.
@@ -27,7 +27,15 @@ The card shows one scale at a time. Each scale has rungs. A rung is a number of 
 
 The office rates: a dev, a master, an assistant or the controller. An estimator reads the card and cannot save.
 
-**Paying** is not picked. A later part reads it from the GC's bills. Until then the scale shows its sentences and takes no pick.
+**Paying** is not picked. The app reads it from the GC's bills. See the next section.
+
+## Paying is read from the bills
+
+Under **Paying** the card says what it found. Paid in 52 days, the median of 7 bills. The GC pace here. How many bills in the last year went past their pay calendar. The rule sits under it. A point when the median is past 45 days, or two bills in a year are late. Fewer than three bills reads no point, and the line says so.
+
+The point counts in the total. When you save, it goes into the rating with its words. When the bills later read a different point, an amber line says so and {{button:blue|Save 4 points}} wakes. Save again to read it in.
+
+Press {{button:outline|Set by hand…}} when the bills do not tell it. Pick the points, write why, and press {{button:outline|Use this}}. The rating carries your reason. Press **Read from the bills again** to take it back.
 
 ## What the points do
 
