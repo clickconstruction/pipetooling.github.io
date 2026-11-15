@@ -230,7 +230,7 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     // The notice rail's own brief (v2.6577): the four parts, no schedule strip (that is the REMINDERS rail's).
     expect(screen.getByTestId('lien-step-brief-plain').textContent).toContain('The owner is known and a month of our work is unpaid.')
     expect(screen.getByTestId('lien-step-brief-usual').textContent).toBe('Draft notice · the office presses it · fills the state’s form from the job; read it once, then send it to the leader')
-    expect(Array.from(screen.getByTestId('lien-step-brief-instead').querySelectorAll('strong')).map((el) => el.textContent)).toEqual(['The leader said to send it ▸', 'Hold — they promised…', 'Hold — I’ll call first'])
+    expect(Array.from(screen.getByTestId('lien-step-brief-instead').querySelectorAll('strong')).map((el) => el.textContent)).toEqual(['The leader said to send it…', 'Hold — they promised…', 'Hold — I’ll call first'])
     expect(screen.getByTestId('lien-step-brief-nobody').textContent).toContain('After the notice’s day the lien right for that month is lost.')
     expect(screen.queryByTestId('lien-schedule-strip')).toBeNull()
     expect(screen.queryByTestId('lien-step-showing')).toBeNull()

@@ -288,7 +288,7 @@ describe('affidavitDraftAppliedWords — what landed', () => {
     const dry = planned(world())
     const done = affidavitDraftAppliedWords(payload(), 'JP608 · ZZ Test 608', dry.write, { id: ITEM, status: 'drafted' })
     expect(done).toMatchObject({ ok: true, item_id: ITEM, wrote: 'a new draft' })
-    expect(String(done.next)).toContain('Send for approval')
+    expect(String(done.next)).toContain('Ask the leader to approve')
     expect(String(done.next)).toContain('Nothing was sent for approval, approved, printed or filed.')
     const none = affidavitDraftAppliedWords(payload(), 'JP608 · ZZ Test 608', dry.write, null)
     expect(none.ok).toBe(false)

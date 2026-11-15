@@ -187,7 +187,7 @@ export async function readAffidavitDraftWorld(reads: AffidavitDraftReads, p: Aff
 export type AffidavitDraftWrite = { kind: 'insert'; row: Json } | { kind: 'update'; itemId: string; patch: Json }
 export type AffidavitDryRun = { ok: true; reply: Json; write: AffidavitDraftWrite } | { ok: false; refused: string }
 
-const NOT_DONE = 'A draft alone. It is not sent for approval, approved, held, printed, signed or filed, and nobody is told. The person who sends it for approval presses Send for approval on the Lien desk.'
+const NOT_DONE = 'A draft alone. It is not sent for approval, approved, held, printed, signed or filed, and nobody is told. The person who sends it for approval presses Ask the leader to approve on the Lien desk.'
 const PILE_REFUSALS: Record<string, string> = {
   awaiting: 'its affidavit is already sent for approval',
   ready: 'its affidavit is already approved and ready to print',
@@ -311,6 +311,6 @@ export function affidavitDraftAppliedWords(p: AffidavitDraftPayload, label: stri
     item_id: back.id,
     status: back.status,
     wrote: write.kind === 'insert' ? 'a new draft' : 'the standing draft, refreshed',
-    next: `${label} has a drafted affidavit on the Lien desk. On the desk under Affidavits, in To draft, Send for approval ▸ sends it on; the leader approves it, and it prints from there. read_rows on job_lien_desk_items (id eq ${back.id}) reads the row back. Nothing was sent for approval, approved, printed or filed.`,
+    next: `${label} has a drafted affidavit on the Lien desk. On the desk under Affidavits, in To draft, Ask the leader to approve ▸ sends it on; the leader approves it, and it prints from there. read_rows on job_lien_desk_items (id eq ${back.id}) reads the row back. Nothing was sent for approval, approved, printed or filed.`,
   }
 }
