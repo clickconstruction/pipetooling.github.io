@@ -1005,7 +1005,7 @@ export function PeopleHoursDayAuditModal({
                               style={{
                                 padding: '0.15rem 0.45rem',
                                 fontSize: '0.75rem',
-                                border: `1px solid ${isApproving ? '#9ca3af' : '#16a34a'}`,
+                                border: `1px solid ${isApproving ? 'var(--border-400)' : '#16a34a'}`,
                                 borderRadius: 4,
                                 background: isApproving ? 'var(--bg-muted)' : 'var(--bg-green-tint)',
                                 color: isApproving ? 'var(--text-muted)' : 'var(--text-green-800)',

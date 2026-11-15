@@ -193,6 +193,7 @@ describe('what the index does not carry', () => {
       // Punch list #353, part 2: the last work month's own notice still due, the pane's line said by the seat too.
       'lib/jobs/lienNoticeOwed.ts',
       'lib/jobs/lienAffidavitMonthsByHand.ts',
+      'lib/jobs/lienMonthCheck.ts',
       'lib/jobs/lienClaimCorrection.ts',
       'lib/jobs/lienProperty.ts',
       'lib/jobs/lienAffidavitForm.ts',

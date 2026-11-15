@@ -94,8 +94,8 @@ describe('the link’s code', () => {
     expect(receiptLinkExpired({ expires_at: 'soon' }, made)).toBe(true)
   })
 
-  it('is the app’s own address until the short host forwards /r/', () => {
-    expect(receiptLinkUrl('K7M2P9XQ4D')).toBe('https://clicktooling.com/r/k7m2p9xq4d')
+  it('rides the short host, which forwards /r/ to the app lower-cased', () => {
+    expect(receiptLinkUrl('K7M2P9XQ4D')).toBe('https://my.clickplumbing.com/r/k7m2p9xq4d')
     expect(receiptLinkUrl('k7m2p9xq4d', 'http://127.0.0.1:5199/')).toBe('http://127.0.0.1:5199/r/k7m2p9xq4d')
   })
 })

@@ -170,6 +170,7 @@ export const GC_SCHEDULE_APPEND_ONLY: Readonly<Record<string, readonly string[]>
 
 /**
  * Tables named `gc_` that are not GC mode's: Trades mode's GC Review (the statement emails, a GC's
- * word by link), older than GC mode and gated their own way. The test leaves them alone.
+ * word by link), older than GC mode and gated their own way, and the GC difficulty rating (a customer's
+ * rating as a GC we bid to, punch list #357, gated to the office). The test leaves them alone.
  */
-export const NOT_GC_MODE_TABLES = ['gc_statement_email_requests', 'gc_word_asks', 'gc_word_ask_answers'] as const
+export const NOT_GC_MODE_TABLES = ['gc_statement_email_requests', 'gc_word_asks', 'gc_word_ask_answers', 'gc_difficulty_ratings'] as const

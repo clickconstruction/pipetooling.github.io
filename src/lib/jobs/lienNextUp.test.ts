@@ -9,7 +9,7 @@ import { buildLienNextUp, lienViewerLeadsJob, groupLienNextUp, lienNextUpCount, 
 const TODAY = '2026-10-05'
 
 function notice(jobId: string, pile: LienDeskPile, over: Partial<LienDeskEntry> = {}): LienDeskEntry {
-  return { jobId, customerId: 'c1', gcCustomerId: 'gc1', openBalance: 1000, hasOwner: true, propertyKind: '', months: [], datedFromCreation: false, dueMonths: ['2026-08'], missedMonths: [], missedUnrecorded: [], earliestDeadline: '2026-10-15', daysLeft: 10, severity: 'amber', item: null, policy: 'ask', pile, ...over }
+  return { jobId, customerId: 'c1', gcCustomerId: 'gc1', openBalance: 1000, hasOwner: true, propertyKind: '', months: [], datedFromCreation: false, dueMonths: ['2026-08'], missedMonths: [], missedUnrecorded: [], affidavitDay: null, affidavitDaysLeft: null, earliestDeadline: '2026-10-15', daysLeft: 10, severity: 'amber', item: null, policy: 'ask', pile, ...over }
 }
 function affidavit(jobId: string, pile: LienAffidavitPile, over: Partial<LienAffidavitEntry> = {}): LienAffidavitEntry {
   return { jobId, isSub: true, lastMonth: '2026-07', lastMonthFromCreation: false, deadline: '2026-11-16', daysLeft: 42, severity: 'quiet', openBalance: 1000, customerId: 'c1', gcCustomerId: 'gc1', propertyKind: '', gates: [], ready: true, item: null, pile, ...over }

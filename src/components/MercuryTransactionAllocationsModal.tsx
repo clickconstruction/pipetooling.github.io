@@ -270,7 +270,7 @@ function fillRemainderButtonStyle(disabled: boolean): CSSProperties {
     fontWeight: 500,
     padding: '8px 14px',
     borderRadius: 10,
-    border: `1px solid ${disabled ? '#e2e8f0' : '#cbd5e1'}`,
+    border: `1px solid ${disabled ? 'var(--border)' : 'var(--border-strong)'}`,
     background: disabled ? 'var(--bg-slate-tint)' : 'var(--surface)',
     color: disabled ? 'var(--text-slate-400)' : 'var(--text-slate-600)',
     cursor: disabled ? 'not-allowed' : 'pointer',

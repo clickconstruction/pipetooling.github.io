@@ -240,7 +240,7 @@ function InboxDropZone({ count, amountSum }: { count: number; amountSum: number 
       style={{
         padding: '0.75rem',
         borderRadius: 8,
-        border: `2px dashed ${isOver ? '#059669' : '#d1d5db'}`,
+        border: `2px dashed ${isOver ? '#059669' : 'var(--border-strong)'}`,
         background: isOver ? 'var(--bg-emerald-tint)' : 'var(--surface)',
         marginBottom: '0.65rem',
       }}

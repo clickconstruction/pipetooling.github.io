@@ -64,10 +64,35 @@ describe('theme tokenizer', () => {
     leaves("{ background: on ? '#2563eb' : undefined }")
     // a prop that is not a colour
     leaves("{ label: on ? '#eff6ff' : undefined }")
-    // a template string needs a person
-    leaves('{ border: `1px solid ${on ? \'#2563eb\' : \'#d1d5db\'}` }')
     // a type, where the next line is not part of the value
     leaves(['type Look = {', '  background: string', "  paper?: 'white' | 'cream'", '}'].join('\n'))
+  })
+
+  it('reads a template string: the branches inside ${…} and the hex in its own text (v2.7287)', () => {
+    // the press blue is not in the border table and stays; the grey goes on its token
+    expect(rewrites('{ border: `1px solid ${on ? \'#2563eb\' : \'#d1d5db\'}` }')).toBe(
+      '{ border: `1px solid ${on ? \'#2563eb\' : \'var(--border-strong)\'}` }',
+    )
+    // a nested ternary inside the expression, every branch read
+    expect(rewrites('{ border: `1px solid ${a ? \'#16a34a\' : b ? \'#d97706\' : \'#cbd5e1\'}` }')).toBe(
+      '{ border: `1px solid ${a ? \'#16a34a\' : b ? \'#d97706\' : \'var(--border-strong)\'}` }',
+    )
+    // a hex in the template\'s own text, and two expressions in one string
+    expect(rewrites('{ border: `${w}px solid #e5e7eb`, borderLeft: `3px solid ${x ? \'#e2e8f0\' : \'#9ca3af\'}` }')).toBe(
+      '{ border: `${w}px solid var(--border)`, borderLeft: `3px solid ${x ? \'var(--border)\' : \'var(--border-400)\'}` }',
+    )
+    // the prop decides the table: a background template reads the background table
+    expect(rewrites('{ background: `${on ? \'#eff6ff\' : \'#ffffff\'}` }')).toBe(
+      '{ background: `${on ? \'var(--bg-blue-tint)\' : \'var(--surface)\'}` }',
+    )
+    // a string handed to a call inside the expression is not a branch
+    leaves('{ border: `1px solid ${alpha(\'#d1d5db\', 0.5)}` }')
+    // a template under a prop that is not a colour
+    leaves('{ boxShadow: `0 0 0 2px ${warn ? \'#dc2626\' : \'#d1d5db\'}` }')
+    // an unterminated template string reads as nothing
+    leaves('{ border: `1px solid ${on ? \'#d1d5db\' : x')
+    // each piece counts once
+    expect(processSource('{ border: `1px solid ${on ? \'#e5e7eb\' : \'#d1d5db\'}` }').count).toBe(2)
   })
 
   it('counts each branch it rewrites', () => {

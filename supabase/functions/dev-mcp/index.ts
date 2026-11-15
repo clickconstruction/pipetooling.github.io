@@ -328,10 +328,15 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // paper would say today: its months, its notice to the owner, its claim, and the questions for the attorney. A draft
 // alone: never sent for approval, approved, printed or filed. No wrapper RPC, no migration.
 //
+// 0.88.0 (v2.7280, punch list #358; the owner, 2026-11-14: a second door on the stand-in lien month): the Lien desk's
+// affidavit pane now lets a person confirm a month dated from the bill, with who said so and when, on the job
+// (jobs_ledger.lien_month_checked_*, 20261114120000). plan_affidavit_draft reads the five columns with their absence
+// tolerated and names the check under month_checked and in last_work_month_from. No new verb, no wrapper RPC.
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.87.0'
+const SERVER_VERSION = '0.88.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [

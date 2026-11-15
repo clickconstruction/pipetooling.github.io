@@ -41,6 +41,10 @@ import { BID_LINK_ICON_PATHS } from '../../lib/bids/bidLinkIconPaths'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { bidBoardDueCellParts, bidBoardLastContactParts, bidBoardNoDueDateParts, bidBoardSentLabel, DUE_SOON_WINDOW_DAYS, UNSENT_NO_DUE_DATE_RED_AFTER_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
+import { useGcDifficultyStandings } from '../../hooks/useGcDifficultyStandings'
+import { useOptionalAuth } from '../../hooks/useAuth'
+import GcDifficultyChip from './GcDifficultyChip'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { bidBoardSearchPlaceholder, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
@@ -357,6 +361,9 @@ export function BidsBidBoardTab({
   const [replyBookOpen, setReplyBookOpen] = useState(false)
   const replyBook = useBidReplyBook(authUser?.id)
   const narrowViewport = useNarrowViewport660()
+  // GC difficulty (punch list #357 PR 2): the rated GCs, for the chip beside the GC's name; Rate them for the office.
+  const gcDifficulty = useGcDifficultyStandings(true)
+  const canRateGc = isOfficeRole(useOptionalAuth()?.role)
   // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.
   // On a phone the search takes its own line (`bidBoardToolsRow.ts`); the cards' width is the phone's.
   const toolsRow = bidBoardToolsRowLayout(narrowViewport)
@@ -1359,6 +1366,7 @@ export function BidsBidBoardTab({
           <div>
             <span style={labelStyle}>GC/Builder</span>
             {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
+            {bid.customer_id ? <span style={{ marginLeft: '0.4rem' }}><GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} /></span> : null}
           </div>
           {bidDevelopmentName(bid) ? (
             <div>
@@ -1499,6 +1507,7 @@ export function BidsBidBoardTab({
               ) : (
                 '-'
               )}
+              {bid.customer_id && !gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} /> : null}
               {bidDevelopmentName(bid) ? (
                 <span
                   title="Development for this bid"
@@ -1754,6 +1763,7 @@ export function BidsBidBoardTab({
               {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
             </button>
           ) : null}
+          {bid.customer_id && !gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} /> : null}
           {estNorm ? <span>{gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? '' : '· '}{estNorm.name || estNorm.email}</span> : null}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             · {renderBidBoardBidValue(bid)}

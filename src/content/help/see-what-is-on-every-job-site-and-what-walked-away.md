@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
+keywords: materials on site, materials desk, blank stickers, print blank stickers, sticker run, stickers before boxes, reprint, print the rest, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -130,6 +130,20 @@ A line the app cannot save stays on the table with its reason under it. The line
 ## Print a label
 
 Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** at the right end of the tabs and pick the job. A job's row there has **Labels** too. A paper label carries the stencil, the job, the place, a small code and ruled lines to write on. A tape label carries the stencil and the code alone. The crew's camera opens the box from the code.
+
+## Print blank stickers
+
+A sticker is a label printed before its box. The sticker carries a code to scan and a short number to read, such as 0147. Stick one on each cage or box on site. Scanning a sticker to say which box it is comes in the next release. For now you print the run and the stickers wait.
+
+On a job's page, press **Print blank stickers** beside **Print labels**. On the Materials page, press **Print blank stickers** at the right end of the tabs and pick the job. New boxes made from the stickers go on that job. The office, a primary and a superintendent can print a run. For everyone else the press is grey and says why.
+
+Pick how many with **30**, **60**, **100** or **200**, or type a number up to 500. A box with more than one side needs more than one sticker. Set **Copies of each** with the minus and plus presses. Every copy of a sticker opens the same box. The window says where the last run ended. The numbers for this run are given when you press.
+
+Stickers print on Brother tape. The window connects to the P-touch as the Labels window does. Press **Print 1 test strip** first. The test strip is not a sticker and uses no number. Then press {{button:blue|Print 200 stickers}}. With copies the press names the sets, such as {{button:blue|Print 200 sets}}. The app numbers the run and the strips print at once. Each strip carries the QR code, the number in large type and the short code.
+
+If the printer stops part way, the window says how many stickers printed. The press becomes **Print the rest, 0163 to 0300**. Connect the printer again and press it. The stickers already printed are not printed twice.
+
+Under the job's boxes, a fold lists every run of stickers. Each run shows its numbers, who printed it and when. The run also shows how many stickers are on boxes and how many are not used yet. Press **Reprint 200 stickers** to print the whole run again. A reprint prints the same codes, so nothing can collide. Press **Print the rest, 0205 to 0300** to print only the stickers still blank. In the window, **Export the stickers as a CSV** writes the run for a label editor.
 
 ## Print a manifest
 

@@ -84,6 +84,8 @@ import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import { PricingStarChooserDialog } from './PricingStarChooserDialog'
 import { PricingBidsLikeThis } from './PricingBidsLikeThis'
+import GcDifficultyChip from './GcDifficultyChip'
+import { useGcDifficultyStandings } from '../../hooks/useGcDifficultyStandings'
 import { WorkbenchHelpCard } from './WorkbenchHelpCard'
 import { usePricingMarginHistory } from '../../hooks/usePricingMarginHistory'
 import { useWorkbenchHelp } from '../../hooks/useWorkbenchHelp'
@@ -1718,6 +1720,8 @@ export function BidsPricingTab({
   // v2.4448: the header slot "Bids like this" is portalled into (a state, not a ref, so the
   // first render after the slot mounts draws the chips).
   const [bidsLikeThisSlot, setBidsLikeThisSlot] = useState<HTMLSpanElement | null>(null)
+  // GC difficulty (punch list #357 PR 2): the GC's rating as a read-only chip beside Bids like this.
+  const gcDifficulty = useGcDifficultyStandings(selectedBidForPricing?.customer_id != null)
   // v2.4395: the version's materials at today's book, one line under the sent-vs-today line.
   const materialsToday = useTakeoffPriceDrift({ bidId: selectedBidForPricing?.id, versionId: selectedBidVersionId, enabled: !!selectedBidForPricing })
 
@@ -3537,14 +3541,17 @@ export function BidsPricingTab({
 
                     {bidsLikeThisSlot
                       ? createPortal(
-                          <PricingBidsLikeThis
-                            history={wbHistory}
-                            currentBidId={selectedBidForPricing?.id}
-                            currentPrice={effRevenue}
-                            currentMargin={effMargin}
-                            gcCustomerId={selectedBidForPricing?.customer_id ?? null}
-                            gcName={selectedBidForPricing?.customers?.name ?? null}
-                          />,
+                          <>
+                            <PricingBidsLikeThis
+                              history={wbHistory}
+                              currentBidId={selectedBidForPricing?.id}
+                              currentPrice={effRevenue}
+                              currentMargin={effMargin}
+                              gcCustomerId={selectedBidForPricing?.customer_id ?? null}
+                              gcName={selectedBidForPricing?.customers?.name ?? null}
+                            />
+                            {selectedBidForPricing?.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(selectedBidForPricing.customer_id)} customerId={selectedBidForPricing.customer_id} /> : null}
+                          </>,
                           bidsLikeThisSlot,
                         )
                       : null}
