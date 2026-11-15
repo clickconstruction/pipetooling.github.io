@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/pay_calendar against a throwaway copy of the WHOLE schema (Pay calendar, punch list #323 PR 1:
 # the payer_pay_calendars table and set_payer_pay_calendar; PR 4: invoice_payer_acceptances and
-# set_invoice_payer_accepted_on; punch list #341 PR 4: invoice_due_days and set_invoice_due_day).
+# set_invoice_payer_accepted_on; punch list #341 PR 4: invoice_due_days and set_invoice_due_day; PR 5: days_after
+# on payer_pay_calendars).
 #
 #   npm run test:pg:pay-calendar
 #
@@ -11,7 +12,7 @@
 # the one row, a job carries its own row or an off switch, clearing removes one row and leaves the rest, the
 # billed-money roles read the table and a subcontractor reads nothing, a subcontractor, a primary and a read-only account cannot
 # set one, days and a month count out of range are refused in words, and the shape and the one row a
-# payer hold under a direct write; and one bill's own due day is set, replaced, read, refused and cleared the same way. It raises on its first failed assertion and ends with "pay_calendar PASSED".
+# payer hold under a direct write; and one bill's own due day is set, replaced, read, refused and cleared the same way; and terms in days after the bill are set, replaced by a calendar and held to their shape. It raises on its first failed assertion and ends with "pay_calendar PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a
 # ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -20,7 +21,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55615}"
 NAME="pgtest-pay-calendar"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_payer_pay_calendars.sql supabase/migrations/*_invoice_payer_acceptances.sql supabase/migrations/*_invoice_due_days.sql)"
+WRITES="$(ls supabase/migrations/*_payer_pay_calendars.sql supabase/migrations/*_invoice_payer_acceptances.sql supabase/migrations/*_invoice_due_days.sql supabase/migrations/*_pay_calendar_days_after.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

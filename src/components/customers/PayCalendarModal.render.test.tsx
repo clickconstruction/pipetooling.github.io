@@ -97,6 +97,66 @@ describe('PayCalendarModal', () => {
     await waitFor(() => expect(record()).toContain('Their last 4 payments all landed by the due day.'))
   })
 
+  describe('a number of days after the bill (punch list #341, PR 5)', () => {
+    const how = (name: string) => screen.getByRole('radio', { name }) as HTMLButtonElement
+    const days = () => screen.getByLabelText('Days after the bill is accepted') as HTMLInputElement
+
+    it('asks how they pay first, and for the days alone on the second answer', async () => {
+      open()
+      await waitFor(() => expect(record()).toContain('Their last 4 payments'))
+      expect(how('On a set day of the month').getAttribute('aria-checked')).toBe('true')
+      expect(screen.queryByLabelText('Days after the bill is accepted')).toBeNull()
+      fireEvent.click(how('A number of days after the bill'))
+      expect(how('A number of days after the bill').getAttribute('aria-checked')).toBe('true')
+      expect(days().value).toBe('45')
+      expect(screen.queryByLabelText('Bills must be in by')).toBeNull()
+      expect(screen.queryByLabelText('They pay on the')).toBeNull()
+      // Said back in dates, and the record replayed against it: three of the four landed inside 45 days, and one 6 days past.
+      expect(preview()).toBe('A bill accepted today, Nov 12, is due Dec 27.Each bill has its own due day. No cutoff decides a month.')
+      expect(record()).toBe('Their record against this. Their last 4 payments landed 0 to 6 days after the due day. Usually on the day. 3 of 4 were on time.')
+      fireEvent.change(days(), { target: { value: '20' } })
+      expect(preview()).toContain('is due Dec 2.')
+      expect(record()).toContain('Their last 4 payments landed 0 to 31 days after the due day.')
+    })
+
+    it('saves the days, and a switch back to a set day saves a calendar', async () => {
+      const { onClose } = open()
+      await waitFor(() => expect(record()).toContain('Their last 4 payments'))
+      fireEvent.click(how('A number of days after the bill'))
+      fireEvent.change(days(), { target: { value: '60' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save pay calendar' }))
+      await waitFor(() => expect(onClose).toHaveBeenCalled())
+      expect(io.savePayCalendar).toHaveBeenCalledWith(expect.anything(), { payerId: 'payer-1', calendar: expect.objectContaining({ daysAfter: 60 }) })
+    })
+
+    it('holds the days inside what the terms can name', async () => {
+      open()
+      await waitFor(() => expect(record()).toContain('Their last 4 payments'))
+      fireEvent.click(how('A number of days after the bill'))
+      fireEvent.change(days(), { target: { value: '999' } })
+      expect(days().value).toBe('180')
+      // An emptied box stays empty while it is typed in, and the terms keep their last days until a number takes their place.
+      fireEvent.change(days(), { target: { value: '' } })
+      expect(days().value).toBe('')
+      expect(preview()).toContain('A bill accepted today, Nov 12, is due May 11.')
+      fireEvent.change(days(), { target: { value: '30' } })
+      expect(days().value).toBe('30')
+      fireEvent.change(days(), { target: { value: '' } })
+      fireEvent.blur(days())
+      expect(days().value).toBe('30')
+      fireEvent.click(how('On a set day of the month'))
+      expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).value).toBe('eom')
+    })
+
+    it('opens a stored row of days on the second answer', async () => {
+      io.loadPayerPayCalendars.mockResolvedValue([{ ...STORED, calendar: { ...STORED.calendar!, daysAfter: 30 } }])
+      open()
+      await waitFor(() => expect(days().value).toBe('30'))
+      expect(how('A number of days after the bill').getAttribute('aria-checked')).toBe('true')
+      expect(preview()).toContain('A bill accepted today, Nov 12, is due Dec 12.')
+    })
+  })
+
   it('hands the calendar to the save, tells the opener and closes', async () => {
     const { onClose, onSaved } = open()
     await waitFor(() => expect(record()).toContain('Usually about 6.'))

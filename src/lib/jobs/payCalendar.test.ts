@@ -4,6 +4,7 @@ import {
   PAY_CALENDAR_MISSED_RUN_DAYS,
   BILL_OWN_DUE_PRESS,
   JOB_RECORD_MIN_PAYMENTS,
+  PAY_CALENDAR_DAYS_AFTER_MAX,
   asPayCalendarRead,
   billCalendarRead,
   billOwnDuePreview,
@@ -28,11 +29,14 @@ import {
   parseBillDueDayRow,
   parsePayCalendarRow,
   payCalendarPreview,
+  payCalendarSavePayload,
   payCalendarShort,
   payCalendarShortFor,
   payCalendarWords,
   payCutoffLine,
+  payTermsNoun,
   payerCalendarLead,
+  paysDaysAfter,
   payerCalendarSummary,
   recordFor,
   recordLandsShort,
@@ -579,5 +583,76 @@ describe("one bill's own due day (punch list #341, PR 4)", () => {
     expect(billOwnDuePreview('2027-02-15', { dueYmd: '2026-12-30', own: true })).toEqual({ otherwise: 'By this job’s own pay calendar it is due Dec 30.', own: 'On its own day it is due Feb 15.', picked: true })
     expect(billOwnDuePreview('', { dueYmd: '2026-12-10', own: false })).toEqual({ otherwise: 'By the pay calendar it is due Dec 10.', own: 'Pick the day to see what it makes the bill.', picked: false })
     expect(billOwnDuePreview('2027-02-15', null).otherwise).toBe('With no pay calendar it reads the usual guess.')
+  })
+})
+
+describe('a number of days after the bill (punch list #341, PR 5)', () => {
+  /** Paid 45 days after the bill is accepted. */
+  const NET_45 = normalizePayCalendar({ daysAfter: 45, clause: ' § 7.1 ', words: 'Paid 45 days after an approved application.' })!
+
+  it('reads the second shape with no pay day, and keeps the first shape as it was', () => {
+    expect(NET_45).toEqual({ cutoffDay: null, payDay: 10, monthsAfter: 1, payWhenPaid: false, clause: '§ 7.1', words: 'Paid 45 days after an approved application.', daysAfter: 45 })
+    expect(paysDaysAfter(NET_45)).toBe(true)
+    expect([paysDaysAfter(TENTH), paysDaysAfter(null), paysDaysAfter({ ...TENTH, daysAfter: null })]).toEqual([false, false, false])
+    // A calendar of the first shape carries no days key at all, so everything that compared one still does.
+    expect('daysAfter' in normalizePayCalendar({ payDay: 10 })!).toBe(false)
+    // Days out of range are not terms: with a pay day the row is a calendar, with none it is nothing.
+    expect(normalizePayCalendar({ daysAfter: 0, payDay: 15 })).toMatchObject({ payDay: 15 })
+    expect(normalizePayCalendar({ daysAfter: PAY_CALENDAR_DAYS_AFTER_MAX + 1 })).toBeNull()
+    expect(normalizePayCalendar({ daysAfter: 30.5 })).toBeNull()
+  })
+
+  it('reads a stored row, and a row read before the column as no calendar', () => {
+    const row = parsePayCalendarRow({ payer_customer_id: 'lark', job_id: 'j1431', off: false, cutoff_day: null, pay_day: null, months_after: 1, pay_when_paid: true, clause: '§ 7.1', words: '', days_after: 45 })!
+    expect(row.calendar).toMatchObject({ daysAfter: 45, payWhenPaid: true, clause: '§ 7.1' })
+    // A reader from before the push selects no days_after: such a row has no pay day, so it is skipped and the bill reads the pace guess.
+    expect(parsePayCalendarRow({ payer_customer_id: 'lark', job_id: null, off: false, cutoff_day: null, pay_day: null, months_after: 1 })).toBeNull()
+  })
+
+  it('makes a bill due the day it was accepted plus the days, with no cutoff to miss', () => {
+    expect(dueDayFor('2026-11-03', NET_45)).toBe('2026-12-18')
+    expect(dueDayFor('2026-11-30', NET_45)).toBe('2027-01-14')
+    expect(dueDayFor('2026-12-01', NET_45)).toBe('2027-01-15')
+    expect(dueDayFor('not a day', NET_45)).toBeNull()
+    expect(nextCutoff('2026-11-12', NET_45)).toBeNull()
+    expect(payCutoffLine('2026-11-12', NET_45)).toBeNull()
+    expect(payCutoffLine('2026-11-12', NET_45, 'Bill')).toBeNull()
+  })
+
+  it('says the terms in a sentence, in a few words, and in dates', () => {
+    expect(payCalendarWords(NET_45)).toBe('A bill is paid 45 days after it is accepted.')
+    expect(payCalendarWords({ ...NET_45, daysAfter: 1 })).toBe('A bill is paid 1 day after it is accepted.')
+    expect(payCalendarShort(NET_45)).toBe('Paid 45 days after the bill')
+    expect(payCalendarShortFor({ calendar: NET_45, from: 'job', payerCalendar: TENTH, jobId: 'j1431' })).toBe('This job’s own · Paid 45 days after the bill')
+    expect(payCalendarPreview(NET_45, '2026-11-12')).toEqual({ inBy: 'A bill accepted today, Nov 12, is due Dec 27.', dayLate: 'Each bill has its own due day. No cutoff decides a month.' })
+    expect(sendTodayCutoffWords('2026-11-12', NET_45)).toEqual({ due: 'Sent today, this bill is due Dec 27.', cutoff: 'They pay 45 days after they accept it.', soon: false })
+    expect(jobPayCalendarWords({ calendar: NET_45, from: 'job', payerCalendar: null, jobId: 'j1431' }, 'Larkfield Construction', true)).toMatchObject({ lead: 'This job’s own', press: 'Paid 45 days after the bill' })
+  })
+
+  it('names them terms, not a calendar, where a line names them', () => {
+    expect([payTermsNoun(NET_45), payTermsNoun(TENTH), payTermsNoun(null)]).toEqual(['pay terms', 'pay calendar', 'pay calendar'])
+    const late = latenessAgainst([{ billedYmd: '2026-08-01', paidYmd: '2026-09-21' }], NET_45)
+    expect(late).toMatchObject({ count: 1, medianDays: 6 })
+    expect(calendarBasisWords(late, false, false, NET_45)).toBe('pay terms · lands ~6d after the due day')
+    expect(calendarBasisWords(null, true, false, NET_45)).toBe('a job’s own pay terms · no payment on record yet')
+    expect(calendarBasisWords(late)).toBe('pay calendar · lands ~6d after the pay day')
+    expect(payerCalendarLead('Larkfield Construction', false, NET_45)).toBe('Larkfield Construction pays a set number of days after a bill.')
+    expect(payerCalendarLead('Larkfield Construction', true, NET_45)).toBe('One of Larkfield Construction’s jobs is on its own pay terms.')
+  })
+
+  it('replays the record and reads an open bill as any calendar does', () => {
+    // Billed Aug 1 and Sep 1, due Sep 15 and Oct 16: paid 6 days after each.
+    const late = latenessAgainst([{ billedYmd: '2026-08-01', paidYmd: '2026-09-21' }, { billedYmd: '2026-09-01', paidYmd: '2026-10-22' }], NET_45)
+    expect(late).toMatchObject({ count: 2, medianDays: 6, onTime: 0 })
+    expect(expectedFromDue('2026-12-18', late)).toBe('2026-12-24')
+    expect(calendarBillRead('2026-11-03', NET_45, late, '2026-12-20')).toMatchObject({ dueYmd: '2026-12-18', expectedYmd: '2026-12-24', daysPastDue: 2, daysPastExpected: 0, tone: 'ok' })
+    expect(calendarBillRead('2026-11-03', NET_45, late, '2026-12-26')).toMatchObject({ daysPastExpected: 2, tone: 'warn' })
+  })
+
+  it('sends a save the days with no pay day, and a calendar as it always went', () => {
+    expect(payCalendarSavePayload({ ...NET_45, clause: ' § 7.1 ' })).toEqual({ daysAfter: 45, payWhenPaid: false, clause: '§ 7.1', words: 'Paid 45 days after an approved application.' })
+    expect(payCalendarSavePayload(BY_25TH)).toEqual({ cutoffDay: 25, payDay: 30, monthsAfter: 1, payWhenPaid: false, clause: '', words: '' })
+    // A form switched back to a set day carries a null days key, and goes as a calendar.
+    expect(payCalendarSavePayload({ ...BY_25TH, daysAfter: null })).toEqual({ cutoffDay: 25, payDay: 30, monthsAfter: 1, payWhenPaid: false, clause: '', words: '' })
   })
 })

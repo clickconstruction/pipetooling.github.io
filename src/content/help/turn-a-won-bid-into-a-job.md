@@ -50,7 +50,7 @@ An estimator cannot open a job. Their Job block shows {{button:green|Send to Dis
 
 1. Check the **Job name** and the **Address**.
 2. On a bid sent to more than one GC, pick the GC that won it.
-3. Press *+ Add their pay terms* if the GC pays on a set day of the month.
+3. Press *+ Add their pay terms* if the GC's contract says when they pay.
 4. Check **The job starts at**. It holds the bid's figure. Leave it blank to start the job at $0.
 5. Pick the **Trade**.
 6. Add a **Wanted by** day and **A note for Dispatch** if they help.

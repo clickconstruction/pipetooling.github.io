@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { parsePaySpeedsRpc } from './billedExpectedPay'
-import { parseBillDueDayRow, parsePayCalendarRow, type BillDueDayDbRow, type PayCalendar, type PayCalendarDbRow, type PayCalendarReceipt, type PayCalendarRow } from './payCalendar'
+import { parseBillDueDayRow, parsePayCalendarRow, payCalendarSavePayload, type BillDueDayDbRow, type PayCalendar, type PayCalendarDbRow, type PayCalendarReceipt, type PayCalendarRow } from './payCalendar'
 import { payCalendarJobOf, type PayCalendarJob, type PayCalendarJobInput } from './payCalendarJob'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty'
 
@@ -17,7 +17,12 @@ type CodedError = { code?: string | null; message: string }
 
 const isMissingRelation = (code: string | null | undefined): boolean => code === 'PGRST205' || code === '42P01'
 
-const COLUMNS = 'payer_customer_id, job_id, off, cutoff_day, pay_day, months_after, pay_when_paid, clause, words, set_at, set_by'
+const COLUMNS_BEFORE_DAYS = 'payer_customer_id, job_id, off, cutoff_day, pay_day, months_after, pay_when_paid, clause, words, set_at, set_by'
+/** With `days_after` (punch list #341, PR 5, migration 20261115190000): the terms that are a number of days after the bill. */
+const COLUMNS = `${COLUMNS_BEFORE_DAYS}, days_after`
+
+/** The read named a column the database does not have yet: PostgREST's own code, or Postgres's. */
+const isMissingColumn = (code: string | null | undefined): boolean => code === '42703' || code === 'PGRST204'
 
 type StoredRow = PayCalendarDbRow & { set_by?: string | null }
 
@@ -31,8 +36,13 @@ async function namesOf(db: Db, ids: ReadonlyArray<string>): Promise<Map<string, 
 }
 
 async function readRows(db: Db, payerId: string | null): Promise<PayCalendarRow[]> {
-  const base = db.from('payer_pay_calendars' as never).select(COLUMNS)
-  const { data, error } = (await (payerId ? base.eq('payer_customer_id', payerId) : base)) as { data: StoredRow[] | null; error: CodedError | null }
+  const read = async (columns: string) => {
+    const base = db.from('payer_pay_calendars' as never).select(columns)
+    return (await (payerId ? base.eq('payer_customer_id', payerId) : base)) as { data: StoredRow[] | null; error: CodedError | null }
+  }
+  let { data, error } = await read(COLUMNS)
+  // Before the days-after migration is pushed the column is not there: read the calendars as they were, so every screen stands either side of the push.
+  if (error && isMissingColumn(error.code)) ({ data, error } = await read(COLUMNS_BEFORE_DAYS))
   if (error) {
     if (isMissingRelation(error.code)) return []
     throw error
@@ -112,7 +122,9 @@ export type PayCalendarSave = PayCalendar | { off: true } | null
 
 /** Sets, replaces or clears one calendar: the payer's own with no job, else that job's. The server stamps who set it. */
 export async function savePayCalendar(db: Db, args: { payerId: string; jobId?: string | null; calendar: PayCalendarSave }): Promise<void> {
-  const { error } = await db.rpc('set_payer_pay_calendar' as never, { p_payer_customer_id: args.payerId, p_job_id: args.jobId ?? null, p_calendar: args.calendar } as never)
+  // A calendar goes as the function reads it: days after the bill carry no pay day, so a database from before that migration refuses them in words.
+  const calendar = args.calendar && !('off' in args.calendar) ? payCalendarSavePayload(args.calendar) : args.calendar
+  const { error } = await db.rpc('set_payer_pay_calendar' as never, { p_payer_customer_id: args.payerId, p_job_id: args.jobId ?? null, p_calendar: calendar } as never)
   if (error) throw error
 }
 

@@ -79,7 +79,7 @@ import type { BillOwnDue, PayCalendar } from '../../lib/jobs/payCalendar'
 import PayerAcceptedModal from './PayerAcceptedModal'
 import BillDueDayModal from './BillDueDayModal'
 import { payCalendarJobOf } from '../../lib/jobs/payCalendarJob'
-import { BILL_OWN_DUE_PRESS, billOwnDueWords, calendarFor, calendarSourceFor, dueDayFor, JOB_NO_CALENDAR_WORDS, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShortFor, payCutoffLine } from '../../lib/jobs/payCalendar'
+import { BILL_OWN_DUE_PRESS, billOwnDueWords, paysDaysAfter, calendarFor, calendarSourceFor, dueDayFor, JOB_NO_CALENDAR_WORDS, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShortFor, payCutoffLine } from '../../lib/jobs/payCalendar'
 import { buildCutoffsComing } from '../../lib/jobs/cutoffsComing'
 import PayCutoffLine from './PayCutoffLine'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
@@ -1208,6 +1208,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             // The calendar's own words stand where Pays in stood: the spread is the calendar's doing, not the payer's.
             // A job on its own calendar says so before the words (punch list #341): one payer can read two sets of days.
             calRead ? payCalendarShortFor(calRead) : null,
+            paysDaysAfter(calRead?.calendar),
           )}
           showBars={false}
           // v2.7013: the words open Pay speeds on this row's payer (the window Payment forecast opens). On a Pay
