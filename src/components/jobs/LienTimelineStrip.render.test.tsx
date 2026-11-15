@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import LienTimelineStrip from './LienTimelineStrip'
+import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
 import { buildLienTimeline } from '../../lib/jobs/lienTimeline'
 import { setLienTimelineView } from '../../hooks/useLienTimelineView'
 
@@ -31,6 +31,20 @@ const timeline = buildLienTimeline({
 })
 
 describe('LienTimelineStrip — Steps · Windows', () => {
+  it('the pane can lift the switch to its title line (v2.7317): switchOutside keeps the box bare, and LienTimelineViewSwitch drives the same view', () => {
+    setLienTimelineView('steps')
+    const { container } = render(
+      <>
+        <LienTimelineViewSwitch />
+        <LienTimelineStrip timeline={timeline} layout="row" switchOutside />
+      </>,
+    )
+    expect(container.querySelectorAll('[data-lien-timeline-switch]').length).toBe(1)
+    expect(container.querySelector('[data-lien-timeline] [data-lien-timeline-switch]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Windows' }))
+    expect(container.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('windows')
+  })
+
   it('the Legal desk’s scope opens on Windows and remembers its own choice apart from the Lien window’s (v2.6104)', () => {
     setLienTimelineView('steps')
     const { container, unmount } = render(<LienTimelineStrip timeline={timeline} layout="row" viewScope="desk" />)

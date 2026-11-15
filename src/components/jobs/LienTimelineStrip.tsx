@@ -248,6 +248,8 @@ export type LienTimelineStripProps = {
   view?: LienTimelineView
   /** Where the remembered view lives (v2.6104): the Lien window's choice, or the Legal desk's, which opens on Windows. */
   viewScope?: LienTimelineViewScope
+  /** The pane draws the Steps · Windows switch itself, on its title line (v2.7317, `LienTimelineViewSwitch`); the box then keeps no copy. */
+  switchOutside?: boolean
   /** The one door to the next step (v2.4693): the Lien window's button, drawn at the verdict band's right so the step is said once. */
   nextDoor?: ReactNode
   /** The last day of work's door (v2.4735): *change ›* under the LAST WORK stop; the Lien window opens its last-day line. */
@@ -265,7 +267,7 @@ export type LienTimelineStripProps = {
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, viewScope = 'window', nextDoor, onChangeLastWork, onOpenStep, lit = null, blocked = null, onAct, act: actProp, style }: LienTimelineStripProps) {
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, viewScope = 'window', switchOutside = false, nextDoor, onChangeLastWork, onOpenStep, lit = null, blocked = null, onAct, act: actProp, style }: LienTimelineStripProps) {
   const { steps, todayIndex, kindUnknown } = timeline
   const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
   const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
@@ -325,7 +327,8 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
   }, [layoutProp])
   const layout: Exclude<LienTimelineLayout, 'auto'> = layoutProp === 'auto' ? (narrow ? 'list' : 'row') : layoutProp
   const view: LienTimelineView = layout === 'mini' ? 'steps' : viewProp ?? rememberedView
-  const switchRow = layout === 'mini' || viewProp ? null : <ViewSwitch view={view} scope={viewScope} />
+  // The switch sits in the box's corner unless the pane lifts it to its title line (v2.7317, `switchOutside`), where `LienTimelineViewSwitch` draws it.
+  const switchRow = layout === 'mini' || viewProp || switchOutside ? null : <ViewSwitch view={view} scope={viewScope} />
   // The verdict band (v2.4652): Next on the path, its aside and Waiting on, ABOVE the drawing on the
   // row, the list and the calendar. The mini row keeps the one quiet line under its rail.
   const mini = layout === 'mini'
@@ -490,7 +493,16 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
 }
 
 /** The corner switch (v2.3815): Steps is today's strip, Windows the calendar of first and last days. */
-function ViewSwitch({ view, scope }: { view: LienTimelineView; scope: LienTimelineViewScope }) {
+/**
+ * The Steps · Windows switch on its own (v2.7317): the Lien desk's panes draw it on the job's title line, at the right,
+ * and pass `switchOutside` to the strip so the box keeps no second copy. The same remembered view, the same scope.
+ */
+export function LienTimelineViewSwitch({ scope = 'window' }: { scope?: LienTimelineViewScope }) {
+  const view = useLienTimelineView(scope)
+  return <ViewSwitch view={view} scope={scope} bare />
+}
+
+function ViewSwitch({ view, scope, bare = false }: { view: LienTimelineView; scope: LienTimelineViewScope; bare?: boolean }) {
   const btn = (v: LienTimelineView, label: string, title: string) => (
     <button
       type="button"
@@ -503,14 +515,14 @@ function ViewSwitch({ view, scope }: { view: LienTimelineView; scope: LienTimeli
       {label}
     </button>
   )
-  return (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.3rem' }}>
-      <div role="group" aria-label="Timeline view" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
-        {btn('steps', 'Steps', 'Each paper as a step, dated by its last day')}
-        {btn('windows', 'Windows', 'Each paper as a window on one calendar, from the first day it can go out to the last, the closed ones too — remembered on this device')}
-      </div>
+  const group = (
+    <div role="group" aria-label="Timeline view" data-lien-timeline-switch style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+      {btn('steps', 'Steps', 'Each paper as a step, dated by its last day')}
+      {btn('windows', 'Windows', 'Each paper as a window on one calendar, from the first day it can go out to the last, the closed ones too — remembered on this device')}
     </div>
   )
+  if (bare) return group
+  return <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.3rem' }}>{group}</div>
 }
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
