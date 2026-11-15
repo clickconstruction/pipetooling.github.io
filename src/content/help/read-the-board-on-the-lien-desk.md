@@ -76,7 +76,7 @@ Press {{button:outline|Every bin}} to see the whole Board. Press {{button:outlin
 
 ## On the Dashboard
 
-The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 in the mail · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
+The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 in the run · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
 
 ## The title is a door
 
