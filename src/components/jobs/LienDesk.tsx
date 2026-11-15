@@ -150,6 +150,7 @@ import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import LienPaneHead from './LienPaneHead'
 import { LIEN_PANE_HEAD_H, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection, type LienPaneSectionKey } from '../../lib/jobs/lienPaneSections'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from '../../lib/jobs/lienPhonePane'
+import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -629,7 +630,8 @@ export default function LienDesk({
     const foot = bar?.nextElementSibling
     setFootFolded(Boolean(bar && panel && foot instanceof HTMLElement && lienPhoneFootStartsFolded({ panel: panel.clientHeight, header: (panel.firstElementChild as HTMLElement | null)?.offsetHeight ?? 0, bar: bar.offsetHeight, footer: foot.offsetHeight })))
   }, [kind, selectedJobId, affSelectedJobId, retSelectedJobId, mobileListShown])
-  // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
+  // The pane's footer lands in the desk's one footer strip through a portal (v2.3753; the strip is the pane column's
+  // bottom row on a computer since the owner's ask of 2026-11-15, `lienDeskFooterHome`). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
   // a loop the Lien affidavits tab had spun in since v2.3412 (about one render a millisecond while it was open).
   const [affFooterEl, setAffFooterEl] = useState<HTMLDivElement | null>(null)
@@ -3962,6 +3964,16 @@ export default function LienDesk({
   // On a phone an open paper is the whole desk (punch list #352, PR 6): the header is one row with the way back to its list, and the footer folds.
   const paneOpenPhone = lienPhonePaneOpen({ oneColumn, listShown: mobileListShown, kind, picked: { notice: selected != null, affidavit: affSelected != null, retainage: retSelected != null } })
   const footFold = paneOpenPhone && !(simpleApprove && !detailsOpen) && (paneOpenPhone.kind !== 'notice' || Boolean(footer)) ? lienPhoneFootFold(footFolded) : null
+  // The footer strip (the owner's ask of 2026-11-15, `lienDeskFooterHome`): on a computer it is the pane's own bottom bar, so the
+  // list runs to the desk's bottom; on a phone it stays the desk's, right after the fold bar whose sibling rule folds it.
+  // The affidavit's and the retainage notice's panes portal their footer into the slot (v2.3753); the notice's is drawn here.
+  const footerHome = lienDeskFooterHome(oneColumn)
+  const paneFooter =
+    kind === 'affidavit' ? <div ref={setAffFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="affidavit" />
+    : kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" />
+    : kind === 'notice' && footer ? <div data-lien-desk-footer="notice" style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div>
+    : null
+  const paneColumn = (node: ReactNode) => (footerHome.column ? <div data-lien-desk-pane-column style={footerHome.column}>{node}{paneFooter}</div> : node)
   return (
     <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
       <div style={panelStyle} data-lien-desk-panel="page">
@@ -4207,20 +4219,20 @@ export default function LienDesk({
             ? (oneColumn ? (mobileListShown ? withFind(affList, affVisible.length) : affPane) : (
                 <>
                   {withFind(affList, affVisible.length)}
-                  {affPane}
+                  {paneColumn(affPane)}
                 </>
               ))
             : kind === 'retainage'
               ? (oneColumn ? (mobileListShown ? withFind(retList, retVisible.length) : retPane) : (
                   <>
                     {withFind(retList, retVisible.length)}
-                    {retPane}
+                    {paneColumn(retPane)}
                   </>
                 ))
             : oneColumn ? (mobileListShown ? withFind(list, visible.length) : pane) : (
             <>
               {withFind(list, visible.length)}
-              {pane}
+              {paneColumn(pane)}
             </>
           )}
         </div>
@@ -4231,9 +4243,7 @@ export default function LienDesk({
             <span aria-hidden="true">{footFold.mark}</span>
           </button>
         ) : null}
-        {kind === 'affidavit' ? <div ref={setAffFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="affidavit" /> : null}
-        {kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" /> : null}
-        {kind === 'notice' && footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
+        {footerHome.in === 'desk' ? paneFooter : null}
         {jobScreenRow ? (() => {
           const row = jobScreenRow
           const card = lienStepCard(row, stepFactsFor(row))
