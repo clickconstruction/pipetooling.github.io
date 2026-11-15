@@ -74,4 +74,10 @@ describe('buildCutoffsComing', () => {
     const lines = buildCutoffsComing({ todayYmd: today, calendars, ready: [work(null, null, 'jx', 500), work('lark', null, 'jy', 700)], working: [] })
     expect(lines.map((l) => l.title)).toEqual(['A customer · in by Nov 30, due Dec 10'])
   })
+
+  it('lists no cutoff for a payer whose terms are days after the bill: there is none to make (punch list #341, PR 5)', () => {
+    const net45 = indexPayCalendars([row('lark', { calendar: { ...PAY_CALENDAR_DEFAULT, daysAfter: 45 } }), row('sable', { calendar: { ...PAY_CALENDAR_DEFAULT, cutoffDay: 25, payDay: 30 } })])
+    const lines = buildCutoffsComing({ todayYmd: today, calendars: net45, ready, working })
+    expect(lines.map((l) => l.payerName)).toEqual(['Sable Ridge Builders'])
+  })
 })

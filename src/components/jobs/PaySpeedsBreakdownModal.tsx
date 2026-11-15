@@ -10,7 +10,7 @@ import {
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
 import { buildMoneyWaiting, moneyWaitingBasis, moneyWaitingInKindLine, moneyWaitingLead, openBillsForCustomers, type MoneyWaitingRow, type OpenBill, type OpenBillTone } from '../../lib/jobs/moneyWaiting'
-import { calendarBillWords, payCalendarWords, payerCalendarLead, type PayCalendarIndex } from '../../lib/jobs/payCalendar'
+import { calendarBillWords, payCalendarWords, payTermsNoun, payerCalendarLead, type PayCalendarIndex } from '../../lib/jobs/payCalendar'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { buildPaySpeedsPayerFocus, type PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
@@ -248,7 +248,7 @@ function openBillRow(b: OpenBill, key: number, onOpenJob?: (jobId: string) => vo
       title={
         `${b.jobName}${b.address ? ` · ${b.address}` : ''} — ${formatUsdNoCents(b.open)} open, ` +
         (b.billedYmd ? `billed ${formatYmdMonthDay(b.billedYmd)}, waiting ${b.waitDays}d` : 'no bill date yet') +
-        (b.calendar ? `, ${calendarBillWords(b.calendar)} ${b.calendar.billOwn ? 'by its own due day' : 'on their pay calendar'}` : '') +
+        (b.calendar ? `, ${calendarBillWords(b.calendar)} ${b.calendar.billOwn ? 'by its own due day' : `on their ${payTermsNoun(b.calendar.of?.calendar)}`}` : '') +
         (clickable ? ' — open the job' : '')
       }
       onClick={(e) => {
@@ -640,7 +640,7 @@ export default function PaySpeedsBreakdownModal({
                           (c.billOwn && c.pastExpectedDays != null
                             ? `${c.name} has a bill ${c.pastExpectedDays}d past its own due day`
                             : c.calendar && c.pastExpectedDays != null
-                            ? `${payerCalendarLead(c.name, c.calendarOwn === true)} ${payCalendarWords(c.calendar)} A bill of theirs is ${c.pastExpectedDays}d past the day it was expected`
+                            ? `${payerCalendarLead(c.name, c.calendarOwn === true, c.calendar)} ${payCalendarWords(c.calendar)} A bill of theirs is ${c.pastExpectedDays}d past the day it was expected`
                             : `${c.name} — oldest open bill has waited ${c.oldestWaitDays}d (` +
                               (c.ownMedianDays != null ? `they usually pay in ~${c.ownMedianDays}d` : `no history of their own — company pays in ~${money.companyMedianDays}d`) +
                               ')') +

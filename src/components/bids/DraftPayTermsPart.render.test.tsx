@@ -21,7 +21,7 @@ const TERMS: DraftPayTerms = { scope: 'job', calendar: { cutoffDay: 25, payDay: 
 describe('DraftPayTermsPart', () => {
   it('starts as one small line with the press, and no field', () => {
     renderWithProviders(<DraftPayTermsPart gcName="Larkfield Construction" value={null} onChange={vi.fn()} />)
-    expect(screen.getByTestId('draft-pay-terms-line').textContent).toBe('+ Add their pay termsif they pay on a set day of the month')
+    expect(screen.getByTestId('draft-pay-terms-line').textContent).toBe('+ Add their pay termsif their contract says when they pay')
     expect(screen.queryByLabelText('Bills must be in by')).toBeNull()
   })
 

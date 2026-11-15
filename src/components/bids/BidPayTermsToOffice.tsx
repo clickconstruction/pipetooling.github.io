@@ -112,7 +112,7 @@ export function BidPayTermsToOffice({ bidId }: { bidId: string }) {
           }
         >
           <div style={{ padding: '0.25rem 0 0.5rem' }}>
-            <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>For a GC who pays on a set day of the month. The office checks them and sets the pay calendar.</p>
+            <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>For a GC whose contract says when they pay: a set day of the month, or a number of days after the bill. The office checks them and sets the pay calendar.</p>
             <DraftPayTermsEditor gcName="the GC" scope={scope} form={form} onScope={setScope} onForm={setForm} />
           </div>
         </ResponsiveModalShell>
