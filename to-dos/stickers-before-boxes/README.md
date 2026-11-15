@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls open
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,7 +14,7 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: the stop to walk the site with the phone's own camera (PRs 1 to 3 make the loop whole), then PRs 4 to 6 on the owner's go.
+next: the owner's six calls on section 10 (a run that names its boxes), then its PRs 7 to 10 on his go; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
 size: L as a train of six (M · M · M · S · M · S); left: PRs 4 to 6 (S · M · S)
 blocker: PRs 4 to 6 wait for the walk of the site, by the owner's order of 2026-11-14.
 ver: v2.7298
@@ -261,6 +261,79 @@ hundred loose strips for the one that matches the cage in front of you.
   (call 6). A run takes numbers that are never given out again.
 - **Signed out**: reads a used sticker's box as today; a blank one says only that it is blank.
 
+### 10 · A run that names its boxes (the owner's ask of 2026-11-15)
+
+Micah, 2026-11-15, looking at the window on job 224 after the preview fold (v2.7304) went in: "I'd
+like to be able to set an array, such as G1-200 or g78-300. That way, I can continue to add to a list
+of boxes I already have if the box code is G, and then as I put those stickers on, I can just identify
+what is in those boxes and the name of the box and the location by scanning the QR code." And: "I
+like the idea of being able to put a prefix of a letter and a number and a letter. Identify the
+maximum number of characters and then allow for the user to set an array of letters and numbers as he
+needs." The mock-up is `mockup-named-runs.html`, beside this card's own; its Names field and rule
+table are live.
+
+The design, with the second pass of the same day folded in on his word:
+
+- **The sticker names its box.** A run carries a name range and each sticker a `box_name`, printed
+  large where the number prints today. The number stays, printed small before the address: it is the
+  identity the Runs fold, the CSV and a typed scan use, and it still opens the box after a rename. The
+  code is still cut from the sticker's own id at the mint. The box's row is still made on the first
+  scan, so an unused sticker leaves nothing behind. The idea under section *The idea* holds: the name
+  on the tape is a promise, the box is what the sticker points at.
+- **The maximum is the box rule's** (#351): one to three letters, 1 to 999, one letter after. Seven
+  characters, no setting. Up to four print at the full size, five to seven smaller, as a long stencil
+  does on a label.
+- **One typed field, Names**, open on the site's next free name as the Add sheet opens, so the
+  default run is named: `G78` with How many 200 reads *G78 to G277*. A range sets the end and the
+  count follows: `G78-300`. The parts of the two ends that differ step, the parts that match stay:
+  `A1-D50` is four rows of fifty, row by row; `G78B-D` twins at one spot; `G1B-200B` a back row;
+  `G1-100C` every spot plain, then B, then C, since on the paint the plain name is the first cage at a
+  spot and B the second (G24 and G24B, never G24A). All three parts stepping, a range running
+  downward, a name past 999 and a run over 500 are refused in words under the field. Cleared, the run
+  is numbered only, as today: the exception, for a crew that wants leftovers that travel.
+- **Two notices at print, one hold.** Names that are live boxes on the site are the backfill of
+  section 7, now the default: *77 of these are boxes on this site already. Their stickers go on those
+  boxes.* Names printed on an earlier run and not yet on boxes are the one mess this can make, two
+  drawers of the same names, so that notice holds the press until **Print them anyway**.
+- **The first scan reads the name off the sticker.** *Sticker G78 is new* opens on **It is a new
+  box** with G78 filled in, kind and place, one press. When the site has a G12 already the sheet opens
+  on that box with **Put 0159 on G12**. A twin found on site after a plain run printed: **It is a
+  different box** offers the next letter, *Save box G78B*, or G78C when G78B stands; the tape then
+  reads G78 on a box named G78B and a later scan says so.
+- **These are on boxes.** A named sticker cannot shift anything, so the scan need not be the only way
+  a sticker goes on a box. The Runs fold gains a press: the person who stuck them types the range,
+  *G78 to G150, cages, Arena*, and 73 boxes are made with their stickers, kind and place in one press.
+  A name already a box takes the sticker instead, a sticker already placed is left as it is and said,
+  and the rest go on. The scan then only adds what is inside. This is not the rejected 200 empty boxes
+  at print time: it is told the range that was used, by the person who used it, so it makes no
+  leftovers.
+- **The number recedes on the screens.** v2.7298's *G12 · 0147* beside every name says the same thing
+  twice on a named run. The number shows only where it carries news: a sticker whose name differs
+  from the box's, a lost one, a blank one in the Runs fold.
+- **The trade, said out loud.** Call 2 chose a plain number so a leftover works on any site. A named
+  G sticker does not travel to a site painted R. That is the right trade for a site with its names on
+  the paint, and a numbered-only run keeps the old way.
+
+The six calls, my pick first: (1) the number stays small on a named strip, or off; (2) names the site
+already has are a notice, or a refusal; (3) grid ranges in, or the number alone steps; (4)
+numbered-only runs stay as the exception, or every run is named; (5) a second run over blank names
+holds the press until *Print them anyway*, or a notice only; (6) **These are on boxes** is built in
+the Runs fold as PR 10, or the scan stays the only way.
+
+The plan, four PRs and one migration, after the six calls: **7 · the run carries names** (M, a
+migration pushed right after the merge: the range on `sticker_runs`, `box_name` on `box_stickers`,
+`mint_sticker_run` taking the range under the box rule, `place_sticker` naming a new box by its
+sticker's name, the parser as a pure kernel with the mock-up's table as its tests and its SQL twin);
+**8 · the window and the strip** (M: the Names field with its read line and the two notices, How many
+following a range, the press *Print 223 stickers, G78 to G300*, the strip, the preview fold, the Runs
+fold's title, the CSV's Name column; the press reads **Print stickers**); **9 · the first scan and the
+screens** (S); **10 · These are on boxes** (M, `place_sticker_range` as the caller, the press in the
+Runs fold, then on the phone's On site tab).
+
+Not built on purpose: a setting for the longest name, a name longer than the box rule allows, a map
+from a row letter to a place, a run that makes its boxes at print time, and a name that changes which
+job a box is on.
+
 ## What needs a migration
 
 One, in PR 1, per `CLAUDE.md`: `SET lock_timeout = '3s'` first, numbered from `origin/main`, claimed,
@@ -289,6 +362,11 @@ the merge because the client calls what it makes.
 | 4 · change it afterwards | **Rename**, **This sticker is on the wrong box**, **Take off**, **lost**, **Empty it and start over**, the History rows | S |
 | 5 · the sticker walk | One screen, the camera in the app, **Or use the next sticker**, what did not send kept on the phone; checked on a real iPhone and a real Android | M |
 | 6 · the sheet of 30 | Only if the tape is too slow: the 30-a-page layout with a one-page alignment test | S |
+| | **The preview fold, v2.7304 (2026-11-14):** *What the stickers will look like* at the foot of the window. | S |
+| 7 · the run carries names | Section 10: the migration, `mint_sticker_run` taking a name range under the box rule, the range parser as a kernel with the mock-up's table as its tests | M |
+| 8 · the window and the strip | The Names field with its read line and two notices, the strip with the name large and the number small, the preview, the Runs fold's title, the CSV | M |
+| 9 · the first scan and the screens | The sheet reads the name off the sticker, a box already here first, the next twin letter, the number receding on the box rows | S |
+| 10 · These are on boxes | `place_sticker_range`: a range placed in one press with kind and place, the press in the Runs fold then the phone | M |
 
 Each PR ships its release note, fragment and guide, and updates
 `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`, `ACCESS_CONTROL.md` and `GLOSSARY.md` (sticker, run, set,
@@ -349,6 +427,20 @@ new box is named by its sticker's number — changed on 2026-11-14 by #351's cal
 | 5 · the walk | The camera in the app, with a no-scan press (PR 5) | The phone's own camera only |
 | 6 · who prints a run | The office, a primary, a superintendent | Anyone on the job |
 | 7 · a new box's name | The sticker's number until someone types one; since 2026-11-14 (#351, call 7) the site's next free name, with the sticker's number shown beside it | Ask for a name every time |
+
+## The owner's calls on section 10
+
+Six, each one spot on `mockup-named-runs.html`, my pick first. Open on 2026-11-15: the owner said
+*fold them in* to the second pass and has not yet taken the calls.
+
+| Call | Recommended | Also possible |
+|---|---|---|
+| 1 · the number on a named strip | Kept, printed small before the address | Left off a named strip |
+| 2 · names the site already has | A notice: their stickers go on those boxes | A refusal |
+| 3 · a grid range | In: `A1-D50` is four rows of fifty | The number alone steps |
+| 4 · numbered-only runs | Stay as the exception, the field cleared | Every run is named |
+| 5 · a second run over blank names | The press held until *Print them anyway* | A notice only |
+| 6 · These are on boxes | Built in the Runs fold as PR 10 | The scan stays the only way |
 
 ## How to verify
 
@@ -451,3 +543,13 @@ mock-up's *A box already here* and *A new box*); the row is picked and the press
 row is; the new box is named by the site's next free name and never the sticker's number, by the owner's call; a press
 with no signal is refused with its reason, not kept, since two phones may hold one blank sticker. **The loop is whole
 with the phone's own camera. The next step is the walk of the site**, then PRs 4 to 6.
+
+2026-11-14, later: **the preview fold is built** as v2.7304 (#8164): **What the stickers will look like** at the
+foot of the window draws the run's strips through the printer's own drawing, the real numbers and a sample code.
+
+2026-11-15: **the owner asked for runs that name their boxes.** Section 10 and `mockup-named-runs.html` hold the
+design: one typed Names field open on the site's next free name, the box rule as the maximum, the letter after the
+number as twins, the name large and the number small on the strip, the first scan reading the name off the sticker,
+**These are on boxes** placing a range in one press, the number receding on the screens, and the trade against call
+2 said out loud. The owner asked *is this the best we can do*, took the second pass with *fold them in*, and the six
+calls under *The owner's calls on section 10* wait on him. Nothing of section 10 is built.
