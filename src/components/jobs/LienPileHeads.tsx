@@ -10,13 +10,13 @@
  * the wiring the three lists share — the scroller's ref, the lit pile, the press and the scroll handler — and the
  * title's markup, so the behavior is one code path, not three copies.
  */
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, useState, type MutableRefObject, type ReactNode } from 'react'
 import { lienPileHeadPlace, lienPileReached, lienPileScrollTop } from '../../lib/jobs/lienPhoneLists'
 import { lienFindPileCount } from '../../lib/jobs/lienDeskFind'
 
 export type LienPileHeads<P extends string> = {
   /** The list's scroller: `position: relative` and `overflow: auto`, so each pile's `offsetTop` is measured against it. */
-  listRef: React.RefObject<HTMLDivElement | null>
+  listRef: MutableRefObject<HTMLDivElement | null>
   /** The pile whose title is lit: the one the scroll reached, or the first shown before any scroll. */
   lit: P | null
   /** The scroller's `onScroll`: lights the title of the last pile whose rows the scroll has reached. */
