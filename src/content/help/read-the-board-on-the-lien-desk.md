@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, chips, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -86,6 +86,20 @@ The third part is **On track**. These papers will make their day. Inside a day t
 
 On a phone the list is drawn by day. The papers at risk lead their day. The waiting rows follow the days that need you.
 
+## What a row says
+
+On a computer each row is two lines. The first line is the paper, the job and what the job still owes. The row's press sits at the right.
+
+The second line starts with the paper's bin, in the Board's own words, like **Ready to file**. Then it says the one thing to know. A notice says its months. A paper waiting on approval says when it was sent and how long it has waited. A paper that waits on a fact says the fact, and its press answers it. {{button:blue|Answer the homestead question}} opens the property record on that question.
+
+An affidavit row also says where its notice stands. It reads like *Notice sent Oct 14*, *No notice needed* or *No notice on record*.
+
+Point at the bin's name to read where that paper stands. It opens the card the four dots used to open. A row with no bin, like a retainage notice, keeps its dots.
+
+A heading carries the day when every row under it shares that day. Then no row repeats it. A row with another day says its own.
+
+{{button:outline|Print 10 affidavits ›}} sits on the **On track** heading. It opens the affidavits list at **Ready to file**, where the batch prints.
+
 ## Held, Missed and retainage
 
 A **Held** bin and a **Missed** bin stand beside a column only while a job is in one. A dashed border marks them. When they are empty they are not drawn.
@@ -110,6 +124,6 @@ Press **Lien desk** at the top of the page from any view. The To do tab opens wi
 
 ## Where the old strips went
 
-The Board took the place of two strips. One was the lien month bar with its five zones. The other was the rails named Steps of each paper. The days of the lien month still sit in {{button:outline|§ Rules}} under **The lien month**. Every row still has its four dots. Point at them to read where that paper stands.
+The Board took the place of two strips. One was the lien month bar with its five zones. The other was the rails named Steps of each paper. The days of the lien month still sit in {{button:outline|§ Rules}} under **The lien month**. On a computer, point at a row's bin name to read where that paper stands. On a phone every row still has its four dots.
 
 A sent notice's reminders still run as before. The courtesy notice and the attorney's letter sit under the **Reminders** heading in the list. Read [send a courtesy notice before a lien](/help/send-a-courtesy-notice-before-a-lien) for the courtesy itself. Read [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk) for the whole flow.

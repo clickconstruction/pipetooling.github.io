@@ -2,6 +2,7 @@ import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, lienNextUpNowHead, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { lienHeadDay, lienRowLine, type LienHeadDay, type LienRowTag } from '../../lib/jobs/lienRowWords'
 import { lienStepCard, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienPhoneGroups, lienPhoneStepWords, type LienPhoneGroup } from '../../lib/jobs/lienPhoneRows'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -24,6 +25,11 @@ import { LienStepCardView, LienStepMark, useLienStepCard } from './LienDeskSteps
  * will not make their day as they stand (the Board's marked chips, `risk`), then the approvals the office waits on,
  * with one press that reminds the leader of them (`remind`), then the rest, *On track*. The order is the kernel's.
  *
+ * Since v2.7372 (step 3) a computer's row is two lines, so nothing is cut off at a laptop's width: the paper, the job
+ * and what it owes, then under the job the Board's bin name, the one thing to know and where an affidavit's notice
+ * stands (`lienRowWords.ts`). The bin's name opens the card the four dots opened, and a row with no bin keeps its
+ * dots. A head carries the day when every row under it shares it, so no row repeats it.
+ *
  * A table on a computer; the same rows as cards on a phone.
  */
 
@@ -35,6 +41,13 @@ const KIND_TONE: Record<LienNextUpKind, { bg: string; fg: string }> = {
 }
 
 const tag = (kind: LienNextUpKind): CSSProperties => ({ display: 'inline-block', padding: '0 7px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 700, lineHeight: '18px', whiteSpace: 'nowrap', background: KIND_TONE[kind].bg, color: KIND_TONE[kind].fg })
+const TAG_TONE: Record<LienRowTag['tone'], CSSProperties> = {
+  ok: { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' },
+  none: { background: 'var(--bg-subtle)', color: 'var(--text-muted)' },
+  warn: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
+}
+/** The width a computer's row keeps for its press, so the dollars line up whatever the press says; longer words wrap inside it. */
+const ROW_PRESS_PX = 172
 const actBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 const openBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 
@@ -81,6 +94,9 @@ export default function LienDeskNextUp({
   risk,
   riskLabel,
   remind,
+  stageFor,
+  noticeFor,
+  trackPress,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -117,6 +133,12 @@ export default function LienDeskNextUp({
   riskLabel?: (n: number) => string
   /** The press on the waiting rows' head (v2.7371): reminds the leader of them. Absent, or for a viewer who cannot send it, the head has no press. */
   remind?: { button: string; dead: boolean; busy?: boolean; onPress: () => void } | null
+  /** The Board's bin a row's paper stands in (v2.7372, `lienBoardRowStage`): a computer's row starts its second line with it. Absent, a row keeps its dots and its words. */
+  stageFor?: (row: LienNextUpRow) => string | null
+  /** Where an affidavit row's notice stands (`lienAffidavitNoticeTag`); null when the desk cannot say. */
+  noticeFor?: (row: LienNextUpRow) => LienRowTag | null
+  /** One press on the head over the rows on track (v2.7372): the door to the affidavits' batch print. */
+  trackPress?: { button: string; onPress: () => void } | null
 }) {
   const card = useLienStepCard(isMobile)
   // The row whose card is open, for the card's own button.
@@ -277,12 +299,60 @@ export default function LienDeskNextUp({
         ev.stopPropagation()
         onAct(r)
       }}
-      style={{ ...(r.button ? actBtn : openBtn), ...(isMobile ? PHONE_PRESS : {}) }}
+      style={{ ...(r.button ? actBtn : openBtn), ...(isMobile ? PHONE_PRESS : { whiteSpace: 'normal', textAlign: 'center', lineHeight: 1.2 }) }}
       data-lien-next-up-act={r.action}
     >
       {r.button ?? 'Open'}
     </button>
   )
+  // The bin's name as the door to the row's card (v2.7372): the card the four dots opened, on the word that says the stage.
+  const stageDoor = (r: LienNextUpRow, stage: string) => {
+    const stepCard = lienStepCard(r, factsFor?.(r))
+    const show = (el: HTMLElement) => {
+      setOpenRow(r)
+      card.show(el, stepCard)
+    }
+    return (
+      <button
+        type="button"
+        className="lienJobDoor"
+        data-lien-next-up-stage={r.key}
+        aria-label={`${stage}: where this stands`}
+        onMouseEnter={(e) => show(e.currentTarget)}
+        onMouseLeave={card.hide}
+        onFocus={(e) => show(e.currentTarget)}
+        onBlur={card.hide}
+        onClick={(e) => {
+          e.stopPropagation()
+          show(e.currentTarget)
+        }}
+        style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-700)', cursor: 'default', borderRadius: 3 }}
+      >
+        {stage}
+      </button>
+    )
+  }
+  // The day a head carries for its rows (v2.7372): the parts of Needs you now share one head, so they share its day;
+  // the waiting rows are under a head of their own kind and each says its day.
+  const partsDay: LienHeadDay | null = lienHeadDay(groups.filter((g) => g.part && g.group !== 'waiting').flatMap((g) => g.rows))
+  const headDayOf = (g: (typeof groups)[number]): LienHeadDay | null => (g.group === 'waiting' ? null : g.part ? partsDay : g.group === 'now' || g.group === 'coming' ? lienHeadDay(g.rows) : null)
+  const dayWords = (d: LienHeadDay | null) =>
+    d ? (
+      <span data-lien-next-up-head-day style={{ marginLeft: 8, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: d.daysLeft != null && d.daysLeft <= 7 ? 'var(--text-red-600)' : 'var(--text-muted)' }}>{d.words}</span>
+    ) : null
+  const trackPressButton = trackPress ? (
+    <button
+      type="button"
+      data-lien-next-up-track-press
+      onClick={(ev) => {
+        ev.stopPropagation()
+        trackPress.onPress()
+      }}
+      style={{ ...openBtn, flex: 'none', padding: '2px 10px', fontSize: '0.78rem' }}
+    >
+      {trackPress.button}
+    </button>
+  ) : null
   // The parts of Needs you now (v2.7371): one head over them, each part with a smaller one of its own.
   const nowHead = lienNextUpNowHead(groups)
   const firstPart = groups.findIndex((g) => g.part)
@@ -379,10 +449,13 @@ export default function LienDeskNextUp({
       {isMobile ? phoneGroups.map(phoneGroup) : groups.map((g, gi) => (
         <Fragment key={g.group}>
         {nowHead && gi === firstPart ? (
-          <h3 data-lien-next-up-now-head style={{ margin: '0 0 0.5rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-red-600)' }}>
-            {nowHead.label} · {nowHead.count}
-            {nowHead.waiting ? <span data-lien-next-up-now-waiting style={{ marginLeft: 8, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-muted)' }}>and {nowHead.waiting}</span> : null}
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', margin: '0 0 0.5rem', fontSize: '0.72rem' }}>
+            <h3 data-lien-next-up-now-head style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-red-600)' }}>
+              {nowHead.label} · {nowHead.count}
+              {nowHead.waiting ? <span data-lien-next-up-now-waiting style={{ marginLeft: 8, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-muted)' }}>and {nowHead.waiting}</span> : null}
+            </h3>
+            {dayWords(partsDay)}
+          </div>
         ) : null}
         <section aria-label={g.label} data-lien-next-up-group={g.group} data-part={g.part ? 'yes' : undefined} style={{ marginBottom: g.part && gi !== lastPart ? '0.65rem' : '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: g.part ? '0 0 0.35rem' : '0 0 0.4rem', minHeight: g.group === 'waiting' && remindPress ? 26 : undefined }}>
@@ -391,38 +464,45 @@ export default function LienDeskNextUp({
                 {g.label} · {g.rows.length}
               </h4>
             ) : (
-              <h3 style={{ flex: 1, minWidth: 0, margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' || g.group === 'waiting' ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
-                {g.label} · {g.rows.length}
-              </h3>
+              <>
+                <h3 style={{ minWidth: 0, margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' || g.group === 'waiting' ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
+                  {g.label} · {g.rows.length}
+                </h3>
+                <span style={{ flex: 1, minWidth: 0, fontSize: '0.72rem' }}>{dayWords(headDayOf(g))}</span>
+              </>
             )}
             {g.group === 'waiting' ? remindPress : null}
+            {g.group === 'now' ? trackPressButton : null}
           </div>
           <div style={{ display: 'grid', gap: 0, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
             {g.rows.map((r, i) => {
-              const due = lienNextUpDueWords(r)
+              // The head's day is not said again; a row with another day, or under a head with none, says its own.
+              const headDay = headDayOf(g)
+              const due = headDay && r.dueOn === headDay.dueOn ? '' : lienNextUpDueWords(r)
+              const line = lienRowLine(r, { stage: stageFor?.(r) ?? null, notice: noticeFor?.(r) ?? null })
+              const amount = amountFor?.(r) ?? null
               return (
                 <div
                   key={r.key}
                   data-lien-next-up-row={r.key}
+                  data-layout="two-line"
                   onClick={() => onAct(r)}
-                  style={{ display: 'grid', gridTemplateColumns: '84px minmax(0, 1.2fr) 86px minmax(0, 1.4fr) 170px auto', gap: '0.75rem', alignItems: 'center', padding: '0.5rem 0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer' }}
+                  style={{ display: 'grid', gridTemplateColumns: `84px minmax(0, 1fr) auto ${ROW_PRESS_PX}px`, columnGap: '0.75rem', rowGap: 2, alignItems: 'center', padding: '0.45rem 0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer' }}
                 >
                   <span>{chip(r)}</span>
-                  {r.jobs ? (
-                    // A run row's question reads on its second line, so its title takes the question's column too (punch list #101).
-                    <span style={{ gridColumn: '2 / 5', minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      {title(r, { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', minWidth: 0 })}
-                      {mark(r)}
-                    </span>
-                  ) : (
-                    <>
-                      <span style={{ minWidth: 0, overflow: 'hidden' }}>{title(r, { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}</span>
-                      <span>{mark(r)}</span>
-                      <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.sub}>{r.sub}</span>
-                    </>
-                  )}
-                  <span style={{ fontWeight: 600, color: dueColor(r), whiteSpace: 'nowrap' }}>{due}</span>
-                  <span style={{ justifySelf: 'end' }}>{button(r)}</span>
+                  <span style={{ minWidth: 0, overflow: 'hidden' }}>{title(r, { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}</span>
+                  {amount != null ? <span data-lien-next-up-amount style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }}>{formatUsdNoCents(amount)}</span> : <span />}
+                  <span style={{ gridColumn: 4, gridRow: '1 / 3', justifySelf: 'end', maxWidth: ROW_PRESS_PX }}>{button(r)}</span>
+                  {/* Under the job: its day when the head does not carry it, the Board's bin, the one thing to know, and an affidavit's notice. */}
+                  <span data-lien-next-up-line style={{ gridColumn: '2 / 4', gridRow: 2, minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                    {due ? <span data-lien-next-up-due style={{ fontWeight: 600, color: dueColor(r), whiteSpace: 'nowrap', marginRight: 8 }}>{due}</span> : null}
+                    {line.stage ? stageDoor(r, line.stage) : <span style={{ marginRight: 8 }}>{mark(r)}</span>}
+                    {/* A run row's question reads in its fold, with the press that answers it (punch list #101). */}
+                    {!r.jobs && line.detail ? <span data-lien-next-up-detail>{line.stage ? ' · ' : ''}{line.detail}</span> : null}
+                    {line.tags.map((t) => (
+                      <span key={t.words} data-lien-next-up-tag={t.tone} style={{ ...TAG_TONE[t.tone], display: 'inline-block', marginLeft: 8, padding: '0 6px', borderRadius: 5, fontSize: '0.72rem', fontWeight: 600, lineHeight: '18px', whiteSpace: 'nowrap' }}>{t.words}</span>
+                    ))}
+                  </span>
                   {fold(r)}
                   {/* The row's other doors (punch list #353) read on a line of their own under the row, so the title keeps its column. */}
                   {!r.jobs && r.doors?.length ? (

@@ -4,7 +4,7 @@ import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits
 import type { LienRetainageEntry, LienRetainagePile } from './lienDeskRetainage'
 import type { LetterTwoStatus } from './lienLetterTwo'
 import type { CourtesyStatus } from './lienCourtesyNotice'
-import { buildLienNextUp, lienViewerLeadsJob, groupLienNextUp, lienNextUpCount, lienNextUpNowHead, lienPrintedDaysWords, type LienNextUpInput, type LienNextUpRow } from './lienNextUp'
+import { buildLienNextUp, lienViewerLeadsJob, groupLienNextUp, lienGateHoldWords, lienNextUpCount, lienNextUpNowHead, lienPrintedDaysWords, lienWaitedWords, type LienNextUpInput, type LienNextUpRow } from './lienNextUp'
 
 const TODAY = '2026-10-05'
 
@@ -102,7 +102,7 @@ describe('buildLienNextUp — notices', () => {
 describe('buildLienNextUp — affidavits and retainage', () => {
   it('affidavit piles: fix the property, draft, approve, file, review; filed and missed ask nothing', () => {
     const act = (pile: LienAffidavitPile, role = 'assistant') => build({ affidavits: [affidavit('j1', pile)], role }).map((r) => [r.action, r.button])
-    expect(act('needs_property')).toEqual([['fix_property', 'Fix the property']])
+    expect(act('needs_property')).toEqual([['fix_property', 'Fix the property record']])
     expect(act('to_draft')).toEqual([['draft', 'Open the affidavit']])
     expect(act('awaiting')).toEqual([['approve', null]])
     expect(act('awaiting', 'dev')).toEqual([['approve', 'Approve']])
@@ -189,7 +189,7 @@ describe('buildLienNextUp — the late notice (v2.4708)', () => {
     expect(only.target).toEqual({ open: 'affidavits', jobId: 'j1' })
     // A property fact also missing: the property record leads, as before.
     const both = build({ affidavits: [affidavit('j1', 'needs_property', { gates: [...gates(true, false), contractor(false)] })] }).find((r) => r.kind === 'affidavit')!
-    expect([both.button, both.sub]).toEqual(['Fix the property', 'Affidavit · the property record is not complete'])
+    expect([both.button, both.sub]).toEqual(['Fix the property record', 'Affidavit · the affidavit still needs the owner of record and the GC’s address'])
   })
   it('the affidavit window closed too: the notice row is Note it, as before; a property gate still failing keeps Fix the property', () => {
     const rows = build({ notices: [closedOnly()], affidavits: [affidavit('j1', 'needs_property', { deadline: '2026-09-15', daysLeft: -20, severity: 'red', gates: gates(false, false) })] })
@@ -487,5 +487,51 @@ describe('Needs you now in three parts (v2.7371, punch list #362 step 2)', () =>
     const groups = groupLienNextUp(build({ leaderName: () => 'Sam', notices: [notice('wait', 'awaiting', { item: awaiting }), notice('later', 'to_draft', { earliestDeadline: '2026-11-15', daysLeft: 41, severity: 'quiet' })] }), { waitingOn: 'Sam' })
     expect(groups.map((g) => [g.group, g.part ?? false])).toEqual([['waiting', false], ['coming', false]])
     expect(lienNextUpNowHead(groups)).toBeNull()
+  })
+})
+
+describe('a row’s one thing to know, once its kind and stage are said beside it (v2.7372, punch list #362 step 3)', () => {
+  const gate = (key: 'owner' | 'legal' | 'contractor' | 'notice' | 'homestead' | 'homestead_answer', ok: boolean) => ({ key, ok, label: '' })
+  const whole = () => [gate('owner', true), gate('legal', true), gate('contractor', true), gate('notice', true), gate('homestead', true)]
+
+  it('an affidavit held by one fact names it, on the row and on its button; until now every hold read the property record is not complete', () => {
+    const r = one({ affidavits: [affidavit('j1', 'needs_property', { gates: [...whole(), gate('homestead_answer', false)] })] })
+    expect([r.action, r.button]).toEqual(['fix_property', 'Answer the homestead question'])
+    expect(r.sub).toBe('Affidavit · nobody has answered whether this home is a homestead')
+    expect(r.detail).toBe('Nobody has answered whether this home is a homestead.')
+    const legal = one({ affidavits: [affidavit('j1', 'needs_property', { gates: [gate('owner', true), gate('legal', false)] })] })
+    expect([legal.button, legal.detail]).toEqual(['Add the legal description', 'The property record has no county and legal description.'])
+    const owner = one({ affidavits: [affidavit('j1', 'needs_property', { gates: [gate('owner', false), gate('legal', true)] })] })
+    expect([owner.button, owner.detail]).toEqual(['Find the owner', 'The affidavit needs the owner of record with a mailing address.'])
+    // A viewer with no move still reads the fact, and has no button.
+    expect(one({ role: 'estimator', affidavits: [affidavit('j1', 'needs_property', { gates: [gate('homestead_answer', false)] })] }).button).toBeNull()
+  })
+
+  it('several facts missing are each named, and the press opens the record', () => {
+    expect(lienGateHoldWords(['owner', 'legal'])).toEqual({ sub: 'the affidavit still needs the owner of record and the legal description', detail: 'The affidavit still needs the owner of record and the legal description.', button: 'Fix the property record' })
+    expect(lienGateHoldWords(['owner', 'legal', 'homestead_answer']).detail).toBe('The affidavit still needs the owner of record, the legal description and the homestead answer.')
+    // A homestead and public property keep the act's own words: neither is a list of facts to fill in.
+    expect(lienGateHoldWords(['homestead', 'legal'])).toEqual({ sub: 'the property is marked as a homestead', detail: 'The property is marked as a homestead. A lien there needs a contract signed before the work began.', button: 'Open the property record' })
+    expect(lienGateHoldWords([]).detail).toBe('The property record is missing facts the affidavit needs.')
+  })
+
+  it('a notice says the months it is for; a paper waiting on approval says when it was sent and how long it has waited', () => {
+    const owner = one({ notices: [notice('j1', 'needs_owner', { dueMonths: ['2026-08', '2026-09'] })] })
+    expect([owner.sub, owner.detail]).toEqual(['Needs the owner of record', 'August and September 2026'])
+    expect(one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })] }).detail).toBe('September 2026')
+    const submitted = { id: 'i1', status: 'awaiting_approval', submitted_at: '2026-10-02T15:00:00Z' } as unknown as LienDeskEntry['item']
+    const waits = one({ leaderName: () => 'Sam', notices: [notice('j1', 'awaiting', { item: submitted })] })
+    expect([waits.sub, waits.detail]).toEqual(['Waiting on Sam · since Oct 2', 'Sent for approval Oct 2 · waiting 3 days'])
+    expect(one({ notices: [notice('j1', 'awaiting')] }).detail).toBe('Sent for approval')
+    expect(one({ leaderName: () => 'Sam', affidavits: [affidavit('j1', 'awaiting', { item: submitted })] }).detail).toBe('Sent for approval Oct 2 · waiting 3 days')
+    expect([lienWaitedWords(0), lienWaitedWords(1), lienWaitedWords(39)]).toEqual(['today', 'waiting 1 day', 'waiting 39 days'])
+  })
+
+  it('a stage that says it all leaves nothing more to say, and a row with no stage of its own keeps its words', () => {
+    expect(one({ affidavits: [affidavit('j1', 'ready')] }).detail).toBe('')
+    expect(one({ affidavits: [affidavit('j1', 'to_draft')] }).detail).toBe('')
+    expect(one({ notices: [notice('j1', 'held')] }).detail).toBe('')
+    expect(one({ retainage: [retainage('j1', 'to_draft')] }).detail).toBeUndefined()
+    expect(one({ notices: [notice('j1', 'ready')] }).detail).toBeUndefined()
   })
 })
