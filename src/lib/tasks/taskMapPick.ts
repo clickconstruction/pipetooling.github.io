@@ -166,6 +166,8 @@ export const TASK_MAP_PICK_WORDS = {
   /** A map painted from a task hangs on no job. */
   paintHome: 'A map painted here is on no job. The office can put it on a job later.',
   pickHead: 'Or pick one that is painted',
+  /** The list's head where the sheet only picks. */
+  pickOnlyHead: 'Pick one that is painted',
   /** Nothing was saved in the painting window. */
   paintedNothing: 'Nothing was painted, so the task has no map yet.',
   paintNoHost: 'The painting window could not open here.',
@@ -173,6 +175,10 @@ export const TASK_MAP_PICK_WORDS = {
   reading: 'Reading the painted maps…',
   /** No map at all. It names the two doors that paint one. */
   none: 'No painted map yet. Paint a new one above.',
+  /** The same, where the sheet cannot paint: it names the two doors that do. */
+  nonePickOnly: 'No painted map yet. Paint one from a job’s address, or search Paint a map, then pick it here.',
+  /** A roadmap task's sentence, with a map on it. */
+  roadmapSentence: 'It comes with a map.',
   noneFound: 'No painted map has that name.',
   failed: 'The painted maps could not be read.',
   /** Under the picked map: who it opens to. */
