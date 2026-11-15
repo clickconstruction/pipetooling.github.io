@@ -2,7 +2,7 @@
 name: "Edge functions: the kernel copy rides a function file by file, so dev-mcp keeps its headroom"
 number: 359
 group: ready
-status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · PR 4 (v2.7291) OverheadPartsDetailLine off the overhead reads, dev-mcp 3.75 MB · PR 5 (v2.7292) FormValues and the GC entity's name in files of their own, dev-mcp 3.70 MB · next the slim types on the owner's yes, else step 3 with the numbers
+status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · PR 4 (v2.7291) OverheadPartsDetailLine off the overhead reads, dev-mcp 3.75 MB · PR 5 (v2.7292) FormValues and the GC entity's name in files of their own, dev-mcp 3.70 MB · the five chain cuts merged and live 2026-11-15, dev-mcp 3.72 MB on main with the week's lien kernels · next the slim types on the owner's yes, else step 3 with the numbers
 summary: >
   v2.7256 took the whole database types file out of every edge upload: dev-mcp went from 5.02 MB,
   which the deploy refused, to 4.03 MB, and the eight portals from about 4.1 MB to about 3.0 MB.
@@ -24,7 +24,17 @@ mockup: not required — a refactor of imports and files with no screen
 
 # Edge functions: the kernel copy rides a function file by file, so dev-mcp keeps its headroom (#359)
 
-## Where it stands (2026-11-14, evening)
+## Where it stands (2026-11-15, morning)
+
+**The five chain cuts of step 2 are merged and live.** PR 1 (v2.7288, #8145) trimmed the copy's index, PR 2 (v2.7289, #8146) took `customerLang` off `portalI18n`, PR 3 (v2.7290, #8153) `textsSwitch` off `quo/send`, PR 4 (v2.7291, #8157) the overhead buckets off the overhead reads and PR 5 (v2.7292, #8160) `hoursStatementForm` off `formSchema` and `messagesEmail` off `gcCustomerEmails`; every function each one touched was redeployed from origin/main the same day and boots. Measured on main at v2.7310 (`node scripts/lib/edgeUploadGraph.mjs`):
+
+| Function | 2026-11-14 morning | 2026-11-15 |
+|---|---|---|
+| dev-mcp | 4.03 MB · 243 files | 3.72 MB · 229 files (3.70 MB after PR 5; the week's lien kernels added the rest) |
+| customer-portal and the other thirteen barrel readers | 2.94 to 3.01 MB | 1.33 to 1.65 MB |
+| bridge-weekly-sheet | 1.18 MB | 1.18 MB |
+
+dev-mcp has 0.78 MB to the CI ceiling, and a verb pair still costs about 0.15 MB (a `plan_*`/`apply_*` module plus the kernels it reaches), so five more pairs fit before the next cut is due; the slim types (−0.3 MB on dev-mcp and the portals) are built on two held branches and wait on the owner's word on the design below, and step 3 is not due while dev-mcp is under 3.5 MB only with them. The cost of a cut in `_shared`: PR 5 touched `portalCompany.ts`, which 91 functions import, and the redeploy after it was all 91.
 
 **Step 1 is read**, on main at v2.7278, with two scratch scripts over `edgeUploadGraph`: one scores every import edge in a function's upload by the bytes the upload loses when that edge alone is cut (a file reached two ways scores nothing on either), the other lists every function that uploads a file and the importers inside each upload. The full tables are in the session notes; what matters:
 
