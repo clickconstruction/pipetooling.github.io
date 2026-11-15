@@ -1,8 +1,8 @@
 ---
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
-group: gated
-status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · calls 1 and 7 settled by her · nothing built · calls 2 to 6 and 8 stand as drawn, shown to her twice, and wait on her word
+group: ready
+status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · nothing built · ready for PR 1
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,9 +11,9 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: Taunya's word that calls 2 to 6 and 8 stand as drawn. Then PR 1, the kernel, which needs none of them but call 4.
+next: PR 1, the kernel (`src/lib/jobs/noteTags.ts` with its tests). Then the train in order, PR 3 and PR 4 landing close together.
 size: L as a train of six (S · M · M · M · S · S)
-blocker: Taunya's word on calls 2 to 6 and 8.
+blocker: none; Taunya settled the eight calls on 2026-11-15.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
 ---
 
@@ -160,6 +160,10 @@ logins differ by one letter in the last name, one on the crew and one a sub, so 
 cannot be trusted to find the right person.
 
 ## The calls, with a pick for each
+
+All eight are settled by Taunya, 2026-11-15. Calls 1 and 7 are in her own words, under their
+headings. Asked whether calls 2 to 6 and 8 stand as the mock-up draws them, she said "Yes, they
+stand". Each pick below is the one to build.
 
 ### Call 1 · Where the tag lands
 
