@@ -4536,6 +4536,42 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunFootStatus span { font-size: 0.78rem; color: var(--text-muted); }
 .lienRunMore { flex-basis: 100%; display: flex; gap: 0.5rem 0.75rem; align-items: center; flex-wrap: wrap; padding-top: 0.6rem; border-top: 1px dashed var(--border); }
 .lienRunMore > div[data-testid='run-saved-copy'] { flex-basis: 100%; }
+/* Lien desk → the run as a checklist (v2.7328): one row per notice, three ticks across, each open tick a press; the rows stack on a phone. */
+.lienRunCheck { display: grid; gap: 0.45rem; padding: 0.4rem 0 0.3rem; }
+.lienRunCheck h3 { margin: 0; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.lienRunCheck h3 span { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 0.5rem; }
+.lienRunCheckRow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr); gap: 0.5rem 0.9rem; align-items: start; border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.75rem; background: var(--surface); font-size: 0.8125rem; }
+.lienRunCheckRow[data-waits='none'] { border-color: var(--text-green-700); }
+.lienRunCheckRow[data-held='yes'] { border-color: var(--border-amber); background: var(--bg-amber-tint); }
+.lienRunCheckHead { display: grid; gap: 1px; min-width: 0; }
+.lienRunCheckHead b { color: var(--text-strong); }
+.lienRunCheckAmt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.lienRunCheckWho { color: var(--text-muted); font-size: 0.72rem; }
+.lienRunCheckLine { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
+.lienRunCheckHeld { color: var(--text-red-600); font-size: 0.72rem; font-weight: 600; }
+.lienRunCheckTicks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-items: start; min-width: 0; }
+.lienRunCheckTick { display: grid; gap: 3px; min-width: 0; padding: 0.3rem 0.45rem; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border); }
+.lienRunCheckTick[data-on='yes'] { border-color: var(--text-green-700); background: var(--bg-green-tint); }
+.lienRunCheckTickName { font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+.lienRunCheckDone { color: var(--text-green-800); font-weight: 600; font-size: 0.78rem; overflow-wrap: anywhere; }
+.lienRunCheckWait { color: var(--text-muted); font-size: 0.75rem; }
+.lienRunCheckBoxes { display: grid; gap: 0.3rem; }
+.lienRunCheckBox { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.2rem 0.35rem; align-items: center; }
+.lienRunCheckBox .lienRunCheckShape { grid-column: 2 / -1; }
+.lienRunCheckBoxWho { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; min-width: 2.6em; }
+.lienRunCheckShape { font-size: 0.68rem; color: var(--text-red-600); }
+.lienRunCheckShape[data-ok='yes'] { color: var(--text-green-700); }
+.lienRunCardsFold { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; width: 100%; text-align: left; margin: 0.5rem 0 0.1rem; padding: 0.3rem 0; border: none; border-top: 1px dashed var(--border); background: none; color: var(--text-700); font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.lienRunCardsFold span { font-weight: 500; color: var(--text-muted); font-size: 0.72rem; }
+.lienRunHeldList { flex-basis: 100%; margin: 0; padding: 0 0 0 1.1rem; font-size: 0.75rem; color: var(--text-muted); display: grid; gap: 1px; }
+.lienRunHeldList b { color: var(--text-700); font-weight: 600; }
+@media (max-width: 700px) {
+  .lienRunCheckRow { grid-template-columns: 1fr; }
+  .lienRunCheckTicks { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; }
+  .lienRunCheckTick { padding: 0.35rem 0.4rem; }
+  .lienRunCheckTick[data-tick='mailed'] { grid-column: 1 / -1; }
+  .lienRunCheckBox { grid-template-columns: auto minmax(0, 1fr) auto; }
+}
 /* Lien desk → the run's live checklist, lanes and the desk's door pill (Run-5, the run shown not told). */
 .lienRunChecklist { display: grid; gap: 0.4rem; padding: 0.4rem 0 0.2rem; }
 .lienRunChecklist h3 { margin: 0; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
@@ -4553,6 +4589,7 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunDoorBar i { display: block; height: 100%; }
 .lienRunDoorSealed { background: var(--text-green-700); }
 .lienRunDoorWait { background: var(--border-amber); }
+.lienRunDoorPrinted { background: var(--text-link); }
 .lienRunDoorWords { display: inline-block; margin-left: 0.45rem; font-weight: 500; opacity: 0.85; }
 @media (max-width: 640px) { .lienRunDoorWords { display: none; } }
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */

@@ -547,7 +547,9 @@ describe('LienDesk', () => {
     await settle()
     // Nothing is Ready to send, one is printed: the header still offers the run, counting what the run lists —
     // and says what the run will do (v2.4823), as the printed footer does, instead of Send the run.
-    expect(screen.getByRole('button', { name: 'Record the mailing · 1' })).toBeTruthy()
+    // The pill reads the run's count with its meter (v2.7328): one printed, none mailed yet.
+    expect(screen.getByRole('button', { name: 'The run · 0 of 1 mailed' })).toBeTruthy()
+    expect(document.querySelector('[data-lien-desk-run-meter]')).not.toBeNull()
     expect(screen.queryByRole('button', { name: /^Send the run/ })).toBeNull()
     // v2.4740: the run sits on the title line, right after the views; on By paper the paper tabs lead the second line.
     expect(document.querySelector('[data-lien-desk-kinds]')!.nextElementSibling!.hasAttribute('data-lien-desk-run')).toBe(true)
