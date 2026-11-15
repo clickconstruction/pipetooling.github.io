@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatYmdMonthDay } from './jobs/billedExpectedPay'
+import { addDaysYmd } from './jobs/lienCourtesyNotice'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { NEEDS_YOU_RANK, buildNeedsYouItems, needsYouKind, rankNeedsYouItems, supplyMoveWindowSeverity, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
 import { SUPPLY_MOVE_WINDOW_CLOSE } from './ageState'
 import type { BankReturnedPayments } from './jobs/bankReturnedDeposits'
@@ -806,14 +808,15 @@ describe('buildNeedsYouItems', () => {
 
   it('a closed window whose affidavit can still be filed reads send the late notice by <day>, not gone (v2.7273, punch list #335, row 4)', () => {
     const quiet = { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 0, next: { deadline: null, notices: 0, dollars: 0, gcIds: [], gcNames: [], toDraft: 0, needsOwner: 0, affidavitBy: null } }, leader: { jobs: 0, dollars: 0, earliestDeadline: null, affidavitBy: null }, held: 0, missed: { jobs: 0, months: 0, dollars: 0, lines: [], lateNotice: { jobs: 0, months: 0, dollars: 0, by: null }, gone: { jobs: 0, months: 0, dollars: 0 } } }
-    const d17 = new Date(); d17.setDate(d17.getDate() + 17)
-    const in17 = d17.toISOString().slice(0, 10)
+    // Days ahead of the app's own today (Central), as the card counts them (v2.7295): a UTC date runs a day ahead
+    // every evening after 6 PM Central, and the title's "in 17 days" read 18.
+    const ahead = (n: number) => addDaysYmd(todayYmdInAppTz(), n)
+    const in17 = ahead(17)
     const day17 = formatYmdMonthDay(in17)
     // Two jobs can still send a late notice (the affidavit's day is 17 days ahead); three are gone for good.
     const mixed = { jobs: 5, months: 5, dollars: 51_780, lines: [], lateNotice: { jobs: 2, months: 2, dollars: 20_000, by: in17 }, gone: { jobs: 3, months: 3, dollars: 31_780 } }
     // On the deadline card: two secondary lines, the late notice first, each opening the Missed lens.
-    const d23 = new Date(); d23.setDate(d23.getDate() + 23)
-    const in23 = d23.toISOString().slice(0, 10)
+    const in23 = ahead(23)
     const next = { deadline: in23, notices: 1, dollars: 9_000, gcIds: ['rlc'], gcNames: ['RLC- Dunmere Mallin'], toDraft: 1, needsOwner: 0, affidavitBy: null }
     const a = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: { ...quiet, office: { ...quiet.office, jobs: 1, months: 1, dollars: 9_000, earliestDeadline: in23, next }, missed: mixed } }))
     expect(a[0]?.secondary).toEqual([
@@ -826,8 +829,7 @@ describe('buildNeedsYouItems', () => {
     expect(b[0]).toMatchObject({ severity: 'amber', title: `Send 2 late lien notices by ${day17} · in 17 days`, figure: '$51,780', actionLabel: 'Open the Missed pile' })
     expect(b[0]?.detail).toBe(`$20,000 still owed on 2 jobs whose notice windows closed with nothing sent. A late notice still carries the lien until ${day17}, the affidavit's last day. Draft it from the desk's Missed pile. 3 more windows closed for good: $31,780 on 3 jobs, and the lien right on that work is gone. Note them on the desk so the record says who saw them.`)
     // Red inside a week of the affidavit's day, as the clock is; one job, singular words, no gone sentence.
-    const d5 = new Date(); d5.setDate(d5.getDate() + 5)
-    const in5 = d5.toISOString().slice(0, 10)
+    const in5 = ahead(5)
     const lateOnly = { jobs: 1, months: 1, dollars: 4_000, lines: [], lateNotice: { jobs: 1, months: 1, dollars: 4_000, by: in5 }, gone: { jobs: 0, months: 0, dollars: 0 } }
     const c = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: { ...quiet, missed: lateOnly } }))
     expect(c[0]).toMatchObject({ severity: 'red', title: `Send the late lien notice by ${formatYmdMonthDay(in5)} · in 5 days`, figure: '$4,000' })
