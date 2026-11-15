@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, handed over, mailed, by hand, say how it went, record it as sent, add a way, edit list, rename a way, take off, bring back, how the bill went, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, handed over, mailed, by hand, say how it went, several bills at once, record how bills went, record it as sent, add a way, edit list, rename a way, take off, bring back, how the bill went, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -161,6 +161,20 @@ The line says *Recorded by hand*, with your name and the day you recorded it. Th
 A record made by hand cannot be changed once saved. Check the day and the name before you press.
 
 No chip may fit how the bill went. Then add a way to the list. See [Change the list of ways](#change-the-list-of-ways).
+
+## Say how several bills went at once
+
+One customer may have more than one bill in the yellow box. The form then lists that customer's other bills.
+
+1. Press **Say how it went…** on one of the bills.
+2. Fill in the form for that bill.
+3. Tick each other bill that went the same way, to the same person, on the same day.
+4. Read the blue button. The button counts the bills, like {{button:blue|Record how 3 bills went}}.
+5. Press the blue button.
+
+Each bill gets its own record. Every record says the same way, the same person and the same day.
+
+A bill may be refused while the others save. The refused bill stays in the yellow box. The row of that bill says the reason in red.
 
 ## Change the list of ways
 

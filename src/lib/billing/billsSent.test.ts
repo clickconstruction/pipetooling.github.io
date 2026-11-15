@@ -22,7 +22,11 @@ import {
   byHandDayOffered,
   byHandDayPicks,
   byHandFiling,
+  byHandOthers,
+  byHandOthersHeading,
+  byHandOutcome,
   byHandProblem,
+  byHandRecordLabel,
   billsSentSumWords,
   billsSentTiles,
   canOpenBillsSent,
@@ -494,6 +498,25 @@ describe('billsSent — a record made by hand (PR 6)', () => {
     expect(byHandDayOffered('2026-11-14', '2026-11-13')).toBe('2026-11-13')
     expect(byHandDayPicks('', '2026-11-13')).toEqual([{ ymd: '2026-11-13', label: 'Today', short: 'Today' }])
     expect(byHandDayPicks('2026-11-14', '2026-11-13')).toEqual([{ ymd: '2026-11-13', label: 'Today', short: 'Today' }])
+  })
+
+  it('offers the same person’s other bills, counts the press and words what took (R2)', () => {
+    const g = (billId: string, payer: string) => ({ billId, jobId: null, jobWords: '', jobTo: null, payer, amount: 100, paid: false, billedWords: 'Billed.', billedYmd: '', haystack: '' })
+    const all = [g('b1', 'Harlan Voss'), g('b2', ' harlan voss '), g('b3', 'Alder Court Homes'), g('b4', 'Harlan Voss'), g('b5', '')]
+    // The same name, however it is cased or spaced, in the strip's order, without the form's own bill.
+    expect(byHandOthers(all[0]!, all).map((x) => x.billId)).toEqual(['b2', 'b4'])
+    expect(byHandOthers(all[2]!, all)).toEqual([])
+    // A bill with no name is nobody's.
+    expect(byHandOthers(all[4]!, all)).toEqual([])
+    expect(byHandOthersHeading(1, 'Harlan Voss')).toBe('1 more bill to Harlan Voss has no send on record.')
+    expect(byHandOthersHeading(2, 'Harlan Voss')).toBe('2 more bills to Harlan Voss have no send on record.')
+    // The button counts what it will record.
+    expect(byHandRecordLabel(1)).toBe('Record how it went')
+    expect(byHandRecordLabel(3)).toBe('Record how 3 bills went')
+    // A press keeps going past a bill that is refused, and says what took and what did not.
+    expect(byHandOutcome(3, 0)).toEqual({ line: 'Recorded 3 bills.', head: null, tone: 'success' })
+    expect(byHandOutcome(2, 1)).toEqual({ line: 'Recorded 2 bills. 1 did not record.', head: '1 bill did not record. It stays here with the reason.', tone: 'warning' })
+    expect(byHandOutcome(0, 2)).toEqual({ line: 'Nothing recorded. 2 did not record.', head: '2 bills did not record. They stay here with the reason.', tone: 'error' })
   })
 
   it('files one sent copy with no addresses, the bill as its source and what was said', () => {
