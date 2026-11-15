@@ -67,3 +67,13 @@ export function penRecordProblems(args: { ymd: string; todayYmd: string; printed
   if (args.ticked === 0) out.push('Tick at least one notice.')
   return out
 }
+
+/**
+ * The pen record as the draft's approval (v2.7297): from the office's draft footer the pen door records his signature
+ * on the printed paper and approves the notice in the same breath, since the office may not approve as the leader
+ * (the guard holds `leader` to a master or dev) and his pen on the paper is his word. The note says what was recorded
+ * and how the office knows; the channel is *in person*, since a pen on a paper is an act in the room, whoever saw it.
+ */
+export function penWordApproval(args: { how: LienPenWitnessHow; dayWords: string; recorderName: string | null }): { note: string; channel: 'in_person' } {
+  return { note: `He signed the printed paper with a pen ${args.dayWords}. Written down by ${lienPenWitnessWords(args.how, args.recorderName)}.`, channel: 'in_person' }
+}
