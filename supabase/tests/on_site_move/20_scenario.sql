@@ -220,11 +220,11 @@ RESET ROLE;
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000509d6', 'controller@onsite.test'),
   ('00000000-0000-0000-0000-0000000509d7', 'gone@onsite.test');
-INSERT INTO public.users (id, email, name, role) VALUES
-  ('00000000-0000-0000-0000-0000000509d6', 'controller@onsite.test', 'Site Controller', 'controller'),
-  ('00000000-0000-0000-0000-0000000509d7', 'gone@onsite.test', 'Site Gone', 'assistant')
-  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
-UPDATE public.users SET archived_at = now() WHERE id = '00000000-0000-0000-0000-0000000509d7';
+-- archived_at is set in the insert: the users guard refuses it on an update, as the archived_seal bed sets it too.
+INSERT INTO public.users (id, email, name, role, archived_at) VALUES
+  ('00000000-0000-0000-0000-0000000509d6', 'controller@onsite.test', 'Site Controller', 'controller', NULL),
+  ('00000000-0000-0000-0000-0000000509d7', 'gone@onsite.test', 'Site Gone', 'assistant', now())
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, archived_at = EXCLUDED.archived_at;
 CREATE FUNCTION osm.office(p_from uuid, p_to uuid, dry boolean DEFAULT true) RETURNS jsonb LANGUAGE sql AS $$
   SELECT public.on_site_move_job(jsonb_build_object('from_job', p_from, 'to_job', p_to), dry) $$;
 GRANT EXECUTE ON FUNCTION osm.office(uuid, uuid, boolean) TO authenticated;
