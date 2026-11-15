@@ -7,7 +7,9 @@
 -- new ledger row or photo its container's job. Since v2.7265 the four tables of 2026-11-13 ride along: a part rename
 -- whose undo is asked against the target, a sticker run, the job's own Same part? answers and prices onto a job on
 -- no site (a pair both jobs answered keeping the newer answer) and, on the second move, onto a job on a site, where
--- they fold into the site's scope. Fixtures made as postgres; the door runs as a dev through RLS;
+-- they fold into the site's scope. Since v2.7305 the office's door, on_site_move_job, runs the same body: the roles
+-- that may combine read the plan and one of them applies the second move; an estimator, a helper, a trainee, a twin
+-- and an archived caller are refused in its words. Fixtures made as postgres; the door runs as a dev through RLS;
 -- everything runs inside one transaction that rolls back. Raises on the first failed assertion; ends with
 -- "on_site_move PASSED". See scripts/pgtest-on-site-move.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -211,7 +213,64 @@ SELECT osm.refused('a target that is no job is refused', $q$SELECT osm.door('000
 SELECT osm.refused('a source with nothing on site is refused', $q$SELECT osm.door('00000000-0000-0000-0000-0000000509a3', '00000000-0000-0000-0000-0000000509a2')$q$, 'JQ903 has nothing on site to move');
 SELECT osm.refused('the carry itself is refused to a dev', $q$SELECT public.on_site_carry_job('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$, 'permission denied');
 
+-- The office's door (v2.7305): on_site_move_job, the same body (on_site_move_job_run) behind the roles that may
+-- combine two jobs — a dev, a master technician, an assistant or a controller — with a training account, a twin and
+-- an archived caller refused in words. The seat's door keeps its gate.
+RESET ROLE;
+INSERT INTO auth.users (id, email) VALUES
+  ('00000000-0000-0000-0000-0000000509d6', 'controller@onsite.test'),
+  ('00000000-0000-0000-0000-0000000509d7', 'gone@onsite.test');
+INSERT INTO public.users (id, email, name, role) VALUES
+  ('00000000-0000-0000-0000-0000000509d6', 'controller@onsite.test', 'Site Controller', 'controller'),
+  ('00000000-0000-0000-0000-0000000509d7', 'gone@onsite.test', 'Site Gone', 'assistant')
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
+UPDATE public.users SET archived_at = now() WHERE id = '00000000-0000-0000-0000-0000000509d7';
+CREATE FUNCTION osm.office(p_from uuid, p_to uuid, dry boolean DEFAULT true) RETURNS jsonb LANGUAGE sql AS $$
+  SELECT public.on_site_move_job(jsonb_build_object('from_job', p_from, 'to_job', p_to), dry) $$;
+GRANT EXECUTE ON FUNCTION osm.office(uuid, uuid, boolean) TO authenticated;
+CREATE TABLE osm.office_plan (r jsonb);
+GRANT ALL ON osm.office_plan TO authenticated;
+SELECT osm.same('the office door runs with the definer''s rights', (SELECT prosecdef::text FROM pg_proc WHERE proname = 'on_site_move_job'), 'true');
+SELECT osm.same('a signed-in caller can reach the office door', has_function_privilege('authenticated', 'public.on_site_move_job(jsonb, boolean)', 'EXECUTE')::text, 'true');
+SELECT osm.same('a signed-out caller cannot reach the office door', has_function_privilege('anon', 'public.on_site_move_job(jsonb, boolean)', 'EXECUTE')::text, 'false');
+SELECT osm.same('the move''s body is nobody''s to call', has_function_privilege('authenticated', 'public.on_site_move_job_run(jsonb, boolean, text)', 'EXECUTE')::text, 'false');
+SELECT osm.same('the seat''s door calls the body', (SELECT (position('public.on_site_move_job_run(p, p_dry_run, ''dev_on_site_move_job'')' IN prosrc) > 0)::text FROM pg_proc WHERE proname = 'dev_on_site_move_job'), 'true');
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d3');
+SET LOCAL ROLE authenticated;
+SELECT osm.refused('an estimator is refused at the office door', $q$SELECT osm.office('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$, 'only a dev, a master technician, an assistant or a controller');
+RESET ROLE;
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d2');
+SET LOCAL ROLE authenticated;
+SELECT osm.refused('a helper on the job is refused at the office door', $q$SELECT osm.office('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$, 'only a dev, a master technician, an assistant or a controller');
+RESET ROLE;
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d4');
+SET LOCAL ROLE authenticated;
+SELECT osm.refused('a dev in training is refused at the office door', $q$SELECT osm.office('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$, 'on_site_move_job: a training account (read_only) cannot move');
+RESET ROLE;
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d5');
+SET LOCAL ROLE authenticated;
+SELECT osm.refused('a twin is refused at the office door', $q$SELECT osm.office('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$, 'on_site_move_job: a digital twin cannot move');
+RESET ROLE;
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d7');
+SET LOCAL ROLE authenticated;
+SELECT osm.refused('an archived assistant is refused at the office door', $q$SELECT osm.office('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$, 'on_site_move_job: an archived account cannot move');
+RESET ROLE;
+-- The controller reads the plan through the office door, is refused at the seat's, and moves nothing by reading.
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d6');
+SET LOCAL ROLE authenticated;
+INSERT INTO osm.office_plan SELECT osm.office('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2', true);
+SELECT osm.same('the office plan names the controller', (SELECT r->>'by' FROM osm.office_plan), 'Site Controller');
+SELECT osm.same('and says it is a dry run', (SELECT r->>'dry_run' FROM osm.office_plan), 'true');
+SELECT osm.refused('the controller is refused at the seat''s door', $q$SELECT osm.door('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$, 'devs only');
+SELECT osm.refused('the office door''s own refusals name it', $q$SELECT osm.office('00000000-0000-0000-0000-0000000509a3', '00000000-0000-0000-0000-0000000509a2')$q$, 'on_site_move_job: JQ903 has nothing on site to move');
+SELECT osm.refused('the same job twice is refused at the office door', $q$SELECT osm.office('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a1')$q$, 'on_site_move_job: from_job and to_job are the same job');
+RESET ROLE;
+SELECT osm.same('the office door''s dry run moved nothing off A', osm.counts('00000000-0000-0000-0000-0000000509a1'), '2 places, 5 containers, 6 rows, 1 box moves, 3 photos, 16 on hand');
+SELECT osm.same('and left no note', osm.one($q$SELECT count(*)::text FROM public.jobs_ledger_thread_notes WHERE job_id IN ('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$), '0');
+
 -- The dry run does the move, reports it and unwinds.
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d1');
+SET LOCAL ROLE authenticated;
 INSERT INTO osm.plan SELECT osm.door('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2', true);
 DO $$
 DECLARE r jsonb;
@@ -249,6 +308,8 @@ SELECT osm.same('the dry run left no note', osm.one($q$SELECT count(*)::text FRO
 SELECT osm.same('and dropped no answer and moved no record', osm.one($q$SELECT count(*)::text FROM public.on_site_part_ties$q$) || ' | ' || osm.more('00000000-0000-0000-0000-0000000509a1'), '5 | 1 renames, 1 runs, 2 ties, 1 prices, 0 site ties, 0 site prices');
 -- The same plan twice reads the same, so its hash holds until something changes.
 SELECT osm.same('a second dry run gives the same plan', (osm.door('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2', true) = (SELECT r FROM osm.plan))::text, 'true');
+-- v2.7305: the office door's plan is the seat's plan but for who read it — one body behind both doors.
+SELECT osm.same('the office door''s plan is the seat''s plan but for who read it', ((SELECT r - 'by' FROM osm.office_plan) = (SELECT r - 'by' FROM osm.plan))::text, 'true');
 
 -- For real. The reply is the plan, but for dry_run.
 DO $$
@@ -327,13 +388,15 @@ INSERT INTO public.job_material_movements (id, job_id, part_name, quantity, reas
 RESET ROLE;
 SELECT osm.same('once on the new job''s crew, the helper''s press lands there', osm.one($q$SELECT job_id::text FROM public.job_material_movements WHERE id = '00000000-0000-0000-0000-000000050955'$q$), '00000000-0000-0000-0000-0000000509a2');
 
--- Onto a job with nothing on site: no place to join, no pile to fold into, no label to renumber.
-SELECT osm.as_user('00000000-0000-0000-0000-0000000509d1');
+-- Onto a job with nothing on site: no place to join, no pile to fold into, no label to renumber. Through the office's
+-- door as the controller (v2.7305), so an office apply lands too.
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d6');
 SET LOCAL ROLE authenticated;
 DO $$
 DECLARE r jsonb;
 BEGIN
-  r := osm.door('00000000-0000-0000-0000-0000000509a2', '00000000-0000-0000-0000-0000000509a3', false);
+  r := osm.office('00000000-0000-0000-0000-0000000509a2', '00000000-0000-0000-0000-0000000509a3', false);
+  PERFORM osm.same('the office apply names the controller and is no dry run', (r->>'by') || ' ' || (r->>'dry_run'), 'Site Controller false');
   PERFORM osm.same('everything moves onto the empty job', (r->'moved'->>'containers') || '/' || (r->'moved'->>'places') || '/' || (r->'moved'->>'movements') || '/' || (r->'moved'->>'photos'), '8/3/12/4');
   PERFORM osm.same('nothing joined, folded or renumbered', jsonb_array_length(r->'places_merged') || ' ' || jsonb_typeof(r->'unsorted_folded') || ' ' || jsonb_array_length(r->'labels_renamed'), '0 null 0');
   PERFORM osm.same('the parts on hand add up onto nothing', (r->'on_hand'->>'holds') || ' ' || (r->'before'->'to'->>'parts_on_hand') || ' ' || ((r->'after'->'to'->>'parts_on_hand') = (r->'before'->'from'->>'parts_on_hand'))::text, 'true 0 true');
