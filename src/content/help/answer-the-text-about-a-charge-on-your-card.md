@@ -26,9 +26,9 @@ The page may ask **Which job was it for?** Tap the job, or skip it.
 
 [Take a photo of a supply house ticket](/help/take-a-photo-of-a-supply-house-ticket#a-receipt-link-from-the-office) explains the page's other presses.
 
-## When one text names two charges
+## When two charges post close together
 
-Charges that post within one hour share one text. The page then shows each charge with its own press. Take one photo for each charge.
+Each charge gets its own text and its own link. Open each text and take one photo for each charge.
 
 ## When you get a second text
 

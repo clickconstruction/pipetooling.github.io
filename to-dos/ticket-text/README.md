@@ -11,9 +11,9 @@ summary: >
   or day. It writes the same ticket record as the Tally press and the office reads both the same
   way. A holder with no cell on file, a card tied to no one, or a holder who replied STOP becomes
   a Needs you item for the office instead of a text.
-next: the owner's first press of the switch on one card (Only me, to try it first) with Send texts on; her word on calls 1, 3, 4 and 5 and on Text again. The /r/ rule on the short host's Worker is live since 2026-11-14 (v2.7286), so the text carries the short link.
+next: the owner's first press of the switch on one card (Only me, to try it first) with Send texts on; her word on Text again; calls 1, 3, 4 and 5 are answered (2026-11-14, under Where it stands). The /r/ rule on the short host's Worker is live since 2026-11-14 (v2.7286), so the text carries the short link.
 size: M as a train of three (M · M · S), after #295's PR 3 has shipped
-blocker: nothing blocks the build. A first text waits on the owner's press of the switch on one card. Call 4, a push beside the text, waits on her word. The Worker rule is live (v2.7286).
+blocker: nothing blocks the build. A first text waits on the owner's press of the switch on one card. Call 4 is answered: text only, no push. The Worker rule is live (v2.7286).
 opinion: build, after #295's third PR — the text turns the charge's own arrival into the ask, and the office stops chasing paper by hand
 ---
 
@@ -88,8 +88,8 @@ link closes, and the reason when no text could go (`no_cell`, `no_person`, `arch
 label suggestion, the returned-check notice); the request is a third, and a cron every fifteen
 minutes sweeps what the webhook missed: every posted, unfailed card charge with no request row
 and no live ticket on it gets one. With a cell: the text goes; without: the
-row carries its reason and the office's Needs you item reads it. Two charges that post inside
-one hour on one card share one text, and the link opens on both (call 3). The next evening at
+row carries its reason and the office's Needs you item reads it. Each charge on a card gets
+its own text and its own link (call 3 as the owner answered it on 2026-11-14; the card drew an hour's fold, built in v2.7142 and undone in v2.7299). The next evening at
 six, a charge still without a receipt gets one reminder (call 2). After that it is the office's.
 
 **The text.** From the company number, through `sendText` as #291's bill text goes, to the
@@ -228,3 +228,5 @@ switch on for one card (the dev's): one charge, one text, one reminder, one STOP
 Messages and on the Needs you list.
 
 2026-11-14, the Worker rule: the owner asked for it in the main session and a session added it through his Chrome, signed in to Cloudflare (`portal-link-shell`, version `fe6488e1`), checked it live and mirrored it in `scripts/cloudflare/portal-link-shell.worker.js`; `RECEIPT_SHORT_ORIGIN` is the short host since v2.7286, so the text and Copy the receipt link carry `my.clickplumbing.com/r/<code>`. Both functions are redeployed after the merge.
+
+2026-11-14, the four calls, answered by Micah in the main session: call 1, the day's jobs offered on the page and skippable, as built; call 3, **one text per charge**, so the hour's fold of v2.7142 is undone in v2.7299 (one text and one reminder a charge, each with its own link); call 4, text only, no push, nothing to build; call 5, every linked card, the office's own included, as built. Left: his word on Text again, and the switch's first press.

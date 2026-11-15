@@ -106,22 +106,23 @@ describe('which charges are asked', () => {
   })
 })
 
-describe('one text for the charges of one hour', () => {
+describe('one text a charge', () => {
   const at = (requestId: string, holderUserId: string, minutes: number) => ({ requestId, holderUserId, postedAtMs: NOW + minutes * 60 * 1000 })
 
-  it('cuts each holder’s charges into runs that post inside one hour of the run’s first', () => {
+  it('gives every charge its own text, oldest first, even minutes apart on one card (the owner’s call 3)', () => {
     const runs = foldReceiptCharges([at('d', JORDAN, 61), at('a', JORDAN, 0), at('c', JORDAN, 60), at('b', JORDAN, 30), at('e', JORDAN, 130)])
-    expect(runs.map((r) => r.map((w) => w.requestId))).toEqual([['a', 'b', 'c'], ['d'], ['e']])
+    expect(runs.map((r) => r.map((w) => w.requestId))).toEqual([['a'], ['b'], ['c'], ['d'], ['e']])
   })
 
-  it('never folds two holders together, and sends the oldest run first', () => {
+  it('never puts two holders in one text, and orders by when the charge posted', () => {
     const runs = foldReceiptCharges([at('s1', SAM, 5), at('j1', JORDAN, 0), at('s2', SAM, 6), at('j2', JORDAN, 1)])
-    expect(runs.map((r) => r.map((w) => w.requestId))).toEqual([['j1', 'j2'], ['s1', 's2']])
+    expect(runs.map((r) => r.map((w) => w.requestId))).toEqual([['j1'], ['j2'], ['s1'], ['s2']])
   })
 
-  it('names at most ten charges in one text', () => {
+  it('a run is never longer than the fold allows', () => {
     const runs = foldReceiptCharges(Array.from({ length: 23 }, (_, i) => at(`r${String(i).padStart(2, '0')}`, JORDAN, i)))
-    expect(runs.map((r) => r.length)).toEqual([10, 10, 3])
+    expect(runs).toHaveLength(23)
+    expect(runs.every((r) => r.length === 1)).toBe(true)
   })
 })
 

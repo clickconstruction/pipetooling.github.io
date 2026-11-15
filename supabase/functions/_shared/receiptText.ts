@@ -131,11 +131,13 @@ export function receiptNoTextWhy(h: { holderUserId: string | null; archived: boo
 export const RECEIPT_TEXT_TRIES = 3
 
 // ---------------------------------------------------------------------------------------------------------------------
-// One text for the charges of one hour.
+// One text a charge.
 
-/** Charges one text names; a link opens the same number (`RECEIPT_LINK_CAPS.charges`). */
-export const RECEIPT_FOLD_MAX = 10
-export const RECEIPT_FOLD_MS = 60 * 60 * 1000
+/**
+ * Charges one text names. One, since v2.7299: the owner's call 3 of 2026-11-14 (punch list #299), "One text per charge",
+ * over the hour's fold the card drew. A link still opens up to `RECEIPT_LINK_CAPS.charges`, for a link the office makes.
+ */
+export const RECEIPT_FOLD_MAX = 1
 
 export interface ReceiptWaiting {
   requestId: string
@@ -144,27 +146,19 @@ export interface ReceiptWaiting {
 }
 
 /**
- * The texts a sweep sends: each holder's waiting charges, oldest first, cut into runs that post inside one hour of the
- * run's first charge, at most ten a run. A charge that posts after a text has gone gets its own text; the fold is for
- * charges that wait together, which is most nights, since the bank posts in batches before dawn.
+ * The texts a sweep sends: one a charge, oldest first across every holder, each run `RECEIPT_FOLD_MAX` charges long.
+ * Until v2.7299 a holder's charges that posted inside one hour shared one text; the owner chose one text a charge, so a
+ * second charge minutes after the first gets its own text and its own link, the one line without the hello.
  */
 export function foldReceiptCharges<T extends ReceiptWaiting>(waiting: readonly T[]): T[][] {
-  const byHolder = new Map<string, T[]>()
-  for (const w of waiting) byHolder.set(w.holderUserId, [...(byHolder.get(w.holderUserId) ?? []), w])
+  const sorted = [...waiting].sort((a, b) => a.postedAtMs - b.postedAtMs || a.requestId.localeCompare(b.requestId))
   const out: T[][] = []
-  for (const list of byHolder.values()) {
-    const sorted = [...list].sort((a, b) => a.postedAtMs - b.postedAtMs || a.requestId.localeCompare(b.requestId))
-    let run: T[] = []
-    for (const w of sorted) {
-      if (run.length > 0 && (w.postedAtMs - run[0]!.postedAtMs > RECEIPT_FOLD_MS || run.length >= RECEIPT_FOLD_MAX)) {
-        out.push(run)
-        run = []
-      }
-      run.push(w)
-    }
-    if (run.length > 0) out.push(run)
+  for (const w of sorted) {
+    const run = out[out.length - 1]
+    if (run && run[0]!.holderUserId === w.holderUserId && run.length < RECEIPT_FOLD_MAX) run.push(w)
+    else out.push([w])
   }
-  return out.sort((a, b) => a[0]!.postedAtMs - b[0]!.postedAtMs || a[0]!.requestId.localeCompare(b[0]!.requestId))
+  return out
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
