@@ -26,11 +26,12 @@ import { missingWeekIsPartial, missingWeekNote } from '../../lib/materials/missi
 import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { EmptyState } from '../EmptyState'
 import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
-import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, newId, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
+import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type Container, type ContainerLine } from '../../lib/materials/onSite'
+import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, newId, priceForJob, priceOfJob, rememberPrice, retireContainer, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
+import { broughtBackWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
+import { RETIRE_ALL_TITLE, retireAllConfirmLabel, retireAllConfirmWords, retireAllOutcomeWords, retireAllPlan, retireAllUndoHeldWords, retireAllUndoneWords, retireAllWords } from '../../lib/materials/retireAll'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, landableLines, landedFromInvoice, linePrice, manifestComparison, readInvoiceText, SAMPLE_INVOICE_TEXT, type LoneFigureIs, type ParsedLine } from '../../lib/materials/manifest'
 import { deliveryAgainWords, deliveryOutcomeWords, deliveryPartWords, notReadHead, refusedLineWords, LONE_FIGURE_WORDS } from '../../lib/materials/deliveryWords'
@@ -38,6 +39,8 @@ import { countedLabel } from '../../lib/batchWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
+import { DESK_PICK_PLACEHOLDER, deskPickOptions } from '../../lib/materials/deskJobPick'
+import { SearchableSelect } from '../SearchableSelect'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
 import { groupDeskBySite, sitePartRows, spellingsWords } from '../../lib/materials/siteRollup'
 import { tieCanon } from '../../lib/materials/partTies'
@@ -159,7 +162,8 @@ function BookPricesLine() {
 }
 
 export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null }: Props) {
-  const openJobRef = useRef<HTMLSelectElement>(null)
+  /** The Open a job pick's wrapper: the empty state's press puts the focus on its trigger. */
+  const openJobRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   useOnSiteStoreVersion()
   const { showToast } = useToastContext()
@@ -268,7 +272,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
             <thead><tr><th style={{ ...th, minWidth: 240 }}>Job</th><th style={{ ...th, ...num }}>Containers</th><th style={{ ...th, ...num }}>On site, lines</th><th style={{ ...th, ...num }}>Missing this week</th><th style={th}>Counts</th><th style={{ ...th, ...num }}>Credits due</th>{rowDoors ? <th style={th} aria-label="Doors"></th> : null}</tr></thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.focus() }} tail="below, then add its first container." /></td></tr>
+                <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.querySelector('button')?.focus() }} tail="below, then add its first container." /></td></tr>
               ) : groups.flatMap((g, gi) => {
                 const jobRow = (r: (typeof rows)[number], under: boolean) => r.failed ? (
                   <tr key={r.id} data-job-not-loaded={r.id} style={{ background: 'var(--bg-amber-100)' }}>
@@ -337,13 +341,25 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
         </div>
         {driveBackfill ? <DriveFolderBackfill jobs={jobs.map(withLinks)} onFoldersMade={onFoldersMade} onOpenJobDetail={onOpenJobDetail} showToast={showToast} /> : null}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            Open a job
-            <select ref={openJobRef} aria-label="Open a job" defaultValue="" onChange={(e) => { if (e.target.value) setJob(e.target.value) }} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', padding: '0 0.5rem', maxWidth: 360 }}>
-              <option value="">Choose…</option>
-              {jobs.map((j) => <option key={j.id} value={j.id}>{jobLabel(j, j.id)}</option>)}
-            </select>
-          </label>
+          {/* v2.7310: a searchable list in place of the native select, which could only scroll; the jobs with a box first. */}
+          <span style={muted}>Open a job</span>
+          <div ref={openJobRef} data-testid="materials-open-job" style={{ minWidth: 0, width: 'min(100%, 420px)' }}>
+            <SearchableSelect
+              value=""
+              onChange={(v) => { if (v) setJob(v) }}
+              options={deskPickOptions(jobs, rows.map((r) => r.id))}
+              placeholder="Choose…"
+              listAriaLabel="Open a job"
+              searchPlaceholder={DESK_PICK_PLACEHOLDER}
+              listMaxHeightPx={360}
+              fillViewportHeight
+              listMinWidthPx={320}
+              listOptionPadding="0.4rem 0.6rem"
+              listOptionFontSize="0.85rem"
+              triggerMinHeightPx={36}
+              triggerStyle={{ font: 'inherit', padding: '0 0.5rem' }}
+            />
+          </div>
         </div>
       </div>
     )
@@ -465,6 +481,51 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [loneIs, setLoneIs] = useState<LoneFigureIs | null>(null)
   const [landing, setLanding] = useState(false)
   const confirmDialog = useConfirmDialog()
+  const { showActionToast } = useToastContext()
+  /**
+   * Retire every box on this job (v2.7303, the owner's ask of 2026-11-14): the empty boxes go, each box with parts stays
+   * with its reason, the press keeps going past a box that fails, and the toast carries Undo for a minute as the phone's
+   * Retire does. The office's refusal of a write comes back through the store's own toast, as every press's does.
+   */
+  const retirePlan = retireAllPlan(containers, lines)
+  const retireWords = retireAllWords(retirePlan)
+  const onRetireAll = async () => {
+    const plan = retireAllPlan(listContainers(jobId), lines)
+    if (plan.go.length === 0) return
+    if (!(await confirmDialog({ title: RETIRE_ALL_TITLE, message: retireAllConfirmWords(plan), confirmLabel: retireAllConfirmLabel(plan) }))) return
+    const retired: Container[] = []
+    const failed: Array<{ box: Container; reason: string }> = []
+    for (const box of plan.go) {
+      try {
+        retireContainer(box.id)
+        retired.push(box)
+      } catch (e) {
+        failed.push({ box, reason: formatErrorMessage(e, 'It did not save.') })
+      }
+    }
+    const words = retireAllOutcomeWords({ retired, held: plan.held, failed })
+    if (retired.length === 0) {
+      showToast(words.line, words.tone)
+      return
+    }
+    showActionToast(words.line, {
+      label: undoRetireLabel,
+      onClick: () => {
+        const all = listContainers(jobId)
+        const back: Container[] = []
+        const refused: Array<{ box: Container; words: string }> = []
+        for (const box of retired) {
+          const v = unretireVerdict(all, box.id)
+          if (v.ok) {
+            unretireContainer(box.id)
+            back.push(box)
+          } else refused.push({ box, words: v.words })
+        }
+        if (back.length > 0) showToast(retireAllUndoneWords(back.length), 'success')
+        if (refused.length > 0) showToast(retireAllUndoHeldWords(refused), 'warning')
+      },
+    }, { durationMs: UNDO_RETIRE_MS, type: words.tone })
+  }
   const [pasteOpen, setPasteOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
   /** The job's Drive folder: where the invoice goes, as every job file does (#164). The app reads it from there. */
@@ -733,6 +794,13 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           </div>
         )
           )}
+          {/* Retire every box on this job (v2.7303): the empty ones go, the ones with parts are named beside the press and stay. The row is drawn only while the job has a live box. */}
+          {boxCount > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }} data-testid="retire-all-row">
+              <button type="button" style={{ ...btn, ...(retireWords.dead ? materialsPressDead : {}) }} disabled={retireWords.dead} aria-disabled={retireWords.dead} title="Retire every empty box on this job at once. A box with parts in it stays, with its reason." onClick={() => void onRetireAll()} data-testid="retire-all">{retireWords.button}</button>
+              {retireWords.foot ? <span style={muted} data-testid="retire-all-foot">{retireWords.foot}</span> : null}
+            </div>
+          ) : null}
           {/* The way back from a retire (v2.6406): the fold lists retired boxes with Bring back, or the reason a stencil is taken. */}
           <RetiredBoxesFold containers={listContainers(jobId)} stamp={(iso) => <Stamp iso={iso} inline />} onBringBack={(c) => { const v = unretireVerdict(listContainers(jobId), c.id); if (!v.ok) { showToast(v.words, 'warning'); return } unretireContainer(c.id); showToast(broughtBackWords(c), 'success') }} />
           {/* Runs of blank stickers printed for this job (punch list #329, v2.7272): each with its range, its counts, who and when, and Reprint / Print the rest. */}

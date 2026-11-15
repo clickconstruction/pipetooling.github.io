@@ -3,8 +3,7 @@
  * GC job we build reads Click Construction; everyone else reads the plumbing company, as before. Pure: the function
  * (`customer-portal`) and the sample portal pick it, and vitest tests it (`src/lib/portal/portalLetterhead.test.ts`).
  */
-import { GC_CUSTOMER_EMAIL_FROM_NAME } from './gcCustomerEmails.ts'
-import { PORTAL_COMPANY } from './portalCompany.ts'
+import { GC_CUSTOMER_EMAIL_FROM_NAME, PORTAL_COMPANY } from './portalCompany.ts'
 
 /** The page's company block: the name, the line under the CLICK. mark, and the letterhead's right side. */
 export type PortalLetterhead = {

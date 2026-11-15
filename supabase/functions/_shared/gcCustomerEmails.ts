@@ -1,9 +1,11 @@
 /**
  * gc-customer-email's pure half (GC mode, Owner Billing's O4b): who may send, what a request may carry, who gets each
  * kind and what it is about, and the email around the lines the window wrote. The words are the window's
- * (`src/lib/gc/customerEmail.ts`); this frames them the way `gc-trade-email` frames a trade partner's. Dependency-free,
- * so the app's tests import it straight from here.
+ * (`src/lib/gc/customerEmail.ts`); this frames them the way `gc-trade-email` frames a trade partner's. Its one import is
+ * the company names, so the app's tests import it straight from here.
  */
+// The GC entity's name lives in portalCompany.ts (punch list #359), so a mail's signer takes it without this file; re-exported here.
+export { GC_CUSTOMER_EMAIL_FROM_NAME } from './portalCompany.ts'
 
 /**
  * Who may email a GC customer: the money team (the Owner Billing door), never a training account or a digital twin.
@@ -11,8 +13,6 @@
  */
 export const GC_CUSTOMER_EMAIL_ROLES: readonly string[] = ['dev', 'master_technician', 'controller']
 
-/** The GC entity's name on every email to a GC customer (the owner's call 12: Click Construction). */
-export const GC_CUSTOMER_EMAIL_FROM_NAME = 'Click Construction'
 
 /**
  * The kinds. O4b-1: our pay application to the customer, and the ask to the architect to certify it. O4b-2: the bill

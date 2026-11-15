@@ -13,7 +13,7 @@ import {
   type BidPricedMargin,
 } from './pricedMargin'
 
-const stamp: BidPricedMargin = { pct: 31.42, revenueUsd: 48_700, costUsd: 33_400, uncostedUsd: 0, rateSet: true, bidVersionId: null, at: '2026-10-09T15:00:00Z' }
+const stamp: BidPricedMargin = { pct: 31.42, revenueUsd: 48_700, costUsd: 33_400, uncostedUsd: 0, rateSet: true, bidVersionId: null, at: '2026-10-09T15:00:00Z', difficultyUsd: 0 }
 
 describe('pricedMarginStampInput (v2.5043)', () => {
   it('reads saved prices × counts, the workbench cost, the uncosted revenue and whether a rate is set', () => {
@@ -23,15 +23,15 @@ describe('pricedMarginStampInput (v2.5043)', () => {
       { unitPrice: 0, count: 3 }, // a saved $0 is not a price
       { unitPrice: null, count: 9 }, // unpriced
     ]
-    expect(pricedMarginStampInput({ rows, totalCost: 33_400.004, uncostedRevenue: 1_200, laborRate: 35.76 })).toEqual({ revenueUsd: 48_750, costUsd: 33_400, uncostedUsd: 1_200, rateSet: true })
+    expect(pricedMarginStampInput({ rows, totalCost: 33_400.004, uncostedRevenue: 1_200, laborRate: 35.76 })).toEqual({ revenueUsd: 48_750, costUsd: 33_400, uncostedUsd: 1_200, rateSet: true, difficultyUsd: 0 })
   })
   it('nothing priced reads null; a missing rate and a negative cost read as none', () => {
     expect(pricedMarginStampInput({ rows: [{ unitPrice: null, count: 4 }], totalCost: 10, uncostedRevenue: 0, laborRate: 30 })).toBeNull()
-    expect(pricedMarginStampInput({ rows: [{ unitPrice: 100, count: 1 }], totalCost: -5, uncostedRevenue: -1, laborRate: null })).toEqual({ revenueUsd: 100, costUsd: 0, uncostedUsd: 0, rateSet: false })
+    expect(pricedMarginStampInput({ rows: [{ unitPrice: 100, count: 1 }], totalCost: -5, uncostedRevenue: -1, laborRate: null })).toEqual({ revenueUsd: 100, costUsd: 0, uncostedUsd: 0, rateSet: false, difficultyUsd: 0 })
   })
   it('the margin to two decimals, as the server computes it', () => {
-    expect(pricedMarginPct({ revenueUsd: 48_700, costUsd: 33_400, uncostedUsd: 0, rateSet: true })).toBe(31.42)
-    expect(pricedMarginPct({ revenueUsd: 1_000, costUsd: 1_250, uncostedUsd: 0, rateSet: true })).toBe(-25)
+    expect(pricedMarginPct({ revenueUsd: 48_700, costUsd: 33_400, uncostedUsd: 0, rateSet: true, difficultyUsd: 0 })).toBe(31.42)
+    expect(pricedMarginPct({ revenueUsd: 1_000, costUsd: 1_250, uncostedUsd: 0, rateSet: true, difficultyUsd: 0 })).toBe(-25)
   })
 })
 
@@ -51,7 +51,7 @@ describe('mayStampPricedMargin (v2.5043)', () => {
 })
 
 describe('pricedMarginStampDiffers (v2.5043)', () => {
-  const input = { revenueUsd: 48_700, costUsd: 33_400, uncostedUsd: 0, rateSet: true }
+  const input = { revenueUsd: 48_700, costUsd: 33_400, uncostedUsd: 0, rateSet: true, difficultyUsd: 0 }
   it('no stamp yet, or any input or the version moved, is worth a write', () => {
     expect(pricedMarginStampDiffers(null, input, null)).toBe(true)
     expect(pricedMarginStampDiffers(stamp, { ...input, revenueUsd: 48_705 }, null)).toBe(true)
@@ -68,8 +68,10 @@ describe('pricedMarginStampDiffers (v2.5043)', () => {
 describe('parseBidPricedMargin (v2.5043)', () => {
   it('reads the bids row’s priced columns, numeric strings included', () => {
     expect(
-      parseBidPricedMargin({ priced_margin_pct: '31.42', priced_revenue_usd: '48700', priced_cost_usd: '33400', priced_uncosted_usd: null, priced_rate_set: true, priced_bid_version_id: 'v1', priced_at: '2026-10-09T15:00:00Z' }),
-    ).toEqual({ ...stamp, bidVersionId: 'v1' })
+      parseBidPricedMargin({ priced_margin_pct: '31.42', priced_revenue_usd: '48700', priced_cost_usd: '33400', priced_uncosted_usd: null, priced_rate_set: true, priced_bid_version_id: 'v1', priced_at: '2026-10-09T15:00:00Z', priced_difficulty_usd: '960' }),
+    ).toEqual({ ...stamp, bidVersionId: 'v1', difficultyUsd: 960 })
+    // Before v2.7301 the column is not there: the difficulty part reads 0.
+    expect(parseBidPricedMargin({ priced_margin_pct: 30, priced_revenue_usd: 1000 })!.difficultyUsd).toBe(0)
   })
   it('no stamp, or a row without a revenue, reads null', () => {
     expect(parseBidPricedMargin(null)).toBeNull()
@@ -98,7 +100,7 @@ describe('pricedMarginStampOnScreen (v2.5043)', () => {
   const derived = { rows: [{ unitPrice: 450, count: 40 }, { unitPrice: null, count: 2 }], totalCost: 12_000, uncostedRevenue: 0, rate: 35.76 }
   const base = { bid: { id: 'b1', bid_date_sent: null }, derived, selectedBidVersionId: null, bidVersions: [], viewingPricingId: 'p1', customerFacingPricingId: 'p1' }
   it('the numbers over saved prices and the gate, for the bid on screen', () => {
-    expect(pricedMarginStampOnScreen(base)).toEqual({ bidId: 'b1', bidVersionId: null, input: { revenueUsd: 18_000, costUsd: 12_000, uncostedUsd: 0, rateSet: true }, mayStamp: true })
+    expect(pricedMarginStampOnScreen(base)).toEqual({ bidId: 'b1', bidVersionId: null, input: { revenueUsd: 18_000, costUsd: 12_000, uncostedUsd: 0, rateSet: true, difficultyUsd: 0 }, mayStamp: true })
   })
   it('reads the version on screen: another GC’s version may not stamp, its own base may', () => {
     const versions = [{ id: 'v1', customer_id: null, is_alternate: false }, { id: 'v2', customer_id: 'gc-2', is_alternate: false }]

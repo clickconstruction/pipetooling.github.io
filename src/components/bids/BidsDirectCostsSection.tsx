@@ -33,6 +33,11 @@ export type BidsDirectCostsSectionProps = {
   cellSaveStyle: (key: string) => CSSProperties
   /** The computed driving line (from the cost kernel); null hides it. */
   driving?: { drivingCost: number; numTrips: number; ratePerMile: number; distance: number; totalHours: number; hrsPerTrip: number } | null
+  /**
+   * Rows the GC difficulty pin wrote (punch list #357, PR 4): drawn with the difficulty chip, read only, no ×.
+   * They come off from the Pricing tab's Workbench, with a reason.
+   */
+  locked?: { ids: ReadonlySet<string>; chip: string; title: string } | null
 }
 
 const kindChip = (kind: DirectCostKind): CSSProperties => ({
@@ -105,7 +110,20 @@ export function BidsDirectCostsSection(p: BidsDirectCostsSectionProps) {
                   <td />
                 </tr>
               ) : null}
-              {list.map(({ kind, row }) => (
+              {list.map(({ kind, row }) => (p.locked?.ids.has(row.id) ? (
+                <tr key={`${kind}:${row.id}`} data-testid="direct-cost-row-difficulty">
+                  <td style={{ padding: '0.2rem 0.5rem' }}>
+                    <span style={{ ...kindChip(kind), color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)' }} title={p.locked.title}>{p.locked.chip}</span>
+                  </td>
+                  <td style={{ padding: '0.2rem 0.5rem', color: 'var(--text-700)' }}>{row.note ?? ''}</td>
+                  {STAGES.map((stage) => (
+                    <td key={stage} style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
+                      {row[stage] === 0 ? '' : `$${formatCurrency(row[stage])}`}
+                    </td>
+                  ))}
+                  <td />
+                </tr>
+              ) : (
                 <tr key={`${kind}:${row.id}`} data-testid={`direct-cost-row-${kind}`}>
                   <td style={{ padding: '0.2rem 0.5rem' }}>
                     <span style={kindChip(kind)} title={DIRECT_COST_KIND_LABELS[kind]}>{DIRECT_COST_KIND_WORDS[kind] === 'subs' ? 'sub' : DIRECT_COST_KIND_WORDS[kind].replace(/s$/, '')}</span>
@@ -142,7 +160,7 @@ export function BidsDirectCostsSection(p: BidsDirectCostsSectionProps) {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         )}

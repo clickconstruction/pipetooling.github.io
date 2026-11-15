@@ -51,11 +51,11 @@ describe('the months set by hand (v2.7270, punch list #356 part 2)', () => {
   it('the paper swears the months set by hand in place of the record’s, and prints them', () => {
     const facts = { jobName: '', jobAddress: '18 Sample Ln', isSub: true, originalContractorName: 'Ridgeway Builders', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Alder', legalDescription: 'Lot 1', customerName: 'Ridgeway Builders', revenue: 100, paymentsMade: 0, lastMonth: '2026-09', contactPerson: 'R', issuer: null, noticesRecorded: true, todayYmd: '2026-11-14', workDays: { first_work_date: null, last_work_date: null, lien_last_work_on: '2026-09-11' } }
     const filings = [{ kind: 'notice_53_056', months_covered: ['2026-04', '2026-06', '2026-07', '2026-08'], sends: [{ recipient: 'owner', method: 'certified_mail', sent_on: '2026-09-22' }], voided_at: null }]
-    expect(lienAffidavitSwornMonths({ ...facts, filings })).toEqual([])
+    expect(lienAffidavitSwornMonths({ ...facts, filings })).toEqual(['2026-09'])
     expect(lienAffidavitSwornMonths({ ...facts, filings, monthsByHand: ['2026-08', '2026-04'] })).toEqual(['2026-04', '2026-08'])
     expect(buildLienAffidavitFieldsForJob({ ...facts, filings, monthsByHand: ['2026-04', '2026-08'] }).workMonthsWords).toBe('April and August 2026')
-    // An empty list is no setting: the record's months stand.
-    expect(lienAffidavitSwornMonths({ ...facts, filings, monthsByHand: [] })).toEqual([])
+    // An empty list is no setting: the record's months stand, with the last day's own.
+    expect(lienAffidavitSwornMonths({ ...facts, filings, monthsByHand: [] })).toEqual(['2026-09'])
     expect(lienAffidavitSwornMonths({ ...facts, isSub: false, filings, monthsByHand: ['2026-04'] })).toEqual([])
   })
 })

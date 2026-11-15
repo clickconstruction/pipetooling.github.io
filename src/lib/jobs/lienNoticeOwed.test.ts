@@ -39,9 +39,9 @@ describe('lienLastMonthNoticeDue · the last work month’s own notice still due
     expect(lienLastMonthNoticeDue({ ...f, lastMonth: '' })).toBeNull()
     expect(lienLastMonthNoticeDue({ ...f, filings: [] })).toEqual({ month: '2026-09', dueOn: '2026-11-16' })
   })
-  it('the pane’s line says the month, the day and what the paper will not name', () => {
+  it('the pane’s line says the month, the day and that the paper names it already', () => {
     const line = lienAffidavitNoticeDueLine({ month: '2026-09', dueOn: '2026-11-16' }, formatYmdMonthDay)
-    expect(line).toBe("September 2026's notice is still due, by Nov 16. The paper will not name that month until the notice is recorded.")
+    expect(line).toBe("September 2026's notice is still due, by Nov 16. The paper names that month from the last day on site. Record the notice, and the month has one behind it.")
     expect(plainWordsFailures(line)).toEqual([])
   })
 })

@@ -145,6 +145,21 @@ describe('the months an affidavit swears, as keys', () => {
     expect(buildLienAffidavitFieldsForJob({ ...facts, workDays: days, filings }).workMonthsWords).toBe('July and August 2026')
     expect(lienAffidavitSwornMonths({ ...facts, isSub: false, workDays: days, filings })).toEqual([])
   })
+  it('always name the month of the last day on site, from the clock or the day set by hand (v2.7302)', () => {
+    // Three tickets at one house: the notice mailed in September named April, June, July and August, and the work was in September.
+    const handDay = { first_work_date: null, last_work_date: null, lien_last_work_on: '2026-09-11' }
+    expect(lienAffidavitSwornMonths({ ...facts, lastMonth: '2026-09', workDays: handDay, filings })).toEqual(['2026-09'])
+    expect(buildLienAffidavitFieldsForJob({ ...facts, lastMonth: '2026-09', workDays: handDay, filings }).workMonthsWords).toBe('September 2026')
+    // A job clocked April through September names the noticed months in its span and September beside them.
+    const clocked = { first_work_date: '2026-04-02', last_work_date: '2026-09-15', lien_last_work_on: null }
+    expect(lienAffidavitSwornMonths({ ...facts, lastMonth: '2026-09', workDays: clocked, filings })).toEqual(['2026-04', '2026-06', '2026-07', '2026-08', '2026-09'])
+    // A notice that already names the last month adds nothing twice.
+    expect(lienAffidavitSwornMonths({ ...facts, workDays: { first_work_date: '2026-07-06', last_work_date: '2026-08-20', lien_last_work_on: null }, filings })).toEqual(['2026-07', '2026-08'])
+    // The check then flags the last month alone as the one with no notice behind it.
+    const check = lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: lienAffidavitSwornMonths({ ...facts, lastMonth: '2026-09', workDays: handDay, filings }), filings })
+    expect(check.ownerLate).toEqual(['2026-09'])
+    expect(check.empty).toBeNull()
+  })
 })
 
 describe('a paper that swears no month while a notice is on record (punch list #356)', () => {
