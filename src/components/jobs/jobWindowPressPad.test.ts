@@ -1,0 +1,87 @@
+// @vitest-environment jsdom
+/**
+ * The hit-area pad on the phone's job window (punch list #355, v2.7309): a small press is marked with its pad, a
+ * thumb-sized one is not, the strip, the head, a press with a press inside and a clipped press are left alone,
+ * and a mark comes off once the press has grown.
+ */
+import { afterEach, describe, expect, it } from 'vitest'
+import { padSmallPresses, watchSmallPresses } from './jobWindowPressPad'
+
+function sized(el: HTMLElement, width: number, height: number): HTMLElement {
+  el.getBoundingClientRect = () => ({ width, height, top: 0, left: 0, right: width, bottom: height, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+  return el
+}
+
+function press(root: HTMLElement, width: number, height: number, html = 'Open'): HTMLButtonElement {
+  const b = document.createElement('button')
+  b.innerHTML = html
+  root.appendChild(b)
+  sized(b, width, height)
+  return b
+}
+
+afterEach(() => {
+  document.body.innerHTML = ''
+})
+
+describe('padSmallPresses', () => {
+  it('marks a small press with its pad and leaves a thumb-sized one bare', () => {
+    const root = document.body.appendChild(document.createElement('div'))
+    const words = press(root, 86, 20)
+    const square = press(root, 23, 23)
+    const big = press(root, 300, 44)
+    expect(padSmallPresses(root)).toBe(2)
+    expect(words.getAttribute('data-press-pad')).toBe('')
+    expect(words.style.getPropertyValue('--press-pad-x')).toBe('0px')
+    expect(words.style.getPropertyValue('--press-pad-y')).toBe('12px')
+    expect(square.style.getPropertyValue('--press-pad-x')).toBe('11px')
+    expect(square.style.getPropertyValue('--press-pad-y')).toBe('11px')
+    expect(big.hasAttribute('data-press-pad')).toBe(false)
+  })
+
+  it('leaves the strip, the head, a press with a press inside, a clipped press and one not drawn alone', () => {
+    const root = document.body.appendChild(document.createElement('div'))
+    const strip = root.appendChild(document.createElement('div'))
+    strip.setAttribute('role', 'tablist')
+    const tab = press(strip, 50, 20)
+    const head = root.appendChild(document.createElement('div'))
+    head.setAttribute('data-testid', 'job-window-head')
+    const pin = press(head, 30, 30)
+    const nest = press(root, 200, 20, '<a href="#x">inner</a>')
+    const clipped = press(root, 60, 20)
+    clipped.style.overflow = 'hidden'
+    const hidden = press(root, 0, 0)
+    const plain = press(root, 60, 20)
+    expect(padSmallPresses(root)).toBe(1)
+    for (const el of [tab, pin, nest, clipped, hidden]) expect(el.hasAttribute('data-press-pad')).toBe(false)
+    expect(plain.hasAttribute('data-press-pad')).toBe(true)
+  })
+
+  it('takes the mark off a press that has grown', () => {
+    const root = document.body.appendChild(document.createElement('div'))
+    const b = press(root, 60, 20)
+    padSmallPresses(root)
+    expect(b.hasAttribute('data-press-pad')).toBe(true)
+    sized(b, 60, 44)
+    expect(padSmallPresses(root)).toBe(0)
+    expect(b.hasAttribute('data-press-pad')).toBe(false)
+    expect(b.style.getPropertyValue('--press-pad-y')).toBe('')
+  })
+})
+
+describe('watchSmallPresses', () => {
+  it('pads now and again after a press is added, and stops when told', async () => {
+    const root = document.body.appendChild(document.createElement('div'))
+    const first = press(root, 60, 20)
+    const stop = watchSmallPresses(root)
+    await new Promise((r) => setTimeout(r, 120))
+    expect(first.hasAttribute('data-press-pad')).toBe(true)
+    const second = press(root, 60, 20)
+    await new Promise((r) => setTimeout(r, 120))
+    expect(second.hasAttribute('data-press-pad')).toBe(true)
+    stop()
+    const third = press(root, 60, 20)
+    await new Promise((r) => setTimeout(r, 120))
+    expect(third.hasAttribute('data-press-pad')).toBe(false)
+  })
+})
