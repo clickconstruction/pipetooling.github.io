@@ -71,6 +71,7 @@ import {
 } from '../../lib/jobs/jobFormUndo'
 import { jobFormAutosaveAggregate, jobFormFooterShowsDelete, type JobFormCloseFlushState } from '../../lib/jobs/jobFormFooter'
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
+import { GcDifficultyAskLine } from '../bids/GcDifficultyAsk'
 import { AwardBaselineBlock } from './AwardBaselineBlock'
 import { awardBaselineOptions, awardBaselinePick, awardBaselineRpcArgs, awardNotNowSource, type AwardBaselineSource, type AwardBidBreakdown } from '../../lib/jobs/awardBaseline'
 import { awardJobBaseline } from '../../lib/jobs/awardBaselineIo'
@@ -2785,6 +2786,8 @@ export default function JobFormModal({
           onCarryBidBudgetChange={mode === 'new' && !awardOn ? setCarryBidBudget : undefined}
         />
         <JobFormSourceEstimateBanner jobId={editing?.id ?? null} onOverlayOpenChange={setBannerOverlayOpen} />
+        {/* #357 PR 5: this job's ask at the end of the job, for its master; nothing with none open. */}
+        <GcDifficultyAskLine jobId={editing?.id ?? null} />
         {awardOn ? <AwardBaselineBlock options={awardOptions} pick={awardPickEffective} onPick={setAwardPick} typedHours={awardTypedHours} onTypedHours={setAwardTypedHours} note={awardNote} onNote={setAwardNote} loading={awardLoading} planned={{ options: planOptions, pick: planPickEffective, onPick: setPlanPick, typedFinish: planTyped, onTypedFinish: setPlanTyped }} /> : null}
         </div>
         {error && (
