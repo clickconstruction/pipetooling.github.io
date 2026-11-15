@@ -19740,6 +19740,48 @@ export type Database = {
           },
         ]
       }
+      invoice_due_days: {
+        Row: {
+          clause: string
+          due_on: string
+          invoice_id: string
+          marked_at: string
+          marked_by: string | null
+          words: string
+        }
+        Insert: {
+          clause?: string
+          due_on: string
+          invoice_id: string
+          marked_at?: string
+          marked_by?: string | null
+          words?: string
+        }
+        Update: {
+          clause?: string
+          due_on?: string
+          invoice_id?: string
+          marked_at?: string
+          marked_by?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_due_days_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_due_days_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_payer_acceptances: {
         Row: {
           accepted_on: string
@@ -48570,6 +48612,15 @@ export type Database = {
       }
       set_first_look_job: {
         Args: { p_job_id: string; p_look_id: string }
+        Returns: Json
+      }
+      set_invoice_due_day: {
+        Args: {
+          p_clause?: string
+          p_due_on: string
+          p_invoice_id: string
+          p_words?: string
+        }
         Returns: Json
       }
       set_invoice_payer_accepted_on: {
