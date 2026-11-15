@@ -98,10 +98,10 @@ export type LienDeskPile = 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | '
 export function lienEmptyPileWords(pile: LienDeskPile, onOtherPiles: number): { head: string; rest: string } {
   const head: Record<LienDeskPile, string> = {
     needs_owner: 'Every notice has its owner of record.',
-    to_draft: 'Nothing is left to draft.',
+    to_draft: 'Nothing is left to send.',
     awaiting: 'Nothing is waiting for approval.',
     ready: 'Nothing is ready to send.',
-    printed: 'Nothing in the mail is waiting on a tracking number.',
+    printed: 'Nothing in the run is waiting on a tick.',
     held: 'Nothing is held.',
     sent: 'Nothing went out in the last 30 days.',
     missed: 'No window was missed.',
@@ -112,10 +112,11 @@ export function lienEmptyPileWords(pile: LienDeskPile, onOtherPiles: number): { 
 
 export const LIEN_DESK_PILES: ReadonlyArray<{ key: LienDeskPile; label: string }> = [
   { key: 'needs_owner', label: 'Needs the owner' },
-  { key: 'to_draft', label: 'To draft' },
+  // *To send* since v2.7327: the paper is drawn from the record and the office sends it; the key stays `to_draft`.
+  { key: 'to_draft', label: 'To send' },
   { key: 'awaiting', label: 'Awaiting approval' },
   { key: 'ready', label: 'Ready to send' },
-  { key: 'printed', label: 'In the mail · tracking owed' },
+  { key: 'printed', label: 'In the run' },
   { key: 'held', label: 'Held' },
   { key: 'sent', label: 'Sent · 30d' },
   { key: 'missed', label: 'Missed' },

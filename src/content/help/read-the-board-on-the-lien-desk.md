@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the mail, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, chips, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -13,13 +13,13 @@ The first tile counts what is due by the next day. It reads like *21 by Monday*,
 
 The second tile counts the papers waiting on the leader, by name. Press it and the list shows only those rows.
 
-The third tile counts the notices in the mail. It asks you to type the tracking numbers. Press it and the run opens.
+The third tile counts the notices in the run. It asks you to type the tracking numbers. Press it and the run opens.
 
 The fourth tile is the money still unpaid on the desk. Each job counts once.
 
 ## The two columns
 
-The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send**, **Awaiting approval**, **In the mail** and **Sent**. A thin grey arrow joins each bin to the next.
+The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send**, **Awaiting approval**, **In the run** and **Sent**. A thin grey arrow joins each bin to the next.
 
 The right column is the lien affidavits. Its bins are **Needs the property facts**, **To send**, **Awaiting approval**, **Ready to file** and *Filed · Served*.
 
@@ -46,7 +46,7 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 
 - A chip in **Needs the owner** or **Needs the property facts** opens the property record at the missing line.
 - A chip in **To send** or **Awaiting approval** opens that job's paper on **By paper**.
-- A chip in **In the mail** opens the run on that envelope.
+- A chip in **In the run** opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
 - A chip in *Filed · Served* opens the job's Lien window.
 

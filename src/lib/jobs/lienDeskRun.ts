@@ -104,6 +104,8 @@ export type RunNotice = {
   payLines?: Record<string, string>
   /** When the packet with this notice printed (v2.4823, from `printed_at`): the run opens on recording, not printing, when every notice in it has one. Absent or null = not yet. */
   printedAt?: string | null
+  /** Who printed it (v2.7328, from `printed_by` through the run's name lookup): the Printed tick's name; absent or null = not known. */
+  printedBy?: string | null
   /** The leader's signature (v2.5077): null while unsigned, or once the draft changed after signing. The papers print it above the rule; the run holds a notice without one. */
   signature?: LienNoticeSignature | null
   /** The job's leader (v2.5086), for Leader here, sign ▸ on a held row of the run: who the drawing is attributed to. */
@@ -159,6 +161,12 @@ export type RunBuildOpts = {
   onDeviceNameFor?: (userId: string | null) => string
   /** The job's leader by master user id (v2.5086): the run's Leader here, sign ▸ attributes the drawing to him. */
   leaderFor?: (masterUserId: string | null) => { userId: string | null; name: string } | null
+}
+
+/** Who printed the item, by the run's name lookup (v2.7328); null when the row has no `printed_by` or the lookup knows no name. */
+function runPrintedBy(item: unknown, opts?: RunBuildOpts): string | null {
+  const id = (item as { printed_by?: string | null }).printed_by ?? null
+  return id ? (opts?.onDeviceNameFor?.(id) ?? '').trim() || null : null
 }
 
 /** The leader's signature off the desk item, for the papers; null while unsigned or once the draft moved on. */
@@ -225,6 +233,7 @@ export function buildLienDeskRun(
       kind: 'notice_53_056',
       mailBy: e.earliestDeadline,
       printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
+      printedBy: runPrintedBy(item, opts),
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,

@@ -37,7 +37,7 @@ describe('lienNoticeTimeline — one notice, top to bottom (punch list #274, PR 
     expect(by.mailed!.next).toBe('23 days ago · the clock started')
     expect(by.courtesy).toMatchObject({ to: '2026-11-09', dayFrom: 18, dayTo: 26, chip: 'courtesy notice', statusWords: 'open · optional', next: '3 days left to send it · after Nov 9 the desk asks for the affidavit' })
     expect(by.letter).toMatchObject({ to: '2026-10-28', dayFrom: 10, dayTo: 14, chip: 'attorney’s letter', statusWords: 'late · act now', next: '9 days past the window · it still goes, weaker each day' })
-    expect(by.week).toMatchObject({ chip: 'our rule', statusWords: 'starts in 3 days', next: 'on Nov 9 the button here becomes Draft affidavit' })
+    expect(by.week).toMatchObject({ chip: 'our rule', statusWords: 'starts in 3 days', next: 'on Nov 9 the button here becomes Open the affidavit' })
     expect(by.lien).toMatchObject({ chip: 'legal requirement', statusWords: 'deadline · in 10 days', next: 'miss it and the lien is lost for good' })
     expect(by.today!.dayFrom).toBe(23)
   })
