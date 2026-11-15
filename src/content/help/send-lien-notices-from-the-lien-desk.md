@@ -125,7 +125,7 @@ To bring a job back, end the arrangement or take the job off it. The job is on t
 
 ## Find a job on the list
 
-A find box sits at the top of every list. On a phone the box is as tall as a thumb. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
+A find box sits at the top of every list. It is a plain line with a ⌕ at its left, just above the first pile. On a phone the box is as tall as a thumb. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
 
 ## The piles
 
