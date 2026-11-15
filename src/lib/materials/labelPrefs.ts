@@ -79,3 +79,22 @@ export function writeTapeCopies(copies: number): void {
     /* the window works without the memory */
   }
 }
+
+const STICKER_PREVIEW_KEY = 'pt.stickers.previewOpen'
+
+/** Whether the Print blank stickers window's *What the stickers will look like* fold was left open on this device (v2.7304); closed until it is. */
+export function readStickerPreviewOpen(): boolean {
+  try {
+    return window.localStorage.getItem(STICKER_PREVIEW_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function writeStickerPreviewOpen(open: boolean): void {
+  try {
+    window.localStorage.setItem(STICKER_PREVIEW_KEY, open ? '1' : '0')
+  } catch {
+    /* the window works without the memory */
+  }
+}

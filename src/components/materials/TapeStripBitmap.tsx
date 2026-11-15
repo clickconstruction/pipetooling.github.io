@@ -16,10 +16,12 @@ type Props = {
   words: string
   /** The dots the tape prints across. */
   dots: number
+  /** How tall it is drawn on the screen; the tape's dots unless a preview draws it smaller (v2.7304). */
+  height?: number
   onDrawn: (id: string, lines: Uint8Array[] | null) => void
 }
 
-export default function TapeStripBitmap({ id, stencil, address, value, words, dots, onDrawn }: Props) {
+export default function TapeStripBitmap({ id, stencil, address, value, words, dots, height = dots, onDrawn }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
   const report = useRef(onDrawn)
   report.current = onDrawn
@@ -30,5 +32,5 @@ export default function TapeStripBitmap({ id, stencil, address, value, words, do
     const drawn = squares ? drawTapeStrip(canvas, { dots, squares, stencil, address, words }) : null
     report.current(id, drawn?.lines ?? null)
   }, [id, stencil, address, value, words, dots])
-  return <canvas ref={ref} data-testid="labels-tape-bitmap" aria-label={`The strip for ${stencil}`} style={{ display: 'block', height: dots, maxWidth: '100%', imageRendering: 'pixelated', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)' }} />
+  return <canvas ref={ref} data-testid="labels-tape-bitmap" aria-label={`The strip for ${stencil}`} style={{ display: 'block', height, maxWidth: '100%', imageRendering: 'pixelated', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)' }} />
 }
