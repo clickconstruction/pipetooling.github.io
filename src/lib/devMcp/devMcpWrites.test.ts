@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs'
+import { readMovePlan } from '../materials/onSiteMoveJob'
 import { describe, expect, it } from 'vitest'
 import { ROBOT_PLANS_SHARED_DRIVE, robotPlansDivisionFolderName, robotPlansPathWords } from '../../../supabase/functions/_shared/bidPlansFolders'
 import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, canonicalJson, clockOpCommitment, driveFilingRefusal, isWriteVerb, personDocCommitment, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
@@ -833,16 +834,30 @@ describe('the Materials on site move (v2.6808, punch list #209)', () => {
     expect(wrapper).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
     expect(wrapper).toContain('IF public.is_read_only() THEN')
     expect(wrapper).toContain('IF public.is_digital_twin() THEN')
-    expect(wrapper).toContain("from_job and to_job are the same job")
-    expect(wrapper).toContain('has nothing on site to move')
+    // Since v2.7305 the body is on_site_move_job_run, shared with the office's door; the seat's door gates and calls it.
+    expect(wrapper).toContain("RETURN public.on_site_move_job_run(p, p_dry_run, 'dev_on_site_move_job');")
+    const body = newestDefinition('on_site_move_job_run').body
+    expect(body).toContain('SECURITY DEFINER')
+    expect(body).toContain("from_job and to_job are the same job")
+    expect(body).toContain('has nothing on site to move')
     // Do it, report, unwind: the dry run raises its own state after the reply is built, and only that state is caught.
-    expect(wrapper).toContain("RAISE EXCEPTION USING ERRCODE = 'P0DRY', MESSAGE = 'dry run';")
-    expect(wrapper).toContain("WHEN SQLSTATE 'P0DRY' THEN")
+    expect(body).toContain("RAISE EXCEPTION USING ERRCODE = 'P0DRY', MESSAGE = 'dry run';")
+    expect(body).toContain("WHEN SQLSTATE 'P0DRY' THEN")
     expect(sql).toContain('REVOKE ALL ON FUNCTION public.dev_on_site_move_job(jsonb, boolean) FROM anon;')
     expect(sql).toContain('GRANT EXECUTE ON FUNCTION public.dev_on_site_move_job(jsonb, boolean) TO authenticated;')
+    // The body is nobody's to call but the two doors; the office's door admits the roles that may combine and refuses the rest in words.
+    const office = readFileSync(`supabase/migrations/${newestDefinition('on_site_move_job').file}`, 'utf8')
+    expect(office).toContain('REVOKE ALL ON FUNCTION public.on_site_move_job_run(jsonb, boolean, text) FROM authenticated;')
+    const door = newestDefinition('on_site_move_job').body
+    expect(door).toContain("u.role IN ('dev', 'master_technician', 'assistant', 'controller')")
+    expect(door).toContain('IF public.is_read_only() THEN')
+    expect(door).toContain('IF public.is_digital_twin() THEN')
+    expect(door).toContain('IF public.caller_is_archived() THEN')
+    expect(door).toContain("RETURN public.on_site_move_job_run(p, p_dry_run, 'on_site_move_job');")
+    expect(office).toContain('GRANT EXECUTE ON FUNCTION public.on_site_move_job(jsonb, boolean) TO authenticated;')
   })
-  it('the rule lives once: the wrapper and the whole-job combine both call on_site_carry_job, which no client may call', () => {
-    const wrapper = newestDefinition('dev_on_site_move_job').body
+  it('the rule lives once: the move\'s body and the whole-job combine both call on_site_carry_job, which no client may call', () => {
+    const wrapper = newestDefinition('on_site_move_job_run').body
     expect(wrapper).toContain('v_carried := public.on_site_carry_job(v_from, v_to);')
     expect(wrapper).not.toMatch(/UPDATE public\.job_(containers|material_movements|box_photos|places)/)
     // The combine's newest body is this migration's, with one PERFORM where its own copy of the block stood.
@@ -889,6 +904,8 @@ describe('the Materials on site move (v2.6808, punch list #209)', () => {
     expect(h1).not.toBe(await planHash('plan_materials_move', pOf(built), { ...reply, labels_renamed: [] }))
     expect(h1).not.toBe(await planHash('plan_materials_move', pOf(writeRpcBody('plan_materials_move', { move: { from_job: TO, to_job: FROM } })), reply))
     expect(planCommitment('plan_materials_move', reply)).not.toHaveProperty('dry_run')
+    // The office's window reads the same reply (v2.7305): the plan is one shape for both doors.
+    expect(readMovePlan(reply)).toMatchObject({ dryRun: true, from: { label: 'JP972' }, to: { label: 'JP1091' }, moved: { containers: 92, movements: 280 }, placesMerged: [{ name: 'Arena', containers: 90 }], labelsRenamed: [{ from: 'G6', to: 'G6 (2)' }], before: { from: { containers: 92 } }, after: { to: { containers: 94 } } })
     // The reply the wrapper builds carries no clock and no made id, so the same plan hashes the same a minute later.
     const wrapper = newestDefinition('dev_on_site_move_job').body
     expect(wrapper).not.toMatch(/now\(\)|gen_random_uuid|clock_timestamp/)
