@@ -17,6 +17,8 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 // The job's stages as `list_job_stage_progress` answers them; a test sets them before it renders.
 const stages = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>> }))
+// Our lead on the job as `job_lead_contact` answers; none until a test names one.
+const lead = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>> }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -53,7 +55,8 @@ vi.mock('../../lib/supabase', async () => {
     supabase: {
       ...stub,
       from: (table: string) => (table === 'jobs_ledger' ? ledger() : stub.from()),
-      rpc: (fn: string) => (fn === 'list_job_stage_progress' ? Promise.resolve({ data: stages.rows, error: null }) : stub.rpc()),
+      rpc: (fn: string) =>
+        fn === 'list_job_stage_progress' ? Promise.resolve({ data: stages.rows, error: null }) : fn === 'job_lead_contact' ? Promise.resolve({ data: lead.rows, error: null }) : stub.rpc(),
     },
   }
 })
@@ -87,6 +90,7 @@ beforeAll(() => {
 afterEach(() => {
   narrowMatches = false
   stages.rows = []
+  lead.rows = []
   localStorage.removeItem(CREW_FOLDS_KEY)
 })
 
@@ -196,6 +200,37 @@ describe('DetailJobModal · the crew’s window on a phone', () => {
     fireEvent.click(parts)
     expect(parts.getAttribute('aria-expanded')).toBe('true')
     expect(JSON.parse(localStorage.getItem(CREW_FOLDS_KEY) ?? '[]')).toEqual(['parts'])
+  })
+
+  it('a sub sees who runs the job for us and their number, never the customer’s', async () => {
+    lead.rows = [{ lead_user_id: 'u-9', lead_name: 'Mo Reyes', lead_phone: '512 555 0100', lead_role: 'master_technician' }]
+    await renderPlainWindow({ phone: true, role: 'subcontractor' })
+    const who = await screen.findByTestId('job-window-who')
+    expect(who.textContent).toContain('Mo Reyes')
+    expect(within(who).getByTestId('job-window-who-note').textContent).toBe('runs this job')
+    expect(within(who).getByRole('button', { name: 'Call 512 555 0100' })).toBeTruthy()
+    // The customer stays on the title's quiet line; their number and email are nowhere on the screen.
+    expect(screen.getByTestId('crew-window-quiet-line').textContent).toBe('9001 · Dana Whitfield')
+    expect(document.body.textContent).not.toContain('(512) 555-0142')
+    expect(document.body.textContent).not.toContain('dana@whitfield.example')
+  })
+
+  it('a sub on a job with no lead is pointed at the office, not at the customer', async () => {
+    await renderPlainWindow({ phone: true, role: 'subcontractor' })
+    const who = await screen.findByTestId('job-window-who')
+    expect(who.textContent).toContain('The office')
+    expect(within(who).getByTestId('job-window-who-note').textContent).toBe('no one of ours is on this job yet')
+    expect(document.body.textContent).not.toContain('(512) 555-0142')
+  })
+
+  it('a sub on a desk reads our lead under the customer’s name', async () => {
+    lead.rows = [{ lead_user_id: 'u-9', lead_name: 'Mo Reyes', lead_phone: '512 555 0100', lead_role: 'master_technician' }]
+    await renderPlainWindow({ phone: false, role: 'subcontractor' })
+    const line = await screen.findByTestId('customer-panel-our-lead')
+    expect(line.textContent).toBe('Mo Reyes runs this job')
+    expect(screen.getByRole('link', { name: 'Call Mo Reyes' }).textContent).toContain('512 555 0100')
+    expect(document.body.textContent).not.toContain('(512) 555-0142')
+    expect(document.body.textContent).not.toContain('dana@whitfield.example')
   })
 
   it('keeps the bar: Arrived · Leave report · Note', async () => {

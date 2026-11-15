@@ -69,6 +69,46 @@ export function crewSheetRows(doors: JobWindowSheetDoors): JobWindowSheetRow[] {
 }
 
 // ---------------------------------------------------------------------------
+// Who, for a sub: our lead, never the customer's number (v2.7380)
+// ---------------------------------------------------------------------------
+
+/**
+ * A subcontractor's job window shows who runs the job for us and their number where the customer's number and email
+ * were (Taunya, 2026-11-15: "Our lead's"). A helper, the superintendent and an estimator are ours, and keep the
+ * customer's number.
+ */
+export function showsOurLead(role: string | null | undefined): boolean {
+  return role === 'subcontractor'
+}
+
+/** Our lead on a job as `job_lead_contact` answers: the first master technician on its team, else the first superintendent. */
+export type JobLead = { name: string; phone: string | null }
+
+export type OurLeadWords = {
+  /** The lead's name, or *The office* when the job has no lead on its team yet. */
+  name: string
+  /** *runs this job*, and what the number is when it is not the lead's own. */
+  note: string
+  /** The number to call, '' when there is none on file anywhere. */
+  phone: string
+}
+
+export const RUNS_THIS_JOB = 'runs this job'
+
+/**
+ * Who a sub calls. The lead with their own number; a lead with no number on file with the office's; no lead yet, the
+ * office. The customer's number is never an answer.
+ */
+export function ourLeadWords(lead: JobLead | null, officePhone: string | null | undefined): OurLeadWords {
+  const office = (officePhone ?? '').trim()
+  const name = (lead?.name ?? '').trim()
+  const phone = (lead?.phone ?? '').trim()
+  if (name && phone) return { name, note: RUNS_THIS_JOB, phone }
+  if (name) return { name, note: office ? `${RUNS_THIS_JOB} · this is the office's number` : RUNS_THIS_JOB, phone: office }
+  return { name: 'The office', note: 'no one of ours is on this job yet', phone: office }
+}
+
+// ---------------------------------------------------------------------------
 // Today's work: the open stage (v2.7376)
 // ---------------------------------------------------------------------------
 

@@ -88,7 +88,7 @@ Then the window runs in sections.
 
 - **Where** shows the street photo with the address on it. You tap the address to open it in Maps. Painted maps sit under the photo, then **＋ Paint a map**.
 - **Photos** is a row of pictures you flick sideways. **Add a photo** is the first tile. It opens the camera.
-- **Who** names the customer. The phone number is written out. You tap the number to call. The square beside the number copies it.
+- **Who** names the customer. The phone number is written out. You tap the number to call. The square beside the number copies it. A subcontractor sees who runs the job for us instead, with that person's number. The customer's number is not shown to a subcontractor.
 - **Today's work** shows the stage the job is on. A bar under it shows how far the job has come. Each stage with a checklist is a press. **Plans** and **Materials on site** are folds. Each fold says what it holds beside its name. A job with no stages shows the two folds alone.
 - **What's happening** shows the block you opened the job from, with its hours on their own line. **Last note** shows the newest note or report, who wrote it and when.
 - **More on this job** holds the rest in folds. **Notes and reports** holds every note and the note box. A superintendent also gets **Parts cost**. You tap a fold to open it. The phone remembers which folds you left open.

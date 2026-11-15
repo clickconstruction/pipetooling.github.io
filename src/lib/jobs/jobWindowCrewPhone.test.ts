@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clipNote, CREW_FOLDS_KEY, CREW_WORK_FOLDS, crewBlockLabel, crewFolds, crewMaterialsWords, crewQuietLine, crewSheetRows, crewStageCard, keepCrewFolds, lastNoteWords, readCrewFolds, type CrewNoteSource } from './jobWindowCrewPhone'
+import { clipNote, CREW_FOLDS_KEY, CREW_WORK_FOLDS, crewBlockLabel, crewFolds, crewMaterialsWords, crewQuietLine, crewSheetRows, crewStageCard, keepCrewFolds, lastNoteWords, ourLeadWords, readCrewFolds, showsOurLead, type CrewNoteSource } from './jobWindowCrewPhone'
 import type { StageProgressRow } from '../reports/stageProgressReport'
 import type { JobWindowSheetDoors } from './jobWindowPhone'
 
@@ -131,5 +131,26 @@ describe('crewMaterialsWords', () => {
     expect(crewMaterialsWords({ loaded: true, containers: 0, lines: 0 })).toBe('nothing yet')
     expect(crewMaterialsWords({ loaded: true, containers: 1, lines: 1 })).toBe('1 container · 1 line')
     expect(crewMaterialsWords({ loaded: true, containers: 3, lines: 14 })).toBe('3 containers · 14 lines')
+  })
+})
+
+describe('who a sub calls', () => {
+  it('is our lead for a sub alone', () => {
+    expect(showsOurLead('subcontractor')).toBe(true)
+    for (const role of ['helpers', 'superintendent', 'estimator', 'master_technician', null]) expect(showsOurLead(role)).toBe(false)
+  })
+
+  it('is the lead with their own number', () => {
+    expect(ourLeadWords({ name: 'Dana Reyes', phone: '512 555 0100' }, '512 555 0199')).toEqual({ name: 'Dana Reyes', note: 'runs this job', phone: '512 555 0100' })
+  })
+
+  it('is the office’s number under the lead’s name when the lead has none on file', () => {
+    expect(ourLeadWords({ name: 'Dana Reyes', phone: null }, '512 555 0199')).toEqual({ name: 'Dana Reyes', note: "runs this job · this is the office's number", phone: '512 555 0199' })
+    expect(ourLeadWords({ name: 'Dana Reyes', phone: ' ' }, null)).toEqual({ name: 'Dana Reyes', note: 'runs this job', phone: '' })
+  })
+
+  it('is the office when the job has no lead on its team', () => {
+    expect(ourLeadWords(null, '512 555 0199')).toEqual({ name: 'The office', note: 'no one of ours is on this job yet', phone: '512 555 0199' })
+    expect(ourLeadWords(null, null).phone).toBe('')
   })
 })
