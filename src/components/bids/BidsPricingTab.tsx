@@ -106,6 +106,11 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { usePricedMarginStamp, type PricedMarginStampArm, type PricedMarginStampLatest } from '../../hooks/usePricedMarginStamp'
 import { pricedMarginStampOnScreen } from '../../lib/bids/pricedMargin'
 import { PricedMarginLine } from './PricedMarginLine'
+import { useBidDifficulty, type BidDifficultyOnScreen } from '../../hooks/useBidDifficulty'
+import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
+import { bidDifficultyAmountOnRows } from '../../lib/bids/bidDifficulty'
+import { difficultyPriceVersionWords } from '../../lib/bids/difficultyPrice'
+import BidDifficultyStrip from './BidDifficultyStrip'
 import type {
   CostEstimate,
   CostEstimateLaborRow,
@@ -1722,6 +1727,12 @@ export function BidsPricingTab({
   const [bidsLikeThisSlot, setBidsLikeThisSlot] = useState<HTMLSpanElement | null>(null)
   // GC difficulty (punch list #357 PR 2): the GC's rating as a read-only chip beside Bids like this.
   const gcDifficulty = useGcDifficultyStandings(selectedBidForPricing?.customer_id != null)
+  // GC difficulty (punch list #357 PR 4): the rating turned into cost lines by the Bid Board's price list, pinned on
+  // the bid. The hook writes them once when the Workbench first costs a bid to a rated GC (`ready` says the numbers
+  // are settled); the strip under the priced-margin line reads the pin.
+  const difficultyPrice = useDifficultyPrice(selectedBidForPricing != null)
+  const difficultyStanding = selectedBidForPricing?.customer_id ? (gcDifficulty.get(selectedBidForPricing.customer_id) ?? null) : null
+  const bidDifficultyLatestRef = useRef<BidDifficultyOnScreen | null>(null)
   // v2.4395: the version's materials at today's book, one line under the sent-vs-today line.
   const materialsToday = useTakeoffPriceDrift({ bidId: selectedBidForPricing?.id, versionId: selectedBidVersionId, enabled: !!selectedBidForPricing })
 
@@ -2386,17 +2397,38 @@ export function BidsPricingTab({
 
   // v2.5043: what the priced-margin stamp reads when a price write settles: the strip's numbers over
   // saved prices, and whether this is the customer-facing price of the bid's own GC. Every commit.
+  // v2.5671: nothing to stamp while the open price loads — the strip still holds the price you left.
+  const derivedNow = selectedBidForPricing && !pricesLoading ? derivePricingWorkbench() : null
+  // #357 PR 4: the GC's rating as cost lines, pinned on the bid; written once the numbers are settled (`ready`).
+  const bidDifficulty = useBidDifficulty({ bidId: selectedBidForPricing?.id ?? null, standing: difficultyStanding, price: difficultyPrice, ready: derivedNow != null, latest: bidDifficultyLatestRef, reload: reloadPricingForBid, onWrote: armPricedMarginStamp })
+  // Of the cost, the difficulty lines' dollars (the Other rows the pin names), which the stamp keeps apart.
+  const difficultyCostNow = bidDifficulty.pin ? bidDifficultyAmountOnRows(pricingOtherRows, bidDifficulty.pin.rowIds) : 0
   const pricedStampLatest: PricedMarginStampLatest | null = pricedMarginStampOnScreen({
     bid: selectedBidForPricing,
-    // v2.5671: nothing to stamp while the open price loads — the strip still holds the price you left.
-    derived: selectedBidForPricing && !pricesLoading ? derivePricingWorkbench() : null,
+    derived: derivedNow ? { ...derivedNow, difficultyCost: difficultyCostNow } : null,
     selectedBidVersionId,
     bidVersions,
     viewingPricingId: selectedPricingVersionId,
     customerFacingPricingId,
   })
+  // #357 PR 4: what the difficulty lines are made from, refreshed every commit as the stamp's numbers are.
+  const bidDifficultyNow: BidDifficultyOnScreen | null = selectedBidForPricing
+    ? {
+        bidId: selectedBidForPricing.id,
+        costEstimateId: pricingCostEstimate?.id ?? null,
+        fieldHours: derivedNow?.totalLaborHours ?? 0,
+        laborRate: derivedNow?.rate ?? 0,
+        totalCost: derivedNow?.totalCost ?? 0,
+        totalRevenue: pricedStampLatest?.input?.revenueUsd ?? 0,
+        otherRows: pricingOtherRows,
+        laborRows: pricingLaborRows,
+        sent: !!selectedBidForPricing.bid_date_sent,
+        mayWrite: pricedStampLatest?.mayStamp ?? false,
+      }
+    : null
   useEffect(() => {
     pricedStampLatestRef.current = pricedStampLatest
+    bidDifficultyLatestRef.current = bidDifficultyNow
   })
 
   return (
@@ -3404,6 +3436,23 @@ export function BidsPricingTab({
                           </div>
                           {altLine}
                           <PricedMarginLine stamp={pricedStamp} sent={!!selectedBidForPricing?.bid_date_sent} />
+                          {selectedBidForPricing ? (
+                            // #357 PR 4: the difficulty lines the bid was priced with, with the door to take one off.
+                            <BidDifficultyStrip
+                              pin={bidDifficulty.pin}
+                              standing={difficultyStanding}
+                              stale={bidDifficulty.stale}
+                              busy={bidDifficulty.busy}
+                              failed={bidDifficulty.failed}
+                              lastWrite={bidDifficulty.lastWrite}
+                              marginPct={wbMarginPct}
+                              sent={!!selectedBidForPricing.bid_date_sent}
+                              priceVersionWords={difficultyPrice ? difficultyPriceVersionWords(difficultyPrice) : null}
+                              byName={profileName ?? ''}
+                              onReadIn={bidDifficulty.readIn}
+                              onTakeOff={(key, reason) => bidDifficulty.takeOff(key, reason, profileName ?? '')}
+                            />
+                          ) : null}
                           {laborCountsOutOfStep({ countRows: pricingCountRows, laborRows: pricingLaborRows }) ? (
                             // #137 PR 2: labor rows are bid-wide and follow whichever version last
                             // opened Labor — when they disagree with THIS version's counts, say so

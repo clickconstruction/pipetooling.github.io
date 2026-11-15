@@ -13809,6 +13809,7 @@ export type Database = {
           customer_id: string
           id: string
           note: string
+          pick_reasons: Json
           picks: Json
           rated_at: string
           rated_by: string | null
@@ -13820,6 +13821,7 @@ export type Database = {
           customer_id: string
           id?: string
           note: string
+          pick_reasons?: Json
           picks?: Json
           rated_at?: string
           rated_by?: string | null
@@ -13831,6 +13833,7 @@ export type Database = {
           customer_id?: string
           id?: string
           note?: string
+          pick_reasons?: Json
           picks?: Json
           rated_at?: string
           rated_by?: string | null
@@ -42513,6 +42516,7 @@ export type Database = {
         Args: { p_lang: string; p_user_id: string }
         Returns: string
       }
+      box_name_words: { Args: { p_label: string }; Returns: string }
       box_sticker_caller_name: { Args: never; Returns: string }
       box_sticker_facts: { Args: { p_sticker_id: string }; Returns: Json }
       box_sticker_number_words: { Args: { p_number: number }; Returns: string }
@@ -47079,6 +47083,11 @@ export type Database = {
         }
         Returns: number
       }
+      on_site_next_box_name: {
+        Args: { p_job_ids: string[]; p_letters?: string }
+        Returns: string
+      }
+      on_site_site_job_ids: { Args: { p_job_id: string }; Returns: string[] }
       on_site_typed_names_on_hand: {
         Args: { p_container_id: string; p_names: string[] }
         Returns: number

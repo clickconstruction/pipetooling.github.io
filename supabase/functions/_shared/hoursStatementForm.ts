@@ -8,7 +8,7 @@
  * signer's answers. Type-only imports, so the app (`src/lib/people/hoursStatementForm.ts` re-exports it) and the
  * functions read one copy.
  */
-import type { FormValues } from './formSchema.ts'
+import type { FormValues } from './formValues.ts'
 import type { HoursStatementStatedDay } from './hoursStatement.ts'
 
 /** The `doc_type` on the statement's form template and its person copy (migration 20261102230000 widens both checks). */

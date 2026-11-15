@@ -9,6 +9,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DIFFICULTY_CRITERIA_V1 } from '../../lib/bids/difficultyCriteria'
+import { DIFFICULTY_PRICE_V1 } from '../../lib/bids/difficultyPrice'
 import { GC_DIFFICULTY_WORDS as W, type DifficultyVersionLite, type GcDifficultyRating } from '../../lib/bids/gcDifficultyRating'
 import type { GcDifficultyIo } from '../../lib/bids/gcDifficultyRatingIo'
 import type { DifficultyPayingInputs } from '../../lib/bids/difficultyPaying'
@@ -98,6 +99,14 @@ describe('GcDifficultyCard', () => {
     expect(card().queryByRole('button', { name: /^Save/ })).toBeNull()
     expect(card().queryByLabelText(W.noteLabel)).toBeNull()
     expect((card().getByRole('radio', { name: 'Field and superintendent: 3 points' }) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('the price list says who may rate (PR 4): an estimator saves when it names the estimators', async () => {
+    const io = fakeIo([RATED], [V1], { loadPrice: vi.fn(async () => ({ ...DIFFICULTY_PRICE_V1, raters: ['estimator' as const] })) })
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="estimator" io={io} />)
+    expect(await card().findByText('Rated by Robert on 2026-11-14 under criteria version 1.')).toBeTruthy()
+    await waitFor(() => expect(card().queryByText(W.cannotRate)).toBeNull())
+    expect(card().getByRole('button', { name: W.save(4) })).toBeTruthy()
   })
 
   it('a version 1 rating with version 2 published carries what it can and says what is unrated; the earlier ratings fold', async () => {

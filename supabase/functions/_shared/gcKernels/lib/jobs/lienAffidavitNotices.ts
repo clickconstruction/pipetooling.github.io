@@ -51,17 +51,23 @@ export type LienAffidavitSwornFacts = {
 }
 
 /**
- * The months a job's affidavit swears, as keys ('YYYY-MM', oldest first): the months its recorded § 53.056 notices name
- * that fall inside the job's own work span. The short form prints them in words; the notice check reads them as they
- * are (punch list #314). None on a job contracted with the owner. Months set by hand (v2.7270) stand in for the
- * record's whole, with counsel's reason on the row that holds them.
+ * The months a job's affidavit swears, as keys ('YYYY-MM', oldest first): the month of the last day on site, and the
+ * months its recorded § 53.056 notices name that fall inside the job's own work span. The last day is the span's end
+ * (`lienWorkSpan`): the day set by hand when there is one, else the last approved clock day, else the last month the
+ * desk knows. Until v2.7302 the paper named the noticed months alone, so a job whose notice named earlier months
+ * printed a blank where its months go; the owner's reading of 2026-11-14 is that the line matches the month of the
+ * last day on site, a day set by hand included. The short form prints them in words; the notice check reads them as
+ * they are (punch list #314) and flags the last month when no notice stands behind it. None on a job contracted with
+ * the owner. Months set by hand (v2.7270) stand in for the whole, with counsel's reason on the row that holds them.
  */
 export function lienAffidavitSwornMonths(f: LienAffidavitSwornFacts): string[] {
   if (!f.isSub) return []
   const byHand = [...new Set((f.monthsByHand ?? []).filter((m) => /^\d{4}-\d{2}$/.test(m)))].sort()
   if (byHand.length > 0) return byHand
   const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
-  return lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)
+  const noticed = lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)
+  const last = /^(\d{4}-\d{2})-\d{2}$/.exec(span.workEnd)?.[1] ?? ''
+  return [...new Set(last ? [...noticed, last] : noticed)].sort()
 }
 
 /**

@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, move everything on site, wrong job, move boxes to another job, read the plan, blank stickers, print blank stickers, sticker run, stickers before boxes, reprint, print the rest, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
+keywords: materials on site, materials desk, move everything on site, wrong job, move boxes to another job, read the plan, retire every box, archive a job's materials, job done, blank stickers, print blank stickers, sticker run, stickers before boxes, reprint, print the rest, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -172,6 +172,12 @@ Each box prints on its own Letter page in large plain type. The page carries the
 Laminate the page and hang it on the box in a document holder. The manifest is a plain print and files no copy. When someone writes a line on it, press the same thing in the app so the count stays true.
 
 For every cage and box across a development, print the [material location report](/help/print-the-material-location-report) from the Development page.
+
+## Retire every box on a job
+
+When a job is done and its cages have gone back to the yard, retire them all at once. Under the job's boxes press {{button:outline|Retire 2 empty boxes}}. The press counts the empty boxes. A box with parts in it stays, and the line beside the press names it. Move its parts or mark them used, then press again.
+
+A window lists what goes and what stays, with the reason for each. The button in the window carries the same count. After the press, a toast says how many boxes were retired. It carries **Undo** for one minute, which brings every one of them back. A retired box keeps its stickers and its history.
 
 ## Bring back a retired box
 
