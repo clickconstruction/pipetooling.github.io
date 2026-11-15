@@ -21,7 +21,6 @@ import { markAskedOn, RECORD_LANDS_WITH, RECORD_QUESTIONS_TITLE, recordAskAbout,
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import OfflineRetryPanel from '../OfflineRetryPanel'
-import { EmptyState } from '../EmptyState'
 import { DevelopmentAskSheet, type AskAboutOption, type AskPreset } from './DevelopmentAskSheet'
 import { QuestionRow } from './DevelopmentSideCards'
 import { SmallButton } from './developmentPageBits'
@@ -145,9 +144,9 @@ export function RecordQuestions({ record, role, io, onAskOpenChange }: { record:
             <QuestionRow key={r.id} request={r} names={names} askedOn={r.askedOn} />
           ))}
         </div>
-      ) : data ? (
-        <EmptyState main={`Nothing asked about ${piece.kind === 'job' ? 'this job' : 'this bid'} yet.`} next={{ label: 'Ask the estimators', onPress: () => openAsk('estimators') }} tail="starts the first question." compact />
       ) : null}
+      {/* With nothing asked, *none yet* beside the title and the two presses at its right are the whole empty (v2.7326):
+          a second line under them said the same thing again and offered Ask the estimators a second time. */}
       <DevelopmentAskSheet open={ask !== null} preset={ask} options={options} siteName={piece.label} landsWith={RECORD_LANDS_WITH[piece.kind]} zIndex={RECORD_ASK_Z} busy={asking} onSend={sendDraft} onClose={() => setAsk(null)} />
     </section>
   )

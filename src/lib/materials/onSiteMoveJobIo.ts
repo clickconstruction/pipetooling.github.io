@@ -6,7 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { afterCombineBoxPhotos } from './boxPhotoRefileIo'
+import { afterCombineBoxPhotos, refreshRefileMarks } from './boxPhotoRefileIo'
 import { readMovePlan, type OnSiteMovePlan } from './onSiteMoveJob'
 import { loadJob } from './onSiteStore'
 
@@ -33,11 +33,12 @@ export function applyOnSiteMove(fromJobId: string, toJobId: string): Promise<OnS
 
 /**
  * After the move landed: both jobs read again, so the source's page reads empty and the target's reads the moved
- * boxes, and the target's photos asked to move to its Drive folder as a combine asks (`afterCombineBoxPhotos`). Hands
- * back the photos' sentence, or '' when no file is due. Never throws: a read that fails leaves the last good read, and
- * the page's own refresh reads again.
+ * boxes; the source's photo marks read again too (v2.7329), since its strip keeps its own read and drew the moved
+ * photos as still held until a reload; and the target's photos asked to move to its Drive folder as a combine asks
+ * (`afterCombineBoxPhotos`). Hands back the photos' sentence, or '' when no file is due. Never throws: a read that
+ * fails leaves the last good read, and the page's own refresh reads again.
  */
 export async function afterOnSiteMove(fromJobId: string, toJobId: string, role: string | null | undefined): Promise<string> {
-  await Promise.allSettled([loadJob(fromJobId, { force: true, quiet: true }), loadJob(toJobId, { force: true, quiet: true })])
+  await Promise.allSettled([loadJob(fromJobId, { force: true, quiet: true }), loadJob(toJobId, { force: true, quiet: true }), refreshRefileMarks(fromJobId)])
   return afterCombineBoxPhotos(toJobId, role)
 }
