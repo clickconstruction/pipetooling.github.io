@@ -27,6 +27,10 @@ export interface JobAccountStripRow {
   rep_contact_id: string | null
   rep_name: string | null
   rep_phone: string | null
+  /** When a not-needed row was marked, or its reason last changed (20261115230000). Absent from a database that has not had the migration. */
+  not_needed_at?: string | null
+  /** The name of who marked it; null on a row marked before the stamp, or by nobody signed in. */
+  not_needed_by_name?: string | null
 }
 
 export type JobAccountStripState = JobAccountStatus | 'none'
@@ -51,6 +55,9 @@ export interface JobAccountStripEntry {
   requestedFromCounter: boolean
   note: string
   rep: JobAccountStripRep | null
+  /** A not-needed row's stamp: when it was marked and by whom. Null or absent when the row carries none. */
+  notNeededAt?: string | null
+  notNeededBy?: string | null
 }
 
 function stateOf(status: string | null): JobAccountStripState {
@@ -76,6 +83,8 @@ export function groupJobAccountStrip(rows: JobAccountStripRow[]): Map<string, Jo
       requestedFromCounter: Boolean(r.requested_from_counter),
       note: (r.account_note ?? '').trim(),
       rep: r.rep_contact_id && r.rep_name ? { id: r.rep_contact_id, name: r.rep_name, phone: (r.rep_phone ?? '').trim() || null } : null,
+      notNeededAt: r.not_needed_at ?? null,
+      notNeededBy: (r.not_needed_by_name ?? '').trim() || null,
     }
     const list = out.get(r.job_id) ?? []
     list.push(entry)

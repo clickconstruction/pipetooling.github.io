@@ -119,3 +119,4 @@ dev-seat-kept-plans
 receipt-texts
 painted-maps
 sticker-names
+job-account-not-needed-stamp

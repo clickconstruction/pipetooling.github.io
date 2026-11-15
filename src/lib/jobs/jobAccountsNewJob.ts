@@ -9,6 +9,7 @@
 import { normalizeAddressForMatch } from './lienProperty'
 import type { JobAccountStripEntry } from './jobAccountStrip'
 import type { JobSupplyHouseAccountRow } from '../materials/jobSupplyHouseAccounts'
+import { formatDenverCalendarDayWithYear } from '../../utils/dateUtils'
 
 export interface SamePropertyJob {
   id: string
@@ -151,6 +152,21 @@ export function notNeededSheetWords(houseName: string, note: string | null | und
   if (isNoReasonNewJobNote(reason)) return 'Marked not needed when the job was made. No reason was given.'
   if (!reason) return `Marked not needed at ${houseName}. No reason was given.`
   return `The office decided this job does not need an account at ${houseName}: ${reason}`
+}
+
+/**
+ * Who marked a house not needed and when, as the sheet's second line: *Marked by Tess on
+ * Nov 13, 2026.* A row marked before the stamp has the day and no name; a row with neither
+ * says nothing, and so does a database that has not had the migration.
+ */
+export function notNeededStampWords(by: string | null | undefined, atIso: string | null | undefined): string | null {
+  const who = (by ?? '').trim()
+  const ms = atIso ? Date.parse(atIso) : NaN
+  const day = Number.isFinite(ms) ? formatDenverCalendarDayWithYear(ms) : ''
+  if (who && day) return `Marked by ${who} on ${day}.`
+  if (day) return `Marked on ${day}.`
+  if (who) return `Marked by ${who}.`
+  return null
 }
 
 /** The chip's hover words for a not-needed house. */

@@ -8,6 +8,7 @@ import {
   newJobNotNeededRows,
   notNeededChipTitle,
   notNeededSheetWords,
+  notNeededStampWords,
   reuseNote,
   samePropertyOffers,
 } from './jobAccountsNewJob'
@@ -114,6 +115,21 @@ describe('the not-needed sheet', () => {
   it('says so when a row has no note at all', () => {
     expect(notNeededSheetWords('Reece', '')).toBe('Marked not needed at Reece. No reason was given.')
     expect(notNeededChipTitle(null)).toBe('Not needed: no reason was given')
+  })
+})
+
+describe('notNeededStampWords', () => {
+  it('names who marked it and the day, in the company calendar', () => {
+    expect(notNeededStampWords('Tess', '2026-11-13T19:24:44.306Z')).toBe('Marked by Tess on Nov 13, 2026.')
+    // 03:30 UTC is still the evening before in the company calendar.
+    expect(notNeededStampWords(' Tess ', '2026-11-14T03:30:00Z')).toBe('Marked by Tess on Nov 13, 2026.')
+  })
+
+  it('says only the day for a row marked before the stamp, and nothing with neither', () => {
+    expect(notNeededStampWords(null, '2026-10-07T22:13:03Z')).toBe('Marked on Oct 7, 2026.')
+    expect(notNeededStampWords('Tess', null)).toBe('Marked by Tess.')
+    expect(notNeededStampWords(null, null)).toBeNull()
+    expect(notNeededStampWords(undefined, 'not a day')).toBeNull()
   })
 })
 
