@@ -49,7 +49,7 @@ below was taken at the card's pick. The guide is `/help/paint-a-map`.
 | 4b | #8053 | v2.7225 | A picture and a page to print, which files itself on the job as a sent copy |
 | 5b | #8054 | v2.7226 | A `.kml` and a `.gpx` file |
 | 6 | #8056, #8057 | v2.7227, v2.7228 | The search door, a map on no job with *Put it on a job…*, and the layer on the Map page and the site map |
-| *Text it…* | this PR | v2.7338 | The link texted to the job's customer from the company's number, on the Share sheet, for the office |
+| *Text it…* | #8202 | v2.7338 | The link texted to the job's customer from the company's number, on the Share sheet, for the office |
 
 Both migrations are pushed and `painted-map-link` is deployed, each on the owner's yes. Each
 version's fragment says what changed from this card and why.
