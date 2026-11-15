@@ -95,6 +95,7 @@ import { JobWindowThread, JobWindowWho, PhoneFold, PhoneRow, PhoneSectionTitle }
 import { JobWindowMoreSheet } from './JobWindowMoreSheet'
 import { watchSmallPresses } from './jobWindowPressPad'
 import { CREW_FOLD_TITLES, crewBlockLabel, crewFolds, crewQuietLine, crewSheetRows, keepCrewFolds, lastNoteWords, readCrewFolds, type CrewFoldKey, type CrewNoteSource } from '../../lib/jobs/jobWindowCrewPhone'
+import { CrewTodaysWork } from './CrewTodaysWork'
 import { foldCountWords, keepPhoneFolds, nextOnSite, NOTHING_SCHEDULED, OPEN_THE_CALENDAR, PHONE_FOLDS, readPhoneFolds, waitingOnWords, type PhoneFoldKey } from '../../lib/jobs/jobWindowPhoneSections'
 import type { JobThreadStampKind } from '../../lib/jobThreadNoteStampBody'
 import { JobWindowActionBar, JobWindowNoteSheet } from './JobWindowActionBar'
@@ -724,13 +725,16 @@ function DetailJobModalFilesPlansRow({
  */
 function DetailJobModalPlans({
   job,
+  onWords,
 }: {
   job: { id: string; job_name?: string | null; click_number?: string | null; hcp_number?: string | null; job_plans_link: string | null | undefined }
+  /** The current set in a few words, for the fold that holds this on the crew's phone (punch list #355, Today's work). */
+  onWords?: (words: string) => void
 }) {
   const [state, setState] = useState<JobPlansSectionState>('loading')
   return (
     <div data-testid="detail-job-plans" data-state={state} style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
-      <JobPlansSection job={job} onState={setState} />
+      <JobPlansSection job={job} onState={setState} onCurrentWords={onWords} headingHidden={Boolean(onWords)} />
       {state === 'no-part' || state === 'failed' ? <DetailJobModalFilesPlansRow jobPlansLink={job.job_plans_link} /> : null}
     </div>
   )
@@ -1203,6 +1207,9 @@ export default function DetailJobModal({
       return next
     })
   const [crewSheetOpen, setCrewSheetOpen] = useState(false)
+  // Today's work (v2.7376): the Plans fold's words, from the section's own read, and a count a landed report bumps.
+  const [crewPlansWords, setCrewPlansWords] = useState('')
+  const [crewStageRev, setCrewStageRev] = useState(0)
   const [noteSheetOpen, setNoteSheetOpen] = useState(false)
   const jobDetailDateBandStyle = useMemo(
     (): CSSProperties =>
@@ -2547,8 +2554,9 @@ export default function DetailJobModal({
         ) : null}
 
         {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, under the address, each
-            opening its sheet. Nothing is drawn until the office types the questions. */}
-        {open && jobId ? (
+            opening its sheet. Nothing is drawn until the office types the questions. The crew's window on a phone
+            draws them in Today's work instead (v2.7376). */}
+        {open && jobId && !(phoneCrew && !fullJob) ? (
           <div style={bandSlim ? { display: 'none' } : { marginTop: '0.75rem' }}>
             <JobStageChecklistStrip jobId={jobId} plansUrl={(fullJob ?? limitedJob)?.job_plans_link} openStage={openStageChecklist} />
           </div>
@@ -2727,6 +2735,21 @@ export default function DetailJobModal({
             </>
           )
         })() : null}
+        {/* Today's work (punch list #355, v2.7376): the open stage, the checklists, the plans and what is on site,
+            fourth on the crew's phone. The limited row only: it is the crew's read, and the full body has its own Plans. */}
+        {phoneCrew && jobId && limitedJob && !fullJob && !loading && !error ? (
+          <CrewTodaysWork
+            jobId={jobId}
+            stageRev={crewStageRev}
+            plans={<DetailJobModalPlans job={{ id: limitedJob.id, job_name: limitedJob.job_name, hcp_number: limitedJob.hcp_number, job_plans_link: limitedJob.job_plans_link }} onWords={setCrewPlansWords} />}
+            plansWords={crewPlansWords}
+            plansUrl={limitedJob.job_plans_link}
+            openStage={openStageChecklist}
+            foldsOpen={crewFoldsOpen}
+            onToggleFold={toggleCrewFold}
+            onLeave={onClose}
+          />
+        ) : null}
         {phoneCrew && (scheduleContext || crewLastNote) ? (
           <>
             <PhoneSectionTitle>What's happening</PhoneSectionTitle>
@@ -3287,7 +3310,6 @@ export default function DetailJobModal({
 
         {!loading && !error && limitedJob && phoneCrew ? (
           <div data-testid="crew-window-folds">
-            {crewFold('plans', <DetailJobModalPlans job={{ id: limitedJob.id, job_name: limitedJob.job_name, hcp_number: limitedJob.hcp_number, job_plans_link: limitedJob.job_plans_link }} />)}
             {jobId
               ? crewFold(
                   'accounts',
@@ -3659,6 +3681,7 @@ export default function DetailJobModal({
           onSaved={() => {
             setLeaveReportOpen(false)
             threadNotes.reload()
+            setCrewStageRev((r) => r + 1)
             void loadDetail()
           }}
           authUserId={authUser?.id ?? null}

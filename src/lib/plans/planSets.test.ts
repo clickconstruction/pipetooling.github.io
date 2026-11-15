@@ -15,6 +15,7 @@ import {
   partNameForJob,
   type PlanPartRow,
   type PlanSetRow,
+  currentSetFoldWords,
   setLineWords,
   shortDayWords,
 } from './planSets'
@@ -92,6 +93,9 @@ describe('the words', () => {
     expect(setLineWords(set({ id: 's', kind: 'permit', source: 'gc', dated: '2026-10-14' }))).toBe('Permit set · the GC · dated Oct 14, 2026')
     expect(setLineWords(set({ id: 's', kind: 'assembled', source: 'ours', dated: null, came_at: '2026-10-30T12:00:00Z' }))).toMatch(/^Assembled set · ours · came Oct 30$/)
     expect(setLineWords(set({ id: 's', source: 'architect' }))).toContain('the architect')
+    // The crew's Plans fold (punch list #355): the kind and the day it came, short enough to share the fold's line.
+    expect(currentSetFoldWords(set({ id: 's', kind: 'permit', came_at: '2026-10-20T12:00:00Z' }))).toBe('Permit set · came Oct 20')
+    expect(currentSetFoldWords(null)).toBe('none yet')
   })
 
   it('writes the line under Building from, and nothing with no current set', () => {

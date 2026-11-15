@@ -56,7 +56,9 @@ export function watchSmallPresses(root: HTMLElement): () => void {
   }
   schedule()
   const observer = new MutationObserver(schedule)
-  observer.observe(root, { childList: true, subtree: true, characterData: true })
+  // `data-open` is a fold opening or closing (`PhoneFold`): its presses stay mounted while it is shut, measure as
+  // nothing, and need their pad the moment it opens. The pad's own attribute is not on the list, so it never loops.
+  observer.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-open'] })
   window.addEventListener('resize', schedule)
   return () => {
     observer.disconnect()
