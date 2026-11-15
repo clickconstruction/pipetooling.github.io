@@ -145,6 +145,16 @@ describe('LienBoard', () => {
     expect((section.querySelector('[data-lien-board-tiles]') as HTMLElement).style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))')
     expect(section.querySelectorAll('[data-lien-board-arrow][data-kind="cross"]')).toHaveLength(0)
     expect(section.querySelector('[data-lien-board-column="notice"] [data-lien-board-retainage]')!.textContent).toBe('Retainage · 1 to send')
+    // A phone keeps the bins behind one press, a thumb tall; the tiles always show.
+    const fold = section.querySelector('[data-lien-board-fold]') as HTMLButtonElement
+    expect(fold.textContent).toContain('Show the bins · 9')
+    expect((section.querySelector('[data-lien-board-grid]') as HTMLElement).style.display).toBe('none')
+    fireEvent.click(fold)
+    expect(fold.textContent).toContain('Hide the bins')
+    expect((section.querySelector('[data-lien-board-grid]') as HTMLElement).style.display).toBe('grid')
+    cleanup()
+    render(<LienBoard board={board()} isMobile={false} />)
+    expect(document.querySelector('[data-lien-board-fold]')).toBeNull()
     cleanup()
     render(<LienBoard board={board({ notices: [], affidavits: [] })} isMobile={false} />)
     expect(document.querySelector('[data-lien-board-empty-board]')!.textContent).toContain('Nothing is on the desk.')
@@ -161,6 +171,9 @@ describe('LienBoard', () => {
     expect(lines[0]).toEqual({ key: 'notice:needs_owner>notice:to_send', kind: 'down', d: 'M 100 60 L 100 99' })
     expect(lines[8]).toEqual({ key: 'notice:sent>affidavit:needs_property', kind: 'cross', d: 'M 200 430 H 250 V 30 L 299 30' })
     expect(lienBoardArrowPaths(b.arrows, boxes, true)).toHaveLength(8)
+    // With the columns measured the vertical run sits in the gutter between them, clear of a bin beside the notices.
+    const withColumns = { ...boxes, 'col:notice': { left: 0, top: 0, width: 240, height: 500 }, 'col:affidavit': { left: 300, top: 0, width: 240, height: 500 } }
+    expect(lienBoardArrowPaths(b.arrows, withColumns, false)[8]!.d).toBe('M 200 430 H 270 V 30 L 299 30')
     // A bin not drawn (Missed while empty) has no box and so no arrow; nothing throws.
     expect(lienBoardArrowPaths([{ from: 'notice:held', to: 'notice:missed', kind: 'down' }], boxes, false)).toEqual([])
   })

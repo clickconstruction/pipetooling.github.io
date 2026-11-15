@@ -23,10 +23,8 @@ Open the Lien desk from the orange gavel on the Pipeline's stage bar. The ☰ **
 - Approving is the one step only the leader can take. The leader sees those rows first, under **Only you can approve**, each with {{button:blue|Approve}}. The office sees them last, under **Waiting on** and the leader's name. Each says since when and shows {{button:outline|Open}}. They are not in the office's count on the To do tab. A master's own jobs are the ones he is master of. Another master's notices wait on that master by name, for a dev too.
 - Signing is the other step only the leader can take. An approved notice with no signature sits first, under **Only you can sign**, with {{button:blue|Sign}}. It opens the notice, where {{button:green|Sign ▸}} waits. The office's row says it waits on the leader by name. So does a dev's row on another master's job. The Dashboard's Needs you carries the same count for the leader.
 - The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
-- A rail above the rows shows the four steps of a notice. The steps are Find the owner, Draft notice, Approve and Send the run. Each step shows how many rows stand on it. Send the run counts the notices ready and the ones printed. Press a step and a brief opens under the rails. The brief says what the step is and why a row is on it. The brief names the usual move and the other moves you may take instead. The rows on that step come first under **On this step**. The rest follow under **On other steps**. Press {{button:outline|Every step}} to put the list back. Affidavits and retainage get rails of their own when one needs an act, with the same kind of brief.
-- On a phone the rails are one row named **Steps of each paper**. Press it to unfold the rails. Press **Hide the steps** to fold them again. A pressed step keeps the rails open.
-- A violet rail named **Reminders** sits between Notices and Affidavits once a notice has been sent. The rail's four steps are Reminder due, Reminder sent, The attorney’s letter and Closed. Reminder due counts the sent notices with nothing since the packet whose reminders week has opened. The count says beside it how many notices are still before day 7, and how many wait for reminders week. Reminder sent counts the notices a courtesy notice went to. The attorney’s letter counts the second letters drafting, waiting on the leader, in the run or sent. Closed counts the notices that are paid, answered, called about, okayed by the GC or filed on. Press a step and its brief opens, with the schedule of days across the top. The brief draws one notice's dated timeline, with today on it and every payment as a row. Press **Show another** to see a different notice. A step whose notices have no row on the list names them under the rail. Each name has {{button:outline|Open}}, which opens that notice. The strip's own guide is [read the reminders ladder on the Lien desk](/help/read-the-reminders-ladder-on-the-lien-desk).
-- The courtesy and the attorney’s letter rows sit under their own heading, **Reminders**. They are not in Needs you now. Their dots read 1/4 or 2/4 on the Reminders rail.
+- The Board sits above the rows. It is the month as one picture, with four tiles and two columns of bins. Every job is a chip in the bin of its stage. Press a bin's name to see only its rows. Read [read the Board on the Lien desk](/help/read-the-board-on-the-lien-desk).
+- The courtesy and the attorney’s letter rows sit under their own heading, **Reminders**. They are not in Needs you now. Their dots read 1/4 or 2/4 on the reminder's own ladder.
 - On a phone the rows are grouped by the day they are due, soonest first. Each heading says the day, how long is left and the money its jobs still owe. A heading reads red inside three days and amber inside a week. The groups that say whose move it is keep their names, like **Only you can approve** and **Reminders**.
 - A phone row has three lines. The first is the job and what it still owes. The second says where the paper stands. The third has the paper's chip, four dots and the row's button. A row with no button for you says whose step it is beside the dots, like *Approve · leader*.
 - Tap a phone row to open that job as its own screen. A tap on the job's name or on the dots does the same. [The desk on a phone](#the-desk-on-a-phone) says what the screen holds.
@@ -35,21 +33,13 @@ Open the Lien desk from the orange gavel on the Pipeline's stage bar. The ☰ **
 
 When nothing needs anyone, the tab says so and points you at the **By date** tab.
 
-## The lien month
+## The Board
 
-A bar across the top of **To do** shows the lien month. The month is the office's rhythm for lien work, set by the owner. The bar has five zones, each as wide as its days. A mark shows today.
+The Board sits across the top of **To do**. It shows the lien month as one picture. Four tiles count the day's load, what waits on the leader, the mail and the unpaid money. Two columns of bins hold every job as a chip. The monthly notices are on the left and the lien affidavits on the right. A chip's colour says how soon its day is. Press a bin's name and the list shows only its rows. Press {{button:outline|Show every row}} to see every row again. The Board never sends, files or moves anything. Read [read the Board on the Lien desk](/help/read-the-board-on-the-lien-desk) for every part of it.
 
-- **Reminders**, days 1 to 5. The courtesy notice goes for every lien due this month.
-- **Notices**, days 6 to 9. The § 53.056 notices due this 15th go out.
-- **Liens**, days 10 to 13. The affidavits due this 15th are filed.
-- **Catch-up**, the 14th and 15th. Whatever slipped is done here. The affidavit's copies to the owner and the GC go out here too.
-- **Nothing scheduled**, the 16th to the end. The zone shows what is already queuing for next month.
+The days of the lien month are the owner's rhythm. Reminders go on days 1 to 5. Notices go on days 6 to 9. Liens are filed on days 10 to 13. The 14th and 15th catch what slipped. The days sit in {{button:outline|§ Rules}} under **The lien month**.
 
-Each zone reads its counts. The zone today is in says how many are left and how many went, like *12 to send · 4 sent*. A zone ahead says how many are coming. A zone behind reads green with a tick when everything went. A zone behind reads red when something slipped, and names the first job. The slip carries into Catch-up.
-
-Press a zone and the list under the bar shows only that zone's rows. The bar says how many it is showing. Press the zone again or {{button:outline|Show all}} to see every row. The bar never sends, files or moves anything. A window closing with work unsent is a red count in Catch-up, and that is the whole nudge. The days sit in {{button:outline|§ Rules}} under **The lien month**.
-
-On a phone the month is one line under the tabs. The line says what is left in the zone today is in, like *9 liens to file by Mon Nov 16*. A chip says how many days are left. The words under it name the day and count what slipped earlier in the month. Press the line and the five zones open as cards in a sheet. Press a card and the sheet closes. The list then shows only that zone's rows and brings them to the top of the screen.
+Press **Lien desk** at the top of the page from any view. The To do tab opens with the Board in view.
 
 ## The four views
 

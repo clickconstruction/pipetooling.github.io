@@ -852,8 +852,11 @@ export default function LienDesk({
   const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
   const boardPick = useMemo(() => (board && boardBins ? lienBoardPick(board, boardBins) : null), [board, boardBins])
   // To do on a phone scrolls the Board, the find box and the list as one page (punch list #352, PR 0): under five
-  // stacked month cards a list that took what was left got a window 26 px tall, and no row could be reached.
-  const doNow = lienDoNowFrame(oneColumn)
+  // stacked month cards a list that took what was left got a window 26 px tall, and no row could be reached. The
+  // same holds wherever the Board's columns stack (the 768 px tablet, 2026-11-15): the Board is then taller than
+  // the screen, so the page scrolls as one and the list is not its own scroller.
+  const [boardStacked, setBoardStacked] = useState(false)
+  const doNow = lienDoNowFrame(oneColumn || boardStacked)
   const doNowRef = useRef<HTMLDivElement | null>(null)
   // There a pressed bin also brings its rows up, since the Board fills the screen and the narrowed list is under it.
   const [pickBringsRows, setPickBringsRows] = useState(0)
@@ -4151,7 +4154,7 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={(d) => { if (d.kind === 'run') { if (office) { setRunTakeBack(false); setRunOpen(true) } } else pickBoardBins(lienBoardStageBins(board, d.stage)) }} /> : <div />}
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={(d) => { if (d.kind === 'run') { if (office) { setRunTakeBack(false); setRunOpen(true) } } else pickBoardBins(lienBoardStageBins(board, d.stage)) }} /> : <div />}
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} foldsOpen={finding} waitingOn={nextUpWaitingOn} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>

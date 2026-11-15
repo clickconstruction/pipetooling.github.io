@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { lienBoardBinsShown, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 
 /**
@@ -55,8 +55,9 @@ type Line = { key: string; kind: LienBoardArrow['kind']; d: string }
 
 /**
  * The arrows as SVG paths from the bins' measured boxes, relative to the grid. A down arrow runs from the bottom
- * middle of one bin to the top middle of the next; the crossing one leaves Sent's right edge, runs along the gutter
- * and enters Needs the property facts' left edge. Pure over the measurements, so a test can read it.
+ * middle of one bin to the top middle of the next; the crossing one leaves Sent's right edge, runs up the gutter
+ * between the two columns (`col:notice` and `col:affidavit` boxes when measured, so a Held or Missed bin beside the
+ * notices never has the line behind it) and enters Needs the property facts' left edge. Pure over the measurements.
  */
 export function lienBoardArrowPaths(arrows: ReadonlyArray<LienBoardArrow>, boxes: Readonly<Record<string, { left: number; top: number; width: number; height: number } | undefined>>, stacked: boolean): Line[] {
   const out: Line[] = []
@@ -77,7 +78,11 @@ export function lienBoardArrowPaths(arrows: ReadonlyArray<LienBoardArrow>, boxes
       const x2 = to.left
       const y2 = to.top + to.height / 2
       if (x2 <= x1) continue
-      const xm = (x1 + x2) / 2
+      const colLeft = boxes['col:notice']
+      const colRight = boxes['col:affidavit']
+      const gutterFrom = colLeft ? colLeft.left + colLeft.width : x1
+      const gutterTo = colRight ? colRight.left : x2
+      const xm = gutterTo > gutterFrom ? (gutterFrom + gutterTo) / 2 : (x1 + x2) / 2
       out.push({ key: `${a.from}>${a.to}`, kind: a.kind, d: `M ${x1} ${y1} H ${xm} V ${y2} L ${x2 - 1} ${y2}` })
     }
   }
@@ -168,6 +173,7 @@ export default function LienBoard({
   onChip,
   columnsOnly,
   foot,
+  onLayout,
 }: {
   board: LienBoardModel
   isMobile: boolean
@@ -185,14 +191,24 @@ export default function LienBoard({
   columnsOnly?: boolean
   /** A line under the bins the desk adds (the leader's one press, PR 4). */
   foot?: ReactNode
+  /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
+  onLayout?: (stacked: boolean) => void
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState<boolean>(isMobile)
   const [lines, setLines] = useState<Line[]>([])
   const [pairLit, setPairLit] = useState<string | null>(null)
+  // On a phone the bins stand behind one press (2026-11-15): stacked they run a screen and a half, and the tiles
+  // already say the day; a pressed bin keeps them open. Session-only.
+  const [binsShown, setBinsShown] = useState(false)
   const notices = lienBoardBinsShown(board.notices)
   const affidavits = lienBoardBinsShown(board.affidavits)
+  const chipCount = [...board.notices, ...board.affidavits].reduce((n, b) => n + b.chips.length, 0)
+  const binsOpen = !isMobile || binsShown || Boolean(pick)
   const layout = columnsOnly ? false : stacked
+  useEffect(() => {
+    onLayout?.(layout)
+  }, [layout, onLayout])
 
   // The arrows follow the bins: measured after every paint of the grid, and again when it changes size.
   useLayoutEffect(() => {
@@ -204,9 +220,15 @@ export default function LienBoard({
       setStacked(nowStacked)
       const origin = grid.getBoundingClientRect()
       const boxes: Record<string, { left: number; top: number; width: number; height: number }> = {}
-      grid.querySelectorAll<HTMLElement>('[data-lien-board-bin]').forEach((el) => {
+      const box = (el: HTMLElement) => {
         const r = el.getBoundingClientRect()
-        boxes[el.getAttribute('data-lien-board-bin') ?? ''] = { left: r.left - origin.left, top: r.top - origin.top, width: r.width, height: r.height }
+        return { left: r.left - origin.left, top: r.top - origin.top, width: r.width, height: r.height }
+      }
+      grid.querySelectorAll<HTMLElement>('[data-lien-board-bin]').forEach((el) => {
+        boxes[el.getAttribute('data-lien-board-bin') ?? ''] = box(el)
+      })
+      grid.querySelectorAll<HTMLElement>('[data-lien-board-column]').forEach((el) => {
+        boxes[`col:${el.getAttribute('data-lien-board-column') ?? ''}`] = box(el)
       })
       setLines(lienBoardArrowPaths(board.arrows, boxes, nowStacked))
     }
@@ -215,7 +237,7 @@ export default function LienBoard({
     const ro = new ResizeObserver(() => measure())
     ro.observe(grid)
     return () => ro.disconnect()
-  }, [board, isMobile, columnsOnly, notices.length, affidavits.length])
+  }, [board, isMobile, columnsOnly, notices.length, affidavits.length, binsOpen])
 
   const column = (kind: 'notice' | 'affidavit', title: string, bins: LienBoardBin[], under: ReactNode) => {
     const flow = bins.filter((b) => !b.beside)
@@ -251,7 +273,13 @@ export default function LienBoard({
           Nothing is on the desk. Every lien paper is sent, filed or waiting on its day.
         </div>
       ) : null}
-      <div ref={gridRef} data-lien-board-grid style={{ position: 'relative', display: 'grid', gridTemplateColumns: layout ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', columnGap: 56, rowGap: 22, alignItems: 'start' }}>
+      {isMobile && !board.empty ? (
+        <button type="button" data-lien-board-fold aria-expanded={binsOpen} onClick={() => setBinsShown((v) => !v)} disabled={Boolean(pick)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 44, padding: '0 0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', font: 'inherit', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', cursor: pick ? 'default' : 'pointer', textAlign: 'left' }}>
+          <span style={{ flex: 1 }}>{binsOpen ? 'Hide the bins' : `Show the bins · ${chipCount}`}</span>
+          <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>{binsOpen ? '▴' : '▾'}</span>
+        </button>
+      ) : null}
+      <div ref={gridRef} data-lien-board-grid style={{ position: 'relative', display: binsOpen ? 'grid' : 'none', gridTemplateColumns: layout ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', columnGap: 56, rowGap: 22, alignItems: 'start' }}>
         <svg aria-hidden="true" data-lien-board-arrows style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
           <defs>
             <marker id="lienBoardArrowHead" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
