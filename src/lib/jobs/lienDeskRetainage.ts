@@ -69,7 +69,7 @@ export type LienRetainagePile = 'clock_not_started' | 'needs_owner' | 'to_draft'
 export const LIEN_RETAINAGE_PILES: ReadonlyArray<{ key: LienRetainagePile; label: string }> = [
   { key: 'clock_not_started', label: 'Clock not started' },
   { key: 'needs_owner', label: 'Needs the owner' },
-  { key: 'to_draft', label: 'To draft' },
+  { key: 'to_draft', label: 'To send' },
   { key: 'awaiting', label: 'Awaiting approval' },
   { key: 'ready', label: 'Ready to send' },
   { key: 'held', label: 'Held' },

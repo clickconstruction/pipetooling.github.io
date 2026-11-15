@@ -824,7 +824,7 @@ describe('LienDesk', () => {
   it('with the owner on file the office can send for approval or record the leader’s spoken word', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     await settle()
-    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: /To send/ }).textContent).toContain('1')
     // The passing gate is a chip; the whole sentence rides in its tooltip (v2.3522).
     expect(screen.getByTitle(/Owner of record with a mailing address — Elwick Holdings LLC/)).toBeTruthy()
     expect((document.querySelector('[data-gate="owner"]') as HTMLElement).textContent).toBe('1Owner of record✓ Elwick Holdings LLC')
@@ -1333,7 +1333,7 @@ describe('LienDesk reads the roll (v2.3450)', () => {
   it('a public owner on the record reads the bond-claim sentence and is not draftable', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true, { owner_company: 'CITY OF ROUND ROCK', owner_mailing_address: '221 E Main St, Round Rock, TX', owner_confirmed_at: '2026-09-14T00:00:00Z' })} />)
     await settle()
-    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: /To send/ }).textContent).toContain('1')
     expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('public')
     expect(screen.getAllByText(/a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond/).length).toBeGreaterThanOrEqual(2)
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
@@ -1622,7 +1622,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     fireEvent.click(within(bar).getByRole('button', { name: 'Redraw 2 on the short form…' }))
     // The confirm window says what happens to the approval, and its button names the act with the count.
     expect(await screen.findByText('Redraw 2 affidavits on the short form?')).toBeTruthy()
-    expect(screen.getByText('Each affidavit goes back to To draft on the short form. Each needs approval again before it is filed.')).toBeTruthy()
+    expect(screen.getByText('Each affidavit goes back to To send on the short form. Each needs approval again before it is filed.')).toBeTruthy()
     expect(redrawManyMock).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Redraw 2 on the short form' }))
     await waitFor(() => expect(redrawManyMock).toHaveBeenCalledTimes(1))
@@ -1676,7 +1676,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     await settle()
     const bar = document.querySelector('[data-lien-affidavit-send-all]') as HTMLElement
     expect(bar.textContent).toContain('2 drafted affidavits are ready to send.')
-    expect(bar.querySelector('[data-lien-affidavit-send-all-foot]')?.textContent).toBe('1 in To draft has no draft yet. Draft it from its own paper.')
+    expect(bar.querySelector('[data-lien-affidavit-send-all-foot]')?.textContent).toBe('1 in To send was never opened. Open it from its own paper.')
     fireEvent.click(within(bar).getByRole('button', { name: 'Send 2 for approval…' }))
     expect(await screen.findByText('Send 2 affidavits for approval?')).toBeTruthy()
     expect(screen.getByText('2 are approved at once by a GC’s standing rule and move to Ready to file.')).toBeTruthy()
@@ -1832,6 +1832,17 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(document.querySelector('[data-lien-foot-menu]')).toBeNull()
     expect(screen.queryByTestId('lien-sign-line')).toBeNull()
     expect((document.querySelector('[data-lien-affidavit-foot-line]') as HTMLElement).textContent).toContain('Ready to file. You sign it on paper before a notary.')
+  })
+
+  it('an affidavit opened and read writes no row (v2.7327): the draft saves itself only on a change', async () => {
+    saveDraftMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([])} initialKind="affidavit" />)
+    await settle()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    vi.advanceTimersByTime(2000)
+    vi.useRealTimers()
+    expect(saveDraftMock).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-lien-affidavit-saved]')).toBeNull()
   })
 
   it('the pane’s send that a standing rule approves tells nobody', async () => {
@@ -2404,7 +2415,7 @@ describe('LienDesk retainage (v2.3753)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
     await settle()
     expect(screen.getByRole('tab', { name: /Retainage notices · 1/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: /To send/ }).textContent).toContain('1')
     const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
     expect(list.textContent).toContain('complete Sep 3')
     expect(list.textContent).toContain('not yet in a § 53.056 claim')
@@ -2616,10 +2627,11 @@ describe('LienDesk · one press per draft footer (v2.7324)', () => {
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Your typed name goes on it, and it goes in the run')
   })
 
-  it('the office’s notice footer: Save draft and Already mailed? are quiet links, the one press asks the leader, and the menu closes on a press outside', async () => {
+  it('the office’s notice footer: no Save draft (v2.7327), Already mailed? a quiet link, the one press asks the leader, and the menu closes on a press outside', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" leaderNameFor={() => 'Malachi Whites'} data={ownerOn()} />)
     await settle()
-    expect((document.querySelector('[data-lien-desk-save-draft]') as HTMLElement).className).toBe('lienFootLink')
+    expect(document.querySelector('[data-lien-desk-save-draft]')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Save draft' })).toBeNull()
     expect(document.querySelector('[data-lien-desk-by-hand]')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Ask Malachi to approve ▸' }).getAttribute('title')).toBe('One line on Malachi’s phone.')
     expect(screen.queryByRole('button', { name: /Sign another way/ })).toBeNull()
@@ -2636,6 +2648,62 @@ describe('LienDesk · one press per draft footer (v2.7324)', () => {
     await settle()
     expect(screen.getByRole('button', { name: 'Sign and approve ▸' })).toBeTruthy()
     expect(Array.from(document.querySelectorAll('[data-lien-foot-menu]')).map((m) => m.getAttribute('data-lien-foot-menu'))).toEqual(['okayed', 'sign'])
+  })
+})
+
+describe('LienDesk · the draft saves itself (v2.7327)', () => {
+  const ownerOn = () => data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
+  afterEach(() => vi.useRealTimers())
+
+  it('never on open: the pane sits for two seconds and writes no row', async () => {
+    saveDraftMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={ownerOn()} />)
+    await settle()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    vi.advanceTimersByTime(2000)
+    vi.useRealTimers()
+    expect(saveDraftMock).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-lien-desk-save-draft]')).toBeNull()
+  })
+
+  it('a month ticked and the cover box set within 800 ms are one save; Saved shows beside the state line, and the desk re-reads', async () => {
+    saveDraftMock.mockClear()
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={ownerOn()} onChanged={onChanged} />)
+    await settle()
+    onChanged.mockClear()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
+    fireEvent.click(boxes[0]!)
+    vi.advanceTimersByTime(500)
+    fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
+    vi.advanceTimersByTime(700)
+    expect(saveDraftMock).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(200)
+    vi.useRealTimers()
+    await waitFor(() => expect(saveDraftMock).toHaveBeenCalledTimes(1))
+    const input = saveDraftMock.mock.calls[0]![0] as unknown as { itemId: string | null; months: string[]; coverNote: boolean }
+    expect(input.itemId).toBeNull()
+    expect(input.months).toHaveLength(2)
+    expect(input.coverNote).toBe(false)
+    await waitFor(() => expect(document.querySelector('[data-lien-desk-saved="saved"]')?.textContent).toContain('Saved'))
+    expect(onChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it('a press inside the wait saves first and once: Ask the leader after a tick writes one row and sends it', async () => {
+    saveDraftMock.mockClear()
+    submitMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={ownerOn()} />)
+    await settle()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
+    fireEvent.click(boxes[0]!)
+    vi.advanceTimersByTime(300)
+    fireEvent.click(screen.getByRole('button', { name: /to approve ▸/ }))
+    vi.advanceTimersByTime(2000)
+    vi.useRealTimers()
+    await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
+    expect(saveDraftMock).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -2695,13 +2763,13 @@ describe('LienDesk the attorney’s letter (v2.3760)', () => {
     return d
   }
 
-  it('a sent job with a new month due sits in To draft, its row saying when the notice went, its footer carrying the attorney’s letter door beside Send for approval (v2.6624, punch list #248)', async () => {
+  it('a sent job with a new month due sits in To send, its row saying when the notice went, its footer carrying the attorney’s letter door beside Send for approval (v2.6624, punch list #248)', async () => {
     // June and July noticed by the Sep 2 packet; August's window is still open, so the next notice drafts while letter two's clock runs.
     const d = data([row('j650', '2026-06', '2026-09-15', { has_owner: true, noticed: true }), row('j650', '2026-07', '2026-10-15', { has_owner: true, noticed: true }), row('j650', '2026-08', '2026-11-16', { has_owner: true })], [sentPacket], true)
     d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} />)
     await settle()
-    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: /To send/ }).textContent).toContain('1')
     expect(document.querySelector('[data-lien-pile-rows="sent"]')).toBeNull()
     const row650 = document.querySelector('[data-lien-pile-rows="to_draft"]') as HTMLElement
     expect((row650.querySelector('[data-lien-desk-sent-words]') as HTMLElement).textContent).toBe('· sent Sep 2')

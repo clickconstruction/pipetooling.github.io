@@ -36,6 +36,7 @@ import { lienStandInSourceOf, lienStandInWords } from '../../lib/jobs/lienBillMo
 import {
   holdLienDeskItem,
   pullBackLienDeskItem,
+  LIEN_DRAFT_AUTOSAVE_MS,
   saveLienDeskDraft,
   sendLienDeskItemOnWord,
   setCustomerLienNoticePolicy,
@@ -468,6 +469,16 @@ export default function LienDesk({
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [notYetOpen, setNotYetOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+  // Autosave (v2.7327): the draft row is written about 800 ms after a change to the months, the cover box, the wording,
+  // the pay lines, the enclosed release or the claim — never on open, never when nothing changed. `draftTouch` counts
+  // the changes; a forward press cancels the wait and saves first, after any save in flight, so no second row is made.
+  const [draftTouch, setDraftTouch] = useState(0)
+  const [draftSave, setDraftSave] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const draftIdRef = useRef<string | null>(null)
+  const autosaveRef = useRef<Promise<void> | null>(null)
+  const autosaveTimerRef = useRef<number | null>(null)
+  const touchDraft = () => setDraftTouch((n) => n + 1)
   const [mobileListShown, setMobileListShown] = useState(true)
   // A phone's open paper: the footer folded to one bar so the paper has the screen (punch list #352, PR 6).
   const [footFolded, setFootFolded] = useState(false)
@@ -1101,6 +1112,9 @@ export default function LienDesk({
     setPenOpen(false)
     setPenDraft(null)
     setSignWay('type')
+    setDraftTouch(0)
+    setDraftSave('idle')
+    draftIdRef.current = null
     setHoldOpen(null)
     setDetailsOpen(false)
     setNotYetOpen(false)
@@ -1256,7 +1270,10 @@ export default function LienDesk({
     const t = ev.target as HTMLElement
     const reset = t.closest<HTMLElement>('[data-reset]')?.getAttribute('data-reset')
     if (reset && isTypedNoticeField(reset)) {
-      if (!wordingLocked) setWordingEdits((e) => ({ ...e, [reset]: jobDefaults[reset] }))
+      if (!wordingLocked) {
+        setWordingEdits((e) => ({ ...e, [reset]: jobDefaults[reset] }))
+        touchDraft()
+      }
       return
     }
     const el = t.closest<HTMLElement>('[data-field]')
@@ -1284,7 +1301,10 @@ export default function LienDesk({
   }
   const commitEdit = () => {
     setEditing((e) => {
-      if (e) setWordingEdits((w) => ({ ...w, [e.key]: e.value }))
+      if (e) {
+        setWordingEdits((w) => ({ ...w, [e.key]: e.value }))
+        touchDraft()
+      }
       return null
     })
   }
@@ -1384,7 +1404,10 @@ export default function LienDesk({
     const t = ev.target as HTMLElement
     const reset = payLineInvoiceId(t.closest<HTMLElement>('[data-reset]')?.getAttribute('data-reset') ?? '')
     if (reset) {
-      if (!wordingLocked) setPayLineEdits((e) => ({ ...e, [reset]: payPage.rows.find((r) => r.invoiceId === reset)?.description ?? '' }))
+      if (!wordingLocked) {
+        setPayLineEdits((e) => ({ ...e, [reset]: payPage.rows.find((r) => r.invoiceId === reset)?.description ?? '' }))
+        touchDraft()
+      }
       return
     }
     const el = t.closest<HTMLElement>('[data-field]')
@@ -1402,7 +1425,10 @@ export default function LienDesk({
   }
   const commitPayEdit = () => {
     setPayEditing((e) => {
-      if (e) setPayLineEdits((x) => ({ ...x, [e.invoiceId]: e.value.trim() }))
+      if (e) {
+        setPayLineEdits((x) => ({ ...x, [e.invoiceId]: e.value.trim() }))
+        touchDraft()
+      }
       return null
     })
   }
@@ -1457,6 +1483,12 @@ export default function LienDesk({
   const run = async (label: string, fn: () => Promise<void>, done?: string): Promise<boolean> => {
     if (busy) return false
     setBusy(true)
+    busyRef.current = true
+    // A press saves first (v2.7327): the wait for the autosave is dropped, and its save in flight is awaited inside ensureDraft.
+    if (autosaveTimerRef.current != null) {
+      window.clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
     try {
       await fn()
       if (done) showToast(done, 'success')
@@ -1467,12 +1499,16 @@ export default function LienDesk({
       return false
     } finally {
       setBusy(false)
+      busyRef.current = false
     }
   }
 
-  const ensureDraft = async (): Promise<string> => {
+  const ensureDraft = async (fromAutosave = false): Promise<string> => {
     if (!selected) throw new Error('nothing selected')
-    const id = await saveLienDeskDraft({ itemId: item?.id ?? null, jobId: selected.jobId, months: monthsList, fields: draftFields(), coverNote, userId: authUserId })
+    // A save the autosave has in flight lands first, so the row it made is the one updated here (v2.7327).
+    if (!fromAutosave && autosaveRef.current) await autosaveRef.current.catch(() => undefined)
+    const id = await saveLienDeskDraft({ itemId: item?.id ?? draftIdRef.current, jobId: selected.jobId, months: monthsList, fields: draftFields(), coverNote, userId: authUserId })
+    draftIdRef.current = id
     // The enclosed release follows the notice (v2.4729): a claim or a month changed here is written to its draft too; a release past a draft is left as it is.
     const rel = releaseIdRef.current
     const relInput = rel ? releaseDraftInput() : null
@@ -1513,6 +1549,38 @@ export default function LienDesk({
   }
 
   const saveDraft = () => run('Save draft', async () => void (await ensureDraft()), 'Draft saved.')
+  // The autosave itself: the office's drafting notice, about 800 ms after the last change, quietly; a failure says why.
+  const canAutosave = Boolean(selected) && office && monthsList.length > 0 && (!item || item.status === 'drafted')
+  useEffect(() => {
+    if (draftTouch === 0 || !canAutosave) return
+    const t = window.setTimeout(() => {
+      autosaveTimerRef.current = null
+      if (busyRef.current) return
+      const p = (async () => {
+        setDraftSave('saving')
+        try {
+          await ensureDraft(true)
+          setDraftSave('saved')
+          onChanged()
+        } catch (e) {
+          setDraftSave('idle')
+          showToast(formatErrorMessage(e, 'The draft did not save.'), 'error')
+        }
+      })()
+      autosaveRef.current = p
+      void p.finally(() => {
+        if (autosaveRef.current === p) autosaveRef.current = null
+      })
+    }, LIEN_DRAFT_AUTOSAVE_MS)
+    autosaveTimerRef.current = t
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the count is the signal; the save reads the latest state when it fires
+  }, [draftTouch])
+  useEffect(() => {
+    if (draftSave !== 'saved') return
+    const t = window.setTimeout(() => setDraftSave('idle'), 2500)
+    return () => window.clearTimeout(t)
+  }, [draftSave])
   const sendToLeader = () =>
     run(
       'Send for approval',
@@ -1644,6 +1712,7 @@ export default function LienDesk({
       const field = d.field
       const value = d.value
       setWordingEdits((e) => ({ ...e, [field]: value }))
+      touchDraft()
       return
     }
     if (d.type === LIEN_NOTICE_PREVIEW_SAVE_MESSAGE) {
@@ -2797,8 +2866,8 @@ export default function LienDesk({
             months={monthsList}
             office={office}
             busy={busy}
-            onSave={(input) => void run('Correct the claim', async () => saveLienClaimCorrection({ jobId: selected.jobId, ...input, userId: authUserId, userName: authName }), input.amountOff > 0 ? 'The notice claims the corrected figure.' : input.amountOff < 0 ? 'Set over the balance — the leader decides this one.' : 'The notice claims the job’s figure.')}
-            onClear={() => void run('Back to the job’s figure', async () => clearLienClaimCorrection(selected.jobId), 'Cleared — the notice claims the job’s figure.')}
+            onSave={(input) => void run('Correct the claim', async () => saveLienClaimCorrection({ jobId: selected.jobId, ...input, userId: authUserId, userName: authName }).then(touchDraft), input.amountOff > 0 ? 'The notice claims the corrected figure.' : input.amountOff < 0 ? 'Set over the balance — the leader decides this one.' : 'The notice claims the job’s figure.')}
+            onClear={() => void run('Back to the job’s figure', async () => clearLienClaimCorrection(selected.jobId).then(touchDraft), 'Cleared — the notice claims the job’s figure.')}
           />
         }
         claimTail={
@@ -2824,6 +2893,7 @@ export default function LienDesk({
           if (on) next.add(key)
           else next.delete(key)
           setCheckedMonths(next)
+          touchDraft()
         }}
       />
       </div>
@@ -2836,7 +2906,7 @@ export default function LienDesk({
           ✉ To <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong> by certified mail{gc?.email ? <span className="lienFootMuted"> · courtesy PDF to {gc.email}</span> : null}
         </span>
         <label title={`Counsel's cover letter for a ${coverLetterKindFor(property)} property (2026-09-22), filled for this job — the first page of the owner's copy; the GC's copy is the form only`}>
-          <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
+          <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => { setCoverNote(ev.target.checked); touchDraft() }} />
           <span>Include counsel's cover letter</span>
         </label>
         {/* The supply houses in the owner's letter (v2.4725, Taunya's ask): one more tick, drawn only while the letter is on and a house is owed. */}
@@ -3581,6 +3651,7 @@ export default function LienDesk({
               <span className="lienFootState">
                 <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWhy ? stateWords.replace(/\.$/, '') : stateWords}
                 {stateWhy ? <span className="lienFootWhy"> · {stateWhy}</span> : null}
+                {draftSave !== 'idle' ? <span className="lienFootWhy" data-lien-desk-saved={draftSave}> · {draftSave === 'saving' ? 'Saving…' : '✓ Saved'}</span> : null}
               </span>
               <span className="lienFootSpacer" />
               {leader && !blocked ? offerSwitch() : null}
@@ -3588,9 +3659,6 @@ export default function LienDesk({
                 <button type="button" className="lienFootSkip" onClick={() => setByHandOpen(true)} disabled={busy} data-lien-desk-by-hand title="The paper was printed here and went out by hand — record when, how, what it claimed, and which jobs at the property it covered">
                   <span className="lienByHandWords">Already mailed?{' '}<br />Record it…</span>
                 </button>
-              ) : null}
-              {foot.links.includes('save') ? (
-                <button type="button" className="lienFootLink" onClick={saveDraft} disabled={busy || monthsList.length === 0} data-lien-desk-save-draft>Save draft</button>
               ) : null}
               <div className="lienFootActions">
                 {foot.menus.map((m) => (

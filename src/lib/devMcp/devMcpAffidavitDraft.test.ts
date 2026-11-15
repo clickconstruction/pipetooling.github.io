@@ -213,7 +213,7 @@ describe('affidavitDraftDryRun — the pane’s draft, and what the seat refuses
     expect(paper.county).toBe('Marlow')
     expect(paper.original_contractor).toBe('ZZ Test Builders')
     expect(paper.signer).toBe('Sam Sample, Master Plumber')
-    expect(dry.reply.desk).toEqual({ pile: 'To draft', last_work_month: '2026-09', last_work_month_from: 'the last day of work set by hand', file_by: '2026-12-15', days_left: 31 })
+    expect(dry.reply.desk).toEqual({ pile: 'To send', last_work_month: '2026-09', last_work_month_from: 'the last day of work set by hand', file_by: '2026-12-15', days_left: 31 })
     // Thirty-one days out is one past what the desk shows.
     expect(String(dry.reply.not_on_the_desk_yet)).toContain('due in 31')
     // No copy to the original contractor is on record: the desk's own line for the attorney.

@@ -99,7 +99,7 @@ export const LIEN_NEXT_UP_NOW_DAYS = 7
 
 const BUTTON: Record<LienNextUpAction, string> = {
   find_owner: 'Find the owner',
-  draft: 'Draft notice',
+  draft: 'Open the notice',
   approve: 'Approve',
   sign: 'Sign',
   confirm_pen: 'Yes, I signed it',
@@ -239,7 +239,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         push({
           ...base,
           key: `notice:${e.jobId}`,
-          sub: owedWords ?? 'Notice to draft',
+          sub: owedWords ?? 'Notice to send',
           action: 'draft',
           target: pane('to_draft'),
           ...(owedWords && canAct
@@ -298,12 +298,12 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
       case 'missed':
         // Months still open are drafted as on any other row; a closed window nobody wrote down is noted.
-        if (e.dueMonths.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'Notice to draft · a window closed', action: 'draft', target: pane('missed') })
+        if (e.dueMonths.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'Notice to send · a window closed', action: 'draft', target: pane('missed') })
         else {
           // v2.4708: every window closed unsent, but the affidavit's own window is still open — a late notice can still carry it (the owner's reading, 2026-10-06).
           const aff = input.affidavits.find((a) => a.jobId === e.jobId)
           const lateOpen = aff && aff.pile !== 'filed' && aff.deadline && aff.deadline >= input.todayYmd && e.missedMonths.length > 0
-          if (lateOpen) push({ ...base, key: `notice:${e.jobId}`, sub: 'Late notice to draft · the window closed, the affidavit is still open', dueOn: aff.deadline, daysLeft: aff.daysLeft, severity: aff.severity, action: 'draft_late', button: office ? BUTTON.draft_late : null, target: pane('missed') })
+          if (lateOpen) push({ ...base, key: `notice:${e.jobId}`, sub: 'Late notice to send · the window closed, the affidavit is still open', dueOn: aff.deadline, daysLeft: aff.daysLeft, severity: aff.severity, action: 'draft_late', button: office ? BUTTON.draft_late : null, target: pane('missed') })
           else if (e.missedUnrecorded.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'A window closed with nothing recorded', dueOn: null, daysLeft: null, severity: 'red', action: 'note_missed', button: office ? BUTTON.note_missed : null, target: pane('missed') })
         }
         break
@@ -368,7 +368,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
       }
       case 'to_draft':
-        push({ ...base, key, sub: 'Affidavit to draft', action: 'draft', button: canAct ? 'Draft affidavit' : null })
+        push({ ...base, key, sub: 'Affidavit to send', action: 'draft', button: canAct ? 'Open the affidavit' : null })
         break
       case 'awaiting': {
         const a = awaiting(e.jobId, e.item)
@@ -400,7 +400,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         push({ ...base, key, sub: 'Retainage · needs the owner of record', action: 'find_owner' })
         break
       case 'to_draft':
-        push({ ...base, key, sub: 'Retainage notice to draft', action: 'draft' })
+        push({ ...base, key, sub: 'Retainage notice to send', action: 'draft' })
         break
       case 'awaiting': {
         const a = awaiting(e.jobId, e.item)
