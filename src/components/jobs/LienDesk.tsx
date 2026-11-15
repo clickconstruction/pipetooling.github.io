@@ -149,8 +149,8 @@ import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, 
 import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
-import LienPaneHead from './LienPaneHead'
-import { LIEN_PANE_HEAD_H, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection, type LienPaneSectionKey } from '../../lib/jobs/lienPaneSections'
+import { LIEN_PANE_HEAD_H, lienPaneSections } from '../../lib/jobs/lienPaneSections'
+import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from '../../lib/jobs/lienPhonePane'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
@@ -501,8 +501,6 @@ export default function LienDesk({
     setStripH(paneScrolled ? stripRef.current?.offsetHeight ?? 0 : 0)
   }, [paneScrolled, selectedJobId])
   const paneRef = useRef<HTMLDivElement | null>(null)
-  // The pane's stacked heads (v2.4733): which section the reader is in; they stack under the pinned strip, whose height v2.4726 measures (`stripH`, 0 while it is not pinned).
-  const [litSection, setLitSection] = useState<LienPaneSectionKey | null>(null)
   // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
   const [activeGate, setActiveGate] = useState<{ key: LienGateKey; at: number } | null>(null)
   useEffect(() => {
@@ -1093,7 +1091,6 @@ export default function LienDesk({
   useEffect(() => {
     setCheckedMonths(null)
     setCoverNote(selected?.item ? selected.item.cover_note : true)
-    setLitSection(null)
     setHousesInLetter(parseLienDeskDraftFields(selected?.item?.fields)?.housesInLetter !== false)
     const storedRelease = parseLienDeskDraftFields(selected?.item?.fields)?.releaseId ?? null
     releaseIdRef.current = storedRelease
@@ -2336,50 +2333,12 @@ export default function LienDesk({
         money: formatUsdNoCents,
       })
     : []
-  const paneStripH = stripH
-  const relightPane = (host: HTMLElement) => {
-    const bodies = paneHeads
-      .map((h) => ({ key: h.key, el: host.querySelector<HTMLElement>(`[data-lien-pane-body="${h.key}"]`) }))
-      .filter((b): b is { key: LienPaneSectionKey; el: HTMLElement } => b.el != null)
-      .map((b) => ({ key: b.key, offsetTop: b.el.offsetTop }))
-    const next = litLienPaneSection(bodies, host.scrollTop, host.scrollTop > STRIP_COLLAPSE_PX ? stripH : 0, isMobile)
-    setLitSection((prev) => (prev === next ? prev : next))
-  }
-  const goToSection = (key: LienPaneSectionKey) => {
-    const host = paneRef.current
-    const i = paneHeads.findIndex((h) => h.key === key)
-    const body = host?.querySelector<HTMLElement>(`[data-lien-pane-body="${key}"]`)
-    if (!host || !body || i < 0) return
-    const scroll = (top: number, smooth: boolean) => {
-      if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
-      else host.scrollTop = top
-    }
-    const measured = () => stripRef.current?.getBoundingClientRect().height || stripH
-    const plain = lienPaneSectionScrollTop(body.offsetTop, i, 0, isMobile)
-    if (plain <= STRIP_COLLAPSE_PX) {
-      scroll(plain, true)
-      setLitSection(key)
-      return
-    }
-    if (paneScrolled) {
-      // The strip is pinned already: its height is on the page to read.
-      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured(), isMobile), true)
-      setLitSection(key)
-      return
-    }
-    // The strip will pin at the landing but is not on the page yet, so its height is a guess (the first live press
-    // landed 15 px short on a wrapped strip). Step just past the fold so it mounts, read it, then land exactly.
-    scroll(STRIP_COLLAPSE_PX + 1, false)
-    window.setTimeout(() => {
-      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured(), isMobile), true)
-      setLitSection(key)
-    }, 80)
-  }
-  const paneHead = (key: LienPaneSectionKey) => {
-    const i = paneHeads.findIndex((h) => h.key === key)
-    if (i < 0) return null
-    return <LienPaneHead section={paneHeads[i]!} index={i} count={paneHeads.length} stripHeight={paneStripH} lit={(litSection ?? paneHeads[0]?.key) === key} onGo={() => goToSection(key)} phone={isMobile} />
-  }
+  // The heads' wiring is shared with the affidavit and retainage panes since v2.7320 (`useLienPaneHeads`): which section is lit from the pane's scroll, the press that lands a section under its own head, and the head itself. The strip's height is v2.4726's `stripH`, 0 while it is not pinned.
+  const {
+    head: paneHead,
+    goTo: goToSection,
+    relight: relightPane,
+  } = useLienPaneHeads({ paneRef, sections: paneHeads, phone: isMobile, strip: { height: stripH, pinned: paneScrolled, foldPx: STRIP_COLLAPSE_PX, measure: () => stripRef.current?.getBoundingClientRect().height || stripH }, resetKey: selected?.jobId ?? null })
 
   // The scrolled strip's chips (v2.7318, the owner's rule of 2026-11-15 on JP372): only what the reader cannot see from where
   // they are, and every chip a press to the door the gate box already has. The kernel words them; this wires each act.
