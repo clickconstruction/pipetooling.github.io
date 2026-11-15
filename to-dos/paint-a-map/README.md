@@ -572,6 +572,114 @@ Each ships alone with its tests, its guide, a release note and a fragment.
 Drawing by hand is before walking on purpose. It needs no location, it proves the object, the
 block and the places, and it is the half that works on every phone.
 
+## A map on a task
+
+Taunya, 2026-11-15, reviewing this card:
+
+> I want to build both, also a tasks place carries it's painted map and I want to add paint a map
+> to checklist items, I want someone to be able to assign a task with a map.
+
+*Both* is *Text it…* and step 5. The last part is new: a painted map on a checklist item. This
+section is its design. It is drawn in [mockup.html](mockup.html), section 11. **Nothing in this
+section is built, and it waits on her yes.**
+
+### What a task is today
+
+Read on main, 2026-11-15.
+
+- **A task is words, a day and people.** It is written once, in `checklist_items`, and each day it
+  is due gets a row in `checklist_instances`. The people are `checklist_item_assignees`. A task has
+  no job.
+- **It is given in three windows.** The New task window (#331, `ChecklistAddModal` over
+  `TaskFormRows`), Checklist → Manage → Edit (`ChecklistItemEditModal`), and the Roadmap's Add task
+  and a roadmap task's own card (`ChecklistTechTreeTab`, `RoadmapTaskPlaceSection`).
+- **Since #328 it can say where.** One row, *Where*: a place (a named point) and a photo of the
+  spot. A roadmap task keeps its own place and photo, because its made row comes and goes as stages
+  unlock.
+- **The person who gets it** reads the place's name under the due line, and opens the card to a
+  small picture from above with **Directions** and **How far am I?**.
+
+### What a map attaches to
+
+- **The task as written.** `checklist_items.painted_map_id`, and the same column on a roadmap task.
+  So a repeating task carries its map every day, and one map can serve ten tasks.
+- **A pointer, not a copy.** The task shows the map as it is today. A place added next week is on
+  the task next week.
+- **No place is needed.** A trench, a route for a camera, a run of pipe: each is a line, not a
+  dot. A task may carry a place, a map, both or neither.
+- **This is step 5's column.** Step 5 sets it from a task's place. This sets it by itself. The
+  migration is the same one (`20261115063000_task_painted_maps.sql`, v2.7340).
+
+### Where the giver adds it
+
+- **One new press in the Where row: Map.** It sits beside the place and the photo, since all three
+  answer *where*. A task with no map takes the presses it takes today.
+- **The press opens *A map for this task*.** Two halves:
+  - **Paint a new one:** **Draw it by hand** or **Walk or drive it**. It opens the painting window
+    that exists. Saving there puts the new map on the task.
+  - **Or pick one that is painted:** the maps the giver can open, each with its length, its places
+    and its job. With a place on the task, the maps nearest the place come first. With none, the
+    newest.
+- **Set, the row shows the map lit** with its name, and a small picture of the line under it. A
+  press opens the map. ✕ takes it off the task and leaves the map where it is.
+- **The sentence in the bar says so:** *Marcus gets this today, with a map.*
+- **The same row** in Manage's Edit window and on a roadmap task.
+
+### Where a map painted from a task lives
+
+A painted map hangs on a job, on a development, or on nothing. A task has no job. So **a map
+painted from a task is on no job.** Its maker and the office read it, and so does whoever reads a
+task that carries it. The office can put it on a job later with **Put it on a job…**, which exists.
+Its name starts as the task's words.
+
+### Who may see it
+
+- **Whoever can read the task:** the office, the person who wrote it, and everyone it is given to.
+  Nobody else gains anything. This holds even on a job the person is not on the crew of, which is
+  the point: the task is how they were sent there.
+- **What they may do** is what anyone who reads a map may do: add a place or a stroke. They cannot
+  rename it, move it, throw it away or make a link.
+- **Take the map off the task and the read goes with it.**
+- **A task may carry only a map its giver can open.** The database holds that, so writing a task
+  never opens a map.
+- An archived account reads nothing. An account in training and a twin write nothing.
+
+### Where the person who gets the task opens it
+
+- **On the task's card,** under the due line: the paint's stroke, the map's name and its length.
+- **Opened,** the card draws the picture from above with the line and its numbered places, the way
+  a task's place draws today. Three presses: **Open the map**, **Directions to the start** and
+  **How far am I?**.
+- **Open the map** is the painted map's own window: its places with their words and photos, its
+  lengths, and **Add to it**.
+- **Directions to the start** opens the phone's maps app at the line's first point. The road gets
+  them to the gate and the line takes them from there.
+- With a place and a map together, the dot is the place and the line is the way to it. That is
+  step 5.
+
+### The PR train
+
+No new table and no new migration. Each PR ships alone with its tests, the guide, a release note
+and a fragment.
+
+| Step | What | Size |
+|---|---|---|
+| 7 | The **Map** press in the New task window and in Manage's Edit: pick a painted map, with or without a place. The sentence in the bar. | S |
+| 8 | **Paint a new one** from the task: the painting window opens for a map on no job and hands the saved map back. | S |
+| 9 | The card for a task with a map and no place: the line under the due line, the picture, the three presses. | S |
+| 10 | The Roadmap: Add task and a roadmap task's card. | S |
+| later | Today's map of a person's tasks draws each task's line with its dot. | S |
+
+### Taunya's calls
+
+1. **A map with no place.** My pick: yes. Or a map only with a place, as step 5 has it.
+2. **Where the press sits.** My pick: in the Where row. Or among the rare things in the Add row.
+3. **A map painted from a task is on no job.** My pick: yes, and the office puts it on a job later.
+   Or painting from a task asks for a job first.
+4. **May the person given the task add to the map?** My pick: yes, a place or a stroke, as a crew
+   member may. Or they only read.
+5. **The Roadmap too?** My pick: yes, as the last small PR.
+
 ## Left for later
 
 - **An area.** A closed shape and its square feet. Same doubts as a length, squared.
