@@ -4985,6 +4985,28 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .stagesStageSegTail > .stagesStageSeg {
   flex: 0 1 auto;
 }
+/* The Pipeline's own bar (v2.7336, Taunya's ask of 2026-11-15: Collections read "Collection" where the gavel began,
+   and the scales sat on the bar's right border). A stage is as wide as its words plus an even share of the spare
+   room, so no name is cut while the bar has room for them all, and the last stage's cell counts its desks' squares
+   in that width. The desks stand a stage's padding apart and the same from the bar's right edge. Only this bar:
+   the Messages, Settings and Development strips wear these classes over their own cells. */
+[data-stages-stage-bar] .stagesStageSeg,
+[data-stages-stage-bar] .stagesStageSegTail {
+  flex: 1 1 auto;
+}
+[data-stages-stage-bar] .stagesStageSegTail {
+  gap: 0.75rem;
+  padding-right: 0.75rem;
+}
+[data-stages-stage-bar] .stagesStageSegTail > .stagesStageSeg {
+  flex: 0 1 auto;
+}
+@container (max-width: 800px) {
+  [data-stages-stage-bar] .stagesStageSegTail {
+    gap: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
 /* The stage bar's desk shortcuts (v2.4520 the Lien desk's gavel; v2.5750 the Legal desk's scales before it). */
 .stagesDeskShortcut {
   position: relative;
