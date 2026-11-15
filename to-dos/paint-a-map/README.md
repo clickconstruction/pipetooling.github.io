@@ -2,7 +2,7 @@
 name: "Paint a map: walk it, drive it or draw it by hand, keep the line on the job, and share it by a link"
 number: 345
 group: close
-status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342) · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) and waits on Taunya's yes · not yet tried on a real phone
+status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342, #8207) · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) and waits on Taunya's yes · not yet tried on a real phone
 summary: >
   The owner's idea: a person walks with precise location on, the phone draws their line on a map,
   and they share it. For measuring, for showing where to drive, how to get into a place, and what
@@ -51,7 +51,7 @@ below was taken at the card's pick. The guide is `/help/paint-a-map`.
 | 6 | #8056, #8057 | v2.7227, v2.7228 | The search door, a map on no job with *Put it on a job…*, and the layer on the Map page and the site map |
 | *Text it…* | #8202 | v2.7338 | The link texted to the job's customer from the company's number, on the Share sheet, for the office |
 | 5, the column | #8204 | v2.7340 | `painted_map_id` on a task and a roadmap task, a second way to read a map (whoever reads the task), and a guard so a task points only at a map its writer can open |
-| 5, the screen | this PR | v2.7342 | **＋ Add the way in** on *Where is it?*, the paint's stroke on a place chip, and on the task the line, **Directions to the start** and **Open the map** |
+| 5, the screen | #8207 | v2.7342 | **＋ Add the way in** on *Where is it?*, the paint's stroke on a place chip, and on the task the line, **Directions to the start** and **Open the map** |
 
 The first two migrations are pushed and `painted-map-link` is deployed, each on the owner's yes.
 The third, `20261115063000_task_painted_maps.sql`, was pushed on 2026-11-15 after #8204 merged.
