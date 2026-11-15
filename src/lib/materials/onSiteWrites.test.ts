@@ -25,7 +25,7 @@ describe('parseOnSiteWrites', () => {
 describe('applyOnSiteWrites', () => {
   it('draws a new box and a press on it, in order', () => {
     const rows = applyOnSiteWrites(empty(), [box, used], 'j1', AT)
-    expect(rows.containers).toEqual([{ id: 'a1', jobId: 'j1', label: 'A1', kind: 'cage', where: 'by the stair', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: AT }])
+    expect(rows.containers).toEqual([{ id: 'a1', jobId: 'j1', label: 'A1', kind: 'cage', where: 'by the stair', said: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: AT }])
     expect(rows.movements).toHaveLength(1)
     expect(rows.movements[0]).toMatchObject({ id: 'm1', jobId: 'j1', partName: 'ZZ test elbow', quantity: 4, reason: 'used', fromContainerId: 'a1', toContainerId: null, byName: 'Mateo', at: '2026-11-13T14:59:00.000Z', itemId: null })
   })
@@ -57,6 +57,13 @@ describe('applyOnSiteWrites', () => {
     expect(piled.containers[0]).toEqual({ ...before, label: 'R70', kind: 'loose', where: 'on a pallet' })
     const cleared = applyOnSiteWrites(piled, [{ table: 'job_containers', op: 'update', id: 'a1', row: { where_note: '' } }], 'j1', AT)
     expect(cleared.containers[0]).toMatchObject({ label: 'R70', kind: 'loose', where: '' })
+    // What is in it (punch list #351): a person's words, and null when they were cleared.
+    const said = applyOnSiteWrites(cleared, [{ table: 'job_containers', op: 'update', id: 'a1', row: { description: 'PVC fittings, mixed' } }], 'j1', AT)
+    expect(said.containers[0]).toMatchObject({ label: 'R70', said: 'PVC fittings, mixed' })
+    expect(applyOnSiteWrites(said, [{ table: 'job_containers', op: 'update', id: 'a1', row: { description: null } }], 'j1', AT).containers[0]!.said).toBe('')
+    expect(applyOnSiteWrites(said, [{ table: 'job_containers', op: 'update', id: 'a1', row: { kind: 'box' } }], 'j1', AT).containers[0]!.said).toBe('PVC fittings, mixed')
+    const made = applyOnSiteWrites(empty(), [{ table: 'job_containers', op: 'insert', id: 'b2', row: { id: 'b2', job_id: 'j1', label: 'R90', kind: 'loose', where_note: '', description: 'Toilets', place_id: null } }], 'j1', AT)
+    expect(made.containers[0]).toMatchObject({ label: 'R90', said: 'Toilets' })
     // A name is never blanked by a bad row: the database would refuse it too.
     expect(applyOnSiteWrites(cleared, [{ table: 'job_containers', op: 'update', id: 'a1', row: { label: '' } }], 'j1', AT).containers[0]!.label).toBe('R70')
   })

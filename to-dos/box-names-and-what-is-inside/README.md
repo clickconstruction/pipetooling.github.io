@@ -2,7 +2,7 @@
 name: "Box names: a letter and a number, with what is inside on its own line"
 number: 351
 group: gated
-status: asked 2026-11-13 · the owner's seven calls taken 2026-11-14 · PR 1 (the name) built the same day, v2.7276 · PR 2 next
+status: asked 2026-11-13 · the owner's seven calls taken 2026-11-14 · PR 1 (the name) v2.7276 · PR 2 (what is in it) v2.7348, 2026-11-15 · stop: add ten boxes on a real site
 mockup: to-dos/box-names-and-what-is-inside/mockup.html
 summary: >
   A box's name is one free field of 24 characters, and nothing says what is in a box, so people type the
@@ -10,9 +10,9 @@ summary: >
   number from 1 to 999, and the app offers the next free one on the site, so nobody types it. What is in it
   is a line of its own, written by the app from the box's parts until a person says it better. Words typed
   into the name are moved to that line, not refused. Old names keep working, and one window tidies them.
-next: PR 2 (what is in it) in its own session, after #329's PRs 2 and 3; then the stop to add ten boxes on a real site.
-size: M as a train of four (M · M · S · S); PRs 1 and 2 close the loop
-blocker: none · PR 2 waits its turn behind #329's PRs 2 and 3 in the build order the owner approved
+next: stop: add ten boxes on a real site. A person adds them and reads whether the app's line is right. PR 3 (Tidy) and PR 4 (the line on a label) are not built before that.
+size: M as a train of four (M · M · S · S); PRs 1 and 2 are built and close the loop
+blocker: stop: add ten boxes on a real site · a person's ten boxes come before PR 3 and PR 4, and no session builds either until then
 opinion: build PRs 1 and 2, then add ten boxes on a real site before the tidy — whether the app's own line reads right is known only there
 ---
 
@@ -100,9 +100,9 @@ the name.
 
 | PR | What | Size |
 |---|---|---|
-| 1 · the name | Kernel `src/lib/materials/boxName.ts` (read a typed name, split the words off, the next free name across a site, the verdict) with tests. Add on the phone and the office page, with the kind on the office page and the last kind remembered. Edit's name field. The trigger, the combine's renumber, the dev seat. The guide | M |
-| 2 · what is in it | The column. Kernel `boxLine.ts` (the line from the parts, a person's words over it). The box's screen, both lists, the office card, the search, the scanned page, the Print labels chips. Words typed into a name land here | M |
-| | **Stop and add ten boxes on a real site.** | |
+| 1 · the name (built, v2.7276) | Kernel `src/lib/materials/boxName.ts` (read a typed name, split the words off, the next free name across a site, the verdict) with tests. Add on the phone and the office page, with the kind on the office page and the last kind remembered. Edit's name field. The trigger, the combine's renumber, the dev seat. The guide | M |
+| 2 · what is in it (built, v2.7348) | The column. Kernel `boxLine.ts` (the line from the parts, a person's words over it). The box's screen, both lists, the office card, the search, the scanned page, the Print labels chips. Words typed into a name land here | M |
+| | **Stop and add ten boxes on a real site.** The train is here since 2026-11-15. | |
 | 3 · tidy the old names | The window, its batch and its holds | S |
 | 4 · the line on a label | Only if call 4 says to print it | S |
 
@@ -153,3 +153,7 @@ one place a name can be changed, to any text, until PR 1 holds it to the rule.
 2026-11-14: **the owner took the six calls, with one change and one addition**, quoted from the session that asked him: "Yes, as picked" to (1) one to three letters then a number from 1 to 999 **and one letter after the number allowed** (`G24B`; Gun Dog has three such cages today), (2) one of a kind across the whole site, (3) the line is the app's until a person says it better, (4) the line prints on a loose pile's label only, (5) old names stay and the Tidy window changes them when the office chooses, (6) the site's letter is the one most of its live boxes carry, asked once on a site with none, and (7) a new box made from a blank sticker (#329, its call 7) takes the site's next free name, not the sticker's number, with the number shown beside it. Build order approved: PR 1 here, then #329's PR 2 and PR 3, then PR 2 (the line) and PR 3 (Tidy).
 
 2026-11-14, later: **PR 1 built** (v2.7276, migration `20261114100000_box_name_rule.sql`, `docs/recent-features/v2.7276.md`). The kernel `boxName.ts`; both Add screens open on the site's next free name with *How it sits* remembered; words typed after a name ride the where line until PR 2; Edit holds the same rule; the trigger, the carry's renumber and the seat hold it in the database; `compareLabels` already sorted `G24B` as read. A lettered twin counts its number: when `G24B` stands the next is `G25`, and `G24` is never offered, since one past the highest is the rule. The stickers card's call 7 is amended.
+
+2026-11-15: **PR 2 built** (v2.7348, migration `20261115210000_box_line.sql`, `docs/recent-features/v2.7348.md`), on Taunya's word of the same day to carry on once #329's PRs 2 and 3 had merged (v2.7272, v2.7298). The column `job_containers.description`; the kernel `boxLine.ts`, shared with `box-read`; the line on the box's screen with **Say it better**, on the phone's list and search, the office card, Go anywhere, the scanned page and the Print labels chips; a **What is in it** field on both Add screens, the sticker sheet and Edit, where words typed into a name now land. Where the mock-up left a choice: a mixed box names the two parts it holds most of, and a person's line reads *In a person's words* with no name or day, since the one column keeps neither.
+
+**Stop: add ten boxes on a real site.** This is the card's own next step and it is a person's, not a session's. Add ten boxes on a real site and read each one's line. Does the app's line say what a person would call the box? Are two names enough for a mixed one? Does anyone press Say it better? PR 3 (Tidy the names) and PR 4 (the line on a loose pile's label, call 4) wait for those answers.

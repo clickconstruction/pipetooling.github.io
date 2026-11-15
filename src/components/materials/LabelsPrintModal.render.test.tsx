@@ -61,6 +61,15 @@ describe('LabelsPrintModal', () => {
     expect(screen.getAllByTestId('labels-tape')).toHaveLength(2)
   })
 
+  it('a chip reads the name and what is in it, and the label keeps the name alone (punch list #351, PR 2)', () => {
+    const R76 = '55556666-0000-4000-8000-000000000076'
+    const boxes = [container(A1, 'A1', 'cage'), container(R76, 'R76', 'loose', { said: 'Kohler toilets' }), container(B3, 'B3', 'cage')]
+    renderWithProviders(<LabelsPrintModal jobLabel="Oak Hollow Apartments Building C" containers={boxes} lines={lines} places={places} only={null} onClose={() => {}} print={() => {}} />)
+    // A1 holds one kind of part: its name with no count. R76 reads a person's words. B3 is empty: the name alone.
+    expect(screen.getAllByTestId('labels-pick').map((b) => b.textContent)).toEqual(['A1 · 3/4" copper 90', 'R76 · Kohler toilets', 'B3'])
+    expect(screen.getAllByTestId('labels-sheet')[1]!.textContent).not.toContain('Kohler')
+  })
+
   it('a label prints the letters and number alone, the chip keeps the whole name, and a line says so (v2.7195)', () => {
     const C7 = '11112222-0000-4000-8000-000000000007'
     const D9 = '33334444-0000-4000-8000-000000000009'

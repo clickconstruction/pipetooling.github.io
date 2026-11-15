@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
-type Box = { id: string; jobId: string; label: string; kind: string; where: string; locationId: null; lat: null; lng: null; retiredAt: string | null; createdAt: string }
+type Box = { id: string; jobId: string; label: string; kind: string; where: string; said?: string; locationId: null; lat: null; lng: null; retiredAt: string | null; createdAt: string }
 const box = (id: string, label: string, kind = 'cage'): Box => ({ id, jobId: 'ja', label, kind, where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z' })
 const data = vi.hoisted(() => ({
   boxes: [] as Box[],
@@ -106,6 +106,14 @@ describe('Retire every box on this job', () => {
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Retire 2 empty boxes' }))
     await waitFor(() => expect(data.retired).toEqual(['zz2']))
     expect(await screen.findByText('Retired 1 box. 1 did not retire. ZZ9 did not retire: The office said no.')).toBeTruthy()
+  })
+
+  it('a box’s card reads what is in it under its heading: the app’s line from the parts, or a person’s words (punch list #351, PR 2)', () => {
+    data.boxes = [box('zz1', 'ZZ1'), { ...box('zz2', 'ZZ2', 'loose'), said: 'Kohler toilets' }, box('zz4', 'ZZ4'), box('un', 'Unsorted', 'unsorted')]
+    open()
+    const lines = screen.getAllByTestId('materials-box-line')
+    // ZZ1 holds one kind of part; ZZ2 was described by a person; ZZ4 is empty and Unsorted is the app's own row, so neither has a line.
+    expect(lines.map((l) => [l.getAttribute('data-by'), l.textContent])).toEqual([['app', 'Test elbow · 8from its parts'], ['person', 'Kohler toiletsin a person’s words']])
   })
 
   it('draws no row when the job has no live box', () => {

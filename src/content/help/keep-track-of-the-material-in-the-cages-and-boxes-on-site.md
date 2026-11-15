@@ -58,7 +58,7 @@ The count becomes the truth for that box. A short count is what the office reads
 
 ## Add a container or a part
 
-Tap {{button:outline|Add a container}} to add a cage, a box or a loose pile. The app fills in the next free name on this site, like R89. Change it only when the paint on the steel says something else. A name is one to three letters and a number from 1 to 999, like R76 or G24B. A name is one of a kind across the whole site. Words typed after the name are kept. R76 TOILETS becomes the name R76, and Toilets goes on the where line. Pick how it sits, say its place on the site, and tap the press that names the box. On a box, tap **Add a part** for a part that came without a delivery.
+Tap {{button:outline|Add a container}} to add a cage, a box or a loose pile. The app fills in the next free name on this site, like R89. Change it only when the paint on the steel says something else. A name is one to three letters and a number from 1 to 999, like R76 or G24B. A name is one of a kind across the whole site. Words typed after the name are kept. R76 TOILETS becomes the name R76, and Toilets moves to **What is in it**. Pick how it sits, say its place on the site, and tap the press that names the box. On a box, tap **Add a part** for a part that came without a delivery.
 
 Type the part's name. **Already on this job** lists the names the job has, with how many and in which box. Tap one when it is the same part. The new pieces go under that name, and the office reads one total. Type a new name only when the job has none like it.
 
@@ -77,6 +77,18 @@ The line at the top of the screen counts what waits. Each press goes out when th
 The office sees a press only after it lands. If the office refuses one, the line turns red and gives the reason. The box then shows the number the office holds.
 
 Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for the line and its list.
+
+## Say what is in a box
+
+Every box has one line that says what is in it. You never have to type it. Add a part and the app writes the line by itself. A box with one kind of part reads its name and count, like *Kohler toilets · 24*. A mixed box reads how many parts it holds and names the two it holds most of.
+
+The line shows under the box's name on the list and on the office page. The page a scan opens shows it too. Open a box and the line is under its name. A line the app wrote is marked *from its parts*.
+
+Tap {{button:outline|Say it better}} to put the line in your own words, like PVC fittings, mixed. Then tap {{button:blue|Save the line}}. Your words show from then on. The parts under them still count.
+
+To hand the line back to the app, clear your words. Then tap {{button:blue|Use the app’s line}}. An empty box has no line yet. Tap **Say what is in it** to give it one.
+
+Search finds a box by your words too. Type toilets and the box that says Kohler toilets is listed. **Print labels** shows each box's name with its line. That tells you which label you are printing. The printed label still carries the name alone.
 
 ## Find a box on the site
 
@@ -100,7 +112,7 @@ The office prints a run of blank stickers before the boxes exist. Each sticker c
 
 Tap **It is on a box I know** when the box is already in the app. The sheet lists every box on this site. Your job's boxes come first. Boxes with no sticker come before the rest. A box on another job of the site names that job. Type the digits of the stencil, like 76, and R76 is left in the list. You can type a place or a part too. Tap the box, then tap {{button:blue|Put 0147 on R76}}. The box keeps its name, its parts, its counts and its photos. The sticker is one more way to open it.
 
-Tap **It is a new box** when the box is not in the app yet. The sheet fills in the next free name on this site, like R97. The sticker's number is shown beside it. Change the name only when the paint on the steel says something else. Pick how it sits and its place on the site. Tap {{button:blue|Save box R97}}. The box opens with the sticker on it. Tap **Add a part** and **Photo** as you do on any box.
+Tap **It is a new box** when the box is not in the app yet. The sheet fills in the next free name on this site, like R97. The sticker's number is shown beside it. Change the name only when the paint on the steel says something else. Pick how it sits and its place on the site. **What is in it** takes your own words, and you can leave it empty. Tap {{button:blue|Save box R97}}. The box opens with the sticker on it. Tap **Add a part** and **Photo** as you do on any box.
 
 A line under the name says which job the new box goes on. Tap **Change** to pick another job. The sticker stays in hand while you pick.
 
@@ -152,6 +164,7 @@ A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box
 
 - **Its name** takes a new name. A name another box on the job carries is refused.
 - **How it sits** is Cage, Box or Loose pile. A pallet is a loose pile, and so is a thing too big for a box.
+- **What is in it** takes your own words for what the box holds. Clear it and the app writes the line from the parts again.
 - **Where exactly** says where it stands, such as on a pallet by the north door.
 - **Which place on site** moves the box to another place, or to a new one you type.
 

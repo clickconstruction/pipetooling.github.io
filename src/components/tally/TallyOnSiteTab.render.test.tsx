@@ -20,6 +20,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   addPlace: vi.fn(),
   addPhoto: vi.fn(),
   newId: () => 'id',
+  sayBoxLine: vi.fn(),
   updatePhoto: vi.fn(),
   listContainers: () => store.containers,
   listMovements: () => store.movements,
@@ -271,9 +272,57 @@ describe('TallyOnSiteTab · small things on the phone (v2.7252)', () => {
   })
 })
 
+describe('what is in a box, on a line of its own (punch list #351, PR 2)', () => {
+  it('the list row and the box’s screen read the app’s line from the parts, and Say it better sends a person’s words', async () => {
+    const storeMock = await import('../../lib/materials/onSiteStore')
+    vi.mocked(storeMock.sayBoxLine).mockClear()
+    renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId={null} />)
+    // One kind of part: its name and count, and the row no longer repeats "1 part".
+    const row = screen.getByTestId('on-site-box-row-line')
+    expect(row.textContent).toBe('ZZ test elbow · 8')
+    expect(row.getAttribute('data-by')).toBe('app')
+    fireEvent.click(row)
+    const line = await screen.findByTestId('on-site-box-line')
+    expect(line.textContent).toContain('ZZ test elbow · 8')
+    expect(line.textContent).toContain('from its parts')
+    fireEvent.click(within(line).getByRole('button', { name: /Say it better/ }))
+    const sheet = screen.getByRole('dialog', { name: 'What is in A2' })
+    const press = within(sheet).getByRole('button', { name: 'Save the line' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    fireEvent.change(within(sheet).getByLabelText('What is in it'), { target: { value: '  Elbows for   level 2 ' } })
+    expect(press.disabled).toBe(false)
+    fireEvent.click(press)
+    expect(vi.mocked(storeMock.sayBoxLine)).toHaveBeenCalledWith('j1', 'a2', 'A2', 'Elbows for level 2')
+    expect(await screen.findByText('A2 reads “Elbows for level 2” now.')).toBeTruthy()
+  })
+
+  it('a person’s words show in place of the app’s line, and clearing them hands it back', async () => {
+    const storeMock = await import('../../lib/materials/onSiteStore')
+    vi.mocked(storeMock.sayBoxLine).mockClear()
+    store.containers = [{ ...box, said: 'PVC fittings, mixed' }]
+    open()
+    const line = await screen.findByTestId('on-site-box-line')
+    expect(line.getAttribute('data-by')).toBe('person')
+    expect(line.textContent).toContain('PVC fittings, mixed')
+    expect(line.textContent).toContain('In a person’s words. The parts under it still count.')
+    fireEvent.click(within(line).getByRole('button', { name: /Say it better/ }))
+    const sheet = screen.getByRole('dialog', { name: 'What is in A2' })
+    fireEvent.change(within(sheet).getByLabelText('What is in it'), { target: { value: '' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Use the app’s line' }))
+    expect(vi.mocked(storeMock.sayBoxLine)).toHaveBeenCalledWith('j1', 'a2', 'A2', null)
+  })
+
+  it('the search lists a box by a person’s words', async () => {
+    store.containers = [{ ...box, said: 'Kohler toilets' }]
+    renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId={null} />)
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'toilet' } })
+    expect((await screen.findByTestId('on-site-hit-line')).textContent).toBe('Kohler toilets')
+  })
+})
+
 describe('Add a container under the name rule (punch list #351)', () => {
   const list = () => renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId={null} />)
-  it('opens on the site’s next free name, splits words off a typed name onto the where line, and remembers the kind', async () => {
+  it('opens on the site’s next free name, moves words typed after a name to What is in it, and remembers the kind', async () => {
     const storeMock = await import('../../lib/materials/onSiteStore')
     vi.mocked(storeMock.addContainer).mockReset()
     vi.mocked(storeMock.addContainer).mockImplementation(((input: { label: string }) => ({ ...box, id: 'new', label: input.label })) as never)
@@ -286,10 +335,11 @@ describe('Add a container under the name rule (punch list #351)', () => {
     expect(screen.getByRole('button', { name: 'Add A3' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cage' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.change(name, { target: { value: 'a5 toilets' } })
-    expect(screen.getByTestId('add-box-say').textContent).toBe('The name is A5. “Toilets” goes on the where line for now. Soon it will be the box’s own line.')
+    expect(screen.getByTestId('add-box-say').textContent).toBe('The name is A5. “Toilets” moved to What is in it.')
+    expect((screen.getByTestId('add-box-line') as HTMLInputElement).value).toBe('Toilets')
     fireEvent.click(screen.getByRole('button', { name: 'Loose pile' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add A5' }))
-    expect(vi.mocked(storeMock.addContainer)).toHaveBeenCalledWith({ jobId: 'j1', label: 'A5', kind: 'loose', where: 'Toilets', locationId: null })
+    expect(vi.mocked(storeMock.addContainer)).toHaveBeenCalledWith({ jobId: 'j1', label: 'A5', kind: 'loose', where: '', said: 'Toilets', locationId: null })
     expect(localStorage.getItem('pt.box.lastKind')).toBe('loose')
   })
 
@@ -303,7 +353,7 @@ describe('Add a container under the name rule (punch list #351)', () => {
     fireEvent.change(name, { target: { value: 'T8678' } })
     expect(screen.getByRole('alert').textContent).toBe('A number runs from 1 to 999. T8678 cannot be a name.')
     fireEvent.change(name, { target: { value: 'concrete mix' } })
-    expect(screen.getByTestId('add-box-say').textContent).toBe('No letter and number in that. The next free name is A3. “Concrete mix” goes on the where line for now. Soon it will be the box’s own line.')
+    expect(screen.getByTestId('add-box-say').textContent).toBe('No letter and number in that. The next free name is A3. “Concrete mix” moved to What is in it.')
     expect((screen.getByRole('button', { name: 'Add A3' }) as HTMLButtonElement).disabled).toBe(false)
   })
 })

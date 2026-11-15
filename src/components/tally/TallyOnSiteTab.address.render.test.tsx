@@ -24,6 +24,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   addPlace: vi.fn(),
   addPhoto: vi.fn(),
   newId: () => 'id',
+  sayBoxLine: vi.fn(),
   updatePhoto: vi.fn(),
   listContainers: (jobId: string) => store.containers.filter((c) => c.jobId === jobId),
   listMovements: () => [],
