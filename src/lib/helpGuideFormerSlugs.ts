@@ -18,6 +18,8 @@ export const HELP_GUIDE_FORMER_SLUGS: ReadonlyArray<readonly [former: string, cu
   ['tag-an-email-onto-a-job-from-your-own-mail', 'save-an-email-to-a-job-from-your-own-mail'],
   // Share with supply house became Add job account (v2.7271, punch list #355): the press requests a job account, and the packet is the request.
   ['share-job-with-supply-house', 'add-a-job-account-at-a-supply-house'],
+  // The reminders ladder left To do with the Board (v2.7332): the guide now reads the Board.
+  ['read-the-reminders-ladder-on-the-lien-desk', 'read-the-board-on-the-lien-desk'],
 ]
 
 const CURRENT_BY_FORMER = new Map<string, string>(HELP_GUIDE_FORMER_SLUGS)

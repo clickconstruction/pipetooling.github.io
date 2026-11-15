@@ -92,8 +92,17 @@ describe('the request', () => {
 
 describe('the run read back', () => {
   it('reads a sticker_runs row', () => {
-    expect(stickerRunOf(runRow)).toEqual({ id: 'run-1', jobId: 'job-juniper', count: 200, firstNumber: 101, lastNumber: 300, copies: 2, printedByName: 'Dana', printedAt: '2026-11-12T16:00:00Z' })
+    expect(stickerRunOf(runRow)).toEqual({ id: 'run-1', jobId: 'job-juniper', count: 200, firstNumber: 101, lastNumber: 300, copies: 2, printedByName: 'Dana', printedAt: '2026-11-12T16:00:00Z', names: null })
     expect(stickerRunOf({ ...runRow, job_id: null, printed_by_name: '' })).toMatchObject({ jobId: null, printedByName: '' })
+  })
+
+  it('reads a named run’s names when they are as many as its stickers, and none otherwise (v2.7312)', () => {
+    const names = Array.from({ length: 200 }, (_, i) => `G${78 + i}`)
+    expect(stickerRunOf({ ...runRow, names })).toMatchObject({ names })
+    expect(stickerRunOf({ ...runRow, names: ['G78'] })).toMatchObject({ names: null })
+    expect(stickerRunOf({ ...runRow, names: [...names.slice(0, 199), ''] })).toMatchObject({ names: null })
+    expect(mintedStickerOf({ id: 's', number: 225, code: '4f2a9c18', box_name: 'g78' })).toEqual({ id: 's', number: 225, code: '4F2A9C18', boxName: 'G78' })
+    expect(mintedStickerOf({ id: 's', number: 225, code: '4f2a9c18' })).toEqual({ id: 's', number: 225, code: '4F2A9C18', boxName: null })
   })
 
   it('is null for a row that is not a numbered run', () => {

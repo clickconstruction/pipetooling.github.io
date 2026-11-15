@@ -1,7 +1,10 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { isOfficeRole } from '../../lib/doorRoles'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { openedViaPhrase } from '../../lib/materials/jobSupplyHouseAccounts'
 import {
@@ -12,7 +15,9 @@ import {
   type JobAccountStripEntry,
   type JobAccountStripState,
 } from '../../lib/jobs/jobAccountStrip'
+import { changeNotNeededExisting, notNeededChipTitle, notNeededSheetWords } from '../../lib/jobs/jobAccountsNewJob'
 import { submitOpenJobAccountRequest } from '../../lib/jobs/openJobAccountDispatchRequest'
+import { MarkJobAccountOpenedModal } from '../materials/MarkJobAccountOpenedModal'
 
 const TEAL = '#0f766e'
 const TEAL_SOFT = '#ccfbf1'
@@ -55,7 +60,9 @@ function chipStyle(state: JobAccountStripState): CSSProperties {
  * Ferguson ✓ · Reece requested · Moore none yet. Only houses that expect a
  * job account appear (plus any house the job already has one at). Tap ✓ for
  * what to say at the counter and who to call; tap "none yet" to ask the office
- * in one tap. Renders nothing when the strip is empty or not loaded.
+ * in one tap. A not-needed chip says why, and gives the office *Change this…* (the
+ * Mark opened window) and *Take the mark off* (back to none yet). Renders nothing
+ * when the strip is empty or not loaded.
  */
 export function JobAccountsStrip({
   jobId,
@@ -77,7 +84,9 @@ export function JobAccountsStrip({
   onSheetOpenChange?: (open: boolean) => void
 }) {
   const [sheet, setSheet] = useState<{ entry: JobAccountStripEntry } | null>(null)
-  const sheetOpen = sheet != null
+  /** *Change this…* on a not-needed sheet: the Mark opened window takes the sheet's place. */
+  const [change, setChange] = useState<JobAccountStripEntry | null>(null)
+  const sheetOpen = sheet != null || change != null
   useEffect(() => {
     onSheetOpenChange?.(sheetOpen)
     return () => onSheetOpenChange?.(false)
@@ -109,7 +118,7 @@ export function JobAccountsStrip({
             stop(ev)
             setSheet({ entry: e })
           }}
-          title={e.state === 'open' ? `${e.houseName} job account open — tap for what to say at the counter` : e.state === 'none' ? `No job account at ${e.houseName} yet — tap to ask the office` : e.state === 'requested' ? `Asked ${shortDate(e.requestedAt)} — Dispatch is on it` : `Not needed: ${e.note || 'office decision'}`}
+          title={e.state === 'open' ? `${e.houseName} job account open — tap for what to say at the counter` : e.state === 'none' ? `No job account at ${e.houseName} yet — tap to ask the office` : e.state === 'requested' ? `Asked ${shortDate(e.requestedAt)} — Dispatch is on it` : notNeededChipTitle(e.note)}
           data-job-account-state={e.state}
           style={chipStyle(e.state)}
         >
@@ -120,7 +129,20 @@ export function JobAccountsStrip({
       ))}
       {sheet ? (
         sheet.entry.state === 'open' || sheet.entry.state === 'not_needed' ? (
-          <JobAccountOpenSheet entry={sheet.entry} jobLabel={jobLabel} jobAddress={jobAddress} onClose={() => setSheet(null)} />
+          <JobAccountOpenSheet
+            entry={sheet.entry}
+            jobLabel={jobLabel}
+            jobAddress={jobAddress}
+            onClose={() => setSheet(null)}
+            onChange={() => {
+              setChange(sheet.entry)
+              setSheet(null)
+            }}
+            onTakenOff={() => {
+              setSheet(null)
+              onChanged?.()
+            }}
+          />
         ) : (
           <RequestJobAccountSheet
             jobId={jobId}
@@ -136,6 +158,21 @@ export function JobAccountsStrip({
           />
         )
       ) : null}
+      {change ? (
+        <MarkJobAccountOpenedModal
+          jobId={jobId}
+          jobLabel={jobLabel}
+          house={{ id: change.houseId, name: change.houseName }}
+          existing={changeNotNeededExisting(jobId, change)}
+          reps={change.rep ? [{ id: change.rep.id, name: change.rep.name, email: '', phone: change.rep.phone }] : []}
+          initialMode="not_needed"
+          onClose={() => setChange(null)}
+          onSaved={() => {
+            setChange(null)
+            onChanged?.()
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -147,9 +184,30 @@ const kv: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto 1fr', ga
 const k: CSSProperties = { color: 'var(--text-muted)' }
 const btn: CSSProperties = { padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 7, font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer', textDecoration: 'none' }
 
-/** ✓ (and not-needed): the reference, who opened it and how, the rep to call, and the sentence for the counter. */
-function JobAccountOpenSheet({ entry, jobLabel, jobAddress, onClose }: { entry: JobAccountStripEntry; jobLabel: string; jobAddress: string | null | undefined; onClose: () => void }) {
+/**
+ * ✓ (and not-needed): the reference, who opened it and how, the rep to call, and the sentence for the counter.
+ * A not-needed house says why in the sheet's own words, and the office gets the two ways back.
+ */
+function JobAccountOpenSheet({
+  entry,
+  jobLabel,
+  jobAddress,
+  onClose,
+  onChange,
+  onTakenOff,
+}: {
+  entry: JobAccountStripEntry
+  jobLabel: string
+  jobAddress: string | null | undefined
+  onClose: () => void
+  /** *Change this…*: the host swaps this sheet for the Mark opened window. */
+  onChange: () => void
+  /** After *Take the mark off* deletes the row: the host closes and refetches. */
+  onTakenOff: () => void
+}) {
+  const { role } = useAuth()
   const { showToast } = useToastContext()
+  const [takingOff, setTakingOff] = useState(false)
   const [company, setCompany] = useState<string>(() => getPhysicalInvoiceIssuerForDocument().companyName)
   useEffect(() => {
     let cancelled = false
@@ -163,6 +221,23 @@ function JobAccountOpenSheet({ entry, jobLabel, jobAddress, onClose }: { entry: 
   const sentence = counterSentence({ companyName: company, address: jobAddress, accountRef: entry.accountRef })
   const tel = telHref(entry.rep?.phone)
   const notNeeded = entry.state === 'not_needed'
+  const canChange = notNeeded && isOfficeRole(role) && entry.accountId != null
+
+  async function takeOff() {
+    if (takingOff || !entry.accountId) return
+    setTakingOff(true)
+    try {
+      const { data, error } = await supabase.from('job_supply_house_accounts').delete().eq('id', entry.accountId).select('id')
+      if (error) throw error
+      if ((data ?? []).length === 0) throw new Error('Nothing was changed.')
+      showToast(`${entry.houseName} is back to none yet for ${jobLabel}.`, 'success')
+      onTakenOff()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not take the mark off.'), 'error')
+    } finally {
+      setTakingOff(false)
+    }
+  }
 
   async function copy() {
     try {
@@ -183,9 +258,16 @@ function JobAccountOpenSheet({ entry, jobLabel, jobAddress, onClose }: { entry: 
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{jobLabel}</span>
         </div>
         {notNeeded ? (
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-            The office decided this job does not need an account at {entry.houseName}{entry.note ? `: ${entry.note}` : '.'}
-          </p>
+          <>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)' }} data-job-account-not-needed-words>
+              {notNeededSheetWords(entry.houseName, entry.note)}
+            </p>
+            {canChange ? (
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Change this… marks it opened or takes the reason. Take the mark off puts {entry.houseName} back to none yet.
+              </span>
+            ) : null}
+          </>
         ) : (
           <>
             <div style={kv}>
@@ -222,6 +304,14 @@ function JobAccountOpenSheet({ entry, jobLabel, jobAddress, onClose }: { entry: 
           ) : null}
           {tel && entry.rep ? (
             <a href={tel} style={btn}>Call {entry.rep.name.split(' ')[0]}</a>
+          ) : null}
+          {canChange ? (
+            <>
+              <button type="button" onClick={() => void takeOff()} disabled={takingOff} style={{ ...btn, border: 'none', color: 'var(--text-muted)', textDecoration: 'underline dotted' }} data-testid="job-account-take-mark-off">
+                {takingOff ? 'Taking it off…' : 'Take the mark off'}
+              </button>
+              <button type="button" onClick={onChange} disabled={takingOff} style={btn} data-testid="job-account-change-this">Change this…</button>
+            </>
           ) : null}
           <button type="button" onClick={onClose} style={{ ...btn, border: 'none', color: 'var(--text-muted)' }}>Close</button>
         </div>

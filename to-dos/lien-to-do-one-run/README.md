@@ -1,0 +1,153 @@
+---
+name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
+number: 362
+group: gated
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · the owner leaned to D, not yet picked · nothing built
+summary: >
+  The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
+  one day fall in no order that means anything, a held paper reads "the property record is not
+  complete" without naming the one question, no affidavit row says where its notice stands, no
+  desktop row carries dollars, and twelve rows carry the same File button. The owner works liens as
+  one run: get every paper accurate and current, then print them all, mail them together and file
+  them together. Since v2.7332 the Board is the top of To do and the list is pinned in what is left
+  under it, about three rows. The mock-up draws today's desk and three answers with the Board in
+  place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
+  steps, opened from the Board's first tile). Each is the start of the next.
+next: Build B, which needs no pick (one page, then the clearer rows). Then the pick between stopping at A and going on to D.
+size: L as a train of seven (S · S · M · M · M · S · M) for D; B is the first two, A the first three
+blocker: None for B. For D's single print, whether notices and affidavits can come out of one print run.
+ver: v2.4583 · v2.6515 · v2.7247
+---
+
+# Lien desk To do: one run (#362)
+
+Mock-up: [`mockup.html`](./mockup.html), served at `/to-dos/lien-to-do-one-run/mockup.html` on the dev
+server. Tabs switch between **Today**, **B**, **A** and **D**, each drawn with the Board on top; D has
+three states of its own (*Before*, *Ready to print*, *After the print*) and the Board's chips move with
+them. A link can open on a drawing: `#today`, `#a`, `#d-ready`, `#d-after`, with `-dark` for the dark
+theme. Sample jobs (ZZ names) and made-up figures only.
+
+## The ask
+
+The owner, 2026-11-14, looking at the Lien desk's To do with 22 rows under Needs you now, all due the
+same Monday: one affidavit row said *the property record is not complete* and *ready to lien* on a job
+that had never had a notice. "Take a look holistically at how the needs you now is generated and help
+me come up with a better way to present it." Then, on the mock-up: "the way I want to do liens is I
+want to get all the information accurate and current and then I want to print them all in a batch and
+mail them all together and file them all together."
+
+That job needed no notice (contracted with the owner, so no § 53.056 notice applies), and its one hold
+was an unanswered homestead question. The row said neither.
+
+Taunya, 2026-11-15, with the Board landed (v2.7332) and a screenshot of the list as a strip under it:
+the Board "takes up most of the screen but is the most important pane", so redo the mock-ups with it
+in place. The first mock-up drew the list alone, under the step strip the Board replaced.
+
+## What exists today
+
+- `buildLienNextUp` (`src/lib/jobs/lienNextUp.ts`) folds the desk's queues (notices, affidavits,
+  retainage, letter two, liens filed and not served) into one row per paper, each with one action.
+- `groupOf` puts a row in Needs you now when its day is within `LIEN_NEXT_UP_NOW_DAYS` (7) or past;
+  `compareRows` orders by the day, then by the row's key. Rows sharing a day fall in key order.
+- `groupLienNextUp` draws the groups: the leader's sign and approve groups first, Needs you now,
+  Reminders, Coming up, then Waiting on the leader.
+- Approved notices already fold: one run row per GC (`send_run`) and one row for every printed notice
+  (`record_mailing`). Affidavits do not fold.
+- The affidavit row's hold is `fix_property` with *Affidavit · the property record is not complete*,
+  whatever the gate. `gateAct` in `src/lib/jobs/lienActWords.ts` already words each gate on its own
+  (*Answer the homestead question*, *Add the GC's address*…), and the To do row does not use it.
+- The step popover (`src/lib/jobs/lienNextUpSteps.ts`) says *The office drafts it from the notice
+  already sent* on every affidavit, true or not.
+- `src/components/jobs/LienDeskNextUp.tsx` draws the rows. The phone layout already carries dollars
+  (`lienPhoneGroups`); the desktop row does not.
+- The Board (`LienBoard.tsx` over `lienBoard.ts`, v2.7332) is the top of To do: four tiles, then the
+  notices' and the affidavits' bins with a chip a job. It orders the papers by stage; the list under it
+  orders the same papers by day. A bin's head narrows the list.
+- The list is pinned under the Board as its own scroller (`lienDoNowFrame`'s `pinned`). Measured on prod
+  data, 2026-11-15: the Board is 577 px tall at 1440 × 900 and the list 127 px; at 1024 × 768 the list
+  is 32 px and starts below the bottom of the screen. The frame goes to one page only when the Board's
+  columns stack, under 760 px.
+
+## The three answers (in the mock-up)
+
+Each keeps the Board whole and is the start of the next.
+
+- **B · One page, clearer rows.** The Board and the list scroll as one page. Once the Board is out of
+  view the find box pins to the top with the Board's numbers and **↑ The Board**. A pressed bin narrows
+  the list, as today, and brings it up. The rows carry dollars, the notice line on every affidavit
+  (*Notice sent Oct 14*, *No notice needed · contracted with the owner*, *No notice on record*) and the
+  held paper's one question on the row and on its button; within a day, ready before held, then largest
+  first. The smallest change: the list still runs by day and ten rows still carry the same button.
+- **A · The list follows the Board.** Under the Board the list is drawn in the Board's order: one group
+  for each bin, under the bin's name, tomorrow's papers first and everything later under one line. A
+  pressed bin goes to its group. Papers that share one act fold into a batch row with a total and one
+  button (*10 affidavits ready to file · Print 10*), so sixteen rows become seven.
+- **D · One run.** The owner's way of working, opened from the Board's first tile (*21 by tomorrow*),
+  as three steps in order under the Board:
+  1. **Get it right.** The tile's red line, *8 will not make tomorrow as they stand*, written out as one
+     checklist counting down: an unanswered homestead question, a missing owner or GC address, a month
+     dated from when the job was typed in, a notice written and not sent for approval, an approval
+     waiting, an *ask the attorney first* flag. Each is one question with the chips it holds, its own
+     button and **Leave out**, so one stuck paper never holds the run.
+  2. **Print the run.** One button, live only when step 1 reads zero or everything left is left out.
+     It says when every paper was last right and the stack's order (help sheet, notices by contractor,
+     affidavits by county clerk), and names what was left out with a way to put it back.
+  3. **Out the door.** Mail (every envelope's number, one window) and File (affidavits grouped by
+     county clerk, then the copies owed to each owner within five days).
+
+  The chips move on the Board as the run moves: settled papers gather in *In the run* and *Ready to
+  file*, a paper left out turns dashed where it stands. After the print, a paper whose record changed
+  turns amber on the Board and says what changed (*a payment came in; the affidavit says X and the
+  record now says Y*) with Reprint, It stands, or Take it out. A tally line keeps printed, mailed,
+  filed, left out and changed side by side.
+
+The first mock-up's C (ready and held, two columns) is dropped: the Board's bins already split what is
+ready from what waits on a fact. The owner liked A most of the first four, then asked whether it could
+go further toward the batch; D is that. He has not picked between A and D.
+
+## A train for D
+
+1. **One page** (S): To do scrolls as one page wherever the Board leaves the list too little room, and
+   the find box pins with the Board's numbers and the way back. B's first half.
+2. **The clearer rows** (S): the named hold from `gateAct`, the notice line on every affidavit row,
+   dollars on the desktop row, and within a day ready before held, then largest first. B's second half.
+3. **The list by bin** (M): the groups under the Board's own names and the batch rows. This is A.
+4. **The checklist** (M): step 1 as a kernel over the desk's queues, every open question with its
+   button and a *Leave out* that the run remembers.
+5. **The gate and the one print** (M): step 2. Needs the answer below on printing notices and
+   affidavits together.
+6. **Changed since printed** (S): a fingerprint of each paper's sworn fields at print, compared on
+   every read after.
+7. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
+
+## Open questions
+
+- **One print for both kinds.** Today notices print from the run window and affidavits from the
+  Affidavits list's batch print, each with its own help sheet. Can one run carry both, or does D keep
+  two stacks under one gate?
+- **Which run.** The desk's lien month cards (Reminders 1 to 5, Notices 6 to 9, Liens 10 to 13, the
+  15th) already describe a monthly rhythm. A run is probably "everything due by this cycle's 15th".
+- **Leave out.** A paper left out of this run: does it roll to the next run by itself, or wait on a
+  person?
+
+## Related
+
+- #353: print a picked set of affidavits, and say why a job with a recorded notice still owes one. D's
+  *Leave out* and its one print answer the first half from the other side.
+- #354: a started paper stays on the desk whatever its day. D's run needs it, or a paper drafted early
+  vanishes from the run.
+- #356: the affidavit's months line on a job whose notice names other months. One of D's step 1
+  questions.
+
+## How to verify
+
+- Open the mock-up on the dev server and walk the tabs, D's three states, light and dark; scroll B
+  until the find box pins, and press a bin's name in Today, B and A.
+- When built: kernel tests over a desk with ready, held, approved and printed papers due the same day;
+  then a ZZ test run walked end to end before a live one.
+
+## Where it stands
+
+Nothing is built. The mock-up is the whole of the design so far. The owner asked for this card on
+2026-11-15 so another session can pick it up; the same day the Board landed and Taunya had the mock-up
+redrawn with it in place.

@@ -43,7 +43,7 @@ vi.mock('../../hooks/useBilledMoneyData', async (original) => {
 import JobsStagesTab, { type JobsStagesTabHandle, type JobsStagesTabProps } from './JobsStagesTab'
 import { makeJob, makeUseAuthValue, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
-import { indexPayCalendars, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from '../../lib/jobs/payCalendar'
+import { indexPayCalendars, parseBillDueDayRow, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from '../../lib/jobs/payCalendar'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
 const authValue = makeUseAuthValue()
@@ -205,6 +205,40 @@ describe('JobsStagesTab — a billed row’s Pays in line opens Pay speeds on it
       fireEvent.click(within(rowOf('job-diner')).getByRole('button', { name: 'No pay calendar on this job' }))
       expect(money.opener.openPayCalendar).toHaveBeenCalledWith({ id: 'cust-diner', name: 'Made Up Diner' }, expect.objectContaining({ job: expect.objectContaining({ id: 'job-diner' }) }))
       expect(within(rowOf('job-diner-2')).queryByRole('button', { name: 'No pay calendar on this job' })).toBeNull()
+    })
+  })
+
+  describe('one bill’s own due day (punch list #341, PR 4)', () => {
+    it('offers the press on a billed row whose payer has no calendar, and opens the window on that bill', async () => {
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: jobs() })} />)
+      await settle()
+      fireEvent.click(within(rowOf('job-diner')).getByRole('button', { name: 'This bill is due on…' }))
+      const dialog = screen.getByRole('dialog', { name: 'This bill is due on…' })
+      expect(within(dialog).getByText(/Sink Drain · Made Up Diner$/)).toBeTruthy()
+      // No calendar under this bill: the window says it reads the usual guess.
+      expect(within(dialog).getByTestId('bill-due-day-preview').textContent).toContain('With no pay calendar it reads the usual guess.')
+    })
+
+    it('reads Due on the bill’s own day, says so with its clause, and hands the window the day and what the calendar made it', async () => {
+      const cal = (over: Partial<PayCalendarRow>): PayCalendarRow => ({ payerCustomerId: 'cust-diner', jobId: null, off: false, calendar: PAY_CALENDAR_DEFAULT, setByName: null, setAt: null, ...over })
+      money.calendars = indexPayCalendars([cal({}), parseBillDueDayRow({ invoice_id: 'inv-job-diner', due_on: '2031-02-15', clause: '§ 9.4', words: 'Retainage is released 60 days after final acceptance.' })!])
+      money.opener = { openPayCalendar: vi.fn(), closePayCalendar: vi.fn() }
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: [billedJob('job-diner', 'Sink Drain', 'cust-diner', 'Made Up Diner', 1070), billedJob('job-diner-2', 'Grease Trap', 'cust-diner', 'Made Up Diner', 900)] })} />)
+      await settle()
+      const row = rowOf('job-diner')
+      expect(row.textContent).toContain('Due')
+      expect(row.textContent).toContain('Feb 15')
+      // The row gives up its Counted from press: a day the contract names counts from nothing.
+      expect(within(row).queryByTestId('pay-clock-press')).toBeNull()
+      expect(within(rowOf('job-diner-2')).getByTestId('pay-clock-press')).toBeTruthy()
+      expect(within(rowOf('job-diner-2')).getByRole('button', { name: 'This bill is due on…' })).toBeTruthy()
+      // The Due row's line says whose day it is, with its clause. The press under it names its act, so the words are on the row once.
+      expect(row.textContent?.match(/This bill’s own day · § 9\.4/g)).toHaveLength(1)
+      fireEvent.click(within(row).getByRole('button', { name: 'Change this bill’s day…' }))
+      const dialog = screen.getByRole('dialog', { name: 'This bill is due on…' })
+      expect((within(dialog).getByLabelText('The day it is due') as HTMLInputElement).value).toBe('2031-02-15')
+      expect(within(dialog).getByTestId('bill-due-day-preview').textContent).toMatch(/^By the pay calendar it is due [A-Z][a-z]{2} 10\.On its own day it is due Feb 15\.$/)
+      expect(within(dialog).getByRole('button', { name: 'Clear this bill’s own day' })).toBeTruthy()
     })
   })
 

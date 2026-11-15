@@ -41,7 +41,7 @@
  */
 import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel, type BilledPayRowInput } from './billedDuePay'
-import { usuallyLandsShort, usuallyLandsWords, type PayCalendarArg } from './payCalendar'
+import { billOwnDueShort, billOwnDueWords, recordLandsShort, recordLandsWords, type PayCalendarArg } from './payCalendar'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
 import { LIEN_LATE_NOTICE_ACT, LIEN_ROW_PRESS_SENTENCE, lienActFor, lienDayGuessSentence, lienRowTip, type LienAct } from './lienActWords'
@@ -263,8 +263,10 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       action: moneyAction,
       title: moneyTitle,
       // The day leads: the row is narrow and cuts the tail. The hover carries the math.
-      sub: usuallyLandsShort(dueYmd, stat.lateness) ?? 'No payment on record yet',
-      subTitle: usuallyLandsWords(dueYmd, stat.lateness) ?? 'No payment of theirs is measured yet, so the due day is the best guess there is.',
+      // A job on its own calendar says whose record it is (punch list #341, PR 3): its own payments, or its payer's until it has two.
+      // A bill with its own due day says so, with its clause (punch list #341, PR 4): no record is replayed against a date named once.
+      sub: stat.ownDue ? billOwnDueShort(stat.ownDue) : recordLandsShort(dueYmd, stat.record),
+      subTitle: stat.ownDue ? billOwnDueWords(stat.ownDue) : recordLandsWords(dueYmd, stat.record, row?.payerName),
     })
   } else if (moneyYmd && moneyTo != null) {
     const tone: LedgerTone = inCollections ? 'red' : moneyPast ? 'amber' : 'green'
@@ -279,7 +281,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       dot: 'filled',
       action: moneyAction,
       title: moneyTitle,
-      sub: promised && promised.dueYmd ? `due ${formatYmdMonthDay(promised.dueYmd)} by their pay calendar` : promised && stat ? `expected ${formatYmdMonthDay(stat.expectedYmd)} by their history` : '',
+      sub: promised && promised.dueYmd ? `due ${formatYmdMonthDay(promised.dueYmd)} by ${promised.ownDue ? 'this bill’s own day' : 'their pay calendar'}` : promised && stat ? `expected ${formatYmdMonthDay(stat.expectedYmd)} by their history` : '',
     })
   }
 

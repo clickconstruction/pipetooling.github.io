@@ -12,7 +12,8 @@
  * window behind **Use the print window instead**, as the labels window keeps it. A run that stops part way says how
  * many went and the press becomes *Print the rest, 0163 to 0300*. Opened on a run already minted (the fold's
  * **Reprint** and **Print the rest**) it mints nothing and prints what it was handed. **Export the stickers as a CSV**
- * writes the run for Brother's own editor. The words are `lib/materials/stickerRun.ts`.
+ * writes the run for Brother's own editor. The words are `lib/materials/stickerRun.ts`. **What the stickers will look
+ * like** (v2.7304, `StickerPreviewFold.tsx`) at the foot of the ask draws the run's strips before the press.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -56,6 +57,7 @@ import { TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB
 import { printRootCss } from '../../lib/printRoot'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
+import StickerPreviewFold from './StickerPreviewFold'
 import TapeStripBitmap from './TapeStripBitmap'
 
 const BLUE = '#2563eb'
@@ -390,6 +392,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
             shownStrips.flatMap((s) => Array.from({ length: testOnly ? 1 : copies }, (_, copy) => domStrip(s, copy)))
           )}
         </div>
+        {/* What the stickers will look like (v2.7304): the run's real numbers through the printer's own drawing, above the presses, closed until this device opens it. */}
+        {stage === 'ask' ? <div className="on-site-stickers-chrome" style={{ marginTop: '0.75rem' }}><StickerPreviewFold lastNumber={last} count={count} copies={copies} width={width} /></div> : null}
         <div className="on-site-stickers-chrome" style={{ position: 'sticky', bottom: '-1rem', margin: '0.75rem -1.25rem -1rem', padding: '0.6rem 1.25rem 0.8rem', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'grid', gap: '0.4rem' }} data-testid="stickers-foot">
           {slip ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="stickers-slip">{slip}</div> : null}
           {minting ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-minting">{STICKER_MINTING}</div> : null}

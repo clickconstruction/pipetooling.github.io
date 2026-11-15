@@ -7,7 +7,8 @@
 # The same bed as scripts/pgtest-dev-clock-session-write.sh: the Supabase Postgres image migrated through
 # pgtest_migrate (every file in supabase/migrations in order, or in CI the leg's migrated copy), then the move's
 # migration a second time, which must change nothing. The scenario plays dev_on_site_move_job through RLS as a dev, an
-# estimator, a helper, a dev in training and a twin, inside one transaction that rolls back: every refusal, a dry run
+# estimator, a helper, a dev in training and a twin, and since v2.7305 the office's on_site_move_job as a controller and
+# an archived assistant among the refused, inside one transaction that rolls back: every refusal, a dry run
 # that reports and unwinds, the apply (a same-name place, Unsorted on both sides, a label the target already holds, a
 # retired box, a box's own move, photos filed and waiting), a replay refused, a move onto a job with nothing on site, a
 # fold that changes what a line reads, and the trigger that gives a new row its container's job. It raises on its first
@@ -23,12 +24,14 @@ NAME="pgtest-on-site-move"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # The move and the photos' due mark (#297), each applied a second time below, then the v2.7265 carry last: both older
 # files redefine on_site_carry_job (and the move on_site_job_counts and dev_on_site_move_job), so the newest bodies must
-# be re-applied after them or the scenario reads the older ones; the name rule (v2.7276) restates the carry again, last.
+# be re-applied after them or the scenario reads the older ones; the name rule (v2.7276) restates the carry again, and the
+# office's door (v2.7305) restates dev_on_site_move_job over the shared body, last.
 PRESSES=(
   supabase/migrations/*_on_site_move_job.sql
   supabase/migrations/*_box_photo_refile_due.sql
   supabase/migrations/*_on_site_carry_job_renames_ties_prices_runs.sql
   supabase/migrations/*_box_name_rule.sql
+  supabase/migrations/*_on_site_move_job_office.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

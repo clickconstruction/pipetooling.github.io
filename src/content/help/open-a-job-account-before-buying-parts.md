@@ -46,7 +46,13 @@ You may rather call the rep yourself. The number is on the sheet. The office sti
 
 ## For the office: when the job is made
 
-A new job saves, and the contract question is answered. Then a second question appears: **Job accounts for J1018?** You pick the houses the job will buy from: {{chip:blue|Ferguson}} {{chip:blue|Reece}} {{chip:gray|Moore Supply}}. Then you press {{button:blue|Send to Dispatch}}. The ask lands in the Dispatch inbox that day. So the account is open before the first parts run. **None needed** records it for every house so nothing signals. **Later** just closes.
+A new job saves, and the contract question is answered. Then a second question appears: **Job accounts for J1018?** You pick the houses the job will buy from: {{chip:blue|Ferguson}} {{chip:blue|Reece}} {{chip:gray|Moore Supply}}. Then you press {{button:blue|Send to Dispatch}}. The ask lands in the Dispatch inbox that day. So the account is open before the first parts run. **Later** just closes.
+
+**None needed…** asks why first. Tap a reason such as {{chip:gray|Service call}}, or type your own. Then press {{button:blue|Mark 3 houses not needed}}. Every house reads not needed with that reason, so nothing signals.
+
+Pressed it by mistake? Open the job and tap the {{chip:gray|not needed}} chip. **Change this…** marks the account opened or takes a new reason. **Take the mark off** puts the house back to none yet. The two presses are for the office.
+
+An older job may read *Marked not needed when the job was made. No reason was given.* That answer came from one press, before the question asked why.
 
 Another job at the same address may already have an open account at a house. Then a teal band offers to carry it over: {{chip:green|Same Ferguson account · JA-4114}}. It copies the reference, how it was opened and the rep. So the office never asks Curly twice for one property.
 

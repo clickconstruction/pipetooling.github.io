@@ -25,6 +25,22 @@ describe('LienDeskFindBox (v2.4721)', () => {
     expect(document.activeElement).toBe(screen.getByTestId('lien-desk-find-input'))
   })
 
+  it('is a quiet line (v2.7315): no border and no fill at rest, the clear with no fill, the / key drawn only for the hover and focus rules', () => {
+    const { rerender } = render(<LienDeskFindBox value="" onChange={() => {}} matched={12} isMobile={false} />)
+    const box = screen.getByTestId('lien-desk-find')
+    expect(box.hasAttribute('data-lien-find-quiet')).toBe(true)
+    expect(box.className).toBe('lienFind')
+    expect(box.style.border).toBe('')
+    expect(box.style.background).toBe('')
+    expect(box.style.margin).toBe('')
+    expect(box.style.paddingLeft).toBe('0.9rem')
+    expect(box.style.height).toBe('47px')
+    expect(document.querySelector('.lienFindKey')?.textContent).toBe('/')
+    rerender(<LienDeskFindBox value="dud" onChange={() => {}} matched={2} isMobile={false} />)
+    expect(screen.getByTestId('lien-desk-find-clear').style.background).toBe('none')
+    expect(document.querySelector('.lienFindKey')).toBeNull()
+  })
+
   it('on a phone the box is a thumb tall, its words are 16 px so an iPhone does not zoom the page, and × is a thumb wide (punch list #352, PR 5)', () => {
     const view = render(<LienDeskFindBox value="dud" onChange={() => {}} matched={2} isMobile />)
     expect(screen.getByTestId('lien-desk-find').style.minHeight).toBe('44px')

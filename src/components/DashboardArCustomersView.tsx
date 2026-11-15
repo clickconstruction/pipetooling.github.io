@@ -21,7 +21,7 @@ import {
 } from '../lib/arCustomerRollup'
 import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
 import type { OpenBillTone } from '../lib/jobs/moneyWaiting'
-import { calendarBillWords, payCalendarWords } from '../lib/jobs/payCalendar'
+import { calendarBillWords, payCalendarWords, payerCalendarLead } from '../lib/jobs/payCalendar'
 import type { CustomerSegment } from '../lib/jobs/billedExpectedPay'
 import { lienArCustomerChip, lienArLensCounts, lienArLensMatch, type LienArChip, type LienArLens } from '../lib/jobs/lienArChip'
 import { LienArChipLine, LienArCustomerChipTag } from './LienArChipTag'
@@ -209,7 +209,7 @@ export default function DashboardArCustomersView({
       <div key={b.item.key} style={{ padding: '0.4rem 0', borderTop: idx > 0 ? '1px solid var(--border)' : 'none' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.55rem' }}>
           <span
-            title={(b.waitDays != null ? `${b.waitDays} days since billing` : 'No bill date on this row') + (b.calendar ? `. On their pay calendar it is ${calendarBillWords(b.calendar)}` : '')}
+            title={(b.waitDays != null ? `${b.waitDays} days since billing` : 'No bill date on this row') + (b.calendar ? `. ${b.calendar.billOwn ? 'On its own due day' : 'On their pay calendar'} it is ${calendarBillWords(b.calendar)}` : '')}
             style={{ fontWeight: 700, borderRadius: 9999, padding: '0 7px', fontSize: '0.68rem', flexShrink: 0, fontVariantNumeric: 'tabular-nums', background: tone.bg, color: tone.fg }}
           >
             {b.waitDays != null ? `${b.waitDays}d` : '—'}
@@ -251,11 +251,15 @@ export default function DashboardArCustomersView({
     const lienHead = lienChips ? lienArCustomerChip(row.bills.map((b) => ({ label: b.item.label, chip: b.item.jobId ? lienChips.get(b.item.jobId) ?? null : null }))) : null
     const worst = BILL_TONE[row.worstTone]
     const onCalendar = row.calendar != null
+    // Punch list #341, PR 4: the bill furthest past is past its own due day, with no calendar behind it.
+    const billOwn = row.billOwn === true && row.pastExpectedDays != null
     const jobs = new Set(row.bills.map((b) => b.item.jobId ?? b.item.key)).size
     const avgDays = row.ownMedianDays ?? row.baselineDays
     const paceTitle =
-      row.calendar != null
-        ? `Pays on a calendar. ${payCalendarWords(row.calendar)} ${row.pastExpectedDays != null ? `A bill is ${row.pastExpectedDays}d past the day it was expected.` : 'No bill is past the day it was expected.'}`
+      billOwn
+        ? `A bill is ${row.pastExpectedDays}d past its own due day.`
+        : row.calendar != null
+        ? `${payerCalendarLead(null, row.calendarOwn === true)} ${payCalendarWords(row.calendar)} ${row.pastExpectedDays != null ? `A bill is ${row.pastExpectedDays}d past the day it was expected.` : 'No bill is past the day it was expected.'}`
         : row.ownMedianDays != null
         ? `Waiting ${row.oldestWaitDays ?? '—'}d — usually pays in ~${row.ownMedianDays}d (their own median)`
         : row.baselineDays != null
@@ -321,7 +325,7 @@ export default function DashboardArCustomersView({
           <span title={paceTitle} style={{ textAlign: 'right', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             <b style={{ color: worst.fg }}>{row.oldestWaitDays != null ? `${row.oldestWaitDays}d` : '—'}</b>
             <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-              {row.oldestWaitDays == null ? 'undated' : onCalendar ? (row.pastExpectedDays != null ? `${row.pastExpectedDays}d past exp.` : 'pay calendar') : avgDays != null ? `${avgDays}d avg` : ''}
+              {row.oldestWaitDays == null ? 'undated' : billOwn ? `${row.pastExpectedDays}d past due` : onCalendar ? (row.pastExpectedDays != null ? `${row.pastExpectedDays}d past exp.` : 'pay calendar') : avgDays != null ? `${avgDays}d avg` : ''}
             </span>
           </span>
           <span

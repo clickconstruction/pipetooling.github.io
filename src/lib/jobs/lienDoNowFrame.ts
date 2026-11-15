@@ -31,7 +31,7 @@ const ONE_PAGE: LienDoNowFrame = {
   listScrolls: false,
 }
 
-/** `oneColumn` is the desk drawn in one column: a phone, or the stacked layout. */
+/** `oneColumn` is the desk drawn in one column: a phone, the stacked layout, or (v2.7332) the Board's columns stacked under 760 px, where the Board is taller than the screen. */
 export function lienDoNowFrame(oneColumn: boolean): LienDoNowFrame {
   return oneColumn ? ONE_PAGE : PINNED
 }

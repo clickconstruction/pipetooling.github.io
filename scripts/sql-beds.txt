@@ -19,6 +19,7 @@ lien-claim
 lien-hand-day
 lien-bill-months
 customer-sends-trail
+lien-closed-paid-activity
 sub-sheet-stamps
 gc-papers
 gc-trade-sign-sow
@@ -118,3 +119,4 @@ person-engagements
 dev-seat-kept-plans
 receipt-texts
 painted-maps
+sticker-names

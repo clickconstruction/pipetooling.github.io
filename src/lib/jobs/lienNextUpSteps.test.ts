@@ -3,7 +3,7 @@ import type { LienNextUpRow } from './lienNextUp'
 import { countLienSteps, lienLaddersShown, lienRunRungWords, lienStepCard, lienStepBrief, lienStepGroups, lienStepName, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
-  key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · AXO Schertz', sub: 'Notice to draft', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
+  key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · AXO Schertz', sub: 'Notice to send', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
   ...over,
 })
 

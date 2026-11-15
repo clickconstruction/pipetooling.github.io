@@ -19,7 +19,7 @@
 import type { FinancialItem } from './dashboardFinancials'
 import { billWaitTone, type OpenBillTone } from './jobs/moneyWaiting'
 import { PAY_SPEED_MIN_SAMPLES, daysBetweenYmd, type CustomerSegment, type PaySpeedData } from './jobs/billedExpectedPay'
-import { calendarBillRead, calendarFor, latenessAgainst, type CalendarBillRead, type PayCalendar, type PayCalendarIndex, type PayCalendarLateness } from './jobs/payCalendar'
+import { billCalendarRead, calendarFor, calendarSourceFor, latenessAgainst, payerCalendarSummary, type CalendarBillRead, type PayCalendar, type PayCalendarIndex, type PayCalendarLateness } from './jobs/payCalendar'
 
 export type ArCustomerBill = {
   item: FinancialItem
@@ -45,12 +45,16 @@ export type ArCustomerRow = {
   pastPace: boolean
   /** The worst tone among the bills: what colours the row's wait. */
   worstTone: OpenBillTone
-  /** The customer's Pay calendar; null when they have none. */
+  /** The calendar the line reads (punch list #341, PR 3): the one behind the bill furthest past its expected day, else the customer's own; null with neither. */
   calendar: PayCalendar | null
-  /** Their record against that calendar; null with no calendar or nothing measured. */
+  /** That calendar is one job's own, not the customer's; absent reads as the customer's. */
+  calendarOwn?: boolean
+  /** The record that calendar was scored on; null with no calendar or nothing measured. */
   lateness: PayCalendarLateness | null
   /** The most days any bill is past its expected day; null when none is, or with no calendar. */
   pastExpectedDays: number | null
+  /** The bill furthest past is past its own due day, with no calendar behind it (punch list #341, PR 4). */
+  billOwn?: boolean
   /** Longest wait first, undated last; amount breaks ties. */
   bills: ArCustomerBill[]
 }
@@ -86,8 +90,10 @@ export function buildArCustomerRollup(
       bills: [],
     }
     acc.open += item.amount
-    const cal = customerId ? calendarFor(payCalendars, { payerId: customerId, jobId: item.jobId }) : null
-    acc.bills.push({ item, waitDays, calendar: cal && customerId ? calendarBillRead(item.dateYmd, cal, latenessAgainst(paySpeeds?.receipts[customerId], cal), todayYmd) : null })
+    // The modal's bill items are keyed `inv:<id>`: that id finds a bill's own due day (punch list #341, PR 4), which needs no customer on the job.
+    const invoiceId = item.key.startsWith('inv:') ? item.key.slice(4) : null
+    const read = customerId || invoiceId ? calendarSourceFor(payCalendars, { payerId: customerId, jobId: item.jobId, invoiceId }) : null
+    acc.bills.push({ item, waitDays, calendar: read && (read.ownDue || (read.calendar && customerId)) ? billCalendarRead(read, item.dateYmd, customerId ? paySpeeds?.receipts[customerId] : null, todayYmd) : null })
     byCustomer.set(customerId, acc)
   }
 
@@ -111,8 +117,10 @@ export function buildArCustomerRollup(
       .sort((a, b) => (b.waitDays ?? -1) - (a.waitDays ?? -1) || b.item.amount - a.item.amount)
     // Past pace is one bill past its yardstick. For waits that is the oldest past the baseline, as it always was.
     const isPastPace = bills.some((b) => b.tone === 'warn' || b.tone === 'late')
-    const calendar = customerId ? calendarFor(payCalendars, { payerId: customerId }) : null
-    const pastExpected = bills.reduce((max, b) => Math.max(max, b.calendar?.daysPastExpected ?? 0), 0)
+    // The line reads its bills (punch list #341, PR 3): a job on its own calendar that is past its day lends the line that calendar and its record.
+    const payerCalendar = customerId ? calendarFor(payCalendars, { payerId: customerId }) : null
+    const summary = payerCalendarSummary({ calendar: payerCalendar, lateness: payerCalendar && customerId ? latenessAgainst(paySpeeds?.receipts[customerId], payerCalendar) : null }, bills.map((b) => b.calendar))
+    const calendar = summary.calendar
     billCount += bills.length
     if (isPastPace) {
       pastPace.count++
@@ -133,8 +141,10 @@ export function buildArCustomerRollup(
       bills,
       worstTone: bills.some((b) => b.tone === 'late') ? 'late' : isPastPace ? 'warn' : oldestWaitDays != null && (baselineDays != null || calendar) ? 'ok' : 'undated',
       calendar,
-      lateness: calendar && customerId ? latenessAgainst(paySpeeds?.receipts[customerId], calendar) : null,
-      pastExpectedDays: calendar && pastExpected > 0 ? pastExpected : null,
+      calendarOwn: summary.own,
+      lateness: summary.lateness,
+      pastExpectedDays: summary.pastExpectedDays,
+      billOwn: summary.billOwn === true,
     })
   }
 

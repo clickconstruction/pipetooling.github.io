@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import LienTimelineStrip from './LienTimelineStrip'
+import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
 import { buildLienTimeline } from '../../lib/jobs/lienTimeline'
 import { setLienTimelineView } from '../../hooks/useLienTimelineView'
 
@@ -31,6 +31,20 @@ const timeline = buildLienTimeline({
 })
 
 describe('LienTimelineStrip — Steps · Windows', () => {
+  it('the pane can lift the switch to its title line (v2.7317): switchOutside keeps the box bare, and LienTimelineViewSwitch drives the same view', () => {
+    setLienTimelineView('steps')
+    const { container } = render(
+      <>
+        <LienTimelineViewSwitch />
+        <LienTimelineStrip timeline={timeline} layout="row" switchOutside />
+      </>,
+    )
+    expect(container.querySelectorAll('[data-lien-timeline-switch]').length).toBe(1)
+    expect(container.querySelector('[data-lien-timeline] [data-lien-timeline-switch]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Windows' }))
+    expect(container.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('windows')
+  })
+
   it('the Legal desk’s scope opens on Windows and remembers its own choice apart from the Lien window’s (v2.6104)', () => {
     setLienTimelineView('steps')
     const { container, unmount } = render(<LienTimelineStrip timeline={timeline} layout="row" viewScope="desk" />)
@@ -121,7 +135,10 @@ describe('LienTimelineStrip — whose move, the demand letter, Waiting on (v2.38
     expect((letter.querySelector('span[aria-hidden]') as HTMLElement).style.borderRadius).toBe('3px')
     expect(container.querySelector('[data-lien-timeline-step="affidavit"] [data-lien-timeline-move="ours"]')?.textContent).toBe('ours')
     expect(container.querySelector('[data-lien-timeline-step="notice:2026-07"] [data-lien-timeline-move]')).toBeNull()
-    expect(container.querySelector('[data-lien-timeline-waiting]')?.textContent).toBe('Waiting onthe GC— a reply to the Sep 14 demand letter by Sep 28 · $8,940')
+    expect(container.querySelector('[data-lien-timeline-waiting]')?.textContent).toBe('Waiting on the GC — a reply to the Sep 14 demand letter by Sep 28 · $8,940')
+    // Not our move (v2.7321): the quiet tag at the band's right, and no press.
+    expect(container.querySelector('[data-lien-timeline-waiting-tag]')?.textContent).toBe('Waiting on the GC')
+    expect(container.querySelector('[data-lien-timeline-act]')).toBeNull()
   })
 
   it('the list carries the word as a chip in front of the step; the mini row carries neither word nor line', () => {
@@ -214,7 +231,7 @@ describe('LienTimelineStrip — one story (v2.4652): job 890 read Oct 20, the li
     const verdict = container.querySelector('[data-lien-timeline-verdict]')!
     expect(verdict.getAttribute('data-tone')).toBe('red')
     expect(verdict.textContent).toContain('Lien: gone. Money: still owed — chase it in Collections.')
-    expect(verdict.querySelector('[data-lien-timeline-waiting]')?.textContent).toContain('Waiting onus')
+    expect(verdict.querySelector('[data-lien-timeline-waiting]')?.textContent).toContain('Waiting on us')
     expect(verdict.compareDocumentPosition(container.querySelector('[data-lien-timeline-windows]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
   it('July\'s closed window is a struck bar, the lien a dotted ghost under it with no date, the axis three months', () => {

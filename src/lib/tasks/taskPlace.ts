@@ -22,6 +22,8 @@ export type TaskPlace = TaskPlacePoint & {
   accuracyM: number | null
   setBy: string | null
   setAt: string | null
+  /** The painted map that leads to the place (punch list #345, step 5), or none. Whoever reads the task reads the map. */
+  mapId?: string | null
 }
 
 /** The place as `checklist_items` holds it. Every column is null on a task with no place. */
@@ -32,10 +34,12 @@ export type TaskPlaceColumns = {
   place_accuracy_m: number | null
   place_set_by: string | null
   place_set_at: string | null
+  /** The painted map the task carries (#345). Its own column, written with the place: a place brings its way in. */
+  painted_map_id: string | null
 }
 
-/** The select list for a read that wants the place. */
-export const TASK_PLACE_SELECT = 'place_name,place_lat,place_lng,place_accuracy_m,place_set_by,place_set_at'
+/** The select list for a read that wants the place, with the painted map that leads to it. */
+export const TASK_PLACE_SELECT = 'place_name,place_lat,place_lng,place_accuracy_m,place_set_by,place_set_at,painted_map_id'
 
 /** What a place with no name is called. A name is asked for, never required. */
 export const TASK_PLACE_UNNAMED = 'A place'
@@ -72,20 +76,22 @@ export function taskPlaceFromRow(row: Partial<TaskPlaceColumns> | null | undefin
     accuracyM: typeof accuracy === 'number' && Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null,
     setBy: row.place_set_by ?? null,
     setAt: row.place_set_at ?? null,
+    mapId: typeof row.painted_map_id === 'string' && row.painted_map_id ? row.painted_map_id : null,
   }
 }
 
 /**
  * The columns to write. A place writes all six, and no place writes six nulls, so a save can never
- * leave a name behind without its point (the table's check would refuse it).
+ * leave a name behind without its point (the table's check would refuse it). The painted map that
+ * leads to the place is written with it, and goes when the place goes.
  */
 export function taskPlaceColumns(
-  place: (TaskPlacePoint & { name?: string | null; accuracyM?: number | null }) | null,
+  place: (TaskPlacePoint & { name?: string | null; accuracyM?: number | null; mapId?: string | null }) | null,
   by: string | null,
   nowIso: string,
 ): TaskPlaceColumns {
   if (!place || !isTaskPlacePoint(place.lat, place.lng)) {
-    return { place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null }
+    return { place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null, painted_map_id: null }
   }
   const accuracy = place.accuracyM
   return {
@@ -95,6 +101,7 @@ export function taskPlaceColumns(
     place_accuracy_m: typeof accuracy === 'number' && Number.isFinite(accuracy) && accuracy >= 0 ? Math.round(accuracy) : null,
     place_set_by: by,
     place_set_at: nowIso,
+    painted_map_id: place.mapId?.trim() || null,
   }
 }
 
@@ -132,18 +139,22 @@ export function matchingTaskPlace(place: TaskPlace | null, offered: ReadonlyArra
   return offered.find((o) => sameTaskPlace(o, place)) ?? null
 }
 
-/** The place as the giver is setting it: not yet saved, so no setter and no day. */
-export type TaskPlaceDraft = TaskPlacePoint & { name: string; accuracyM: number | null }
+/**
+ * The place as the giver is setting it: not yet saved, so no setter and no day. `mapId` is the
+ * painted map that leads to it (#345), and `mapName` is that map's name when the window knows it,
+ * for the chip. Neither is asked for: a place with no way in is the common place.
+ */
+export type TaskPlaceDraft = TaskPlacePoint & { name: string; accuracyM: number | null; mapId?: string | null; mapName?: string | null }
 
 /** A saved place back into the giver's hands, for the Edit window. */
 export function taskPlaceDraft(place: TaskPlace | null): TaskPlaceDraft | null {
-  return place ? { lat: place.lat, lng: place.lng, name: place.name === TASK_PLACE_UNNAMED ? '' : place.name, accuracyM: place.accuracyM } : null
+  return place ? { lat: place.lat, lng: place.lng, name: place.name === TASK_PLACE_UNNAMED ? '' : place.name, accuracyM: place.accuracyM, ...(place.mapId ? { mapId: place.mapId } : {}) } : null
 }
 
 /** Has the giver changed the place? Compared as written, so opening and closing the sheet on the same ring is no change. */
 export function taskPlaceDraftChanged(a: TaskPlaceDraft | null, b: TaskPlaceDraft | null): boolean {
   if (!a || !b) return a !== b
-  return a.lat !== b.lat || a.lng !== b.lng || cleanTaskPlaceName(a.name) !== cleanTaskPlaceName(b.name) || a.accuracyM !== b.accuracyM
+  return a.lat !== b.lat || a.lng !== b.lng || cleanTaskPlaceName(a.name) !== cleanTaskPlaceName(b.name) || a.accuracyM !== b.accuracyM || (a.mapId ?? null) !== (b.mapId ?? null)
 }
 
 /** A drag past this takes the ring off the phone's reading: about 10 ft, more than a map settles by on its own. */

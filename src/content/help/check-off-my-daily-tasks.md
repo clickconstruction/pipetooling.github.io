@@ -74,6 +74,17 @@ The line under the buttons says who set the place and when. A machine moves and 
 
 With no signal the picture may not load. The task says so. **How far am I?** still works, since your phone finds itself without a signal.
 
+### When the way in is painted
+
+Some places come with a painted map. An orange stroke sits beside the place's name.
+
+Open the task. The picture shows the orange line that leads to the spot. A line under the picture names the map and says about how long it is.
+
+- {{button:blue|Directions to the start}} opens your phone's maps app at the start of the line. The road gets you to the gate. The line takes you from there.
+- {{button:outline|Open the map}} opens the painted map. It shows every place on the line, with its words and photo.
+
+You can add a place you find to the map. [Add a place](/help/paint-a-map#add-a-place) shows how.
+
 ## Add a place to a task that has none
 
 Some tasks come with no place. If you are standing at the task, you can add its place yourself.

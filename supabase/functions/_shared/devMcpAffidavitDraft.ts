@@ -7,7 +7,7 @@
 // short form's mark. The row is the app's own: the dry run reads the desk's reader for the job
 // (list_lien_affidavit_windows over GET), fills in the three facts the desk fills in (the GC's address, a public
 // owner, the homestead answer), and runs the desk's queue (gcKernels/lib/jobs/lienDeskAffidavits.ts →
-// buildLienAffidavitQueue), so it drafts only what the pane would: a job in To draft with every gate closed behind
+// buildLienAffidavitQueue), so it drafts only what the pane would: a job in To send (the pile called To draft until v2.7327) with every gate closed behind
 // it. A job the desk does not list, one still missing a property fact and one whose paper is already past a draft
 // are each refused in words, with the door.
 //
@@ -187,7 +187,7 @@ export async function readAffidavitDraftWorld(reads: AffidavitDraftReads, p: Aff
 export type AffidavitDraftWrite = { kind: 'insert'; row: Json } | { kind: 'update'; itemId: string; patch: Json }
 export type AffidavitDryRun = { ok: true; reply: Json; write: AffidavitDraftWrite } | { ok: false; refused: string }
 
-const NOT_DONE = 'A draft alone. It is not sent for approval, approved, held, printed, signed or filed, and nobody is told. The person who sends it for approval presses Send for approval on the Lien desk.'
+const NOT_DONE = 'A draft alone. It is not sent for approval, approved, held, printed, signed or filed, and nobody is told. The person who sends it for approval presses Ask the leader to approve on the Lien desk.'
 const PILE_REFUSALS: Record<string, string> = {
   awaiting: 'its affidavit is already sent for approval',
   ready: 'its affidavit is already approved and ready to print',
@@ -217,7 +217,7 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
     const closed = entry.gates.filter((g) => !g.ok).map((g) => g.label)
     return { ok: false, refused: `${label}: the desk will not draft this yet. Still missing: ${closed.join(' · ')}. Fill them in on the job's property record or the GC's customer record, then plan again.` }
   }
-  if (entry.pile !== 'to_draft') return { ok: false, refused: `${label}: ${PILE_REFUSALS[entry.pile] ?? `its affidavit is in ${entry.pile}`}. Open it on the Lien desk under Affidavits; the seat drafts only a paper still in To draft.` }
+  if (entry.pile !== 'to_draft') return { ok: false, refused: `${label}: ${PILE_REFUSALS[entry.pile] ?? `its affidavit is in ${entry.pile}`}. Open it on the Lien desk under Affidavits; the seat drafts only a paper still in To send.` }
   const standing = entry.item
   if (standing && standing.status !== 'drafted') return { ok: false, refused: `${label}: the desk holds an affidavit item in status ${standing.status}, which the seat does not rewrite. Open it on the Lien desk under Affidavits.` }
 
@@ -268,7 +268,7 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
     reply: {
       action: 'affidavit_draft',
       job: { id: job.id, label },
-      desk: { pile: 'To draft', last_work_month: entry.lastMonth, last_work_month_from: monthSource, file_by: entry.deadline, days_left: entry.daysLeft },
+      desk: { pile: 'To send', last_work_month: entry.lastMonth, last_work_month_from: monthSource, file_by: entry.deadline, days_left: entry.daysLeft },
       paper_today: {
         form,
         contracted_with_the_owner: !entry.isSub,
@@ -311,6 +311,6 @@ export function affidavitDraftAppliedWords(p: AffidavitDraftPayload, label: stri
     item_id: back.id,
     status: back.status,
     wrote: write.kind === 'insert' ? 'a new draft' : 'the standing draft, refreshed',
-    next: `${label} has a drafted affidavit on the Lien desk. On the desk under Affidavits, in To draft, Send for approval ▸ sends it on; the leader approves it, and it prints from there. read_rows on job_lien_desk_items (id eq ${back.id}) reads the row back. Nothing was sent for approval, approved, printed or filed.`,
+    next: `${label} has a drafted affidavit on the Lien desk. On the desk under Affidavits, in To send, Ask the leader to approve ▸ sends it on; the leader approves it, and it prints from there. read_rows on job_lien_desk_items (id eq ${back.id}) reads the row back. Nothing was sent for approval, approved, printed or filed.`,
   }
 }

@@ -44,7 +44,11 @@ import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { useGcDifficultyStandings } from '../../hooks/useGcDifficultyStandings'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import GcDifficultyChip from './GcDifficultyChip'
-import { isOfficeRole } from '../../lib/doorRoles'
+import BidScoreHoldChip from './BidScoreHoldChip'
+import { useBidScoreReadiness } from '../../hooks/useBidScoreReadiness'
+import BidDifficultyPriceModal from './BidDifficultyPriceModal'
+import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
+import { DIFFICULTY_PRICE_WORDS, difficultyCanRate } from '../../lib/bids/difficultyPrice'
 import { bidBoardSearchPlaceholder, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
@@ -363,7 +367,11 @@ export function BidsBidBoardTab({
   const narrowViewport = useNarrowViewport660()
   // GC difficulty (punch list #357 PR 2): the rated GCs, for the chip beside the GC's name; Rate them for the office on the opened row only (PR 3: twenty links on one screen was loud).
   const gcDifficulty = useGcDifficultyStandings(true)
-  const canRateGc = isOfficeRole(useOptionalAuth()?.role)
+  // #357 PR 4: the Bid Board's price list says who may rate; the Pricing rules door opens it.
+  const difficultyPrice = useDifficultyPrice(true)
+  const boardRole = useOptionalAuth()?.role
+  const canRateGc = difficultyCanRate(difficultyPrice?.body ?? null, boardRole)
+  const [pricingRulesOpen, setPricingRulesOpen] = useState(false)
   // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.
   // On a phone the search takes its own line (`bidBoardToolsRow.ts`); the cards' width is the phone's.
   const toolsRow = bidBoardToolsRowLayout(narrowViewport)
@@ -520,6 +528,8 @@ export function BidsBidBoardTab({
   const boardCounts = useMemo(() => bidSentCounts(filteredBidsForBidBoard, { scope: sentScope, packetsByBid: gcPacketsByBid }), [filteredBidsForBidBoard, sentScope, gcPacketsByBid])
   // Bid flow facts for the rows on the board, loaded once per list (chunked, never per row).
   const bidFlowIds = useMemo(() => filteredBidsForBidBoard.map((b) => b.id), [filteredBidsForBidBoard])
+  // #360 PR 2: the priced bids the Scores tab would hold (labor not estimated, rows with no cost), for the row's chip.
+  const scoreHolds = useBidScoreReadiness(filteredBidsForBidBoard)
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(bidFlowIds)
   // Doors on the board: the Edit window, one of the five jump tabs, or the Mark reviewed action (v2.3201).
   const bidFlowReview = useBidFlowReview(filteredBidsForBidBoard)
@@ -1242,6 +1252,12 @@ export function BidsBidBoardTab({
     )
   }
 
+  /** #360 PR 2: *Can't be scored* on a priced bid the Scores tab would hold; a press to Labor while the bid is still on the desk. */
+  function renderScoreHoldChip(bid: BidWithBuilder) {
+    const hold = scoreHolds.get(bid.id)
+    return hold ? <BidScoreHoldChip hold={hold} onOpenLabor={bid.bid_date_sent ? null : () => onOpenBidTab(bid, 'labor')} /> : null
+  }
+
   function renderBidBoardBidValue(bid: BidWithBuilder) {
     return shouldShowEmptyBidValueAlert(bid) ? (
       <button
@@ -1367,6 +1383,7 @@ export function BidsBidBoardTab({
             <span style={labelStyle}>GC/Builder</span>
             {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
             {bid.customer_id ? <span style={{ marginLeft: '0.4rem' }}><GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} /></span> : null}
+            {scoreHolds.get(bid.id) ? <span style={{ marginLeft: '0.4rem' }}>{renderScoreHoldChip(bid)}</span> : null}
           </div>
           {bidDevelopmentName(bid) ? (
             <div>
@@ -1508,6 +1525,7 @@ export function BidsBidBoardTab({
                 '-'
               )}
               {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} /> : null}
+              {renderScoreHoldChip(bid)}
               {bidDevelopmentName(bid) ? (
                 <span
                   title="Development for this bid"
@@ -1764,6 +1782,7 @@ export function BidsBidBoardTab({
             </button>
           ) : null}
           {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} /> : null}
+          {renderScoreHoldChip(bid)}
           {estNorm ? <span>{gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? '' : '· '}{estNorm.name || estNorm.email}</span> : null}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             · {renderBidBoardBidValue(bid)}
@@ -1866,6 +1885,28 @@ export function BidsBidBoardTab({
               <path d="M64 128C64 110.3 78.3 96 96 96L544 96C561.7 96 576 110.3 576 128L576 160C576 177.7 561.7 192 544 192L96 192C78.3 192 64 177.7 64 160L64 128zM96 240L544 240L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 240zM248 304C234.7 304 224 314.7 224 328C224 341.3 234.7 352 248 352L392 352C405.3 352 416 341.3 416 328C416 314.7 405.3 304 392 304L248 304z" />
             </svg>
             {workingBoardArchivedBids.length > 0 ? `(${workingBoardArchivedBids.length})` : ''}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPricingRulesOpen(true)}
+            title="Pricing rules: what a GC's difficulty rating costs on a bid"
+            aria-label={DIFFICULTY_PRICE_WORDS.door}
+            style={{
+              padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
+              <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+            {narrowViewport ? null : DIFFICULTY_PRICE_WORDS.door}
           </button>
           <button
             type="button"
@@ -2338,6 +2379,7 @@ export function BidsBidBoardTab({
       )}
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
       {replyBookOpen ? <BidReplyBookModal book={replyBook} onClose={() => setReplyBookOpen(false)} /> : null}
+      {pricingRulesOpen ? <BidDifficultyPriceModal role={boardRole} onClose={() => setPricingRulesOpen(false)} /> : null}
       {robotKeyOpen ? <RobotIconKeyModal onClose={() => setRobotKeyOpen(false)} /> : null}
       {filesWindow
         ? (() => {

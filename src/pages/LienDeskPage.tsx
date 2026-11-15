@@ -200,6 +200,8 @@ export default function LienDeskPage() {
   // and ← Notices return to the list; a notice reached by a link goes to the list in its own place.
   const openedFromList = Boolean((location.state as { fromList?: boolean } | null)?.fromList)
   const onOpenNotice = useCallback((jobId: string, pile: LienDeskPile | null) => navigate(lienDeskHref({ kind: 'notice', job: jobId, pile }), { state: { fromList: true } }), [navigate])
+  // A zoom from the Board or a job number (v2.7333): the paper is an entry of its own, so Back returns to To do at the Board.
+  const onZoomAddress = useCallback((a: { kind: 'notice' | 'affidavit'; job: string; pile: LienDeskPile | null }) => navigate(lienDeskHref({ kind: a.kind, job: a.job, pile: a.pile }), { state: { fromBoard: true } }), [navigate])
   const onShowList = useCallback(() => {
     if (openedFromList) navigate(-1)
     else navigate(lienDeskHref({ kind: 'notice', pile: address.pile }), { replace: true })
@@ -216,6 +218,15 @@ export default function LienDeskPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordsDoor])
   const ownerRecordsDesk = useMemo(() => ownerRecordsFromDesk(ownerRecords ? data : null), [ownerRecords, data])
+  // The run over the desk (v2.7328): `?run=<item id>&mail=1` is the sheet's code, scanned on a phone — consumed once, the same way.
+  const [runDoor, setRunDoor] = useState<{ itemId: string; mail: boolean; key: number } | null>(null)
+  const runAsked = address.run
+  useEffect(() => {
+    if (!runAsked) return
+    setRunDoor({ ...runAsked, key: Date.now() })
+    navigate(lienDeskHref({ kind: address.kind, job: address.job, pile: address.pile }), { replace: true, state: location.state })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runAsked])
 
   // A way back: the page behind when there is one, else the Pipeline, as `/accounts-receivable` does.
   const canGoBack = hasInAppHistory(typeof window !== 'undefined' ? window.history.state : null, location.key)
@@ -282,6 +293,7 @@ export default function LienDeskPage() {
       <LienDesk
         layout={isMobile ? 'stacked' : 'columns'}
         onOpenNotice={onOpenNotice}
+        onZoomAddress={onZoomAddress}
         onShowList={onShowList}
         backDoor={backDoor}
         onAddressChange={onAddressChange}
@@ -302,6 +314,7 @@ export default function LienDeskPage() {
         initialJobId={address.job}
         initialKind={address.kind ?? LIEN_DESK_DEFAULT_KIND}
         initialPile={address.pile}
+        openRun={runDoor}
         calendarRows={calendarRows}
         onCalendarChanged={(what) => {
           // The pen (v2.4153): a promise re-reads the pay dates; a kind or a last day re-reads the clocks; the desk's own queue follows either.

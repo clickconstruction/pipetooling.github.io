@@ -159,7 +159,7 @@ export function buildPaymentChaseQueue(
       todayYmd,
       promises?.[job.id] ?? null,
       paceInputFor(pace ?? null, { payerId: pace_.id, jobId: job.id, sentFromHere: sentFromHereOf(r.inv) }, paySpeeds),
-      calendarSourceFor(payCalendars, { payerId: pace_.id, jobId: job.id }),
+      calendarSourceFor(payCalendars, { payerId: pace_.id, jobId: job.id, invoiceId: r.inv.id }),
     )
     if (!model) continue // no clock to be late against — the forecast's 'unknown' bucket
     const number = effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'

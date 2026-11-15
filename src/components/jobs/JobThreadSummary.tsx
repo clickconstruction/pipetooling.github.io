@@ -51,8 +51,9 @@ export function JobThreadSummary({
   const press: CSSProperties = narrow ? { ...smallBtn, minHeight: 36, padding: '6px 14px', fontSize: '0.84rem' } : smallBtn
   if (summary?.empty) {
     // Nothing written down yet: one quiet line, no fold and no presses, so an empty job keeps its window for the job.
+    // Plain muted words like the photos line above it (v2.7326): the blue box it had read as a field waiting for words.
     return (
-      <p data-testid="job-thread-summary" data-empty="true" aria-label={title} style={{ margin: '0 0 0.75rem', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+      <p data-testid="job-thread-summary" data-empty="true" aria-label={title} style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         {summary.emptyLine}
       </p>
     )

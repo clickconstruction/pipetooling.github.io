@@ -37,6 +37,8 @@ A bill is green until its expected day. The expected day is the due day plus how
 
 A customer with every bill still ahead of its expected day is on pace. Their bills fold into the quiet line at the bottom.
 
+One job can be on a calendar of its own. That job's bill is read against that calendar. When that bill is the one furthest past its day, the small line reads *a job's own pay calendar*.
+
 :::example The same three bills, read two ways
 Larkfield Construction pays the 10th of the next month. Their money usually lands 6 days after.
 By the wait, a bill in on Oct 20 looks 33 days slow on Nov 22.

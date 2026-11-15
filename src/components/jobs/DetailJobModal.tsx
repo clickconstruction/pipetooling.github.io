@@ -2008,6 +2008,7 @@ export default function DetailJobModal({
                 }}
                 title={jobAccountShareIconTitle(jobAccountShares ?? [], (iso) => new Date(iso).toLocaleDateString())}
                 aria-label="Add job account"
+                data-word="Job account"
                 data-job-account={jobAccountOnFile ? 'on-file' : undefined}
                 style={{
                   display: 'inline-flex',
@@ -2041,6 +2042,7 @@ export default function DetailJobModal({
                 }}
                 title="Email the paid-in-full report"
                 aria-label="Email the paid-in-full report"
+                data-word="Paid report"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2097,6 +2099,7 @@ export default function DetailJobModal({
                 }}
                 title="Open the job calendar — days scheduled, who, and every appointment"
                 aria-label="Open the job calendar"
+                data-word="Calendar"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2132,6 +2135,7 @@ export default function DetailJobModal({
                 disabled={!sendJobAsTaskReady}
                 title="Send this job to someone as a task"
                 aria-label="Send job as a task"
+                data-word="Send"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2167,6 +2171,7 @@ export default function DetailJobModal({
                 }}
                 title="Make change order on this job"
                 aria-label="Make change order"
+                data-word="Change order"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2194,6 +2199,7 @@ export default function DetailJobModal({
                   }}
                   title="Edit job"
                   aria-label="Edit job"
+                  data-word="Edit"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -2222,7 +2228,7 @@ export default function DetailJobModal({
             </div>
             ) : null}
             {/* Share anchors the far right (owner call, v2.1706). */}
-            <ShareJobButton jobId={jobId} fields={shareFields} size={18} padding="0.35rem" color="var(--text-600)" />
+            <ShareJobButton jobId={jobId} fields={shareFields} size={18} padding="0.35rem" color="var(--text-600)" word="Share" />
             {!paneMode ? (
               <button
                 type="button"

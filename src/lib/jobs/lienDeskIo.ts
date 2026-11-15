@@ -29,6 +29,9 @@ function draftJson(fields: LienDeskDraftFields): Json {
 }
 
 /** Create or refresh the draft (status stays / becomes `drafted`). Returns the row id. */
+/** The draft's own save waits this long after the last change (v2.7327): long enough to tick two months in one write, short enough that a press right after finds the row. */
+export const LIEN_DRAFT_AUTOSAVE_MS = 800
+
 export async function saveLienDeskDraft(input: {
   itemId: string | null
   jobId: string
@@ -196,7 +199,7 @@ export async function redrawLienAffidavitsShort(
 
 /**
  * Send every drafted affidavit for approval (punch list #305, v2.6918): each paper is its own write, the pane's own
- * **Send for approval ▸**, and the batch keeps going past one that fails. A paper that did not take stays in To draft.
+ * **Send for approval ▸**, and the batch keeps going past one that fails. A paper that did not take stays in To send.
  */
 export async function submitLienAffidavits(
   papers: ReadonlyArray<{ jobId: string; itemId: string; outcome: LienSubmitOutcome }>,

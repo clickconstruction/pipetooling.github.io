@@ -20,9 +20,11 @@ export type BidPricedMargin = {
   rateSet: boolean
   bidVersionId: string | null
   at: string | null
+  /** Of the cost, the part that is the GC difficulty lines (punch list #357, PR 4); absent or 0 before v2.7301. */
+  difficultyUsd?: number
 }
 
-export type PricedMarginStampInput = { revenueUsd: number; costUsd: number; uncostedUsd: number; rateSet: boolean }
+export type PricedMarginStampInput = { revenueUsd: number; costUsd: number; uncostedUsd: number; rateSet: boolean; difficultyUsd?: number }
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 const num = (v: unknown): number | null => {
@@ -41,6 +43,8 @@ export function pricedMarginStampInput(args: {
   totalCost: number
   uncostedRevenue: number
   laborRate: number | null | undefined
+  /** The difficulty lines' dollars inside `totalCost` (punch list #357, PR 4); none when absent. */
+  difficultyCost?: number
 }): PricedMarginStampInput | null {
   const revenue = args.rows.reduce((s, r) => s + (r.unitPrice != null && r.unitPrice > 0 && Number.isFinite(r.count) ? r.unitPrice * r.count : 0), 0)
   if (!(revenue > 0)) return null
@@ -49,6 +53,7 @@ export function pricedMarginStampInput(args: {
     costUsd: round2(Math.max(0, Number(args.totalCost) || 0)),
     uncostedUsd: round2(Math.max(0, Number(args.uncostedRevenue) || 0)),
     rateSet: Number(args.laborRate) > 0,
+    difficultyUsd: round2(Math.max(0, Number(args.difficultyCost) || 0)),
   }
 }
 
@@ -81,7 +86,7 @@ export function mayStampPricedMargin(args: {
  */
 export function pricedMarginStampOnScreen(args: {
   bid: { id: string; bid_date_sent?: string | null } | null | undefined
-  derived: { rows: ReadonlyArray<{ unitPrice: number | null | undefined; count: number }>; totalCost: number; uncostedRevenue: number; rate: number | null | undefined } | null
+  derived: { rows: ReadonlyArray<{ unitPrice: number | null | undefined; count: number }>; totalCost: number; uncostedRevenue: number; rate: number | null | undefined; difficultyCost?: number } | null
   selectedBidVersionId: string | null | undefined
   bidVersions: ReadonlyArray<{ id: string; customer_id?: string | null; is_alternate?: boolean | null }>
   viewingPricingId: string | null | undefined
@@ -95,7 +100,7 @@ export function pricedMarginStampOnScreen(args: {
   return {
     bidId: bid.id,
     bidVersionId: versionId,
-    input: d ? pricedMarginStampInput({ rows: d.rows, totalCost: d.totalCost, uncostedRevenue: d.uncostedRevenue, laborRate: d.rate }) : null,
+    input: d ? pricedMarginStampInput({ rows: d.rows, totalCost: d.totalCost, uncostedRevenue: d.uncostedRevenue, laborRate: d.rate, difficultyCost: d.difficultyCost }) : null,
     mayStamp: mayStampPricedMargin({ bidDateSent: bid.bid_date_sent ?? null, viewingPricingId: args.viewingPricingId, customerFacingPricingId: args.customerFacingPricingId, bidVersion: version }),
   }
 }
@@ -108,6 +113,7 @@ export function pricedMarginStampDiffers(prev: BidPricedMargin | null, next: Pri
     round2(prev.costUsd) !== next.costUsd ||
     round2(prev.uncostedUsd) !== next.uncostedUsd ||
     prev.rateSet !== next.rateSet ||
+    round2(prev.difficultyUsd ?? 0) !== (next.difficultyUsd ?? 0) ||
     (prev.bidVersionId ?? null) !== (nextVersionId ?? null)
   )
 }
@@ -126,6 +132,7 @@ export function parseBidPricedMargin(row: Record<string, unknown> | null | undef
     rateSet: row.priced_rate_set === true,
     bidVersionId: typeof row.priced_bid_version_id === 'string' ? row.priced_bid_version_id : null,
     at: typeof row.priced_at === 'string' ? row.priced_at : null,
+    difficultyUsd: num(row.priced_difficulty_usd) ?? 0,
   }
 }
 
@@ -146,7 +153,8 @@ export function pricedMarginPartialWords(m: Pick<BidPricedMargin, 'rateSet' | 'u
 
 /** "$33,600 cost on $48,700 · no labor rate" — the inputs behind the margin, and why it may read high. */
 export function pricedMarginDetailWords(m: BidPricedMargin): string {
-  return [`${usd0(m.costUsd)} cost on ${usd0(m.revenueUsd)}`, ...pricedMarginPartialWords(m)].join(' · ')
+  const difficulty = (m.difficultyUsd ?? 0) >= 0.5 ? [`${usd0(m.difficultyUsd ?? 0)} of it difficulty`] : []
+  return [`${usd0(m.costUsd)} cost on ${usd0(m.revenueUsd)}`, ...difficulty, ...pricedMarginPartialWords(m)].join(' · ')
 }
 
 /**

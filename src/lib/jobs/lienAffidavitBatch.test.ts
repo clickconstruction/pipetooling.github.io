@@ -28,7 +28,7 @@ describe('send every drafted affidavit for approval (punch list #305, v2.6918)',
     expect(lienAffidavitSubmitOutcome(entry('d', 'to_draft', item('drafted'), 'gc-hold'), ctx).status).toBe('held')
   })
 
-  it('acts on a draft a person made in To draft, and leaves a paper nobody drafted', () => {
+  it('acts on a draft a person made in To send, and leaves a paper nobody drafted', () => {
     const entries = [
       entry('redrawn-1', 'to_draft', item('drafted')),
       entry('redrawn-2', 'to_draft', item('drafted'), 'gc-ask'),
@@ -53,7 +53,7 @@ describe('send every drafted affidavit for approval (punch list #305, v2.6918)',
       title: 'Send 13 affidavits for approval?',
       message: '10 are approved at once by a GC’s standing rule and move to Ready to file. 2 go to the leader for approval. 1 is held by its GC’s standing rule.',
       confirmLabel: 'Send 13 for approval',
-      foot: '1 in To draft has no draft yet. Draft it from its own paper.',
+      foot: '1 in To send was never opened. Open it from its own paper.',
       dead: false,
       hidden: null,
     })

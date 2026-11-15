@@ -1,14 +1,12 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { groupLienNextUp, isLienReminderRow, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import type { LienReminderRow, LienReminders } from '../../lib/jobs/lienReminders'
-import { countLienSteps, lienLaddersShown, lienStepBrief, lienStepCard, lienStepGroups, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
+import { groupLienNextUp, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { lienStepCard, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienPhoneGroups, lienPhoneStepWords, type LienPhoneGroup } from '../../lib/jobs/lienPhoneRows'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { EmptyState } from '../EmptyState'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
-import { LienStepBrief, LienStepCardView, LienStepMark, LienStepRail, useLienStepCard } from './LienDeskSteps'
-import { lienTimelineWhyChips, type LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
+import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
+import { LienStepCardView, LienStepMark, useLienStepCard } from './LienDeskSteps'
 
 /**
  * The Lien desk's To do tab (Next up until v2.4630; punch list #82, PR 2): every lien paper that asks for an act,
@@ -16,13 +14,10 @@ import { lienTimelineWhyChips, type LienTimelineRow } from '../../lib/jobs/lienN
  * (or a press on the row) hands the row back to the desk, which opens the pane that already
  * does the work. Nothing is written here.
  *
- * Since v2.4631 the steps read too: a rail of four rungs per kind of paper above the rows
- * (`lienNextUpSteps.ts`), each with its count, a press narrowing the list to that rung; four
- * dots and a fraction on every row; and a card on the dots that writes the row's ladder out.
- *
- * Since punch list #262 a REMINDERS rail sits between the notices' and the affidavits', its four
- * counts from `lienReminders.ts`; the courtesy and letter-two rows read under *Reminders*, and a
- * rung pressed lists the sent notices that stand on it with no row here, each a door to its notice.
+ * Since v2.4631 the steps read too: four dots and a fraction on every row, and a card on the dots that
+ * writes the row's ladder out (`lienNextUpSteps.ts`). The rails of rungs above the rows, the step brief a
+ * pressed rung opened (v2.6574) and the REMINDERS rail (punch list #262) stood here until v2.7332, when the
+ * Board took the top of To do (`LienBoard.tsx`): a bin's head narrows the list the way a rung did.
  *
  * A table on a computer; the same rows as cards on a phone.
  */
@@ -67,22 +62,17 @@ export default function LienDeskNextUp({
   isMobile,
   onAct,
   onOpenJob,
-  ready,
-  onOpenRun,
   factsFor,
   viewerIsLeader,
   leadsRow,
   onOpenPaper,
   gapsFor,
-  printed,
   foldsOpen,
   waitingOn,
-  reminders,
-  onOpenReminder,
-  timelineFor,
   scrolls = true,
   amountFor,
   onOpenRow,
+  zoomFor,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -90,10 +80,6 @@ export default function LienDeskNextUp({
   onAct: (row: LienNextUpRow) => void
   /** The job's number and name as a door to the Job window (v2.4628); a GC's run row has no job and stays plain. */
   onOpenJob?: (jobId: string) => void
-  /** Notices (and retainage notices) approved and waiting for the run — the ladders' fourth rung (v2.4631). */
-  ready?: Partial<Record<LienStepLadder, number>>
-  /** The rail's fourth rung opens the run (v2.4631). */
-  onOpenRun?: () => void
   /** What the desk knows about a row's job, for its card (v2.4631). */
   factsFor?: (row: LienNextUpRow) => LienStepFacts
   viewerIsLeader?: boolean
@@ -105,31 +91,19 @@ export default function LienDeskNextUp({
   gapsFor?: (row: LienNextUpRow) => number | null
   /** The find (v2.4721): a row's title with the typed words marked. */
   markTitle?: (text: string) => ReactNode
-  /** Of the fourth rung's count, how many printed and wait on their tracking numbers (punch list #101). */
-  printed?: Partial<Record<LienStepLadder, number>>
   /** Open every run row's list of jobs (the find is on, punch list #101). */
   foldsOpen?: boolean
   /** The leader the office's waiting rows wait on, by name, when they all wait on one (punch list #101 PR 3). */
   waitingOn?: string | null
-  /** The REMINDERS ladder (punch list #262): every sent notice's rung, the four counts and the ones before day 7. */
-  reminders?: LienReminders
-  /** A rung's row with no row on the list, pressed: the desk opens its notice. Without it the row opens the notice under Sent through `onAct`. */
-  onOpenReminder?: (row: LienReminderRow) => void
-  /** One sent notice's dated timeline for the step brief (PR 2 of #274); null when the desk has no clock for it. */
-  timelineFor?: (jobId: string) => ReadonlyArray<LienTimelineRow> | null
   /** Whether the list is its own scroller. A phone's desk scrolls the month, the find box and the list as one page, so there it is not (punch list #352, PR 0; `lienDoNowFrame`). */
   scrolls?: boolean
   /** What a row's job still owes, for a phone's row and its day's total (punch list #352, PR 3; `lienPhoneAmounts`). Absent, no money is drawn. */
   amountFor?: (row: LienNextUpRow) => number | null
   /** A phone: a tap on a row, its name or its dots opens the job as its own screen (punch list #352, PR 4). Absent, the name is the job's door and the dots open the step card. */
   onOpenRow?: (row: LienNextUpRow) => void
+  /** The job's number as a zoom (v2.7333): the press to the right place for the paper's stage, with its hover words; null for a job not on the Board. Absent, the number and the name are one door to the job. */
+  zoomFor?: (row: LienNextUpRow) => { press: () => void; words: string } | null
 }) {
-  // The rung the list is narrowed to (v2.4631); session-only, cleared on a second press.
-  const [on, setOn] = useState<LienStepAt | null>(null)
-  // The notice the brief's timeline draws (PR 2 of #274); the first on the step until picked.
-  const [pickedJobId, setPickedJobId] = useState<string | null>(null)
-  const counts = useMemo(() => countLienSteps(rows, ready ?? {}, reminders?.counts), [rows, ready, reminders])
-  const ladders = useMemo(() => lienLaddersShown(counts), [counts])
   const card = useLienStepCard(isMobile)
   // The row whose card is open, for the card's own button.
   const [openRow, setOpenRow] = useState<LienNextUpRow | null>(null)
@@ -137,8 +111,7 @@ export default function LienDeskNextUp({
   const [folds, setFolds] = useState<ReadonlySet<string>>(() => new Set())
   if (loading) return <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
   const byDay = groupLienNextUp(rows, { waitingOn })
-  // A pressed rung sorts the list — its rows first, the rest after, nothing faded (v2.6574, in place of v2.4631's fade).
-  const groups = on ? lienStepGroups(rows, on) : byDay
+  const groups = byDay
   if (byDay.length === 0) {
     return (
       <div data-lien-next-up="empty" style={{ padding: '2rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -150,6 +123,22 @@ export default function LienDeskNextUp({
   const title = (r: LienNextUpRow, style: CSSProperties) => {
     const jobId = r.jobId
     if (!jobId || !onOpenJob) return <span style={style} title={r.title}>{markTitle ? markTitle(r.title) : r.title}</span>
+    // The number is a zoom (v2.7333): the same press as the job's chip on the Board; the name stays the job's door.
+    const zoom = !isMobile && zoomFor ? zoomFor(r) : null
+    const split = zoom ? splitLienJobLabel(r.title) : null
+    if (zoom && split && split.name) {
+      return (
+        <span style={{ ...style, display: 'inline-flex', alignItems: 'baseline', gap: 0, minWidth: 0, maxWidth: '100%' }}>
+          <button type="button" className="lienJobDoor" data-testid={`lien-next-up-zoom-${jobId}`} title={zoom.words} onClick={(ev) => { ev.stopPropagation(); zoom.press() }} style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', borderRadius: 3, flex: 'none' }}>
+            {markTitle ? markTitle(split.number) : split.number}
+          </button>
+          <span aria-hidden="true" style={{ flex: 'none' }}>{' · '}</span>
+          <button type="button" className="lienJobDoor" data-testid={`lien-next-up-job-${jobId}`} title={LIEN_JOB_DOOR_TITLE} onClick={(ev) => { ev.stopPropagation(); onOpenJob(jobId) }} style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {markTitle ? markTitle(split.name) : split.name}
+          </button>
+        </span>
+      )
+    }
     return (
       <button
         type="button"
@@ -280,19 +269,6 @@ export default function LienDeskNextUp({
       {r.button ?? 'Open'}
     </button>
   )
-  // A REMINDERS rung pressed (punch list #262): the sent notices on it that have no row here, so every name behind the count can be seen.
-  const reminderStep = on?.ladder === 'reminder' ? on.step : null
-  const reminderRows = reminderStep && reminders ? reminders.rows.filter((r) => r.step === reminderStep && !rows.some((x) => x.jobId === r.jobId && isLienReminderRow(x))) : []
-  const reminderOnList = reminderStep ? rows.filter((r) => isLienReminderRow(r) && r.reminder?.step === reminderStep).length : 0
-  const reminderStub = (r: LienReminderRow): LienNextUpRow => ({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: 'sent' }, reminder: r })
-  // The brief's timeline (PR 2 of #274): the notices on the pressed REMINDERS rung, the picked one's rows, and why each is here as counts.
-  const stepNotices = on?.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).filter((r) => r.jobId).map((r) => ({ jobId: r.jobId as string, title: r.title })), ...reminderRows.map((r) => ({ jobId: r.jobId, title: r.title }))] : []
-  const picked = stepNotices.find((n) => n.jobId === pickedJobId)?.jobId ?? stepNotices[0]?.jobId ?? null
-  const timelineRows = picked && timelineFor ? timelineFor(picked) : null
-  const timeline = picked && timelineRows && timelineRows.length ? { rows: timelineRows, options: stepNotices, picked, onPick: setPickedJobId } : null
-  const whyChips = on?.ladder === 'reminder' && reminders ? lienTimelineWhyChips(reminders.rows.filter((r) => r.step === on.step && r.counted).map((r) => r.why ?? '')) : undefined
-  // The picked notice's own rung state (PR 3 of #274): a notice paying it down reads the payment's brief on step 2.
-  const pickedState = on?.ladder === 'reminder' && picked ? ((groups[0]?.rows ?? []).find((r) => r.jobId === picked)?.reminder?.state ?? reminderRows.find((r) => r.jobId === picked)?.state ?? null) : null
   const openCard = card.open
   const cardButton = openCard ? openRow : null
   // A phone's list (punch list #352, PR 3): the day-driven groups by the day itself, each head with how long is left
@@ -319,7 +295,7 @@ export default function LienDeskNextUp({
   }
   const phoneGroup = (g: LienPhoneGroup) => {
     const whose = g.group === 'mine' || g.group === 'sign' || g.group === 'pen'
-    const violet = g.group === 'reminders' || (g.group === 'step_on' && on?.ladder === 'reminder')
+    const violet = g.group === 'reminders'
     const fg = g.group === 'day' ? PHONE_TONE[g.tone].fg : whose ? 'var(--text-link)' : violet ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : 'var(--text-muted)'
     const bg = g.group === 'day' ? PHONE_TONE[g.tone].bg : 'var(--bg-subtle)'
     return (
@@ -366,36 +342,9 @@ export default function LienDeskNextUp({
   }
   return (
     <div ref={card.hostRef} data-lien-next-up="list" data-scrolls={scrolls ? 'yes' : 'no'} style={{ position: 'relative', overflowY: scrolls ? 'auto' : 'visible', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
-      <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} reminderWaiting={reminders?.waiting} reminderScheduled={reminders?.scheduled} />
-      {/* The step brief (v2.6574; every rail since v2.6577): what the step is, why a row is here, the usual move, the other moves, what closes it — and the REMINDERS rail's notices with no row here. */}
-      {on ? (
-        <LienStepBrief on={on} brief={lienStepBrief(on, pickedState)} count={(groups[0]?.rows.length ?? 0) + reminderRows.length} marks={on.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).map((r) => r.reminder?.day ?? null), ...reminderRows.map((r) => r.day)] : []} timeline={timeline} whyChips={whyChips} isMobile={isMobile} onClear={() => setOn(null)}>
-          {reminderStep ? (
-        <div data-testid="lien-reminder-step-list" data-step={reminderStep} style={{ borderTop: '1px solid var(--border)', paddingTop: 8, fontSize: '0.8125rem' }}>
-          <div style={{ fontSize: '0.66rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-violet-700)', fontWeight: 700, marginBottom: 2 }}>
-            Also on this step, with no row on the list · {reminderRows.length}{reminderOnList ? ` · ${reminderOnList} on the list below` : ''}
-          </div>
-          {reminderRows.length === 0 ? (
-            // A sub-list inside the window: `main` alone, its next step the rung above it (`check:empty-words`).
-            <EmptyState compact main={reminderOnList ? 'Every notice on this step is on the list below.' : 'Nothing waiting on this step.'} />
-          ) : (
-            reminderRows.map((r) => (
-              <div key={r.jobId} data-lien-reminder-row={r.jobId} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.2fr) minmax(0, 1.6fr) auto', gap: isMobile ? 2 : 12, alignItems: 'center', padding: '3px 0' }}>
-                {title(reminderStub(r), { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', minWidth: 0 })}
-                <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.words}>{r.words}</span>
-                <button type="button" onClick={() => (onOpenReminder ? onOpenReminder(r) : onAct(reminderStub(r)))} style={{ ...openBtn, ...(isMobile ? { width: '100%', padding: '9px 12px', fontSize: '0.9rem' } : { padding: '2px 10px', fontSize: '0.78rem' }) }} data-lien-reminder-open={r.jobId}>
-                  Open
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-          ) : null}
-        </LienStepBrief>
-      ) : null}
       {isMobile ? phoneGroups.map(phoneGroup) : groups.map((g) => (
         <section key={g.group} aria-label={g.label} data-lien-next-up-group={g.group} style={{ marginBottom: '1rem' }}>
-          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' || (g.group === 'step_on' && on?.ladder === 'reminder') ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
+          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
             {g.label} · {g.rows.length}
           </h3>
           <div style={{ display: 'grid', gap: 0, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>

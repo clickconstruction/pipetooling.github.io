@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tag a teammate in a job note</title>
+<style>
+  /* Punch list #363. Tag a teammate in a job note: the name list under the note box, where the tag lands, the count
+     above Jobs, and the same on a phone. Drawn 2026-11-15, with that day as today. Nothing here is built. Every
+     person, customer, job, address, amount and count is made up: Ridgeway Builders, Cedar Bluff Lofts, jobs J1466 to
+     J1497, Dana Whitlock, Marcus Hale, Luis Ortega, two people named Chris. No live row is on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-800: #1e40af;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-blue: #bfdbfe;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-blue: #1e3a8a;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  h3 { font-size: 14px; margin: 0 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); background: var(--bg-page); color: var(--text-base); min-width: 0; }
+  .frame.clip { overflow: hidden; }
+  .col.sug .frame, .frame.sug { border: 2px solid var(--new); }
+  .frame.no { opacity: .78; }
+  .pad { padding: 12px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+  .tag.grey { color: var(--text-muted); background: var(--bg-muted); }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick p { margin: 0; font-size: 13px; }
+
+  /* the Pipeline row's notes box */
+  .rowhead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 10px 12px 0; }
+  .jobname { color: var(--text-link); font-weight: 600; text-decoration: underline; }
+  .jobmeta { font-size: 12px; color: var(--text-muted); }
+  .chipk { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .notes { margin: 10px 12px 8px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); padding: 6px 10px; max-height: 190px; overflow-y: auto; }
+  .n { display: flex; gap: 8px; padding: 3px 0; font-size: 13px; align-items: flex-start; }
+  .n .num { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border-strong); font-size: 11px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); margin-top: 1px; }
+  .n .when { color: var(--text-muted); }
+  .n b { color: var(--text-strong); }
+  .n .txt { min-width: 0; overflow-wrap: anywhere; }
+  .at { display: inline-block; background: var(--bg-blue-tint); color: var(--text-blue-800); border: 1px solid var(--border-blue); border-radius: 999px; padding: 0 7px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .at.me { background: var(--bg-amber-tint); color: var(--text-amber-800); border-color: var(--border-amber); }
+  .wait { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+  .wait.late { color: var(--text-amber-800); font-weight: 600; }
+  .wait.ok { color: var(--text-green-700); }
+  .composer { position: relative; margin: 0 12px 12px; }
+  .box { display: flex; gap: 8px; align-items: center; padding: 5px 7px 5px 14px; border: 1px solid #3b82f6; border-radius: 999px; background: var(--surface); }
+  .box input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text-strong); font: inherit; font-size: 13px; }
+  .post { background: #2563eb; color: #fff; border: none; border-radius: 999px; padding: 5px 16px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  .atbtn { background: none; color: var(--text-link); border: 1px solid #2563eb; border-radius: 999px; width: 30px; height: 28px; font: inherit; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  .x { color: var(--text-muted); background: none; border: none; font-size: 15px; cursor: pointer; padding: 0 2px; flex-shrink: 0; }
+  .willtag { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--text-muted); margin: 0 4px 6px; min-height: 0; }
+  .willtag:empty { display: none; }
+  .willtag .at button { background: none; border: none; color: inherit; cursor: pointer; padding: 0 0 0 4px; font: inherit; }
+  .names { position: absolute; left: 8px; right: 8px; top: calc(100% + 4px); z-index: 5; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.22); padding: 4px; max-height: 260px; overflow-y: auto; }
+  .names[hidden] { display: none; }
+  .names.static { position: static; margin: 6px 12px 12px; }
+  .names .grp { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); padding: 6px 8px 2px; }
+  .names .p { display: flex; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 7px; cursor: pointer; min-height: 40px; }
+  .names .p[aria-selected="true"], .names .p:hover { background: var(--bg-blue-tint); }
+  .names .p.off { cursor: default; opacity: .55; }
+  .names .p.off:hover { background: none; }
+  .av { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-muted); color: var(--text-700); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+  .names .who { font-weight: 600; color: var(--text-strong); }
+  .names .what { font-size: 12px; color: var(--text-muted); margin-left: auto; text-align: right; }
+  .hint { font-size: 12px; color: var(--text-muted); margin: 0 12px 12px; }
+
+  /* the app's header */
+  .appbar { display: flex; align-items: center; gap: 4px 18px; flex-wrap: wrap; padding: 12px 16px 10px; background: var(--surface); border-bottom: 1px solid var(--border); border-radius: 12px 12px 0 0; font-size: 13.5px; }
+  .appbar .brand { font-weight: 800; color: var(--text-strong); margin-right: 8px; }
+  .appbar a { color: var(--text-700); text-decoration: none; position: relative; padding: 4px 0; }
+  .appbar a.on { color: var(--text-link); font-weight: 700; border-bottom: 2px solid var(--text-link); }
+  .badge { position: absolute; top: -0.55rem; right: -0.95rem; background: #b91c1c; color: #fff; font-size: 11px; font-weight: 700; line-height: 1; padding: 2px 6px; border-radius: 999px; border: 2px solid var(--surface); }
+  .badge.inl { position: static; display: inline-block; border: none; margin-left: 6px; vertical-align: middle; }
+  .scroll { overflow-x: auto; }
+  .desk { min-width: 780px; }
+
+  /* the Tagged job notes section */
+  .sec { margin: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .sec > h4 { margin: 0; padding: 10px 14px; font-size: 13.5px; color: var(--text-strong); border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sec > h4 .sub { font-weight: 500; color: var(--text-muted); font-size: 12.5px; }
+  .t { padding: 10px 14px; border-bottom: 1px solid var(--border); display: grid; gap: 6px; }
+  .t:last-child { border-bottom: none; }
+  .t .l1 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
+  .t .l1 .age { margin-left: auto; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .t .l1 .age.late { color: var(--text-amber-800); font-weight: 700; }
+  .t .q { font-size: 13.5px; color: var(--text-base); overflow-wrap: anywhere; }
+  .t .q b { color: var(--text-strong); }
+  .t .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .t .acts .box { flex: 1 1 260px; min-width: 0; }
+  .t .acts .composer { flex: 1 1 260px; min-width: 0; margin: 0; }
+  .t .acts .composer .names { max-height: 156px; }
+  .cleared { font-size: 13px; color: var(--text-700); overflow-wrap: anywhere; }
+  .cleared .ok { color: var(--text-green-700); font-weight: 700; }
+  .foldbtn { margin-left: auto; font: inherit; font-size: 12px; font-weight: 600; color: var(--text-link); background: none; border: none; cursor: pointer; padding: 0; }
+  .again { font: inherit; font-size: 12.5px; color: var(--text-link); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; }
+  .newmark { display: inline-block; background: #2563eb; color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 1px 7px; vertical-align: middle; }
+  .changed { margin-top: 16px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--new); border-radius: 0 10px 10px 0; padding: 10px 14px; max-width: 110ch; font-size: 13px; }
+  .changed h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--new); margin: 0 0 4px; }
+  .changed ul { margin: 0; padding-left: 18px; }
+  .changed li { margin: 2px 0; }
+  .side { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 18px 0 0; }
+  .btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; white-space: nowrap; }
+  .lnk { font-size: 12.5px; color: var(--text-link); text-decoration: none; white-space: nowrap; }
+  .fold { padding: 9px 14px; font-size: 13px; color: var(--text-700); display: grid; gap: 5px; }
+  .fold .hd { font-weight: 700; color: var(--text-strong); }
+  .board { margin: 0 16px 16px; border: 1px dashed var(--border-strong); border-radius: 10px; padding: 14px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+
+  /* small option frames */
+  .mini { padding: 12px; display: grid; gap: 8px; font-size: 13px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .card .ttl { font-weight: 700; color: var(--text-strong); margin-bottom: 4px; }
+  .line { display: flex; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--border); }
+  .line:first-of-type { border-top: none; }
+  .line .go { margin-left: auto; color: var(--text-link); white-space: nowrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #b91c1c; flex: 0 0 auto; }
+  .verdict { font-size: 12.5px; margin: 0; }
+  .verdict b { color: var(--text-strong); }
+
+  /* the life of a tag */
+  .life { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 12px; margin-top: 14px; }
+  .life > div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .life .st { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .life .st.red { color: var(--text-red-700); } .life .st.grn { color: var(--text-green-700); } .life .st.amb { color: var(--text-amber-800); } .life .st.gry { color: var(--text-muted); }
+
+  /* phones */
+  .phones { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 14px; align-items: flex-start; }
+  .phone { width: 375px; max-width: 100%; border: 1px solid var(--border-strong); border-radius: 26px; box-shadow: 0 6px 22px rgba(0,0,0,.18); background: var(--bg-page); overflow: hidden; }
+  .phone .bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text-strong); }
+  .phone .bar .menu { position: relative; width: 34px; height: 30px; border: 1px solid var(--border-strong); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text-700); }
+  .phone .bar .menu .badge { top: -8px; right: -10px; }
+  .phone .body { padding: 10px; display: grid; gap: 10px; }
+  .phone .cap2 { font-size: 12px; color: var(--text-muted); padding: 0 14px 12px; }
+  .menulist a { display: flex; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text-700); text-decoration: none; background: var(--surface); font-size: 15px; }
+  .kb { background: var(--bg-muted); border-top: 1px solid var(--border); padding: 8px; display: grid; gap: 5px; }
+  .kb div { display: flex; gap: 4px; justify-content: center; }
+  .kb span { flex: 0 1 30px; height: 30px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-700); }
+  .push { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 10px 12px; display: grid; gap: 2px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  .push .app { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; display: flex; }
+  .push .app span { margin-left: auto; text-transform: none; letter-spacing: 0; }
+  .push b { color: var(--text-strong); }
+
+  /* the calls */
+  table.calls { width: 100%; border-collapse: collapse; margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+  table.calls th, table.calls td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  table.calls th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  table.calls td:first-child { font-weight: 700; color: var(--text-strong); white-space: nowrap; }
+  table.calls td.mine { background: var(--new-tint); }
+  @media (max-width: 720px) {
+    table.calls, table.calls tbody, table.calls tr, table.calls td { display: block; }
+    table.calls thead { display: none; }
+    table.calls tr { border-bottom: 2px solid var(--border-strong); }
+    table.calls td { border-bottom: none; padding: 6px 12px; }
+    table.calls td[data-h]::before { content: attr(data-h) ": "; font-weight: 700; color: var(--text-muted); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #363 · a mock-up · nothing here is built · every name, job and amount is made up</p>
+    <h1>Tag a teammate in a job note</h1>
+    <p>Taunya's ask of 2026-11-15: type <b>@name</b> in a job note, have it reach that person, and show a red count above <b>Jobs</b> like the one above <b>Messages</b>. This page draws the note box with the name list, the place the tag lands, the count, and the same on a phone. The purple outline marks what I would build.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump" aria-label="On this page">
+  <a href="#short">The short of it</a>
+  <a href="#box">1 · The note box</a>
+  <a href="#lands">2 · Where it lands</a>
+  <a href="#others">3 · The other places</a>
+  <a href="#life">4 · What clears the count</a>
+  <a href="#phone">5 · On a phone</a>
+  <a href="#calls">6 · The calls</a>
+</nav>
+
+<section id="short">
+  <div class="pick">
+    <div>
+      <h3>Today</h3>
+      <p>A job note reaches nobody. It sits in the job's list until someone happens to open that row. Typing <b>@dana</b> does nothing: it is seven letters in a sentence.</p>
+    </div>
+    <div class="sug">
+      <h3>What I would build</h3>
+      <p>Pick a name from a list under the box. The tag lands in a <b>Tagged job notes</b> section at the top of the Pipeline, counted above <b>Jobs</b>, with one line on the Dashboard for people who have no Jobs link. You answer right there and the answer goes on the job.</p>
+    </div>
+    <div>
+      <h3>What I would leave out first</h3>
+      <p>Subs, email, tags in reports, estimates and bids, tagging a whole group, and any reminder for a tag nobody answers. Each can follow once the first version has been used for a few weeks.</p>
+    </div>
+  </div>
+  <div class="changed">
+    <h3>Changed after Taunya's first look, 2026-11-15</h3>
+    <ul>
+      <li><b>Open the job › is gone.</b> Her call: the job's name on the card is already that link.</li>
+      <li><b>Where it lands is settled.</b> She picked the section in Jobs and the Needs you line, and not Messages or the checklist.</li>
+      <li><b>The asker now learns of an answer without a push.</b> An answer counts above Jobs for the asker until they see it. Section 4 draws it. This changes call 7.</li>
+      <li><b>A question back is one tap.</b> Each answer box has the @ button, with the person who asked first in its list.</li>
+      <li><b>The crew's path is drawn.</b> The fourth phone in section 5 is a person with no Jobs link.</li>
+      <li><b>The section in section 2 now works.</b> Answer one or press No reply needed and watch the red number drop.</li>
+      <li><b>Smaller:</b> the oldest tag is on top, the section folds, and the press reads <b>No reply needed</b>, the words Messages already uses.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ 1 -->
+<h2 id="box">1 · The note box <small>the Pipeline row, in the middle of the job's row</small></h2>
+<p class="lede">The right side works: click in the box, type <b>@</b> and a letter or two, pick a name, press <b>Post</b>. Two people here are named Chris, which is why the tag is a pick from a list and never a guess from the words.</p>
+
+<div class="two">
+  <div class="col">
+    <div class="cap">Today</div>
+    <div class="frame clip">
+      <div class="rowhead"><span class="jobname">Cedar Bluff Lofts</span><span class="chipk">Project</span><span class="jobmeta">J1482 · Ridgeway Builders · 410 Quarry Rd</span></div>
+      <div class="notes">
+        <div class="n"><span class="num">29</span><span class="txt"><span class="when">Wed 9:16 AM (39d)</span> <b>Dana</b> | on going</span></div>
+        <div class="n"><span class="num">30</span><span class="txt"><span class="when">Thu 10:26 AM (31d)</span> <b>Dana</b> | on going</span></div>
+        <div class="n"><span class="num">31</span><span class="txt"><span class="when">Mon 12:00 PM (20d)</span> <b>Dana</b> | on going</span></div>
+        <div class="n"><span class="num">32</span><span class="txt"><span class="when">Sun 10:04 AM (today)</span> <b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet @dana</span></div>
+      </div>
+      <div class="composer"><div class="box"><input value="" placeholder="Add a note to Cedar Bluff Lofts…" aria-label="Note text, today" readonly><button class="post" type="button" tabindex="-1">Post</button><span class="x" aria-hidden="true">×</span></div></div>
+    </div>
+    <p class="say">The note posts with <b>@dana</b> as plain words. Dana is not told. She learns of it if she opens this row and reads to line 32.</p>
+  </div>
+
+  <div class="col sug">
+    <div class="cap">Suggested <span class="tag">try it</span></div>
+    <div class="frame">
+      <div class="rowhead"><span class="jobname">Cedar Bluff Lofts</span><span class="chipk">Project</span><span class="jobmeta">J1482 · Ridgeway Builders · 410 Quarry Rd</span></div>
+      <div class="notes" id="demoNotes">
+        <div class="n"><span class="num">29</span><span class="txt"><span class="when">Wed 9:16 AM (39d)</span> <b>Dana</b> | on going</span></div>
+        <div class="n"><span class="num">30</span><span class="txt"><span class="when">Thu 10:26 AM (31d)</span> <b>Dana</b> | on going</span></div>
+        <div class="n"><span class="num">31</span><span class="txt"><span class="when">Mon 12:00 PM (20d)</span> <b>Dana</b> | on going</span></div>
+        <div class="n"><span class="num">32</span><span class="txt"><span class="when">Sun 10:04 AM (today)</span> <b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet <span class="at">@Dana Whitlock</span><span class="wait">waiting on Dana · 2 min</span></span></div>
+      </div>
+      <div class="composer" id="demoBox">
+        <div class="willtag"></div>
+        <div class="box">
+          <input value="" placeholder="Add a note to Cedar Bluff Lofts…  try typing @ch" aria-label="Note text" autocomplete="off">
+          <button class="atbtn" data-at type="button" aria-label="Tag a teammate" title="Tag a teammate">@</button>
+          <button class="post" data-post type="button">Post</button>
+          <button class="x" data-clear type="button" aria-label="Clear the note">×</button>
+        </div>
+        <div class="names" role="listbox" aria-label="Teammates" hidden></div>
+      </div>
+      <p class="hint">Arrow keys and Enter pick a name. Esc closes the list and leaves the words alone.</p>
+    </div>
+    <p class="say">The list opens on <b>@</b>, or on the <b>@</b> button for a thumb. The job's own crew comes first, then the office. A picked name shows above the box until you post, and × takes it off. The posted note carries the name as a chip and a grey line saying who it waits on.</p>
+  </div>
+</div>
+
+<div class="two">
+  <div class="col sug">
+    <div class="cap">The list, held open</div>
+    <div class="frame clip">
+      <div class="composer" style="margin-top:12px"><div class="box"><input value="can you check the meter set date @ch" aria-label="Note text, example" readonly><button class="atbtn" type="button" tabindex="-1">@</button><button class="post" type="button" tabindex="-1">Post</button><span class="x" aria-hidden="true">×</span></div></div>
+      <div class="names static" aria-hidden="true">
+        <div class="grp">On this job</div>
+        <div class="p" aria-selected="true"><span class="av">CA</span><span class="who">Chris Alvarez</span><span class="what">crew · on this job</span></div>
+        <div class="grp">Office</div>
+        <div class="p"><span class="av">CB</span><span class="who">Chris Bell</span><span class="what">office</span></div>
+        <div class="grp">Cannot be tagged here</div>
+        <div class="p off"><span class="av">CK</span><span class="who">Chuck Kessler</span><span class="what">sub · not in the first version</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">Why a pick and not the typed word</div>
+    <div class="note" style="margin-top:0">
+      <b>Two people can share a first name.</b> The list shows the full name and what the person does, so the right Chris is one tap.<br><br>
+      <b>The team already types @ to mean "at".</b> Notes on prod read like <i>arrive @ 8:45</i> and <i>materials @ $300</i>. If the app guessed from the words, those would look for a teammate named 845.<br><br>
+      <b>A pick can be checked.</b> The list offers only people who can open this job, so nobody is tagged on a job they cannot see.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 2 -->
+<h2 id="lands">2 · Where it lands <small>Dana's screen, two tags waiting on her</small></h2>
+<p class="lede">A red count above <b>Jobs</b>, drawn like the one above <b>Messages</b>. Pressing Jobs opens the Pipeline with <b>Tagged job notes</b> at the top. The section is there only while something waits on you or on someone you tagged. <b>It works here:</b> answer one, or press <b>No reply needed</b>, and watch both red numbers.</p>
+
+<div class="frame sug" style="margin-top:14px">
+  <div class="scroll"><div class="desk">
+    <div class="appbar">
+      <span class="brand">PipeTooling</span>
+      <a href="#lands">Dashboard</a>
+      <a href="#lands">Estimates</a>
+      <a href="#lands" class="on">Jobs<span class="badge" data-tagcount title="Job notes that tagged you">2</span></a>
+      <a href="#lands">Schedule</a>
+      <a href="#lands">Projects</a>
+      <a href="#lands">Bids</a>
+      <a href="#lands">Prospects</a>
+      <a href="#lands">Messages<span class="badge" title="5 customers waiting on us">5</span></a>
+    </div>
+
+    <div class="sec" id="landSec">
+      <h4>Tagged job notes <span class="badge inl" data-tagcount>2</span> <span class="sub" id="landSub">waiting on you, oldest first · an answer or No reply needed clears one</span><button class="foldbtn" id="landFold" type="button" aria-expanded="true">Fold ▴</button></h4>
+
+      <div id="landBody">
+        <div class="t" data-card="tanner">
+          <div class="l1"><span class="jobname">Tanner residence, water heater</span><span class="jobmeta">J1497 · Joel Tanner</span><span class="age late">Wed 3:40 PM · 4d</span></div>
+          <div class="q"><b>Luis</b> | <span class="at me">@Dana Whitlock</span> homeowner wants the bill split in two, half now and half at the final. Can we?</div>
+          <div class="acts">
+            <div class="composer">
+              <div class="willtag"></div>
+              <div class="box"><input value="" placeholder="Answer Luis on the job's notes…" aria-label="Answer on Tanner residence" autocomplete="off"><button class="atbtn" data-at type="button" aria-label="Tag a teammate in the answer" title="Tag a teammate in the answer">@</button><button class="post" data-post type="button">Post</button></div>
+              <div class="names" role="listbox" aria-label="Teammates" hidden></div>
+            </div>
+            <button class="btn" data-done type="button">No reply needed</button>
+          </div>
+        </div>
+
+        <div class="t" data-card="cedar">
+          <div class="l1"><span class="jobname">Cedar Bluff Lofts</span><span class="chipk">Project</span><span class="jobmeta">J1482 · Ridgeway Builders</span><span class="age">today 10:04 AM</span></div>
+          <div class="q"><b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet <span class="at me">@Dana Whitlock</span></div>
+          <div class="acts">
+            <div class="composer">
+              <div class="willtag"></div>
+              <div class="box"><input value="" placeholder="Answer Marcus on the job's notes…" aria-label="Answer on Cedar Bluff Lofts" autocomplete="off"><button class="atbtn" data-at type="button" aria-label="Tag a teammate in the answer" title="Tag a teammate in the answer">@</button><button class="post" data-post type="button">Post</button></div>
+              <div class="names" role="listbox" aria-label="Teammates" hidden></div>
+            </div>
+            <button class="btn" data-done type="button">No reply needed</button>
+          </div>
+        </div>
+
+        <div class="fold">
+          <div class="hd">You asked · 2</div>
+          <div><span class="jobname">Oak Hollow Clinic</span> <span class="jobmeta">J1466</span> · you tagged <span class="at">@Luis Ortega</span> · <span class="wait late" style="display:inline">no answer yet · 5d</span></div>
+          <div><span class="jobname">Cedar Bluff Lofts</span> <span class="jobmeta">J1482</span> · <b>Chris Bell</b> answered 1h ago: "Permit is posted on the door." · <span class="wait ok" style="display:inline">answered</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="board">The Pipeline's stages follow below, as they are today. On a row, a note that tags you wears the amber chip, and one you sent wears the grey line under it.</div>
+  </div></div>
+</div>
+<p class="say" style="margin-top:10px">The job's name is the door to the job, so the card has no second link. The answer box posts a plain note on that job, the same as typing in the row. It clears the tag and tells the person who asked. The <b>@</b> in it offers that person first, for a question back. <b>No reply needed</b> clears a tag without a note. With more than three waiting, the section shows three and a <b>Show the rest</b> press, and <b>Fold</b> shuts it to its one line. <button class="again" id="landAgain" type="button">Put both tags back</button></p>
+
+<!-- ============================================================ 3 -->
+<h2 id="others">3 · The other places she named <small>and where each one falls short</small></h2>
+<div class="three">
+  <div class="col sug">
+    <div class="cap">Also build: one line on the Dashboard</div>
+    <div class="frame clip"><div class="mini">
+      <div class="card">
+        <div class="ttl">Needs you</div>
+        <div class="line"><span class="dot"></span><span><b>2 job notes tagged you</b><br><span class="jobmeta">Cedar Bluff Lofts · Tanner residence</span></span><span class="go">Open ›</span></div>
+        <div class="line"><span class="dot" style="background:var(--border-strong)"></span><span>1 time card to approve</span><span class="go">Open ›</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Yes, as the second door. Taunya's pick.</b> The field has no Pipeline: a superintendent's Jobs page hides it, and the crew has no Jobs link at all. They open the app on the Dashboard. This line opens the same list as a window, so nobody is tagged into a place they never look. Section 5 draws it on a crew phone.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap">Not this: a lane in Messages</div>
+    <div class="frame clip no"><div class="mini">
+      <div class="card">
+        <div class="ttl">Messages <span class="badge inl">5</span></div>
+        <div class="line"><span>New · 2</span></div>
+        <div class="line"><span>Needs a reply · 3</span></div>
+        <div class="line"><span>Tagged job notes · 2</span><span class="tag grey">would be new</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>No.</b> The count above Messages is one number for the whole office: customers waiting on us. A tag is one person waiting on one teammate. Mixing them makes both numbers mean less. Field roles cannot open Messages at all, so a superintendent could never be tagged.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap">Not this: a task on the checklist</div>
+    <div class="frame clip no"><div class="mini">
+      <div class="card">
+        <div class="ttl">Checklist · today</div>
+        <div class="line"><span>☐ Order trim for Oak Hollow</span></div>
+        <div class="line"><span>☐ Marcus tagged you on Cedar Bluff Lofts</span><span class="tag grey">would be new</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>No, not by itself.</b> A task has a due day, a tick and a history of its own. A tag would become a second copy of the note that someone must tick as well as answer. If a tag does need to be a job with a date, the tagged person can still make a task from it by hand.</p>
+  </div>
+</div>
+
+<!-- ============================================================ 4 -->
+<h2 id="life">4 · What clears the count <small>the life of one tag</small></h2>
+<p class="lede">Taunya's words were "so a user knows what they need to respond to". So the count is what still waits on an answer, and reading alone does not clear it. The Messages count already works this way.</p>
+<p class="side">The person who is tagged</p>
+<div class="life" style="margin-top:6px">
+  <div><div class="st red">Waiting · counted</div>From the post until the tagged person acts. Shows in their section, above Jobs and on the Dashboard line. The asker's note says <i>waiting on Dana</i>.</div>
+  <div><div class="st gry">Opened · still counted</div>Opening the row or the job changes nothing. A tag read on a phone in a truck is still owed an answer at the desk.</div>
+  <div><div class="st grn">Answered · cleared</div>The tagged person posts any note on that job, from the section or from the row. On the job, the grey line under the question turns to <i>answered by Dana</i>.</div>
+  <div><div class="st grn">No reply needed · cleared</div>One press, no note. The asker sees <i>Dana: no reply needed</i>. For a tag that only needed reading.</div>
+  <div><div class="st amb">Nobody answers</div>It stays, and its age turns amber after two working days on both screens. The first version sends no reminder and never expires a tag by itself.</div>
+</div>
+
+<p class="side">The person who asked <span class="tag">changed</span></p>
+<div class="two" style="margin-top:6px">
+  <div class="col sug">
+    <div class="frame clip"><div class="mini">
+      <div class="appbar" style="border-radius:10px; border:1px solid var(--border); padding:10px 14px 8px">
+        <span class="brand">PipeTooling</span>
+        <a href="#life">Dashboard</a>
+        <a href="#life" class="on">Jobs<span class="badge" title="1 answer you have not seen">1</span></a>
+        <a href="#life">Schedule</a>
+      </div>
+      <div class="card">
+        <div class="ttl">You asked · 1</div>
+        <div><span class="jobname">Cedar Bluff Lofts</span> <span class="jobmeta">J1482</span> · <b>Dana Whitlock</b> answered just now: "Yes, it came Friday. It is on the job." <span class="newmark">new</span></div>
+      </div>
+    </div></div>
+    <p class="say">Marcus's screen when Dana's answer lands. The answer counts above <b>Jobs</b> until this line has been on his screen, then the number clears by itself. Nothing to press.</p>
+  </div>
+  <div class="col">
+    <div class="note" style="margin-top:0">
+      <b>Why the change.</b> My first pick told the asker by push alone. Most of the office works at a desk, and I could not read how many people have pushes switched on. The table that says so is closed to the dev seat. A count that needs no push is the safer way for an answer to reach the person who asked.<br><br>
+      <b>One rule each.</b> A question clears when you answer it. An answer clears when you see it.<br><br>
+      <b>Not a loop.</b> An answer is not a new tag. Marcus owes nothing, and Dana is not asked to clear anything again. If her answer is a question back, she picks his name with the <b>@</b>, and then it is a tag.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 5 -->
+<h2 id="phone">5 · On a phone <small>375 wide</small></h2>
+<p class="lede">The same on a phone: the list above the keyboard, the count where the Messages count already sits, the section as cards, and the path of a person on the crew, who has no Jobs link.</p>
+<div class="phones">
+  <div class="phone">
+    <div class="bar"><span class="menu">☰<span class="badge">2</span></span><span>Jobs</span></div>
+    <div class="body" style="padding-bottom:0">
+      <div class="card" style="padding:0">
+        <div class="rowhead"><span class="jobname">Cedar Bluff Lofts</span><span class="chipk">Project</span></div>
+        <div class="notes" style="max-height:92px">
+          <div class="n"><span class="num">31</span><span class="txt"><span class="when">Mon (20d)</span> <b>Dana</b> | on going</span></div>
+          <div class="n"><span class="num">32</span><span class="txt"><span class="when">10:04 AM</span> <b>Marcus</b> | The developer says they paid Ridgeway…</span></div>
+        </div>
+        <div class="names static" style="margin:0 8px 6px" aria-hidden="true">
+          <div class="grp">On this job</div>
+          <div class="p" aria-selected="true"><span class="av">CA</span><span class="who">Chris Alvarez</span><span class="what">crew</span></div>
+          <div class="grp">Office</div>
+          <div class="p"><span class="av">CB</span><span class="who">Chris Bell</span><span class="what">office</span></div>
+        </div>
+        <div class="composer" style="margin:0 8px 8px"><div class="box"><input value="meter set date? @ch" aria-label="Note text, phone example" readonly><button class="atbtn" type="button" tabindex="-1">@</button><button class="post" type="button" tabindex="-1">Post</button></div></div>
+      </div>
+    </div>
+    <div class="kb" aria-hidden="true">
+      <div><span>q</span><span>w</span><span>e</span><span>r</span><span>t</span><span>y</span><span>u</span><span>i</span><span>o</span><span>p</span></div>
+      <div><span>a</span><span>s</span><span>d</span><span>f</span><span>g</span><span>h</span><span>j</span><span>k</span><span>l</span></div>
+      <div><span>123</span><span style="flex:1 1 150px">space</span><span>@</span><span>return</span></div>
+    </div>
+    <div class="cap2" style="padding-top:8px">The list opens above the box, so the keyboard never covers it. Each name is a full-width row, 40 px tall. The @ button saves hunting for the key.</div>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span class="menu">✕</span><span>Menu</span></div>
+    <div class="menulist">
+      <a href="#phone">Dashboard</a>
+      <a href="#phone">Estimates</a>
+      <a href="#phone"><span>Jobs</span><span class="badge inl">2</span></a>
+      <a href="#phone">Schedule</a>
+      <a href="#phone">Projects</a>
+      <a href="#phone">Bids</a>
+      <a href="#phone"><span>Messages</span><span class="badge inl">5</span></a>
+    </div>
+    <div class="cap2" style="padding-top:10px">Today a phone shows the Messages count only inside the open menu. The tag count sits beside Jobs the same way, and one thing is new: the count rides on the menu button too, so it is seen with the menu shut. That is for people who have a Jobs link. The crew's menu has no Jobs, so their button carries no number.</div>
+    <div class="body">
+      <div class="push">
+        <div class="app">PipeTooling <span>now</span></div>
+        <b>Marcus tagged you on Cedar Bluff Lofts</b>
+        <span>The developer says they paid Ridgeway the change order, but I don't know if we've got it yet</span>
+      </div>
+    </div>
+    <div class="cap2">The push, for a person who has notices switched on. Tapping it opens the list.</div>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span class="menu">☰<span class="badge">2</span></span><span>Jobs</span></div>
+    <div class="body">
+      <div class="sec" style="margin:0">
+        <h4>Tagged job notes <span class="badge inl">2</span></h4>
+        <div class="t">
+          <div class="l1"><span class="jobname">Tanner residence</span><span class="age late">Wed · 4d</span></div>
+          <div class="q"><b>Luis</b> | <span class="at me">@Dana Whitlock</span> homeowner wants the bill split in two, half now and half at the final. Can we?</div>
+          <div class="acts">
+            <div class="box"><input value="" placeholder="Answer Luis…" aria-label="Answer, phone" readonly><button class="atbtn" type="button" tabindex="-1">@</button><button class="post" type="button" tabindex="-1">Post</button></div>
+            <button class="btn" type="button" tabindex="-1">No reply needed</button>
+          </div>
+        </div>
+        <div class="t">
+          <div class="l1"><span class="jobname">Cedar Bluff Lofts</span><span class="age">10:04 AM</span></div>
+          <div class="q"><b>Marcus</b> | The developer says they paid Ridgeway the change order, but I don't know if we've got it yet <span class="at me">@Dana Whitlock</span></div>
+          <div class="acts">
+            <div class="box"><input value="" placeholder="Answer Marcus…" aria-label="Answer, phone, second" readonly><button class="atbtn" type="button" tabindex="-1">@</button><button class="post" type="button" tabindex="-1">Post</button></div>
+            <button class="btn" type="button" tabindex="-1">No reply needed</button>
+          </div>
+        </div>
+        <div class="fold"><div class="hd">You asked · 2 ›</div></div>
+      </div>
+    </div>
+    <div class="cap2">The office on a phone. The job's name opens the job. The oldest tag is on top.</div>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span class="menu">☰</span><span>Dashboard</span></div>
+    <div class="body">
+      <div class="card">
+        <div class="ttl">Needs you</div>
+        <div class="line"><span class="dot"></span><span><b>1 job note tagged you</b><br><span class="jobmeta">Cedar Bluff Lofts</span></span><span class="go">Open ›</span></div>
+      </div>
+      <div class="sec" style="margin:0; box-shadow:0 10px 28px rgba(0,0,0,.22)">
+        <h4>Tagged job notes <span class="badge inl">1</span><span class="foldbtn" aria-hidden="true">✕</span></h4>
+        <div class="t">
+          <div class="l1"><span class="jobname">Cedar Bluff Lofts</span><span class="age">11:20 AM</span></div>
+          <div class="q"><b>Dana</b> | <span class="at me">@Chris Alvarez</span> is the meter set still on for Tuesday?</div>
+          <div class="acts">
+            <div class="box"><input value="" placeholder="Answer Dana…" aria-label="Answer, crew phone" readonly><button class="atbtn" type="button" tabindex="-1">@</button><button class="post" type="button" tabindex="-1">Post</button></div>
+            <button class="btn" type="button" tabindex="-1">No reply needed</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cap2">Chris Alvarez, on the crew. He has no Jobs link and no Pipeline. The Needs you line opens the same list as a window, and so does the push. He answers there, and the answer goes on the job's notes. The job's name opens the job as he sees it.</div>
+  </div>
+</div>
+
+<!-- ============================================================ 6 -->
+<h2 id="calls">6 · The calls <small>eight, each with my pick</small></h2>
+<table class="calls">
+  <thead><tr><th>Call</th><th>My pick</th><th>The other way</th></tr></thead>
+  <tbody>
+    <tr><td>1 · Where it lands</td><td class="mine" data-h="My pick">Tagged job notes at the top of the Pipeline with the count above Jobs, and one line on the Dashboard's Needs you card, which opens the same list as a window. <b>Settled: Taunya's pick, 2026-11-15.</b></td><td data-h="The other way">A lane in Messages, or a task on the checklist. Section 3 says why not.</td></tr>
+    <tr><td>2 · What clears it</td><td class="mine" data-h="My pick">An answer on the job, or No reply needed. Opening does not.</td><td data-h="The other way">Opening clears it, like an unread mail. Simpler, but a tag read in passing is then lost.</td></tr>
+    <tr><td>3 · Nobody answers</td><td class="mine" data-h="My pick">It stays and turns amber after two working days. No reminder, no expiry.</td><td data-h="The other way">A second push after two days, or the tag falls off after two weeks.</td></tr>
+    <tr><td>4 · Picking the name</td><td class="mine" data-h="My pick">A list under the box on @ or the @ button, the job's crew first. Only a picked name is a tag.</td><td data-h="The other way">The app reads @word from the text. Fails on two people named Chris and on "arrive @ 8:45".</td></tr>
+    <tr><td>5 · Who can be tagged</td><td class="mine" data-h="My pick">Anyone with a login who can open that job: the office and the job's crew. Not subs, not people who left, and not an estimator, who cannot open a job today.</td><td data-h="The other way">Subs too. They see only their own jobs through their own pages, so it needs its own design.</td></tr>
+    <tr><td>6 · A push</td><td class="mine" data-h="My pick">Yes, one push per tag, under the notice switches a person already has. No email.</td><td data-h="The other way">The count only. Cheaper, but the crew is not looking at the header all day.</td></tr>
+    <tr><td>7 · Telling the asker</td><td class="mine" data-h="My pick"><b>Changed.</b> The answer counts above Jobs for the asker until they see it, then clears by itself. A push too, and the You asked fold. A question back is a tag, picked with the @ in the answer box.</td><td data-h="The other way">A push and the fold only, with no count. That was my first pick. It leans on pushes being switched on, which I could not read.</td></tr>
+    <tr><td>8 · Other note boxes</td><td class="mine" data-h="My pick">The Pipeline row first, then the job window, Job Mode and Quickfill, which share one box. Reports, estimates and bids later.</td><td data-h="The other way">Every box at once. A bigger first PR with more to walk.</td></tr>
+  </tbody>
+</table>
+
+</div>
+<script>
+(function () {
+  // Theme toggle.
+  var root = document.documentElement
+  document.querySelectorAll('.themes button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      root.setAttribute('data-theme', b.getAttribute('data-set'))
+      document.querySelectorAll('.themes button').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)) })
+    })
+  })
+
+  // The note boxes. Made-up people only. One function wires the Pipeline row's box and each answer box.
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] }) }
+  function initials(n) { return n.split(' ').map(function (w) { return w[0] }).join('').slice(0, 2) }
+  // A first name two people share is written whole, so the line says which Chris.
+  function who(names, people) {
+    return names.map(function (n) {
+      var first = n.split(' ')[0]
+      var shared = people.filter(function (p) { return p.name.split(' ')[0] === first }).length > 1
+      return esc(shared ? n : first)
+    }).join(' and ')
+  }
+
+  function wire(el, people, onPost) {
+    var input = el.querySelector('input')
+    var list = el.querySelector('.names')
+    var will = el.querySelector('.willtag')
+    var picked = []
+    var shown = []
+    var sel = 0
+
+    function caret() { return input.selectionStart == null ? input.value.length : input.selectionStart }
+    function query() {
+      var m = /(^|\s)@([A-Za-z]*)$/.exec(input.value.slice(0, caret()))
+      return m ? m[2].toLowerCase() : null
+    }
+    function matches(q) {
+      return people.filter(function (p) {
+        if (picked.indexOf(p.name) >= 0) return false
+        return p.name.toLowerCase().split(' ').some(function (w) { return w.indexOf(q) === 0 })
+      })
+    }
+    function pickable() { return shown.filter(function (p) { return !p.off }) }
+    function draw() {
+      var q = query()
+      if (q == null) { list.hidden = true; return }
+      shown = matches(q)
+      if (shown.length === 0) { list.innerHTML = '<div class="grp">Nobody by that name can open this job</div>'; list.hidden = false; return }
+      if (sel >= pickable().length) sel = 0
+      var html = '', grp = '', i = 0
+      shown.forEach(function (p) {
+        if (p.grp !== grp) { grp = p.grp; html += '<div class="grp">' + esc(grp) + '</div>' }
+        var inner = '<span class="av">' + initials(p.name) + '</span><span class="who">' + esc(p.name) + '</span><span class="what">' + esc(p.what) + '</span>'
+        if (p.off) { html += '<div class="p off">' + inner + '</div>'; return }
+        html += '<div class="p" role="option" data-name="' + esc(p.name) + '" aria-selected="' + (i === sel) + '">' + inner + '</div>'
+        i += 1
+      })
+      list.innerHTML = html
+      list.hidden = false
+    }
+    function drawWill() {
+      will.innerHTML = picked.length === 0 ? '' : 'Will tag: ' + picked.map(function (n) {
+        return '<span class="at">@' + esc(n) + '<button type="button" data-off="' + esc(n) + '" aria-label="Take ' + esc(n) + ' off">×</button></span>'
+      }).join(' ')
+    }
+    function pick(name) {
+      var pos = caret()
+      var before = input.value.slice(0, pos).replace(/(^|\s)@([A-Za-z]*)$/, '$1@' + name + ' ')
+      input.value = before + input.value.slice(pos)
+      picked.push(name)
+      list.hidden = true
+      sel = 0
+      drawWill()
+      input.focus()
+      input.setSelectionRange(before.length, before.length)
+    }
+    function clear() { input.value = ''; picked = []; list.hidden = true; drawWill() }
+    function post() {
+      var body = input.value.trim()
+      if (!body) return
+      var html = esc(body)
+      var live = picked.filter(function (n) { return body.indexOf('@' + n) >= 0 })
+      live.forEach(function (n) { html = html.split('@' + esc(n)).join('<span class="at">@' + esc(n) + '</span>') })
+      clear()
+      onPost(html, live)
+    }
+
+    input.addEventListener('input', function () { sel = 0; draw() })
+    input.addEventListener('click', draw)
+    input.addEventListener('keydown', function (e) {
+      var open = !list.hidden
+      var can = pickable()
+      if (open && can.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault()
+        sel = (sel + (e.key === 'ArrowDown' ? 1 : can.length - 1)) % can.length
+        draw()
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (open && can.length) pick(can[sel].name)
+        else post()
+      } else if (e.key === 'Escape' && open) {
+        list.hidden = true
+      }
+    })
+    list.addEventListener('mousedown', function (e) {
+      var row = e.target.closest('[data-name]')
+      if (!row) return
+      e.preventDefault()
+      pick(row.getAttribute('data-name'))
+    })
+    will.addEventListener('click', function (e) {
+      var off = e.target.getAttribute && e.target.getAttribute('data-off')
+      if (!off) return
+      picked = picked.filter(function (n) { return n !== off })
+      input.value = input.value.split('@' + off + ' ').join('').split('@' + off).join('')
+      drawWill()
+    })
+    el.querySelector('[data-at]').addEventListener('click', function () {
+      var v = input.value
+      input.value = v + (v && !/\s$/.test(v) ? ' ' : '') + '@'
+      input.focus()
+      input.setSelectionRange(input.value.length, input.value.length)
+      sel = 0
+      draw()
+    })
+    el.querySelector('[data-post]').addEventListener('click', post)
+    var x = el.querySelector('[data-clear]')
+    if (x) x.addEventListener('click', clear)
+    document.addEventListener('click', function (e) { if (!el.contains(e.target)) list.hidden = true })
+    return { clear: clear }
+  }
+
+  // 1 · The Pipeline row's box.
+  var ROW = [
+    { name: 'Luis Ortega', what: 'superintendent · on this job', grp: 'On this job' },
+    { name: 'Chris Alvarez', what: 'crew · on this job', grp: 'On this job' },
+    { name: 'Chris Bell', what: 'office', grp: 'Office' },
+    { name: 'Dana Whitlock', what: 'office', grp: 'Office' },
+    { name: 'Priya Nair', what: 'estimator · cannot open jobs', grp: 'Cannot be tagged here', off: true },
+    { name: 'Chuck Kessler', what: 'sub · not in the first version', grp: 'Cannot be tagged here', off: true },
+  ]
+  var notes = document.getElementById('demoNotes')
+  var next = 33
+  wire(document.getElementById('demoBox'), ROW, function (html, live) {
+    var wait = live.length ? '<span class="wait">waiting on ' + who(live, ROW) + ' · just now</span>' : ''
+    var row = document.createElement('div')
+    row.className = 'n'
+    row.innerHTML = '<span class="num">' + next + '</span><span class="txt"><span class="when">Sun 10:06 AM (today)</span> <b>You</b> | ' + html + wait + '</span>'
+    next += 1
+    notes.appendChild(row)
+    notes.scrollTop = notes.scrollHeight
+  })
+
+  // 2 · The section. An answer or No reply needed clears a tag, and both red numbers follow.
+  var CARDS = {
+    tanner: [
+      { name: 'Luis Ortega', what: 'superintendent', grp: 'Asked you' },
+      { name: 'Chris Alvarez', what: 'crew', grp: 'On this job' },
+      { name: 'Marcus Hale', what: 'office', grp: 'Office' },
+      { name: 'Chris Bell', what: 'office', grp: 'Office' },
+    ],
+    cedar: [
+      { name: 'Marcus Hale', what: 'office', grp: 'Asked you' },
+      { name: 'Luis Ortega', what: 'superintendent', grp: 'On this job' },
+      { name: 'Chris Alvarez', what: 'crew', grp: 'On this job' },
+      { name: 'Chris Bell', what: 'office', grp: 'Office' },
+    ],
+  }
+  var sub = document.getElementById('landSub')
+  var subWords = sub.textContent
+  var waiting = 2
+  var boxes = []
+  function setCount(n) {
+    waiting = n
+    document.querySelectorAll('[data-tagcount]').forEach(function (b) { b.textContent = String(n); b.hidden = n === 0 })
+    sub.textContent = n === 0 ? 'Nothing waiting on you' : subWords
+  }
+  document.querySelectorAll('#landSec [data-card]').forEach(function (card) {
+    var people = CARDS[card.getAttribute('data-card')]
+    var asker = people[0].name.split(' ')[0]
+    var acts = card.querySelector('.acts')
+    function cleared(words) {
+      var line = document.createElement('div')
+      line.className = 'cleared'
+      line.innerHTML = words
+      acts.hidden = true
+      card.appendChild(line)
+      setCount(waiting - 1)
+    }
+    boxes.push(wire(card.querySelector('.composer'), people, function (html, live) {
+      cleared('<b>You</b> | ' + html + '<br><span class="ok">Answered.</span> It is on the job\'s notes and ' + asker + ' is told.' + (live.length ? ' It now waits on ' + who(live, people) + '.' : ''))
+    }))
+    card.querySelector('[data-done]').addEventListener('click', function () {
+      cleared('<span class="ok">No reply needed.</span> ' + asker + ' sees that you pressed it. No note was added to the job.')
+    })
+  })
+  document.getElementById('landAgain').addEventListener('click', function () {
+    document.querySelectorAll('#landSec .cleared').forEach(function (c) { c.remove() })
+    document.querySelectorAll('#landSec .acts').forEach(function (a) { a.hidden = false })
+    boxes.forEach(function (b) { b.clear() })
+    setCount(2)
+  })
+  var fold = document.getElementById('landFold')
+  fold.addEventListener('click', function () {
+    var body = document.getElementById('landBody')
+    body.hidden = !body.hidden
+    fold.setAttribute('aria-expanded', String(!body.hidden))
+    fold.textContent = body.hidden ? 'Open ▾' : 'Fold ▴'
+  })
+})()
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, blank stickers, print blank stickers, sticker run, stickers before boxes, reprint, print the rest, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
+keywords: materials on site, materials desk, move everything on site, wrong job, move boxes to another job, read the plan, retire every box, archive a job's materials, job done, blank stickers, print blank stickers, sticker run, stickers before boxes, reprint, print the rest, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -103,6 +103,24 @@ The boxes sit grouped by their place on the site. **All**, **Due a count** and *
 
 Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. On a line, **Correct…** sets the count the crew should have found. It writes a count row in your name.
 
+## Move everything on site to another job
+
+A crew can start a count under the wrong job. The boxes then sit on a job that is not theirs. This press moves them to the right job in one go.
+
+Open the wrong job's page and look under its boxes. Press **Move everything on site to another job…**. Only a dev, a master technician, an assistant or a controller can press it. For everyone else the press is grey and says why.
+
+Pick the job the material belongs on. The jobs on the same site are listed first. Type a number or a name in **Find another job** to reach any other job. Then press {{button:blue|Read the plan}}.
+
+The plan says what moves, table by table. It names a place that becomes one with a place of the same name. It names a box whose stencil the other job already has, and the new name that box takes. It reads each job's boxes and parts before and after. Nothing has moved yet.
+
+The button names the move with its counts, such as {{button:blue|Move 91 boxes and 284 presses to JP1091}}. Press it and the boxes move. Every box keeps its code, its label and its history. Only the job it sits under changes. A note lands on both jobs.
+
+The wrong job's page then reads empty. The right job's page reads the boxes. The box photos' files follow to that job's Drive folder by themselves. A strip above the boxes shows them on their way.
+
+A refusal is said with its reason, and nothing moves. A phone that still has the wrong job open should open the right one. A press it sends lands on the box's job now.
+
+On the Materials desk, a site that holds boxes under two jobs has the same press on its row. There you pick both jobs from that site's jobs.
+
 ## Missing
 
 The table holds one row per part. It reads what was bought and what was added on site. Then what was used, returned, taken or damaged, and what the crew could not find. Then what is still on site and what walked away. Below it, **Reported this week** lists each short count and each Can't find with the person and the day.
@@ -139,7 +157,7 @@ On a job's page, press **Print blank stickers** beside **Print labels**. On the 
 
 Pick how many with **30**, **60**, **100** or **200**, or type a number up to 500. A box with more than one side needs more than one sticker. Set **Copies of each** with the minus and plus presses. Every copy of a sticker opens the same box. The window says where the last run ended. The numbers for this run are given when you press.
 
-Stickers print on Brother tape. The window connects to the P-touch as the Labels window does. Press **Print 1 test strip** first. The test strip is not a sticker and uses no number. Then press {{button:blue|Print 200 stickers}}. With copies the press names the sets, such as {{button:blue|Print 200 sets}}. The app numbers the run and the strips print at once. Each strip carries the QR code, the number in large type and the short code.
+Stickers print on Brother tape. The window connects to the P-touch as the Labels window does. Open **What the stickers will look like** at the foot of the window to see the strips before you print. The fold draws the first six strips with the run's own numbers. The code on each strip is a sample, since a sticker's code is given when the run prints. Press **Show all 200** to draw the rest smaller. The fold also draws the test strip. Press **Print 1 test strip** first. The test strip is not a sticker and uses no number. Then press {{button:blue|Print 200 stickers}}. With copies the press names the sets, such as {{button:blue|Print 200 sets}}. The app numbers the run and the strips print at once. Each strip carries the QR code, the number in large type and the short code.
 
 If the printer stops part way, the window says how many stickers printed. The press becomes **Print the rest, 0163 to 0300**. Connect the printer again and press it. The stickers already printed are not printed twice.
 
@@ -154,6 +172,12 @@ Each box prints on its own Letter page in large plain type. The page carries the
 Laminate the page and hang it on the box in a document holder. The manifest is a plain print and files no copy. When someone writes a line on it, press the same thing in the app so the count stays true.
 
 For every cage and box across a development, print the [material location report](/help/print-the-material-location-report) from the Development page.
+
+## Retire every box on a job
+
+When a job is done and its cages have gone back to the yard, retire them all at once. Under the job's boxes press {{button:outline|Retire 2 empty boxes}}. The press counts the empty boxes. A box with parts in it stays, and the line beside the press names it. Move its parts or mark them used, then press again.
+
+A window lists what goes and what stays, with the reason for each. The button in the window carries the same count. After the press, a toast says how many boxes were retired. It carries **Undo** for one minute, which brings every one of them back. A retired box keeps its stickers and its history.
 
 ## Bring back a retired box
 

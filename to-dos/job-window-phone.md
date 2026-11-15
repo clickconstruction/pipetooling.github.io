@@ -2,7 +2,7 @@
 name: "The job window on a phone"
 number: 355
 group: ready
-status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day
+status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day · the six other tabs built, v2.7281 to v2.7285 · C shown to Taunya 2026-11-15 as three roles beside the live window · her pick the same day: build the crew half, the crew lead's tabs wait
 summary: >
   The owner opened a job on his iPhone and did not like how it reads: the tab row wraps onto two
   lines, the top is eight small icons, and the Job tab runs six and a half screens before the bar.
@@ -14,11 +14,13 @@ summary: >
   C gives the phone its own window shaped by role. Pass 2 read nineteen days of presses on the
   window from prod: the crew's bar is the live part, six of the eight icons were never pressed, and
   no office role pressed the window's chrome at all. So the name comes first with ⋯ and ✕ fixed at
-  the right, every door goes behind ⋯, C waits, and three questions are left for the owner.
-next: build D, H, E, F, G in that order, each its own PR on the one before, verified at 375 and 768 before it opens; tell the owner when each is live.
-size: L as a train (S for A · M for B · L for C); the first step is S
+  the right and every door goes behind ⋯. A, B and the six other tabs are built. C was shown on
+  2026-11-15 and split on Taunya's word: the crew's plain window gets B's order now, and the crew
+  lead's tabs shaped by role wait for a month of tab counts.
+next: build the crew half of C, the plain window on a phone in B's order (Where, Photos, Who, What's happening, the rest folded) and then Today's work on it, each its own PR, walked at 375 px as the sample superintendent before it opens; tell Taunya when each is live.
+size: L as a train (S for A · M for B · L for C, of which the crew half is M); the next step is M
 blocker: none
-opinion: A and B are built (v2.7271, v2.7278); C waits for the count
+opinion: A, B and the six other tabs are built; the crew half of C is picked and next; the crew lead's tabs wait for the count
 mockup: job-window-phone-directions.html
 ---
 
@@ -326,7 +328,7 @@ under its title. The rest folds under More on this job, each with its count: Que
 and papers, Work and time, Their journey. With every fold closed the scroll ends near
 1,300 px. The desk is untouched.
 
-**C · The crew lead's window** (not recommended now). A `JobWindowPhone` drawn from a kernel that
+**C · The crew lead's window** (as first drawn; split on 2026-11-15, see *Direction C, shown and split* below). A `JobWindowPhone` drawn from a kernel that
 shapes it by role: the three tabs the role uses and a More ▾ sheet, and for a master tech on the
 crew a Job tab that is Where, Who, Today's work (the open stage, its checklist, the plans, materials
 on site), Questions, Notes and reports, the photo banner after Where, with no money and the crew's bar. The count says
@@ -546,6 +548,52 @@ order.
 6. **The five desk windows** Documents opens (the AIA application, View bill, Contract, Test report, Lien):
    measure each at 375 px as its own pass, or leave them to a desk with a *This opens at a desk* line?
 
+## Direction C, shown and split (pass 4)
+
+Taunya, asked build, later or drop on 2026-11-15: "in a new sessions show me screenshots of mockups
+so I can better understand and make a decision". The third mock-up is
+[`job-window-phone-c.html`](job-window-phone-c.html): three roles, each beside the window that role
+opens today, read from the live app at 375 px the same day (as the dev and the sample master tech
+on the ZZ test job, and as the sample superintendent on a ZZ test job he is on the crew of).
+
+**What the walk found.** A and B rebuilt only the tabbed window, which `resolveJobWindowMode` gives
+to the office roles and the master techs. Helpers, the superintendent and the subs open the plain
+`DetailJobModal`, and at 375 px it is still the old layout: about 1,800 px long, three small icons
+with no names, a notes feed that scrolls inside the scroll, and the office's reads on a crew phone
+(job accounts, Last bill date, the Status rail, Parts Cost). Its bar, Arrived or Leaving · Leave
+report · Note, is right, and it is what gets pressed. A master tech on the crew gets the office's
+window whole, with a four-press bar (Status ▾ · the next verb · Arrived · Note).
+
+**The count, 2026-11-09 to 11-15** (`ui_nav_clicks`, counts only). The office opened the tabbed
+window about 100 times, nearly all from the Jobs page, and pressed nothing on its top or its bar. A
+master tech opened it 3 times, all from the Dashboard, and pressed nothing counted. The
+superintendent opened the plain window 11 times: Arrived 5, Leaving 9, Leave report 3, Close 5.
+Helpers opened it 3 times and pressed nothing. Subs, none. The tabs have been counted since A
+shipped on Saturday 2026-11-14; the two days since are a weekend, and every tab press so far is the
+dev account's. The table has no column for the screen size.
+
+**Her pick: "Build crew half".** C is two jobs of different worth, and they are split:
+
+- **The crew half, now (M).** The plain window on a phone reads in B's order: the name first with
+  the status, then Where (the banner, the address with Directions, the painted map), Photos, Who
+  (the number written out as a press that calls), What's happening, and the rest folded under More
+  on this job (Notes and reports, Questions, and Parts cost for the roles that read it today). Job
+  accounts, the hours target card, the two dates and the Status rail leave the crew's phone. The bar
+  does not change. No new window and no role kernel: it is the shape B gave the tabbed window's Job
+  tab, drawn for the plain one. Then **Today's work** on it (the open stage, its checklist, the
+  plans, materials on site), a PR of its own, since it needs reads the crew roles do not have
+  cleanly today.
+- **The crew lead's tabs, later.** Three tabs and a More ▾ for a master tech on the crew, with the
+  crew's bar. Three opens a week and no tab pressed is not yet a reason; a month of tab counts says
+  whether it is.
+
+**Found on the walk, not part of C.** The plain window's Plans section answered *Could not read the
+job. Try again* for the sample superintendent on a job he is on the crew of. Seen once, on a window
+opened from the pane and not from a Dashboard tap; the Today's work PR confirms it and fixes it.
+
+**Hers to say, when the sub's window is drawn for real:** whether a sub sees the customer's number
+or our lead's, and whether a *Your pay* row is drawn before the sub pay work lands.
+
 ## The plan
 
 1. **A** (S): **built, v2.7271** (`docs/recent-features/v2.7271.md`): the title row first with ⋯ over ✕,
@@ -562,9 +610,18 @@ order.
    **Built, v2.7281 to v2.7285.** The viewport sweep after them (375 to 440 px, landscape, iPad, both
    themes) found one tap trap: A's floating ✕ sat over the right edge of whatever had scrolled under
    it. **v2.7300** takes it off: the ✕ goes with the tabs and comes back at the pinned strip's right.
-4. **C** (L), only when a master tech works from a phone or the tab count says the office's
-   phone use is real: `JobWindowPhone`, the role kernel for tabs and bar, the crew lead's Today's
-   work.
+   The sweep's other find, 86 presses under 40 px that predate the pass (the rows' blue acts, the
+   pencils, Print, the draw chips), **v2.7309** pads: an unseen 44 px square around each, measured
+   as the body changes, and the History range select at 16 px and 40 px tall. The owner's
+   look at the desk after it (2026-11-15), **v2.7326**: a new job read as a stack of empties. The
+   questions section said none yet twice and offered Ask the estimators twice; the calls line sat
+   in a blue box that read as a field; Paint a map was a dashed box the width of the window; the
+   head's six icons had no words. Now one none yet, a plain line, a small press, and a word under
+   each icon on the desk pane. The phone is untouched.
+4. **C, the crew half** (M), picked 2026-11-15: the plain window on a phone in B's order, then
+   Today's work on it, each its own PR.
+5. **C, the crew lead's tabs** (M to L), only when a month of tab counts says a master tech works
+   the tabbed window from a phone: `JobWindowPhone`, the role kernel for tabs and bar.
 
 ## How to verify
 
