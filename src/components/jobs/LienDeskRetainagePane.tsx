@@ -16,6 +16,7 @@ import { retainageReleaseWords, retainageSourceWords } from '../../lib/ar/retain
 import { holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverLetter } from '../../lib/jobs/lienNoticeDraft'
 import { coverLetterKindFor } from '../../lib/jobs/gcOnNotice'
@@ -115,6 +116,7 @@ export default function LienDeskRetainagePane({
   const label = job ? `${jobNumber}${(job.job_name ?? '').trim() ? ` · ${(job.job_name ?? '').trim()}` : ''}` : entry.jobId.slice(0, 8)
   // The job's master by name (v2.4856): the word row and the record say *on Malachi's word*.
   const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
+  const press = lienLeaderPressWords(leaderName, 'retainage')
   const item = entry.item && entry.item.status !== 'sent' && entry.item.status !== 'missed' ? entry.item : null
   const endedWords = contractEndedWords(entry.contractEndedHow, entry.contractEndedOn, formatYmdMonthDay)
 
@@ -214,15 +216,15 @@ export default function LienDeskRetainagePane({
     ) : (
       <>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          ✉ Certified mail to <strong style={{ color: 'var(--text-700)' }}>{ownerName || 'the owner of record'}</strong> and <strong style={{ color: 'var(--text-700)' }}>{gc?.name ?? 'the original contractor'}</strong> · {blocked ? 'Blocked until every gate above is clear.' : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit, into the run.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — the leader decides between paper and their word.` : 'Goes to the leader, then out with the run.'} {fuse}
+          ✉ Certified mail to <strong style={{ color: 'var(--text-700)' }}>{ownerName || 'the owner of record'}</strong> and <strong style={{ color: 'var(--text-700)' }}>{gc?.name ?? 'the original contractor'}</strong> · {blocked ? 'Blocked until every gate above is clear.' : leader ? press.approveLine : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit, into the run.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between paper and their word.` : press.askLine} {fuse}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ flex: 1 }} />
-          {canWord ? <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)}>The leader said to send it ▸</button> : null}
+          {canWord ? <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)} title={press.onWordTitle}>{press.onWord}</button> : null}
           {leader ? (
-            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)}>Sign and approve ▸</button>
+            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)} title={press.approveLine}>{press.approve}</button>
           ) : (
-            <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)}>Send for approval ▸</button>
+            <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)} title={press.askLine}>{press.ask}</button>
           )}
         </div>
       </>
