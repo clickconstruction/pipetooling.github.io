@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for Scan a label (punch list #304): the words, the typed code with its dash, a slip for a short code,
- * and the code handed on whole.
+ * and the code handed on whole. Since v2.7298 (punch list #329, PR 3) a sticker's number typed finds the sticker and
+ * hands on its code, and a number nobody answers says so.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import ScanLabelWindow, { SCAN_LABEL_SLIP } from './ScanLabelWindow'
 
@@ -13,7 +14,7 @@ afterEach(cleanup)
 describe('ScanLabelWindow', () => {
   it('says how a label opens and refuses a short code with a reason', () => {
     const onOpen = vi.fn()
-    renderWithProviders(<ScanLabelWindow onClose={() => {}} onOpen={onOpen} />)
+    renderWithProviders(<ScanLabelWindow onClose={() => {}} onOpen={onOpen} findByNumber={async () => null} />)
     expect(screen.getByRole('dialog', { name: 'Scan a label' }).textContent).toContain('point it at the label')
     const input = screen.getByTestId('scan-label-input') as HTMLInputElement
     fireEvent.change(input, { target: { value: '4f2a9' } })
@@ -26,11 +27,26 @@ describe('ScanLabelWindow', () => {
   it('hands on a whole code and closes on the backdrop', () => {
     const onOpen = vi.fn()
     const onClose = vi.fn()
-    renderWithProviders(<ScanLabelWindow onClose={onClose} onOpen={onOpen} />)
+    renderWithProviders(<ScanLabelWindow onClose={onClose} onOpen={onOpen} findByNumber={async () => null} />)
     fireEvent.change(screen.getByTestId('scan-label-input'), { target: { value: '4f2a-9c18' } })
     fireEvent.click(screen.getByTestId('scan-label-open'))
     expect(onOpen).toHaveBeenCalledWith('4F2A9C18')
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a sticker’s number finds the sticker and hands on its code; one nobody answers says so', async () => {
+    const onOpen = vi.fn()
+    const findByNumber = vi.fn(async (n: number) => (n === 147 ? { id: 's-147', code: '4F2A9C18' } : null))
+    renderWithProviders(<ScanLabelWindow onClose={() => {}} onOpen={onOpen} findByNumber={findByNumber} />)
+    const input = screen.getByTestId('scan-label-input') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '0147' } })
+    expect(input.value).toBe('0147')
+    fireEvent.click(screen.getByTestId('scan-label-open'))
+    await waitFor(() => expect(onOpen).toHaveBeenCalledWith('4F2A9C18'))
+    expect(findByNumber).toHaveBeenCalledWith(147)
+    fireEvent.change(input, { target: { value: '0199' } })
+    fireEvent.click(screen.getByTestId('scan-label-open'))
+    expect((await screen.findByTestId('scan-label-slip')).textContent).toBe('No sticker 0199 is on a job you are on.')
   })
 })

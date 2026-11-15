@@ -14,6 +14,8 @@ const store = vi.hoisted(() => ({
 }))
 vi.mock('../../lib/materials/onSiteStore', () => ({
   addContainer: vi.fn(),
+  loadJob: vi.fn(async () => {}),
+  resolveBoxCode: vi.fn(async () => ({ kind: 'none' })),
   addMovement: vi.fn(),
   addPlace: vi.fn(),
   addPhoto: vi.fn(),
@@ -38,6 +40,8 @@ vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ loaded: tr
 vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords: () => ({ coords: new Map() }) }))
 // The site's boxes for the name rule (punch list #351): the test hands none, so the job's own boxes are the check.
 vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
+// The job's stickers (punch list #329, PR 3): none in these tests.
+vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map(), blank: 0, loaded: true, refresh: () => {} }) }))
 // Every job with a box (punch list #304): the tab asks for it only for Every job or an empty job.
 const desk = vi.hoisted(() => ({ jobs: [] as unknown[], asked: [] as boolean[] }))
 vi.mock('../../hooks/useOnSiteDeskJobs', () => ({

@@ -27,6 +27,8 @@ const data = vi.hoisted(() => ({ containers: {} as Record<string, unknown[]>, mo
 data.containers = { ja: [box('r12', 'ja', 'R12')], jb: [box('p1', 'jb', 'P1')], jc: [box('a1', 'jc', 'A1')] }
 data.movements = { ja: [delivered('m1', 'ja', '2" 90 pvc', 94, 'r12')], jb: [delivered('m2', 'jb', '2 inch 90 PVC', 28, 'p1')], jc: [delivered('m3', 'jc', 'Wax ring', 6, 'a1')] }
 
+// The job's stickers (punch list #329, PR 3): none in these tests.
+vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map(), blank: 0, loaded: true, refresh: () => {} }) }))
 vi.mock('../../lib/materials/onSiteStore', () => ({
   listContainers: (id: string) => data.containers[id] ?? [],
   listPlaces: () => [],

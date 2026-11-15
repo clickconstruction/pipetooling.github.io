@@ -10,9 +10,18 @@
  * `useOnSiteDeskJobs`, searched by `lib/materials/onSiteFind.ts`), a job with no box names the other jobs that hold
  * one, **Scan a label** takes a typed code, and a box's label and manifest print here, where they used to open the
  * office's page and send everyone outside the office away.
+ *
+ * Since v2.7298 (punch list #329, PR 3) a blank sticker's scan lands here with `&sticker=<code>` and opens the
+ * **Sticker is new** sheet (`StickerNewSheet.tsx`); a box's row and its header read its sticker numbers beside the
+ * name (*G12 · 0147*, `useJobStickers`), and a line under the boxes counts the job's stickers not yet on a box.
  */
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Sheet } from './OnSiteSheet'
+import StickerNewSheet from './StickerNewSheet'
+import { useJobStickers } from '../../hooks/useJobStickers'
+import { notYetOnBoxLine, stickerNumbersWords, type PlaceOutcome } from '../../lib/materials/stickerPlace'
+import { lostStickerTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../../lib/materials/stickers'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
@@ -40,7 +49,7 @@ import { addPressLabel, boxNameVerdict, movedWordsNote, nextFreeName, siteBoxesF
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
-import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, pinContainer, resolveBoxCode, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { BOX_KIND_CHOICES, BOX_WHERE_MAX, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import BoxTabs from '../materials/BoxTabs'
@@ -72,10 +81,14 @@ type Props = {
   searchParts: (term: string) => Promise<OnSitePart[]>
   /** `?container=<id>` from a label's QR: open that container first. */
   initialContainerId: string | null
+  /** `?sticker=<code>` from a blank sticker's QR (v2.7298): open the Sticker is new sheet on it. */
+  initialStickerCode?: string | null
   /** Goes up each time the address asks for a box, so a box asked for a second time opens again (v2.6904). */
   askSeq?: number
   /** Told which box's screen is open, null on the list, so the page can keep it on the address (v2.6904). */
   onOpenContainer?: (containerId: string | null) => void
+  /** Told which sticker's sheet is open, null once it closes, so the page keeps it on the address (v2.7298). */
+  onOpenSticker?: (code: string | null) => void
 }
 
 const TOUCH_MIN = 48
@@ -125,7 +138,7 @@ type Sheet =
   | { kind: 'pin'; container: Container }
   | { kind: 'pick-box' }
 
-export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId, askSeq = 0, onOpenContainer }: Props) {
+export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId, initialStickerCode = null, askSeq = 0, onOpenContainer, onOpenSticker }: Props) {
   const { showToast, showActionToast } = useToastContext()
   /** A 320 px phone: the four presses go two by two, as the mock-up drew them. */
   const narrow = useMatchMedia('(max-width: 359px)')
@@ -137,6 +150,9 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   // The site's boxes for the name rule (punch list #351): the other jobs' from one read, this job's from the store.
   const siteNames = useSiteBoxNames(jobId)
   const siteBoxes: SiteBox[] = jobId ? siteBoxesFor(jobId, siteNames.rows, listContainers(jobId)) : []
+  // The job's stickers (punch list #329, PR 3): the numbers beside each box's name, and how many are not yet on a box.
+  const jobStickers = useJobStickers(jobId, containers.map((c) => c.id))
+  const stickersOn = (id: string) => stickerNumbersWords(jobStickers.byBox.get(id) ?? [])
   const movements = jobId ? listMovements(jobId) : []
   const places = jobId ? listPlaces(jobId) : []
   const lines = containerLines(movements)
@@ -156,6 +172,31 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const [paper, setPaper] = useState<{ kind: 'label' | 'manifest'; id: string } | null>(null)
   /** The box to open once another job's boxes are on screen (a hit on another job was pressed). */
   const pendingContainerRef = useRef<string | null>(null)
+  /** The blank sticker in hand (v2.7298): its code while its sheet is open, and what the code resolved to. It outlives a change of job, so *Change* under the new box keeps the sticker. */
+  const [stickerCode, setStickerCode] = useState<string | null>(null)
+  const [stickerFound, setStickerFound] = useState<CodeLookup | 'looking' | null>(null)
+  useEffect(() => { if (initialStickerCode) setStickerCode(initialStickerCode) }, [initialStickerCode, askSeq])
+  useEffect(() => { onOpenSticker?.(stickerCode) }, [stickerCode, onOpenSticker])
+  /** A sticker that resolved to something other than a blank one: a box opens as a scan of it would, the rest is said. */
+  useEffect(() => {
+    if (!stickerFound || stickerFound === 'looking' || stickerFound.kind === 'blank') return
+    setStickerCode(null)
+    if (stickerFound.kind === 'box') {
+      if (jobId && stickerFound.container.jobId === jobId) setView({ kind: 'container', id: stickerFound.container.id })
+      else { pendingContainerRef.current = stickerFound.container.id; onPickJob(stickerFound.container.jobId) }
+      return
+    }
+    showToast(stickerFound.kind === 'lost' ? `${lostStickerTitle(stickerFound.sticker.number)}.` : stickerFound.kind === 'retired' ? `${retiredBoxStickerTitle(stickerFound.sticker)}. Bring it back first.` : stickerFound.kind === 'out_of_reach' ? `${outOfReachStickerTitle(stickerFound.sticker.number)}.` : 'That code is not a sticker or a box you can open.', 'warning')
+  }, [stickerFound, jobId, onPickJob, showToast])
+  useEffect(() => {
+    if (!stickerCode) { setStickerFound(null); return }
+    let live = true
+    setStickerFound('looking')
+    resolveBoxCode(stickerCode)
+      .then((found) => { if (live) setStickerFound(found) })
+      .catch((e: unknown) => { if (live) { setStickerFound(null); setStickerCode(null); showToast(formatErrorMessage(e, 'The sticker did not read.'), 'error') } })
+    return () => { live = false }
+  }, [stickerCode, showToast])
   // Every job with a box loads only when it is asked for: the search set to Every job, or a job with no box of its own.
   const emptyJob = jobId != null && load.loaded && containers.length === 0
   const desk = useOnSiteDeskJobs(scope === 'all' || emptyJob, jobs)
@@ -225,6 +266,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     const open = pending ?? initialContainerId
     setView(open ? { kind: 'container', id: open } : { kind: 'containers' })
     setSheet(null)
+    if (open) setStickerCode(null)
     setQuery('')
     setScope('job')
     setPlaceFilter('all')
@@ -250,6 +292,37 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
 
   const write = (reason: MovementReason, line: Pick<ContainerLine, 'partId' | 'partName' | 'manufacturer'>, quantity: number, from: string | null, to: string | null, note = '') =>
     addMovement({ jobId, partId: line.partId, partName: line.partName, manufacturer: line.manufacturer, quantity, reason, fromContainerId: from, toContainerId: to, note, byUserId, byName })
+
+  /** The sticker's sheet said its last word: the sticker is placed, or a taken one's box is to be opened. The job is read again so a new box is there before its screen opens. */
+  const stickerDone = (outcome: PlaceOutcome) => {
+    setStickerCode(null)
+    showToast(outcome.words, outcome.kind === 'placed' || outcome.kind === 'created' || outcome.kind === 'already' ? 'success' : 'info')
+    jobStickers.refresh()
+    if (!outcome.containerId) return
+    const target = outcome.containerId
+    if (outcome.jobId && outcome.jobId !== jobId) {
+      pendingContainerRef.current = target
+      onPickJob(outcome.jobId)
+      return
+    }
+    void loadJob(jobId, { force: true }).then(() => { setSheet(null); setView({ kind: 'container', id: target }) })
+  }
+  const stickerSheet = stickerFound && stickerFound !== 'looking' && stickerFound.kind === 'blank' ? (
+    <StickerNewSheet
+      sticker={stickerFound.sticker}
+      jobId={jobId}
+      jobs={jobs}
+      containers={containers}
+      lines={lines}
+      places={places}
+      siteJobIds={siteNames.rows.map((r) => r.jobId)}
+      siteBoxes={siteBoxes}
+      stickersByBox={jobStickers.byBox}
+      onClose={() => setStickerCode(null)}
+      onChangeJob={() => setSheet({ kind: 'pick-job' })}
+      onDone={stickerDone}
+    />
+  ) : null
 
   // ── the containers ──────────────────────────────────────────────────────────────────────────
   if (view.kind === 'containers') {
@@ -423,6 +496,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                     <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.02em' }}>{c.label}</span>
+                      {stickersOn(c.id) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="on-site-box-stickers">· {stickersOn(c.id)}</span> : null}
                       <span style={{ ...muted, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', fontWeight: 600 }}>{c.kind === 'unsorted' ? 'delivered' : boxKindWords(c.kind).toLowerCase()}</span>
                       {c.where ? <span style={muted}>{c.where}</span> : null}
                     </div>
@@ -440,8 +514,12 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
               ))
             )}
             {containers.length > 0 ? <button type="button" style={{ ...btn, ...btnBlock, borderStyle: 'dashed', background: 'transparent', color: 'var(--text-700)' }} onClick={() => setSheet({ kind: 'add-container', moveAfter: null })}><span aria-hidden style={{ fontSize: '1.2rem', lineHeight: 1 }}>+</span> Add a container</button> : null}
+            {/* Stickers not yet on a box (punch list #329, PR 3): the job's blank stickers, from its runs. */}
+            {jobStickers.blank > 0 ? <p style={{ ...muted, margin: 0, textAlign: 'center' }} data-testid="on-site-stickers-blank">{notYetOnBoxLine(jobStickers.blank)}</p> : null}
           </>
         )}
+        {stickerFound === 'looking' ? <p style={{ ...muted, margin: 0 }} data-testid="on-site-sticker-looking">Reading the sticker…</p> : null}
+        {stickerSheet}
         {sheet?.kind === 'add-container' ? <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { setSheet(null); setView({ kind: 'container', id: c.id }) }} /> : null}
         {sheet?.kind === 'places' ? (
           <Sheet title="Places on this site" sub={`${boxCount} ${boxCount === 1 ? 'box' : 'boxes'} in ${places.length} ${places.length === 1 ? 'place' : 'places'}. Tap a place to see only its boxes.`} onClose={closeSheet} footer={<button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setSheet({ kind: 'map', focusId: null })}>Show the site map · {pinnedCount} pinned</button>}>
@@ -502,7 +580,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
       <button type="button" aria-label="Back to the containers" onClick={() => { setSheet(null); setView({ kind: 'containers' }) }} style={{ ...btn, width: TOUCH_MIN, padding: 0, fontSize: '1.25rem' }}>‹</button>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{containerWords(container)}</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{containerWords(container)}{stickersOn(container.id) ? <span style={{ ...muted, fontWeight: 600, fontSize: '1rem' }} title="The stickers on it" data-testid="on-site-box-header-stickers"> · {stickersOn(container.id)}</span> : null}</div>
         <div style={muted}>{container.where ? `${container.where} · ` : ''}{ls.filter((l) => l.onHand > 0).length} parts · <span style={due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : undefined}>{container.kind === 'unsorted' ? 'put them in a cage' : lastCountWords(last, now)}</span></div>
       </div>
       {/* Edit a box (v2.7179): its name, its kind and its where line, from the box's own screen. Never Unsorted, the app's own row. */}
@@ -639,6 +717,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { const mv = sheet.moveAfter; setSheet(null); if (mv) { write('moved', mv.line, mv.qty, mv.from.id, c.id); showToast(`Moved ${mv.qty} to ${c.label}.`, 'success') } else setView({ kind: 'container', id: c.id }) }} />
       ) : null}
       {pinSheet}
+      {stickerSheet}
       {sheet?.kind === 'move-box' ? <MoveBoxSheet jobId={jobId} container={sheet.container} places={places} byName={byName} onClose={() => setSheet(null)} onMoved={(name) => { setSheet(null); showToast(`${sheet.container.label} is now at ${name}.`, 'success') }} /> : null}
       {sheet?.kind === 'edit-box' ? (
         <Sheet title={editBoxTitle(sheet.container)} onClose={() => setSheet(null)}>
@@ -663,32 +742,6 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
 }
 
 // ── the sheets ────────────────────────────────────────────────────────────────────────────────
-
-function Sheet({ title, sub, children, onClose, footer, fill }: { title: string; sub?: string; children: ReactNode; onClose: () => void; /** Buttons that stay on screen under the body, whatever the body does with a drag or a wheel. */ footer?: ReactNode; /** The body fills the sheet and the sheet fills the screen: for a map, which eats the scroll. */ fill?: boolean }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 800, background: 'rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-end', paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={title} style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderTopLeftRadius: 16, borderTopRightRadius: 16, ...(fill ? { flex: '1 1 auto', minHeight: 0 } : { maxHeight: '90%' }), overflow: 'hidden', display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ flex: 'none', padding: '0.6rem 1rem 0', display: 'grid', gap: '0.4rem' }}>
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-strong)', margin: '0 auto' }} />
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{title}</h2>
-            <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)', minHeight: 36, minWidth: 36 }}>×</button>
-          </div>
-          {sub ? <p style={{ ...muted, margin: '-0.2rem 0 0' }}>{sub}</p> : null}
-        </div>
-        <div style={fill ? { flex: '1 1 auto', minHeight: 0, padding: '0.6rem 1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' } : { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0.6rem 1rem 1rem', display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
-          {children}
-        </div>
-        {footer ? <div style={{ flex: 'none', borderTop: '1px solid var(--border)', padding: '0.6rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px))', display: 'grid', gap: '0.5rem', background: 'var(--surface)' }}>{footer}</div> : null}
-      </div>
-    </div>
-  )
-}
 
 function Stepper({ n, max, onChange }: { n: number; max: number; onChange: (n: number) => void }) {
   const stepBtn: CSSProperties = { ...btn, width: 56, height: 56, padding: 0, fontSize: '1.5rem', borderRadius: 12 }

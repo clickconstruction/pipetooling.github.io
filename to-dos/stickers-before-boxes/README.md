@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PRs 3 to 6 not built
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,10 +14,10 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: PR 3 (the first scan) once PR 2 and #351's PR 1 have both merged, then a stop to walk the site, then PRs 4 to 6.
-size: L as a train of six (M · M · M · S · M · S); left: PRs 3 to 6 (M · S · M · S), PR 3 closes the loop
-blocker: PR 3 waits for PR 2 and #351's PR 1 to merge, by the owner's order of 2026-11-14.
-ver: v2.7272
+next: the stop to walk the site with the phone's own camera (PRs 1 to 3 make the loop whole), then PRs 4 to 6 on the owner's go.
+size: L as a train of six (M · M · M · S · M · S); left: PRs 4 to 6 (S · M · S)
+blocker: PRs 4 to 6 wait for the walk of the site, by the owner's order of 2026-11-14.
+ver: v2.7298
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -284,7 +284,7 @@ the merge because the client calls what it makes.
 |---|---|---|
 | 1 · the sticker | The migration, the kernel `src/lib/materials/stickers.ts` (number words, ranges, counts, placing verdicts) with tests, `/b/:code` and `box-read` resolving a sticker first, the blank sticker's page, the types, the docs | M |
 | 2 · print a run | **Print blank stickers** on tape through the window's own strip, reprint, print the rest, the runs on the office page; a guide | M |
-| 3 · the first scan | The **Sticker is new** sheet with both branches, the match list across the development, the number on a box's row and screen, the unused count, the twice-named and other-job verdicts, **Scan a label** taking a number; the guide | M |
+| 3 · the first scan | **Built 2026-11-14 (v2.7298).** The **Sticker is new** sheet with both branches, the match list across the development, the number on a box's row and screen, the unused count, the twice-named and other-job verdicts, **Scan a label** taking a number; the guide | M |
 | | **Stop here and walk the site.** The loop is whole with the phone's own camera. | |
 | 4 · change it afterwards | **Rename**, **This sticker is on the wrong box**, **Take off**, **lost**, **Empty it and start over**, the History rows | S |
 | 5 · the sticker walk | One screen, the camera in the app, **Or use the next sticker**, what did not send kept on the phone; checked on a real iPhone and a real Android | M |
@@ -429,3 +429,25 @@ What PR 2 changed from the design, said plainly: the press names the count, not 
 given by the mint under its lock and a range shown ahead could be another session's; the run's title carries the range
 once it exists. *Print 0163 again* for one damaged sticker is not its own press: Reprint prints the run, Print the rest
 the blank ones. The phone's On site tab has no press yet, and *Move the unused ones to another job* waits.
+
+2026-11-14: **PR 3, the first scan, is built** as v2.7298, under the owner's change to call 7. A signed-in scan of a blank
+sticker lands on the On site tab with `&sticker=<code>` and opens **Sticker 0147 is new**, the number large, two
+branches. **It is on a box I know**: the site's live boxes, this job's first and the ones with no sticker first, read
+from the store for this job and from the site's other jobs when the sheet opens, searched by the start of the stencil
+or of its number (two digits find R76), the place, the where line, a part or the other job; a row is picked and
+*Put 0147 on R76* places through `place_sticker`. **It is a new box**: the box made in the same call, *Its name* on the
+site's next free name under #351's rule with *Sticker 0147* beside it, the kind and the place as Add a container asks
+them, *Goes on* the job with **Change**, which keeps the sticker in hand through the job picker. The verdicts in words:
+*Marcus put 0147 on R76 a minute ago* with **Open R76**, a sticker on a box of a job the person is not on, a lost one, a
+name the rule refuses. The press is dead with its reason while the phone has no signal, and nothing is kept for later.
+A box's row and header on the phone and the office's box card read the sticker numbers beside the name (*G12 · 0147*);
+**Scan a label** takes a sticker's number; the office page counts the stickers not yet on a box with **Runs** one press
+away, and the Print blank stickers window says the count before a new run. The words are
+`src/lib/materials/stickerPlace.ts`; the sheet `src/components/tally/StickerNewSheet.tsx`; the reads and the write
+`stickerPlaceIo.ts` and `useJobStickers`. No migration: `place_sticker` and the events' triggers held every rule.
+
+What PR 3 changed from the design, said plainly: the branches read *It is on a box I know* and *It is a new box* (the
+mock-up's *A box already here* and *A new box*); the row is picked and the press names it, so the press is dead until a
+row is; the new box is named by the site's next free name and never the sticker's number, by the owner's call; a press
+with no signal is refused with its reason, not kept, since two phones may hold one blank sticker. **The loop is whole
+with the phone's own camera. The next step is the walk of the site**, then PRs 4 to 6.

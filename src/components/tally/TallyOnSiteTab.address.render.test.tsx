@@ -18,6 +18,8 @@ import { installDomShims } from '../../test/renderSmokeMocks'
 const store = vi.hoisted(() => ({ containers: [] as Array<{ jobId: string }> }))
 vi.mock('../../lib/materials/onSiteStore', () => ({
   addContainer: vi.fn(),
+  loadJob: vi.fn(async () => {}),
+  resolveBoxCode: vi.fn(async () => ({ kind: 'none' })),
   addMovement: vi.fn(),
   addPlace: vi.fn(),
   addPhoto: vi.fn(),
@@ -41,6 +43,8 @@ vi.mock('../../hooks/useAuth', async () => {
 vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ loaded: true, loading: false, error: null, raw: null, retry: () => {} }), useOnSiteStoreVersion: () => 0 }))
 vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords: () => ({ coords: new Map() }) }))
 vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
+// The job's stickers (punch list #329, PR 3): none in these tests.
+vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map(), blank: 0, loaded: true, refresh: () => {} }) }))
 vi.mock('../../hooks/useOnSiteDeskJobs', () => ({ useOnSiteDeskJobs: () => ({ jobs: [], rows: [], loading: false, loaded: false, error: null, raw: null, retry: () => {} }) }))
 vi.mock('../../lib/materials/shortRequestIo', () => ({ sendShortRequest: vi.fn() }))
 

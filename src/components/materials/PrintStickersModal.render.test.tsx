@@ -25,12 +25,12 @@ function mintedRun(request: StickerRunRequest): MintedRun {
   return { run: { id: 'run-1', jobId: request.jobId, count: request.count, firstNumber: 101, lastNumber: 100 + request.count, copies: request.copies, printedByName: 'Dana', printedAt: '2026-11-14T16:00:00Z' }, stickers }
 }
 
-function setup(over: { role?: string; mint?: (r: StickerRunRequest) => Promise<MintedRun>; last?: () => Promise<number | null>; run?: MintedRun & { title: string } } = {}) {
+function setup(over: { role?: string; mint?: (r: StickerRunRequest) => Promise<MintedRun>; last?: () => Promise<number | null>; blank?: () => Promise<number>; run?: MintedRun & { title: string } } = {}) {
   const print = vi.fn()
   const mint = vi.fn(over.mint ?? (async (r: StickerRunRequest) => mintedRun(r)))
   const onMinted = vi.fn()
   renderWithProviders(
-    <PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role={over.role ?? 'assistant'} run={over.run ? { run: over.run.run, stickers: over.run.stickers, title: over.run.title } : null} onClose={() => {}} onMinted={onMinted} mint={mint} lastNumber={over.last ?? (async () => 100)} print={print} />,
+    <PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role={over.role ?? 'assistant'} run={over.run ? { run: over.run.run, stickers: over.run.stickers, title: over.run.title } : null} onClose={() => {}} onMinted={onMinted} mint={mint} lastNumber={over.last ?? (async () => 100)} blankCount={over.blank ?? (async () => 0)} print={print} />,
   )
   return { print, mint, onMinted }
 }
@@ -51,11 +51,17 @@ describe('PrintStickersModal · the ask', () => {
     expect(screen.getByTestId('stickers-copies').textContent).toBe('1')
     await waitFor(() => expect(screen.getByTestId('stickers-last-run').textContent).toContain('The last run ended at 0100.'))
     expect(screen.getByTestId('stickers-last-run').textContent).toContain('go on JP1204 · Juniper Ridge')
+    expect(screen.queryByTestId('stickers-blank-count')).toBeNull()
     // no USB in this browser: the way out is said, and the test strip and the setup steps are still offered
     expect(screen.getByTestId('stickers-no-usb')).toBeTruthy()
     expect(screen.getByTestId('stickers-tape-setup').textContent).toContain('First time on this computer')
     expect(screen.getByTestId('stickers-test-strip').textContent).toBe('Print 1 test strip')
     expect(screen.queryByTestId('stickers-csv')).toBeNull()
+  })
+
+  it('says how many of the job’s stickers are not yet on a box, before 200 more are printed over them (v2.7298)', async () => {
+    setup({ blank: async () => 96 })
+    await waitFor(() => expect(screen.getByTestId('stickers-blank-count').textContent).toBe('This job has 96 stickers not yet on a box.'))
   })
 
   it('a quick count and Copies of each change the press to sets, and the first run says so', async () => {

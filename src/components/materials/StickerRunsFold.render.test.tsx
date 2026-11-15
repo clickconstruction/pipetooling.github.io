@@ -77,4 +77,12 @@ describe('StickerRunsFold', () => {
     fireEvent.click(retry)
     await waitFor(() => expect(screen.getByTestId('sticker-runs-fold').textContent).toContain('1 run of stickers'))
   })
+
+  it('opens when the page’s *not yet on a box* line is pressed (v2.7298)', async () => {
+    const { rerender } = renderWithProviders(<StickerRunsFold jobId="job-juniper" onPrint={() => {}} fetch={async () => [old]} openKey={0} />)
+    const fold = (await screen.findByTestId('sticker-runs-fold')) as HTMLDetailsElement
+    expect(fold.open).toBe(false)
+    rerender(<StickerRunsFold jobId="job-juniper" onPrint={() => {}} fetch={async () => [old]} openKey={1} />)
+    await waitFor(() => expect((screen.getByTestId('sticker-runs-fold') as HTMLDetailsElement).open).toBe(true))
+  })
 })

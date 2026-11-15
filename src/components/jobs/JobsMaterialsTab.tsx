@@ -60,6 +60,8 @@ import { BOX_KIND_CHOICES, boxKindWords, editBoxTitle, type BoxKindChoice } from
 import { addPressLabel, boxNameVerdict, movedWordsNote, nextFreeName, siteBoxesFor, whereWithWords } from '../../lib/materials/boxName'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
+import { useJobStickers } from '../../hooks/useJobStickers'
+import { notYetOnBoxWords, stickerNumbersWords } from '../../lib/materials/stickerPlace'
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
@@ -585,6 +587,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   // The site's boxes for the name rule: the other jobs' from one read, this job's from the store, retired ones too.
   const siteNames = useSiteBoxNames(jobId)
   const siteBoxes = siteBoxesFor(jobId, siteNames.rows, listContainers(jobId))
+  // The job's stickers (punch list #329, PR 3): the numbers beside each box's name, and how many are not yet on a box.
+  const jobStickers = useJobStickers(jobId, containers.map((c) => c.id))
+  const refreshStickers = jobStickers.refresh
+  useEffect(() => { if (runsKey > 0) refreshStickers() }, [runsKey, refreshStickers])
+  /** Ticks when the *not yet on a box* line is pressed: the Runs fold opens and comes into view. */
+  const [runsOpenKey, setRunsOpenKey] = useState(0)
   const nameVerdict = boxNameVerdict(newTyped ?? '', siteBoxes)
   const newShown = newTyped ?? nextFreeName(siteBoxes) ?? ''
   const [newWhere, setNewWhere] = useState('')
@@ -651,6 +659,13 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })} data-testid="materials-print-manifest"><MaterialsPressGlyph kind="manifest" dead={boxCount === 0} />Print the manifest</button>
             </span>
           </div>
+          {/* Stickers not yet on a box (punch list #329, PR 3): the job's blank stickers, with the Runs fold one press away. */}
+          {jobStickers.blank > 0 ? (
+            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-stickers-blank">
+              <span>{notYetOnBoxWords(jobStickers.blank)}. Scan one on the phone to say which box it is on.</span>
+              <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
+            </p>
+          ) : null}
       {adding ? (
         <div style={{ ...sec, padding: '0.75rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'end', flexWrap: 'wrap' }}>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Its name<input value={newShown} onChange={(e) => setNewTyped(e.target.value)} placeholder="R1" aria-label="Its name" autoCapitalize="characters" autoComplete="off" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', fontWeight: 800, textTransform: 'uppercase', width: 150, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
@@ -679,7 +694,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               const due = c.kind !== 'unsorted' && countIsDue(last, now)
               return (
                 <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
+                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}{stickerNumbersWords(jobStickers.byBox.get(c.id) ?? []) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="materials-box-stickers">· {stickerNumbersWords(jobStickers.byBox.get(c.id) ?? [])}</span> : null}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                     <thead><tr><th style={{ ...th, minWidth: 150 }}>Part</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>Last count</th><th style={{ ...th, width: 160 }}></th></tr></thead>
@@ -721,7 +736,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           {/* The way back from a retire (v2.6406): the fold lists retired boxes with Bring back, or the reason a stencil is taken. */}
           <RetiredBoxesFold containers={listContainers(jobId)} stamp={(iso) => <Stamp iso={iso} inline />} onBringBack={(c) => { const v = unretireVerdict(listContainers(jobId), c.id); if (!v.ok) { showToast(v.words, 'warning'); return } unretireContainer(c.id); showToast(broughtBackWords(c), 'success') }} />
           {/* Runs of blank stickers printed for this job (punch list #329, v2.7272): each with its range, its counts, who and when, and Reprint / Print the rest. */}
-          <StickerRunsFold jobId={jobId} refreshKey={runsKey} onPrint={(run, stickers, title) => setStickersOpen({ run: { run, stickers, title } })} />
+          <StickerRunsFold jobId={jobId} refreshKey={runsKey} openKey={runsOpenKey} onPrint={(run, stickers, title) => setStickersOpen({ run: { run, stickers, title } })} />
         </div>
       ) : null}
 

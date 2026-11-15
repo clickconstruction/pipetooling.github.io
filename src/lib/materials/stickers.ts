@@ -253,6 +253,11 @@ export function blankStickerPublicWords(number: number): string {
   return `${blankStickerTitle(number)}. Sign in to say what it is.`
 }
 
+/** Where a blank sticker goes, signed in (v2.7298, PR 3): the On site tab's Sticker is new sheet, on the job its run was printed for when there is one. */
+export function blankStickerPath(sticker: Pick<StickerFacts, 'code' | 'runJobId'>): string {
+  return `/tally?tab=on-site${sticker.runJobId ? `&job=${sticker.runJobId}` : ''}&sticker=${sticker.code}`
+}
+
 /** A lost sticker's heading. */
 export function lostStickerTitle(number: number): string {
   return `Sticker ${stickerNumberWords(number)} was marked lost`

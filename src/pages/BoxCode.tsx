@@ -8,8 +8,9 @@
  *
  * Since v2.7072 (punch list #329) the code may be a sticker's: a printed code that points at a box, or at nothing yet.
  * One resolver answers both (`resolveBoxCode`, a sticker first). A sticker on a box goes to that box as a label does.
- * A blank one gets a plain page that says so; the sheet that puts it on a box is the train's PR 3. A lost one, one on a
- * retired box and one on a box of a job the reader is not on each say so.
+ * A blank one goes to the On site tab's **Sticker is new** sheet since v2.7298 (PR 3), on the job its run was printed
+ * for (`&sticker=<code>`, `onSiteAddress.ts`). A lost one, one on a retired box and one on a box of a job the reader
+ * is not on each say so.
  */
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
@@ -17,7 +18,7 @@ import { BoxPublicPage } from '../components/materials/BoxPublicPage'
 import { useAuth } from '../hooks/useAuth'
 import { boxCodeWords, normalizeBoxCode } from '../lib/materials/labels'
 import { resolveBoxCode } from '../lib/materials/onSiteStore'
-import { blankStickerTitle, lostStickerDetail, lostStickerTitle, NO_BOX_DETAIL, noBoxTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../lib/materials/stickers'
+import { blankStickerPath, lostStickerDetail, lostStickerTitle, NO_BOX_DETAIL, noBoxTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../lib/materials/stickers'
 import { formatErrorMessage } from '../utils/errorHandling'
 
 export default function BoxCode() {
@@ -39,8 +40,6 @@ export default function BoxCode() {
 function wordsFor(found: CodeLookup, words: string, wanted: string, error: string | null): { title: string; detail: string } {
   if (error) return { title: `Box ${words} did not open`, detail: error }
   switch (found.kind) {
-    case 'blank':
-      return { title: blankStickerTitle(found.sticker.number), detail: 'Nobody has said which box it is on.' }
     case 'lost':
       return { title: lostStickerTitle(found.sticker.number), detail: lostStickerDetail(found.sticker) }
     case 'retired':
@@ -68,6 +67,7 @@ function SignedInBox({ wanted }: { wanted: string }) {
     return () => { live = false }
   }, [wanted])
   if (found !== 'looking' && found.kind === 'box') return <Navigate to={`/tally?tab=on-site&job=${found.container.jobId}&container=${found.container.id}`} replace />
+  if (found !== 'looking' && found.kind === 'blank') return <Navigate to={blankStickerPath(found.sticker)} replace />
   const words = wanted ? boxCodeWords(wanted) : ''
   const said = found === 'looking' ? null : wordsFor(found, words, wanted, error)
   return (

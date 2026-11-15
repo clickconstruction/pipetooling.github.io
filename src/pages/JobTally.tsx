@@ -2341,8 +2341,10 @@ export default function JobTally() {
           byName={profileName ?? authUser?.email?.split('@')[0] ?? 'someone'}
           searchParts={searchPartsForOnSite}
           initialContainerId={onSiteAddress.asked.containerId}
+          initialStickerCode={onSiteAddress.asked.stickerCode}
           askSeq={onSiteAddress.asked.seq}
           onOpenContainer={onSiteAddress.reportOpen}
+          onOpenSticker={onSiteAddress.reportSticker}
         />
       )}
 
