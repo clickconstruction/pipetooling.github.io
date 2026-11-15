@@ -285,17 +285,25 @@ describe('a charge the office already made a link for', () => {
 })
 
 describe('a busy night', () => {
-  it('is taken sixty charges a sweep and ten a text, and no charge is asked or texted twice', async () => {
-    // 170 charges, one a second, on one card: more than one read of ids carries, and more than one sweep makes.
+  it('is taken sixty charges a sweep and thirty texts a sweep, one a charge, and no charge is asked or texted twice', async () => {
+    // 170 charges, one a second, on one card: more than one read of ids carries, more than one sweep makes, and more
+    // than one sweep texts, since a sweep sends thirty texts and each charge is its own text (v2.7299).
     const charges = Array.from({ length: 170 }, (_, i) => charge(`c${String(i).padStart(3, '0')}`, new Date(Date.parse('2026-11-04T19:00:00.000Z') + i * 1000).toISOString()))
     const w = world({ charges, holderOf: Object.fromEntries(charges.map((c) => [c.id as string, JORDAN])) })
-    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 60, texted: 60 })
-    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 60, texted: 60 })
-    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 50, texted: 50 })
-    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 0, texted: 0 })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 60, texted: 30 })
+    let made = 60
+    let texted = 30
+    for (let i = 0; i < 12; i += 1) {
+      const r = await runReceiptSweep(w.doors)
+      if (!('made' in r)) break
+      made += r.made
+      texted += r.texted
+      if (r.made === 0 && r.texted === 0) break
+    }
+    expect({ made, texted }).toEqual({ made: 170, texted: 170 })
     expect(w.requests()).toHaveLength(170)
     expect(w.requests().every((r) => r.texted_at)).toBe(true)
-    expect(w.sent).toHaveLength(17)
+    expect(w.sent).toHaveLength(170)
     // Each request is opened by exactly one link.
     const opened = w.links().flatMap((l) => l.request_ids as string[])
     expect(opened).toHaveLength(170)
@@ -305,16 +313,17 @@ describe('a busy night', () => {
 })
 
 describe('charges that wait together', () => {
-  it('inside one hour share one text and one link; a later one gets its own, without the hello', async () => {
+  it('each gets its own text and its own link, oldest first; only the first carries the hello (the owner’s call 3)', async () => {
     const w = world({
       charges: [charge('c1', '2026-11-04T19:00:00.000Z'), charge('c2', '2026-11-04T19:40:00.000Z', { amount: -41.17, counterparty_name: 'Cedar Bend Hardware' }), charge('c3', '2026-11-04T20:20:00.000Z', { amount: -12, counterparty_name: 'Corner Fuel' })],
       holderOf: { c1: JORDAN, c2: JORDAN, c3: JORDAN },
     })
     expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 3, texted: 3 })
-    expect(w.sent).toHaveLength(2)
-    expect(w.sent[0]!.body).toMatch(/^Hi Jordan, this is Click Plumbing\. \$228\.58 at Ridgeway Supply and \$41\.17 at Cedar Bend Hardware posted to your card today\. Snap the receipts here: /)
-    expect(w.sent[1]!.body).toMatch(/^\$12\.00 at Corner Fuel posted to your card today\. Snap the receipt here: /)
-    expect(w.links().map((l) => l.request_ids)).toEqual([['req-c1', 'req-c2'], ['req-c3']])
+    expect(w.sent).toHaveLength(3)
+    expect(w.sent[0]!.body).toMatch(/^Hi Jordan, this is Click Plumbing\. \$228\.58 at Ridgeway Supply posted to your card today\. Snap the receipt here: /)
+    expect(w.sent[1]!.body).toMatch(/^\$41\.17 at Cedar Bend Hardware posted to your card today\. Snap the receipt here: /)
+    expect(w.sent[2]!.body).toMatch(/^\$12\.00 at Corner Fuel posted to your card today\. Snap the receipt here: /)
+    expect(w.links().map((l) => l.request_ids)).toEqual([['req-c1'], ['req-c2'], ['req-c3']])
   })
 
   it('two holders are never folded into one text', async () => {
@@ -412,11 +421,12 @@ describe('the one reminder', () => {
     expect(w.sent).toHaveLength(1)
   })
 
-  it('folds a holder’s waiting charges into one reminder', async () => {
+  it('reminds a holder once a charge, never two charges in one reminder', async () => {
     const w = world({ charges: [charge('c1', '2026-11-03T23:00:00.000Z'), charge('c2', '2026-11-03T23:10:00.000Z', { amount: -41.17, counterparty_name: 'Cedar Bend Hardware' })], requests: [texted('c1'), texted('c2')], now: EVENING })
     expect(await runReceiptSweep(w.doors)).toMatchObject({ reminded: 2 })
-    expect(w.sent).toHaveLength(1)
-    expect(w.sent[0]!.body).toMatch(/^Still no receipt for \$228\.58 at Ridgeway Supply and \$41\.17 at Cedar Bend Hardware\. Snap them here: /)
+    expect(w.sent).toHaveLength(2)
+    expect(w.sent[0]!.body).toMatch(/^Still no receipt for \$228\.58 at Ridgeway Supply\. Snap it here: /)
+    expect(w.sent[1]!.body).toMatch(/^Still no receipt for \$41\.17 at Cedar Bend Hardware\. Snap it here: /)
   })
 
   it('waits for its evening: not at noon, not at midnight, not inside twelve hours', async () => {

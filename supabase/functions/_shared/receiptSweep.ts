@@ -319,8 +319,10 @@ async function sweep(doors: ReceiptSweepDoors, setting: ReceiptTextsSetting) {
         out.held += items.length
         continue
       }
-      for (let i = 0; i < items.length; i += 10) {
-        out.reminded += await sendRun(doors, 'reminder', items.slice(i, i + 10), holder, placed)
+      // One reminder a charge, as one text a charge (v2.7299, the owner's call 3).
+      for (const item of items) {
+        if (sent >= MAX_TEXTS) break
+        out.reminded += await sendRun(doors, 'reminder', [item], holder, placed)
         sent += 1
       }
     }

@@ -38,7 +38,7 @@ The card then says who gets the texts and since when. A charge that posted befor
 
 ## What a person gets
 
-Each person gets one text when a charge posts. Charges that post within one hour share one text and one link.
+Each person gets one text for each charge that posts. Two charges minutes apart get two texts, each with its own link.
 
 A charge with no receipt gets one reminder. The reminder goes in the evening, at least twelve hours after the first text.
 
