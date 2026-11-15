@@ -2,7 +2,7 @@
 title: see every payment made to subs by date
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: ledger, sub payments, mercury, bank line, match, find bank lines, checked, tick, not checked, bank reconciliation, statement, by sub, running balance, we owe, 1099, how paid, check number, reconcile, bank statement, date sent, back-charge, backcharge, csv, export, print, month total, paid to, sub labor, payment history, when was it paid
+keywords: ledger, sub payments, mercury, bank line, match, match to a sub payment, banking, paid a sub, find bank lines, checked, tick, not checked, bank reconciliation, statement, by sub, running balance, we owe, 1099, how paid, check number, reconcile, bank statement, date sent, back-charge, backcharge, csv, export, print, month total, paid to, sub labor, payment history, when was it paid
 order: 32
 ---
 Jobs → Subs → Ledger lists every payment made to a sub, newest first. You hold it beside a bank statement and check each line.
@@ -70,6 +70,34 @@ A matched payment shows the bank line's day and payee in green. Press **undo** b
 One check that paid several sheets is matched as one. The picker compares the whole check with the bank line.
 
 Nothing is matched by itself. A payment with no bank line that fits keeps its box, and you tick it by hand.
+
+## Match it from Banking
+
+You can make the same match from the bank's side. Open [Banking → Ledger](/banking?tab=ledger) and find the money that left.
+
+A bank line gets a small picker under its payee when a sub payment fits it. The picker reads **Match to a sub payment…**. A payment fits when the amount is the same and the day is within three days.
+
+Open the picker and choose the payment. The two are matched, and the payment is ticked on the Subs Ledger.
+
+:::example A bank line a sub payment fits
+CALLOWAY TILE LLC
+
+{{button:outline|Match to a sub payment…}}
+:::
+
+A matched bank line says who it paid, in green. One check that paid several sheets shows its sending number and how many sheets.
+
+:::example A bank line that is matched
+CALLOWAY TILE LLC
+
+{{chip:green|paid Calloway Tile · sending 12 · 2 sheets}} undo
+:::
+
+Press **undo** beside it to take the match off. The payment's tick is cleared with it.
+
+A bank line that one payment took is offered to no other payment. Nothing is matched by itself here either.
+
+Only the people who run Banking's Ledger see the picker. They are the controller and the developer.
 
 {{button:outline|Download CSV}} saves the lines to sort in a spreadsheet. The file has a column for the day each was checked.
 
