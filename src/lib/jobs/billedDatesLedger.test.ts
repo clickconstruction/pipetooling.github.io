@@ -412,6 +412,17 @@ describe('buildBilledDatesLedger with a Pay calendar (punch list #323): Due on t
     expect(money(none)).toMatchObject({ sub: 'No payment on this job yet' })
   })
 
+  it("a bill with its own due day reads Due on that day, with the clause under it (punch list #341, PR 4)", () => {
+    const ownDue = { dueYmd: '2027-02-15', clause: '§ 9.4', words: 'Retainage is released 60 days after final acceptance' }
+    const read = { calendar: null, from: 'bill' as const, payerCalendar: tenth, ownDue, under: { calendar: tenth, from: 'payer' as const } }
+    const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-02'), data: lark, promise: null, runway: null, inCollections: false, calendar: read })
+    expect(l.rows.map(line)).toEqual(['Billed Nov 2 10d ago', 'Due Feb 15 in 95d'])
+    expect(money(l)).toMatchObject({ label: 'Due', tone: 'green', sub: 'This bill’s own day · § 9.4', subTitle: '§ 9.4: Retainage is released 60 days after final acceptance. No pay calendar is read for this bill.' })
+    // A date the customer named takes the row, and the line under it says whose due day rides along.
+    const said = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-02'), data: lark, promise: { promisedYmd: '2027-01-20', markedByName: 'Rosa' } as never, runway: null, inCollections: false, calendar: read })
+    expect(money(said)).toMatchObject({ label: 'They said', sub: 'due Feb 15 by this bill’s own day' })
+  })
+
   it('without the calendar the same bill reads Expected Dec 14, as before', () => {
     const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-03'), data: lark, promise: null, runway: null, inCollections: false })
     expect(l.rows.map(line)).toEqual(['Billed Nov 3 9d ago', 'Expected Dec 14 in 32d'])

@@ -22,7 +22,7 @@ import { shortDate } from '../gc/words.ts'
 import { billedReferenceYmd, daysBetweenYmd, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay.ts'
 import { billHeldDay, billedPayModel, type BilledPayModel } from '../jobs/billedDuePay.ts'
 import { listPayer, paySpeedPayer } from '../jobs/billToParty.ts'
-import { calendarFor, type PayCalendar, type PayCalendarIndex } from '../jobs/payCalendar.ts'
+import { calendarSourceFor, type PayCalendarArg, type PayCalendarIndex } from '../jobs/payCalendar.ts'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes.ts'
 import type { QuickReply } from '../quickReplies/kernel.ts'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils.ts'
@@ -98,8 +98,8 @@ export type TheyOweContact = Pick<Contact, 'id' | 'kind' | 'name' | 'goesBy' | '
 
 // ---------- the day a bill is due ----------
 
-/** What a bill's payer's Pay calendar adds to `billDueDay`: the calendar itself (`calendarFor`) and the day they accepted the bill. */
-export type BillDueCalendar = { calendar?: PayCalendar | null; acceptedYmd?: string | null }
+/** What a bill's Pay calendar adds to `billDueDay`: the read (`calendarSourceFor`, which finds the bill's own due day too) or a bare calendar, and the day they accepted the bill. */
+export type BillDueCalendar = { calendar?: PayCalendarArg; acceptedYmd?: string | null }
 
 /**
  * The day we expect a bill paid, and whether it is late: the Stages board's pay model for this bill. The pace read
@@ -257,7 +257,7 @@ export function theyOweUs(bills: TheyOweUsBills, contacts: ReadonlyArray<TheyOwe
     const due = inv
       ? billHeldDay(
           billDueDay(job, inv, bills.paySpeeds, bills.promises?.[job.id] ?? null, todayYmd, {
-            calendar: calendarFor(bills.payCalendars, { payerId: paySpeedPayer(job, inv).id, jobId: job.id }),
+            calendar: calendarSourceFor(bills.payCalendars, { payerId: paySpeedPayer(job, inv).id, jobId: job.id, invoiceId: inv.id }),
             acceptedYmd: bills.acceptedByInvoice?.get(inv.id) ?? null,
           }),
         )

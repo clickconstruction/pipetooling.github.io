@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, tiles, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, chips, zoom, job number, back, tiles, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -39,6 +39,20 @@ A chip is a job's number. Its colour says how soon its day is.
 A chip with a red mark after its number will not make its day as it stands. It has more stages to pass than working days left. Point at a chip to read the job's name, its GC and what it owes.
 
 A job that needs its owner stands in both columns. Point at either chip and both light up. One press on the owner clears both.
+
+## Press a chip
+
+Every chip is a press to the right place for its stage. Point at a chip to read where it goes.
+
+- A chip in **Needs the owner** or **Needs the property facts** opens the property record at the missing line.
+- A chip in **To send** or **Awaiting approval** opens that job's paper on **By paper**.
+- A chip in **In the run** opens the run on that envelope.
+- A chip in **Ready to file** opens the affidavit.
+- A chip in *Filed · Served* opens the job's Lien window.
+
+A paper opened from a chip is a step of its own in the browser. Press Back and the desk returns to To do with the Board in view. The property record and the run open over the Board. Close them and the Board is where it was.
+
+The same press sits on the job number of every To do row. It also sits on the number of every row on **By paper** and **By date**. A number is a zoom everywhere on the desk. On a To do row the job's name still opens the job itself.
 
 ## Press a bin
 

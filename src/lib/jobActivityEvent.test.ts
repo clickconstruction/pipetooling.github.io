@@ -41,6 +41,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'demand_letter_sent',
   'lien_notice_sent',
   'lien_courtesy_sent',
+  'lien_notice_closed_paid',
   'invoice_resent',
   'sub_stage_change',
   'sub_progress',
@@ -98,6 +99,21 @@ describe('JOB_ACTIVITY_EVENT_RENDER', () => {
     expect(eventRenderMeta('demand_letter_sent').tag).toBe('Demand')
     expect(eventRenderMeta('lien_notice_sent').tag).toBe('Lien notice')
     expect(eventRenderMeta('invoice_resent').tag).toBe('Resent')
+  })
+})
+
+describe('a lien notice closed because the job was paid (v2.7359)', () => {
+  it('shows under Billing as ours, in grey, and is the type the migration writes, word for word', async () => {
+    expect(eventRenderMeta('lien_notice_closed_paid')).toMatchObject({ tag: 'Lien notice', bucket: 'billing' })
+    expect(eventRenderMeta('lien_notice_closed_paid').tagColor).toBe(eventRenderMeta('field_edited').tagColor)
+    const { isCustomerEvent } = await import('./jobActivityEvent')
+    expect(isCustomerEvent('lien_notice_closed_paid')).toBe(false)
+    const sql = readFileSync(resolve(__dirname, '../..', 'supabase/migrations/20261115233000_lien_closed_paid_to_activity.sql'), 'utf8')
+    const written = [...new Set([...sql.matchAll(/'(lien_notice_[a-z_]+)'/g)].map((m) => m[1]!))]
+    expect(written).toEqual(['lien_notice_closed_paid'])
+    // The record the trigger reads is the one the run's press keeps on the item.
+    expect(sql).toContain("it.fields -> 'runClosedPaid'")
+    for (const key of ['at', 'byName', 'printedAt', 'paperClaim']) expect(sql, key).toContain(`v_rec ->> '${key}'`)
   })
 })
 

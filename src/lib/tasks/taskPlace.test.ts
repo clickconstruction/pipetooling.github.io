@@ -69,7 +69,7 @@ describe('a place is whole or absent', () => {
   })
 
   it('reads a row into a place, and a row with no point into nothing', () => {
-    expect(taskPlaceFromRow(row())).toEqual({ name: 'Pump house', lat: 29.5512, lng: -98.2874, accuracyM: 6, setBy: 'user-rosa', setAt: '2026-11-03T15:00:00Z' })
+    expect(taskPlaceFromRow(row())).toEqual({ name: 'Pump house', lat: 29.5512, lng: -98.2874, accuracyM: 6, setBy: 'user-rosa', setAt: '2026-11-03T15:00:00Z', mapId: null })
     expect(taskPlaceFromRow(row({ place_lat: null }))).toBeNull()
     expect(taskPlaceFromRow({})).toBeNull()
     expect(taskPlaceFromRow(null)).toBeNull()
@@ -89,7 +89,7 @@ describe('a place is whole or absent', () => {
 })
 
 describe('what a save writes', () => {
-  it('a place writes all six columns, with the margin as whole metres', () => {
+  it('a place writes all six columns and the pointer at its map, with the margin as whole metres', () => {
     expect(taskPlaceColumns({ lat: 29.5512, lng: -98.2874, name: ' Pump house ', accuracyM: 6.4 }, 'user-rosa', '2026-11-12T18:00:00Z')).toEqual({
       place_name: 'Pump house',
       place_lat: 29.5512,
@@ -97,11 +97,12 @@ describe('what a save writes', () => {
       place_accuracy_m: 6,
       place_set_by: 'user-rosa',
       place_set_at: '2026-11-12T18:00:00Z',
+      painted_map_id: null,
     })
   })
 
-  it('no place, or half of one, writes six nulls, so a name is never left without its point', () => {
-    const none = { place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null }
+  it('no place, or half of one, writes nulls, so a name is never left without its point', () => {
+    const none = { place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null, painted_map_id: null }
     expect(taskPlaceColumns(null, 'user-rosa', '2026-11-12T18:00:00Z')).toEqual(none)
     expect(taskPlaceColumns({ lat: 29.5, lng: Number.NaN, name: 'Gate' }, 'user-rosa', '2026-11-12T18:00:00Z')).toEqual(none)
   })

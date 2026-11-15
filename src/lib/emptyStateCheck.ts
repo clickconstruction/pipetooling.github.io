@@ -8,10 +8,11 @@
  *
  * What is read: every JSX text child, and every string literal that is a direct JSX child
  * expression or a branch of a conditional that is one (`{q ? 'No bids match.' : 'No bids yet.'}`).
- * A prop string is not read: `main="No bids yet."` is the words, not the markup. Three things a
+ * A prop string is not read: `main="No bids yet."` is the words, not the markup. Four things a
  * sentence can look like but are not an empty state are left alone: a single word (a Yes / No
- * control, a *None* option), an `<option>`, and a table cell with no `colSpan` (a cell fallback
- * such as *No house*; an empty row spans the table and is read).
+ * control, a *None* option), an `<option>`, a table cell with no `colSpan` (a cell fallback
+ * such as *No house*; an empty row spans the table and is read), and the label of a `<button>`
+ * (*None needed…*, *No thanks*: the words are the press itself, not a list with nothing in it).
  *
  * The TypeScript compiler is loaded through `createRequire`, as the codemods do: its CommonJS
  * bundle has no named ESM exports, so a static import gives an empty namespace under Node.
@@ -75,6 +76,12 @@ function isCellOrOption(sf: SourceFile, node: Node): boolean {
   return tag === 'option' || (tag === 'td' && !hasAttribute(el, 'colSpan'))
 }
 
+/** A `<button>`'s own label: a press, never an empty list. */
+function isPressLabel(sf: SourceFile, node: Node): boolean {
+  const el = parentElement(node)
+  return el !== null && tagName(sf, el) === 'button'
+}
+
 /** Every bare empty sentence in a `.tsx` source, with its line. */
 export function bareEmptySentences(source: string, fileName: string): BareEmptySentence[] {
   const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
@@ -83,7 +90,7 @@ export function bareEmptySentences(source: string, fileName: string): BareEmptyS
   const consider = (text: string, pos: number, child: Node): void => {
     const collapsed = text.replace(/\s+/g, ' ').trim()
     if (!BARE_EMPTY_SENTENCE.test(collapsed) || SINGLE_WORD.test(collapsed)) return
-    if (insideEmptyState(sf, child) || isCellOrOption(sf, child)) return
+    if (insideEmptyState(sf, child) || isCellOrOption(sf, child) || isPressLabel(sf, child)) return
     out.push({ line: sf.getLineAndCharacterOfPosition(pos).line + 1, text: collapsed })
   }
 

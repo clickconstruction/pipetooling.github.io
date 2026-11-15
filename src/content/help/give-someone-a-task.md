@@ -2,7 +2,7 @@
 title: give someone a task
 category: Office
 roles: dev, master_technician, assistant, controller, primary, estimator, subcontractor, helpers
-keywords: task, new task, add task, assign, faces, someone else, tomorrow, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task, done when, success criteria, lines, place, where, map, spot, use where I am, photo of the spot, picture
+keywords: way in, painted map, paint a map, task, new task, add task, assign, faces, someone else, tomorrow, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task, done when, success criteria, lines, place, where, map, spot, use where I am, photo of the spot, picture
 order: 40
 ---
 The ＋ Task button in the top bar opens the **New task** window from anywhere in the app. Type what needs doing, pick who does it and send it.
@@ -39,6 +39,22 @@ In **Where is it?** you set the place one of two ways.
 Type a name, like *Pump house*. Then tap {{button:blue|Use this place}}. The name becomes a chip for the next task.
 
 The app asks your phone where it is only when you tap **Use where I am**. That one reading becomes the task's place. The app does not follow you after that.
+
+### Add the way in
+
+A place is a dot. A painted map is the way to it, like which gate to use. A place can carry one.
+
+1. In **Where is it?**, put the ring on the spot.
+2. Tap **＋ Add the way in**. The painted maps that come within a mile of the ring show, nearest first.
+3. Tap a map. Its name shows above {{button:blue|Use this place}}.
+
+Whoever gets the task can open that map, even on a job they are not on the crew of. They can add a place they find to it. They cannot rename it, remove it or share it.
+
+Tap the ✕ beside the map's name to take the way in off. The map itself stays where it is.
+
+A place chip with an orange stroke already has a way in. Tap the chip and the task gets the place and the map together.
+
+No map near the spot yet? [Paint one first](/help/paint-a-map#start-a-map), then pick it here.
 
 :::example A place in two taps
 "Grease the pump bearings" → tap {{chip:blue|Pump house}} → Send. The person sees the place on the task, with directions. [Find where a task is](/help/check-off-my-daily-tasks#find-where-a-task-is) shows their side.

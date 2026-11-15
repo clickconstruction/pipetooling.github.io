@@ -119,6 +119,12 @@ export function laborHoursEstimated(l: NonNullable<EstimatorBidInput['labor']>):
   return l.rowsTotal > 0 && l.rowsWithHours / l.rowsTotal >= LABOR_ROWS_WITH_HOURS_MIN
 }
 
+/** "3 of 14 rows have hours", or the words for a Labor tab with no rows at all. */
+export function laborRowsWords(l: { rowsTotal: number; rowsWithHours: number }): string {
+  if (l.rowsTotal === 0) return 'the Labor tab has no rows'
+  return `${l.rowsWithHours} of ${l.rowsTotal} rows ${l.rowsWithHours === 1 ? 'has' : 'have'} hours`
+}
+
 /**
  * Why a priced bid still cannot be judged: its labor was never estimated (hours on few rows, no rate), so the priced cost
  * has no labor in it; or rows went uncosted, so the margin is partial. Null when the estimate stands.
@@ -126,8 +132,7 @@ export function laborHoursEstimated(l: NonNullable<EstimatorBidInput['labor']>):
 export function estimateHoldWords(b: Pick<EstimatorBidInput, 'labor' | 'pricedUncostedUsd' | 'pricedRevenueUsd' | 'pricedCostUsd'>): string | null {
   if (b.pricedRevenueUsd == null || b.pricedCostUsd == null) return null
   if (b.labor && !laborHoursEstimated(b.labor)) {
-    const rows = `${b.labor.rowsWithHours} of ${b.labor.rowsTotal} rows ${b.labor.rowsWithHours === 1 ? 'has' : 'have'} hours`
-    return `Labor not estimated: ${rows}. The priced cost has little or no labor in it.`
+    return `Labor not estimated: ${laborRowsWords(b.labor)}. The priced cost has little or no labor in it.`
   }
   if (b.pricedUncostedUsd != null && b.pricedUncostedUsd > 0) return `$${Math.round(b.pricedUncostedUsd).toLocaleString('en-US')} of rows uncosted at send: the priced margin is partial.`
   return null

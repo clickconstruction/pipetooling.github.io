@@ -75,10 +75,11 @@ import {
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import { billedPayModel, payClockFor, payClockShort, payClockWords } from '../../lib/jobs/billedDuePay'
-import type { PayCalendar } from '../../lib/jobs/payCalendar'
+import type { BillOwnDue, PayCalendar } from '../../lib/jobs/payCalendar'
 import PayerAcceptedModal from './PayerAcceptedModal'
+import BillDueDayModal from './BillDueDayModal'
 import { payCalendarJobOf } from '../../lib/jobs/payCalendarJob'
-import { calendarFor, calendarSourceFor, JOB_NO_CALENDAR_WORDS, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShortFor, payCutoffLine } from '../../lib/jobs/payCalendar'
+import { BILL_OWN_DUE_PRESS, billOwnDueWords, calendarFor, calendarSourceFor, dueDayFor, JOB_NO_CALENDAR_WORDS, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShortFor, payCutoffLine } from '../../lib/jobs/payCalendar'
 import { buildCutoffsComing } from '../../lib/jobs/cutoffsComing'
 import PayCutoffLine from './PayCutoffLine'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
@@ -829,6 +830,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [paySpeedsPayer, setPaySpeedsPayer] = useState<PaySpeedsPayer | null>(null)
   /** Punch list #323, PR 4: the bill whose accepted day is being set, for a payer on a Pay calendar. */
   const [payerAcceptedBill, setPayerAcceptedBill] = useState<{ invoiceId: string; billLabel: string; payerName: string; calendar: PayCalendar; wentInYmd: string | null; acceptedYmd: string | null } | null>(null)
+  /** Punch list #341, PR 4: the bill whose own due day is being set, with what it reads without one. */
+  const [billDueDayBill, setBillDueDayBill] = useState<{ invoiceId: string; billLabel: string; payerName: string; stored: BillOwnDue | null; otherwise: { dueYmd: string; own: boolean } | null } | null>(null)
   const [billedAgingChartOpen, setBilledAgingChartOpen] = useState(false)
   const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
   // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929).
@@ -1160,7 +1163,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const payer = inv ? paySpeedPayer(row.job, inv) : null
       // Punch list #323: a payer on a Pay calendar reads Due, with when their money usually lands under it.
       // Punch list #341: the read says whose calendar it is, so the row can mark a job's own and a job switched off.
-      const calRead = inv && payer ? calendarSourceFor(payCalendars, { payerId: payer.id, jobId: row.job.id }) : null
+      const calRead = inv && payer ? calendarSourceFor(payCalendars, { payerId: payer.id, jobId: row.job.id, invoiceId: inv.id }) : null
       const calendar = calRead?.calendar ?? null
       const ledger = buildBilledDatesLedger({
         todayYmd,
@@ -1190,6 +1193,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const acceptedYmd = inv ? (acceptedByInvoice?.get(inv.id) ?? null) : null
       const clock = calendar && inv ? payClockFor({ billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer?.id ?? null, acceptedYmd }) : null
       const wentIn = inv ? payClockFor({ billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer?.id ?? null }) : null
+      // Punch list #341, PR 4: this bill's own due day, and what the bill reads without it (the next rungs of the ladder).
+      const ownDue = calRead?.ownDue ?? null
+      const under = calRead?.from === 'bill' ? calRead.under : calRead
+      const underClock = under?.calendar && inv ? payClockFor({ billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer?.id ?? null, acceptedYmd }) : null
+      const underDue = under?.calendar && underClock ? dueDayFor(underClock.ymd, under.calendar) : null
       const evidence = inv ? (
         <>
         <BilledReliabilityLine
@@ -1231,20 +1239,40 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             {JOB_NO_CALENDAR_WORDS}
           </button>
         ) : null}
-        {calendar && clock && canMarkPromisedPay && inv ? (
-          <button
-            type="button"
-            className="payCalendarPress"
-            data-testid="pay-clock-press"
-            title={`${payClockWords(clock)}. Press to set the day they accepted it.`}
-            onClick={(e) => {
-              e.stopPropagation()
-              setPayerAcceptedBill({ invoiceId: inv.id, billLabel: label, payerName: payer?.name ?? 'this customer', calendar, wentInYmd: wentIn?.ymd ?? null, acceptedYmd })
-            }}
-            style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}
-          >
-            {payClockShort(clock)}
-          </button>
+        {canMarkPromisedPay && inv ? (
+          // One line for the two presses that correct one bill's day, so a row gains a single line.
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 0.6rem' }}>
+            {calendar && clock ? (
+              <button
+                type="button"
+                className="payCalendarPress"
+                data-testid="pay-clock-press"
+                title={`${payClockWords(clock)}. Press to set the day they accepted it.`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPayerAcceptedBill({ invoiceId: inv.id, billLabel: label, payerName: payer?.name ?? 'this customer', calendar, wentInYmd: wentIn?.ymd ?? null, acceptedYmd })
+                }}
+                style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}
+              >
+                {payClockShort(clock)}
+              </button>
+            ) : null}
+            {/* Punch list #341, PR 4: one bill due on a named date. On every billed row, so the door never hides behind a calendar nobody has set. */}
+            <button
+              type="button"
+              className="payCalendarPress"
+              data-testid="bill-due-day-press"
+              title={ownDue ? `${billOwnDueWords(ownDue)} Press to change the day, or to clear it.` : 'For one bill whose contract names its own date, like a retainage release. Press to set the day.'}
+              onClick={(e) => {
+                e.stopPropagation()
+                setBillDueDayBill({ invoiceId: inv.id, billLabel: label, payerName: payer?.name ?? 'this customer', stored: ownDue, otherwise: underDue ? { dueYmd: underDue, own: under?.from === 'job' } : null })
+              }}
+              style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}
+            >
+              {/* Set, the Due row's own line already says This bill's own day and its clause: the press names its act, so the row never says it twice. */}
+              {ownDue ? 'Change this bill’s day…' : BILL_OWN_DUE_PRESS}
+            </button>
+          </div>
         ) : null}
         </>
       ) : null
@@ -2718,7 +2746,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             phoneTodayYmd,
             promisedPayDates?.[job.id] ?? null,
             paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
-            calendarSourceFor(payCalendars, { payerId: payer.id, jobId: job.id }),
+            calendarSourceFor(payCalendars, { payerId: payer.id, jobId: job.id, invoiceId: inv.id }),
           )
         : null
     const bDetail = deriveStagesBillingActivityDetail(job)
@@ -4756,6 +4784,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onSaved={() => void loadPayCalendars()}
         />
       ) : null}
+      {billDueDayBill ? <BillDueDayModal key={billDueDayBill.invoiceId} {...billDueDayBill} onClose={() => setBillDueDayBill(null)} onSaved={() => void loadPayCalendars()} /> : null}
       <BankPaymentsModal
         open={bankPaymentsModalOpen}
         onClose={() => {

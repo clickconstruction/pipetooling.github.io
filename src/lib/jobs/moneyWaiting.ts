@@ -86,6 +86,8 @@ export type MoneyWaitingRow = {
   lateness: PayCalendarLateness | null
   /** The most days any bill is past its expected day; null when none is, or with no calendar. */
   pastExpectedDays: number | null
+  /** The bill furthest past is past its own due day, with no calendar behind it (punch list #341, PR 4). */
+  billOwn?: boolean
 }
 
 /** What the lists read beside the pay speeds for a payer on a Pay calendar. Absent, every bill reads its wait as before. */
@@ -120,7 +122,7 @@ function rawBillOf(r: Exclude<StageRow, { kind: 'job' }>, payerId: string, open:
   const dates = { billedAtIso: r.inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(r.inv) }
   const refYmd = billedReferenceYmd(dates)
   const rawWait = refYmd ? daysBetweenYmd(refYmd, todayYmd) : null
-  const read = calendarSourceFor(calendars?.payCalendars, { payerId, jobId: r.job.id })
+  const read = calendarSourceFor(calendars?.payCalendars, { payerId, jobId: r.job.id, invoiceId: r.inv.id })
   const cal = read.calendar
   const clock = cal ? payClockFor({ ...dates, customerId: payerId, acceptedYmd: calendars?.acceptedByInvoice?.get(r.inv.id) ?? null }) : null
   return {
@@ -130,7 +132,8 @@ function rawBillOf(r: Exclude<StageRow, { kind: 'job' }>, payerId: string, open:
     billedYmd: refYmd,
     waitDays: rawWait != null && rawWait >= 0 ? rawWait : null,
     open,
-    calendar: cal && clock ? billCalendarRead(read, clock.ymd, paySpeeds?.receipts[payerId], todayYmd) : null,
+    // A bill with its own due day reads that day and needs no clock (punch list #341, PR 4).
+    calendar: read.ownDue || (cal && clock) ? billCalendarRead(read, clock?.ymd ?? null, paySpeeds?.receipts[payerId], todayYmd) : null,
   }
 }
 
@@ -204,6 +207,7 @@ export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | nu
       calendarOwn: summary.own,
       lateness: summary.lateness,
       pastExpectedDays: summary.pastExpectedDays,
+      billOwn: summary.billOwn === true,
     })
   }
 
@@ -212,16 +216,16 @@ export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | nu
 }
 
 /** A row reads its calendar once a bill of theirs is past its expected day; a calendar payer held up by a job with no calendar reads its wait. */
-const readsCalendar = (row: Pick<MoneyWaitingRow, 'calendar' | 'pastExpectedDays'>): boolean => row.calendar != null && row.pastExpectedDays != null
+const readsCalendar = (row: Pick<MoneyWaitingRow, 'calendar' | 'pastExpectedDays' | 'billOwn'>): boolean => (row.calendar != null || row.billOwn === true) && row.pastExpectedDays != null
 
 /** The row's lead: "55d waiting", or for a payer on a Pay calendar "12d past expected". */
-export function moneyWaitingLead(row: Pick<MoneyWaitingRow, 'calendar' | 'pastExpectedDays' | 'oldestWaitDays'>): string {
-  return readsCalendar(row) ? `${row.pastExpectedDays}d past expected` : `${row.oldestWaitDays}d waiting`
+export function moneyWaitingLead(row: Pick<MoneyWaitingRow, 'calendar' | 'pastExpectedDays' | 'oldestWaitDays' | 'billOwn'>): string {
+  return readsCalendar(row) ? `${row.pastExpectedDays}d past ${row.billOwn ? 'due' : 'expected'}` : `${row.oldestWaitDays}d waiting`
 }
 
 /** What the lead is measured against: "usually ~41d" · "no history — vs company ~33d" · "pay calendar · lands ~6d after the pay day". */
-export function moneyWaitingBasis(row: Pick<MoneyWaitingRow, 'calendar' | 'calendarOwn' | 'pastExpectedDays' | 'lateness' | 'ownMedianDays'>, companyMedianDays: number): string {
-  if (readsCalendar(row)) return calendarBasisWords(row.lateness, row.calendarOwn === true)
+export function moneyWaitingBasis(row: Pick<MoneyWaitingRow, 'calendar' | 'calendarOwn' | 'pastExpectedDays' | 'lateness' | 'ownMedianDays' | 'billOwn'>, companyMedianDays: number): string {
+  if (readsCalendar(row)) return calendarBasisWords(row.lateness, row.calendarOwn === true, row.billOwn === true)
   return row.ownMedianDays != null ? `usually ~${row.ownMedianDays}d` : `no history — vs company ~${companyMedianDays}d`
 }
 

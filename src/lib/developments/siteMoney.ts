@@ -9,7 +9,7 @@
  */
 import { type PaySpeedData } from '../jobs/billedExpectedPay'
 import { billHeldDay, billedPayModel, type BilledPayModel } from '../jobs/billedDuePay'
-import { calendarBasisWords, calendarFor, type PayCalendarIndex } from '../jobs/payCalendar'
+import { calendarBasisWords, calendarSourceFor, type PayCalendarIndex } from '../jobs/payCalendar'
 import { daysBetweenYmd, lienByForJob } from '../jobs/lienPayRunway'
 import { jobsLedgerStatusDotColor, normalizeJobsLedgerStatus } from '../jobsLedgerStatusPipeline'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -169,12 +169,13 @@ function datesFor(job: MemberJob, inp: SiteMoneyInputs): MoneyDates {
     inp.todayYmd,
     null,
     null,
-    calendarFor(inp.payCalendars, { payerId, jobId: job.id }),
+    // The read, not the bare calendar: it finds the newest bill's own due day (punch list #341, PR 4) and knows a job's own calendar.
+    calendarSourceFor(inp.payCalendars, { payerId, jobId: job.id, invoiceId: newest?.id }),
   )
   const held = billHeldDay(expected)
   const due: MoneyDue | null =
     held?.onCalendar && expected
-      ? { ymd: held.ymd, daysPast: held.daysLate, daysTo: Math.max(0, daysBetweenYmd(inp.todayYmd, held.ymd) ?? 0), basis: calendarBasisWords(expected.lateness) }
+      ? { ymd: held.ymd, daysPast: held.daysLate, daysTo: Math.max(0, daysBetweenYmd(inp.todayYmd, held.ymd) ?? 0), basis: calendarBasisWords(expected.lateness, expected.calendarOwn, expected.ownDue != null) }
       : null
   const lienBy = lienByForJob(job.last_work_date, '')
   const lien = lienBy.ymd ? { ymd: lienBy.ymd, daysLeft: daysBetweenYmd(inp.todayYmd, lienBy.ymd), kindAssumed: lienBy.kindAssumed } : null

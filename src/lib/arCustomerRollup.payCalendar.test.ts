@@ -7,7 +7,7 @@ import { buildArCustomerRollup } from './arCustomerRollup'
 import { arCallOpener, buildArCallSummary } from './arCustomerChase'
 import type { FinancialItem } from './dashboardFinancials'
 import type { PayReceipt, PaySpeedData } from './jobs/billedExpectedPay'
-import { indexPayCalendars, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from './jobs/payCalendar'
+import { indexPayCalendars, parseBillDueDayRow, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from './jobs/payCalendar'
 
 const TODAY = '2026-11-22'
 
@@ -101,5 +101,19 @@ describe('the Dashboard’s receivables for a customer on a Pay calendar', () =>
     const row = buildArCustomerRollup(ITEMS, data, '2026-12-15', calendars).rows[0]!
     expect(row.bills.find((b) => b.item.key === 'a')?.calendar).toMatchObject({ dueYmd: '2026-11-30', expectedYmd: '2026-12-12', daysPastExpected: 3, of: { own: true, record: { of: 'job', jobPayments: 2 } } })
     expect(row.bills.find((b) => b.item.key === 'b')?.calendar?.of).toMatchObject({ own: false, record: { of: 'payer' } })
+  })
+
+  it("reads a bill with its own due day against that day (punch list #341, PR 4)", () => {
+    // The modal's bill items are keyed `inv:<id>`.
+    const bill = { ...ITEMS[2]!, key: 'inv:i-1443' }
+    const calendars = indexPayCalendars([calRow(), parseBillDueDayRow({ invoice_id: 'i-1443', due_on: '2026-11-10' })!])
+    const row = buildArCustomerRollup([bill], speeds, TODAY, calendars).rows[0]!
+    // By Larkfield's calendar this bill was due Dec 10 and nothing was late.
+    expect(row.bills[0]).toMatchObject({ tone: 'warn', calendar: { dueYmd: '2026-11-10', daysPastDue: 12, billOwn: true } })
+    expect(row).toMatchObject({ pastPace: true, calendar: null, billOwn: true, pastExpectedDays: 12 })
+    expect(arCallOpener(row)).toBe('1 bill past due — 1443 · Lot 6, $2,500, due Nov 10 · 12d past due. $2,500 open on 1 bill.')
+    // A bill with no customer on its job still reads its own day.
+    const orphan = buildArCustomerRollup([{ ...bill, customerId: null, customerName: null }], speeds, TODAY, calendars).rows[0]!
+    expect(orphan.bills[0]?.calendar).toMatchObject({ dueYmd: '2026-11-10', billOwn: true })
   })
 })
