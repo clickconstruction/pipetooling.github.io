@@ -15,7 +15,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, wayCalls: [] as unknown[][], wayRefuse: null as null | Error, refuse: null as null | Error, refuseBill: null as null | string, fail: null as null | Error, phone: false }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
 vi.mock('../../hooks/useAuth', () => {
-  const auth = () => ({ role: 'master_technician', user: { id: 'u1' } })
+  const auth = () => ({ role: 'master_technician', user: { id: 'u1' }, profileName: 'Priya' })
   return { useAuth: auth, useOptionalAuth: auth }
 })
 vi.mock('../../lib/billing/billsSentIo', () => ({
@@ -271,7 +271,9 @@ describe('BillsSentLedger', () => {
     const day = screen.getByLabelText('The day it went') as HTMLInputElement
     expect(day.value).toBe('2026-11-09')
     const days = screen.getByRole('group', { name: 'Days one press away' })
-    const billed = within(days).getByRole('button', { name: 'Mon, Nov 9 · the day it was billed' })
+    const billed = within(days).getByRole('button', { name: 'Mon, Nov 9 · billed' })
+    // The chip is one line in the date's narrow column, and its tip says the rest.
+    expect([billed.getAttribute('title'), billed.style.whiteSpace]).toEqual(['Mon, Nov 9 · the day it was billed', 'nowrap'])
     const todayPress = within(days).getByRole('button', { name: 'Today' })
     expect(billed.getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(todayPress)
@@ -281,6 +283,12 @@ describe('BillsSentLedger', () => {
     fireEvent.click(billed)
     expect(day.value).toBe('2026-11-09')
     expect(save.disabled).toBe(false)
+    // R3: the whole form reads the record back above the button, in place of what was missing.
+    const will = screen.getByTestId('bills-sent-by-hand-will')
+    expect(will.textContent).toMatch(/^The record will read: Mon, Nov 9 · Handed over · to Sable Ridge Builders · recorded by hand by Priya on \w{3}, \w{3} \d{1,2}\.It is your word, with your name\. It cannot be changed once saved\.$/)
+    fireEvent.change(screen.getByLabelText('Who it went to'), { target: { value: ' ' } })
+    expect(will.textContent).toBe('Say who the bill went to.It is your word, with your name. It cannot be changed once saved.')
+    fireEvent.change(screen.getByLabelText('Who it went to'), { target: { value: 'Sable Ridge Builders' } })
     // A refusal says its reason and keeps the form.
     io.refuse = Object.assign(new Error('new row violates row-level security policy for table "sent_documents"'), { code: '42501' })
     fireEvent.click(save)
@@ -324,6 +332,7 @@ describe('BillsSentLedger', () => {
     fireEvent.click(boxes[0]!)
     fireEvent.click(boxes[1]!)
     const go = screen.getByRole('button', { name: 'Record how 3 bills went' }) as HTMLButtonElement
+    expect(screen.getByTestId('bills-sent-by-hand-will').textContent).toContain('Each record will read: Mon, Nov 9 · Mailed · to Sable Ridge Builders · recorded by hand by Priya on ')
     // One of the three is refused. The other two save, each its own record, on the day and to the person the form says.
     io.refuseBill = B
     fireEvent.click(go)

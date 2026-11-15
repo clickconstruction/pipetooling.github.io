@@ -152,13 +152,14 @@ Do this when you know how a bill in the yellow box went out.
 3. Type who the bill went to. Add an address if you have one.
 4. Check the day the bill went. The form offers the day the bill was made.
 5. Press **Today** under the date if the bill went today. You can also pick any earlier day.
-6. Press {{button:blue|Record how it went}}.
+6. Read the line above the button. The line starts with *The record will read:* and says the whole record.
+7. Press {{button:blue|Record how it went}}.
 
 The bill leaves the yellow box. The bill now has a line on the day you picked.
 
 The line says *Recorded by hand*, with your name and the day you recorded it. The line has no copy, because the app sent nothing.
 
-A record made by hand cannot be changed once saved. Check the day and the name before you press.
+A record made by hand cannot be changed once saved. Read the line above the button before you press.
 
 No chip may fit how the bill went. Then add a way to the list. See [Change the list of ways](#change-the-list-of-ways).
 
@@ -169,8 +170,9 @@ One customer may have more than one bill in the yellow box. The form then lists 
 1. Press **Say how it went…** on one of the bills.
 2. Fill in the form for that bill.
 3. Tick each other bill that went the same way, to the same person, on the same day.
-4. Read the blue button. The button counts the bills, like {{button:blue|Record how 3 bills went}}.
-5. Press the blue button.
+4. Read the line above the button. The line now starts with *Each record will read:*.
+5. Read the blue button. The button counts the bills, like {{button:blue|Record how 3 bills went}}.
+6. Press the blue button.
 
 Each bill gets its own record. Every record says the same way, the same person and the same day.
 
