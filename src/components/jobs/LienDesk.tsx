@@ -48,7 +48,8 @@ import {
 } from '../../lib/jobs/lienDeskIo'
 import { addJobPaymentPromise } from '../../lib/jobs/paymentChaseIo'
 import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
-import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
+import { lienFooter, type LienSignWay } from '../../lib/jobs/lienFooterMenu'
+import { LienFootMenu } from './LienFootMenu'
 import { penWordApproval } from '../../lib/jobs/lienPenRecord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
@@ -456,6 +457,8 @@ export default function LienDesk({
   const [byHandOpen, setByHandOpen] = useState(false)
   // He signed the paper ▸ (the pen train, PR 2): the office writes down the leader's pen signature on a ready, unsigned notice.
   const [penOpen, setPenOpen] = useState(false)
+  // The leader's way of signing the draft (v2.7324): his typed name, unless Sign another way ▾ picked the pad or his code.
+  const [signWay, setSignWay] = useState<LienSignWay>('type')
   // The pen door on the draft footer (v2.7297): the draft just saved, so the pane has a row to bind the record to before the desk re-reads.
   const [penDraft, setPenDraft] = useState<{ id: string; fields: unknown } | null>(null)
   /** Counsel's sign-off ask on a sent notice (#41 PR 3). */
@@ -1098,6 +1101,7 @@ export default function LienDesk({
     setByHandOpen(false)
     setPenOpen(false)
     setPenDraft(null)
+    setSignWay('type')
     setHoldOpen(null)
     setDetailsOpen(false)
     setNotYetOpen(false)
@@ -1124,8 +1128,6 @@ export default function LienDesk({
   const openBalance = selected?.openBalance ?? 0
   // The job's master by name (v2.4856): the word row, the record and the queue row say *on Malachi's word*.
   const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
-  // The draft footer's presses name the leader as the app has him on the job (v2.7308).
-  const press = lienLeaderPressWords(leaderName, 'notice')
   // Someone else's screen (v2.5791, punch list #150): the job has a master and he is not the one signed in here. The
   // signature line is then his — his name in cursive, his signing code or his hand — never the signed-in user's name.
   const masterId = job?.master_user_id ?? null
@@ -1153,6 +1155,9 @@ export default function LienDesk({
     }
   }, [otherScreen, masterId, codeStatusTick, selected?.jobId])
   const codeSigner: LienNoticeSignLineCodeSigner | null = otherScreen ? lienCodeSignerFrom(leaderName, codeStatus) : null
+  const codeReady = codeSigner?.status === 'ready'
+  // On someone else's screen the typed name is never a way; until the line reports its own pick, his code or his hand stands.
+  const draftSignWay: LienSignWay = otherScreen && signWay === 'type' ? (codeReady ? 'code' : 'draw') : signWay
   const wordPreview = selected
     ? wordRecordPreview({ leaderName, note: wordNote, channel: wordChannel, recorderName: authName, jobLabel: jobLabel(job, selected.jobId), gcName: gc?.name ?? null, amountWords: formatUsdNoCents(openBalance) })
     : undefined
@@ -3343,6 +3348,12 @@ export default function LienDesk({
     const signLine = (compact = false) => (
       <LienNoticeSignLine key={`${selected.jobId}:${otherScreen ? 'other' : 'own'}`} ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} codeSigner={codeSigner} codeProblem={codeProblem} disabled={busy} compact={compact} />
     )
+    // The draft's line (v2.7324): his typed name needs no box, so the line is drawn only for the pad or his code, and
+    // Sign another way ▾ in the footer is the way between them (the line's own toggle is off). Keyed by the way, so a
+    // pick starts the line clean, as the toggle did.
+    const draftSignLine = () => (
+      <LienNoticeSignLine key={`${selected.jobId}:${otherScreen ? 'other' : 'own'}:${draftSignWay}`} ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} codeSigner={codeSigner} codeProblem={codeProblem} disabled={busy} initialMode={draftSignWay} ownToggle={false} onModeChange={setSignWay} />
+    )
     // v2.4745 (the owner's ask): the switch rides in the footer's bottom row; the details open above that row only while it is on.
     const offerBox = (onSave?: () => void, saved?: boolean) => (
       <LienOfferBox part="details" offer={offer} onChange={setOffer} todayYmd={todayYmd} affidavitDueOn={affidavitDueOn} amounts={offerAmounts} disabled={busy} onSave={onSave} saving={busy} saved={saved} />
@@ -3457,18 +3468,32 @@ export default function LienDesk({
       // on the right (the quiet Skip left in v2.4743: a month nobody sends closes on its own and is noted as missed).
       // The envelope line sits above the paper; the why is a parenthetical, not a sentence. Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing).
       const firstBlocker = gates.find((g) => g.tone === 'blocker') ?? null
+      // One press per footer (v2.7324): the kernel names the press, the line beside it and the menus; the route is
+      // the office's — a live send rule puts it in the run, the hold rule parks it, a claim set by hand goes to him whatever the rule.
+      const foot = lienFooter({
+        role: authRole,
+        paper: 'notice',
+        leaderName,
+        blocked,
+        route: claimGate ? 'leader' : ruleLive && !promise ? 'run' : selected.policy === 'hold' && !promise ? 'hold' : 'leader',
+        sign: { way: draftSignWay, otherScreen, codeReady },
+        pen: monthsList.length > 0,
+      })
+      const pickDoor = (key: string) => {
+        if (key === 'word') {
+          setWordNote(defaultWordNote(leaderName, demandDate(todayYmd)))
+          setWordOpen(true)
+        } else if (key === 'pen') {
+          // v2.7297: the pen door on the draft — the paper printed and he signed it; the record approves the notice on his word.
+          void run('He signed the paper', async () => { const id = await ensureDraft(); setPenDraft({ id, fields: draftFields() }); setPenOpen(true) })
+        } else if (key.startsWith('sign:')) {
+          const way = key.slice(5) as LienSignWay
+          setSignWay(way)
+          signRef.current?.setMode(way)
+        }
+      }
       // Blocked, the footer says the stop and the one thing to do in plain words (v2.4797); the gate's button is the way there.
-      const stateWords = blocked
-        ? lienFootBlockedSentence(firstBlocker, monthsList.length)
-        : leader
-          ? 'Add to run'
-          : claimGate
-            ? 'Goes to the leader'
-            : ruleLive && !promise
-              ? 'Straight into the run'
-              : selected.policy === 'hold' && !promise
-                ? 'Parks under the hold rule'
-                : 'Goes to the leader'
+      const stateWords = blocked ? lienFootBlockedSentence(firstBlocker, monthsList.length) : foot.primary?.line ?? ''
       const stateWhy = blocked
         ? readiness.reason === 'public_owner'
           ? PUBLIC_OWNER_DESK_SENTENCE
@@ -3518,7 +3543,7 @@ export default function LienDesk({
           ) : (
             <>
             {leader && !blocked ? offerBox() : null}
-            {leader && !blocked ? signLine() : null}
+            {leader && !blocked && draftSignWay !== 'type' ? draftSignLine() : null}
             {selected.sentItem && first ? (
               // The notice that went (v2.6624, punch list #248): its day, letter two's clock and its two doors ride above the draft row, so the next months draft while the reminders stay one press away.
               <div className="lienFootRow" data-lien-desk-sent-doors style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -3534,42 +3559,34 @@ export default function LienDesk({
             ) : null}
             <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
               <span className="lienFootState">
-                <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWords}
+                <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWhy ? stateWords.replace(/\.$/, '') : stateWords}
                 {stateWhy ? <span className="lienFootWhy"> · {stateWhy}</span> : null}
               </span>
               <span className="lienFootSpacer" />
               {leader && !blocked ? offerSwitch() : null}
-              {office && monthsList.length > 0 ? (
-                <>
+              {foot.links.includes('by_hand') && monthsList.length > 0 ? (
                 <button type="button" className="lienFootSkip" onClick={() => setByHandOpen(true)} disabled={busy} data-lien-desk-by-hand title="The paper was printed here and went out by hand — record when, how, what it claimed, and which jobs at the property it covered">
                   <span className="lienByHandWords">Already mailed?{' '}<br />Record it…</span>
                 </button>
-                </>
+              ) : null}
+              {foot.links.includes('save') ? (
+                <button type="button" className="lienFootLink" onClick={saveDraft} disabled={busy || monthsList.length === 0} data-lien-desk-save-draft>Save draft</button>
               ) : null}
               <div className="lienFootActions">
-                <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
-                {canSendOnWord(authRole) && !blocked ? (
-                  <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title={press.onWordTitle}>
-                    {press.onWord}
-                  </button>
-                ) : null}
-                {canSendOnWord(authRole) && !blocked && monthsList.length > 0 ? (
-                  // v2.7297: the pen door on the draft too — the paper printed and he signed it; the record approves the notice on his word.
-                  <button type="button" onClick={() => void run('He signed the paper', async () => { const id = await ensureDraft(); setPenDraft({ id, fields: draftFields() }); setPenOpen(true) })} disabled={busy} style={btn('plain', busy)} data-lien-desk-pen title="He signed the printed paper with a pen: write down who, when and how you know, add the signed page, and it is approved on the record and goes in the run">
-                    He signed the paper…
-                  </button>
-                ) : null}
+                {foot.menus.map((m) => (
+                  <LienFootMenu key={m.key} menu={m} disabled={busy} style={btn('plain', busy)} onPick={pickDoor} />
+                ))}
                 {blocked ? (
                   <button type="button" onClick={() => (firstBlocker ? pickGate(firstBlocker.key) : paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' }))} style={btn('primary')} data-lien-desk-go-to-gate>
                     {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
                   </button>
-                ) : leader ? (
-                  <button type="button" onClick={() => run('Sign and approve', async () => { const id = await ensureDraft(); await setLienDeskItemOffer(id, offer); await signItem(id, draftFields(), true) }, offer ? `Signed and approved with a ${offer.pct}% offer — it is in the run.` : 'Signed and approved — it is in the run.')} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>
-                    Sign and approve ▸
+                ) : foot.primary?.key === 'approve' ? (
+                  <button type="button" onClick={() => run('Sign and approve', async () => { const id = await ensureDraft(); await setLienDeskItemOffer(id, offer); await signItem(id, draftFields(), true) }, offer ? `Signed and approved with a ${offer.pct}% offer — it is in the run.` : 'Signed and approved — it is in the run.')} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))} title={foot.primary.line} data-lien-desk-approve>
+                    {foot.primary.label}
                   </button>
                 ) : (
-                  <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
-                    {ruleLive && !promise && !claimGate ? 'Put it in the run ▸' : press.ask}
+                  <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)} title={foot.primary?.line} data-lien-desk-ask>
+                    {foot.primary?.label}
                   </button>
                 )}
               </div>
