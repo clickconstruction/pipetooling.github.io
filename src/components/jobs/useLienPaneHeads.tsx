@@ -1,5 +1,6 @@
-import { useEffect, useState, type RefObject, type UIEvent } from 'react'
+import { useEffect, useRef, useState, type RefObject, type UIEvent } from 'react'
 import LienPaneHead from './LienPaneHead'
+import { watchSmallPresses } from './jobWindowPressPad'
 import { lienPaneSectionScrollTop, litLienPaneSection, type LienPaneSection } from '../../lib/jobs/lienPaneSections'
 
 /**
@@ -39,6 +40,24 @@ export function useLienPaneHeads<K extends string>({
   useEffect(() => {
     setLit(null)
   }, [resetKey])
+  // A phone's open paper (punch list #352, the leftovers): every press under 40 px in the pane gets an unseen pad to
+  // a thumb's 44 px square, as the job window's do (v2.7309). The gates, the months grid and the page's own edit
+  // marks are drawn for a computer, 14 to 28 px, and nothing moves. The pane mounts and leaves as papers open, so
+  // the watch follows the element, not the first render. `index.css` draws the pad.
+  const padded = useRef<{ el: HTMLElement; stop: () => void } | null>(null)
+  useEffect(() => {
+    const el = phone ? paneRef.current : null
+    if ((padded.current?.el ?? null) === el) return
+    padded.current?.stop()
+    padded.current = el ? { el, stop: watchSmallPresses(el) } : null
+  })
+  useEffect(
+    () => () => {
+      padded.current?.stop()
+      padded.current = null
+    },
+    [],
+  )
   const stripH = strip?.height ?? 0
   const bodyOf = (host: HTMLElement, key: K) => host.querySelector<HTMLElement>(`[data-lien-pane-body="${key}"]`)
 

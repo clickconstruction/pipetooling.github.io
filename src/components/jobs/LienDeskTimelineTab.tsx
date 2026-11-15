@@ -30,6 +30,8 @@ export type LienDeskTimelineTabProps = {
   /** A row's job number opens the job itself (v2.4535): the Job window, with its history and Edit. */
   onOpenJob?: (jobId: string) => void
   onPrint: (rows: LienTimelineBookRow[], title: string) => void
+  /** On a phone the two pickers and the print press are a thumb tall (punch list #352, the leftovers). */
+  phone?: boolean
 }
 
 const STACK_BELOW_PX = 700
@@ -39,9 +41,13 @@ function nextColor(tone: LienTimelineBookRow['timeline']['next']['tone']): strin
 }
 
 const selectStyle: CSSProperties = { padding: '2px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem' }
+/** A phone's pickers and print press (punch list #352, the leftovers): a thumb tall, and 16 px words so an iPhone does not zoom the page on a picker's focus. */
+const PHONE_PRESS_PX = 44
+const phoneSelectStyle: CSSProperties = { ...selectStyle, minHeight: PHONE_PRESS_PX, padding: '0 10px', borderRadius: 8, fontSize: '1rem', minWidth: 0, maxWidth: '100%' }
 
-export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId, show, onShow, onOpenRow, onOpenJob, onPrint }: LienDeskTimelineTabProps) {
+export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId, show, onShow, onOpenRow, onOpenJob, onPrint, phone = false }: LienDeskTimelineTabProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
+  const picker = phone ? phoneSelectStyle : selectStyle
   const [stacked, setStacked] = useState(false)
   useEffect(() => {
     const el = hostRef.current
@@ -61,10 +67,11 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
 
   return (
     <div ref={hostRef} data-lien-desk-timeline-tab style={{ overflow: 'auto', minWidth: 0, display: 'grid', alignContent: 'start' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.8rem', alignItems: 'center', padding: '0.55rem 0.9rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
+      {/* The control bar stays over the rows on a computer. On a phone its presses are a thumb tall, so the bar scrolls away with the list sooner than hold a taller strip of the screen (punch list #352: a thumb-tall row makes a pinned header taller). */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.8rem', alignItems: 'center', padding: '0.55rem 0.9rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', position: phone ? 'static' : 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
         <label style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
           <span style={{ color: 'var(--text-muted)' }}>GC</span>
-          <select value={gcId ?? ''} onChange={(e) => onGcId(e.target.value || null)} style={selectStyle} aria-label="GC">
+          <select value={gcId ?? ''} onChange={(e) => onGcId(e.target.value || null)} style={picker} aria-label="GC">
             <option value="">All GCs{book ? ` · ${book.rows.length}` : ''}</option>
             {(book?.gcs ?? []).map((g) => (
               <option key={g.id} value={g.id}>
@@ -75,7 +82,7 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
         </label>
         <label style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
           <span style={{ color: 'var(--text-muted)' }}>Show</span>
-          <select value={show} onChange={(e) => onShow(e.target.value === 'all' ? 'all' : 'due')} style={selectStyle} aria-label="Show">
+          <select value={show} onChange={(e) => onShow(e.target.value === 'all' ? 'all' : 'due')} style={picker} aria-label="Show">
             <option value="due">Something due{book ? ` · ${book.counts.due}` : ''}</option>
             <option value="all">All{book ? ` · ${book.counts.all}` : ''}</option>
           </select>
@@ -84,7 +91,7 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
           {loading && !book ? 'Reading every unpaid job…' : book ? `${rows.length} ${rows.length === 1 ? 'job' : 'jobs'} · ${formatUsdNoCents(open)} open${show === 'due' && book.counts.later ? ` · ${book.counts.later} more with nothing due yet` : ''}${book.counts.dead ? ` · ${book.counts.dead} gone` : ''}` : error ? `Could not read the book — ${error}` : ''}
         </span>
         <span style={{ flex: 1 }} />
-        <button type="button" onClick={() => onPrint(rows, title)} disabled={!rows.length} title="Counsel's grid: one row per job, letter landscape — blanks where the app has no fact yet" style={{ padding: '2px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: rows.length ? 'var(--text-700)' : 'var(--text-muted)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: rows.length ? 'pointer' : 'default' }}>
+        <button type="button" onClick={() => onPrint(rows, title)} disabled={!rows.length} title="Counsel's grid: one row per job, letter landscape — blanks where the app has no fact yet" style={{ padding: '2px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: rows.length ? 'var(--text-700)' : 'var(--text-muted)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: rows.length ? 'pointer' : 'default', ...(phone ? { minHeight: PHONE_PRESS_PX, padding: '0 14px', borderRadius: 8, fontSize: '0.875rem' } : null) }}>
           ⎙ Print the grid
         </button>
       </div>
