@@ -358,13 +358,14 @@ describe('LienDesk', () => {
     expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
   })
 
-  it('the tools end the title line when it has room for them (v2.7213; the line measured since v2.7277): all five in a 2,000 px window, the four presses with the door under them at 1,300', async () => {
+  it('the tools end the title line when it has room for them (v2.7213; the line measured since v2.7277): all five in a 2,000 px window, the four presses with the door under them at 1,300; since v2.7311 the door ends the second line on every view, and falls under the piles with its span when the line is too narrow', async () => {
     const rect = Element.prototype.getBoundingClientRect
     // The desk as drawn on 2026-11-14 (← Back, To do · 21, Record the mailing · 7 sealed, the office's door and four presses) in a bar `barWidth` px wide:
     // 1,952 is a 2,000 px window, 1,252 a 1,300 px one, 1,000 a 1,048 px one. jsdom has no ResizeObserver, so the bar reads the line once, on mount.
-    const drawn = (barWidth: number) =>
+    // `pile` draws By paper's line too (v2.7311): the paper tabs and the right span at the widths given; without it they are 0 and the line holds everything.
+    const drawn = (barWidth: number, pile?: { papers: number; right: number }) =>
       function (this: Element): DOMRect {
-        const w = this.classList.contains('lienDeskTitleBar') ? barWidth : this.hasAttribute('data-lien-desk-way-back') ? 90 : this.tagName === 'H2' ? 100 : this.hasAttribute('data-lien-desk-kinds') ? 278 : this.hasAttribute('data-lien-desk-run') ? 270 : this.getAttribute('data-testid') === 'lien-owner-records-door' ? 199 : this.hasAttribute('data-lien-desk-presses') ? 231 : 0
+        const w = this.classList.contains('lienDeskTitleBar') ? barWidth : this.hasAttribute('data-lien-desk-way-back') ? 90 : this.tagName === 'H2' ? 100 : this.hasAttribute('data-lien-desk-kinds') ? 278 : this.hasAttribute('data-lien-desk-run') ? 270 : this.getAttribute('data-testid') === 'lien-owner-records-door' ? 199 : this.hasAttribute('data-lien-desk-presses') ? 231 : this.hasAttribute('data-lien-desk-paper-kinds') ? (pile?.papers ?? 0) : this.hasAttribute('data-lien-desk-right') ? (pile?.right ?? 0) : 0
         return { width: w, height: 0, x: 0, y: 0, top: 0, left: 0, right: w, bottom: 0, toJSON: () => ({}) } as DOMRect
       }
     const back = <button type="button" data-lien-desk-way-back>← Back</button>
@@ -375,37 +376,50 @@ describe('LienDesk', () => {
     const withRun = data(J650, [printed], true)
     const shape = () => {
       const bar = document.querySelector('.lienDeskTitleBar') as HTMLElement
-      return Array.from(bar.children).map((el) => (el.hasAttribute('data-lien-desk-kinds') ? 'views' : el.hasAttribute('data-lien-desk-run') ? 'run' : el.hasAttribute('data-lien-desk-tools') ? 'tools' : el.hasAttribute('data-lien-desk-header-break') ? 'break' : el.hasAttribute('data-lien-desk-paper-kinds') ? 'papers' : el.hasAttribute('data-lien-desk-right') ? 'right' : null)).filter(Boolean)
+      return Array.from(bar.children).map((el) => (el.hasAttribute('data-lien-desk-kinds') ? 'views' : el.hasAttribute('data-lien-desk-run') ? 'run' : el.hasAttribute('data-lien-desk-tools') ? 'tools' : el.hasAttribute('data-lien-desk-header-break') ? 'break' : el.hasAttribute('data-lien-desk-paper-kinds') ? 'papers' : el.hasAttribute('data-lien-desk-piles') ? 'piles' : el.hasAttribute('data-lien-desk-pile-break') ? 'pile-break' : el.hasAttribute('data-lien-desk-right') ? 'right' : null)).filter(Boolean)
     }
     const names = (within: Element) => Array.from(within.querySelectorAll('button')).map((b) => b.getAttribute('aria-label') ?? b.textContent)
     try {
       Element.prototype.getBoundingClientRect = drawn(1952)
       const onOpenOwnerRecords = vi.fn()
-      // Deadlines, the owner's screenshot of v2.7213: one line, the five tools at its end in their order, no break and no empty span after them.
+      // Deadlines, the owner's screenshot of v2.7213: the four presses end the title line in their order; since v2.7311 the door is alone at the right end of the second line, under Share, on every view.
       const deadlines = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRun} initialKind="calendar" backDoor={back} onOpenOwnerRecords={onOpenOwnerRecords} />)
       await settle()
-      expect(shape()).toEqual(['views', 'run', 'tools'])
+      expect(shape()).toEqual(['views', 'run', 'tools', 'break', 'right'])
       const tools = document.querySelector('[data-lien-desk-tools]') as HTMLElement
       expect(tools.style.marginLeft).toBe('auto')
-      expect(names(tools)).toEqual(['An owner asked for records ›', '§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
-      expect(document.querySelector('[data-lien-desk-right]')).toBeNull()
+      expect(names(tools)).toEqual(['§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
+      const deadlinesRight = document.querySelector('[data-lien-desk-right]') as HTMLElement
+      expect(deadlinesRight.style.marginLeft).toBe('auto')
+      expect(names(deadlinesRight)).toEqual(['An owner asked for records ›'])
       fireEvent.click(screen.getByTestId('lien-owner-records-door'))
       expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
       // Share still opens from the title line.
       fireEvent.click(document.querySelector('[data-lien-desk-share]') as HTMLElement)
       expect(screen.getByRole('dialog', { name: 'Share where the liens stand' })).toBeTruthy()
       deadlines.unmount()
-      // To do: the same line.
+      // To do: the same two lines.
       const now = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRun} initialKind="next" backDoor={back} onOpenOwnerRecords={onOpenOwnerRecords} />)
       await settle()
-      expect(shape()).toEqual(['views', 'run', 'tools'])
+      expect(shape()).toEqual(['views', 'run', 'tools', 'break', 'right'])
       now.unmount()
-      // By paper's Lien affidavits, which draws no run: the tools stay on the title line, before the break; the paper tabs lead the second line.
+      // By paper's Lien affidavits, which draws no run: the four presses stay on the title line, before the break; the paper tabs lead the second line and the door ends it, alone in the span, pushed right (v2.7311, the owner's ask of 2026-11-15).
       const affidavits = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRun} initialKind="affidavit" backDoor={back} onOpenOwnerRecords={onOpenOwnerRecords} />)
       await settle()
-      expect(shape()).toEqual(['views', 'tools', 'break', 'papers'])
+      expect(shape()).toEqual(['views', 'tools', 'break', 'papers', 'right'])
+      expect(names(document.querySelector('[data-lien-desk-tools]')!)).toEqual(['§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
+      const pileRight = document.querySelector('[data-lien-desk-right]') as HTMLElement
+      expect(pileRight.style.marginLeft).toBe('auto')
+      expect(names(pileRight)).toEqual(['An owner asked for records ›'])
+      fireEvent.click(screen.getByTestId('lien-owner-records-door'))
+      expect(onOpenOwnerRecords).toHaveBeenCalledTimes(2)
+      // Back on To do the door keeps the second line's right end: the view changes nothing but the papers.
+      fireEvent.click(screen.getByRole('tab', { name: /^To do/ }))
+      await settle()
+      expect(shape()).toEqual(['views', 'run', 'tools', 'break', 'right'])
+      expect(names(document.querySelector('[data-lien-desk-right]')!)).toEqual(['An owner asked for records ›'])
       affidavits.unmount()
-      // The leader has no owner-records door and no caller's door: § Rules, ? and Share end his title line.
+      // The leader has no owner-records door and no caller's door: § Rules, ? and Share end his title line, and the bar has no second line.
       const leader = renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650)} initialKind="calendar" backDoor={back} />)
       await settle()
       expect(shape()).toEqual(['views', 'tools'])
@@ -424,7 +438,7 @@ describe('LienDesk', () => {
       expect(right.style.marginLeft).toBe('auto')
       expect(names(right)).toEqual(['An owner asked for records ›'])
       fireEvent.click(screen.getByTestId('lien-owner-records-door'))
-      expect(onOpenOwnerRecords).toHaveBeenCalledTimes(2)
+      expect(onOpenOwnerRecords).toHaveBeenCalledTimes(3)
       // By paper's Lien affidavits hides the run's pill, not the run: the line keeps the pill's width, so the door stays under the presses and ends the paper line.
       fireEvent.click(screen.getByRole('tab', { name: 'By paper' }))
       await settle()
@@ -442,10 +456,27 @@ describe('LienDesk', () => {
 
       // A 1,048 px window: the two steady lines of v2.6569, the door leading the tool row.
       Element.prototype.getBoundingClientRect = drawn(1000)
-      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRun} initialKind="calendar" backDoor={back} onOpenOwnerRecords={onOpenOwnerRecords} />)
+      const steady = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRun} initialKind="calendar" backDoor={back} onOpenOwnerRecords={onOpenOwnerRecords} />)
       await settle()
       expect(shape()).toEqual(['views', 'run', 'break', 'right'])
       expect(names(document.querySelector('[data-lien-desk-right]')!)).toEqual(['An owner asked for records ›', '§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
+      steady.unmount()
+
+      // An 808 px window on By paper (v2.7311): the pile line — 393 px of paper tabs and a 440 px span of the door and the four presses — cannot hold both, so the bar breaks before the span and it falls under the papers as one piece, still pushed right and still its presses.
+      Element.prototype.getBoundingClientRect = drawn(760, { papers: 393, right: 440 })
+      const tablet = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRun} initialKind="affidavit" backDoor={back} onOpenOwnerRecords={onOpenOwnerRecords} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'break', 'papers', 'pile-break', 'right'])
+      expect((document.querySelector('[data-lien-desk-pile-break]') as HTMLElement).style.flexBasis).toBe('100%')
+      expect(names(document.querySelector('[data-lien-desk-right]')!)).toEqual(['An owner asked for records ›', '§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
+      fireEvent.click(screen.getByTestId('lien-owner-records-door'))
+      expect(onOpenOwnerRecords).toHaveBeenCalledTimes(4)
+      tablet.unmount()
+      // The same bar with room on its 720 px line (the papers at 260, the span at 440): no break, the span ends the line.
+      Element.prototype.getBoundingClientRect = drawn(760, { papers: 260, right: 440 })
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRun} initialKind="affidavit" backDoor={back} onOpenOwnerRecords={onOpenOwnerRecords} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'break', 'papers', 'right'])
     } finally {
       Element.prototype.getBoundingClientRect = rect
     }

@@ -161,7 +161,7 @@ import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
 import LienDeskJobScreen from './LienDeskJobScreen'
 import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../../lib/jobs/lienDeskPhoneMore'
-import { lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskTitleLine, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
+import { lienDeskPileLineFit, lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineFit, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
 import { DeskLegendCard } from '../help/LegendCard'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
@@ -413,6 +413,8 @@ export default function LienDesk({
   // owner-records door under them, or none. The bar reads the line it drew; the rule is `lienDeskTitleBar.ts`. None until it is drawn.
   const titleBarRef = useRef<HTMLDivElement>(null)
   const [titleLineFit, setTitleLineFit] = useState<LienDeskTitleLineFit>('none')
+  // Whether By paper's pile line holds its right span beside the piles, or the span falls under them (v2.7311). One line until measured.
+  const [pileLineFit, setPileLineFit] = useState<LienDeskPileLineFit>('one_line')
   // One column (the list or the pane, never both): a phone's width, or a host that stacks the desk (punch list #182 PR 3).
   const oneColumn = isMobile || stacked
   const { showToast } = useToastContext()
@@ -1663,15 +1665,17 @@ export default function LienDesk({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the pages are a function of exactly these
   }, [previewIsThisJob, docHtml, coverHtml, payHtml, wordingDiff.length, wordingEditedBy])
 
-  // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer it sits on the title line
-  // left of § Rules on every view (v2.4740 off By paper; v2.4786 there too, the owner's ask — the title line had the room). On a phone it ends the second line.
+  // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer it sat on the title line
+  // left of § Rules on every view (v2.4740 off By paper; v2.4786 there too, the owner's ask — the title line had the room) until v2.7311, the owner's ask of 2026-11-15:
+  // it ends the second line on every view, at the right under Share, after the paper tabs and the piles on By paper. On a phone it is a row of More. Its height is the presses'
+  // (`headDoor`), so the pile line is as tall beside it as beside Put a GC on notice.
   const ownerRecordsDoor = office && onOpenOwnerRecords ? (
     <button
       type="button"
       data-testid="lien-owner-records-door"
       onClick={onOpenOwnerRecords}
       title="An owner asked what we billed and what was paid on their property: the packet for that property, behind four checks"
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
+      style={{ gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer', ...headDoor }}
     >
       An owner asked for records ›
     </button>
@@ -1858,20 +1862,23 @@ export default function LienDesk({
       if (line.parts.run > 0) lastRunWidth.current = line.parts.run
       else if (runHiddenByView) line.parts.run = lastRunWidth.current
       setTitleLineFit(lienDeskTitleLineFit(line.width, line.parts))
+      // The pile line (v2.7311): the span's width is the same at the line's end and under the piles, so the answer holds once the break is drawn.
+      const piles = readLienDeskPileLine(bar)
+      setPileLineFit(piles ? lienDeskPileLineFit(piles.width, piles.parts) : 'one_line')
     }
     measure()
     if (typeof ResizeObserver === 'undefined') return
-    // The bar moves with the window; the run's pill and the views move with their words. The door and the presses keep their widths wherever they sit.
+    // The bar moves with the window; the run's pill, the views, the paper tabs and the piles move with their words. The door and the presses keep their widths wherever they sit.
     const ro = new ResizeObserver(measure)
     ro.observe(bar)
-    for (const part of ['[data-lien-desk-kinds]', '[data-lien-desk-run]']) {
+    for (const part of ['[data-lien-desk-kinds]', '[data-lien-desk-run]', '[data-lien-desk-paper-kinds]', '[data-lien-desk-piles]', '[data-lien-desk-right]']) {
       const el = bar.querySelector(part)
       if (el) ro.observe(el)
     }
     return () => ro.disconnect()
-  }, [isMobile, runDoorShown, runHiddenByView, recordsDoorShown])
-  // The title bar's shape on this screen: where the tools and the door sit, and whether it has a second line (v2.7213, v2.7277).
-  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, recordsDoor: recordsDoorShown, paperShown, gcNotice: gcNoticeShown })
+  }, [isMobile, runDoorShown, runHiddenByView, recordsDoorShown, paperShown, gcNoticeShown, kind, titleLineFit])
+  // The title bar's shape on this screen: where the tools and the door sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311).
+  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, recordsDoor: recordsDoorShown, paperShown, gcNotice: gcNoticeShown })
   const moreRun = runDoorShown ? { label: runDoor.label, count: runDoor.count, hint: runDoorHint } : null
   const moreRows = lienDeskMoreRows({ run: moreRun, gcNotice: gcNoticeShown, legendLabel: LIEN_DESK_LEGEND.label, caller: office, share: !!data, ownerRecords: office && !!onOpenOwnerRecords })
   const moreButton = lienDeskMoreButton(moreRun)
@@ -4015,7 +4022,7 @@ export default function LienDesk({
           ) : null}
           {isMobile && moreOpen ? <LienDeskMoreSheet rows={moreRows} onPick={pickMore} onClose={() => setMoreOpen(false)} /> : null}
           {/* The second line (v2.3817): on By paper the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off By paper it holds the tool row on a computer (v2.6569), or the door on a phone. */}
-          {/* The second line is the tool row on a computer whose title line has no room for the presses (v2.6569; a 1,540 px viewport rule until v2.7277), or the door's line when it has room for the presses alone (v2.7277); on a phone, and on a computer with room for all five (v2.7213), it comes only with the paper tabs. */}
+          {/* The second line is the tool row on a computer whose title line has no room for the presses (v2.6569; a 1,540 px viewport rule until v2.7277), or the door's line when it has room for the presses alone (v2.7277); on a phone, and on a computer with room for all five (v2.7213), it comes only with the paper tabs — since v2.7311 it is always there on a computer with the door, ending with it, the pile line on By paper. */}
           {titleBar.breakLine ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
@@ -4029,12 +4036,15 @@ export default function LienDesk({
               ))}
             </div>
           ) : null}
-          {/* The pile chips: in the header on a computer; on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). */}
-          {kind === 'retainage' && !isMobile ? retPileChips : null}
-          {kind === 'affidavit' && !isMobile ? affPileChips : null}
+          {/* The pile chips: in the header on a computer, one span so the pile line can be measured (v2.7311); on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). */}
+          {!isMobile && (kind === 'retainage' || kind === 'affidavit') && (kind === 'retainage' ? retPileChips : affPileChips).length > 0 ? (
+            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
+          ) : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *show every pile*. */}
-          {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
+          {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door (on every view's second line since v2.7311) and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
           {/* Drawn only when it holds something (v2.7213): empty, it would still take a column gap and push the title line's tools off the edge. */}
+          {/* The span ends the second line with the owner-records door on every view (v2.7311, the owner's ask); a pile line too narrow for the piles and the span together breaks here, so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}
+          {titleBar.pileBreak ? <span aria-hidden data-lien-desk-pile-break style={{ flexBasis: '100%', height: 0 }} /> : null}
           {titleBar.rightSpan ? <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {gcNoticeShown && onPutGcOnNotice ? (
             <div style={{ position: 'relative' }}>
