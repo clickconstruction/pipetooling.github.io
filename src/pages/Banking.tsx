@@ -2211,6 +2211,7 @@ export default function Banking() {
               onEditAllocations={(r) => void openAllocModalForMercuryRow(r)}
               orgNotesByTxId={orgNotesByTxId}
               onOrgNoteUpdated={onOrgNoteUpdated}
+              subPaymentMatch
             />
           )}
         </div>

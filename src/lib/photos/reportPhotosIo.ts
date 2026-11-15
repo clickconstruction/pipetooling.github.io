@@ -11,6 +11,7 @@ import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../u
 import { REPORT_PHOTOS_BUCKET, reportPhotoPath, type ReportPhotoRow } from './reportPhotos'
 import { chunkIds, countPhotosByReport } from './reportPhotoCounts'
 import { REPORT_PHOTO_SIZE_SETTING_KEY, photoSizeFromSetting, type ReportPhotoSize } from './shrink'
+import { bytesAlreadyThere } from './shotTiles'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -54,13 +55,15 @@ export type SendReportPhotoInput = {
 
 /**
  * The bytes to the bucket, then the row. Throws with the reason when the phone has no signal or the bucket refuses
- * (over 2 MB, no door to the job); the caller keeps the tile with Retry.
+ * (over 2 MB, no door to the job); the caller keeps the tile with Retry. The upload is never an upsert: the bucket has
+ * no update policy and refuses one onto an object that is there, every try. A resend that finds its own bytes there
+ * (the first upload landed and its answer was lost) goes on to the row, an upsert on the shot's id (punch list #338).
  */
 export async function sendReportPhoto(input: SendReportPhotoInput): Promise<{ storagePath: string }> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new ReportPhotoSendError('The phone has no signal.', 'network')
   const storagePath = reportPhotoPath(input.jobId, input.id)
-  const { error } = await db.storage.from(REPORT_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: true })
-  if (error) throw new ReportPhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
+  const { error } = await db.storage.from(REPORT_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: false })
+  if (error && !bytesAlreadyThere(error)) throw new ReportPhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
   const { error: rowError } = await db.from('report_photos').upsert(
     {
       id: input.id,

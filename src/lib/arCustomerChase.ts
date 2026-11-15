@@ -129,6 +129,12 @@ export function arCallOpener(row: ArCustomerRow): string {
   const total = `${money(row.open)} open on ${row.bills.length} ${row.bills.length === 1 ? 'bill' : 'bills'}.`
   const late = row.bills.filter((b) => b.tone === 'warn' || b.tone === 'late')
   // A customer on a Pay calendar (punch list #323): the call names the due day, not a count of days.
+  // A bill past its own due day (punch list #341, PR 4) leads the call the same way, with no calendar behind it.
+  if (row.billOwn && late.length > 0) {
+    const worst = late.reduce((a, b) => ((b.calendar?.daysPastExpected ?? 0) > (a.calendar?.daysPastExpected ?? 0) ? b : a))
+    const words = worst.calendar ? calendarBillWords(worst.calendar) : `${worst.waitDays}d waiting`
+    return `${late.length} bill${late.length === 1 ? '' : 's'} past due — ${worst.item.label}, ${money(worst.item.amount)}, ${words}. ${total}`
+  }
   if (row.calendar) {
     // The line can read one job's own calendar (punch list #341, PR 3): the words say whose.
     const whose = row.calendarOwn ? 'a job’s own pay calendar' : 'their pay calendar'

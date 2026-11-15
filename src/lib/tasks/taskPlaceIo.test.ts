@@ -143,9 +143,13 @@ describe('a roadmap task\'s place', () => {
 
   it('saves all six columns, clears with six nulls, and hands back the reason when the write is refused', async () => {
     expect(await saveRoadmapTaskPlace('t1', { lat: 29.57, lng: -98.3, name: 'North gate', accuracyM: 6 }, 'u9')).toBeNull()
-    expect(db.updates[0]).toMatchObject({ table: 'checklist_tech_tree_group_tasks', id: 't1', cols: { place_name: 'North gate', place_lat: 29.57, place_lng: -98.3, place_accuracy_m: 6, place_set_by: 'u9' } })
+    expect(db.updates[0]).toMatchObject({ table: 'checklist_tech_tree_group_tasks', id: 't1', cols: { place_name: 'North gate', place_lat: 29.57, place_lng: -98.3, place_accuracy_m: 6, place_set_by: 'u9', painted_map_id: null } })
+    expect(await saveRoadmapTaskPlace('t1', { lat: 29.57, lng: -98.3, name: 'North gate', accuracyM: 6, mapId: 'map-1' }, 'u9')).toBeNull()
+    expect(db.updates[1]!.cols).toMatchObject({ place_name: 'North gate', painted_map_id: 'map-1' })
+    db.updates.length = 1
     expect(await saveRoadmapTaskPlace('t1', null, 'u9')).toBeNull()
-    expect(db.updates[1]!.cols).toEqual(none)
+    // No place writes no way in either: the pointer at the painted map goes with the place (#345).
+    expect(db.updates[1]!.cols).toEqual({ ...none, painted_map_id: null })
     db.updateError = { message: 'new row violates row-level security policy' }
     expect(await saveRoadmapTaskPlace('t1', null, 'u9')).toContain('row-level security')
   })

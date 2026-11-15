@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: gated
-status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn the same day · nothing built · waits on her picks
+status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · call 1 settled by her · nothing built · waits on her picks on the other seven
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,9 +11,9 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: Taunya's picks on the eight calls. Then PR 1, the kernel, which needs none of them but call 4.
+next: Taunya's picks on calls 2 to 8, call 7 first because it changed after her first look. Then PR 1, the kernel, which needs none of them but call 4.
 size: L as a train of six (S · M · M · M · S · S)
-blocker: Taunya's picks.
+blocker: Taunya's picks on calls 2 to 8.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
 ---
 
@@ -34,7 +34,27 @@ three parts: a tag typed as `@name`, a place the tagged person finds it, and a r
 **Jobs** in the header.
 
 [mockup.html](mockup.html) draws all three on made-up data, at desktop and phone width. Its note
-box works: type `@ch` and pick a name.
+box works: type `@ch` and pick a name. Its section works too: answer a tag or press **No reply
+needed** and both red numbers drop.
+
+### Her first look, 2026-11-15
+
+Taunya on the first drawing: "this is so great, but 'open the job >' seems redundant to the 'Cedar
+Bluff Lofts' in the top left, maybe we can remove open the job >", and "I like that is in Needs you
+and not Checklist and not Messages". She then asked whether it was the best we could do. What
+changed:
+
+- **Open the job › is gone.** The job's name on the card is the door to the job.
+- **Call 1 is settled** as drawn: the section in Jobs and the Needs you line.
+- **Call 7 changed.** The asker now learns of an answer by a count, not by a push alone.
+- **A question back is one tap.** The answer box carries the @ button, the asker first in its list.
+- **The crew's path is drawn**: the Needs you line opens the same list as a window.
+- **Smaller:** the oldest tag is on top, the section folds and shows three, and the press reads
+  **No reply needed**, the words Messages already uses for the same act.
+
+Looked at and left out: a fold on each card showing the notes before the tagged one (the job's name
+is one press to them), one-press answers such as Yes and No, and one summed number on the phone's
+menu button (the Messages number is the office's and is rarely zero, so the sum would never clear).
 
 ## The view, in short
 
@@ -49,8 +69,9 @@ checklist are the wrong homes, for the reasons under *Call 1*.
 **A tag is a pick, not a typed word.** The name comes from a list under the box and is kept as its
 own row. The team already types `@` to mean "at".
 
-**The count is what still waits on an answer.** An answer on the job or a Done press clears it.
-Opening does not.
+**The count is what still waits on an answer.** An answer on the job or a **No reply needed**
+press clears it. Opening does not. For the person who asked, an answer counts until they have seen
+it.
 
 ## What exists today
 
@@ -140,16 +161,20 @@ cannot be trusted to find the right person.
 
 ### Call 1 · Where the tag lands
 
-**Pick: a Tagged job notes section at the top of the Pipeline, counted above Jobs, and one line on
-the Dashboard's Needs you card.**
+**Settled by Taunya, 2026-11-15: a Tagged job notes section at the top of the Pipeline, counted
+above Jobs, and one line on the Dashboard's Needs you card.**
 
 - **A new section in Jobs** is the right home. The answer belongs on the job's notes, and Jobs is
   where those notes are. A per-person count above Jobs is new, but the pill is `MessagesBadge`'s.
   The section draws only while something waits on you or on someone you tagged, so an idle
   Pipeline looks as it does today.
+- **The section must not bury the Pipeline.** The oldest tag is on top. It shows three, with a
+  **Show the rest** press, and **Fold** shuts it to its one line. A card has no link but the
+  job's name.
 - **The Dashboard line is the second door, not a second list.** A superintendent's Jobs page hides
   the Pipeline, and helpers have no Jobs link. Both open the app on the Dashboard. The Needs you
-  card already carries two per-person notices for every role, so a third fits.
+  card already carries two per-person notices for every role, so a third fits. Its press opens the
+  same section as a window, and the push opens that window too.
 - **Not Messages.** Its count is one number for the whole office and means customers waiting on
   us. A tag is one teammate waiting on another. Mixing them weakens both numbers. Field roles
   cannot open Messages (`canOpenMessages` is the office team), so a superintendent could never be
@@ -158,16 +183,18 @@ the Dashboard's Needs you card.**
   second copy of the note that must be ticked as well as answered. A person who wants a dated task
   out of a tag can still make one by hand.
 - One thing on a phone is new: the count would ride on the menu button too. Today the Messages
-  count is seen only with the menu open.
+  count is seen only with the menu open. That is for a person with a Jobs link. The crew's menu
+  has no Jobs, so their button carries no number.
 
 ### Call 2 · What marks a tag read
 
-**Pick: an answer or a Done press. Opening does not.**
+**Pick: an answer or a No reply needed press. Opening does not.**
 
 Her words are "so a user know what they need to respond to", so the count is what is still owed.
 The Messages count already works this way. An answer is a note the tagged person types on that
-job, from the section's box or from the row. A stamp or a % line does not count. **Done, no
-reply** clears a tag that only needed reading, and the sender sees who pressed it.
+job, from the section's box or from the row. A stamp or a % line does not count. **No reply
+needed** clears a tag that only needed reading, and the asker sees who pressed it. The words are
+the ones Messages uses for the same act.
 
 The other way is to clear on opening, like unread mail. It is simpler, and it loses the tag read
 in passing on a phone.
@@ -214,13 +241,20 @@ The crew does not watch the header. The push reads *Marcus tagged you on Cedar B
 the note's first words, and opens the list. A person with no device hears nothing until they open
 the app; an email for them can follow.
 
-### Call 7 · Telling the sender
+### Call 7 · Telling the asker
 
-**Pick: a push when the answer lands, and a You asked fold under the section. No count for the
-sender.**
+**Pick, changed after her first look: the answer counts above Jobs for the asker until they have
+seen it, then clears by itself. A push too, and a You asked fold under the section.**
 
-The other way is for the answer to tag the sender back. Then each answer is a new thing to clear,
-and two people end up clearing each other.
+- The first pick was a push and the fold, with no count. It leans on pushes being switched on.
+  Most of the office works at a desk, and the dev seat cannot read who has a device registered
+  (`push_subscriptions` is closed to it), so that reach is unknown.
+- One rule each: a question clears when you answer it, an answer clears when you see it. Seen
+  means the You asked line has been on the asker's screen. Nothing to press.
+- An answer is not a new tag. The asker owes nothing, and the two do not end up clearing each
+  other, which is what tagging the asker back by rule would do.
+- A question back is a tag like any other. The answer box carries the @ button, and the person
+  who asked is first in its list.
 
 ### Call 8 · The other places notes are written
 
@@ -257,13 +291,13 @@ New:
 
 | Piece | What |
 |---|---|
-| `jobs_ledger_note_tags` | one row a tag: the note, the job, who is tagged, who tagged, when, and when and how it cleared (`answered` with the answering note, or `done`). Cascades with its note. Written only through definer functions, as `bid_mark_requests` is |
+| `jobs_ledger_note_tags` | one row a tag: the note, the job, who is tagged, who tagged, when, when and how it cleared (`answered` with the answering note, or `done`), and when the asker saw that. Cascades with its note. Written only through definer functions, as `bid_mark_requests` is |
 | `job_note_post_tagged` | posts a typed note and its tags in one transaction, refuses a person who cannot read the job's notes, and clears the writer's own waiting tags on that job as answered |
-| `job_note_tags_mine`, `job_note_tags_count`, `job_note_tag_done` | the section's two lists, the header's number, the Done press |
+| `job_note_tags_mine`, `job_note_tags_count`, `job_note_tag_done`, `job_note_tags_seen` | the section's two lists, the header's number (tags that wait on you and answers you have not seen), the No reply needed press, and the mark that the asker saw an answer |
 | `job_note_taggable` | who may be tagged on a job: the notes' read rule asked for a named person. The policy today is written for the signed-in person only, so this is the one hard piece |
 | `src/lib/jobs/noteTags.ts` | the kernel: the `@` being typed at the caret, the ranked list, which picked names are still in the words, the age words |
 | `NoteTagPicker.tsx`, `JobsTagsBadge.tsx`, `TaggedJobNotesSection.tsx` | the list, the pill, the section |
-| `notify-note-tag` | the push to the tagged person and to the sender on the answer, through `_shared/pushHoursSend.ts` |
+| `notify-note-tag` | the push to the tagged person and to the asker on the answer, through `_shared/pushHoursSend.ts` |
 | `src/content/help/tag-a-teammate-in-a-job-note.md` | the guide |
 
 Neighbours on 2026-11-15: #8192 (the Lien desk's Board on the Needs you card) edits the Needs you
@@ -276,14 +310,15 @@ Six PRs, smallest first. Each cut from fresh `main`, each with its release note 
 
 1. **The kernel** (S). `src/lib/jobs/noteTags.ts` with its tests. No screen, no migration. Needs
    call 4 only.
-2. **The ground** (M). One migration: the table with the four fence calls, the five functions,
+2. **The ground** (M). One migration: the table with the four fence calls, the six functions,
    `SET lock_timeout`. `docs/migrations/`, the types PR after the push. No screen. Needs calls 2
    and 5.
 3. **The list on the Pipeline row** (M). The picker in `JobActivityView`, the chip and the waiting
    line. The guide starts here. A tag made now is seen by the tagged person on that row only, so
    this PR and the next should land close together.
-4. **Where it lands** (M). The count above Jobs, the section with its answer box and Done, the You
-   asked fold, the Needs you line. Needs calls 1, 3 and 7. `PROJECT_DOCUMENTATION.md`,
+4. **Where it lands** (M). The count above Jobs, the section with its answer box and No reply
+   needed, the You asked fold with its seen mark, the Needs you line and the window it opens.
+   Needs calls 1, 3 and 7. `PROJECT_DOCUMENTATION.md`,
    `GLOSSARY.md` and `ACCESS_CONTROL.md` take their lines here.
 5. **The push** (S). `notify-note-tag`, deployed after the merge, its section in
    `docs/EDGE_FUNCTIONS.md`. Needs call 6.
@@ -293,14 +328,15 @@ Six PRs, smallest first. Each cut from fresh `main`, each with its release note 
 ## Left to settle while building
 
 - **A tagged person who loses the job.** A helper's read of a job's notes lapses. The tag should
-  keep that one note readable to them through `job_note_tags_mine`, with *Open the job* hidden.
+  keep that one note readable to them through `job_note_tags_mine`, with the job's name drawn as
+  plain words and not as a link.
 - **Who else sees a tag.** Anyone who can read the note should see the chip, so the row says who
   it waits on. The tag row's read rule follows the note's.
 - **Live re-read.** The count needs a realtime channel on the tags table, or a read on focus only.
   Focus alone is cheaper and may be enough for a handful of tags a week.
 - **An answer from the row.** A typed note on the job clears the writer's own waiting tags there,
   wherever it is typed. A status sweep such as *on going* would clear a tag too. That is accepted
-  for the first version, and the sender still reads the answer.
+  for the first version, and the asker still reads the answer.
 
 ## How to verify
 
@@ -311,7 +347,7 @@ Two logins and one test job, nothing live:
    Needs you line. Open the row: the count holds.
 3. Answer from the section: the note is on the job, the count is gone, the dev's You asked reads
    *answered*.
-4. Tag again, press **Done, no reply**: the count is gone and the dev's side names who pressed it.
+4. Tag again, press **No reply needed**: the count is gone and the dev's side names who pressed it.
 5. View as a superintendent and a helper: the Dashboard line is there and opens the list.
 6. Try to tag a person who cannot open the job: the name is not offered.
 7. At 375 wide: the list sits above the keyboard, the menu button carries the count.

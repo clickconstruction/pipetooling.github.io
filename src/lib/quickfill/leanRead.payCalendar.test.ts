@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { BilledBreakdownBill, BilledBreakdownCustomerGroup } from '../jobs/billedByCustomerBreakdown'
-import { indexPayCalendars, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from '../jobs/payCalendar'
+import { indexPayCalendars, parseBillDueDayRow, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from '../jobs/payCalendar'
 import type { StageRow } from '../jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { leanBillKey, leanDueByBill, leanRows, leanSince, type LeanInput } from './leanRead'
@@ -52,6 +52,12 @@ describe('leanDueByBill', () => {
   it('gives each bill of a calendar payer its due day, and no other bill one', () => {
     const due = leanDueByBill(rows, { payCalendars: indexPayCalendars([calRow('lark')]) })
     expect([...due]).toEqual([['i-oct', '2026-11-10'], ['i-nov', '2026-12-10']])
+  })
+
+  it("reads a bill's own due day over its payer's calendar, and for a payer with none (punch list #341, PR 4)", () => {
+    const own = [parseBillDueDayRow({ invoice_id: 'i-oct', due_on: '2027-02-15' })!, parseBillDueDayRow({ invoice_id: 'i-sable', due_on: '2026-12-01' })!]
+    const due = leanDueByBill(rows, { payCalendars: indexPayCalendars([calRow('lark'), ...own]) })
+    expect([...due]).toEqual([['i-oct', '2027-02-15'], ['i-nov', '2026-12-10'], ['i-sable', '2026-12-01']])
   })
 
   it('counts from the day they accepted the bill, and honours a job that switched its calendar off', () => {

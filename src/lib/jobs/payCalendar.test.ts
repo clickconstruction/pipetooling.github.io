@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   PAY_CALENDAR_DEFAULT,
   PAY_CALENDAR_MISSED_RUN_DAYS,
+  BILL_OWN_DUE_PRESS,
   JOB_RECORD_MIN_PAYMENTS,
   asPayCalendarRead,
   billCalendarRead,
+  billOwnDuePreview,
+  billOwnDueShort,
+  billOwnDueWords,
   calendarBasisWords,
   calendarBillRead,
   calendarBillWords,
@@ -21,6 +25,7 @@ import {
   nextCutoffChip,
   normalizePayCalendar,
   ordinalDay,
+  parseBillDueDayRow,
   parsePayCalendarRow,
   payCalendarPreview,
   payCalendarShort,
@@ -37,6 +42,7 @@ import {
   sendTodayCutoffWords,
   usuallyLandsShort,
   usuallyLandsWords,
+  type BillOwnDue,
   type PayCalendar,
   type PayCalendarRead,
   type PayCalendarReceipt,
@@ -502,5 +508,76 @@ describe("the job's own record (punch list #341, PR 3)", () => {
     expect(payerCalendarLead('Larkfield Construction', true)).toBe('One of Larkfield Construction’s jobs is on its own pay calendar.')
     expect(payerCalendarLead(null, false)).toBe('Pays on a calendar.')
     expect(payerCalendarLead(null, true)).toBe('One of their jobs is on its own pay calendar.')
+  })
+})
+
+describe("one bill's own due day (punch list #341, PR 4)", () => {
+  const RELEASE: BillOwnDue = { dueYmd: '2027-02-15', clause: '§ 9.4', words: 'Retainage is released 60 days after final acceptance', setByName: 'Rosa', setAt: '2026-11-15T18:00:00Z' }
+  const rows = [
+    { payerCustomerId: 'lark', jobId: null, off: false, calendar: TENTH, setByName: null, setAt: null },
+    { payerCustomerId: 'lark', jobId: 'j1431', off: false, calendar: BY_25TH, setByName: null, setAt: null },
+    parseBillDueDayRow({ invoice_id: 'inv-release', due_on: '2027-02-15', clause: ' § 9.4 ', words: ' Retainage is released 60 days after final acceptance ', marked_at: '2026-11-15T18:00:00Z' }, 'Rosa')!,
+  ]
+  const index = indexPayCalendars(rows)
+
+  it('reads a stored row, and nothing from one with no bill or no day', () => {
+    expect(rows[2]).toEqual({ payerCustomerId: '', jobId: null, off: false, calendar: null, setByName: 'Rosa', setAt: '2026-11-15T18:00:00Z', invoiceId: 'inv-release', ownDue: RELEASE })
+    expect(parseBillDueDayRow({ invoice_id: 'inv-release', due_on: '2027-02-15T00:00:00Z' })?.ownDue).toEqual({ dueYmd: '2027-02-15', clause: '', words: '', setByName: null, setAt: null })
+    expect(parseBillDueDayRow({ invoice_id: 'inv-release', due_on: 'soon' })).toBeNull()
+    expect(parseBillDueDayRow({ invoice_id: 'inv-release', due_on: '2027-02-30' })).toBeNull()
+    expect(parseBillDueDayRow({ due_on: '2027-02-15' })).toBeNull()
+    expect(parseBillDueDayRow(null)).toBeNull()
+  })
+
+  it("rides with the calendars and leaves the payer's and the job's rows as they were", () => {
+    expect(index.byInvoice?.get('inv-release')).toEqual(RELEASE)
+    expect(index.byPayer.size).toBe(1)
+    expect(index.byPayerJob.size).toBe(1)
+    // A reader that hands over no bill reads the job's calendar, as before.
+    expect(calendarSourceFor(index, { payerId: 'lark', jobId: 'j1431' })).toEqual({ calendar: BY_25TH, from: 'job', payerCalendar: TENTH, jobId: 'j1431' })
+    expect(calendarSourceFor(index, { payerId: 'lark', jobId: 'j1431', invoiceId: 'inv-other' })).toMatchObject({ from: 'job' })
+  })
+
+  it('sits at the top of the ladder: the bill, the job, the payer, the guess', () => {
+    const onJob = calendarSourceFor(index, { payerId: 'lark', jobId: 'j1431', invoiceId: 'inv-release' })
+    expect(onJob).toEqual({ calendar: null, from: 'bill', payerCalendar: TENTH, ownDue: RELEASE, under: { calendar: BY_25TH, from: 'job' } })
+    expect(calendarSourceFor(index, { payerId: 'lark', jobId: 'j1406', invoiceId: 'inv-release' }).under).toEqual({ calendar: TENTH, from: 'payer' })
+    // A payer with no calendar, and a bill typed to an email with no payer on file: the day still holds.
+    expect(calendarSourceFor(index, { payerId: 'newco', jobId: 'j9', invoiceId: 'inv-release' })).toMatchObject({ from: 'bill', ownDue: RELEASE, under: { calendar: null, from: 'none' } })
+    expect(calendarSourceFor(index, { payerId: null, invoiceId: 'inv-release' })).toMatchObject({ from: 'bill', ownDue: RELEASE, payerCalendar: null })
+    // No calendar is handed on for it, so a reader that only knows calendars reads none.
+    expect(calendarFor(index, { payerId: 'lark', jobId: 'j1431', invoiceId: 'inv-release' })).toBeNull()
+    expect(payCalendarShortFor(onJob)).toBeNull()
+    expect(recordFor([], onJob)).toBeNull()
+  })
+
+  it('reads one open bill against its own day: no clock, no record, the day itself', () => {
+    const read = calendarSourceFor(index, { payerId: 'lark', jobId: 'j1431', invoiceId: 'inv-release' })
+    expect(billCalendarRead(read, null, null, '2026-11-15')).toEqual({ dueYmd: '2027-02-15', expectedYmd: '2027-02-15', daysPastDue: 0, daysPastExpected: 0, tone: 'ok', billOwn: true })
+    expect(billCalendarRead(read, '2026-11-02', [{ billedYmd: '2026-09-03', paidYmd: '2026-10-16' }], '2027-02-20')).toMatchObject({ daysPastDue: 5, daysPastExpected: 5, tone: 'warn' })
+    expect(billCalendarRead(read, null, null, '2027-03-17')).toMatchObject({ daysPastDue: PAY_CALENDAR_MISSED_RUN_DAYS, tone: 'late' })
+    expect(calendarBillWords(billCalendarRead(read, null, null, '2026-11-15')!)).toBe('due Feb 15')
+    expect(calendarBillWords(billCalendarRead(read, null, null, '2027-02-20')!)).toBe('due Feb 15 · 5d past due')
+  })
+
+  it("lends a payer's summary line its own day when it is the bill furthest past", () => {
+    const read = calendarSourceFor(index, { payerId: 'lark', jobId: 'j1431', invoiceId: 'inv-release' })
+    const late = billCalendarRead(read, null, null, '2027-02-20')
+    const six = latenessAgainst([{ billedYmd: '2026-09-03', paidYmd: '2026-10-16' }], TENTH)
+    expect(payerCalendarSummary({ calendar: TENTH, lateness: six }, [late])).toEqual({ calendar: null, own: false, lateness: null, recordOf: null, pastExpectedDays: 5, billOwn: true })
+    expect(calendarBasisWords(null, false, true)).toBe('a bill’s own due day')
+    // Ahead of its day, the line reads the payer's calendar, as before.
+    expect(payerCalendarSummary({ calendar: TENTH, lateness: six }, [billCalendarRead(read, null, null, '2026-11-15')])).toMatchObject({ calendar: TENTH, pastExpectedDays: null })
+  })
+
+  it('says the day, its clause and what it replaces', () => {
+    expect(BILL_OWN_DUE_PRESS).toBe('This bill is due on…')
+    expect(billOwnDueShort(RELEASE)).toBe('This bill’s own day · § 9.4')
+    expect(billOwnDueShort({ dueYmd: '2027-02-15', clause: '', words: '' })).toBe('This bill’s own day')
+    expect(billOwnDueWords(RELEASE)).toBe('§ 9.4: Retainage is released 60 days after final acceptance. No pay calendar is read for this bill.')
+    expect(billOwnDueWords({ dueYmd: '2027-02-15', clause: '', words: '' })).toBe('The contract names this date for this one bill. No pay calendar is read for this bill.')
+    expect(billOwnDuePreview('2027-02-15', { dueYmd: '2026-12-30', own: true })).toEqual({ otherwise: 'By this job’s own pay calendar it is due Dec 30.', own: 'On its own day it is due Feb 15.', picked: true })
+    expect(billOwnDuePreview('', { dueYmd: '2026-12-10', own: false })).toEqual({ otherwise: 'By the pay calendar it is due Dec 10.', own: 'Pick the day to see what it makes the bill.', picked: false })
+    expect(billOwnDuePreview('2027-02-15', null).otherwise).toBe('With no pay calendar it reads the usual guess.')
   })
 })

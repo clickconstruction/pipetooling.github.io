@@ -12,6 +12,8 @@ import {
   lienBoardArrows,
   lienBoardAtRisk,
   lienBoardBinsShown,
+  lienBoardChipFor,
+  lienBoardDoorWords,
   lienBoardDayWords,
   lienBoardDots,
   lienBoardForLeader,
@@ -319,6 +321,22 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     expect(lienBoardPickWords(pick, 2)).toEqual({ head: 'Showing 2 rows in To send.', clear: 'Show every row' })
     expect(lienBoardPickWords(pick, 1).head).toBe('Showing 1 row in To send.')
     expect(plainWordsFailures(lienBoardPickWords(both, 2).head)).toEqual([])
+  })
+  it('a job number stands for its chip (v2.7333): the column asked for, or the notice first, and the door words say where the press goes', () => {
+    const board = build({ notices: [notice('1', 'needs_owner'), notice('2', 'printed', { item: item('i2', 'approved', { printed_at: '2026-11-14T10:00:00Z' }) })], affidavits: [affidavit('1', 'needs_property', { gates: [gate('owner', true), gate('legal', false)] }), affidavit('3', 'filed')] })
+    expect(lienBoardChipFor(board, '1', 'notice')?.bin).toBe('notice:needs_owner')
+    expect(lienBoardChipFor(board, '1', 'affidavit')?.bin).toBe('affidavit:needs_property')
+    expect(lienBoardChipFor(board, '1', 'either')?.bin).toBe('notice:needs_owner')
+    expect(lienBoardChipFor(board, '3', 'either')?.bin).toBe('affidavit:filed')
+    expect(lienBoardChipFor(board, '3', 'notice')).toBeNull()
+    expect(lienBoardChipFor(board, '9', 'either')).toBeNull()
+    expect(lienBoardDoorWords({ kind: 'property', jobId: '1', focus: 'owner' })).toBe('Open the property record at the owner')
+    expect(lienBoardDoorWords({ kind: 'property', jobId: '1', focus: 'legal' })).toBe('Open the property record at the legal description')
+    expect(lienBoardDoorWords({ kind: 'property', jobId: '1', focus: 'homestead_answer' })).toBe('Open the property record at the homestead question')
+    expect(lienBoardDoorWords({ kind: 'paper', tab: 'notices', jobId: '1' })).toBe('Open the notice')
+    expect(lienBoardDoorWords({ kind: 'paper', tab: 'affidavits', jobId: '1' })).toBe('Open the affidavit')
+    expect(lienBoardDoorWords({ kind: 'run', itemId: 'i2', jobId: '2' })).toBe('Open the run on this envelope')
+    expect(lienBoardDoorWords({ kind: 'lienWindow', jobId: '3' })).toBe('Open the job’s Lien window')
   })
   it('the words constant holds every bin name once', () => {
     expect(Object.keys(LIEN_BOARD_WORDS).sort()).toEqual(['awaiting', 'filed', 'held', 'in_mail', 'missed', 'needs_owner', 'needs_property', 'ready', 'sent', 'to_send'])

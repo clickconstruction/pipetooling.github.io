@@ -15,13 +15,17 @@
  * money reads `expectedYmd`, as before. A screen that asks whether to call reads `dueYmd`
  * too: a bill can be past due while its money is not yet expected.
  *
+ * A bill with a due day of its own (punch list #341, PR 4, `invoice_due_days`) reads that day and
+ * no calendar: `dueYmd` and `expectedYmd` are the day itself, since no record is replayed against
+ * a date the contract names once. A date the customer named still wins the expected day.
+ *
  * The clock is the day the payer accepted the bill, when the office has recorded one (PR 4,
  * `invoice_payer_acceptances`), else the bill's reference day, `billedReferenceYmd`: the day
  * it was billed, else the estimated bill date. The reference day is what the record is
  * measured from too, so with no accepted day the due day and the lateness read one clock.
  */
 import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayModel, type ExpectedPayPaceInput, type ExpectedPayRowInput, type ExpectedPaySource, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
-import { asPayCalendarRead, dueDayFor, expectedFromDue, payCalendarWords, recordFor, recordWords, type PayCalendar, type PayCalendarArg, type PayCalendarLateness, type PayCalendarRecord } from './payCalendar'
+import { BILL_OWN_DUE_WORDS, asPayCalendarRead, dueDayFor, expectedFromDue, payCalendarWords, recordFor, recordWords, type BillOwnDue, type PayCalendar, type PayCalendarArg, type PayCalendarLateness, type PayCalendarRecord } from './payCalendar'
 
 export type BilledPaySource = ExpectedPaySource | 'terms'
 
@@ -49,12 +53,14 @@ export type BilledPayModel = Omit<ExpectedPayModel, 'source'> & {
   calendar: PayCalendar | null
   /** The calendar is this job's own, not its payer's (punch list #341); false with none, or the payer's. */
   calendarOwn: boolean
+  /** The due day is this bill's own (punch list #341, PR 4): no calendar was read. Null on every other bill. */
+  ownDue: BillOwnDue | null
   /** The day the calendar counted its cutoff from, and which day that is; null with no calendar. */
   clockYmd: string | null
   clockFrom: PayClockFrom | null
 }
 
-const plain = (base: ExpectedPayModel | null): BilledPayModel | null => (base ? { ...base, dueYmd: null, daysPastDue: 0, lateness: null, record: null, calendar: null, calendarOwn: false, clockYmd: null, clockFrom: null } : null)
+const plain = (base: ExpectedPayModel | null): BilledPayModel | null => (base ? { ...base, dueYmd: null, daysPastDue: 0, lateness: null, record: null, calendar: null, calendarOwn: false, ownDue: null, clockYmd: null, clockFrom: null } : null)
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 
@@ -117,6 +123,7 @@ export function billedPayModel(
 ): BilledPayModel | null {
   const base = billedExpectedPayModel(input, data, todayYmd, promise, pace)
   const read = asPayCalendarRead(calendarArg)
+  if (read.ownDue) return ownDayModel(input, base, read.ownDue, todayYmd)
   const calendar = read.calendar
   const calendarOwn = read.from === 'job'
   if (!calendar) return plain(base)
@@ -130,7 +137,7 @@ export function billedPayModel(
   const lateness = record?.lateness ?? null
   const daysPastDue = Math.max(0, daysBetweenYmd(dueYmd, todayYmd) ?? 0)
   // Their word wins the expected day; the due day rides along for the line under it.
-  if (base?.source === 'promised') return { ...base, dueYmd, daysPastDue, lateness, record, calendar, calendarOwn, ...clockFields }
+  if (base?.source === 'promised') return { ...base, dueYmd, daysPastDue, lateness, record, calendar, calendarOwn, ownDue: null, ...clockFields }
 
   const expectedYmd = expectedFromDue(dueYmd, lateness)
   const sinceExpected = daysBetweenYmd(expectedYmd, todayYmd)
@@ -165,6 +172,39 @@ export function billedPayModel(
     record,
     calendar,
     calendarOwn,
+    ownDue: null,
     ...clockFields,
+  }
+}
+
+/**
+ * The model for a bill with a due day of its own: the day the contract names is the due day and the
+ * expected day. No calendar is read and no record is replayed. Their word still wins the expected day.
+ */
+function ownDayModel(input: BilledPayRowInput, base: ExpectedPayModel | null, ownDue: BillOwnDue, todayYmd: string): BilledPayModel | null {
+  const dueYmd = ownDue.dueYmd
+  const since = daysBetweenYmd(dueYmd, todayYmd)
+  if (since == null) return plain(base)
+  const daysPastDue = Math.max(0, since)
+  const none = { lateness: null, record: null, calendar: null, calendarOwn: false, ownDue, clockYmd: null, clockFrom: null }
+  if (base?.source === 'promised') return { ...base, dueYmd, daysPastDue, ...none }
+  const billedYmd = billedReferenceYmd(input)
+  const clause = ownDue.clause ? ` (${ownDue.clause})` : ''
+  const said = ownDue.words ? ` ${/[.!?]$/.test(ownDue.words) ? ownDue.words : `${ownDue.words}.`}` : ''
+  const lands = BILL_OWN_DUE_WORDS.replace(/^T/, 't')
+  return {
+    expectedYmd: dueYmd,
+    state: daysPastDue > 0 ? 'late' : 'upcoming',
+    source: 'terms',
+    medianDays: 0,
+    samples: 0,
+    payers: 0,
+    daysLate: daysPastDue,
+    paceWords: lands,
+    label: daysPastDue > 0 ? `${daysPastDue}d past due · ${lands}` : `Due ${formatYmdMonthDay(dueYmd)} · ${lands}`,
+    title: `${billedYmd ? `Billed ${formatYmdMonthDay(billedYmd)}. ` : ''}This bill has a due day of its own${clause}.${said} Due ${formatYmdMonthDay(dueYmd)}. No pay calendar is read for it.`,
+    dueYmd,
+    daysPastDue,
+    ...none,
   }
 }

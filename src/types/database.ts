@@ -6298,6 +6298,7 @@ export type Database = {
           links: string[] | null
           notify_creator_on_complete: boolean
           notify_on_complete_user_id: string | null
+          painted_map_id: string | null
           place_accuracy_m: number | null
           place_lat: number | null
           place_lng: number | null
@@ -6329,6 +6330,7 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          painted_map_id?: string | null
           place_accuracy_m?: number | null
           place_lat?: number | null
           place_lng?: number | null
@@ -6360,6 +6362,7 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          painted_map_id?: string | null
           place_accuracy_m?: number | null
           place_lat?: number | null
           place_lng?: number | null
@@ -6394,6 +6397,13 @@ export type Database = {
             columns: ["notify_on_complete_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_painted_map_id_fkey"
+            columns: ["painted_map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
             referencedColumns: ["id"]
           },
           {
@@ -6457,6 +6467,7 @@ export type Database = {
           estimated_days: number | null
           group_id: string
           id: string
+          painted_map_id: string | null
           percent_complete: number
           pinned_at: string | null
           place_accuracy_m: number | null
@@ -6477,6 +6488,7 @@ export type Database = {
           estimated_days?: number | null
           group_id: string
           id?: string
+          painted_map_id?: string | null
           percent_complete?: number
           pinned_at?: string | null
           place_accuracy_m?: number | null
@@ -6497,6 +6509,7 @@ export type Database = {
           estimated_days?: number | null
           group_id?: string
           id?: string
+          painted_map_id?: string | null
           percent_complete?: number
           pinned_at?: string | null
           place_accuracy_m?: number | null
@@ -6522,6 +6535,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "checklist_tech_tree_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_group_tasks_painted_map_id_fkey"
+            columns: ["painted_map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
             referencedColumns: ["id"]
           },
           {
@@ -19717,6 +19737,48 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inspection_types"
             referencedColumns: ["name"]
+          },
+        ]
+      }
+      invoice_due_days: {
+        Row: {
+          clause: string
+          due_on: string
+          invoice_id: string
+          marked_at: string
+          marked_by: string | null
+          words: string
+        }
+        Insert: {
+          clause?: string
+          due_on: string
+          invoice_id: string
+          marked_at?: string
+          marked_by?: string | null
+          words?: string
+        }
+        Update: {
+          clause?: string
+          due_on?: string
+          invoice_id?: string
+          marked_at?: string
+          marked_by?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_due_days_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_due_days_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -47329,6 +47391,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      painted_map_on_a_task_i_read: {
+        Args: { p_map_id: string }
+        Returns: boolean
+      }
       painted_map_on_development_team: {
         Args: { p_development_id: string }
         Returns: boolean
@@ -48546,6 +48612,15 @@ export type Database = {
       }
       set_first_look_job: {
         Args: { p_job_id: string; p_look_id: string }
+        Returns: Json
+      }
+      set_invoice_due_day: {
+        Args: {
+          p_clause?: string
+          p_due_on: string
+          p_invoice_id: string
+          p_words?: string
+        }
         Returns: Json
       }
       set_invoice_payer_accepted_on: {

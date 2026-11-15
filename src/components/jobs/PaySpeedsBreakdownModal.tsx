@@ -248,7 +248,7 @@ function openBillRow(b: OpenBill, key: number, onOpenJob?: (jobId: string) => vo
       title={
         `${b.jobName}${b.address ? ` · ${b.address}` : ''} — ${formatUsdNoCents(b.open)} open, ` +
         (b.billedYmd ? `billed ${formatYmdMonthDay(b.billedYmd)}, waiting ${b.waitDays}d` : 'no bill date yet') +
-        (b.calendar ? `, ${calendarBillWords(b.calendar)} on their pay calendar` : '') +
+        (b.calendar ? `, ${calendarBillWords(b.calendar)} ${b.calendar.billOwn ? 'by its own due day' : 'on their pay calendar'}` : '') +
         (clickable ? ' — open the job' : '')
       }
       onClick={(e) => {
@@ -637,7 +637,9 @@ export default function PaySpeedsBreakdownModal({
                         tabIndex={0}
                         aria-expanded={expanded}
                         title={
-                          (c.calendar && c.pastExpectedDays != null
+                          (c.billOwn && c.pastExpectedDays != null
+                            ? `${c.name} has a bill ${c.pastExpectedDays}d past its own due day`
+                            : c.calendar && c.pastExpectedDays != null
                             ? `${payerCalendarLead(c.name, c.calendarOwn === true)} ${payCalendarWords(c.calendar)} A bill of theirs is ${c.pastExpectedDays}d past the day it was expected`
                             : `${c.name} — oldest open bill has waited ${c.oldestWaitDays}d (` +
                               (c.ownMedianDays != null ? `they usually pay in ~${c.ownMedianDays}d` : `no history of their own — company pays in ~${money.companyMedianDays}d`) +

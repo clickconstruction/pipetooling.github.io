@@ -19,6 +19,8 @@ import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
 import { ReceiptStateChip } from '../tickets/ReceiptStateChip'
 import { useReceiptStates } from '../../hooks/useReceiptStates'
 import { receiptStateChargeIds } from '../../lib/tickets/receiptState'
+import { BankLineSubPayment } from './BankLineSubPayment'
+import { useBankLineSubPayments } from '../../hooks/useBankLineSubPayments'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -255,6 +257,8 @@ type BankingMercuryTableProps = {
   /** Organization team notes for visible rows (from `useMercuryOrgNotesByTxId`). */
   orgNotesByTxId: Map<string, string>
   onOrgNoteUpdated: (txId: string, body: string) => void
+  /** Punch list #347: say which lines paid a sub, and offer the Match press. Left out, the table reads no sub payments. */
+  subPaymentMatch?: boolean
 }
 
 export function BankingMercuryTable({
@@ -279,7 +283,9 @@ export function BankingMercuryTable({
   counterpartyNoteCombined = false,
   orgNotesByTxId,
   onOrgNoteUpdated,
+  subPaymentMatch = false,
 }: BankingMercuryTableProps) {
+  const subPayments = useBankLineSubPayments(subPaymentMatch, displayRows)
   const [notesExpandedTxId, setNotesExpandedTxId] = useState<string | null>(null)
   // The receipt's state beside a card charge (punch list #299, PR 3): the recent card charges on screen, read apart.
   const receiptChargeIds = useMemo(() => receiptStateChargeIds(displayRows.map((r) => ({ id: r.id, kind: r.kind, amount: r.amount, at: r.posted_at ?? r.created_at })), Date.now()), [displayRows])
@@ -531,6 +537,7 @@ export function BankingMercuryTable({
                           {r.counterparty_name ?? '—'}
                           <ReceiptStateChip state={receiptStates.get(r.id)} style={{ marginLeft: 6 }} />
                         </span>
+                        <BankLineSubPayment txId={r.id} side={subPayments.byTx.get(r.id)} onMatch={subPayments.match} onUndo={subPayments.undo} />
                         {(() => {
                           const nt = (r.note ?? '').trim()
                           if (nt === '') return null
@@ -549,6 +556,7 @@ export function BankingMercuryTable({
                     <td style={{ padding: padMain, borderBottom: mainRowBb }}>
                       {r.counterparty_name ?? '—'}
                       <ReceiptStateChip state={receiptStates.get(r.id)} style={{ marginLeft: 6 }} />
+                      <BankLineSubPayment txId={r.id} side={subPayments.byTx.get(r.id)} onMatch={subPayments.match} onUndo={subPayments.undo} />
                     </td>
                   )}
                   {showAllocations && allocationsAfterCounterparty ? allocationCells(r, notesContinuationBelow) : null}

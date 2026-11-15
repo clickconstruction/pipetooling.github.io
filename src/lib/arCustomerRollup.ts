@@ -53,6 +53,8 @@ export type ArCustomerRow = {
   lateness: PayCalendarLateness | null
   /** The most days any bill is past its expected day; null when none is, or with no calendar. */
   pastExpectedDays: number | null
+  /** The bill furthest past is past its own due day, with no calendar behind it (punch list #341, PR 4). */
+  billOwn?: boolean
   /** Longest wait first, undated last; amount breaks ties. */
   bills: ArCustomerBill[]
 }
@@ -88,8 +90,10 @@ export function buildArCustomerRollup(
       bills: [],
     }
     acc.open += item.amount
-    const read = customerId ? calendarSourceFor(payCalendars, { payerId: customerId, jobId: item.jobId }) : null
-    acc.bills.push({ item, waitDays, calendar: read?.calendar && customerId ? billCalendarRead(read, item.dateYmd, paySpeeds?.receipts[customerId], todayYmd) : null })
+    // The modal's bill items are keyed `inv:<id>`: that id finds a bill's own due day (punch list #341, PR 4), which needs no customer on the job.
+    const invoiceId = item.key.startsWith('inv:') ? item.key.slice(4) : null
+    const read = customerId || invoiceId ? calendarSourceFor(payCalendars, { payerId: customerId, jobId: item.jobId, invoiceId }) : null
+    acc.bills.push({ item, waitDays, calendar: read && (read.ownDue || (read.calendar && customerId)) ? billCalendarRead(read, item.dateYmd, customerId ? paySpeeds?.receipts[customerId] : null, todayYmd) : null })
     byCustomer.set(customerId, acc)
   }
 
@@ -140,6 +144,7 @@ export function buildArCustomerRollup(
       calendarOwn: summary.own,
       lateness: summary.lateness,
       pastExpectedDays: summary.pastExpectedDays,
+      billOwn: summary.billOwn === true,
     })
   }
 

@@ -2,7 +2,7 @@
 title: read the team scores and set the hurdle
 category: Office
 roles: dev, master_technician, controller
-keywords: scores, scorecard, hurdle, gross profit per hour, paid field hours, break-even, estimator, account manager, priced margin, labor tab, people review
+keywords: scores, scorecard, hurdle, gross profit per hour, paid field hours, break-even, estimator, account manager, priced margin, labor tab, people review, can't be scored, labor not estimated, rows with no cost, mark sent
 order: 41
 ---
 The Scores tab holds two numbers for the team. The field's number is gross profit on every paid hour. The estimators' number is gross profit won above the hurdle. Each has one formula, and the same formula everywhere.
@@ -42,6 +42,18 @@ Press {{button:outline|Open the bids}} to see the drill-down. It lists the bids 
 A bid can be judged only when three things are true. The bid carries a priced stamp from the Pricing workbench. Its Labor tab has hours on nine rows in ten. Every row was costed at send.
 
 Until the first judged bid is awarded, the card shows how many priced bids can be judged. Under the bids, **Finish these before they can score** lists each one with its reason. Press **open the Labor tab** on a row to fill the hours.
+
+## A bid says so before it goes out
+
+The estimator hears it while the bid is still on the desk. The Pricing workbench shows a line under the margin when the bid cannot be scored. It names the reason and offers **Open Labor**.
+
+:::example The line on the Pricing workbench
+{{chip:yellow|Can’t be scored}} Labor not estimated: 3 of 14 rows have hours. The cost has little or no labor in it, so this bid cannot be scored. Fill the hours on the Labor tab before it goes out.
+:::
+
+The same line stands at the top of **Share with a teammate**. It stands again under **Mark sent today** on the Cover Letter. That press keeps the bid's margin, so it is the last moment to fix the estimate. The line never stops a send.
+
+On the Bid Board, a priced bid that cannot be scored carries {{chip:yellow|Can’t be scored}} beside the GC. Hover it to read the reason. On a bid not sent yet, press the chip to open its Labor tab. A bid already sent keeps the margin it went out at, so its chip only says why.
 
 ## What the words mean
 

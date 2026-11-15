@@ -178,5 +178,41 @@ SELECT pcal.same('clearing it', (public.set_invoice_payer_accepted_on('00000000-
 SELECT pcal.same('leaves no row', pcal.accepted(), 'none');
 RESET ROLE;
 
+-- 9 · A bill's own due day (punch list #341, PR 4, migration *_invoice_due_days): the office sets it on one bill with
+-- its clause, a second set replaces it, the billed-money roles read it and a subcontractor reads nothing, a primary
+-- and a subcontractor cannot set it, an unknown bill is refused in words, long words are cut to the column's length,
+-- and clearing leaves no row.
+CREATE FUNCTION pcal.due_day() RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce((SELECT due_on::text || ' ' || clause || ' ' || words FROM public.invoice_due_days WHERE invoice_id = '00000000-0000-0000-0000-0000000cad01'), 'none')
+$$;
+CREATE FUNCTION pcal.due_day_by() RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT coalesce((SELECT u.name FROM public.invoice_due_days d JOIN public.users u ON u.id = d.marked_by WHERE d.invoice_id = '00000000-0000-0000-0000-0000000cad01'), 'nobody')
+$$;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pcal TO anon, authenticated, service_role;
+SET LOCAL ROLE authenticated;
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca101');
+SELECT pcal.same('no day of its own to begin with', pcal.due_day(), 'none');
+SELECT pcal.same('Rosa sets the bill''s own day', (public.set_invoice_due_day('00000000-0000-0000-0000-0000000cad01', DATE '2027-02-15', ' § 9.4 ', 'Retainage is released 60 days after final acceptance.'))->>'dueOn', '2027-02-15');
+SELECT pcal.same('the office reads it, trimmed', pcal.due_day(), '2027-02-15 § 9.4 Retainage is released 60 days after final acceptance.');
+SELECT pcal.same('stamped with who marked it', pcal.due_day_by(), 'Paycal Rosa');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca102');
+SELECT pcal.same('Mo replaces it, with no clause', (public.set_invoice_due_day('00000000-0000-0000-0000-0000000cad01', DATE '2027-03-01'))->>'dueOn', '2027-03-01');
+SELECT pcal.same('one row, the new day and no words', pcal.due_day(), '2027-03-01  ');
+SELECT pcal.same('stamped again', pcal.due_day_by(), 'Paycal Mo');
+SELECT pcal.same('long words are cut to what the column holds', char_length((public.set_invoice_due_day('00000000-0000-0000-0000-0000000cad01', DATE '2027-03-01', repeat('c', 60), repeat('w', 300)))->>'words')::text, '240');
+SELECT pcal.same('and a long clause', (SELECT char_length(clause)::text FROM public.invoice_due_days WHERE invoice_id = '00000000-0000-0000-0000-0000000cad01'), '40');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca103');
+SELECT pcal.same('Pat, a primary, reads it', left(pcal.due_day(), 10), '2027-03-01');
+SELECT pcal.refused('Pat cannot set it', $q$SELECT public.set_invoice_due_day('00000000-0000-0000-0000-0000000cad01', DATE '2027-03-02')$q$, 'Not allowed to set the day a bill is due');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca105');
+SELECT pcal.same('Hank, a subcontractor, reads nothing', pcal.due_day(), 'none');
+SELECT pcal.refused('Hank cannot set it', $q$SELECT public.set_invoice_due_day('00000000-0000-0000-0000-0000000cad01', DATE '2027-03-02')$q$, 'Not allowed to set the day a bill is due');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca101');
+SELECT pcal.refused('a bill that is not one', $q$SELECT public.set_invoice_due_day('00000000-0000-0000-0000-0000000cad99', DATE '2027-03-02')$q$, 'Bill not found');
+SELECT pcal.refused('nobody writes the table directly', $q$INSERT INTO public.invoice_due_days (invoice_id, due_on) VALUES ('00000000-0000-0000-0000-0000000cad01', DATE '2027-03-05')$q$, 'permission denied');
+SELECT pcal.same('clearing it', (public.set_invoice_due_day('00000000-0000-0000-0000-0000000cad01', NULL))->>'cleared', 'true');
+SELECT pcal.same('leaves no row', pcal.due_day(), 'none');
+RESET ROLE;
+
 DO $$ BEGIN RAISE NOTICE 'pay_calendar PASSED'; END $$;
 ROLLBACK;
