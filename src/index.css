@@ -6976,3 +6976,15 @@ button.developmentCountChip:focus-visible {
   -webkit-mask-image: none;
   mask-image: none;
 }
+
+/* The Lien desk's scrolled strip (v2.7318): every chip is a press, so it underlines on hover as a link does. The chip's
+   own look (fill, colour, size) rides inline from `chip()`. */
+.lienStripChip {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.lienStripChip:hover,
+.lienStripChip:focus-visible {
+  text-decoration: underline;
+}
