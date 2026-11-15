@@ -84,9 +84,9 @@ describe('lienRunChecklistRows', () => {
 
   it('a job that owes nothing now holds its row (v2.7337): the words name what the paper says, and the hold comes before an address', () => {
     // Printed with a claim, paid since: the run's amount is the open balance today, the fields are the paper.
-    const [paid] = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-09T15:32:00Z', signature: null, amount: 0, fields: { ...notice().fields, claimAmount: '4421.26' } })] })
+    const [paid] = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-09T15:32:00Z', signature: null, amount: 0, fields: { ...notice().fields, claimAmount: '6150.75' } })] })
     expect(paid!.nothingToClaim).toBe(true)
-    expect(paid!.held).toBe('Nothing to claim: the job owes $0 now. The paper says $4,421.')
+    expect(paid!.held).toBe('Nothing to claim: the job owes $0 now. The paper says $6,151.')
     // The ticks stay facts: it printed, nobody signed it.
     expect(paid!.printed).toEqual({ at: '2026-10-09T15:32:00Z', by: null })
     expect(paid!.line).toBe('printed · not signed')
@@ -147,7 +147,7 @@ describe('lienRunBatchPlans', () => {
   })
 
   it('a row with nothing to claim is held from every press and never picks the signer (v2.7337)', () => {
-    const paid = (itemId: string, extra: Partial<RunNotice> = {}) => notice({ itemId, label: itemId.toUpperCase(), amount: 0, signature: null, fields: { ...notice().fields, claimAmount: '1380.00' }, ...extra })
+    const paid = (itemId: string, extra: Partial<RunNotice> = {}) => notice({ itemId, label: itemId.toUpperCase(), amount: 0, signature: null, fields: { ...notice().fields, claimAmount: '2400.00' }, ...extra })
     const plans = lienRunBatchPlans(
       lienRunChecklistRows({
         notices: [
@@ -160,7 +160,7 @@ describe('lienRunBatchPlans', () => {
         ],
       }),
     )
-    const why = 'Nothing to claim: the job owes $0 now. The paper says $1,380.'
+    const why = 'Nothing to claim: the job owes $0 now. The paper says $2,400.'
     expect(plans.sign.ready.map((r) => r.itemId)).toEqual(['b'])
     expect(plans.sign.held.map((h) => [h.itemId, h.why])).toEqual([
       ['p1', why],

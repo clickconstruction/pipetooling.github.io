@@ -966,12 +966,12 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     const leader = { userId: 'u-rob', name: 'Robert Douglas' }
     const two = [
       notice({ printedAt: at, signature: null, leader }),
-      // The paper says $1,380; the job's open balance is $0 today.
-      notice({ itemId: 'it2', jobId: 'j651', label: '651 · Paid since', jobNumber: '651', printedAt: at, signature: null, leader, amount: 0, fields: { ...notice().fields, claimAmount: '1380.00' }, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] }),
+      // The paper says $2,400; the job's open balance is $0 today.
+      notice({ itemId: 'it2', jobId: 'j651', label: '651 · Paid since', jobNumber: '651', printedAt: at, signature: null, leader, amount: 0, fields: { ...notice().fields, claimAmount: '2400.00' }, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] }),
     ]
     renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    const why = 'Nothing to claim: the job owes $0 now. The paper says $1,380.'
+    const why = 'Nothing to claim: the job owes $0 now. The paper says $2,400.'
     expect(screen.getByTestId('run-check-held-it2').textContent).toBe(`Held · ${why}`)
     expect(screen.getByTestId('run-foot-status').textContent).toContain('1 to sign · 1 held')
     const press = screen.getByTestId('run-mark-signed') as HTMLButtonElement
