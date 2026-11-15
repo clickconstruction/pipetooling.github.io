@@ -145,7 +145,7 @@ Built with this card's edit, between PR 2 and PR 3:
 - **A payment is offered** the bank lines with the same amount to the cent within three days, closest day first, a payee that reads like the sub breaking a tie. A bank line another payment took is offered to nobody else.
 - **A press matches.** Nothing is matched by itself. A match ticks the payment, and clearing the tick clears the match, so a matched payment is always a checked one.
 - **One check is one match.** The lines of a sending are matched together, against what was sent. Payments typed one per sheet before sendings can share a bank line, and what sits on one line can never add up to more than it.
-- **From Banking too, since 2026-11-15 (v2.7352).** On Banking → Ledger a bank line a payment took reads *paid <sub>* with **undo**, and an open line with a payment that fits gets **Match to a sub payment…**. The rules above hold on that side: a test holds that a line is offered a payment exactly when the ledger offers that payment the line.
+- **From Banking too, since 2026-11-15 (v2.7352).** On Banking → Ledger a bank line a payment took reads *paid <sub>* with **undo**, and an open line with a payment that fits gets **Match to a sub payment…**. The rules above hold on that side: a test holds that a line is offered a payment exactly when the ledger offers that payment the line. A transfer between the company's own accounts is offered on neither side (v2.7362).
 
 ## Not built
 
@@ -161,4 +161,5 @@ Left by the two that were built:
 
 - **Banking's Sorting tab** reads no sub payments. The Match press is on the Ledger tab alone, which the controller and the developer open.
 - **A bank line that two old payments add up to** is offered on neither side. The database takes that match and both sides show it once made.
+- **The press has not been walked on prod.** The Banking side was read on the live data, 76 bank lines offered a payment, and nothing was pressed: a ZZ test payment was refused to the session as a prod write. `match_sub_payment` has run on its migration's bed only.
 - **The dev seat places nothing past a sheet.** An amount past what a sheet owes is refused there. Filling their other sheets, keeping a credit and paying from a credit stay the window's presses.
