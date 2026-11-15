@@ -2208,7 +2208,8 @@ export default function LienDesk({
     else if (key === 'owner_records') onOpenOwnerRecords?.()
   }
   // What each row's job still owes, for a phone's rows and its days' totals (punch list #352, PR 3): the open balance each list already draws.
-  const phoneAmountFor = isMobile && data ? lienPhoneAmounts({ notices: data.queue.entries, affidavits: data.affidavits.entries, retainage: data.retainage.entries }) : undefined
+  // What each row's job owes. A phone's row draws it (punch list #352); since v2.7371 a computer's list orders a day's rows by it, largest first.
+  const phoneAmountFor = data ? lienPhoneAmounts({ notices: data.queue.entries, affidavits: data.affidavits.entries, retainage: data.retainage.entries }) : undefined
   // What a To do row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
   const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
     const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader && leadsRow(row) }
