@@ -4,11 +4,13 @@ import { SearchableSelect } from '../../SearchableSelect'
 import { ChecklistCrewTagsRow } from '../ChecklistCrewTagsRow'
 import { ChecklistScheduleCalendar } from '../ChecklistScheduleCalendar'
 import { TaskPlaceRow } from '../TaskPlaceRow'
+import { TaskMapPress, TaskMapSet } from '../TaskMapField'
 import { TaskSpotPhotoField, type TaskSpotPhotoDraft } from '../TaskSpotPhotoField'
 import { crewChipState, type CrewView } from '../../../lib/checklistCrewTags'
 import { REMINDER_PRESETS, dayBeforeApplicable, reminderSummary } from '../../../lib/checklistReminderOptions'
 import { parseLines } from '../../../lib/taskCriteria'
 import type { TaskPlaceDraft } from '../../../lib/tasks/taskPlace'
+import { taskMapAfterPlace, taskPlaceForRow, type TaskMapDraft } from '../../../lib/tasks/taskMapPick'
 import {
   dropSoloSelfWhenAddingOthers,
   taskAddRow,
@@ -65,6 +67,13 @@ type Props = {
   onAsksForPhoto: (next: boolean) => void
   place: TaskPlaceDraft | null
   onPlace: (next: TaskPlaceDraft | null) => void
+  /**
+   * The task's painted map (punch list #345). A window that hands in `onMap` gets the **Map** press in the Where row.
+   * The rows keep the map in step with the place: a place that brings a way in sets it, and a map that came with a
+   * place leaves with it.
+   */
+  map?: TaskMapDraft | null
+  onMap?: (next: TaskMapDraft | null) => void
   spotPhoto: TaskSpotPhotoDraft | null
   onSpotPhoto: (next: TaskSpotPhotoDraft | null) => void
   /** The window is saving: the photo press waits. */
@@ -124,7 +133,8 @@ const lit = (on: boolean): CSSProperties => ({
  * cannot drift apart. The window keeps the form and the save; the rows keep only what is open.
  */
 export function TaskFormRows(props: Props) {
-  const { value, onChange, when, repeatMode, meId, users, todayStr, phone } = props
+  const { value, onChange, when, repeatMode, meId, users, todayStr, phone, onMap } = props
+  const taskMap = props.map ?? null
   const [addOpen, setAddOpen] = useState<TaskAddKey | null>(props.initialOpen ?? null)
   const [listOpen, setListOpen] = useState(false)
   /** People picked from the full list while the window is open. They take a face after Me. */
@@ -355,9 +365,19 @@ export function TaskFormRows(props: Props) {
       {props.hideWhere ? null : (
         <div style={rowStyle}>
           <span style={labStyle}>Where</span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center', minWidth: 0 }}>
-            <TaskPlaceRow value={props.place} onChange={props.onPlace} variant="shelf" {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} />
+          <div style={{ display: 'grid', gridTemplateColumns: onMap ? 'minmax(0, 1fr) auto auto' : 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center', minWidth: 0 }}>
+            <TaskPlaceRow
+              value={onMap ? taskPlaceForRow(props.place, taskMap) : props.place}
+              onChange={(next) => {
+                props.onPlace(next)
+                onMap?.(taskMapAfterPlace(taskMap, next))
+              }}
+              variant="shelf"
+              {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})}
+            />
+            {onMap ? <TaskMapPress value={taskMap} onChange={onMap} place={props.place} busy={props.busy} {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} /> : null}
             <TaskSpotPhotoField value={props.spotPhoto} onChange={props.onSpotPhoto} busy={props.busy} variant="press" />
+            {onMap ? <TaskMapSet value={taskMap} onChange={onMap} /> : null}
           </div>
         </div>
       )}

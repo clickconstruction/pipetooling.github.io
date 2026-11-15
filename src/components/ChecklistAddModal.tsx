@@ -16,6 +16,7 @@ import { parseLines } from '../lib/taskCriteria'
 import { writeItemLines } from '../lib/taskLinesIo'
 import { asksForPhotoDefault } from '../lib/taskProgress'
 import { taskPlaceColumns, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
+import { sentenceWithMap, taskMapColumn, type TaskMapDraft } from '../lib/tasks/taskMapPick'
 import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
 import { newTaskSentence, taskPersonName, taskSendLabel, type TaskAddKey } from '../lib/tasks/newTaskWindow'
@@ -92,6 +93,8 @@ export default function ChecklistAddModal({
   const [sourceTag, setSourceTag] = useState<string | null>(null)
   // Punch list #328: where the work is. Null is a task with no place, the default.
   const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
+  // Punch list #345: the task's painted map, with or without a place. Null is a task with no map, the default.
+  const [taskMap, setTaskMap] = useState<TaskMapDraft | null>(null)
   // PR 6: the giver's photo of the spot, held here until the task has an id to file it under.
   const [spotPhoto, setSpotPhoto] = useState<TaskSpotPhotoDraft | null>(null)
   const asksForPhoto = asksForPhotoPick ?? asksForPhotoDefault(lineCount)
@@ -241,6 +244,7 @@ export default function ChecklistAddModal({
       })
       setFormError(null)
       setPlace(null)
+      setTaskMap(null)
       setSpotPhoto(null)
       // The job bar already shows its link, so the links stay closed behind it (v2.3751).
       setRowsOpen(presetLinks.length > 0 && !preset?.job ? 'link' : null)
@@ -378,6 +382,9 @@ export default function ChecklistAddModal({
           // A place (#328) is written only when one is set, so a task with none sends the row it always sent. The columns
           // are younger than the generated types.
           ...(place ? (taskPlaceColumns(place, authUser.id, new Date().toISOString()) as Record<string, unknown>) : {}),
+          // The task's map (#345) is the window's own: it overrides what a place chip carried, and a task with neither
+          // sends the row it always sent.
+          ...(place || taskMap ? taskMapColumn(taskMap) : {}),
           created_by_user_id: authUser.id,
           repeat_type: effRepeatType,
           repeat_days_of_week: effRepeatType === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
@@ -440,6 +447,7 @@ export default function ChecklistAddModal({
       setAsksForPhotoPick(null)
       setSourceTag(null)
       setPlace(null)
+      setTaskMap(null)
       setSpotPhoto(null)
       modalContext.onSaved?.(newId || undefined)
       modalContext.closeModal()
@@ -529,7 +537,7 @@ export default function ChecklistAddModal({
       }
       bar={
         <TaskSendBar
-          sentence={sentence.text}
+          sentence={sentence.dead ? sentence.text : sentenceWithMap(sentence.text, Boolean(taskMap))}
           dead={sentence.dead}
           label={taskSendLabel({ meId, assigneeIds: form.assigned_to_user_ids, nameOf })}
           submitting={submitting}
@@ -720,6 +728,8 @@ export default function ChecklistAddModal({
         onAsksForPhoto={setAsksForPhotoPick}
         place={place}
         onPlace={setPlace}
+        map={taskMap}
+        onMap={setTaskMap}
         spotPhoto={spotPhoto}
         onSpotPhoto={setSpotPhoto}
         busy={submitting}

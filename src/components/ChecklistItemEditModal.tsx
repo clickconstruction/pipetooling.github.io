@@ -22,6 +22,8 @@ import { TaskWindowClose, TaskWindowShell } from './checklist/newTask/TaskWindow
 import { TASK_WORDS_BOX_STYLE } from './checklist/newTask/taskWindowBits'
 import { taskPlaceColumns, taskPlaceDraft, taskPlaceDraftChanged, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
 import { loadTaskPlace } from '../lib/tasks/taskPlaceIo'
+import { loadTaskMapAlone } from '../lib/tasks/taskMapIo'
+import { sentenceWithMap, taskMapChanged, taskMapColumn, taskMapDraftFromSaved, type TaskMapDraft } from '../lib/tasks/taskMapPick'
 import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { loadTaskSpotPhotoPath, putTaskSpotPhoto, removeTaskSpotPhotoFile, saveTaskSpotPhotoPath, taskSpotPhotoUrls } from '../lib/tasks/taskSpotPhotoIo'
 
@@ -160,16 +162,24 @@ export function ChecklistItemEditModal({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [loadedPlace, setLoadedPlace] = useState<TaskPlaceDraft | null>(null)
   const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
+  // Punch list #345: the task's painted map as loaded and as the editor has it now. Save writes it only when it changed.
+  const [loadedMap, setLoadedMap] = useState<TaskMapDraft | null>(null)
+  const [taskMap, setTaskMap] = useState<TaskMapDraft | null>(null)
   useEffect(() => {
     setLoadedPlace(null)
     setPlace(null)
+    setLoadedMap(null)
+    setTaskMap(null)
     if (!itemId) return
     let cancelled = false
-    void loadTaskPlace(itemId).then((p) => {
+    void Promise.all([loadTaskPlace(itemId), loadTaskMapAlone(itemId)]).then(([p, mapAlone]) => {
       if (cancelled) return
       const draft = taskPlaceDraft(p)
       setLoadedPlace(draft)
       setPlace(draft)
+      const map = taskMapDraftFromSaved(p, mapAlone)
+      setLoadedMap(map)
+      setTaskMap(map)
     })
     return () => {
       cancelled = true
@@ -330,6 +340,9 @@ export function ChecklistItemEditModal({
           ...({ asks_for_photo: form.asks_for_photo } as Record<string, boolean>),
           // A place (#328) is written only when the editor changed it; the columns are younger than the generated types.
           ...(taskPlaceDraftChanged(loadedPlace, place) ? (taskPlaceColumns(place, authUser?.id ?? null, new Date().toISOString()) as Record<string, unknown>) : {}),
+          // The task's map (#345) is the window's own: written when it changed, and with a changed place, whose columns
+          // carry the map a chip brought and not the one the editor has now.
+          ...(taskPlaceDraftChanged(loadedPlace, place) || taskMapChanged(loadedMap, taskMap) ? taskMapColumn(taskMap) : {}),
           repeat_type: effRepeatType,
           repeat_days_of_week: effRepeatType === 'day_of_week' ? (form.repeat_days_of_week.length ? form.repeat_days_of_week : null) : null,
           repeat_days_after: effRepeatType === 'days_after_completion' ? form.repeat_days_after : null,
@@ -438,7 +451,7 @@ export function ChecklistItemEditModal({
       headActions={<TaskWindowClose onClose={onClose} />}
       bar={
         <TaskSendBar
-          sentence={sentence.text}
+          sentence={sentence.dead ? sentence.text : sentenceWithMap(sentence.text, Boolean(taskMap))}
           dead={sentence.dead}
           label="Save"
           busyLabel="Saving…"
@@ -483,6 +496,8 @@ export function ChecklistItemEditModal({
         onAsksForPhoto={(asks_for_photo) => setForm((f) => ({ ...f, asks_for_photo }))}
         place={place}
         onPlace={setPlace}
+        map={taskMap}
+        onMap={setTaskMap}
         spotPhoto={spotPhoto}
         onSpotPhoto={setSpotPhoto}
         busy={saving}
