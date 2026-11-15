@@ -13802,6 +13802,64 @@ export type Database = {
           },
         ]
       }
+      gc_difficulty_ratings: {
+        Row: {
+          created_at: string
+          criteria_version_id: string
+          customer_id: string
+          id: string
+          note: string
+          picks: Json
+          rated_at: string
+          rated_by: string | null
+          rated_by_name: string
+        }
+        Insert: {
+          created_at?: string
+          criteria_version_id: string
+          customer_id: string
+          id?: string
+          note: string
+          picks?: Json
+          rated_at?: string
+          rated_by?: string | null
+          rated_by_name?: string
+        }
+        Update: {
+          created_at?: string
+          criteria_version_id?: string
+          customer_id?: string
+          id?: string
+          note?: string
+          picks?: Json
+          rated_at?: string
+          rated_by?: string | null
+          rated_by_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_difficulty_ratings_criteria_version_id_fkey"
+            columns: ["criteria_version_id"]
+            isOneToOne: false
+            referencedRelation: "difficulty_criteria_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_difficulty_ratings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_difficulty_ratings_rated_by_fkey"
+            columns: ["rated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_draw_lines: {
         Row: {
           draw_id: string
@@ -21000,6 +21058,51 @@ export type Database = {
           },
         ]
       }
+      job_lien_affidavit_months: {
+        Row: {
+          job_id: string
+          months: string[]
+          reason: string
+          set_at: string
+          set_by: string | null
+          set_by_name: string
+          updated_at: string
+        }
+        Insert: {
+          job_id: string
+          months: string[]
+          reason: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          updated_at?: string
+        }
+        Update: {
+          job_id?: string
+          months?: string[]
+          reason?: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_lien_affidavit_months_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_affidavit_months_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_lien_claim_corrections: {
         Row: {
           amount_off: number
@@ -22899,6 +23002,11 @@ export type Database = {
           lien_last_work_on: string | null
           lien_last_work_set_at: string | null
           lien_last_work_set_by: string | null
+          lien_month_check_note: string
+          lien_month_checked_at: string | null
+          lien_month_checked_by: string | null
+          lien_month_checked_by_name: string
+          lien_month_checked_month: string | null
           lien_payment_bond: string
           lien_retainage_held: number | null
           master_user_id: string
@@ -22977,6 +23085,11 @@ export type Database = {
           lien_last_work_on?: string | null
           lien_last_work_set_at?: string | null
           lien_last_work_set_by?: string | null
+          lien_month_check_note?: string
+          lien_month_checked_at?: string | null
+          lien_month_checked_by?: string | null
+          lien_month_checked_by_name?: string
+          lien_month_checked_month?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id: string
@@ -23055,6 +23168,11 @@ export type Database = {
           lien_last_work_on?: string | null
           lien_last_work_set_at?: string | null
           lien_last_work_set_by?: string | null
+          lien_month_check_note?: string
+          lien_month_checked_at?: string | null
+          lien_month_checked_by?: string | null
+          lien_month_checked_by_name?: string
+          lien_month_checked_month?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id?: string
@@ -23155,6 +23273,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_lien_last_work_set_by_fkey"
             columns: ["lien_last_work_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_lien_month_checked_by_fkey"
+            columns: ["lien_month_checked_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
