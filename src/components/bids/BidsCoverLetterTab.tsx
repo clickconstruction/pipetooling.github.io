@@ -76,6 +76,8 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
 import { BidBestEffortCard } from './BidBestEffortCard'
+import BidScoreHoldLine from './BidScoreHoldLine'
+import { useBidScoreHold } from '../../hooks/useBidScoreReadiness'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
@@ -218,6 +220,8 @@ export function BidsCoverLetterTab({
   const [versionSends, setVersionSends] = useState<VersionSendRow[]>([])
   const [boardValueRule, setBoardValueRule] = useState<BoardValueRule>('base_sum')
   const [markingSent, setMarkingSent] = useState(false)
+  // #360 PR 2: Mark sent is the moment the priced margin is kept, so the bid says here when the Scores tab would hold it.
+  const scoreHold = useBidScoreHold(selectedBidForPricing?.id ?? null)
   // Bid basis (v2.3219): the bid's marked-up plans exports + the persisted letter pill.
   const bidBasisExports = useBidBasisExports(selectedBidForPricing?.id ?? null, selectedBidForPricing ? bidBasisRefForBid(selectedBidForPricing) : null)
   const [bidToMarkedPlansOverride, setBidToMarkedPlansOverride] = useState<Record<string, boolean>>({})
@@ -1877,6 +1881,7 @@ export function BidsCoverLetterTab({
                                     : <>stamps the bid with today as its sent date and {letterOptions ? "Option 1's amount" : "this letter's amount"} as its value — or the bid room's first link send does it for you</>}
                                 </span>
                               </div>
+                              {!bid.bid_date_sent ? <BidScoreHoldLine hold={scoreHold} /> : null}
                               {addressedCustomer ? (
                                 <div data-testid="cover-letter-room-folded" style={{ marginTop: '0.5rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                                   The bid room stays {customerName}'s. A room carries its own opens and signature, so {addressedCustomer.name} does not share it. Pick {customerName} on Addressed to to open it.
@@ -2020,6 +2025,7 @@ export function BidsCoverLetterTab({
                                     : "stamps every bid in the letter with today + its ★ value, and sets the bid's sent date and value"}
                                 </span>
                               </div>
+                              {!bid.bid_date_sent ? <BidScoreHoldLine hold={scoreHold} /> : null}
                               {addressedCustomer ? (
                                 <div data-testid="cover-letter-room-folded" style={{ marginTop: '0.5rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                                   The bid room stays {customerName}'s. A room carries its own opens and signature, so {addressedCustomer.name} does not share it. Pick {customerName} on Addressed to to open it.

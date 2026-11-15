@@ -1,6 +1,11 @@
 import { Suspense, lazy, useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
+import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
+import { loadPaintedMap, type Landed, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
+import { paintedLayerMaps, type PaintedLayerMap } from '../../lib/paintedMap/paintedMapLayer'
+import { TASK_PLACE_WAY_WORDS, taskPlaceWayStart, taskPlaceWayWords } from '../../lib/tasks/taskPlaceWay'
+import { PAINT_COLOR, PAINT_SWATCH } from '../paintedMap/paintedMapLook'
 import { directionsUrlForPoint } from '../../lib/directionsUrl'
 import { requestMyFix, type MyFix } from '../../lib/materials/myLocation'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -41,6 +46,8 @@ export function TaskPlaceLine({ place, number, overdue, far }: { place: TaskPlac
         {number != null ? number : ''}
       </span>
       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place.name}</span>
+      {/* The paint's stroke (punch list #345): this place comes with the painted way to it. */}
+      {place.mapId ? <span role="img" aria-label="The way in is painted" data-task-place-line-way style={{ flex: 'none', width: 16, height: 4, borderRadius: 2, background: PAINT_COLOR }} /> : null}
       {far ? <span data-task-place-line-far style={{ flex: 'none', fontWeight: 500, color: 'var(--text-muted)' }}>· {far}</span> : null}
     </span>
   )
@@ -59,11 +66,51 @@ type Asked = { kind: 'idle' } | { kind: 'finding' } | { kind: 'found'; me: MyFix
  *   here and kept only while the card is open. Nothing is saved and nothing is sent.
  * - With no signal the picture does not come, and the block says so. The distance still answers,
  *   since a phone finds itself without a signal.
+ * - **The way in** (punch list #345, step 5): a place that carries a painted map draws its line on
+ *   both pictures and says its name and length. **Directions** then goes to the line's start, since
+ *   a maps app can route to a gate and cannot follow a painted line, and **Open the map** opens the
+ *   painted map's own window. A map that is gone or cannot be read leaves the block as it was.
  */
-export function TaskPlaceBlock({ place, placedByName, photoUrl = null }: { place: TaskPlace; placedByName: string | null; /** The giver's photo of the spot (PR 6): drawn beside the picture from above, so the two together need no other words. */ photoUrl?: string | null }) {
+export function TaskPlaceBlock({
+  place,
+  placedByName,
+  photoUrl = null,
+  canOpenWay = true,
+  loadWay = loadPaintedMap,
+}: {
+  place: TaskPlace
+  placedByName: string | null
+  /** The giver's photo of the spot (PR 6): drawn beside the picture from above, so the two together need no other words. */
+  photoUrl?: string | null
+  /** False where the painted map's window would open under the window this block sits in (the roadmap's canvas). */
+  canOpenWay?: boolean
+  /** The painted map the place carries, read once when the card opens. For a smoke. */
+  loadWay?: (mapId: string) => Promise<Landed<PaintedMapWhole | null>>
+}) {
   const [asked, setAsked] = useState<Asked>({ kind: 'idle' })
   const [mapFailed, setMapFailed] = useState(false)
   const [bigOpen, setBigOpen] = useState(false)
+  const [way, setWay] = useState<{ mapId: string; whole: PaintedMapWhole } | null>(null)
+  const mapId = place.mapId ?? null
+
+  useEffect(() => {
+    if (!mapId) return
+    let cancelled = false
+    void loadWay(mapId).then(
+      (res) => {
+        if (!cancelled && res.ok && res.value) setWay({ mapId, whole: res.value })
+      },
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [mapId, loadWay])
+
+  // A read for another map, kept from a card that changed under the block, is not this place's way.
+  const whole = way && way.mapId === mapId ? way.whole : null
+  const painted: PaintedLayerMap[] | undefined = whole ? paintedLayerMaps([whole]) : undefined
+  const wayStart = whole ? taskPlaceWayStart(whole.lines, whole.places) : null
 
   const howFar = useCallback(() => {
     setAsked({ kind: 'finding' })
@@ -79,7 +126,8 @@ export function TaskPlaceBlock({ place, placedByName, photoUrl = null }: { place
     { id: 'place', label: place.name, lat: place.lat, lng: place.lng, tone: 'ok' },
     ...(me ? [{ id: 'me', label: 'You', lat: me.lat, lng: me.lng, tone: 'me' as const }] : []),
   ]
-  const directions = directionsUrlForPoint(place.lat, place.lng)
+  const directions = wayStart ? directionsUrlForPoint(wayStart.lat, wayStart.lng) : directionsUrlForPoint(place.lat, place.lng)
+  const directionsLabel = wayStart ? TASK_PLACE_WAY_WORDS.directionsToStart : 'Directions'
   const setMs = place.setAt ? Date.parse(place.setAt) : Number.NaN
   const placedBy = taskPlacedByWords(placedByName, Number.isFinite(setMs) ? formatDenverCalendarDayShort(setMs) : null)
 
@@ -106,13 +154,19 @@ export function TaskPlaceBlock({ place, placedByName, photoUrl = null }: { place
           style={{ height: 150, background: 'var(--bg-muted)', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
         >
           <Suspense fallback={null}>
-            <OnSiteMapLazy center={place} pins={pins} height={150} focusId="place" still onTilesFailed={() => setMapFailed(true)} />
+            <OnSiteMapLazy center={place} pins={pins} height={150} focusId="place" still onTilesFailed={() => setMapFailed(true)} {...(painted ? { painted } : {})} />
           </Suspense>
           {/* The picture takes no press of its own: the whole of it is this one press. */}
           <span aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 600 }} />
         </div>
       )}
       </div>
+      {whole ? (
+        <p data-task-place-way style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.875rem', color: 'var(--text-700)', fontWeight: 600 }}>
+          <span aria-hidden style={PAINT_SWATCH} />
+          <span style={{ minWidth: 0 }}>{taskPlaceWayWords(whole.map.name, whole.lines)}</span>
+        </p>
+      ) : null}
       {asked.kind === 'found' && far ? (
         <p role="status" data-task-place-far style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
           <b>{far.lead}</b>
@@ -127,7 +181,12 @@ export function TaskPlaceBlock({ place, placedByName, photoUrl = null }: { place
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         {directions ? (
           <button type="button" style={pressBlue} onClick={() => openInExternalBrowser(directions)}>
-            Directions
+            {directionsLabel}
+          </button>
+        ) : null}
+        {whole && canOpenWay ? (
+          <button type="button" data-task-place-way-open style={press} onClick={() => openPaintedMap(whole.map.id)}>
+            {TASK_PLACE_WAY_WORDS.open}
           </button>
         ) : null}
         <button type="button" style={press} onClick={howFar} disabled={asked.kind === 'finding'}>
@@ -138,13 +197,13 @@ export function TaskPlaceBlock({ place, placedByName, photoUrl = null }: { place
         {placedBy ? `${placedBy} ` : ''}
         {TASK_PLACE_PRIVACY_WORDS}
       </p>
-      {bigOpen ? <TaskPlaceMapSheet title={place.name} place={place} pins={pins} directions={directions} onClose={() => setBigOpen(false)} /> : null}
+      {bigOpen ? <TaskPlaceMapSheet title={place.name} place={place} pins={pins} directions={directions} directionsLabel={directionsLabel} painted={painted} onClose={() => setBigOpen(false)} /> : null}
     </div>
   )
 }
 
 /** The same map, full size: it drags, zooms and switches to streets. Read-only; nothing here moves the place. */
-function TaskPlaceMapSheet({ title, place, pins, directions, onClose }: { title: string; place: TaskPlace; pins: OnSiteMapPin[]; directions: string | null; onClose: () => void }) {
+function TaskPlaceMapSheet({ title, place, pins, directions, directionsLabel, painted, onClose }: { title: string; place: TaskPlace; pins: OnSiteMapPin[]; directions: string | null; directionsLabel: string; painted?: PaintedLayerMap[]; onClose: () => void }) {
   const isTopmost = useModalStackEntry()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -174,13 +233,13 @@ function TaskPlaceMapSheet({ title, place, pins, directions, onClose }: { title:
         </div>
         <div style={{ flex: '1 1 auto', minHeight: 240 }}>
           <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-            <OnSiteMapLazy center={place} pins={pins} height="100%" focusId="place" />
+            <OnSiteMapLazy center={place} pins={pins} height="100%" focusId="place" {...(painted ? { painted } : {})} />
           </Suspense>
         </div>
         {directions ? (
           <div style={{ flex: 'none', padding: '0.75rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid var(--border)' }}>
             <button type="button" style={{ ...pressBlue, width: '100%', minHeight: 52 }} onClick={() => openInExternalBrowser(directions)}>
-              Directions
+              {directionsLabel}
             </button>
           </div>
         ) : null}

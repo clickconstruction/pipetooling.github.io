@@ -118,6 +118,19 @@ On the Pipeline a job on its own calendar says so. The job's row reads *This job
 
 The customer's own window lists the jobs that do not follow it. Press a job there to open its calendar.
 
+### The record on a job's own calendar
+
+A job on its own calendar pays under its own terms. So the app scores it on that job's own payments. The job needs two payments first.
+
+- With two or more, the line under the due day ends *this job's record*.
+- With one or none, the line ends *their record on other jobs*. The customer's other payments stand in until the job has two.
+
+The amber box in the window says the same. On the job's side it reads **This job's record against this** once the job has two payments.
+
+:::example A job with two payments of its own
+This job's last 2 payments all landed by the due day.
+:::
+
 A job in a development offers one more tick, like *Also set on the other 12 jobs in Larkfield Commons*. Tick it to set them all at once. The button then names the count, like {{button:blue|Save for 13 jobs}}. A job that fails is named with its reason, and the rest are still saved.
 
 To undo it, open the same window on the job and press {{button:outline|Follow Larkfield Construction again}}. The button carries the customer's own name.
@@ -187,6 +200,36 @@ In on Nov 24, it is due Dec 10.
 
 The line under the row then reads *Accepted Dec 2*. Press it again to change the day, or to clear it.
 
+## One bill due on a named date
+
+Some bills have a date of their own in the contract. A retainage release is one. A dated draw is another.
+
+A pay calendar cannot hold that date. So you set it on the bill.
+
+:::steps
+1. Find the bill on **Billed Awaiting Payment**.
+2. Press *This bill is due on…* under the row's dates.
+3. Pick **The day it is due**.
+4. Type the clause number and a few of its words.
+5. Read the box. It says what the bill read before, and what the day makes it.
+6. Press {{button:blue|Save this bill's due day}}.
+:::
+
+:::example What the box says
+By this job's own pay calendar it is due Dec 30.
+**On its own day it is due Feb 15.**
+:::
+
+The row then reads **Due** on that day. The line under it reads *This bill's own day* with the clause number.
+
+That day wins over the job's calendar and the customer's. Only that one bill reads it. The job's other bills read their calendar as before.
+
+A date the customer named still wins the expected day. The bill's own day shows under it.
+
+The app adds no usual lateness to a named date. The bill turns amber the day after it.
+
+To change the day, press *Change this bill's day…* under the row's dates. To go back to the calendar, press {{button:outline|Clear this bill's own day}}.
+
 ## The cutoff, before a bill goes out
 
 A bill that has not gone out yet shows its cutoff. You see it in five places.
@@ -218,6 +261,8 @@ Every bill that customer pays reads the calendar.
 - A development's **Money** look reads **Due** on their billed jobs. It counts a job past due after that day.
 
 A customer with no calendar reads exactly as before. So does a job with **This job has no pay calendar** ticked.
+
+One bill with a day of its own reads that day on every one of these screens. See [One bill due on a named date](#one-bill-due-on-a-named-date).
 
 ## Who can set one
 

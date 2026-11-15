@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PRs 7 to 10 not built
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PR 7, the run carries names, LIVE 2026-11-15 (v2.7312, #8169; migration 20261115050000 pushed, types #8193, dev-mcp redeployed) · PRs 8 to 10 not built
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,10 +14,10 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: PR 7 (the run carries names, section 10) in its own session, then 8, 9, 10 in order; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
-size: L as a train of six (M · M · M · S · M · S); left: PRs 4 to 6 (S · M · S)
+next: PR 8 (the window and the strip, section 10) in its own session, then 9 and 10 in order; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
+size: L as a train of ten (M · M · M · S · M · S · M · M · S · M); left: L, PRs 8 to 10 (M · S · M) and PRs 4 to 6 (S · M · S)
 blocker: PRs 4 to 6 wait for the walk of the site, by the owner's order of 2026-11-14.
-ver: v2.7298
+ver: v2.7312
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -363,7 +363,7 @@ the merge because the client calls what it makes.
 | 5 · the sticker walk | One screen, the camera in the app, **Or use the next sticker**, what did not send kept on the phone; checked on a real iPhone and a real Android | M |
 | 6 · the sheet of 30 | Only if the tape is too slow: the 30-a-page layout with a one-page alignment test | S |
 | | **The preview fold, v2.7304 (2026-11-14):** *What the stickers will look like* at the foot of the window. | S |
-| 7 · the run carries names | Section 10: the migration, `mint_sticker_run` taking a name range under the box rule, the range parser as a kernel with the mock-up's table as its tests | M |
+| 7 · the run carries names | **Live 2026-11-15 (v2.7312).** Section 10: the migration, `mint_sticker_run` taking a name range under the box rule, the range parser as a kernel with the mock-up's table as its tests | M |
 | 8 · the window and the strip | The Names field with its read line and two notices, the strip with the name large and the number small, the preview, the Runs fold's title, the CSV | M |
 | 9 · the first scan and the screens | The sheet reads the name off the sticker, a box already here first, the next twin letter, the number receding on the box rows | S |
 | 10 · These are on boxes | `place_sticker_range`: a range placed in one press with kind and place, the press in the Runs fold then the phone | M |
@@ -554,3 +554,13 @@ number as twins, the name large and the number small on the strip, the first sca
 **These are on boxes** placing a range in one press, the number receding on the screens, and the trade against call
 2 said out loud. The owner asked *is this the best we can do*, took the second pass with *fold them in*, and then **took the six
 calls as picked** the same day (*Yes, as picked*). Nothing of section 10 is built; PR 7 is next, in its own session.
+
+2026-11-15, later: **PR 7, the run carries names, is live** as v2.7312 (#8169). It is the ground only, as PR 1 was,
+and no screen changed. A run can carry one name per sticker, held to #351's box rule, as many as its stickers and
+each name once, and each sticker keeps its name as printed. `mint_sticker_run` takes the list as `p_names`, and every
+run printed before reads as numbers only. The migration `20261115050000_sticker_run_names` is on prod's ledger, the
+types came with #8193, and the dev seat was redeployed so it reads the new columns. The range parser is
+`src/lib/materials/stickerNames.ts`, its 27 tests the mock-up's rule table row for row. Checked by those tests and by
+CI's `sticker-names` bed on the PR, since the local Postgres could not start. `docs/recent-features/v2.7312.md` says
+what it built and why. **PR 8 is next**: the Names field and its two notices, the strip with the name large and the
+number small, the preview, the Runs fold's title and the CSV, and the mint sending the names.

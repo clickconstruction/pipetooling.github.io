@@ -91,7 +91,7 @@ export function useJobBilledExpectedPay(job: { id: string } & PayerNamedJob): (i
         calendarYmdInAppTzFromIso(new Date().toISOString()),
         promises?.[job.id] ?? null,
         null,
-        calendarSourceFor(calendars, { payerId: payer.id, jobId: job.id }),
+        calendarSourceFor(calendars, { payerId: payer.id, jobId: job.id, invoiceId: inv.id }),
       )
     },
     [allowed, job.id, payerJob, paySpeeds, promises, calendars, accepted],

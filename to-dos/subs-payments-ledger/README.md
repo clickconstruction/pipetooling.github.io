@@ -15,7 +15,7 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: the owner's look once the three migrations are pushed; then the residue under *Not built*
+next: the owner's look, now that the three migrations are in prod's ledger (read 2026-11-15); then the residue under *Not built*
 size: M as a train of six (XS · S · S · S · S · M)
 blocker: none
 opinion: use it for a month's statement before building more; the first real sitting will say whether hand placement or the Banking side is worth it

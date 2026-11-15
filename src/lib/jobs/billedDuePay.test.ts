@@ -30,7 +30,7 @@ describe('billedPayModel', () => {
   it('is the pace guess, unchanged, with no calendar', () => {
     const base = billedExpectedPayModel(row('2026-11-03'), DATA, TODAY)
     expect(base?.expectedYmd).toBe('2026-12-14')
-    expect(billedPayModel(row('2026-11-03'), DATA, TODAY)).toEqual({ ...base, dueYmd: null, daysPastDue: 0, lateness: null, calendar: null, calendarOwn: false, clockYmd: null, clockFrom: null })
+    expect(billedPayModel(row('2026-11-03'), DATA, TODAY)).toEqual({ ...base, dueYmd: null, daysPastDue: 0, lateness: null, record: null, calendar: null, calendarOwn: false, ownDue: null, clockYmd: null, clockFrom: null })
     expect(billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, null)?.source).toBe('customer')
     expect(billedPayModel(row('2026-11-03'), null, TODAY)).toBeNull()
   })
@@ -63,6 +63,59 @@ describe('billedPayModel', () => {
     // Their word still wins the day, and the model still knows whose calendar the due day is.
     const said = billedPayModel(row('2026-11-03'), DATA, TODAY, { promisedYmd: '2026-12-20' } as never, null, { calendar: TENTH, from: 'job', payerCalendar: null })!
     expect(said).toMatchObject({ source: 'promised', dueYmd: '2026-12-10', calendarOwn: true })
+  })
+
+  it("scores a job's own calendar on that job's payments once it has two, and on its payer's until then (punch list #341, PR 3)", () => {
+    const onJob = (jobId: string | null) => ({ jobId, jobName: null, address: null })
+    // Job 1431 has two payments of its own, both by the 10th. Larkfield's other jobs ran 6 and 14 days after it.
+    const data: PaySpeedData = {
+      ...DATA,
+      receipts: {
+        lark: [
+          { billedYmd: '2026-10-06', paidYmd: '2026-11-10', gapDays: 35, ...onJob('j1431') },
+          { billedYmd: '2026-09-03', paidYmd: '2026-10-09', gapDays: 36, ...onJob('j1431') },
+          { billedYmd: '2026-10-27', paidYmd: '2026-11-16', gapDays: 20, ...onJob('j1406') },
+          { billedYmd: '2026-08-20', paidYmd: '2026-09-24', gapDays: 35, ...onJob('j1406') },
+        ],
+      },
+    }
+    const own = billedPayModel(row('2026-11-03'), data, TODAY, null, null, { calendar: TENTH, from: 'job', payerCalendar: null, jobId: 'j1431' })!
+    expect(own.record).toMatchObject({ of: 'job', jobPayments: 2 })
+    expect(own.lateness).toMatchObject({ count: 2, medianDays: 0 })
+    expect(own.expectedYmd).toBe('2026-12-10')
+    expect(own.title).toContain('This job’s last 2 payments all landed by the due day.')
+    // The payer's calendar on another job reads all four, as before.
+    const payers = billedPayModel(row('2026-11-03'), data, TODAY, null, null, { calendar: TENTH, from: 'payer', payerCalendar: TENTH })!
+    expect(payers.record).toMatchObject({ of: 'payer', jobPayments: 0 })
+    expect(payers.lateness?.count).toBe(4)
+    expect(payers.expectedYmd).toBe('2026-12-13')
+    // A job on its own calendar with one payment stands on the payer's record, and the hover says whose it is.
+    const young = billedPayModel(row('2026-11-03'), data, TODAY, null, null, { calendar: TENTH, from: 'job', payerCalendar: null, jobId: 'j1406-b' })!
+    expect(young.record).toMatchObject({ of: 'borrowed', jobPayments: 0 })
+    expect(young.expectedYmd).toBe(payers.expectedYmd)
+    expect(young.title).toContain('No payment on this job yet. The record is Larkfield Construction’s on other jobs. Their last 4 payments landed')
+    // With no calendar there is no record to name.
+    expect(billedPayModel(row('2026-11-03'), data, TODAY)?.record).toBeNull()
+  })
+
+  it("reads a bill's own due day over any calendar, with no record replayed (punch list #341, PR 4)", () => {
+    const ownDue = { dueYmd: '2027-02-15', clause: '§ 9.4', words: 'Retainage is released 60 days after final acceptance' }
+    const read = { calendar: null, from: 'bill' as const, payerCalendar: TENTH, ownDue, under: { calendar: TENTH, from: 'payer' as const } }
+    const m = billedPayModel(row('2026-11-02'), DATA, TODAY, null, null, read)!
+    expect(m).toMatchObject({ source: 'terms', dueYmd: '2027-02-15', expectedYmd: '2027-02-15', state: 'upcoming', daysPastDue: 0, daysLate: 0, lateness: null, record: null, calendar: null, calendarOwn: false, ownDue, clockYmd: null, clockFrom: null })
+    expect(m.label).toBe('Due Feb 15 · this bill’s own day')
+    expect(m.title).toBe('Billed Nov 2. This bill has a due day of its own (§ 9.4). Retainage is released 60 days after final acceptance. Due Feb 15. No pay calendar is read for it.')
+    // The payer's calendar alone made the same bill due Dec 10.
+    expect(billedPayModel(row('2026-11-02'), DATA, TODAY, null, null, TENTH)?.dueYmd).toBe('2026-12-10')
+    // Past its day it is late, and the screens that ask "is this past due?" hold it to that day.
+    const late = billedPayModel(row('2026-11-02'), DATA, '2027-02-20', null, null, read)!
+    expect(late).toMatchObject({ state: 'late', daysLate: 5, daysPastDue: 5, label: '5d past due · this bill’s own day' })
+    expect(billHeldDay(late)).toEqual({ ymd: '2027-02-15', late: true, daysLate: 5, onCalendar: true })
+    // Their word still wins the expected day, and the bill's own day rides under it.
+    const said = billedPayModel(row('2026-11-02'), DATA, TODAY, { promisedYmd: '2027-01-20' } as never, null, read)!
+    expect(said).toMatchObject({ source: 'promised', expectedYmd: '2027-01-20', dueYmd: '2027-02-15', ownDue })
+    // It needs no pay speeds and no payer on file.
+    expect(billedPayModel({ billedAtIso: null, estBillYmd: '2026-11-02', customerId: null }, null, TODAY, null, null, read)).toMatchObject({ dueYmd: '2027-02-15', source: 'terms' })
   })
 
   it('reads past due while the money is not yet expected', () => {

@@ -50,8 +50,10 @@ export type LienRunRow = {
   waitsOn: LienRunWaitsOn
   /** The pile row's line: "printed · not signed", "signed · not mailed", "mailed · ready to record". */
   line: string
-  /** The run's own hold on the notice — no mailing address, nothing to claim, the owner unconfirmed — or null. The Signed wait is a tick, not a hold. */
+  /** The run's own hold on the notice — nothing to claim, no mailing address, the owner unconfirmed — or null. The Signed wait is a tick, not a hold. */
   held: string | null
+  /** The job owes nothing now (v2.7337): the hold no tick can lift. No batch press takes the row, and its own Signed and Mailed are closed. */
+  nothingToClaim: boolean
   /** The job's leader, for the pen pane; null when the builder named none. */
   leader: { userId: string | null; name: string } | null
   /** Every recipient goes by email or through Docsmit: nothing prints here. */
@@ -90,6 +92,19 @@ function recipientCell(r: RunRecipient): LienRunRecipientCell {
   }
 }
 
+/**
+ * The hold on a notice whose job owes nothing now (v2.7337), or null. The run's amount is the job's
+ * open balance as the desk reads it today, so a notice that printed with a claim and was paid since
+ * lands here: the words name what the paper says beside what is owed. The rule is the envelope's
+ * (`runEnvelopeHold`), read per notice, so the row and its envelope card agree.
+ */
+export function lienRunNothingToClaim(n: Pick<RunNotice, 'amount' | 'fields' | 'printedAt'>): string | null {
+  if (Number(n.amount) > 0.005) return null
+  const paper = Number(n.fields?.claimAmount)
+  const says = n.printedAt && Number.isFinite(paper) && paper > 0.005 ? ` The paper says $${Math.round(paper).toLocaleString('en-US')}.` : ''
+  return `Nothing to claim: the job owes $0 now.${says}`
+}
+
 /** One row per notice in the run, in the run's order. */
 export function lienRunChecklistRows(input: LienRunChecklistInput): LienRunRow[] {
   return input.notices.map((n) => {
@@ -102,8 +117,9 @@ export function lienRunChecklistRows(input: LienRunChecklistInput): LienRunRow[]
     const numbers = recipients.filter((r) => r.needsNumber && r.tracking.trim()).map((r) => r.tracking.trim())
     const everyMailed = recipients.length > 0 && recipients.every((r) => r.mailed)
     const mailed: LienRunTickMailed | null = everyMailed ? { tracking: numbers.join(' · ') || (paperless ? 'by email' : 'by hand'), sentOn: null } : null
-    // The run's holds, less the signature: Signed is a tick here, never a red hold.
-    const held = runNoticeProblems(n).filter((p) => p !== RUN_UNSIGNED_PROBLEM)[0] ?? null
+    // The run's holds, less the signature: Signed is a tick here, never a red hold. Nothing to claim comes first: an address can be fixed, a paid job cannot be put on notice.
+    const nothing = lienRunNothingToClaim(n)
+    const held = nothing ?? runNoticeProblems(n).filter((p) => p !== RUN_UNSIGNED_PROBLEM)[0] ?? null
     const printedOk = printed != null || paperless
     const waitsOn: LienRunWaitsOn = !printedOk ? 'print' : signed === null ? 'sign' : !mailed ? 'mail' : null
     return {
@@ -119,6 +135,7 @@ export function lienRunChecklistRows(input: LienRunChecklistInput): LienRunRow[]
       waitsOn,
       line: lienRunRowLine(printedOk, signed === 'not_needed' ? 'not_needed' : signed !== null, mailed != null),
       held,
+      nothingToClaim: nothing != null,
       leader: n.leader ?? null,
       paperless,
     }
@@ -141,7 +158,8 @@ export type LienRunBatchPlans = { print: LienRunBatchPlan; sign: LienRunBatchPla
  * What each batch press would do: Mark N printed takes the unprinted paper rows the run does not
  * hold; Mark N signed takes the printed, unsigned rows of one leader (the first in the run; the
  * pen pane names one signer) and holds the rest with why; Record N mailings takes the printed rows
- * whose every envelope has its number, and holds the ones still owing a print or a number.
+ * whose every envelope has its number, and holds the ones still owing a print or a number. A row
+ * with nothing to claim (v2.7337) is held from all three, and never picks the signer.
  */
 export function lienRunBatchPlans(rows: ReadonlyArray<LienRunRow>): LienRunBatchPlans {
   const printReady: LienRunRow[] = []
@@ -154,9 +172,10 @@ export function lienRunBatchPlans(rows: ReadonlyArray<LienRunRow>): LienRunBatch
   const signReady: LienRunRow[] = []
   const signHeld: LienRunHeldRow[] = []
   const unsigned = rows.filter((r) => r.signed === null)
-  const firstLeader = unsigned.find((r) => r.printed || r.paperless)?.leader ?? null
+  const firstLeader = unsigned.find((r) => !r.nothingToClaim && (r.printed || r.paperless))?.leader ?? null
   for (const r of unsigned) {
-    if (!r.printed && !r.paperless) signHeld.push({ itemId: r.itemId, label: r.label, why: 'not printed yet' })
+    if (r.nothingToClaim) signHeld.push({ itemId: r.itemId, label: r.label, why: r.held ?? 'nothing to claim' })
+    else if (!r.printed && !r.paperless) signHeld.push({ itemId: r.itemId, label: r.label, why: 'not printed yet' })
     else if (!r.leader?.name) signHeld.push({ itemId: r.itemId, label: r.label, why: 'the job has no leader to name' })
     else if (firstLeader && r.leader.userId !== firstLeader.userId) signHeld.push({ itemId: r.itemId, label: r.label, why: `${r.leader.name}’s, on the next press` })
     else signReady.push(r)
@@ -192,7 +211,7 @@ export function lienRunChecklistWords(rows: ReadonlyArray<Pick<LienRunRow, 'prin
 }
 
 /** The foot's status line: what the run waits on most, in a few words. */
-export function lienRunFootWords(rows: ReadonlyArray<Pick<LienRunRow, 'waitsOn' | 'held'>>): { line1: string; line2: string } {
+export function lienRunFootWords(rows: ReadonlyArray<Pick<LienRunRow, 'waitsOn' | 'held'> & { nothingToClaim?: boolean }>): { line1: string; line2: string } {
   if (rows.length === 0) return { line1: 'Nothing is in this run.', line2: 'Approve a notice, or put one back in.' }
   const held = rows.filter((r) => r.held).length
   const print = rows.filter((r) => !r.held && r.waitsOn === 'print').length
@@ -201,7 +220,7 @@ export function lienRunFootWords(rows: ReadonlyArray<Pick<LienRunRow, 'waitsOn' 
   const done = rows.filter((r) => !r.held && r.waitsOn === null).length
   const parts = [print ? `${print} to print` : '', sign ? `${sign} to sign` : '', mail ? `${mail} ${mail === 1 ? 'owes' : 'owe'} a number` : '', done ? `${done} ready to record` : '', held ? `${held} held` : ''].filter(Boolean)
   const line1 = parts.join(' · ')
-  const line2 = print ? 'Print the packet, or tick Printed on a paper printed elsewhere.' : sign ? 'Tick Signed when the leader has signed the paper, and say how you know.' : mail ? 'Type each envelope’s number from the slip. Record takes the rows that have theirs.' : done ? 'Record the mailings. Each notice goes to its job with how it went.' : 'Fix what is marked in red, then print.'
+  const line2 = print ? 'Print the packet, or tick Printed on a paper printed elsewhere.' : sign ? 'Tick Signed when the leader has signed the paper, and say how you know.' : mail ? 'Type each envelope’s number from the slip. Record takes the rows that have theirs.' : done ? 'Record the mailings. Each notice goes to its job with how it went.' : rows.every((r) => r.nothingToClaim) ? 'Nothing is owed on these jobs now, so nothing here goes out.' : 'Fix what is marked in red, then print.'
   return { line1, line2 }
 }
 

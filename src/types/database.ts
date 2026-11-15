@@ -947,6 +947,118 @@ export type Database = {
           },
         ]
       }
+      bid_difficulty: {
+        Row: {
+          bid_id: string
+          carried_usd: number
+          cost_estimate_id: string | null
+          criteria_version_id: string | null
+          field_hours: number
+          id: string
+          labor_rate: number
+          lines: Json
+          own_cost_usd: number
+          picks: Json
+          points: number
+          price_version_id: string | null
+          priced_at: string
+          priced_by: string | null
+          priced_by_name: string
+          rating_id: string | null
+          removed: Json
+          row_ids: string[]
+          total_usd: number
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          carried_usd?: number
+          cost_estimate_id?: string | null
+          criteria_version_id?: string | null
+          field_hours?: number
+          id?: string
+          labor_rate?: number
+          lines?: Json
+          own_cost_usd?: number
+          picks?: Json
+          points?: number
+          price_version_id?: string | null
+          priced_at?: string
+          priced_by?: string | null
+          priced_by_name?: string
+          rating_id?: string | null
+          removed?: Json
+          row_ids?: string[]
+          total_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          carried_usd?: number
+          cost_estimate_id?: string | null
+          criteria_version_id?: string | null
+          field_hours?: number
+          id?: string
+          labor_rate?: number
+          lines?: Json
+          own_cost_usd?: number
+          picks?: Json
+          points?: number
+          price_version_id?: string | null
+          priced_at?: string
+          priced_by?: string | null
+          priced_by_name?: string
+          rating_id?: string | null
+          removed?: Json
+          row_ids?: string[]
+          total_usd?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_difficulty_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_criteria_version_id_fkey"
+            columns: ["criteria_version_id"]
+            isOneToOne: false
+            referencedRelation: "difficulty_criteria_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_price_version_id_fkey"
+            columns: ["price_version_id"]
+            isOneToOne: false
+            referencedRelation: "difficulty_price_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_priced_by_fkey"
+            columns: ["priced_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_rating_id_fkey"
+            columns: ["rating_id"]
+            isOneToOne: false
+            referencedRelation: "gc_difficulty_ratings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_estimators_extra_users: {
         Row: {
           added_at: string
@@ -4138,6 +4250,7 @@ export type Database = {
           priced_bid_version_id: string | null
           priced_by: string | null
           priced_cost_usd: number | null
+          priced_difficulty_usd: number | null
           priced_margin_pct: number | null
           priced_on_set_id: string | null
           priced_rate_set: boolean | null
@@ -4243,6 +4356,7 @@ export type Database = {
           priced_bid_version_id?: string | null
           priced_by?: string | null
           priced_cost_usd?: number | null
+          priced_difficulty_usd?: number | null
           priced_margin_pct?: number | null
           priced_on_set_id?: string | null
           priced_rate_set?: boolean | null
@@ -4348,6 +4462,7 @@ export type Database = {
           priced_bid_version_id?: string | null
           priced_by?: string | null
           priced_cost_usd?: number | null
+          priced_difficulty_usd?: number | null
           priced_margin_pct?: number | null
           priced_on_set_id?: string | null
           priced_rate_set?: boolean | null
@@ -5389,6 +5504,7 @@ export type Database = {
       }
       box_stickers: {
         Row: {
+          box_name: string | null
           code: string | null
           container_id: string | null
           created_at: string
@@ -5401,6 +5517,7 @@ export type Database = {
           run_id: string
         }
         Insert: {
+          box_name?: string | null
           code?: string | null
           container_id?: string | null
           created_at?: string
@@ -5413,6 +5530,7 @@ export type Database = {
           run_id: string
         }
         Update: {
+          box_name?: string | null
           code?: string | null
           container_id?: string | null
           created_at?: string
@@ -6180,6 +6298,7 @@ export type Database = {
           links: string[] | null
           notify_creator_on_complete: boolean
           notify_on_complete_user_id: string | null
+          painted_map_id: string | null
           place_accuracy_m: number | null
           place_lat: number | null
           place_lng: number | null
@@ -6211,6 +6330,7 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          painted_map_id?: string | null
           place_accuracy_m?: number | null
           place_lat?: number | null
           place_lng?: number | null
@@ -6242,6 +6362,7 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          painted_map_id?: string | null
           place_accuracy_m?: number | null
           place_lat?: number | null
           place_lng?: number | null
@@ -6276,6 +6397,13 @@ export type Database = {
             columns: ["notify_on_complete_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_painted_map_id_fkey"
+            columns: ["painted_map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
             referencedColumns: ["id"]
           },
           {
@@ -6339,6 +6467,7 @@ export type Database = {
           estimated_days: number | null
           group_id: string
           id: string
+          painted_map_id: string | null
           percent_complete: number
           pinned_at: string | null
           place_accuracy_m: number | null
@@ -6359,6 +6488,7 @@ export type Database = {
           estimated_days?: number | null
           group_id: string
           id?: string
+          painted_map_id?: string | null
           percent_complete?: number
           pinned_at?: string | null
           place_accuracy_m?: number | null
@@ -6379,6 +6509,7 @@ export type Database = {
           estimated_days?: number | null
           group_id?: string
           id?: string
+          painted_map_id?: string | null
           percent_complete?: number
           pinned_at?: string | null
           place_accuracy_m?: number | null
@@ -6404,6 +6535,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "checklist_tech_tree_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_group_tasks_painted_map_id_fkey"
+            columns: ["painted_map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
             referencedColumns: ["id"]
           },
           {
@@ -9834,6 +9972,73 @@ export type Database = {
           },
           {
             foreignKeyName: "difficulty_criteria_versions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      difficulty_price_versions: {
+        Row: {
+          body: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string
+          published_at: string | null
+          published_by: string | null
+          published_by_name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          body?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+          published_at?: string | null
+          published_by?: string | null
+          published_by_name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          body?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+          published_at?: string | null
+          published_by?: string | null
+          published_by_name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "difficulty_price_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "difficulty_price_versions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "difficulty_price_versions_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
@@ -36234,6 +36439,9 @@ export type Database = {
           id: string
           job_id: string | null
           last_number: number | null
+          name_first: string | null
+          name_last: string | null
+          names: string[] | null
           printed_at: string
           printed_by: string | null
           printed_by_name: string
@@ -36245,6 +36453,9 @@ export type Database = {
           id?: string
           job_id?: string | null
           last_number?: number | null
+          name_first?: string | null
+          name_last?: string | null
+          names?: string[] | null
           printed_at?: string
           printed_by?: string | null
           printed_by_name?: string
@@ -36256,6 +36467,9 @@ export type Database = {
           id?: string
           job_id?: string | null
           last_number?: number | null
+          name_first?: string | null
+          name_last?: string | null
+          names?: string[] | null
           printed_at?: string
           printed_by?: string | null
           printed_by_name?: string
@@ -46940,7 +47154,12 @@ export type Database = {
       }
       mint_pay_code: { Args: never; Returns: string }
       mint_sticker_run: {
-        Args: { p_copies?: number; p_count: number; p_job_id: string }
+        Args: {
+          p_copies?: number
+          p_count: number
+          p_job_id: string
+          p_names?: string[]
+        }
         Returns: Json
       }
       mint_sub_portal_link: {
@@ -47083,6 +47302,14 @@ export type Database = {
         }
         Returns: number
       }
+      on_site_move_job: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
+      on_site_move_job_run: {
+        Args: { p: Json; p_door: string; p_dry_run: boolean }
+        Returns: Json
+      }
       on_site_next_box_name: {
         Args: { p_job_ids: string[]; p_letters?: string }
         Returns: string
@@ -47120,6 +47347,10 @@ export type Database = {
           p_development_id: string
           p_job_id: string
         }
+        Returns: boolean
+      }
+      painted_map_on_a_task_i_read: {
+        Args: { p_map_id: string }
         Returns: boolean
       }
       painted_map_on_development_team: {
@@ -48611,6 +48842,7 @@ export type Database = {
           p_bid_id: string
           p_bid_version_id: string
           p_cost_usd: number
+          p_difficulty_usd?: number
           p_rate_set: boolean
           p_revenue_usd: number
           p_uncosted_usd: number
