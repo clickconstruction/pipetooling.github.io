@@ -96,6 +96,17 @@ describe('edgeUpload (what a deploy uploads)', () => {
     expect(edgeUpload('supabase/functions/bridge-weekly-sheet/index.ts').via(reads)).not.toBeNull()
   })
 
+  it('dev-mcp uploads neither the form schema nor the GC customer email kernel: the form values and the GC entity’s name sit in files of their own (v2.7292, punch list #359)', () => {
+    const u = edgeUpload('supabase/functions/dev-mcp/index.ts')
+    expect(u.via('supabase/functions/_shared/formSchema.ts')).toBeNull()
+    expect(u.via('supabase/functions/_shared/formValues.ts')?.slice(-2)).toEqual(['supabase/functions/_shared/hoursStatementForm.ts', 'supabase/functions/_shared/formValues.ts'])
+    expect(u.via('supabase/functions/_shared/gcCustomerEmails.ts')).toBeNull()
+    expect(u.via('supabase/functions/_shared/portalCompany.ts')).not.toBeNull()
+    // The signing function fills the schema, and the GC customer email frames its mail, so each keeps its file.
+    expect(edgeUpload('supabase/functions/hours-statement-signing/index.ts').via('supabase/functions/_shared/formSchema.ts')).not.toBeNull()
+    expect(edgeUpload('supabase/functions/gc-customer-email/index.ts').via('supabase/functions/_shared/gcCustomerEmails.ts')).not.toBeNull()
+  })
+
   it('legal-portal uploads neither the sample fixtures, the kernel copy’s index nor the generated types', () => {
     const u = edgeUpload('supabase/functions/legal-portal/index.ts')
     expect(u.via('supabase/functions/_shared/customerSampleFixtures.ts')).toBeNull()
