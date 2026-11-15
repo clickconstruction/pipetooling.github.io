@@ -107,6 +107,7 @@ export function JobPlansSection({
   onLeave,
   onState,
   onCurrentWords,
+  headingHidden = false,
 }: {
   job: { id: string; job_name?: string | null; click_number?: string | null; hcp_number?: string | null }
   io?: JobPlansIo
@@ -120,6 +121,8 @@ export function JobPlansSection({
   onState?: (state: JobPlansSectionState) => void
   /** The current set in a few words once a part is read, '' otherwise (punch list #355): the crew's fold says them beside its title. */
   onCurrentWords?: (words: string) => void
+  /** True inside a fold already titled Plans (the crew's phone): the heading keeps its place and its name for a reader, and is not drawn twice. */
+  headingHidden?: boolean
 }) {
   const io = useMemo(() => ioProp ?? supabaseJobPlansIo(), [ioProp])
   const { role, user } = useAuth()
@@ -445,7 +448,7 @@ export function JobPlansSection({
   return (
     <section aria-labelledby="job-documents-plans" data-job-documents-plans={state} style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <h3 id="job-documents-plans" style={{ ...documentsHeading, flex: 1 }}>
+        <h3 id="job-documents-plans" style={{ ...documentsHeading, flex: 1, ...(headingHidden ? { visibility: 'hidden' as const } : {}) }}>
           Plans
         </h3>
         {read && canWrite ? (

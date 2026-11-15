@@ -734,7 +734,7 @@ function DetailJobModalPlans({
   const [state, setState] = useState<JobPlansSectionState>('loading')
   return (
     <div data-testid="detail-job-plans" data-state={state} style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
-      <JobPlansSection job={job} onState={setState} onCurrentWords={onWords} />
+      <JobPlansSection job={job} onState={setState} onCurrentWords={onWords} headingHidden={Boolean(onWords)} />
       {state === 'no-part' || state === 'failed' ? <DetailJobModalFilesPlansRow jobPlansLink={job.job_plans_link} /> : null}
     </div>
   )
