@@ -2,7 +2,7 @@
 name: "Paint a map: walk it, drive it or draw it by hand, keep the line on the job, and share it by a link"
 number: 345
 group: close
-status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342, #8207) · both walked on the live app 2026-11-15 on a made-up map and task, nothing sent, each deleted after · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) and waits on Taunya's yes · not yet tried on a real phone
+status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342, #8207) · both walked on the live app 2026-11-15 on a made-up map and task, nothing sent, each deleted after · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) · Taunya's yes the same day (*Yes, build it*), every call at the card's pick · its card for a map with no place built first (v2.7363) · not yet tried on a real phone
 summary: >
   The owner's idea: a person walks with precise location on, the phone draws their line on a map,
   and they share it. For measuring, for showing where to drive, how to get into a place, and what
@@ -14,7 +14,7 @@ summary: >
   above, and drawing by hand is the better way for a drive and for a length. One link with no
   sign-in shows it to a customer or a driver, with a dot for where they are. Location is read
   only while a red bar says Painting, and nothing leaves the phone until the person saves.
-next: Taunya's yes on *A map on a task* and its five calls, then steps 7 to 10 as that section draws them. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
+next: Steps 7, 8 and 10 of *A map on a task*, in that order (the Map press in the New task window and Manage's Edit, Paint a new one from the task, the Roadmap), then a walk on the live app on a made-up task and map. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
 size: L as a train of eight after a one-day try (S · S · M · M · M · M · S · S · S)
 blocker: None for what is built. The walk, the screen held on, the pause on lock and the phone's share sheet have only been walked in a headless browser, so the first real walk is the proof.
 opinion: built as carded. Strong for the way in and what is where, weak for measuring. Count the maps painted and the links opened for two weeks before step 5.
@@ -583,8 +583,9 @@ Taunya, 2026-11-15, reviewing this card:
 > to checklist items, I want someone to be able to assign a task with a map.
 
 *Both* is *Text it…* and step 5. The last part is new: a painted map on a checklist item. This
-section is its design. It is drawn in [mockup.html](mockup.html), section 11. **Nothing in this
-section is built, and it waits on her yes.**
+section is its design. It is drawn in [mockup.html](mockup.html), section 11. **Taunya said yes on
+2026-11-15 (*Yes, build it*), every call at the card's pick.** The train's table below says what is
+built.
 
 ### What a task is today
 
@@ -670,11 +671,13 @@ and a fragment.
 |---|---|---|
 | 7 | The **Map** press in the New task window and in Manage's Edit: pick a painted map, with or without a place. The sentence in the bar. | S |
 | 8 | **Paint a new one** from the task: the painting window opens for a map on no job and hands the saved map back. | S |
-| 9 | The card for a task with a map and no place: the line under the due line, the picture, the three presses. | S |
+| 9 | The card for a task with a map and no place: the line under the due line, the picture, the three presses. **Built first, v2.7363,** so no task carries a map its reader cannot see. | S |
 | 10 | The Roadmap: Add task and a roadmap task's card. | S |
 | later | Today's map of a person's tasks draws each task's line with its dot. | S |
 
 ### Taunya's calls
+
+All five taken at the pick, 2026-11-15.
 
 1. **A map with no place.** My pick: yes. Or a map only with a place, as step 5 has it.
 2. **Where the press sits.** My pick: in the Where row. Or among the rare things in the Add row.

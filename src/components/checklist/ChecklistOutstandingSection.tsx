@@ -11,6 +11,8 @@ import { TaskLinesList } from './TaskLinesList'
 import { TaskPhotoStrip } from './TaskPhotoStrip'
 import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
 import { TaskPlaceAddHere } from './TaskPlaceAddHere'
+import { TaskMapBlock, TaskMapLine } from './TaskMapBlock'
+import { useTaskMapWhole } from '../../hooks/useTaskMapWhole'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { TaskRing } from './TaskRing'
 
@@ -48,6 +50,7 @@ export function ChecklistOutstandingSection({
   onPhotoAdded,
   onPostComment,
   placeFor,
+  mapFor,
   placeNumberFor,
   placeFarFor,
   openInstance,
@@ -77,6 +80,8 @@ export function ChecklistOutstandingSection({
   onPostComment?: (inst: LedgerInstance, body: string) => Promise<boolean>
   /** The task's place (punch list #328, PR 3): its name on the row and, opened, the map, Directions and How far am I?. */
   placeFor?: (inst: LedgerInstance) => TaskPlace | null
+  /** The painted map of a task that has a map and no place (punch list #345): its id. */
+  mapFor?: (inst: LedgerInstance) => string | null
   /** The dot's number, once the list has a map over it (PR 4). */
   placeNumberFor?: (inst: LedgerInstance) => number | null
   placeFarFor?: (inst: LedgerInstance) => string | null
@@ -156,6 +161,8 @@ export function ChecklistOutstandingSection({
             onPhotoAdded={onPhotoAdded}
             onPostComment={onPostComment ? (body) => onPostComment(inst, body) : undefined}
             place={placeFor?.(inst) ?? null}
+            mapId={mapFor?.(inst) ?? null}
+            paintedByNameOf={(by) => (by && nameById?.[by] ? nameById[by]! : null)}
             placeNumber={placeNumberFor?.(inst) ?? null}
             placeFar={placeFarFor?.(inst) ?? null}
             spotPhotoUrl={spotPhotoUrlFor?.(inst) ?? null}
@@ -194,6 +201,8 @@ function OutstandingRow({
   onPhotoAdded,
   onPostComment,
   place,
+  mapId,
+  paintedByNameOf,
   placeNumber,
   placeFar,
   placedByName,
@@ -222,6 +231,8 @@ function OutstandingRow({
   onPhotoAdded?: (row: TaskPhotoRow) => void
   onPostComment?: (body: string) => Promise<boolean>
   place: TaskPlace | null
+  mapId: string | null
+  paintedByNameOf: (userId: string | null) => string | null
   placeNumber: number | null
   placeFar: string | null
   placedByName: string | null
@@ -229,6 +240,8 @@ function OutstandingRow({
   onPlaceAdded?: () => void
 }) {
   const notes = events.filter((e) => e.event_type === 'comment').length
+  // A map by itself is read for the row that has no place. With a place, the place's block reads its own way in.
+  const taskMap = useTaskMapWhole(place ? null : mapId)
   const sheets = useTaskCardSheets({
     instanceId: inst.id,
     title: inst.checklist_items?.title ?? '',
@@ -281,6 +294,7 @@ function OutstandingRow({
         >
           <span style={{ display: 'block', fontSize: '0.9375rem' }}>{title}</span>
           {place ? <TaskPlaceLine place={place} number={placeNumber} overdue far={placeFar} /> : null}
+          {!place ? <TaskMapLine map={taskMap} /> : null}
           {(() => {
             // Due-aware line (v2.2351): red means LATE — a task inside
             // its start→due window is calm, amber on the due day.
@@ -324,6 +338,10 @@ function OutstandingRow({
           {place ? (
             <div style={{ marginBottom: '0.7rem' }}>
               <TaskPlaceBlock place={place} placedByName={placedByName} photoUrl={spotPhotoUrl} />
+            </div>
+          ) : taskMap.kind === 'read' ? (
+            <div style={{ marginBottom: '0.7rem' }}>
+              <TaskMapBlock whole={taskMap.whole} paintedByName={paintedByNameOf(taskMap.whole.map.createdBy)} photoUrl={spotPhotoUrl} />
             </div>
           ) : spotPhotoUrl ? (
             <div style={{ marginBottom: '0.7rem' }}>

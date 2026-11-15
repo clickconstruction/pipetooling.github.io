@@ -16,6 +16,8 @@ import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
 import { TaskPlaceAddHere } from './TaskPlaceAddHere'
+import { TaskMapBlock, TaskMapLine } from './TaskMapBlock'
+import { useTaskMapWhole } from '../../hooks/useTaskMapWhole'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
@@ -85,6 +87,12 @@ type ChecklistInstanceCardProps = {
    * map, Directions and How far am I?. A task with no place passes nothing and draws nothing.
    */
   place?: TaskPlace | null
+  /**
+   * The painted map of a task that has a map and no place (punch list #345). The card wears the map's name under the
+   * title and, opened, draws the line with Open the map, Directions to the start and How far am I?. With a place, the
+   * map is that place's way in and rides on `place`.
+   */
+  mapId?: string | null
   /** The dot's number, once the list has a map over it (PR 4). */
   placeNumber?: number | null
   placeOverdue?: boolean
@@ -130,6 +138,7 @@ export function ChecklistInstanceCard({
   photos,
   onPhotoAdded,
   place = null,
+  mapId = null,
   placeNumber = null,
   placeOverdue = false,
   placeFar = null,
@@ -141,6 +150,8 @@ export function ChecklistInstanceCard({
   useEffect(() => {
     if (openSignal) setThreadOpen(true)
   }, [openSignal])
+  // A map by itself is read for the card that has no place. With a place, the place's block reads its own way in.
+  const taskMap = useTaskMapWhole(place ? null : mapId)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
   const composerRef = useRef<HTMLInputElement | null>(null)
@@ -520,6 +531,7 @@ export function ChecklistInstanceCard({
             {title}
           </div>
           {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} far={placeFar} /> : null}
+          {!place ? <TaskMapLine map={taskMap} /> : null}
           {statusStrip}
           {reopenedCallout}
           {linesBlock}
@@ -589,7 +601,10 @@ export function ChecklistInstanceCard({
       {variant === 'row' && linesOpen ? <div style={{ padding: '0.1rem 0 0.4rem 2.2rem' }}>{linesBlock}{photoStrip}</div> : null}
       {ringSheet}
       {threadOpen && place && variant === 'card' ? <TaskPlaceBlock place={place} placedByName={place.setBy ? (nameById[place.setBy] ?? null) : null} photoUrl={spotPhotoUrl} /> : null}
-      {threadOpen && !place && spotPhotoUrl && variant === 'card' ? (
+      {threadOpen && !place && taskMap.kind === 'read' && variant === 'card' ? (
+        <TaskMapBlock whole={taskMap.whole} paintedByName={taskMap.whole.map.createdBy ? (nameById[taskMap.whole.map.createdBy] ?? null) : null} photoUrl={spotPhotoUrl} />
+      ) : null}
+      {threadOpen && !place && taskMap.kind !== 'read' && spotPhotoUrl && variant === 'card' ? (
         <div style={{ marginTop: '0.6rem' }}>
           <TaskSpotPhotoView url={spotPhotoUrl} />
         </div>
