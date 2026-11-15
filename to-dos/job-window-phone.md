@@ -559,6 +559,9 @@ order.
    bubbles, the six folds remembered per device; `jobWindowPhoneSections.ts` with tests; a render
    smoke at 375 px; the guide.
 3. **D** (S), **E** (M), **F** (M), **G** (M), **H** (S): the six other tabs, pass 3 above, D first.
+   **Built, v2.7281 to v2.7285.** The viewport sweep after them (375 to 440 px, landscape, iPad, both
+   themes) found one tap trap: A's floating ✕ sat over the right edge of whatever had scrolled under
+   it. **v2.7300** takes it off: the ✕ goes with the tabs and comes back at the pinned strip's right.
 4. **C** (L), only when a master tech works from a phone or the tab count says the office's
    phone use is real: `JobWindowPhone`, the role kernel for tabs and bar, the crew lead's Today's
    work.
@@ -567,8 +570,8 @@ order.
 
 Open any job from the Pipeline at the 375 px preset (Jobs → Pipeline, Mobile cards on), or on a
 phone: the name is the first line with ⋯ and ✕ at its right, the tab row under it is one line
-that slides, a flick down takes both off the screen and leaves a floating ✕, a flick up brings
-the tabs back, the ⋯ sheet names every door, and the Job tab's first screen reads the address and
+that slides, a flick down takes both off the screen, a flick up brings
+the tabs back with the ✕ at their right, the ⋯ sheet names every door, and the Job tab's first screen reads the address and
 the customer. Then `ui_nav_clicks` on prod a week later shows rows named by the tabs. The
 ZZ test job `ZZ TEST Riders Walk` has stages, a checklist, plans and an activity feed to scroll.
 Then the same window on a desk at 760 px, unchanged.

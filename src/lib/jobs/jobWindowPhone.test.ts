@@ -8,7 +8,7 @@ describe('headerScrollState', () => {
     expect(headerScrollState({ top: 120, lastTop: 90, headBottom: 120, wasPinned: true })).toEqual({ headGone: false, stripPinned: false })
   })
 
-  it('floats the ✕ once the strip has gone, and pins the strip on a scroll back up', () => {
+  it('hides the header once the strip has gone, and pins the strip (with its ✕) on a scroll back up', () => {
     expect(headerScrollState({ top: 400, lastTop: 380, headBottom: 120, wasPinned: false })).toEqual({ headGone: true, stripPinned: false })
     expect(headerScrollState({ top: 380, lastTop: 400, headBottom: 120, wasPinned: false })).toEqual({ headGone: true, stripPinned: true })
     // A scroll back down unpins it.
