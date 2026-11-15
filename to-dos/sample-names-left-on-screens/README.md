@@ -2,15 +2,15 @@
 name: Sample names left on a few screens
 number: 337
 group: ready
-status: found 2026-11-13 by the names sweep (#7908 left them on purpose) · waits for #7872 to merge
+status: found 2026-11-13 by the names sweep (#7908 left them on purpose) · #7872 merged 2026-11-13, so nothing holds it · not started
 summary: >
   The names sweep changed only comments in the source. Fourteen lines still hold a real-looking name as live text:
   seven sample subjects and names in the email catalog, one sample name in an email preview, two helper lines on the
   customer form, three placeholders, and one word in the contract match's list of ignored words. Thirteen can take
   the sweep's own made-up names. The fourteenth changes what matches, so it is the owner's call.
-next: Once #7872 has merged, run the private rename list over the six files, keep the 13 lines, and fix any test that reads them. One PR.
+next: Run the private rename list over the six files, keep the 13 lines, and fix any test that reads them. One PR.
 size: XS (one PR)
-blocker: PR #7872 merges first, so the tests and these screens use the same made-up names.
+blocker: none
 opinion: build — a sample on screen should never read like a real customer
 mockup: not required — only sample names change
 ---
@@ -33,7 +33,7 @@ changed. That left fourteen lines where a real-looking name is live text.
 - `src/lib/jobs/driveContractMatch.ts`: one word in `NAME_NOISE`, the words the contract match ignores. Changing it
   changes what matches. Leave it for the owner.
 
-## The build (one PR, after #7872 merges)
+## The build (one PR; #7872, the tests' made-up names, merged 2026-11-13)
 
 1. The private rename list and its scripts live outside the repo, because they hold the old strings. The memory note
    `fixture-names-sweep-stream` says where, or see

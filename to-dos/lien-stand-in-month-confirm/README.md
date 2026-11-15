@@ -2,14 +2,14 @@
 name: "Lien desk: confirm the stand-in month"
 number: 358
 group: ready
-status: written 2026-11-14 from a Lien desk session · the owner approved the mock-up and said build it in a new session · built 2026-11-14 as v2.7280 on claude/lien-month-check, one PR
+status: written 2026-11-14 from a Lien desk session · the owner approved the mock-up and said build it in a new session · built 2026-11-14 as v2.7280, one PR (#8143), on main · the migration is in prod's ledger and dev-mcp is redeployed (server 0.89.0 names the five columns, read 2026-11-15)
 summary: >
   A job with no clock hours and no last day of work set by hand takes its lien month from its bill,
   and every surface flags that month as a stand-in. The only way to clear the flag was to type a
   last day of work, which moves every clock. This adds a second door: a person confirms the month
   is right, with who said so and when. The flag turns quiet on the affidavit pane, the Lien window,
   the printed help sheet and the notice record. No clock moves and no paper changes.
-next: Push the migration after the merge, redeploy dev-mcp, then retire the card once the office has confirmed one real job's month.
+next: Retire the card once the office has confirmed one real job's month.
 size: S
 ver: v2.7280
 blocker: none
