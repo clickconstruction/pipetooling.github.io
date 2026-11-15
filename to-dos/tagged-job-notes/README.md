@@ -1,0 +1,318 @@
+---
+name: "Tag a teammate in a job note, with a count above Jobs"
+number: 363
+group: gated
+status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn the same day · nothing built · waits on her picks
+summary: >
+  Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
+  their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
+  Jobs like the one above Messages. Today a job note reaches nobody: it is one row in a table with
+  no reader but the job's own list, and nothing in the app handles a mention. The plan is a name
+  picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
+  the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
+  roles with no Pipeline, an answer box that posts back on the job, and a push.
+next: Taunya's picks on the eight calls. Then PR 1, the kernel, which needs none of them but call 4.
+size: L as a train of six (S · M · M · M · S · S)
+blocker: Taunya's picks.
+opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
+---
+
+# Tag a teammate in a job note (#363)
+
+## The ask
+
+Taunya, 2026-11-15, with a screenshot of one Pipeline row whose note box held a sentence ending in
+`@taunya`:
+
+> I would like to be able to tag "@personName" in cards and have that show up on their to-do list or
+> Messages or a new section in jobs called "Tagged Job Notes" where in Jobs there is a red icon with
+> the number of unread above jobs just like there is above messages in the header so a user know what
+> they need to respond to
+
+"Cards" are the job rows on Jobs → Pipeline, and the tag is typed in the row's note box. The ask has
+three parts: a tag typed as `@name`, a place the tagged person finds it, and a red count above
+**Jobs** in the header.
+
+[mockup.html](mockup.html) draws all three on made-up data, at desktop and phone width. Its note
+box works: type `@ch` and pick a name.
+
+## The view, in short
+
+**Worth building.** The job's notes are where the team already writes about a job, and today a
+note reaches nobody. A question sits in the list until its reader happens to open that row.
+
+**Land it in Jobs, with one line on the Dashboard.** Of her three places, the new **Tagged job
+notes** section with its own count above Jobs is the right home. The Dashboard's Needs you card
+gets one line that opens the same list, because the field has no Pipeline. Messages and the
+checklist are the wrong homes, for the reasons under *Call 1*.
+
+**A tag is a pick, not a typed word.** The name comes from a list under the box and is kept as its
+own row. The team already types `@` to mean "at".
+
+**The count is what still waits on an answer.** An answer on the job or a Done press clears it.
+Opening does not.
+
+## What exists today
+
+### The note
+
+- A job note is one row of `jobs_ledger_thread_notes`: `id`, `job_id`, `author_user_id`, `body`,
+  `created_at`. Nothing else. No reader, no recipient, no read mark.
+- A typed note is a plain insert from `submitJobThreadNoteWithBody` in
+  `src/hooks/useJobThreadNotes.ts` (and its twin in `useJobThreadNotesForModal.ts`). The Arrived
+  and Leaving stamps and the % complete lines ride the same insert with a built body.
+- **Two note boxes** write to it. `src/components/jobs/JobActivityView.tsx` is the one-line box on
+  the Pipeline row, in the floating window and full screen; it already receives the job's
+  `teamMembers`. `src/components/JobThreadNotesPanel.tsx` is the taller box in the job window, Job
+  Detail, Job Mode and Quickfill.
+- The row's preview and count come from the RPC `jobs_ledger_thread_note_stats`.
+- Edge functions and the dev seat also write notes (`send-test-report`, `auto-send-test-reports`,
+  `legal-portal`, `dev-mcp`'s `apply_activity_note`). None of them tags anyone, and none changes.
+- **Who can read and write a job's notes** (the two policies in
+  `supabase/migrations/20261014220000_helper_on_job_thread_notes.sql`, plus the superintendent's in
+  `20260902165836`): the office team, the job's master, a helper or sub on the job's crew or its
+  schedule this week or last, and a superintendent on a job they can touch. An estimator is outside
+  the `jobs_ledger` read policy and cannot open a job at all (`docs/ACCESS_CONTROL.md`).
+
+### Anything like a mention
+
+Nothing. A search of `src/` for mention handling finds none on notes, messages, tasks or reports.
+The nearest thing is `bid_mark_requests`: one person marks a bid for a teammate with a note and a
+push (`notify-bid-mark`), written only through definer functions and read only by the two people.
+It is the pattern to copy.
+
+### The count above Messages
+
+- `src/components/MessagesBadge.tsx`: a pill at the link's top right, `#b91c1c` under white words,
+  `99+` past 99, nothing at zero or on a failed read. `Layout.tsx`'s `renderNavLinks` draws the
+  link for the desktop bar and for the phone's menu. On a phone the count shows only inside the
+  open menu.
+- The number is `follow_up_count()`: **one number for the whole office**, the customers and
+  contacts waiting on us. It is not per person.
+- Nothing clears on opening a thread. An answer, a logged call, *No reply needed* or Done clears a
+  contact. So the Messages count already means "still owed an answer", not "unread".
+- It reads again live through `useMessagesLive` over one realtime channel and the bus in
+  `src/lib/messages/liveReread.ts`.
+- No other header link carries a count. The only per-person read mark in the app is
+  `user_bid_notes_read_state`, behind the Bid Board's unread bid notes.
+
+### A person's to-do list
+
+- **The Dashboard's Needs you card** (`DashboardNeedsYouCard.tsx` over `buildNeedsYouItems` in
+  `src/lib/dashboardNeedsYou.ts`): a closed list of about 75 kinds of row, most of them counts for
+  the office. Two are per-person notices open to every role, `while-off` and `mail-saved`. A new
+  kind needs a key, a rank, an actor, a source with its role gate, an input and a door, each in a
+  file the typecheck holds.
+- **The checklist and tasks** (`checklist_items`, the New task window `ChecklistAddModal`): an
+  item has a due day, a repeat, assignees and a tick. It has no job column; a job rides as a link.
+  Assigning one sends nothing at the time. The assignee hears at the reminder hour.
+- There is no bell and no notices list. `notification_history` logs each push.
+
+### Pushes a teammate already gets
+
+About a dozen functions push a teammate (a Dispatch request, a bid mark, a lien approval, a report,
+a customer's reply and more). Each goes through `supabase/functions/_shared/pushHoursSend.ts`,
+which holds a push outside the person's own hours (`user_push_hours`) and logs it.
+
+### The size of the need, counted on prod 2026-11-15
+
+Reads only, through the dev seat.
+
+| What | Count |
+|---|---|
+| Job notes in the week to Nov 15 | 93, by 3 people |
+| Of those, Arrived and Leaving stamps | 14 |
+| Of those, written by the dev login, most of them lines the app or the dev seat wrote | 30 |
+| Job notes in the two weeks before | 139, by 5 people |
+| Three weeks together | 232, about 77 a week, 5 writers: the office, a master, a superintendent, the dev login and one sub |
+| Notes of the last week that name a teammate in plain words | at least 6 |
+| Notes since June 1 with an `@` after a space | 3, each meaning "at" (a time or a price) |
+| Notes before today that tag a person with `@` | none |
+| Logins | 78: about 20 working people, 19 subs not archived, about 13 sample, twin and test accounts, the rest archived |
+
+What the numbers say. The notes are a log more than a conversation: about fifty typed lines a week,
+most of them a status in a few words. So the tags will be few, perhaps a handful a week at first.
+The value is not the volume. It is that the one question in fifty no longer waits on luck. Two
+logins differ by one letter in the last name, one on the crew and one a sub, so a typed first name
+cannot be trusted to find the right person.
+
+## The calls, with a pick for each
+
+### Call 1 · Where the tag lands
+
+**Pick: a Tagged job notes section at the top of the Pipeline, counted above Jobs, and one line on
+the Dashboard's Needs you card.**
+
+- **A new section in Jobs** is the right home. The answer belongs on the job's notes, and Jobs is
+  where those notes are. A per-person count above Jobs is new, but the pill is `MessagesBadge`'s.
+  The section draws only while something waits on you or on someone you tagged, so an idle
+  Pipeline looks as it does today.
+- **The Dashboard line is the second door, not a second list.** A superintendent's Jobs page hides
+  the Pipeline, and helpers have no Jobs link. Both open the app on the Dashboard. The Needs you
+  card already carries two per-person notices for every role, so a third fits.
+- **Not Messages.** Its count is one number for the whole office and means customers waiting on
+  us. A tag is one teammate waiting on another. Mixing them weakens both numbers. Field roles
+  cannot open Messages (`canOpenMessages` is the office team), so a superintendent could never be
+  tagged there.
+- **Not a checklist task.** A task has a due day, a tick and its own history. A tag as a task is a
+  second copy of the note that must be ticked as well as answered. A person who wants a dated task
+  out of a tag can still make one by hand.
+- One thing on a phone is new: the count would ride on the menu button too. Today the Messages
+  count is seen only with the menu open.
+
+### Call 2 · What marks a tag read
+
+**Pick: an answer or a Done press. Opening does not.**
+
+Her words are "so a user know what they need to respond to", so the count is what is still owed.
+The Messages count already works this way. An answer is a note the tagged person types on that
+job, from the section's box or from the row. A stamp or a % line does not count. **Done, no
+reply** clears a tag that only needed reading, and the sender sees who pressed it.
+
+The other way is to clear on opening, like unread mail. It is simpler, and it loses the tag read
+in passing on a phone.
+
+### Call 3 · A tag nobody answers
+
+**Pick: it stays and shows its age, amber after two working days, on both people's screens. No
+reminder and no expiry in the first version.**
+
+The sender's note carries *waiting on Dana · 3d*, and the sender's **You asked** fold lists it. A
+second push or an expiry can follow once there are real tags to judge by.
+
+### Call 4 · How a name is picked
+
+**Pick: a list under the box, opened by `@` or by an @ button, the job's crew first. Only a picked
+name is a tag.**
+
+- Two people can share a first name, and two logins already differ by one letter. The list shows
+  the full name and what the person does.
+- The team types `@` to mean "at". A tag read from the words would misfire on those notes.
+- A pick can be checked against who may open the job before the note is posted.
+- On a phone the list opens above the box so the keyboard does not cover it, each name a row 40 px
+  tall. The @ button saves finding the key.
+- The picked name stays in the words as `@Full Name` and shows above the box until the post, with
+  an × to take it off. The tag itself is a row, never parsed back out of the body.
+
+### Call 5 · Who may be tagged
+
+**Pick: anyone with a login who can open that job's notes. The office and the job's crew. Not
+subs, not archived people, not sample, twin or test accounts.**
+
+- The list offers only people the notes' own policy lets in, so nobody is tagged on a job they
+  cannot see. An estimator cannot open a job today and so is not offered.
+- A helper's access to a job ends two weeks after their last day on it. A tag made while they had
+  it should still show them that one note. PR 2 settles how (see *Left to settle*).
+- Subs see their jobs through their own pages and have no Dashboard like the crew's. Tagging a sub
+  needs its own design and waits.
+
+### Call 6 · Whether a tag sends a push
+
+**Pick: yes, one push per tag, held outside the person's push hours like every other. No email.**
+
+The crew does not watch the header. The push reads *Marcus tagged you on Cedar Bluff Lofts* with
+the note's first words, and opens the list. A person with no device hears nothing until they open
+the app; an email for them can follow.
+
+### Call 7 · Telling the sender
+
+**Pick: a push when the answer lands, and a You asked fold under the section. No count for the
+sender.**
+
+The other way is for the answer to tag the sender back. Then each answer is a new thing to clear,
+and two people end up clearing each other.
+
+### Call 8 · The other places notes are written
+
+**Pick: the Pipeline row's box first, then the taller box the job window, Job Detail, Job Mode and
+Quickfill share. Reports, estimate notes and bid notes later.**
+
+The two boxes are two components, so the second is its own small PR. Reports are a form, not a
+line of text, and estimates and bids keep their own threads.
+
+## Left out of the first version
+
+- Tagging a sub.
+- Email for a person with no device.
+- A reminder or an expiry for a tag nobody answers.
+- Tags in reports, estimate notes and bid notes.
+- Tagging a group, such as the whole office.
+- Editing or adding a tag after the note is posted.
+- A tag from the dev seat's `apply_activity_note`.
+
+## Where it plugs in
+
+Exists and changes:
+
+| File | Change |
+|---|---|
+| `src/components/jobs/JobActivityView.tsx` | the list under the one-line box, the @ button, the chips above the box, the chip and the waiting line on a posted note |
+| `src/components/JobThreadNotesPanel.tsx` | the same on the taller box (PR 6) |
+| `src/hooks/useJobThreadNotes.ts`, `useJobThreadNotesForModal.ts` | a typed note with tags posts through the new RPC; stamps and % lines keep the plain insert |
+| `src/components/Layout.tsx` | the Jobs link carries the count, in the bar and in the phone's menu, and the menu button on a phone |
+| `src/components/jobs/JobsStagesTab.tsx` | mounts the section above the stages |
+| `src/lib/dashboardNeedsYou.ts`, `needsYouActor.ts`, `needsYouSources.ts`, `needsYouDoors.ts`, `src/hooks/useNeedsYouInputs.ts` | the `tagged-notes` row, open to every role |
+
+New:
+
+| Piece | What |
+|---|---|
+| `jobs_ledger_note_tags` | one row a tag: the note, the job, who is tagged, who tagged, when, and when and how it cleared (`answered` with the answering note, or `done`). Cascades with its note. Written only through definer functions, as `bid_mark_requests` is |
+| `job_note_post_tagged` | posts a typed note and its tags in one transaction, refuses a person who cannot read the job's notes, and clears the writer's own waiting tags on that job as answered |
+| `job_note_tags_mine`, `job_note_tags_count`, `job_note_tag_done` | the section's two lists, the header's number, the Done press |
+| `job_note_taggable` | who may be tagged on a job: the notes' read rule asked for a named person. The policy today is written for the signed-in person only, so this is the one hard piece |
+| `src/lib/jobs/noteTags.ts` | the kernel: the `@` being typed at the caret, the ranked list, which picked names are still in the words, the age words |
+| `NoteTagPicker.tsx`, `JobsTagsBadge.tsx`, `TaggedJobNotesSection.tsx` | the list, the pill, the section |
+| `notify-note-tag` | the push to the tagged person and to the sender on the answer, through `_shared/pushHoursSend.ts` |
+| `src/content/help/tag-a-teammate-in-a-job-note.md` | the guide |
+
+Neighbours on 2026-11-15: #8192 (the Lien desk's Board on the Needs you card) edits the Needs you
+files, so PR 4 here is cut after it merges. #8200 touches the stage bar's CSS only. No open PR
+edits either note box.
+
+## The plan
+
+Six PRs, smallest first. Each cut from fresh `main`, each with its release note and fragment.
+
+1. **The kernel** (S). `src/lib/jobs/noteTags.ts` with its tests. No screen, no migration. Needs
+   call 4 only.
+2. **The ground** (M). One migration: the table with the four fence calls, the five functions,
+   `SET lock_timeout`. `docs/migrations/`, the types PR after the push. No screen. Needs calls 2
+   and 5.
+3. **The list on the Pipeline row** (M). The picker in `JobActivityView`, the chip and the waiting
+   line. The guide starts here. A tag made now is seen by the tagged person on that row only, so
+   this PR and the next should land close together.
+4. **Where it lands** (M). The count above Jobs, the section with its answer box and Done, the You
+   asked fold, the Needs you line. Needs calls 1, 3 and 7. `PROJECT_DOCUMENTATION.md`,
+   `GLOSSARY.md` and `ACCESS_CONTROL.md` take their lines here.
+5. **The push** (S). `notify-note-tag`, deployed after the merge, its section in
+   `docs/EDGE_FUNCTIONS.md`. Needs call 6.
+6. **The second box** (S). `JobThreadNotesPanel`, which covers the job window, Job Detail, Job Mode
+   and Quickfill. Needs call 8.
+
+## Left to settle while building
+
+- **A tagged person who loses the job.** A helper's read of a job's notes lapses. The tag should
+  keep that one note readable to them through `job_note_tags_mine`, with *Open the job* hidden.
+- **Who else sees a tag.** Anyone who can read the note should see the chip, so the row says who
+  it waits on. The tag row's read rule follows the note's.
+- **Live re-read.** The count needs a realtime channel on the tags table, or a read on focus only.
+  Focus alone is cheaper and may be enough for a handful of tags a week.
+- **An answer from the row.** A typed note on the job clears the writer's own waiting tags there,
+  wherever it is typed. A status sweep such as *on going* would clear a tag too. That is accepted
+  for the first version, and the sender still reads the answer.
+
+## How to verify
+
+Two logins and one test job, nothing live:
+
+1. On a `ZZ Test` job, as the dev, type `@` in the row's box, pick the walk tester and post.
+2. As the walk tester (`node scripts/dev-pane-login.mjs`), see 1 above Jobs, the section, and the
+   Needs you line. Open the row: the count holds.
+3. Answer from the section: the note is on the job, the count is gone, the dev's You asked reads
+   *answered*.
+4. Tag again, press **Done, no reply**: the count is gone and the dev's side names who pressed it.
+5. View as a superintendent and a helper: the Dashboard line is there and opens the list.
+6. Try to tag a person who cannot open the job: the name is not offered.
+7. At 375 wide: the list sits above the keyboard, the menu button carries the count.
+8. Delete every `ZZ Test` note and tag made.
