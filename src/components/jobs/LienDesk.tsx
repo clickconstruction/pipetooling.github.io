@@ -96,7 +96,8 @@ import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRo
 import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
 import { lienMonthLineDue } from '../../lib/jobs/lienMonthLine'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
-import { LIEN_PHONE_TAB, lienPileHeadPlace, lienPileReached, lienPileScrollTop } from '../../lib/jobs/lienPhoneLists'
+import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
+import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
 import { LienMonthBar } from './LienMonthBar'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
@@ -164,7 +165,7 @@ import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../.
 import { lienDeskPileLineFit, lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineFit, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
 import { DeskLegendCard } from '../help/LegendCard'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
-import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
+import { lienFindMatch, lienFindNothingWords, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
 import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
@@ -468,8 +469,6 @@ export default function LienDesk({
   // A phone's open paper: the footer folded to one bar so the paper has the screen (punch list #352, PR 6).
   const [footFolded, setFootFolded] = useState(false)
   // The pile titles stack as the Notices list scrolls (v2.4672): the list's scroller, and the pile the reader is in.
-  const listRef = useRef<HTMLDivElement | null>(null)
-  const [litPile, setLitPile] = useState<LienDeskPile | null>(null)
   // Wording (v2.3522): the four typed values the office may shape, layered over the draft; the paper-first pane's scroll state.
   const [wordingEdits, setWordingEdits] = useState<Partial<LienNoticeFields>>({})
   const previewWinRef = useRef<Window | null>(null)
@@ -1698,7 +1697,8 @@ export default function LienDesk({
   // The held papers alone (v2.7209): only while a gate holds one, so the list never narrows to nothing when the last one clears.
   const affHeldJobIds = new Set(affPrintPlanAll.gated.map((g) => g.entry.jobId))
   const affHeldOnly = affHeldOnlyPicked && affHeldJobIds.size > 0
-  const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affHeldOnly ? affHeldJobIds.has(e.jobId) : affPile == null || affPile === p))).filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
+  const affVisibleAll = LIEN_AFFIDAVIT_PILES.flatMap((p) => affEntries.filter((e) => e.pile === p.key && (affHeldOnly ? affHeldJobIds.has(e.jobId) : affPile == null || affPile === p.key)))
+  const affVisible = affVisibleAll.filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
   const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!oneColumn ? affVisible[0] : undefined) ?? null
   // While a find is typed (punch list #353, part 1) both batch presses take only the rows the list shows, and say so; with nothing typed they take every paper as before.
   const affShownKey = finding ? affVisible.map((e) => e.jobId).join('\n') : null
@@ -1832,7 +1832,8 @@ export default function LienDesk({
     for (const copy of run.copies) void fileSentCopy({ ...copy.filing, how: 'print' }, { html: copy.html })
   }
   const retEntries = data?.retainage.entries ?? []
-  const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key) && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
+  const retVisibleAll = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key)))
+  const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retVisibleAll.filter((e) => e.pile === p.key && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
   const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!oneColumn ? retVisible[0] : undefined) ?? null
   const retCount = retEntries.filter((e) => e.pile !== 'sent').length
   const retReady = data?.retainage.counts.ready ?? 0
@@ -1917,28 +1918,11 @@ export default function LienDesk({
 
   // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
   // On a phone one title pins, the pile being read, and each is a thumb tall (punch list #352, PR 5; `lienPhoneLists.ts`).
+  // The three By paper lists share the titles' wiring (`LienPileHeads.tsx`, the owner's ask of 2026-11-15); the rule of where a title sits stays in `lienPhoneLists.ts`.
   const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p), total: visibleAll.filter((e) => e.pile === p).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
-  const scrollToPile = (p: LienDeskPile, i: number) => {
-    const host = listRef.current
-    const rows = host?.querySelector<HTMLElement>(`[data-lien-pile-rows="${p}"]`)
-    if (!host || !rows) return
-    const top = lienPileScrollTop(rows.offsetTop, i, isMobile)
-    if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: 'smooth' })
-    else host.scrollTop = top
-    setLitPile(p)
-  }
-  const relightPiles = () => {
-    const host = listRef.current
-    if (!host) return
-    let on: LienDeskPile | null = null
-    pilesShown.forEach(({ p }, i) => {
-      const rows = host.querySelector<HTMLElement>(`[data-lien-pile-rows="${p}"]`)
-      if (rows && lienPileReached(rows.offsetTop, host.scrollTop, i, isMobile)) on = p
-    })
-    setLitPile(on)
-  }
+  const noticeHeads = useLienPileHeads(pilesShown.map((x) => x.p), isMobile)
   const list = (
-    <div ref={listRef} onScroll={relightPiles} data-lien-desk-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
+    <div ref={noticeHeads.listRef} onScroll={noticeHeads.onScroll} data-lien-desk-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
       {visible.length === 0 && finding && visibleAll.length > 0 && alsoSent.length === 0 ? (
         <div data-testid="lien-desk-find-nothing" style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4 }}>
           <strong style={{ color: 'var(--text-strong)' }}>{lienFindNothingWords(find).head}</strong>
@@ -1972,11 +1956,7 @@ export default function LienDesk({
         const label = LIEN_DESK_PILES.find((x) => x.key === p)?.label ?? p
         return (
           <Fragment key={p}>
-            <div className="lienPileHead" data-lien-pile-head={p} data-on={(litPile ?? pilesShown[0]?.p) === p ? 'yes' : 'no'} data-empty={finding && rows.length === 0 ? 'yes' : undefined} style={{ ...lienPileHeadPlace(i, pilesShown.length, isMobile), ...(isMobile ? { fontSize: '0.75rem' } : null), opacity: finding && rows.length === 0 ? 0.55 : undefined }}>
-              <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPile(p, i)} title="Go to this pile">
-                {label}
-                <span className="n" data-lien-pile-count={p}>{finding ? lienFindPileCount(rows.length, total, true) : (counts?.[p] ?? rows.length)}</span>
-              </button>
+            <LienPileHead pile={p} label={label} count={lienPileHeadCount(rows.length, total, counts?.[p], finding)} i={i} n={pilesShown.length} phone={isMobile} on={noticeHeads.lit === p} empty={finding && rows.length === 0} onPress={() => noticeHeads.scrollToPile(p, i)} onShowEvery={pile ? () => setPile(null) : null}>
               {p === 'ready' && office && runCount > 0 ? (
                 <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap', ...(isMobile ? PHONE_PILE_PRESS : null) }}>
                   Send the run · {runCount}
@@ -1987,12 +1967,7 @@ export default function LienDesk({
                   {deliveriesOnly ? 'Every sent notice' : `Deliveries · ${mailedJobIds.size}`}
                 </button>
               ) : null}
-              {pile ? (
-                <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' , ...(isMobile ? { fontSize: '0.8125rem', minHeight: 40 } : null) }}>
-                  show every pile
-                </button>
-              ) : null}
-            </div>
+            </LienPileHead>
             <div data-lien-pile-rows={p}>
             {rows.map((e) => {
               const j = data?.jobsById[e.jobId]
@@ -2998,8 +2973,11 @@ export default function LienDesk({
   // On a phone the chips are one strip that slides sideways, the first thing in the list's own scroller.
   const pileStrip = (chips: ReactNode[]) => (isMobile && chips.length > 0 ? <div data-lien-desk-piles style={{ display: 'flex', gap: 8, padding: '8px 12px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>{chips}</div> : null)
 
+  // Every pile with rows gets a stacked title, as the Notices list draws them (the owner's ask of 2026-11-15); the held-only list keeps the title's count to the rows it shows.
+  const affPilesShown = LIEN_AFFIDAVIT_PILES.map((p) => ({ p: p.key, label: p.label, rows: affVisible.filter((e) => e.pile === p.key), total: affVisibleAll.filter((e) => e.pile === p.key).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
+  const affHeads = useLienPileHeads(affPilesShown.map((x) => x.p), isMobile)
   const affList = (
-    <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
+    <div ref={affHeads.listRef} onScroll={affHeads.onScroll} data-lien-affidavit-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
       {pileStrip(affPileChips)}
       {affVisible.length === 0 ? (
         loading || data == null ? (
@@ -3120,12 +3098,10 @@ export default function LienDesk({
           </button>
         </div>
       ) : null}
-      {LIEN_AFFIDAVIT_PILES.map((p) => {
-        const rows = affVisible.filter((e) => e.pile === p.key)
-        if (rows.length === 0) return null
-        return (
-          <div key={p.key}>
-            <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.6rem 0.9rem 0.2rem' }}>{p.label}</div>
+      {affPilesShown.map(({ p, label, rows, total }, i) => (
+          <Fragment key={p}>
+            <LienPileHead pile={p} label={label} count={lienPileHeadCount(rows.length, total, affHeldOnly ? undefined : data?.affidavits.counts[p], finding)} i={i} n={affPilesShown.length} phone={isMobile} on={affHeads.lit === p} empty={finding && rows.length === 0} onPress={() => affHeads.scrollToPile(p, i)} onShowEvery={affPile && !affHeldOnly ? () => setAffPile(null) : null} />
+            <div data-lien-pile-rows={p}>
             {rows.map((e) => {
               const j = data?.jobsById[e.jobId]
               const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
@@ -3164,9 +3140,9 @@ export default function LienDesk({
                 </button>
               )
             })}
-          </div>
-        )
-      })}
+            </div>
+          </Fragment>
+      ))}
     </div>
   )
   const affPane =
@@ -3205,8 +3181,10 @@ export default function LienDesk({
     )
 
   // ---------- retainage: the list and the pane (v2.3753) ----------
+  const retPilesShown = LIEN_RETAINAGE_PILES.map((p) => ({ p: p.key, label: p.label, rows: retVisible.filter((e) => e.pile === p.key), total: retVisibleAll.filter((e) => e.pile === p.key).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
+  const retHeads = useLienPileHeads(retPilesShown.map((x) => x.p), isMobile)
   const retList = (
-    <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
+    <div ref={retHeads.listRef} onScroll={retHeads.onScroll} style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
       {pileStrip(retPileChips)}
       {retVisible.length === 0 ? (
         !loading && data != null && (finding || retPile) ? (
@@ -3219,12 +3197,10 @@ export default function LienDesk({
           </p>
         )
       ) : null}
-      {LIEN_RETAINAGE_PILES.map((p) => {
-        const rows = retVisible.filter((e) => e.pile === p.key)
-        if (rows.length === 0) return null
-        return (
-          <div key={p.key}>
-            <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.6rem 0.9rem 0.2rem' }}>{p.label}</div>
+      {retPilesShown.map(({ p, label, rows, total }, i) => (
+          <Fragment key={p}>
+            <LienPileHead pile={p} label={label} count={lienPileHeadCount(rows.length, total, data?.retainage.counts[p], finding)} i={i} n={retPilesShown.length} phone={isMobile} on={retHeads.lit === p} empty={finding && rows.length === 0} onPress={() => retHeads.scrollToPile(p, i)} onShowEvery={retPile ? () => setRetPile(null) : null} />
+            <div data-lien-pile-rows={p}>
             {rows.map((e) => {
               const j = data?.jobsById[e.jobId]
               const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
@@ -3255,9 +3231,9 @@ export default function LienDesk({
                 </button>
               )
             })}
-          </div>
-        )
-      })}
+            </div>
+          </Fragment>
+      ))}
     </div>
   )
   const retPane =
