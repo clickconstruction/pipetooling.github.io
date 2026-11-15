@@ -212,7 +212,7 @@ describe('buildLienNextUp — the printed run is one row (punch list #101)', () 
     expect(rows.map((r) => r.key).sort()).toEqual(['notice:j4', 'run:printed'])
     const run = rows.find((r) => r.key === 'run:printed')!
     expect([run.kind, run.jobId, run.gcId, run.title, run.dueOn, run.daysLeft, run.severity, run.group]).toEqual(['notice', null, null, '3 notices printed Oct 7', '2026-10-15', 5, 'red', 'now'])
-    expect(run.sub).toBe('Mailed? Type each envelope’s number. Not mailing them? Take the run back.')
+    expect(run.sub).toBe('The run as a checklist: tick Printed, Signed and Mailed on each. Mailed? Type each envelope’s number. Not mailing them? Take the run back.')
     expect([run.action, run.button]).toEqual(['record_mailing', 'Record the mailing'])
     expect(run.target).toEqual({ open: 'run', gcId: null })
     expect(run.secondary).toEqual({ words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } })
