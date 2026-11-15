@@ -184,6 +184,7 @@
       <li><b>G78</b> alone: the names start there and How many says how far.</li>
       <li><b>G78-300</b>: the count follows the range. How many goes grey and reads 223.</li>
       <li><b>A1-D50</b>: the letter and the number both step. Four rows of fifty.</li>
+      <li><b>G78B-D</b>: twins at one spot. <b>G1-100C</b>: every spot plain, then B, then C.</li>
       <li>Leave it empty and the run is numbered only, as today.</li>
     </ul>
     <p class="b">The parts of the two ends that differ step. The parts that match stay.</p>
@@ -252,7 +253,7 @@
         <div class="btn">Print 1 test strip</div>
       </div>
     </div>
-    <p class="say">Try <b>G78</b>, <b>G1-200</b>, <b>A1-D50</b>, <b>G24A-G24D</b>, <b>G900-1100</b> or nothing. The strips redraw, the press renames itself, and a range that breaks the rule says why in the same spot.</p>
+    <p class="say">Try <b>G78</b>, <b>G1-200</b>, <b>A1-D50</b>, <b>G78B-D</b>, <b>G1-100C</b>, <b>G900-1100</b> or nothing. The strips redraw, the press renames itself, and a range that breaks the rule says why in the same spot.</p>
   </div>
 </div>
 <p class="note"><b>Why one typed field and not three.</b> A letter, a from and a to as three boxes is the same ask spread out, and a person with a list in hand already thinks <i>G78 to 300</i>. The read line under the field says what was understood, as the Add sheet says what it made of a typed name. The three pieces are still there in the words, so nothing is hidden.</p>
@@ -349,7 +350,10 @@
     <tr data-try="G78" data-count="200"></tr>
     <tr data-try="G1-200"></tr>
     <tr data-try="A1-D50"></tr>
-    <tr data-try="G24A-G24D"></tr>
+    <tr data-try="G78B-D"></tr>
+    <tr data-try="G1B-200B"></tr>
+    <tr data-try="G1-100C"></tr>
+    <tr data-try="G78B"></tr>
     <tr data-try="g78 to g300"></tr>
     <tr data-try="R7"></tr>
     <tr data-try="G900-1100"></tr>
@@ -361,7 +365,8 @@
     <tr class="try"><td class="typed"><input id="tryInput" value="GA1-GD12" aria-label="Try a range" spellcheck="false" autocomplete="off"></td><td id="tryRead"></td><td id="tryCount"></td><td id="tryWhy"></td></tr>
   </tbody>
 </table>
-<p class="note"><b>Why seven characters and not a setting.</b> The maximum is the box rule's, which the site already holds in the database and on every Add sheet. A sticker that could carry a longer name than a box can hold would make a name the scan then refuses. <b>Why the letter after is the innermost step</b>: G24A to G24D is a set of twins at one spot, which is what that letter means on the paint.</p>
+<p class="note"><b>Why seven characters and not a setting.</b> The maximum is the box rule's, which the site already holds in the database and on every Add sheet. A sticker that could carry a longer name than a box can hold would make a name the scan then refuses. <b>The letter after the number</b> is the second cage at a spot: on the paint there is G24 and G24B, never G24A, so the plain name is the first and B the second. A range from a plain name to a lettered one reads plain, B, C for every spot, and it is the innermost step, so a spot's cages print together.</p>
+<p class="note"><b>A twin found on site</b> after a plain run printed: the person scans the plain G78 sticker, the sheet says the site has a G78 already, and <b>It is a different box</b> offers the next twin, <b>Save box G78B</b>, or G78C when G78B stands. The tape then reads G78 for a box named G78B, and a later scan says so. For a twin set known ahead, print <b>G78B-C</b> from the window instead: two stickers that read as the cages do.</p>
 
 <h2 id="calls">Your calls <small>four, my pick first</small></h2>
 <div class="cards">
@@ -454,8 +459,9 @@
       return { kind: 'names', names: names1, from: names1[0], to: names1[names1.length - 1], rows: 1,
         why: cut ? 'Names stop at ' + a.letters + '999' + a.tail + ', so the run is ' + names1.length + '.' : 'From ' + nameWords(a) + ', How many says how far.' };
     }
-    var b = /^[1-9][0-9]{0,2}$/.test(parts[1]) ? { letters: a.letters, number: Number(parts[1]), tail: a.tail }
-      : /^[A-Z]$/.test(parts[1]) && a.tail ? { letters: a.letters, number: a.number, tail: parts[1] }
+    var short = /^([1-9][0-9]{0,2})([A-Z])?$/.exec(parts[1]);
+    var b = short ? { letters: a.letters, number: Number(short[1]), tail: short[2] || a.tail }
+      : /^[A-Z]$/.test(parts[1]) ? { letters: a.letters, number: a.number, tail: parts[1] }
       : parseName(parts[1]);
     if (!b) return { kind: 'bad', why: RULE_WORDS };
     var lettersStep = a.letters !== b.letters, numberStep = a.number !== b.number, tailStep = a.tail !== b.tail;
@@ -464,14 +470,17 @@
     var letters = lettersStep ? stepLetters(a.letters, b.letters) : [a.letters];
     if (!letters) return { kind: 'bad', why: 'The letters step on the last letter only, A to D or GA to GD, upward.' };
     if (b.number < a.number) return { kind: 'bad', why: 'The range runs upward: ' + nameWords(b) + ' to ' + nameWords(a) + '.' };
-    if ((a.tail && !b.tail) || (!a.tail && b.tail)) return { kind: 'bad', why: 'Both ends carry the letter after the number, or neither does.' };
-    if (tailStep && b.tail < a.tail) return { kind: 'bad', why: 'The range runs upward: ' + nameWords(b) + ' to ' + nameWords(a) + '.' };
-    var tails = tailStep ? stepLetters(a.tail, b.tail) : [a.tail];
+    if (a.tail && !b.tail) return { kind: 'bad', why: 'The range runs upward: ' + nameWords(b) + ' to ' + nameWords(a) + '.' };
+    if (tailStep && a.tail && b.tail < a.tail) return { kind: 'bad', why: 'The range runs upward: ' + nameWords(b) + ' to ' + nameWords(a) + '.' };
+    // The plain name is the first cage at a spot and B the second (G24 and G24B on the paint, never G24A), so a range
+    // from a plain name to a lettered one reads plain, B, C: G1-100C is G1, G1B, G1C, G2, G2B, G2C.
+    var tails = !tailStep ? [a.tail] : a.tail ? stepLetters(a.tail, b.tail) : [''].concat(b.tail > 'A' ? stepLetters('B', b.tail) : []);
     var names = [];
     letters.forEach(function (L) { for (var n = a.number; n <= b.number; n++) tails.forEach(function (T) { names.push(L + n + T); }); });
     if (names.length > RUN_MAX) return { kind: 'bad', why: 'A run is 1 to ' + RUN_MAX + ' stickers. ' + nameWords(a) + ' to ' + nameWords(b) + ' is ' + names.length + '.' };
     var rows = letters.length > 1 ? letters.length : 1;
     var why = rows > 1 ? rows + ' rows of ' + (names.length / rows) + ', ' + letters[0] + ' to ' + letters[letters.length - 1] + ', row by row.'
+      : tails.length > 1 && !a.tail ? 'Each spot gets the plain name, then ' + (tails.length > 2 ? 'B to ' + b.tail : 'B') + ': the twins behind it.'
       : tails.length > 1 ? 'The letter after the number steps: a set of twins at one spot.'
       : 'The number steps.';
     return { kind: 'names', names: names, from: names[0], to: names[names.length - 1], rows: rows, why: why };
