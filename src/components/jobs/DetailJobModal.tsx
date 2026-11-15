@@ -93,6 +93,7 @@ import { stripStateWord } from '../../lib/jobs/jobAccountStrip'
 import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
 import { JobWindowThread, JobWindowWho, PhoneFold, PhoneRow, PhoneSectionTitle } from './JobWindowPhoneSections'
 import { JobWindowMoreSheet } from './JobWindowMoreSheet'
+import { watchSmallPresses } from './jobWindowPressPad'
 import { CREW_FOLD_TITLES, crewBlockLabel, crewFolds, crewQuietLine, crewSheetRows, keepCrewFolds, lastNoteWords, readCrewFolds, type CrewFoldKey, type CrewNoteSource } from '../../lib/jobs/jobWindowCrewPhone'
 import { foldCountWords, keepPhoneFolds, nextOnSite, NOTHING_SCHEDULED, OPEN_THE_CALENDAR, PHONE_FOLDS, readPhoneFolds, waitingOnWords, type PhoneFoldKey } from '../../lib/jobs/jobWindowPhoneSections'
 import type { JobThreadStampKind } from '../../lib/jobThreadNoteStampBody'
@@ -1719,6 +1720,28 @@ export default function DetailJobModal({
 
   useBodyScrollLock(open && narrowViewport)
 
+  // The crew's window on a phone: every press under 40 px in the body gets the unseen 44 px pad the tabbed window's
+  // body has (v2.7309), marked by `watchSmallPresses` and drawn by the rule beside the body; nothing moves.
+  const crewBodyRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!open || !phoneCrew) return
+    const body = crewBodyRef.current
+    if (!body) return
+    return watchSmallPresses(body)
+  }, [open, phoneCrew])
+
+  // A feed inside a fold is laid out hidden, so its own jump to the newest entry lands nowhere: when the fold opens,
+  // on either window's phone, the list goes to its newest entry, as it does on a desk.
+  const notesFoldOpen = phoneCrew ? crewFoldsOpen.has('notes') : phonePane && phoneFolds.has('activity')
+  const notesLoading = threadNotes.loading
+  useEffect(() => {
+    if (!open || !notesFoldOpen || notesLoading) return
+    const frame = requestAnimationFrame(() => {
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-phone-fold] [data-activity-scroll]'))) el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open, notesFoldOpen, notesLoading])
+
   if (!open) return null
 
   // v2.3615: Their journey — the What-customers-see strips for this job's customer, narrowed to this job. Office roles
@@ -1836,6 +1859,11 @@ export default function DetailJobModal({
         {node}
       </PhoneFold>
     ) : null
+  /** Last note's blue words: the Notes and reports fold opens for this look and comes into view. */
+  const openCrewNotes = () => {
+    setCrewFoldsOpen((prev) => new Set(prev).add('notes'))
+    requestAnimationFrame(() => document.querySelector(`[data-phone-fold="${CREW_FOLD_TITLES.notes}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
+  }
   /** The notes and reports: the crew's own fold in the plain window, the Activity fold in the tabbed one, the panel itself on a desk. */
   const notesFold = (node: ReactNode, count?: string): ReactNode => (phoneCrew ? crewFold('notes', node, count) : fold('activity', node, count))
 
@@ -1902,7 +1930,13 @@ export default function DetailJobModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* On a phone the plain window's body scrolls on its own under the crew bar (punch list #189, PR 4). */}
-        <div style={phoneCrewBar ? { flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 1.25rem 1.25rem' } : undefined}>
+        {phoneCrew ? (
+          <style>{`
+            .crew-window-body [data-press-pad] { position: relative; }
+            .crew-window-body [data-press-pad]::after { content: ''; position: absolute; top: calc(-1 * var(--press-pad-y, 0px)); bottom: calc(-1 * var(--press-pad-y, 0px)); left: calc(-1 * var(--press-pad-x, 0px)); right: calc(-1 * var(--press-pad-x, 0px)); }
+          `}</style>
+        ) : null}
+        <div ref={crewBodyRef} className={phoneCrew ? 'crew-window-body' : undefined} style={phoneCrewBar ? { flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 0.9rem 1.25rem' } : undefined}>
         {phoneCrew ? (
           <div data-testid="crew-window-head" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem', paddingBottom: '0.25rem' }}>
             <div style={{ flex: 1, minWidth: 0, paddingTop: '0.45rem' }}>
@@ -2712,7 +2746,7 @@ export default function DetailJobModal({
                 />
               ) : null
             })() : null}
-            {crewLastNote ? <PhoneRow testId="crew-window-last-note" label="Last note" value={crewLastNote.value} sub={crewLastNote.sub} act="Read the notes" onAct={() => setCrewFoldsOpen((prev) => new Set(prev).add('notes'))} /> : null}
+            {crewLastNote ? <PhoneRow testId="crew-window-last-note" label="Last note" value={crewLastNote.value} sub={crewLastNote.sub} act="Read the notes" onAct={openCrewNotes} /> : null}
           </>
         ) : null}
         {/* v2.6585 (punch list #255): the job's target in hours, for any job: the expected hours, else the labor budget, else none yet.

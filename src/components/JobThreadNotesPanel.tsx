@@ -453,6 +453,7 @@ export function JobThreadNotesPanel({
       ) : (
         <div
           ref={activityScrollRef}
+          data-activity-scroll=""
           style={{
             maxHeight: ACTIVITY_LIST_MAX_HEIGHT,
             overflowY: 'auto',
