@@ -11,6 +11,7 @@ import { errorKindOf, formatErrorMessage } from '../../utils/errorHandling'
 import { TASK_PHOTOS_BUCKET, taskPhotoCaption, taskPhotoPath, type TaskPhotoKind, type TaskPhotoRowShape } from '../taskPhotos'
 import { PhotoSendError } from './jobPhotoNotesIo'
 import { newPhotoId } from './reportPhotos'
+import { bytesAlreadyThere } from './shotTiles'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -46,14 +47,16 @@ export type SendTaskPhotoInput = {
 /**
  * The bytes to the bucket, then the row. Throws a `PhotoSendError` with the reason and its class: a `network` one is
  * the phone with no signal, and the sheet keeps the shot for the outbox (v2.6628); any other shows as it is. A shot
- * sent again under its kept id lands on the same row (an upsert), so a resend counts once.
+ * sent again under its kept id lands on the same row (an upsert), so a resend counts once. The upload is never an
+ * upsert: the bucket has no update policy and refuses one onto an object that is there, every try. A resend that finds
+ * its own bytes there (the first upload landed and its answer was lost) goes on to the row (punch list #338).
  */
 export async function sendTaskPhoto(input: SendTaskPhotoInput): Promise<TaskPhotoRow> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new PhotoSendError('The phone has no signal.', 'network')
   const id = input.id ?? newPhotoId()
   const storagePath = taskPhotoPath(input.instanceId, id)
-  const { error } = await db.storage.from(TASK_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: true })
-  if (error) throw new PhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
+  const { error } = await db.storage.from(TASK_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: false })
+  if (error && !bytesAlreadyThere(error)) throw new PhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
   const row = {
     id,
     instance_id: input.instanceId,

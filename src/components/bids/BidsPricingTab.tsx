@@ -111,6 +111,8 @@ import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
 import { bidDifficultyAmountOnRows } from '../../lib/bids/bidDifficulty'
 import { difficultyPriceVersionWords } from '../../lib/bids/difficultyPrice'
 import BidDifficultyStrip from './BidDifficultyStrip'
+import BidScoreHoldLine from './BidScoreHoldLine'
+import { bidScoreReadiness, laborCompleteness } from '../../lib/scorecard/scoreReadiness'
 import type {
   CostEstimate,
   CostEstimateLaborRow,
@@ -2411,6 +2413,14 @@ export function BidsPricingTab({
     viewingPricingId: selectedPricingVersionId,
     customerFacingPricingId,
   })
+  // #360 PR 2: whether the Scores tab could judge this bid, said here while the estimator can still act. A bid on
+  // the desk is read off the screen (the stamp's numbers as they stand); a sent bid off the margin it went out at.
+  const scoreSent = !!selectedBidForPricing?.bid_date_sent
+  const scoreNumbers = scoreSent || !pricedStampLatest?.input ? pricedStamp : pricedStampLatest.input
+  const scoreReadiness = selectedBidForPricing && scoreNumbers
+    ? bidScoreReadiness({ pricedRevenueUsd: scoreNumbers.revenueUsd, pricedCostUsd: scoreNumbers.costUsd, pricedUncostedUsd: scoreNumbers.uncostedUsd, labor: pricingCostEstimate ? laborCompleteness(pricingLaborRows, pricingCostEstimate.labor_rate) : null, sent: scoreSent })
+    : null
+  const scoreHold = scoreReadiness?.kind === 'hold' ? scoreReadiness : null
   // #357 PR 4: what the difficulty lines are made from, refreshed every commit as the stamp's numbers are.
   const bidDifficultyNow: BidDifficultyOnScreen | null = selectedBidForPricing
     ? {
@@ -3436,6 +3446,7 @@ export function BidsPricingTab({
                           </div>
                           {altLine}
                           <PricedMarginLine stamp={pricedStamp} sent={!!selectedBidForPricing?.bid_date_sent} />
+                          <BidScoreHoldLine hold={scoreHold} onOpenLabor={selectedBidForPricing && !scoreSent ? () => onNavigateBidToTab(selectedBidForPricing, 'labor') : null} />
                           {selectedBidForPricing ? (
                             // #357 PR 4: the difficulty lines the bid was priced with, with the door to take one off.
                             <BidDifficultyStrip
@@ -4545,6 +4556,8 @@ export function BidsPricingTab({
             setPackageSendOpen(false)
             onEditBid(selectedBidForPricing)
           }}
+          scoreHold={scoreHold}
+          onOpenLabor={scoreSent ? null : () => { setPackageSendOpen(false); setShareOverride(null); onNavigateBidToTab(selectedBidForPricing, 'labor') }}
         />
       ) : null}
     </>

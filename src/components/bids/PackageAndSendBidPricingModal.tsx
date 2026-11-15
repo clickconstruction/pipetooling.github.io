@@ -23,6 +23,8 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import { type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import BidScoreHoldLine from './BidScoreHoldLine'
+import type { ScoreReadiness } from '../../lib/scorecard/scoreReadiness'
 
 const MODAL_Z = 10050
 
@@ -97,6 +99,10 @@ export type PackageAndSendBidPricingModalProps = {
   prefixMap: LedgerPrefixMap
   currentUserName: string | null
   onRequestEditBid: () => void
+  /** #360 PR 2: the bid cannot be scored as it stands (labor not estimated, rows with no cost). Said, never a stop. */
+  scoreHold?: Extract<ScoreReadiness, { kind: 'hold' }> | null
+  /** Closes the window and opens the bid's Labor tab; absent on a bid already sent. */
+  onOpenLabor?: (() => void) | null
 }
 
 type SendState =
@@ -163,6 +169,8 @@ export function PackageAndSendBidPricingModal({
   prefixMap,
   currentUserName,
   onRequestEditBid,
+  scoreHold = null,
+  onOpenLabor = null,
 }: PackageAndSendBidPricingModalProps) {
   const [recipientUserId, setRecipientUserId] = useState<string>('')
   const [sendState, setSendState] = useState<SendState>({ kind: 'idle' })
@@ -457,6 +465,8 @@ export function PackageAndSendBidPricingModal({
             ×
           </button>
         </div>
+
+        <BidScoreHoldLine hold={scoreHold} onOpenLabor={onOpenLabor} style={{ marginTop: 0 }} />
 
         <div style={sectionStyle}>
           <p style={sectionLabelStyle}>Job address</p>

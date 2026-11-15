@@ -2,13 +2,12 @@
 name: "Team scorecard: two numbers, one formula each, against the hurdle"
 number: 360
 group: ready
-status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · next PR 2, the Pricing workbench's send says when a bid cannot be scored
+status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · next PR 3, the target on the Bid Board's Pricing rules
 next: >
-  The owner reads the tab live and makes the four calls under Calls the owner makes. Then PR 2:
-  the Pricing workbench's send says when a bid cannot be scored, and the Bid Board row carries the
-  chip, so the estimators fill the Labor tab before a bid goes out and the ramp climbs toward
-  the first judged award.
-size: M as a train of five (M · S · S · M · S); PR 1 shipped
+  PR 3: the target on the Bid Board's Pricing rules beside the difficulty price list, with the
+  owner's own UPDATE policy on scorecard_hurdle_v1, and the Scores tab links there. The owner's
+  four calls under Calls the owner makes are unanswered and block none of the train.
+size: M as a train of five (M · S · S · M · S); PRs 1 and 2 shipped
 blocker: none; the estimators' number stays a ramp until a priced bid with labor hours is awarded
 summary: >
   A prompt from outside the company proposed four team scores for a plumbing shop. The owner
@@ -51,7 +50,7 @@ Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Lo
 ## The train
 
 1. ~~**The Scores tab**~~ v2.7325.
-2. **The estimating desk's feedback**: the Pricing workbench's send says when the bid cannot be scored (labor not estimated, rows uncosted) and the Bid Board row carries the same chip; `bids.outcome_at` backfilled for old awards from the linked job's creation.
+2. ~~**The estimating desk's feedback**~~ v2.7347: the Pricing workbench, its share window and the Cover Letter's Mark sent say when the bid cannot be scored, the Bid Board row carries the chip, and 16 old awards got `bids.outcome_at` from their linked job's creation. Left for PR 4: a sent bid's margin is frozen without its labor count, so hours filled after the send make it read as judged.
 3. **The target on the Bid Board's Pricing rules**, with the owner's own UPDATE policy on `scorecard_hurdle_v1` (one migration); the tab links there.
 4. **`team_scores(p_from, p_to)`**, a SECURITY DEFINER function with the loader's arithmetic, as `superintendent_scores` does, so the gate can widen without a wage leaving the database; the tab reads it instead of the browser-side loader.
 5. **The estimator's own row on the phone**, and a closeout's adjustment named on the bid.

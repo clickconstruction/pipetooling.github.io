@@ -16,7 +16,7 @@ On the bid's **Job** block, {{button:green|Open the job}} is unchanged. The Job 
 - The houses that **quoted this bid** come first and start picked, with a *· quoted* mark. Every other house that expects a job account follows.
 - {{button:blue|Send to Dispatch}} files the ask with the office today. So the account is open before the first parts run.
 - **Ask the rep by email…** is your lane, below.
-- **None needed** and **Later** are one tap.
+- **None needed…** asks why, then marks every house. **Later** is one tap.
 
 ## Ask the rep by email
 

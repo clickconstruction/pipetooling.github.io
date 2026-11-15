@@ -49,6 +49,17 @@ describe('bareEmptySentences', () => {
     expect(bareEmptySentences(more, 'Page.tsx')).toEqual([])
   })
 
+  it('leaves alone the label of a button, and still reads a sentence beside or under one', () => {
+    const found = bareEmptySentences(
+      tsx(`    <div>\n      <button type="button">None needed…</button>\n      <button type="button">{q ? 'No thanks' : 'Later'}</button>\n      <p>None needed yet.</p>\n      <button type="button"><span>No bids yet.</span></button>\n    </div>`),
+      'Page.tsx',
+    )
+    expect(found).toEqual([
+      { line: 7, text: 'None needed yet.' },
+      { line: 8, text: 'No bids yet.' },
+    ])
+  })
+
   it('reads an empty row that spans the table, the legacy shape', () => {
     const row = tsx(`    <table>\n      <tbody>\n        <tr>\n          <td colSpan={5}>\n            {rows.length === 0 ? 'No sessions in this date range' : 'No sessions for selected people'}\n          </td>\n        </tr>\n      </tbody>\n    </table>`)
     expect(bareEmptySentences(row, 'Page.tsx').map((f) => f.text)).toEqual(['No sessions in this date range', 'No sessions for selected people'])

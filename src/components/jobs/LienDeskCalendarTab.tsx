@@ -89,6 +89,8 @@ export type LienDeskCalendarTabProps = {
   onOpenJob: (jobId: string) => void
   /** The job number opens the job itself (v2.4531): the Job window, with its history and Edit. Left out, the number is plain. */
   onOpenJobWindow?: (jobId: string) => void
+  /** The job's number as a zoom (v2.7333): the press to the right place for the job's stage on the Board. Given, it takes the number's press from `onOpenJobWindow`. */
+  onZoomJob?: (jobId: string) => void
   /** The last-day label at the start of a row's bar (v2.4735): the Lien window with the last day's line editing. Left out, the label is plain. */
   onOpenLastWork?: (jobId: string) => void
   /** Phone: no axis, the column cards and the sentences instead. */
@@ -1102,7 +1104,9 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpe
   )
 }
 
-export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onRecord, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
+export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onZoomJob, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onRecord, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
+  // The number's door (v2.7333): the zoom to the job's stage on the Board when the desk hands one, else the Job window as before.
+  const numberDoor = onZoomJob ?? onOpenJobWindow
   const [query, setQuery] = useState('')
   const [pen, setPen] = useState<PenTarget | null>(null)
   const [kindsOpen, setKindsOpen] = useState(false)
@@ -1219,7 +1223,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
           board.count === 0 ? (
             <EmptyState compact {...searchEmpty} />
           ) : (
-            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} onOpenLastWork={onOpenLastWork} query={query} onClearQuery={clearQuery} marks={supplierMarks} todayYmd={todayYmd} />
+            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={numberDoor} onOpenLastWork={onOpenLastWork} query={query} onClearQuery={clearQuery} marks={supplierMarks} todayYmd={todayYmd} />
           )
         ) : null}
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
@@ -1240,7 +1244,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
                           <EmptyState compact {...(query.trim() ? searchEmpty : { main: b.empty })} />
                         </div>
                       ) : null}
-                      {open && b.key === 'later' && b.jobs.length > 0 ? <LaterList lines={lienLaterLines(b, todayYmd)} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} onOpenLastWork={onOpenLastWork} marks={supplierMarks} /> : null}
+                      {open && b.key === 'later' && b.jobs.length > 0 ? <LaterList lines={lienLaterLines(b, todayYmd)} onOpenJob={onOpenJob} onOpenJobWindow={numberDoor} onOpenLastWork={onOpenLastWork} marks={supplierMarks} /> : null}
                       {open && b.key !== 'later'
                         ? b.groups.map((g) => {
                             const scope = `${b.key}/${g.key}`
@@ -1265,7 +1269,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
                                       const j = row.job
                                       return (
                                       <div key={j.jobId} style={{ position: 'relative' }}>
-                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onRecord={onRecord} onOpen={() => onOpenJob(j.jobId)} onOpenJob={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} onLastWork={onOpenLastWork ? () => onOpenLastWork(j.jobId) : undefined} onKinds={penOn ? () => setKindsOpen(true) : undefined} />
+                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onRecord={onRecord} onOpen={() => onOpenJob(j.jobId)} onOpenJob={numberDoor ? () => numberDoor(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} onLastWork={onOpenLastWork ? () => onOpenLastWork(j.jobId) : undefined} onKinds={penOn ? () => setKindsOpen(true) : undefined} />
                                         {pen && pen.kind === 'job' && pen.job.jobId === j.jobId ? (
                                           <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
                                             <div />
