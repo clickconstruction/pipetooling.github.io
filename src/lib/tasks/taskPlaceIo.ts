@@ -6,6 +6,7 @@
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { TASK_PLACE_SELECT, recentTaskPlaces, taskPlaceColumns, taskPlaceFromRow, type TaskPlace, type TaskPlaceColumns, type TaskPlaceDraft } from './taskPlace'
+import { taskMapIdFromRow } from './taskMap'
 
 type PlaceRead = { data: Array<Partial<TaskPlaceColumns>> | null; error: { message: string } | null }
 
@@ -61,9 +62,24 @@ export async function loadTaskPlace(itemId: string): Promise<TaskPlace | null> {
  * own and a roadmap task behind it takes the roadmap task's, read second and on its own.
  */
 export async function loadTaskPlacesForItems(itemIds: ReadonlyArray<string>): Promise<Map<string, TaskPlace>> {
+  return (await loadTaskWheresForItems(itemIds)).places
+}
+
+/** Where the tasks on a screen are: each task's place, and the painted map of each task that has a map and no place. */
+export type TaskWheres = { places: Map<string, TaskPlace>; maps: Map<string, string> }
+
+/**
+ * The same reads as `loadTaskPlacesForItems`, kept whole (punch list #345): a task may carry a
+ * painted map with no place, and the reads that find the places already bring the map's id. So a
+ * map costs no read of its own. A task with a place is in `places`, and its map is that place's
+ * way in. A task with a map and no place is in `maps`.
+ */
+export async function loadTaskWheresForItems(itemIds: ReadonlyArray<string>): Promise<TaskWheres> {
   const out = new Map<string, TaskPlace>()
+  const maps = new Map<string, string>()
+  const wheres: TaskWheres = { places: out, maps }
   const ids = [...new Set(itemIds.filter(Boolean))]
-  if (ids.length === 0) return out
+  if (ids.length === 0) return wheres
   const roadmapTaskOf = new Map<string, string>()
   let firstRead = false
   try {
@@ -75,7 +91,9 @@ export async function loadTaskPlacesForItems(itemIds: ReadonlyArray<string>): Pr
       firstRead = true
       for (const row of res.data) {
         const place = taskPlaceFromRow(row)
+        const mapId = taskMapIdFromRow(row)
         if (place) out.set(row.id, place)
+        else if (mapId) maps.set(row.id, mapId)
         else if (row.roadmap_group_task_id) roadmapTaskOf.set(row.id, row.roadmap_group_task_id)
       }
     }
@@ -91,30 +109,36 @@ export async function loadTaskPlacesForItems(itemIds: ReadonlyArray<string>): Pr
       }
       for (const row of res.error || !res.data ? [] : res.data) if (row.roadmap_group_task_id) roadmapTaskOf.set(row.id, row.roadmap_group_task_id)
     } catch {
-      return out
+      return wheres
     }
   }
-  if (roadmapTaskOf.size === 0) return out
+  if (roadmapTaskOf.size === 0) return wheres
   try {
     const res = (await supabase
       .from('checklist_tech_tree_group_tasks')
       .select(`id,${TASK_PLACE_SELECT}` as '*')
       .in('id', [...new Set(roadmapTaskOf.values())])
-      .not('place_lat' as 'id', 'is', null)) as unknown as { data: Array<Partial<TaskPlaceColumns> & { id: string }> | null; error: { message: string } | null }
-    if (res.error || !res.data) return out
+      // A roadmap task with a place, or with a map and no place: either is where its task is.
+      .or('place_lat.not.is.null,painted_map_id.not.is.null')) as unknown as { data: Array<Partial<TaskPlaceColumns> & { id: string }> | null; error: { message: string } | null }
+    if (res.error || !res.data) return wheres
     const byTask = new Map<string, TaskPlace>()
+    const mapByTask = new Map<string, string>()
     for (const row of res.data) {
       const place = taskPlaceFromRow(row)
+      const mapId = taskMapIdFromRow(row)
       if (place) byTask.set(row.id, place)
+      else if (mapId) mapByTask.set(row.id, mapId)
     }
     for (const [itemId, taskId] of roadmapTaskOf) {
       const place = byTask.get(taskId)
+      const mapId = mapByTask.get(taskId)
       if (place) out.set(itemId, place)
+      else if (mapId) maps.set(itemId, mapId)
     }
   } catch {
     // The roadmap's places could not be read; the tasks' own stand.
   }
-  return out
+  return wheres
 }
 
 /** One roadmap task's place, for its card window (PR 5). Null for a task with none, and for a read that failed. */

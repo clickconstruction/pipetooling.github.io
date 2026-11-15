@@ -20,7 +20,7 @@ vi.mock('../supabase', () => {
   function builder(table: string) {
     let select = ''
     const b: Record<string, unknown> = {}
-    for (const m of ['eq', 'in', 'not', 'order', 'limit']) b[m] = () => b
+    for (const m of ['eq', 'in', 'not', 'or', 'order', 'limit']) b[m] = () => b
     b.select = (cols: string) => {
       select = cols
       return b
@@ -51,7 +51,7 @@ vi.mock('../supabase', () => {
   }
 })
 
-import { addTaskPlaceFromTheSpot, loadRecentTaskPlaces, loadRoadmapTaskPlace, loadTaskPlacesForItems, saveRoadmapTaskPlace } from './taskPlaceIo'
+import { addTaskPlaceFromTheSpot, loadRecentTaskPlaces, loadRoadmapTaskPlace, loadTaskPlacesForItems, loadTaskWheresForItems, saveRoadmapTaskPlace } from './taskPlaceIo'
 
 const place = (name: string, lat: number, at = '2026-11-03T15:00:00Z') => ({ place_name: name, place_lat: lat, place_lng: -98.3, place_accuracy_m: null, place_set_by: 'u1', place_set_at: at })
 const none = { place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null }
@@ -116,6 +116,51 @@ describe('loadTaskPlacesForItems', () => {
     db.reads = []
     expect((await loadTaskPlacesForItems([])).size).toBe(0)
     expect(db.reads).toEqual([])
+  })
+})
+
+describe('loadTaskWheresForItems: a painted map with no place (punch list #345)', () => {
+  it('a task with a map and no place is in maps, and a task with a place keeps its map as the way in', async () => {
+    db.answers.checklist_items = [
+      { id: 'a', roadmap_group_task_id: null, ...none, painted_map_id: 'm1' },
+      { id: 'b', roadmap_group_task_id: null, ...place('Pump house', 29.55), painted_map_id: 'm2' },
+      { id: 'c', roadmap_group_task_id: null, ...none, painted_map_id: null },
+    ]
+    const got = await loadTaskWheresForItems(['a', 'b', 'c'])
+    expect([...got.maps]).toEqual([['a', 'm1']])
+    expect(got.places.get('b')?.mapId).toBe('m2')
+    expect(got.places.has('a')).toBe(false)
+    // No task came from a roadmap, so the roadmap is not asked.
+    expect(db.reads).toEqual(['checklist_items'])
+  })
+
+  it('a task from a roadmap takes its roadmap task\'s map, and its own map wins when it has one', async () => {
+    db.answers.checklist_items = [
+      { id: 'a', roadmap_group_task_id: 't1', ...none, painted_map_id: null },
+      { id: 'b', roadmap_group_task_id: 't2', ...none, painted_map_id: 'own' },
+      { id: 'c', roadmap_group_task_id: 't3', ...none, painted_map_id: null },
+    ]
+    db.answers.checklist_tech_tree_group_tasks = [
+      { id: 't1', ...none, painted_map_id: 'm1' },
+      { id: 't2', ...none, painted_map_id: 'm2' },
+      { id: 't3', ...place('Shop bay 2', 29.56), painted_map_id: 'm3' },
+    ]
+    const got = await loadTaskWheresForItems(['a', 'b', 'c'])
+    expect([...got.maps].sort()).toEqual([
+      ['a', 'm1'],
+      ['b', 'own'],
+    ])
+    // The roadmap task has a place, so its map is that place's way in and not a map by itself.
+    expect(got.places.get('c')?.mapId).toBe('m3')
+    expect(got.maps.has('c')).toBe(false)
+  })
+
+  it('every read failing is no maps, never a throw', async () => {
+    db.answers.checklist_items = new Error('nope')
+    db.answers['checklist_items:bare'] = new Error('nope')
+    const got = await loadTaskWheresForItems(['a'])
+    expect(got.maps.size).toBe(0)
+    expect(got.places.size).toBe(0)
   })
 })
 

@@ -908,6 +908,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
                   photos={taskPhotos.photosFor(inst.id)}
                   onPhotoAdded={taskPhotos.add}
                   place={taskPlaces.placeFor(inst.checklist_item_id)}
+                  mapId={taskPlaces.mapFor(inst.checklist_item_id)}
                   placeNumber={placeNumbers.get(inst.id) ?? null}
                   placeFar={placeFarFor(inst)}
                   openSignal={shownTask?.id === inst.id ? shownTask.n : 0}
@@ -1005,6 +1006,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
         photosFor={(inst) => taskPhotos.photosFor(inst.id)}
         onPhotoAdded={taskPhotos.add}
         placeFor={(inst) => taskPlaces.placeFor((inst as ChecklistInstance).checklist_item_id)}
+        mapFor={(inst) => taskPlaces.mapFor((inst as ChecklistInstance).checklist_item_id)}
         placeNumberFor={(inst) => placeNumbers.get(inst.id) ?? null}
         placeFarFor={(inst) => placeFarFor(inst as ChecklistInstance)}
         openInstance={shownTask}
