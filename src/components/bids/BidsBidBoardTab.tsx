@@ -44,6 +44,8 @@ import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { useGcDifficultyStandings } from '../../hooks/useGcDifficultyStandings'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import GcDifficultyChip from './GcDifficultyChip'
+import BidScoreHoldChip from './BidScoreHoldChip'
+import { useBidScoreReadiness } from '../../hooks/useBidScoreReadiness'
 import BidDifficultyPriceModal from './BidDifficultyPriceModal'
 import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
 import { DIFFICULTY_PRICE_WORDS, difficultyCanRate } from '../../lib/bids/difficultyPrice'
@@ -526,6 +528,8 @@ export function BidsBidBoardTab({
   const boardCounts = useMemo(() => bidSentCounts(filteredBidsForBidBoard, { scope: sentScope, packetsByBid: gcPacketsByBid }), [filteredBidsForBidBoard, sentScope, gcPacketsByBid])
   // Bid flow facts for the rows on the board, loaded once per list (chunked, never per row).
   const bidFlowIds = useMemo(() => filteredBidsForBidBoard.map((b) => b.id), [filteredBidsForBidBoard])
+  // #360 PR 2: the priced bids the Scores tab would hold (labor not estimated, rows with no cost), for the row's chip.
+  const scoreHolds = useBidScoreReadiness(filteredBidsForBidBoard)
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(bidFlowIds)
   // Doors on the board: the Edit window, one of the five jump tabs, or the Mark reviewed action (v2.3201).
   const bidFlowReview = useBidFlowReview(filteredBidsForBidBoard)
@@ -1248,6 +1252,12 @@ export function BidsBidBoardTab({
     )
   }
 
+  /** #360 PR 2: *Can't be scored* on a priced bid the Scores tab would hold; a press to Labor while the bid is still on the desk. */
+  function renderScoreHoldChip(bid: BidWithBuilder) {
+    const hold = scoreHolds.get(bid.id)
+    return hold ? <BidScoreHoldChip hold={hold} onOpenLabor={bid.bid_date_sent ? null : () => onOpenBidTab(bid, 'labor')} /> : null
+  }
+
   function renderBidBoardBidValue(bid: BidWithBuilder) {
     return shouldShowEmptyBidValueAlert(bid) ? (
       <button
@@ -1373,6 +1383,7 @@ export function BidsBidBoardTab({
             <span style={labelStyle}>GC/Builder</span>
             {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
             {bid.customer_id ? <span style={{ marginLeft: '0.4rem' }}><GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} /></span> : null}
+            {scoreHolds.get(bid.id) ? <span style={{ marginLeft: '0.4rem' }}>{renderScoreHoldChip(bid)}</span> : null}
           </div>
           {bidDevelopmentName(bid) ? (
             <div>
@@ -1514,6 +1525,7 @@ export function BidsBidBoardTab({
                 '-'
               )}
               {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} /> : null}
+              {renderScoreHoldChip(bid)}
               {bidDevelopmentName(bid) ? (
                 <span
                   title="Development for this bid"
@@ -1770,6 +1782,7 @@ export function BidsBidBoardTab({
             </button>
           ) : null}
           {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} /> : null}
+          {renderScoreHoldChip(bid)}
           {estNorm ? <span>{gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? '' : '· '}{estNorm.name || estNorm.email}</span> : null}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             · {renderBidBoardBidValue(bid)}
