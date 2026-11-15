@@ -22800,6 +22800,8 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
+          not_needed_at: string | null
+          not_needed_by: string | null
           note: string
           opened_at: string | null
           opened_by: string | null
@@ -22817,6 +22819,8 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
+          not_needed_at?: string | null
+          not_needed_by?: string | null
           note?: string
           opened_at?: string | null
           opened_by?: string | null
@@ -22834,6 +22838,8 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
+          not_needed_at?: string | null
+          not_needed_by?: string | null
           note?: string
           opened_at?: string | null
           opened_by?: string | null
@@ -22852,6 +22858,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_supply_house_accounts_not_needed_by_fkey"
+            columns: ["not_needed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -46192,6 +46205,8 @@ export type Database = {
           account_ref: string
           house_name: string
           job_id: string
+          not_needed_at: string
+          not_needed_by_name: string
           opened_at: string
           opened_via: string
           policy: string
