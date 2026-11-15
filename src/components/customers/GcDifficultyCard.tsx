@@ -125,7 +125,11 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
   const payingScale = body?.scales.find((s) => s.key === DIFFICULTY_PAYING_KEY && s.source === 'bills') ?? null
   const payingPick = payingScale ? difficultyPayingPick(paying, byHand) : null
   const allPicks: DifficultyPicks = useMemo(() => (payingPick ? { ...picks, [DIFFICULTY_PAYING_KEY]: payingPick.points } : picks), [picks, payingPick])
-  const reasons = useMemo<Record<string, string>>(() => (payingPick ? { [DIFFICULTY_PAYING_KEY]: payingPick.reason } : {}), [payingPick])
+  const reasons = useMemo(() => {
+    const out: Record<string, string> = {}
+    if (payingPick) out[DIFFICULTY_PAYING_KEY] = payingPick.reason
+    return out
+  }, [payingPick])
   const total = body ? difficultyTotalPoints(allPicks, body, 'gc').points : 0
   const problems = gcDifficultyDraftProblems(allPicks, note, body)
   const changed = gcDifficultyPicksChanged(allPicks, standing)
