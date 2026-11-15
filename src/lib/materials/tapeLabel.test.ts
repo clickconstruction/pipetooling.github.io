@@ -85,6 +85,10 @@ describe('the tape label (v2.6801)', () => {
     expect(direct.join(' ')).not.toContain('driver')
     expect(tapeProgressWords(0, 6)).toBe('Printing 1 of 6\u2026')
     expect(tapeProgressWords(6, 6)).toBe('Printing 6 of 6\u2026')
+    // with the strip's box the line says where the run is
+    expect(tapeProgressWords(6, 455, { name: 'G2', copy: 2, copies: 5 })).toBe('Printing 7 of 455 \u00b7 G2, strip 2 of 5')
+    expect(tapeProgressWords(6, 91, { name: 'G7', copy: 1, copies: 1 })).toBe('Printing 7 of 91 \u00b7 G7')
+    expect(tapeProgressWords(0, 1, null)).toBe('Printing 1 of 1\u2026')
     expect(tapeSentWords(1, 1)).toBe('1 tape label printed.')
     expect(tapeSentWords(6, 6)).toBe('6 tape labels printed.')
     expect(tapeSentWords(2, 6, 'The printer\u2019s cover is open.')).toBe('2 of 6 printed, then the printer stopped: The printer\u2019s cover is open.')

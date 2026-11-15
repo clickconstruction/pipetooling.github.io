@@ -53,7 +53,8 @@ import {
 } from '../../lib/materials/stickerRun'
 import { fetchLastStickerNumber, fetchStickerRuns, mintStickerRun } from '../../lib/materials/stickerRunsIo'
 import { blankCountOf, jobBlankWords } from '../../lib/materials/stickerPlace'
-import { stickerRangeWords } from '../../lib/materials/stickers'
+import { stickerNumberWords, stickerRangeWords } from '../../lib/materials/stickers'
+import { LABEL_RANGE_FROM, LABEL_RANGE_TO, leftAfterRangePick, rangeCountWords, tickedRange } from '../../lib/materials/labelPick'
 import { TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, longestNameChars, repeatEach, tapeLayout, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSetupSteps, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { tapeAddressLines } from '../../lib/materials/tapeStrip'
 import { printRootCss } from '../../lib/printRoot'
@@ -147,7 +148,9 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const [link, setLink] = useState<PtouchLink | null>(null)
   const [usbBusy, setUsbBusy] = useState<null | 'connecting' | 'printing'>(null)
   const [slip, setSlip] = useState<string | null>(null)
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [progress, setProgress] = useState<{ done: number; total: number; test: boolean } | null>(null)
+  /** Whether what is left on the page is the rest of a run that stopped, or a range someone picked: the press reads differently. */
+  const [isRest, setIsRest] = useState(false)
   const [sentWords, setSentWords] = useState<string | null>(null)
   /** Stop printing was pressed: the loop reads the ref before each strip, the press reads the state. */
   const stopRef = useRef(false)
@@ -204,12 +207,12 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     setUsbBusy('printing')
     setSlip(null)
     setSentWords(null)
-    setProgress({ done: 0, total: labels.length })
+    setProgress({ done: 0, total: labels.length, test })
     stopRef.current = false
     setStopping(false)
     let done = 0
     try {
-      await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length }) }, () => stopRef.current)
+      await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length, test }) }, () => stopRef.current)
       const today = todayYmdInAppTz()
       writeTapePrintedDay(today)
       setTapeDay(today)
@@ -217,6 +220,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
         // Stop printing was pressed (Taunya, 2026-11-15): the printer fed the last strip out and cut it, and the press prints the rest.
         setSentWords(stickersStoppedWords(done, toPrint.length, copies))
         setPrinting(restAfterStop(printing, done, copies))
+        setIsRest(true)
       } else if (!test) {
         // The run stays on the page once printed, so the press prints it again as the fold's Reprint would.
         setSentWords(stickersSentWords(done, toPrint.length, copies))
@@ -227,6 +231,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
       else {
         setSlip(`${stickersSentWords(done, toPrint.length, copies, formatErrorMessage(e, PTOUCH_NOT_ANSWERING))}${inside}`)
         setPrinting(restAfterStop(printing, done, copies))
+        setIsRest(true)
       }
       void link.close()
       setLink(null)
@@ -299,7 +304,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     downloadFile(new File([stickersCsvText(minted.stickers)], stickersCsvFileName(minted.run, todayYmdInAppTz()), { type: 'text/csv' }))
   }
 
-  const pressLabel = stage === 'ask' ? stickerRunPressLabel(count, copies) : printing.length < (minted?.stickers.length ?? 0) ? printRestLabel(printing) : printRunLabel(printing, copies)
+  const pressLabel = stage === 'ask' ? stickerRunPressLabel(count, copies) : printing.length < (minted?.stickers.length ?? 0) && isRest ? printRestLabel(printing) : printRunLabel(printing, copies)
   const dead = stage === 'ask' ? !verdict.ok || minting || printerHolds : printing.length === 0 || printerHolds
   const deadStyle: CSSProperties = dead ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}
   const ready = tapeDay ? tapeReadyWords(width, formatWorkDateYmdMonthDayShort(tapeDay)) : null
@@ -310,6 +315,21 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const countWords = minted ? runStripsWords(minted.run, printing.length) : stickerRunCountWords(count, copies)
   /** The strips on the page: the run's, or the test strip alone while it prints. */
   const shownStrips: StickerStrip[] = testOnly ? [STICKER_TEST_STRIP] : strips
+  /** A range of the run on the page by its two ends (Taunya, 2026-11-15): the same rule as Print labels, over the run's numbers. */
+  const runIds = useMemo(() => (minted ? minted.stickers.map((s) => s.id) : []), [minted])
+  const runLeft = useMemo(() => { const on = new Set(printing.map((s) => s.id)); return new Set(runIds.filter((id) => !on.has(id))) }, [runIds, printing])
+  const runRange = tickedRange(runIds, runLeft)
+  const pickRange = (end: 'from' | 'to', id: string) => {
+    if (!minted) return
+    const left = leftAfterRangePick(runIds, runLeft, end, id)
+    setPrinting(minted.stickers.filter((s) => !left.has(s.id)))
+    setIsRest(false)
+    setSentWords(null)
+    setSlip(null)
+  }
+  /** The strip going out now, for the progress line: its number and which of its copies. */
+  const progressSticker = progress && !progress.test ? strips[Math.min(Math.floor(progress.done / copies), strips.length - 1)] : undefined
+  const progressAt = progress && progressSticker ? { name: progressSticker.stencil, copy: (Math.min(progress.done, progress.total - 1) % copies) + 1, copies } : null
   /** The print window cuts every strip of a run to one length: what the run's longest number needs. */
   const nameChars = longestNameChars(shownStrips.map((s) => s.stencil))
   const layout = tapeLayout(width, nameChars)
@@ -379,6 +399,21 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
               </span>
             </div>
           ) : null}
+          {minted && minted.stickers.length > 2 ? (
+            /* A range of the run by its two ends: Reprint 0103 to 0130 without printing the whole run. */
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }} role="group" aria-label="A range of stickers" data-testid="stickers-range">
+              {(['from', 'to'] as const).map((end) => (
+                <label key={end} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
+                  {end === 'from' ? LABEL_RANGE_FROM : LABEL_RANGE_TO}
+                  <select value={(end === 'from' ? runRange?.fromId : runRange?.toId) ?? ''} disabled={usbBusy != null} onChange={(e) => pickRange(end, e.target.value)} style={{ minHeight: 32, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-strong)' }} data-testid={`stickers-range-${end}`}>
+                    {runRange ? null : <option value="" disabled>Pick a sticker</option>}
+                    {minted.stickers.map((s) => <option key={s.id} value={s.id}>{stickerNumberWords(s.number)}</option>)}
+                  </select>
+                </label>
+              ))}
+              <span style={muted} data-testid="stickers-range-count">{rangeCountWords(runIds, runLeft, ['sticker', 'stickers'])}</span>
+            </div>
+          ) : null}
           {stage === 'ask' ? (
             <div style={{ display: 'grid', gap: '0.6rem' }} data-testid="stickers-ask">
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label="How many">
@@ -418,7 +453,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
           {minting ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-minting">{STICKER_MINTING}</div> : null}
           {progress ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <span role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-progress">{stopping ? PTOUCH_STOPPING : tapeProgressWords(progress.done, progress.total)}</span>
+              <span role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-progress">{stopping ? PTOUCH_STOPPING : tapeProgressWords(progress.done, progress.total, progressAt)}</span>
               {/* A run can be stopped (Taunya, 2026-11-15): the strip after the one printing is sent as the run's last, fed out and cut. */}
               {progress.total > 1 ? <button type="button" disabled={stopping} aria-disabled={stopping} style={{ ...btn, minHeight: 32, ...(stopping ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}) }} onClick={askStop} data-testid="stickers-stop">{stopping ? PTOUCH_STOPPING_LABEL : PTOUCH_STOP_LABEL}</button> : null}
             </div>

@@ -1,16 +1,17 @@
 /**
- * Which boxes Print labels prints (Taunya's ask of 2026-11-15, with a run of 455 strips stopped after five): a range
- * picked by its two ends, and the boxes a stopped run already printed taken off the pick, so the next press prints
- * the rest. The window keeps one set, the boxes left out, and every box's chip shows it; these read and write that
- * set. Pure. The window is `LabelsPrintModal.tsx`; the printer's side of a stop is `endsTheRun` in `ptouchRaster.ts`.
+ * Which strips Print labels prints (Taunya's ask of 2026-11-15, with a run of 455 strips stopped after five): a range
+ * of boxes picked by its two ends, the run as its strips in order, and what a run that stopped part way has left, so
+ * the next press prints the rest and nothing twice. The window keeps one set, the boxes left out, which every box's
+ * chip shows, and at most one box that is part way through its copies. Pure. The window is `LabelsPrintModal.tsx`;
+ * the printer's side of a stop is `endsTheRun` in `ptouchRaster.ts`.
  */
 import { clampTapeCopies } from './tapeLabel'
+
+// ── a range by its two ends ──────────────────────────────────────────────────────────────────
 
 /** The labels beside the two ends of a range. */
 export const LABEL_RANGE_FROM = 'From'
 export const LABEL_RANGE_TO = 'to'
-/** Under the two ends: what a pick does. */
-export const LABEL_RANGE_WORDS = 'Ticks every box between the two.'
 
 /** The first and the last ticked box, in the list's order; null when none is ticked. */
 export function tickedRange(ids: ReadonlyArray<string>, left: ReadonlySet<string>): { fromId: string; toId: string } | null {
@@ -37,24 +38,79 @@ export function leftAfterRangePick(ids: ReadonlyArray<string>, left: ReadonlySet
 }
 
 /**
- * The boxes whose every strip has gone, from how many strips the printer took. A box's copies go together,
- * 1 1 2 2, so a run stopped after three strips of two each has printed the first box whole and half of the second.
+ * Beside the two ends: how many that is. *86 of 91 boxes*; with chips unticked inside the range, *84 of 91 boxes, 2
+ * left out between*; *No box is ticked.* `noun` is what the list holds, singular and plural.
  */
-export function boxesPrintedWhole<T>(boxes: ReadonlyArray<T>, doneStrips: number, copies: number): T[] {
-  return boxes.slice(0, Math.max(0, Math.floor(doneStrips / clampTapeCopies(copies))))
+export function rangeCountWords(ids: ReadonlyArray<string>, left: ReadonlySet<string>, noun: readonly [string, string] = ['box', 'boxes']): string {
+  const range = tickedRange(ids, left)
+  if (!range) return `No ${noun[0]} is ticked.`
+  const ticked = ids.filter((id) => !left.has(id)).length
+  const holes = ids.indexOf(range.toId) - ids.indexOf(range.fromId) + 1 - ticked
+  const of = `${ticked} of ${ids.length} ${ids.length === 1 ? noun[0] : noun[1]}`
+  return holes > 0 ? `${of}, ${holes} left out between` : of
 }
 
-/** The boxes left out after a run stopped part way: the ones it printed whole join them. */
-export function leftAfterStop(left: ReadonlySet<string>, printedIds: ReadonlyArray<string>): Set<string> {
-  return new Set([...left, ...printedIds])
+// ── the run as its strips ────────────────────────────────────────────────────────────────────
+
+/** The one box a stopped run left part way through its copies: how many of `copies` are out. */
+export type PartialBox = { id: string; done: number; copies: number }
+
+/** One strip of a run: whose it is, and which of the box's copies, counted from 1. */
+export type RunStrip = { id: string; copy: number }
+
+/** The part-way box while it still means something: its box is ticked and the copies are what they were. */
+export function partialThatHolds(partial: PartialBox | null, tickedIds: ReadonlyArray<string>, copies: number): PartialBox | null {
+  if (!partial) return null
+  const n = clampTapeCopies(copies)
+  return partial.copies === n && partial.done > 0 && partial.done < n && tickedIds.includes(partial.id) ? partial : null
 }
 
 /**
- * Said after a run stops part way, by a press or by the printer: which boxes are done and what the press does now.
- * `names` are the boxes printed whole, in the order they went; `rest` how many ticked boxes are still to print.
+ * The run as its strips in the order they print: each ticked box's copies together, 1 1 2 2. A box a stopped run left
+ * part way prints only the copies it is missing, so nothing comes out twice and no box comes up short.
  */
-export function printedUntickedWords(names: ReadonlyArray<string>, rest: number): string {
-  if (names.length === 0) return rest > 0 ? 'No box printed whole, so every box is still ticked.' : ''
-  const which = names.length === 1 ? `${names[0]} printed whole and is unticked.` : names.length === 2 ? `${names[0]} and ${names[1]} printed whole and are unticked.` : `${names[0]} to ${names[names.length - 1]} printed whole and are unticked.`
-  return rest > 0 ? `${which} The press prints the rest.` : which
+export function runStrips(tickedIds: ReadonlyArray<string>, copies: number, partial: PartialBox | null = null): RunStrip[] {
+  const n = clampTapeCopies(copies)
+  const held = partialThatHolds(partial, tickedIds, n)
+  return tickedIds.flatMap((id) => {
+    const first = held && held.id === id ? held.done + 1 : 1
+    return Array.from({ length: n - first + 1 }, (_, i) => ({ id, copy: first + i }))
+  })
+}
+
+/**
+ * What a run that ended after `done` of its strips has left: the boxes whose last copy went, to untick, and the one
+ * box part way through its copies, if any. A run that printed every strip leaves neither.
+ */
+export function afterStop(strips: ReadonlyArray<RunStrip>, done: number, copies: number): { wholeIds: string[]; partial: PartialBox | null } {
+  const n = clampTapeCopies(copies)
+  const out = new Map<string, number>()
+  for (const strip of strips.slice(0, Math.max(0, done))) out.set(strip.id, strip.copy)
+  const wholeIds: string[] = []
+  let partial: PartialBox | null = null
+  for (const [id, copy] of out) {
+    if (copy >= n) wholeIds.push(id)
+    else partial = { id, done: copy, copies: n }
+  }
+  return { wholeIds, partial }
+}
+
+/**
+ * Under *7 of 455 printed, then you stopped the run.*: which boxes are done, which is part way, and what the press
+ * does now. `whole` are the names of the boxes printed whole, in the order they went; `partial` the part-way box's
+ * name with how many strips it is missing; `rest` how many strips the press would print.
+ */
+export function stoppedDetailWords(whole: ReadonlyArray<string>, partial: { name: string; toGo: number; copies: number } | null, rest: number): string {
+  const parts: string[] = []
+  if (whole.length === 1) parts.push(`${whole[0]} is done and unticked.`)
+  else if (whole.length === 2) parts.push(`${whole[0]} and ${whole[1]} are done and unticked.`)
+  else if (whole.length > 2) parts.push(`${whole[0]} to ${whole[whole.length - 1]} are done and unticked.`)
+  if (partial) parts.push(`${partial.name} has ${partial.toGo} of its ${partial.copies} strips to go.`)
+  if (rest > 0) parts.push('The press prints the rest.')
+  return parts.join(' ')
+}
+
+/** The line under the window's title while a part-way box is owed strips: *90 boxes, 447 strips to go.* */
+export function restCountWords(boxes: number, strips: number): string {
+  return `${boxes} ${boxes === 1 ? 'box' : 'boxes'}, ${strips} ${strips === 1 ? 'strip' : 'strips'} to go.`
 }

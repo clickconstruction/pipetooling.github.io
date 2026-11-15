@@ -109,7 +109,7 @@ describe('LabelsPrintModal · straight to the P-touch over USB', () => {
     usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => { onLabel?.(1); throw new Error('The printer’s cover is open.') })
     setup()
     fireEvent.click(await screen.findByTestId('labels-print'))
-    await waitFor(() => expect(screen.getByTestId('labels-usb-slip').textContent).toBe('1 of 2 printed, then the printer stopped: The printer’s cover is open. A printed strip may still be inside the printer. Feed and cut the tape on the printer to get it out. A1 printed whole and is unticked. The press prints the rest.'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-slip').textContent).toBe('1 of 2 printed, then the printer stopped: The printer’s cover is open. A printed strip may still be inside the printer. Feed and cut the tape on the printer to get it out. A1 is done and unticked. The press prints the rest.'))
     expect(usb.close).toHaveBeenCalled()
     // the box that printed is off the pick, so connecting again and pressing prints the rest, not the run from its start
     const chips = screen.getAllByTestId('labels-pick')
@@ -117,7 +117,7 @@ describe('LabelsPrintModal · straight to the P-touch over USB', () => {
     await waitFor(() => expect(screen.getByTestId('labels-print').textContent).toBe('Print 1 tape label'))
   })
 
-  it('Stop printing ends the run with one more strip, unticks what printed, and the press prints the rest (Taunya, 2026-11-15)', async () => {
+  it('Stop printing ends the run with one more strip, and the press prints the rest: a box part way gets only its missing strips (Taunya, 2026-11-15)', async () => {
     usb.granted = true
     let go: () => void = () => {}
     const held = new Promise<void>((r) => { go = r })
@@ -132,8 +132,11 @@ describe('LabelsPrintModal · straight to the P-touch over USB', () => {
     })
     setup()
     fireEvent.click(await screen.findByTestId('labels-copies-more'))
+    fireEvent.click(screen.getByTestId('labels-copies-more'))
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 6 tape labels')
     fireEvent.click(screen.getByTestId('labels-print'))
-    await waitFor(() => expect(screen.getByTestId('labels-usb-progress').textContent).toBe('Printing 2 of 4…'))
+    // the line names the box in the hand and which of its strips
+    await waitFor(() => expect(screen.getByTestId('labels-usb-progress').textContent).toBe('Printing 2 of 6 · A1, strip 2 of 3'))
     // an earlier test's window closed its printer on the way out
     usb.close.mockClear()
     const stop = screen.getByTestId('labels-stop')
@@ -143,19 +146,40 @@ describe('LabelsPrintModal · straight to the P-touch over USB', () => {
     expect((screen.getByTestId('labels-stop') as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByTestId('labels-usb-progress').textContent).toBe('Stopping. One more strip prints, so the printer can cut the tape.')
     go()
-    await waitFor(() => expect(screen.getByTestId('labels-usb-sent').textContent).toBe('2 of 4 printed, then you stopped the run. A1 printed whole and is unticked. The press prints the rest.'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-sent').textContent).toBe('2 of 6 printed, then you stopped the run. A1 has 1 of its 3 strips to go. The press prints the rest.'))
     expect(asked).toEqual([false, true])
     // nothing went wrong: the printer stays connected, no red line, and the press is the rest
     expect(usb.close).not.toHaveBeenCalled()
     expect(screen.queryByTestId('labels-usb-slip')).toBeNull()
     expect(screen.queryByTestId('labels-stop')).toBeNull()
-    expect(screen.getAllByTestId('labels-pick').map((c) => c.getAttribute('aria-pressed'))).toEqual(['false', 'true'])
-    expect(screen.getByTestId('labels-print').textContent).toBe('Print 2 tape labels')
-    // the next run starts unstopped
-    usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void, stopAsked?: () => boolean) => { asked.push(stopAsked?.() ?? false); labels.forEach((_, i) => onLabel?.(i + 1)) })
+    // A1 is part way, so it stays ticked with its mark, and the press counts its one missing strip and B3's three
+    const chips = screen.getAllByTestId('labels-pick')
+    expect(chips.map((c) => c.getAttribute('aria-pressed'))).toEqual(['true', 'true'])
+    expect(chips.map((c) => c.getAttribute('data-part'))).toEqual(['true', null])
+    expect(chips[0]!.getAttribute('title')).toContain('1 of its 3 strips to go')
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 4 tape labels')
+    expect(screen.getByTestId('labels-count-words').textContent).toBe('2 boxes, 4 strips to go.')
+    // the next run starts unstopped, sends the four and nothing twice, and the mark is gone
+    let sent = 0
+    usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void, stopAsked?: () => boolean) => { asked.push(stopAsked?.() ?? false); sent = labels.length; labels.forEach((_, i) => onLabel?.(i + 1)) })
     fireEvent.click(screen.getByTestId('labels-print'))
-    await waitFor(() => expect(screen.getByTestId('labels-usb-sent').textContent).toBe('2 tape labels printed.'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-sent').textContent).toBe('4 tape labels printed.'))
+    expect(sent).toBe(4)
     expect(asked).toEqual([false, true, false])
+    expect(screen.getAllByTestId('labels-pick').map((c) => c.getAttribute('data-part'))).toEqual([null, null])
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 6 tape labels')
+  })
+
+  it('a part-way box is forgotten when the copies change: the box prints whole', async () => {
+    usb.granted = true
+    usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => { onLabel?.(1); throw new Error('The printer’s cover is open.') })
+    setup()
+    fireEvent.click(await screen.findByTestId('labels-copies-more'))
+    fireEvent.click(screen.getByTestId('labels-print'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-slip').textContent).toContain('A1 has 1 of its 2 strips to go. The press prints the rest.'))
+    await waitFor(() => expect(screen.getByTestId('labels-print').textContent).toBe('Print 3 tape labels'))
+    fireEvent.click(screen.getByTestId('labels-copies-more'))
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 6 tape labels')
   })
 
   it('one strip has no Stop printing: the test strip is a run of one', async () => {

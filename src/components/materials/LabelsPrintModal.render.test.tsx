@@ -242,8 +242,10 @@ describe('LabelsPrintModal', () => {
     expect(from.value).toBe(A1)
     expect(to.value).toBe(D4)
     expect(Array.from(from.options).map((o) => o.textContent)).toEqual(['A1', 'B3', 'C2', 'D4'])
+    expect(screen.getByTestId('labels-range-count').textContent).toBe('4 of 4 boxes')
     fireEvent.change(from, { target: { value: B3 } })
     expect(pressed()).toEqual(['false', 'true', 'true', 'true'])
+    expect(screen.getByTestId('labels-range-count').textContent).toBe('3 of 4 boxes')
     expect(screen.getByTestId('labels-print').textContent).toBe('Print 3 labels')
     fireEvent.change(to, { target: { value: C2 } })
     expect(pressed()).toEqual(['false', 'true', 'true', 'false'])
@@ -254,6 +256,7 @@ describe('LabelsPrintModal', () => {
     // None: the ends read Pick a box, and an end picked runs to the list's far end
     fireEvent.click(screen.getByRole('button', { name: 'None' }))
     expect((screen.getByTestId('labels-range-from') as HTMLSelectElement).value).toBe('')
+    expect(screen.getByTestId('labels-range-count').textContent).toBe('No box is ticked.')
     fireEvent.change(screen.getByTestId('labels-range-to'), { target: { value: B3 } })
     expect(pressed()).toEqual(['true', 'true', 'false', 'false'])
   })

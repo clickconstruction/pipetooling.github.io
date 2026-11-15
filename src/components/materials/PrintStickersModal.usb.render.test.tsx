@@ -124,7 +124,7 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     fireEvent.click(screen.getByRole('button', { name: '30' }))
     fireEvent.click(screen.getByTestId('stickers-copies-more'))
     fireEvent.click(screen.getByTestId('stickers-print'))
-    await waitFor(() => expect(screen.getByTestId('stickers-progress').textContent).toBe('Printing 4 of 60…'))
+    await waitFor(() => expect(screen.getByTestId('stickers-progress').textContent).toBe('Printing 4 of 60 · 0102, strip 2 of 2'))
     // an earlier test's window closed its printer on the way out
     usb.close.mockClear()
     fireEvent.click(screen.getByTestId('stickers-stop'))
@@ -137,6 +137,33 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(screen.queryByTestId('stickers-slip')).toBeNull()
     expect(screen.queryByTestId('stickers-stop')).toBeNull()
     expect(screen.getByTestId('stickers-print').textContent).toBe('Print the rest, 0103 to 0130')
+    expect(screen.getByTestId('stickers-range-count').textContent).toBe('28 of 30 stickers')
+  })
+
+  it('a range of the run on the page is picked by its two ends, and the press names it (Taunya, 2026-11-15)', async () => {
+    usb.granted = true
+    setup()
+    await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+    // before a run is made there are no numbers to pick from
+    expect(screen.queryByTestId('stickers-range')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '30' }))
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('30 stickers printed.'))
+    const from = screen.getByTestId('stickers-range-from') as HTMLSelectElement
+    const to = screen.getByTestId('stickers-range-to') as HTMLSelectElement
+    expect(from.value).toBe('s-101')
+    expect(to.value).toBe('s-130')
+    expect(Array.from(from.options).slice(0, 3).map((o) => o.textContent)).toEqual(['0101', '0102', '0103'])
+    expect(screen.getByTestId('stickers-range-count').textContent).toBe('30 of 30 stickers')
+    fireEvent.change(from, { target: { value: 's-103' } })
+    fireEvent.change(to, { target: { value: 's-110' } })
+    expect(screen.getByTestId('stickers-range-count').textContent).toBe('8 of 30 stickers')
+    // a picked range is not the rest of a stopped run, and the press says which stickers it is
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 8 stickers, 0103 to 0110')
+    usb.print.mockClear()
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('8 stickers printed.'))
+    expect((usb.print.mock.calls[0]![0] as unknown[]).length).toBe(8)
   })
 
   it('tape the sticker is not laid out for holds the press and says what to load', async () => {
