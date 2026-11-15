@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   PAY_CALENDAR_DEFAULT,
   PAY_CALENDAR_MISSED_RUN_DAYS,
+  JOB_RECORD_MIN_PAYMENTS,
   asPayCalendarRead,
+  billCalendarRead,
   calendarBasisWords,
   calendarBillRead,
   calendarBillWords,
@@ -25,10 +27,19 @@ import {
   payCalendarShortFor,
   payCalendarWords,
   payCutoffLine,
+  payerCalendarLead,
+  payerCalendarSummary,
+  recordFor,
+  recordLandsShort,
+  recordLandsWords,
+  recordOfShort,
+  recordWords,
   sendTodayCutoffWords,
   usuallyLandsShort,
   usuallyLandsWords,
   type PayCalendar,
+  type PayCalendarRead,
+  type PayCalendarReceipt,
 } from './payCalendar'
 
 const cal = (over: Partial<PayCalendar> = {}): PayCalendar => ({ ...PAY_CALENDAR_DEFAULT, ...over })
@@ -201,10 +212,10 @@ describe('whose calendar a job reads (punch list #341)', () => {
 
   it("says the job's own, the payer's, switched off or none", () => {
     expect(calendarSourceFor(index, { payerId: 'p1', jobId: 'j1' })).toEqual({ calendar: TENTH, from: 'payer', payerCalendar: TENTH })
-    expect(calendarSourceFor(index, { payerId: 'p1', jobId: 'j2' })).toEqual({ calendar: BY_25TH, from: 'job', payerCalendar: TENTH })
-    expect(calendarSourceFor(index, { payerId: 'p1', jobId: 'j3' })).toEqual({ calendar: null, from: 'off', payerCalendar: TENTH })
+    expect(calendarSourceFor(index, { payerId: 'p1', jobId: 'j2' })).toEqual({ calendar: BY_25TH, from: 'job', payerCalendar: TENTH, jobId: 'j2' })
+    expect(calendarSourceFor(index, { payerId: 'p1', jobId: 'j3' })).toEqual({ calendar: null, from: 'off', payerCalendar: TENTH, jobId: 'j3' })
     expect(calendarSourceFor(index, { payerId: 'p9', jobId: 'j9' })).toMatchObject({ from: 'job', payerCalendar: null })
-    expect(calendarSourceFor(index, { payerId: 'p9', jobId: 'j8' })).toEqual({ calendar: null, from: 'off', payerCalendar: null })
+    expect(calendarSourceFor(index, { payerId: 'p9', jobId: 'j8' })).toEqual({ calendar: null, from: 'off', payerCalendar: null, jobId: 'j8' })
     expect(calendarSourceFor(index, { payerId: 'p9', jobId: 'other' })).toEqual({ calendar: null, from: 'none', payerCalendar: null })
     expect(calendarSourceFor(index, { payerId: null, jobId: 'j2' }).from).toBe('none')
     expect(calendarSourceFor(null, { payerId: 'p1' }).from).toBe('none')
@@ -390,5 +401,106 @@ describe('one open bill against the calendar, for the waiting lists (v2.7127)', 
     expect(calendarBasisWords(six)).toBe('pay calendar · lands ~6d after the pay day')
     expect(calendarBasisWords(latenessAgainst([{ billedYmd: '2026-10-06', paidYmd: '2026-11-09' }], TENTH))).toBe('pay calendar · lands by the pay day')
     expect(calendarBasisWords(null)).toBe('pay calendar · no payment on record yet')
+  })
+})
+
+describe("the job's own record (punch list #341, PR 3)", () => {
+  /** Larkfield on its other jobs: 37, 30 and 37 days after the 10th. Job 1431 on its own calendar: two payments, each on its due day. */
+  const paid = (billedYmd: string, paidYmd: string, jobId: string | null = null): PayCalendarReceipt => ({ billedYmd, paidYmd, jobId })
+  const OTHER_JOBS = [paid('2026-07-10', '2026-09-16', 'j1406'), paid('2026-08-06', '2026-10-10', 'j1406'), paid('2026-06-03', '2026-08-16', 'j1418')]
+  const OWN_TWO = [paid('2026-08-20', '2026-09-30', 'j1431'), paid('2026-09-22', '2026-10-30', 'j1431')]
+  const own = (jobId: string | null = 'j1431'): PayCalendarRead => ({ calendar: BY_25TH, from: 'job', payerCalendar: TENTH, jobId })
+  const payers: PayCalendarRead = { calendar: TENTH, from: 'payer', payerCalendar: TENTH }
+
+  it("scores the payer's calendar on the payer's payments on every job, as before", () => {
+    const r = recordFor([...OTHER_JOBS, ...OWN_TWO], payers)!
+    expect(r).toMatchObject({ of: 'payer', jobPayments: 0 })
+    expect(r.lateness).toEqual(latenessAgainst([...OTHER_JOBS, ...OWN_TWO], TENTH))
+    expect(recordWords(r, 'Larkfield Construction')).toBe(latenessWords(r.lateness))
+    expect(recordOfShort(r)).toBeNull()
+  })
+
+  it("scores a job's own calendar on that job's payments once it has two, and says so", () => {
+    expect(JOB_RECORD_MIN_PAYMENTS).toBe(2)
+    const r = recordFor([...OTHER_JOBS, ...OWN_TWO], own())!
+    expect(r).toMatchObject({ of: 'job', jobPayments: 2 })
+    expect(r.lateness).toEqual(latenessAgainst(OWN_TWO, BY_25TH))
+    expect(r.lateness?.medianDays).toBe(0)
+    expect(recordWords(r, 'Larkfield Construction')).toBe('This job’s last 2 payments all landed by the due day.')
+    expect(recordOfShort(r)).toBe('this job’s record')
+    expect(recordLandsShort('2026-12-30', r)).toBe('Usually lands by the due day · this job’s record')
+    expect(recordLandsWords('2026-12-30', r, 'Larkfield Construction')).toBe('Usually lands by the due day. That is this job’s own 2 payments, not Larkfield Construction’s other jobs.')
+  })
+
+  it("stands on the payer's record until the job has two, and says whose it is", () => {
+    const none = recordFor(OTHER_JOBS, own())!
+    expect(none).toMatchObject({ of: 'borrowed', jobPayments: 0 })
+    expect(none.lateness).toEqual(latenessAgainst(OTHER_JOBS, BY_25TH))
+    expect(recordWords(none, 'Larkfield Construction')).toBe(`No payment on this job yet. The record is Larkfield Construction’s on other jobs. ${latenessWords(none.lateness)}`)
+    expect(recordOfShort(none)).toBe('their record on other jobs')
+
+    const one = recordFor([...OTHER_JOBS, OWN_TWO[0]!], own())!
+    expect(one).toMatchObject({ of: 'borrowed', jobPayments: 1 })
+    expect(one.lateness?.count).toBe(4)
+    expect(recordWords(one, 'Larkfield Construction')).toContain('One payment on this job so far. Until it has 2, the record is Larkfield Construction’s on all their jobs.')
+    expect(recordLandsWords('2026-12-30', one, 'Larkfield Construction')).toContain('That is Larkfield Construction’s record on all their jobs. This job is scored on its own once it has 2 payments.')
+  })
+
+  it('says so when neither the job nor the payer has a payment', () => {
+    const r = recordFor([], own())!
+    expect(r).toEqual({ lateness: null, of: 'borrowed', jobPayments: 0 })
+    expect(recordWords(r, 'Larkfield Construction')).toBe('No payment on this job yet, and none on record for Larkfield Construction. The due day is the best guess there is.')
+    expect(recordLandsShort('2026-12-30', r)).toBe('No payment on this job yet')
+    expect(recordLandsShort('2026-12-10', recordFor([], payers))).toBe('No payment on record yet')
+    expect(recordLandsWords('2026-12-10', recordFor([], payers))).toBe('No payment of theirs is measured yet, so the due day is the best guess there is.')
+  })
+
+  it("reads a job's own calendar handed over with no job as the payer's, and nothing with no calendar", () => {
+    expect(recordFor(OWN_TWO, own(null))?.of).toBe('payer')
+    expect(recordFor(OWN_TWO, asPayCalendarRead(BY_25TH))?.of).toBe('payer')
+    expect(recordFor(OWN_TWO, { calendar: null, from: 'off', payerCalendar: TENTH, jobId: 'j1431' })).toBeNull()
+  })
+
+  it('carries the job on the read the index answers', () => {
+    const index = indexPayCalendars([
+      { payerCustomerId: 'lark', jobId: null, off: false, calendar: TENTH, setByName: null, setAt: null },
+      { payerCustomerId: 'lark', jobId: 'j1431', off: false, calendar: BY_25TH, setByName: null, setAt: null },
+    ])
+    expect(calendarSourceFor(index, { payerId: 'lark', jobId: 'j1431' })).toMatchObject({ from: 'job', jobId: 'j1431' })
+    expect(calendarSourceFor(index, { payerId: 'lark', jobId: 'j1406' })).toEqual({ calendar: TENTH, from: 'payer', payerCalendar: TENTH })
+  })
+
+  it('reads one bill against its own calendar and its own record', () => {
+    // Job 1431's bill in Oct 22: due Nov 30 on its own calendar, and its two payments landed on the day.
+    const bill = billCalendarRead(own(), '2026-10-22', [...OTHER_JOBS, ...OWN_TWO], '2026-12-05')!
+    expect(bill).toMatchObject({ dueYmd: '2026-11-30', expectedYmd: '2026-11-30', daysPastExpected: 5, tone: 'warn' })
+    expect(bill.of).toMatchObject({ calendar: BY_25TH, own: true, record: { of: 'job', jobPayments: 2 } })
+    // The same bill scored on the payer's record would not be past its day yet.
+    expect(calendarBillRead('2026-10-22', BY_25TH, latenessAgainst(OTHER_JOBS, BY_25TH), '2026-12-05')?.daysPastExpected).toBe(0)
+    expect(billCalendarRead({ calendar: null, from: 'none', payerCalendar: null }, '2026-10-22', OWN_TWO, '2026-12-05')).toBeNull()
+  })
+
+  it("lends a payer's summary line the calendar of the bill furthest past its day", () => {
+    const ownBill = billCalendarRead(own(), '2026-10-22', [...OTHER_JOBS, ...OWN_TWO], '2026-12-05')
+    const ahead = billCalendarRead(payers, '2026-11-03', OTHER_JOBS, '2026-12-05')
+    // A payer with no calendar of their own, and one job on its own that is past its day.
+    expect(payerCalendarSummary({ calendar: null, lateness: null }, [null, ownBill])).toEqual({ calendar: BY_25TH, own: true, lateness: ownBill!.of!.record.lateness, recordOf: 'job', pastExpectedDays: 5 })
+    // The payer's own calendar, with nothing past: the line reads the payer's, as before.
+    const slow = latenessAgainst(OTHER_JOBS, TENTH)
+    expect(payerCalendarSummary({ calendar: TENTH, lateness: slow }, [ahead])).toEqual({ calendar: TENTH, own: false, lateness: slow, recordOf: 'payer', pastExpectedDays: null })
+    // Neither: a pace payer.
+    expect(payerCalendarSummary({ calendar: null, lateness: null }, [null, undefined])).toEqual({ calendar: null, own: false, lateness: null, recordOf: null, pastExpectedDays: null })
+    // A read built bare is the payer's.
+    const bare = calendarBillRead('2026-08-05', TENTH, slow, '2026-12-05')
+    expect(payerCalendarSummary({ calendar: TENTH, lateness: slow }, [bare])).toMatchObject({ calendar: TENTH, own: false, pastExpectedDays: 49 })
+  })
+
+  it("says whose calendar a summary line reads", () => {
+    expect(calendarBasisWords(null, true)).toBe('a job’s own pay calendar · no payment on record yet')
+    expect(calendarBasisWords(latenessAgainst([paid('2026-09-03', '2026-10-16')], TENTH), true)).toBe('a job’s own pay calendar · lands ~6d after the pay day')
+    expect(payerCalendarLead('Larkfield Construction', false)).toBe('Larkfield Construction pays on a calendar.')
+    expect(payerCalendarLead('Larkfield Construction', true)).toBe('One of Larkfield Construction’s jobs is on its own pay calendar.')
+    expect(payerCalendarLead(null, false)).toBe('Pays on a calendar.')
+    expect(payerCalendarLead(null, true)).toBe('One of their jobs is on its own pay calendar.')
   })
 })

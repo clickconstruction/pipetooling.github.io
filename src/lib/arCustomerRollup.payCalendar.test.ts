@@ -77,4 +77,29 @@ describe('the Dashboard’s receivables for a customer on a Pay calendar', () =>
     expect(text).toContain('• 1441 · Lot 4 — $9,000.00 (due Oct 10 · 37d past expected)')
     expect(text).toContain('• 1443 · Lot 6 — $2,500.00 (due Dec 10)')
   })
+
+  it("reads the customer's summary line from its bills: a job on its own calendar that is past its day (punch list #341, PR 3)", () => {
+    // Larkfield has no calendar of its own. Job 1441 does: in by the 25th, paid the 30th of the next month. In Sep 28, due Nov 30.
+    const own = { ...PAY_CALENDAR_DEFAULT, cutoffDay: 25, payDay: 30 }
+    const calendars = indexPayCalendars([calRow({ jobId: 'j1441', calendar: own })])
+    const row = buildArCustomerRollup([ITEMS[0]!], speeds, '2026-12-09', calendars).rows[0]!
+    expect(row.bills[0]).toMatchObject({ tone: 'warn', calendar: { dueYmd: '2026-11-30', daysPastExpected: 9, of: { own: true, record: { of: 'borrowed' } } } })
+    expect(row).toMatchObject({ pastPace: true, calendar: own, calendarOwn: true, pastExpectedDays: 9 })
+    expect(arCallOpener(row)).toBe('1 bill past expected on a job’s own pay calendar — 1441 · Lot 4, $9,000, due Nov 30 · 9d past expected. $9,000 open on 1 bill.')
+    expect(buildArCallSummary(row, null)).toContain('One of their jobs is on its own pay calendar. A bill in by the 25th is paid the 30th of the next month.')
+    // Not yet past its day, the customer has no calendar of their own to read: the line is a pace line, as before.
+    const ahead = buildArCustomerRollup([ITEMS[0]!], speeds, TODAY, calendars).rows[0]!
+    expect(ahead).toMatchObject({ pastPace: false, calendar: null, calendarOwn: false, pastExpectedDays: null })
+    expect(ahead.bills[0]?.calendar?.dueYmd).toBe('2026-11-30')
+  })
+
+  it("scores a job's own bill on that job's payments once it has two", () => {
+    const own = { ...PAY_CALENDAR_DEFAULT, cutoffDay: 25, payDay: 30 }
+    const calendars = indexPayCalendars([calRow(), calRow({ jobId: 'j1441', calendar: own })])
+    const on1441 = (billedYmd: string, paidYmd: string): PayReceipt => ({ ...receipt(billedYmd, paidYmd), jobId: 'j1441' })
+    const data = { ...speeds, receipts: { lark: [...speeds.receipts.lark!, on1441('2026-07-20', '2026-09-11'), on1441('2026-08-20', '2026-10-12')] } }
+    const row = buildArCustomerRollup(ITEMS, data, '2026-12-15', calendars).rows[0]!
+    expect(row.bills.find((b) => b.item.key === 'a')?.calendar).toMatchObject({ dueYmd: '2026-11-30', expectedYmd: '2026-12-12', daysPastExpected: 3, of: { own: true, record: { of: 'job', jobPayments: 2 } } })
+    expect(row.bills.find((b) => b.item.key === 'b')?.calendar?.of).toMatchObject({ own: false, record: { of: 'payer' } })
+  })
 })
