@@ -28,7 +28,7 @@ describe('lienGateMarks', () => {
     const marks = lienGateMarks(affidavitGates(row({ job_id: 'a' })), true)
     expect(marks.map((m) => m.slot)).toEqual([...LIEN_GATE_MARK_SLOTS])
     expect(marks.map((m) => m.state)).toEqual(['ok', 'ok', 'ok', 'ok', 'ok'])
-    expect(marks[0].title).toBe('Owner of record with a mailing address')
+    expect(marks[0]!.title).toBe('Owner of record with a mailing address')
     expect(lienGateMarksMissingWords(marks)).toBeNull()
     expect(lienGateMarksSummary(marks)).toBe('All 5 clear')
   })
@@ -44,7 +44,7 @@ describe('lienGateMarks', () => {
     const marks = lienGateMarks(affidavitGates(row({ job_id: 'c', has_owner: false, has_legal: false, noticed: false })), true)
     expect(marks.map((m) => m.state)).toEqual(['open', 'open', 'ok', 'open', 'ok'])
     expect(lienGateMarksMissingWords(marks)).toBe('missing owner, legal, notice')
-    expect(marks[3].title).toBe('Missing notice')
+    expect(marks[3]!.title).toBe('Missing notice')
   })
 
   it("the GC's address and the homestead answer carry their own words", () => {
@@ -56,8 +56,8 @@ describe('lienGateMarks', () => {
   it('a job contracted with the owner keeps five marks, with the GC and notice slots skipped and not green', () => {
     const marks = lienGateMarks(affidavitGates(row({ job_id: 'e', is_sub: false, noticed: false, gc_customer_id: null, has_contractor_address: null })), false)
     expect(marks.map((m) => m.state)).toEqual(['ok', 'ok', 'skipped', 'skipped', 'ok'])
-    expect(marks[2].title).toBe('No general contractor to name (contracted with the owner)')
-    expect(marks[3].title).toBe('No monthly notice required (contracted with the owner)')
+    expect(marks[2]!.title).toBe('No general contractor to name (contracted with the owner)')
+    expect(marks[3]!.title).toBe('No monthly notice required (contracted with the owner)')
     expect(lienGateMarksSummary(marks)).toBe('All 3 asked clear')
   })
 
