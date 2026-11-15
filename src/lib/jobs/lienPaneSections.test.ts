@@ -45,10 +45,12 @@ describe('the notice pane’s stacked heads (v2.4733)', () => {
   })
 
   it('stacks like the list: passed heads under the strip at the top, coming heads at the bottom', () => {
-    expect(lienPaneHeadOffsets(0, 5, 0)).toEqual({ top: 0, bottom: 4 * LIEN_PANE_HEAD_H })
-    expect(lienPaneHeadOffsets(2, 5, 0)).toEqual({ top: 2 * LIEN_PANE_HEAD_H, bottom: 2 * LIEN_PANE_HEAD_H })
-    expect(lienPaneHeadOffsets(4, 5, 44)).toEqual({ top: 44 + 4 * LIEN_PANE_HEAD_H, bottom: 0 })
-    expect(lienPaneHeadOffsets(0, 1, -5)).toEqual({ top: 0, bottom: 0 })
+    // 24 px a head since v2.7323 (the owner's ask: closer together, the words as they are), the list's number.
+    expect(LIEN_PANE_HEAD_H).toBe(24)
+    expect(lienPaneHeadOffsets(0, 5, 0)).toEqual({ top: 0, bottom: 4 * LIEN_PANE_HEAD_H, height: LIEN_PANE_HEAD_H })
+    expect(lienPaneHeadOffsets(2, 5, 0)).toEqual({ top: 2 * LIEN_PANE_HEAD_H, bottom: 2 * LIEN_PANE_HEAD_H, height: LIEN_PANE_HEAD_H })
+    expect(lienPaneHeadOffsets(4, 5, 44)).toEqual({ top: 44 + 4 * LIEN_PANE_HEAD_H, bottom: 0, height: LIEN_PANE_HEAD_H })
+    expect(lienPaneHeadOffsets(0, 1, -5)).toEqual({ top: 0, bottom: 0, height: LIEN_PANE_HEAD_H })
   })
 
   it('lands a pressed head’s section under it, and lights the section the reader is in', () => {
@@ -62,9 +64,9 @@ describe('the notice pane’s stacked heads (v2.4733)', () => {
       { key: 'envelope', offsetTop: 1700 },
     ] as const
     expect(litLienPaneSection(bodies, 0, 0)).toBe('path')
-    // The gates body at 400 reaches its stuck head once scrollTop + 3·30 ≥ 400.
-    expect(litLienPaneSection(bodies, 309, 0)).toBe('path')
-    expect(litLienPaneSection(bodies, 310, 0)).toBe('gates')
+    // The gates body at 400 reaches its stuck head once scrollTop + 3·H ≥ 400.
+    expect(litLienPaneSection(bodies, 400 - 3 * LIEN_PANE_HEAD_H - 1, 0)).toBe('path')
+    expect(litLienPaneSection(bodies, 400 - 3 * LIEN_PANE_HEAD_H, 0)).toBe('gates')
     expect(litLienPaneSection(bodies, 1400, 44)).toBe('months')
     expect(litLienPaneSection(bodies, 5000, 0)).toBe('envelope')
     expect(litLienPaneSection([], 0, 0)).toBeNull()
@@ -73,8 +75,8 @@ describe('the notice pane’s stacked heads (v2.4733)', () => {
 
 describe('the pane’s heads on a phone (punch list #352, PR 6)', () => {
   it('one head pins under the strip, whichever section it is, and none at the bottom', () => {
-    for (const i of [0, 2, 4]) expect(lienPaneHeadOffsets(i, 5, 0, true)).toEqual({ top: 0, bottom: 'auto' })
-    expect(lienPaneHeadOffsets(3, 5, 44, true)).toEqual({ top: 44, bottom: 'auto' })
+    for (const i of [0, 2, 4]) expect(lienPaneHeadOffsets(i, 5, 0, true)).toEqual({ top: 0, bottom: 'auto', height: 40 })
+    expect(lienPaneHeadOffsets(3, 5, 44, true)).toEqual({ top: 44, bottom: 'auto', height: 40 })
     expect(LIEN_PANE_HEAD_H_PHONE).toBe(40)
   })
 

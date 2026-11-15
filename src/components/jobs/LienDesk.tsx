@@ -150,7 +150,7 @@ import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, 
 import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
-import { LIEN_PANE_HEAD_H, lienPaneSections } from '../../lib/jobs/lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from '../../lib/jobs/lienPhonePane'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
@@ -369,8 +369,8 @@ const PHONE_CHIP: React.CSSProperties = { flex: 'none', minHeight: 40, padding: 
 const headDoor: React.CSSProperties = { height: 'calc(0.78rem * 1.5 + 6px)', boxSizing: 'border-box', paddingTop: 0, paddingBottom: 0, display: 'inline-flex', alignItems: 'center' }
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
-/** The page labels (v2.4726) stack like the Notices list's pile titles (v2.4651): one bar each, this tall. */
-const PAGE_LABEL_H = 30
+/** The page labels (v2.4726) stack like the Notices list's pile titles (v2.4651): one bar each, as tall as the pane's heads (one number since v2.7323). */
+const PAGE_LABEL_H = LIEN_PANE_HEAD_H
 /** The paper stays light in both themes — `data-theme="light"` re-pins the tokens and the text color (index.css). */
 const paperStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }
 const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }
@@ -2123,11 +2123,16 @@ export default function LienDesk({
   // passed and at the pane's foot while ahead (the Notices list's pile titles, v2.4651), lit for the page under the reader,
   // and a button that scrolls to its page.
   const pageKeys: string[] = [...(coverHtml ? ['cover'] : []), ...(releaseHtml ? ['release'] : []), 'notice', ...(payHtml ? ['pay'] : [])]
+  // The heads over the page labels: on a computer every section head stacked, on a phone the one pinned head (punch list #352, PR 6);
+  // and a label is as tall as those heads (v2.7323), so the bars in the pane are one kind on either screen. Read when a label
+  // is drawn or pressed: `paneHeads` is declared after this point.
+  const headsOverPages = () => (isMobile ? LIEN_PANE_HEAD_H_PHONE : paneHeads.length * LIEN_PANE_HEAD_H)
+  const pageLabelH = isMobile ? LIEN_PANE_HEAD_H_PHONE : PAGE_LABEL_H
   const relightPages = (host: HTMLElement) => {
     let on: string | null = null
     pageKeys.forEach((key, i) => {
       const label = host.querySelector<HTMLElement>(`[data-lien-desk-page-label="${key}"]`)
-      if (label && label.offsetTop <= host.scrollTop + stripH + paneHeads.length * LIEN_PANE_HEAD_H + (i + 1) * PAGE_LABEL_H) on = key
+      if (label && label.offsetTop <= host.scrollTop + stripH + headsOverPages() + (i + 1) * pageLabelH) on = key
     })
     setLitPage((prev) => (prev === on ? prev : on))
   }
@@ -2135,7 +2140,7 @@ export default function LienDesk({
     const host = paneRef.current
     const label = host?.querySelector<HTMLElement>(`[data-lien-desk-page-label="${key}"]`)
     if (!host || !label) return
-    const top = Math.max(0, label.offsetTop - stripH - paneHeads.length * LIEN_PANE_HEAD_H - i * PAGE_LABEL_H)
+    const top = Math.max(0, label.offsetTop - stripH - headsOverPages() - i * pageLabelH)
     if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: 'smooth' })
     else host.scrollTop = top
     setLitPage(key)
@@ -2144,7 +2149,7 @@ export default function LienDesk({
     const i = pageKeys.indexOf(key)
     const on = (litPage ?? pageKeys[0]) === key
     return (
-      <div className="lienPileHead" data-lien-desk-page-label={key} data-on={on ? 'yes' : 'no'} style={{ top: stripH + paneHeads.length * LIEN_PANE_HEAD_H + i * PAGE_LABEL_H, bottom: 'auto', zIndex: 1, margin: '0 -1.1rem -0.3rem', padding: '0 1.1rem' }}>
+      <div className="lienPileHead" data-lien-desk-page-label={key} data-on={on ? 'yes' : 'no'} style={{ top: stripH + headsOverPages() + i * pageLabelH, bottom: 'auto', height: pageLabelH, zIndex: 1, margin: '0 -1.1rem -0.3rem', padding: '0 1.1rem', ...(isMobile ? { fontSize: '0.75rem' } : null) }}>
         <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPage(key, i)} title="Go to this page" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
           <span>{words}</span>
           {extra ? (

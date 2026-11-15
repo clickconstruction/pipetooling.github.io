@@ -1300,8 +1300,8 @@ describe('LienDesk · an open paper on a phone (punch list #352, PR 6)', () => {
     expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
     const wideHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
     expect(wideHeads.length).toBeGreaterThan(1)
-    expect(wideHeads.map((h) => parseFloat(h.style.top))).toEqual(wideHeads.map((_, i) => i * 30))
-    expect(wideHeads.every((h) => h.style.height === '')).toBe(true)
+    expect(wideHeads.map((h) => parseFloat(h.style.top))).toEqual(wideHeads.map((_, i) => i * 24))
+    expect(wideHeads.every((h) => h.style.height === '24px')).toBe(true)
     desk.unmount()
 
     const before = window.matchMedia
@@ -3212,7 +3212,9 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     expect(heads[3]!.textContent).toBe('Months on this jobJun + Jul + Aug · $33,500')
     expect(heads[4]!.textContent).toBe('In the envelope2 pages · owner + GC · courtesy PDF to the GC')
     // Stacked: passed heads at the top, coming ones at the bottom; the first is lit at the top of the pane.
-    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '120px'], ['30px', '90px'], ['60px', '60px'], ['90px', '30px'], ['120px', '0px']])
+    // 24 px a head since v2.7323 (30 before): the owner's ask that the bars sit closer with the words as they are.
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '96px'], ['24px', '72px'], ['48px', '48px'], ['72px', '24px'], ['96px', '0px']])
+    expect(heads.every((h) => h.style.height === '24px')).toBe(true)
     expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no', 'no'])
     // Every head sits before its section, as a sibling in the pane's grid.
     for (const key of ['path', 'gates', 'houses', 'months', 'envelope']) {
@@ -3328,10 +3330,10 @@ describe('LienDesk · By paper on a phone (punch list #352, PR 5)', () => {
     await settle()
     const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pile-head]')]
     expect(heads.length).toBeGreaterThanOrEqual(1)
-    // i bars from the top, n-1-i from the bottom, 30 px each (`lienPhoneLists.test.ts` holds a list of five).
-    expect(heads.map((h) => parseFloat(h.style.top))).toEqual(heads.map((_, i) => i * 30))
-    expect(heads.map((h) => parseFloat(h.style.bottom))).toEqual(heads.map((_, i) => (heads.length - 1 - i) * 30))
-    expect(heads.every((h) => h.style.height === '30px')).toBe(true)
+    // i bars from the top, n-1-i from the bottom, 24 px each since v2.7323 (`lienPhoneLists.test.ts` holds a list of five).
+    expect(heads.map((h) => parseFloat(h.style.top))).toEqual(heads.map((_, i) => i * 24))
+    expect(heads.map((h) => parseFloat(h.style.bottom))).toEqual(heads.map((_, i) => (heads.length - 1 - i) * 24))
+    expect(heads.every((h) => h.style.height === '24px')).toBe(true)
     const wide = document.querySelector<HTMLElement>('[data-lien-desk-paper-kinds] [role="tab"]')!
     expect(wide.style.whiteSpace).toBe('nowrap')
     desk.unmount()
@@ -3431,8 +3433,10 @@ describe('LienDesk — the page labels stick (v2.4726)', () => {
     // heads + i bars from the top once passed; it does not stack at the foot, where the envelope head already names the pages.
     const headCount = document.querySelectorAll('[data-lien-pane-head]').length
     expect(headCount).toBe(4)
-    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${(headCount + i) * 30}px`))
+    // 24 px a bar since v2.7323 (30 before), the same number as the pane's heads over them.
+    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${(headCount + i) * 24}px`))
     expect(labels.map((l) => l.style.bottom)).toEqual(labels.map(() => 'auto'))
+    expect(labels.every((l) => l.style.height === '24px')).toBe(true)
     expect(labels.map((l) => l.getAttribute('data-on'))).toEqual(labels.map((_, i) => (i === 0 ? 'yes' : 'no')))
     expect(labels[0]!.textContent).toMatch(/^Page 1 of \d/)
     // Each is a button that goes to its page and lights up.
@@ -3661,7 +3665,8 @@ describe('LienDesk · the affidavit and retainage panes under grey heads (v2.732
     expect(heads[2]!.textContent).toBe("The owner's answersno call yet · bond unknown")
     expect(heads[3]!.textContent).toBe('The papershort form · Robert Douglas, Master Plumber')
     // Stacked like the notice pane: passed heads at the top, coming ones at the bottom, the first lit.
-    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '90px'], ['30px', '60px'], ['60px', '30px'], ['90px', '0px']])
+    // 24 px a head since v2.7323 (30 when v2.7320 shipped): the owner's ask that the bars sit closer with the words as they are.
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '72px'], ['24px', '48px'], ['48px', '24px'], ['72px', '0px']])
     expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no'])
     // Every head sits before its body, a sibling in the pane's grid, and the pane is the scrolling box.
     for (const key of ['path', 'gates', 'owner', 'paper']) {
@@ -3685,7 +3690,7 @@ describe('LienDesk · the affidavit and retainage panes under grey heads (v2.732
     const paperBody = pane.querySelector<HTMLElement>('[data-lien-pane-body="paper"]')!
     Object.defineProperty(paperBody, 'offsetTop', { value: 900, configurable: true })
     fireEvent.click(heads[3]!.querySelector('button')!)
-    expect(pane.scrollTop).toBe(900 - 4 * 30)
+    expect(pane.scrollTop).toBe(900 - 4 * 24)
     expect(heads[3]!.getAttribute('data-on')).toBe('yes')
     expect(heads[0]!.getAttribute('data-on')).toBe('no')
   })
@@ -3728,7 +3733,7 @@ describe('LienDesk · the affidavit and retainage panes under grey heads (v2.732
       'The § 53.056 claimnot yet inside one · the owner withholds once the affidavit is filed',
       'The paper2 pages · cover letter + the form · § 53.057(a-2)',
     ])
-    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '60px'], ['30px', '30px'], ['60px', '0px']])
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '48px'], ['24px', '24px'], ['48px', '0px']])
     expect(screen.queryByText(/Before this notice can go/)).toBeNull()
     expect(screen.queryByText(/Not yet inside a § 53\.056 claim/)).toBeNull()
     expect(pane.querySelector('[data-lien-pane-body="gates"] [data-lien-retainage-window]')!.textContent).toBe('§ 53.057 · 30 days from the day our contract on the job ended · complete Sep 3')
@@ -3769,9 +3774,10 @@ describe('LienDesk · Lien affidavits and Retainage notices stack their pile tit
       expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([first, second])
       for (const [i, h] of heads().entries()) {
         expect(h.className).toBe('lienPileHead')
-        expect(h.style.top).toBe(`${i * 30}px`)
-        expect(h.style.bottom).toBe(`${(1 - i) * 30}px`)
-        expect(h.style.height).toBe('30px')
+        // 24 px a title since v2.7323 (30 when v2.7316 shipped): the owner's ask that the bars sit closer with the words as they are.
+        expect(h.style.top).toBe(`${i * 24}px`)
+        expect(h.style.bottom).toBe(`${(1 - i) * 24}px`)
+        expect(h.style.height).toBe('24px')
         expect(h.querySelector(`[data-lien-pile-count="${h.getAttribute('data-lien-pile-head')}"]`)!.textContent).toBe('1')
       }
       // No flat caption is left over.
