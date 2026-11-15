@@ -96,7 +96,7 @@ Neither card edits the other's kernel. #346's is `subOwedBreakdown` (sub → job
 2. **The Ledger on Jobs → Subs, by date** (S). The kernel's lines and month groups, `?view=ledger` on `JobsSubsTab`, the desk table and the phone cards, periods, Paid to, search, the tiles, Print and CSV, with no ✓ column. A new guide, *see every payment made to subs by date*. `PROJECT_DOCUMENTATION.md`, `GLOSSARY.md` and `docs/JOBS_TABS_ARCHITECTURE.md` gain the view. No migration.
 3. **By sub, and People → Subs** (S). **Built, v2.7231.** The by-sub rows, one sub's statement with its running balance and the check against Balance due, the statement's print, the **Roster | Ledger** switch on `PeopleSubsTab` (`/people?tab=subs&view=ledger`, and `&sub=<id>` for one sub). `docs/PEOPLE_TABS_ARCHITECTURE.md`, guide `review-your-subs`. No migration.
 4. **The check mark** (S, a migration). **Built, v2.7237**, migration `20261114030000_sub_payment_checked.sql`: a tick is on the sending, so every row of one check goes together. On `people_labor_job_payments`: `checked_at timestamptz`, `checked_by uuid`. A definer RPC `set_sub_payment_checked(p_payment_id, p_checked)` for office staff, and a trigger that clears the tick when `amount` or `payment_date` changes. The ✓ column, the *Not checked* chip, the tile, a How paid filter and a Method column on the ledger. **How paid itself shipped with PR 2b**: `method` and `method_ref` are on the row since migration 20261113180000. A back-charge gets a date field. The client reads columns only the migration creates, so it is a *push right after the merge* PR.
-5. **Match to the bank** (M, the owner's yes to call 2). **Built, v2.7239**, migration `20261114040000_sub_payment_bank_matches.sql`, on the ledger's side only. A link table from a Mercury transaction to a sub payment, a pure matcher (same amount, within three days, the payee's name as a tiebreak), **Match** on a ledger line and the same from the Banking side. Built only if most sub money leaves Mercury.
+5. **Match to the bank** (M, the owner's yes to call 2). **Built, v2.7239**, migration `20261114040000_sub_payment_bank_matches.sql`, on the ledger's side, and from Banking's side since v2.7352. A link table from a Mercury transaction to a sub payment, a pure matcher (same amount, within three days, the payee's name as a tiebreak), **Match** on a ledger line and the same from the Banking side. Built only if most sub money leaves Mercury.
 
 ## PR 2b, added the same day: the payment window
 
@@ -111,7 +111,7 @@ Built with this card's edit, between PR 2 and PR 3:
 - **How it was sent.** Chips: Check, Zelle, Mercury, Cash App, Apple Pay, Cash, Client direct, Other, with a box for a check number, a Cash App id or a confirmation. Stored on the row as `method` and `method_ref` (migration `20261113180000_sub_payment_method.sql`), carried through a removal and its undo. Edit Payment has the same chips, so an old payment can be given its method.
 - **Past what remains is refused**, with the reason. See call 6.
 - **The portal is unchanged.** The memo is still the only text of a payment the sub reads, and the hide tick is now on both windows.
-- **Left for PR 3 and PR 4:** the ledger's Method column and How paid filter, once the Ledger and this are both on `main`. The dev seat's `plan_sub_labor_payment` does not take a method yet.
+- **Left for PR 3 and PR 4:** the ledger's Method column and How paid filter, once the Ledger and this are both on `main`. The dev seat's `plan_sub_labor_payment` takes the method since v2.7357.
 
 ## The owner's calls
 
@@ -145,11 +145,20 @@ Built with this card's edit, between PR 2 and PR 3:
 - **A payment is offered** the bank lines with the same amount to the cent within three days, closest day first, a payee that reads like the sub breaking a tie. A bank line another payment took is offered to nobody else.
 - **A press matches.** Nothing is matched by itself. A match ticks the payment, and clearing the tick clears the match, so a matched payment is always a checked one.
 - **One check is one match.** The lines of a sending are matched together, against what was sent. Payments typed one per sheet before sendings can share a bank line, and what sits on one line can never add up to more than it.
+- **From Banking too, since 2026-11-15 (v2.7352).** On Banking → Ledger a bank line a payment took reads *paid <sub>* with **undo**, and an open line with a payment that fits gets **Match to a sub payment…**. The rules above hold on that side: a test holds that a line is offered a payment exactly when the ledger offers that payment the line.
 
 ## Not built
 
-- **The Banking side.** A bank line on Banking does not say it paid a sub, and has no Match press. The link table is there for it.
-- **Placing a sending's lines by hand.** The fill is oldest first, on or off.
-- **A sheet already paid past its total** becoming a credit. One sheet is in that state.
-- **The dev seat's** `plan_sub_labor_payment` records one row with no sending and no method.
-- **Old payments typed one per sheet** are not gathered into sendings. They are ticked and matched row by row.
+Taunya, 2026-11-15, of the lines here once hand placement had gone to the sub labor spike: "Build all four". Two are built. Three are with the spike.
+
+- **Built: the Banking side** (v2.7352). See *The match to Mercury* above.
+- **Built: the dev seat's sub payment** (v2.7357, server 0.90.0). `plan_sub_labor_payment` records a sending with its number, the method and its reference through `record_sub_sending`, as the Record payment window does, and the plan reads back what will be written.
+- **Placing a sending's lines by hand.** The fill is oldest first, on or off. With the sub labor spike (cards #346 and #350 together), prototyped there.
+- **A sheet already paid past its total** becoming a credit. One sheet is in that state. With the same spike.
+- **Old payments typed one per sheet** are not gathered into sendings. They are ticked and matched row by row. With the same spike.
+
+Left by the two that were built:
+
+- **Banking's Sorting tab** reads no sub payments. The Match press is on the Ledger tab alone, which the controller and the developer open.
+- **A bank line that two old payments add up to** is offered on neither side. The database takes that match and both sides show it once made.
+- **The dev seat places nothing past a sheet.** An amount past what a sheet owes is refused there. Filling their other sheets, keeping a credit and paying from a credit stay the window's presses.
