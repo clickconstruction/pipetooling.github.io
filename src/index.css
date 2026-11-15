@@ -4290,6 +4290,11 @@ body.my-time-boundary-dragging {
 /* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. */
 .lienDeskTitleBar { gap: 0.4rem 0.9rem; }
 .lienDeskKindTab { padding: 2px 10px; }
+/* On a computer the bar's lines sit 6 px apart by each item's 3 px block margins and not the row gap, which the bar sets to 0 (v2.7322, the owner's three boxes of 2026-11-15): a 0-height break on a line of its own took the row gap on each side, 14.4 px between the title line and the pile line. The breaks carry no margin, so a break between two lines is the same 6 px as a line that wraps by itself (the run under the title at the 768 px tablet). The half is `LIEN_DESK_TITLE_BAR_ROW_GAP_PX` in `lienDeskTitleBar.ts`. */
+@media (min-width: 641px) {
+  .lienDeskTitleBar > * { margin-block: 3px; }
+  .lienDeskTitleBar > [data-lien-desk-header-break], .lienDeskTitleBar > [data-lien-desk-pile-break] { margin-block: 0; }
+}
 @media (min-width: 641px) and (max-width: 1131px) {
   .lienDeskTitleBar { column-gap: 0.5rem; }
   .lienDeskKindTab { padding: 2px 7px; }
@@ -4341,6 +4346,17 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPileHeadBtn .n { margin-left: auto; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 /* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
 .lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
+/* The list's find box as a quiet line (v2.7315): no pill — the ⌕ and the words on the list's own background with one hairline under them,
+   which turns blue while the box has the focus; the / key shows only while the column is hovered or the box has the focus, so the shortcut
+   stays findable without a badge on every list. A phone draws no key at all. */
+.lienFind { border-bottom: 1px solid var(--border); background: transparent; transition: border-color 120ms; }
+.lienFind:focus-within { border-bottom-color: var(--border-blue); }
+.lienFind:focus-within .lienFindGlyph { color: var(--text-strong) !important; }
+.lienFind input::placeholder { color: var(--text-muted); opacity: 1; }
+.lienFind input::-webkit-search-cancel-button { display: none; }
+.lienFindKey { opacity: 0; transition: opacity 120ms; }
+[data-lien-desk-find-column]:hover .lienFindKey, .lienFind:hover .lienFindKey, .lienFind:focus-within .lienFindKey { opacity: 1; }
+.lienFindClear:hover, .lienFindClear:focus-visible { background: var(--bg-subtle) !important; color: var(--text-strong) !important; outline: none; }
 /* A stop's title on the lien timeline as a door to its paper (v2.4793): the label's own type, a dotted underline, blue on hover. */
 .lienStopDoor { background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline dotted var(--border-strong); text-underline-offset: 3px; }
 .lienStopDoor:hover, .lienStopDoor:focus-visible { color: var(--text-link) !important; text-decoration-color: var(--text-link); outline: none; }
@@ -7012,6 +7028,18 @@ button.developmentCountChip:focus-visible {
   padding-right: 2px;
   -webkit-mask-image: none;
   mask-image: none;
+}
+
+/* The Lien desk's scrolled strip (v2.7318): every chip is a press, so it underlines on hover as a link does. The chip's
+   own look (fill, colour, size) rides inline from `chip()`. */
+.lienStripChip {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.lienStripChip:hover,
+.lienStripChip:focus-visible {
+  text-decoration: underline;
 }
 
 /* The affidavit pane's gate rows (v2.7313): every row is a press that opens the fact's own record; its words underline on hover and its door sits at the end. */

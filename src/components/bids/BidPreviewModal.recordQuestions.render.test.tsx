@@ -52,7 +52,8 @@ describe('BidPreviewModal · Questions on this bid', () => {
     const section = await screen.findByTestId('record-questions-bid')
     expect(within(section).getByText('Questions on this bid')).toBeTruthy()
     await waitFor(() => expect(read).toHaveBeenCalledWith({ kind: 'bid', id: 'bid-1' }, null))
-    expect(await within(section).findByText(/Nothing asked about this bid yet\./)).toBeTruthy()
+    await waitFor(() => expect(within(section).getByTestId('record-questions-meta').textContent).toBe('none yet'))
+    expect(within(section).queryByText(/Nothing asked about this bid yet\./)).toBeNull()
     fireEvent.click(within(section).getByRole('button', { name: 'Ask Dispatch' }))
     const sheet = await screen.findByRole('dialog', { name: 'Ask a question' })
     const about = within(sheet).getByTestId('ask-about') as HTMLSelectElement

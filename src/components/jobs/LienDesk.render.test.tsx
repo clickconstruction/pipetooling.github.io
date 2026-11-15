@@ -468,6 +468,11 @@ describe('LienDesk', () => {
       await settle()
       expect(shape()).toEqual(['views', 'break', 'papers', 'pile-break', 'right'])
       expect((document.querySelector('[data-lien-desk-pile-break]') as HTMLElement).style.flexBasis).toBe('100%')
+      // v2.7322: on a computer the bar's row gap is 0 and the lines sit 6 px apart by the items' block margins in index.css, so a 0-height break on a line of its own costs no gap of its own; the bar's padding is 1 px over the title line and 3 under the pile line, under those margins.
+      expect((document.querySelector('[data-lien-desk-pile-break]') as HTMLElement).style.height).toBe('0px')
+      expect((document.querySelector('[data-lien-desk-header-break]') as HTMLElement).style.height).toBe('0px')
+      expect((document.querySelector('.lienDeskTitleBar') as HTMLElement).style.rowGap).toBe('0')
+      expect((document.querySelector('.lienDeskTitleBar') as HTMLElement).style.padding).toBe('1px 1.25rem 3px')
       expect(names(document.querySelector('[data-lien-desk-right]')!)).toEqual(['An owner asked for records ›', '§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
       fireEvent.click(screen.getByTestId('lien-owner-records-door'))
       expect(onOpenOwnerRecords).toHaveBeenCalledTimes(4)
@@ -831,11 +836,49 @@ describe('LienDesk', () => {
     expect(screen.getByTitle(/Owner of record with a mailing address — Elwick Holdings LLC/)).toBeTruthy()
     expect((document.querySelector('[data-gate="owner"]') as HTMLElement).textContent).toBe('1Owner of record✓ Elwick Holdings LLC')
     expect((screen.getByRole('button', { name: /to approve ▸/ }) as HTMLButtonElement).disabled).toBe(false)
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Goes to the leader · first notice we've sent this GC")
-    fireEvent.click(screen.getByRole('button', { name: /said to send it/ }))
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("One line on the leader’s phone · first notice we've sent this GC")
+    // One press per footer (v2.7324): his word waits behind He already okayed it ▾; the row runs what the old press ran.
+    expect(screen.queryByRole('button', { name: /said to send it/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'He already okayed it ▾' }))
+    const menu = screen.getByRole('menu', { name: 'He already okayed it. Pick how.' })
+    expect(within(menu).getAllByRole('menuitem').map((r) => r.querySelector('strong')?.textContent)).toEqual(['The leader said to send it…', 'He signed the paper…'])
+    fireEvent.click(within(menu).getByRole('menuitem', { name: /said to send it/ }))
+    expect(screen.queryByRole('menu')).toBeNull()
     expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
     expect(screen.getByText('by phone')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
+  })
+
+  it('the scrolled strip says only what is out of view and every chip is a press (v2.7318): one red owner chip opens the property record at the owner, no Can\u2019t go out yet, and no next chip while it repeats the blocker', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    const pane = document.querySelector('[data-lien-desk-pane]') as HTMLElement
+    expect(document.querySelector('[data-lien-desk-strip]')).toBeNull()
+    fireEvent.scroll(pane, { target: { scrollTop: 300 } })
+    const strip = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+    expect(strip).toBeTruthy()
+    const chips = Array.from(strip.querySelectorAll<HTMLElement>('[data-lien-strip-chip]'))
+    // The blocker is red, the unknown kind an amber check; the months and the claim are quiet presses.
+    expect(chips.map((c) => c.textContent)).toEqual(['Owner of record missing \u203a', 'Property kind unknown \u203a', 'Jun + Jul + Aug \u203a', 'Claim $33,500 \u203a'])
+    expect(chips.map((c) => c.getAttribute('data-tone'))).toEqual(['red', 'amber', 'quiet', 'quiet'])
+    expect(chips.every((c) => c.tagName === 'BUTTON')).toBe(true)
+    expect(strip.textContent).not.toContain("Can't go out yet")
+    // The timeline's *Find the owner, then send\u2026* says what the owner chip says, so the strip carries no next chip.
+    expect(strip.querySelector('[data-lien-desk-strip-next]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show gates \u25b4' })).toBeTruthy()
+    fireEvent.click(strip.querySelector('[data-lien-strip-chip="gate:owner"]') as HTMLElement)
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+  })
+
+  it('the scrolled strip on a ready notice (v2.7318): one green Ready to go out \u203a, no red chip, and the next chip stays since it adds the day', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    fireEvent.scroll(document.querySelector('[data-lien-desk-pane]') as HTMLElement, { target: { scrollTop: 300 } })
+    const strip = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+    expect((strip.querySelector('[data-lien-strip-chip="ready"]') as HTMLElement).textContent).toBe('Ready to go out \u203a')
+    expect(strip.querySelectorAll('[data-lien-strip-chip^="gate:"]').length).toBe(0)
+    // The next chip keeps the timeline's own tone (red: due tomorrow) and its words, with the door mark.
+    expect(strip.querySelector('[data-lien-desk-strip-next]')?.textContent).toMatch(/^Draft the Jun( \+ \w+)* notice \u2014 tomorrow \u203a$/)
   })
 
   it('a phone\u2019s header is one row with More; the doors it held are rows of the sheet and open what they open on a computer (punch list #352, PR 1)', { timeout: 30000 }, async () => {
@@ -858,6 +901,10 @@ describe('LienDesk', () => {
       const more = bar.querySelector('[data-lien-desk-more="door"]') as HTMLButtonElement
       expect(more.getAttribute('aria-label')).toBe('More')
       expect(more.style.height).toBe('44px')
+      // v2.7322 trimmed the computer's bar; a phone keeps its own rows: the 0.4rem row gap, its own padding, and no break on To do.
+      expect(bar.style.rowGap).toBe('0.4rem')
+      expect(bar.style.padding).toBe('0.15rem 0.6rem 0.5rem')
+      expect(bar.querySelector('[data-lien-desk-header-break]')).toBeNull()
       // None of the doors is in the bar any more.
       expect(within(bar).queryByTestId('lien-rules-door')).toBeNull()
       expect(within(bar).queryByTestId('lien-owner-records-door')).toBeNull()
@@ -1024,7 +1071,7 @@ describe('LienDesk', () => {
     await settle()
     expect(screen.getByRole('button', { name: /to approve ▸/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Put it in the run/ })).toBeNull()
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Goes to the leader · first notice to this GC — the rule starts with the next one')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('One line on the leader’s phone · first notice to this GC — the rule starts with the next one')
   })
 
   it('the leader sees what he is deciding, the standing rule, and Approve & next / Hold on an awaiting item', async () => {
@@ -1337,7 +1384,8 @@ describe('LienDesk reads the roll (v2.3450)', () => {
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Don't send yet. This is public property, so no lien notice can go.")
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /said to send it/ })).toBeNull()
+    // Blocked, the menus are gone too (v2.7324): no door to his word on a paper that cannot go.
+    expect(document.querySelector('[data-lien-foot-menu]')).toBeNull()
     expect(lookupMock).not.toHaveBeenCalled()
   })
 
@@ -1367,7 +1415,7 @@ describe('LienDesk affidavits (v2.3412)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="affidavit" />)
     await settle()
     expect(screen.getByRole('tab', { name: /Lien affidavits · 1/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Needs the property facts/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: 'Needs the property facts · 1' })).toBeTruthy()
     expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
     const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
     // v2.7187: the desk's own timeline names the step the paper is on, as its To do row does (*the property record is not complete*).
@@ -1375,7 +1423,9 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(timeline.textContent).toContain('the property record to be completed')
     // The kind is not set: the timeline says residential dates are shown, the earlier ones (v2.5031).
     expect(timeline.textContent).toContain('Property kind not set: residential dates shown, the earlier ones. Commercial would be a month later.')
-    expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
+    // The gate box's caption is the pane's grey head since v2.7320: the count of gates missing, each named short.
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe('Before it can be generated✗ 3 missing · owner of record missing · county or legal description missing · no § 53.056 notice on the job')
+    expect(document.querySelector('[data-lien-affidavit-window]')?.textContent).toBe('§ 53.052 · window from May 2026, the last month worked')
     // v2.4724: the door opens the property record in a window over the desk, not Edit Job.
     fireEvent.click(screen.getAllByRole('button', { name: /Fill in the record ›/ })[0]!)
     expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
@@ -1394,7 +1444,8 @@ describe('LienDesk affidavits (v2.3412)', () => {
     }
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} workMonths={workMonths} initialKind="affidavit" />)
     const card = document.querySelector('[data-lien-affidavit-months]') as HTMLElement
-    expect(card.textContent).toContain('Months the affidavit claims')
+    // The section's title is its grey head since v2.7320, with the months the paper swears, the claim and the months worked with no notice.
+    expect(document.querySelector('[data-lien-pane-head="months"]')?.textContent).toBe('Months the affidavit claimsMay 2026 · $33,500 · 1 worked, not noticed')
     expect(card.textContent).toContain('Worked, not noticedMay 202620 approved hours · window closed Aug 17 with no notice — the lien does not cover itunsecured')
     expect(card.textContent).toContain("No month has a notice on record — the affidavit cannot claim this work. May 2026's share of the balance stays an ordinary receivable")
   })
@@ -1809,6 +1860,26 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(await screen.findByText("Sent for approval. Malachi's phone has it.")).toBeTruthy()
   })
 
+  it('one press per affidavit footer (v2.7324): the office’s menu holds his word alone and runs the word row; the leader sees I approve it ▸ alone, with the notary line and no signing box', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" leaderNameFor={() => 'Malachi Whites'} data={threeAsked([])} initialKind="affidavit" />)
+    await settle()
+    expect(screen.queryByRole('button', { name: /said to file it/ })).toBeNull()
+    expect((document.querySelector('[data-lien-affidavit-foot-line]') as HTMLElement).textContent).toContain('One line on Malachi’s phone.')
+    fireEvent.click(screen.getByRole('button', { name: 'He already okayed it ▾' }))
+    const rows = screen.getAllByRole('menuitem')
+    expect(rows.map((r) => r.querySelector('strong')?.textContent)).toEqual(['Malachi said to file it…'])
+    fireEvent.click(rows[0]!)
+    expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
+    cleanup()
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" leaderNameFor={() => 'Malachi Whites'} data={threeAsked([])} initialKind="affidavit" />)
+    await settle()
+    expect(screen.getByRole('button', { name: 'I approve it ▸' })).toBeTruthy()
+    expect(document.querySelector('[data-lien-foot-menu]')).toBeNull()
+    expect(screen.queryByTestId('lien-sign-line')).toBeNull()
+    expect((document.querySelector('[data-lien-affidavit-foot-line]') as HTMLElement).textContent).toContain('Ready to file. You sign it on paper before a notary.')
+  })
+
   it('the pane’s send that a standing rule approves tells nobody', async () => {
     submitMock.mockClear()
     tellAffMock.mockClear()
@@ -2115,7 +2186,7 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     // Ready (v2.3776): ONE row — the state and its why, then Save draft and the one primary (Skip left in v2.4743).
     const next = document.querySelector('[data-lien-desk-next]') as HTMLElement
     expect(next.getAttribute('data-blocked')).toBe('no')
-    expect(next.textContent).toContain('Goes to the leader')
+    expect(next.textContent).toContain('One line on the leader’s phone')
     expect(next.textContent).not.toContain('Blocked until')
     expect(next.textContent).not.toContain('give up the lien right')
     expect(screen.queryByRole('button', { name: /Go to gate/ })).toBeNull()
@@ -2379,11 +2450,13 @@ describe('LienDesk retainage (v2.3753)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
     await settle()
     expect(screen.getByRole('tab', { name: /Retainage notices · 1/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: 'To draft · 1' })).toBeTruthy()
     const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
     expect(list.textContent).toContain('complete Sep 3')
     expect(list.textContent).toContain('not yet in a § 53.056 claim')
-    expect(screen.getByText(/Before this notice can go/)).toBeTruthy()
+    // The gate box's caption is the pane's grey head since v2.7320, its fact the verdict, the retainage and the contract's end.
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe('Before it can go✓ all four clear · $1,760 · complete Sep 3')
+    expect(document.querySelector('[data-lien-retainage-window]')?.textContent).toBe('§ 53.057 · 30 days from the day our contract on the job ended · complete Sep 3')
     expect((document.querySelector('[data-lien-retainage-in-claim]') as HTMLElement).getAttribute('data-lien-retainage-in-claim')).toBe('no')
     expect(screen.getAllByText(/§ 53\.081\(c\)/).length).toBeGreaterThan(0)
     const paper = (document.querySelector('[data-lien-retainage-pane]') as HTMLElement).textContent ?? ''
@@ -2396,6 +2469,21 @@ describe('LienDesk retainage (v2.3753)', () => {
     expect(((await screen.findByRole('button', { name: /to approve ▸/ })) as HTMLButtonElement).disabled).toBe(false)
   })
 
+  it('one press per retainage footer (v2.7324): the ask alone, the menu holds his word and runs the word row', async () => {
+    const d = data([], [], true)
+    d.retainageRows = [retRow()]
+    d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" leaderNameFor={() => 'Malachi Whites'} data={d} initialKind="retainage" />)
+    await settle()
+    expect(screen.queryByRole('button', { name: /said to send it/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Ask Malachi to approve ▸' }).getAttribute('title')).toBe('One line on Malachi’s phone.')
+    fireEvent.click(screen.getByRole('button', { name: 'He already okayed it ▾' }))
+    const rows = screen.getAllByRole('menuitem')
+    expect(rows.map((r) => r.querySelector('strong')?.textContent)).toEqual(['Malachi said to send it…'])
+    fireEvent.click(rows[0]!)
+    expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
+  })
+
   it('a job whose contract is still open sits in Clock not started with the door to set the day', async () => {
     const d = data([], [], true)
     d.retainageRows = [retRow({ contract_ended_on: null, contract_ended_how: null, deadline: null })]
@@ -2403,7 +2491,7 @@ describe('LienDesk retainage (v2.3753)', () => {
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
     await settle()
-    expect(screen.getByRole('button', { name: /Clock not started/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: 'Clock not started · 1' })).toBeTruthy()
     expect(screen.getByText(/§ 53\.057 · clock not started/)).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: /Set the day our contract ended/ }))
     expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
@@ -2450,9 +2538,57 @@ describe('LienDesk footer hand-off (v2.3753)', () => {
       }
       expect(n).toBeLessThan(40)
       const strip = document.querySelector(`[data-lien-desk-footer="${kind}"]`) as HTMLElement
-      expect(strip.textContent).toContain(kind === 'affidavit' ? 'Blocked until every gate above is clear' : 'Goes to the leader')
+      expect(strip.textContent).toContain(kind === 'affidavit' ? 'Blocked until every gate above is clear' : 'One line on the leader’s phone')
     })
   }
+})
+
+describe('LienDesk · the footer is the pane’s own bottom bar (the owner’s ask of 2026-11-15)', () => {
+  const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+  const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+  const withPaper = () => {
+    const d = data(J650, [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.retainageRows = [retRow]
+    d.retainage = buildLienRetainageQueue([retRow], [], TODAY)
+    return d
+  }
+
+  for (const kind of ['notice', 'affidavit', 'retainage'] as const) {
+    it(`on a computer the ${kind} footer sits inside the pane column, not under the list, and the list has nothing below it`, async () => {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind={kind} initialJobId="j650" />)
+      await waitFor(() => expect(document.querySelector(`[data-lien-desk-footer="${kind}"]`)).not.toBeNull())
+      const strip = document.querySelector<HTMLElement>(`[data-lien-desk-footer="${kind}"]`)!
+      const column = strip.closest<HTMLElement>('[data-lien-desk-pane-column]')!
+      expect(column).not.toBeNull()
+      expect(column.style.gridTemplateRows).toBe('minmax(0, 1fr) auto')
+      // The pane scrolls above the footer, the footer is the column's last child.
+      expect(column.lastElementChild).toBe(strip)
+      expect(column.contains(document.querySelector('[data-lien-desk-find-column]'))).toBe(false)
+      expect(strip.closest('[data-lien-desk-find-column]')).toBeNull()
+      // The list column and the pane column are the grid's two children: nothing spans under both.
+      const grid = column.parentElement!
+      expect(grid.querySelector('[data-lien-desk-find-column]')).not.toBeNull()
+      expect(grid.parentElement!.querySelector(':scope > [data-lien-desk-footer]')).toBeNull()
+      expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+    })
+  }
+
+  it('a phone keeps the strip as the desk’s, right after the fold bar, with no column around the pane', async () => {
+    const phone = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    const orig = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind="affidavit" initialJobId="j650" />)
+      await waitFor(() => expect(document.querySelector('[data-lien-desk-foot-fold]')).not.toBeNull())
+      const fold = document.querySelector<HTMLElement>('[data-lien-desk-foot-fold]')!
+      expect(fold.nextElementSibling?.getAttribute('data-lien-desk-footer')).toBe('affidavit')
+      expect(document.querySelector('[data-lien-desk-pane-column]')).toBeNull()
+    } finally {
+      window.matchMedia = orig
+    }
+  })
 })
 
 describe('LienDesk · the pay page in the pane (punch list #35, PR 3)', () => {
@@ -2516,8 +2652,11 @@ describe('LienDesk · the pen door on the draft (v2.7297)', () => {
     d.jobsById.j650 = { ...d.jobsById.j650!, master_user_id: 'u-malachi' } as NonNullable<typeof d.jobsById.j650>
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={d} />)
     await settle()
-    const door = document.querySelector('[data-lien-desk-pen]') as HTMLButtonElement | null
-    expect(door?.textContent).toBe('He signed the paper…')
+    // v2.7324: the pen door is a row of He already okayed it ▾.
+    expect(document.querySelector('[data-lien-desk-pen]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'He already okayed it ▾' }))
+    const door = document.querySelector('[data-lien-foot-menu-row="pen"]') as HTMLButtonElement | null
+    expect(door?.querySelector('strong')?.textContent).toBe('He signed the paper…')
     fireEvent.click(door!)
     const pane = await screen.findByTestId('lien-pen-pane')
     expect(saveDraftMock).toHaveBeenCalledTimes(1)
@@ -2534,11 +2673,65 @@ describe('LienDesk · the pen door on the draft (v2.7297)', () => {
     expect(screen.queryByTestId('lien-pen-pane')).toBeNull()
   })
 
-  it('a leader’s own draft footer has no pen door: his name waits in cursive and Sign and approve ▸ places it', async () => {
+  it('a leader’s own draft footer has no pen door and no okayed menu: Sign and approve ▸ places his typed name', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     await settle()
     expect(document.querySelector('[data-lien-desk-pen]')).toBeNull()
+    expect(document.querySelector('[data-lien-foot-menu="okayed"]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Sign and approve ▸' })).toBeTruthy()
+  })
+})
+
+describe('LienDesk · one press per draft footer (v2.7324)', () => {
+  const ownerOn = () => data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
+
+  it('the leader on his own notice: no signing box, the line says his typed name goes on it; Sign another way ▾ → Draw it draws the pad, and Type my name takes it away again', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" authUserId="u-malachi" authName="Malachi" leaderNameFor={() => 'Malachi Whites'} data={ownerOn()} />)
+    await settle()
+    expect(screen.queryByTestId('lien-sign-line')).toBeNull()
+    const next = document.querySelector('[data-lien-desk-next]') as HTMLElement
+    expect(next.textContent).toContain('Your typed name goes on it, and it goes in the run')
+    expect(screen.getByRole('button', { name: 'Sign and approve ▸' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign another way ▾' }))
+    const menu = screen.getByRole('menu', { name: 'Sign another way. Pick how.' })
+    expect(within(menu).getAllByRole('menuitem').map((r) => r.querySelector('strong')?.textContent)).toEqual(['Draw it'])
+    // Escape closes the menu and nothing changes.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(screen.queryByTestId('lien-sign-line')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign another way ▾' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Draw it/ }))
+    expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('draw')
+    // The line's own toggle is off: the menu is the way between the ways.
+    expect(screen.queryByTestId('lien-sign-line-toggle')).toBeNull()
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Your signature on the line goes on it, and it goes in the run')
+    fireEvent.click(screen.getByRole('button', { name: 'Sign another way ▾' }))
+    expect(screen.getAllByRole('menuitem').map((r) => r.querySelector('strong')?.textContent)).toEqual(['Type my name'])
+    fireEvent.click(screen.getByRole('menuitem', { name: /Type my name/ }))
+    expect(screen.queryByTestId('lien-sign-line')).toBeNull()
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Your typed name goes on it, and it goes in the run')
+  })
+
+  it('the office’s notice footer: Save draft and Already mailed? are quiet links, the one press asks the leader, and the menu closes on a press outside', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" leaderNameFor={() => 'Malachi Whites'} data={ownerOn()} />)
+    await settle()
+    expect((document.querySelector('[data-lien-desk-save-draft]') as HTMLElement).className).toBe('lienFootLink')
+    expect(document.querySelector('[data-lien-desk-by-hand]')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ask Malachi to approve ▸' }).getAttribute('title')).toBe('One line on Malachi’s phone.')
+    expect(screen.queryByRole('button', { name: /Sign another way/ })).toBeNull()
+    const press = screen.getByRole('button', { name: 'He already okayed it ▾' })
+    fireEvent.click(press)
+    expect(press.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.mouseDown(document.body)
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(press.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('the dev is both: Sign and approve ▸ with both menus beside it', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="dev" leaderNameFor={() => 'Malachi Whites'} data={ownerOn()} />)
+    await settle()
+    expect(screen.getByRole('button', { name: 'Sign and approve ▸' })).toBeTruthy()
+    expect(Array.from(document.querySelectorAll('[data-lien-foot-menu]')).map((m) => m.getAttribute('data-lien-foot-menu'))).toEqual(['okayed', 'sign'])
   })
 })
 
@@ -3393,5 +3586,197 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('type')
     expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi')
     expect(document.querySelector('[data-lien-sign-code-row]')).toBeNull()
+  })
+})
+
+describe('LienDesk · the affidavit and retainage panes under grey heads (v2.7320, the owner’s ask of 2026-11-15)', () => {
+  const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+  const affDesk = () => {
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    return d
+  }
+  const phone = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+
+  it('the affidavit pane is sections under the notice pane’s stacked heads, in order with their facts; the boxes lost their captions; a lower head’s press lands on its body', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={affDesk()} initialKind="affidavit" />)
+    await settle()
+    const pane = document.querySelector<HTMLElement>('[data-lien-affidavit-pane]')!
+    const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'owner', 'paper'])
+    expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this affidavit is', 'Before it can be generated', "The owner's answers", 'The paper'])
+    expect(heads[0]!.querySelector('[data-lien-pane-head-fact]')!.textContent).toBe('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, the notice missing')
+    expect(heads[1]!.textContent).toBe('Before it can be generated✗ 3 missing · owner of record missing · county or legal description missing · no § 53.056 notice on the job')
+    expect(heads[2]!.textContent).toBe("The owner's answersno call yet · bond unknown")
+    expect(heads[3]!.textContent).toBe('The papershort form · Robert Douglas, Master Plumber')
+    // Stacked like the notice pane: passed heads at the top, coming ones at the bottom, the first lit.
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '90px'], ['30px', '60px'], ['60px', '30px'], ['90px', '0px']])
+    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no'])
+    // Every head sits before its body, a sibling in the pane's grid, and the pane is the scrolling box.
+    for (const key of ['path', 'gates', 'owner', 'paper']) {
+      const head = pane.querySelector(`[data-lien-pane-head="${key}"]`)!
+      const body = pane.querySelector(`[data-lien-pane-body="${key}"]`)!
+      expect(head.parentElement).toBe(pane)
+      expect(body.parentElement).toBe(pane)
+      expect(head.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+    expect(pane.style.overflow).toBe('auto')
+    // The boxes gave their captions to the heads; the gate caption's window words lead the gates body.
+    expect(screen.queryByText(/Before this affidavit can be generated/)).toBeNull()
+    expect(pane.querySelector('[data-lien-pane-body="gates"] [data-lien-affidavit-window]')!.textContent).toBe('§ 53.052 · window from May 2026, the last month worked')
+    expect(pane.querySelector('[data-lien-pane-body="owner"]')!.getAttribute('data-lien-affidavit-owner-answers')).not.toBeNull()
+    // The bodies keep their doors.
+    // The gate rows are the presses of v2.7313: the notice gate's row ends in its door.
+    expect(within(pane.querySelector<HTMLElement>('[data-lien-pane-body="gates"]')!).getByRole('button', { name: /Send the notice first ›$/ })).toBeTruthy()
+    expect(within(pane.querySelector<HTMLElement>('[data-lien-pane-body="owner"]')!).getByRole('button', { name: 'Record it on the notice ›' })).toBeTruthy()
+    expect(pane.querySelector('[data-lien-pane-body="paper"] [data-lien-affidavit-paper="short"]')).not.toBeNull()
+    // Press a lower head: the pane scrolls its body up under the stacked heads (jsdom lays nothing out, so the body's offset is given), and the head lights.
+    const paperBody = pane.querySelector<HTMLElement>('[data-lien-pane-body="paper"]')!
+    Object.defineProperty(paperBody, 'offsetTop', { value: 900, configurable: true })
+    fireEvent.click(heads[3]!.querySelector('button')!)
+    expect(pane.scrollTop).toBe(900 - 4 * 30)
+    expect(heads[3]!.getAttribute('data-on')).toBe('yes')
+    expect(heads[0]!.getAttribute('data-on')).toBe('no')
+  })
+
+  it('on a phone the affidavit pane pins one head at a time, a thumb tall, in one column held to the screen', async () => {
+    const before = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={affDesk()} layout="stacked" initialKind="affidavit" backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      // A phone shows the list first; the row opens its pane.
+      fireEvent.click(screen.getByRole('button', { name: /AXO Schertz/ }))
+      await waitFor(() => expect(document.querySelector('[data-lien-affidavit-pane]')).not.toBeNull())
+      const pane = document.querySelector<HTMLElement>('[data-lien-affidavit-pane]')!
+      expect(pane.getAttribute('data-lien-pane-phone')).toBe('yes')
+      expect(pane.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+      const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+      expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'owner', 'paper'])
+      for (const h of heads) {
+        expect(parseFloat(h.style.top)).toBe(0)
+        expect(h.style.bottom).toBe('auto')
+        expect(h.style.height).toBe('40px')
+      }
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
+  it('the retainage pane has its own three heads — the gates, the § 53.056 claim, the paper — and its boxes lost their captions', async () => {
+    const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: false, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+    const d = data([], [], true)
+    d.retainageRows = [retRow]
+    d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="retainage" />)
+    await settle()
+    const pane = document.querySelector<HTMLElement>('[data-lien-retainage-pane]')!
+    const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(heads.map((h) => h.textContent)).toEqual([
+      'Before it can go✗ 1 missing · owner of record missing',
+      'The § 53.056 claimnot yet inside one · the owner withholds once the affidavit is filed',
+      'The paper2 pages · cover letter + the form · § 53.057(a-2)',
+    ])
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '60px'], ['30px', '30px'], ['60px', '0px']])
+    expect(screen.queryByText(/Before this notice can go/)).toBeNull()
+    expect(screen.queryByText(/Not yet inside a § 53\.056 claim/)).toBeNull()
+    expect(pane.querySelector('[data-lien-pane-body="gates"] [data-lien-retainage-window]')!.textContent).toBe('§ 53.057 · 30 days from the day our contract on the job ended · complete Sep 3')
+    expect(pane.querySelector('[data-lien-pane-body="claim"]')!.getAttribute('data-lien-retainage-in-claim')).toBe('no')
+    expect(within(pane.querySelector<HTMLElement>('[data-lien-pane-body="claim"]')!).getByRole('button', { name: 'The monthly notices on this job ›' })).toBeTruthy()
+    expect(within(pane.querySelector<HTMLElement>('[data-lien-pane-body="gates"]')!).getByRole('button', { name: 'Property record ›' })).toBeTruthy()
+    expect(pane.querySelectorAll('[data-lien-pane-body="paper"] [data-theme="light"]').length).toBe(2)
+    // The gates head is the one lit at the top; a press on the paper's head lights it.
+    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no'])
+    fireEvent.click(heads[2]!.querySelector('button')!)
+    expect(heads[2]!.getAttribute('data-on')).toBe('yes')
+  })
+})
+
+describe('LienDesk · Lien affidavits and Retainage notices stack their pile titles like Monthly notices (the owner’s ask of 2026-11-15)', () => {
+  const affRow = (partial: Partial<LienAffidavitRow> = {}): LienAffidavitRow => ({ job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null, ...partial })
+  const retRow = (partial: Partial<LienRetainageRow> = {}): LienRetainageRow => ({ job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null, ...partial })
+  const twoPiles = () => {
+    const d = data([], [], true)
+    d.jobsById.j651 = { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'Palomino Trail' }
+    d.affidavitRows = [affRow(), affRow({ job_id: 'j651', last_month: '2026-08', deadline: '2026-11-16', noticed: true, has_owner: true, has_legal: true, property_kind: 'non_residential', has_contractor_address: true })]
+    d.affidavits = buildLienAffidavitQueue(d.affidavitRows, [], TODAY)
+    d.retainageRows = [retRow({ contract_ended_on: null, contract_ended_how: null, deadline: null }), retRow({ job_id: 'j651' })]
+    d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
+    return d
+  }
+  const heads = () => [...document.querySelectorAll<HTMLElement>('[data-lien-pile-head]')]
+
+  for (const [kind, listHook, first, second] of [
+    ['affidavit', '[data-lien-affidavit-list]', 'needs_property', 'to_draft'],
+    ['retainage', '[data-lien-retainage-list]', 'clock_not_started', 'to_draft'],
+  ] as const) {
+    it(`${kind}: one sticky title per pile with rows, its count at the right, stacked at both ends; a press on a later title scrolls to it and lights it`, async () => {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={twoPiles()} initialKind={kind} />)
+      await settle()
+      const list = document.querySelector(listHook) as HTMLElement & { scrollTo: (o: unknown) => void }
+      expect(list.style.position).toBe('relative')
+      expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([first, second])
+      for (const [i, h] of heads().entries()) {
+        expect(h.className).toBe('lienPileHead')
+        expect(h.style.top).toBe(`${i * 30}px`)
+        expect(h.style.bottom).toBe(`${(1 - i) * 30}px`)
+        expect(h.style.height).toBe('30px')
+        expect(h.querySelector(`[data-lien-pile-count="${h.getAttribute('data-lien-pile-head')}"]`)!.textContent).toBe('1')
+      }
+      // No flat caption is left over.
+      expect(list.querySelectorAll('.lienPileHead').length).toBe(2)
+      expect(list.querySelector(`[data-lien-pile-rows="${second}"]`)!.textContent).toContain('651 · Palomino Trail')
+      expect(heads()[0]!.getAttribute('data-on')).toBe('yes')
+      expect(heads()[1]!.getAttribute('data-on')).toBe('no')
+      const scrollTo = vi.fn()
+      list.scrollTo = scrollTo
+      fireEvent.click(within(heads()[1]!).getByTitle('Go to this pile'))
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+      expect(heads()[1]!.getAttribute('data-on')).toBe('yes')
+      expect(heads()[0]!.getAttribute('data-on')).toBe('no')
+      // No pile is picked, so no title offers the way back.
+      expect(document.querySelector('[data-lien-pile-all]')).toBeNull()
+    })
+
+    it(`${kind}: a pile chip narrows the list to that pile's title and rows, the title offers show every pile, and a find keeps every title with its count`, async () => {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={twoPiles()} initialKind={kind} />)
+      await settle()
+      fireEvent.click(screen.getByRole('button', { name: 'To draft · 1' }))
+      expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([second])
+      expect(heads()[0]!.style.top).toBe('0px')
+      expect(heads()[0]!.style.bottom).toBe('0px')
+      expect(document.querySelector(`[data-lien-pile-rows="${first}"]`)).toBeNull()
+      fireEvent.click(document.querySelector('[data-lien-pile-all]') as HTMLElement)
+      expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([first, second])
+      // A find that empties a pile keeps its title, greyed, counting the matches of the pile's total.
+      fireEvent.change(screen.getByTestId('lien-desk-find-input'), { target: { value: '651' } })
+      expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([first, second])
+      expect(heads()[0]!.getAttribute('data-empty')).toBe('yes')
+      expect(heads()[0]!.querySelector('[data-lien-pile-count]')!.textContent).toBe('0 of 1')
+      expect(heads()[1]!.getAttribute('data-empty')).toBeNull()
+      expect(heads()[1]!.querySelector('[data-lien-pile-count]')!.textContent).toBe('1 of 1')
+    })
+  }
+
+  it('on a phone each title pins alone at the top, a thumb tall, on both lists', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      for (const kind of ['affidavit', 'retainage'] as const) {
+        const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={twoPiles()} initialKind={kind} layout="stacked" />)
+        await settle()
+        expect(heads()).toHaveLength(2)
+        for (const h of heads()) {
+          expect(h.style.top).toBe('0px')
+          expect(h.style.bottom).toBe('auto')
+          expect(h.style.height).toBe('40px')
+          expect(h.style.fontSize).toBe('0.75rem')
+        }
+        view.unmount()
+      }
+    } finally {
+      window.matchMedia = before
+    }
   })
 })

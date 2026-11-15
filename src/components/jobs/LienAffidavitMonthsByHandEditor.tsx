@@ -52,6 +52,7 @@ export default function LienAffidavitMonthsByHandEditor({
   }
   const press: React.CSSProperties = { padding: '3px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }
   const field: React.CSSProperties = { padding: '0.3rem 0.45rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit' }
+  const doorLink: React.CSSProperties = { padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }
 
   if (!open) {
     return (
@@ -59,12 +60,13 @@ export default function LienAffidavitMonthsByHandEditor({
         {current ? <span style={{ color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.25rem 0.5rem' }}>{lienAffidavitMonthsByHandWords(current, formatYmdMonthDay)}</span> : null}
         {canEdit ? (
           <>
-            <button type="button" onClick={start} disabled={busy} style={press} data-lien-affidavit-months-by-hand-open>
-              {current ? 'Change…' : 'Set the months by hand…'}
+            {/* Blue link text, not a boxed press (v2.7319): the owner's ask, so the door reads like Correct the claim › beside it. */}
+            <button type="button" onClick={start} disabled={busy} style={doorLink} data-lien-affidavit-months-by-hand-open>
+              {current ? 'Change ›' : 'Set the months by hand ›'}
             </button>
             {current ? (
-              <button type="button" onClick={onClear} disabled={busy} style={press} data-lien-affidavit-months-by-hand-clear>
-                Clear
+              <button type="button" onClick={onClear} disabled={busy} style={{ ...doorLink, color: 'var(--text-muted)' }} data-lien-affidavit-months-by-hand-clear>
+                Clear ›
               </button>
             ) : null}
           </>

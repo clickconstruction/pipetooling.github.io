@@ -442,6 +442,24 @@ export function JobWindowModal({
             right: calc(-1 * var(--press-pad-x, 0px));
           }
         }
+        @media (min-width: 641px) {
+          /* The head's icons say their word on the desk (v2.7326): the glyph above, the word under it in muted small
+             caps, drawn from data-word so each press keeps its own markup. */
+          .job-window-body button[data-word] {
+            flex-direction: column;
+            gap: 3px;
+            padding: 0.25rem 0.4rem !important;
+          }
+          .job-window-body button[data-word]::after {
+            content: attr(data-word);
+            font-size: 0.6rem;
+            line-height: 1;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: var(--text-muted);
+            white-space: nowrap;
+          }
+        }
       `}</style>
       <div
         className="job-window-dialog"

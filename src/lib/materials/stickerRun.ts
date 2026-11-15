@@ -90,7 +90,13 @@ export function lastRunWords(lastNumber: number | null): string {
 // The run as the database answers it
 // ---------------------------------------------------------------------------
 
-export type MintedSticker = { id: string; number: number; code: string }
+export type MintedSticker = {
+  id: string
+  number: number
+  code: string
+  /** The name printed large on the sticker, G78 (section 10, v2.7312); null on a sticker that carries its number only. Left out by a reader from before the names. */
+  boxName?: string | null
+}
 
 export type StickerRun = {
   id: string
@@ -102,6 +108,8 @@ export type StickerRun = {
   copies: number
   printedByName: string
   printedAt: string
+  /** The run's box names in print order (section 10, v2.7312); null for a run of numbers only. Left out by a reader from before the names. */
+  names?: string[] | null
 }
 
 function text(v: unknown): string | null {
@@ -117,6 +125,8 @@ export function stickerRunOf(raw: unknown): StickerRun | null {
   const first = typeof r.first_number === 'number' ? r.first_number : Number.NaN
   const last = typeof r.last_number === 'number' ? r.last_number : Number.NaN
   if (!id || !Number.isInteger(count) || count < 1 || !Number.isInteger(first) || !Number.isInteger(last) || last < first) return null
+  // The names, when the row carries them and they are as many as the stickers; a short or odd list reads as none.
+  const names = Array.isArray(r.names) && r.names.length === count && r.names.every((n) => typeof n === 'string' && n.trim()) ? (r.names as string[]) : null
   return {
     id,
     jobId: text(r.job_id),
@@ -126,6 +136,7 @@ export function stickerRunOf(raw: unknown): StickerRun | null {
     copies: clampTapeCopies(r.copies),
     printedByName: typeof r.printed_by_name === 'string' ? r.printed_by_name.trim() : '',
     printedAt: text(r.printed_at) ?? '',
+    names,
   }
 }
 
@@ -137,7 +148,7 @@ export function mintedStickerOf(raw: unknown): MintedSticker | null {
   const code = text(r.code)
   const number = typeof r.number === 'number' ? r.number : Number.NaN
   if (!id || !code || !Number.isInteger(number) || number < 1) return null
-  return { id, number, code: code.toUpperCase() }
+  return { id, number, code: code.toUpperCase(), boxName: text(r.box_name)?.toUpperCase() ?? null }
 }
 
 export type MintedRun = { run: StickerRun; stickers: MintedSticker[] }

@@ -69,12 +69,15 @@ export function ShareJobButton({
   size = 16,
   padding = '0.25rem',
   color = 'var(--text-700)',
+  word,
 }: {
   jobId: string
   fields: JobShareFields
   size?: number
   padding?: string
   color?: string
+  /** The word drawn under the glyph on the desk job window (v2.7326); the window's stylesheet draws it. */
+  word?: string
 }) {
   const shareJob = useShareJob()
   const label = 'Share job — text the job #, name, and address to a teammate'
@@ -87,6 +90,7 @@ export function ShareJobButton({
       }}
       title={label}
       aria-label="Share job"
+      data-word={word}
       style={{
         padding,
         background: 'none',
