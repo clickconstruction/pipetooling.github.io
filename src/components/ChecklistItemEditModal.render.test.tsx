@@ -13,7 +13,24 @@ vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
   return useAuthModuleMock()
 })
-vi.mock('../lib/tasks/taskPlaceIo', () => ({ loadRecentTaskPlaces: () => Promise.resolve([]), loadTaskPlace: () => Promise.resolve(null) }))
+const saved = vi.hoisted(() => ({ place: null as null | Record<string, unknown>, mapAlone: null as string | null }))
+vi.mock('../lib/tasks/taskPlaceIo', () => ({ loadRecentTaskPlaces: () => Promise.resolve([]), loadTaskPlace: () => Promise.resolve(saved.place) }))
+vi.mock('../lib/tasks/taskMapIo', () => ({ loadTaskMapAlone: () => Promise.resolve(saved.mapAlone) }))
+// The task's painted map (#345): the press is stood in for by one press that hands up a map, and the set strip by one
+// that names the map it holds and takes it off.
+vi.mock('./checklist/TaskMapField', () => ({
+  TaskMapPress: (props: { onChange: (v: unknown) => void }) => (
+    <button type="button" onClick={() => props.onChange({ id: 'map-9', name: 'The trench' })}>
+      stub: pick the trench
+    </button>
+  ),
+  TaskMapSet: (props: { value: { id: string; withPlace?: boolean } | null; onChange: (v: unknown) => void }) =>
+    props.value ? (
+      <button type="button" onClick={() => props.onChange(null)}>
+        {`stub: map ${props.value.id}${props.value.withPlace ? ' with the place' : ''}`}
+      </button>
+    ) : null,
+}))
 vi.mock('../lib/tasks/taskSpotPhotoIo', () => ({
   loadTaskSpotPhotoPath: () => Promise.resolve(null),
   putTaskSpotPhoto: () => Promise.resolve({ path: 'x' }),
@@ -201,6 +218,64 @@ describe('ChecklistItemEditModal as Edit task (punch list #331)', () => {
     expect(Object.keys(update).filter((k) => k.startsWith('place_'))).toEqual([])
     const people = db.writes.find((w) => w.table === 'checklist_item_assignees' && w.op === 'insert')!.row as Array<{ user_id: string }>
     expect(people.map((p) => p.user_id)).toEqual(['theo'])
+    cleanup()
+  })
+})
+
+describe('ChecklistItemEditModal map (punch list #345, a map on a task)', () => {
+  const updateRow = () => db.writes.find((w) => w.table === 'checklist_items' && w.op === 'update')!.row as Record<string, unknown>
+
+  it('a task saved with a map and no place opens with the map lit, and a save that leaves it alone writes no map column', async () => {
+    saved.mapAlone = 'map-1'
+    const { words, onClose } = await openEdit()
+    expect(await screen.findByRole('button', { name: 'stub: map map-1' })).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toMatch(/^Theo gets it on Mon, Mar 17, with a map\. /)
+    fireEvent.change(words, { target: { value: 'Grease both pump bearings' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect('painted_map_id' in updateRow()).toBe(false)
+    saved.mapAlone = null
+    cleanup()
+  })
+
+  it('taking the map off writes it gone, and leaves the place columns alone', async () => {
+    saved.mapAlone = 'map-1'
+    const { onClose } = await openEdit()
+    fireEvent.click(await screen.findByRole('button', { name: 'stub: map map-1' }))
+    expect(screen.getByRole('status').textContent).not.toContain('with a map')
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+    const update = updateRow()
+    expect(update.painted_map_id).toBeNull()
+    expect(Object.keys(update).filter((k) => k.startsWith('place_'))).toEqual([])
+    saved.mapAlone = null
+    cleanup()
+  })
+
+  it('a map picked on a task that had none is written, with no place', async () => {
+    const { onClose } = await openEdit()
+    fireEvent.click(screen.getByRole('button', { name: 'stub: pick the trench' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+    const update = updateRow()
+    expect(update.painted_map_id).toBe('map-9')
+    expect(Object.keys(update).filter((k) => k.startsWith('place_'))).toEqual([])
+    cleanup()
+  })
+
+  it('a saved place with a way in opens with the map as that place\'s, and another map picked replaces it', async () => {
+    saved.place = { name: 'Pump house', lat: 29.5512, lng: -98.2874, accuracyM: 6, setBy: 'lead-1', setAt: '2026-11-03T18:00:00Z', mapId: 'way-1' }
+    const { onClose } = await openEdit()
+    expect(await screen.findByRole('button', { name: 'stub: map way-1 with the place' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'stub: pick the trench' }))
+    expect(screen.getByRole('button', { name: 'stub: map map-9' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+    const update = updateRow()
+    expect(update.painted_map_id).toBe('map-9')
+    // The place itself was not touched, so who placed it and when stay as they were.
+    expect(Object.keys(update).filter((k) => k.startsWith('place_'))).toEqual([])
+    saved.place = null
     cleanup()
   })
 })
