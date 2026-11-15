@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { parsePaySpeedsRpc } from './billedExpectedPay'
-import { parsePayCalendarRow, type PayCalendar, type PayCalendarDbRow, type PayCalendarReceipt, type PayCalendarRow } from './payCalendar'
+import { parseBillDueDayRow, parsePayCalendarRow, type BillDueDayDbRow, type PayCalendar, type PayCalendarDbRow, type PayCalendarReceipt, type PayCalendarRow } from './payCalendar'
 import { payCalendarJobOf, type PayCalendarJob, type PayCalendarJobInput } from './payCalendarJob'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty'
 
@@ -47,9 +47,37 @@ async function readRows(db: Db, payerId: string | null): Promise<PayCalendarRow[
   return out
 }
 
-/** Every stored calendar, for `indexPayCalendars`. None before the migration is pushed. */
-export function loadPayCalendars(db: Db): Promise<PayCalendarRow[]> {
-  return readRows(db, null)
+type StoredDueDay = BillDueDayDbRow & { marked_by?: string | null }
+
+/**
+ * Every bill's own due day (punch list #341, PR 4, `invoice_due_days`), as rows that ride with the calendars.
+ * None before migration 20261115170000 is pushed, and none on a read that fails: the days are an extra on top of
+ * the calendars, and a screen that cannot read them reads each bill's calendar as before.
+ */
+async function readBillDueDays(db: Db): Promise<PayCalendarRow[]> {
+  try {
+    const { data, error } = (await db.from('invoice_due_days' as never).select('invoice_id, due_on, clause, words, marked_at, marked_by')) as { data: StoredDueDay[] | null; error: CodedError | null }
+    if (error) return []
+    const rows = data ?? []
+    const names = await namesOf(db, [...new Set(rows.map((r) => r.marked_by).filter((id): id is string => !!id))])
+    const out: PayCalendarRow[] = []
+    for (const r of rows) {
+      const parsed = parseBillDueDayRow(r, r.marked_by ? names.get(r.marked_by) : null)
+      if (parsed) out.push(parsed)
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Every stored calendar, and every bill's own due day with them, for `indexPayCalendars`: one read, so each
+ * screen that reads a calendar finds a bill's own day too. None before the migrations are pushed.
+ */
+export async function loadPayCalendars(db: Db): Promise<PayCalendarRow[]> {
+  const [calendars, dueDays] = await Promise.all([readRows(db, null), readBillDueDays(db)])
+  return dueDays.length ? [...calendars, ...dueDays] : calendars
 }
 
 /** One payer's rows: its own calendar and any a job of theirs carries. */
@@ -123,6 +151,12 @@ export async function loadInvoiceAcceptances(db: Db): Promise<Map<string, string
 /** Sets, replaces or clears (null) the day a payer accepted one bill. The server stamps who marked it. */
 export async function saveInvoiceAcceptance(db: Db, args: { invoiceId: string; acceptedYmd: string | null }): Promise<void> {
   const { error } = await db.rpc('set_invoice_payer_accepted_on' as never, { p_invoice_id: args.invoiceId, p_accepted_on: args.acceptedYmd } as never)
+  if (error) throw error
+}
+
+/** Sets, replaces or clears (null day) one bill's own due day, with its clause and a few of its words. The server stamps who marked it. */
+export async function saveInvoiceDueDay(db: Db, args: { invoiceId: string; dueYmd: string | null; clause?: string; words?: string }): Promise<void> {
+  const { error } = await db.rpc('set_invoice_due_day' as never, { p_invoice_id: args.invoiceId, p_due_on: args.dueYmd, p_clause: args.clause ?? '', p_words: args.words ?? '' } as never)
   if (error) throw error
 }
 

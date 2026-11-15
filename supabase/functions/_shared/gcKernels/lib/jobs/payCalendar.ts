@@ -38,8 +38,25 @@ export type PayCalendar = {
   words: string
 }
 
-/** One stored row: the payer's own calendar (`jobId` null), or one job's. */
+/**
+ * One bill's own due day (punch list #341, PR 4): the contract names a date for that one bill. A
+ * retainage release, a dated draw once it is billed, a final payment. It sits at the top of the
+ * ladder a bill reads: the bill's own day, the job's calendar, the payer's calendar, the pace guess.
+ */
+export type BillOwnDue = {
+  /** YYYY-MM-DD the bill is due. */
+  dueYmd: string
+  /** The clause as the contract numbers it: `§ 9.4`. '' when the office has none. */
+  clause: string
+  /** The clause in a few words. */
+  words: string
+  setByName?: string | null
+  setAt?: string | null
+}
+
+/** One stored row: the payer's own calendar (`jobId` null), one job's, or one bill's own due day (`invoiceId`). */
 export type PayCalendarRow = {
+  /** '' on a bill's own due day, which belongs to the bill and names no payer. */
   payerCustomerId: string
   jobId: string | null
   /** A job's row can say the payer's calendar is not on this job. */
@@ -47,6 +64,9 @@ export type PayCalendarRow = {
   calendar: PayCalendar | null
   setByName: string | null
   setAt: string | null
+  /** The bill a row of `invoice_due_days` is for. Such a row rides with the calendars, so every reader of one finds the other. */
+  invoiceId?: string | null
+  ownDue?: BillOwnDue | null
 }
 
 export const PAY_CALENDAR_CUTOFF_MAX = 28
@@ -168,27 +188,61 @@ export function parsePayCalendarRow(row: PayCalendarDbRow | null | undefined, se
   return { payerCustomerId: payer, jobId, off, calendar, setByName: setByName?.trim() || null, setAt: typeof row.set_at === 'string' ? row.set_at : null }
 }
 
+/** An `invoice_due_days` row as the database returns it. Every column optional: a read from before the push has none. */
+export type BillDueDayDbRow = {
+  invoice_id?: string | null
+  due_on?: string | null
+  clause?: string | null
+  words?: string | null
+  marked_at?: string | null
+}
+
+/** One bill's own due day, read for a screen as a row that rides with the calendars; null with no bill or no usable day. */
+export function parseBillDueDayRow(row: BillDueDayDbRow | null | undefined, setByName?: string | null): PayCalendarRow | null {
+  const invoiceId = typeof row?.invoice_id === 'string' ? row.invoice_id : ''
+  const dueYmd = typeof row?.due_on === 'string' ? row.due_on.slice(0, 10) : ''
+  if (!row || !invoiceId || !parts(dueYmd)) return null
+  const setAt = typeof row.marked_at === 'string' ? row.marked_at : null
+  const by = setByName?.trim() || null
+  const ownDue: BillOwnDue = {
+    dueYmd,
+    clause: typeof row.clause === 'string' ? row.clause.trim().slice(0, PAY_CALENDAR_CLAUSE_MAX) : '',
+    words: typeof row.words === 'string' ? row.words.trim().slice(0, PAY_CALENDAR_WORDS_MAX) : '',
+    setByName: by,
+    setAt,
+  }
+  return { payerCustomerId: '', jobId: null, off: false, calendar: null, setByName: by, setAt, invoiceId, ownDue }
+}
+
 /** Every stored row, keyed for `calendarFor`. */
 export type PayCalendarIndex = {
   byPayer: ReadonlyMap<string, PayCalendarRow>
   /** Keyed `payerId|jobId`. */
   byPayerJob: ReadonlyMap<string, PayCalendarRow>
+  /** One bill's own due day, by the bill's id (punch list #341, PR 4); absent on an index built before it. */
+  byInvoice?: ReadonlyMap<string, BillOwnDue>
 }
 
-export const PAY_CALENDAR_INDEX_EMPTY: PayCalendarIndex = { byPayer: new Map(), byPayerJob: new Map() }
+export const PAY_CALENDAR_INDEX_EMPTY: PayCalendarIndex = { byPayer: new Map(), byPayerJob: new Map(), byInvoice: new Map() }
 
 export function indexPayCalendars(rows: ReadonlyArray<PayCalendarRow>): PayCalendarIndex {
   const byPayer = new Map<string, PayCalendarRow>()
   const byPayerJob = new Map<string, PayCalendarRow>()
+  const byInvoice = new Map<string, BillOwnDue>()
   for (const r of rows) {
-    if (r.jobId) byPayerJob.set(`${r.payerCustomerId}|${r.jobId}`, r)
+    if (r.invoiceId) {
+      if (r.ownDue) byInvoice.set(r.invoiceId, r.ownDue)
+    } else if (r.jobId) byPayerJob.set(`${r.payerCustomerId}|${r.jobId}`, r)
     else if (r.calendar) byPayer.set(r.payerCustomerId, r)
   }
-  return { byPayer, byPayerJob }
+  return { byPayer, byPayerJob, byInvoice }
 }
 
-/** Whose calendar a bill reads: its job's own, its payer's, none because the job switched it off, or none because none is set. */
-export type PayCalendarSource = 'job' | 'payer' | 'off' | 'none'
+/**
+ * Where a bill's due day comes from: the bill's own day, its job's own calendar, its payer's, none
+ * because the job switched it off, or none because none is set.
+ */
+export type PayCalendarSource = 'bill' | 'job' | 'payer' | 'off' | 'none'
 
 /** The calendar one bill reads, and whose it is (punch list #341). */
 export type PayCalendarRead = {
@@ -199,6 +253,10 @@ export type PayCalendarRead = {
   payerCalendar: PayCalendar | null
   /** The job whose own row this is, so its record can be picked out of the payer's payments (`recordFor`); absent on the payer's, and with none. */
   jobId?: string | null
+  /** The bill's own due day (`from` is `bill`): no calendar is read for it, so `calendar` is null. */
+  ownDue?: BillOwnDue | null
+  /** On a bill with its own day, what the bill would read without it: the next rungs of the ladder, for the window that sets the day. */
+  under?: { calendar: PayCalendar | null; from: Exclude<PayCalendarSource, 'bill'> }
 }
 
 const NO_CALENDAR: PayCalendarRead = { calendar: null, from: 'none', payerCalendar: null }
@@ -208,12 +266,53 @@ const NO_CALENDAR: PayCalendarRead = { calendar: null, from: 'none', payerCalend
  * payer's, else none. A job's row that is off means none, whatever the payer holds. None is
  * today's behavior. A job's row belongs to one payer: a bill another party pays reads past it.
  */
-export function calendarSourceFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null }): PayCalendarRead {
-  if (!index || !bill.payerId) return NO_CALENDAR
+export function calendarSourceFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null; invoiceId?: string | null }): PayCalendarRead {
+  if (!index) return NO_CALENDAR
+  const under = calendarUnder(index, bill)
+  // The top rung (punch list #341, PR 4): a day the contract names for this one bill wins over any calendar, and needs no payer on file.
+  const ownDue = bill.invoiceId ? index.byInvoice?.get(bill.invoiceId) : undefined
+  if (ownDue) return { calendar: null, from: 'bill', payerCalendar: under.payerCalendar, ownDue, under: { calendar: under.calendar, from: under.from as Exclude<PayCalendarSource, 'bill'> } }
+  return under
+}
+
+/** The ladder below a bill's own day: the job's own row for the payer, else the payer's, else none. */
+function calendarUnder(index: PayCalendarIndex, bill: { payerId: string | null | undefined; jobId?: string | null }): PayCalendarRead {
+  if (!bill.payerId) return NO_CALENDAR
   const payerCalendar = index.byPayer.get(bill.payerId)?.calendar ?? null
   const own = bill.jobId ? index.byPayerJob.get(`${bill.payerId}|${bill.jobId}`) : undefined
   if (own) return own.off || !own.calendar ? { calendar: null, from: 'off', payerCalendar, jobId: own.jobId } : { calendar: own.calendar, from: 'job', payerCalendar, jobId: own.jobId }
   return payerCalendar ? { calendar: payerCalendar, from: 'payer', payerCalendar } : NO_CALENDAR
+}
+
+/** The press that sets one bill's own due day, and its window's title. */
+export const BILL_OWN_DUE_PRESS = 'This bill is due on…'
+
+/** What a bill with its own due day reads where a calendar's words would stand. */
+export const BILL_OWN_DUE_WORDS = 'This bill’s own day'
+
+/** A bill's own day in a few words, with its clause: "This bill’s own day · § 9.4". */
+export function billOwnDueShort(own: BillOwnDue): string {
+  return own.clause ? `${BILL_OWN_DUE_WORDS} · ${own.clause}` : BILL_OWN_DUE_WORDS
+}
+
+/** A bill's own day in a sentence, for a hover: the clause's words, then that no calendar is read. */
+export function billOwnDueWords(own: BillOwnDue): string {
+  const said = own.words ? `${own.clause ? `${own.clause}: ` : ''}${/[.!?]$/.test(own.words) ? own.words : `${own.words}.`}` : 'The contract names this date for this one bill.'
+  return `${said} No pay calendar is read for this bill.`
+}
+
+/**
+ * The window's two lines for one bill's own day: what the bill reads without it, and what the day
+ * typed makes it. `otherwise` is the due day its calendar gives it and whether that calendar is the
+ * job's own; null with no calendar, where the bill reads the usual guess.
+ */
+export function billOwnDuePreview(dueYmd: string | null | undefined, otherwise: { dueYmd: string; own: boolean } | null | undefined): { otherwise: string; own: string; picked: boolean } {
+  const picked = !!parts(dueYmd)
+  return {
+    otherwise: otherwise ? `By ${otherwise.own ? 'this job’s own' : 'the'} pay calendar it is due ${payCalendarMonthDay(otherwise.dueYmd)}.` : 'With no pay calendar it reads the usual guess.',
+    own: picked ? `On its own day it is due ${payCalendarMonthDay(dueYmd as string)}.` : 'Pick the day to see what it makes the bill.',
+    picked,
+  }
 }
 
 /** A calendar handed over bare, or with whose it is: the pay model takes either (punch list #341). */
@@ -238,8 +337,8 @@ export function payCalendarShortFor(read: PayCalendarRead): string | null {
   return read.from === 'job' ? `${OWN_CALENDAR_WORDS} · ${payCalendarShort(read.calendar)}` : payCalendarShort(read.calendar)
 }
 
-/** The calendar one bill reads (`calendarSourceFor`, without whose it is). */
-export function calendarFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null }): PayCalendar | null {
+/** The calendar one bill reads (`calendarSourceFor`, without whose it is). Null for a bill with its own due day, which reads no calendar. */
+export function calendarFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null; invoiceId?: string | null }): PayCalendar | null {
   return calendarSourceFor(index, bill).calendar
 }
 
@@ -525,6 +624,8 @@ export type CalendarBillRead = {
   tone: CalendarBillTone
   /** The calendar the bill read, whether it is its job's own, and the record it was scored on (`billCalendarRead`); absent on a read built bare. */
   of?: { calendar: PayCalendar; own: boolean; record: PayCalendarRecord }
+  /** The due day is the bill's own (punch list #341, PR 4): no calendar was read. */
+  billOwn?: boolean
 }
 
 /**
@@ -550,6 +651,13 @@ export function calendarBillRead(clockYmd: string | null | undefined, cal: PayCa
  * Null with no calendar, or no usable day.
  */
 export function billCalendarRead(read: PayCalendarRead, clockYmd: string | null | undefined, receipts: ReadonlyArray<PayCalendarReceipt> | null | undefined, todayYmd: string): CalendarBillRead | null {
+  // A bill with its own due day reads that day and no calendar (punch list #341, PR 4): nothing is replayed, so the expected day is the day itself.
+  if (read.ownDue) {
+    const since = payCalendarDaysBetween(read.ownDue.dueYmd, todayYmd)
+    if (since == null) return null
+    const past = Math.max(0, since)
+    return { dueYmd: read.ownDue.dueYmd, expectedYmd: read.ownDue.dueYmd, daysPastDue: past, daysPastExpected: past, tone: past >= PAY_CALENDAR_MISSED_RUN_DAYS ? 'late' : past > 0 ? 'warn' : 'ok', billOwn: true }
+  }
   const record = recordFor(receipts, read)
   if (!read.calendar || !record) return null
   const bill = calendarBillRead(clockYmd, read.calendar, record.lateness, todayYmd)
@@ -567,6 +675,8 @@ export type PayerCalendarSummary = {
   recordOf: PayCalendarRecordOf | null
   /** The most days any bill is past its expected day; null when none is. */
   pastExpectedDays: number | null
+  /** The bill furthest past is past its own due day, with no calendar behind it (punch list #341, PR 4). */
+  billOwn?: boolean
 }
 
 /**
@@ -579,6 +689,8 @@ export function payerCalendarSummary(payer: { calendar: PayCalendar | null; late
   let worst: CalendarBillRead | null = null
   for (const b of bills) if (b && b.daysPastExpected > 0 && (!worst || b.daysPastExpected > worst.daysPastExpected)) worst = b
   if (worst) {
+    // One bill past its own due day: the line reads that day, whatever calendar the payer holds.
+    if (worst.billOwn) return { calendar: null, own: false, lateness: null, recordOf: null, pastExpectedDays: worst.daysPastExpected, billOwn: true }
     const of = worst.of
     // A read built bare names no calendar of its own: it was the payer's.
     if (!of) return payer.calendar ? { calendar: payer.calendar, own: false, lateness: payer.lateness, recordOf: 'payer', pastExpectedDays: worst.daysPastExpected } : { calendar: null, own: false, lateness: null, recordOf: null, pastExpectedDays: null }
@@ -588,16 +700,18 @@ export function payerCalendarSummary(payer: { calendar: PayCalendar | null; late
   return { calendar: null, own: false, lateness: null, recordOf: null, pastExpectedDays: null }
 }
 
-/** The read in a row's words: "due Dec 10" · "due Nov 10 · 5d past due" · "due Nov 10 · 12d past expected". */
+/** The read in a row's words: "due Dec 10" · "due Nov 10 · 5d past due" · "due Nov 10 · 12d past expected". A bill's own day has no expected day apart from it. */
 export function calendarBillWords(read: CalendarBillRead): string {
   const due = `due ${payCalendarMonthDay(read.dueYmd)}`
+  if (read.billOwn) return read.daysPastDue > 0 ? `${due} · ${read.daysPastDue}d past due` : due
   if (read.daysPastExpected > 0) return `${due} · ${read.daysPastExpected}d past expected`
   if (read.daysPastDue > 0) return `${due} · ${read.daysPastDue}d past due`
   return due
 }
 
 /** What a calendar payer's waits are measured against, in a list's small line: "pay calendar · lands ~6d after the pay day". */
-export function calendarBasisWords(lateness: PayCalendarLateness | null | undefined, own = false): string {
+export function calendarBasisWords(lateness: PayCalendarLateness | null | undefined, own = false, billOwn = false): string {
+  if (billOwn) return 'a bill’s own due day'
   const whose = own ? 'a job’s own pay calendar' : 'pay calendar'
   if (!lateness) return `${whose} · no payment on record yet`
   if (lateness.medianDays <= 0) return `${whose} · lands by the pay day`

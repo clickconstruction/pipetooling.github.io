@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildMoneyWaiting, moneyWaitingBasis, moneyWaitingLead, openBillsForCustomers } from './moneyWaiting'
 import { buildPaySpeedsPayerFocus } from './paySpeedsPayerFocus'
-import { indexPayCalendars, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from './payCalendar'
+import { indexPayCalendars, parseBillDueDayRow, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from './payCalendar'
 import type { PayReceipt, PaySpeedData } from './billedExpectedPay'
 import type { StageRow } from '../jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -127,6 +127,21 @@ describe('Money waiting for a payer on a Pay calendar', () => {
     expect(row.bills.find((b) => b.jobName === 'Lot 5')?.calendar?.of).toMatchObject({ own: false, record: { of: 'payer' } })
     // The line reads the bill furthest past its day, which is the payer's own Lot 5 here.
     expect(row).toMatchObject({ calendar: PAY_CALENDAR_DEFAULT, calendarOwn: false })
+  })
+
+  it("reads a bill with its own due day against that day, whatever calendar its payer holds (punch list #341, PR 4)", () => {
+    // Lot 4 went in Sep 28: by Larkfield's calendar it is 37 days past expected. Its contract names Dec 15 for that one bill.
+    const calendars = { payCalendars: indexPayCalendars([calRow('lark'), parseBillDueDayRow({ invoice_id: 'inv-Lot 4', due_on: '2026-12-15' })!]) }
+    const row = buildMoneyWaiting(LARK_ROWS, speeds(), TODAY, calendars)!.rows[0]!
+    expect(row.bills.find((b) => b.jobName === 'Lot 4')).toMatchObject({ tone: 'ok', calendar: { dueYmd: '2026-12-15', daysPastExpected: 0, billOwn: true } })
+    // Lot 5 is still read by the payer's calendar, and leads the line.
+    expect(row).toMatchObject({ calendar: PAY_CALENDAR_DEFAULT, pastExpectedDays: 6, billOwn: false })
+    // Past its own day, with no calendar on the payer at all: the line reads the bill's day.
+    const alone = { payCalendars: indexPayCalendars([parseBillDueDayRow({ invoice_id: 'inv-Lot 6', due_on: '2026-11-10' })!]) }
+    const m = buildMoneyWaiting([LARK_ROWS[2]!], speeds(), TODAY, alone)!
+    expect(m.rows[0]).toMatchObject({ calendar: null, billOwn: true, pastExpectedDays: 12 })
+    expect(moneyWaitingLead(m.rows[0]!)).toBe('12d past due')
+    expect(moneyWaitingBasis(m.rows[0]!, m.companyMedianDays)).toBe('a bill’s own due day')
   })
 
   it('says so when a calendar payer has no payment on record', () => {
