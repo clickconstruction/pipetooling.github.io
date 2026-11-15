@@ -285,7 +285,7 @@ describe('what is in a box, on a line of its own (punch list #351, PR 2)', () =>
     const line = await screen.findByTestId('on-site-box-line')
     expect(line.textContent).toContain('ZZ test elbow · 8')
     expect(line.textContent).toContain('from its parts')
-    fireEvent.click(within(line).getByRole('button', { name: /Say it better/ }))
+    fireEvent.click(within(line).getByRole('button', { name: 'Say it better: What is in A2' }))
     const sheet = screen.getByRole('dialog', { name: 'What is in A2' })
     const press = within(sheet).getByRole('button', { name: 'Save the line' }) as HTMLButtonElement
     expect(press.disabled).toBe(true)
@@ -307,6 +307,8 @@ describe('what is in a box, on a line of its own (punch list #351, PR 2)', () =>
     expect(line.textContent).toContain('In a person’s words. The parts under it still count.')
     fireEvent.click(within(line).getByRole('button', { name: /Say it better/ }))
     const sheet = screen.getByRole('dialog', { name: 'What is in A2' })
+    // The empty field shows what the box reads once the words are gone: the app's own line.
+    expect((within(sheet).getByLabelText('What is in it') as HTMLInputElement).placeholder).toBe('ZZ test elbow · 8')
     fireEvent.change(within(sheet).getByLabelText('What is in it'), { target: { value: '' } })
     fireEvent.click(within(sheet).getByRole('button', { name: 'Use the app’s line' }))
     expect(vi.mocked(storeMock.sayBoxLine)).toHaveBeenCalledWith('j1', 'a2', 'A2', null)

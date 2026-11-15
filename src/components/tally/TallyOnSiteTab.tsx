@@ -46,7 +46,7 @@ import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/ma
 import { stepperKeeps, stepperTyped } from '../../lib/materials/stepperInput'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor, type SiteBox } from '../../lib/materials/boxName'
-import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, BOX_LINE_SAID_NOTE, addedLineVerdict, boxLineOf, boxLinePressLabel, boxLineSavedWords, boxLineVerdict, lineFieldValue, nameWordsNote, sayItBetterPress, sayItBetterSub, sayItBetterTitle, type BoxLine } from '../../lib/materials/boxLine'
+import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, BOX_LINE_SAID_NOTE, addedLineVerdict, boxLineFromParts, boxLineOf, boxLinePressLabel, boxLineSavedWords, boxLineVerdict, lineFieldValue, nameWordsNote, sayItBetterPress, sayItBetterSub, sayItBetterTitle, type BoxLine } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
@@ -632,7 +632,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {boxLineNow.text ? <span style={{ fontWeight: 600, fontSize: '1.05rem', minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span> : null}
             {boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : null}
-            <button type="button" style={{ ...chip, marginLeft: boxLineNow.text ? 'auto' : 0, flex: 'none' }} aria-label={`${sayItBetterPress(boxLineNow)}: ${sayItBetterTitle(container).toLowerCase()}`} onClick={() => setSheet({ kind: 'say-line', container })}>{sayItBetterPress(boxLineNow)}</button>
+            <button type="button" style={{ ...chip, marginLeft: boxLineNow.text ? 'auto' : 0, flex: 'none' }} aria-label={`${sayItBetterPress(boxLineNow)}: ${sayItBetterTitle(container)}`} onClick={() => setSheet({ kind: 'say-line', container })}>{sayItBetterPress(boxLineNow)}</button>
           </div>
           {boxLineNow.by === 'person' ? <span style={muted}>{BOX_LINE_SAID_NOTE}</span> : null}
         </div>
@@ -740,7 +740,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       {pinSheet}
       {stickerSheet}
       {sheet?.kind === 'move-box' ? <MoveBoxSheet jobId={jobId} container={sheet.container} places={places} byName={byName} onClose={() => setSheet(null)} onMoved={(name) => { setSheet(null); showToast(`${sheet.container.label} is now at ${name}.`, 'success') }} /> : null}
-      {sheet?.kind === 'say-line' ? <SayLineSheet container={containers.find((c) => c.id === sheet.container.id) ?? sheet.container} line={boxLineOf(sheet.container, lines)} onClose={() => setSheet(null)} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} /> : null}
+      {sheet?.kind === 'say-line' ? <SayLineSheet container={containers.find((c) => c.id === sheet.container.id) ?? sheet.container} line={boxLineOf(containers.find((c) => c.id === sheet.container.id) ?? sheet.container, lines)} appLine={boxLineFromParts(linesOf(lines, sheet.container.id))} onClose={() => setSheet(null)} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} /> : null}
       {sheet?.kind === 'edit-box' ? (
         <Sheet title={editBoxTitle(sheet.container)} onClose={() => setSheet(null)}>
           <BoxTabs touch container={sheet.container} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
@@ -952,7 +952,7 @@ function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobI
  * its parts. Cleared words hand the line back to the app. The rules and every word are `boxLine.ts`; the write is the
  * store's `sayBoxLine`, kept and sent later when there is no signal.
  */
-function SayLineSheet({ container, line, onClose, onSaved }: { container: Container; line: BoxLine; onClose: () => void; onSaved: (words: string) => void }) {
+function SayLineSheet({ container, line, appLine, onClose, onSaved }: { container: Container; line: BoxLine; /** The app's own line from the parts, shown in the empty field: what the box reads when the words are cleared. */ appLine: string; onClose: () => void; onSaved: (words: string) => void }) {
   const [typed, setTyped] = useState(container.said ?? '')
   const verdict = boxLineVerdict(container, typed)
   const save = () => {
@@ -963,7 +963,7 @@ function SayLineSheet({ container, line, onClose, onSaved }: { container: Contai
   return (
     <Sheet title={sayItBetterTitle(container)} sub={sayItBetterSub(line)} onClose={onClose}>
       <form onSubmit={(e) => { e.preventDefault(); save() }} style={{ display: 'grid', gap: '0.75rem' }} data-testid="say-line-form">
-        <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input type="text" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder={line.by === 'app' ? line.text : 'PVC fittings, mixed'} aria-label={BOX_LINE_FIELD_LABEL} style={input} /></label>
+        <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input type="text" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder={appLine || 'PVC fittings, mixed'} aria-label={BOX_LINE_FIELD_LABEL} style={input} /></label>
         {!verdict.ok && verdict.words ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{verdict.words}</p> : null}
         <button type="submit" style={{ ...btnPrimary, ...btnBlock, minHeight: 52, ...dis(!verdict.ok) }} disabled={!verdict.ok}>{boxLinePressLabel(container, typed)}</button>
       </form>
