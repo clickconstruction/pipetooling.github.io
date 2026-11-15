@@ -197,6 +197,8 @@
     "@turf/turf": "^7.3.5",
     "@vis.gl/react-google-maps": "^1.10.0",
     "@xyflow/react": "^12.10.2",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "dagre": "^0.8.5",
     "dompurify": "3.4.17",
     "exceljs": "^4.4.0",
