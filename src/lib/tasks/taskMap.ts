@@ -27,9 +27,16 @@ export function taskMapIdFromRow(row: { place_lat?: number | null; place_lng?: n
 
 /** Under the due line: `The trench · about 830 ft · 3 places`. A map with nothing on it yet is its name alone. */
 export function taskMapLineWords(mapName: string | null | undefined, lines: ReadonlyArray<Pick<PaintedLine, 'lengthM' | 'measuredFt'>>, placeCount: number): string {
-  const name = (mapName ?? '').trim() || PAINTED_MAP_UNNAMED
-  const summary = mapSummaryWords(lines, placeCount)
+  const { name, summary } = taskMapLineParts(mapName, lines, placeCount)
   return summary ? `${name} · ${summary}` : name
+}
+
+/**
+ * The same words in their two halves. On a narrow card the name is what gives way, since the
+ * length and the places are what the person plans by.
+ */
+export function taskMapLineParts(mapName: string | null | undefined, lines: ReadonlyArray<Pick<PaintedLine, 'lengthM' | 'measuredFt'>>, placeCount: number): { name: string; summary: string } {
+  return { name: (mapName ?? '').trim() || PAINTED_MAP_UNNAMED, summary: mapSummaryWords(lines, placeCount) }
 }
 
 /** How many places the card names under the picture. Past it the rest are counted. */

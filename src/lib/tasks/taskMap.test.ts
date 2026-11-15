@@ -3,7 +3,7 @@
  * one, what the task says about it, where the small picture looks and what How far am I? answers.
  */
 import { describe, expect, it } from 'vitest'
-import { TASK_MAP_WORDS, taskMapFrame, taskMapHowFarWords, taskMapIdFromRow, taskMapLineWords, taskMapPlaceKey, taskMapStart } from './taskMap'
+import { TASK_MAP_WORDS, taskMapFrame, taskMapHowFarWords, taskMapIdFromRow, taskMapLineParts, taskMapLineWords, taskMapPlaceKey, taskMapStart } from './taskMap'
 
 const line = (points: Array<[number, number]>, madeAt = '2026-11-15T15:00:00Z', lengthM = 253) => ({ points: points.map(([lat, lng]) => ({ lat, lng })), madeAt, lengthM, measuredFt: null })
 
@@ -26,6 +26,11 @@ describe('taskMapIdFromRow', () => {
 describe('taskMapLineWords', () => {
   it('names the map, its length and its places', () => {
     expect(taskMapLineWords('The trench', [{ lengthM: 253, measuredFt: null }], 3)).toBe('The trench · about 830 ft · 3 places')
+  })
+
+  it('comes in two halves too, so a narrow card can shorten the name and keep the length', () => {
+    expect(taskMapLineParts('The trench', [{ lengthM: 253, measuredFt: null }], 3)).toEqual({ name: 'The trench', summary: 'about 830 ft · 3 places' })
+    expect(taskMapLineParts(' ', [], 0)).toEqual({ name: 'A painted map', summary: '' })
   })
 
   it('a map with nothing on it yet is its name alone, and a blank name is a painted map', () => {

@@ -370,8 +370,9 @@ export function TaskFormRows(props: Props) {
 
       {/* ── Where: the place and the photo of the spot on one row (#328) ── */}
       {props.hideWhere ? null : (
-        <div style={rowStyle}>
-          <span style={labStyle}>Where</span>
+        // With a map set the row is tall: its picture sits under the presses. The label then stays beside the presses.
+        <div style={onMap && taskMap ? { ...rowStyle, alignItems: 'start' } : rowStyle}>
+          <span style={onMap && taskMap ? { ...labStyle, paddingTop: 13 } : labStyle}>Where</span>
           <div style={{ display: 'grid', gridTemplateColumns: onMap ? 'minmax(0, 1fr) auto auto' : 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center', minWidth: 0 }}>
             <TaskPlaceRow
               value={onMap ? taskPlaceForRow(props.place, taskMap) : props.place}
