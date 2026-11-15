@@ -13,7 +13,8 @@ type Props = {
   address: string
   /** What the QR carries. */
   value: string
-  words: string
+  /** A line of words under the address; the test strip alone has one. */
+  words?: string
   /** The dots the tape prints across. */
   dots: number
   /** How tall it is drawn on the screen; the tape's dots unless a preview draws it smaller (v2.7304). */

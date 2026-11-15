@@ -123,6 +123,9 @@ export function difficultyLines(input: DifficultyLinesInput): DifficultyLines {
     for (const l of lines) {
       l.amount = round2(l.amount * share)
       l.hours = round2(l.hours * share)
+      // The words are the arithmetic before the cap, so they say what the cap left (the walks of PR 4 read a line
+      // whose words and dollars disagreed).
+      l.words = `${l.words}, held to ${money(l.amount)} by the cap`
     }
     capped = { before, cap }
   }
@@ -142,10 +145,11 @@ export function difficultyOnPriceWords(total: number, marginPct: number | null):
   return `about +${money(onPrice)} on the price at ${Number.isInteger(marginPct) ? marginPct : marginPct.toFixed(1)}%`
 }
 
-/** One line of the fold: "Field 2 · $3,840 · 10% of 480 field hours at $80: the order of work changes after we mobilize." */
+/** One line of the fold: "Field 2 · $3,840 · 10% of 480 field hours at $80: The order of work changes after we mobilize." */
 export function difficultyLineWords(l: DifficultyLine): string {
+  // The sentence stands as the criteria wrote it: lowering its first letter turned a name into *zZ walk…*.
   const sentence = l.sentence.trim()
-  const tail = sentence ? `: ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}` : ''
+  const tail = sentence ? `: ${sentence}` : ''
   return `${l.name} ${l.points} · ${money(l.amount)} · ${l.words}${tail}`
 }
 

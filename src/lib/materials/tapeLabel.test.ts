@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { LABEL_OUTPUTS, TAPE_COPIES_MAX, clampTapeCopies, repeatEach, TAPE_TEST_STRIP_LABEL, TAPE_WIDTH_DEFAULT, isTapeWidth, labelCountWords, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps } from './tapeLabel'
+import { LABEL_OUTPUTS, TAPE_COPIES_MAX, clampTapeCopies, repeatEach, TAPE_TEST_STRIP_LABEL, TAPE_WIDTH_DEFAULT, isTapeWidth, labelCountWords, longestNameChars, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps } from './tapeLabel'
 
 describe('the tape label (v2.6801)', () => {
   it('lays the strip out inside the tape with a QR that leaves its quiet zone', () => {
     for (const w of [18, 24] as const) {
       const l = tapeLayout(w)
       expect(l.qrMm + 2 * l.padMm).toBeLessThanOrEqual(w)
+      // the stencil with the address on its two lines, and the test strip's address with its words
+      expect(l.stencilMm + 2 * l.codeMm * 1.1 + 3 * l.padMm).toBeLessThanOrEqual(w)
       expect(l.stencilMm + l.codeMm + l.wordsMm + 2 * l.padMm).toBeLessThanOrEqual(w)
       expect(l.lengthMm).toBeGreaterThan(l.qrMm * 2)
     }
-    expect(tapeLayout(24).lengthMm).toBe(72)
+    expect(tapeLayout(24).lengthMm).toBe(54)
+    expect(tapeLayout(18).lengthMm).toBe(40)
     expect(TAPE_WIDTH_DEFAULT).toBe(24)
     expect(isTapeWidth(24)).toBe(true)
     expect(isTapeWidth(36)).toBe(false)
@@ -17,10 +20,36 @@ describe('the tape label (v2.6801)', () => {
 
   it('writes the page rule at the tape size with no margin, and breaks each strip to its own page', () => {
     const css = tapePrintCss(24, 'on-site-tape')
-    expect(css).toContain('@page { size: 72mm 24mm; margin: 0; }')
-    expect(css).toContain('.on-site-tape { width: 72mm !important; height: 24mm !important;')
+    expect(css).toContain('@page { size: 54mm 24mm; margin: 0; }')
+    expect(css).toContain('.on-site-tape { width: 54mm !important; height: 24mm !important;')
     expect(css).toContain('.on-site-tape + .on-site-tape { break-before: page;')
-    expect(tapePrintCss(18, 'x')).toContain('size: 60mm 18mm')
+    expect(tapePrintCss(18, 'x')).toContain('size: 40mm 18mm')
+    expect(tapePrintCss(24, 'x', 2)).toContain('size: 41mm 24mm')
+  })
+
+  it('cuts the strip to what its longest name needs, never shorter than the address’s first line (Taunya’s ask of 2026-11-15)', () => {
+    // G1 and G81: the address's first line is the wider; G120 and a sticker's four digits: the name is
+    expect(tapeLayout(24, 2).lengthMm).toBe(41)
+    expect(tapeLayout(24, 3).lengthMm).toBe(47)
+    expect(tapeLayout(24, 4).lengthMm).toBe(54)
+    expect(tapeLayout(24, 5).lengthMm).toBe(61)
+    expect(tapeLayout(24, 6).lengthMm).toBe(69)
+    expect(tapeLayout(18, 2).lengthMm).toBe(32)
+    expect(tapeLayout(18, 3).lengthMm).toBe(35)
+    // every one is shorter than the 72 and 60 mm the strip was before
+    for (const chars of [1, 2, 3, 4, 5, 6]) {
+      expect(tapeLayout(24, chars).lengthMm).toBeLessThan(72)
+      expect(tapeLayout(18, chars).lengthMm).toBeLessThan(60)
+      // the name's room: 0.8 of its type size a character, so a W or an M is not cut off
+      const l = tapeLayout(24, chars)
+      expect(l.lengthMm - (l.qrMm + 3 * l.padMm)).toBeGreaterThanOrEqual(chars * l.stencilMm * 0.8 - 0.05)
+    }
+    // a count nobody can read is the default, not a strip with no room
+    expect(tapeLayout(24, 0).lengthMm).toBe(54)
+    expect(tapeLayout(24, Number.NaN).lengthMm).toBe(54)
+    expect(longestNameChars(['G1', 'G81', 'G120'])).toBe(4)
+    expect(longestNameChars(['A1', 'B3'])).toBe(2)
+    expect(longestNameChars([])).toBe(4)
   })
 
   it('names the press with its count, dead at zero', () => {

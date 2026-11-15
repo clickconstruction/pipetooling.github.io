@@ -8,7 +8,7 @@
  */
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DIFFICULTY_CRITERIA_V1 } from '../../lib/bids/difficultyCriteria'
+import { DIFFICULTY_CRITERIA_V1, DIFFICULTY_CRITERIA_V2 } from '../../lib/bids/difficultyCriteria'
 import { DIFFICULTY_PRICE_V1 } from '../../lib/bids/difficultyPrice'
 import type { DifficultyPayingInputs } from '../../lib/bids/difficultyPaying'
 import { RATE_SHEET_WORDS as S } from '../../lib/bids/difficultyRateSheet'
@@ -143,5 +143,40 @@ describe('DifficultyRateSheet', () => {
     expect(screen.queryByLabelText(W.noteLabel)).toBeNull()
     expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull()
     expect((screen.getByRole('radio', { name: 'Field and superintendent: 3 points' }) as HTMLInputElement).disabled).toBe(true)
+  })
+
+  it('PR 6: under version 2 the site is picked on the bid; the site alone saves with no reason asked, and the rating is left as it stands', async () => {
+    const V2: DifficultyVersionLite = { id: 'v2', version: 2, body: DIFFICULTY_CRITERIA_V2 }
+    const io = fakeIo([{ ...RATED, criteriaVersionId: 'v2' }], {
+      loadVersions: vi.fn(async () => ({ versions: [V2], published: V2 })),
+      loadPaying: vi.fn(async () => ({ ...PAYING, own: { medianDays: 52, samples: 2 } })),
+      loadBidPicks: vi.fn(async () => ({})),
+      saveBidPicks: vi.fn(async (_bidId, _versionId, picks) => picks),
+    })
+    const onClose = vi.fn()
+    renderWithProviders(<DifficultyRateSheet customerId="c1" customerName="Seguin Ridge Builders" bid={BID} role="master_technician" io={io} onClose={onClose} />)
+    expect(await screen.findByTestId('rate-sheet-bid-picks')).toBeTruthy()
+    // The GC's 3 points: field 2 = 48 h at $80, office 1 = 12 h at $80.
+    await waitFor(() => expect(head()).toBe('3 points · about +$4,800 in cost'))
+    expect((screen.getByRole('button', { name: W.save(3) }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('radio', { name: 'The site: 1 point' }))
+    // The site adds 4% of 480 hours = 19.2 h at $80.
+    expect(head()).toBe('4 points · about +$6,336 in cost')
+    const press = screen.getByRole('button', { name: W.save(4) }) as HTMLButtonElement
+    expect(press.disabled).toBe(false)
+    fireEvent.click(press)
+    await waitFor(() => expect(io.saveBidPicks).toHaveBeenCalledWith('b1', 'v2', { site: 1 }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    expect(io.saveRating).not.toHaveBeenCalled()
+    expect(await screen.findByText(S.savedBidOnly)).toBeTruthy()
+  })
+
+  it('PR 6: from the ask there is no bid, so no site', async () => {
+    const V2: DifficultyVersionLite = { id: 'v2', version: 2, body: DIFFICULTY_CRITERIA_V2 }
+    const io = fakeIo([], { loadVersions: vi.fn(async () => ({ versions: [V2], published: V2 })) })
+    renderWithProviders(<DifficultyRateSheet customerId="c1" customerName="Seguin Ridge Builders" ask={{ jobLabel: '1042 Riverside Lofts' }} role="master_technician" io={io} onClose={() => {}} />)
+    expect(await screen.findByRole('radio', { name: 'Field and superintendent: 2 points' })).toBeTruthy()
+    expect(screen.queryByTestId('rate-sheet-bid-picks')).toBeNull()
+    expect(screen.queryByRole('radio', { name: 'The site: 1 point' })).toBeNull()
   })
 })

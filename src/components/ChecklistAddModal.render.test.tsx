@@ -22,7 +22,7 @@ vi.mock('../hooks/useAuth', async () => {
 })
 
 // The places tasks already carry (#328): the Place row's chips. Empty unless a test fills it.
-const offeredPlaces = vi.hoisted(() => ({ places: [] as Array<{ name: string; lat: number; lng: number; accuracyM: number | null; setBy: string | null; setAt: string | null }> }))
+const offeredPlaces = vi.hoisted(() => ({ places: [] as Array<{ name: string; lat: number; lng: number; accuracyM: number | null; setBy: string | null; setAt: string | null; mapId?: string | null }> }))
 vi.mock('../lib/tasks/taskPlaceIo', () => ({ loadRecentTaskPlaces: () => Promise.resolve(offeredPlaces.places), loadTaskPlace: () => Promise.resolve(null) }))
 
 // The photo of the spot (#328, PR 6): the field is stood in for by one press that hands up a picture, and the send is recorded.
@@ -39,6 +39,22 @@ vi.mock('./checklist/TaskSpotPhotoField', () => ({
       {props.value ? 'photo held' : 'stub: take the photo'}
     </button>
   ),
+}))
+
+// The task's painted map (#345): the press is stood in for by one press that hands up a map, and the set strip by one
+// that names the map it holds and takes it off.
+vi.mock('./checklist/TaskMapField', () => ({
+  TaskMapPress: (props: { onChange: (v: unknown) => void }) => (
+    <button type="button" onClick={() => props.onChange({ id: 'map-9', name: 'The trench' })}>
+      stub: pick the trench
+    </button>
+  ),
+  TaskMapSet: (props: { value: { id: string; withPlace?: boolean } | null; onChange: (v: unknown) => void }) =>
+    props.value ? (
+      <button type="button" onClick={() => props.onChange(null)}>
+        {`stub: map ${props.value.id}${props.value.withPlace ? ' with the place' : ''}`}
+      </button>
+    ) : null,
 }))
 
 // Rows the modal inserts (v2.3751 job-bar tests read the checklist_items row back).
@@ -658,6 +674,94 @@ describe('ChecklistAddModal place (punch list #328)', () => {
     expect(row).toMatchObject({ place_name: 'Pump house', place_lat: 29.5512, place_lng: -98.2874, place_accuracy_m: 6, place_set_by: 'smoke-auth-user-1' })
     expect(typeof row.place_set_at).toBe('string')
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    offeredPlaces.places = []
+    cleanup()
+  })
+})
+
+describe('ChecklistAddModal map (punch list #345, a map on a task)', () => {
+  const PUMP = { name: 'Pump house', lat: 29.5512, lng: -98.2874, accuracyM: 6, setBy: 'u1', setAt: '2026-11-03T15:00:00Z' }
+  const sentRow = async () => {
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    return inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
+  }
+  const closed = () => vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+
+  it('a task with no map sends no map column, and the sentence says nothing of one', async () => {
+    inserted.length = 0
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Order hose clamps' } })
+    expect(screen.getByRole('status').textContent).not.toContain('with a map')
+    fireEvent.click(sendPress())
+    expect('painted_map_id' in (await sentRow())).toBe(false)
+    await closed()
+    cleanup()
+  })
+
+  it('a map with no place: the sentence says so, and Send stores the map alone', async () => {
+    inserted.length = 0
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Dig the trench from the meter to the house' } })
+    fireEvent.click(screen.getByRole('button', { name: 'stub: pick the trench' }))
+    expect(screen.getByRole('button', { name: 'stub: map map-9' })).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toMatch(/^Robert gets it today, with a map\. /)
+    fireEvent.click(sendPress())
+    const row = await sentRow()
+    expect(row.painted_map_id).toBe('map-9')
+    expect(Object.keys(row).filter((k) => k.startsWith('place_'))).toEqual([])
+    await closed()
+    cleanup()
+  })
+
+  it('a place chip that has a way in brings its map, and taking the place off takes the map with it', async () => {
+    inserted.length = 0
+    offeredPlaces.places = [{ ...PUMP, mapId: 'way-1' }]
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Pump house' }))
+    expect(screen.getByRole('button', { name: 'stub: map way-1 with the place' })).toBeTruthy()
+    // The chip pressed again takes the place off, and the map that came with it.
+    fireEvent.click(screen.getByRole('button', { name: 'Pump house' }))
+    expect(screen.queryByRole('button', { name: /^stub: map / })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Pump house' }))
+    fireEvent.click(sendPress())
+    expect(await sentRow()).toMatchObject({ place_name: 'Pump house', painted_map_id: 'way-1' })
+    await closed()
+    offeredPlaces.places = []
+    cleanup()
+  })
+
+  it('a map picked by itself stays when a place is set and when it is taken off', async () => {
+    inserted.length = 0
+    offeredPlaces.places = [PUMP]
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Run the camera down the main' } })
+    fireEvent.click(screen.getByRole('button', { name: 'stub: pick the trench' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Pump house' }))
+    expect(screen.getByRole('button', { name: 'stub: map map-9' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Pump house' }))
+    expect(screen.getByRole('button', { name: 'stub: map map-9' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Pump house' }))
+    fireEvent.click(sendPress())
+    expect(await sentRow()).toMatchObject({ place_name: 'Pump house', place_lat: 29.5512, painted_map_id: 'map-9' })
+    await closed()
+    offeredPlaces.places = []
+    cleanup()
+  })
+
+  it('a way in taken off with its own press leaves the place and stores no map', async () => {
+    inserted.length = 0
+    offeredPlaces.places = [{ ...PUMP, mapId: 'way-1' }]
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Pump house' }))
+    fireEvent.click(screen.getByRole('button', { name: 'stub: map way-1 with the place' }))
+    expect(screen.getByRole('button', { name: 'Pump house' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(sendPress())
+    const row = await sentRow()
+    expect(row).toMatchObject({ place_name: 'Pump house' })
+    expect(row.painted_map_id).toBeNull()
+    await closed()
     offeredPlaces.places = []
     cleanup()
   })

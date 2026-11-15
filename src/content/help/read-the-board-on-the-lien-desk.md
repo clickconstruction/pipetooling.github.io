@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, chips, scroll, list, find box, the board, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -56,9 +56,21 @@ The same press sits on the job number of every To do row. It also sits on the nu
 
 ## Press a bin
 
-Press a bin's name and the list under the Board shows only that bin's rows. A line under the bins says how many it is showing. Press {{button:outline|Show every row}} to see every row again. Pressing the same bin a second time does the same. On a phone a pressed bin scrolls the rows into view.
+Press a bin's name and the list under the Board shows only that bin's rows. A line under the bins says how many it is showing. Press {{button:outline|Show every row}} to see every row again. Pressing the same bin a second time does the same. A pressed bin also brings the list up to you, on a phone and on a computer.
 
 The Board never sends, files or moves anything. Every press on a row below still does what it did.
+
+## Scroll down to the list
+
+The Board fills most of the screen. Scroll down and the Board moves away as the list comes up. The list then has the whole screen.
+
+The find box stays at the top while you read the list. Beside it sit the Board's numbers, like *21 by tomorrow*. The waiting number and the run number are presses. They go where their tiles go.
+
+When a bin is pressed, that line says what the list is showing instead. It reads like *Showing 4 rows in To send*. {{button:outline|Show every row}} sits beside it.
+
+Press {{button:outline|↑ The Board}} to go back to the top.
+
+On a very tall screen the Board and the list fit together. There the Board stays put and the list scrolls under it.
 
 ## Held, Missed and retainage
 

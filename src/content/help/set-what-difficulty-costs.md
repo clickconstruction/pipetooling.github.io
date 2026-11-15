@@ -2,7 +2,7 @@
 title: set what difficulty costs
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: pricing rules, price list, difficulty, gc rating, points, cost lines, field hours, office hours, paying point, cap, bid board, workbench, take a line off, rated higher since this was priced, who may rate
+keywords: pricing rules, price list, difficulty, gc rating, points, cost lines, field hours, office hours, paying point, cap, bid board, workbench, take a line off, rated higher since this was priced, who may rate, the site, site scale, pick the site, occupied building, phases
 ---
 
 A GC's rating is points. The price list says what a point costs on a bid. The owner and the controller set it once, on the Bid Board. Every bid to a rated GC reads it when the Pricing tab first costs the bid. The points become cost lines on the Labor tab. Margin stays margin.
@@ -24,6 +24,12 @@ Each field point adds a percent of the bid's field hours at its labor rate. Two 
 :::card Office
 
 Each office point adds office hours at the office rate. One office point at 12 hours and $80 adds $960.
+
+:::
+
+:::card The site
+
+Each site point adds a percent of the bid's field hours at its labor rate. The site is picked on the bid, not on the GC. One site point at 4% on 480 hours at $80 adds 19.2 hours, $1,536.
 
 :::
 
@@ -61,6 +67,25 @@ Open a bid on the **Pricing** tab. The Workbench writes the lines the first time
 
 On the **Labor** tab the lines sit in **Direct costs** with the chip {{chip:yellow|difficulty}}. They read like any other direct cost. They cannot be typed over or removed there.
 
+## Pick the site on a bid
+
+The site belongs to the job, not to the GC. So it is picked on each bid.
+
+:::steps
+
+1. Open the bid on the **Pricing** tab.
+2. Under the difficulty chip, find the line **The site: not picked on this bid**.
+3. Press **Pick** and choose the sentence that fits the site.
+4. The Workbench reads the pick into the bid's lines at once.
+
+:::
+
+:::example The line under the Workbench strip
+The site: 1 point · An occupied building, or no room to stage. **Change**
+:::
+
+Press **Change** to pick again. Press **Clear the pick** to take it back. A bid to a GC nobody has rated can still carry a site pick. A master can pick the site from the Bid Board too. See [rate how a GC is to work with](/help/rate-how-a-gc-is-to-work-with#rate-from-a-bid).
+
 ## Take a line off this bid
 
 :::steps
@@ -77,6 +102,8 @@ The GC keeps its rating. The bid records who took the line off and why. The fold
 ## When the GC is rated again
 
 A bid keeps the lines it was priced with. When the GC is rated again since, the Workbench says **Rated higher since this was priced**. The line gives the points then and now. Press **Read the new rating in** to rewrite the lines from the new rating. A bid that went out keeps its lines for good.
+
+The same line shows when the site was picked somewhere else since the bid was priced. It reads **The site was picked since this was priced**. Press **Read the new rating in** to take it.
 
 ## At send
 

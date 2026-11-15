@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -84,6 +84,18 @@ Open the task. The picture shows the orange line that leads to the spot. A line 
 - {{button:outline|Open the map}} opens the painted map. It shows every place on the line, with its words and photo.
 
 You can add a place you find to the map. [Add a place](/help/paint-a-map#add-a-place) shows how.
+
+### When a task comes with a map
+
+Some work is a line and not a spot, like a trench or a run of pipe. That task shows an orange stroke under its title. Beside it are the map's name, about how long it is and how many places it has.
+
+Open the task. The picture shows the whole line from above. Under it, each numbered place is named.
+
+- {{button:blue|Open the map}} opens the painted map. It shows every place on the line, with its words and photo.
+- {{button:outline|Directions to the start}} opens your phone's maps app at the start of the line.
+- {{button:outline|How far am I?}} says how far the start is from you. Your location stays on your phone.
+
+A tap on the picture opens the map too. You can add a place you find to it.
 
 ## Add a place to a task that has none
 

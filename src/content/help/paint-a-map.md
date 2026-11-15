@@ -206,9 +206,12 @@ Press {{button:outline|From above}} or {{button:outline|Streets}} to change the 
 
 ### On a task
 
-A task's place can carry the painted map that leads to it. The person who gets the task sees the line on the task and opens the map from there.
+A task can carry a painted map. The person who gets the task sees the line on the task and opens the map from there.
 
-[Give someone a task](/help/give-someone-a-task#add-the-way-in) shows how to add it. Whoever gets the task can open the map, even on a job they are not on the crew of.
+- **With a place**: the map is the way to that place. [Add the way in](/help/give-someone-a-task#add-the-way-in) shows how.
+- **By itself**: for work that is a line, like a trench. [Add a map](/help/give-someone-a-task#add-a-map) shows how.
+
+Whoever gets the task can open the map, even on a job they are not on the crew of.
 
 ## Change a map
 

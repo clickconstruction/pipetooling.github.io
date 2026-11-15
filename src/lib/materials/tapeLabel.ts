@@ -1,8 +1,10 @@
 /**
  * The tape label (punch list #294, v2.6801): one strip per cage or box for a Brother P-touch, printed through the
  * printer's own driver from the browser's print window. The app lays the strip out at the tape's size, the QR on the left
- * with a quiet zone of four modules, the stencil in the largest type that fits, the code with its dash and one line of
- * words underneath; the print window hands it to the driver at the tape's paper size and the printer cuts between strips.
+ * with a quiet zone of four modules, the stencil in the largest type that fits, and under it the address on two lines,
+ * `PRTS.CO/B/` and then the code with its dash (`tapeStrip.ts`, Taunya's ask of 2026-11-15, which also took the line
+ * of words off the strip); the print window hands it to the driver at the tape's paper size and the printer cuts
+ * between strips. The strip is as long as its longest name needs, so a run of short names uses less tape.
  * Pure: the sizes in millimetres, the page rule and the press's words. The window is `LabelsPrintModal.tsx`.
  */
 import { countedLabel } from '../batchWords'
@@ -33,21 +35,39 @@ export type TapeLayout = {
   wordsMm: number
 }
 
-export function tapeLayout(widthMm: TapeWidthMm): TapeLayout {
-  return widthMm === 24
-    ? { widthMm, lengthMm: 72, qrMm: 22, padMm: 1, stencilMm: 9, codeMm: 2.4, wordsMm: 2 }
-    : { widthMm, lengthMm: 60, qrMm: 16.5, padMm: 0.75, stencilMm: 6.5, codeMm: 1.9, wordsMm: 1.6 }
+/** The name length a strip is cut for when nobody says: a letter and three digits, or a sticker's four digits. */
+export const TAPE_NAME_CHARS_DEFAULT = 4
+
+/**
+ * The strip's sizes for a tape width. `nameChars` is the longest name the run prints, in characters: the print window
+ * cuts every strip of a run to one length, so the length is what that name needs beside the QR, and never less than
+ * the address's first line. Printed straight to the P-touch each strip is trimmed to its own ink instead
+ * (`tapeStripCanvas.ts`).
+ */
+export function tapeLayout(widthMm: TapeWidthMm, nameChars: number = TAPE_NAME_CHARS_DEFAULT): TapeLayout {
+  const sizes = widthMm === 24
+    ? { qrMm: 22, padMm: 1, stencilMm: 9, codeMm: 2.4, wordsMm: 2 }
+    : { qrMm: 16.5, padMm: 0.75, stencilMm: 6.5, codeMm: 1.9, wordsMm: 1.6 }
+  const chars = Math.max(1, Math.floor(Number(nameChars)) || TAPE_NAME_CHARS_DEFAULT)
+  // Room for the widest heavy capitals, 0.8 of the type size each (a W or an M; a digit is narrower), and for the
+  // address's first line, ten characters of the code's face. Measured in Chrome on 2026-11-15: G120, RM120 and MMM888 fit.
+  const textMm = Math.max(chars * sizes.stencilMm * 0.8, 10 * sizes.codeMm * 0.65)
+  // To a tenth before the whole millimetre, so 61.00000001 is 61.
+  const lengthMm = Math.ceil(Math.round((sizes.padMm + sizes.qrMm + sizes.padMm + textMm + sizes.padMm) * 10) / 10)
+  return { widthMm, lengthMm, ...sizes }
 }
 
-/** The words under the code on the strip. */
-export const TAPE_WORDS = 'Scan for what is inside'
+/** The longest name of a run, in characters, for `tapeLayout`; the default when the run is empty. */
+export function longestNameChars(names: ReadonlyArray<string>): number {
+  return names.reduce((most, name) => Math.max(most, name.length), 0) || TAPE_NAME_CHARS_DEFAULT
+}
 
 /**
  * The print rules for the tape: the page is one strip, no margins, and each strip breaks to its own page. Written after
- * `printRootCss`'s rules so its `@page` wins. `rootClass` is the window's root, `stripClass` each strip.
+ * `printRootCss`'s rules so its `@page` wins. `stripClass` is each strip; `nameChars` the run's longest name.
  */
-export function tapePrintCss(widthMm: TapeWidthMm, stripClass: string): string {
-  const l = tapeLayout(widthMm)
+export function tapePrintCss(widthMm: TapeWidthMm, stripClass: string, nameChars: number = TAPE_NAME_CHARS_DEFAULT): string {
+  const l = tapeLayout(widthMm, nameChars)
   return [
     '@media print {',
     `@page { size: ${l.lengthMm}mm ${l.widthMm}mm; margin: 0; }`,
