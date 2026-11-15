@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Job Window on a Phone: Direction C</title>
+<style>
+  /* Layout: one pair of phones per role (today at the left, C at the right), each a scrolling 375 px screen;
+     the pair stacks at phone width. ?pair=1|2|3 shows one pair alone, for a tight picture. */
+  :root {
+    --ground: #F1F3F6; --surface: #FFFFFF; --subtle: #F6F8FA; --ink: #111827; --muted: #6B7280; --soft: #9CA3AF;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB; --blue: #2563EB; --blue-bg: #DBEAFE; --blue-ink: #1D4ED8;
+    --green: #16A34A; --green-bg: #DCFCE7; --green-ink: #15803D; --amber-bg: #FEF3C7; --amber-ink: #B45309;
+    --red: #DC2626; --red-bg: #FEE2E2; --brown: #92400E; --purple: #7C3AED;
+    --font: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  .lede { margin: 14px 0 0; color: var(--muted); max-width: 82ch; }
+  .lede b { color: var(--ink); }
+  h2 { font-size: 18px; margin: 34px 0 4px; }
+  h2 .who { color: var(--muted); font-weight: 600; font-size: 14px; margin-left: 8px; }
+  .pairnote { margin: 0; color: var(--muted); max-width: 82ch; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 399px)); gap: 18px; align-items: start; margin-top: 12px; }
+  @media (max-width: 800px) { .pair { grid-template-columns: minmax(0, 399px); } }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .panel .cap { padding: 9px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .panel .cap .tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .tag.today { background: var(--red-bg); color: var(--red); }
+  .tag.c { background: var(--amber-bg); color: var(--amber-ink); }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; border-top: 1px solid var(--line); }
+  .panel .verdict b { color: var(--ink); }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 18px; }
+  .panel .verdict li { margin: 2px 0; }
+
+  /* The phone */
+  .phone { margin: 12px auto; width: calc(100% - 22px); max-width: 375px; height: 760px; border: 1px solid var(--line-strong); border-radius: 22px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; font-size: 14px; position: relative; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+  .status { height: 28px; display: flex; justify-content: space-between; align-items: center; padding: 0 16px; font-size: 12px; font-weight: 700; color: var(--ink); flex-shrink: 0; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .scroll::-webkit-scrollbar { width: 6px; } .scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+  .flag { display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--red); background: var(--red-bg); border-radius: 999px; padding: 1px 8px; margin: 2px 0 6px; }
+  .flag.ok { color: var(--green-ink); background: var(--green-bg); }
+
+  /* The title row and the tab strip, as A built them */
+  .head { display: flex; align-items: flex-start; gap: 6px; padding: 8px 6px 6px 14px; flex-shrink: 0; }
+  .head .names { flex: 1; min-width: 0; }
+  .head .names b { font-size: 18px; line-height: 1.2; display: block; }
+  .head .names .quiet { margin: 2px 0 0; }
+  .head .pins { display: flex; flex-direction: column; flex-shrink: 0; }
+  .head .pin { width: 44px; height: 40px; display: grid; place-items: center; font-size: 22px; color: var(--muted); }
+  .head .pin.dots { font-size: 20px; letter-spacing: 1px; }
+  .tabs { display: flex; align-items: center; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+  .tabs .rail { display: flex; gap: 2px; overflow-x: auto; padding: 6px 10px; scrollbar-width: none; flex: 1; min-width: 0; }
+  .tabs .rail::-webkit-scrollbar { display: none; }
+  .tabs.fade .rail { -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); }
+  .tab { padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; border-radius: 999px; font-weight: 600; font-size: 14px; color: var(--muted); white-space: nowrap; }
+  .tab.on { background: var(--blue); color: #fff; }
+  .tab.more { border: 1px solid var(--line-strong); color: var(--ink); margin-left: auto; }
+
+  /* Body */
+  .body { padding: 8px 14px 16px; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .chip.status { background: var(--blue-bg); color: var(--blue-ink); }
+  .chip.kind { background: var(--blue-bg); color: var(--blue-ink); font-size: 11px; }
+  .chip.num { background: var(--blue-bg); color: var(--blue-ink); border-radius: 6px; padding: 2px 8px; }
+  .quiet { color: var(--muted); font-size: 12.5px; margin: -2px 0 6px; }
+  .press { min-height: 44px; border: 1px solid var(--line-strong); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 14px; background: var(--surface); padding: 0 10px; white-space: nowrap; }
+  .press.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .press.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .who { display: grid; gap: 6px; margin-top: 6px; }
+  .who .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+  .who .row.one { grid-template-columns: minmax(0, 1fr) auto; }
+  .who .press { justify-content: flex-start; min-width: 0; }
+  .who .press .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--link); }
+  .who .press .verb { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 700; padding-left: 8px; }
+  .who .press.sq { width: 52px; justify-content: center; }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .three .press { color: var(--link); }
+  .sv { position: relative; height: 104px; border-radius: 10px; overflow: hidden; margin: 2px 0 8px; background: linear-gradient(180deg, #bcd3ea 0%, #d9e4ee 48%, #8e9aa6 50%, #6b7480 100%); }
+  .sv::before { content: ''; position: absolute; left: 12%; right: 30%; top: 22%; height: 30%; background: #c9b79c; border-radius: 3px 3px 0 0; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .sv .pin { position: absolute; left: 8px; bottom: 8px; padding: 4px 10px; border-radius: 6px; background: rgba(17,24,39,.7); color: #f9fafb; font-size: 13px; font-weight: 600; text-decoration: underline; }
+  .maprow { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; min-height: 44px; }
+  .maprow .dot { display: inline-block; width: 22px; height: 6px; border-radius: 3px; background: #F97316; margin-right: 8px; vertical-align: middle; }
+  .maprow .dist { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .paintwords { text-align: center; color: var(--link); font-weight: 700; font-size: 14px; padding: 6px 0 2px; }
+  .photos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 6px -14px 0; padding: 0 14px 4px; }
+  .photos::-webkit-scrollbar { display: none; }
+  .photos .ph { flex: 0 0 72px; height: 72px; border-radius: 10px; position: relative; overflow: hidden; background: linear-gradient(135deg, #cbd5e1, #64748b); }
+  .ph .d { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 600; text-align: center; background: rgba(17,24,39,.55); color: #f9fafb; padding: 1px 0; }
+  .photos .add { flex: 0 0 72px; height: 72px; border-radius: 10px; border: 1.5px dashed var(--blue); display: grid; place-items: center; color: var(--link); font-weight: 700; font-size: 12px; text-align: center; line-height: 1.2; }
+  .cust { font-size: 17px; font-weight: 700; margin-top: 2px; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface); }
+  .card b.h { display: block; font-size: 15px; }
+  .card .sub { color: var(--muted); font-size: 13px; }
+  .kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); min-height: 44px; }
+  .kv .k { color: var(--muted); font-size: 13px; font-weight: 600; padding-top: 1px; }
+  .kv .v { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .kv .v .sub { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .kv .v .line2 { display: block; font-weight: 600; font-size: 15px; }
+  .act { color: var(--link); font-weight: 700; }
+  .fold { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; min-height: 44px; font-weight: 700; }
+  .fold .n { margin-left: auto; color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .fold .n.live { color: var(--blue-ink); }
+  .fold .chev { color: var(--soft); }
+  .fold .n + .chev { margin-left: 0; }
+  .fold > .chev:nth-child(2) { margin-left: auto; }
+  .fold .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; display: block; }
+  .sect { font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; margin: 16px -14px 8px; padding: 10px 14px 4px; border-top: 6px solid var(--ground); display: flex; align-items: center; gap: 8px; }
+  .sect .right { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--link); }
+  .sect .right .n { color: var(--muted); margin-right: 6px; }
+  .sect::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--blue); }
+  .body > .sect:first-child { border-top: none; margin-top: 0; }
+  .pct { height: 6px; background: var(--line); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .pct i { display: block; height: 100%; background: var(--green); }
+  .open { text-align: center; color: var(--link); font-weight: 700; font-size: 13px; padding: 10px 0 0; }
+
+  /* The plain window as it draws today: a white sheet over the dimmed Dashboard */
+  .phone.dim { background: #8f949c; }
+  .sheetwin { margin: 34px 14px 44px; background: var(--surface); border-radius: 12px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .sheetwin .body { padding: 18px 18px 12px; }
+  .oldtitle { font-size: 18px; font-weight: 800; line-height: 1.25; }
+  .oldicons { display: flex; justify-content: flex-end; gap: 14px; font-size: 17px; color: var(--muted); margin: 4px 0 8px; }
+  .oldicons .p { color: var(--purple); }
+  .paintbox { display: inline-block; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 12px; color: var(--link); font-weight: 600; margin-bottom: 8px; }
+  .label { font-size: 13px; color: var(--muted); margin: 6px 0 2px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px 10px; color: var(--link); font-size: 13px; margin: 4px 4px 0 0; }
+  .pill.plain { color: var(--ink); font-weight: 600; }
+  .pill.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .accounts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11.5px; letter-spacing: .04em; color: var(--muted); margin: 10px 0 8px; }
+  .accounts .lab { text-transform: uppercase; font-weight: 700; }
+  .accounts .acc { border: 1px dashed var(--line-strong); border-radius: 999px; padding: 2px 9px; letter-spacing: 0; font-size: 12.5px; }
+  .feedbox { height: 150px; overflow-y: auto; border-top: 1px solid var(--line); margin-top: 8px; font-size: 13px; }
+  .feedbox .ev { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .feedbox .ev .m { color: var(--muted); font-size: 12px; }
+  .composer { border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin-top: 8px; color: var(--soft); font-size: 13px; background: var(--subtle); }
+  .composer .btn { float: right; border: 1px solid var(--line-strong); border-radius: 6px; padding: 2px 8px; color: var(--muted); background: var(--surface); margin-top: 18px; }
+  .datebox { border: 1px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; color: var(--muted); margin-bottom: 8px; background: var(--subtle); }
+  .datebox b { display: block; color: var(--ink); }
+  .rail-old { text-align: center; color: var(--muted); margin: 4px 0 10px; }
+  .rail-old b { color: var(--ink); background: var(--subtle); padding: 2px 8px; border-radius: 6px; }
+  .costrow { display: flex; justify-content: space-between; padding: 9px 12px; border: 1px solid var(--line); margin-top: -1px; font-weight: 600; background: var(--subtle); }
+  .costrow:first-of-type { border-radius: 8px 8px 0 0; } .costrow:last-of-type { border-radius: 0 0 8px 8px; }
+  .err { color: var(--brown); }
+
+  /* The bar at the foot */
+  .bar { display: grid; gap: 6px; padding: 8px 10px 12px; border-top: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
+  .bar .press { min-height: 48px; }
+  .bar.three { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .bar.four { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .bar.crew { grid-template-columns: minmax(0, 1fr) auto auto; }
+
+  /* Tables and the closing blocks */
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--subtle); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: none; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tablewrap { overflow-x: auto; margin-top: 10px; max-width: 980px; }
+  .block { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px 18px; margin-top: 10px; max-width: 980px; }
+  .block p { margin: 0 0 8px; max-width: 84ch; }
+  .block ul { margin: 4px 0 0; padding-left: 20px; }
+  .block li { margin: 5px 0; max-width: 84ch; }
+  .pick { color: var(--green-ink); font-weight: 700; }
+  footer { margin-top: 30px; color: var(--muted); font-size: 12.5px; max-width: 980px; }
+  body.solo header.top, body.solo .lede, body.solo .tablewrap, body.solo .block, body.solo footer, body.solo h2.other, body.solo .hide-solo { display: none; }
+  body.solo h2 { margin-top: 14px; }
+  /* ?only=c1|c2|c3 draws one C phone alone at the width of the screen; &full=1 lets it run to its whole length
+     with a line where the first screen ends. Both are for pictures. */
+  body.only { padding: 0; background: var(--surface); }
+  body.only .phone { margin: 0; width: 100%; max-width: none; border: 0; border-radius: 0; box-shadow: none; height: 100vh; }
+  body.only.full .phone { height: auto; min-height: 812px; }
+  body.only.full .scroll { overflow: visible; }
+  .foldline { position: absolute; left: 0; right: 0; top: 744px; border-top: 2px dashed var(--red); z-index: 4; pointer-events: none; }
+  .foldline span { position: absolute; right: 6px; top: -19px; font-size: 10.5px; font-weight: 700; color: var(--red); background: var(--red-bg); border-radius: 999px; padding: 1px 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #355 · direction C · redrawn on what is live</p>
+    <h1>Direction C: a phone window shaped by who is holding it</h1>
+  </div>
+  <div class="stamp">drawn 2026-11-15, after A, B and the six tabs went live<br>today's side read from the live app at 375 px the same day<br>presses read from prod, 2026-11-09 to 11-15<br>every name, street and number here is made up</div>
+</header>
+<p class="lede">A and B rebuilt the job window on a phone, but only the <b>tabbed</b> one, which the office and the master techs open. The helpers, the superintendent and the subs open a different, plain window, and <b>that one is still the old layout</b>. C is the idea of one phone window that draws itself for the person holding it. Each pair below is one role: what they see today at the left, what C would draw at the right. Each phone scrolls.</p>
+
+<h2 class="other">Who opens which window today</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Who</th><th>Window on a phone today</th><th>Its bar</th><th class="n">Opens, Nov 9 to 15</th><th>What they pressed on it</th></tr>
+  <tr><td>The office (assistants, controller, primary)</td><td>Tabbed, after A and B</td><td>Status ▾ · the next verb · Note</td><td class="n">about 100</td><td>Nothing on its top or its bar. Nearly every open came from the Jobs page, which is a desk.</td></tr>
+  <tr><td>A master tech</td><td>The same tabbed window</td><td>The office's bar, plus Arrived when he is on the crew</td><td class="n">3</td><td>Nothing counted. All three opens came from the Dashboard.</td></tr>
+  <tr><td>The superintendent</td><td>Plain, read only</td><td>Arrived or Leaving · Leave report · Note</td><td class="n">11</td><td>Arrived 5, Leaving 9, Leave report 3, Close 5</td></tr>
+  <tr><td>Helpers</td><td>Plain, read only</td><td>The same crew bar</td><td class="n">3</td><td>Nothing</td></tr>
+  <tr><td>Subs</td><td>Plain, read only</td><td>The same crew bar</td><td class="n">0</td><td>Nothing</td></tr>
+</table>
+</div>
+
+<!-- ============ PAIR 1 · the crew lead ============ -->
+<section data-pair="1">
+<h2>1 · The crew lead <span class="who">a master tech who is on the job's crew</span></h2>
+<p class="pairnote hide-solo">Today he gets the office's window whole. C keeps the frame and changes what is first.</p>
+<div class="pair">
+
+  <div class="panel">
+    <div class="cap"><span>Today · the tabbed window</span><span class="tag today">live, after A and B</span></div>
+    <div class="phone">
+      <div class="status"><span>7:42</span><span>●●● 81</span></div>
+      <div class="scroll">
+        <div class="head">
+          <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders <span class="chip kind">Project</span></div></div>
+          <span class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></span>
+        </div>
+        <div class="tabs fade"><div class="rail"><span class="tab on">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Documents</span><span class="tab">Materials</span></div></div>
+        <div class="body">
+          <span class="flag">seven tabs · four are the office's</span>
+          <div class="sect">Where</div>
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX</span></div>
+          <div class="maprow"><span><span class="dot"></span>Gate and parking</span><span class="dist">about 640 ft ›</span></div>
+          <div class="paintwords">＋ Paint a map</div>
+          <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6,#4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c,#7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3,#4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8,#5b5b78)"><span class="d">Nov 7</span></span></div>
+          <div class="sect">Who</div>
+          <div class="cust">Ridgeway Builders</div>
+          <div class="who">
+            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span><span class="press sq">⧉</span></div>
+            <div class="row one"><span class="press">✉ <span class="v">office@ridgewaybuilders.example</span><span class="verb">EMAIL</span></span><span class="press sq">⧉</span></div>
+          </div>
+          <div class="three"><span class="press">🌐 Portal</span><span class="press">▲ Files</span><span class="press">🖼 Photos</span></div>
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Saturday, November 14<span class="line2">8:00 AM – 12:00 PM</span><span class="sub">Sample leader and one helper. <span class="act">Open the calendar</span></span></span></div>
+          <div class="kv"><span class="k">Waiting on</span><span class="v">The crew, to finish the work<span class="sub">Nothing has happened for 3 days. <span class="act">Ready to bill</span></span></span></div>
+          <div class="kv"><span class="k">Hours</span><span class="v">No target set<span class="sub">How many hours the job should take. The crew's hours count against it once it is set. <span class="act">Set the hours</span></span></span></div>
+          <div class="sect">The thread</div>
+          <span class="flag">the customer thread, before any of the work</span>
+          <div class="kv"><span class="k">Last word</span><span class="v">Theirs, by text, yesterday<span class="sub">Nobody has answered yet. <span class="act">Reply</span></span></span></div>
+          <div class="kv"><span class="k">They promised</span><span class="v">Nothing promised yet.<span class="sub">A day Ridgeway Builders gives for a payment or an answer lands here. <span class="act">Write it down</span></span></span></div>
+          <div class="kv"><span class="k">We owe them</span><span class="v">Nothing open.<span class="sub">A call, a price or a date we said we would give lands here. <span class="act">Mark it</span></span></span></div>
+          <div class="open">Open the thread · 56 ›</div>
+          <div class="sect">More on this job</div>
+          <div class="fold"><span>Questions on this job</span><span class="chev">›</span></div>
+          <div class="fold"><span>Activity</span><span class="n">56</span><span class="chev">›</span></div>
+          <div class="fold"><span>Money</span><span class="chev">›</span></div>
+          <div class="fold"><span>Plans and papers</span><span class="chev">›</span></div>
+          <div class="fold"><span>Work and time</span><span class="chev">›</span></div>
+          <div class="fold"><span>Their journey</span><span class="chev">›</span></div>
+          <span class="flag">the checklist, the plans and the materials are behind these folds</span>
+        </div>
+      </div>
+      <div class="bar four"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press green">Arrived</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What he has today</b>
+      <ul>
+        <li>The office's window, word for word: seven tabs, the customer thread, Money.</li>
+        <li>Four presses on the bar. The office's bar is the same without <b>Arrived</b>.</li>
+        <li>What he came for on site (the open stage, its checklist, the plans, what is on site) sits behind folds at the foot, about two screens down.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="cap"><span>C · the crew lead's window</span><span class="tag c">not built</span></div>
+    <div class="phone" id="c1">
+      <div class="status"><span>7:42</span><span>●●● 81</span></div>
+      <div class="scroll">
+        <div class="head">
+          <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Sat 8:00 to 12:00</div></div>
+          <span class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></span>
+        </div>
+        <div class="tabs"><div class="rail"><span class="tab on">Job</span><span class="tab">Materials</span><span class="tab">Documents</span><span class="tab more">More ▾</span></div></div>
+        <div class="body">
+          <span class="flag ok">his three tabs · Edit, Bill, Costs and History under More ▾</span>
+          <div class="sect">Where</div>
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX</span></div>
+          <div class="maprow"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span><span class="press" style="min-height:36px;font-size:13px">Directions</span></div>
+          <div class="maprow"><span><span class="dot"></span>Gate and parking</span><span class="dist">about 640 ft ›</span></div>
+          <div class="paintwords">＋ Paint a map</div>
+          <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6,#4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c,#7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3,#4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8,#5b5b78)"><span class="d">Nov 7</span></span></div>
+          <div class="sect">Who</div>
+          <div class="cust">Ridgeway Builders</div>
+          <div class="who">
+            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span><span class="press sq">⧉</span></div>
+          </div>
+          <div class="sect">Today's work</div>
+          <span class="flag ok">the work comes third, not behind a fold</span>
+          <div class="card"><b class="h">Trim Set</b><span class="sub">Rough In done · Top Out done · Trim Set open</span><div class="pct"><i style="width:66%"></i></div></div>
+          <div class="fold"><span>Trim Set checklist</span><span class="n live">2 of 9 answered</span><span class="chev">›</span></div>
+          <div class="fold"><span>Plans<span class="sub">Issued set · came Nov 7</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Materials on site<span class="sub">2 cages · 1 box · 3 short</span></span><span class="chev">›</span></div>
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Saturday, November 14<span class="line2">8:00 AM – 12:00 PM</span><span class="sub">You and one helper.</span></span></div>
+          <div class="kv"><span class="k">Waiting on</span><span class="v">The crew, to finish the work<span class="sub">Nothing has happened for 3 days. <span class="act">Ready to bill</span></span></span></div>
+          <div class="kv"><span class="k">Hours</span><span class="v">31 of 48 hours<span class="sub">17 left before the target. <span class="act">Set the hours</span></span></span></div>
+          <div class="sect">More on this job</div>
+          <div class="fold"><span>Questions</span><span class="n live">1 waiting</span><span class="chev">›</span></div>
+          <div class="fold"><span>Notes and reports</span><span class="n">8</span><span class="chev">›</span></div>
+          <div class="fold"><span>The thread with the customer</span><span class="n">56</span><span class="chev">›</span></div>
+          <span class="flag ok">no Money on the Job tab · Bill and Costs stay one press away</span>
+        </div>
+      </div>
+      <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What changes for him</b>
+      <ul>
+        <li>Three tabs he uses, and <b>More ▾</b> for Edit, Bill, Costs and History.</li>
+        <li><b>Today's work</b> is the third thing on the screen: the open stage, its checklist, the plans, what is on site.</li>
+        <li>The crew's bar: <b>Arrived · Leave report · Note</b>. <b>Ready to bill</b> stays as the blue words on Waiting on, where B already put it.</li>
+        <li><b>Moves, not lost:</b> Status ▾ goes into the ⋯ sheet. The customer thread and the email fold under More on this job.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ PAIR 2 · helper or superintendent ============ -->
+<section data-pair="2">
+<h2>2 · A helper or the superintendent <span class="who">the people who press this window on a phone</span></h2>
+<p class="pairnote hide-solo">Today's side is the plain window as it drew live on 2026-11-15 for the sample superintendent. A and B never touched it.</p>
+<div class="pair">
+
+  <div class="panel">
+    <div class="cap"><span>Today · the plain window, first screen</span><span class="tag today">live, the old layout</span></div>
+    <div class="phone dim">
+      <div class="status" style="color:#fff"><span>7:42</span><span>●●● 81</span></div>
+      <div class="sheetwin">
+        <div class="scroll">
+          <div class="body">
+            <div class="oldtitle"><span class="chip num">1042</span> Ridgeway Walk</div>
+            <div class="oldicons"><span class="p">➤</span><span>⇧</span><span>✕</span></div>
+            <span class="flag">three small icons, none named</span>
+            <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockh…</span></div>
+            <span class="paintbox">＋ Paint a map</span>
+            <div class="label">Photos</div>
+            <div class="photos" style="margin:4px 0 0;padding:0 0 4px"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6,#4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c,#7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3,#4f7a4a)"><span class="d">Nov 8</span></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span style="font-size:16px;color:var(--ink)">Ridgeway Builders</span><span style="color:var(--muted);font-size:16px">▲ 🖼</span></div>
+            <div><span class="pill">📞 (512) 555-0142</span><span class="pill">✉ office@ridgeway…</span></div>
+            <div class="accounts"><span class="lab">Job accounts</span><span class="acc">Ferguson · none yet</span><span class="acc">Moore Supply · none yet</span><span class="acc">Reece · none yet</span></div>
+            <span class="flag">supply house accounts, on a helper's screen</span>
+            <div class="card"><b class="h">⏱ Hours target · none yet</b><span class="sub">How many hours the job should take. The crew's hours count against it once it is set.</span></div>
+            <div class="card">
+              <div><span class="pill on">All</span><span class="pill plain">Notes 4</span><span class="pill plain">Reports 1</span><span class="pill plain">Status 2</span><span class="pill plain">Billing</span><span class="pill plain">Crew 2</span></div>
+              <div class="feedbox">
+                <div class="ev"><span class="m">OPENED · Sample office · 7 days ago</span><br>Job opened from bid B398</div>
+                <div class="ev"><span class="m">WORK · Sample office · 7 days ago</span><br>Specific work added: Rough In</div>
+                <div class="ev"><span class="m">CREW · Sample office · 7 days ago</span><br>Sample leader added to crew</div>
+                <div class="ev"><span class="m">EDIT · System · 7 days ago</span><br>Job updated: changed pictures link</div>
+                <div class="ev"><span class="m">REPORT · Sample leader · 6 days ago</span><br>Status Report · How complete is the job? 25%</div>
+                <div class="ev"><span class="m">Sample office · 5 days ago</span><br>Trim caps ordered, expected Nov 30.</div>
+              </div>
+              <span class="flag">a feed that scrolls inside the scroll</span>
+              <div class="composer">Type a note… <span class="btn">Post note</span><div style="clear:both"></div></div>
+            </div>
+            <div class="datebox">Last work date<b>—</b></div>
+            <div class="datebox">Last bill date<b>—</b></div>
+            <div class="label" style="text-align:center">Status</div>
+            <div class="rail-old">Waiting → <b>Working</b> → Ready to bill → Billed → Paid</div>
+            <div style="font-weight:700;margin-bottom:4px">Plans</div>
+            <div class="err" style="margin-bottom:10px">Could not read the job. <span class="act">Try again</span></div>
+            <div style="font-weight:700;margin-bottom:6px">Parts Cost</div>
+            <div class="costrow"><span>› Supply house invoices</span><span>0.00</span></div>
+            <div class="costrow"><span>› Card charges</span><span>0.00</span></div>
+            <div class="costrow"><span>› Parts from tally</span><span>0.00</span></div>
+            <div class="costrow"><span>› Other job charges</span><span>0.00</span></div>
+            <div class="label" style="text-align:center;margin-top:10px">Job Total<br><b style="color:var(--ink)">—</b></div>
+            <div class="label" style="text-align:center">Payments and invoices are not shown in this view.</div>
+          </div>
+        </div>
+        <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
+      </div>
+    </div>
+    <div class="verdict"><b>What the live window says</b>
+      <ul>
+        <li>It is a sheet over the Dashboard, <b>1,800 px</b> long, close to three screens.</li>
+        <li>None of A or B is here: no sections, no number written out as a press, small icons, a feed that scrolls inside the scroll.</li>
+        <li>The office's reads fill it: job accounts, Last bill date, the Status rail, Parts Cost.</li>
+        <li>The bar is right, and it is what the superintendent presses every working day.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="cap"><span>C · the crew's window</span><span class="tag c">not built</span></div>
+    <div class="phone" id="c2">
+      <div class="status"><span>7:42</span><span>●●● 81</span></div>
+      <div class="scroll">
+        <div class="head">
+          <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Sat 8:00 to 12:00</div></div>
+          <span class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></span>
+        </div>
+        <div class="body">
+          <span class="flag ok">no tabs · the job on one screen</span>
+          <div class="sect">Where</div>
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX</span></div>
+          <div class="maprow"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span><span class="press" style="min-height:36px;font-size:13px">Directions</span></div>
+          <div class="maprow"><span><span class="dot"></span>Gate and parking</span><span class="dist">about 640 ft ›</span></div>
+          <div class="paintwords">＋ Paint a map</div>
+          <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6,#4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c,#7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3,#4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8,#5b5b78)"><span class="d">Nov 7</span></span></div>
+          <div class="sect">Who</div>
+          <div class="cust">Ridgeway Builders</div>
+          <div class="who">
+            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span><span class="press sq">⧉</span></div>
+          </div>
+          <span class="flag ok">the number written out, as B does for the office</span>
+          <div class="sect">Today's work</div>
+          <div class="card"><b class="h">Trim Set</b><span class="sub">Rough In done · Top Out done · Trim Set open</span><div class="pct"><i style="width:66%"></i></div></div>
+          <div class="fold"><span>Trim Set checklist</span><span class="n live">2 of 9 answered</span><span class="chev">›</span></div>
+          <div class="fold"><span>Plans<span class="sub">Issued set · came Nov 7</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Materials on site<span class="sub">2 cages · 1 box · 3 short</span></span><span class="chev">›</span></div>
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Saturday, November 14<span class="line2">8:00 AM – 12:00 PM</span><span class="sub">Sample leader and you.</span></span></div>
+          <div class="kv"><span class="k">Last note</span><span class="v">Trim caps ordered<span class="sub">Sample office, 5 days ago. Expected Nov 30.</span></span></div>
+          <div class="sect">More on this job</div>
+          <div class="fold"><span>Notes and reports</span><span class="n">8</span><span class="chev">›</span></div>
+          <div class="fold"><span>Questions</span><span class="n live">1 waiting</span><span class="chev">›</span></div>
+          <div class="fold"><span>Parts cost<span class="sub">the superintendent only</span></span><span class="chev">›</span></div>
+          <span class="flag ok">no job accounts, no bill date, no Status rail</span>
+        </div>
+      </div>
+      <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What changes for them</b>
+      <ul>
+        <li>The whole screen, in B's order: <b>Where · Photos · Who · Today's work · What's happening</b>, about one and a half screens.</li>
+        <li>The address has <b>Directions</b>, the number is a 44 px press that calls.</li>
+        <li>The newest note is a row. The whole feed is behind <b>Notes and reports</b>.</li>
+        <li><b>Gone from their phone:</b> job accounts, the hours target card, Last work and Last bill date, the Status rail, the Billing filter, the customer's email.</li>
+        <li>The bar does not change.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ PAIR 3 · a sub ============ -->
+<section data-pair="3">
+<h2>3 · A sub <span class="who">opens the same plain window as the helper</span></h2>
+<p class="pairnote hide-solo">Today's side is the same plain window, scrolled to its last screen. The code hides Job Total from a sub and a helper. No sub was walked live: no sample sub sits on a test job's crew.</p>
+<div class="pair">
+
+  <div class="panel">
+    <div class="cap"><span>Today · the plain window, last screen</span><span class="tag today">live, the old layout</span></div>
+    <div class="phone dim">
+      <div class="status" style="color:#fff"><span>7:42</span><span>●●● 81</span></div>
+      <div class="sheetwin">
+        <div class="scroll">
+          <div class="body">
+            <div class="datebox">Last work date<b>—</b></div>
+            <div class="datebox">Last bill date<b>—</b></div>
+            <span class="flag">a bill date, on a sub's screen</span>
+            <div class="label" style="text-align:center">Status</div>
+            <div class="rail-old">Waiting → <b>Working</b> → Ready to bill → Billed → Paid</div>
+            <div style="font-weight:700;margin-bottom:4px">Plans</div>
+            <div class="err" style="margin-bottom:4px">Could not read the job. <span class="act">Try again</span></div>
+            <span class="flag">the plans did not load for the crew role walked</span>
+            <div style="font-weight:700;margin:6px 0">Parts Cost</div>
+            <div class="costrow"><span>› Supply house invoices</span><span>0.00</span></div>
+            <div class="costrow"><span>› Card charges</span><span>0.00</span></div>
+            <div class="costrow"><span>› Parts from tally</span><span>0.00</span></div>
+            <div class="costrow"><span>› Other job charges</span><span>0.00</span></div>
+            <div class="label" style="text-align:center;margin-top:12px">Payments and invoices are not shown in this view.</div>
+            <div style="text-align:right;margin-top:10px"><span class="pill plain" style="border-radius:6px">Close</span></div>
+          </div>
+        </div>
+        <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
+      </div>
+    </div>
+    <div class="verdict"><b>What the last screen holds</b>
+      <ul>
+        <li>Two empty dates, the Status rail he cannot move, and the company's parts cost.</li>
+        <li>Plans answered <b>Could not read the job</b> on the live walk. That is a fault of its own, with or without C.</li>
+        <li>Nothing here is his: not his scope, not his price, not when he is paid.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="cap"><span>C · the sub's window</span><span class="tag c">not built</span></div>
+    <div class="phone" id="c3">
+      <div class="status"><span>7:42</span><span>●●● 81</span></div>
+      <div class="scroll">
+        <div class="head">
+          <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Sat 8:00 to 12:00</div></div>
+          <span class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></span>
+        </div>
+        <div class="body">
+          <div class="sect">Where</div>
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX</span></div>
+          <div class="maprow"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span><span class="press" style="min-height:36px;font-size:13px">Directions</span></div>
+          <div class="maprow"><span><span class="dot"></span>Gate and parking</span><span class="dist">about 640 ft ›</span></div>
+          <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6,#4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c,#7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3,#4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8,#5b5b78)"><span class="d">Nov 7</span></span></div>
+          <div class="sect">Who</div>
+          <div class="cust">Sample leader <span style="font-weight:400;color:var(--muted);font-size:13px">runs this job</span></div>
+          <div class="who">
+            <div class="row"><span class="press">📞 <span class="v">(512) 555-0177</span><span class="verb">CALL</span></span><span class="press sq">💬</span><span class="press sq">⧉</span></div>
+          </div>
+          <span class="flag ok">our lead's number first · the customer's is a question below</span>
+          <div class="sect">Your work</div>
+          <div class="card"><b class="h">Trim Set</b><span class="sub">Your work order · 14 fixtures · $4,200</span><div class="pct"><i style="width:20%"></i></div></div>
+          <div class="fold"><span>Trim Set checklist</span><span class="n live">2 of 9 answered</span><span class="chev">›</span></div>
+          <div class="fold"><span>Plans<span class="sub">Issued set · came Nov 7</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Materials on site<span class="sub">2 cages · 1 box · 3 short</span></span><span class="chev">›</span></div>
+          <span class="flag ok">his own price only · no company money</span>
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Saturday, November 14<span class="line2">8:00 AM – 12:00 PM</span><span class="sub">You, with Sample leader.</span></span></div>
+          <div class="kv"><span class="k">Your pay</span><span class="v">Not sent in yet<span class="sub">Leave a report when the stage is done. The office pays from it.</span></span></div>
+          <div class="sect">More on this job</div>
+          <div class="fold"><span>Notes and reports</span><span class="n">8</span><span class="chev">›</span></div>
+        </div>
+      </div>
+      <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What changes for a sub</b>
+      <ul>
+        <li>The same one screen as the helper's, with <b>Your work</b> in place of Today's work: his work order, his price, the checklist, the plans.</li>
+        <li><b>Who</b> is our lead on the job. Whether a sub also sees the customer's number is yours to say.</li>
+        <li><b>Your pay</b> is a row only if the sub pay work on the punch list lands. Until then the row is not drawn.</li>
+        <li><b>Gone from his phone:</b> parts cost, the dates, the Status rail, job accounts.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<h2 class="other">Has the press count moved since A shipped?</h2>
+<div class="block">
+  <p><b>Not yet, and it cannot have.</b> A went live on Saturday 2026-11-14, and the tabs have been counted since. The two days since are a weekend.</p>
+  <ul>
+    <li><b>Tab presses:</b> about 100, every one by the dev account: the build sessions checking their own work, and the dev himself. No office role and no master tech has pressed a tab.</li>
+    <li><b>A master tech:</b> opened the tabbed window once on Saturday morning, from the Dashboard, and pressed nothing counted. Three opens in the week, all from the Dashboard.</li>
+    <li><b>The superintendent:</b> the same as the nineteen days before. He opens the plain window and presses Arrived, Leaving and Leave report.</li>
+    <li><b>What the count cannot say:</b> it does not record the screen size. An open from the Dashboard is very likely a phone. An open from the Jobs page is very likely a desk.</li>
+  </ul>
+</div>
+
+<h2 class="other">What building C costs, and what a person would lose</h2>
+<div class="block">
+  <ul>
+    <li><b>Size L, as the card says.</b> A new <code>JobWindowPhone</code>, a kernel that picks the tabs, the sections and the bar by role, and a new <b>Today's work</b> section. With tests, a guide and a walk as each role, that is four or five PRs.</li>
+    <li><b>Today's work needs reads the crew roles do not have cleanly today.</b> The plain window's Plans section failed to load on the live walk. That is fixed first, and it is worth fixing even if C is dropped.</li>
+    <li><b>Two windows to keep in step.</b> Every later change to the job window is then made twice, once for the desk and once for the phone window. That cost does not end when C ships.</li>
+    <li><b>A master tech loses one tap.</b> Edit, Bill, Costs and History move behind More ▾, and Status ▾ moves into the ⋯ sheet. Nothing is removed.</li>
+    <li><b>The crew lose what was never theirs.</b> Job accounts, the bill date, the Status rail. The superintendent keeps Parts cost under a fold.</li>
+    <li><b>The office loses nothing.</b> Their window stays as A and B left it.</li>
+  </ul>
+</div>
+
+<h2 class="other">The pick</h2>
+<div class="block">
+  <p>C is two jobs of different worth, and the walk says to split them.</p>
+  <ul>
+    <li><span class="pick">Build the crew half now (pairs 2 and 3), sized M.</span> It needs no new window and no role kernel. It gives the plain window B's order and sections, which the tabbed window already has. The people it serves are the ones who press this window on a phone every working day.</li>
+    <li><b>Leave the crew lead's tabs for later (pair 1).</b> Three opens a week and no tab pressed is not yet a reason to shape tabs by role. A month of tab counts will say whether it is.</li>
+  </ul>
+</div>
+
+<footer>Today's side was read from the live app at 375 px on 2026-11-15: as the dev and as the sample master tech on the ZZ test job, and as the sample superintendent on a ZZ test job he is on the crew of. Read only, nothing written. The presses are counts from <code>ui_nav_clicks</code> on prod for 2026-11-09 to 2026-11-15. The names, streets, numbers and amounts on the phones are invented. The card is <code>to-dos/job-window-phone.md</code> (#355), and the first drawing of C is in <code>job-window-phone-directions.html</code>.</footer>
+</div>
+<script>
+  // ?pair=1|2|3 shows one pair alone. ?only=c1|c2|c3 shows one C phone alone, &full=1 at its whole length.
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var only = q.get('only');
+    if (only && document.getElementById(only)) {
+      var phone = document.getElementById(only);
+      document.body.innerHTML = '';
+      document.body.appendChild(phone);
+      document.body.classList.add('only');
+      if (q.get('full')) {
+        document.body.classList.add('full');
+        var line = document.createElement('div');
+        line.className = 'foldline';
+        line.innerHTML = '<span>the first screen ends here, above the bar</span>';
+        phone.appendChild(line);
+      }
+      return;
+    }
+    var p = q.get('pair');
+    if (!p) return;
+    document.body.classList.add('solo');
+    document.querySelectorAll('section[data-pair]').forEach(function (s) {
+      if (s.getAttribute('data-pair') !== p) s.style.display = 'none';
+    });
+  })();
+</script>
+</body>
+</html>
