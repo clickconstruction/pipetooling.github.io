@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -233,6 +233,18 @@ Open the map and press {{button:outline|Share}}. The press shows for whoever pai
 :::
 
 Anyone who has the link can open the map. Send it only to people who should have it.
+
+### Text it to the job's customer
+
+The office can text the link from the company's number. Press **Text it…** under the link.
+
+The customer's text box opens with the map's name and the link in it. Change the words if you like.
+
+Press **Send text…** and look it over before it goes. Nothing is sent until you do.
+
+The text lands in the customer's thread on the job. Their answer comes back to Messages.
+
+**Text it…** shows only on a map that is on a job. A map on no job has no customer to text.
 
 ### What they see
 
