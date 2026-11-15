@@ -28,7 +28,7 @@ Row heights from the DOM, on three live rows: one with one gate open and a suppl
 
 Shape 1 (A/B/F) hides the strip when all five pass. Shape 2 (C/D/G/H) shows five quiet dots on every row.
 
-**Screenshots.** Fifteen 2× PNGs were taken: the left column at 1400 wide for each shape, single rows, and the phone list for each shape. They show live jobs with their names, GCs and amounts, so they are not on GitHub: the repo is public, and its standing rule (punch list #336) keeps real names, job numbers and dollar figures out of anything public. They are on the local branch `claude/lien-gate-marks-spike-shots` (commit `d1e66ed71`, under `docs/spikes/lien-gate-marks/`) on the Mac that ran the spike. Never push that branch, and never copy its pictures into the repo, a PR or a card. To see a shape again, run this branch's dev server and set its flags, or take the picture again on test data.
+**Screenshots.** Fifteen 2× PNGs were taken: the left column at 1400 wide for each shape, single rows, and the phone list for each shape. They show live jobs with their names, GCs and amounts, so they are not on GitHub: the repo is public, and its standing rule (`AGENTS.md`, rule 12) keeps real customers, GCs, jobs and job numbers out of anything public. They are on the local branch `claude/lien-gate-marks-spike-shots` (commit `d1e66ed71`, under `docs/spikes/lien-gate-marks/`) on the Mac that ran the spike. Never push that branch, and never copy its pictures into the repo, a PR or a card. To see a shape again, run this branch's dev server and set its flags, or take the picture again on test data.
 
 ## What each costs
 
