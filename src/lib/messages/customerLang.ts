@@ -8,7 +8,7 @@
  * until a native speaker reads the words, so the strip, the phone and the morning run pass `customerLang(contact)` to a
  * quick reply's words. The gate is a parameter so a test can open it.
  */
-import { PORTAL_SPANISH_ON, type PortalLang } from '../gc/portalI18n'
+import { PORTAL_SPANISH_ON, type PortalLang } from '../gc/portalLang'
 import { wordsFor, type LineWords } from '../quickReplies/language'
 
 /**

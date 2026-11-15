@@ -8,7 +8,7 @@
  * - The app fills their first name, the tech's name, the job, its address, and the window, day and next visit from the
  *   tech's own blocks on the job. Minutes out and what the tech found are typed in the fill row.
  */
-import type { PortalLang } from './gc/portalI18n'
+import type { PortalLang } from './gc/portalLang'
 import { scheduleFormatTimeHm, scheduleFormatWeekdayOnly } from './jobScheduleChicago'
 import { blanksIn, blankWords, fillFirst, fillLine, type BlankFills } from './quickReplies/blanks'
 import { wordsFor, type LineWords } from './quickReplies/language'

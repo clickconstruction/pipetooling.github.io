@@ -18,7 +18,7 @@
  * the bio's own kernel (`bio.ts`: `bioText`), so what the tech read is what goes.
  */
 
-import type { PortalLang } from '../gc/portalI18n.ts'
+import type { PortalLang } from '../gc/portalLang.ts'
 import { bioPickedLines, bioText, type BioLine } from '../bio/bio.ts'
 import { onPhone, previewOf } from '../jobModeText.ts'
 import type { BlankFills } from '../quickReplies/blanks.ts'

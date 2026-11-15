@@ -3,7 +3,7 @@
  * run and `quo-send` read it). Its one import is a type from a file `quo-send`'s copy of the kernels already holds, so
  * the edge reads the same rule.
  */
-import type { PortalLang } from '../gc/portalI18n'
+import type { PortalLang } from '../gc/portalLang'
 
 /** A quick reply's words in both languages: `quick_replies.text` and `text_es`. */
 export interface LineWords {

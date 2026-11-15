@@ -183,6 +183,9 @@ export const ENTRIES = {
   'lib/bio/bio.ts': { values: [], types: [] },
   'lib/jobModeText.ts': { values: [], types: [] },
   'lib/messages/customerLang.ts': { values: [], types: [] },
+  // The portal's two languages and the Spanish switch on their own (punch list #359, v2.7289), so customerLang and the
+  // quick replies' language take a line and not portalI18n's 122 KB of translations; portalI18n re-exports them.
+  'lib/gc/portalLang.ts': { values: [], types: [] },
   // May we text? (v2.5606): the one rule the card and quo-send read.
   'lib/prospects/textingRule.ts': { values: [], types: [] },
   'lib/followUp/assignSeats.ts': { values: [], types: [] },

@@ -26,8 +26,8 @@ vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
  */
 
 const gate = vi.hoisted(() => ({ on: true }))
-vi.mock('../../../../lib/gc/portalI18n', async (importOriginal) => {
-  const real = await importOriginal<typeof import('../../../../lib/gc/portalI18n')>()
+vi.mock('../../../../lib/gc/portalLang', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../../../lib/gc/portalLang')>()
   return {
     ...real,
     get PORTAL_SPANISH_ON() {

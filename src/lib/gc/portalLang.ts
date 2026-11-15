@@ -1,0 +1,21 @@
+/**
+ * The portal's two languages and the owner's one switch for Spanish, on their own so a kernel that needs the language
+ * alone (`messages/customerLang.ts`, `quickReplies/language.ts`, the tech's text) takes a line and not the portal's
+ * translations (`portalI18n.ts`, 122 KB): on the edge a function uploads every file an import names, a type import too,
+ * and dev-mcp carried the translations for this constant and this type (punch list #359, v2.7289). `portalI18n.ts`
+ * re-exports all three, so every reader in the app imports as before.
+ */
+
+export type PortalLang = 'en' | 'es'
+
+/**
+ * The portal's Spanish is built whole and held until a native speaker reads it (PORTAL_REAL_BUILD.md, decision 8, the
+ * owner's call 9). Until then a company kept as Spanish reads English, and its language stays on its record for the day
+ * this turns on. Turning it on is this one line, with the reader's name in the PR's fragment.
+ */
+export const PORTAL_SPANISH_ON = false
+
+/** The language the portal shows a company: its own once Spanish is on, English until then. */
+export function portalShownLang(lang: PortalLang): PortalLang {
+  return PORTAL_SPANISH_ON ? lang : 'en'
+}
