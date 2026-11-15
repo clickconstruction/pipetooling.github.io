@@ -5,6 +5,8 @@
  * the aria-label nouns, the count and dollars under each name, an empty section greyed in
  * place, the section being scrolled through lit, and the click → section key.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -156,6 +158,31 @@ describe('the Legal desk shortcut (v2.5750)', () => {
     // Nothing waiting: no badge, the plain name.
     view.rerender(strip(<StagesLegalDeskShortcut count={null} to="/legal-desk" />))
     expect(screen.getByRole('link', { name: 'Open the Legal desk' }).textContent).toBe('')
+  })
+})
+
+describe('the bar’s widths (v2.7336, Taunya’s ask of 2026-11-15)', () => {
+  /** The declarations of the first index.css rule whose selector is exactly this. */
+  const rule = (selector: string): string => {
+    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) if (m[1]!.trim() === selector) return m[2]!
+    return ''
+  }
+
+  it('gives a stage its words’ width in the Pipeline’s bar only, and stands the desks off the bar’s right edge', () => {
+    render(<JobsStagesJumpStrip counts={counts} totals={totals} onFocusSection={vi.fn()} sectionElementId={sectionElementId} />)
+    // The hook the rules below hang on: the Messages, Settings and Development strips wear the classes without it.
+    expect(screen.getByRole('navigation', { name: 'Pipeline stages' }).parentElement?.hasAttribute('data-stages-stage-bar')).toBe(true)
+    // Read "Collection" at 1,280 wide: every cell took an even share, and the last one had two 32 px squares to fit in it.
+    expect(rule('[data-stages-stage-bar] .stagesStageSeg,\n[data-stages-stage-bar] .stagesStageSegTail')).toContain('flex: 1 1 auto;')
+    // The scales sat on the bar’s border: the cell had no padding of its own.
+    const tail = rule('[data-stages-stage-bar] .stagesStageSegTail')
+    expect(tail).toContain('gap: 0.75rem;')
+    expect(tail).toContain('padding-right: 0.75rem;')
+    // Past the cell’s own room the name gives way, never the squares.
+    expect(rule('[data-stages-stage-bar] .stagesStageSegTail > .stagesStageSeg')).toContain('flex: 0 1 auto;')
+    // The other strips keep their even cells.
+    expect(rule('.stagesStageSeg')).toContain('flex: 1 1 0;')
   })
 })
 
