@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
+import { LIEN_DESK_PATH } from '../../lib/lien/lienDeskRoute'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { needsYouDoorWords } from '../../lib/dashboard/phoneFolds'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
@@ -453,6 +454,8 @@ export function DashboardPinnedQuickRow({
           items={needsYouItems}
           onAction={press.onAction}
           onSecondary={press.onSecondary}
+          lienBoardStrip={needsYou.lienBoardStrip}
+          onOpenBoard={() => navigate(LIEN_DESK_PATH)}
         />
       )}
       {/* The office's round (v2.5845, punch list #176, change 5): the round's close sheet in two lines, for the office. */}
