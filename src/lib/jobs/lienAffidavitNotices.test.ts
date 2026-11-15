@@ -29,7 +29,7 @@ describe('lienAffidavitMonthsInSpan · the noticed months that are this job’s 
     expect(lienAffidavitMonthsInSpan(paper, '2026-06-15', '2026-07-03')).toEqual(['2026-06', '2026-07'])
   })
 
-  it('a span that reaches no noticed month names none, so the paper prints its blank', () => {
+  it('a span that reaches no noticed month keeps none of them', () => {
     expect(lienAffidavitMonthsInSpan(paper, '2026-09-01', '2026-09-30')).toEqual([])
   })
 
@@ -88,7 +88,7 @@ describe('lienAffidavitWorkMonths · the months of the job’s own work (punch l
     expect(lienAffidavitWorkMonths({ isSub: true, workDays: { first_work_date: '2026-07-06', last_work_date: '2026-09-02', lien_last_work_on: null }, lastMonth: '2026-09' })).toEqual(['2026-07', '2026-08', '2026-09'])
     expect(lienAffidavitWorkMonths({ isSub: true, workDays: { first_work_date: '2026-07-06', last_work_date: '2026-10-02', lien_last_work_on: '2026-08-15' }, lastMonth: '2026-08' })).toEqual(['2026-07', '2026-08'])
   })
-  it('a job with no clock hours and a day set by hand is that day’s month alone, so a notice naming earlier months leaves the paper blank', () => {
+  it('a job with no clock hours and a day set by hand is that day’s month alone', () => {
     expect(lienAffidavitWorkMonths({ isSub: true, workDays: { first_work_date: null, last_work_date: null, lien_last_work_on: '2026-09-11' }, lastMonth: '2026-09' })).toEqual(['2026-09'])
   })
   it('none on a job contracted with the owner, or with no day and no month', () => {
