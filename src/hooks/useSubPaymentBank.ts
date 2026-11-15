@@ -15,7 +15,7 @@ import { bankLinesFromRows, type BankLine, type BankRow } from '../lib/subWorkOr
 import type { SubSendingResult } from '../types/laborJob'
 import { formatErrorMessage } from '../utils/errorHandling'
 
-const BANK_COLUMNS = 'id, amount, posted_at, created_at, counterparty_name, note, external_memo, status, duplicate_of_transaction_id'
+const BANK_COLUMNS = 'id, amount, posted_at, created_at, counterparty_name, note, external_memo, status, kind, duplicate_of_transaction_id'
 /** A transaction is made a little before it posts: read this many days further back than the day asked for. */
 const CREATED_BEFORE_POSTED_DAYS = 7
 const BANK_READ_MAX_ROWS = 15000
@@ -60,7 +60,7 @@ export function useSubPaymentBank(enabled: boolean): SubPaymentBank {
     setBankById((prev) => {
       const next = new Map(prev)
       for (const r of found) {
-        const line = bankLinesFromRows([{ ...r, status: null, duplicate_of_transaction_id: null }])[0]
+        const line = bankLinesFromRows([{ ...r, status: null, kind: null, duplicate_of_transaction_id: null }])[0]
         if (line) next.set(line.id, line)
       }
       return next
