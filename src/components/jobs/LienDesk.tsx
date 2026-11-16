@@ -121,6 +121,7 @@ import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
+import { lienLastWorkAffidavitMonths } from '../../lib/jobs/lienLastWorkDayPreview'
 import LienDeskNextUp from './LienDeskNextUp'
 import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../../lib/jobs/lienDoNowFrame'
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
@@ -3248,7 +3249,7 @@ export default function LienDesk({
       <LienDeskMonths
         headless
         grid={monthGrid!}
-        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} propertyKind={selected.propertyKind} />}
+        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} affidavitMonths={lienLastWorkAffidavitMonths(data?.affidavits.entries.find((a) => a.jobId === selected.jobId))} propertyKind={selected.propertyKind} />}
         claimNode={
           <LienClaimBox
             openSignal={claimOpenSignal}
