@@ -5,6 +5,9 @@
  *
  * Since v2.7379 (Taunya's call of 2026-11-15) the page says whose the box is and how to reach the office, and what is
  * inside needs a sign-in: the function answers the name, the kind, the code and the office's number and nothing else.
+ * Since v2.7405 it is the company's card (her drawing of the same evening): the company first, the box right under it
+ * on one plate, and two rows that each open a choice of a text or an email, so the answer also carries the company's
+ * email and the address a bid ask goes to.
  */
 export {
   BOX_PAGE_COMPANY_KEY,
@@ -13,8 +16,10 @@ export {
   boxPageAsksInside,
   boxPageCode,
   boxPageCodeWords,
+  boxPageCompanyEmail,
   boxPageCompanyPhone,
   boxPageEarlyAnswer,
+  boxPageEmail,
   boxPageKind,
   boxPageNoun,
   boxPageOfficePhone,
@@ -23,14 +28,14 @@ export {
   buildBoxPagePayload,
   parseBoxPageResponse,
   type BoxPageKind,
+  type BoxPageOffice,
   type BoxPagePayload,
   type BoxPageRefusal,
   type BoxPageStickerAnswer,
   type BoxPageStickerRow,
 } from '../../../supabase/functions/_shared/boxPage'
-import { boxPageCodeWords, boxPageKind, boxPageNoun, parseBoxPageResponse, type BoxPageKind, type BoxPagePayload } from '../../../supabase/functions/_shared/boxPage'
+import { boxPageCodeWords, boxPageEmail, boxPageKind, boxPageNoun, parseBoxPageResponse, type BoxPageKind, type BoxPageOffice, type BoxPagePayload } from '../../../supabase/functions/_shared/boxPage'
 import { portalFailureCause, type PortalFailureCause } from '../portal/portalFailure'
-import { BOX_LINK_HOST } from './labels'
 
 /** The page's state from the function's answer. */
 export type BoxPageView =
@@ -96,26 +101,98 @@ export function boxPageTextWords(kind: BoxPageKind, stencil: string, code: strin
 }
 
 /**
- * What *Ask for a bid* opens the text with (v2.7379): the ask, then the box that was scanned, so the office can tell
- * which site the person was standing on, then a colon for their own words.
+ * What *Ask for a bid* opens with (v2.7379; an email since v2.7405): the ask, then the box that was scanned, so the
+ * office can tell which site the person was standing on, then a colon for their own words.
  */
 export function boxPageBidWords(kind: BoxPageKind, stencil: string, code: string): string {
   return `I would like a bid. I scanned ${boxPageNoun(kind, false)} ${stencil}, ${boxPageCodeWords(code)}: `
 }
 
-/** What *Work with us* opens the text with (v2.7379): the same, for someone who wants a job. */
+/** What *Work with us* opens the text or the email with (v2.7379): the same, for someone who wants a job. */
 export function boxPageWorkWords(kind: BoxPageKind, stencil: string, code: string): string {
   return `I would like to work with Click. I scanned ${boxPageNoun(kind, false)} ${stencil}, ${boxPageCodeWords(code)}: `
 }
 
-/** The label's own address as a person reads it, `prts.co/b/849F-DB0B`: the line across the top of the page (v2.7379). */
-export function boxPageAddressWords(code: string): string {
-  return `${BOX_LINK_HOST}/b/${boxPageCodeWords(code)}`
+/** *Our cage on this site*, *Our box on this site*: the small line over the box's name on the plate (v2.7405). */
+export function boxPageOursWords(kind: BoxPageKind): string {
+  return `Our ${boxPageNoun(kind, false)} on this site`
 }
 
-/** *Box on this site*, *Cage on this site*: the small line over the name (v2.7379). */
-export function boxPageSiteWords(kind: BoxPageKind): string {
-  return `${boxPageNoun(kind)} on this site`
+/** *Cage ZZ1*, *Box G81*: the box's name on the plate, the kind said with it (v2.7405). */
+export function boxPageNameWords(kind: BoxPageKind, stencil: string): string {
+  return `${boxPageNoun(kind)} ${stencil}`
+}
+
+/** *Let us know about cage ZZ1.*: the line under *Moved, damaged or in the way?* (v2.7405). */
+export function boxPageKnowLine(kind: BoxPageKind, stencil: string): string {
+  return `Let us know about ${boxPageNoun(kind, false)} ${stencil}.`
+}
+
+/** The same row's line for someone who reads Spanish first. Cage, box and pile are all feminine in Spanish. */
+export const BOX_PAGE_KNOW_LINE_ES = '¿Estorba o está dañada? Avísenos.'
+
+/** The company's website as the foot of the page reads it. No setting holds one. */
+export const BOX_PAGE_WEBSITE = 'clickplumbing.com'
+
+/**
+ * A link that opens the phone's own Mail with the address, a subject and the opening words filled in (v2.7405). Null
+ * when the address is not one (`boxPageEmail`). Like the text link, it writes nothing to the app.
+ */
+export function boxPageMailHref(to: string | null | undefined, subject: string, words: string): string | null {
+  const address = boxPageEmail(to)
+  return address ? `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(words)}` : null
+}
+
+/** The subject of the email *Ask for a bid* opens. */
+export const BOX_PAGE_BID_SUBJECT = 'Bid request'
+
+/** The box as the page's words name it. */
+type BoxPageNamed = { kind: BoxPageKind; stencil: string; code: string }
+
+/**
+ * Where *Ask for a bid* goes (v2.7405): an email to the bids box, which the app reads, with the scanned box in the
+ * words. With no bids address it is an email to the company's own, and with neither a text to the company's number,
+ * as it was from v2.7379. Null when there is no way at all, and the press is not drawn.
+ */
+export function boxPageBidHref(box: BoxPageNamed, office: BoxPageOffice | null): { href: string; by: 'email' | 'text' } | null {
+  const words = boxPageBidWords(box.kind, box.stencil, box.code)
+  const mail = boxPageMailHref(office?.bidsEmail, BOX_PAGE_BID_SUBJECT, words) ?? boxPageMailHref(office?.email, BOX_PAGE_BID_SUBJECT, words)
+  if (mail) return { href: mail, by: 'email' }
+  const text = boxPageTextHref(office?.phone, words)
+  return text ? { href: text, by: 'text' } : null
+}
+
+/** The two rows that open a choice (v2.7405): *Moved, damaged or in the way?* and *Work with us*. */
+export type BoxPageSheetKind = 'know' | 'work'
+
+/** One sheet: its words, and the two ways to the office. A way with no number or address is null and not drawn. */
+export type BoxPageSheet = {
+  kind: BoxPageSheetKind
+  title: string
+  words: string
+  textHref: string | null
+  phone: string | null
+  mailHref: string | null
+  email: string | null
+}
+
+const SHEET_WORDS: Record<BoxPageSheetKind, { title: string; words: string }> = {
+  know: { title: 'Let us know', words: 'Send us a photo and we will work to make it right.' },
+  work: { title: 'Work with us', words: 'Always hiring motivated teammates. How would you like to reach the office?' },
+}
+
+/**
+ * The sheet a row opens (v2.7405, Taunya's word of 2026-11-15): a text to the company's number or an email to the
+ * company's address, each opening with the box that was scanned so the office knows where the person stood. Null when
+ * the office has neither a number a phone can text nor an address, and the row is not drawn.
+ */
+export function boxPageSheet(kind: BoxPageSheetKind, box: BoxPageNamed, office: BoxPageOffice | null): BoxPageSheet | null {
+  const opening = kind === 'know' ? boxPageTextWords(box.kind, box.stencil, box.code) : boxPageWorkWords(box.kind, box.stencil, box.code)
+  const subject = kind === 'know' ? `${boxPageNameWords(box.kind, box.stencil)}, ${boxPageCodeWords(box.code)}` : 'Work with Click'
+  const textHref = boxPageTextHref(office?.phone, opening)
+  const mailHref = boxPageMailHref(office?.email, subject, opening)
+  if (!textHref && !mailHref) return null
+  return { kind, ...SHEET_WORDS[kind], textHref, phone: textHref ? (office?.phone ?? null) : null, mailHref, email: mailHref ? boxPageEmail(office?.email) : null }
 }
 
 /**

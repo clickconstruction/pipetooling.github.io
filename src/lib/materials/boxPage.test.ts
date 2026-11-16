@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { APP_SETTINGS_KEY_PHYSICAL_INVOICE_ISSUER_V1 } from '../appSettingsKeys'
-import { BOX_PAGE_COMPANY_KEY, BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAddressWords, boxPageAsksInside, boxPageBidWords, boxPageCallHref, boxPageCode, boxPageCodeWords, boxPageCompanyPhone, boxPageDayWords, boxPageDialNumber, boxPageEarlyAnswer, boxPageNoun, boxPageOfficePhone, boxPagePath, boxPagePlate, boxPageSiteWords, boxPageStickerAnswer, boxPageTextHref, boxPageTextWords, boxPageView, boxPageWorkWords, buildBoxPagePayload, parseBoxPageResponse } from './boxPage'
+import { BOX_PAGE_COMPANY_KEY, BOX_PAGE_LOCKED_WORDS, BOX_PAGE_BID_SUBJECT, BOX_PAGE_KNOW_LINE_ES, BOX_PAGE_SIGN_IN_ERROR, BOX_PAGE_WEBSITE, boxPageAsksInside, boxPageBidHref, boxPageBidWords, boxPageCallHref, boxPageCode, boxPageCodeWords, boxPageCompanyEmail, boxPageCompanyPhone, boxPageEmail, boxPageKnowLine, boxPageMailHref, boxPageNameWords, boxPageOursWords, boxPageSheet, boxPageDayWords, boxPageDialNumber, boxPageEarlyAnswer, boxPageNoun, boxPageOfficePhone, boxPagePath, boxPagePlate, boxPageStickerAnswer, boxPageTextHref, boxPageTextWords, boxPageView, boxPageWorkWords, buildBoxPagePayload, parseBoxPageResponse } from './boxPage'
 import { typedCodeWords } from './boxPageMemory'
 import { labelPlate } from './labels'
 
@@ -32,10 +32,9 @@ describe('the box page code', () => {
     expect(boxPageCode(null)).toBeNull()
   })
 
-  it('prints the code for a person with its dash, the return path lower-cased, and the label’s own address', () => {
+  it('prints the code for a person with its dash, and the return path lower-cased', () => {
     expect(boxPageCodeWords('4F2A9C18')).toBe('4F2A-9C18')
     expect(boxPagePath('4F2A9C18')).toBe('/b/4f2a9c18')
-    expect(boxPageAddressWords('849fdb0b')).toBe('prts.co/b/849F-DB0B')
     expect(typedCodeWords('4f2a9c')).toBe('4F2A-9C')
   })
 })
@@ -98,8 +97,14 @@ describe('what is inside needs a sign-in (v2.7379)', () => {
     expect(boxPageNoun('cage')).toBe('Cage')
     expect(boxPageNoun('box', false)).toBe('box')
     expect(boxPageNoun('pile')).toBe('Pile')
-    expect(boxPageSiteWords('box')).toBe('Box on this site')
-    expect(boxPageSiteWords('cage')).toBe('Cage on this site')
+    // v2.7405: the plate says whose it is, then names the box with its kind.
+    expect(boxPageOursWords('box')).toBe('Our box on this site')
+    expect(boxPageOursWords('cage')).toBe('Our cage on this site')
+    expect(boxPageNameWords('cage', 'ZZ1')).toBe('Cage ZZ1')
+    expect(boxPageNameWords('pile', 'P2')).toBe('Pile P2')
+    expect(boxPageKnowLine('cage', 'ZZ1')).toBe('Let us know about cage ZZ1.')
+    expect(BOX_PAGE_KNOW_LINE_ES).toBe('¿Estorba o está dañada? Avísenos.')
+    expect(BOX_PAGE_WEBSITE).toBe('clickplumbing.com')
   })
 
   it('refuses an answer that is not the shape', () => {
@@ -169,6 +174,84 @@ describe('the office number (the company block\'s Phone since v2.7390)', () => {
     const source = readFileSync(resolve(process.cwd(), 'supabase/functions/box-read/index.ts'), 'utf8')
     expect(source).toContain(".in('key', [BOX_PAGE_COMPANY_KEY, BOXES_SETTINGS_KEY])")
     expect(source).toContain("boxPageOfficePhone([company, team, Deno.env.get('QUO_COMPANY_PHONE'), PORTAL_COMPANY.phone])")
+  })
+})
+
+describe('the office\'s two addresses and the presses that use them (v2.7405)', () => {
+  const BOX = { kind: 'cage' as const, stencil: 'ZZ1', code: 'B365B514' }
+  const OFFICE = { phone: '(512) 555-0142', email: 'office@example.com', bidsEmail: 'bids@example.com' }
+  const enc = encodeURIComponent
+
+  it('an address is one a mail link can take, or nothing', () => {
+    expect(boxPageEmail(' office@example.com ')).toBe('office@example.com')
+    for (const bad of ['', null, undefined, 'office', 'office@example', 'a b@example.com', 'office@example.com?cc=x@example.com', 'office@example.com&bcc=x', 'a@b.com, c@d.com', 'two@at@example.com']) expect(boxPageEmail(bad)).toBe('')
+  })
+
+  it('the company\'s email is the Email of Settings\' company block', () => {
+    expect(boxPageCompanyEmail(JSON.stringify({ companyName: 'Click Plumbing and Electrical', phone: '(512) 555-0177', email: ' office@example.com ' }))).toBe('office@example.com')
+    expect(boxPageCompanyEmail(JSON.stringify({ email: 'not an address' }))).toBe('')
+    expect(boxPageCompanyEmail(JSON.stringify({ phone: '(512) 555-0177' }))).toBe('')
+    expect(boxPageCompanyEmail('not json')).toBe('')
+    expect(boxPageCompanyEmail(null)).toBe('')
+  })
+
+  it('the answer carries each address Settings holds and leaves out one it does not', () => {
+    expect(buildBoxPagePayload({ container: CONTAINER, officePhone: '(512) 555-0142', officeEmail: 'office@example.com', bidsEmail: 'bids@example.com' }).office).toEqual(OFFICE)
+    expect(buildBoxPagePayload({ container: CONTAINER, officePhone: '(512) 555-0142', officeEmail: '', bidsEmail: 'not an address' }).office).toEqual({ phone: '(512) 555-0142' })
+    expect(buildBoxPagePayload({ container: CONTAINER, officePhone: '', officeEmail: 'office@example.com' }).office).toEqual({ phone: '', email: 'office@example.com' })
+    expect(buildBoxPagePayload({ container: CONTAINER, officePhone: '', officeEmail: '', bidsEmail: null }).office).toBeNull()
+    // The client reads the same back, and drops an address that is not one.
+    const wire = JSON.parse(JSON.stringify(buildBoxPagePayload({ container: CONTAINER, officePhone: '(512) 555-0142', officeEmail: 'office@example.com', bidsEmail: 'bids@example.com' })))
+    expect(parseBoxPageResponse(wire)?.office).toEqual(OFFICE)
+    expect(parseBoxPageResponse({ ...wire, office: { phone: '(512) 555-0142', email: 'x@example.com?bcc=y@example.com', bidsEmail: 7 } })?.office).toEqual({ phone: '(512) 555-0142' })
+  })
+
+  it('the function reads both addresses in the one settings read', () => {
+    const source = readFileSync(resolve(process.cwd(), 'supabase/functions/box-read/index.ts'), 'utf8')
+    expect(source).toContain('email = boxPageCompanyEmail(block)')
+    expect(source).toContain("bidsEmail = boxSetting('bids', boxes).address")
+    expect(source.match(/from\('app_settings'\)/g)).toHaveLength(1)
+  })
+
+  it('a mail link carries the address, a subject and the opening words', () => {
+    expect(boxPageMailHref('office@example.com', 'Cage ZZ1, B365-B514', 'Cage ZZ1, B365-B514: ')).toBe(`mailto:office@example.com?subject=${enc('Cage ZZ1, B365-B514')}&body=${enc('Cage ZZ1, B365-B514: ')}`)
+    expect(boxPageMailHref('not an address', 'x', 'y')).toBeNull()
+    expect(boxPageMailHref(null, 'x', 'y')).toBeNull()
+  })
+
+  it('Ask for a bid emails the bids box, then the company, then texts the number', () => {
+    const words = 'I would like a bid. I scanned cage ZZ1, B365-B514: '
+    expect(boxPageBidHref(BOX, OFFICE)).toEqual({ href: `mailto:bids@example.com?subject=${enc(BOX_PAGE_BID_SUBJECT)}&body=${enc(words)}`, by: 'email' })
+    expect(boxPageBidHref(BOX, { phone: OFFICE.phone, email: OFFICE.email })).toEqual({ href: `mailto:office@example.com?subject=${enc('Bid request')}&body=${enc(words)}`, by: 'email' })
+    expect(boxPageBidHref(BOX, { phone: OFFICE.phone })).toEqual({ href: `sms:+15125550142?&body=${enc(words)}`, by: 'text' })
+    expect(boxPageBidHref(BOX, { phone: '' })).toBeNull()
+    expect(boxPageBidHref(BOX, null)).toBeNull()
+  })
+
+  it('each row\'s sheet has its own words and the two ways, each naming the box', () => {
+    expect(boxPageSheet('know', BOX, OFFICE)).toEqual({
+      kind: 'know',
+      title: 'Let us know',
+      words: 'Send us a photo and we will work to make it right.',
+      textHref: `sms:+15125550142?&body=${enc('Cage ZZ1, B365-B514: ')}`,
+      phone: '(512) 555-0142',
+      mailHref: `mailto:office@example.com?subject=${enc('Cage ZZ1, B365-B514')}&body=${enc('Cage ZZ1, B365-B514: ')}`,
+      email: 'office@example.com',
+    })
+    const work = boxPageSheet('work', BOX, OFFICE)
+    expect(work?.title).toBe('Work with us')
+    expect(work?.words).toBe('Always hiring motivated teammates. How would you like to reach the office?')
+    expect(work?.textHref).toBe(`sms:+15125550142?&body=${enc('I would like to work with Click. I scanned cage ZZ1, B365-B514: ')}`)
+    expect(work?.mailHref).toBe(`mailto:office@example.com?subject=${enc('Work with Click')}&body=${enc('I would like to work with Click. I scanned cage ZZ1, B365-B514: ')}`)
+  })
+
+  it('a sheet offers only the ways the office has, and is not there with none', () => {
+    expect(boxPageSheet('know', BOX, { phone: OFFICE.phone })).toMatchObject({ phone: '(512) 555-0142', mailHref: null, email: null })
+    expect(boxPageSheet('work', BOX, { phone: '', email: OFFICE.email })).toMatchObject({ textHref: null, phone: null, email: 'office@example.com' })
+    // A number a phone cannot text is no way, and it is not shown.
+    expect(boxPageSheet('know', BOX, { phone: '555-0142', email: OFFICE.email })).toMatchObject({ textHref: null, phone: null })
+    expect(boxPageSheet('know', BOX, { phone: '' })).toBeNull()
+    expect(boxPageSheet('work', BOX, null)).toBeNull()
   })
 })
 
