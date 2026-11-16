@@ -7,7 +7,7 @@
  * out of what was read, whether that was theirs alone or everyone's at once. Pure.
  */
 import { parsePaySpeedsRpc, parsePromisedPayDatesRpc } from '../jobs/billedExpectedPay'
-import { indexPayCalendars, type PayCalendarRow } from '../jobs/payCalendar'
+import { indexPayCalendars, parseBillDueDayRow, parsePayCalendarRow, type BillDueDayDbRow, type PayCalendarDbRow, type PayCalendarRow } from '../jobs/payCalendar'
 import type { ContactRow, StepSkipRow } from './load'
 import type {
   ClockSessionRow,
@@ -38,8 +38,10 @@ export const PIPELINE_SELECTS = {
   texts: 'contact_id, jobs_ledger_id, channel, direction, at, body, who_user_id, who_text',
   /** `job_contracts`: the warranties sent in place of a contract (the Warranty step's rounds); every kind is read, the loader keeps the warranties. */
   agreements: 'id, job_id, kind, status, sent_at, signed_at, voided_at',
-  /** `payer_pay_calendars` (punch list #323, v2.7140), for `parsePayCalendarRow`: the morning run selects them; the client reads through `payCalendarIo.ts`. */
-  payCalendars: 'payer_customer_id, job_id, off, cutoff_day, pay_day, months_after, pay_when_paid, clause, words, set_at',
+  /** `payer_pay_calendars` (punch list #323, v2.7140), for `parsePayCalendarRow`, with the days after the bill (#341, v2.7452): the morning run selects them; the client reads through `payCalendarIo.ts`. */
+  payCalendars: 'payer_customer_id, job_id, off, cutoff_day, pay_day, months_after, pay_when_paid, clause, words, set_at, days_after',
+  /** `invoice_due_days` (punch list #341, v2.7452), for `parseBillDueDayRow`: a bill's own due day, which rides with the calendars; the morning run selects them, the client reads through `payCalendarIo.ts`. */
+  billDueDays: 'invoice_id, due_on, clause, words, marked_at',
   /** `invoice_payer_acceptances`: the day a payer accepted a bill, which its Pay calendar counts from. */
   acceptedDays: 'invoice_id, accepted_on',
 } as const
@@ -67,7 +69,7 @@ export type PipelineRows = {
   agreements?: readonly JobAgreementRow[]
   paySpeeds: unknown
   promisedPay: unknown
-  /** The stored Pay calendars, parsed (`parsePayCalendarRow`). Left out or null by a reader from before v2.7140, or when the read failed: every bill then reads the pay speeds. */
+  /** The stored Pay calendars, parsed (`parsePayCalendarRow`), and each bill's own due day with them (`parseBillDueDayRow`), as `payTermRowsOf` joins them. Left out or null by a reader from before v2.7140, or when the read failed: every bill then reads the pay speeds. */
   payCalendars?: readonly PayCalendarRow[] | null
   /** The day a payer accepted each bill that has one (`YYYY-MM-DD`), by the bill's id. Left out or null: every bill counts from the day it went in. */
   acceptedDays?: Readonly<Record<string, string>> | null
@@ -75,6 +77,26 @@ export type PipelineRows = {
 
 /** An empty read, for a run with no residential customer. */
 export const NO_PIPELINE_ROWS: PipelineRows = { jobs: [], contactJobs: [], blocks: [], clockSessions: [], reports: [], estimates: [], statusEvents: [], invoices: [], payments: [], texts: [], agreements: [], paySpeeds: null, promisedPay: null }
+
+/**
+ * The stored pay terms as the rows `indexPayCalendars` takes, the way `loadPayCalendars` hands them to a screen: the
+ * calendars (`payer_pay_calendars`), then each bill's own due day (`invoice_due_days`). A half that was not read is
+ * null and is left out, so a bill's own day stands without the calendars and the calendars without the days; null
+ * when neither was read.
+ */
+export function payTermRowsOf(calendars: readonly PayCalendarDbRow[] | null | undefined, dueDays: readonly BillDueDayDbRow[] | null | undefined): PayCalendarRow[] | null {
+  if (!calendars && !dueDays) return null
+  const out: PayCalendarRow[] = []
+  for (const r of calendars ?? []) {
+    const row = parsePayCalendarRow(r)
+    if (row) out.push(row)
+  }
+  for (const r of dueDays ?? []) {
+    const row = parseBillDueDayRow(r)
+    if (row) out.push(row)
+  }
+  return out
+}
 
 /** Whose rows to cut out: the contact, what our texts call them, their customer record, and what `flow_rows` gave. */
 export type ResidentialWho = {
