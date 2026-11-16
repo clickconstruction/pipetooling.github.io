@@ -95,7 +95,8 @@ import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMet
 import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
-import { dueGroupKey } from '../lib/materials/supplyBillGroups'
+import { billDateWords, dueGroupKey } from '../lib/materials/supplyBillGroups'
+import { billMoveTrace, removedLately } from '../lib/materials/payments/supplyPaymentMove'
 import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
@@ -465,6 +466,8 @@ export function SupplyHousesTab({
   const [housePayments, setHousePayments] = useState<HousePayments>({ payments: [], lines: [] })
   /** The payment a paid row opened, by id. */
   const [paymentViewId, setPaymentViewId] = useState<string | null>(null)
+  /** The removed payment whose Put it back is saving. */
+  const [puttingBackPaymentId, setPuttingBackPaymentId] = useState<string | null>(null)
   /** The bill in the Edit window is paid by a typed payment: its status follows that payment. */
   const editingTypedPaid = !!editingInvoice?.is_paid && billPaidBy(editingInvoice.id, housePayments.payments, housePayments.lines).typed.length > 0
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
@@ -1419,6 +1422,26 @@ export function SupplyHousesTab({
       .catch(() => setHousePayments({ payments: [], lines: [] }))
   }
 
+  /**
+   * After a payment is recorded, moved, removed or put back: the house's bills and payments are read again where
+   * they stand. The card keeps its place and an open payment window stays open, since neither is emptied first.
+   */
+  async function refreshHouseMoney(houseId: string) {
+    const [billsRes, pays] = await Promise.all([
+      supabase.from('supply_house_invoices').select('id, is_paid, paid_at').eq('supply_house_id', houseId),
+      supabaseSupplyPaymentsIo.loadHouse(houseId).catch(() => null),
+    ])
+    const now = new Map((billsRes.data ?? []).map((r) => [r.id, r]))
+    setSupplyHouseInvoices((list) =>
+      list.map((row) => {
+        const fresh = now.get(row.id)
+        return fresh ? { ...row, is_paid: fresh.is_paid, paid_at: fresh.paid_at } : row
+      }),
+    )
+    if (pays) setHousePayments(pays)
+    void loadSupplyHouseSummary()
+  }
+
   async function saveInvoice(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedSupplyHouseForDetail) return
@@ -2105,6 +2128,8 @@ export function SupplyHousesTab({
                                           poMismatch: poGenCode != null && poGeneratorCodesForSelectedHouse != null && !poGeneratorCodesForSelectedHouse.has(poGenCode),
                                           // v2.5035 · a credit and the invoice it credits name each other; read against every row, paid ones too.
                                           pairLine: creditPairingLine(inv, supplyHouseInvoices),
+                                          // Where a payment's money moved to or from this bill, and who moved it.
+                                          trace: billMoveTrace(inv.id, housePayments.events ?? []),
                                           lines: rowLinesWords(paper, { link: inv.link, hasFile: !!inv.bill_read }, paper?.acceptedBy ? paperNames.get(paper.acceptedBy) : null),
                                         }
                                       })
@@ -2139,6 +2164,20 @@ export function SupplyHousesTab({
                                           onLook={(id) => {
                                             const inv = byId(id)
                                             if (inv) void openPaperLook(inv)
+                                          }}
+                                          removedPayments={removedLately(housePayments.payments, Date.now(), (ymd) => billDateWords(ymd, billToday), calendarYmdInAppTzFromIso).map((r) => ({ id: r.payment.id, words: r.words }))}
+                                          puttingBackId={puttingBackPaymentId}
+                                          onPutBack={(paymentId) => {
+                                            const houseId = selectedSupplyHouseForDetail.id
+                                            setPuttingBackPaymentId(paymentId)
+                                            supabaseSupplyPaymentsIo
+                                              .restore(paymentId)
+                                              .then(async () => {
+                                                showToast('The payment is back. Its bills read as they did.', 'success')
+                                                await refreshHouseMoney(houseId)
+                                              })
+                                              .catch((e: unknown) => showToast(formatErrorMessage(e, 'The payment was not put back.'), 'error', 6000))
+                                              .finally(() => setPuttingBackPaymentId(null))
                                           }}
                                         />
                                       )
@@ -3414,8 +3453,7 @@ export function SupplyHousesTab({
           onRecorded={(_result, words) => {
             setRecordPaymentOpen(false)
             showToast(words, 'success')
-            void loadSupplyHouseDetail(selectedSupplyHouseForDetail)
-            void loadSupplyHouseSummary()
+            void refreshHouseMoney(selectedSupplyHouseForDetail.id)
           }}
         />
       )}
@@ -3434,17 +3472,27 @@ export function SupplyHousesTab({
                 const d = supplyHouseJobDetailsMap[a.job_id]
                 return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
               })
-              return { id: inv.id, invoice_number: inv.invoice_number, title: jobs.join(', '), amount: inv.amount, is_paid: inv.is_paid }
+              return { id: inv.id, invoice_number: inv.invoice_number, title: jobs.join(', '), amount: inv.amount, is_paid: inv.is_paid, due_date: inv.due_date }
             })}
+            events={housePayments.events}
             houseName={house.name.trim() || 'this house'}
             todayYmd={todayYmdInAppTz()}
             onClose={() => setPaymentViewId(null)}
-            onRemove={async (payment) => {
-              await supabaseSupplyPaymentsIo.remove(payment.id, { id: authUser?.id ?? null, name: null }, null)
+            onRemove={async (payment, reason) => {
+              await supabaseSupplyPaymentsIo.remove(payment.id, reason)
               setPaymentViewId(null)
-              showToast('The payment is removed. Its bills read unpaid again.', 'success')
-              void loadSupplyHouseDetail(house)
-              void loadSupplyHouseSummary()
+              showToast('The payment is removed. Its bills read unpaid again. It can be put back for 30 days.', 'success')
+              await refreshHouseMoney(house.id)
+            }}
+            onMove={async (input) => {
+              await supabaseSupplyPaymentsIo.move(input)
+              showToast('The money is moved. Both bills say where it went.', 'success')
+              await refreshHouseMoney(house.id)
+            }}
+            onUndoMove={async (eventId) => {
+              await supabaseSupplyPaymentsIo.undoMove(eventId)
+              showToast('The move is taken back.', 'success')
+              await refreshHouseMoney(house.id)
             }}
           />
         )

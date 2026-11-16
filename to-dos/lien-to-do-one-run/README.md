@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -16,7 +16,7 @@ summary: >
 next: Step 5, the Get it right checklist with Leave out (M), the first step of the run. Ask where a left-out paper is remembered and whether the next run takes it by itself, before it is built.
 size: L for D as five steps (M · M · M · S · M); B, the first three, and step 4, the list by bin, are built; left: steps 5 to 8 (M · M · S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7483
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7483 · v2.7490
 ---
 
 # Lien desk To do: one run (#362)
@@ -191,10 +191,10 @@ they stand between the tiles and the columns, each over its own column, and the 
 
 Two things he agreed to in direction the same day, not yet drawn or built:
 
-- **Retire the title bar's run door** once the foot's print is live. It is a third door to one place
-  and the widest thing on the title line (`lienDeskTitleBar.ts` measures it). By date and By job have
-  no other door to the run, so they get one first, and a phone's More sheet keeps its row. It goes
-  after the PR that folds the title into the first tab.
+- ~~**Retire the title bar's run door.**~~ **Done, v2.7490**, on the owner's *"Retire it everywhere"* after he was
+  told what else it did: the only way to print the run from By date and By job, and the only sign of the run's
+  progress on those views. By job now has no door to the run; a phone's More sheet keeps its row. Left: delete
+  `runDoorPill`, `runDoorTail` and `lienRunPill`, which have no caller, once the run window's redraw has landed.
 - **Redraw the run window with D**, shown to him before it is built. His screenshot counted one batch
   several ways on one screen (15 notices, 16 built, *of 10*, 9 envelopes, 8 ready and 7 waiting, 10 to
   print and 5 held). It wants one total with its parts in the same words, or the unit beside each

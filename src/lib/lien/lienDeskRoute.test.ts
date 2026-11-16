@@ -21,13 +21,13 @@ describe('lienDeskRoute (punch list #182, the Lien desk)', () => {
   })
 
   it('reads the address back; a job or a pile with no tab lands on Notices; an unknown word is no tab', () => {
-    expect(lienDeskFromSearch(new URLSearchParams(''))).toEqual({ kind: null, job: null, pile: null, records: null, run: null })
-    expect(lienDeskFromSearch(new URLSearchParams('tab=deadlines'))).toEqual({ kind: 'calendar', job: null, pile: null, records: null, run: null })
-    expect(lienDeskFromSearch(new URLSearchParams('tab=notices&job=j1&pile=missed'))).toEqual({ kind: 'notice', job: 'j1', pile: 'missed', records: null, run: null })
-    expect(lienDeskFromSearch(new URLSearchParams('job=j1'))).toEqual({ kind: 'notice', job: 'j1', pile: null, records: null, run: null })
-    expect(lienDeskFromSearch(new URLSearchParams('pile=ready'))).toEqual({ kind: 'notice', job: null, pile: 'ready', records: null, run: null })
-    expect(lienDeskFromSearch(new URLSearchParams('tab=nonsense&pile=nonsense'))).toEqual({ kind: null, job: null, pile: null, records: null, run: null })
-    expect(lienDeskFromSearch(new URLSearchParams('records=j7'))).toEqual({ kind: null, job: null, pile: null, records: { jobId: 'j7' }, run: null })
+    expect(lienDeskFromSearch(new URLSearchParams(''))).toEqual({ kind: null, job: null, pile: null, records: null, run: null, property: null })
+    expect(lienDeskFromSearch(new URLSearchParams('tab=deadlines'))).toEqual({ kind: 'calendar', job: null, pile: null, records: null, run: null, property: null })
+    expect(lienDeskFromSearch(new URLSearchParams('tab=notices&job=j1&pile=missed'))).toEqual({ kind: 'notice', job: 'j1', pile: 'missed', records: null, run: null, property: null })
+    expect(lienDeskFromSearch(new URLSearchParams('job=j1'))).toEqual({ kind: 'notice', job: 'j1', pile: null, records: null, run: null, property: null })
+    expect(lienDeskFromSearch(new URLSearchParams('pile=ready'))).toEqual({ kind: 'notice', job: null, pile: 'ready', records: null, run: null, property: null })
+    expect(lienDeskFromSearch(new URLSearchParams('tab=nonsense&pile=nonsense'))).toEqual({ kind: null, job: null, pile: null, records: null, run: null, property: null })
+    expect(lienDeskFromSearch(new URLSearchParams('records=j7'))).toEqual({ kind: null, job: null, pile: null, records: { jobId: 'j7' }, run: null, property: null })
     expect(lienDeskFromSearch(new URLSearchParams('records=1')).records).toEqual({ jobId: null })
     // The sheet's code (v2.7328): the run over the desk, on that notice's Mailed box.
     expect(lienDeskFromSearch(new URLSearchParams('run=it1&mail=1')).run).toEqual({ itemId: 'it1', mail: true })
@@ -61,5 +61,13 @@ describe('lienDeskRoute (punch list #182, the Lien desk)', () => {
     expect(lienDeskRedirect(new URLSearchParams('tab=stages&liendesk=0'))).toBeNull()
     expect(lienDeskRedirect(new URLSearchParams('tab=stages&liendeskJob=j273&kind=affidavit'))).toBeNull()
     expect(lienDeskRedirect(new URLSearchParams('tab=stages&lienwindow=j273'))).toBeNull()
+  })
+})
+
+describe('the property card’s door (v2.7488)', () => {
+  it('writes and reads the property record’s id', () => {
+    expect(lienDeskHref({ kind: 'timeline', property: 'p1' })).toBe('/lien-desk?tab=timeline&property=p1')
+    expect(lienDeskFromSearch(new URLSearchParams('tab=timeline&property=p1'))).toMatchObject({ kind: 'timeline', property: 'p1' })
+    expect(lienDeskFromSearch(new URLSearchParams('property='))).toMatchObject({ property: null })
   })
 })

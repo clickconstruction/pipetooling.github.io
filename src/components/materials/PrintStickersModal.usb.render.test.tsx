@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Print blank stickers straight to the P-touch over USB (punch list #329, PR 2, v2.7272): the press
+ * Render smoke for Print future stickers straight to the P-touch over USB (punch list #329, PR 2, v2.7272): the press
  * is the connection until a printer is connected; the press then mints the run and the strips go as soon as they are
  * drawn, a set together; a printer that stops says how many stickers went and the press becomes Print the rest. The
  * USB side and the canvas are mocked, as the labels window's test mocks them: a test's DOM has neither.
@@ -87,7 +87,7 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     await waitFor(() => expect(screen.getByTestId('stickers-printer-line').textContent).toContain('PT-D610BT · 24 mm tape · ready'))
     fireEvent.click(screen.getByRole('button', { name: '30' }))
     fireEvent.click(screen.getByTestId('stickers-copies-more'))
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 30 sets')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 30 sets of future stickers')
     fireEvent.click(screen.getByTestId('stickers-print'))
     await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('30 stickers printed.'))
     expect(mint).toHaveBeenCalledWith({ jobId: 'job-juniper', count: 30, copies: 2 })
@@ -204,7 +204,7 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
     await waitFor(() => expect(screen.queryByTestId('stickers-names-reading')).toBeNull())
     fireEvent.change(screen.getByTestId('stickers-names-input'), { target: { value: 'G78-81' } })
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 4 stickers, G78 to G81')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 4 future stickers, G78 to G81')
     fireEvent.click(screen.getByTestId('stickers-print'))
     await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('4 stickers printed.'))
     expect(mint).toHaveBeenCalledWith({ jobId: 'job-juniper', count: 4, copies: 1, names: ['G78', 'G79', 'G80', 'G81'] })

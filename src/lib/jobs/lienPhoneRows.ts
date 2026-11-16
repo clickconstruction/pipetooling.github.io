@@ -83,7 +83,7 @@ function dayGroups(rows: ReadonlyArray<LienNextUpRow>, amountFor: (row: LienNext
 
 /**
  * The desk's groups as a phone draws them. The day-driven groups become days, each pool at the place the first of
- * its groups stood; every other group passes through with its label. A pressed step's two groups pass through too.
+ * its groups stood; every other group passes through with its label.
  *
  * Since v2.7371 (punch list #362, step 2) the days come in two pools. The rows that need a person now, at risk
  * and on track, are one run of days with the rows at risk first inside each day; the approvals the office waits

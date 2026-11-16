@@ -29,7 +29,7 @@ import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlin
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type Container, type ContainerLine } from '../../lib/materials/onSite'
 import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, newId, priceForJob, priceOfJob, rememberPrice, retireContainer, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadDesk, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { broughtBackWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { RETIRE_ALL_TITLE, retireAllConfirmLabel, retireAllConfirmWords, retireAllOutcomeWords, retireAllPlan, retireAllUndoHeldWords, retireAllUndoneWords, retireAllWords } from '../../lib/materials/retireAll'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
@@ -58,7 +58,7 @@ import LabelsPrintModal from '../materials/LabelsPrintModal'
 import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintStickersModal'
 import StickerRunsFold from '../materials/StickerRunsFold'
 import StickersOnBoxes from '../materials/StickersOnBoxes'
-import { onBoxesPrefill, onBoxesToast } from '../../lib/materials/stickersOnBoxes'
+import { ON_BOXES_LABEL, onBoxesPrefill, onBoxesToast } from '../../lib/materials/stickersOnBoxes'
 import OnSiteMoveJobModal from '../materials/OnSiteMoveJobModal'
 import { canMoveOnSite, MOVE_JOB_LABEL, MOVE_JOB_WHO, type MoveJobChoice } from '../../lib/materials/onSiteMoveJob'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
@@ -69,7 +69,7 @@ import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdi
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { useJobStickers } from '../../hooks/useJobStickers'
-import { notYetOnBoxWords, stickerMarksWords } from '../../lib/materials/stickerPlace'
+import { notYetOnBoxWords, reservedByWords, stickerMarksWords } from '../../lib/materials/stickerPlace'
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
@@ -85,7 +85,7 @@ type Props = {
   driveBackfill?: boolean
   /** A row's doors on the desk (the Materials page's mount): Labels for the job's boxes, and the job on the phone screen. */
   rowDoors?: { onLabels: (jobId: string) => void }
-  /** The signed-in role (punch list #329, v2.7272): Print blank stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
+  /** The signed-in role (punch list #329, v2.7272): Print future stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
   role?: string | null
 }
 
@@ -646,7 +646,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
   /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
   const [manifestOpen, setManifestOpen] = useState<{ only: string | null } | null>(null)
-  /** Print blank stickers (punch list #329, v2.7272): a new run, or a run the fold hands back to print again. */
+  /** Print future stickers (punch list #329, v2.7272): a new run, or a run the fold hands back to print again. */
   const [stickersOpen, setStickersOpen] = useState<{ run: StickerRunToPrint | null } | null>(null)
   /** These are on boxes (section 10, PR 10): the form, opened from a named run's row on that run's blank names. */
   const [onBoxesOpen, setOnBoxesOpen] = useState<{ initial: string } | null>(null)
@@ -745,15 +745,17 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto' }} role="group" aria-label="This site's boxes">
               <button type="button" aria-expanded={adding} style={materialsPressStyle(32)} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container"><MaterialsPressGlyph kind="add" />Add a container</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })} data-testid="materials-print-labels"><MaterialsPressGlyph kind="print-labels" dead={boxCount === 0} />Print labels</button>
-              {/* Stickers before boxes (punch list #329, v2.7272): a run of blank stickers for this job, live for the roles the database lets mint and dead with the reason for the rest. */}
-              <button type="button" style={{ ...materialsPressStyle(32), ...(canMint ? {} : materialsPressDead) }} disabled={!canMint} aria-disabled={!canMint} title={canMint ? 'A run of stickers to stick on boxes before they are in the app: a code to scan and a number to read' : STICKER_MINT_WHO} aria-label={canMint ? undefined : `${PRINT_STICKERS_LABEL}. ${STICKER_MINT_WHO}`} onClick={() => setStickersOpen({ run: null })} data-testid="materials-print-stickers"><MaterialsPressGlyph kind="print-stickers" dead={!canMint} />{PRINT_STICKERS_LABEL}</button>
+              {/* Stickers before boxes (punch list #329, v2.7272): a run of stickers reserved for this job's boxes to come, live for the roles the database lets mint and dead with the reason for the rest. */}
+              <button type="button" style={{ ...materialsPressStyle(32), ...(canMint ? {} : materialsPressDead) }} disabled={!canMint} aria-disabled={!canMint} title={canMint ? 'Print stickers before their boxes are in the app. Each one reserves a name and its own link.' : STICKER_MINT_WHO} aria-label={canMint ? undefined : `${PRINT_STICKERS_LABEL}. ${STICKER_MINT_WHO}`} onClick={() => setStickersOpen({ run: null })} data-testid="materials-print-stickers"><MaterialsPressGlyph kind="print-stickers" dead={!canMint} />{PRINT_STICKERS_LABEL}</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })} data-testid="materials-print-manifest"><MaterialsPressGlyph kind="manifest" dead={boxCount === 0} />Print the manifest</button>
             </span>
           </div>
-          {/* Stickers not yet on a box (punch list #329, PR 3): the job's blank stickers, with the Runs fold one press away. */}
+          {/* The job's reserved stickers (punch list #329, PR 3; v2.7487 the names, who and when, and the press that fills them in): printed, on no box yet, with the Runs fold one press away. */}
           {jobStickers.blank > 0 ? (
             <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-stickers-blank">
-              <span>{notYetOnBoxWords(jobStickers.blank)}. Scan one on the phone to say which box it is on.</span>
+              <span>{[`${notYetOnBoxWords(jobStickers.blank, jobStickers.reserved)}.`, reservedByWords(jobStickers.reserved, jobStickers.reserved.printedAt ? formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(jobStickers.reserved.printedAt)) : ''), 'Scan one on the phone to say which box it is on.'].filter(Boolean).join(' ')}</span>
+              {/* A named sticker needs no scan: These are on boxes opens on the reserved names when one run holds them, as the fold's own press does. */}
+              {jobStickers.reserved.anyNamed ? <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} title="Put a range of the reserved stickers on their boxes in one press, with no scan" onClick={() => setOnBoxesOpen({ initial: onBoxesPrefill(jobStickers.reserved.names) })} data-testid="materials-stickers-on-boxes">{ON_BOXES_LABEL}</button> : null}
               <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
             </p>
           ) : null}
