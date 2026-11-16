@@ -158,6 +158,13 @@ describe('what paid a bill', () => {
     expect(isPressPayment(pay({ id: 'done', source: 'mark_paid', method: 'check' }), [line('done', 'q', 5)])).toBe(false)
   })
 
+  it('names the payment that still needs how it was paid, for the row’s Finish press', () => {
+    const by = billPaidBy('p', [press], [line('press', 'p', 40)], { sayMissing: true })
+    expect(by.words).toBe('how it was paid is missing')
+    expect(by.needsHowId).toBe('press')
+    expect(billPaidBy('x', all, lines, { sayMissing: true }).needsHowId).toBeUndefined()
+  })
+
   it('says nothing for a bill with no line read', () => {
     expect(billPaidBy('nobody', all, lines)).toEqual({ words: '', receiptLink: null, typed: [] })
   })
