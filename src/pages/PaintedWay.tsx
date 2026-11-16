@@ -3,18 +3,23 @@
  * one painted map: its name, its lines, and its places with their words and photos. The ten-letter code is the key, as
  * an estimate's link is, and the page shows nothing else from the app: not who painted the map, not when, not the job.
  *
- * **Show where I am** puts the reader's own dot on the map so they can follow the line. It is asked for on a press, it
- * moves while the page is open and on the screen, and it never leaves the phone: nothing here sends a position
- * anywhere. Light, on the portal's paper, as `/e`, `/pay`, `/b` and `/r` are.
+ * **Who is looking** (v2.7414, Taunya's ask of 2026-11-15): a reader who is not signed in gives a name before the map
+ * opens, and the page says first what the company keeps: the name, the phone or computer, and when. A signed-in
+ * teammate is named from their account and types nothing. The name is kept on the phone so nobody is asked twice.
+ *
+ * **Show where I am** puts the reader's own dot on the map so they can follow the line. It is asked for on a press, and
+ * the line under the press says the company will see where they are while it is on: the first point and then the
+ * latest, about once a minute. Not pressing it shares nothing. The sample sends nothing and keeps nothing. Light, on
+ * the portal's paper, as `/e`, `/pay`, `/b` and `/r` are.
  */
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
 import { SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
 import { directionsUrlForPoint } from '../lib/directionsUrl'
 import { lineLengthWords, mapLengthMeters, aboutLengthWords } from '../lib/paintedMap/paintedMap'
-import { PAINTED_MAP_LINK_WORDS, linkEndsWords, paintedMapLinkCode, sharedLineForCanvas, sharedPlacesForCanvas } from '../lib/paintedMap/paintedMapLink'
-import { paintedWayIo, type PaintedWayIo, type PaintedWayView } from '../lib/paintedMap/paintedMapLinkIo'
-import { WAY_LENGTH_GUIDE_WORDS, WAY_PRIVACY_WORDS, wayLineUnderWords, wayNearMap, wayNoFixWords, wayWords } from '../lib/paintedMap/paintedWay'
+import { PAINTED_MAP_LINK_WORDS, PAINTED_MAP_VISITOR_NAME_MAX, linkEndsWords, paintedMapLinkCode, paintedMapVisitorName, sharedLineForCanvas, sharedPlacesForCanvas } from '../lib/paintedMap/paintedMapLink'
+import { paintedWayIo, type PaintedWayAsk, type PaintedWayIo, type PaintedWayView } from '../lib/paintedMap/paintedMapLinkIo'
+import { WAY_LENGTH_GUIDE_WORDS, WAY_NAME_WORDS, WAY_PRIVACY_WORDS, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNearMap, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from '../lib/paintedMap/paintedWay'
 import { SAMPLE_PAINTED_WAY, SAMPLE_PAINTED_WAY_COMPANY } from '../lib/paintedMap/paintedWaySample'
 import { PAINT_COLOR } from '../components/paintedMap/paintedMapLook'
 import { CARD, HAIR, INK, MUTED, NOTE_BAND, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
@@ -31,6 +36,25 @@ const card: CSSProperties = { background: CARD, border: `1px solid ${HAIR}`, bor
 const press: CSSProperties = { display: 'block', width: '100%', minHeight: 50, borderRadius: 10, border: `1px solid ${HAIR}`, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, cursor: 'pointer', padding: '8px 12px', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box', lineHeight: '32px' }
 const tiny: CSSProperties = { fontSize: 12.5, color: MUTED }
 
+/** The browser's own store, or none where it is switched off. */
+const wayStore = (): Storage | null => {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+/** A new id for a device that has none: the browser's own, or one built from its random bytes. */
+const newDeviceId = (): string => {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  const b = crypto.getRandomValues(new Uint8Array(16))
+  b[6] = (b[6]! & 0x0f) | 0x40
+  b[8] = (b[8]! & 0x3f) | 0x80
+  const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo }) {
   const { code: raw } = useParams<{ code: string }>()
   const code = paintedMapLinkCode(raw)
@@ -43,6 +67,32 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
   const [photo, setPhoto] = useState<{ url: string; name: string } | null>(null)
   const [mapFailed, setMapFailed] = useState(false)
   const watchId = useRef<number | null>(null)
+  const [nameText, setNameText] = useState('')
+  const [nameNote, setNameNote] = useState<string | null>(null)
+  const [opening, setOpening] = useState(false)
+  // One id for the whole visit, the kept one when the browser keeps things.
+  const deviceId = useRef<string | null>(null)
+  // The name the reader just typed, so Try again after no signal does not ask for it twice.
+  const typedName = useRef<string | null>(null)
+  const pointSentAt = useRef<number | null>(null)
+
+  const askFor = useCallback((name: string | null): PaintedWayAsk => {
+    deviceId.current ??= wayDeviceId(wayStore(), newDeviceId)
+    let timeZone = ''
+    try {
+      timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? ''
+    } catch {
+      // A browser with no time zone to tell.
+    }
+    return { name, device: { id: deviceId.current, screen: wayScreenWords(window.screen?.width, window.screen?.height, window.devicePixelRatio), language: navigator.language ?? '', timeZone } }
+  }, [])
+
+  const landed = useCallback((next: PaintedWayView) => {
+    // The name the function kept is the one remembered: a signed-in teammate's is their account's, not this phone's.
+    if (next.kind === 'open' && next.visitor && !next.visitor.signedIn) rememberWayName(wayStore(), next.visitor.name)
+    if (next.kind === 'open' || next.kind === 'name') typedName.current = null
+    setView(next)
+  }, [])
 
   const load = useCallback(async () => {
     if (sample) {
@@ -54,8 +104,23 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
       return
     }
     setView({ kind: 'loading' })
-    setView(await io.read(code))
-  }, [code, io, sample])
+    landed(await io.open(code, askFor(typedName.current ?? wayRememberedName(wayStore()))))
+  }, [code, io, sample, askFor, landed])
+
+  const giveName = useCallback(async () => {
+    if (!code || opening) return
+    const name = paintedMapVisitorName(nameText)
+    if (!name) {
+      setNameNote(PAINTED_MAP_LINK_WORDS.needsName)
+      return
+    }
+    setNameNote(null)
+    setOpening(true)
+    typedName.current = name
+    const next = await io.open(code, askFor(name))
+    setOpening(false)
+    landed(next)
+  }, [code, opening, nameText, io, askFor, landed])
 
   useEffect(() => {
     void load()
@@ -66,7 +131,8 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
     document.title = shared ? `${shared.name}${view.kind === 'open' && view.company.name ? ` · ${view.company.name}` : ''}` : 'A painted map'
   }, [shared, view])
 
-  // The reader's own dot: read only after their press, only while they keep it on, and kept in this page alone.
+  // The reader's own dot: read only after their press and only while they keep it on. On a real link the company sees
+  // it too, as the line under the press says: the first point at once, then about one a minute. The sample sends none.
   useEffect(() => {
     if (!showMe) return
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -76,7 +142,14 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
     }
     setNoFix(null)
     watchId.current = navigator.geolocation.watchPosition(
-      (pos) => setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null }),
+      (pos) => {
+        const at = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null }
+        setMe(at)
+        if (!sample && code && deviceId.current && wayPointIsDue(pointSentAt.current, Date.now())) {
+          pointSentAt.current = Date.now()
+          void io.here(code, deviceId.current, at)
+        }
+      },
       (err) => {
         if (err.code === 1) {
           setNoFix(wayNoFixWords('refused'))
@@ -90,9 +163,10 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
     return () => {
       if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current)
       watchId.current = null
+      pointSentAt.current = null
       setMe(null)
     }
-  }, [showMe])
+  }, [showMe, sample, code, io])
 
   const lines = useMemo(() => (shared ? shared.lines.map(sharedLineForCanvas) : []), [shared])
   const places = useMemo(() => (shared ? sharedPlacesForCanvas(shared) : []), [shared])
@@ -106,6 +180,17 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
   // Near the map, the picture holds the reader and the map together. Across town it stays on the map, and the words say how far.
   const near = useMemo(() => (me ? wayNearMap(me, [...lines.flatMap((l) => l.points), ...places]) : false), [me, lines, places])
   const where = me ? wayWords(me, lines, start) : null
+  // Whoever sent the map, for the words that say who sees what. The sample's reader is seen by nobody.
+  const sentBy = view.kind === 'open' || view.kind === 'name' ? view.company.name : ''
+  const visitor = view.kind === 'open' ? (view.visitor ?? null) : null
+  const notMe = () => {
+    if (view.kind !== 'open') return
+    rememberWayName(wayStore(), null)
+    setShowMe(false)
+    setNameText('')
+    setNameNote(null)
+    setView({ kind: 'name', mapName: view.map.name, company: view.company, endsOn: view.endsOn })
+  }
 
   return (
     <div data-theme="light" data-painted-way={view.kind} style={page}>
@@ -113,8 +198,8 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
         {sample ? <div role="status" style={{ background: INK, color: CARD, fontSize: 13, padding: '8px 16px' }}>{SAMPLE_BANNER_TEXT}</div> : null}
         <header style={{ ...pad, display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: `3px solid ${INK}`, background: CARD }}>
           <div>
-            <div style={{ fontWeight: 700 }}>{view.kind === 'open' && view.company.name ? view.company.name : 'A painted map'}</div>
-            <div style={tiny}>{view.kind === 'open' ? 'sent you a map' : ' '}</div>
+            <div style={{ fontWeight: 700 }}>{sentBy || 'A painted map'}</div>
+            <div style={tiny}>{view.kind === 'open' || view.kind === 'name' ? 'sent you a map' : ' '}</div>
           </div>
         </header>
 
@@ -134,6 +219,46 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
               Try again
             </button>
           </div>
+        ) : view.kind === 'name' ? (
+          <form
+            data-way-name
+            style={{ ...pad, marginTop: 16, display: 'grid', gap: 10 }}
+            onSubmit={(e) => {
+              e.preventDefault()
+              void giveName()
+            }}
+          >
+            {view.mapName ? <h1 style={{ margin: 0, fontSize: 22, lineHeight: 1.2 }}>{view.mapName}</h1> : null}
+            <div style={card}>
+              <label htmlFor="way-name" style={{ display: 'block', fontWeight: 700 }}>
+                {WAY_NAME_WORDS.head}
+              </label>
+              <input
+                id="way-name"
+                type="text"
+                autoComplete="name"
+                autoCapitalize="words"
+                enterKeyHint="go"
+                maxLength={PAINTED_MAP_VISITOR_NAME_MAX}
+                value={nameText}
+                onChange={(e) => {
+                  setNameText(e.target.value)
+                  setNameNote(null)
+                }}
+                placeholder={WAY_NAME_WORDS.placeholder}
+                aria-label={WAY_NAME_WORDS.label}
+                aria-describedby="way-name-kept"
+                style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 8, padding: '12px 12px', fontSize: 17, borderRadius: 10, border: `1px solid ${HAIR}`, background: CARD, color: INK, fontFamily: 'inherit' }}
+              />
+              {nameNote ? <p role="alert" style={{ margin: '8px 0 0', fontSize: 14 }}>{nameNote}</p> : null}
+              <p id="way-name-kept" data-way-kept style={{ ...tiny, margin: '10px 0 0' }}>
+                {wayKeptWords(view.company.name)}
+              </p>
+            </div>
+            <button type="submit" disabled={opening} style={{ ...press, background: INK, color: CARD, borderColor: INK, opacity: opening ? 0.7 : 1 }}>
+              {opening ? WAY_NAME_WORDS.opening : WAY_NAME_WORDS.open}
+            </button>
+          </form>
         ) : shared ? (
           <>
             <div style={{ ...pad, paddingTop: 14 }}>
@@ -157,6 +282,7 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
                   {showMe ? 'Hide where I am' : 'Show where I am'}
                 </button>
               </div>
+              {!sample && !showMe ? <p data-way-will-see style={{ ...tiny, margin: '6px 0 0' }}>{wayWillSeeWords(sentBy)}</p> : null}
               {noFix ? <p role="status" style={{ ...tiny, margin: '8px 0 0' }}>{noFix}</p> : null}
               {showMe ? (
                 <div role="status" data-way-where style={{ marginTop: 10, borderRadius: 10, padding: '10px 12px', background: NOTE_BAND, border: `1px solid ${HAIR}` }}>
@@ -167,7 +293,7 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
                   ) : (
                     'Finding you…'
                   )}
-                  <div style={{ ...tiny, marginTop: 6 }}>{WAY_PRIVACY_WORDS}</div>
+                  <div style={{ ...tiny, marginTop: 6 }}>{sample ? WAY_PRIVACY_WORDS : wayIsSeenWords(sentBy)}</div>
                 </div>
               ) : null}
 
@@ -181,8 +307,8 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
                         {p.words ? <div style={{ color: MUTED }}>{p.words}</div> : null}
                       </div>
                       {p.photo && code ? (
-                        <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setPhoto({ url: io.photoUrl(code, p.id), name: p.name })} style={{ padding: 0, border: `1px solid ${HAIR}`, borderRadius: 8, overflow: 'hidden', background: NOTE_BAND, cursor: 'pointer', width: 84, height: 63 }}>
-                          <img src={io.photoUrl(code, p.id)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = 'none')} />
+                        <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setPhoto({ url: io.photoUrl(code, p.id, deviceId.current), name: p.name })} style={{ padding: 0, border: `1px solid ${HAIR}`, borderRadius: 8, overflow: 'hidden', background: NOTE_BAND, cursor: 'pointer', width: 84, height: 63 }}>
+                          <img src={io.photoUrl(code, p.id, deviceId.current)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = 'none')} />
                         </button>
                       ) : null}
                     </div>
@@ -216,6 +342,16 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
               <p style={{ ...tiny, marginTop: 16 }}>
                 {view.kind === 'open' && view.company.name ? `${view.company.name} shared this map with you.` : 'This map was shared with you.'} {view.kind === 'open' ? linkEndsWords(view.endsOn) : null}
               </p>
+              {visitor ? (
+                <p data-way-opened-as style={{ ...tiny, marginTop: 6 }}>
+                  {wayOpenedAsWords(visitor.name)}{' '}
+                  {visitor.signedIn ? null : (
+                    <button type="button" onClick={notMe} style={{ border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: INK, textDecoration: 'underline', cursor: 'pointer' }}>
+                      {WAY_NAME_WORDS.change}
+                    </button>
+                  )}
+                </p>
+              ) : null}
             </div>
           </>
         ) : null}
