@@ -124,7 +124,7 @@ const refusal = (p: LienFilingPayload, w: LienFilingWorld) => {
 }
 
 describe('the pair and what it stands on', () => {
-  it('is a pair that names no RPC, declared and handled by the server at 0.93.0, with its row in the docs', () => {
+  it('is a pair that names no RPC, declared and handled by the server, with its row in the docs', () => {
     expect(LIEN_FILING_VERBS).toEqual(['plan_lien_filing', 'apply_lien_filing'])
     for (const v of LIEN_FILING_VERBS) {
       expect(isLienFilingVerb(v)).toBe(true)
@@ -135,9 +135,9 @@ describe('the pair and what it stands on', () => {
     }
     expect(isLienFilingVerb('plan_affidavit_draft')).toBe(false)
     expect(planVerbFor('apply_lien_filing')).toBe('plan_lien_filing')
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(111)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.93.0'")
-    expect(SERVER).toContain('Writes are one hundred and eleven verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(113)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.94.0'")
+    expect(SERVER).toContain('Writes are one hundred and thirteen verbs and nothing else:')
     expect(SERVER).toContain("plan_lien_filing → apply_lien_filing (a filed lien affidavit recorded as the job's Lien window records it once the clerk has stamped it")
     expect(README).toContain('`plan_lien_filing(filing \\| filings)` · `apply_lien_filing(filing, plan_hash)`')
     expect(README).toContain("one hundred and eleven since v2.7511's recorded lien filing")
@@ -512,7 +512,7 @@ describe('the staged copy and the apply’s words', () => {
     const dry = ready(p, world())
     const done = lienFilingAppliedWords(p, 'JP2291', dry.write, { file: { url: 'https://drive.google.com/file/d/abc/view', driveFileId: 'abc' }, filing: { id: FILING, serve_due: '2026-11-23', document_url: 'https://drive.google.com/file/d/abc/view' }, item: 'marked sent', stagedRemoved: true })
     expect(done).toMatchObject({ ok: true, filing_id: FILING, wrote: 'the filing', serve_by: '2026-11-23', desk_item: 'marked sent' })
-    expect(String(done.next)).toContain('Mail the copies')
+    expect(String(done.next)).toContain('plan_lien_service')
     const noRow = lienFilingAppliedWords(p, 'JP2291', dry.write, { file: null, filing: null, item: 'none', stagedRemoved: null })
     expect(noRow.ok).toBe(false)
     expect(String(noRow.why)).toContain('Nothing else was written')
