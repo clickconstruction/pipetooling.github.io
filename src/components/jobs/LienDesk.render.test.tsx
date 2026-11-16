@@ -1275,7 +1275,7 @@ describe('LienDesk', () => {
   it('while the desk’s book is not in, a computer’s first tab reads the page’s name alone (v2.7465)', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={null} initialKind="next" />)
     await settle()
-    const tab = within(screen.getByRole('tablist', { name: 'View' })).getAllByRole('tab')[0]
+    const tab = within(screen.getByRole('tablist', { name: 'View' })).getAllByRole('tab')[0] as HTMLElement
     expect(tab.textContent).toBe('⏱ Lien desk')
     expect(screen.getByRole('tab', { name: 'Lien desk' })).toBe(tab)
   })
