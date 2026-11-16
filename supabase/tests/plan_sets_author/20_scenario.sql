@@ -53,7 +53,9 @@ INSERT INTO public.people (id, master_user_id, kind, name, account_user_id) VALU
 INSERT INTO public.people_labor_jobs (id, master_user_id, assigned_to_name, job_ledger_id) VALUES
   ('00000000-0000-0000-0000-00000355b001', '00000000-0000-0000-0000-00000239a004', 'Sam Sub', '00000000-0000-0000-0000-00000239b001'),
   ('00000000-0000-0000-0000-00000355b002', '00000000-0000-0000-0000-00000239a004', 'Someone Else', '00000000-0000-0000-0000-00000239b001');
-INSERT INTO public.people_labor_job_assignees (labor_job_id, person_id) VALUES ('00000000-0000-0000-0000-00000355b001', '00000000-0000-0000-0000-00000355a001');
+-- The sheet's own trigger ties it to the roster person its name spells; the insert says it outright and stands either way.
+INSERT INTO public.people_labor_job_assignees (labor_job_id, person_id) VALUES ('00000000-0000-0000-0000-00000355b001', '00000000-0000-0000-0000-00000355a001')
+  ON CONFLICT DO NOTHING;
 INSERT INTO public.people_labor_job_items (job_id, fixture, count, is_fixed, direct_labor_amount) VALUES
   ('00000000-0000-0000-0000-00000355b001', 'Top out', 1, true, 4200),
   ('00000000-0000-0000-0000-00000355b002', 'Trim', 1, true, 900);
