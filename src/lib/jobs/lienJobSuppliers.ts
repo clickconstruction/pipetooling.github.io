@@ -245,6 +245,16 @@ export type LienSupplierNotice =
   /** Nothing unpaid, or no invoice date to count from. */
   | { kind: 'none' }
 
+/**
+ * The table's small line under a house's notice date (v2.7424). A date we counted says "our
+ * estimate" there, in Held for suppliers' words, since the column's title no longer says it. A day
+ * the house gave keeps who said it. The phone's row says it in its own sentence and does not read this.
+ */
+export function lienSupplierNoticeSmallLine(notice: LienSupplierNotice, sub: string): string {
+  const ours = notice.kind === 'open' || notice.kind === 'closed'
+  return [ours ? 'our estimate' : '', sub].filter(Boolean).join(' · ')
+}
+
 export interface LienSupplierCardRow {
   houseId: string
   name: string

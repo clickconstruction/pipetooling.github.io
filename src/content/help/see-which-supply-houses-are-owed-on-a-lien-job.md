@@ -31,7 +31,7 @@ Press a job on the Monthly notices tab. The card **Supply houses on this job** s
 
 - **House** names the house. Under it you see if a job account is open there.
 - **Unpaid since** names the oldest month with an unpaid invoice.
-- **Its own notice** is the date we expect the house's notice by.
+- **SupHse notice** is short for the supply house's notice. The date is when we expect that notice by. The small words under the date say *our estimate*.
 - **Paid** is what we have paid that house on this job.
 - **Owed** is what that house is still owed on this job.
 
@@ -39,7 +39,7 @@ The last row adds up every house. The bold line under it compares the two debts.
 
 ## Know what the date means
 
-The date under **Its own notice** is our estimate. The desk counts it from the house's unpaid invoice dates. It uses the same rule as our own notices. The house keeps its own calendar, so call the house to be sure.
+The date under **SupHse notice** is our estimate. The desk counts it from the house's unpaid invoice dates. The desk uses the same rule as our own notices. The house keeps its own calendar, so call the house to be sure.
 
 A row that says *window closed* means that date has passed by our count.
 

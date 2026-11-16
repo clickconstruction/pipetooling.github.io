@@ -8,6 +8,7 @@ import {
   buildLienSupplierCard,
   lienSupplierEmailText,
   lienSupplierMark,
+  lienSupplierNoticeSmallLine,
   parseSupplierWordBalance,
   type LienSupplierCardRow,
   type LienSupplierJob,
@@ -347,8 +348,9 @@ export function LienJobSuppliersCard({
       <div role="row" style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0 12px', padding: '0.4rem 0.8rem 0.3rem', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
         <span role="columnheader">HOUSE</span>
         <span role="columnheader">UNPAID SINCE</span>
-        <span role="columnheader" title={ESTIMATE_NOTE} style={{ cursor: 'help' }}>
-          ITS OWN NOTICE <span style={{ fontWeight: 500, letterSpacing: 0 }}>· our estimate</span>
+        {/* Taunya's title (2026-11-15), in capitals as the other four; "our estimate" left it for each row's small line. */}
+        <span role="columnheader" aria-label="Supply house notice" title={ESTIMATE_NOTE} style={{ cursor: 'help', whiteSpace: 'nowrap' }}>
+          SUPHSE NOTICE
         </span>
         <span role="columnheader" style={{ textAlign: 'right' }}>PAID</span>
         <span role="columnheader" style={{ textAlign: 'right' }}>OWED</span>
@@ -373,7 +375,7 @@ export function LienJobSuppliersCard({
               {n ? (
                 <>
                   <div style={{ color: NOTICE_INK[n.tone], fontWeight: n.tone === 'amber' ? 600 : undefined }}>{n.top}</div>
-                  {n.sub ? <div style={small}>{n.sub}</div> : null}
+                  {lienSupplierNoticeSmallLine(r.notice, n.sub) ? <div style={small} data-lien-supplier-notice-sub>{lienSupplierNoticeSmallLine(r.notice, n.sub)}</div> : null}
                 </>
               ) : (
                 <span style={{ color: 'var(--text-muted)' }}>—</span>
