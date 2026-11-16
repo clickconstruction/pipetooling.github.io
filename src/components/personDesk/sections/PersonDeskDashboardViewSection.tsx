@@ -22,7 +22,7 @@ export function PersonDeskDashboardViewSection({ userId, displayName, personRole
   const first = displayName.trim().split(/\s+/)[0] || 'this person'
 
   return (
-    <DeskSection title={DASHBOARD_VIEW_PICKER_WORDS.label} id="dashboard-view" who={editable ? 'the office picks' : 'read only'}>
+    <DeskSection title={DASHBOARD_VIEW_PICKER_WORDS.label} id="dashboard_view" who={editable ? 'the office picks' : 'read only'}>
       <DeskRow label="View">
         <div style={{ display: 'grid', gap: 6 }}>
           <span style={HINT}>{DASHBOARD_VIEW_PICKER_WORDS.hintFor(first)}</span>
