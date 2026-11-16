@@ -1,4 +1,5 @@
 import { leaderFirstName } from './lienWord'
+import { LIEN_RUN_THEN_TO_MAIL, LIEN_RUN_THEN_TO_PRINT } from './lienRunWords'
 
 /**
  * The words on a draft footer's approval presses, and the line beside them (v2.7308). Pure.
@@ -33,15 +34,16 @@ export function lienLeaderPressWords(leaderName: string | null | undefined, pape
   const name = first || 'the leader'
   const cap = first || 'The leader'
   const verb = paper === 'affidavit' ? 'file' : 'send'
-  const lands = paper === 'affidavit' ? 'Ready to file' : 'the run'
+  // Where the paper stands after the press, as the end of a sentence (v2.7448; *it goes in the run* until then).
+  const lands = paper === 'affidavit' ? 'It goes in Ready to file on that word.' : paper === 'retainage' ? 'It then waits to mail, on that word.' : 'It then waits to print, on that word.'
   return {
     name,
     onWord: `${cap} said to ${verb} it…`,
-    onWordTitle: `${cap} already said to ${verb} it. Write down who, when and how, and it goes in ${lands} on that word.`,
-    onWordLine: `Write down what ${name} said. It goes in ${lands} on that word.`,
+    onWordTitle: `${cap} already said to ${verb} it. Write down who, when and how. ${lands}`,
+    onWordLine: `Write down what ${name} said. ${lands}`,
     approve: paper === 'affidavit' ? 'I approve it ▸' : 'Sign and approve ▸',
-    approveLine: paper === 'affidavit' ? 'Your okay puts it in Ready to file. The paper is signed before a notary.' : 'Your name goes on the paper, and it goes in the run.',
+    approveLine: paper === 'affidavit' ? 'Your okay puts it in Ready to file. The paper is signed before a notary.' : `Your name goes on the paper. ${paper === 'retainage' ? LIEN_RUN_THEN_TO_MAIL : LIEN_RUN_THEN_TO_PRINT}`,
     ask: `Ask ${name} to approve ▸`,
-    askLine: paper === 'affidavit' ? `Goes to ${name}. An affidavit is sworn and filed at the county, and ${name} signs it.` : `Goes to ${name}, then out with the run.`,
+    askLine: paper === 'affidavit' ? `Goes to ${name}. An affidavit is sworn and filed at the county, and ${name} signs it.` : `Goes to ${name}, then out with the next mailing.`,
   }
 }

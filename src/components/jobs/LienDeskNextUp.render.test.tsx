@@ -19,7 +19,7 @@ describe('LienDeskNextUp', () => {
     const onAct = vi.fn()
     const rows = [
       row({}),
-      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } }),
+      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · to print', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } }),
       row({ key: 'affidavit:j2', kind: 'affidavit', jobId: 'j2', title: '977 · Stonewick', sub: 'Affidavit approved · ready to file', dueOn: '2026-11-16', daysLeft: 42, severity: 'quiet', group: 'coming', action: 'file_affidavit', button: 'File the affidavit', target: { open: 'affidavits', jobId: 'j2' } }),
     ]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} />)
@@ -144,7 +144,7 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
   it('with onOpenJob the number and name are a text button that opens the job and not the row; a GC run row stays plain', () => {
     const onAct = vi.fn()
     const onOpenJob = vi.fn()
-    const rows = [row({}), row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } })]
+    const rows = [row({}), row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · to print', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } })]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenJob={onOpenJob} />)
     const door = screen.getByTestId('lien-next-up-job-j1')
     expect(door.tagName).toBe('BUTTON')
@@ -294,7 +294,7 @@ describe('LienDeskNextUp · the chip as a door to the paper (v2.4632)', () => {
     const rows = [
       row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner' }),
       row({ key: 'notice:j2', jobId: 'j2', title: '651 · AXO Schertz II', action: 'approve', button: 'Approve' }),
-      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
+      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } }),
       row({ key: 'retainage:j3', jobId: 'j3', kind: 'retainage', title: '700 · Retainage', action: 'draft', button: 'Open the notice', target: { open: 'retainage', jobId: 'j3' } }),
     ]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenPaper={onOpenPaper} gapsFor={(r) => (r.jobId === 'j1' ? 1 : 0)} />)
@@ -321,7 +321,7 @@ describe('LienDeskNextUp · the chip as a door to the paper (v2.4632)', () => {
 
 describe('LienDeskNextUp · the printed run (punch list #101)', () => {
   const run = row({
-    key: 'run:printed', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: 'Mailed? Type each envelope’s number. Not mailing them? Take the run back.', action: 'record_mailing', button: 'Record the mailing', target: { open: 'run', gcId: null },
+    key: 'run:printed', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: 'Mailed? Type each envelope’s number. Not mailing them? Take the run back.', action: 'record_mailing', button: 'Enter mail numbers', target: { open: 'run', gcId: null },
     secondary: { words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } },
     jobs: [{ jobId: 'j2', title: '712 · Cedar Park', dueOn: '2026-10-15' }, { jobId: 'j3', title: '715 · Leander', dueOn: '2026-11-15' }],
   })
@@ -334,7 +334,7 @@ describe('LienDeskNextUp · the printed run (punch list #101)', () => {
     expect(el.textContent).toContain('19 notices printed Oct 7')
     fireEvent.click(within(el).getByRole('button', { name: 'Take back…' }))
     expect(onAct.mock.calls[0]![0].target).toEqual({ open: 'run', gcId: null, takeBack: true })
-    fireEvent.click(within(el).getByRole('button', { name: 'Record the mailing' }))
+    fireEvent.click(within(el).getByRole('button', { name: 'Enter mail numbers' }))
     expect(onAct.mock.calls[1]![0].target).toEqual({ open: 'run', gcId: null })
     expect(document.querySelector('[data-lien-next-up-fold-body]')).toBeNull()
     fireEvent.click(within(el).getByRole('button', { name: '▸ The 2 jobs' }))
@@ -362,9 +362,9 @@ describe('LienDeskNextUp · only you can approve, first (punch list #101 PR 3)',
     cleanup()
     render(<LienDeskNextUp rows={[row({}), { ...approve, button: null, sub: 'Waiting on Sam' }]} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" />)
     // One head over the parts, then each part's own: the approvals that wait, then what is on track.
-    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 1and 1 waiting on Sam')
+    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 1and 1 waiting on Sam to approve')
     expect(Array.from(document.querySelectorAll('[data-lien-next-up-group]')).map((g) => [g.getAttribute('data-lien-next-up-group'), g.getAttribute('data-part'), g.querySelector('h4')?.textContent])).toEqual([
-      ['waiting', 'yes', 'Waiting on Sam · 1'],
+      ['waiting', 'yes', 'Waiting on Sam to approve · 1'],
       ['now', 'yes', 'On track · 1'],
     ])
   })
@@ -385,10 +385,10 @@ describe('LienDeskNextUp · Needs you now in three parts (v2.7371, punch list #3
 
   it('first what will not make its day, the longest road first; then waiting on the leader; then on track, largest first; Coming up follows', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} riskLabel={riskLabel} amountFor={amountFor} />)
-    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 4and 1 waiting on Sam')
+    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 4and 1 waiting on Sam to approve')
     expect(parts()).toEqual([
       ['risk', 'Will not make tomorrow as they stand · 2', ['notice:j1', 'affidavit:j9']],
-      ['waiting', 'Waiting on Sam · 1', ['notice:j2']],
+      ['waiting', 'Waiting on Sam to approve · 1', ['notice:j2']],
       ['now', 'On track · 2', ['affidavit:j4', 'affidavit:j3']],
       ['coming', 'Coming up · 1', ['notice:j5']],
     ])
@@ -405,7 +405,7 @@ describe('LienDeskNextUp · Needs you now in three parts (v2.7371, punch list #3
     // It sits on the waiting head and nowhere else, and the head keeps its own words.
     expect(document.querySelectorAll('[data-lien-next-up-remind]')).toHaveLength(1)
     expect(document.querySelector('[data-lien-next-up-group="waiting"]')!.contains(press())).toBe(true)
-    expect((document.querySelector('[data-lien-next-up-group="waiting"] h4') as HTMLElement).textContent).toBe('Waiting on Sam · 1')
+    expect((document.querySelector('[data-lien-next-up-group="waiting"] h4') as HTMLElement).textContent).toBe('Waiting on Sam to approve · 1')
     fireEvent.click(press())
     expect(onPress).toHaveBeenCalledTimes(1)
     view.rerender(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} remind={{ button: 'Reminded at 2:14 PM', dead: true, onPress }} />)
@@ -591,5 +591,110 @@ describe('LienDeskNextUp · a computer’s row in two lines (v2.7372, punch list
     expect(phone.getAttribute('data-layout')).toBe('lines')
     expect(phone.querySelector('[data-lien-next-up-stage]')).toBeNull()
     expect(within(phone).getByTestId('lien-step-mark')).toBeTruthy()
+  })
+})
+
+describe('LienDeskNextUp · a computer’s list follows the Board (v2.7456, punch list #362 step 4)', () => {
+  const BINS = {
+    'notice:to_send': { key: 'notice:to_send', label: 'To send for Master approval', kind: 'notice' as const, order: 1 },
+    'notice:awaiting': { key: 'notice:awaiting', label: 'Awaiting Master approval', kind: 'notice' as const, order: 2 },
+    'affidavit:ready': { key: 'affidavit:ready', label: 'Ready to file', kind: 'affidavit' as const, order: 10 },
+  }
+  const binOf: Record<string, keyof typeof BINS> = { 'notice:j1': 'notice:to_send', 'notice:j2': 'notice:awaiting', 'affidavit:j3': 'affidavit:ready', 'affidavit:j4': 'affidavit:ready', 'affidavit:j5': 'affidavit:ready', 'notice:j6': 'notice:to_send' }
+  const binFor = (r: LienNextUpRow) => (binOf[r.key] ? BINS[binOf[r.key]!] : null)
+  const ready = (id: string, title: string) => row({ key: `affidavit:${id}`, kind: 'affidavit', jobId: id, title, sub: 'Affidavit approved · ready to file', detail: '', action: 'file_affidavit', button: 'File the affidavit', target: { open: 'affidavits', jobId: id } })
+  const rows = [
+    ready('j3', '1024 · ZZ Marlow, main house'),
+    ready('j4', '1031 · ZZ Marlow, hilltop'),
+    ready('j5', '1044 · ZZ Oak Hollow, barn'),
+    row({ key: 'notice:j2', jobId: 'j2', title: '1101 · ZZ Builders, lot 7', sub: 'Waiting on Malachi', detail: 'Sent for approval Oct 5', action: 'approve', button: null }),
+    row({}),
+    row({ key: 'notice:j6', jobId: 'j6', title: '1123 · ZZ Service Visit', dueOn: '2026-11-16', daysLeft: 42, severity: 'quiet', group: 'coming' }),
+  ]
+  const folds = [{ bin: 'affidavit:ready', action: 'file_affidavit' as const, title: (n: number) => `${n} affidavits approved and ready to file`, sub: 'One stack for the notary, then the county clerk.', button: 'Print 3 for notarization ›', target: { open: 'affidavit_pile' as const, pile: 'ready' as const } }]
+  const amountFor = (r: Pick<LienNextUpRow, 'jobId'>) => ({ j1: 900, j2: 1200, j3: 9400, j4: 6100, j5: 5200, j6: 700 })[r.jobId ?? ''] ?? null
+  const draw = (over: Partial<Parameters<typeof LienDeskNextUp>[0]> = {}) => render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={vi.fn()} waitingOn="Malachi" amountFor={amountFor} stageFor={(r) => binFor(r)?.label ?? null} byBin={{ binFor, folds }} {...over} />)
+
+  it('one group a bin in the Board’s order, each head with its papers and what they owe, under one head for what needs you now', () => {
+    draw()
+    expect(document.querySelector('[data-lien-next-up-now-head]')!.textContent).toBe('Needs you now · 5')
+    expect(document.querySelector('[data-lien-next-up-now-total]')!.textContent).toBe('$22,800')
+    const heads = Array.from(document.querySelectorAll('[data-lien-next-up-part-head]')).map((h) => h.textContent)
+    expect(heads).toEqual(['To send for Master approval · 1 notice', 'Awaiting Master approval · 1 notice · waiting on Malachi', 'Ready to file · 3 affidavits'])
+    expect(Array.from(document.querySelectorAll('[data-lien-next-up-bin]')).map((el) => el.getAttribute('data-lien-next-up-bin'))).toEqual(['notice:to_send', 'notice:awaiting', 'affidavit:ready'])
+    expect(document.querySelector('[data-lien-next-up-bin="affidavit:ready"] [data-lien-next-up-group-total]')!.textContent).toBe('$20,700')
+    // Under its bin's own head a row says the one thing to know, not the bin again, and not the day the head carries.
+    const waitingRow = document.querySelector('[data-lien-next-up-row="notice:j2"]') as HTMLElement
+    expect(waitingRow.querySelector('[data-lien-next-up-stage]')).toBeNull()
+    expect(waitingRow.querySelector('[data-lien-next-up-line]')!.textContent).toBe('Sent for approval Oct 5')
+    expect(document.querySelector('[data-lien-next-up-row="notice:j1"] [data-lien-next-up-line]')!.textContent).toBe('Notice to send')
+  })
+
+  it('the three ready affidavits are one row with one press, their jobs behind a fold with what each owes', () => {
+    const onAct = vi.fn()
+    draw({ onAct })
+    const bin = document.querySelector('[data-lien-next-up-bin="affidavit:ready"]') as HTMLElement
+    expect(bin.querySelectorAll('[data-lien-next-up-row]')).toHaveLength(1)
+    const fold = bin.querySelector('[data-lien-next-up-row="fold:affidavit:ready:file_affidavit"]') as HTMLElement
+    expect(fold.textContent).toContain('Affidavits')
+    expect(fold.textContent).toContain('3 affidavits approved and ready to file')
+    expect(fold.querySelector('[data-lien-next-up-amount]')!.textContent).toBe('$20,700')
+    expect(fold.querySelector('[data-lien-next-up-run-sub]')!.textContent).toBe('One stack for the notary, then the county clerk.')
+    expect(fold.querySelector('[data-lien-next-up-fold-body]')).toBeNull()
+    fireEvent.click(within(fold).getByRole('button', { name: /The 3 jobs/ }))
+    const body = fold.querySelector('[data-lien-next-up-fold-body]') as HTMLElement
+    expect(body.textContent).toContain('1024 · ZZ Marlow, main house')
+    expect(Array.from(body.querySelectorAll('[data-lien-next-up-fold-amount]')).map((el) => el.textContent)).toEqual(['$9,400', '$6,100', '$5,200'])
+    fireEvent.click(within(fold).getByRole('button', { name: 'Print 3 for notarization ›' }))
+    expect(onAct.mock.calls[0]![0].target).toEqual({ open: 'affidavit_pile', pile: 'ready' })
+  })
+
+  it('the reminder press sits on the bin whose papers wait on the leader, and the print door is the fold’s, not a head’s', () => {
+    const onPress = vi.fn()
+    draw({ remind: { button: 'Remind Malachi of 1 paper', dead: false, onPress }, trackPress: { button: 'Print 3 for notarization ›', onPress: vi.fn() } })
+    const waiting = document.querySelector('[data-lien-next-up-bin="notice:awaiting"]') as HTMLElement
+    fireEvent.click(within(waiting).getByRole('button', { name: 'Remind Malachi of 1 paper' }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+    expect(document.querySelectorAll('[data-lien-next-up-remind]')).toHaveLength(1)
+    expect(document.querySelector('[data-lien-next-up-track-press]')).toBeNull()
+  })
+
+  it('everything due later waits under one line, folded; a press, a find or a pressed bin opens it', () => {
+    const view = draw()
+    const later = screen.getByRole('region', { name: 'Later' })
+    expect(later.textContent).toContain('Later · 1 paper')
+    expect(later.querySelector('[data-lien-next-up-later]')!.textContent).toContain('To send for Master approval, notices 1')
+    expect(later.querySelector('[data-lien-next-up-row]')).toBeNull()
+    fireEvent.click(within(later).getByRole('button', { name: '▸ Show the 1' }))
+    expect(later.querySelector('[data-lien-next-up-row="notice:j6"]')).toBeTruthy()
+    // Later holds rows of many bins, so each keeps its bin's name.
+    expect(later.querySelector('[data-lien-next-up-row="notice:j6"] [data-lien-next-up-stage]')!.textContent).toBe('To send for Master approval')
+    fireEvent.click(within(later).getByRole('button', { name: '▾ Hide them' }))
+    expect(later.querySelector('[data-lien-next-up-row]')).toBeNull()
+    view.unmount()
+    draw({ byBin: { binFor, folds, narrowed: true } })
+    expect(screen.getByRole('region', { name: 'Later' }).querySelector('[data-lien-next-up-row="notice:j6"]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-next-up-later-press]')).toBeNull()
+  })
+
+  it('a row with nothing else to say keeps its bin’s name under the bin’s head, since the name opens its card', () => {
+    render(<LienDeskNextUp rows={[ready('j3', '1024 · ZZ Marlow, main house')]} loading={false} isMobile={false} onAct={vi.fn()} stageFor={(r) => binFor(r)?.label ?? null} byBin={{ binFor }} />)
+    expect(document.querySelector('[data-lien-next-up-row="affidavit:j3"] [data-lien-next-up-stage]')!.textContent).toBe('Ready to file')
+  })
+
+  it('with nothing due now, Later is open: the list is never one folded line', () => {
+    render(<LienDeskNextUp rows={[rows[5]!]} loading={false} isMobile={false} onAct={vi.fn()} byBin={{ binFor }} />)
+    expect(document.querySelector('[data-lien-next-up-now-head]')).toBeNull()
+    expect(document.querySelector('[data-lien-next-up-row="notice:j6"]')).toBeTruthy()
+  })
+
+  it('a phone keeps its list by the day, and a desk that hands over no bins keeps the list as it was', () => {
+    const phone = draw({ isMobile: true })
+    expect(document.querySelector('[data-lien-next-up-bin]')).toBeNull()
+    expect(document.querySelectorAll('[data-lien-next-up-row^="affidavit:"]')).toHaveLength(3)
+    phone.unmount()
+    draw({ byBin: null })
+    expect(document.querySelector('[data-lien-next-up-bin]')).toBeNull()
+    expect(document.querySelector('[data-lien-next-up-row^="fold:"]')).toBeNull()
   })
 })
