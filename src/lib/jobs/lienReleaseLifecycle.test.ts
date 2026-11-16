@@ -78,7 +78,6 @@ describe('lienReleaseLifecycle', () => {
       mode: 'draw',
       printedName: 'Malachi Whites',
       pngDataUrl: null,
-      auditLine: 'Drawn by Malachi Whites in ClickTooling on Sep 30, 2026 at 9:19 PM CT, consent recorded.',
       signedYmd: '2026-09-30',
     })
     expect(lienReleaseRowSignature({ ...row, status: 'awaiting_signature' })).toBeNull()

@@ -70,7 +70,6 @@ const FIELDS: LienWaiverFields = {
 const DRAWN = {
   mode: 'draw' as const,
   printedName: 'Malachi Whites',
-  auditLine: 'Drawn by Malachi Whites on Robert’s screen in ClickTooling on Oct 1, 2026 at 4:23 PM CT, consent recorded.',
   signedYmd: '2026-10-01',
   pngDataUrl: 'data:image/png;base64,INK',
 }
@@ -118,5 +117,27 @@ describe('the drawn signature on the PDF (v2.4335)', () => {
   it('a typed signature draws no picture', async () => {
     await buildLienWaiverPdfBlob('unconditional_progress', FIELDS, { ...DRAWN, mode: 'type', pngDataUrl: null })
     expect(FakeJsPDF.last!.images).toHaveLength(0)
+  })
+})
+
+describe('what the signed PDF says under the foot (v2.7437)', () => {
+  const BANNED = [/\bat \d{1,2}:\d{2}/, /\b[AP]M\b/, / CT\b/, /screen/, /Typed by/, /Drawn by/, /signing code/, /in ClickTooling/, /consent recorded/]
+
+  it('an electronic signature: the day alone and the statutes, with no clock and no sentence of how it was signed, whichever way he signed', async () => {
+    for (const mode of ['type', 'draw', 'code'] as const) {
+      await buildLienWaiverPdfBlob('unconditional_progress', FIELDS, { ...DRAWN, mode, pngDataUrl: mode === 'draw' ? DRAWN.pngDataUrl : null })
+      const words = FakeJsPDF.last!.texts.join('\n')
+      expect(words, mode).toContain('Signed October 1, 2026')
+      expect(words, mode).toContain('Binding as a signature in ink under the ESIGN Act')
+      expect(words, mode).not.toContain('Notary Public')
+      for (const banned of BANNED) expect(words, `${mode}: ${banned}`).not.toMatch(banned)
+    }
+  })
+
+  it('a paper signed before a notary says where the signature is, and no more', async () => {
+    await buildLienWaiverPdfBlob('unconditional_progress', FIELDS, { ...DRAWN, mode: 'notary_paper', pngDataUrl: null })
+    const words = FakeJsPDF.last!.texts.join('\n')
+    expect(words).toContain('Signed before a Notary Public of the State of Texas. The signed copy is on file.')
+    for (const banned of BANNED) expect(words, String(banned)).not.toMatch(banned)
   })
 })

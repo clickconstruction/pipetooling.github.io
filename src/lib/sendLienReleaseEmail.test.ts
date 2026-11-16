@@ -112,11 +112,12 @@ describe('sendLienReleaseEmailToCustomer', () => {
     await sendLienReleaseEmailToCustomer(release({ signed_pdf_path: null, form_type: 'mystery' }), job)
     expect(download).not.toHaveBeenCalled()
     expect(buildPdf).toHaveBeenCalledTimes(1)
-    const [form, , sig] = buildPdf.mock.calls[0]! as [string, unknown, { mode: string; printedName: string; auditLine: string }]
+    const [form, , sig] = buildPdf.mock.calls[0]! as [string, unknown, Record<string, unknown>]
     expect(form).toBe('conditional_progress')
     expect(sig.mode).toBe('type')
     expect(sig.printedName).toBe('Pat Signer')
-    expect(sig.auditLine.length).toBeGreaterThan(0)
+    // v2.7437: the regenerated paper is handed no sentence of how it was signed, and no clock.
+    expect(Object.keys(sig).sort()).toEqual(['mode', 'pngDataUrl', 'printedName', 'signedYmd'])
     expect(body().pdf_base64).toBe(btoa('regenerated'))
     expect(body().pdf_filename).toBe('lien-release-conditional-progress-1842.pdf')
 

@@ -81,9 +81,9 @@ export function lienReleaseNotaryPrint(row: Pick<JobLienReleaseRow, 'status'>): 
 }
 
 /**
- * The audit sentence every signed rendering carries under the signature block (v2.4285 — one
- * sentence that says how, who, when and whose screen; the statutes are the renderer's second
- * line, `LIEN_WAIVER_ESIGN_LINE`): "Drawn by Malachi Whites in ClickTooling on Sep 30, 2026 at
+ * The record's sentence for a signed release (v2.4285): how, who, when and whose screen. The release
+ * window and the Bids tab show it; since v2.7437 (Taunya's ask) no paper prints it, and the paper's
+ * grey line is the statutes alone (`LIEN_WAIVER_ESIGN_LINE`): "Drawn by Malachi Whites in ClickTooling on Sep 30, 2026 at
  * 9:19 PM CT, on Robert’s screen, consent recorded." Without the signer's name on the row (rows
  * signed before v2.2619's loop) it opens "Signed electronically in ClickTooling on …".
  */
@@ -126,14 +126,15 @@ export function lienReleaseSignatureAuditLine(
 /**
  * A signed row as the renderers' signature (v2.4285 — the one place every re-rendering reads it:
  * the window's print and PDF, the Documents page, the cleared-releases queue, the signature inbox,
- * the email's regenerated PDF). The mode is the row's, so the audit sentence tells the truth; the
+ * the email's regenerated PDF). The mode is the row's; the audit sentence is not part of it (v2.7437), so no paper prints it; the
  * drawn PNG is not on the row, so a drawn re-rendering shows the printed name in the cursive face —
  * the stored signed PDF carries the ink itself.
  */
 export function lienReleaseRowSignature(
   row: Pick<JobLienReleaseRow, 'status' | 'signed_at' | 'signer_consented_at' | 'signer_printed_name' | 'signer_signature_mode'>,
-  onDeviceOf?: string | null,
-): { mode: 'type' | 'draw' | 'code' | 'notary_paper'; printedName: string; pngDataUrl: null; auditLine: string; signedYmd: string | null } | null {
+  /** Whose screen he signed on. Unread since v2.7437: the paper no longer says it. Kept so every caller's call stands. */
+  _onDeviceOf?: string | null,
+): { mode: 'type' | 'draw' | 'code' | 'notary_paper'; printedName: string; pngDataUrl: null; signedYmd: string | null } | null {
   if (lienReleaseStatus(row) !== 'signed' || !row.signer_printed_name) return null
   return {
     // Mode 'code' (v2.5924) renders as the cursive name, like 'type'; the audit sentence carries the mechanism.
@@ -141,7 +142,6 @@ export function lienReleaseRowSignature(
     mode: row.signer_signature_mode === 'draw' ? 'draw' : row.signer_signature_mode === 'code' ? 'code' : row.signer_signature_mode === 'notary_paper' ? 'notary_paper' : 'type',
     printedName: row.signer_printed_name,
     pngDataUrl: null,
-    auditLine: lienReleaseSignatureAuditLine(row, onDeviceOf) ?? '',
     signedYmd: row.signed_at ? calendarYmdInAppTzFromIso(row.signed_at) : null,
   }
 }

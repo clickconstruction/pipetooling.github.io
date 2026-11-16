@@ -58,7 +58,7 @@ describe('the notary_paper signature', () => {
   })
 
   it('the foot renders no cursive ink for notary_paper — the scan is the signature', () => {
-    const html = buildLienWaiverFootHtml(FIELDS, { mode: 'notary_paper', printedName: 'Malachi Whites', auditLine: 'Signed in ink…', signedYmd: '2026-10-28' })
+    const html = buildLienWaiverFootHtml(FIELDS, { mode: 'notary_paper', printedName: 'Malachi Whites', signedYmd: '2026-10-28' })
     expect(html).not.toContain('Great Vibes')
     expect(html).toContain('<strong>Malachi Whites</strong>')
   })

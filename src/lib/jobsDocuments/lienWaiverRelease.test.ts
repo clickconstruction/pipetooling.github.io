@@ -10,6 +10,7 @@ import {
   buildLienWaiverFootHtml,
   lienWaiverFootLines,
   LIEN_WAIVER_ESIGN_LINE,
+  LIEN_WAIVER_NOTARY_LINE,
   lienWaiverDate,
   lienWaiverDatesUnfinished,
   lienWaiverUnfinishedDateBlocksIssue,
@@ -284,7 +285,7 @@ describe('pdf model + filename', () => {
     expect(model[0]).toEqual({ kind: 'title', text: 'Conditional Waiver and Release on Progress Payment' })
     expect(model.filter((b) => b.kind === 'paragraph')).toHaveLength(4)
     expect(model[model.length - 1]).toEqual({ kind: 'foot', foot: { name: 'Robert Douglas', company: 'ClickConstruction LLC', title: 'Managing Member', signed: null } })
-    const signed = buildLienWaiverPdfModel('conditional_progress', FIELDS, { mode: 'draw', printedName: 'Malachi Whites', auditLine: 'x', signedYmd: '2026-09-30' })
+    const signed = buildLienWaiverPdfModel('conditional_progress', FIELDS, { mode: 'draw', printedName: 'Malachi Whites', signedYmd: '2026-09-30' })
     expect(signed[signed.length - 1]).toEqual({ kind: 'foot', foot: { name: 'Malachi Whites', company: 'ClickConstruction LLC', title: 'Managing Member', signed: 'Signed September 30, 2026' } })
   })
   it('filename slugs the form type and job number', () => {
@@ -297,17 +298,17 @@ describe('electronic signature rendering (v2.2619)', () => {
   const SIG_TYPED = {
     mode: 'type' as const,
     printedName: 'Malachi Whites',
-    auditLine: 'Typed by Malachi Whites in ClickTooling on Sep 1, 2026 at 3:41 PM CT, consent recorded.',
     signedYmd: '2026-09-01',
   }
 
-  it('typed signature renders the cursive name above the rule, the name and company under it, the audit sentence and the statute line', () => {
+  it('typed signature renders the cursive name above the rule, the name and company under it, the day alone and the statute line', () => {
     const html = buildLienWaiverFootHtml(FIELDS, SIG_TYPED)
     expect(html).toContain('Great Vibes')
     expect(html).toContain('<strong>Malachi Whites</strong>, ClickConstruction LLC')
     expect(html).toContain('Signed September 1, 2026')
-    expect(html).toContain('Typed by Malachi Whites in ClickTooling')
-    expect(html).toContain(LIEN_WAIVER_ESIGN_LINE.replace('&', '&amp;'))
+    // v2.7437: the statutes stand alone in the grey line. No clock and no sentence of how it was signed.
+    expect(html).toContain(`max-width:640px"><span style="color:#7a7f86">${LIEN_WAIVER_ESIGN_LINE.replace('&', '&amp;')}</span></p>`)
+    for (const banned of [/Typed by/, /in ClickTooling/, / CT\b/, /\b[AP]M\b/, /screen/, /consent recorded/]) expect(html).not.toMatch(banned)
     expect(html).not.toContain('<img')
   })
 
@@ -320,7 +321,8 @@ describe('electronic signature rendering (v2.2619)', () => {
   it('print HTML carries the signature block and the webfont only when the name is typed', () => {
     const signed = buildLienWaiverPrintHtml('unconditional_final', FIELDS, '1003', SIG_TYPED)
     expect(signed).toContain('fonts.googleapis.com')
-    expect(signed).toContain('Typed by Malachi Whites in ClickTooling')
+    expect(signed).toContain('ESIGN')
+    expect(signed).not.toContain('in ClickTooling')
     const unsigned = buildLienWaiverPrintHtml('unconditional_final', FIELDS, '1003')
     expect(unsigned).not.toContain('fonts.googleapis.com')
     expect(unsigned).not.toContain('in ClickTooling')
@@ -334,11 +336,20 @@ describe('electronic signature rendering (v2.2619)', () => {
     expect(drawn).toContain('<img src="data:image/png;base64,AAAA"')
   })
 
-  it('escapes markup in the printed name and audit line', () => {
-    const html = buildLienWaiverFootHtml(FIELDS, { ...SIG_TYPED, printedName: 'A <b>bold</b> & co', auditLine: 'x < y' })
+  it('escapes markup in the printed name', () => {
+    const html = buildLienWaiverFootHtml(FIELDS, { ...SIG_TYPED, printedName: 'A <b>bold</b> & co' })
     expect(html).not.toContain('<b>bold</b>')
     expect(html).toContain('&lt;b&gt;')
-    expect(html).toContain('x &lt; y')
+  })
+
+  it('a paper signed before a notary draws no ink and says where the signature is, with no clock (v2.7437)', () => {
+    const html = buildLienWaiverFootHtml(FIELDS, { ...SIG_TYPED, mode: 'notary_paper' })
+    expect(html).not.toContain('Great Vibes')
+    expect(html).toContain(`${LIEN_WAIVER_NOTARY_LINE}<br>`)
+    expect(LIEN_WAIVER_NOTARY_LINE).toBe('Signed before a Notary Public of the State of Texas. The signed copy is on file.')
+    for (const banned of [/ CT\b/, /\b[AP]M\b/, /filed in ClickTooling/, /in ink before/]) expect(html).not.toMatch(banned)
+    // An electronic signature's paper never carries the notary's line.
+    expect(buildLienWaiverFootHtml(FIELDS, SIG_TYPED)).not.toContain('Notary Public')
   })
 })
 

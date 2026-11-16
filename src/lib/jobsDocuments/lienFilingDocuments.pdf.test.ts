@@ -97,18 +97,20 @@ describe('the pay page in PDF', () => {
 })
 
 describe('the signed frame in PDF (v2.5077)', () => {
-  const signed = { mode: 'type' as const, printedName: 'Robert Douglas', pngDataUrl: null, signedWords: 'Signed October 9, 2026 at 2:14 PM CT', recordId: 'L878-4C2E91', auditLine: 'Placed by Robert Douglas with one press under his own sign-in to ClickTooling on October 9, 2026 at 2:14 PM CT.' }
+  const signed = { mode: 'type' as const, printedName: 'Robert Douglas', pngDataUrl: null, signedWords: 'Signed October 9, 2026', recordId: 'L878-4C2E91' }
 
-  it('pressed: the rounded frame, the tag, the name in type, the names and the day, the record ID, the audit line; drawn: the ink as an image inside the frame', async () => {
+  it('pressed: the rounded frame, the tag, the name in type, the names and the day, the record ID, the statute line alone under it; drawn: the ink as an image inside the frame', async () => {
     await filingDocPdfBlob([{ kind: 'paragraph', text: 'Before.' }, { kind: 'signature', lines: ['Robert Douglas, Owner', 'Click Plumbing'], signed }])
     const pdf = FakeJsPDF.last!
     expect(pdf.rects.filter((r) => r.style === 'round')).toHaveLength(1)
     expect(pdf.texts).toContain('SIGNED ELECTRONICALLY')
     expect(pdf.texts).toContain('Robert Douglas')
     expect(pdf.texts).toContain('Robert Douglas, Owner')
-    expect(pdf.texts).toContain('Signed October 9, 2026 at 2:14 PM CT')
+    expect(pdf.texts).toContain('Signed October 9, 2026')
     expect(pdf.texts).toContain('L878-4C2E91')
-    expect(pdf.texts.some((t) => t.startsWith('Placed by Robert Douglas'))).toBe(true)
+    // Under the frame: the statute line and nothing before it (v2.7437).
+    expect(pdf.texts.some((t) => t.startsWith('Binding as a signature in ink'))).toBe(true)
+    expect(pdf.texts.some((t) => /Placed by|Typed by|Drawn by| CT\b|screen/.test(t))).toBe(false)
     expect(pdf.images).toEqual([])
     await filingDocPdfBlob([{ kind: 'signature', lines: ['Robert Douglas, Owner'], signed: { ...signed, mode: 'draw', pngDataUrl: 'data:image/png;base64,AAAA' } }])
     const drawn = FakeJsPDF.last!
