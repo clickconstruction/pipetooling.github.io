@@ -115,6 +115,7 @@ describe('While you were off: the line', () => {
     expect(heldKind('help_feedback')).toBe('help note')
     expect(heldKind('lien_approval_ask')).toBe('lien notice')
     expect(heldKind('lien_affidavit_approval_ask')).toBe('lien affidavit')
+    expect(heldKind('lien_retainage_approval_ask')).toBe('retainage notice')
     expect(heldKind('trial_helper_verdict')).toBe('try-out question')
     expect(heldKind('bid_followup')).toBe('call-again day')
     expect(heldKind('ready_to_bill')).toBe('Ready to Bill')

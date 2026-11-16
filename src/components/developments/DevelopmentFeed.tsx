@@ -4,7 +4,7 @@
  * moving the line to now. The lines come from `lib/developments/whatChanged.ts`.
  */
 import { useState, type CSSProperties } from 'react'
-import { HISTORY_FOLD_AT } from '../../lib/developments/history'
+import { HISTORY_FOLD_AT, MAIL_DOOR_WORDS } from '../../lib/developments/history'
 import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } from '../../lib/developments/whatChanged'
 import { historyMark, type MarkTone } from '../../lib/developments/historyLegend'
 import { lineTiles } from '../../lib/developments/photoLines'
@@ -89,6 +89,7 @@ export function DevelopmentFeed({
   onMore,
   photoIo,
   onPerson,
+  onOpenThread,
 }: {
   lines: ChangeLine[]
   /** Where the *You last looked* line sits, or null with no stamp yet. */
@@ -106,6 +107,8 @@ export function DevelopmentFeed({
   photoIo?: UploadedPhotosIo
   /** The viewer's *Only Malachi's photos*: the page puts the name in the search box. */
   onPerson?: (name: string) => void
+  /** A mail line's door (v2.7479): the page goes to the mail's thread in Messages; with none the line draws its words alone. */
+  onOpenThread?: (href: string) => void
 }) {
   const [shown, setShown] = useState(PAGE)
   // The viewer opened from a photos line: that line's batch, at the tile pressed.
@@ -120,7 +123,7 @@ export function DevelopmentFeed({
     const b = badge(line)
     const entry = line.kind === 'entry'
     return (
-      <div key={line.id} style={{ ...rowStyle, ...(entry ? { background: 'var(--bg-subtle)', margin: '0 -8px', padding: '6px 8px', borderRadius: 6 } : {}), background: line.waitingDays != null ? 'var(--bg-amber-tint)' : entry ? 'var(--bg-subtle)' : undefined }} data-testid={entry ? 'history-entry-line' : 'changed-line'}>
+      <div key={line.id} style={{ ...rowStyle, ...(entry ? { background: 'var(--bg-subtle)', margin: '0 -8px', padding: '6px 8px', borderRadius: 6 } : {}), background: line.waitingDays != null ? 'var(--bg-amber-tint)' : entry ? 'var(--bg-subtle)' : undefined }} data-testid={entry ? 'history-entry-line' : line.kind === 'mail' ? 'history-mail-line' : 'changed-line'}>
         <span style={{ color: isNew ? 'var(--text-strong)' : 'var(--text-faint)', fontWeight: isNew ? 700 : 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }} title={line.dayOnly ? 'The source keeps the day, not the time' : new Date(line.at).toLocaleString()}>
           {shortDay(line.at)}
           {searching && !line.dayOnly && timeOfDay(line.at) ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {timeOfDay(line.at)}</span> : null}
@@ -146,6 +149,13 @@ export function DevelopmentFeed({
               <Lit text={line.about.label} words={words} />
             </span>
           )}
+          {/* A tied mail's subject, before its words (v2.7479). */}
+          {line.subject ? (
+            <span style={{ color: 'var(--text-strong)', fontWeight: 600 }} data-testid="history-mail-subject">
+              {' · '}
+              <Lit text={line.subject} words={words} />
+            </span>
+          ) : null}
           {line.detail ? (
             // A folded run's details sit one a line (the Gray Fox spike, 2026-11-02); every other detail wraps as prose.
             <span style={{ color: 'var(--text-muted)', whiteSpace: 'foldedCount' in line && line.foldedCount ? 'pre-line' : undefined }}>
@@ -180,6 +190,15 @@ export function DevelopmentFeed({
               {' '}
               · waiting {line.waitingDays === 0 ? 'since today' : `${line.waitingDays} ${line.waitingDays === 1 ? 'day' : 'days'}`}
             </span>
+          ) : null}
+          {/* A tied mail's door: its thread in Messages, open at the mail (v2.7479). */}
+          {line.threadHref && onOpenThread ? (
+            <>
+              {' · '}
+              <LinkButton onClick={() => onOpenThread(line.threadHref!)} title="This mail in its thread, in Messages" nowrap>
+                {MAIL_DOOR_WORDS} ›
+              </LinkButton>
+            </>
           ) : null}
         </span>
         {/* A photos line's thumbnails under its words (punch list #247): up to four, or three and a + N tile; a tap opens the viewer on that photo. */}

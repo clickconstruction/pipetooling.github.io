@@ -67,12 +67,20 @@ type Props = {
   places: ReadonlyArray<{ id: string; name: string }>
   /** One box (the panel's Label press, the phone's link), or null for every box. */
   only: string | null
+  /**
+   * How the window opens when a door of *Which job?* said (v2.7482): on every box with a kept run set aside, or on
+   * the named boxes alone. Left out, it opens as it always has, on a run stopped earlier today or on every box.
+   */
+  start?: LabelsStart
   onClose: () => void
   /** The print itself; a test hands a spy. */
   print?: () => void
 }
 
-export default function LabelsPrintModal({ jobLabel: jl, containers, lines, places, only, onClose, print = () => window.print() }: Props) {
+/** A door's pick: every box from the start, or these boxes alone. */
+export type LabelsStart = { kind: 'all' } | { kind: 'ids'; ids: ReadonlyArray<string> }
+
+export default function LabelsPrintModal({ jobLabel: jl, containers, lines, places, only, start, onClose, print = () => window.print() }: Props) {
   const candidates = useMemo(() => (only ? containers.filter((c) => c.id === only) : containers), [containers, only])
   const one = candidates.length === 1 ? candidates[0] : null
   const [format, setFormatState] = useState<LabelFormat>(() => readLabelFormat())
@@ -83,8 +91,13 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
    * A run that stopped part way earlier today on this device (the tape ran out, the window was closed to change it):
    * read once as the window opens, so it comes back on the rest and not on every box.
    */
-  const [resumed] = useState(() => (only ? null : stoppedRunToResume(readStoppedRun(), containers[0]?.jobId, todayYmdInAppTz(), containers.map((c) => c.id))))
-  const [left, setLeft] = useState<ReadonlySet<string>>(() => resumed?.left ?? new Set())
+  const [resumed] = useState(() => (only || start ? null : stoppedRunToResume(readStoppedRun(), containers[0]?.jobId, todayYmdInAppTz(), containers.map((c) => c.id))))
+  const [left, setLeft] = useState<ReadonlySet<string>>(() => {
+    if (resumed) return resumed.left
+    // A door that named its boxes: every other box starts unticked.
+    if (!only && start?.kind === 'ids') { const on = new Set(start.ids); return new Set(containers.filter((c) => !on.has(c.id)).map((c) => c.id)) }
+    return new Set()
+  })
   const setFormat = (f: LabelFormat) => { setFormatState(f); writeLabelFormat(f) }
   const setWidth = (w: TapeWidthMm) => { setWidthState(w); writeTapeWidth(w) }
   /** Strips of each box (v2.6878): a box with more than one side takes more than one. Tape only. */

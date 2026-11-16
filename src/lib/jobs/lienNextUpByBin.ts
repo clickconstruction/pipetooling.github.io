@@ -55,7 +55,7 @@ export type LienBinGroup = LienNextUpGrouped & {
   papers: number
   /** What the group's jobs still owe; null when the desk gave no amounts or nothing is owed. */
   total: number | null
-  /** The head carries the press that reminds the leader: the first group holding rows that wait on him. */
+  /** The head carries the press that reminds the leader: the first bin holding rows that wait on him, or *Other lien papers* when no bin does (v2.7478). */
   remind?: true
   /** Everything due later, under one line: which bins hold how many. The group is drawn folded. */
   later?: { line: string }
@@ -181,7 +181,15 @@ export function groupLienNextUpByBin(rows: ReadonlyArray<LienNextUpRow>, opts: L
     }
     groups.push(group)
   }
-  if (loose.length) groups.push({ group: 'now', label: 'Other lien papers', rows: loose, part: true, key: 'other', bin: null, papers: loose.length, countWords: countWords(null, loose.length), total: totalOf(loose, amount) })
+  if (loose.length) {
+    const other: LienBinGroup = { group: 'now', label: 'Other lien papers', rows: loose, part: true, key: 'other', bin: null, papers: loose.length, countWords: countWords(null, loose.length), total: totalOf(loose, amount) }
+    // A retainage notice that waits on the leader has a message since v2.7478, and no bin: with no bin's head to carry the press, this head does.
+    if (!remindGiven && loose.some((r) => waiting.has(r))) {
+      other.remind = true
+      remindGiven = true
+    }
+    groups.push(other)
+  }
 
   const reminders = byDay.find((g) => g.group === 'reminders')
   if (reminders) groups.push(plain(reminders))
