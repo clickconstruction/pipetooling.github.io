@@ -56,7 +56,7 @@ Stonewick's $40,000 electrical sheet was written against job 977 before the job 
 
 While an offer waits, you have three buttons. {{button:outline|Nudge}} resends the notification. {{button:outline|Signed on paper}} records a signature they gave you on a printed copy. {{button:outline|Withdraw}} takes it back to a draft. Signed orders open read-only. {{button:outline|Print}} gives the paper copy.
 
-Crew pay sheets never need a work order and are never listed here. A crew pay sheet is one with a teammate on the sheet. They keep their own label on **Jobs → Subs → Pay**.
+A sheet with no sub on it never needs a work order and is never listed here. A teammate's own sheet is one of these. It keeps its own label on **Jobs → Subs → Pay**.
 
 ## Where the words come from
 

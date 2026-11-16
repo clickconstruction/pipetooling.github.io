@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { MoreHorizontal } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
@@ -8,6 +9,8 @@ import { buildJobWorkOrderCoverage, type JobWorkOrderCoverage, type WorkOrderRow
 import { buildSheetRail, sheetNextAction, type SheetNextAction, type SheetRail as SheetRailShape } from '../../lib/subWorkOrders/sheetRail'
 import { isRosterSubSheet, type NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/sheetsNeedingWorkOrder'
 import { sheetParties, type SheetParties } from '../../lib/subWorkOrders/sheetParties'
+import { sheetOwedTo, sheetOwedToChip, TEAM_SHEET_RULE } from '../../lib/subWorkOrders/teamSheetRule'
+import { teamSheetPayWhen } from '../../lib/subWorkOrders/sheetStanding'
 import { buildSubLaborPayRun, payRunFilterMatches, sheetPayWhen, PAY_RUN_FILTERS, PAY_RUN_FILTER_HINT, PAY_RUN_FILTER_LABEL, PAY_RUN_SEGMENTS, PAY_RUN_SEGMENT_LABEL, type PayRunFilter, type PayRunSegment, type PayRunSub, type SheetPayWhen } from '../../lib/subWorkOrders/subLaborPayRun'
 import { SHEET_RAIL_GAP } from '../../lib/subWorkOrders/sheetRailTone'
 import { sheetPaidInFullWords, sheetPaidLine, sheetPaymentDates } from '../../lib/subWorkOrders/sheetPaymentDates'
@@ -59,6 +62,7 @@ import { subLaborPayRunEmptyWords } from '../../lib/subWorkOrders/subLaborPayRun
 import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
 import { subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
+import { SUB_PAY_FROM_CREDIT } from '../../lib/subWorkOrders/subPaymentWindow'
 
 export type JobsSubLaborTabProps = {
   error: string | null
@@ -157,6 +161,8 @@ export default function JobsSubLaborTab({
   const [storySheetId, setStorySheetId] = useState<string | null>(null)
   /** Send a lien waiver from a pay row (v2.2970): the sheet + job facts the picker seeds into the form. */
   const [lienWaiverFor, setLienWaiverFor] = useState<LienWaiverSendTarget | null>(null)
+  // Taunya's rule of 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
+  const teamRule = TEAM_SHEET_RULE
   useEffect(() => {
     if (!stageMenuJobId) return
     const close = () => setStageMenuJobId(null)
@@ -220,7 +226,7 @@ export default function JobsSubLaborTab({
 
   /** The rail, the office's next move, who the sheet is for, and the rule its money is under — one call per row. */
   const spineFor = useCallback(
-    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen; stageView: LaborJob } => {
+    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; team: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen; stageView: LaborJob } => {
       // v2.3065: the sheet's link first; the number only for a sheet that never got one.
       const pipelineJob = (job.job_ledger_id ? spine.jobsById.get(job.job_ledger_id) : undefined) ?? (job.job_ledger_id ? null : spine.jobsByNumber.get((job.job_number ?? '').trim().toLowerCase())) ?? null
       const covering = [...(spine.bySheet.get(job.id) ?? []), ...(pipelineJob ? (spine.byJob.get(pipelineJob.id) ?? []) : [])]
@@ -235,16 +241,22 @@ export default function JobsSubLaborTab({
       const rail = buildSheetRail({ coverage, sheetStage: eff.stage, payableAfter: job.payable_after ?? null, agreed: bal.totalCost, open, unpriced, crewPay: crewRail })
       // Subs-only naming: the sheet is the roster sub's; teammates ride along as "with …". No sub at all = a crew sheet.
       const parties = sheetParties(job, laborJobAssigneesByJobId.get(job.id), spine)
-      const crew = roster.length > 0 && parties.crew
+      // Whose the money is (Taunya, 2026-11-15): one teammate and no sub is that teammate's, owed like any sheet.
+      const to = sheetOwedTo(parties, teamRule)
+      const crew = roster.length > 0 && parties.crew && !to.counts
+      const team = roster.length > 0 && to.kind === 'team'
       const next = sheetNextAction(rail, coverage, { subName: parties.label || job.assigned_to_name, agreed: bal.totalCost, open, unpriced, todayYmd: today })
       const ids = spine.assigneeIds.get(job.id) ?? []
       const personId = ids.length === 1 ? ids[0]! : null
       const inv = pipelineJob?.invoices ?? null
       const bills = pipelineJob ? { out: (inv ?? []).filter((i) => i.status && i.status !== 'draft').length, paid: (inv ?? []).filter((i) => i.status === 'paid').length } : null
-      const payWhen = sheetPayWhen({ stage: eff.stage, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, bills, gap: rail.gap, crew, balance: bal.balance, unpriced, todayYmd: today })
-      return { coverage, rail, next, crew, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView }
+      const payWhen =
+        team && !unpriced && bal.balance > 0
+          ? teamSheetPayWhen(job, open, today)
+          : sheetPayWhen({ stage: eff.stage, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, bills, gap: rail.gap, crew, balance: bal.balance, unpriced, todayYmd: today })
+      return { coverage, rail, next, crew, team, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView }
     },
-    [spine, roster.length, today, laborJobAssigneesByJobId],
+    [spine, roster.length, today, laborJobAssigneesByJobId, teamRule],
   )
 
   /** Every sheet the search leaves, with its balance and its spine. */
@@ -267,11 +279,13 @@ export default function JobsSubLaborTab({
   const payRun = useMemo(
     () =>
       buildSubLaborPayRun(
-        rows.map((r) => ({ id: r.job.id, subKey: r.parties.key || normalizePersonNameKey(r.job.assigned_to_name), subName: r.parties.label || r.job.assigned_to_name, personId: !r.crew && r.parties.contractors.length === 1 ? (r.parties.contractors[0]!.id ?? null) : null, teammates: r.parties.teammates.map((p) => p.name).filter(Boolean), crew: r.crew, balance: r.balance, payWhen: r.payWhen })),
+        rows.map((r) => ({ id: r.job.id, subKey: r.parties.key || normalizePersonNameKey(r.job.assigned_to_name), subName: r.parties.label || r.job.assigned_to_name, personId: !r.crew && r.parties.contractors.length === 1 ? (r.parties.contractors[0]!.id ?? null) : null, teammates: r.parties.teammates.map((p) => p.name).filter(Boolean), crew: r.crew, team: r.team, balance: r.balance, payWhen: r.payWhen })),
         { payRunDay, todayYmd: today },
       ),
     [rows, payRunDay, today],
   )
+  /** A teammate is owed on a sheet of their own: the tiles say people, not subs. */
+  const teamOwed = payRun.subs.some((x) => x.team && x.owed > 0)
   const crewOpen = useMemo(() => rows.filter((r) => r.crew && r.balance > 0).reduce((n, r) => n + r.balance, 0), [rows])
 
   // Did the sub look? One RPC for every sub on the run; the line under the name opens the trail.
@@ -390,17 +404,17 @@ export default function JobsSubLaborTab({
       {!laborJobsLoading && laborJobs.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(190px, 1fr))', gap: narrow ? 8 : 10, marginBottom: '1.1rem' }}>
           <div style={tileStyle()}>
-            <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 600 }}>Owed to subs</div>
+            <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 600 }}>{teamOwed ? 'Owed for sub labor' : 'Owed to subs'}</div>
             <div style={{ fontSize: '1.35rem', fontWeight: 700 }}><AmountSmallCents value={payRun.tiles.owed} /></div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {payRun.tiles.owedSubs} sub{payRun.tiles.owedSubs === 1 ? '' : 's'} · {payRun.tiles.owedSheets} sheet{payRun.tiles.owedSheets === 1 ? '' : 's'}
+              {payRun.tiles.owedSubs} {teamOwed ? (payRun.tiles.owedSubs === 1 ? 'person' : 'people') : payRun.tiles.owedSubs === 1 ? 'sub' : 'subs'} · {payRun.tiles.owedSheets} sheet{payRun.tiles.owedSheets === 1 ? '' : 's'}
               {crewOpen > 0 ? <> · + <AmountSmallCents value={crewOpen} /> crew pay via payroll</> : null}
             </div>
           </div>
           <div style={tileStyle('ready')}>
             <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 600 }}>Ready to pay now</div>
             <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-green-700)' }}><AmountSmallCents value={payRun.tiles.ready} /></div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{payRun.tiles.readySheets} sheet{payRun.tiles.readySheets === 1 ? '' : 's'} · customer paid or date reached</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{payRun.tiles.readySheets} sheet{payRun.tiles.readySheets === 1 ? '' : 's'} · {teamOwed ? 'customer paid, date reached or a teammate’s own sheet' : 'customer paid or date reached'}</div>
           </div>
           <div style={tileStyle()}>
             <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 600 }}>{payRun.tiles.queuedDayLabel ? `Queued for ${payRun.tiles.queuedDayLabel}` : 'Queued for the pay run'}</div>
@@ -438,6 +452,7 @@ export default function JobsSubLaborTab({
                         </button>
                         {s.personId ? <span style={{ marginLeft: 6, verticalAlign: 'middle' }} title="Their portal — the page this money reads from"><SubPortalGlobeButton personId={s.personId} personName={s.name} size={14} /></span> : null}
                         {s.crew ? <span style={{ marginLeft: 6 }}>{tag('Crew pay', 'violet', 'No roster sub on these sheets — pays through payroll')}</span> : null}
+                        {s.team ? <span style={{ marginLeft: 6 }}>{tag(sheetOwedToChip('team'), 'violet', 'A teammate paid as sub labor. These sheets are theirs, owed like any sheet.')}</span> : null}
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {s.sheetCount} sheet{s.sheetCount === 1 ? '' : 's'}
                           {s.teammates.length > 0 ? ` · with ${s.teammates.join(', ')}` : ''}
@@ -528,7 +543,7 @@ export default function JobsSubLaborTab({
                     <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</strong>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {g.rows.length} sheet{g.rows.length === 1 ? '' : 's'}
-                      {sub?.crew ? ' · crew pay' : ''}
+                      {sub?.crew ? ' · crew pay' : sub?.team ? ' · team, sub labor' : ''}
                       {sub && sub.whyNot ? ` · ${sub.whyNot}` : ''}
                     </span>
                   </span>
@@ -594,6 +609,13 @@ export default function JobsSubLaborTab({
                         <span style={{ fontWeight: 600 }}>{sub?.name.trim() || g.rows[0]!.parties.label || g.rows[0]!.job.assigned_to_name || <span style={{ color: 'var(--text-muted)' }}>(No name)</span>}</span>
                         {sub?.personId ? <span title="Their portal" style={{ display: 'inline-flex' }}><SubPortalGlobeButton personId={sub.personId} personName={sub.name} size={14} /></span> : null}
                         {sub?.crew ? tag('Crew pay', 'violet', 'No roster sub on these sheets — pays through payroll') : null}
+                        {sub?.team ? tag(sheetOwedToChip('team'), 'violet', 'A teammate paid as sub labor. These sheets are theirs, owed like any sheet.') : null}
+                        {/* Punch list #346, PR 3: the money by job and sheet, on the sub's row on People → Subs. */}
+                        {sub?.personId && !sub.crew ? (
+                          <Link to={`/people?tab=subs&owed=${encodeURIComponent(sub.personId)}`} data-testid={`sublabor-what-we-owe-${sub.personId}`} style={{ fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                            What we owe ›
+                          </Link>
+                        ) : null}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {g.rows.length} sheet{g.rows.length === 1 ? '' : 's'}
                           {sub && sub.teammates.length > 0 ? ` · with ${sub.teammates.join(', ')}` : ''}
