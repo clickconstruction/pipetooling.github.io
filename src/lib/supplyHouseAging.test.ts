@@ -347,6 +347,9 @@ describe('agingCellRowDoors (punch list #132 PR 4)', () => {
   })
   it('a charge with no due date offers Add a due date', () => {
     expect(agingCellRowDoors({ amount: 120, due_date: null }, 1)).toEqual({ addDueDate: true, pickJob: false })
+    // Interest is kept off every job's cost: with no job on it, it still offers no Pick a job.
+    expect(agingCellRowDoors({ amount: 18.6, due_date: '2026-11-01', is_interest: true }, 0)).toEqual({ addDueDate: false, pickJob: false })
+    expect(agingCellRowDoors({ amount: 18.6, due_date: '2026-11-01', is_interest: false }, 0)).toEqual({ addDueDate: false, pickJob: true })
   })
   it('a charge on no job offers Pick a job', () => {
     expect(agingCellRowDoors(charge, 0)).toEqual({ addDueDate: false, pickJob: true })

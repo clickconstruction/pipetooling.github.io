@@ -1511,6 +1511,10 @@ export default function Materials() {
           failure={{ error: onSiteDesk.error, raw: onSiteDesk.raw, retry: onSiteDesk.retry }}
           onAddFirst={() => { setPrintStickers(false); openTab('on-site') }}
           onClose={() => setPrintStickers(false)}
+          onLabels={() => { setPrintStickers(false); setPrintLabels({ jobId: null }) }}
+          onScan={() => { setPrintStickers(false); setScanLabelOpen(true) }}
+          onOpenJob={(jobId) => { setPrintStickers(false); setActiveTab('on-site'); setSearchParams((p) => { const next = new URLSearchParams(p); next.set('tab', 'on-site'); next.set('job', jobId); next.delete('site'); return next }) }}
+          onReadAgain={onSiteDesk.readAgain}
         />
       ) : null}
 

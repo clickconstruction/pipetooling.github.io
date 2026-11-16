@@ -36,6 +36,8 @@ export interface SupplyInvoiceDraft {
   /** The read a bill filled from its PDF keeps; undefined leaves the column alone, null clears it. */
   billRead?: BillRowRead | null
   billAttachmentId?: string | null
+  /** Interest or a late fee (v2.7467), and the bill that ran late ('' for none). Undefined leaves both columns alone. */
+  interest?: { on: boolean; lateInvoiceId: string }
 }
 
 /** The row being edited, as much of it as the payload rules read. Null for a new row. */
@@ -44,6 +46,27 @@ export interface PriorSupplyInvoice {
   on_job_account?: boolean | null
   paid_at?: string | null
   credits_invoice_id?: string | null
+  is_interest?: boolean | null
+  late_invoice_id?: string | null
+}
+
+/**
+ * The interest columns to write: only what changed, so a save that never touched them works before the columns
+ * exist. A credit memo is never interest. Interest names its late bill; an ordinary bill names none.
+ */
+export function interestPatch(draft: Pick<SupplyInvoiceDraft, 'kind' | 'interest'>, prior: PriorSupplyInvoice | null): { is_interest?: boolean; late_invoice_id?: string | null } {
+  if (!draft.interest) return {}
+  const on = draft.interest.on && draft.kind !== 'credit'
+  const late = on ? draft.interest.lateInvoiceId.trim() || null : null
+  const out: { is_interest?: boolean; late_invoice_id?: string | null } = {}
+  if (on !== (prior?.is_interest === true)) out.is_interest = on
+  if (late !== (prior?.late_invoice_id ?? null)) out.late_invoice_id = late
+  return out
+}
+
+/** Interest is kept off every job's cost: a bill being saved as interest carries no job. */
+export function interestOn(draft: Pick<SupplyInvoiceDraft, 'kind' | 'interest'>): boolean {
+  return draft.interest?.on === true && draft.kind !== 'credit'
 }
 
 export type SupplyInvoicePayload = Record<string, unknown> & { supply_house_id: string; invoice_number: string; invoice_date: string; amount: number; document_kind: SupplyDocumentKind }
@@ -61,7 +84,7 @@ export function supplyInvoicePayload(draft: SupplyInvoiceDraft, prior: PriorSupp
   const amount = signedAmountForSave(draft.kind, draft.amountTyped)
   if (amount == null) return { ok: false, problem: 'Amount must be a number.' }
   // Per-property flag: forced off unless the invoice is allocated to exactly one job.
-  const effectiveOnJobAccount = draft.onJobAccount && singleAllocatedJobId(draft.allocations) != null
+  const effectiveOnJobAccount = draft.onJobAccount && !interestOn(draft) && singleAllocatedJobId(draft.allocations) != null
   const priorOnJobAccount = prior ? prior.on_job_account === true : false
   const payload: SupplyInvoicePayload = {
     ...(draft.id && !prior ? { id: draft.id } : {}),
@@ -80,6 +103,7 @@ export function supplyInvoicePayload(draft: SupplyInvoiceDraft, prior: PriorSupp
     // Sent only when it changes, so untouched saves keep working in the merge-to-db-push window.
     ...(effectiveOnJobAccount !== priorOnJobAccount ? { on_job_account: effectiveOnJobAccount } : {}),
     ...creditsInvoicePatch(draft.kind, draft.creditsInvoiceId, prior),
+    ...interestPatch(draft, prior),
     // The read a filled bill keeps (punch list #179): only when the draft carries one, the same window rule.
     ...(draft.billRead !== undefined ? { bill_read: draft.billRead, bill_attachment_id: draft.billAttachmentId ?? null } : {}),
   }
@@ -109,6 +133,10 @@ export type SupplyInvoiceSaved = { ok: true; id: string; allocationProblem: stri
 export async function saveSupplyInvoice(db: SupplyInvoiceDb, draft: SupplyInvoiceDraft, prior: PriorSupplyInvoice | null): Promise<SupplyInvoiceSaved> {
   const built = supplyInvoicePayload(draft, prior)
   if (!built.ok) return built
+  // Interest is kept off every job's cost: its jobs come off before the row is marked, since the database refuses
+  // to mark a bill that is still on a job, and none is written back.
+  const allocations = interestOn(draft) ? [] : draft.allocations
+  if (prior && interestOn(draft)) await db.deleteAllocations(prior.id)
   let id: string
   if (prior) {
     const { error } = await db.updateInvoice(prior.id, built.payload)
@@ -120,9 +148,9 @@ export async function saveSupplyInvoice(db: SupplyInvoiceDb, draft: SupplyInvoic
     id = inserted.id
   }
   let allocationProblem: string | null = null
-  if (draft.allocations.length > 0) {
+  if (allocations.length > 0) {
     await db.deleteAllocations(id)
-    const rows = allocationRows(id, draft.allocations)
+    const rows = allocationRows(id, allocations)
     if (rows.length > 0) {
       const { error } = await db.insertAllocations(rows)
       if (error) allocationProblem = formatErrorMessage(error, 'The jobs were not saved on the invoice.')

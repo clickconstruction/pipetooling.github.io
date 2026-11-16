@@ -61,6 +61,8 @@ export type MemberJob = {
   payments_made: number | null
   /** jobs_ledger.pct_complete, 0–100, for the Money look's bars. */
   pct_complete?: number | null
+  /** The job's first day of work, for the Plans look's By date view; absent on the overview door's read, which does not carry it. */
+  first_work_date?: string | null
   last_work_date: string | null
   last_bill_date: string | null
   job_plans_link: string | null
