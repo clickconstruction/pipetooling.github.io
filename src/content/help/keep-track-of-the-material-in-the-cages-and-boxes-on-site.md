@@ -108,7 +108,7 @@ Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with 
 
 ## Stick a sticker on a box
 
-The office prints a run of blank stickers before the boxes exist. Each sticker carries a code to scan. Most also carry a box's name, like G78. Stick one on a cage or box. Then scan it with your phone's camera. The On site tab opens on a sheet that reads **Sticker G78 is new**. A sticker with no name opens **This sticker is new**, with its code at the top. Under it the sheet asks what the sticker is on.
+The office prints a run of blank stickers before the boxes exist. Each sticker carries a code to scan. Most also carry a box's name, like G78. Stick one on a cage or box. Then scan it with your phone's camera. The On site tab opens on a sheet that reads **Sticker G78 is new**. A sticker with no name opens **This sticker is new**, with its code at the top. The sheet then asks what the sticker is on.
 
 Tap **It is on a box I know** when the box is already in the app. The sheet lists every box on this site. Your job's boxes come first. Boxes with no sticker come before the rest. A box on another job of the site names that job. Type the digits of the stencil, like 76, and R76 is left in the list. You can type a place or a part too. Tap the box, then tap {{button:blue|Put this sticker on R76}}. The box keeps its name, its parts, its counts and its photos. The sticker is one more way to open it.
 
