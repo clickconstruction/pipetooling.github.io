@@ -25,7 +25,10 @@ SET lock_timeout = '3s';
 -- the picks to the published criteria, and the restrictive fences (training mode, a digital twin, an archived
 -- caller) stand as they did. A digital twin is an estimator by role and is still refused by its fence.
 
--- 1. The price list names the estimators.
+-- 1. The price list names the estimators. The guard takes this lock when a person publishes, so a publish in the
+-- same moment waits for this one and takes the number after it.
+SELECT pg_advisory_xact_lock(hashtext('difficulty_price_versions'));
+
 UPDATE public.difficulty_price_versions d
 SET body = jsonb_set(d.body, '{raters}', (
   SELECT jsonb_agg(g.name ORDER BY g.ord)

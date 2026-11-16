@@ -17,7 +17,7 @@ import {
 
 const MIGRATION = resolve(__dirname, '../../../supabase/migrations/20261115020000_difficulty_price_versions.sql')
 /** v2.7468: the insert rule on gc_difficulty_ratings asks gc_difficulty_can_rate(), this kernel's twin. */
-const GATE_MIGRATION = resolve(__dirname, '../../../supabase/migrations/20261116233000_gc_difficulty_raters_from_price_list.sql')
+const GATE_MIGRATION = resolve(__dirname, '../../../supabase/migrations/20261117003000_gc_difficulty_raters_from_price_list.sql')
 
 /** Every role an account can carry (the `user_role` enum), and one no account does. */
 const ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', 'owner', 'master', 'nobody'] as const
