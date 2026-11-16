@@ -383,7 +383,7 @@ describe('TallyOnSiteTab · the stickers beside a box’s name (punch list #329,
 
 describe('TallyOnSiteTab · These are on boxes (punch list #329, section 10, PR 10)', () => {
   function list() {
-    renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} />)
+    renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId={null} />)
   }
 
   it('a job with stickers not yet on a box offers the press, which opens the form as a sheet', async () => {
