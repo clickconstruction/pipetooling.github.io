@@ -4374,6 +4374,14 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPaneHead .lienPaneHeadLabel { flex: none; }
 .lienPaneHead .n { font-weight: 700; font-size: 0.78rem; text-transform: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lienPaneHead .lienPaneHeadTail { font-weight: 500; color: var(--text-muted); }
+/* The footer's head (v2.7422): the one blue bar in the pane, white words on the press blue in both themes. It and its section draw over a
+   stacked head on a short pane, so the signing box is never under a bar at the pane's end. */
+.lienPaneHead[data-tone="blue"] { z-index: 4; background: #2563eb; border-color: #2563eb; color: #fff; box-shadow: none; }
+.lienPaneHead[data-tone="blue"] .lienPileHeadBtn:hover, .lienPaneHead[data-tone="blue"] .lienPileHeadBtn:focus-visible { color: #fff; text-decoration: underline; }
+.lienPaneHead[data-tone="blue"] .n { color: #fff; }
+/* The footer in the pane (v2.7422): the pane's last section, edge to edge like the heads, drawn over a stacked head where a short pane overlaps them. */
+.lienDeskFooterInPane { position: relative; z-index: 4; margin: -0.6rem -1.1rem 0; }
+.lienDeskFooterInPane > .lienDeskFooterSlot { border-top: none; }
 /* A phone's open paper (punch list #352, PR 6): the header drops its two rows of tabs, the footer's presses are a thumb tall, and the bar over the footer folds it away without unmounting it. */
 .lienDeskTitleBar[data-lien-pane-open] [role="tablist"] { display: none !important; }
 [data-lien-desk-foot-fold] ~ div button { min-height: 40px; }

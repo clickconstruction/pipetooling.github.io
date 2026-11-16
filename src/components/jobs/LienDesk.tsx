@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import type { LienDeskKind } from '../../lib/lien/lienDeskRoute'
 import { EmptyState } from '../EmptyState'
@@ -157,7 +158,7 @@ import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, 
 import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienPaneSections } from '../../lib/jobs/lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, lienPhonePrintBoxFold } from '../../lib/jobs/lienPhonePane'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
@@ -685,6 +686,10 @@ export default function LienDesk({
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
   // a loop the Lien affidavits tab had spun in since v2.3412 (about one render a millisecond while it was open).
   const [affFooterEl, setAffFooterEl] = useState<HTMLDivElement | null>(null)
+  // The notice's footer goes the other way on a computer (v2.7422, Taunya's ask of 2026-11-15): it is the pane's last section, under a blue
+  // head, so the paper has the whole pane and the reader goes through it to sign. The pane draws the section's empty body before the footer
+  // is built, and the footer lands in it through a portal. A phone keeps the desk's strip under its fold bar.
+  const [noticeFootHome, setNoticeFootHome] = useState<HTMLDivElement | null>(null)
 
   const entries = data?.queue.entries ?? []
   // Supply houses on the desk's jobs (v2.4404): a mark on a row while a house is still owed, and the card in the pane.
@@ -2447,7 +2452,7 @@ export default function LienDesk({
   // The heads over the page labels: on a computer every section head stacked, on a phone the one pinned head (punch list #352, PR 6);
   // and a label is as tall as those heads (v2.7323), so the bars in the pane are one kind on either screen. Read when a label
   // is drawn or pressed: `paneHeads` is declared after this point.
-  const headsOverPages = () => (isMobile ? LIEN_PANE_HEAD_H_PHONE : paneHeads.length * LIEN_PANE_HEAD_H)
+  const headsOverPages = () => (isMobile ? LIEN_PANE_HEAD_H_PHONE : lienPaneHeadsOverPages(paneHeads) * LIEN_PANE_HEAD_H)
   const pageLabelH = isMobile ? LIEN_PANE_HEAD_H_PHONE : PAGE_LABEL_H
   const relightPages = (host: HTMLElement) => {
     let on: string | null = null
@@ -2673,6 +2678,8 @@ export default function LienDesk({
     return none
   }
 
+  // The footer's section (v2.7422): on a computer the notice's footer is the pane's last section, `sign`, under the one blue head.
+  const footInPane = !oneColumn
   // The pane's stacked heads (v2.4733): the five sections' title rows, pinned like the list's pile heads — passed ones under the strip, coming ones at the bottom, the one the reader is in lit.
   const paneHeads = selected
     ? lienPaneSections({
@@ -2685,6 +2692,7 @@ export default function LienDesk({
         gcEmail: Boolean(gc?.email),
         monthShort: workMonthShort,
         money: formatUsdNoCents,
+        foot: footInPane ? lienNoticeFootHead({ pile: selected.pile, signed: Boolean(paneSigned), signerFirst: (leaderName.trim().split(/\s+/)[0] ?? ''), dueMonths: selected.dueMonths.length }) : null,
       })
     : []
   // The heads' wiring is shared with the affidavit and retainage panes since v2.7320 (`useLienPaneHeads`): which section is lit from the pane's scroll, the press that lands a section under its own head, and the head itself. The strip's height is v2.4726's `stripH`, 0 while it is not pinned.
@@ -3384,6 +3392,9 @@ export default function LienDesk({
         </div>
       ) : null}
       </div>
+      {/* The footer's section (v2.7422): the blue head, then the empty body the footer is portalled into once it is built. */}
+      {footInPane ? paneHead('sign') : null}
+      {footInPane ? <div ref={setNoticeFootHome} className="lienDeskFooterInPane" data-lien-pane-body="sign" data-lien-desk-foot-home /> : null}
       {/* The pane's foot room (v2.4747): a row, not the pane's bottom padding, so a section head stuck to the bottom sits on the edge with no gap under it. */}
       <div aria-hidden data-lien-desk-pane-foot style={{ height: '0.3rem' }} />
     </div>
@@ -4490,12 +4501,17 @@ export default function LienDesk({
   const footFold = paneOpenPhone && !(simpleApprove && !detailsOpen) && (paneOpenPhone.kind !== 'notice' || Boolean(footer)) ? lienPhoneFootFold(footFolded) : null
   // The footer strip (the owner's ask of 2026-11-15, `lienDeskFooterHome`): on a computer it is the pane's own bottom bar, so the
   // list runs to the desk's bottom; on a phone it stays the desk's, right after the fold bar whose sibling rule folds it.
-  // The affidavit's and the retainage notice's panes portal their footer into the slot (v2.3753); the notice's is drawn here.
+  // The affidavit's and the retainage notice's panes portal their footer into the slot (v2.3753). The notice's is drawn here on a phone;
+  // on a computer it is the pane's last section since v2.7422, so the pane column's bottom row is empty for a notice.
   const footerHome = lienDeskFooterHome(oneColumn)
+  // The notice's strip: the desk's on a phone, the pane's last section on a computer (v2.7422), where the blue head is its top edge.
+  const noticeFooterStrip = (
+    <div ref={noticeFooterRef} className="lienDeskFooterSlot" data-lien-desk-footer="notice" style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: footInPane ? 'none' : '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div>
+  )
   const paneFooter =
     kind === 'affidavit' ? <div ref={setAffFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="affidavit" />
     : kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" />
-    : kind === 'notice' && footer ? <div ref={noticeFooterRef} className="lienDeskFooterSlot" data-lien-desk-footer="notice" style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div>
+    : kind === 'notice' && footer ? (footInPane ? (noticeFootHome ? createPortal(noticeFooterStrip, noticeFootHome) : null) : noticeFooterStrip)
     : null
   const paneColumn = (node: ReactNode) => (footerHome.column ? <div data-lien-desk-pane-column style={footerHome.column}>{node}{paneFooter}</div> : node)
   return (
