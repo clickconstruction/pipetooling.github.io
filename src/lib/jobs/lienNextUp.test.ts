@@ -557,3 +557,28 @@ describe('a row’s one thing to know, once its kind and stage are said beside i
     expect(one({ notices: [notice('j1', 'ready')] }).detail).toBe('not printed')
   })
 })
+
+describe('an approved affidavit a gate moved to Held (punch list #335)', () => {
+  const closed = (key: 'homestead_answer' | 'notice' | 'contractor' | 'public_owner') => [{ key, ok: false, label: key }]
+  const approved = { id: 'a1', status: 'approved', fields: {} } as unknown as LienAffidavitEntry['item']
+  it('asks the gate’s one question, with its press, and says the approval stands', () => {
+    const r = one({ affidavits: [affidavit('j1', 'held', { item: approved, ready: false, gates: closed('homestead_answer') })] })
+    const plain = one({ affidavits: [affidavit('j1', 'needs_property', { ready: false, gates: closed('homestead_answer') })] })
+    expect(r.action).toBe('fix_property')
+    expect(r.button).toBe(plain.button)
+    expect(r.sub).toBe(plain.sub.replace(/^Affidavit · /, 'Affidavit approved, held · '))
+    expect(r.detail).toBe(`${plain.detail} The approval stands.`)
+    expect(r.target).toEqual({ open: 'affidavits', jobId: 'j1' })
+  })
+  it('a late notice as the one gate left opens the notices; a public owner offers no press', () => {
+    const late = one({ affidavits: [affidavit('j1', 'held', { item: approved, ready: false, gates: closed('notice') })] })
+    expect(late).toMatchObject({ action: 'send_notice', target: { open: 'notices', jobId: 'j1', pile: 'missed' } })
+    expect(late.detail).toBe('Send the § 53.056 notice first. Late is allowed while this window is open. The approval stands.')
+    const pub = one({ affidavits: [affidavit('j1', 'held', { item: approved, ready: false, gates: closed('public_owner') })] })
+    expect(pub).toMatchObject({ action: 'fix_property', button: null, sub: 'Affidavit approved, held · public property, no lien attaches. Ask the attorney about the bond' })
+  })
+  it('a paper the leader holds still reads Affidavit held, his hold to review', () => {
+    const r = one({ affidavits: [affidavit('j1', 'held', { item: { id: 'a1', status: 'held', fields: {} } as unknown as LienAffidavitEntry['item'] })] })
+    expect(r).toMatchObject({ sub: 'Affidavit held', action: 'review_hold' })
+  })
+})

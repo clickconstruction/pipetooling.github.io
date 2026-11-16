@@ -1,0 +1,64 @@
+/**
+ * A scanned lien paper as a file from this computer (punch list #366): the county clerk's stamped affidavit, added
+ * as a PDF where **Record filing…** already takes a photo of the stamped page. The owner's ask of 2026-11-16, over a
+ * screenshot of that press: "The option to upload a pdf from the scanned filings would be helpful". Until now a scan
+ * reached the filing only as a Drive link pasted by hand.
+ *
+ * The rule a file is held to is the one a notice's mailed copy is held to (`lienMailedCopies.ts`, on its own branch
+ * when this was written): a PDF or a picture, not empty, and no larger than the job folder's `put` takes. The two
+ * differ in one word, the paper to scan alone when the file is too big, so the rule lives here once and names it.
+ *
+ * Pure: the kinds of file, the one reason a file is refused, the file's name in Drive, and every word a person reads.
+ */
+import { ADD_FILE_MAX_BYTES, addFileSizeWords, addFileTooBig } from './jobFolderAddFile'
+
+/** The kinds of file a scan press takes: a scan or a photo. */
+export const LIEN_SCAN_ACCEPT = 'application/pdf,image/*'
+
+export type LienScanFileLike = { size: number; type: string; name: string }
+
+/** A PDF by its type, or by its name when the computer gives no type (a scanner's *SCAN0007.PDF*). */
+export function lienScanIsPdf(file: Pick<LienScanFileLike, 'type' | 'name'>): boolean {
+  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+}
+
+/** Why a file cannot be added, in sentences, or null when it can. `paper` is the one to scan alone: *notice*, *affidavit*. */
+export function lienScanProblem(file: LienScanFileLike, paper: 'notice' | 'affidavit'): string | null {
+  if (!lienScanIsPdf(file) && !file.type.startsWith('image/')) return 'That file is not a scan or a photo. Add a PDF or a picture.'
+  if (file.size <= 0) return 'That file is empty. Scan the papers again.'
+  if (addFileTooBig(file.size)) return `That file is ${addFileSizeWords(file.size)}. The most a file can be is ${addFileSizeWords(ADD_FILE_MAX_BYTES)}. Scan this ${paper} alone, or at a lower quality.`
+  return null
+}
+
+/** The extension the Drive name keeps: the file's own, or one from its type. */
+export function lienScanExtension(file: Pick<LienScanFileLike, 'type' | 'name'>): string {
+  const own = /\.([a-z0-9]{1,5})$/i.exec(file.name)?.[1]?.toLowerCase()
+  if (own) return own
+  if (file.type === 'application/pdf') return 'pdf'
+  if (file.type === 'image/png') return 'png'
+  if (file.type === 'image/heic') return 'heic'
+  return 'jpg'
+}
+
+/** The note the filing's saved copy takes when it is the clerk's stamped affidavit, scanned. A photo of the page keeps its own note (`LIEN_CLERK_PAGE_NOTE`). */
+export const LIEN_CLERK_SCAN_NOTE = 'the clerk’s stamped affidavit, scanned'
+
+/**
+ * The scan's name in the job's Drive folder, under Team only, Sent by us: *Lien affidavit, Job 2291, the clerk’s
+ * stamped affidavit, scanned, 2026-11-13.pdf*. The day is the day filed, so the folder sorts the papers by it.
+ */
+export function lienFiledScanName(jobNumber: string, ymd: string, file: Pick<LienScanFileLike, 'type' | 'name'>): string {
+  const job = jobNumber.trim() ? `Job ${jobNumber.trim()}, ` : ''
+  const day = ymd.trim() ? `, ${ymd.trim()}` : ''
+  return `Lien affidavit, ${job}${LIEN_CLERK_SCAN_NOTE}${day}.${lienScanExtension(file)}`
+}
+
+/** The press's words. Each sentence is one idea, as a first-timer reads it. */
+export const LIEN_FILED_SCAN_WORDS = {
+  press: 'Upload the scanned PDF',
+  again: 'Upload another',
+  saving: 'Uploading…',
+  saved: 'Scan saved',
+  title: 'Pick the scan of the stamped affidavit from this computer. It goes in the job’s Drive folder, under Sent by us.',
+  failed: 'The file was not added. Nothing was saved.',
+} as const

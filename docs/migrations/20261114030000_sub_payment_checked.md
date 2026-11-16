@@ -16,3 +16,5 @@ Additive and idempotent. No table is created, so no fence call is needed. `ADD C
 **Order.** Push right after the merge. Until then the payments read falls back (no ticks are read, every sheet still draws) and pressing a box says ticking is not switched on yet.
 
 **After the push:** the types and the dev seat's catalog, in one types PR with the credit migration's.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `checked_at`, `checked_by`, `checked_by_name`, `set_sub_payment_checked`.

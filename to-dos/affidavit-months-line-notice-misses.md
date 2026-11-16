@@ -2,7 +2,7 @@
 name: "Affidavit: the months line on a job whose notice names other months"
 number: 356
 group: gated
-status: written 2026-11-14 from a Lien desk session · the owner picked door 1 for part 2 the same day, months set by hand with counsel's reason · part 1 built as v2.7266 and part 2 as v2.7270 the same day · counsel's read of the words still open
+status: written 2026-11-14 from a Lien desk session · the owner picked door 1 for part 2 the same day, months set by hand with counsel's reason · part 1 built as v2.7266 and part 2 as v2.7270 the same day, both on main · since v2.7302, also that day, the paper always names the month of the last day on site, so a blank is left only on a job with no last day and no month · counsel's read of the words still open
 summary: >
   A short-form affidavit swears the months the job's recorded notices name, cut to the job's own
   work span. On a job with no clock hours and a last day set by hand, the span is that day's month
@@ -14,7 +14,7 @@ summary: >
 next: Counsel reads the words a paper with months set by hand prints, and the office walks one on a live job. Then retire the card.
 size: M as two PRs (S · M)
 blocker: none for the build. Counsel's read of the words before a paper with months set by hand is sworn.
-ver: v2.6061 · v2.7224 · v2.7229 · v2.7247
+ver: v2.6061 · v2.7224 · v2.7229 · v2.7247 · v2.7266 · v2.7270 · v2.7302
 ---
 
 # Affidavit: the months line on a job whose notice names other months (#356)
@@ -116,5 +116,5 @@ counsel's, never the app's.
 
 ## Where it stands
 
-Nothing is built. The two drafts wait in To draft, unapproved, until counsel answers. The owner picked
+Both parts are built and on main: part 1 as v2.7266 and part 2 as v2.7270, on 2026-11-14. The same day v2.7302 made the paper always name the month of the last day on site, so a job with a last day set by hand no longer prints a blank. Counsel's read of the words a paper with months set by hand prints is still open. The owner picked
 door 1 on 2026-11-14: months set by hand, with counsel's reason typed, as the claim set by hand works.

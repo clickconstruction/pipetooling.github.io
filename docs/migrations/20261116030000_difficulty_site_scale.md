@@ -11,3 +11,5 @@ GC difficulty rating, PR 6 of six (punch list #357, [`to-dos/gc-difficulty-ratin
 Nothing prices the site until a person picks it: `difficultyLines` has read `sitePctPerPoint` since PR 4, and no scale carried the key before this version.
 
 **Apply order**: push right after the merge. The client reads `bid_difficulty_picks` by name and fails soft (no site line until the push), and the site line draws only once version 2 is published. Regenerate types after the push as a `chore(types)` PR.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `bid_difficulty_picks`.

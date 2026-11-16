@@ -15,7 +15,7 @@ summary: >
   the hours statement's way of making a PDF. It builds on card #347's ledger and payment window.
 next: step 2 under *Where it stands*, the numbers' migration alone, then its push and the types; settle the names (call 1) before step 3 prints a number under one; Send and the portal tab wait on Taunya's go and counsel's words
 size: L as a train of seven (S · S · M · S · M · M · M)
-blocker: none for PR 1 and PR 2; PR 3 is a migration; PR 4 waits on card #347's sending and on PR #7992's push; PR 5 and PR 6 are edge deploys; PR 7 waits on counsel's words
+blocker: none for PR 1, PR 2 and PR 4 (card #347's sendings and PR #7992's method are in prod); PR 3 is a migration; PR 5 and PR 6 are edge deploys; PR 7 waits on counsel's words
 opinion: build PR 1 now, it is the paper he asked for and reads rows the Pay view already holds; settle the names before PR 3 prints a number under one; do not let a paper say invoice, receipt or owed until counsel has read the six marked sentences
 mockup: to-dos/sub-papers-statement-of-account/mockup.html
 ---
