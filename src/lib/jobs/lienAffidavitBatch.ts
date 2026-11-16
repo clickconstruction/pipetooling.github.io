@@ -160,6 +160,15 @@ export function lienAffidavitPrintWords(plan: Pick<LienAffidavitPrintPlan, 'read
   }
 }
 
+/**
+ * The door to that print from To do's *On track* head (v2.7398): the print button's own words with the door's mark,
+ * *Print 10 for notarization ›*. The press opens the affidavits list at Ready to file, where the button of the same
+ * name stands with its options; it said *Print 10 affidavits ›* until Taunya's walk of 2026-11-15 found the two apart.
+ */
+export function lienAffidavitPrintDoorWords(plan: Pick<LienAffidavitPrintPlan, 'ready' | 'held'> & Partial<Pick<LienAffidavitPrintPlan, 'gated'>>): string {
+  return `${lienAffidavitPrintWords(plan).button} ›`
+}
+
 /** One paper of the print: the job, its number as the ledger shows it, and the fields the desk filled. `label` and `fileBy` are the help sheet's (punch list #314): the job as the desk names it and its last day to file, in words. */
 export type LienAffidavitPrintPaper = {
   jobId: string
