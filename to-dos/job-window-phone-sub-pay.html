@@ -235,7 +235,7 @@
   </div>
 
   <div class="panel">
-    <div class="cap"><span>After · the sheet is found</span><span class="tag few">1 to 3 of 12 today</span></div>
+    <div class="cap"><span>After · the sheet is found</span><span class="tag few">3 of 12 today</span></div>
     <div class="phone">
       <div class="status"><span>7:42</span><span>●●● 81</span></div>
       <div class="head"><div class="names"><b>Ridgeway Walk <span class="chip status">Working</span></b><p class="quiet">1042 · Ridgeway Builders</p></div><div class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></div></div>
@@ -262,13 +262,13 @@
       <ul>
         <li>What is open, with the agreed price and what has been paid under it.</li>
         <li>The pay date once the office sets one, and <b>Open your portal</b> for the rest.</li>
-        <li>Today the app finds a sub's own sheet by matching their name. On prod this week that works for <b>1 of 12</b> subs on a working job, or 3 of 12 counting sheets that carry several names.</li>
+        <li>The app knows whose a sheet is: each sub's login is tied to their person on the roster, and the sheet names that person. On prod this week <b>3 of 12</b> subs on a working job's crew have a sheet of their own on that job.</li>
       </ul>
     </div>
   </div>
 
   <div class="panel">
-    <div class="cap"><span>After · the sheet is not found</span><span class="tag most">9 to 11 of 12 today</span></div>
+    <div class="cap"><span>After · the sheet is not found</span><span class="tag most">9 of 12 today</span></div>
     <div class="phone">
       <div class="status"><span>7:42</span><span>●●● 81</span></div>
       <div class="head"><div class="names"><b>Ridgeway Walk <span class="chip status">Working</span></b><p class="quiet">1042 · Ridgeway Builders</p></div><div class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></div></div>
@@ -291,10 +291,10 @@
       </div>
       <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
     </div>
-    <div class="verdict"><b>What most subs would see if it were drawn now.</b>
+    <div class="verdict"><b>What most subs would see this week.</b>
       <ul>
-        <li>Four of the 12 are on jobs with no sheet at all. The rest have a sheet the app cannot tie to them by name.</li>
-        <li>A sub who is owed money would read that they have no sheet. That is the risk of drawing it now.</li>
+        <li>Four of the 12 are on jobs with no sheet at all. Five are on jobs whose sheets are someone else's.</li>
+        <li>The row is true for them: the office has not made them a sheet on this job. It tells them to ask.</li>
       </ul>
     </div>
   </div>
@@ -308,15 +308,11 @@
   <div class="kv"><span class="k">Your pay</span><span class="v money">Paid in full<span class="sub">$4,200 agreed · $4,200 paid</span><span class="sub">Last payment Nov 24</span></span></div>
 </div>
 
-<h2>What decides it</h2>
+<h2>What decided it</h2>
 <div class="block">
-  <p><b>The money is already in the app.</b> Each sub's sheet holds the agreed price, what has been paid, what is open and the pay date. Their portal shows all of it.</p>
-  <p><b>What is missing is whose sheet it is.</b> A sheet names its sub by a typed name, not by their login. Punch list #346 is the work that settles whose a sheet is; its first PR merged on 2026-11-15.</p>
-  <ul>
-    <li><span class="pick">Leave it off for now</span>, then draw the middle phone once #346 ties a sheet to a login. Every sub then gets the true row. Small, one PR.</li>
-    <li><b>Draw it now</b>: the middle phone for the few the name match finds, the right phone for the rest.</li>
-    <li><b>A door only</b>: no numbers, one row that reads <i>Your pay · Open your portal</i>. It cannot be wrong about money. It still needs the app to know which portal is theirs, the same tie the numbers need.</li>
-  </ul>
+  <p><b>Taunya, 2026-11-15: <span class="pick">"Draw it now."</span></b> Built as v2.7399.</p>
+  <p><b>The money is the portal's.</b> Each sub's sheet holds the agreed price, what has been paid, what is open and the pay date, and their portal shows all of it. The row reads the same rows and runs the portal's own sums, so the window and the portal cannot disagree.</p>
+  <p><b>Corrected after the picture was first shown.</b> The first draft of this page said the app finds a sub's sheet by matching a typed name, and that most subs would get the right phone because the match fails. That was wrong. The tie is by the roster, and it holds for all 12. The right phone is what a sub with no sheet on the job reads, and it is true.</p>
 </div>
 <footer>Mock-up for punch list #355 (<code>to-dos/job-window-phone.md</code>). The counts are from prod on 2026-11-15, working jobs only, counts and no names.</footer>
 </div>
