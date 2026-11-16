@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { lienFieldsHash } from './lienNoticeSignature'
 
 const db = vi.hoisted(() => ({
+  /** The signer's own row, as the signing reads it for the name (v2.7395); null = no row, 'throw' = the read fails. */
+  userRow: null as { name: string | null; notes: string | null; role: string | null } | null | 'throw',
+  userReads: [] as string[],
   updates: [] as Array<{ patch: Record<string, unknown>; id: string }>,
   uploads: [] as Array<{ bucket: string; path: string; type: string }>,
   updateError: null as string | null,
@@ -11,6 +14,15 @@ const db = vi.hoisted(() => ({
 vi.mock('../supabase', () => ({
   supabase: {
     from: () => ({
+      select: (_cols: string) => ({
+        eq: (_col: string, id: string) => ({
+          maybeSingle: async () => {
+            db.userReads.push(id)
+            if (db.userRow === 'throw') throw new Error('network')
+            return { data: db.userRow, error: null }
+          },
+        }),
+      }),
       update: (patch: Record<string, unknown>) => ({
         eq: async (_col: string, id: string) => {
           db.updates.push({ patch, id })
@@ -42,6 +54,8 @@ const PNG = `data:image/png;base64,${btoa('png-bytes')}`
 const FIELDS = { notice: { claimAmount: '12480.00' }, gcEmail: 'ap@brightline.example', extra: undefined }
 
 beforeEach(() => {
+  db.userRow = null
+  db.userReads = []
   db.updates = []
   db.uploads = []
   db.updateError = null
@@ -50,6 +64,26 @@ beforeEach(() => {
 })
 
 describe('signLienDeskItem (v2.5082)', () => {
+  it('the mark carries the signer’s full name off his own row, whatever name the screen handed over (v2.7395)', async () => {
+    const { signLienDeskItem, lienSignaturePrintedName } = await import('./lienDeskSignIo')
+    db.userRow = { name: 'Malachi', notes: 'Malachi Whites, Master Plumber (#RMP41130)', role: 'master_technician' }
+    const r = await signLienDeskItem({ itemId: 'it9', fields: FIELDS, signer: { userId: 'u-malachi', printedName: 'Malachi' }, payload: { mode: 'type' }, onDevice: null, approve: true })
+    expect(r).toMatchObject({ ok: true, printedName: 'Malachi Whites' })
+    expect(db.userReads).toEqual(['u-malachi'])
+    expect(db.updates[0]!.patch.signer_printed_name).toBe('Malachi Whites')
+    // A dev signs by his account name; his notes are licences.
+    db.userRow = { name: 'Robert', notes: 'PLUM APP: 184614 02/28/27', role: 'dev' }
+    expect(await lienSignaturePrintedName('u-robert', 'Robert D')).toBe('Robert')
+    // No row, a row with no name, or a read that fails: the name the screen handed over stands.
+    db.userRow = null
+    expect(await lienSignaturePrintedName('u-gone', ' Wendi ')).toBe('Wendi')
+    db.userRow = { name: '', notes: '', role: 'master_technician' }
+    expect(await lienSignaturePrintedName('u-blank', 'Wendi')).toBe('Wendi')
+    db.userRow = 'throw'
+    expect(await lienSignaturePrintedName('u-malachi', 'Malachi')).toBe('Malachi')
+    expect(await lienSignaturePrintedName(null, 'Malachi')).toBe('Malachi')
+  })
+
   it('one press under his own sign-in: no file, the seven columns on the row with the draft’s hash, and the approval in the same write', async () => {
     const { signLienDeskItem } = await import('./lienDeskSignIo')
     const r = await signLienDeskItem({ itemId: 'it1', fields: FIELDS, signer: { userId: 'u-robert', printedName: ' Robert Douglas ' }, payload: { mode: 'type' }, onDevice: null, approve: true })

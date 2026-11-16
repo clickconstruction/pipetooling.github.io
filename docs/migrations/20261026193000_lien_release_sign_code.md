@@ -15,8 +15,8 @@ The leader's signing code (v2.5788's `user_sign_codes`) reaches the Release of L
   (`lienWaiverSignerName`, v2.5231): a leader by his notes before the comma, a dev by his name —
   so the signed page reads *Malachi Whites*, as the window's Who signs pick does, not a short
   `users.name`. SECURITY DEFINER; EXECUTE revoked from clients — only other definer functions
-  call it. The desk's own `sign_lien_desk_item_with_code` is left untouched (it still prints
-  `users.name`).
+  call it. The desk's own `sign_lien_desk_item_with_code` was left printing `users.name` here;
+  `20261116110000_lien_notice_code_full_name` gives it this rule.
 - `sign_lien_release_with_code(p_release_id, p_signer_id, p_code)` — the waiver twin of the
   desk's RPC: caller must be the office set or a leader and not read-only; the signer a live
   master/dev; the release unvoided and `issued` or `awaiting_signature`. The right code stamps

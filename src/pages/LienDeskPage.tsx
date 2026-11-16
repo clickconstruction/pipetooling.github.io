@@ -33,7 +33,7 @@ import { newAskMeta, signoffStateForJob } from '../lib/legal/legalAsks'
 import { isStagesOfficeRole } from '../lib/jobs/stagesRoleGates'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../lib/physicalInvoiceIssuer'
-import { lienSignerNameFor, lienSignerPhoneFor, type LienSignerUser } from '../lib/jobs/lienSigner'
+import { lienSignatureNameFor, lienSignerNameFor, lienSignerPhoneFor, type LienSignerUser } from '../lib/jobs/lienSigner'
 import { lienFocusEditJobOptions } from '../lib/jobs/lienFocusEditJobOptions'
 import { isLienLeader } from '../lib/jobs/lienDesk'
 import { syncLienDeskAfterRecord } from '../lib/jobs/lienDeskIo'
@@ -124,8 +124,8 @@ export default function LienDeskPage() {
     let live = true
     void (async () => {
       const [people, devs] = await Promise.all([
-        fetchActiveUsers<LienSignerUser>('id, name, notes, phone', { roles: DESK_USER_ROLES }),
-        role === 'dev' ? fetchActiveUsers<LienSignerUser>('id, name, notes', { roles: [], includeDev: true }) : Promise.resolve({ data: [] as LienSignerUser[], error: null }),
+        fetchActiveUsers<LienSignerUser>('id, name, notes, phone, role', { roles: DESK_USER_ROLES }),
+        role === 'dev' ? fetchActiveUsers<LienSignerUser>('id, name, notes, role', { roles: [], includeDev: true }) : Promise.resolve({ data: [] as LienSignerUser[], error: null }),
       ])
       if (!live) return
       const seen = new Set(people.data.map((u) => u.id))
@@ -137,6 +137,8 @@ export default function LienDeskPage() {
   }, [allowed, role])
   const signerNameFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authName), [users, authName])
   const leaderNameFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
+  // The name a signature carries (v2.7395): his full name, where leaderNameFor is the short one the desk talks in.
+  const signatureNameFor = useCallback((userId: string | null) => lienSignatureNameFor(users, userId, ''), [users])
   const signerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, issuer?.phone ?? ''), [users, issuer?.phone])
 
   // The By date rows (v2.4101): the billed jobs with their runways, through the Pipeline's kernel. The pen on the grid
@@ -310,6 +312,7 @@ export default function LienDeskPage() {
         issuer={issuer}
         signerNameFor={signerNameFor}
         leaderNameFor={leaderNameFor}
+        signatureNameFor={signatureNameFor}
         signerPhoneFor={signerPhoneFor}
         initialJobId={address.job}
         initialKind={address.kind ?? LIEN_DESK_DEFAULT_KIND}
