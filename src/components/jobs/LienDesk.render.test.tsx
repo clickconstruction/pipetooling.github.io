@@ -736,7 +736,7 @@ describe('LienDesk', () => {
 
   it('a Docsmit envelope that came back is a To do row opening the notice under Sent, whose head has the Deliveries filter and whose footer has the cost (the Docsmit train, 6b-2)', async () => {
     const sent = { id: 'r2', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'sent', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: 'f1', sent_at: '2026-09-14T16:00:00Z', printed_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T16:00:00Z', voided_at: null } as unknown as LienDeskItemRow
-    // Every month noticed (v2.6624): a job with a month still due sits in To send now, and this test is about the Sent pile's filter.
+    // Every month noticed (v2.6624): a job with a month still due sits in To send for approval now, and this test is about the Sent pile's filter.
     const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sent], true)
     d.filingsByJob = { j650: [{ id: 'f1', job_id: 'j650', kind: 'notice', sends: [], voided_at: null } as never] }
     d.mailPiecesByFiling = { f1: [{ id: 'p2', kind: 'lien_notice_53_056', recipient: 'original_contractor', status: 'returned', usps_tracking: '9407 1118', mailed_at: '2026-09-15T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'Return to Sender', source_ids: ['f1'], price: 9.85 }] }
@@ -1972,7 +1972,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     fireEvent.click(within(bar).getByRole('button', { name: 'Redraw 2 on the short form…' }))
     // The confirm window says what happens to the approval, and its button names the act with the count.
     expect(await screen.findByText('Redraw 2 affidavits on the short form?')).toBeTruthy()
-    expect(screen.getByText('Each affidavit goes back to To send on the short form. Each needs approval again before it is filed.')).toBeTruthy()
+    expect(screen.getByText('Each affidavit goes back to To send for approval on the short form. Each needs approval again before it is filed.')).toBeTruthy()
     expect(redrawManyMock).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Redraw 2 on the short form' }))
     await waitFor(() => expect(redrawManyMock).toHaveBeenCalledTimes(1))
@@ -2026,7 +2026,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     await settle()
     const bar = document.querySelector('[data-lien-affidavit-send-all]') as HTMLElement
     expect(bar.textContent).toContain('2 drafted affidavits are ready to send.')
-    expect(bar.querySelector('[data-lien-affidavit-send-all-foot]')?.textContent).toBe('1 in To send was never opened. Open it from its own paper.')
+    expect(bar.querySelector('[data-lien-affidavit-send-all-foot]')?.textContent).toBe('1 in To send for approval was never opened. Open it from its own paper.')
     fireEvent.click(within(bar).getByRole('button', { name: 'Send 2 for approval…' }))
     expect(await screen.findByText('Send 2 affidavits for approval?')).toBeTruthy()
     expect(screen.getByText('2 are approved at once by a GC’s standing rule and move to Ready to file.')).toBeTruthy()
@@ -2866,7 +2866,7 @@ describe('LienDesk retainage (v2.3753)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
     await settle()
     expect(screen.getByRole('tab', { name: /Retainage notices · 1/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'To send · 1' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'To send for approval · 1' })).toBeTruthy()
     const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
     expect(list.textContent).toContain('complete Sep 3')
     expect(list.textContent).toContain('not yet in a § 53.056 claim')
@@ -4254,7 +4254,7 @@ describe('LienDesk · Lien affidavits and Retainage notices stack their pile tit
     it(`${kind}: a pile chip narrows the list to that pile's title and rows, the title offers show every pile, and a find keeps every title with its count`, async () => {
       renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={twoPiles()} initialKind={kind} />)
       await settle()
-      fireEvent.click(screen.getByRole('button', { name: 'To send · 1' }))
+      fireEvent.click(screen.getByRole('button', { name: 'To send for approval · 1' }))
       expect(heads().map((h) => h.getAttribute('data-lien-pile-head'))).toEqual([second])
       expect(heads()[0]!.style.top).toBe('0px')
       expect(heads()[0]!.style.bottom).toBe('0px')

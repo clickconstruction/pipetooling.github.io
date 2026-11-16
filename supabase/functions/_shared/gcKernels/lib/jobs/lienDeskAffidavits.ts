@@ -64,7 +64,7 @@ export type LienAffidavitPile = 'needs_property' | 'to_draft' | 'awaiting' | 're
 
 export const LIEN_AFFIDAVIT_PILES: ReadonlyArray<{ key: LienAffidavitPile; label: string }> = [
   { key: 'needs_property', label: 'Needs the property facts' },
-  { key: 'to_draft', label: 'To send' },
+  { key: 'to_draft', label: 'To send for approval' },
   { key: 'awaiting', label: 'Awaiting approval' },
   { key: 'ready', label: 'Ready to file' },
   { key: 'held', label: 'Held' },

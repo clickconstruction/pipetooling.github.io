@@ -2337,7 +2337,7 @@ export default function LienDesk({
                             : 'approved'
                       }${e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' ? ' · unsigned' : ''}`
                     : e.pile === 'printed'
-                      // In the run (v2.7328): the row names the tick it waits on, as the run's checklist does.
+                      // Approved · to mail (*In the run* until v2.7434): the row names the tick it waits on, as the run's checklist does.
                       ? lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)
                     : e.pile === 'held'
                       ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`

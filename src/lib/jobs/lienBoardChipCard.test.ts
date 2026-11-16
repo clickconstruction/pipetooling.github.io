@@ -40,7 +40,7 @@ describe('lienBoardChipCard', () => {
       customer: 'ZZ Homeowner',
       gc: 'ZZ Builders',
       paper: 'Monthly notice',
-      stage: 'To send',
+      stage: 'To send for approval',
       detail: 'September 2026',
       day: 'Due Mon Nov 16 · 1 day left',
       urgency: 'day',
@@ -55,7 +55,7 @@ describe('lienBoardChipCard', () => {
     const b = board()
     const card = lienBoardChipCard(lienBoardChipFor(b, 'j858', 'affidavit')!, b, facts({ detail: 'The property record has no county and legal description.' }))
     expect([card.paper, card.stage, card.day, card.risk]).toEqual(['Lien affidavit', 'Needs the property facts', 'Due Tue Dec 15 · 30 days left', null])
-    expect(card.other).toBe('Its monthly notice is in To send.')
+    expect(card.other).toBe('Its monthly notice is in To send for approval.')
     expect(card.door).toBe('Press to open the property record at the legal description.')
   })
 
