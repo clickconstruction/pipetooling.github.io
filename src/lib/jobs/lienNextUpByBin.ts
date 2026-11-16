@@ -78,11 +78,12 @@ export function isLienFoldRow(row: Pick<LienNextUpRow, 'key'>): boolean {
  * when the batch send would take two or more, under its words. Each press opens the Affidavits list at that pile,
  * where the batch press of the same name stands with its options. A viewer who is not the lien office gets none.
  */
-export function lienBinFolds(f: { office: boolean; printReady: number; printButton: string; sendReady: number }): LienBinFoldRule[] {
+export function lienBinFolds(f: { office: boolean; printReady: number; printButton: string; sendReady: number; /** Filed liens that owe their copies, and the press that mails them together (punch list #366). */ serveOwed?: number; serveButton?: string }): LienBinFoldRule[] {
   if (!f.office) return []
   const rules: LienBinFoldRule[] = []
   if (f.printReady >= 2) rules.push({ bin: 'affidavit:ready', action: 'file_affidavit', title: (n) => `${n} affidavits approved and ready to file`, sub: 'One stack for the notary, then the county clerk.', button: f.printButton, target: { open: 'affidavit_pile', pile: 'ready' } })
   if (f.sendReady >= 2) rules.push({ bin: 'affidavit:to_send', action: 'draft', title: (n) => `${n} affidavits to send for approval`, sub: 'Not yet sent for approval.', button: `${countedLabel('Send', f.sendReady)} for approval ›`, target: { open: 'affidavit_pile', pile: 'to_draft' } })
+  if ((f.serveOwed ?? 0) >= 2) rules.push({ bin: 'affidavit:filed', action: 'record_service', title: (n) => `${n} filed liens owe their copies`, sub: 'One stack for the mail, then each mail number.', button: f.serveButton ?? null, target: { open: 'serve_copies' } })
   return rules
 }
 

@@ -5,14 +5,12 @@ import type { LienAffidavitRow } from './lienDeskAffidavits'
 import type { JobLienFilingRow } from './lienDeadlines'
 import {
   buildLienProperties,
-  lienNotInRunGroups,
-  lienNotInRunWords,
   lienPropertyAffidavitLine,
-  lienPropertyAtAffidavit,
   lienPropertyJobsWords,
   lienPropertyNoticeLine,
   lienPropertyOf,
   lienPropertyOfJob,
+  lienPropertyTallies,
   lienPropertyTally,
   type LienPropertyNoticeFacts,
 } from './lienPropertyPapers'
@@ -52,7 +50,7 @@ describe('lienPropertyNoticeLine: where one job’s notice stands', () => {
 describe('lienPropertyAffidavitLine: where one job’s affidavit stands', () => {
   const none = { pile: null, gateHeld: false, missing: [] as string[] }
   it('a filed affidavit and its served copy are the timeline’s own steps', () => {
-    expect(lienPropertyAffidavitLine({ ...none, pile: 'filed', affidavitStep: { state: 'done', dateWords: 'filed Jul 14', words: '#2026-0412' }, serveStep: { state: 'done', dateWords: 'served Jul 16', words: '2 days' } })).toEqual({ state: 'filed', words: 'Filed Jul 14', aside: 'served Jul 16', pile: 'filed' })
+    expect(lienPropertyAffidavitLine({ ...none, pile: 'filed', affidavitStep: { state: 'done', dateWords: 'filed Jul 14', words: '#2026-0412' }, serveStep: { state: 'done', dateWords: 'served Jul 16', words: '2 days' } })).toEqual({ state: 'filed', words: 'Filed Jul 14', aside: 'served Jul 16', pile: 'filed', serve: 'served' })
     expect(lienPropertyAffidavitLine({ ...none, affidavitStep: { state: 'done', dateWords: 'filed Jul 14', words: '' }, serveStep: { state: 'due', dateWords: 'Jul 20', words: '' } })).toMatchObject({ state: 'filed', aside: 'serve its copy by Jul 20' })
     expect(lienPropertyAffidavitLine({ ...none, affidavitStep: { state: 'done', dateWords: 'filed Jul 14', words: '' }, serveStep: { state: 'missed', dateWords: 'Jul 20', words: '' } })).toMatchObject({ aside: 'serving its copy is overdue' })
   })
@@ -167,15 +165,23 @@ describe('buildLienProperties: the book gathered by property record', () => {
   })
 
   it('one tally per property', () => {
-    expect(ridgeline.tally).toBe('6 notices sent · 1 to print and mail · 6 at the affidavit')
-    expect(properties.find((p) => p.key === 'p-fenwick')!.tally).toBe('1 needs the owner')
-    expect(properties.find((p) => p.key === 'p-quarry')!.tally).toBe('1 needs no notice · 1 at the affidavit')
+    expect(ridgeline.tallies).toEqual({ notices: '4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail', affidavits: '5 lien affidavits to send for approval · 1 needing the property facts' })
+    expect(ridgeline.tally).toBe('4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail · 5 lien affidavits to send for approval · 1 needing the property facts')
+    expect(properties.find((p) => p.key === 'p-fenwick')!.tallies).toEqual({ notices: '1 notice needing the owner', affidavits: '' })
+    expect(properties.find((p) => p.key === 'p-quarry')!.tally).toBe('1 job needs no notice · 1 lien affidavit to send for approval')
   })
 
   it('names the owner’s other property only when the name and the mailing address both match', () => {
     expect(ridgeline.sameOwner).toEqual([{ addressId: 'p-fenwick', address: '88 Fenwick Ln, Hollow Creek', jobs: 1 }])
     expect(properties.find((p) => p.key === 'p-quarry')!.sameOwner).toEqual([])
     expect(properties.find((p) => p.key === '')!.sameOwner).toEqual([])
+  })
+
+  it('marks a second record that reads the same address, so the card can say it is one place', () => {
+    const twin = input()
+    twin.jobs = { ...twin.jobs, j1301: { ...twin.jobs.j1301!, propertyAddress: '412 ridgeline dr,  Hollow Creek' } }
+    const again = buildLienProperties(buildLienTimelineBook(twin).rows)
+    expect(again.find((p) => p.key === 'p-ridgeline')!.sameOwner).toEqual([{ addressId: 'p-fenwick', address: '412 ridgeline dr,  Hollow Creek', jobs: 1, sameAddress: true }])
   })
 
   it('finds one property by its record or by a job on it', () => {
@@ -185,51 +191,64 @@ describe('buildLienProperties: the book gathered by property record', () => {
     expect(lienPropertyOfJob(book.rows, 'j1500')).toBeNull()
   })
 
-  it('why the other six are not in the envelope, in one set of words', () => {
-    const others = ridgeline.jobs.filter((l) => l.jobId !== 'j1207').map((l) => l.notice)
-    expect(lienNotInRunGroups(others)).toEqual([
-      { count: 4, words: '4 had their notice sent Oct 14.' },
-      { count: 2, words: '2 had their notice sent Sep 22.' },
-    ])
-    expect(lienNotInRunWords(others)).toBe('6 other jobs at this property are not in this envelope. 4 had their notice sent Oct 14. 2 had their notice sent Sep 22.')
+  it('the desk’s own entries win over the book’s, so the card says what the Board says', () => {
+    // The book reads the affidavit windows without the desk's drafted and approved papers; the desk's queue holds them.
+    const ready = book.rows.filter((r) => r.job.addressId === 'p-ridgeline' && r.jobId !== 'j1207').map((r) => ({ ...r.affidavit!, pile: 'ready' as const, ready: true }))
+    const fromDesk = buildLienProperties(book.rows, { affidavits: ready }).find((p) => p.key === 'p-ridgeline')!
+    expect(fromDesk.jobs.find((l) => l.jobId === 'j1203')!.affidavit).toMatchObject({ state: 'ready', words: 'Ready to file' })
+    expect(fromDesk.tallies.affidavits).toBe('6 lien affidavits ready to file')
+    expect(lienPropertyOf(book.rows, 'p-ridgeline', { affidavits: ready })?.tallies.affidavits).toBe('6 lien affidavits ready to file')
+  })
+
+  it('counts the jobs a caller hands it, so a run can count the ones not in its envelope', () => {
+    const others = ridgeline.jobs.filter((l) => l.jobId !== 'j1207')
+    expect(lienPropertyTally(others)).toBe('4 notices sent Oct 14 · 2 on Sep 22 · 5 lien affidavits to send for approval · 1 needing the property facts')
   })
 })
 
-describe('lienNotInRunWords: every reason is the notice’s own state', () => {
-  const line = (f: Partial<LienPropertyNoticeFacts>) => lienPropertyNoticeLine(sub(f))
-  it('says one job in the singular', () => {
-    expect(lienNotInRunWords([line({ pile: 'awaiting' })])).toBe('1 other job at this property is not in this envelope. 1 waits on Master approval.')
-  })
-  it('has a sentence for each state', () => {
-    const words = (f: Partial<LienPropertyNoticeFacts>, n = 2) => lienNotInRunGroups(Array.from({ length: n }, () => line(f)))[0]!.words
-    expect(words({ pile: 'awaiting' })).toBe('2 wait on Master approval.')
-    expect(words({ pile: 'to_draft' })).toBe('2 are not sent for approval yet.')
-    expect(words({ pile: 'needs_owner' })).toBe('2 need the owner.')
-    expect(words({ pile: 'held' })).toBe('2 are held.')
-    expect(words({ pile: 'ready' })).toBe('2 are approved and not printed yet.')
-    expect(words({ pile: 'printed' })).toBe('2 are printed and wait for the mail.')
-    expect(words({ pile: 'missed' })).toBe('2 missed their notice window.')
-    expect(words({ isSub: false })).toBe('2 need no notice.')
-    expect(words({})).toBe('2 have no notice on record.')
-    expect(words({ noticed: true })).toBe('2 have their notice on record.')
-    expect(words({ pile: 'printed' }, 1)).toBe('1 is printed and waits for the mail.')
-  })
-  it('names the run a caller hands it, and says nothing with no other job', () => {
-    expect(lienNotInRunWords([line({ isSub: false })], 'this run')).toBe('1 other job at this property is not in this run. 1 needs no notice.')
-    expect(lienNotInRunWords([])).toBe('')
-  })
-})
+describe('lienPropertyTallies: each kind of paper counted apart', () => {
+  const notice = (n: Partial<LienPropertyNoticeFacts>) => lienPropertyNoticeLine(sub(n))
+  const none = lienPropertyAffidavitLine({ pile: null, gateHeld: false, missing: [] })
+  const aff = (pile: 'needs_property' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'missed', extra: Partial<Parameters<typeof lienPropertyAffidavitLine>[0]> = {}) => lienPropertyAffidavitLine({ pile, gateHeld: false, missing: [], ...extra })
+  const filed = (serve: 'done' | 'due' | 'missed') => lienPropertyAffidavitLine({ pile: 'filed', gateHeld: false, missing: [], affidavitStep: { state: 'done', dateWords: 'filed Jul 14', words: '' }, serveStep: { state: serve, dateWords: 'Jul 20', words: '' } })
 
-describe('lienPropertyTally', () => {
-  it('counts each notice once, in the path’s order, then the affidavits', () => {
-    const l = (n: Partial<LienPropertyNoticeFacts>, pile: 'to_draft' | 'filed' | null = null) => ({ notice: lienPropertyNoticeLine(sub(n)), affidavit: lienPropertyAffidavitLine({ pile, gateHeld: false, missing: [] }) })
-    expect(lienPropertyTally([l({ pile: 'awaiting' }), l({ pile: 'to_draft' }), l({ pile: 'to_draft' }), l({ pile: 'held' }), l({ pile: 'missed' }), l({}), l({ noticed: true }, 'filed'), l({ noticed: true }, 'to_draft')])).toBe(
-      '2 notices sent · 1 awaiting approval · 2 to send for approval · 1 held · 1 missed · 1 with no notice on record · 1 at the affidavit · 1 filed',
-    )
+  it('the office’s count: six liens ready to file beside one notice in the run and six that went', () => {
+    const lines = [
+      { notice: notice({ pile: 'printed' }), affidavit: none },
+      ...Array.from({ length: 4 }, () => ({ notice: notice({ pile: 'sent', noticed: true, sentOn: ['2026-10-14'] }), affidavit: aff('ready') })),
+      ...Array.from({ length: 2 }, () => ({ notice: notice({ noticed: true, sentOn: ['2026-09-22'] }), affidavit: aff('ready') })),
+    ]
+    expect(lienPropertyTallies(lines)).toEqual({ notices: '4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail', affidavits: '6 lien affidavits ready to file' })
+  })
+
+  it('names the kind once, on the first count of each', () => {
+    const lines = [
+      { notice: notice({ pile: 'awaiting' }), affidavit: aff('held') },
+      { notice: notice({ pile: 'to_draft' }), affidavit: aff('awaiting') },
+      { notice: notice({ pile: 'to_draft' }), affidavit: aff('to_draft') },
+      { notice: notice({ pile: 'needs_owner' }), affidavit: aff('needs_property') },
+      { notice: notice({ pile: 'held' }), affidavit: aff('missed') },
+      { notice: notice({ pile: 'missed' }), affidavit: none },
+    ]
+    expect(lienPropertyTallies(lines)).toEqual({
+      notices: '1 notice awaiting approval · 2 to send for approval · 1 needing the owner · 1 held · 1 missed',
+      affidavits: '1 lien affidavit awaiting approval · 1 to send for approval · 1 needing the property facts · 1 held · 1 missed',
+    })
+  })
+
+  it('a notice on record with no day, a job that needs none and a job with nothing on record each say only that', () => {
+    expect(lienPropertyTallies([{ notice: notice({ noticed: true }), affidavit: none }, { notice: notice({ noticed: true, sentOn: ['2026-10-14'] }), affidavit: none }]).notices).toBe('1 notice sent Oct 14 · 1 on record')
+    expect(lienPropertyTallies([{ notice: notice({ isSub: false }), affidavit: none }, { notice: notice({ isSub: false }), affidavit: none }, { notice: notice({}), affidavit: none }]).notices).toBe('2 jobs need no notice · 1 job with no notice on record')
+    expect(lienPropertyTallies([{ notice: notice({ isSub: false }), affidavit: none }, { notice: notice({ pile: 'ready' }), affidavit: none }]).notices).toBe('1 notice to print and mail · 1 job needs no notice')
+  })
+
+  it('a filed lien says whether its copy is served', () => {
+    const lines = [filed('done'), filed('done'), filed('due'), filed('missed'), lienPropertyAffidavitLine({ pile: 'filed', gateHeld: false, missing: [] }), lienPropertyAffidavitLine({ pile: null, gateHeld: false, missing: [], affidavitStep: { state: 'blocked', dateWords: '—', words: 'blocked · no notice on record' } })].map((affidavit) => ({ notice: notice({ noticed: true }), affidavit }))
+    expect(lienPropertyTallies(lines).affidavits).toBe('2 lien affidavits filed and served · 1 filed, copy to serve · 1 filed, copy overdue · 1 filed · 1 blocked')
+  })
+
+  it('nothing to count is no words', () => {
+    expect(lienPropertyTallies([])).toEqual({ notices: '', affidavits: '' })
     expect(lienPropertyTally([])).toBe('')
-  })
-  it('a job is at the affidavit only once its notice is behind it', () => {
-    expect(lienPropertyAtAffidavit({ notice: lienPropertyNoticeLine(sub({ pile: 'awaiting' })), affidavit: lienPropertyAffidavitLine({ pile: 'to_draft', gateHeld: false, missing: [] }) })).toBe(false)
-    expect(lienPropertyAtAffidavit({ notice: lienPropertyNoticeLine(sub({ isSub: false })), affidavit: lienPropertyAffidavitLine({ pile: 'ready', gateHeld: false, missing: [] }) })).toBe(true)
   })
 })

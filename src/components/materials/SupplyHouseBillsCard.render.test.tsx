@@ -113,6 +113,24 @@ describe('SupplyHouseBillsCard', () => {
     expect(screen.getByTestId('supply-bills-stat-account').textContent).toBe('On account$187.40sent past the bills, offered on the next payment')
   })
 
+  it('a bill says where a payment’s money moved, and a removed payment is one press to put back', () => {
+    const onPutBack = vi.fn()
+    renderWithProviders(
+      card({
+        bills: [bill('11', { trace: ['$1,000.00 moved to S4398120 · Dana · the house applied it differently'] }), bill('12', {})],
+        removedPayments: [{ id: 'p9', words: '$5,000.00 ACH 88213 payment of 11/12 · removed 11/16 · Dana · typed twice' }],
+        onPutBack,
+      }),
+    )
+    const rows = screen.getAllByTestId('supply-bill-row')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-trace').textContent).toBe('$1,000.00 moved to S4398120 · Dana · the house applied it differently')
+    expect(within(rows[1] as HTMLElement).queryByTestId('supply-bill-trace')).toBeNull()
+    const removed = screen.getByTestId('supply-bills-removed')
+    expect(removed.textContent).toContain('$5,000.00 ACH 88213 payment of 11/12 · removed 11/16 · Dana · typed twice')
+    fireEvent.click(within(removed).getByRole('button', { name: 'Put it back' }))
+    expect(onPutBack).toHaveBeenCalledWith('p9')
+  })
+
   it('shows no On account number when nothing waits there', () => {
     renderWithProviders(card())
     expect(screen.queryByTestId('supply-bills-stat-account')).toBeNull()

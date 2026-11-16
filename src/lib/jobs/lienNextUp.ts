@@ -8,6 +8,7 @@
  * The office and the leader see different buttons on the same row, as the panes' footers do
  * (`isLienOffice` / `isLienLeader`); a role that is neither sees the list and no buttons.
  */
+import { lienServeClock, lienServeRowWords } from './lienServeClock'
 import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type LienDeskSeverity } from './lienDesk'
 import { lienOtherScreen } from './lienCodeSigner'
 import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
@@ -68,9 +69,11 @@ export type LienNextUpTarget =
   | { open: 'lien_window'; jobId: string; tab: 'affidavit' | 'notice'; openLastWork?: true }
   /** The recorded notice's months, corrected (punch list #353): the paper as mailed named these months too, so they join its record. */
   | { open: 'notice_record_months'; jobId: string; months: string[] }
+  /** The window that mails every filed lien's copies together (punch list #366): a folded row's press, and the Board's own. */
+  | { open: 'serve_copies' }
 
 /** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. Since v2.7371 (punch list #362, step 2) `risk` holds the `now` rows that will not make their day as they stand, first, and `waiting` (on the leader) stands right after it, above the rest of `now`. */
-export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting' | 'step_on' | 'step_other'
+export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting'
 
 export type LienNextUpRow = {
   key: string
@@ -130,7 +133,8 @@ const BUTTON: Record<LienNextUpAction, string> = {
   send_notice: 'Send the notice first',
   draft_late: 'Draft it late',
   file_affidavit: 'File the affidavit',
-  record_service: 'Record service',
+  // The copies of a filed lien (punch list #366): the press opens where they are printed, mailed and recorded. *Record service* until v2.7497.
+  record_service: 'Mail the copies',
   mail_needs_you: 'Open the notice',
 }
 
@@ -455,9 +459,11 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
     }
   }
+  // A filed lien's copies (punch list #366): the row says what is owed and by when, and turns red the day before its day.
   for (const s of input.serveDue ?? []) {
-    const daysLeft = daysBetween(input.todayYmd, s.serveDue)
-    push({ kind: 'affidavit', key: `serve:${s.jobId}`, jobId: s.jobId, gcId: null, title: input.jobTitle(s.jobId), sub: 'Lien filed · not yet served', dueOn: s.serveDue, daysLeft, severity: 'red', action: 'record_service', button: office ? BUTTON.record_service : null, target: { open: 'lien_window', jobId: s.jobId, tab: 'affidavit' } })
+    const clock = lienServeClock(s.serveDue, input.todayYmd)
+    const daysLeft = clock.serveDue ? clock.daysLeft : daysBetween(input.todayYmd, s.serveDue)
+    push({ kind: 'affidavit', key: `serve:${s.jobId}`, jobId: s.jobId, gcId: null, title: input.jobTitle(s.jobId), sub: lienServeRowWords(clock), dueOn: s.serveDue, daysLeft, severity: clock.late || daysLeft <= 1 ? 'red' : 'amber', action: 'record_service', button: office ? BUTTON.record_service : null, target: { open: 'lien_window', jobId: s.jobId, tab: 'affidavit' } })
   }
 
   // ---- § 53.057 retainage ----

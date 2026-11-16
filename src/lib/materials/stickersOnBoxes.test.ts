@@ -60,13 +60,13 @@ describe('the plan, before the press', () => {
     expect(onBoxesPlanLines(onBoxesPlan(run, site), run)).toEqual([
       '4 boxes will be made, G78, G79 and 2 more.',
       '1 is a box on this site already, G80. Its sticker goes on it.',
-      '1 has no blank sticker, G83. Nothing is done for it.',
+      '1 has no reserved sticker, G83. Nothing is done for it.',
     ])
     const two = names('G81-82')
     expect(onBoxesPlanLines(onBoxesPlan(two, site), two)).toEqual(['2 boxes will be made, G81 to G82.'])
     expect(onBoxesPlanLines(onBoxesPlan(['G78'], site), ['G78'])).toEqual(['1 box will be made, G78.'])
     const none = names('G90-92')
-    expect(onBoxesPlanLines(onBoxesPlan(none, site), none)).toEqual(['3 have no blank sticker, G90 to G92. Nothing is done for them.'])
+    expect(onBoxesPlanLines(onBoxesPlan(none, site), none)).toEqual(['3 have no reserved sticker, G90 to G92. Nothing is done for them.'])
     const taken = { boxes: [box('G78'), box('G79')], blankNames: ['G78', 'G79'] }
     expect(onBoxesPlanLines(onBoxesPlan(['G78', 'G79'], taken), ['G78', 'G79'])).toEqual(['2 are boxes on this site already, G78 to G79. Their stickers go on them.'])
   })

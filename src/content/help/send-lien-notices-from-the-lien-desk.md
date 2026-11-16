@@ -57,7 +57,7 @@ The top of the desk has four tabs. **To do** is the work. The other three show t
 
 On a phone the top of the desk is one row. The row holds the way back, the desk's name and {{button:outline|⋯}}. The four tabs sit under it, each as tall as a thumb. On a narrow phone a tab's words wrap onto a second line. The kinds of paper wrap the same way, so neither row of tabs slides sideways.
 
-Press {{button:outline|⋯}} to open **More**. More holds the doors that sit in the top bar on a computer.
+Press {{button:outline|⋯}} to open **More**. More holds the door to the run. It also holds the doors that sit in the top bar on a computer.
 
 - **Print and mail** or **Enter mail numbers**, with its count. It shows while a notice waits. The {{button:outline|⋯}} button wears the same count.
 - **Put a GC on notice…** shows while **Monthly notices** is open.
@@ -175,6 +175,7 @@ The last work was in August. July's notice window closed on Sep 15, and nobody n
 The **By job** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first.
 
 - **GC** turns the list into one GC's book.
+- A blue line like *412 Ridgeline Dr · 7 jobs here ›* opens [every job at that property](/help/see-every-job-at-one-property-on-the-lien-desk).
 - **Show** switches between *Something due* and *All*. Something due holds the next 30 days, plus any closed window nobody noted. All adds the filed liens whose year is running and the dimmed jobs whose lien is gone. When nothing is due, the list offers **Show All ›**.
 - A row opens the job on the pane its next step belongs to. A job the desk does not list yet opens its Lien window.
 - {{button:outline|⎙ Print the grid}} prints counsel's table for the rows shown, one job per row. A blank with a footnote marks a fact the app does not hold yet.
@@ -373,7 +374,7 @@ A bill paid in full by the day is written down by the percent once the money lan
 
 ## Sending the run
 
-Approved notices go out together. The run's pill sits on the desk's title line, right after the four views. It carries the same name as every other door to the run. While any notice is still to print it reads {{button:blue|Print and mail 7}}. The number counts every approved notice not yet recorded as mailed. Once all of them have printed it reads {{button:blue|Enter mail numbers · 4}}. After some are mailed it adds the tally, like *3 of 10 mailed*. A small meter rides on it. Green is what was mailed and recorded this week. Blue is what printed. Grey is what is still to print. When an approved notice has no signature yet, small words beside the pill split the count. They read like *4 to print · 3 for Robert to sign*. The Board's second tile counts the same three under **to sign**.
+Approved notices go out together, in one run. On **To do** the press stands under the Board's tiles, over the notices' column. While any notice is still to print it reads {{button:blue|Print and mail 7 notices}}. It counts the notices that can print now. Once all of them have printed it reads {{button:blue|Enter mail numbers · 4}}. A line under it says how many wait on a signature. On **By paper** the press is on the head of the {{chip:green|Approved · to print}} pile. It is in an approved notice's footer too. **By date** offers the mail numbers on a printed notice. **By job** has no door to the run, so open **To do** to print. On a phone the run is the first row of **More**. The desk's title bar no longer carries a door to the run.
 
 The run opens with a journey across the top. The journey has six steps. The steps are **Built**, **Signed**, **Sent**, **In the mail**, **Recorded** and **Delivered**. Under each step is a count, like *2 of 3*. The step the run is on is blue. A step that blocks the run is amber, and it says why. The fill between the steps runs as far as every envelope has come. On a phone the run fills the screen and the six steps are one line. The line names the step the run is on, like *Step 2 of 6 · Signed*, with its count. Press the line to see all six in two rows of three.
 
@@ -420,6 +421,8 @@ Each card has its own row of steps. The step the envelope is on is blue. A card 
 3. **Record the mailing.** The button names what it will do, like {{button:blue|Record 2 mailings · 1 waits ▸}}. Each row with every envelope numbered is recorded now. Each notice is written to its job with every month it covered. The courtesy emails go out, and the row moves to **Sent**. A notice with a number missing waits in the run until it is typed. A notice marked in red stays too, with its reason and its doors. The ready ones record now.
 
 Nothing moves to Sent without its tracking number. The **Saved copy** boxes under More take a Drive link to the packet as printed.
+
+**Keep what you mailed.** Before you seal an envelope, scan or photograph the papers in it. On that notice's row, press {{button:outline|Add what was mailed}} and pick the file. A PDF or a picture up to 10 MB is taken. The file goes into the job's Drive folder, under **Sent by us**. The row then lists the file. Press its name to open it in Drive. Press {{button:outline|Add another}} for a second file. The press shows once the notice has printed. When you record the mailing, the notice's record keeps the link as its saved copy. So anyone can see later what went out.
 
 A printed notice waits on the desk in {{chip:yellow|Approved · to mail}}. Open it and press {{button:blue|Enter mail numbers · N ▸}} to go back to the run. The journey then shows **Sent** as done and **In the mail** as the step it is on. Under More the print button reads **Print it again**, for a lost copy only. If the notice was never mailed, press {{button:outline|Back to Approved · to print}}. The approval stands.
 
