@@ -9,6 +9,12 @@
  * with the box to open), a sticker on a box of a job the person is not on, a lost one, a name the rule refuses. It
  * needs signal: the press is dead and says so without one, never an outbox press, since two phones may hold the same
  * blank sticker and only the database can say who was first. The words and the order are `lib/materials/stickerPlace.ts`.
+ *
+ * A sticker printed with a name reads it off the tape (design section 10, PR 9, v2.7396; `stickerOpening`). *Sticker
+ * G78 is new* opens on **It is a new box** with G78 filled in, one press. When the site has a G78 already the sheet
+ * opens on that box, picked, with the press that puts the sticker on it, and **It is a different box** opens a new
+ * box on the next letter at the spot, G78B. The number sits small beside the name, and a row's stickers are said only
+ * where they carry news (`stickerMarksWords`).
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { boxNameVerdict, nextFreeName, type SiteBox } from '../../lib/materials/boxName'
@@ -26,6 +32,8 @@ import {
   matchBoxes,
   matchJobOf,
   matchList,
+  matchStickerWords,
+  nameIsHereWords,
   NO_SIGNAL_WORDS,
   NO_STICKER_MARK,
   newBoxPressLabel,
@@ -35,17 +43,21 @@ import {
   placePressLabel,
   READING_SITE_WORDS,
   STICKER_BRANCH_WORDS,
+  STICKER_DIFFERENT_BOX_LABEL,
   STICKER_NEW_ASK,
+  stickerMarksByBoxOf,
   stickerNewTitle,
-  stickerNumbersWords,
+  stickerOpening,
   stickersByBoxOf,
+  twinNoteWords,
   type MatchBox,
   type PlaceOutcome,
   type PlaceRequest,
   type StickerBranch,
+  type StickerMark,
 } from '../../lib/materials/stickerPlace'
 import { fetchStickersOnBoxes, placeSticker } from '../../lib/materials/stickerPlaceIo'
-import { placingVerdict, stickerNumberWords, type StickerFacts } from '../../lib/materials/stickers'
+import { placingVerdict, stickerNameIs, stickerNumberWords, type StickerFacts } from '../../lib/materials/stickers'
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { Sheet } from './OnSiteSheet'
@@ -77,6 +89,8 @@ type Props = {
   siteBoxes: ReadonlyArray<SiteBox>
   /** The stickers on this job's boxes, by box. */
   stickersByBox: ReadonlyMap<string, ReadonlyArray<number>>
+  /** The same stickers with the name printed on each (section 10, PR 9); left out by a caller that has only the numbers. */
+  marksByBox?: ReadonlyMap<string, ReadonlyArray<StickerMark>>
   onClose: () => void
   /** *Change* under the new box's job: the job picker, the sticker kept in hand. */
   onChangeJob: () => void
@@ -92,7 +106,7 @@ type Props = {
   now?: () => string
 }
 
-export default function StickerNewSheet({ sticker, jobId, jobs, containers, lines, places, siteJobIds, siteBoxes, stickersByBox, onClose, onChangeJob, onDone, place = placeSticker, sayLine = sayBoxLine, readSite = fetchSiteMaterials, readStickers = fetchStickersOnBoxes, online = () => typeof navigator === 'undefined' || navigator.onLine !== false, now = () => new Date().toISOString() }: Props) {
+export default function StickerNewSheet({ sticker, jobId, jobs, containers, lines, places, siteJobIds, siteBoxes, stickersByBox, marksByBox, onClose, onChangeJob, onDone, place = placeSticker, sayLine = sayBoxLine, readSite = fetchSiteMaterials, readStickers = fetchStickersOnBoxes, online = () => typeof navigator === 'undefined' || navigator.onLine !== false, now = () => new Date().toISOString() }: Props) {
   const number = stickerNumberWords(sticker.number)
   const job = jobs.find((j) => j.id === jobId) ?? null
   const jobLabel = job ? onSiteJobWords(job) : 'this job'
@@ -100,6 +114,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
   /** The site's other jobs with their boxes: 'reading' while the read runs, null when it failed, the jobs once read. */
   const [others, setOthers] = useState<OnSiteFindJob[] | 'reading' | null>(otherIds.length ? 'reading' : [])
   const [otherStickers, setOtherStickers] = useState<Map<string, number[]>>(new Map())
+  const [otherMarks, setOtherMarks] = useState<Map<string, StickerMark[]>>(new Map())
   useEffect(() => {
     if (otherIds.length === 0) { setOthers([]); return }
     let live = true
@@ -115,6 +130,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
         const stickers = await readStickers(rows.containers.map((c) => c.id)).catch(() => [])
         if (!live) return
         setOtherStickers(stickersByBoxOf(stickers))
+        setOtherMarks(stickerMarksByBoxOf(stickers))
         setOthers(read)
       } catch {
         if (live) setOthers(null)
@@ -129,13 +145,28 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
     for (const [id, nums] of stickersByBox) m.set(id, nums)
     return m
   }, [stickersByBox, otherStickers])
-  const boxes: MatchBox[] = useMemo(() => matchBoxes({ hereJobId: jobId, jobs: [hereJob, ...(Array.isArray(others) ? others : [])], stickersByBox: byBox }), [jobId, hereJob, others, byBox])
-  /** The branch pressed; until a press the sheet opens on whichever fits the boxes as they load (the store's rows land a moment after the sheet mounts). */
+  /** The marks by box, when the tab handed this job's: the site's other jobs' are read beside their numbers. */
+  const marks = useMemo(() => {
+    if (!marksByBox) return undefined
+    const m = new Map<string, ReadonlyArray<StickerMark>>(otherMarks)
+    for (const [id, list] of marksByBox) m.set(id, list)
+    return m
+  }, [marksByBox, otherMarks])
+  const boxes: MatchBox[] = useMemo(() => matchBoxes({ hereJobId: jobId, jobs: [hereJob, ...(Array.isArray(others) ? others : [])], stickersByBox: byBox, marksByBox: marks }), [jobId, hereJob, others, byBox, marks])
+  /** How a named sticker opens the sheet (section 10): on the site's box of its name, or on a new box of that name. */
+  const opening = useMemo(() => stickerOpening(sticker, siteBoxes), [sticker, siteBoxes])
+  const stickerName = sticker.boxName ?? null
+  /** The branch pressed; until a press the sheet opens on what the sticker's name says, or on whichever fits the boxes as they load (the store's rows land a moment after the sheet mounts). */
   const [branchPick, setBranchPick] = useState<StickerBranch | null>(null)
-  const branch: StickerBranch = branchPick ?? defaultBranch(boxes)
+  const branch: StickerBranch = branchPick ?? opening.branch ?? defaultBranch(boxes)
   const setBranch = setBranchPick
-  const [query, setQuery] = useState('')
-  const [pickedId, setPickedId] = useState<string | null>(null)
+  /** The search and the pick as typed and pressed; until then a named sticker's own box is searched for and picked. */
+  const [queryTyped, setQueryTyped] = useState<string | null>(null)
+  const [pickedPress, setPickedPress] = useState<{ id: string | null } | null>(null)
+  const query = queryTyped ?? (opening.pickId && stickerName ? stickerName : '')
+  const pickedId = pickedPress ? pickedPress.id : opening.pickId && boxes.some((b) => b.container.id === opening.pickId) ? opening.pickId : null
+  const setQuery = setQueryTyped
+  const setPickedId = (id: string | null) => setPickedPress({ id })
   const list = useMemo(() => matchList(boxes, query), [boxes, query])
   const picked = pickedId ? boxes.find((b) => b.container.id === pickedId) ?? null : null
 
@@ -144,8 +175,11 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
   const [typed, setTyped] = useState<string | null>(null)
   const [where, setWhere] = useState('')
   const [placeId, setPlaceId] = useState<string | null>(places[0]?.id ?? null)
-  const verdict = boxNameVerdict(typed ?? '', siteBoxes)
-  const shown = typed ?? nextFreeName(siteBoxes) ?? ''
+  // A named sticker's new box opens on the name on its tape; a numbered one's on the site's next free name, as before.
+  const verdict = boxNameVerdict(typed ?? opening.offerName ?? '', siteBoxes)
+  const shown = typed ?? opening.offerName ?? nextFreeName(siteBoxes) ?? ''
+  /** **It is a different box**: a new box on the next letter at the spot, or the site's next free name when no letter is left. */
+  const differentBox = () => { setTyped(opening.twinName); setBranch('new') }
   /** What was typed into **What is in it** (punch list #351, PR 2); null while untouched, when the words typed after the name stand in it. */
   const [lineTyped, setLineTyped] = useState<string | null>(null)
   const newLine = addedLineVerdict(lineTyped, verdict.words)
@@ -176,7 +210,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
     setFailure(null)
     try {
       const answer = await place(request)
-      const outcome = placeOutcome(answer, { jobIds: jobs.map((j) => j.id), boxLabel, number: sticker.number, now: now() })
+      const outcome = placeOutcome(answer, { jobIds: jobs.map((j) => j.id), boxLabel, number: sticker.number, boxName: stickerName, now: now() })
       if (outcome.kind === 'placed' || outcome.kind === 'created' || outcome.kind === 'already') {
         if (request.kind === 'new') rememberBoxKind(request.boxKind)
         // The database made the box, and its line is the box's own press after it (punch list #351): kept and sent
@@ -198,14 +232,14 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
   if (said) {
     const open = said.containerId && said.jobId && jobs.some((j) => j.id === said.jobId)
     return (
-      <Sheet title={stickerNewTitle(sticker.number)} onClose={onClose} footer={open ? <button type="button" style={btnPrimary} onClick={() => onDone(said)} data-testid="sticker-open-box">{openBoxLabel(said.kind === 'taken' ? boxes.find((b) => b.container.id === said.containerId)?.container.label ?? null : null)}</button> : <button type="button" style={{ ...btn, width: '100%' }} onClick={onClose}>Close</button>}>
+      <Sheet title={stickerNewTitle(sticker)} onClose={onClose} footer={open ? <button type="button" style={btnPrimary} onClick={() => onDone(said)} data-testid="sticker-open-box">{openBoxLabel(said.kind === 'taken' ? boxes.find((b) => b.container.id === said.containerId)?.container.label ?? null : null)}</button> : <button type="button" style={{ ...btn, width: '100%' }} onClick={onClose}>Close</button>}>
         <p role="alert" style={{ margin: 0, fontSize: '1.05rem', lineHeight: 1.45 }} data-testid="sticker-said" data-kind={said.kind}>{said.words}</p>
       </Sheet>
     )
   }
 
   return (
-    <Sheet title={stickerNewTitle(sticker.number)} sub={STICKER_NEW_ASK} onClose={onClose} footer={
+    <Sheet title={stickerNewTitle(sticker)} sub={STICKER_NEW_ASK} onClose={onClose} footer={
       <>
         {!hasSignal ? <p role="alert" style={{ margin: 0, color: 'var(--text-amber-800)', fontSize: '0.85rem' }} data-testid="sticker-no-signal">{NO_SIGNAL_WORDS}</p> : null}
         {failure ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="sticker-failure">{failure}</p> : null}
@@ -221,7 +255,15 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
       </>
     }>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
-        <span style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }} data-testid="sticker-number">{number}</span>
+        {stickerName ? (
+          /* The name on the tape, large; its number small beside it, the one thing that still names the sticker after a rename. */
+          <>
+            <span style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1 }} data-testid="sticker-name">{stickerName}</span>
+            <span style={{ ...muted, fontVariantNumeric: 'tabular-nums' }} data-testid="sticker-number">{number}</span>
+          </>
+        ) : (
+          <span style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }} data-testid="sticker-number">{number}</span>
+        )}
         {otherJob.kind === 'other_job' ? <span style={{ ...muted, color: 'var(--text-amber-800)', fontWeight: 600 }} data-testid="sticker-other-job">{otherJob.words}</span> : null}
       </div>
       <div role="group" aria-label={STICKER_NEW_ASK} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.35rem' }}>
@@ -232,17 +274,24 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
 
       {branch === 'known' ? (
         <>
+          {opening.branch === 'known' && stickerName ? (
+            /* The site has a box of the name on the tape: it is picked, and the other answer is one press. */
+            <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.9rem' }} data-testid="sticker-name-here">
+              <span>{nameIsHereWords(stickerName)}</span>
+              <button type="button" style={{ ...btn, minHeight: 40, fontSize: '0.85rem' }} onClick={differentBox} data-testid="sticker-different-box">{STICKER_DIFFERENT_BOX_LABEL}</button>
+            </p>
+          ) : null}
           <input type="search" autoFocus value={query} onChange={(e) => { setQuery(e.target.value); setPickedId(null) }} placeholder="Stencil, place or part" aria-label="Which box" style={input} data-testid="sticker-match-search" />
           <div style={{ display: 'grid', gap: '0.35rem' }} data-testid="sticker-match-list">
             {list.slice(0, MATCH_ROWS_MAX).map((b) => {
               const isPicked = b.container.id === pickedId
-              const nums = stickerNumbersWords(b.stickerNumbers)
+              const nums = matchStickerWords(b)
               return (
                 <button key={b.container.id} type="button" aria-pressed={isPicked} onClick={() => setPickedId(isPicked ? null : b.container.id)} style={{ ...btn, width: '100%', justifyContent: 'flex-start', gap: '0.6rem', fontWeight: 500, textAlign: 'left', padding: '0.5rem 0.75rem', ...(isPicked ? { borderColor: BLUE, boxShadow: `inset 0 0 0 1px ${BLUE}` } : {}) }} data-testid="sticker-match-row">
                   <span style={{ display: 'grid', minWidth: 0, flex: 1 }}>
                     <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '1.15rem', fontWeight: 800 }}>{b.container.label}</span>
-                      {nums ? <span style={muted}>· {nums}</span> : <span style={{ ...muted, color: 'var(--text-amber-800)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{NO_STICKER_MARK}</span>}
+                      {nums ? <span style={muted}>· {nums}</span> : b.stickerNumbers.length === 0 ? <span style={{ ...muted, color: 'var(--text-amber-800)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{NO_STICKER_MARK}</span> : null}
                       {!b.here ? <span style={{ ...muted, fontSize: '0.75rem' }}>{b.jobLabel}</span> : null}
                     </span>
                     <span style={muted}>{boxKindWords(b.container.kind).toLowerCase()} · {b.place || placeName([], null)}{b.container.where ? ` · ${b.container.where}` : ''}{b.partNames.length ? ` · ${b.partNames.length === 1 ? '1 part' : `${b.partNames.length} parts`}` : ''}</span>
@@ -262,9 +311,11 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'end' }}>
             <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>Its name<input type="text" value={shown} onChange={(e) => setTyped(e.target.value)} placeholder="R1" aria-label="Its name" autoCapitalize="characters" autoComplete="off" style={{ ...input, fontSize: '1.4rem', fontWeight: 800, textTransform: 'uppercase' }} data-testid="sticker-new-name" /></label>
-            <span style={{ ...btn, cursor: 'default', borderStyle: 'dashed', fontVariantNumeric: 'tabular-nums' }} title="The sticker on it" data-testid="sticker-beside-name">Sticker {number}</span>
+            {/* A numbered sticker's number sits beside the name. A named one says nothing here unless the box takes another name than its tape reads. */}
+            {!stickerName ? <span style={{ ...btn, cursor: 'default', borderStyle: 'dashed', fontVariantNumeric: 'tabular-nums' }} title="The sticker on it" data-testid="sticker-beside-name">Sticker {number}</span> : null}
           </div>
           <p data-testid="sticker-new-say" role={verdict.ok ? undefined : 'alert'} style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: !verdict.ok ? 'var(--text-red-700)' : verdict.tone === 'wait' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{verdict.say}{wordsNote ? ` ${wordsNote}` : ''}</p>
+          {stickerName && verdict.ok && !stickerNameIs(stickerName, verdict.name) ? <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: 'var(--text-amber-800)' }} data-testid="sticker-twin-note">{twinNoteWords(stickerName, verdict.name)}</p> : null}
           <div style={{ display: 'grid', gap: '0.25rem' }}>
             <span style={{ fontWeight: 600 }}>How it sits</span>
             <div role="group" aria-label="How it sits" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.35rem' }}>

@@ -18,7 +18,10 @@
 # table: read by whoever reads the map, written by nobody signed in, a hash and never a code, gone with its map; it
 # ends with "painted_map_links PASSED". A third, 40_tasks.sql, holds a task's map: whoever reads the task reads the
 # map and nobody else gains anything, a task points only at a map its writer can read, and a map thrown away leaves
-# its task standing; it ends with "task_painted_maps PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker;
+# its task standing; it ends with "task_painted_maps PASSED". A fourth, 50_visits.sql (v2.7411, migration
+# *_painted_map_link_visits), holds who opened a link: read by the office and the map's painter and by nobody else,
+# written by nobody signed in, a point whole or not there, gone with its link and its map; it ends with
+# "painted_map_link_visits PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker;
 # the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -26,7 +29,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55619}"
 NAME="pgtest-painted-maps"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_painted_maps.sql supabase/migrations/*_painted_map_links.sql supabase/migrations/*_task_painted_maps.sql)"
+WRITES="$(ls supabase/migrations/*_painted_maps.sql supabase/migrations/*_painted_map_links.sql supabase/migrations/*_task_painted_maps.sql supabase/migrations/*_painted_map_link_visits.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -55,5 +58,8 @@ if ! grep -q "painted_map_links PASSED" <<<"$out"; then echo "$out" | tail -40; 
 grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/painted_maps/40_tasks.sql 2>&1 || true)"
 if ! grep -q "task_painted_maps PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/painted_maps/50_visits.sql 2>&1 || true)"
+if ! grep -q "painted_map_link_visits PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "painted-maps bed ok"

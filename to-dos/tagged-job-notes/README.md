@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: ready
-status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · building since 2026-11-15 · PR 1 (v2.7384) the kernel · nothing on screen yet
+status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · building since 2026-11-15 · PR 1 (v2.7384) the kernel · PR 2 (v2.7385) the table and functions, pushed to prod and proved 2026-11-15 · nothing on screen yet
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,7 +11,7 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: PR 2, the ground (one migration, the table `jobs_ledger_note_tags` and its six functions, pushed right after the merge). Then the train in order, PR 3 and PR 4 landing close together.
+next: PR 3, the list on the Pipeline row (the picker in `JobActivityView`, typed notes posted through `job_note_post_tagged`). Then PR 4 close behind it, then the push and the second box.
 size: L as a train of six (S · M · M · M · S · S)
 blocker: none; Taunya settled the eight calls on 2026-11-15.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
@@ -300,7 +300,8 @@ New:
 | `jobs_ledger_note_tags` | one row a tag: the note, the job, who is tagged, who tagged, when, when and how it cleared (`answered` with the answering note, or `done`), and when the asker saw that. Cascades with its note. Written only through definer functions, as `bid_mark_requests` is |
 | `job_note_post_tagged` | posts a typed note and its tags in one transaction, refuses a person who cannot read the job's notes, and clears the writer's own waiting tags on that job as answered |
 | `job_note_tags_mine`, `job_note_tags_count`, `job_note_tag_done`, `job_note_tags_seen` | the section's two lists, the header's number (tags that wait on you and answers you have not seen), the No reply needed press, and the mark that the asker saw an answer |
-| `job_note_taggable` | who may be tagged on a job: the notes' read rule asked for a named person. The policy today is written for the signed-in person only, so this is the one hard piece |
+| `job_note_taggable` | who may be tagged on a job. As built, it does not replay the notes' read policy for a named person. It lists the office and the job's master, crew and this week's or last week's dispatch (helpers, superintendent, primary), over the internal `job_note_people` |
+| `job_note_tags_write`, `job_note_caller_sees_test` | two more than planned: the definer half of the post, so the note itself is still inserted under the writer's own policies, and the rule that offers sample and walk-tester logins only to a dev or to another such login |
 | `src/lib/jobs/noteTags.ts` | the kernel: the `@` being typed at the caret, the ranked list, which picked names are still in the words, the age words |
 | `NoteTagPicker.tsx`, `JobsTagsBadge.tsx`, `TaggedJobNotesSection.tsx` | the list, the pill, the section |
 | `notify-note-tag` | the push to the tagged person and to the asker on the answer, through `_shared/pushHoursSend.ts` |
@@ -318,7 +319,9 @@ Six PRs, smallest first. Each cut from fresh `main`, each with its release note 
    call 4 only. **Built: v2.7384.**
 2. **The ground** (M). One migration: the table with the four fence calls, the six functions,
    `SET lock_timeout`. `docs/migrations/`, the types PR after the push. No screen. Needs calls 2
-   and 5.
+   and 5. **Built: v2.7385**, with eight functions and the `job-note-tags` SQL bed. Pushed to
+   prod on 2026-11-15 and proved by a read: the table empty with its fences, each function with
+   its grants.
 3. **The list on the Pipeline row** (M). The picker in `JobActivityView`, the chip and the waiting
    line. The guide starts here. A tag made now is seen by the tagged person on that row only, so
    this PR and the next should land close together.
@@ -333,14 +336,16 @@ Six PRs, smallest first. Each cut from fresh `main`, each with its release note 
 
 ## Left to settle while building
 
-- **A tagged person who loses the job.** A helper's read of a job's notes lapses. The tag should
-  keep that one note readable to them through `job_note_tags_mine`, with the job's name drawn as
-  plain words and not as a link.
-- **Who else sees a tag.** Anyone who can read the note should see the chip, so the row says who
-  it waits on. The tag row's read rule follows the note's.
-- **A person renamed after the note.** The kernel finds a chip by `@` plus the full name, so a
-  renamed person's old notes draw no chip and still read whole. PR 2 decides whether the tag row
-  keeps the name as it was written.
+- **A tagged person who loses the job.** Settled in PR 2: `job_note_tags_mine` hands them the note
+  they were tagged in whatever they can read of the job. PR 4 draws the job's name as plain words
+  and not as a link when the job is closed to them.
+- **Who else sees a tag.** Settled in PR 2: anyone who can read the note reads its tag rows, so
+  the row says who it waits on.
+- **A person renamed after the note.** Settled in PR 2: the tag row keeps `tagged_name`, the name
+  as it was written, and the chip is drawn from that.
+- **An account in training mode.** Settled in PR 2: it is not offered, since it could neither
+  answer nor press No reply needed. PR 4 calls `job_note_tags_seen` only when an unseen answer is
+  on screen, because the training-mode trigger refuses even a write that changes no row.
 - **Live re-read.** The count needs a realtime channel on the tags table, or a read on focus only.
   Focus alone is cheaper and may be enough for a handful of tags a week.
 - **An answer from the row.** A typed note on the job clears the writer's own waiting tags there,

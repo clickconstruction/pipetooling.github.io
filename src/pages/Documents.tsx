@@ -25,6 +25,7 @@ import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/d
 import { canReadSentCopies } from '../lib/sent/sentCopies'
 import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
 import { DocumentsPhotosTab } from '../components/documents/DocumentsPhotosTab'
+import { DocumentsPaintedMapsTab } from '../components/documents/DocumentsPaintedMapsTab'
 import { FindAFile } from '../components/documents/FindAFile'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
@@ -1849,6 +1850,9 @@ export default function Documents() {
         <button type="button" style={pageTabStyle(documentsTab === 'photos')} onClick={() => setDocumentsTab('photos')}>
           Photos
         </button>
+        <button type="button" style={pageTabStyle(documentsTab === 'painted-maps')} onClick={() => setDocumentsTab('painted-maps')}>
+          Painted maps
+        </button>
         {companyTabVisible ? (
           <button type="button" style={pageTabStyle(documentsTab === 'company')} onClick={() => setDocumentsTab('company')}>
             Company
@@ -1881,6 +1885,7 @@ export default function Documents() {
       {documentsTab === 'sent' && sentTabVisible ? <DocumentsSentLedger /> : null}
       {documentsTab === 'where-files-go' && whereFilesGoVisible ? <DocumentsWhereFilesGo /> : null}
       {documentsTab === 'photos' ? <DocumentsPhotosTab /> : null}
+      {documentsTab === 'painted-maps' ? <DocumentsPaintedMapsTab /> : null}
     </div>
   )
 }
