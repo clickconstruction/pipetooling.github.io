@@ -7266,5 +7266,7 @@ button.lienBoardChip:hover, button.lienBoardChip:focus-visible { filter: brightn
 .lienBoardTile { display: grid; gap: 3px; align-content: start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); text-align: left; font: inherit; color: inherit; min-width: 0; }
 button.lienBoardTile { cursor: pointer; }
 button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #2563eb; outline: none; }
+/* On a computer the first tab carries the page's name (v2.7465, the owner's pick: the title is the tab), so the heading leaves the line and stays for a screen reader and the page's outline. Out of the flow, it takes no column gap; the bar's own selector outranks the block margins the bar gives its items. */
+.lienDeskTitleBar > .lienDeskOutlineHeading { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .lienDeskTitleDoor { margin: 0; padding: 0; border: none; background: none; font: inherit; color: inherit; cursor: pointer; border-radius: 4px; text-align: left; }
 .lienDeskTitleDoor:hover, .lienDeskTitleDoor:focus-visible { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; outline: none; }
