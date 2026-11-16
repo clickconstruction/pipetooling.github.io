@@ -43353,6 +43353,10 @@ export type Database = {
       }
       contract_text_setting_keys: { Args: never; Returns: string[] }
       contract_trade_key: { Args: { p_trade: string }; Returns: string }
+      convert_sub_overpayment_to_credit: {
+        Args: { p_amount: number; p_payment_id: string; p_person_id: string }
+        Returns: Json
+      }
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
         Returns: Json
