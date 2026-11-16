@@ -166,7 +166,9 @@ The print is kept on the job. Find it on the job's Documents tab under *Sent fro
 
 ### Several liens filed together
 
-Open the Lien desk's To do. Find a row that reads *Lien filed · not yet served*. Press {{button:outline|Record service}} on it. With two or more filed liens, one window opens for all of them. It is named **Filed liens: copies to mail**. One filed lien alone opens its own Lien window.
+Open the Lien desk's To do. On the Board, find the bin *Filed · copies to mail*. It holds every filed lien whose copies are not mailed yet. Press the bin's own press, like **Mail 12 liens’ copies ›**. The list under the Board has the same press, on one row for all of them. One window opens. It is named **Filed liens: copies to mail**.
+
+One filed lien alone has a row of its own. The row reads *Lien filed · mail its copies by* and the day. Press {{button:outline|Mail the copies}} on it to open that job's Lien window. A row turns red the day before its day. A row past its day says the day the copies were due. Mail them that day and record it.
 
 The top half prints. Its press counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with a blank for its certified mail number. Keep the mail sheet in the office. A lien that cannot print is listed under the press with its reason. Press **Open the Lien window** beside it to fix it.
 

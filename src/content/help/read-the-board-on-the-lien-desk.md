@@ -21,7 +21,7 @@ The fourth tile is the money still unpaid on the desk. Each job counts once.
 
 The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send for Master approval**, **Awaiting Master approval**, *Approved · to print*, *Approved · to mail* and **Sent**. An approved notice stands in *Approved · to print* until its packet prints. Then it stands in *Approved · to mail* until its mail numbers are typed in. The Monthly notices list uses the same two names. A thin grey arrow joins each bin to the next.
 
-The right column is the lien affidavits. Its first two bins are **Needs the property facts** and **Waiting on its notice**. Then come **To send for Master approval**, **Awaiting Master approval**, **Ready to file** and *Filed · Served*.
+The right column is the lien affidavits. Its first two bins are **Needs the property facts** and **Waiting on its notice**. Then come **To send for Master approval**, **Awaiting Master approval** and **Ready to file**. Its last two are *Filed · copies to mail* and *Served*. A filed lien owes a copy of its affidavit to the owner within five days. It stands in *Filed · copies to mail* until the copies are mailed and the day is recorded. Then it stands in *Served*. Its chip there is coloured by the day the copies must be mailed by. That bin has a press of its own, like **Mail 12 liens’ copies ›**. The press opens one window that prints the copies and takes their mail numbers.
 
 **Needs the property facts** holds an affidavit that still needs a fact. The fact is on the property record or on the GC's customer record. **Waiting on its notice** holds an affidavit that needs nothing but its notice. A job with a GC needs a notice mailed and on record before its affidavit can go. An affidavit that needs both a fact and a notice stays in **Needs the property facts**.
 
@@ -65,7 +65,7 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 - A chip in **To send for Master approval** or **Awaiting Master approval** opens that job's paper on **By paper**.
 - A chip in *Approved · to print* or *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
-- A chip in *Filed · Served* opens the job's Lien window.
+- A chip in *Filed · copies to mail* or *Served* opens the job's Lien window.
 
 A paper opened from a chip is a step of its own in the browser. Press Back and the desk returns to To do with the Board in view. The property record and the run open over the Board. Close them and the Board is where it was.
 
