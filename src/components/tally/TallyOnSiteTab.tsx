@@ -14,13 +14,15 @@
  * Since v2.7298 (punch list #329, PR 3) a blank sticker's scan lands here with `&sticker=<code>` and opens the
  * **Sticker is new** sheet (`StickerNewSheet.tsx`); a box's row and its header read its sticker numbers beside the
  * name (*G12 · 0147*, `useJobStickers`), and a line under the boxes counts the job's stickers not yet on a box.
+ * Since v2.7396 (section 10, PR 9) the number recedes: a sticker printed with the box's own name says nothing beside
+ * it, one printed with another name reads *sticker reads G78*, and a scan of that one says so (`stickerMarksWords`).
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sheet } from './OnSiteSheet'
 import StickerNewSheet from './StickerNewSheet'
 import { useJobStickers } from '../../hooks/useJobStickers'
-import { notYetOnBoxLine, stickerNumbersWords, type PlaceOutcome } from '../../lib/materials/stickerPlace'
+import { notYetOnBoxLine, stickerMarksWords, stickerReadsOtherWords, type PlaceOutcome } from '../../lib/materials/stickerPlace'
 import { lostStickerTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../../lib/materials/stickers'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
@@ -155,7 +157,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const siteBoxes: SiteBox[] = jobId ? siteBoxesFor(jobId, siteNames.rows, listContainers(jobId)) : []
   // The job's stickers (punch list #329, PR 3): the numbers beside each box's name, and how many are not yet on a box.
   const jobStickers = useJobStickers(jobId, containers.map((c) => c.id))
-  const stickersOn = (id: string) => stickerNumbersWords(jobStickers.byBox.get(id) ?? [])
+  const stickersOn = (c: { id: string; label: string }) => stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])
   const movements = jobId ? listMovements(jobId) : []
   const places = jobId ? listPlaces(jobId) : []
   const lines = containerLines(movements)
@@ -185,6 +187,9 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     if (!stickerFound || stickerFound === 'looking' || stickerFound.kind === 'blank') return
     setStickerCode(null)
     if (stickerFound.kind === 'box') {
+      // A sticker whose tape reads another name than its box's says so as the box opens (section 10: G78 on a box named G78B).
+      const reads = stickerFound.sticker ? stickerReadsOtherWords(stickerFound.sticker, stickerFound.container.label) : ''
+      if (reads) showToast(reads, 'info')
       if (jobId && stickerFound.container.jobId === jobId) setView({ kind: 'container', id: stickerFound.container.id })
       else { pendingContainerRef.current = stickerFound.container.id; onPickJob(stickerFound.container.jobId) }
       return
@@ -321,6 +326,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       siteJobIds={siteNames.rows.map((r) => r.jobId)}
       siteBoxes={siteBoxes}
       stickersByBox={jobStickers.byBox}
+      marksByBox={jobStickers.marksByBox}
       onClose={() => setStickerCode(null)}
       onChangeJob={() => setSheet({ kind: 'pick-job' })}
       onDone={stickerDone}
@@ -504,7 +510,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                     <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.02em' }}>{c.label}</span>
-                      {stickersOn(c.id) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="on-site-box-stickers">· {stickersOn(c.id)}</span> : null}
+                      {stickersOn(c) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="on-site-box-stickers">· {stickersOn(c)}</span> : null}
                       <span style={{ ...muted, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', fontWeight: 600 }}>{c.kind === 'unsorted' ? 'delivered' : boxKindWords(c.kind).toLowerCase()}</span>
                       {c.where ? <span style={muted}>{c.where}</span> : null}
                     </div>
@@ -589,7 +595,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
       <button type="button" aria-label="Back to the containers" onClick={() => { setSheet(null); setView({ kind: 'containers' }) }} style={{ ...btn, width: TOUCH_MIN, padding: 0, fontSize: '1.25rem' }}>‹</button>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{containerWords(container)}{stickersOn(container.id) ? <span style={{ ...muted, fontWeight: 600, fontSize: '1rem' }} title="The stickers on it" data-testid="on-site-box-header-stickers"> · {stickersOn(container.id)}</span> : null}</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{containerWords(container)}{stickersOn(container) ? <span style={{ ...muted, fontWeight: 600, fontSize: '1rem' }} title="The stickers on it" data-testid="on-site-box-header-stickers"> · {stickersOn(container)}</span> : null}</div>
         <div style={muted}>{container.where ? `${container.where} · ` : ''}{ls.filter((l) => l.onHand > 0).length} parts · <span style={due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : undefined}>{container.kind === 'unsorted' ? 'put them in a cage' : lastCountWords(last, now)}</span></div>
       </div>
       {/* Edit a box (v2.7179): its name, its kind and its where line, from the box's own screen. Never Unsorted, the app's own row. */}

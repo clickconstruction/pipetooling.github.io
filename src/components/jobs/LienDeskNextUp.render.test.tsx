@@ -558,9 +558,9 @@ describe('LienDeskNextUp · a computer’s row in two lines (v2.7372, punch list
 
   it('one press on the head over the rows on track is the door to the batch print; absent, the head has none', () => {
     const onPress = vi.fn()
-    const view = render(<LienDeskNextUp rows={[ready, send]} loading={false} isMobile={false} onAct={() => {}} trackPress={{ button: 'Print 12 affidavits ›', onPress }} />)
+    const view = render(<LienDeskNextUp rows={[ready, send]} loading={false} isMobile={false} onAct={() => {}} trackPress={{ button: 'Print 12 for notarization ›', onPress }} />)
     const press = document.querySelector('[data-lien-next-up-track-press]') as HTMLButtonElement
-    expect(press.textContent).toBe('Print 12 affidavits ›')
+    expect(press.textContent).toBe('Print 12 for notarization ›')
     expect(document.querySelector('[data-lien-next-up-group="now"]')!.contains(press)).toBe(true)
     fireEvent.click(press)
     expect(onPress).toHaveBeenCalledTimes(1)

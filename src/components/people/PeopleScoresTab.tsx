@@ -168,7 +168,7 @@ export function PeopleScoresTab() {
             {/* #360 PR 3: the target is a pricing rule now, set by the owner on the Bid Board beside what difficulty costs. */}
             <div style={{ fontSize: '0.8rem', color: 'var(--text-700)' }} data-testid="scores-target-door">
               {HURDLE_TARGET_WORDS.setOnBoard}{' '}
-              <Link to={HURDLE_TARGET_HREF} style={{ fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}>
+              <Link to={HURDLE_TARGET_HREF} style={{ display: 'inline-block', padding: '13px 0', margin: '-13px 0', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}>
                 {HURDLE_TARGET_WORDS.boardDoor}
               </Link>
             </div>

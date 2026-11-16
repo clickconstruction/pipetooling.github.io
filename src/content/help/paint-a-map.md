@@ -196,6 +196,14 @@ Each row says the map's length, its places, who painted it and when. Press a map
 
 A map there is the map as it is now. It is not a stored copy. A page you printed is kept apart, under **Sent from this job** on the same tab.
 
+### Every map in one list
+
+Open [Documents](/documents?tab=painted-maps) and press the **Painted maps** tab. It lists every painted map you can open, newest first.
+
+Each row says where the map is, what is on it and who painted it. A map on no job says **On no job yet**. Press a map's name to open it.
+
+A long list has a box to find a map. Type part of its name, its job or its words.
+
 ### On other maps
 
 The **Map** page has a chip named {{chip:gray|Painted maps}}. Press it to draw every painted map where it is.

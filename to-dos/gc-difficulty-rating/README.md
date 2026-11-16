@@ -1,8 +1,8 @@
 ---
 name: "GC difficulty rating: the GC is rated once, and the points become cost lines on every new bid to them"
 number: 357
-group: ready
-status: designed 2026-11-14 with the owner on a canvas, the calls settled the same day · building as a train of six, one PR merged, pushed and walked live before the next is cut · PR 1 (the criteria, versioned, and the dev's editor) merged as v2.7275 (#8129), pushed and walked live the same day · PR 2 (the rating on the GC's record, the chips) merged as v2.7279 (#8134), pushed and walked live the same day · PR 3 (Paying read from the bills) merged as v2.7296 (#8150), pushed and walked live 2026-11-15 · PR 4 (the price list and the lines) merged as v2.7301 (#8159), pushed and walked live 2026-11-15 · PR 5 (the master's sheet from a bid, the ask at the end of a job) built as v2.7358 by the session Taunya started on 2026-11-15 · PR 6 (criteria version 2 with the site scale picked on the bid, and *What the rating did*) built as v2.7360, the same session
+group: close
+status: designed 2026-11-14 with the owner on a canvas, the calls settled the same day · building as a train of six, one PR merged, pushed and walked live before the next is cut · PR 1 (the criteria, versioned, and the dev's editor) merged as v2.7275 (#8129), pushed and walked live the same day · PR 2 (the rating on the GC's record, the chips) merged as v2.7279 (#8134), pushed and walked live the same day · PR 3 (Paying read from the bills) merged as v2.7296 (#8150), pushed and walked live 2026-11-15 · PR 4 (the price list and the lines) merged as v2.7301 (#8159), pushed and walked live 2026-11-15 · PR 5 (the master's sheet from a bid, the ask at the end of a job) merged as v2.7358 (#8228), pushed and walked live 2026-11-15 · PR 6 (criteria version 2 with the site scale picked on the bid, and *What the rating did*) merged as v2.7360 (#8244), pushed and walked live 2026-11-15 · all six are live · Taunya asked for a walk at every width before the close: done, its fixes in v2.7397
 mockup: the canvas, five screens — https://claude.ai/artifact/JRUZqLEPwTHHdJNCWFEgVd
 summary: >
   The company loses bids because a master in the field asks the estimator to add twenty or fifty
@@ -12,10 +12,10 @@ summary: >
   the office owns. Paying is read from the GC's bills, never picked. The criteria are the dev's and
   versioned; the price list is the owner's and the controller's and versioned; a rating and a priced
   bid pin to the versions they were made under, so a new version never moves old points or old lines.
-next: PR 5 (v2.7358) and PR 6 (v2.7360) are merged, pushed and walked live one after the other, the ZZ fixture is deleted and named, and the card moves to done.
+next: Taunya looks at the screens herself (the pictures of the viewport walk, or the app on the ZZ test GC). Then the ZZ fixture is deleted and named, and this card is closed. Micah's open calls are listed in the fragments and block nothing.
 size: L as a train of six (M · M · S · L · M · M)
 blocker: none; the owner settled the calls on 2026-11-14 and said build it.
-ver: v2.7275 (PR 1) · v2.7279 (PR 2) · v2.7296 (PR 3) · v2.7301 (PR 4) · v2.7358 (PR 5) · v2.7360 (PR 6)
+ver: v2.7275 (PR 1) · v2.7279 (PR 2) · v2.7296 (PR 3) · v2.7301 (PR 4) · v2.7358 (PR 5) · v2.7360 (PR 6) · v2.7397 (the viewport walk's fixes)
 opinion: build — the owner's calls are settled and every PR stands on its own
 ---
 
@@ -64,6 +64,10 @@ Each PR is merged before the next is cut. After each merge: `supabase db push`, 
 Signed in as the dev on clicktooling.com. Make a `ZZ Test` GC customer and a `ZZ Test` bid to it when none fits, and delete both before the session ends. PR 1: Settings → Difficulty criteria shows version 1 with the three scales, a draft can be edited and published as version 2, the preview draws the GC card from the draft, and version 1 reads unchanged afterwards. The later rows add their own recipe as they land.
 
 ## Where it stands
+
+**2026-11-15, the end of the train.** All six PRs are merged, pushed and walked live; each fragment has its *Checked live*. Taunya then asked for everything to be walked at every width: five widths, light and dark, measured and pictured, written up in `docs/recent-features/v2.7397.md` with what was fixed and what was seen and left.
+
+**The ZZ fixture as it stands, kept until Taunya has had her own look** (all on the GC *ZZ Test Walk 2026-11-08*): 3 `gc_difficulty_ratings` rows (the newest 5 points); the `bid_difficulty` pin on BP605 with its four difficulty lines; 1 `bid_difficulty_picks` row (the site, 2 points); no `gc_difficulty_asks` row; the job #1113 at Ready to Bill (it was Working), so its ask is open; BP605's counts, hours and prices from the earlier walks. Already deleted during the viewport walk, to reopen the ask: 1 `gc_difficulty_asks` row (the answered ask) and 1 `gc_difficulty_ratings` row (the rating that answered it). The customer, the bid and the job were on prod before this train and stay.
 
 PR 1 (v2.7275), PR 2 (v2.7279), PR 3 (v2.7296) and PR 4 (v2.7301) are merged, pushed and walked live; the types are regenerated through PR 4 (#8193). The session that built them stopped here on 2026-11-15 at the owner's word; a new session builds PR 5 and PR 6 from this card, the same way: one PR at a time, cut from `main`, merged, pushed (`bash scripts/db-push.sh` from a checkout at `origin/main`, then a `chore(types)` PR) and walked live on clicktooling.com as the dev against the ZZ fixture before the next is cut, each fragment ending with *Is this the best we can do?* and *Checked live*. Questions that need the owner's word go to Micah in a batch; the work goes on with what does not depend on them.
 

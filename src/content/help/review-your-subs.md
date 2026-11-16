@@ -2,7 +2,7 @@
 title: review your subs in one place
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: subs, subcontractor, ledger, statement, payments, balance, compliance, coi, w9, agreement, work orders, track record, general conditions, sheet work order, multiple subs, teammates, crew sheet, counted twice, double count, what we owe, sheets behind the balance, bonus, team sub labor, export, search, sort
+keywords: subs, subcontractor, ledger, statement, payments, balance, compliance, coi, w9, agreement, work orders, track record, general conditions, sheet work order, multiple subs, teammates, crew sheet, counted twice, double count, take teammates off, clean up names, what we owe, sheets behind the balance, bonus, team sub labor, export, search, sort
 order: 80
 ---
 People → Subs shows one row per subcontractor, an outside crew you hire. The row shows their work, what you owe them, whether their paperwork is current, and how they have performed.
@@ -83,6 +83,18 @@ The panel shows **#892** assigned to "MIke Rodrigez" with $1,240 open → tap {{
 :::
 
 The panel shows the three biggest balances first. **Show all N sheets** expands the rest. It disappears entirely once every sheet is linked.
+
+## Take teammates off a sub's sheet
+
+An older sheet may name a teammate beside the sub. The names came from the job's team when the sheet was made. The teammate is not paid from the sheet.
+
+A line under the roster counts these sheets. Press **Take the teammates off…** to open the list.
+
+- Each sheet shows who keeps it and who comes off. Every ready sheet starts ticked.
+- A sheet that needs a look first is held with its reason. A hold never stops the rest.
+- The press says its count, like {{button:blue|Take teammates off 8 sheets}}.
+
+No amount, payment or date changes. One thing does move. People → Review and the Team Summary split a sheet's cost evenly between its names. After the press, each sheet's whole cost is its sub's.
 
 ## Sheet work orders and General Conditions
 

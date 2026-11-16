@@ -19,6 +19,8 @@ export type LaborJobPayment = {
   /** v2.7237: when this payment was ticked against the bank, and by whom. Null is not checked. */
   checked_at?: string | null
   checked_by_name?: string | null
+  /** The office hid this memo from the sub (the Record payment window's tick). A paper leaves it off. */
+  hidden_from_sub?: boolean
 }
 
 /** v2.7235: one sending to record. `lines` are the sheets it pays, `credit` what is kept past them. */
