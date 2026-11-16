@@ -1499,7 +1499,9 @@ describe('LienDesk · an open paper on a phone (punch list #352, PR 6)', () => {
     expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBeNull()
     expect(document.querySelector('[data-lien-desk-pane]')!.getAttribute('data-lien-pane-phone')).toBeNull()
     expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
-    const wideHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    // The footer's blue head (v2.7422) is a computer's alone and pins at the bottom only, so it is not one of the stacked ones.
+    expect(document.querySelectorAll('[data-lien-pane-head][data-tone="blue"]').length).toBe(1)
+    const wideHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]:not([data-tone])')]
     expect(wideHeads.length).toBeGreaterThan(1)
     expect(wideHeads.map((h) => parseFloat(h.style.top))).toEqual(wideHeads.map((_, i) => i * 24))
     expect(wideHeads.every((h) => h.style.height === '24px')).toBe(true)
@@ -2971,7 +2973,35 @@ describe('LienDesk · the footer is the pane’s own bottom bar (the owner’s a
     return d
   }
 
-  for (const kind of ['notice', 'affidavit', 'retainage'] as const) {
+  it('on a computer the notice footer is the pane’s last section, under the one blue head (v2.7422, Taunya’s ask of 2026-11-15)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind="notice" initialJobId="j650" />)
+    await waitFor(() => expect(document.querySelector('[data-lien-desk-footer="notice"]')).not.toBeNull())
+    const strip = document.querySelector<HTMLElement>('[data-lien-desk-footer="notice"]')!
+    const pane = document.querySelector<HTMLElement>('[data-lien-desk-pane]')!
+    // The footer scrolls with the paper: it is in the pane, in the section the blue head names.
+    expect(pane.contains(strip)).toBe(true)
+    const body = strip.closest<HTMLElement>('[data-lien-pane-body="sign"]')!
+    expect(body).not.toBeNull()
+    expect(body.parentElement).toBe(pane)
+    const head = pane.querySelector<HTMLElement>('[data-lien-pane-head="sign"]')!
+    expect(head.getAttribute('data-tone')).toBe('blue')
+    expect(head.nextElementSibling).toBe(body)
+    expect(head.textContent).toBe('Sign and sendNot signed yet')
+    // It is the last head, after every page, and the only blue one.
+    const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(heads[heads.length - 1]).toBe(head)
+    expect(pane.querySelectorAll('[data-lien-pane-head][data-tone="blue"]').length).toBe(1)
+    const labels = [...pane.querySelectorAll<HTMLElement>('[data-lien-desk-page-label]')]
+    expect(labels.length).toBeGreaterThan(0)
+    for (const l of labels) expect(l.compareDocumentPosition(head) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Nothing is pinned under the pane, and the list still has nothing below it.
+    const column = pane.closest<HTMLElement>('[data-lien-desk-pane-column]')!
+    expect(column.lastElementChild).toBe(pane)
+    expect(column.parentElement!.parentElement!.querySelector(':scope > [data-lien-desk-footer]')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+  })
+
+  for (const kind of ['affidavit', 'retainage'] as const) {
     it(`on a computer the ${kind} footer sits inside the pane column, not under the list, and the list has nothing below it`, async () => {
       renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind={kind} initialJobId="j650" />)
       await waitFor(() => expect(document.querySelector(`[data-lien-desk-footer="${kind}"]`)).not.toBeNull())
@@ -3633,17 +3663,19 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     await settle()
     const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
-    expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'houses', 'months', 'envelope'])
-    expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this notice is', 'The four gates', 'Supply houses', 'Months on this job', 'In the envelope'])
+    expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'houses', 'months', 'envelope', 'sign'])
+    expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this notice is', 'The four gates', 'Supply houses', 'Months on this job', 'In the envelope', 'Sign and send'])
     expect(heads[1]!.textContent).toContain('✓ Ready to go out · All 4 clear')
     expect(heads[2]!.textContent).toBe('Supply houses1 house owed · $9,612 · from our books · Sep 14')
     expect(heads[3]!.textContent).toBe('Months on this jobJun + Jul + Aug · $33,500')
     expect(heads[4]!.textContent).toBe('In the envelope2 pages · owner + GC · courtesy PDF to the GC')
     // Stacked: passed heads at the top, coming ones at the bottom; the first is lit at the top of the pane.
     // 24 px a head since v2.7323 (30 before): the owner's ask that the bars sit closer with the words as they are.
-    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '96px'], ['24px', '72px'], ['48px', '48px'], ['72px', '24px'], ['96px', '0px']])
+    // The footer's head (v2.7422) is the last: the coming heads stack over it at the bottom, and it takes no place at the top.
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '120px'], ['24px', '96px'], ['48px', '72px'], ['72px', '48px'], ['96px', '24px'], ['auto', '0px']])
     expect(heads.every((h) => h.style.height === '24px')).toBe(true)
-    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no', 'no'])
+    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no', 'no', 'no'])
+    expect(heads.map((h) => h.getAttribute('data-tone'))).toEqual([null, null, null, null, null, 'blue'])
     // Every head sits before its section, as a sibling in the pane's grid.
     for (const key of ['path', 'gates', 'houses', 'months', 'envelope']) {
       const head = document.querySelector(`[data-lien-pane-head="${key}"]`)!
@@ -3859,7 +3891,8 @@ describe('LienDesk — the page labels stick (v2.4726)', () => {
     expect(labels.length).toBeGreaterThanOrEqual(2)
     // Stacked like the pile titles, under the pane's section heads (v2.4733: four on this job, which bought from no house) — the i-th label sits
     // heads + i bars from the top once passed; it does not stack at the foot, where the envelope head already names the pages.
-    const headCount = document.querySelectorAll('[data-lien-pane-head]').length
+    // The footer's blue head (v2.7422) pins at the pane's bottom and never over a page, so the labels do not count it.
+    const headCount = document.querySelectorAll('[data-lien-pane-head]:not([data-tone])').length
     expect(headCount).toBe(4)
     // 24 px a bar since v2.7323 (30 before), the same number as the pane's heads over them.
     expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${(headCount + i) * 24}px`))

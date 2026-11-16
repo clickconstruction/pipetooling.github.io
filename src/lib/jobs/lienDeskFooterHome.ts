@@ -6,6 +6,10 @@
  * bottom to a bar about one job. Now the strip is the pane's own bottom bar: the pane column holds the pane,
  * which scrolls, over the footer, which is pinned, and the list runs to the desk's bottom edge beside them.
  *
+ * A monthly notice's footer left that bottom bar in v2.7422 (Taunya's ask of 2026-11-15): on a computer it is the
+ * pane's last section, under a blue head, so the paper has the whole pane and the reader goes through it to sign
+ * (`lienNoticeFootHead` in `lienPaneSections.ts`). The affidavit's and the retainage notice's footers are still the bar.
+ *
  * On a phone (one column) nothing moves: the strip stays the desk's, under the fold bar that folds it away
  * (punch list #352, PR 6), whose sibling rule needs the footer right after it.
  */
