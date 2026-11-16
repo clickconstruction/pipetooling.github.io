@@ -4619,6 +4619,57 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienFootLink:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; border-radius: 4px; }
 .lienFootLink:disabled { cursor: default; opacity: 0.55; text-decoration: none; }
 .lienFootRed { font-size: 0.78rem; color: var(--text-red-600); min-width: 0; }
+/* Lien desk → the leader's footer as one box (v2.7382, Taunya's ask): the paper on the left, the call and the one press beside
+   it with the code, the other ways out as a quiet strip. The box reads its own width, not the window's: one column on a
+   narrow pane, the press beside the code from 380px, the call as a title line over paper and press from 580px, three across
+   from 962px. It stops growing at 1112px so the parts stay together on a wide monitor. */
+.lienSignFrameWrap { container-type: inline-size; container-name: lien-sign-frame; min-width: 0; margin-top: 0.45rem; }
+.lienSignFrame { position: relative; border: 2px dashed #2563eb; border-radius: 8px; background: var(--bg-blue-tint); padding: 14px 14px 0; max-width: 1112px; }
+.lienSignFrame:not(:has(.lienSignFrameStrip)) { padding-bottom: 12px; }
+.lienSignFrameTag { position: absolute; top: -0.85em; left: 0.6em; background: #2563eb; color: #ffffff; font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 0.1em 0.65em; white-space: nowrap; }
+.lienSignFrameGrid { display: grid; gap: 10px 20px; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'call' 'paper' 'act'; }
+.lienSignFrameCall { grid-area: call; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; line-height: 1.3; }
+.lienSignFrameCallTitle { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); text-wrap: balance; }
+.lienSignFrameCallNote { font-size: 0.78rem; color: var(--text-muted); }
+.lienSignFrameCallNote .lienFootWhy { font-size: inherit; }
+.lienSignFramePaperCol { grid-area: paper; display: flex; flex-direction: column; min-width: 0; max-width: 470px; }
+.lienSignFramePaper { position: relative; flex: 1 1 auto; min-height: 58px; display: flex; flex-direction: column; justify-content: flex-end; border-radius: 6px 6px 0 0; overflow: hidden; }
+.lienSignFrameName { padding: 0 0 1px 18px; font-size: 2.3em; line-height: 1.05; color: #9aa3ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lienSignFramePadWords { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 1em; color: #767f8d; font-size: 0.8125rem; text-align: center; pointer-events: none; }
+.lienSignFrameCorner { position: absolute; top: 4px; right: 9px; display: flex; gap: 0.9rem; }
+.lienSignFrameCorner button { border: none; background: none; padding: 0; font: inherit; font-size: 0.75rem; font-weight: 600; line-height: 1.3; color: #2563eb; cursor: pointer; white-space: nowrap; }
+.lienSignFrameCorner button:hover, .lienSignFrameCorner button:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.lienSignFrameCorner button:disabled { cursor: default; opacity: 0.55; text-decoration: none; }
+.lienSignFrameUnder { border-top: 1.5px solid var(--text-base); padding-top: 4px; font-size: 0.8125rem; line-height: 1.35; }
+.lienSignFrameAct { grid-area: act; min-width: 0; max-width: 470px; display: grid; gap: 6px; align-content: center; }
+.lienSignFrameActRow { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.lienSignFrameCode { flex: 0 0 auto; display: flex; flex-direction: row; align-items: center; gap: 10px; font-size: 0.8125rem; line-height: 1.2; color: var(--text-700); }
+.lienSignFrameCode input { font: inherit; font-size: 1.05rem; letter-spacing: 0.25em; width: 6.2em; height: 36px; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-base); }
+.lienSignFramePress { flex: 1 1 auto; min-height: 44px; padding: 0 16px; border: 1px solid transparent; border-radius: 7px; background: #166534; color: #ffffff; font: inherit; font-size: 1rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.lienSignFramePress:disabled { cursor: default; opacity: 0.55; }
+.lienSignFramePress:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; }
+.lienSignFrameHint { font-size: 0.78rem; line-height: 1.35; color: var(--text-muted); }
+.lienSignFrameStrip { margin: 12px -14px 0; padding: 5px 14px 6px; border-top: 1px solid color-mix(in srgb, #2563eb 45%, transparent); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 18px; font-size: 0.8125rem; }
+.lienSignFrameStrip .lienFootLink { padding-left: 0; padding-right: 0; }
+.lienSignFrameLead { color: var(--text-muted); }
+.lienSignFramePush { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 18px; }
+@container lien-sign-frame (min-width: 380px) {
+  .lienSignFrameActRow { flex-direction: row; align-items: flex-end; gap: 12px; }
+  .lienSignFrameCode { flex-direction: column; align-items: flex-start; gap: 3px; font-size: 0.75rem; }
+  .lienSignFramePress { min-height: 0; height: 36px; font-size: 0.875rem; }
+}
+@container lien-sign-frame (min-width: 580px) {
+  .lienSignFrameGrid { grid-template-columns: minmax(0, 1fr) 320px; grid-template-areas: 'call call' 'paper act'; }
+  .lienSignFramePaperCol { max-width: none; }
+  .lienSignFramePush { flex: 0 1 auto; margin-left: auto; justify-content: flex-start; }
+}
+@container lien-sign-frame (min-width: 962px) {
+  /* A flex row here, so the call keeps its one line and the paper is what gives way. */
+  .lienSignFrameGrid { display: flex; align-items: stretch; gap: 20px; }
+  .lienSignFramePaperCol { order: 1; flex: 1 1 220px; max-width: 370px; }
+  .lienSignFrameCall { order: 2; flex: 0 0 auto; max-width: 26rem; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; align-self: center; gap: 1px; }
+  .lienSignFrameAct { order: 3; flex: 1 1 320px; max-width: 376px; }
+}
 @media (max-width: 640px) { .lienFootChip { white-space: normal; } }
 @media (max-width: 640px) {
   .lienFootState { flex: 1 1 100%; }

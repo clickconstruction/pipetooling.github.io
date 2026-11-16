@@ -1291,6 +1291,12 @@ describe('LienDesk', () => {
     // footer's bottom row and the box opens above that row only once it is on.
     expect(screen.queryByTestId('lien-offer-box')).toBeNull()
     expect(screen.getByTestId('lien-offer-switch').closest('[data-lien-desk-next]')).toBeTruthy()
+    // v2.7382 (Taunya's ask): the footer is one box. The call, the press and the other ways out sit inside the signature's box.
+    const box = screen.getByTestId('lien-sign-line')
+    expect(box.hasAttribute('data-lien-sign-frame')).toBe(true)
+    expect((box.querySelector('.lienSignFrameCall') as HTMLElement).textContent).toContain('Your call on')
+    expect(box.contains(screen.getByRole('button', { name: /Sign and approve & next/ }))).toBe(true)
+    expect((box.querySelector('.lienSignFrameStrip') as HTMLElement).textContent).toBe("Not yetHold — they promised…Hold — I'll call firstBack to the officeOffer a discountAlready mailed? Record it ›")
     fireEvent.click(screen.getByTestId('lien-offer-switch'))
     expect(screen.getByTestId('lien-offer-box').closest('[data-lien-desk-next]')).toBeNull()
     expect(screen.getByTestId('lien-offer-box').getAttribute('data-on')).toBe('yes')
