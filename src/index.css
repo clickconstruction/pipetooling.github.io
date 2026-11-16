@@ -4641,11 +4641,11 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienSignFrameCorner button:hover, .lienSignFrameCorner button:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
 .lienSignFrameCorner button:disabled { cursor: default; opacity: 0.55; text-decoration: none; }
 .lienSignFrameUnder { border-top: 1.5px solid var(--text-base); padding-top: 4px; font-size: 0.8125rem; line-height: 1.35; }
-.lienSignFrameAct { grid-area: act; min-width: 0; max-width: 470px; display: grid; gap: 6px; align-content: center; }
+.lienSignFrameAct { grid-area: act; min-width: 0; max-width: 470px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; align-content: center; }
 .lienSignFrameActRow { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .lienSignFrameCode { flex: 0 0 auto; display: flex; flex-direction: row; align-items: center; gap: 10px; font-size: 0.8125rem; line-height: 1.2; color: var(--text-700); }
 .lienSignFrameCode input { font: inherit; font-size: 1.05rem; letter-spacing: 0.25em; width: 6.2em; height: 36px; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-base); }
-.lienSignFramePress { flex: 1 1 auto; min-height: 44px; padding: 0 16px; border: 1px solid transparent; border-radius: 7px; background: #166534; color: #ffffff; font: inherit; font-size: 1rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.lienSignFramePress { flex: 1 1 auto; min-height: 44px; padding: 4px 10px; border: 1px solid transparent; border-radius: 7px; background: #166534; color: #ffffff; font: inherit; font-size: 1rem; font-weight: 600; line-height: 1.2; cursor: pointer; }
 .lienSignFramePress:disabled { cursor: default; opacity: 0.55; }
 .lienSignFramePress:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; }
 .lienSignFrameHint { font-size: 0.78rem; line-height: 1.35; color: var(--text-muted); }
@@ -4656,7 +4656,7 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 @container lien-sign-frame (min-width: 380px) {
   .lienSignFrameActRow { flex-direction: row; align-items: flex-end; gap: 12px; }
   .lienSignFrameCode { flex-direction: column; align-items: flex-start; gap: 3px; font-size: 0.75rem; }
-  .lienSignFramePress { min-height: 0; height: 36px; font-size: 0.875rem; }
+  .lienSignFramePress { min-height: 0; height: 36px; padding: 0 16px; font-size: 0.875rem; white-space: nowrap; }
 }
 @container lien-sign-frame (min-width: 580px) {
   .lienSignFrameGrid { grid-template-columns: minmax(0, 1fr) 320px; grid-template-areas: 'call call' 'paper act'; }
