@@ -1,3 +1,4 @@
+import { openAmount } from '../materials/payments/supplyPayment'
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -35,17 +36,18 @@ export const moveWindowFillInIo: MoveWindowFillInIo = {
   async fetchSources() {
     const todayYmd = todayYmdInAppTz()
     const nowMs = Date.now()
-    const invoices = ((await withSupabaseRetry(
+    // An unpaid charge counts for what is left on it (v2.7450 amount_paid).
+    const invoices = (((await withSupabaseRetry(
       async () =>
         supabase
           .from('supply_house_invoices')
-          .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, due_date, on_job_account')
+          .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, amount_paid, due_date, on_job_account')
           .eq('is_paid', false)
           .gt('amount', 0)
           .gte('due_date', todayYmd)
           .not('on_job_account', 'is', true),
       'fill in: move window charges',
-    )) ?? []) as MoveWindowInvoiceSource[]
+    )) ?? []) as (MoveWindowInvoiceSource & { amount_paid: number | null })[]).map(({ amount_paid, ...row }) => ({ ...row, amount: openAmount({ amount: Number(row.amount ?? 0), amount_paid }) }))
     const ids = invoices.map((i) => i.id)
     if (ids.length === 0) return { invoices, allocations: [], accounts: [], asks: [], reps: [], houses: [], jobs: [], todayYmd, nowMs }
     const allocations = await inChunks(ids, async (chunk) => ((await withSupabaseRetry(async () => supabase.from('supply_house_invoice_job_allocations').select('invoice_id, job_id').in('invoice_id', chunk), 'fill in: move window allocations')) ?? []) as MoveWindowAllocationSource[])
