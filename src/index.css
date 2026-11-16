@@ -4206,6 +4206,13 @@ body.my-time-boundary-dragging {
 .lienGateRowBody .lienGateFactValue { font-size: 0.9rem; font-weight: 700; color: var(--text-strong); min-width: 0; }
 .lienGateRowMeta { font-size: 0.75rem; color: var(--text-muted); }
 .lienGatesFold { display: flex; justify-content: flex-end; }
+/* Under an open row the press tucks right beneath the row's words (v2.7423): the row gives up its bottom padding and the
+   press takes back half the box's gap. 4px stay between them, the room the row's bring-up ring needs. Only in the wide
+   box: stacked under 560px the last thing above the press can be a folded gate's cell, which keeps the whole gap. */
+@container lien-gates (min-width: 561px) {
+  .lienGatesFold[data-under-row='yes'] { margin-top: -0.25rem; }
+  .lienGatesGrid:has(+ .lienGatesFold[data-under-row='yes']) > .lienGateDetail:last-of-type { padding-bottom: 0; }
+}
 .lienGatesFoldBtn { background: none; border: none; padding: 0; font: inherit; font-size: 0.78rem; font-weight: 700; color: var(--text-link); cursor: pointer; }
 .lienGatesFoldBtn:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; border-radius: 3px; }
 .lienGateDetail[data-active='yes'] { animation: lienGateBringUp 4s ease-out both; }

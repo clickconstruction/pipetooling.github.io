@@ -14,6 +14,9 @@ import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 export type LienGateKey = 'owner' | 'gc' | 'kind' | 'months' | 'billed'
 export type LienGateTone = 'ok' | 'blocker' | 'check'
 
+/** The gate box's fold press, closed and open (v2.7423, Taunya's words of 2026-11-15: *details can become "more details"*). */
+export const LIEN_GATES_FOLD_WORDS = { open: 'More details ∨', close: 'Fewer details ∧' } as const
+
 export interface LienGate {
   n: 1 | 2 | 3 | 4 | 5
   key: LienGateKey
@@ -142,7 +145,7 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
  * The gates folded to one line on a sent notice with nothing due (v2.6625, punch list #248 face two, the owner's rule A):
  * the paper went, so no verdict judges it — the day it went, then the owner, the GC, the kind and the months the notice
  * named, each in plain words with no tone (a missing owner reads *not on file*, not a blocker). `rows` are the same four
- * as rows for *Details ∨*. A Sent row with months still due keeps the four gates on the next notice instead.
+ * as rows for *More details ∨*. A Sent row with months still due keeps the four gates on the next notice instead.
  */
 export type LienSentGatesFold = {
   /** "Oct 14" — the day the notice went, for the pane's head and the strip. */
