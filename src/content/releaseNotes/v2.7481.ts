@@ -9,7 +9,7 @@ const note: ReleaseNote = {
     'In the run window, a row’s Printed tick is now a press. It asks first, then puts that one notice back in Approved · to print.',
     'Right after you press Printed ▸ on a row, a line offers Undo the Printed mark, for a press made by mistake.',
     'The approval stands, and a copy that printed stays in the job’s Documents. A number typed on that row and not recorded is dropped.',
-    'Take back… under More still takes back every printed notice in the run.',
+    'A signed notice loses its signature when it goes back, and the window says so first. The leader signs it again before it prints.',
   ],
 }
 

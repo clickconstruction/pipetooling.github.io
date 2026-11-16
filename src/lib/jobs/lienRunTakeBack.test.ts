@@ -97,6 +97,13 @@ describe('un-print one notice from its own row (v2.7481)', () => {
       'The other notices in this run stay as they are.',
     ])
     expect(runTakeBackOneConfirm({ jobNumber: '372', printedAt: null, typed: 1 }).lines).toContain('The tracking number typed on this row is not saved.')
+    // A signed notice: the signature comes off, said second, in the run's own words.
+    expect(runTakeBackOneConfirm({ jobNumber: '372', printedAt: null, typed: 0, signed: true }).lines).toEqual([
+      'The notice goes back to Approved · to print. The approval stands.',
+      'Its signature comes off. The leader signs it again before it prints.',
+      'A copy that printed here stays in the job’s Documents, filed as printed.',
+      'The other notices in this run stay as they are.',
+    ])
     // A row with no job number still reads as a sentence.
     expect(runTakeBackOneConfirm({ jobNumber: ' ', printedAt: null, typed: 0 }).button).toBe('Put this notice back in Approved · to print')
   })
@@ -105,6 +112,9 @@ describe('un-print one notice from its own row (v2.7481)', () => {
     expect(runTakenBackOneWords('372')).toBe('Taken back. 372 is in Approved · to print again. Its approval stands.')
     expect(runMarkedPrintedWords(1, '372')).toEqual({ words: '372 is marked printed. Pressed it by mistake?', button: 'Undo the Printed mark' })
     expect(runMarkedPrintedWords(1, null).words).toBe('The notice is marked printed. Pressed it by mistake?')
+    // A signed row: the strip after says who is next, and the undo's press says it asks first.
+    expect(runTakenBackOneWords('372', true)).toBe('Taken back. 372 is in Approved · to print again. The leader signs it again. Then print the packet.')
+    expect(runMarkedPrintedWords(1, '372', { asks: true }).button).toBe('Undo the Printed mark…')
     expect(runMarkedPrintedWords(13)).toEqual({ words: '13 notices are marked printed. Pressed it by mistake?', button: 'Undo 13 Printed marks' })
   })
 
