@@ -53,14 +53,16 @@ describe('the answer on the property record', () => {
 
   it('stands off the path, asking, private or clear', () => {
     expect(lienPublicStanding({ ...CITY, lien_public_answer: 'public' })).toBe('off_path')
-    expect(lienPublicStanding(CITY)).toBe('asks')
+    expect(lienPublicStanding({ ...CITY, lien_public_answer: null })).toBe('asks')
+    // A row read before the migration is pushed cannot be answered, so it does not ask.
+    expect(lienPublicStanding(CITY)).toBe('clear')
     expect(lienPublicStanding({ ...CITY, lien_public_answer: 'private' })).toBe('private')
     expect(lienPublicStanding(PRIVATE)).toBe('clear')
     expect(lienPublicStanding(null)).toBe('clear')
   })
 
   it('every job at a public property is off the path, by its property and no flag of its own', () => {
-    const properties = { a1: { ...CITY, lien_public_answer: 'public' }, a2: CITY, a3: PRIVATE, a4: { ...CITY, lien_public_answer: 'private' } }
+    const properties = { a1: { ...CITY, lien_public_answer: 'public' }, a2: { ...CITY, lien_public_answer: null }, a3: PRIVATE, a4: { ...CITY, lien_public_answer: 'private' } }
     const jobs = [
       { id: 'j1', customer_address_id: 'a1' },
       { id: 'j2', customer_address_id: 'a1' },

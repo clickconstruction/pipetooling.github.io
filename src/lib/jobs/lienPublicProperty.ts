@@ -59,7 +59,10 @@ export function lienPublicStanding(record: LienPublicRecord | null | undefined):
   const answer = lienPublicAnswerOf(record)
   if (answer === 'public') return 'off_path'
   if (answer === 'private') return 'private'
-  return record && lienOwnerNamesReadPublic([record.owner_name, record.owner_company]) ? 'asks' : 'clear'
+  // A record read before the answer's column exists cannot be answered yet (migration 20261116221500), so it does not
+  // ask: no question, no mark and no line until the push. Its papers keep holding on the name guess, as before.
+  if (!record || record.lien_public_answer === undefined) return 'clear'
+  return lienOwnerNamesReadPublic([record.owner_name, record.owner_company]) ? 'asks' : 'clear'
 }
 
 type JobAtAddress = { id: string; customer_address_id?: string | null }

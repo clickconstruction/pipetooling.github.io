@@ -10,7 +10,7 @@ import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { confirmOwnerForProperty, stampOwnerConfirmed } from '../../lib/jobs/ownerConfirmWrite'
 import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
 import { lienOwnerIsPublic } from '../../lib/jobs/lienDeskAffidavits'
-import { lienPublicAnswerOf, type LienPublicRecord } from '../../lib/jobs/lienPublicProperty'
+import { lienPublicAnswerOf, lienPublicStanding, type LienPublicRecord } from '../../lib/jobs/lienPublicProperty'
 import LienPublicQuestion from './LienPublicQuestion'
 import type { CustomerAddressRow, LienPropertyOwner } from '../../lib/jobs/lienProperty'
 import type { LienDeskJob } from '../../hooks/useLienDeskData'
@@ -101,8 +101,9 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
     // name on the record is asked, as gate 1 asks them.
     const publicAnswer = lienPublicAnswerOf(address as LienPublicRecord | null)
     const isPublic = lienOwnerIsPublic([ownerName, owner.ownerName, owner.ownerCompany], publicAnswer)
-    // With a property record to answer on, the record asks once, for every job at the address.
-    const asks = isPublic && !publicAnswer && Boolean(address?.id)
+    // With a property record to answer on, the record asks once, for every job at the address: once the record carries
+    // the answer's column, so nothing is asked before the migration is pushed.
+    const asks = isPublic && lienPublicStanding(address as LienPublicRecord | null) === 'asks' && Boolean(address?.id)
     const unconfirmed = owner.source === 'property_record' && ownerFromRollUnconfirmed(address)
     if (!isPublic && !unconfirmed) return null
     const county = (address?.county ?? '').trim()

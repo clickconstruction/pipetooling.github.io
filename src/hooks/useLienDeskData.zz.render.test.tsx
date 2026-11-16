@@ -225,10 +225,17 @@ describe('useLienDeskData · a public property’s jobs leave the lien path at t
   })
 
   it('unanswered: the jobs stay on the lien path, the affidavit holds on the name as before, and the property asks', async () => {
-    const data = await withProperty({})
+    const data = await withProperty({ lien_public_answer: null })
     expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
     expect(data.publicJobs).toEqual([])
     expect([...data.publicAskJobIds!].sort()).toEqual(['A', 'Y'])
+    expect(data.affidavitRows.find((r) => r.job_id === 'Y')).toMatchObject({ owner_public: true })
+  })
+
+  it('before the migration is pushed the record carries no answer’s column: nothing asks, and the name guess holds as before', async () => {
+    const data = await withProperty({})
+    expect(data.publicJobs).toEqual([])
+    expect([...data.publicAskJobIds!]).toEqual([])
     expect(data.affidavitRows.find((r) => r.job_id === 'Y')).toMatchObject({ owner_public: true })
   })
 
