@@ -12,7 +12,6 @@ import type { OnSiteFindJob } from '../../lib/materials/onSiteFind'
 
 vi.mock('../../lib/materials/stickerRunsIo', () => ({
   mintStickerRun: vi.fn(),
-  fetchLastStickerNumber: vi.fn(async () => null),
   fetchStickerRuns: vi.fn(async () => []),
   fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: [] })),
 }))

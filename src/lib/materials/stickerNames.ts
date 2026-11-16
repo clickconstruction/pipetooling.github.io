@@ -23,8 +23,8 @@ import { STICKER_RUN_MAX } from './stickerRun'
 import { BOX_NUMBER_MAX } from './boxName'
 
 export type StickerRange =
-  /** Nothing typed: the run carries numbers only, as before. */
-  | { kind: 'numbered' }
+  /** Nothing typed: the run's stickers carry no name, only their code. */
+  | { kind: 'unnamed' }
   | {
       kind: 'names'
       /** In print order. */
@@ -86,7 +86,7 @@ export function normalizeStickerRange(typed: string): string {
  */
 export function readStickerRange(typed: string, howMany: number): StickerRange {
   const t = normalizeStickerRange(typed)
-  if (!t) return { kind: 'numbered' }
+  if (!t) return { kind: 'unnamed' }
   const parts = t.split('-')
   if (parts.length > 2) return { kind: 'refused', words: STICKER_RANGE_SHAPE_WORDS }
   const a = parseBoxName(parts[0]!)
@@ -138,10 +138,10 @@ export function readStickerRange(typed: string, howMany: number): StickerRange {
   return { kind: 'names', names, first: names[0]!, last: names[names.length - 1]!, rows, why }
 }
 
-/** The read line under the field: *G78 to G300 · 223 stickers. The number steps.*; the refusal's words; the numbered line. */
+/** The read line under the field: *G78 to G300 · 223 stickers. The number steps.*; the refusal's words; the line for a run with no names. */
 export function stickerRangeWords(range: StickerRange): string {
   if (range.kind === 'refused') return range.words
-  if (range.kind === 'numbered') return 'Nothing typed: the stickers carry their number only. A leftover works on any site.'
+  if (range.kind === 'unnamed') return 'Nothing typed: the stickers carry no name, only their code. A leftover works on any site.'
   const n = range.names.length
   return `${range.first} to ${range.last} · ${n} ${n === 1 ? 'sticker' : 'stickers'}. ${range.why}`
 }
@@ -180,7 +180,7 @@ export const STICKER_NAME_RULE = BOX_NAME_RULE
 export const STICKER_NAMES_LABEL = 'Names'
 export const STICKER_NAMES_PLACEHOLDER = 'G78, or G78-300'
 
-/** Said under the field while the site's boxes are read: the press waits, so nobody prints a numbered run by being quick. */
+/** Said under the field while the site's boxes are read: the press waits, so nobody prints a run with no names by being quick. */
 export const STICKER_NAMES_READING_WORDS = 'Reading the site’s names…'
 
 /** Said under the field when the site's boxes did not load: the field takes a typed range, and the two notices cannot be given. */
@@ -189,7 +189,7 @@ export const STICKER_NAMES_UNREAD_WORDS = 'The site’s names did not load, so n
 /** What the field makes of what is typed, with How many: the range, the count the run will have and the line under the field. */
 export type StickerNamesAsk = {
   range: StickerRange
-  /** The stickers the run will have: the names' count, or How many for a run of numbers. Zero when refused. */
+  /** The stickers the run will have: the names' count, or How many for a run with no names. Zero when refused. */
   count: number
   /** The typed range set its own end, so How many shows the count and its presses are dead. */
   countFollows: boolean
@@ -206,7 +206,7 @@ export function stickerNamesAsk(typed: string, howMany: number, offered?: string
   const range = readStickerRange(typed, howMany)
   const countFollows = range.kind === 'names' && stickerRangeSetsCount(typed)
   if (range.kind === 'refused') return { range, count: 0, countFollows: false, words: range.words, tone: 'refused' }
-  if (range.kind === 'numbered') return { range, count: Math.max(0, Math.floor(Number(howMany)) || 0), countFollows: false, words: stickerRangeWords(range), tone: 'ok' }
+  if (range.kind === 'unnamed') return { range, count: Math.max(0, Math.floor(Number(howMany)) || 0), countFollows: false, words: stickerRangeWords(range), tone: 'ok' }
   const n = range.names.length
   const isOffer = !!offered && normalizeStickerRange(typed) === offered.toUpperCase() && !range.why.startsWith('Names stop')
   const words = isOffer ? `${range.first} to ${range.last} · ${n} ${n === 1 ? 'sticker' : 'stickers'}. ${range.first} is the site’s next free name. Type a range to set the end, like ${range.first}-${Math.min(BOX_NUMBER_MAX, parseBoxName(range.first)!.number + 99)}.` : stickerRangeWords(range)

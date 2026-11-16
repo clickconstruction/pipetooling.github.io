@@ -18,7 +18,7 @@ import { BoxPublicPage } from '../components/materials/BoxPublicPage'
 import { useAuth } from '../hooks/useAuth'
 import { boxCodeWords, normalizeBoxCode } from '../lib/materials/labels'
 import { resolveBoxCode } from '../lib/materials/onSiteStore'
-import { blankStickerPath, lostStickerDetail, lostStickerTitle, NO_BOX_DETAIL, noBoxTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../lib/materials/stickers'
+import { blankStickerPath, lostStickerDetail, LOST_STICKER_TITLE, NO_BOX_DETAIL, noBoxTitle, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, type CodeLookup } from '../lib/materials/stickers'
 import { formatErrorMessage } from '../utils/errorHandling'
 
 export default function BoxCode() {
@@ -41,11 +41,11 @@ function wordsFor(found: CodeLookup, words: string, wanted: string, error: strin
   if (error) return { title: `Box ${words} did not open`, detail: error }
   switch (found.kind) {
     case 'lost':
-      return { title: lostStickerTitle(found.sticker.number), detail: lostStickerDetail(found.sticker) }
+      return { title: LOST_STICKER_TITLE, detail: lostStickerDetail(found.sticker) }
     case 'retired':
       return { title: retiredBoxStickerTitle(found.sticker), detail: 'The office brings a retired box back from the Retired fold on its Materials page.' }
     case 'out_of_reach':
-      return { title: outOfReachStickerTitle(found.sticker.number), detail: 'Ask the office to add you to that job.' }
+      return { title: OUT_OF_REACH_STICKER_TITLE, detail: 'Ask the office to add you to that job.' }
     default:
       return {
         title: wanted ? noBoxTitle(words) : 'That is not a box code',

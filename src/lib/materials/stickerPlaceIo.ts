@@ -3,8 +3,8 @@
  * `place_sticker` as the caller: a blank sticker onto a known box, or onto a new box made in the same transaction;
  * `SECURITY INVOKER`, so the gate and every policy judge the caller, and a refusal comes back in the database's own
  * words. It is never queued in the outbox: two phones may hold the same blank sticker, and only the database can say
- * who was first, so the press waits for signal. The reads: the stickers on a set of boxes (the number beside a
- * box's name), and one sticker by its number for Scan a label. The words are `stickerPlace.ts`.
+ * who was first, so the press waits for signal. The read: the stickers on a set of boxes, with the name printed on
+ * each (what a row says beside a box's name). The words are `stickerPlace.ts`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
@@ -35,10 +35,3 @@ export async function fetchStickersOnBoxes(containerIds: ReadonlyArray<string>):
   return (rows as unknown as RawRow[]).map((r) => ({ id: r.id, number: r.number, code: r.code, boxName: r.box_name ? r.box_name.trim().toUpperCase() : null, containerId: r.container_id, lostAt: r.lost_at }))
 }
 
-/** One sticker by its printed number, as far as the caller may read: on a box of their job, or blank on a run printed for one. Null when none answers. */
-export async function fetchStickerByNumber(number: number): Promise<{ id: string; code: string } | null> {
-  const { data, error } = await db.from('box_stickers').select('id, code').eq('number', number).limit(1)
-  if (error) throw error
-  const row = ((data ?? []) as Array<{ id: string; code: string | null }>)[0]
-  return row?.code ? { id: row.id, code: row.code } : null
-}

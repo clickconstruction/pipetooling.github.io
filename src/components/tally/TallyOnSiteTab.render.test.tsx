@@ -373,11 +373,16 @@ describe('TallyOnSiteTab · the stickers beside a box’s name (punch list #329,
     expect(screen.queryByTestId('on-site-box-header-stickers')).toBeNull()
   })
 
-  it('a sticker printed with another name says so, and a numbered one reads its number', async () => {
+  it('a sticker printed with another name says so, and one with no name says nothing (v2.7438: no running number)', async () => {
     stuck.marks = new Map([['a2', [{ number: 159, boxName: 'A1' }, { number: 147 }]]])
     open()
     await screen.findByRole('button', { name: 'Short' })
-    expect(screen.getByTestId('on-site-box-header-stickers').textContent).toBe(' · 0147, sticker reads A1')
+    expect(screen.getByTestId('on-site-box-header-stickers').textContent).toBe(' · sticker reads A1')
+    cleanup()
+    stuck.marks = new Map([['a2', [{ number: 147 }]]])
+    open()
+    await screen.findByRole('button', { name: 'Short' })
+    expect(screen.queryByTestId('on-site-box-header-stickers')).toBeNull()
   })
 })
 
