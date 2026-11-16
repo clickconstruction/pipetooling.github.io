@@ -3997,6 +3997,21 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     codeState.answer = { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' }
   })
 
+  it('the line previews his full name while the words around it keep the short one (v2.7395)', async () => {
+    codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    renderWithProviders(<LienDesk {...baseProps} authRole="dev" authUserId="u-robert" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi' : 'Robert')} signatureNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : id === 'u-robert' ? 'Robert Douglas' : '')} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
+    await settle()
+    await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi Whites')
+    expect(screen.getByTestId('lien-sign-line').textContent).toContain('Malachi signs here with his code')
+    cleanup()
+    // On his own sign-in the preview is his own full name, not the short name he is signed in under.
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" authUserId="u-malachi" authName="Malachi" leaderNameFor={() => 'Malachi'} signatureNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : '')} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
+    await settle()
+    expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('type')
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi Whites')
+  })
+
   it('with no code set the line opens on the pad and says where he sets one; the office’s awaiting footer carries the same line and its own press', async () => {
     codeState.status = { set: false, setAtIso: null, lastUsedAtIso: null, lockedUntilIso: null }
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" authName="Wendi" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Wendi')} data={awaitingOn({ master_user_id: 'u-malachi' })} />)

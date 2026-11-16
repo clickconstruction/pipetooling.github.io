@@ -239,6 +239,8 @@ export type LienDeskProps = {
   signerNameFor: (masterUserId: string | null) => string
   /** The job's master by his plain name (v2.4856): the word row and the record say *on Malachi's word*; '' when not known. */
   leaderNameFor?: (masterUserId: string | null) => string
+  /** The name a signature carries for a user (v2.7395): his full name, "Malachi Whites", where `leaderNameFor` is the short one; '' when not known. */
+  signatureNameFor?: (userId: string | null) => string
   /** The signer's own phone for the cover letters' `{{phone}}` (v2.3753); the letterhead's when he has none. */
   signerPhoneFor?: (masterUserId: string | null) => string
   /** Land on this job's item when given (the forecast's Send notice…, the row icon). */
@@ -405,6 +407,7 @@ export default function LienDesk({
   issuer,
   signerNameFor,
   leaderNameFor,
+  signatureNameFor,
   signerPhoneFor,
   initialJobId,
   onChanged,
@@ -1874,7 +1877,8 @@ export default function LienDesk({
     )
   // Signing (v2.5082): one press under his own sign-in places his name in the cursive face; the line may hold a drawing instead.
   // On someone else's screen (v2.5791) the name is the master's, and the press is his code or his hand, attributed to him.
-  const signerName = otherScreen ? leaderName : authName.trim() || leaderName
+  // v2.7395 (Taunya's ask): the mark carries his full name. The short names stay for the words around it.
+  const signerName = otherScreen ? signatureNameFor?.(masterId)?.trim() || leaderName : signatureNameFor?.(authUserId)?.trim() || authName.trim() || leaderName
   const signPayloadOrThrow = (): LienDeskSignPayload | { mode: 'code'; code: string } => {
     const h = signRef.current
     if (h?.mode === 'code') {
@@ -4905,7 +4909,7 @@ export default function LienDesk({
             onChanged()
             return out
           }}
-          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: leaderNameFor?.(id) ?? '' }) }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: leaderNameFor?.(id) ?? '' }) })]}
+          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) })]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}

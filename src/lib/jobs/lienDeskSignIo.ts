@@ -1,5 +1,6 @@
 import { LIEN_RELEASE_DOCUMENTS_BUCKET } from './lienReleaseDocuments'
 import { lienFieldsHash, type LienPenWitnessHow } from './lienNoticeSignature'
+import { lienSignatureName } from './lienSigner'
 import { penPageFileProblem, penPagePath, penWitnessHowWithPage } from './lienPenRecord'
 import { validateReportSignatureDataUrlForSubmit } from '../reportSignatureField'
 import { trimSignatureInk } from '../signatureInkTrim'
@@ -34,7 +35,24 @@ export type SignLienDeskItemArgs = {
   approve: boolean
 }
 
-export type SignLienDeskItemResult = { ok: true; signedAtIso: string } | { ok: false; message: string }
+export type SignLienDeskItemResult = { ok: true; signedAtIso: string; printedName: string } | { ok: false; message: string }
+
+/**
+ * The name this signature carries (v2.7395): the signer's full name by `lienSignatureName`, read from his own row at
+ * the moment of signing, so every screen that signs a notice writes the same name whatever it was handed. The name
+ * the caller passed is the fallback when his row cannot be read.
+ */
+export async function lienSignaturePrintedName(signerUserId: string | null, given: string): Promise<string> {
+  const fallback = given.trim()
+  if (!signerUserId) return fallback
+  try {
+    const { data } = await supabase.from('users').select('name, notes, role').eq('id', signerUserId).maybeSingle()
+    const row = data as { name: string | null; notes: string | null; role: string | null } | null
+    return (row ? lienSignatureName(row) : '') || fallback
+  } catch {
+    return fallback
+  }
+}
 
 export const LIEN_DESK_SIGNATURE_FOLDER = 'desk'
 
@@ -45,7 +63,7 @@ export function lienDeskSignaturePath(itemId: string, uuid: string): string {
 
 export async function signLienDeskItem(args: SignLienDeskItemArgs): Promise<SignLienDeskItemResult> {
   const { itemId, fields, signer, payload, onDevice, approve } = args
-  const printedName = signer.printedName.trim()
+  const printedName = await lienSignaturePrintedName(signer.userId, signer.printedName)
   if (!printedName) return { ok: false, message: 'There is no name to sign with. Set your name on your profile first.' }
   const present = onDevice != null
   if (present && payload.mode !== 'draw') {
@@ -83,7 +101,7 @@ export async function signLienDeskItem(args: SignLienDeskItemArgs): Promise<Sign
   } catch (e) {
     return { ok: false, message: e instanceof Error && e.message ? e.message : 'Could not record the signature — nothing was saved. Try again.' }
   }
-  return { ok: true, signedAtIso }
+  return { ok: true, signedAtIso, printedName }
 }
 
 /**
@@ -124,7 +142,7 @@ export type RecordLienPenSignatureResult ={ ok: true; signedAtIso: string; how: 
 
 export async function recordLienPenSignature(args: RecordLienPenSignatureArgs): Promise<RecordLienPenSignatureResult> {
   const { itemId, fields, signer, recordedBy, signedAtIso } = args
-  const printedName = signer.printedName.trim()
+  const printedName = await lienSignaturePrintedName(signer.userId, signer.printedName)
   if (!printedName) return { ok: false, message: 'There is no leader to name. Set the job’s master first.' }
   if (!signer.userId) return { ok: false, message: 'The leader has no account to name. Set the job’s master first.' }
   let pagePath: string | null = null

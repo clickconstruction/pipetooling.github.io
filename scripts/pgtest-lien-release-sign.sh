@@ -16,7 +16,9 @@
 # own policies and the bucket's documented ones; a field user writes nothing; the CHECK holds every other path out.
 # 30_bid_scoped: an estimator makes and reads a bid's waivers and never a job's, his waiver keeps its paper
 # unsigned but for the leader's code, which signs it at his screen; a twin, a trainee and a primary are refused; the
-# office reads and signs a bid's waiver; a waiver has one home; the job's feed skips a bid's waiver. Each raises on
+# office reads and signs a bid's waiver; a waiver has one home; the job's feed skips a bid's waiver. 35_notice_code
+# (v2.7395): his code signs a lien NOTICE in his full name, a dev's in his account name, at the office's screen and
+# at his own, and the messages keep the short name. Each raises on
 # its first failed assertion and ends with its own "PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the
 # SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -29,6 +31,7 @@ CODE="$(ls supabase/migrations/*_lien_release_sign_code.sql)"
 NOTARY="$(ls supabase/migrations/*_lien_release_notary.sql)"
 BID="$(ls supabase/migrations/*_lien_release_bid_scoped.sql)"
 FILE="$(ls supabase/migrations/*_lien_release_notary_copy_file.sql)"
+NOTICE="$(ls supabase/migrations/*_lien_notice_code_full_name.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -49,7 +52,7 @@ pgtest_migrate
 # their own order: the notary's widens the mode CHECK past the signing code's, the bid waiver's restates the signing
 # function, and the notary file's restates the link column's comment, so each keeps the last word it has on a fresh
 # database.
-for f in "$CODE" "$NOTARY" "$BID" "$FILE"; do
+for f in "$CODE" "$NOTARY" "$BID" "$FILE" "$NOTICE"; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
 out="$(psql_as postgres -f - < supabase/tests/lien_release_sign/20_scenario.sql 2>&1 || true)"
@@ -63,5 +66,8 @@ if ! grep -q "lien_release_notary_file PASSED" <<<"$out"; then echo "$out" | tai
 grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/lien_release_sign/30_bid_scoped.sql 2>&1 || true)"
 if ! grep -q "lien_release_bid PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/lien_release_sign/35_notice_code.sql 2>&1 || true)"
+if ! grep -q "lien_notice_code PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "lien-release-sign bed ok"
