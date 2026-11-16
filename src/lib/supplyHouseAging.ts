@@ -309,11 +309,12 @@ export function moveStripSummary<T extends { id: string; amount: number | null; 
  */
 export type AgingCellRowDoors = { addDueDate: boolean; pickJob: boolean }
 
-export function agingCellRowDoors(inv: { amount: number | null; due_date: string | null }, allocationCount: number | null): AgingCellRowDoors {
+export function agingCellRowDoors(inv: { amount: number | null; due_date: string | null; is_interest?: boolean | null }, allocationCount: number | null): AgingCellRowDoors {
   const credit = Number(inv.amount ?? 0) < 0
   return {
     addDueDate: !credit && inv.due_date == null,
-    pickJob: !credit && allocationCount === 0,
+    // Interest and late fees are kept off every job's cost, so there is no job to pick.
+    pickJob: !credit && !inv.is_interest && allocationCount === 0,
   }
 }
 

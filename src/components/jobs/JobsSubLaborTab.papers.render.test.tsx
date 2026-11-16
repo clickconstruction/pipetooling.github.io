@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * The papers' two presses on the Pay view (punch list #350): Statement of account… on a person's group, and
- * Work statement… in Print's place on the ⋯ menu of a sheet that is one person's. A sheet two subs share, and one
- * with nobody the roster knows, keep Print.
+ * The papers' presses on the Pay view (punch list #350): Statement of account… on a person's group, Work statement…
+ * in Print's place on the ⋯ menu of a sheet that is one person's, and Payment record… beside a payment in the opened
+ * row. A sheet two subs share keeps Print and offers no paper.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
@@ -31,8 +31,8 @@ vi.mock('../../hooks/useRosterSubKinds', () => ({
 }))
 // The window is drawn by its own smoke. Here it only says what it was opened on.
 vi.mock('./SubPapersWindowConnected', () => ({
-  SubPapersWindow: (p: { open: { kind: string; sheetId?: string }; subKey: string; name: string; onClose: () => void }) => (
-    <div role="dialog" aria-label={`Papers for ${p.name}`} data-open={p.open.kind} data-sheet={p.open.sheetId ?? ''} data-key={p.subKey}>
+  SubPapersWindow: (p: { open: { kind: string; sheetId?: string; sendingKey?: string }; subKey: string; name: string; onClose: () => void }) => (
+    <div role="dialog" aria-label={`Papers for ${p.name}`} data-open={p.open.kind} data-sheet={p.open.sheetId ?? ''} data-sending={p.open.sendingKey ?? ''} data-key={p.subKey}>
       <button type="button" onClick={p.onClose}>
         Close the papers
       </button>
@@ -112,5 +112,32 @@ describe('JobsSubLaborTab · the papers (#350)', () => {
     expect(items).not.toContain('Work statement…')
     fireEvent.click(screen.getByRole('menuitem', { name: 'Print' }))
     expect(onPrintJobSubSheet).toHaveBeenCalledWith(expect.objectContaining({ id: 'sheet-2' }))
+  })
+
+  it('Payment record… sits beside a payment: one per sending, a row with no sending its own, and none for money from a credit or a back-charge', async () => {
+    const paid = makeLaborJob({
+      id: 'sheet-1',
+      assigned_to_name: 'Sam Sub',
+      job_number: 'S-212',
+      payments: [
+        { id: 'pay-a', amount: 20, memo: null, created_at: '2026-11-02T10:00:00Z', method: 'check', sending_id: 'snd-7', sending_no: 7 },
+        { id: 'pay-b', amount: 10, memo: null, created_at: '2026-10-02T10:00:00Z' },
+        { id: 'pay-c', amount: 5, memo: null, created_at: '2026-11-03T10:00:00Z', method: 'credit' },
+        { id: 'back', amount: -5, memo: 'cleanup', created_at: '2026-11-04T10:00:00Z' },
+      ],
+    })
+    mount([paid])
+    await settle()
+    fireEvent.click([...document.querySelectorAll('tr')].find((tr) => tr.firstElementChild?.textContent === '▶') as HTMLElement)
+    const presses = screen.getAllByRole('button', { name: 'Payment record…' })
+    expect(presses).toHaveLength(2)
+    fireEvent.click(presses[0]!)
+    const first = screen.getByRole('dialog', { name: 'Papers for Sam Sub' })
+    expect(first.getAttribute('data-open')).toBe('payment')
+    const keys = [first.getAttribute('data-sending')]
+    fireEvent.click(screen.getByRole('button', { name: 'Close the papers' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Payment record…' })[1]!)
+    keys.push(screen.getByRole('dialog', { name: 'Papers for Sam Sub' }).getAttribute('data-sending'))
+    expect(keys.sort()).toEqual(['row:pay-b', 'snd-7'])
   })
 })

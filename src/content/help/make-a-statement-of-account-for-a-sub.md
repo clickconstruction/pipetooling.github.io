@@ -2,12 +2,12 @@
 title: make a statement of account for a sub
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: statement of account, work statement, sub statement, pay due report, still open, what we owe a sub, sub papers, pdf, download, print, part payment, partial payment, back-charge, last payments, period, sub labor, reverse invoice, payment receipt, how it adds up, sent copies, paper for a sub
+keywords: statement of account, work statement, payment record, sub statement, pay due report, still open, what we owe a sub, sub papers, pdf, download, print, part payment, partial payment, back-charge, last payments, period, sub labor, reverse invoice, payment receipt, how it adds up, sent copies, paper for a sub
 order: 34
 ---
 A statement of account is one paper for one sub. The paper lists their work, what was paid and what is still open. You make it as a PDF and hand it to them.
 
-A work statement is the same kind of paper for one sheet. Both papers read the sheets and payments the Pay view already shows.
+A work statement is the same kind of paper for one sheet. A payment record is the paper for one payment. All three read the sheets and payments the Pay view already shows.
 
 ## Open the papers window
 
@@ -17,6 +17,8 @@ The press sits where the sub's row already is.
 - On [People → Subs](/people?tab=subs), open what we owe a person. Then press {{button:outline|Statement of account…}} at the top of the block.
 - For one sheet, press **⋯** on its row in the Pay view. Then press **Work statement…**.
 - On People → Subs, open a sheet in the block. Then press {{button:outline|Work statement…}} under it.
+- For one payment, open the sheet's row in the Pay view. Then press **Payment record…** beside the payment.
+- Right after you record a payment, press {{button:blue|Payment record…}} in the window that follows.
 
 The window opens on the paper you asked for. The chips at the top switch to another paper for the same person.
 
@@ -48,7 +50,16 @@ A statement of account has four parts.
 
 A work statement shows one sheet. The paper lists each line and what was agreed, then each back-charge in red. Under those come each payment, then **Paid so far** and **Still open on this statement**.
 
-A part payment reads the same on both papers. The sheet's row shows what was paid and what is left.
+A payment record shows one payment. It can be one check that paid several sheets. The top says who was paid, the day, how it was sent and the amount.
+
+- **Applied to** has a row for each sheet the payment went to. Each row shows what was open before, this payment and what is open after.
+- A row reads **Part payment** or **Paid in full**.
+- **After this payment** lists every sheet still open and the total.
+- The office's note to the sub prints under it. A hidden memo is left off.
+
+Money paid from a sub's credit has no payment record. No money left the bank for it.
+
+A part payment reads the same on all three papers. The sheet's row shows what was paid and what is left.
 
 A memo the office hid from the sub is left off. The amounts always show.
 
@@ -62,9 +73,9 @@ This window does not send the paper. Give the sub the printed page, or attach th
 
 ## What the papers do not have yet
 
-- **No number.** Each paper says the day and time it was prepared. Numbers come in a later change.
+- **No number on two of them.** A work statement and a statement of account say the day and time they were prepared. Their numbers come in a later change.
+- **A payment record has one.** It carries its payment's own number, like *PR-0231*. A payment recorded before those numbers reads *Not numbered*.
 - **Draft sentences.** A few sentences are boxed and marked §. The boxed sentences are draft wording until our lawyer has read them.
-- **No payment record.** A paper for one payment comes in a later change.
 
 ## When the papers do not add up
 

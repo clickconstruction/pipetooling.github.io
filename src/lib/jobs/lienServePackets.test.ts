@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { lienServeBatchPrint, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { lienServeBatchPrint, lienServeClock, lienServeDoorWords, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
 
 // Every name, address and figure here is made up.
 const FIELDS = {
@@ -105,6 +105,13 @@ describe('lienServePlanWords', () => {
     expect(w.lead).toBe('3 filed liens owe their copies. The soonest was due Nov 11.')
     expect(w.late).toBe('2 are past their day. Mail them today.')
     expect(words([job('1', { serve_due: '2026-11-11' })]).late).toBe('1 is past its day. Mail it today.')
+  })
+
+  it('names the door to the window by every lien that owes its copies, held ones too', () => {
+    const door = (jobs: LienServeJob[]) => lienServeDoorWords(lienServePlan(jobs, CTX))
+    expect(door([job('1'), job('2'), job('3', { recording_number: '' })])).toBe('Mail 3 liens’ copies ›')
+    expect(door([job('1')])).toBe('Mail 1 lien’s copies ›')
+    expect(door([])).toBe('')
   })
 
   it('is dead only when nothing is ready', () => {
