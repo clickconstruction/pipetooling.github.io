@@ -3935,6 +3935,30 @@ describe('LienDesk — the page labels stick (v2.4726)', () => {
     expect(labels[1]!.getAttribute('data-on')).toBe('yes')
     expect(labels[0]!.getAttribute('data-on')).toBe('no')
   })
+  it('each page bar carries Open ↗ and PDF ↓ beside its own button, never inside it, and the bar still goes to its page (v2.7432)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    const labels = Array.from(document.querySelectorAll('[data-lien-desk-page-label]')) as HTMLElement[]
+    expect(labels.length).toBeGreaterThanOrEqual(2)
+    for (const label of labels) {
+      const key = label.getAttribute('data-lien-desk-page-label') as string
+      const bar = label.querySelector('.lienPileHeadBtn') as HTMLElement
+      const presses = label.querySelector('[data-lien-page-export]') as HTMLElement
+      // Siblings: a button inside a button is not allowed, and a press must not scroll the pane.
+      expect(bar.parentElement).toBe(label)
+      expect(presses.parentElement).toBe(label)
+      expect(bar.querySelector('button')).toBeNull()
+      expect(bar.nextElementSibling).toBe(presses)
+      expect(presses.getAttribute('data-lien-page-export')).toBe(key)
+      expect((presses.querySelector(`[data-lien-page-open="${key}"]`) as HTMLElement).textContent).toBe('Open ↗')
+      expect((presses.querySelector(`[data-lien-page-pdf="${key}"]`) as HTMLElement).textContent).toBe('PDF ↓')
+    }
+    const pane = document.querySelector('[data-lien-desk-pane]') as HTMLElement
+    pane.scrollTo = vi.fn() as never
+    fireEvent.click(labels[1]!.querySelector('.lienPileHeadBtn') as HTMLElement)
+    expect(pane.scrollTo).toHaveBeenCalledTimes(1)
+    expect(labels[1]!.getAttribute('data-on')).toBe('yes')
+  })
 })
 
 describe('LienDesk — find on the list (v2.4721)', () => {

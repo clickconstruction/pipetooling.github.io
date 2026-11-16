@@ -170,6 +170,9 @@ import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type 
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates, { LienGatesSentFold } from './LienDeskGates'
+import LienPageExportPresses from './LienPageExportPresses'
+import { isLienExportPageKey, lienExportDraftLine, lienExportFileName, lienExportFiling, lienExportTitle } from '../../lib/jobs/lienPageExport'
+import { lienPageExportBlob } from '../../lib/jobs/lienPageExportIo'
 import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
 import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
@@ -2472,6 +2475,22 @@ export default function LienDesk({
     else host.scrollTop = top
     setLitPage(key)
   }
+  // One page exported alone (v2.7432, Taunya's ask of 2026-11-15): Open ↗ and PDF ↓ at the bar's right end, beside the bar's own
+  // button. The page is made as the run makes it; until the notice is approved its foot carries the draft line.
+  const pageExport = (key: string) => {
+    if (!selected || !isLienExportPageKey(key)) return null
+    const named = { jobNumber: job ? jobNumberOf(job, selected.jobId) : '', jobName: job?.job_name, key }
+    const title = lienExportTitle(named)
+    return (
+      <LienPageExportPresses
+        pageKey={key}
+        phone={isMobile}
+        fileName={lienExportFileName(named)}
+        filing={lienExportFiling({ pile: selected.pile, jobId: selected.jobId, title })}
+        build={() => lienPageExportBlob(key, { coverBlocks, noticeBlocks: () => buildLienNoticeBlocks(noticeFields, docExtras, { signature: paneSigned }), payBlocks, release: noticeRelease }, { title, draftLine: lienExportDraftLine(selected.pile, todayYmd) })}
+      />
+    )
+  }
   const pageLabel = (key: string, words: string, extra: ReactNode) => {
     const i = pageKeys.indexOf(key)
     const on = (litPage ?? pageKeys[0]) === key
@@ -2486,6 +2505,7 @@ export default function LienDesk({
             </>
           ) : null}
         </button>
+        {pageExport(key)}
       </div>
     )
   }
