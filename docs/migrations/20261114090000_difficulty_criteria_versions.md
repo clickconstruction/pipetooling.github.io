@@ -9,3 +9,5 @@ GC difficulty rating, PR 1 of six (punch list #357, [`to-dos/gc-difficulty-ratin
 - Ends with the four fence calls.
 
 **Apply order**: push right after the merge. The only reader is the dev's Settings card, which shows the read's refusal and a *Try again* until the table is there; nothing else calls it. Regenerate types after the push (`npm run gen-types:linked`) as a `chore(types)` PR; `difficultyCriteriaIo.ts` reads the table by name (`as never`) until then.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `difficulty_criteria_versions`.
