@@ -96,6 +96,8 @@ import { JobWindowMoreSheet } from './JobWindowMoreSheet'
 import { watchSmallPresses } from './jobWindowPressPad'
 import { CREW_FOLD_TITLES, crewBlockLabel, crewFolds, crewQuietLine, crewSheetRows, keepCrewFolds, lastNoteWords, ourLeadWords, readCrewFolds, showsOurLead, type CrewFoldKey, type CrewNoteSource, type OurLeadWords } from '../../lib/jobs/jobWindowCrewPhone'
 import { useJobLeadContact } from '../../hooks/useJobLeadContact'
+import { useMySubPay } from '../../hooks/useMySubPay'
+import { OPEN_YOUR_PORTAL, subPayWords } from '../../lib/jobs/subPayRow'
 import { useFirstAssistantDispatchPhone } from '../../hooks/useFirstAssistantDispatchPhone'
 import { CrewTodaysWork } from './CrewTodaysWork'
 import { foldCountWords, keepPhoneFolds, nextOnSite, NOTHING_SCHEDULED, OPEN_THE_CALENDAR, PHONE_FOLDS, readPhoneFolds, waitingOnWords, type PhoneFoldKey } from '../../lib/jobs/jobWindowPhoneSections'
@@ -1231,6 +1233,10 @@ export default function DetailJobModal({
   const jobLead = useJobLeadContact(jobId, forSub && open)
   const officePhone = useFirstAssistantDispatchPhone(forSub && open)
   const ourLead: OurLeadWords | null | undefined = !forSub ? undefined : jobLead.loaded ? ourLeadWords(jobLead.lead, officePhone?.display ?? null) : null
+  // Your pay (v2.7399, Taunya's "Draw it now"): what is open on the sub's own sheets on this job, by the portal's own
+  // kernel. Null until the read answers, when it cannot be read, and for an account that is no one on the roster.
+  const mySubPay = useMySubPay(jobId, forSub && open)
+  const subPay = mySubPay?.onRoster ? { words: subPayWords(mySubPay), portalUrl: mySubPay.portalUrl } : null
   const [noteSheetOpen, setNoteSheetOpen] = useState(false)
   const jobDetailDateBandStyle = useMemo(
     (): CSSProperties =>
@@ -2777,7 +2783,7 @@ export default function DetailJobModal({
             onLeave={onClose}
           />
         ) : null}
-        {phoneCrew && (scheduleContext || crewLastNote) ? (
+        {phoneCrew && (scheduleContext || crewLastNote || subPay) ? (
           <>
             <PhoneSectionTitle>What's happening</PhoneSectionTitle>
             {scheduleContext ? (() => {
@@ -2796,6 +2802,20 @@ export default function DetailJobModal({
                 />
               ) : null
             })() : null}
+            {subPay ? (
+              <PhoneRow
+                testId="crew-window-your-pay"
+                label="Your pay"
+                value={subPay.words.value}
+                sub={subPay.words.lines.map((line) => (
+                  <span key={line} style={{ display: 'block' }}>
+                    {line}
+                  </span>
+                ))}
+                act={subPay.portalUrl ? OPEN_YOUR_PORTAL : null}
+                onAct={subPay.portalUrl ? () => openInExternalBrowser(subPay.portalUrl as string) : undefined}
+              />
+            ) : null}
             {crewLastNote ? <PhoneRow testId="crew-window-last-note" label="Last note" value={crewLastNote.value} sub={crewLastNote.sub} act="Read the notes" onAct={openCrewNotes} /> : null}
           </>
         ) : null}

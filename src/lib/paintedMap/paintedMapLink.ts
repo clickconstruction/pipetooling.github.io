@@ -11,7 +11,15 @@ export {
   PAINTED_MAP_LINK_DAYS,
   PAINTED_MAP_LINKS_OPEN_MAX,
   PAINTED_MAP_LINK_WORDS,
+  PAINTED_MAP_VISITOR_NAME_MAX,
+  PAINTED_MAP_VISIT_POINT_GAP_MS,
   mintPaintedMapLinkCode,
+  paintedMapClip,
+  paintedMapDeviceId,
+  paintedMapDeviceWords,
+  paintedMapVisitPoint,
+  paintedMapVisitPointColumns,
+  paintedMapVisitorName,
   paintedMapHexOf,
   paintedMapLinkCode,
   paintedMapLinkExpiry,
@@ -19,7 +27,7 @@ export {
   sharedMapIsEmpty,
   sharedPaintedMap,
 } from '../../../supabase/functions/_shared/paintedMapLink'
-export type { SharedLine, SharedPaintedMap, SharedPlace } from '../../../supabase/functions/_shared/paintedMapLink'
+export type { PaintedMapVisitPoint, SharedLine, SharedPaintedMap, SharedPlace } from '../../../supabase/functions/_shared/paintedMapLink'
 
 /** The address a link opens at. The page lives at `/way/<code>`. */
 export function paintedMapLinkUrl(origin: string, code: string): string {

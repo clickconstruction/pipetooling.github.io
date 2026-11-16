@@ -174,7 +174,7 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
       <div style={HEAD}>
         {W.cardTitle}
         {standing ? <GcDifficultyChip standing={standing} customerId={customerId} /> : <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{W.notRated}</span>}
-        <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--text-muted)' }}>{W.cardLead}</span>
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{W.cardLead}</span>
       </div>
       <div style={BODY}>
         {failed ? (

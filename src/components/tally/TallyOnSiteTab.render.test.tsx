@@ -41,8 +41,9 @@ vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ loaded: tr
 vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords: () => ({ coords: new Map() }) }))
 // The site's boxes for the name rule (punch list #351): the test hands none, so the job's own boxes are the check.
 vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
-// The job's stickers (punch list #329, PR 3): none in these tests.
-vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map(), blank: 0, loaded: true, refresh: () => {} }) }))
+// The job's stickers (punch list #329, PR 3): none, until a test hands the marks beside a box's name (PR 9).
+const stuck = vi.hoisted(() => ({ marks: new Map<string, Array<{ number: number; boxName?: string | null }>>() }))
+vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map([...stuck.marks].map(([id, list]) => [id, list.map((m) => m.number)])), marksByBox: stuck.marks, blank: 0, loaded: true, refresh: () => {} }) }))
 // Every job with a box (punch list #304): the tab asks for it only for Every job or an empty job.
 const desk = vi.hoisted(() => ({ jobs: [] as unknown[], asked: [] as boolean[] }))
 vi.mock('../../hooks/useOnSiteDeskJobs', () => ({
@@ -69,6 +70,7 @@ beforeEach(() => {
   io.send.mockClear()
   desk.jobs = [otherJob]
   desk.asked = []
+  stuck.marks = new Map()
 })
 afterEach(() => cleanup())
 
@@ -357,5 +359,21 @@ describe('Add a container under the name rule (punch list #351)', () => {
     fireEvent.change(name, { target: { value: 'concrete mix' } })
     expect(screen.getByTestId('add-box-say').textContent).toBe('No letter and number in that. The next free name is A3. “Concrete mix” moved to What is in it.')
     expect((screen.getByRole('button', { name: 'Add A3' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+})
+
+describe('TallyOnSiteTab · the stickers beside a box’s name (punch list #329, section 10, PR 9)', () => {
+  it('a sticker printed with the box’s own name says nothing beside it', async () => {
+    stuck.marks = new Map([['a2', [{ number: 159, boxName: 'A2' }]]])
+    open()
+    await screen.findByRole('button', { name: 'Short' })
+    expect(screen.queryByTestId('on-site-box-header-stickers')).toBeNull()
+  })
+
+  it('a sticker printed with another name says so, and a numbered one reads its number', async () => {
+    stuck.marks = new Map([['a2', [{ number: 159, boxName: 'A1' }, { number: 147 }]]])
+    open()
+    await screen.findByRole('button', { name: 'Short' })
+    expect(screen.getByTestId('on-site-box-header-stickers').textContent).toBe(' · 0147, sticker reads A1')
   })
 })

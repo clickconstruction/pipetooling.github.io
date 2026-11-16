@@ -23,16 +23,16 @@ export async function placeSticker(request: PlaceRequest): Promise<PlaceAnswer> 
   return answer
 }
 
-export type StickerOnBoxRow = StickerCountRow & { id: string; code: string | null }
+export type StickerOnBoxRow = StickerCountRow & { id: string; code: string | null; /** The name printed on the sticker (section 10); null on a numbered one. */ boxName: string | null }
 
-type RawRow = { id: string; number: number; code: string | null; container_id: string | null; lost_at: string | null }
+type RawRow = { id: string; number: number; code: string | null; box_name: string | null; container_id: string | null; lost_at: string | null }
 
 /** The stickers on the boxes handed in, under the caller's own RLS; chunked, since a site may hold hundreds of boxes. */
 export async function fetchStickersOnBoxes(containerIds: ReadonlyArray<string>): Promise<StickerOnBoxRow[]> {
   const ids = [...new Set(containerIds)]
   if (ids.length === 0) return []
-  const rows = await fetchAllRowsChunkedIn(ids, (chunk, from, to) => db.from('box_stickers').select('id, number, code, container_id, lost_at').in('container_id', chunk).order('number').range(from, to), 'stickers on boxes', { parallel: 4 })
-  return (rows as unknown as RawRow[]).map((r) => ({ id: r.id, number: r.number, code: r.code, containerId: r.container_id, lostAt: r.lost_at }))
+  const rows = await fetchAllRowsChunkedIn(ids, (chunk, from, to) => db.from('box_stickers').select('id, number, code, box_name, container_id, lost_at').in('container_id', chunk).order('number').range(from, to), 'stickers on boxes', { parallel: 4 })
+  return (rows as unknown as RawRow[]).map((r) => ({ id: r.id, number: r.number, code: r.code, boxName: r.box_name ? r.box_name.trim().toUpperCase() : null, containerId: r.container_id, lostAt: r.lost_at }))
 }
 
 /** One sticker by its printed number, as far as the caller may read: on a box of their job, or blank on a run printed for one. Null when none answers. */

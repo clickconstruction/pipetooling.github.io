@@ -57,7 +57,7 @@ export default function GcDifficultyFeedbackCard({ customerId, withHours, io = D
     <section style={CARD} data-testid="gc-difficulty-feedback" aria-label={W.cardTitle}>
       <div style={HEAD}>
         {W.cardTitle}
-        <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--text-muted)' }}>{W.cardLead}</span>
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{W.cardLead}</span>
       </div>
       <div style={BODY}>
         {failed ? (

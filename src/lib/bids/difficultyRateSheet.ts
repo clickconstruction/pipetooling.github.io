@@ -158,9 +158,16 @@ export function rateSheetPayingWords(args: { pick: { points: number; reason: str
   const { pick, read } = args
   if (!pick) return read ? `${difficultyPayingWords(read)} ${RATE_SHEET_WORDS.notMine}` : RATE_SHEET_WORDS.notReadYet
   const byHand = difficultyPayingByHandOf(pick.reason)
-  if (byHand != null) return `${difficultyPointsWords(pick.points)}, set by hand: ${byHand} ${RATE_SHEET_WORDS.notMine}`
+  // The reason is a person's own words and may end without a full stop; the next sentence needs one before it.
+  if (byHand != null) return `${difficultyPointsWords(pick.points)}, set by hand: ${endedSentence(byHand)} ${RATE_SHEET_WORDS.notMine}`
   const behind = read && read.points != null ? difficultyPayingWords(read) : pick.reason.replace(/^Read from their bills:\s*/, '')
   return `${difficultyPointsWords(pick.points)} from their bills · ${behind} ${RATE_SHEET_WORDS.notMine}`
+}
+
+/** A person's words as a sentence: a full stop added when they end without a mark. */
+function endedSentence(words: string): string {
+  const t = words.trim()
+  return /[.!?…]$/.test(t) ? t : `${t}.`
 }
 
 export type RateSheetGcRecord = { total: number; won: number; lowPct: number | null; highPct: number | null }

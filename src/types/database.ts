@@ -4300,6 +4300,8 @@ export type Database = {
           priced_by: string | null
           priced_cost_usd: number | null
           priced_difficulty_usd: number | null
+          priced_labor_rows_total: number | null
+          priced_labor_rows_with_hours: number | null
           priced_margin_pct: number | null
           priced_on_set_id: string | null
           priced_rate_set: boolean | null
@@ -4406,6 +4408,8 @@ export type Database = {
           priced_by?: string | null
           priced_cost_usd?: number | null
           priced_difficulty_usd?: number | null
+          priced_labor_rows_total?: number | null
+          priced_labor_rows_with_hours?: number | null
           priced_margin_pct?: number | null
           priced_on_set_id?: string | null
           priced_rate_set?: boolean | null
@@ -4512,6 +4516,8 @@ export type Database = {
           priced_by?: string | null
           priced_cost_usd?: number | null
           priced_difficulty_usd?: number | null
+          priced_labor_rows_total?: number | null
+          priced_labor_rows_with_hours?: number | null
           priced_margin_pct?: number | null
           priced_on_set_id?: string | null
           priced_rate_set?: boolean | null

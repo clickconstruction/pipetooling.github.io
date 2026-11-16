@@ -2,7 +2,7 @@
 name: "The job window on a phone"
 number: 355
 group: waiting
-status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day · the six other tabs built, v2.7281 to v2.7285 · C shown to Taunya 2026-11-15 as three roles beside the live window · her pick the same day: build the crew half, the crew lead's tabs wait · the crew's window in B's order built as v2.7355 the same day · the crew reads their job's row (v2.7375) and Today's work is on the crew's window (v2.7376), both 2026-11-15 · Taunya's answer the same day, a sub sees our lead's number: v2.7380
+status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day · the six other tabs built, v2.7281 to v2.7285 · C shown to Taunya 2026-11-15 as three roles beside the live window · her pick the same day: build the crew half, the crew lead's tabs wait · the crew's window in B's order built as v2.7355 the same day · the crew reads their job's row (v2.7375) and Today's work is on the crew's window (v2.7376), both 2026-11-15 · Taunya's answer the same day, a sub sees our lead's number: v2.7380 · her pick after the before and after were drawn, "Draw it now": Your pay on a sub's window, v2.7399
 summary: >
   The owner opened a job on his iPhone and did not like how it reads: the tab row wraps onto two
   lines, the top is eight small icons, and the Job tab runs six and a half screens before the bar.
@@ -17,10 +17,10 @@ summary: >
   the right and every door goes behind ⋯. A, B and the six other tabs are built. C was shown on
   2026-11-15 and split on Taunya's word: the crew's plain window gets B's order now, and the crew
   lead's tabs shaped by role wait for a month of tab counts.
-next: on 2026-12-14 read a month of tab counts (`ui_nav_clicks`, by role) and say whether a master tech works the tabbed window from a phone, which is what the crew lead's tabs wait on; before then, ask Taunya the sub's second question (is a Your pay row drawn), which the sub's own rows wait on.
+next: on 2026-12-14 read a month of tab counts (`ui_nav_clicks`, by role) and say whether a master tech works the tabbed window from a phone, which is what the crew lead's tabs wait on. Both of the sub's questions are answered and built.
 size: L as a train (S for A · M for B · L for C, of which the crew half is M, built); what is left is M to L, and waits
 blocker: none
-opinion: A, B, the six other tabs and the crew half of C are built (v2.7355, v2.7375, v2.7376), and a sub's window shows our lead's number (v2.7380); the crew lead's tabs wait for a month of tab counts, and the sub's own rows for Taunya's answer on Your pay
+opinion: A, B, the six other tabs and the crew half of C are built (v2.7355, v2.7375, v2.7376), and a sub's window shows our lead's number (v2.7380); the crew lead's tabs wait for a month of tab counts, and Your pay is on a sub's window (v2.7399)
 mockup: job-window-phone-directions.html
 ---
 
@@ -599,7 +599,10 @@ Today's work.
 2026-11-15, **"Our lead's"**. Built as **v2.7380** (`docs/recent-features/v2.7380.md`): a sub's
 window names the master technician on the job's team, else the superintendent, with their number,
 and shows neither the customer's number nor their email; with no lead on the team it shows the
-office's number. Job Mode's details card follows the same rule. Still hers to say: whether a *Your pay* row is drawn before the sub pay work lands.
+office's number. Job Mode's details card follows the same rule. Whether a *Your pay* row is drawn: she asked for the before and after as a picture
+(`job-window-phone-sub-pay.html`) and picked **"Draw it now"** the same day. Built as **v2.7399**
+(`docs/recent-features/v2.7399.md`): what is open on the sub's own sheets on the job, by the
+portal's own sums, with the door to their portal; a job with no sheet in their name says so.
 
 ## The plan
 

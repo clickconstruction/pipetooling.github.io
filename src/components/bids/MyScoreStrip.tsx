@@ -33,7 +33,7 @@ export default function MyScoreStrip({ read, onOpenLabor }: { read: EstimatorSco
                   setOpen(false)
                   onOpenLabor(r.bidId)
                 }}
-                style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, minHeight: 36, padding: '0 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, minHeight: 44, padding: '0 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
               >
                 {W.openLabor}
               </button>

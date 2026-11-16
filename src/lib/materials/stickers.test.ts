@@ -65,12 +65,13 @@ describe('the number', () => {
 describe('the function’s answer', () => {
   it('reads a blank sticker', () => {
     const got = stickerFactsOf({ id: blank.id, number: 147, code: '4F2A9C18', state: 'blank', container_id: null, container_label: null, container_kind: null, container_retired_at: null, job_id: null, placed_by_name: null, placed_at: null, lost_at: null, run_id: 'run-1', run_job_id: 'job-juniper' })
-    expect(got).toEqual(blank)
+    // the name on the tape rides along, null on a sticker that carries its number only (section 10)
+    expect(got).toEqual({ ...blank, boxName: null })
   })
 
   it('reads a sticker on a box with who put it there', () => {
     const got = stickerFactsOf({ id: blank.id, number: 147, code: '4F2A9C18', state: 'on_box', container_id: 'box-r76', container_label: 'R76', container_kind: 'cage', job_id: 'job-juniper', placed_by_name: 'Marcus', placed_at: '2026-11-14T15:00:00Z', run_id: 'run-1', run_job_id: 'job-juniper' })
-    expect(got).toEqual(onR76)
+    expect(got).toEqual({ ...onR76, boxName: null })
   })
 
   it('is null for anything that is not a sticker', () => {
