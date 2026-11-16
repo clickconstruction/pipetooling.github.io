@@ -24,6 +24,10 @@ SET lock_timeout = '3s';
 --     by-hand "not paid" on a bill it covers is refused with the reason.
 -- A bill for $0.00 and a credit memo with no line keep their by-hand paid state: nothing was sent.
 --
+-- supply_house_invoices.amount_paid is what the live payments have put on a bill, kept by the same
+-- sync, so a reader that totals unpaid bills takes a part-paid bill's open balance off the row:
+-- amount - amount_paid.
+--
 -- Every bill already paid gets one payment "from before" (source 'before') for its whole amount on
 -- the day it was marked paid. The backfill skips a bill that already has a line, so it can run twice.
 -- It runs set-based, before the two new tables have their triggers, under a lock that holds writes
@@ -122,11 +126,19 @@ CREATE POLICY "Office staff can delete supply house payment lines" ON public.sup
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.supply_house_payment_lines TO authenticated;
 
+-- What the live payments have put on a bill. A constant default, so the column is added without
+-- rewriting the table.
+ALTER TABLE public.supply_house_invoices
+  ADD COLUMN IF NOT EXISTS amount_paid numeric(12,2) NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN public.supply_house_invoices.amount_paid IS
+  'The sum of the lines of this bill''s live payments (supply_house_payment_lines), kept by supply_house_invoice_sync_paid. Below zero on a credit memo a payment has used. An unpaid bill has amount - amount_paid open. Never written by hand.';
+
 -- ── 3. A bill reads paid when its lines cover it ────────────────────────────────────────────────
 
--- Sets one bill's is_paid and paid_at from the lines of its live payments. A bill above zero is
--- paid when its lines reach its amount; a credit memo when its lines, below zero, reach its amount.
--- A bill for nothing is left alone. Half a cent is dust, as everywhere else in the app.
+-- Sets one bill's is_paid, paid_at and amount_paid from the lines of its live payments. A bill above
+-- zero is paid when its lines reach its amount; a credit memo when its lines, below zero, reach its
+-- amount. A bill for nothing keeps its paid state. Half a cent is dust, as everywhere else in the app.
 --
 -- While it writes the bill it sets supply_house_payments.syncing for the transaction, so the
 -- trigger on the bill can tell this write from one made by hand.
@@ -142,39 +154,42 @@ DECLARE
   v_amount numeric;
   v_is_paid boolean;
   v_paid_at timestamptz;
+  v_amount_paid numeric;
   v_sum numeric;
   v_last date;
-  v_cover boolean;
-  v_stamp timestamptz;
+  v_new_paid boolean;
+  v_new_at timestamptz;
 BEGIN
-  SELECT amount, is_paid, paid_at INTO v_amount, v_is_paid, v_paid_at
+  SELECT amount, is_paid, paid_at, amount_paid INTO v_amount, v_is_paid, v_paid_at, v_amount_paid
     FROM public.supply_house_invoices WHERE id = p_invoice_id FOR NO KEY UPDATE;
-  IF NOT FOUND OR v_amount = 0 THEN RETURN; END IF;
+  IF NOT FOUND THEN RETURN; END IF;
 
   SELECT COALESCE(SUM(l.amount), 0), MAX(p.paid_on) INTO v_sum, v_last
     FROM public.supply_house_payment_lines l
     JOIN public.supply_house_payments p ON p.id = l.payment_id
    WHERE l.invoice_id = p_invoice_id AND p.removed_at IS NULL;
 
-  IF v_amount > 0 THEN v_cover := v_sum >= v_amount - 0.005;
-  ELSE v_cover := v_sum <= v_amount + 0.005;
+  v_new_paid := v_is_paid;
+  v_new_at := v_paid_at;
+  -- A bill for nothing keeps the state it was written with.
+  IF v_amount <> 0 THEN
+    IF (v_amount > 0 AND v_sum >= v_amount - 0.005) OR (v_amount < 0 AND v_sum <= v_amount + 0.005) THEN
+      v_new_paid := true;
+      -- Noon on the latest payment's day, as the invoice form writes a typed paid day.
+      IF NOT v_is_paid OR v_paid_at IS NULL OR (v_paid_at AT TIME ZONE 'America/Chicago')::date <> v_last THEN
+        v_new_at := (v_last + time '12:00') AT TIME ZONE 'America/Chicago';
+      END IF;
+    ELSE
+      v_new_paid := false;
+    END IF;
   END IF;
 
-  IF v_cover THEN
-    -- Noon on the payment's day, as the invoice form writes a typed paid day.
-    v_stamp := (v_last + time '12:00') AT TIME ZONE 'America/Chicago';
-    IF NOT v_is_paid THEN
-      PERFORM set_config('supply_house_payments.syncing', '1', true);
-      UPDATE public.supply_house_invoices SET is_paid = true, paid_at = v_stamp WHERE id = p_invoice_id;
-      PERFORM set_config('supply_house_payments.syncing', '', true);
-    ELSIF v_paid_at IS NULL OR (v_paid_at AT TIME ZONE 'America/Chicago')::date <> v_last THEN
-      PERFORM set_config('supply_house_payments.syncing', '1', true);
-      UPDATE public.supply_house_invoices SET paid_at = v_stamp WHERE id = p_invoice_id;
-      PERFORM set_config('supply_house_payments.syncing', '', true);
-    END IF;
-  ELSIF v_is_paid THEN
+  IF v_new_paid IS DISTINCT FROM v_is_paid OR v_new_at IS DISTINCT FROM v_paid_at OR v_sum IS DISTINCT FROM v_amount_paid THEN
     PERFORM set_config('supply_house_payments.syncing', '1', true);
-    UPDATE public.supply_house_invoices SET is_paid = false WHERE id = p_invoice_id;
+    -- On the way to not paid, the baseline's trigger clears paid_at itself.
+    UPDATE public.supply_house_invoices
+       SET is_paid = v_new_paid, paid_at = CASE WHEN v_new_paid THEN v_new_at ELSE paid_at END, amount_paid = v_sum
+     WHERE id = p_invoice_id;
     PERFORM set_config('supply_house_payments.syncing', '', true);
   END IF;
 END;
@@ -672,9 +687,10 @@ GRANT EXECUTE ON FUNCTION public.record_supply_house_payment(uuid, date, numeric
 -- the receipt link pasted on it. A bill that already has a line is skipped, so a second run does
 -- nothing. A paid credit memo and a paid bill for $0.00 keep their by-hand state and get no row.
 --
--- It runs before the triggers on the two new tables exist, as two set-based inserts, so thousands
--- of bills take a moment and no bill row is read back or written. Writes to the bills wait while
--- it runs (the lock below; reads do not), so no bill is marked paid half-way through.
+-- It runs before the triggers on the two new tables exist, as two set-based inserts and one update
+-- of amount_paid, so thousands of bills take a moment and nothing a reader already reads on a bill
+-- changes. Writes to the bills wait while it runs (the lock below), so no bill is marked paid
+-- half-way through.
 DO $$
 BEGIN
   LOCK TABLE public.supply_house_invoices IN SHARE ROW EXCLUSIVE MODE;
@@ -692,6 +708,15 @@ BEGIN
 
   INSERT INTO public.supply_house_payment_lines (payment_id, invoice_id, amount, created_by)
   SELECT payment_id, invoice_id, amount, NULL FROM supply_house_payments_backfill;
+
+  -- Each of those bills now has its whole amount on it. Only amount_paid is written: updated_at is
+  -- held still, so no screen reads these bills as just changed, and no trigger of this file fires
+  -- (none listens to amount_paid).
+  ALTER TABLE public.supply_house_invoices DISABLE TRIGGER update_supply_house_invoices_updated_at;
+  UPDATE public.supply_house_invoices i SET amount_paid = b.amount
+    FROM supply_house_payments_backfill b
+   WHERE i.id = b.invoice_id AND i.amount_paid IS DISTINCT FROM b.amount;
+  ALTER TABLE public.supply_house_invoices ENABLE TRIGGER update_supply_house_invoices_updated_at;
 
   DROP TABLE supply_house_payments_backfill;
 END;

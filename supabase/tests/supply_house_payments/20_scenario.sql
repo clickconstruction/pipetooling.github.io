@@ -45,7 +45,9 @@ BEGIN
   SELECT p.* INTO v FROM public.supply_house_payments p JOIN public.supply_house_payment_lines l ON l.payment_id = p.id WHERE l.invoice_id = '00000000-0000-0000-0000-000000000c02';
   PERFORM pg_temp.expect(v.amount = 30.00 AND v.paid_on = '2026-10-06' AND v.receipt_link = 'https://example.test/receipt', 'OLD-2: the day in the company''s time zone, the link trimmed');
   PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_payment_lines WHERE invoice_id IN ('00000000-0000-0000-0000-000000000c03', '00000000-0000-0000-0000-000000000c04', '00000000-0000-0000-0000-000000000c05')) = 0, 'no line on the open bill, the paid credit or the $0.00 bill');
-  -- The backfill wrote no bill row: what each bill said before, it says now.
+  -- The backfill changed nothing a reader already reads: what each bill said before, it says now.
+  PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_invoices WHERE amount_paid IS DISTINCT FROM pg_temp.on_bill(id)) = 0, 'and each bill''s amount_paid is what its payment put on it');
+  PERFORM pg_temp.expect((SELECT amount_paid FROM public.supply_house_invoices WHERE id = '00000000-0000-0000-0000-000000000c01') = 100.00, 'OLD-1 reads 100 paid');
   PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_invoices i JOIN pg_temp.before b ON b.id = i.id WHERE i.is_paid IS DISTINCT FROM b.is_paid OR i.paid_at IS DISTINCT FROM b.paid_at OR i.updated_at IS DISTINCT FROM b.updated_at) = 0, 'no bill row was written by the backfill');
   RAISE NOTICE 'A backfill PASSED';
 END;
@@ -102,6 +104,7 @@ BEGIN
   PERFORM pg_temp.expect((SELECT method = 'ach' AND method_ref = '88213' AND source = 'recorded' AND created_by_name = 'Dana Whitfield' FROM public.supply_house_payments WHERE id = p1), 'the payment keeps how it was sent, its number trimmed');
   PERFORM pg_temp.expect(pg_temp.paid(x) AND pg_temp.paid_day(x) = '2026-11-12', 'the bill paid whole reads paid on the payment''s day');
   PERFORM pg_temp.expect(NOT pg_temp.paid(y) AND pg_temp.on_bill(y) = 150, 'the bill paid in part stays open with 150 on it');
+  PERFORM pg_temp.expect((SELECT amount - amount_paid FROM public.supply_house_invoices WHERE id = y) = 50, 'and its row says 50 is open');
   r := public.record_supply_house_payment(h, '2026-11-14', 50, jsonb_build_array(jsonb_build_object('invoice_id', y, 'amount', 50)), 'card', '4410');
   p2 := (r->>'payment_id')::uuid;
   PERFORM pg_temp.expect(pg_temp.paid(y) AND pg_temp.paid_day(y) = '2026-11-14', 'the rest paid later: paid on the later day');
@@ -241,6 +244,7 @@ BEGIN
   -- Set to nothing: a typed line comes off whole, a press goes.
   UPDATE public.supply_house_invoices SET amount = 0 WHERE id = t2;
   PERFORM pg_temp.expect(pg_temp.on_bill(t2) = 0 AND pg_temp.on_account(pt) = 140 AND pg_temp.paid(t2), 'a bill set to $0.00 lets go of its typed line and keeps the state it was written with');
+  PERFORM pg_temp.expect((SELECT amount_paid FROM public.supply_house_invoices WHERE id = t2) = 0, 'and its amount_paid is cleared');
   UPDATE public.supply_house_invoices SET is_paid = true WHERE id = g2;
   UPDATE public.supply_house_invoices SET amount = 0 WHERE id = g2;
   PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_payment_lines WHERE invoice_id = g2) = 0 AND pg_temp.paid(g2), 'a paid bill set to $0.00 loses its press and stays marked');
@@ -355,6 +359,7 @@ BEGIN
   ) = 0, 'every paid bill''s paid day is its latest payment''s day');
   -- The one paid bill seeded with no paid day was left as it was by the backfill: no row of it was written.
   PERFORM pg_temp.expect((SELECT is_paid AND paid_at IS NULL FROM public.supply_house_invoices WHERE id = '00000000-0000-0000-0000-000000000c07'), 'the paid bill with no paid day still has none');
+  PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_invoices WHERE amount_paid IS DISTINCT FROM pg_temp.on_bill(id)) = 0, 'every bill''s amount_paid is the sum of its live lines');
   PERFORM pg_temp.expect((
     SELECT count(*) FROM public.supply_house_payments p WHERE pg_temp.on_account(p.id) < -0.005
   ) = 0, 'no payment places more than it sent');

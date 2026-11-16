@@ -1115,7 +1115,7 @@ uuid3           | Supply House C    | 0
 - **Key Fields**:
   - `supply_house_payments`: `supply_house_id` (FK → `supply_houses.id`, cascade), `paid_on` (date, the day it was sent), `amount` (what was sent), `method` (`card` | `ach` | `check` | `cash` | `other`, nullable), `method_ref`, `receipt_link`, `memo`, `source` (`recorded` | `mark_paid` | `before`), `removed_at` / `removed_by` / `removed_by_name` / `removed_reason`, `created_by` / `created_by_name`
   - `supply_house_payment_lines`: `payment_id` (FK, cascade), `invoice_id` (FK → `supply_house_invoices.id`, cascade), `amount` (above zero on a bill, below zero on a credit memo)
-- **Rules**: a bill's `is_paid` and `paid_at` are kept true by the lines of its live payments, in both directions (a by-hand Mark paid makes a payment); what a payment sent past its lines is on account with the house and is stored nowhere else
+- **Rules**: a bill's `is_paid`, `paid_at` and `supply_house_invoices.amount_paid` (what its live payments have put on it; an unpaid bill has `amount - amount_paid` open) are kept true by the lines, in both directions (a by-hand Mark paid makes a payment); what a payment sent past its lines is on account with the house and is stored nowhere else
 - **RLS**: office staff only (`is_office_staff()`), all four commands
 
 #### `public.supply_house_service_types`
