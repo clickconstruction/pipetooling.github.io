@@ -1634,6 +1634,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "person_file_thing": [{"args":{"p_id":"string","p_kind":"string"},"returns":"Json"}],
   "pipeline_customer_lines": [{"args":{"p_job_ids":"string[]","p_per_job?":"number"},"returns":"{ at: string auto: boolean body: string channel: string contact_goes_by: string contact_id: string contact_kind: string contact_name: string delivery: string di…"}],
   "place_sticker": [{"args":{"p_container_id?":"string","p_job_id?":"string","p_kind?":"string","p_label?":"string","p_place_id?":"string","p_sticker_id":"string","p_where_note?":"string"},"returns":"Json"}],
+  "place_sticker_range": [{"args":{"p_job_id":"string","p_kind?":"string","p_names":"string[]","p_place_id?":"string","p_where_note?":"string"},"returns":"Json"}],
   "plan_job_names_from_work": [{"args":{"p_apply?":"boolean"},"returns":"{ hcp_number: string job_id: string new_name: string old_name: string work: string }[]"}],
   "plan_part_can_see": [{"args":{"p_part_id":"string"},"returns":"boolean"}],
   "plan_part_can_write": [{"args":{"p_part_id":"string"},"returns":"boolean"}],
