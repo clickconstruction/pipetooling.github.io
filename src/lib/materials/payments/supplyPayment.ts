@@ -112,6 +112,23 @@ export function supplyBillOpen(bill: { amount: number; is_paid: boolean }, paidO
   return 0
 }
 
+/**
+ * What a bill still has open, from the row alone: `supply_house_invoices.amount_paid` is what its live payments
+ * have put on it, kept by the database. A reader that totals unpaid bills uses this, so a bill paid in part counts
+ * for what is left on it and not for its whole amount. A row read without the column counts whole, as it always did.
+ */
+export function openAmount(bill: { amount: number | null; is_paid?: boolean | null; amount_paid?: number | null }): number {
+  return supplyBillOpen({ amount: Number(bill.amount ?? 0), is_paid: bill.is_paid === true }, Number(bill.amount_paid ?? 0))
+}
+
+/** `$300.00 paid · $512.40 left of $812.40`: what a bill paid in part says on its row. Empty when nothing is on it yet. */
+export function partPaidWords(bill: { amount: number; is_paid: boolean }, paidOnIt: number): string {
+  if (bill.is_paid || Math.abs(paidOnIt) <= SUPPLY_PAYMENT_TOLERANCE) return ''
+  const open = supplyBillOpen(bill, paidOnIt)
+  if (bill.amount < 0) return `${usd(Math.abs(paidOnIt))} used · ${usd(Math.abs(open))} left of ${usd(Math.abs(bill.amount))}`
+  return `${usd(paidOnIt)} paid · ${usd(open)} left of ${usd(bill.amount)}`
+}
+
 /** What a payment sent past its lines: on account with the house. A removed payment holds nothing. */
 export function paymentOnAccount(payment: SupplyPayment, lines: ReadonlyArray<SupplyPaymentLine>): number {
   if (payment.removed_at) return 0

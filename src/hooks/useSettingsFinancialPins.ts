@@ -1,3 +1,4 @@
+import { openAmount } from '../lib/materials/payments/supplyPayment'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getUsersWithPin } from '../lib/pinnedTabs'
@@ -64,10 +65,10 @@ export function useSettingsFinancialPins(enabled: boolean) {
   async function loadSupplyHousesAPTotalAndPinnedUsers() {
     if (!enabled) return
     const [invoicesRes, pinnedRes] = await Promise.all([
-      supabase.from('supply_house_invoices').select('amount, is_paid').eq('is_paid', false),
+      supabase.from('supply_house_invoices').select('amount, amount_paid, is_paid').eq('is_paid', false),
       getUsersWithPin('/materials', 'supply-houses'),
     ])
-    const total = (invoicesRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
+    const total = (invoicesRes.data ?? []).reduce((sum, r) => sum + openAmount(r), 0)
     setApTotal(total)
     const pinned = new Set(pinnedRes.map((r) => r.user_id))
     setPinAPMasterIds(pinned)
