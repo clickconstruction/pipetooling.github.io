@@ -13,9 +13,11 @@ import { useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
+import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
 import { useGcDifficultyAsks } from '../../hooks/useGcDifficultyAsks'
 import { GC_DIFFICULTY_ASK_WORDS as W, gcDifficultyAskForJob, gcDifficultyAskGroups, type GcDifficultyOpenAsk } from '../../lib/bids/gcDifficultyAsk'
 import type { GcDifficultyAskIo } from '../../lib/bids/gcDifficultyAskIo'
+import { difficultyCanRate } from '../../lib/bids/difficultyPrice'
 import type { RateSheetIo } from '../../lib/bids/difficultyRateSheetIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { PhoneSheet } from '../PhoneSheet'
@@ -28,6 +30,17 @@ const NOT_NOW: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWei
 /** Who is ever asked: a job's master, and a dev walking a test job. Everyone else makes no read. */
 function mayBeAsked(role: string | null | undefined): boolean {
   return role === 'master_technician' || role === 'dev'
+}
+
+/**
+ * Whether the ask draws for this person: they are someone who is asked, and the price list lets them rate
+ * (`difficultyCanRate`, the one answer every rating press asks; v2.7468). With the masters taken off the list an ask
+ * could only open a sheet that cannot save, so it waits unseen until they are named again.
+ */
+function useAsked(role: string | null | undefined): boolean {
+  const asked = mayBeAsked(role)
+  const price = useDifficultyPrice(asked)
+  return asked && difficultyCanRate(price?.body ?? null, role)
 }
 
 /** The sheet for a set of open asks about one GC: a save answers them, *Not now* puts them away. */
@@ -67,7 +80,8 @@ function AskSheet({ asks, io, sheetIo, onClose }: { asks: readonly GcDifficultyO
 export function GcDifficultyAskLine({ jobId, io, sheetIo }: { jobId: string | null | undefined; io?: GcDifficultyAskIo; sheetIo?: RateSheetIo }) {
   const { showToast } = useToastContext()
   const role = useOptionalAuth()?.role
-  const state = useGcDifficultyAsks(!!jobId && mayBeAsked(role), io)
+  const asked = useAsked(role)
+  const state = useGcDifficultyAsks(!!jobId && asked, io)
   const ask = gcDifficultyAskForJob(state.asks, jobId)
   const [open, setOpen] = useState(false)
   if (!ask) return null
@@ -97,7 +111,8 @@ export function GcDifficultyAskLine({ jobId, io, sheetIo }: { jobId: string | nu
 export function GcDifficultyAsksPress({ style, io, sheetIo }: { style?: CSSProperties; io?: GcDifficultyAskIo; sheetIo?: RateSheetIo }) {
   const { showToast } = useToastContext()
   const role = useOptionalAuth()?.role
-  const state = useGcDifficultyAsks(mayBeAsked(role), io)
+  const asked = useAsked(role)
+  const state = useGcDifficultyAsks(asked, io)
   const groups = gcDifficultyAskGroups(state.asks)
   const [listOpen, setListOpen] = useState(false)
   const [rating, setRating] = useState<string | null>(null)

@@ -20,17 +20,20 @@ import {
   DIFFICULTY_PAYING_KEY,
   difficultyPayingByHandOf,
   difficultyPayingDriftWords,
+  difficultyPayingKeptWords,
   difficultyPayingPick,
+  type DifficultyPayingPick,
+  type DifficultyPayingRead,
   difficultyPayingRuleWords,
   difficultyPayingWords,
   readDifficultyPaying,
-  type DifficultyPayingRead,
 } from '../../lib/bids/difficultyPaying'
 import {
   GC_DIFFICULTY_WORDS as W,
   gcDifficultyCarryLine,
   gcDifficultyDraftProblems,
   gcDifficultyHistoryLine,
+  gcDifficultyKeepableBillsPick,
   gcDifficultyOpeningPicks,
   gcDifficultyPicksChanged,
   gcDifficultyPicksToSave,
@@ -71,7 +74,8 @@ type ByHand = { points: number; reason: string }
 export default function GcDifficultyCard({ customerId, customerName, role, io = DEFAULT_IO }: { customerId: string; customerName: string; role: UserRole | null | undefined; io?: GcDifficultyIo }) {
   const { showToast } = useToastContext()
   const [price, setPrice] = useState<DifficultyPriceList | null>(null)
-  // #357 PR 4: the Bid Board's price list says who may rate; version 1's answer until it is read.
+  // #357 PR 4: the Bid Board's price list says who may rate; until it is read every group may, and the database
+  // asks the same list before it takes the row (v2.7468).
   const canRate = difficultyCanRate(price, role)
   const [versions, setVersions] = useState<DifficultyVersionLite[] | null>(null)
   const [published, setPublished] = useState<DifficultyVersionLite | null>(null)
@@ -134,7 +138,14 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
 
   const body = published?.body ?? null
   const payingScale = body?.scales.find((s) => s.key === DIFFICULTY_PAYING_KEY && s.source === 'bills') ?? null
-  const payingPick = payingScale ? difficultyPayingPick(paying, byHand) : null
+  const storedPaying = gcDifficultyStoredBillsPick(standing, DIFFICULTY_PAYING_KEY)
+  // v2.7468: bills that could not be read here keep the point the rating holds (an estimator's save, a failed read).
+  const payingPick = payingScale ? difficultyPayingPick(paying, byHand, gcDifficultyKeepableBillsPick(standing, DIFFICULTY_PAYING_KEY, body)) : null
+  // Someone who cannot read the bills has nothing to read again: the press takes a by-hand point back to what the
+  // rating holds, and does not draw while the point on screen is the one it holds.
+  const storedHand = storedPaying ? difficultyPayingByHandOf(storedPaying.reason) : null
+  const byHandIsStored = byHand != null && storedPaying != null && storedHand != null && byHand.points === storedPaying.points && byHand.reason === storedHand
+  const clearLabel = paying?.why !== 'unreadable' ? W.byHandClear : byHandIsStored ? null : W.byHandBack
   const allPicks: DifficultyPicks = useMemo(() => (payingPick ? { ...picks, [DIFFICULTY_PAYING_KEY]: payingPick.points } : picks), [picks, payingPick])
   const reasons = useMemo(() => {
     const out: Record<string, string> = {}
@@ -146,7 +157,6 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
   const changed = gcDifficultyPicksChanged(allPicks, standing)
   const dead = saving || problems.length > 0 || (!changed && standing != null)
   const carryLine = standing ? gcDifficultyCarryLine(standing) : null
-  const storedPaying = gcDifficultyStoredBillsPick(standing, DIFFICULTY_PAYING_KEY)
   const driftLine = payingScale && !byHand ? difficultyPayingDriftWords(storedPaying, paying) : null
 
   const save = async () => {
@@ -166,7 +176,7 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
   }
 
   const billsLine = (scale: DifficultyScale) => (
-    <PayingLine scale={scale} read={paying} byHand={byHand} open={byHandOpen} canRate={canRate} driftLine={driftLine} storedByHand={storedPaying ? difficultyPayingByHandOf(storedPaying.reason) : null} onOpen={() => setByHandOpen(true)} onClose={() => setByHandOpen(false)} onSet={(v) => { setByHand(v); setByHandOpen(false) }} onClear={() => { setByHand(null); setByHandOpen(false) }} />
+    <PayingLine scale={scale} read={paying} kept={payingPick?.kept ? payingPick : null} byHand={byHand} open={byHandOpen} canRate={canRate} clearLabel={clearLabel} driftLine={driftLine} storedByHand={storedHand} onOpen={() => setByHandOpen(true)} onClose={() => setByHandOpen(false)} onSet={(v) => { setByHand(v); setByHandOpen(false) }} onClear={() => { setByHand(null); setByHandOpen(false) }} />
   )
 
   return (
@@ -236,9 +246,11 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
 function PayingLine({
   scale,
   read,
+  kept,
   byHand,
   open,
   canRate,
+  clearLabel,
   driftLine,
   storedByHand,
   onOpen,
@@ -248,9 +260,13 @@ function PayingLine({
 }: {
   scale: DifficultyScale
   read: DifficultyPayingRead | null
+  /** The point the rating holds, kept because the bills could not be read here (v2.7468). */
+  kept: DifficultyPayingPick | null
   byHand: ByHand | null
   open: boolean
   canRate: boolean
+  /** The words on the press that lets a by-hand point go; null when there is nothing to go back to. */
+  clearLabel: string | null
   driftLine: string | null
   /** The by-hand reason the rating that stands holds, for the line that says so. */
   storedByHand: string | null
@@ -264,16 +280,16 @@ function PayingLine({
   const rungs = scale.rungs.length > 0 ? scale.rungs.map((r) => r.points) : Array.from({ length: scale.max + 1 }, (_, i) => i)
   return (
     <div style={BILLS_BOX} data-testid="gc-difficulty-paying">
-      <span data-testid="gc-difficulty-paying-words">{read ? difficultyPayingWords(read) : 'Reading their bills…'}</span>
+      <span data-testid="gc-difficulty-paying-words">{kept ? difficultyPayingKeptWords(kept) : read ? difficultyPayingWords(read) : 'Reading their bills…'}</span>
       <span style={MUTED}>{difficultyPayingRuleWords(read?.rule ?? { daysPast: 45, lateBillsInYear: 2, minBills: 3 })}</span>
       {byHand ? (
         <span style={AMBER} data-testid="gc-difficulty-paying-by-hand">
           Set by hand to {difficultyPointsWords(byHand.points)}: {byHand.reason}
-          {canRate ? (
+          {canRate && clearLabel ? (
             <>
               {' '}
               <button type="button" style={QUIET} onClick={onClear}>
-                {W.byHandClear}
+                {clearLabel}
               </button>
             </>
           ) : null}

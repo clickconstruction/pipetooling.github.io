@@ -128,6 +128,7 @@ type LienDeskItemRow = {
   id: string
   job_id: string
   kind: string
+  mailed_copies: Json
   months: string[]
   offer_by: string | null
   offer_pct: number
