@@ -10,8 +10,8 @@ describe('lienNextActFor — what pressing the band does (v2.7321)', () => {
     expect(lienNextActFor(facts({ noticeState: 'needs_owner' }))).toEqual({ kind: 'gate:owner', label: 'Find the owner ›' })
     expect(lienNextActFor(facts())).toEqual({ kind: 'footer', label: 'Send for approval ›' })
     expect(lienNextActFor(facts({ noticeState: 'awaiting' }))).toEqual({ kind: 'footer', label: 'Approve it ›' })
-    expect(lienNextActFor(facts({ noticeState: 'ready' }))).toEqual({ kind: 'footer', label: 'Send it ›' })
-    expect(lienNextActFor(facts({ noticeState: 'printed' }))).toEqual({ kind: 'footer', label: 'Record the mailing ›' })
+    expect(lienNextActFor(facts({ noticeState: 'ready' }))).toEqual({ kind: 'footer', label: 'Print and mail ›' })
+    expect(lienNextActFor(facts({ noticeState: 'printed' }))).toEqual({ kind: 'footer', label: 'Enter mail numbers ›' })
     expect(lienNextActFor(facts({ noticeState: 'held' }))).toEqual({ kind: 'footer', label: 'Lift the hold ›' })
   })
 

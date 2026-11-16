@@ -323,7 +323,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={fresh()} deskNotice={{ state: 'printed', holdUntil: null }} />)
     await settle()
     const card = await verdict()
-    expect(card.textContent).toMatch(/Record the mailing of the \w+ notice/)
+    expect(card.textContent).toMatch(/Enter mail numbers for the \w+ notice/)
     expect(card.textContent).toContain('the envelope’s certified number to be typed in')
     expect(card.textContent).not.toMatch(/Draft the/)
   })

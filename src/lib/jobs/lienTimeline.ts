@@ -357,7 +357,7 @@ function noticeStateWords(state: LienTimelineNoticeState, holdUntil: string | nu
     case 'awaiting':
       return 'awaiting approval'
     case 'ready':
-      return 'ready to send'
+      return 'approved to print'
     case 'printed':
       return 'in the mail · tracking owed'
     case 'held':
@@ -374,9 +374,9 @@ function noticeVerb(state: LienTimelineNoticeState): string {
     case 'awaiting':
       return 'Approve'
     case 'ready':
-      return 'Send'
+      return 'Print and mail'
     case 'printed':
-      return 'Record the mailing of'
+      return 'Enter mail numbers for'
     case 'held':
       return 'Held —'
     default:

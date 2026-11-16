@@ -1,5 +1,6 @@
 import { canSendLienOnWord, isLienLeader, isLienOffice } from './lienDesk'
 import { lienLeaderPressWords, type LienLeaderPaper } from './lienLeaderPress'
+import { LIEN_RUN_THEN_TO_MAIL, LIEN_RUN_THEN_TO_PRINT } from './lienRunWords'
 
 /**
  * One press per draft footer (v2.7324). Pure.
@@ -65,14 +66,14 @@ export type LienFooter = {
 export const LIEN_FOOTER_OKAYED_LABEL = 'He already okayed it ▾'
 export const LIEN_FOOTER_SIGN_LABEL = 'Sign another way ▾'
 export const LIEN_FOOTER_PEN_LABEL = 'He signed the paper…'
-export const LIEN_FOOTER_PEN_TITLE = 'He signed the printed paper with a pen. Write down who, when and how you know, and add the signed page. It goes in the run on that record.'
+export const LIEN_FOOTER_PEN_TITLE = 'He signed the printed paper with a pen. Write down who, when and how you know, and add the signed page. It waits to print on that record.'
 export const LIEN_FOOTER_AFFIDAVIT_LEADER_LINE = 'Ready to file. You sign it on paper before a notary.'
 
 /** The leader's own line on a notice: what reaches the paper when he presses. */
 export function lienSignWayLine(way: LienSignWay, otherScreen: boolean, name: string): string {
-  if (way === 'code') return `${name}’s code signs it, and it goes in the run.`
-  if (way === 'draw') return otherScreen ? `${name} signs on the line, and it goes in the run.` : 'Your signature on the line goes on it, and it goes in the run.'
-  return 'Your typed name goes on it, and it goes in the run.'
+  if (way === 'code') return `${name}’s code signs it. ${LIEN_RUN_THEN_TO_PRINT}`
+  if (way === 'draw') return otherScreen ? `${name} signs on the line. ${LIEN_RUN_THEN_TO_PRINT}` : `Your signature on the line goes on it. ${LIEN_RUN_THEN_TO_PRINT}`
+  return `Your typed name goes on it. ${LIEN_RUN_THEN_TO_PRINT}`
 }
 
 /** The ways he can sign on this screen: his own sign-in types or draws; someone else's screen draws, or takes his code when he has one. */
@@ -99,11 +100,11 @@ export function lienFooter(input: LienFooterInput): LienFooter {
       paper === 'affidavit'
         ? LIEN_FOOTER_AFFIDAVIT_LEADER_LINE
         : paper === 'retainage'
-          ? 'Your okay puts it in the run.'
+          ? `Your okay approves it. ${LIEN_RUN_THEN_TO_MAIL}`
           : lienSignWayLine(input.sign?.way ?? 'type', input.sign?.otherScreen ?? false, press.name)
     primary = { key: 'approve', label: press.approve, line }
   } else if (input.route === 'run') {
-    primary = { key: 'run', label: 'Put it in the run ▸', line: 'Straight into the run.' }
+    primary = { key: 'run', label: 'Move it to print ▸', line: `The standing rule approves it. ${LIEN_RUN_THEN_TO_PRINT}` }
   } else if (input.route === 'hold') {
     primary = { key: 'ask', label: press.ask, line: 'Parks under the hold rule.' }
   } else {

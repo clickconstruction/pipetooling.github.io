@@ -11,15 +11,15 @@ The Lien desk's To do tab opens on the Board. The Board is the whole lien month 
 
 The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers.
 
-The second tile counts the papers waiting on the leader, by name. Press it and the list shows only those rows.
+The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Press the tile and the list shows only those rows.
 
-The third tile counts the notices in the run. It asks you to type the tracking numbers. Press it and the run opens.
+The third tile counts the approved notices still to print and mail. Its small line says how many are to print and how many are to mail. Press it and the run opens.
 
 The fourth tile is the money still unpaid on the desk. Each job counts once.
 
 ## The two columns
 
-The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send for Master approval**, **Awaiting Master approval**, *Approved · to mail* and **Sent**. A thin grey arrow joins each bin to the next.
+The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send for Master approval**, **Awaiting Master approval**, *Approved · to print*, *Approved · to mail* and **Sent**. An approved notice stands in *Approved · to print* until its packet prints. Then it stands in *Approved · to mail* until its mail numbers are typed in. The Monthly notices list uses the same two names. A thin grey arrow joins each bin to the next.
 
 The right column is the lien affidavits. Its first two bins are **Needs the property facts** and **Waiting on its notice**. Then come **To send for Master approval**, **Awaiting Master approval**, **Ready to file** and *Filed · Served*.
 
@@ -63,7 +63,7 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 - A chip in **Needs the owner** or **Needs the property facts** opens the property record at the missing line.
 - A chip in **Waiting on its notice** opens the job's notice. When the notice is approved, the chip opens the run on that envelope.
 - A chip in **To send for Master approval** or **Awaiting Master approval** opens that job's paper on **By paper**.
-- A chip in *Approved · to mail* opens the run on that envelope.
+- A chip in *Approved · to print* or *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
 - A chip in *Filed · Served* opens the job's Lien window.
 
@@ -147,7 +147,7 @@ Press {{button:outline|Every bin}} to see the whole Board. Press {{button:outlin
 
 ## On the Dashboard
 
-The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 in the run · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
+The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 to print and mail · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
 
 ## The title is a door
 

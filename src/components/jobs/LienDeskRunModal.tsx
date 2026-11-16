@@ -52,6 +52,7 @@ import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { LIEN_RUN_ACT, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -499,7 +500,7 @@ export default function LienDeskRunModal({
       if (signed.length) {
         setNotices((prev) => prev.map((n) => signed.find((x) => x.itemId === n.itemId) ?? n))
         setSignOpen(null)
-        showToast(signed.length === 1 ? 'Signed — the notice is in the run.' : `Signed — ${signed.length} notices are in the run.`)
+        showToast(signed.length === 1 ? 'Signed. The notice can print now.' : `Signed. ${signed.length} notices can print now.`)
         onRecorded()
       }
     } finally {
@@ -716,7 +717,7 @@ export default function LienDeskRunModal({
       const result = await recordLienDeskRun(recordable, { userId, todayYmd, mailedOn, invoiceDocsByJob: invoiceDocsShown, payBlocksByJob, document: { url: docUrl, note: docNote } })
       const courtesy = runCourtesyResultWords(result.courtesySent, result.courtesyFailed)
       const stay = notices.length - recordable.reduce((s, n) => s + (partsOf(n)?.length ?? 1), 0)
-      if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.${courtesy.sent ? ` ${courtesy.sent}` : ''}${stay > 0 ? ` ${stay} ${stay === 1 ? 'stays' : 'stay'} in the run until its ticks are in.` : ''}`, 'success')
+      if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.${courtesy.sent ? ` ${courtesy.sent}` : ''}${stay > 0 ? ` ${stay} ${stay === 1 ? 'stays' : 'stay'} here until its ticks are in.` : ''}`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
       if (courtesy.failed) showToast(courtesy.failed, 'warning')
       if (result.releaseFailed.length) showToast(`The enclosed release was not issued on ${result.releaseFailed.map((f) => `${f.label} (${f.reason})`).join('; ')}. Issue it from the Release of Lien window.`, 'warning')
@@ -779,7 +780,7 @@ export default function LienDeskRunModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={recording ? 'Record the mailing' : 'Send the run'}
+      aria-label={LIEN_RUN_ACT[recording ? 'record' : 'print']}
       style={{ position: 'fixed', inset: 0, paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 790 }}
       onClick={(e) => {
         // The Lien desk and Put a GC on notice draw the run inside their own backdrop: a click
@@ -794,7 +795,7 @@ export default function LienDeskRunModal({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{recording ? 'Record the mailing' : 'Send the run'} · {shown.length} {shown.length === 1 ? 'notice' : 'notices'}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
+              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{lienRunWindowTitle(recording ? 'record' : 'print', shown.length)}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
               <button
                 type="button"
                 aria-label="What the packet is"

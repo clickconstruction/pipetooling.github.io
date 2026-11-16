@@ -15,6 +15,7 @@ import { PersonDeskWorkOrdersSection } from './sections/PersonDeskWorkOrdersSect
 import { PersonDeskPaySection } from './sections/PersonDeskPaySection'
 import { PersonDeskFieldSection } from './sections/PersonDeskFieldSection'
 import { PersonDeskWeekSection } from './sections/PersonDeskWeekSection'
+import { PersonDeskDashboardViewSection } from './sections/PersonDeskDashboardViewSection'
 import { PersonDeskBioSection } from './sections/PersonDeskBioSection'
 import { PersonDeskPaperworkSection } from './sections/PersonDeskPaperworkSection'
 import { PersonDeskRecordsSection } from './sections/PersonDeskRecordsSection'
@@ -156,6 +157,8 @@ export function PersonDeskBody({
             <PersonDeskFieldSection userId={key.userId} payName={key.payName} displayName={displayName} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             {/* Your week (v2.6589, punch list #255): the one signal this person sees move on their home, the office's pick. */}
             <PersonDeskWeekSection userId={key.userId} displayName={displayName} personRole={user?.role ?? null} viewer={viewer} changeKey={changeKey} />
+            {/* Dashboard view: Short or Full for a leader, the office's press, so he gets the short page without opening Settings. */}
+            <PersonDeskDashboardViewSection userId={key.userId} displayName={displayName} personRole={user?.role ?? null} viewer={viewer} viewerUserId={viewerUserId} changeKey={changeKey} />
             <PersonDeskBioSection userId={key.userId} displayName={displayName} personRole={user?.role ?? null} viewer={viewer} changeKey={changeKey} />
             <PersonDeskPaperworkSection payName={key.payName} personId={key.personId} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskRecordsSection userId={key.userId} personId={key.personId} viewer={viewer} changeKey={changeKey} />

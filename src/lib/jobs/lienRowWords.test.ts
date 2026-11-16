@@ -10,7 +10,7 @@ describe('lienRowLine', () => {
   })
 
   it('with no detail of its own a row under a bin keeps its words after it', () => {
-    expect(lienRowLine({ kind: 'notice', sub: 'Approved · ready to send' }, { stage: 'Approved · to mail' })).toEqual({ stage: 'Approved · to mail', detail: 'Approved · ready to send', tags: [] })
+    expect(lienRowLine({ kind: 'notice', sub: 'Approved · to print · offer 2%' }, { stage: 'Approved · to print' })).toEqual({ stage: 'Approved · to print', detail: 'Approved · to print · offer 2%', tags: [] })
   })
 
   it('a row with no bin keeps its words as they were', () => {

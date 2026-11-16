@@ -114,7 +114,8 @@ const WHERE_WORDS: Record<LienStatusWhere, string> = {
   owner: 'needs the owner of record',
   draft: 'to draft',
   approval: 'waiting for approval',
-  ready: 'approved for the next run',
+  // *approved to print* since v2.7448: the desk's own name for the step, with no dot or comma inside a list of commas (*approved for the next run* until then).
+  ready: 'approved to print',
   held: 'held for now',
 }
 
@@ -440,7 +441,7 @@ export function lienStatusText(p: LienStatusPayload): string {
     const ready = p.jobs.filter((j) => j.where === 'ready')
     const held = p.jobs.filter((j) => j.where === 'held')
     if (ready.length || held.length) L.push('')
-    if (ready.length) L.push(`Approved for the next run: ${count(ready.length, 'notice', 'notices')}, ${money(ready.reduce((s, j) => s + j.owed, 0))}.`)
+    if (ready.length) L.push(`Approved to print: ${count(ready.length, 'notice', 'notices')}, ${money(ready.reduce((s, j) => s + j.owed, 0))}.`)
     if (held.length) L.push(`Held for now: ${count(held.length, 'notice', 'notices')}, ${money(held.reduce((s, j) => s + j.owed, 0))}.`)
     const groups = lienStatusGroups(p.jobs)
     if (groups.length) {

@@ -14,6 +14,7 @@
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import { lienAffidavitNoticeWaits, lienAffidavitNoticeWords, type LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import type { LienTimelineAffidavitState, LienTimelineMove, LienTimelineNextKind, LienTimelineNoticeState } from './lienTimeline'
+import { LIEN_RUN_ACT } from './lienRunWords'
 
 /**
  * The doors a pane maps an act to. `gate:*` opens the record the gate reads (`owner` the property record at
@@ -50,9 +51,9 @@ function footerLabel(state: LienTimelineNoticeState | LienTimelineAffidavitState
     case 'awaiting':
       return 'Approve it ›'
     case 'ready':
-      return paper === 'affidavit' ? 'File it ›' : 'Send it ›'
+      return paper === 'affidavit' ? 'File it ›' : `${LIEN_RUN_ACT.print} ›`
     case 'printed':
-      return 'Record the mailing ›'
+      return `${LIEN_RUN_ACT.record} ›`
     case 'held':
       return 'Lift the hold ›'
     default:
