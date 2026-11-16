@@ -11,7 +11,8 @@ import { LienLastWorkDayConfirm } from './LienLastWorkDayConfirm'
  * hours, the job's creation, or a person), the reason when a person set it, and *Change ›* to set
  * it by hand — a day and a one-line reason, saved on the job. Clock hours and pay are never
  * touched, and the line says so. Drawn above the Months card on the Lien desk and in Edit Job's
- * lien row; the caller re-reads after a save. Since v2.4717 *Save the day* opens a window first
+ * lien row; the caller re-reads after a save. Since v2.7447 (punch list #335) the day may be earlier
+ * than the clock hours, and the window says what that takes off the lien clock. Since v2.4717 *Save the day* opens a window first
  * (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
  * and the reason, asked there; the write happens on its *Set the day*.
  */
@@ -39,6 +40,7 @@ export function LienLastWorkDayLine({
   jobLabel,
   clockMonths,
   noticedMonths,
+  affidavitMonths,
   propertyKind,
   startEditing = false,
   onCancel,
@@ -57,6 +59,8 @@ export function LienLastWorkDayLine({
   /** The months with approved hours (YYYY-MM), for the window's dates; the Edit Job row has none. */
   clockMonths?: ReadonlyArray<string>
   noticedMonths?: ReadonlyArray<string>
+  /** The months the job's approved or filed affidavit names (v2.7447), when the caller holds the paper. */
+  affidavitMonths?: ReadonlyArray<string>
   /** 'residential' | 'commercial'; '' or absent draws the words without the table. */
   propertyKind?: string
   /** Open on the editor (v2.4733): the Lien window draws the line only when its timeline's *change ›* is pressed. */
@@ -97,7 +101,7 @@ export function LienLastWorkDayLine({
   // Save the day opens the window (v2.4717); the write is its Set the day, after the day and the reason stand.
   const save = () => setConfirming(true)
   const confirm = () => {
-    const problem = lienLastWorkDayProblem(dayDraft, job?.last_work_date ?? null, todayYmd)
+    const problem = lienLastWorkDayProblem(dayDraft, todayYmd)
     if (problem || !noteDraft.trim()) return
     void write(lienLastWorkDayPatch(dayDraft, noteDraft, userId, new Date().toISOString()), `Last day of work set to ${formatYmdMonthDay(dayDraft)}. The lien months follow it; clock hours are untouched.`)
   }
@@ -154,7 +158,7 @@ export function LienLastWorkDayLine({
       {confirming ? (
         <LienLastWorkDayConfirm
           jobLabel={jobLabel ?? ''}
-          input={{ currentDay: d.day, currentSource: d.source, lastSessionDay: job?.last_work_date ?? null, clockMonths: clockMonths ?? [], noticedMonths: noticedMonths ?? [], propertyKind: propertyKind ?? '', todayYmd }}
+          input={{ currentDay: d.day, currentSource: d.source, lastSessionDay: job?.last_work_date ?? null, clockMonths: clockMonths ?? [], noticedMonths: noticedMonths ?? [], affidavitMonths: affidavitMonths ?? [], propertyKind: propertyKind ?? '', todayYmd }}
           day={dayDraft}
           onDay={setDayDraft}
           note={noteDraft}

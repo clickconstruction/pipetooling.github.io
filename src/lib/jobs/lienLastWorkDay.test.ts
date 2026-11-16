@@ -10,11 +10,12 @@ describe('lienLastWorkDay (v2.4676)', () => {
     expect(lienLastWorkDay(null)).toMatchObject({ day: null, source: 'created', sourceWords: 'no day yet' })
   })
   it('refuses a bad day, a future day, and a day before the clock hours', () => {
-    expect(lienLastWorkDayProblem('2026-13-40', null, '2026-10-06')).toBe('Pick a day.')
-    expect(lienLastWorkDayProblem('2026-10-07', null, '2026-10-06')).toBe('The last day of work cannot be after today.')
-    expect(lienLastWorkDayProblem('2026-08-14', '2026-09-24', '2026-10-06')).toBe('The clock hours already say Sep 24. The last day cannot be earlier.')
-    expect(lienLastWorkDayProblem('2026-09-24', '2026-09-24', '2026-10-06')).toBeNull()
-    expect(lienLastWorkDayProblem('2026-08-14', null, '2026-10-06')).toBeNull()
+    expect(lienLastWorkDayProblem('2026-13-40', '2026-10-06')).toBe('Pick a day.')
+    expect(lienLastWorkDayProblem('2026-10-07', '2026-10-06')).toBe('The last day of work cannot be after today.')
+    expect(lienLastWorkDayProblem('2026-10-06', '2026-10-06')).toBeNull()
+    // v2.7447, punch list #335: a day earlier than the clock hours is no longer a problem. The rule never reads the hours.
+    expect(lienLastWorkDayProblem('2026-08-14', '2026-10-06')).toBeNull()
+    expect(lienLastWorkDayProblem('2019-01-02', '2026-10-06')).toBeNull()
   })
   it('the patch carries the day, the reason trimmed, who and when; the clear empties all four', () => {
     expect(lienLastWorkDayPatch('2026-08-14', '  final walk-through ', 'u1', '2026-10-06T14:00:00Z')).toEqual({ lien_last_work_on: '2026-08-14', lien_last_work_note: 'final walk-through', lien_last_work_set_at: '2026-10-06T14:00:00Z', lien_last_work_set_by: 'u1' })

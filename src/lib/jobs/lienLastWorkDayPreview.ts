@@ -6,6 +6,13 @@
  * today beside the new day, changed rows lit. A day the rule refuses is explained in the same
  * window; a day far from the hours asks for a second look; a new month whose window already
  * closed is named as one that would read as missed. Pure: dates in, rows and words out.
+ *
+ * Since v2.7447 (punch list #335, the owner's calls of 2026-11-14 and 2026-11-16) a day earlier than
+ * the clock hours is saved, where it was refused. Any past day may be typed. The window says the
+ * later hours stay and do not move the day, names the months with hours that leave the lien clock,
+ * and asks for the second look (*Set the day anyway*) when the day is far from the hours, is before
+ * the first month with hours, takes away a month a mailed notice or the affidavit names, or puts
+ * the affidavit's last day in the past.
  */
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { filingDeadlineForMonth, noticeDeadlineForMonth, suitDeadlineFor } from './lienDeadlines'
@@ -18,12 +25,14 @@ export type LienLastWorkPreviewInput = {
   /** The day the job reads today, and where it comes from. */
   currentDay: string | null
   currentSource: 'hand' | 'hours' | 'bill' | 'created'
-  /** The last approved clock day; the one floor a hand-set day cannot go under. */
+  /** The last approved clock day. A hand-set day may be earlier since v2.7447; the window measures the move from it. */
   lastSessionDay: string | null
   /** The months with approved hours, YYYY-MM. Empty on a job with none. */
   clockMonths: ReadonlyArray<string>
   /** Months a notice already names; they never move. */
   noticedMonths?: ReadonlyArray<string>
+  /** Months the job's approved or filed affidavit names (v2.7447), when the caller holds the paper; an earlier day that takes one away asks for the second look. */
+  affidavitMonths?: ReadonlyArray<string>
   /** 'residential' | 'commercial' | '' — '' means the dates cannot be drawn. */
   propertyKind: string
   todayYmd: string
@@ -80,9 +89,9 @@ export function lienLastWorkShiftSize(days: number): string {
 }
 
 /**
- * The months the readers will name for a day: the clocked months up to the day's month, and the day's month (the one
- * rule, `lienClockMonths`). A typed day is never earlier than the hours, so for a day about to be saved this is the
- * clocked months plus its own. For a day already on the job that later hours follow, the later months are left out.
+ * The months the readers will name for a day: the clocked months before the day's month, and the day's month (the one
+ * rule, `lienClockMonths`). Months with hours after the day's month are left out, whether the day is on the job
+ * already or about to be saved (a typed day may be earlier than the hours since v2.7447).
  */
 export function lienLastWorkMonthsFor(day: string | null, clockMonths: ReadonlyArray<string>): string[] {
   return lienClockMonths(clockMonths, day && YMD.test(day) ? day : null).months
@@ -104,29 +113,82 @@ export function lienLastWorkDayWords(ymd: string, todayYmd: string): string {
   return y && y !== todayYmd.slice(0, 4) ? `${formatYmdMonthDay(ymd)}, ${y}` : formatYmdMonthDay(ymd)
 }
 
+/**
+ * The months an affidavit already approved or filed names, as far as the desk's entry knows them (v2.7447): its last
+ * month, the one an earlier day would take away. Empty for a paper not yet approved, a voided one, or no paper.
+ */
+export function lienLastWorkAffidavitMonths(entry: { lastMonth: string; item: { status: string; voided_at?: string | null } | null } | null | undefined): string[] {
+  const item = entry?.item
+  if (!entry || !item || item.voided_at) return []
+  return (item.status === 'approved' || item.status === 'sent') && /^\d{4}-\d{2}$/.test(entry.lastMonth) ? [entry.lastMonth] : []
+}
+
+const listWords = (months: ReadonlyArray<string>): string => {
+  const names = months.map(workMonthLabel)
+  return names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
 export function lienLastWorkPreview(i: LienLastWorkPreviewInput): LienLastWorkPreview {
   const hours = (i.lastSessionDay ?? '').slice(0, 10) || null
   const anchor = hours ?? i.currentDay
   const w = (d: string) => lienLastWorkDayWords(d, i.todayYmd)
   const anchorWords = hours ? `the clock hours say (${w(hours)})` : i.currentSource === 'created' && i.currentDay ? `the job's creation (${w(i.currentDay)})` : i.currentSource === 'bill' && i.currentDay ? `the bill (${w(i.currentDay)})` : i.currentDay ? `the day on the job (${w(i.currentDay)})` : 'today'
-  const problem = lienLastWorkDayProblem(i.candidate, hours, i.todayYmd)
+  const problem = lienLastWorkDayProblem(i.candidate, i.todayYmd)
   const dayWords = YMD.test(i.candidate) ? w(i.candidate) : '—'
   const delta = anchor && YMD.test(i.candidate) ? daysBetween(anchor, i.candidate) : 0
   const size = lienLastWorkShiftSize(delta)
   const dir = delta < 0 ? 'earlier' : 'later'
+  const kind = (i.propertyKind ?? '').trim()
+
+  // What an earlier day takes off the clock (v2.7447). The months with hours are the caller's, and the last clocked day's own.
+  const clocked = [...new Set([...i.clockMonths.map((m) => m.slice(0, 7)), ...(hours ? [hours.slice(0, 7)] : [])])].filter((m) => /^\d{4}-\d{2}$/.test(m)).sort()
+  const earlier = !problem && !!hours && i.candidate < hours
+  const monthsBefore = lienLastWorkMonthsFor(i.currentDay, clocked)
+  const monthsAfter = problem ? monthsBefore : lienLastWorkMonthsFor(i.candidate, clocked)
+  const offBefore = lienClockMonths(clocked, i.currentSource === 'hand' ? i.currentDay : null).hoursAfter
+  const offAfter = problem ? offBefore : lienClockMonths(clocked, i.candidate).hoursAfter
+  const noticed = new Set(i.noticedMonths ?? [])
+  const sworn = new Set(i.affidavitMonths ?? [])
+  const gone = monthsBefore.filter((m) => !monthsAfter.includes(m))
+  const goneNoticed = gone.filter((m) => noticed.has(m))
+  const goneSworn = gone.filter((m) => sworn.has(m) && !noticed.has(m))
+  // Only a caller that holds the job's clocked months can say a day is before the first of them (Edit Job's row holds none).
+  const beforeFirst = earlier && i.clockMonths.length > 0 && i.candidate.slice(0, 7) < clocked[0]!
+  const far = !!hours && Math.abs(delta) >= LIEN_LAST_WORK_FAR_DAYS
+  // The affidavit's last day, each side, when the property kind lets it be counted: an earlier day can put it in the past.
+  const dueBefore = kind && monthsBefore.length ? filingDeadlineForMonth(`${monthsBefore[monthsBefore.length - 1]}-01`, kind) : ''
+  const dueAfter = kind && monthsAfter.length ? filingDeadlineForMonth(`${monthsAfter[monthsAfter.length - 1]}-01`, kind) : ''
+  const lienGone = earlier && !!dueAfter && dueAfter < i.todayYmd && !(dueBefore && dueBefore < i.todayYmd)
 
   let verdict: LienLastWorkPreviewVerdict = 'fine'
   let shiftWords: string
   let sayWords: string
   if (problem) {
     verdict = 'refused'
-    shiftWords = !YMD.test(i.candidate) ? 'Type a day.' : i.candidate > i.todayYmd ? `Last day of work ${dayWords} — after today.` : `Last day of work ${dayWords} — ${size} ${dir} than ${anchorWords}.`
-    sayWords = i.candidate > i.todayYmd ? `A last day of work has to be a day that has happened. Today is ${w(i.todayYmd)}.` : hours && i.candidate < hours ? `The clock hours already show work on ${w(hours)}, so the last day cannot be earlier. If you meant a later month, check the month number.` : problem
+    shiftWords = !YMD.test(i.candidate) ? 'Type a day.' : `Last day of work ${dayWords} — after today.`
+    sayWords = YMD.test(i.candidate) && i.candidate > i.todayYmd ? `A last day of work has to be a day that has happened. Today is ${w(i.todayYmd)}.` : problem
   } else if (i.candidate === i.currentDay) {
     verdict = 'refused'
     shiftWords = `Last day of work ${dayWords} — the same day the job reads today.`
     sayWords = i.currentSource === 'hand' ? 'Nothing changes. Cancel, or pick another day.' : 'Nothing changes. Leave it as it is; there is no need to set it by hand.'
-  } else if (hours && Math.abs(delta) >= LIEN_LAST_WORK_FAR_DAYS) {
+  } else if (earlier) {
+    // Earlier than the clock hours (v2.7447): the hand day counts and the later hours stay where they are.
+    shiftWords = `Last day of work ${dayWords} — ${size} ${dir} than ${anchorWords}.`
+    const parts = [`The hours run to ${w(hours!)}, after this day. They stay as they are and do not move it.`]
+    if (offAfter.length) parts.push(`${listWords(offAfter)} ${offAfter.length === 1 ? 'has' : 'have'} clock hours and ${offAfter.length === 1 ? 'is' : 'are'} off the lien clock with this day.`)
+    const looks: string[] = []
+    if (beforeFirst) looks.push('The day is before the first month with clock hours, so no month with hours stays on the lien clock.')
+    else if (far) looks.push('That is a long way before the last clocked hour.')
+    if (goneNoticed.length) looks.push(`${listWords(goneNoticed)} ${goneNoticed.length === 1 ? 'is' : 'are'} named on a notice already recorded. The notice stays on record, and the lien clock stops counting ${goneNoticed.length === 1 ? 'that month' : 'those months'}.`)
+    if (goneSworn.length) looks.push(`${listWords(goneSworn)} ${goneSworn.length === 1 ? 'is' : 'are'} named on the job's affidavit. Read the affidavit again before it is filed.`)
+    if (lienGone) looks.push(`With this day the affidavit's last day to file was ${w(dueAfter)}, so the lien right would read as gone.`)
+    if (looks.length) {
+      verdict = 'look'
+      sayWords = [...parts, ...looks, 'Make sure the day is right before you set it.'].join(' ')
+    } else {
+      sayWords = [...parts, 'The dates below move with it.'].join(' ')
+    }
+  } else if (far) {
     verdict = 'look'
     shiftWords = `Last day of work ${dayWords} — ${size} ${dir} than ${anchorWords}.`
     sayWords = `That is a long way past the last clocked hour. Work on ${dayWords} with no hours against it is unusual; make sure the day is right before you set it.`
@@ -135,20 +197,20 @@ export function lienLastWorkPreview(i: LienLastWorkPreviewInput): LienLastWorkPr
     sayWords = hours ? `The hours end ${w(hours)} and the day is in reach of them. The dates below move with it.` : 'The job has no clock hours, so this day is the one the lien dates hang on.'
   }
 
-  const kind = (i.propertyKind ?? '').trim()
   if (!kind) return { verdict, shiftWords, sayWords: verdict === 'refused' ? sayWords : `${sayWords} The property kind is not on record, so the dates cannot be drawn here; the Lien desk shows them.`, rows: [], before: null, after: null }
 
   const before = datesFor(i.currentDay, i.clockMonths, kind)
   const after = verdict === 'refused' ? before : datesFor(i.candidate, i.clockMonths, kind)
-  const noticed = new Set(i.noticedMonths ?? [])
   const newMonths = after.months.filter((m) => !before.months.includes(m) && !noticed.has(m))
   const closedNew = newMonths.filter((m) => noticeDeadlineForMonth(`${m}-01`, kind) < i.todayYmd)
   const lastWords = (d: LienLastWorkPreviewDates) => (d.lastMonth ? `${workMonthLabel(d.lastMonth)} · mail by ${w(d.noticeDue)}` : '—')
   const rows: LienLastWorkPreviewRow[] = [
     { what: 'Last day of work', before: before.day ? `${w(before.day)} · ${i.currentSource === 'hand' ? 'set by hand' : i.currentSource === 'hours' ? 'clock hours' : i.currentSource === 'bill' ? 'the bill' : "the job's creation"}` : 'none yet', after: verdict === 'refused' ? '' : `${dayWords} · set by hand` },
     { what: 'Months the notice names', before: monthsWords(before.months), after: monthsWords(after.months) },
+    // v2.7447: the months with hours that the day leaves behind, drawn only when a side has one.
+    ...(offBefore.length || offAfter.length ? [{ what: 'Months off the clock', before: monthsWords(offBefore), after: monthsWords(offAfter) }] : []),
     { what: '§ 53.056 for the last month', before: lastWords(before), after: `${lastWords(after)}${closedNew.includes(after.lastMonth ?? '') ? ' · window closed, would read as missed' : ''}` },
-    { what: '§ 53.052 affidavit', before: before.affidavitDue ? `file by ${w(before.affidavitDue)}` : '—', after: after.affidavitDue ? `file by ${w(after.affidavitDue)}` : '—' },
+    { what: '§ 53.052 affidavit', before: before.affidavitDue ? `file by ${w(before.affidavitDue)}` : '—', after: after.affidavitDue ? `file by ${w(after.affidavitDue)}${lienGone ? ' · already past' : ''}` : '—' },
     { what: '§ 53.158 suit', before: before.suitDue ? `by ${w(before.suitDue)}` : '—', after: after.suitDue ? `by ${w(after.suitDue)}` : '—' },
   ].map((r) => ({ ...r, after: r.after || r.before, changed: verdict !== 'refused' && r.after !== '' && r.after !== r.before }))
   if (closedNew.length && verdict !== 'refused') sayWords += ` ${closedNew.map(workMonthLabel).join(' and ')} would join the notice with ${closedNew.length === 1 ? 'its window' : 'their windows'} already closed, so ${closedNew.length === 1 ? 'it' : 'they'} would read as missed.`
