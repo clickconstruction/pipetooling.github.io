@@ -288,12 +288,92 @@ export function noteTagMark(
   return { names, mine, words: said.join(' · '), waiting: false, late: false }
 }
 
+/** The roles job_note_people() lists (punch list #363): the office, and the roles a job's crew is made of. */
+const TAGGING_ROLES: readonly string[] = ['dev', 'master_technician', 'assistant', 'controller', 'superintendent', 'helpers', 'primary']
+
 /**
- * Who is offered the @ button and the list. A dev alone until the Tagged job notes section
- * lands (punch list #363, PR 4): before it, a tag would reach its person on the job's row only.
+ * Who is offered the @ button and the list: every role the list itself can hold. A subcontractor
+ * and an estimator are not offered it, since nobody can tag them back. The server still decides
+ * job by job: a helper off a job's crew is refused its list.
  */
 export function canTagInJobNotes(role: string | null | undefined): boolean {
-  return role === 'dev'
+  return role != null && TAGGING_ROLES.includes(role)
+}
+
+/** One row of `job_note_tags_mine()`: a tag that waits on the reader, or one the reader made. */
+export type MyTag = {
+  tagId: string
+  kind: 'waiting' | 'asked'
+  noteId: string
+  jobId: string
+  jobName: string
+  jobNumber: string | null
+  jobKind: string | null
+  customerName: string | null
+  noteBody: string
+  noteCreatedAt: string
+  taggerUserId: string
+  taggerName: string
+  taggedUserId: string
+  taggedName: string
+  createdAt: string
+  clearedAt: string | null
+  clearedHow: 'answered' | 'done' | null
+  answerBody: string | null
+  askerSeenAt: string | null
+}
+
+/** The section's two lists and its number. */
+export type MyTagsView = {
+  /** What waits on the reader, the oldest on top. */
+  waiting: MyTag[]
+  /** What the reader asked: an answer not yet seen first, then what still waits, then the rest. */
+  asked: MyTag[]
+  /** Answers and No reply needed presses the reader has not seen. */
+  unseen: number
+  /** The number above Jobs. */
+  count: number
+}
+
+function askedRank(t: MyTag): number {
+  if (t.clearedAt != null && t.askerSeenAt == null) return 0
+  return t.clearedAt == null ? 1 : 2
+}
+
+export function myTagsView(tags: readonly MyTag[]): MyTagsView {
+  const waiting = oldestFirst(tags.filter((t) => t.kind === 'waiting'))
+  const asked = tags
+    .filter((t) => t.kind === 'asked')
+    .sort((a, b) => askedRank(a) - askedRank(b) || (askedRank(a) === 1 ? a.createdAt.localeCompare(b.createdAt) : (b.clearedAt ?? '').localeCompare(a.clearedAt ?? '')))
+  const unseen = asked.filter((t) => askedRank(t) === 0).length
+  return { waiting, asked, unseen, count: waiting.length + unseen }
+}
+
+/** What a You asked line says after the name: how the tag stands, and whether it is late. */
+export function askedLineWords(tag: MyTag, todayYmd: string, postedYmd: string): { words: string; tone: 'late' | 'waiting' | 'cleared' } {
+  if (tag.clearedAt == null) {
+    const age = tagAgeWords(postedYmd, todayYmd)
+    return { words: `no answer yet${age ? ` · ${age}` : ''}`, tone: tagIsLate(postedYmd, todayYmd) ? 'late' : 'waiting' }
+  }
+  if (tag.clearedHow === 'done') return { words: 'no reply needed', tone: 'cleared' }
+  const said = (tag.answerBody ?? '').trim()
+  return { words: said ? `answered: ${said}` : 'answered', tone: 'cleared' }
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+/** The Needs you line for tags (punch list #363): its title and the jobs under it. Null when nothing waits. */
+export function tagsNeed(view: Pick<MyTagsView, 'waiting' | 'unseen' | 'count'>): { count: number; title: string; detail: string } | null {
+  if (view.count === 0) return null
+  const parts = [
+    view.waiting.length > 0 ? `${plural(view.waiting.length, 'job note', 'job notes')} tagged you` : '',
+    view.unseen > 0 ? `${plural(view.unseen, 'answer', 'answers')} to a note you tagged` : '',
+  ].filter(Boolean)
+  const jobs = [...new Set(view.waiting.map((t) => t.jobName.trim()).filter(Boolean))]
+  const detail = jobs.length > 3 ? `${jobs.slice(0, 3).join(' · ')} and ${jobs.length - 3} more` : jobs.join(' · ')
+  return { count: view.count, title: parts.join(' · '), detail }
 }
 
 const YMD = /^(\d{4})-(\d{2})-(\d{2})$/

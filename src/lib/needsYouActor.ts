@@ -28,6 +28,8 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'while-off': 'anyone',
   // The owner is told (v2.7068): someone else saved the viewer's own mail; nobody else's line.
   'mail-saved': 'anyone',
+  // Tagged job notes (punch list #363): the viewer's own tags; nobody else's line.
+  'tagged-notes': 'anyone',
   // The review ask (v2.5946): whoever reads it calls; the owner may want the call himself.
   'rating-low': 'anyone',
   'gc-review-weekly': 'assistant',

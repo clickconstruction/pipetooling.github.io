@@ -106,6 +106,7 @@ import { canOpenMessages } from '../lib/gc/access'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { canOpenMoneyfill } from '../lib/quickfill/closeWeekChip'
 import { MessagesBadge } from './MessagesBadge'
+import { JobsTagsBadge } from './JobsTagsBadge'
 import { SKY_UNDER_WORDS } from '../lib/skyUnderWords'
 import { DESK_MARKS } from '../lib/messages/deskMarks'
 
@@ -739,7 +740,7 @@ export default function Layout() {
             </NavLink>
           )}
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
-          <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
+          <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}><span style={{ position: 'relative', display: 'inline-block' }}>Jobs<JobsTagsBadge /></span></NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
         </>
       )
@@ -794,7 +795,7 @@ export default function Layout() {
             {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent') && (
               <>
                 <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
-                <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
+                <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}><span style={{ position: 'relative', display: 'inline-block' }}>Jobs<JobsTagsBadge /></span></NavLink>
               </>
             )}
             {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent') && (
@@ -920,6 +921,7 @@ export default function Layout() {
                 aria-controls="mobile-nav"
                 aria-label="Open menu"
                 style={{
+                  position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -933,6 +935,8 @@ export default function Layout() {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="24" height="24" fill="currentColor" aria-hidden="true">
                   <path d="M96 160C96 142.3 110.3 128 128 128L512 128C529.7 128 544 142.3 544 160C544 177.7 529.7 192 512 192L128 192C110.3 192 96 177.7 96 160zM96 320C96 302.3 110.3 288 128 288L512 288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96 320zM544 480C544 497.7 529.7 512 512 512L128 512C110.3 512 96 497.7 96 480C96 462.3 110.3 448 128 448L512 448C529.7 448 544 462.3 544 480z" />
                 </svg>
+                {/* The Jobs count rides the menu button too (punch list #363), for the roles whose menu holds Jobs. */}
+                {role !== 'helpers' ? <JobsTagsBadge onMenuButton /> : null}
               </button>
               {menuOpen && (
                 <div

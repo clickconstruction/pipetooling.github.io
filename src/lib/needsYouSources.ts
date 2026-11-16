@@ -1,5 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike } from './subcontractorLikeRole'
+import { canTagInJobNotes } from './jobs/noteTags'
 import { canAccessBanking } from './bankingAccess'
 import { canWorkRobotAudits } from './bids/bidAudits'
 import { canOpenGcProjects } from './gc/access'
@@ -82,6 +83,8 @@ export type NeedsYouSource =
   | 'todaysSends'
   // The owner is told (v2.7068): someone else saved the viewer's mail onto a job, through the dev seat.
   | 'mailSaved'
+  // Tagged job notes (punch list #363): the job notes that tagged the viewer, whoever they are.
+  | 'taggedNotes'
 
 export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'tally',
@@ -139,6 +142,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'customerMessages',
   'todaysSends',
   'mailSaved',
+  'taggedNotes',
 ]
 
 /** The office set: the owner, the assistant and the controller. Most company lines are theirs. */
@@ -228,6 +232,9 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'whileOff':
       // While you were off (v2.6060, punch list #141 PR 4): the person's own held pushes, whoever they are.
       return role != null
+    case 'taggedNotes':
+      // Tagged job notes (punch list #363): every role the list of names can hold; a sub and an estimator are never tagged.
+      return canTagInJobNotes(role)
     case 'mailSaved':
       // The owner is told (v2.7068): whoever's mail it was, a field role too; each person reads only their own notices.
       return role != null

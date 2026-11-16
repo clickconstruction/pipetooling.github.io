@@ -160,8 +160,8 @@ describe('JobsStagesActivityBox, tagging a teammate', () => {
     expect(screen.getByLabelText('Note text')).toBeTruthy()
   })
 
-  it('draws no @ button for a role the list is not open to yet', async () => {
-    mount({ authRole: 'assistant' })
+  it('draws no @ button for a role nobody can tag back', async () => {
+    mount({ authRole: 'subcontractor' })
     await settle()
     fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
     expect(screen.queryByLabelText('Tag a teammate')).toBeNull()

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   TAG_SECTION_SHOWN,
+  askedLineWords,
   canTagInJobNotes,
   insertPick,
   liveTags,
   mentionIndex,
+  myTagsView,
   nameMatchesQuery,
   noteBodyParts,
   noteTagMark,
@@ -17,8 +19,10 @@ import {
   tagIsLate,
   tagQueryAtCaret,
   tagsByNote,
+  tagsNeed,
   waitingOnWords,
   workingDaysWaited,
+  type MyTag,
   type NoteTagRow,
   type TaggablePerson,
 } from './noteTags'
@@ -347,10 +351,66 @@ describe('the mark on a note', () => {
     expect(by.get('n2')).toHaveLength(1)
   })
 
-  it('offers the @ to a dev alone until the section lands', () => {
-    expect(canTagInJobNotes('dev')).toBe(true)
-    expect(canTagInJobNotes('assistant')).toBe(false)
-    expect(canTagInJobNotes(null)).toBe(false)
+  it('offers the @ to the office and the crew roles, and not to a sub or an estimator', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'superintendent', 'helpers', 'primary']) expect(canTagInJobNotes(role), role).toBe(true)
+    for (const role of ['subcontractor', 'estimator', null, undefined]) expect(canTagInJobNotes(role), String(role)).toBe(false)
+  })
+})
+
+describe('the reader\'s own tags', () => {
+  const mine = (over: Partial<MyTag>): MyTag => ({
+    tagId: 't',
+    kind: 'waiting',
+    noteId: 'n',
+    jobId: 'j',
+    jobName: 'Cedar Bluff Lofts',
+    jobNumber: 'J1482',
+    jobKind: null,
+    customerName: 'Ridgeway Builders',
+    noteBody: 'Did the check come? @Dana Whitlock',
+    noteCreatedAt: '2026-11-11T21:40:00Z',
+    taggerUserId: 'u-marcus',
+    taggerName: 'Marcus Hale',
+    taggedUserId: 'u-dana',
+    taggedName: 'Dana Whitlock',
+    createdAt: '2026-11-11T21:40:00Z',
+    clearedAt: null,
+    clearedHow: null,
+    answerBody: null,
+    askerSeenAt: null,
+    ...over,
+  })
+  const tags = [
+    mine({ tagId: 'w2', createdAt: '2026-11-15T16:04:00Z' }),
+    mine({ tagId: 'w1', createdAt: '2026-11-11T21:40:00Z', jobName: 'Tanner residence' }),
+    mine({ tagId: 'a-seen', kind: 'asked', clearedAt: '2026-11-13T15:00:00Z', clearedHow: 'answered', answerBody: 'Yes.', askerSeenAt: '2026-11-13T16:00:00Z' }),
+    mine({ tagId: 'a-open', kind: 'asked' }),
+    mine({ tagId: 'a-new', kind: 'asked', clearedAt: '2026-11-15T15:00:00Z', clearedHow: 'answered', answerBody: 'Permit is posted.' }),
+  ]
+
+  it('puts the oldest waiting tag on top and an unseen answer first under You asked', () => {
+    const view = myTagsView(tags)
+    expect(view.waiting.map((t) => t.tagId)).toEqual(['w1', 'w2'])
+    expect(view.asked.map((t) => t.tagId)).toEqual(['a-new', 'a-open', 'a-seen'])
+    expect(view.unseen).toBe(1)
+    expect(view.count).toBe(3)
+  })
+
+  it('counts nothing for tags the reader asked that still wait or were seen', () => {
+    expect(myTagsView(tags.filter((t) => t.tagId === 'a-open' || t.tagId === 'a-seen')).count).toBe(0)
+  })
+
+  it('says how a tag the reader asked stands', () => {
+    expect(askedLineWords(tags[3]!, '2026-11-15', '2026-11-11')).toEqual({ words: 'no answer yet · 4d', tone: 'late' })
+    expect(askedLineWords(tags[3]!, '2026-11-11', '2026-11-11')).toEqual({ words: 'no answer yet', tone: 'waiting' })
+    expect(askedLineWords(tags[4]!, '2026-11-15', '2026-11-11')).toEqual({ words: 'answered: Permit is posted.', tone: 'cleared' })
+    expect(askedLineWords(mine({ kind: 'asked', clearedAt: 'x', clearedHow: 'done' }), '2026-11-15', '2026-11-11').words).toBe('no reply needed')
+  })
+
+  it('words the Needs you line, and has none when nothing waits', () => {
+    expect(tagsNeed(myTagsView(tags))).toEqual({ count: 3, title: '2 job notes tagged you · 1 answer to a note you tagged', detail: 'Tanner residence · Cedar Bluff Lofts' })
+    expect(tagsNeed(myTagsView([tags[0]!]))?.title).toBe('1 job note tagged you')
+    expect(tagsNeed(myTagsView([tags[3]!]))).toBeNull()
   })
 })
 

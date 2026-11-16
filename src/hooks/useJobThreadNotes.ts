@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { noteTagsChanged } from '../lib/jobs/noteTagsIo'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import {
   OperationTimeoutError,
@@ -504,6 +505,8 @@ export function useJobThreadNotes(
                 THREAD_NOTE_SUBMIT_TIMEOUT_MS,
                 'Post note',
               )
+        // A typed note may have made a tag or answered one: the count above Jobs and the section read again.
+        if (source === 'draft' && opts?.typed !== false) noteTagsChanged()
         if (inserted == null) {
           if (source !== 'draft' || opts?.typed === false) throw new Error('No note row returned')
           // Posted, but not read back: drop the optimistic row and let the thread read itself again.
