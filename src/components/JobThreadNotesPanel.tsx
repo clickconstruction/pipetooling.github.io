@@ -30,7 +30,6 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { ReportPhotosStrip } from './reports/ReportPhotosStrip'
 import { canTagInJobNotes } from '../lib/jobs/noteTags'
 import { useJobNoteTags } from '../hooks/useJobNoteTags'
-import { useOptionalAuth } from '../hooks/useAuth'
 import { useNoteTagBox } from './jobs/NoteTagBox'
 import { TaggedNoteBody } from './jobs/TaggedNoteBody'
 import { ReportPhotoCount } from './reports/ReportPhotoCount'
@@ -73,6 +72,8 @@ type JobThreadNotesPanelProps = {
    * box offers the list of names, and a posted note draws its chips and who it waits on. Absent on an estimate's notes.
    */
   tagJobId?: string | null
+  /** The reader, whose own tags draw amber and read as you. Handed in by the host, which already holds it. */
+  tagViewerId?: string | null
   /** The post when the box can tag: the ids of the teammates picked in the words. Used in place of `onSubmit`. */
   onSubmitTagged?: (taggedUserIds: string[]) => void
   submitting: boolean
@@ -180,6 +181,7 @@ export function JobThreadNotesPanel({
   onDraftChange,
   onSubmit,
   tagJobId = null,
+  tagViewerId = null,
   onSubmitTagged,
   submitting,
   emptyLabel = 'No activity yet.',
@@ -256,7 +258,7 @@ export function JobThreadNotesPanel({
   }, [pctDraft, draft, onCommitPct])
   const noteBodyRef = useRef<HTMLTextAreaElement>(null)
   // Tagging a teammate (punch list #363): the list above the box, and the tags on the job's posted notes.
-  const viewerId = useOptionalAuth()?.user?.id ?? null
+  const viewerId = tagViewerId ?? null
   const tagging = Boolean(tagJobId && onSubmitTagged)
   const noteTags = useJobNoteTags(tagJobId, (activityProp ?? notes ?? []).length)
   const tagBox = useNoteTagBox({ jobId: tagJobId ?? '', draft, setDraft: onDraftChange, inputRef: noteBodyRef, enabled: tagging && canPost && canTagInJobNotes(viewerRole), place: 'above' })

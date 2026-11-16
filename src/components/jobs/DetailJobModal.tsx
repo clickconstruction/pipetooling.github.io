@@ -2904,6 +2904,7 @@ export default function DetailJobModal({
             onDraftChange={threadNotes.setDraft}
             onSubmit={() => void threadNotes.submitNote()}
             tagJobId={fullJob?.id ?? null}
+            tagViewerId={authUser?.id ?? null}
             onSubmitTagged={(tagged) => void threadNotes.submitNote(tagged)}
             submitting={threadNotes.submitting}
             jobThreadStampActions={stampsOffered && !narrowViewport ? { onArrived: stampArrived, onLeaving: stampLeaving } : undefined}
