@@ -70,7 +70,7 @@ export type LienNextUpTarget =
   | { open: 'notice_record_months'; jobId: string; months: string[] }
 
 /** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. Since v2.7371 (punch list #362, step 2) `risk` holds the `now` rows that will not make their day as they stand, first, and `waiting` (on the leader) stands right after it, above the rest of `now`. */
-export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting' | 'step_on' | 'step_other'
+export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting'
 
 export type LienNextUpRow = {
   key: string
