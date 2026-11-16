@@ -192,10 +192,37 @@ function Tile({ tile, isMobile, onTile }: { tile: LienBoardTile; isMobile: boole
   )
 }
 
+/** The overflow values that cut what leaves a box. */
+const CUTS = new Set(['hidden', 'clip', 'auto', 'scroll'])
+
+/** What can show a card under and over `box`: the screen, cut by every box around `el` that cuts its contents from top to bottom. */
+function roomAround(el: HTMLElement, box: DOMRect): { roomBelow: number; roomAbove: number } {
+  let top = 0
+  let bottom = typeof window === 'undefined' ? 0 : window.innerHeight
+  for (let up = el.parentElement; up && up !== document.body && up !== document.documentElement; up = up.parentElement) {
+    if (!CUTS.has(getComputedStyle(up).overflowY)) continue
+    const cut = up.getBoundingClientRect()
+    top = Math.max(top, cut.top)
+    bottom = Math.min(bottom, cut.bottom)
+  }
+  return { roomBelow: bottom - box.bottom, roomAbove: box.top - top }
+}
+
+/** What the card is placed by: its chip's box in the Board's own box, the Board's width, and the screen left under and over the chip. */
+type ChipCardAt = { chip: { left: number; top: number; width: number; height: number }; hostWidth: number; roomBelow: number; roomAbove: number }
+
 const CARD_DAY_TONE: Record<LienBoardUrgency, string> = { day: 'var(--text-red-700)', week: 'var(--text-amber-800)', waiting: 'var(--text-violet-700)', later: 'var(--text-700)' }
 
 /** The card of the chip under the pointer: the job, where it is and whose it is, then its paper's status and where the press goes. */
-function ChipCard({ card, place, chipKey }: { card: LienBoardChipCard; place: LienBoardCardPlace; chipKey: string }) {
+function ChipCard({ card, at, chipKey }: { card: LienBoardChipCard; at: ChipCardAt; chipKey: string }) {
+  // Placed by its real height (v2.7425): drawn hidden where the guess puts it, measured before the paint, then shown
+  // where it fits. A guess alone hung the taller cards off the bottom of a short screen.
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [height, setHeight] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    setHeight(ref.current?.offsetHeight ?? 0)
+  }, [card])
+  const place: LienBoardCardPlace = lienBoardCardPlace({ ...at, cardHeight: height && height > 0 ? height : lienBoardCardHeight(card) })
   const label: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 600 }
   const fact = (name: string, words: string | null, missing: string) => (
     <>
@@ -205,10 +232,12 @@ function ChipCard({ card, place, chipKey }: { card: LienBoardChipCard; place: Li
   )
   return (
     <div
+      ref={ref}
       role="tooltip"
       data-lien-board-chip-card={chipKey}
       data-above={place.above ? 'yes' : undefined}
-      style={{ position: 'absolute', left: place.left, top: place.top, transform: place.above ? 'translateY(-100%)' : undefined, zIndex: 6, width: `min(${LIEN_BOARD_CARD_WIDTH_PX}px, calc(100vw - 32px))`, boxSizing: 'border-box', pointerEvents: 'none', display: 'grid', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 14px 40px rgba(0,0,0,0.35)', fontSize: '0.8125rem', lineHeight: 1.35, color: 'var(--text-700)', textAlign: 'left' }}
+      data-beside={place.beside ? 'yes' : undefined}
+      style={{ position: 'absolute', left: place.left, top: place.top, visibility: height == null ? 'hidden' : 'visible', zIndex: 6, width: `min(${LIEN_BOARD_CARD_WIDTH_PX}px, calc(100vw - 32px))`, boxSizing: 'border-box', pointerEvents: 'none', display: 'grid', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 14px 40px rgba(0,0,0,0.35)', fontSize: '0.8125rem', lineHeight: 1.35, color: 'var(--text-700)', textAlign: 'left' }}
     >
       <div data-lien-board-card-title style={{ fontWeight: 700, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{card.title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '3px 10px', alignItems: 'baseline' }}>
@@ -286,7 +315,7 @@ export default function LienBoard({
   // The card of the chip under the pointer (v2.7381), placed in the Board's own box. A short wait before it goes lets
   // the pointer cross to the next chip without a blink.
   const boardRef = useRef<HTMLElement | null>(null)
-  const [cardShown, setCardShown] = useState<{ key: string; card: LienBoardChipCard; place: LienBoardCardPlace } | null>(null)
+  const [cardShown, setCardShown] = useState<{ key: string; card: LienBoardChipCard; at: ChipCardAt } | null>(null)
   const hideTimer = useRef<number | null>(null)
   const cancelHide = () => {
     if (hideTimer.current != null) window.clearTimeout(hideTimer.current)
@@ -308,8 +337,8 @@ export default function LienBoard({
       }
       const box = el.getBoundingClientRect()
       const origin = host.getBoundingClientRect()
-      const place = lienBoardCardPlace({ chip: { left: box.left - origin.left, top: box.top - origin.top, width: box.width, height: box.height }, hostWidth: origin.width, roomBelow: (typeof window === 'undefined' ? 0 : window.innerHeight) - box.bottom, cardHeight: lienBoardCardHeight(card) })
-      setCardShown({ key: `${chip.kind}:${chip.jobId}`, card, place })
+      const at: ChipCardAt = { chip: { left: box.left - origin.left, top: box.top - origin.top, width: box.width, height: box.height }, hostWidth: origin.width, ...roomAround(el, box) }
+      setCardShown({ key: `${chip.kind}:${chip.jobId}`, card, at })
     },
     [cardFor],
   )
@@ -455,7 +484,7 @@ export default function LienBoard({
         </div>
       ) : null}
       {foot}
-      {cardShown ? <ChipCard card={cardShown.card} place={cardShown.place} chipKey={cardShown.key} /> : null}
+      {cardShown ? <ChipCard key={cardShown.key} card={cardShown.card} at={cardShown.at} chipKey={cardShown.key} /> : null}
     </section>
   )
 }

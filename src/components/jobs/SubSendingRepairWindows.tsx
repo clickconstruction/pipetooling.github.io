@@ -72,7 +72,7 @@ export function OverToCreditWindow({ title, plan, personId, onDone, onClose }: {
     if (!plan.ok || !personId) return
     setSaving(true)
     setError(null)
-    const { error: err } = await supabase.rpc('convert_sub_overpayment_to_credit' as never, { p_person_id: personId, p_payment_id: plan.paymentId, p_amount: plan.over } as never)
+    const { error: err } = await supabase.rpc('convert_sub_overpayment_to_credit', { p_person_id: personId, p_payment_id: plan.paymentId, p_amount: plan.over })
     setSaving(false)
     if (err) setError(notLive(err) ? 'Turning an overpayment into a credit is not switched on yet. Nothing was changed.' : formatErrorMessage(err, 'Nothing was changed'))
     else {

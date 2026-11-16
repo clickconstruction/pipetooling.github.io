@@ -370,7 +370,10 @@ export type LaborPerson = {
   user_id: string | null
   kind: string | null
   role: string | null
-  /** How the Pay ledger files their sheets: a roster sub's as the sub's own, anyone else's as Crew pay (`isRosterSub`). */
+  /**
+   * How the Pay ledger reads their sheets (`isRosterSub`): a roster sub's as the sub's own. Anyone else is a teammate,
+   * and a sheet that names them alone is their own too, owed as sub labor (`teamSheetRule`, Taunya, 2026-11-15).
+   */
   pay_ledger: 'sub' | 'crew'
   sample: boolean
   /** Every roster row of theirs, for finding their sheets. */
@@ -389,7 +392,8 @@ export const SHEET_PERSON_ROLES = ['subcontractor', 'primary'] as const
  * The one person an ask means, as the form's Subcontractors list would offer them: an account whose role is
  * subcontractor or primary, or a roster row of kind sub or primary with no account. Refused in words for nobody,
  * several, any other teammate (paid through payroll from their hours), an archived person, a sub on the bench and a
- * twin. A primary's sheet is one the Pay ledger files under Crew pay; the person says which way theirs reads.
+ * twin. A primary's sheet is a teammate's own, which the Pay ledger counts as owed to them (*Team · sub labor*); the
+ * person says which way theirs reads.
  */
 export function laborPersonFacts(read: PersonRead): { ok: true; person: LaborPerson } | { ok: false; refused: string } {
   const candidates: Candidate[] = read.users.map((user) => ({ user, roster: read.people.filter((p) => p.account_user_id === user.id) }))
@@ -764,7 +768,7 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
     if (bank.length) warnings.push(`${label} already carries ${bank.length === 1 ? 'a bank row' : `${bank.length} bank rows`} allocated as cost that may be this same pay (bank_rows_that_may_be_this_pay). Each counts in the job's profit as a card charge, and the sheet would count as sub labor: the same dollars twice. ${TWICE_FIX}`)
     if (overlap.length) warnings.push(`${person.name} already has ${overlap.length === 1 ? 'a sheet' : `${overlap.length} sheets`} on ${label} in these days; this one is written beside ${overlap.length === 1 ? 'it' : 'them'} because second_sheet_ok is true.`)
     if (p.through && !p.lines.some((l) => l.day)) warnings.push(`The sheet covers ${dayWords(p.date, p.through)} and no line names its day. Give each line its day so the sheet says which day was which.`)
-    if (person.pay_ledger === 'crew' && person.people_id) warnings.push(`${person.name} is ${person.kind === 'primary' || person.role === 'primary' ? 'a primary' : `a ${person.kind ?? 'teammate'} with a ${(person.role ?? 'no').replace(/_/g, ' ')} account`}, not a roster sub. The form's Subcontractors list offers them, and the Pay ledger files their sheets under Crew pay (no roster sub on the sheet: pays through payroll), outside what is owed to subs. The sheet still counts on ${label} as sub labor, and a payment on it is still recorded.`)
+    if (person.pay_ledger === 'crew' && person.people_id) warnings.push(`${person.name} is ${person.kind === 'primary' || person.role === 'primary' ? 'a primary' : `a ${person.kind ?? 'teammate'} with a ${(person.role ?? 'no').replace(/_/g, ' ')} account`}, not a roster sub. The form's Subcontractors list offers them. A sheet that names them alone is their own: the Pay ledger counts what is open on it as owed to them, sub labor paid to someone on payroll (Team · sub labor). The sheet still counts on ${label} as sub labor, and a payment on it is still recorded.`)
     if (!person.people_id) warnings.push(`${person.name} has an account and no roster row on People, so no assignee row would tie the sheet to them: their portal and get_hours_statement find a sheet by that row. The sheet still counts on ${label} and in the Pay ledger under their name. People → Subs adds the roster row; then plan again.`)
     if (person.sample) warnings.push(`${person.name} is a sample account: this is a practice sheet on real job cost. Remove it with action remove when the walk is done.`)
     const noteBody = subLaborNoteBody(p, world, person.name)
@@ -773,7 +777,7 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
       reply: {
         action: 'add',
         job: jobCard(job),
-        person: { name: person.name, people_id: person.people_id, user_id: person.user_id, kind: person.kind ?? (person.role === 'primary' ? 'primary' : 'sub'), pay_ledger: person.pay_ledger === 'sub' ? 'a roster sub: the sheet reads as theirs in the Pay ledger' : 'Crew pay: the Pay ledger files the sheet under Crew pay', ...(person.sample ? { sample: true } : {}) },
+        person: { name: person.name, people_id: person.people_id, user_id: person.user_id, kind: person.kind ?? (person.role === 'primary' ? 'primary' : 'sub'), pay_ledger: person.pay_ledger === 'sub' ? 'a roster sub: the sheet reads as theirs in the Pay ledger' : 'Team · sub labor: a sheet of their own, which the Pay ledger counts as owed to them', ...(person.sample ? { sample: true } : {}) },
         sheet: row,
         lines: linesCard(items, rate),
         totals: { owed_to_them: owed / 100, cost_on_the_job: cost / 100, ...(hours ? { hours } : {}), priced: 'amount' in p.lines[0]! ? 'flat amounts' : 'hours at a rate' },
@@ -961,8 +965,11 @@ export type SheetSentTo = { person_id: string | null; name: string; reads: strin
 /**
  * Whose a sheet is, as the Pay view rules it (`sheetParties` over `isRosterSub`, then `sendingSheetsFrom`): a person
  * on it is a sub when they are not on the roster, or are a roster sub with no login or a subcontractor's login.
- * Anyone else is a teammate riding along. A sheet with no sub is crew pay and its sending names nobody. A sheet with
- * one sub who is on the roster names that person; any other sheet names nobody, and such a sub can hold no credit.
+ * Anyone else is a teammate riding along. A sheet with one sub who is on the roster names that person. A sheet with
+ * no sub and ONE teammate is that teammate's own (`teamSheetRule`'s `owed`, Taunya, 2026-11-15: "a sheet that names
+ * one teammate and no sub be counted: owed to the teamate"), so its sending names them and they can hold a credit, as
+ * `sendingSheetsFrom` keys it. Any other sheet names nobody: two subs, several teammates and no sub, no name at all,
+ * or a sub who is not on the roster.
  */
 export function sheetSentTo(sheet: Pick<SheetRow, 'assigned_to_name'>, assignees: readonly SheetAssigneeRow[], people: readonly LaborPersonRow[], users: readonly Pick<LaborUserRow, 'id' | 'role'>[]): SheetSentTo {
   const roleOf = new Map(users.map((u) => [u.id, (u.role ?? '').trim()]))
@@ -977,7 +984,12 @@ export function sheetSentTo(sheet: Pick<SheetRow, 'assigned_to_name'>, assignees
       })
   const subs = on.filter((x) => isSub(x.person))
   const label = (list: typeof on): string => list.map((x) => x.name).filter(Boolean).join(LABOR_ASSIGNED_DELIMITER) || (sheet.assigned_to_name ?? '').trim() || 'nobody named'
-  if (subs.length === 0) return { person_id: null, name: label(on), reads: 'a crew pay sheet: nobody on it is a sub, so the sending names no person' }
+  if (subs.length === 0) {
+    // No sub on it. A teammate always has a roster row, so one teammate is one person the sending can name.
+    if (on.length === 1 && on[0]!.id) return { person_id: on[0]!.id, name: label(on), reads: `${label(on)}, a teammate, alone on a sheet of their own: sub labor paid to someone on payroll` }
+    if (on.length === 0) return { person_id: null, name: label(on), reads: 'nobody is named on the sheet, so the sending names no person' }
+    return { person_id: null, name: label(on), reads: `${on.length} teammates share the sheet and no sub is on it, so the sending names no one person` }
+  }
   const one = subs.length === 1 ? subs[0]! : null
   if (one?.id) return { person_id: one.id, name: label(subs), reads: `${label(subs)}, the sheet's one sub, on the roster` }
   return { person_id: null, name: label(subs), reads: subs.length > 1 ? `${subs.length} subs share the sheet, so the sending names no one person` : `${label(subs)} is not on the roster, so the sending names no person` }

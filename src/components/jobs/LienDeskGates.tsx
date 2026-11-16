@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { lienGateMark, type LienGate, type LienGateKey, type LienGateVerdict, type LienSentGatesFold } from '../../lib/jobs/lienDeskGates'
+import { LIEN_GATES_FOLD_WORDS, lienGateMark, type LienGate, type LienGateKey, type LienGateVerdict, type LienSentGatesFold } from '../../lib/jobs/lienDeskGates'
 
 /**
  * The gates folded to one line on a sent notice with nothing due (v2.6625, punch list #248): the day it went and the four
- * facts as the paper went, no verdict and no tone — nothing is about to go out. *Details ∨* opens the four as plain rows.
+ * facts as the paper went, no verdict and no tone — nothing is about to go out. *More details ∨* opens the four as plain rows.
  */
 export function LienGatesSentFold({ fold }: { fold: LienSentGatesFold }) {
   const [open, setOpen] = useState(false)
@@ -16,7 +16,7 @@ export function LienGatesSentFold({ fold }: { fold: LienSentGatesFold }) {
         </span>
         <span style={{ flex: 1 }} />
         <button type="button" className="lienGatesFoldBtn" data-lien-gates-sent-fold={open ? 'close' : 'open'} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          {open ? 'Fold the details ∧' : 'Details ∨'}
+          {open ? LIEN_GATES_FOLD_WORDS.close : LIEN_GATES_FOLD_WORDS.open}
         </button>
       </div>
       {open ? (
@@ -44,10 +44,14 @@ export function LienGatesSentFold({ fold }: { fold: LienSentGatesFold }) {
  *
  * Since v2.4718 the sections fold (the owner's ask: *it all blurs together*): the four
  * cells already say every answer, so a clear gate's section stays folded until its cell is
- * pressed or *Details ∨* opens them all; a gate that is not clear opens on its own. An open
+ * pressed or *More details ∨* opens them all; a gate that is not clear opens on its own. An open
  * section is a row — the number, the label as a column, then the fact with its doors at the
  * right on the first line and one muted line under it. A cell press still brings its section
  * up: scrolled into the pane when it is out of view, and ringed for a few seconds.
+ *
+ * Since v2.7423 (Taunya's ask of 2026-11-15) the press sits right under the last open row:
+ * the row's own bottom padding and the box's gap had left a dead band between a gate's words
+ * and the press (`data-under-row`, `.lienGatesFold` in index.css).
  */
 export default function LienDeskGates({
   gates,
@@ -78,6 +82,8 @@ export default function LienDeskGates({
   const isOpen = (g: LienGate) => g.tone !== 'ok' || open.includes(g.key) || opened.has(g.key)
   const foldable = gates.filter((g) => g.tone === 'ok' && !open.includes(g.key) && details[g.key])
   const allOpen = foldable.every((g) => opened.has(g.key))
+  // A row is drawn above the press: it tucks under that row instead of standing a band below it.
+  const rowOpen = gates.some((g) => isOpen(g) && Boolean(details[g.key]))
 
   // Bringing a section up: scroll only when it is not already in the pane's view (the pinned strip covers the top 48px), then move focus to it.
   useEffect(() => {
@@ -148,9 +154,9 @@ export default function LienDeskGates({
         })}
       </div>
       {foldable.length ? (
-        <div className="lienGatesFold">
+        <div className="lienGatesFold" data-under-row={rowOpen ? 'yes' : 'no'}>
           <button type="button" className="lienGatesFoldBtn" data-lien-gates-fold={allOpen ? 'close' : 'open'} onClick={() => setOpened(allOpen ? new Set() : new Set(gates.map((g) => g.key)))}>
-            {allOpen ? 'Fold the details ∧' : 'Details ∨'}
+            {allOpen ? LIEN_GATES_FOLD_WORDS.close : LIEN_GATES_FOLD_WORDS.open}
           </button>
         </div>
       ) : null}

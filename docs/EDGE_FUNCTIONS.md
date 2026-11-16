@@ -198,6 +198,7 @@ when_to_read:
    - [notify-dispatch-request](#notify-dispatch-request)
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-bid-mark](#notify-bid-mark)
+   - [notify-note-tag](#notify-note-tag)
    - [notify-lien-approval](#notify-lien-approval)
    - [mail-send-docsmit](#mail-send-docsmit)
    - [mail-poll](#mail-poll)
@@ -1018,6 +1019,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### dev-mcp
+
+> **v2.7428 (server 0.91.0) — a teammate's own sheet is theirs in the seat** (punch list #346; Taunya, 2026-11-15: "a sheet that names one teammate and no sub be counted: owed to the teamate"): `sheetSentTo` in `_shared/devMcpSubLabor.ts` mirrors `sheetParties` and `sendingSheetsFrom` under `teamSheetRule`'s `owed`, as the Pay view has read them since v2.7389. **`plan_sub_labor_payment`**'s `record` on a sheet with no sub and one teammate now names that teammate as who the sending is to (`sending.person_id`, `who_reads`: *a teammate, alone on a sheet of their own: sub labor paid to someone on payroll*), so `record_sub_sending` files the sending under them and their sheets can share one and hold a credit. It named nobody before (*a crew pay sheet*). Several teammates and no sub, or no name at all, still name nobody, each with its own words. **`plan_sub_labor`**'s plan for a primary reads `pay_ledger: 'Team · sub labor: a sheet of their own, which the Pay ledger counts as owed to them'` and its warning says the same, where both said *Crew pay* and *pays through payroll*. No new verb, no input change, no migration.
 
 > **v2.7357 (server 0.90.0) — a sub payment from the seat is a sending, with its method** (punch list #347; Taunya, 2026-11-15, of the card's *Not built* lines: "Build all four"): **`plan_sub_labor_payment`** / **`apply_sub_labor_payment`**'s `record` now POSTs `record_sub_sending` as the dev under RLS, as the Record payment window does, with one line and no credit, in place of one bare `people_labor_job_payments` row. `method` is one of the window's chips by key or by words and lands in `method`; `reference` lands in `method_ref`, refused with no method or with one that has no number; `note` alone is the memo. The plan reads the sheet's assignee rows, their `people` rows and those accounts' roles (or the typed names when the sheet has no assignee row) and names who the sending is to by the Pay view's rule (`sheetSentTo`, the mirror of `sheetParties` and `sendingSheetsFrom`), and reads back the sending, the row and how How paid will read. An amount past what the sheet still owes is refused, where it was a warning: what is sent past a sheet is the window's to place or to keep as a credit. The payments a plan lists now carry `how_paid` and `sending_id` (`SHEET_PAY_COLS` gained `method`, `method_ref`, `sending_id`). The apply reads the new row back and replies with it and the sending's id and number. No new verb, no wrapper RPC, no migration. Tests `src/lib/devMcp/devMcpSubLabor.test.ts`.
 
@@ -3969,6 +3972,47 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 **Deploy**: `supabase functions deploy notify-bid-mark` after the `20261001170000_bid_mark_requests.sql` push (it reads `bid_mark_requests`).
 
+
+### notify-note-tag
+
+**Purpose** (v2.7410, punch list #363 PR 5): the phone notice for a teammate tagged in a job note, and for the person who asked when the answer lands. The client calls it right after a typed note posts on the Pipeline or from the Tagged job notes section (`notifyNoteTag` in `src/lib/jobs/noteTagsIo.ts`), and after a **No reply needed** press. A call that fails is dropped: the tag is already on the job and in the count above Jobs.
+
+**Endpoint**: `POST /functions/v1/notify-note-tag`
+
+**Required Role**: any signed-in user, but only the note's **writer** for `note_id` and only the **tagged person** for `tag_id`; anyone else gets 403. A note or a press more than fifteen minutes old returns 200 with `push_sent: 0`, so an old note cannot be replayed. An archived caller is refused (`refuseArchivedCaller`).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (missing VAPID keys send nothing and return 200).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer with `getUser` and reads the rows with the service role.
+
+#### Request body
+
+```json
+{ "note_id": "<jobs_ledger_thread_notes.id>" }
+```
+
+or, for a No reply needed press:
+
+```json
+{ "tag_id": "<jobs_ledger_note_tags.id>" }
+```
+
+The caller sends no text. The words come from `words.ts` beside the function (pure, tested from `src/lib/jobs/noteTagPush.test.ts`):
+
+- The people the note tags, still waiting: *Marcus tagged you on Cedar Bluff Lofts*, with the note cut to 140 characters. Template `note_tag`.
+- The people whose tags on that job the note answered: *Dana answered on Cedar Bluff Lofts*. Template `note_tag_answer`. A person the answer tags back gets the tag alone.
+- The asker of a tag cleared with no note: *Chris: no reply needed*, with the job and the note.
+
+The tap opens `/jobs?tab=stages` for the office, whose section is at the top of the Pipeline, and `/dashboard` for everyone else, whose door is the Needs you line. Every push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts), so a person outside their **Push me** hours is held with a row and no push, and **While you were off** names it a *tagged job note* or an *answer to your tag* (`heldKind`).
+
+#### Response
+
+```json
+{ "success": true, "push_sent": 1, "held": 0 }
+```
+
+**Deploy**: `supabase functions deploy notify-note-tag`. It reads `jobs_ledger_note_tags`, on prod since v2.7385. Until it is deployed the client's call answers 404 and is dropped.
+
 ---
 
 ### notify-lien-approval
@@ -5964,7 +6008,7 @@ interface Body {
 
 The log lines say that a visit or a place was kept. They never carry the name, the device or the address.
 
-Until that page is live, the reader's own position (**Show where I am**) is never sent here or anywhere: the page draws it on the phone.
+The page that asks is live since **v2.7414**: it opens every link with `way.open`, and sends `way.here` at once and then about once a minute while **Show where I am** is on. The sample page calls neither.
 
 **The app's asks** (signed in; the caller must read the map under their own RLS and be its maker or pass `is_office_staff()`; an archived account, an account in training and a digital twin are refused, **403**):
 - `POST { action: "desk.mint", mapId }` → `{ ok, code, endsOn }`: ten letters from `23456789abcdefghjkmnpqrstuvwxyz`, no letter likelier than another, handed out once with only the SHA-256 kept, good for ninety days, three tries on a clash. An earlier link stays open until its own day. **409** for a map with nothing on it, and past twenty open links on one map.

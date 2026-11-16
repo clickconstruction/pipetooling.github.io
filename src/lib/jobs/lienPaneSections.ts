@@ -12,7 +12,7 @@ import { LIEN_PILE_HEAD_H, LIEN_PILE_HEAD_H_PHONE } from './lienPhoneLists'
 /** The height of one head: the Notices list's title bar, one number for every bar on the desk (v2.7323). */
 export const LIEN_PANE_HEAD_H = LIEN_PILE_HEAD_H
 
-export type LienPaneSectionKey = 'path' | 'gates' | 'houses' | 'months' | 'envelope'
+export type LienPaneSectionKey = 'path' | 'gates' | 'houses' | 'months' | 'envelope' | 'sign'
 
 export type LienPaneSection<K extends string = LienPaneSectionKey> = {
   key: K
@@ -22,6 +22,11 @@ export type LienPaneSection<K extends string = LienPaneSectionKey> = {
   fact: string
   /** A muted tail after the fact, cut short first when the row is narrow; '' for none. */
   tail: string
+  /**
+   * The pane's last section, the one that holds the footer (v2.7422): its bar is blue, and it pins at the pane's
+   * bottom edge only. It never stacks under the strip, so it cannot ride over its own short body at the pane's end.
+   */
+  foot?: boolean
 }
 
 export type LienPaneSectionsInput = {
@@ -41,6 +46,8 @@ export type LienPaneSectionsInput = {
   gcEmail: boolean
   monthShort: (key: string) => string
   money: (n: number) => string
+  /** The footer's own section at the pane's end (v2.7422, `lienNoticeFootHead`); null or absent where the footer is not in the pane (a phone). */
+  foot?: { label: string; fact: string } | null
 }
 
 function houses(n: number): string {
@@ -68,7 +75,42 @@ export function lienPaneSections(i: LienPaneSectionsInput): LienPaneSection[] {
   }
   out.push({ key: 'months', label: 'Months on this job', fact: `${i.months.length ? i.months.map(i.monthShort).join(' + ') : 'no months'} · ${i.claimWords}`, tail: '' })
   out.push({ key: 'envelope', label: 'In the envelope', fact: `${i.pages} ${i.pages === 1 ? 'page' : 'pages'} · owner + GC`, tail: i.gcEmail ? 'courtesy PDF to the GC' : '' })
+  if (i.foot) out.push({ key: 'sign', label: i.foot.label, fact: i.foot.fact, tail: '', foot: true })
   return out
+}
+
+/** The piles a notice sits in, as the desk names them (`LienDeskPile`); spelled here so this kernel reads no other. */
+export type LienNoticeFootPile = 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'printed' | 'held' | 'sent' | 'missed'
+
+/**
+ * The blue bar over the notice's footer (v2.7422, Taunya's ask of 2026-11-15: the signing box is a section of the
+ * pane like the rest, its bar blue, so the paper has the whole pane and the reader goes through it to sign at the
+ * bottom). The label is the act the section holds; the fact is where the signature stands, so the bar says from
+ * the pane's bottom edge whether anything waits down there.
+ */
+export function lienNoticeFootHead(i: { pile: LienNoticeFootPile; signed: boolean; signerFirst: string; /** Months still due on the job; a missed notice with none has nothing left to sign. */ dueMonths: number }): { label: string; fact: string } {
+  const who = i.signerFirst.trim()
+  switch (i.pile) {
+    case 'sent':
+      return { label: 'After the send', fact: 'Sent' }
+    case 'printed':
+      return { label: 'Record the mailing', fact: 'Printed, in the run' }
+    case 'missed':
+      return i.dueMonths > 0 ? { label: 'Sign and send', fact: 'Not signed yet' } : { label: 'Window closed', fact: 'Nothing to sign' }
+    case 'held':
+      return { label: 'Sign and send', fact: 'On hold' }
+    case 'ready':
+      return { label: 'Sign and send', fact: i.signed ? 'Signed, in the run' : 'Approved, not signed yet' }
+    case 'awaiting':
+      return { label: 'Sign and send', fact: who ? `Waiting on ${who}’s signature` : 'Waiting on the signature' }
+    default:
+      return { label: 'Sign and send', fact: 'Not signed yet' }
+  }
+}
+
+/** The heads that stack over the pages: every head but the footer's, which pins at the pane's bottom edge and never over a page. */
+export function lienPaneHeadsOverPages<K extends string>(sections: ReadonlyArray<LienPaneSection<K>>): number {
+  return sections.filter((h) => !h.foot).length
 }
 
 /** Where a head sticks and how tall it is: under the strip and the heads passed, above the heads to come — the list's `top: i·H`, `bottom: (n−1−i)·H`. */

@@ -2,7 +2,7 @@
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
 group: close
-status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage; the page's number is the company's from Settings (v2.7390); the page redrawn as the company's card from her drawing the same evening (v2.7405) · left: the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage; the page's number is the company's from Settings (v2.7390); the page redrawn as the company's card from her drawing the same evening (v2.7405), `box-read` redeployed and the card proved live signed out on 2026-11-16 · left: each press of the card on a real phone, the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -259,4 +259,6 @@ With the sealed page live, Taunya asked whether it could be better and more prof
 
 **Picked while building, each hers to reverse.** The Spanish line (*¿Estorba o está dañada? Avísenos.*). The row's own line, *Let us know about cage ZZ1.* The two presses sit side by side on a phone 390 wide and one over the other on a narrower one, so the words never wrap inside a press.
 
-**Left**: `box-read` deployed after the merge and the page proved signed out on a ZZ Test box; each press pressed once on a real phone.
+**Live 2026-11-16.** `box-read` was redeployed after the merge. Signed out on ZZ Test cage ZZ1 it answers the name, the kind, the code, the number and the two addresses and nothing a box holds; `&find=` and `&photo=` answer 401 and the retired pile 410. The live page draws the card with each link in place.
+
+**Left**: each press pressed once on a real phone.

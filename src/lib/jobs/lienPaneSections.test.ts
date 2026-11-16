@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienPaneHeadOffsets, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadOffsets, lienPaneHeadsOverPages, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
 
 const monthShort = (k: string) => ({ '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -92,5 +92,40 @@ describe('the pane’s heads on a phone (punch list #352, PR 6)', () => {
     expect(litLienPaneSection(bodies, 319, 0, true)).toBe('path')
     expect(litLienPaneSection(bodies, 320, 0, true)).toBe('gates')
     expect(litLienPaneSection(bodies, 1420, 0, true)).toBe('months')
+  })
+})
+
+describe('the footer’s section at the pane’s end (v2.7422, Taunya’s ask of 2026-11-15)', () => {
+  const base = { nextWords: null, gates: null, houses: null, months: [], claimWords: '$0', pages: 1, gcEmail: false, monthShort, money }
+
+  it('is the last section, marked as the footer’s, only where the footer is in the pane', () => {
+    const withFoot = lienPaneSections({ ...base, foot: { label: 'Sign and send', fact: 'Not signed yet' } })
+    expect(withFoot.map((h) => h.key)).toEqual(['path', 'gates', 'months', 'envelope', 'sign'])
+    expect(withFoot[4]).toEqual({ key: 'sign', label: 'Sign and send', fact: 'Not signed yet', tail: '', foot: true })
+    expect(withFoot.slice(0, 4).every((h) => !h.foot)).toBe(true)
+    // A phone keeps the desk's strip, so the pane has no such section.
+    expect(lienPaneSections({ ...base, foot: null }).map((h) => h.key)).toEqual(['path', 'gates', 'months', 'envelope'])
+    expect(lienPaneSections(base).map((h) => h.key)).toEqual(['path', 'gates', 'months', 'envelope'])
+  })
+
+  it('does not count among the heads that stack over the pages', () => {
+    expect(lienPaneHeadsOverPages(lienPaneSections({ ...base, foot: { label: 'Sign and send', fact: 'Not signed yet' } }))).toBe(4)
+    expect(lienPaneHeadsOverPages(lienPaneSections(base))).toBe(4)
+  })
+
+  it('says where the signature stands, by the pile the notice is in', () => {
+    const head = (pile: Parameters<typeof lienNoticeFootHead>[0]['pile'], signed = false, signerFirst = 'Dee', dueMonths = 1) => lienNoticeFootHead({ pile, signed, signerFirst, dueMonths })
+    expect(head('to_draft')).toEqual({ label: 'Sign and send', fact: 'Not signed yet' })
+    expect(head('needs_owner')).toEqual({ label: 'Sign and send', fact: 'Not signed yet' })
+    // A missed notice with a month still due is drafted like any other; with none, its footer only says the window closed.
+    expect(head('missed')).toEqual({ label: 'Sign and send', fact: 'Not signed yet' })
+    expect(head('missed', false, 'Dee', 0)).toEqual({ label: 'Window closed', fact: 'Nothing to sign' })
+    expect(head('awaiting')).toEqual({ label: 'Sign and send', fact: 'Waiting on Dee’s signature' })
+    expect(head('awaiting', false, ' ')).toEqual({ label: 'Sign and send', fact: 'Waiting on the signature' })
+    expect(head('ready')).toEqual({ label: 'Sign and send', fact: 'Approved, not signed yet' })
+    expect(head('ready', true)).toEqual({ label: 'Sign and send', fact: 'Signed, in the run' })
+    expect(head('held')).toEqual({ label: 'Sign and send', fact: 'On hold' })
+    expect(head('printed')).toEqual({ label: 'Record the mailing', fact: 'Printed, in the run' })
+    expect(head('sent')).toEqual({ label: 'After the send', fact: 'Sent' })
   })
 })
