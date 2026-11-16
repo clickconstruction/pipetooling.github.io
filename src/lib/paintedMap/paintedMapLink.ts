@@ -50,7 +50,51 @@ export const PAINTED_MAP_SHARE_WORDS = {
   see: 'They see the name, the lines, and the places with their words and photos.',
   notSee: 'They do not see who painted it, when, or anything else about the job.',
   copy: 'A link can be ended. A copy cannot be taken back.',
+  /** Since v2.7415: what a reader is asked, said to whoever is about to send the link. */
+  asks: 'They give their name first. We keep the name, the phone or computer and the time.',
+  whoHead: 'Who opened it',
+  seeWhere: 'See that place',
+  signedIn: 'signed in',
 } as const
+
+/** One visit to a map's link as the sheet reads it from the table. Read by the office and the map's painter alone. */
+export type PaintedMapVisitRow = {
+  id: string
+  visitor_name: string
+  user_id: string | null
+  device_words: string
+  last_opened_at: string
+  open_count: number
+  first_lat: number | null
+  first_lng: number | null
+  first_located_at: string | null
+  last_lat: number | null
+  last_lng: number | null
+  last_located_at: string | null
+}
+
+/** One visit in words. `whereUrl` opens the place the reader showed in a map app, when they showed one. */
+export type PaintedMapVisitLine = { id: string; name: string; teammate: boolean; detail: string; where: string | null; whereUrl: string | null }
+
+/**
+ * `Dana Reyes` · `iPhone · Safari · opened Nov 15, 3:02 PM · 2 times` · `Showed where they were, Nov 15, 3:05 PM.`
+ * The place is the latest one kept, or the first when there is only one. `whenOf` says a moment in the app's words.
+ */
+export function visitLine(row: PaintedMapVisitRow, whenOf: (iso: string) => string | null): PaintedMapVisitLine {
+  const opened = whenOf(row.last_opened_at)
+  const detail = [row.device_words.trim() || null, opened ? `opened ${opened}` : null, row.open_count > 1 ? `${row.open_count.toLocaleString('en-US')} times` : null].filter(Boolean).join(' · ')
+  const latest = row.last_lat != null && row.last_lng != null && row.last_located_at
+  const point = latest ? { lat: row.last_lat!, lng: row.last_lng!, at: row.last_located_at! } : row.first_lat != null && row.first_lng != null && row.first_located_at ? { lat: row.first_lat, lng: row.first_lng, at: row.first_located_at } : null
+  const shown = point ? whenOf(point.at) : null
+  return {
+    id: row.id,
+    name: row.visitor_name,
+    teammate: !!row.user_id,
+    detail,
+    where: point ? `Showed where they were${shown ? `, ${shown}` : ''}.` : null,
+    whereUrl: point ? `https://www.google.com/maps/search/?api=1&query=${point.lat.toFixed(6)},${point.lng.toFixed(6)}` : null,
+  }
+}
 
 /** One link of a map as the sheet reads it from the table: when it was made, when it ends, how often it was opened. */
 export type PaintedMapLinkRow = { id: string; made_at: string; expires_at: string; ended_at: string | null; open_count: number }

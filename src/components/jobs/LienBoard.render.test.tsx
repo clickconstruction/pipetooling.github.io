@@ -99,21 +99,21 @@ describe('LienBoard', () => {
     const { rerender } = render(<LienBoard board={b} isMobile={false} onPick={onPick} />)
     expect(document.querySelector('[data-lien-board-pick]')).toBeNull()
     const head = () => document.querySelector('button[data-lien-board-bin-head="notice:to_send"]') as HTMLButtonElement
-    expect(head().textContent).toBe('To send2')
+    expect(head().textContent).toBe('To send for Master approval2')
     fireEvent.click(head())
     expect(onPick).toHaveBeenCalledWith('notice:to_send')
     rerender(<LienBoard board={b} isMobile={false} onPick={onPick} pick={lienBoardPick(b, ['notice:to_send'])} shown={2} />)
     expect(document.querySelector('[data-lien-board-bin="notice:to_send"]')!.getAttribute('data-picked')).toBe('yes')
     expect(document.querySelector('[data-lien-board-bin="affidavit:to_send"]')!.getAttribute('data-picked')).toBeNull()
     expect(head().getAttribute('aria-pressed')).toBe('true')
-    expect(document.querySelector('[data-lien-board-pick-words]')!.textContent).toBe('Showing 2 rows in To send.')
+    expect(document.querySelector('[data-lien-board-pick-words]')!.textContent).toBe('Showing 2 rows in To send for Master approval.')
     fireEvent.click(screen.getByRole('button', { name: 'Show every row' }))
     expect(onPick).toHaveBeenLastCalledWith(null)
     // Without onPick the heads are plain words.
     cleanup()
     render(<LienBoard board={b} isMobile={false} />)
     expect(document.querySelector('button[data-lien-board-bin-head]')).toBeNull()
-    expect(document.querySelector('[data-lien-board-bin-head="notice:to_send"]')!.textContent).toBe('To send2')
+    expect(document.querySelector('[data-lien-board-bin-head="notice:to_send"]')!.textContent).toBe('To send for Master approval2')
   })
   it('a job in both columns for one reason lights in both on hover, and only those two', () => {
     render(<LienBoard board={board()} isMobile={false} />)
@@ -145,7 +145,7 @@ describe('LienBoard', () => {
     expect(section.getAttribute('data-lien-board-layout')).toBe('stacked')
     expect((section.querySelector('[data-lien-board-tiles]') as HTMLElement).style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))')
     expect(section.querySelectorAll('[data-lien-board-arrow][data-kind="cross"]')).toHaveLength(0)
-    expect(section.querySelector('[data-lien-board-column="notice"] [data-lien-board-retainage]')!.textContent).toBe('Retainage · 1 to send')
+    expect(section.querySelector('[data-lien-board-column="notice"] [data-lien-board-retainage]')!.textContent).toBe('Retainage · 1 to send for approval')
     // A phone keeps the bins behind one press, a thumb tall; the tiles always show.
     const fold = section.querySelector('[data-lien-board-fold]') as HTMLButtonElement
     expect(fold.textContent).toContain('Show the bins · 9')
@@ -256,7 +256,7 @@ describe('LienBoard', () => {
       ['customer', 'ZZ Homeowner'],
       ['gc', 'ZZ Builders'],
     ])
-    expect(card.querySelector('[data-lien-board-card-status]')!.textContent).toContain('Monthly noticeTo send')
+    expect(card.querySelector('[data-lien-board-card-status]')!.textContent).toContain('Monthly noticeTo send for Master approval')
     expect(card.querySelector('[data-lien-board-card-detail]')!.textContent).toBe('September 2026')
     expect(card.querySelector('[data-lien-board-card-door]')!.textContent).toBe('Press to open the notice.')
     // It will make its day, so the card names no stages (v2.7419).

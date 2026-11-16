@@ -82,9 +82,9 @@ describe('LienDoNowBar', () => {
   })
 
   it('pinned over a narrowed list, it says what the list shows and puts every row back', () => {
-    const { scrollTo, onClearPick } = mount({ pick: { head: 'Showing 4 rows in To send.', clear: 'Show every row' } })
+    const { scrollTo, onClearPick } = mount({ pick: { head: 'Showing 4 rows in To send for Master approval.', clear: 'Show every row' } })
     scrollTo(700, 100)
-    expect((document.querySelector('[data-lien-do-now-bar-pick]') as HTMLElement).textContent).toBe('Showing 4 rows in To send.')
+    expect((document.querySelector('[data-lien-do-now-bar-pick]') as HTMLElement).textContent).toBe('Showing 4 rows in To send for Master approval.')
     expect(document.querySelector('[data-lien-do-now-bar-parts]')).toBeNull()
     const clear = document.querySelector('[data-lien-do-now-bar-clear]') as HTMLButtonElement
     expect(clear.textContent).toBe('Show every row')

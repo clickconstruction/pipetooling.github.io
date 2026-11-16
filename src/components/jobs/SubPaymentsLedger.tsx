@@ -57,6 +57,8 @@ import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useToastContext } from '../../contexts/ToastContext'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { saveBlobAs } from '../../lib/storageSave'
+import { proposeSendingGroups } from '../../lib/subWorkOrders/subSendingRepair'
+import { GatherSendingsWindow } from './SubSendingRepairWindows'
 import { calendarYmdInAppTzFromIso, formatDenverDateTimeShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { EmptyState } from '../EmptyState'
@@ -183,6 +185,12 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
   const jobById = useMemo(() => new Map(laborJobs.map((j) => [j.id, j])), [laborJobs])
 
   const allLines = useMemo(() => buildLedgerLines(sheets), [sheets])
+  // Punch list #347's residue: payments typed one per sheet before sendings, offered as the sendings they were.
+  const gatherGroups = useMemo(
+    () => proposeSendingGroups(allLines.map((l) => ({ id: l.id, sheetId: l.sheetId, paidToKey: l.crew ? '' : l.paidToKey, paidTo: l.paidTo, job: l.job, ymd: l.ymd, recorded: l.recorded, method: l.method, methodRef: l.methodRef, amount: l.amount, hasSending: l.sendingNo != null, fromCredit: l.fromCredit, bankLineId: bankApi.matchedByPayment.get(l.id) ?? null }))),
+    [allLines, bankApi.matchedByPayment],
+  )
+  const [gatherOpen, setGatherOpen] = useState(false)
   const allTraces = useMemo(() => buildLedgerTraces(sheets), [sheets])
   /** The people whose sheets are a teammate's own: sub labor paid to someone on payroll. */
   const teamKeys = useMemo(() => {
@@ -283,6 +291,11 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
       <button type="button" onClick={saveCsv} disabled={nothingToSend} style={outPress}>
         Download CSV
       </button>
+      {gatherGroups.length > 0 && onBankChanged ? (
+        <button type="button" data-testid="sub-ledger-gather" onClick={() => setGatherOpen(true)} title="Payments typed one per sheet that were one check or one transfer" style={outPress}>
+          Gather old payments…
+        </button>
+      ) : null}
     </span>
   )
 
@@ -619,6 +632,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           </table>
         </div>
       )}
+      {gatherOpen ? <GatherSendingsWindow groups={gatherGroups} onDone={() => void onBankChanged?.()} onClose={() => setGatherOpen(false)} /> : null}
     </div>
   )
 }

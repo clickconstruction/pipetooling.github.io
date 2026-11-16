@@ -308,7 +308,7 @@ export default function LienBoard({
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void
   /**
-   * The leader's Board (v2.7334): with `mine` on, only his two Awaiting approval bins stand under the tiles, with one
+   * The leader's Board (v2.7334): with `mine` on, only his two Awaiting Master approval bins stand under the tiles, with one
    * counted press for the lot and what it holds, each held paper a chip to its own door; a toggle shows every bin.
    */
   leader?: { view: LienBoardLeaderView; mine: boolean; onToggleMine: () => void; onApprove: () => void; busy?: boolean }

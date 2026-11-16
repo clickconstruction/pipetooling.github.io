@@ -1,9 +1,9 @@
 /**
- * Sticker 0147 is new (punch list #329, PR 3, v2.7298): the sheet a signed-in scan of a blank sticker opens on the
+ * Sticker G78 is new (punch list #329, PR 3, v2.7298): the sheet a signed-in scan of a blank sticker opens on the
  * phone's On site tab. Two branches. **It is on a box I know**: the development's live boxes, this job's and the
  * site's other jobs', the ones with no sticker first, searched by stencil, place, where line and parts; a row is
- * picked and *Put 0147 on R76* places the sticker through `place_sticker`. **It is a new box**: the box is made in
- * the same call, named by the site's next free name under #351's rule with the sticker's number beside it (the
+ * picked and *Put this sticker on R76* places the sticker through `place_sticker`. **It is a new box**: the box is made in
+ * the same call, named by the site's next free name under #351's rule (the
  * owner's change to call 7, 2026-11-14: never the number as the name), the kind asked as Add a container asks it,
  * the place optional, and what is in it on its own line (#351's PR 2), where words typed after the name land. The database's verdicts are said in words: someone else took the sticker first (who and when,
  * with the box to open), a sticker on a box of a job the person is not on, a lost one, a name the rule refuses. It
@@ -13,8 +13,9 @@
  * A sticker printed with a name reads it off the tape (design section 10, PR 9, v2.7396; `stickerOpening`). *Sticker
  * G78 is new* opens on **It is a new box** with G78 filled in, one press. When the site has a G78 already the sheet
  * opens on that box, picked, with the press that puts the sticker on it, and **It is a different box** opens a new
- * box on the next letter at the spot, G78B. The number sits small beside the name, and a row's stickers are said only
- * where they carry news (`stickerMarksWords`).
+ * box on the next letter at the spot, G78B. A row's stickers are said only where they carry news
+ * (`stickerMarksWords`). Since v2.7438 (Taunya's call of 2026-11-16) the sheet shows no running number: a named
+ * sticker is its name, large, and one with no name is its code as the tape prints it.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { boxNameVerdict, nextFreeName, type SiteBox } from '../../lib/materials/boxName'
@@ -57,7 +58,8 @@ import {
   type StickerMark,
 } from '../../lib/materials/stickerPlace'
 import { fetchStickersOnBoxes, placeSticker } from '../../lib/materials/stickerPlaceIo'
-import { placingVerdict, stickerNameIs, stickerNumberWords, type StickerFacts } from '../../lib/materials/stickers'
+import { dashedCode } from '../../lib/materials/labels'
+import { placingVerdict, stickerNameIs, type StickerFacts } from '../../lib/materials/stickers'
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { Sheet } from './OnSiteSheet'
@@ -107,7 +109,6 @@ type Props = {
 }
 
 export default function StickerNewSheet({ sticker, jobId, jobs, containers, lines, places, siteJobIds, siteBoxes, stickersByBox, marksByBox, onClose, onChangeJob, onDone, place = placeSticker, sayLine = sayBoxLine, readSite = fetchSiteMaterials, readStickers = fetchStickersOnBoxes, online = () => typeof navigator === 'undefined' || navigator.onLine !== false, now = () => new Date().toISOString() }: Props) {
-  const number = stickerNumberWords(sticker.number)
   const job = jobs.find((j) => j.id === jobId) ?? null
   const jobLabel = job ? onSiteJobWords(job) : 'this job'
   const otherIds = useMemo(() => [...new Set(siteJobIds)].filter((id) => id !== jobId), [siteJobIds, jobId])
@@ -210,7 +211,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
     setFailure(null)
     try {
       const answer = await place(request)
-      const outcome = placeOutcome(answer, { jobIds: jobs.map((j) => j.id), boxLabel, number: sticker.number, boxName: stickerName, now: now() })
+      const outcome = placeOutcome(answer, { jobIds: jobs.map((j) => j.id), boxLabel, boxName: stickerName, now: now() })
       if (outcome.kind === 'placed' || outcome.kind === 'created' || outcome.kind === 'already') {
         if (request.kind === 'new') rememberBoxKind(request.boxKind)
         // The database made the box, and its line is the box's own press after it (punch list #351): kept and sent
@@ -245,7 +246,7 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
         {failure ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="sticker-failure">{failure}</p> : null}
         {branch === 'known' ? (
           <button type="button" style={{ ...btnPrimary, ...dis(knownDead) }} disabled={knownDead} onClick={() => { if (picked) void run({ kind: 'known', stickerId: sticker.id, containerId: picked.container.id }, picked.container.label) }} data-testid="sticker-place-known">
-            {picked ? placePressLabel(sticker.number, picked.container.label) : `Put ${number} on a box`}
+            {placePressLabel(picked ? picked.container.label : null)}
           </button>
         ) : (
           <button type="button" style={{ ...btnPrimary, ...dis(newDead) }} disabled={newDead} onClick={() => { if (verdict.ok && newLine.ok) void run({ kind: 'new', stickerId: sticker.id, containerId: newBoxIdRef.current, jobId, label: verdict.name, boxKind: kind, where: whereSaved, placeId }, verdict.name, newLine.said) }} data-testid="sticker-place-new">
@@ -256,13 +257,11 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
     }>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
         {stickerName ? (
-          /* The name on the tape, large; its number small beside it, the one thing that still names the sticker after a rename. */
-          <>
-            <span style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1 }} data-testid="sticker-name">{stickerName}</span>
-            <span style={{ ...muted, fontVariantNumeric: 'tabular-nums' }} data-testid="sticker-number">{number}</span>
-          </>
+          /* The name on the tape, large. */
+          <span style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1 }} data-testid="sticker-name">{stickerName}</span>
         ) : (
-          <span style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }} data-testid="sticker-number">{number}</span>
+          /* A sticker with no name: its code, as the tape prints it, so the person can match the sheet to the strip in hand. */
+          <span style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.06em', fontFamily: 'ui-monospace, Menlo, monospace', lineHeight: 1 }} data-testid="sticker-code">{dashedCode(sticker.code)}</span>
         )}
         {otherJob.kind === 'other_job' ? <span style={{ ...muted, color: 'var(--text-amber-800)', fontWeight: 600 }} data-testid="sticker-other-job">{otherJob.words}</span> : null}
       </div>
@@ -309,10 +308,8 @@ export default function StickerNewSheet({ sticker, jobId, jobs, containers, line
         </>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem', alignItems: 'end' }}>
             <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>Its name<input type="text" value={shown} onChange={(e) => setTyped(e.target.value)} placeholder="R1" aria-label="Its name" autoCapitalize="characters" autoComplete="off" style={{ ...input, fontSize: '1.4rem', fontWeight: 800, textTransform: 'uppercase' }} data-testid="sticker-new-name" /></label>
-            {/* A numbered sticker's number sits beside the name. A named one says nothing here unless the box takes another name than its tape reads. */}
-            {!stickerName ? <span style={{ ...btn, cursor: 'default', borderStyle: 'dashed', fontVariantNumeric: 'tabular-nums' }} title="The sticker on it" data-testid="sticker-beside-name">Sticker {number}</span> : null}
           </div>
           <p data-testid="sticker-new-say" role={verdict.ok ? undefined : 'alert'} style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: !verdict.ok ? 'var(--text-red-700)' : verdict.tone === 'wait' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{verdict.say}{wordsNote ? ` ${wordsNote}` : ''}</p>
           {stickerName && verdict.ok && !stickerNameIs(stickerName, verdict.name) ? <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: 'var(--text-amber-800)' }} data-testid="sticker-twin-note">{twinNoteWords(stickerName, verdict.name)}</p> : null}
