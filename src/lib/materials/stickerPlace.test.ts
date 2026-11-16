@@ -10,6 +10,8 @@ import {
   jobBlankWords,
   matchBoxes,
   matchList,
+  matchStickerWords,
+  nameIsHereWords,
   newBoxPressLabel,
   NO_SIGNAL_WORDS,
   noStickerByNumberWords,
@@ -26,12 +28,18 @@ import {
   SCAN_TYPED_SLIP,
   scanTypedWords,
   STICKER_BRANCH_WORDS,
+  STICKER_DIFFERENT_BOX_LABEL,
   STICKER_NEW_ASK,
+  stickerMarksByBoxOf,
+  stickerMarksWords,
   stickerNewTitle,
   stickerNumbersWords,
+  stickerOpening,
+  stickerReadsOtherWords,
   stickersByBoxOf,
+  twinNoteWords,
 } from './stickerPlace'
-import type { StickerFacts } from './stickers'
+import { placingVerdict, stickerFactsOf, stickerNameIs, stickerSayName, type StickerFacts } from './stickers'
 
 /** A made-up site: Juniper Ridge, two jobs, Marcus on it. */
 const box = (over: Partial<Container> & { id: string; label: string }): Container => ({ jobId: 'job-a', kind: 'cage', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-10-01T00:00:00Z', ...over })
@@ -231,6 +239,108 @@ describe('plain words', () => {
       noStickerByNumberWords(147),
       SCAN_TYPED_SLIP,
     ]
+    for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
+  })
+})
+
+describe('a sticker that names its box (design section 10, PR 9, v2.7399)', () => {
+  const g78: StickerFacts = { ...blank, id: 's-159', number: 159, boxName: 'G78' }
+  const site = (labels: string[], retired: string[] = []) => [...labels.map((label) => ({ id: label.toLowerCase(), label, kind: 'cage', retiredAt: null })), ...retired.map((label) => ({ id: `old-${label.toLowerCase()}`, label, kind: 'cage', retiredAt: '2026-11-01T00:00:00Z' }))]
+
+  it('the function’s answer carries the name on the tape, in capitals, and a numbered sticker has none', () => {
+    const raw = { id: 's-159', number: 159, code: '4F2A9C18', state: 'blank', box_name: 'g78' }
+    expect(stickerFactsOf(raw)?.boxName).toBe('G78')
+    expect(stickerFactsOf({ ...raw, box_name: null })?.boxName).toBeNull()
+    expect(stickerFactsOf({ id: 's', number: 1, code: 'A', state: 'blank' })?.boxName).toBeNull()
+    expect(stickerSayName(g78)).toBe('G78')
+    expect(stickerSayName(blank)).toBe('0147')
+    expect(stickerNameIs('G78', ' g78')).toBe(true)
+    expect(stickerNameIs('G78', 'G78B')).toBe(false)
+    expect(stickerNameIs(null, 'G78')).toBe(false)
+  })
+
+  it('the sheet is titled by the name on the tape', () => {
+    expect(stickerNewTitle(g78)).toBe('Sticker G78 is new')
+    expect(stickerNewTitle(blank)).toBe('Sticker 0147 is new')
+    expect(stickerNewTitle(147)).toBe('Sticker 0147 is new')
+  })
+
+  it('opens on a new box of that name when the site has none, the retired one aside', () => {
+    expect(stickerOpening(g78, site(['G1', 'G2']))).toEqual({ branch: 'new', pickId: null, offerName: 'G78', twinName: null })
+    expect(stickerOpening(g78, site(['G1'], ['G78']))).toEqual({ branch: 'new', pickId: null, offerName: 'G78', twinName: null })
+    expect(stickerOpening(g78, [])).toMatchObject({ branch: 'new', offerName: 'G78' })
+  })
+
+  it('opens on the site’s box of that name, and a different box is offered the next letter', () => {
+    expect(stickerOpening(g78, site(['G77', 'G78']))).toEqual({ branch: 'known', pickId: 'g78', offerName: null, twinName: 'G78B' })
+    // G78B stands, so the next is G78C; a name saved in small letters is still the name
+    expect(stickerOpening(g78, site(['g78', 'G78B']))).toMatchObject({ branch: 'known', pickId: 'g78', twinName: 'G78C' })
+  })
+
+  it('a numbered sticker opens as before: the boxes decide', () => {
+    expect(stickerOpening(blank, site(['G78']))).toEqual({ branch: null, pickId: null, offerName: null, twinName: null })
+    expect(stickerOpening({ boxName: null }, [])).toMatchObject({ branch: null })
+  })
+
+  it('a row says of its stickers only what carries news', () => {
+    // the sticker printed with the box's own name says nothing
+    expect(stickerMarksWords('G78', [{ number: 159, boxName: 'G78' }])).toBe('')
+    expect(stickerMarksWords('g78', [{ number: 159, boxName: 'G78' }])).toBe('')
+    // one printed with another name says so
+    expect(stickerMarksWords('G78B', [{ number: 159, boxName: 'G78' }])).toBe('sticker reads G78')
+    // a numbered one reads its number, as before, lowest first
+    expect(stickerMarksWords('R12', [{ number: 152 }, { number: 147, boxName: null }])).toBe('0147, 0152')
+    expect(stickerMarksWords('G78', [{ number: 160, boxName: 'G78' }, { number: 152 }, { number: 159, boxName: 'G77' }])).toBe('0152, sticker reads G77')
+    expect(stickerMarksWords('G78', [])).toBe('')
+  })
+
+  it('folds the rows read by box with their names, a lost sticker left off', () => {
+    const m = stickerMarksByBoxOf([
+      { number: 160, containerId: 'a', lostAt: null, boxName: 'G78' },
+      { number: 152, containerId: 'a', lostAt: null },
+      { number: 153, containerId: 'a', lostAt: '2026-11-14T00:00:00Z', boxName: 'G79' },
+      { number: 154, containerId: null, lostAt: null, boxName: 'G80' },
+    ])
+    expect([...m.keys()]).toEqual(['a'])
+    expect(m.get('a')).toEqual([{ number: 152, boxName: null }, { number: 160, boxName: 'G78' }])
+  })
+
+  it('a match row reads its marks when it has them, its numbers when it does not', () => {
+    const named = matchBoxes({ hereJobId: 'job-a', jobs: [jobA], stickersByBox: new Map([['r12', [152]], ['r76', [159]]]), marksByBox: new Map([['r12', [{ number: 152 }]], ['r76', [{ number: 159, boxName: 'R76' }]]]) })
+    expect(matchStickerWords(named.find((b) => b.container.id === 'r12')!)).toBe('0152')
+    expect(matchStickerWords(named.find((b) => b.container.id === 'r76')!)).toBe('')
+    // a box with no marks handed keeps none, and reads by number
+    expect(named.find((b) => b.container.id === 'r7')!.marks).toBeUndefined()
+    expect(matchStickerWords(boxes.find((b) => b.container.id === 'r12')!)).toBe('0147, 0152')
+  })
+
+  it('says what became of the press without saying the name twice', () => {
+    const on = (label: string): StickerFacts => ({ ...g78, state: 'on_box', containerId: 'c', containerLabel: label, containerKind: 'cage', jobId: 'job-a', placedByName: 'Marcus', placedAt: '2026-11-14T15:00:00Z' })
+    const r = { ...reach, number: 159, boxLabel: 'G78', boxName: 'G78' }
+    expect(placeOutcome({ ok: true, already: false, created: true, containerId: 'c', sticker: on('G78') }, r).words).toBe('G78 is made, with its sticker on it.')
+    expect(placeOutcome({ ok: true, already: false, created: false, containerId: 'c', sticker: on('G78') }, r).words).toBe('The sticker is on G78.')
+    expect(placeOutcome({ ok: true, already: true, created: false, containerId: 'c', sticker: on('G78') }, r).words).toBe('The sticker was already on G78.')
+    // on a box of another name both are said
+    expect(placeOutcome({ ok: true, already: false, created: true, containerId: 'c', sticker: on('G78B') }, r).words).toBe('G78B is made, with sticker G78 on it.')
+    expect(placeOutcome({ ok: true, already: false, created: false, containerId: 'c', sticker: on('G12') }, r).words).toBe('Sticker G78 is on G12.')
+    expect(placeOutcome({ ok: true, already: true, created: false, containerId: 'c', sticker: on('G12') }, r).words).toBe('Sticker G78 was already on G12.')
+    // the answer with no sticker in it reads the name the sheet handed
+    expect(placeOutcome({ ok: true, already: false, created: false, containerId: 'c', sticker: null }, r).words).toBe('The sticker is on G78.')
+    // taken, out of reach and lost say this sticker, not its number
+    expect(placeOutcome({ ok: false, sticker: on('G78') }, r).words).toBe('Marcus put this sticker on G78 a minute ago.')
+    expect(placeOutcome({ ok: false, sticker: { ...on('G78'), jobId: 'job-z' } }, r).words).toBe('This sticker is on a box of a job you are not on. Ask the office to add you to that job.')
+    expect(placeOutcome({ ok: false, sticker: { ...on('G78'), state: 'lost', lostAt: '2026-11-14T00:00:00Z' } }, r).words).toBe('This sticker was on G78 and was marked lost.')
+    expect(placingVerdict({ sticker: { ...on('G78'), placedByName: null }, now: NOW })).toMatchObject({ kind: 'on_box', words: 'This sticker was put on G78 a minute ago.' })
+  })
+
+  it('a scan of a sticker whose tape reads another name than its box says so', () => {
+    expect(stickerReadsOtherWords(g78, 'G78B')).toBe('This sticker reads G78. The box is G78B.')
+    expect(stickerReadsOtherWords(g78, 'g78')).toBe('')
+    expect(stickerReadsOtherWords(blank, 'R76')).toBe('')
+  })
+
+  it('every new sentence follows the rules', () => {
+    const words = [nameIsHereWords('G12'), `${STICKER_DIFFERENT_BOX_LABEL}.`, twinNoteWords('G78', 'G78B'), stickerReadsOtherWords(g78, 'G78B'), 'G78 is made, with its sticker on it.', 'The sticker is on G78.', 'Marcus put this sticker on G78 a minute ago.']
     for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
   })
 })

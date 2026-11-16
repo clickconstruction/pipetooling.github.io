@@ -10,17 +10,57 @@
  * box's name, the count of stickers not yet on a box, and what a typed scan means (a code or a number). The reads
  * and the one write are `stickerPlaceIo.ts`; the sheet is `StickerNewSheet.tsx`.
  */
+import { nameTakenBy, type SiteBox } from './boxName'
 import { compareLabels, type Container, type ContainerLine, type Place } from './onSite'
 import type { OnSiteFindJob } from './onSiteFind'
-import { placingVerdict, stickerFactsOf, stickerNumberWords, type StickerCountRow, type StickerFacts } from './stickers'
+import { nextTwinName } from './stickerNames'
+import { placingVerdict, stickerFactsOf, stickerNameIs, stickerNumberWords, stickerSayName, type StickerCountRow, type StickerFacts } from './stickers'
 
 // ---------------------------------------------------------------------------
 // The sheet's words
 // ---------------------------------------------------------------------------
 
-/** The sheet's heading: *Sticker 0147 is new*. */
-export function stickerNewTitle(number: number): string {
-  return `Sticker ${stickerNumberWords(number)} is new`
+/** The sheet's heading: *Sticker 0147 is new*; a named sticker by the name on its tape, *Sticker G78 is new* (section 10, PR 9). */
+export function stickerNewTitle(sticker: number | Pick<StickerFacts, 'number' | 'boxName'>): string {
+  return `Sticker ${typeof sticker === 'number' ? stickerNumberWords(sticker) : stickerSayName(sticker)} is new`
+}
+
+/** Under the list, when a named sticker's name is a box on the site already and the box in hand is another one. */
+export const STICKER_DIFFERENT_BOX_LABEL = 'It is a different box'
+
+/**
+ * How the sheet opens for a sticker (section 10, PR 9). A sticker with a name reads it off the tape: when the site
+ * has a live box of that name the sheet opens on **It is on a box I know** with that box picked, and **It is a
+ * different box** offers the next letter at the spot (`nextTwinName`: G78B, or G78C when G78B stands); when the site
+ * has none it opens on **It is a new box** with the name filled in. A sticker with a number only opens as before:
+ * `branch` null, so the boxes decide (`defaultBranch`).
+ */
+export type StickerOpening = {
+  branch: StickerBranch | null
+  /** The site's live box that carries the sticker's name, to pick in the list. */
+  pickId: string | null
+  /** The name the new box opens on: the sticker's own when the site has no box of it. */
+  offerName: string | null
+  /** The name **It is a different box** opens the new box on; null when there is no box of the name, or no letter left. */
+  twinName: string | null
+}
+
+export function stickerOpening(sticker: Pick<StickerFacts, 'boxName'>, siteBoxes: ReadonlyArray<SiteBox>): StickerOpening {
+  const name = sticker.boxName?.trim().toUpperCase() || null
+  if (!name) return { branch: null, pickId: null, offerName: null, twinName: null }
+  const taken = nameTakenBy(siteBoxes, name)
+  if (!taken) return { branch: 'new', pickId: null, offerName: name, twinName: null }
+  return { branch: 'known', pickId: taken.id ?? null, offerName: null, twinName: nextTwinName(siteBoxes, name) }
+}
+
+/** Said over the list when the sheet opened on the box of the sticker's name: *G12 is a box on this site already.* */
+export function nameIsHereWords(name: string): string {
+  return `${name} is a box on this site already.`
+}
+
+/** Said under the new box's name when it is not the name on the tape (after **It is a different box**, or a typed name): the two will differ, and a scan says so. */
+export function twinNoteWords(stickerName: string, boxName: string): string {
+  return `The sticker reads ${stickerName}. This box will be ${boxName}, and a scan will say so.`
 }
 
 export const STICKER_NEW_ASK = 'What is it on?'
@@ -69,13 +109,15 @@ export type MatchBox = {
   partNames: string[]
   /** The stickers already on it, lowest first. */
   stickerNumbers: number[]
+  /** The same stickers with the name printed on each, when the reader has them (section 10, PR 9). */
+  marks?: StickerMark[]
 }
 
 /**
  * The boxes of the site a sticker may go on: every live cage, box and pile of every job handed in, Unsorted and the
  * retired left out (a retired box takes no sticker; Bring back first, as the judge says).
  */
-export function matchBoxes(input: { hereJobId: string | null; jobs: ReadonlyArray<OnSiteFindJob>; stickersByBox?: ReadonlyMap<string, ReadonlyArray<number>> }): MatchBox[] {
+export function matchBoxes(input: { hereJobId: string | null; jobs: ReadonlyArray<OnSiteFindJob>; stickersByBox?: ReadonlyMap<string, ReadonlyArray<number>>; marksByBox?: ReadonlyMap<string, ReadonlyArray<StickerMark>> }): MatchBox[] {
   const out: MatchBox[] = []
   for (const job of input.jobs) {
     const here = job.jobId === input.hereJobId
@@ -83,7 +125,8 @@ export function matchBoxes(input: { hereJobId: string | null; jobs: ReadonlyArra
       if (c.retiredAt || c.kind === 'unsorted') continue
       const place = job.places.find((p) => p.id === c.locationId)?.name ?? ''
       const partNames = job.lines.filter((l) => l.containerId === c.id && l.onHand > 0).map((l) => l.partName)
-      out.push({ container: c, jobId: job.jobId, jobLabel: here ? '' : job.label, here, place, partNames, stickerNumbers: [...(input.stickersByBox?.get(c.id) ?? [])].sort((a, b) => a - b) })
+      const marks = input.marksByBox?.get(c.id)
+      out.push({ container: c, jobId: job.jobId, jobLabel: here ? '' : job.label, here, place, partNames, stickerNumbers: [...(input.stickersByBox?.get(c.id) ?? [])].sort((a, b) => a - b), ...(marks ? { marks: [...marks] } : {}) })
     }
   }
   return out
@@ -142,6 +185,47 @@ export const NO_STICKER_MARK = 'no sticker'
 // ---------------------------------------------------------------------------
 // The number on a box
 // ---------------------------------------------------------------------------
+
+/** A sticker on a box, as a row needs it: its number and the name printed on it, if any. */
+export type StickerMark = { number: number; boxName?: string | null }
+
+/**
+ * What a box's row says of its stickers beside its name (section 10, PR 9: the number recedes). A sticker whose
+ * printed name is the box's own says nothing, since the name is already there. A sticker whose name differs says so,
+ * *sticker reads G78*. A sticker with a number only reads its number, as before. Empty when nothing carries news.
+ */
+export function stickerMarksWords(label: string, marks: ReadonlyArray<StickerMark>): string {
+  const out: string[] = []
+  for (const m of [...marks].sort((a, b) => a.number - b.number)) {
+    if (!m.boxName) out.push(stickerNumberWords(m.number))
+    else if (!stickerNameIs(m.boxName, label)) out.push(`sticker reads ${m.boxName.trim().toUpperCase()}`)
+  }
+  return out.join(', ')
+}
+
+/** The stickers on each box with their printed names, from the rows read: a lost sticker is not on its box any more. */
+export function stickerMarksByBoxOf(rows: ReadonlyArray<StickerCountRow & { boxName?: string | null }>): Map<string, StickerMark[]> {
+  const out = new Map<string, StickerMark[]>()
+  for (const r of rows) {
+    if (!r.containerId || r.lostAt) continue
+    const list = out.get(r.containerId) ?? []
+    list.push({ number: r.number, boxName: r.boxName ?? null })
+    out.set(r.containerId, list)
+  }
+  for (const list of out.values()) list.sort((a, b) => a.number - b.number)
+  return out
+}
+
+/** Said when a scan opens a box whose name is not the one on the sticker's tape: *This sticker reads G78. The box is G78B.* Empty when they agree or the sticker has no name. */
+export function stickerReadsOtherWords(sticker: Pick<StickerFacts, 'boxName'>, boxLabel: string): string {
+  if (!sticker.boxName || stickerNameIs(sticker.boxName, boxLabel)) return ''
+  return `This sticker reads ${sticker.boxName}. The box is ${boxLabel}.`
+}
+
+/** A match row's words for the stickers on its box: by their marks when the reader has them, by number when not. */
+export function matchStickerWords(box: Pick<MatchBox, 'container' | 'stickerNumbers' | 'marks'>): string {
+  return box.marks ? stickerMarksWords(box.container.label, box.marks) : stickerNumbersWords(box.stickerNumbers)
+}
 
 /** The stickers on a box, as the row reads them: `0147`, or `0147, 0152`. Empty with none. */
 export function stickerNumbersWords(numbers: ReadonlyArray<number>): string {
@@ -245,12 +329,20 @@ export type PlaceOutcome = {
   jobId: string | null
 }
 
-export function placeOutcome(answer: PlaceAnswer, input: { /** The jobs the person may open. */ jobIds: ReadonlyArray<string>; /** The box the press named, for the words when the answer carries none. */ boxLabel: string; number: number; now: string }): PlaceOutcome {
+export function placeOutcome(answer: PlaceAnswer, input: { /** The jobs the person may open. */ jobIds: ReadonlyArray<string>; /** The box the press named, for the words when the answer carries none. */ boxLabel: string; number: number; /** The name printed on the sticker, when the answer carries no sticker to read it from. */ boxName?: string | null; now: string }): PlaceOutcome {
   const n = stickerNumberWords(input.number)
   if (answer.ok) {
     const label = answer.sticker?.containerLabel ?? input.boxLabel
     const containerId = answer.containerId ?? answer.sticker?.containerId ?? null
     const jobId = answer.sticker?.jobId ?? null
+    // A named sticker (section 10): on the box of its own name the name says it all; on another, the two are said.
+    const name = (answer.sticker?.boxName ?? input.boxName ?? '').trim().toUpperCase()
+    if (name) {
+      const same = stickerNameIs(name, label)
+      if (answer.already) return { kind: 'already', words: same ? `The sticker was already on ${label}.` : `Sticker ${name} was already on ${label}.`, containerId, jobId }
+      if (answer.created) return { kind: 'created', words: same ? `${label} is made, with its sticker on it.` : `${label} is made, with sticker ${name} on it.`, containerId, jobId }
+      return { kind: 'placed', words: same ? `The sticker is on ${label}.` : `Sticker ${name} is on ${label}.`, containerId, jobId }
+    }
     if (answer.already) return { kind: 'already', words: `${n} was already on ${label}.`, containerId, jobId }
     if (answer.created) return { kind: 'created', words: `${label} is made, with sticker ${n} on it.`, containerId, jobId }
     return { kind: 'placed', words: `${n} is on ${label}.`, containerId, jobId }
@@ -261,7 +353,7 @@ export function placeOutcome(answer: PlaceAnswer, input: { /** The jobs the pers
   if (verdict.kind === 'lost') return { kind: 'lost', words: verdict.words, containerId: null, jobId: s.jobId }
   if (verdict.kind === 'on_box') {
     const reach = s.jobId != null && input.jobIds.includes(s.jobId)
-    if (!reach) return { kind: 'out_of_reach', words: `${n} is on a box of a job you are not on. Ask the office to add you to that job.`, containerId: null, jobId: s.jobId }
+    if (!reach) return { kind: 'out_of_reach', words: `${s.boxName ? 'This sticker' : n} is on a box of a job you are not on. Ask the office to add you to that job.`, containerId: null, jobId: s.jobId }
     return { kind: 'taken', words: verdict.words, containerId: s.containerId, jobId: s.jobId }
   }
   // Blank still: the database refused nothing and placed nothing, which it never answers; said plainly.

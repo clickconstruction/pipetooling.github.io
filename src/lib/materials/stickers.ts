@@ -30,6 +30,18 @@ export type StickerFacts = {
   runId: string | null
   /** The job the sticker's run was printed for: where a new box made from it lands. */
   runJobId: string | null
+  /** The box name printed large on the sticker, `G78` (section 10, v2.7312); null on a sticker that carries its number only. Left out by a reader from before the names. */
+  boxName?: string | null
+}
+
+/** What a person reads off a sticker first: its printed name when it carries one, its number when it does not. */
+export function stickerSayName(sticker: Pick<StickerFacts, 'number' | 'boxName'>): string {
+  return sticker.boxName || stickerNumberWords(sticker.number)
+}
+
+/** Whether a sticker's printed name is the name of the box it is on: capitals and spaces do not matter. */
+export function stickerNameIs(boxName: string | null | undefined, label: string | null | undefined): boolean {
+  return !!boxName && !!label && boxName.trim().toUpperCase() === label.trim().toUpperCase()
 }
 
 /** The number as printed: `0147`. Four digits, and five past 9999. The database's twin is `box_sticker_number_words`. */
@@ -75,6 +87,7 @@ export function stickerFactsOf(raw: unknown): StickerFacts | null {
     lostAt: text(r.lost_at),
     runId: text(r.run_id),
     runJobId: text(r.run_job_id),
+    boxName: text(r.box_name)?.trim().toUpperCase() ?? null,
   }
 }
 
@@ -183,15 +196,18 @@ export function placingVerdict(input: {
   now: string
 }): PlacingVerdict {
   const s = input.sticker
-  const n = stickerNumberWords(s.number)
+  // A named sticker is *this sticker* in a sentence that already names its box (section 10): the number recedes, and
+  // *Marcus put G78 on G78* says one thing twice.
+  const n = s.boxName ? 'this sticker' : stickerNumberWords(s.number)
+  const N = s.boxName ? 'This sticker' : n
   if (s.state === 'lost') {
-    return { kind: 'lost', words: s.containerLabel ? `${n} was on ${s.containerLabel} and was marked lost.` : `${n} was marked lost.` }
+    return { kind: 'lost', words: s.containerLabel ? `${N} was on ${s.containerLabel} and was marked lost.` : `${N} was marked lost.` }
   }
   if (s.state === 'on_box') {
     const box = s.containerLabel ?? 'a box'
     const ago = stickerAgoWords(s.placedAt, input.now)
     const tail = ago ? ` ${ago}` : ''
-    const words = s.placedByName ? `${s.placedByName} put ${n} on ${box}${tail}.` : `${n} was put on ${box}${tail}.`
+    const words = s.placedByName ? `${s.placedByName} put ${n} on ${box}${tail}.` : `${N} was put on ${box}${tail}.`
     return { kind: 'on_box', words, containerId: s.containerId, jobId: s.jobId }
   }
   if (s.runJobId && input.hereJobId && s.runJobId !== input.hereJobId) {
