@@ -254,8 +254,10 @@ Tabs **Today**, **1 Get them right**, **2 Print**, **3 Mail and record** and **T
 - **Waiting: the line that counts a property's other jobs** (*At this property: 1 notice in this
   envelope · 4 notices mailed Oct 14 · 6 lien affidavits ready to file*), with a press to see them.
   Its reasons come from the whole-property view's kernel (`lienPropertyPapers.ts`), so it is built
-  once that kernel is on `main`. The owner picks first whether a contractor's envelope gets one line
-  a property or one line for the envelope.
+  once that kernel is on `main` (PR #8389). The owner picked the shape on 2026-11-16: **one line for
+  the envelope**. A contractor's envelope that spans properties gets a single line that totals them
+  (*At these 2 properties: 3 notices in this envelope · 6 notices mailed earlier · 9 lien affidavits
+  ready to file*), not one line a property.
 - **Not checked on the live desk.** It was looked at with sample ZZ rows at 1,280, 1,024 and 375 px.
 
 ## How to verify
