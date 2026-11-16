@@ -25,6 +25,9 @@ export type EstimatorBidInput = {
   bidNumber: string | null
   projectName: string | null
   customerName: string | null
+  /** Who estimated the bid and who manages the account, by id (PR 5: a person's own row is the bids that name them). */
+  estimatorId?: string | null
+  accountManagerId?: string | null
   estimatorName: string | null
   accountManagerName: string | null
   outcome: 'won' | 'lost' | 'started_or_complete' | null

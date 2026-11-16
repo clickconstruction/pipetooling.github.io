@@ -45,6 +45,10 @@ import { useGcDifficultyStandings } from '../../hooks/useGcDifficultyStandings'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import GcDifficultyChip from './GcDifficultyChip'
 import BidScoreHoldChip from './BidScoreHoldChip'
+import BidCloseoutChip from './BidCloseoutChip'
+import MyScoreStrip from './MyScoreStrip'
+import { useEstimatorScores } from '../../hooks/useEstimatorScores'
+import { closeoutChipsByBid } from '../../lib/scorecard/myScore'
 import DifficultyRateSheet from './DifficultyRateSheet'
 import { GcDifficultyAsksPress } from './GcDifficultyAsk'
 import { useBidScoreReadiness } from '../../hooks/useBidScoreReadiness'
@@ -543,6 +547,11 @@ export function BidsBidBoardTab({
   const bidFlowIds = useMemo(() => filteredBidsForBidBoard.map((b) => b.id), [filteredBidsForBidBoard])
   // #360 PR 2: the priced bids the Scores tab would hold (labor not estimated, rows with no cost), for the row's chip.
   const scoreHolds = useBidScoreReadiness(filteredBidsForBidBoard)
+  // #360 PR 5: the estimating score from team-scores. The scoreboard's gate reads everyone's for the closeout chips;
+  // whoever can be a bid's estimator or account manager reads their own row. Nothing draws until the function answers.
+  const scoresView = boardRole === 'dev' || boardRole === 'master_technician' ? 'bids' : boardRole === 'estimator' || boardRole === 'assistant' || boardRole === 'controller' ? 'mine' : null
+  const estimating = useEstimatorScores(scoresView)
+  const closeoutChips = useMemo(() => closeoutChipsByBid(estimating?.estimator ?? null), [estimating])
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(bidFlowIds)
   // Doors on the board: the Edit window, one of the five jump tabs, or the Mark reviewed action (v2.3201).
   const bidFlowReview = useBidFlowReview(filteredBidsForBidBoard)
@@ -1268,7 +1277,15 @@ export function BidsBidBoardTab({
   /** #360 PR 2: *Can't be scored* on a priced bid the Scores tab would hold; a press to Labor while the bid is still on the desk. */
   function renderScoreHoldChip(bid: BidWithBuilder) {
     const hold = scoreHolds.get(bid.id)
-    return hold ? <BidScoreHoldChip hold={hold} onOpenLabor={bid.bid_date_sent ? null : () => onOpenBidTab(bid, 'labor')} /> : null
+    const closed = closeoutChips.get(bid.id)
+    if (!hold && !closed) return null
+    return (
+      <>
+        {hold ? <BidScoreHoldChip hold={hold} onOpenLabor={bid.bid_date_sent ? null : () => onOpenBidTab(bid, 'labor')} /> : null}
+        {/* #360 PR 5: what the job made against the estimate, once it closed. */}
+        <BidCloseoutChip chip={closed} />
+      </>
+    )
   }
 
   function renderBidBoardBidValue(bid: BidWithBuilder) {
@@ -1396,7 +1413,7 @@ export function BidsBidBoardTab({
             <span style={labelStyle}>GC/Builder</span>
             {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
             {bid.customer_id ? <span style={{ marginLeft: '0.4rem' }}><GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} onRate={canRateGc ? () => setRateSheetBid(bid) : undefined} /></span> : null}
-            {scoreHolds.get(bid.id) ? <span style={{ marginLeft: '0.4rem' }}>{renderScoreHoldChip(bid)}</span> : null}
+            {scoreHolds.get(bid.id) || closeoutChips.get(bid.id) ? <span style={{ marginLeft: '0.4rem', display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>{renderScoreHoldChip(bid)}</span> : null}
           </div>
           {bidDevelopmentName(bid) ? (
             <div>
@@ -1975,6 +1992,16 @@ export function BidsBidBoardTab({
           </button>
         </div>
       </div>
+      {/* #360 PR 5: the estimator's own row, for whoever has a bid in the window; the gate's people have the Scores tab. */}
+      {scoresView === 'mine' ? (
+        <MyScoreStrip
+          read={estimating}
+          onOpenLabor={(bidId) => {
+            const b = bids.find((x) => x.id === bidId)
+            if (b) onOpenBidTab(b, 'labor')
+          }}
+        />
+      ) : null}
       {loading && bids.length === 0 ? (
         // J10-F8: the first fetch has not settled — say so instead of a false "No bids yet".
         <div role="status" aria-label="Loading bids" style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>

@@ -1,13 +1,13 @@
 ---
 name: "Team scorecard: two numbers, one formula each, against the hurdle"
 number: 360
-group: ready
-status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · PR 3 (v2.7361) the owner sets the target on the Bid Board's Pricing rules · PR 4 (v2.7365) the scores are read by the edge function `team-scores`, Taunya's pick · next PR 5, the estimator's own row
+group: close
+status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · PR 3 (v2.7361) the owner sets the target on the Bid Board's Pricing rules · PR 4 (v2.7365) the scores are read by the edge function `team-scores`, Taunya's pick · PR 5 (v2.7369) the estimator's own row on the Bid Board and a closeout's chip on the bid · the train is built; one residual, the labor count kept with the priced margin
 next: >
-  PR 5: the estimator's own row on the phone, answered by team-scores to someone outside the
-  scoreboard's gate, and a closeout's adjustment named on the bid. With it, the labor count kept
-  with the priced margin at send. The owner's four calls are unanswered and block none of this.
-size: M as a train of five (M · S · S · M · S); PRs 1 to 4 shipped
+  The owner reads the Scores tab and an estimator reads their row, and the four calls under Calls the
+  owner makes are answered. One residual from the train: keep the labor count with the priced margin
+  at send, so hours filled after a send cannot make a bid read as judged (The train, item 5).
+size: M as a train of five (M · S · S · M · S); all five shipped
 blocker: none; the estimators' number stays a ramp until a priced bid with labor hours is awarded
 summary: >
   A prompt from outside the company proposed four team scores for a plumbing shop. The owner
@@ -37,6 +37,7 @@ Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Lo
 ## Checked live
 
 - **PR 2 (v2.7347), 2026-11-15**, on clicktooling.com as the dev, after the merge (#8211) and the push. The migration's notice read 16 awarded bids given an award day; prod then read 47 awarded bids, 25 still with no day (none of them has a job), none dated before its send. The types followed in #8226. The Bid Board drew 26 *Can't be scored* chips: 20 on sent bids as words, 6 on unsent bids as presses (5 for labor, 1 for rows with no cost). The press on the test bid BP605 opened its Labor tab. Its Workbench read *Can't be scored. $21,000 of the price is on rows with no cost, so the margin is partial and this bid cannot be scored. Give every priced row a cost before it goes out.* with **Open Labor** under the priced-margin line. The same line stood at the top of *Share with a teammate* and under **Mark sent today** on the Cover Letter. Nothing was sent or saved.
+- **PR 3 (v2.7361), 2026-11-15**, as the dev, after the merge (#8255), the push and the deploy. `app_settings` carries the owner's insert and update policies on `scorecard_hurdle_v1`, each held to `is_master_or_dev()`. `/bids?tab=bid-board&rules=1` opened Pricing rules by itself and dropped the flag; **The score's target** drew under the price list with **Save the target** dead, letters left it dead and a different number woke it. Nothing was saved: prod has no row for the target yet, so the figure shown is the default and the first real save is Micah's. **Open the Scores tab** went to People → Scores, where the old form is gone and **Open Pricing rules** leads back to the same door.
 
 ## What the live data said (2026-11-15, 56-day window)
 
@@ -57,6 +58,6 @@ Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Lo
 2. ~~**The estimating desk's feedback**~~ v2.7347: the Pricing workbench, its share window and the Cover Letter's Mark sent say when the bid cannot be scored, the Bid Board row carries the chip, and 16 old awards got `bids.outcome_at` from their linked job's creation. Left for PR 4: a sent bid's margin is frozen without its labor count, so hours filled after the send make it read as judged.
 3. ~~**The target on the Bid Board's Pricing rules**~~ v2.7361: **The score's target** under the difficulty price list, the owner's own insert and update policies on `scorecard_hurdle_v1`, and the tab's door (`/bids?tab=bid-board&rules=1`).
 4. ~~**`team_scores`**~~ v2.7365, as an edge function and not the SQL function first planned. The loader's arithmetic is the Overhead page's pool and the Costs tab's charge events, and `overheadPoolSnapshotReads.ts` says why none of it is in SQL: *no SQL re-implementation, no second kernel to drift*. Taunya picked the edge function on 2026-11-15 over a SQL function for the wage-priced hours alone and over leaving the read in the browser. `team-scores` runs the app's own `readScorecard` as the service role and answers with hours and dollars by job; seven reads now take a client; two database functions answer the service role. The tab falls back to the browser's read only while the function is not deployed.
-5. **The estimator's own row on the phone**, and a closeout's adjustment named on the bid. Both need the hurdle and a closed job's actual without the wages behind them, which `team-scores` can now answer. With it: a sent bid's priced margin is kept without its labor count, so hours filled after a send make the bid read as judged.
+5. ~~**The estimator's own row on the phone**, and a closeout's adjustment named on the bid~~ v2.7369: **Your score** at the top of the Bid Board for an estimator, an assistant or a controller with a bid in the last 8 weeks, with its sheet; *Closed +$N* on a won bid whose job was billed; `team-scores` answers `mine` (a person's own bids, the hurdle as one figure) and `bids` (the gate, for the chips); and a closeout now counts whatever its award day. **Left, the train's one residual:** a sent bid's priced margin is kept without its labor count, so hours filled after a send make the bid read as judged while its kept cost has no labor in it. It needs two columns on `bids` and one more argument on `stamp_bid_priced_margin`, a migration the Pricing tab calls ahead of. S.
 
 Separate card, the owner's call: job actuals at the burden factor on the Costs tab and the burn.
