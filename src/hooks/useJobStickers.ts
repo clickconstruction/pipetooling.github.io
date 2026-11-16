@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { blankCountOf, stickerMarksByBoxOf, stickersByBoxOf, type StickerMark } from '../lib/materials/stickerPlace'
+import { blankCountOf, NO_RESERVED, reservedOfJob, stickerMarksByBoxOf, stickersByBoxOf, type ReservedOfJob, type StickerMark } from '../lib/materials/stickerPlace'
 import { fetchStickersOnBoxes } from '../lib/materials/stickerPlaceIo'
 import { fetchStickerRuns } from '../lib/materials/stickerRunsIo'
 
@@ -10,6 +10,8 @@ export type JobStickers = {
   marksByBox: ReadonlyMap<string, StickerMark[]>
   /** The job's stickers still on no box, across its runs. */
   blank: number
+  /** The same stickers as the job's line says them (v2.7487): which names, who printed them and when. */
+  reserved: ReservedOfJob
   loaded: boolean
   /** Reads again: after a sticker is placed here. */
   refresh: () => void
@@ -22,7 +24,7 @@ export type JobStickers = {
  * job and set of boxes, and again on `refresh`.
  */
 export function useJobStickers(jobId: string | null, containerIds: ReadonlyArray<string>, reads: { onBoxes?: typeof fetchStickersOnBoxes; runs?: typeof fetchStickerRuns } = {}): JobStickers {
-  const [state, setState] = useState<{ forJob: string | null; byBox: Map<string, number[]>; marksByBox: Map<string, StickerMark[]>; blank: number; loaded: boolean }>({ forJob: null, byBox: new Map(), marksByBox: new Map(), blank: 0, loaded: false })
+  const [state, setState] = useState<{ forJob: string | null; byBox: Map<string, number[]>; marksByBox: Map<string, StickerMark[]>; blank: number; reserved: ReservedOfJob; loaded: boolean }>({ forJob: null, byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: NO_RESERVED, loaded: false })
   const [tick, setTick] = useState(0)
   const idsKey = [...containerIds].sort().join('|')
   const onBoxes = reads.onBoxes ?? fetchStickersOnBoxes
@@ -40,7 +42,8 @@ export function useJobStickers(jobId: string | null, containerIds: ReadonlyArray
         const byBox = boxesRead.status === 'fulfilled' ? stickersByBoxOf(boxesRead.value) : same ? prev.byBox : new Map<string, number[]>()
         const marksByBox = boxesRead.status === 'fulfilled' ? stickerMarksByBoxOf(boxesRead.value) : same ? prev.marksByBox : new Map<string, StickerMark[]>()
         const blank = runsRead.status === 'fulfilled' ? blankCountOf(runsRead.value) : same ? prev.blank : 0
-        return { forJob: jobId, byBox, marksByBox, blank, loaded: true }
+        const reserved = runsRead.status === 'fulfilled' ? reservedOfJob(runsRead.value) : same ? prev.reserved : NO_RESERVED
+        return { forJob: jobId, byBox, marksByBox, blank, reserved, loaded: true }
       })
     })()
     return () => {
@@ -49,5 +52,5 @@ export function useJobStickers(jobId: string | null, containerIds: ReadonlyArray
   }, [jobId, idsKey, tick, onBoxes, runs])
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
-  return useMemo(() => (state.forJob === jobId ? { byBox: state.byBox, marksByBox: state.marksByBox, blank: state.blank, loaded: state.loaded, refresh } : { byBox: new Map(), marksByBox: new Map(), blank: 0, loaded: false, refresh }), [state, jobId, refresh])
+  return useMemo(() => (state.forJob === jobId ? { byBox: state.byBox, marksByBox: state.marksByBox, blank: state.blank, reserved: state.reserved, loaded: state.loaded, refresh } : { byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: NO_RESERVED, loaded: false, refresh }), [state, jobId, refresh])
 }

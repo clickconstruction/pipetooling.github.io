@@ -120,10 +120,13 @@ export function stickerRunCounts(stickers: ReadonlyArray<StickerCountRow>): Stic
   return { total: stickers.length, onBoxes, notUsed: blank.length, lost, unused }
 }
 
-/** *96 stickers not used yet*. Empty when every sticker is used. A named run's row adds which, by name (`StickerRunsFold`). */
+/**
+ * *96 reserved and not on a box yet*. Empty when every sticker is on a box or lost. A named run's row adds which, by
+ * name (`StickerRunsFold`). *Not used yet* until v2.7487: one name for the idea on every screen.
+ */
 export function unusedStickersWords(counts: Pick<StickerRunCounts, 'notUsed'>): string {
   if (counts.notUsed <= 0) return ''
-  return counts.notUsed === 1 ? '1 sticker not used yet' : `${counts.notUsed} stickers not used yet`
+  return `${counts.notUsed} reserved and not on a box yet`
 }
 
 /** *104 of 200 stickers are on boxes*. */

@@ -35,8 +35,7 @@ import { readTapeCopies, readTapePrintedDay, readTapeWidth, writeTapeCopies, wri
 import { downloadFile } from '../../lib/materials/photoShare'
 import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_CHECK_AGAIN_LABEL, PTOUCH_NOT_ANSWERING, PTOUCH_RECHECK_MS, PTOUCH_RECHECK_WORDS, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchCannotPrintWords, ptouchNeedsRecheck, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
 import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
-import { nextFreeName } from '../../lib/materials/boxName'
-import { blankNamesNotice, liveNamesNotice, STICKER_NAMES_LABEL, STICKER_NAMES_PLACEHOLDER, STICKER_NAMES_READING_WORDS, STICKER_NAMES_UNREAD_WORDS, stickerNamesAsk } from '../../lib/materials/stickerNames'
+import { blankNamesNotice, liveNamesNotice, nextNameToReserve, STICKER_NAMES_LABEL, STICKER_NAMES_PLACEHOLDER, STICKER_NAMES_READING_WORDS, STICKER_NAMES_UNREAD_WORDS, stickerNamesAsk } from '../../lib/materials/stickerNames'
 import {
   PRINT_STICKERS_LABEL,
   printRestLabel,
@@ -137,12 +136,13 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   }, [given, jobId, blankCount])
   /**
    * The site's boxes and its blank named stickers (section 10): undefined while they are read, null when the read
-   * failed. The Names field opens on the site's next free name once they land, unless someone typed first.
+   * failed. The Names field opens on the site's next free name once they land, unless someone typed first: one past
+   * its boxes and past every name an earlier run reserved (v2.7487), so a second run starts after the first.
    */
   const [site, setSite] = useState<SiteStickerNames | null | undefined>(given ? null : undefined)
   const [namesText, setNamesText] = useState('')
   const namesTouched = useRef(false)
-  const offered = useMemo(() => (site ? nextFreeName(site.boxes) : null), [site])
+  const offered = useMemo(() => (site ? nextNameToReserve(site.boxes, site.blankNames) : null), [site])
   useEffect(() => {
     if (given) return
     let live = true
@@ -150,7 +150,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
       .then((got) => {
         if (!live) return
         setSite(got)
-        const first = nextFreeName(got.boxes)
+        const first = nextNameToReserve(got.boxes, got.blankNames)
         if (first && !namesTouched.current) setNamesText(first)
       })
       .catch(() => { if (live) setSite(null) })

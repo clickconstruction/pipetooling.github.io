@@ -18,7 +18,7 @@
  * `to-dos/stickers-before-boxes/mockup-named-runs.html` is this file's test list. The window's Names field (PR 8,
  * v2.7391) reads through `stickerNamesAsk`, and its two notices at print are `liveNamesNotice` and `blankNamesNotice`.
  */
-import { BOX_NAME_RULE, BOX_NAME_RULE_WORDS, boxNameWords, parseBoxName, type BoxName, type SiteBox } from './boxName'
+import { BOX_NAME_RULE, BOX_NAME_RULE_WORDS, boxNameWords, nextFreeName, parseBoxName, type BoxName, type SiteBox } from './boxName'
 import { STICKER_RUN_MAX } from './stickerRun'
 import { BOX_NUMBER_MAX } from './boxName'
 
@@ -222,6 +222,15 @@ export function namesSpanWords(some: ReadonlyArray<string>, runNames: ReadonlyAr
   if (unbroken) return `${some[0]} to ${some[some.length - 1]}`
   if (some.length === 2) return `${some[0]} and ${some[1]}`
   return `${some[0]}, ${some[1]} and ${some.length - 2} more`
+}
+
+/**
+ * The name a new run opens on (v2.7487): one past the highest number the site's boxes carry and the highest a
+ * reserved sticker holds, so a second run starts after the first where it used to open on the first's own names and
+ * meet the hold. A reserved name counts as a box of that name does. Null on a site with no name yet.
+ */
+export function nextNameToReserve(boxes: ReadonlyArray<SiteBox>, reservedNames: ReadonlyArray<string>): string | null {
+  return nextFreeName([...boxes, ...reservedNames.map((label) => ({ label, kind: 'box', retiredAt: null }))])
 }
 
 /**

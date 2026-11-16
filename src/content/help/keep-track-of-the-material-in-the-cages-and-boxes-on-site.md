@@ -128,7 +128,7 @@ Did you stick on a whole roll of named stickers? Tap **These are on boxes** unde
 
 Placing a sticker needs signal. With none, the press is grey and the sheet says so. Nothing is kept for later, because two phones might hold the same sticker. Try again when the phone has a bar.
 
-Under the boxes, a line counts the job's stickers not yet on a box. Scan one to say which box it is on.
+Under the boxes, a line counts the job's reserved stickers, the ones not yet on a box. When one run holds them, the line names them, such as G92 to G200. Scan one to say which box it is on.
 
 ## Print a tape label
 

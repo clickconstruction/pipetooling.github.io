@@ -80,7 +80,7 @@ describe('PrintStickersModal · the ask', () => {
 
   it('says how many of the job’s stickers are not yet on a box, before 200 more are printed over them (v2.7298)', async () => {
     setup({ blank: async () => 96 })
-    await waitFor(() => expect(screen.getByTestId('stickers-blank-count').textContent).toBe('This job has 96 stickers not yet on a box.'))
+    await waitFor(() => expect(screen.getByTestId('stickers-blank-count').textContent).toBe('This job has 96 stickers reserved and not on a box yet.'))
   })
 
   it('a quick count and Copies of each change the press to sets, and the device remembers the copies', async () => {
@@ -222,6 +222,15 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     // How many still says how far while one name is typed
     fireEvent.click(screen.getByRole('button', { name: '30' }))
     expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 30 stickers, G91 to G120')
+  })
+
+  it('opens past the names an earlier run reserved, so a second run starts after the first and meets no hold (v2.7487)', async () => {
+    setup({ site: site(Array.from({ length: 10 }, (_, i) => `G${91 + i}`)) })
+    await ready()
+    expect((screen.getByTestId('stickers-names-input') as HTMLInputElement).value).toBe('G101')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 200 stickers, G101 to G300')
+    expect(screen.queryByTestId('stickers-names-blank')).toBeNull()
+    expect(screen.getByTestId('stickers-print').getAttribute('aria-disabled')).toBe('false')
   })
 
   it('a typed range sets the count: How many shows it, its presses rest, and the press names the range', async () => {

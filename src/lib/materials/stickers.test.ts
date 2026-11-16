@@ -86,14 +86,14 @@ describe('a run’s counts', () => {
     const c = stickerRunCounts(run((n) => (n <= 204 ? { containerId: `box-${n}` } : {})))
     expect(c).toEqual({ total: 200, onBoxes: 104, notUsed: 96, lost: 0, unused: [{ first: 205, last: 300 }] })
     // how many, and never which by number: a named run's row adds the names
-    expect(unusedStickersWords(c)).toBe('96 stickers not used yet')
+    expect(unusedStickersWords(c)).toBe('96 reserved and not on a box yet')
     expect(onBoxesWords(c)).toBe('104 of 200 stickers are on boxes')
   })
 
   it('counts a sticker skipped on the walk with the rest', () => {
     const c = stickerRunCounts(run((n) => (n <= 204 && n !== 163 ? { containerId: `box-${n}` } : {})))
     expect(c.unused).toEqual([{ first: 163, last: 163 }, { first: 205, last: 300 }])
-    expect(unusedStickersWords(c)).toBe('97 stickers not used yet')
+    expect(unusedStickersWords(c)).toBe('97 reserved and not on a box yet')
   })
 
   it('keeps a lost sticker out of both counts', () => {
@@ -103,7 +103,7 @@ describe('a run’s counts', () => {
       { number: 3, containerId: null, lostAt: null },
     ])
     expect(c).toEqual({ total: 3, onBoxes: 1, notUsed: 1, lost: 1, unused: [{ first: 3, last: 3 }] })
-    expect(unusedStickersWords(c)).toBe('1 sticker not used yet')
+    expect(unusedStickersWords(c)).toBe('1 reserved and not on a box yet')
   })
 
   it('reads rows in any order, and says nothing when every sticker is used', () => {
