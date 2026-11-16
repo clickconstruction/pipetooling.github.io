@@ -8,3 +8,5 @@ Team scorecard, PR 3 (punch list #360): the owner's own write on `app_settings.s
 `CREATE POLICY` takes a brief lock on `app_settings`; `lock_timeout` is 3 s, so on a busy moment the push fails fast and is run again.
 
 **Apply order**: any. Until the push the owner's save is refused with the policy's own words and a dev's still lands; nothing else reads differently.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111).

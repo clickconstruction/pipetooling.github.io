@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -13,10 +13,10 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: Step 4, the list by bin (M), which is A and the first half of D. Then the run's four steps, 5 to 8, each shipped when it is ready.
-size: M for A alone (step 4); L for D as the five steps left (M · M · M · S · M); B, the first three, is built
+next: Step 5, the Get it right checklist with Leave out (M), the first step of the run. Ask where a left-out paper is remembered and whether the next run takes it by itself, before it is built.
+size: L for D as five steps (M · M · M · S · M); B, the first three, and step 4, the list by bin, are built; left: steps 5 to 8 (M · M · S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470
 ---
 
 # Lien desk To do: one run (#362)
@@ -157,7 +157,7 @@ by itself.
    notice line on every affidavit row, dollars on the desktop row, the day on the head
    (`lienRowWords.ts`). The bin's name opens the card the four dots opened, and a row with no bin keeps
    its dots. With step 2 this is B.
-4. **The list by bin** (M): the groups under the Board's own names and the batch rows. This is A.
+4. **The list by bin** (M), built, v2.7456: the groups under the Board's own names and the batch rows. This is A.
    A kernel beside `groupLienNextUp` puts the rows due by the tile's day in one group a bin, in the
    Board's order, and everything later under one line. Rows that share one act fold into one row with
    a total and one press that exists today: the affidavits ready to file (*Print N for notarization ›*,
@@ -174,6 +174,28 @@ by itself.
 7. **Changed since printed** (S): a fingerprint of each paper's sworn fields at print, compared on
    every read after.
 8. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
+
+## The print at the foot of each column (built, v2.7470)
+
+The owner, 2026-11-16, asked whether To do offers good enough tools to print batches. A band between
+the Board and the list was drawn and not liked; one line beside the find box was drawn next; the third
+drawing split it by the Board's columns, and on that one he said *"Yes, build this"*. Each column ends
+in its own print: under the notices *Print and mail N notices* opens the whole run, under the
+affidavits *Print N for notarization* prints from To do, each with one line for what it leaves out and
+its door. The same pair stands beside the find box once the list is scrolled. Not in it: chips by GC,
+ticks on To do's rows, one print job for both kinds (that is step 6).
+
+Two things he agreed to in direction the same day, not yet drawn or built:
+
+- **Retire the title bar's run door** once the foot's print is live. It is a third door to one place
+  and the widest thing on the title line (`lienDeskTitleBar.ts` measures it). By date and By job have
+  no other door to the run, so they get one first, and a phone's More sheet keeps its row. It goes
+  after the PR that folds the title into the first tab.
+- **Redraw the run window with D**, shown to him before it is built. His screenshot counted one batch
+  several ways on one screen (15 notices, 16 built, *of 10*, 9 envelopes, 8 ready and 7 waiting, 10 to
+  print and 5 held). It wants one total with its parts in the same words, or the unit beside each
+  number; three steps on the journey where there are six; the *Combine the jobs at one property* box
+  out of the lead; and one primary press for the step the run is on.
 
 ## Open questions
 
@@ -215,9 +237,13 @@ with the reminder press, twelve on track, the day on the head, the notice line o
 The reminder press was never pressed on a live paper: it messages the leader, and its smokes cover it
 with the sends mocked.
 
-A (step 4) and D (steps 5 to 8) are picked (2026-11-16) and not built. Step 4 is next. The mock-up
-still draws all three; its B is what shipped, but for two things the build changed: the bin's name stands where the
-mock-up dropped the four dots, and *Print N affidavits ›* opens the affidavits list at Ready to file
+Step 4, the list by bin, is built (v2.7456): one group a bin on a computer, the ready affidavits and
+the ones to send folded into one row each, and Later under one line. Two things it left: notices to
+send do not fold, because the desk has no press that sends several for approval at once, and a pressed
+bin still narrows the list and does not scroll to its group. It was looked at with sample rows at
+1,280, 1,024 and 375 px, not on the live desk. D's steps 5 to 8 are picked (2026-11-16) and not built.
+Step 5 is next. The mock-up still draws all three; its B is what shipped, but for two things the build changed: the bin's name stands where the
+mock-up dropped the four dots, and *Print N for notarization ›* (*Print N affidavits ›* until v2.7398, renamed to the button it opens) opens the affidavits list at Ready to file
 and does not print from To do.
 
 The owner asked for this card on 2026-11-15 so another session can pick it up; the same day the Board

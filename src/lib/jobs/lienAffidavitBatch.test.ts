@@ -257,3 +257,18 @@ describe('the batch presses take what the find shows (punch list #353, part 1)',
     for (const s of [lienAffidavitHiddenWords('print', 3, 'ready')!, lienAffidavitHiddenWords('send', 1, 'drafted')!]) expect(plainWordsFailures(s), s).toEqual([])
   })
 })
+
+describe('lienAffidavitPrintPlan · an approved paper a gate moved to Held (punch list #335)', () => {
+  it('is still left out with the gate’s reason, and a paper the leader holds is in no list', () => {
+    const closed = [{ key: 'homestead_answer' as const, ok: false, label: 'The homestead question is not answered' }]
+    const plan = lienAffidavitPrintPlan([
+      { ...entry('clear', 'ready', item('approved')), ready: true, gates: [] },
+      { ...entry('by-gate', 'held', item('approved')), ready: false, gates: closed },
+      { ...entry('by-leader', 'held', item('held')), ready: true, gates: [] },
+    ])
+    expect(plan.ready.map((e) => e.jobId)).toEqual(['clear'])
+    expect(plan.gated.map((g) => g.entry.jobId)).toEqual(['by-gate'])
+    expect(plan.gated[0]!.reason).toBe(lienAffidavitGatedReason({ gates: closed }))
+    expect(plan.held).toEqual([])
+  })
+})

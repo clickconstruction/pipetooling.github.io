@@ -22,7 +22,7 @@ import { batchWords, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
-import type { LienAffidavitEntry, LienAffidavitGateKey, LienAffidavitPile } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey, type LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { lienItemUnsigned } from './lienNoticeSignature'
 
@@ -79,6 +79,8 @@ export type LienBoardChip = {
   gcId: string | null
   /** The job sits on a property that reads as public and has no answer yet (v2.7443): the chip carries ⊘ and no red day. */
   publicMark?: boolean
+  /** An affidavit in Held because a gate closed after its approval (punch list #335), not by the leader: what is left is the gate, then the filing. */
+  gateHeld?: true
   /** An approved notice the leader has not signed as it stands (v2.7448, `lienItemUnsigned`): the run holds it, so it waits on him too. */
   unsigned?: boolean
 }
@@ -216,9 +218,12 @@ const AFFIDAVIT_STAGES_LEFT: Record<LienBoardAffidavitStage, ReadonlyArray<strin
   missed: [],
 }
 
+/** An approved affidavit a gate closed on (punch list #335): the approval stands, so what is left is the gate and the filing. Two stages, as a leader's hold has. */
+const AFFIDAVIT_GATE_HELD_LEFT: ReadonlyArray<string> = ['Clear what holds it', AFFIDAVIT_TAIL[2]]
+
 /** The stages a chip's paper still has to pass, in order and by name; `leader` absent reads *The leader*. Empty once it is sent, filed or missed. */
-export function lienBoardStagesLeft(chip: Pick<LienBoardChip, 'kind' | 'stage'>, leader?: string | null): string[] {
-  const list = chip.kind === 'notice' ? NOTICE_STAGES_LEFT[chip.stage as LienBoardNoticeStage] : AFFIDAVIT_STAGES_LEFT[chip.stage as LienBoardAffidavitStage]
+export function lienBoardStagesLeft(chip: Pick<LienBoardChip, 'kind' | 'stage'> & Partial<Pick<LienBoardChip, 'gateHeld'>>, leader?: string | null): string[] {
+  const list = chip.kind === 'notice' ? NOTICE_STAGES_LEFT[chip.stage as LienBoardNoticeStage] : chip.gateHeld ? AFFIDAVIT_GATE_HELD_LEFT : AFFIDAVIT_STAGES_LEFT[chip.stage as LienBoardAffidavitStage]
   const name = leader?.trim() || 'The leader'
   return (list ?? []).map((s) => s.replace('{leader}', name))
 }
@@ -340,7 +345,8 @@ function noticeDestination(e: LienDeskEntry, stage: LienBoardNoticeStage): LienB
 }
 
 function affidavitDestination(e: LienAffidavitEntry, stage: LienBoardAffidavitStage): LienBoardDestination {
-  switch (stage) {
+  // A paper a gate holds after its approval (punch list #335) opens where the gate is answered, as one not yet sent does.
+  switch (lienAffidavitGateHeld(e) ? 'needs_property' : stage) {
     case 'needs_property': {
       const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
       // The notice as the one gate left: the door is the notice, as the To do row's is (v2.4708).
@@ -442,7 +448,8 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
   })
   const affidavits: LienBoardChip[] = input.affidavits.map((e) => {
     const stage = affidavitStage(e.pile)
-    const stepsLeft = AFFIDAVIT_STAGES_LEFT[stage].length
+    const gateHeld = lienAffidavitGateHeld(e)
+    const stepsLeft = (gateHeld ? AFFIDAVIT_GATE_HELD_LEFT : AFFIDAVIT_STAGES_LEFT[stage]).length
     const dueYmd = e.deadline || null
     const daysLeft = dueYmd ? e.daysLeft : null
     const marked = publicJob(e.jobId)
@@ -458,6 +465,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       urgency: stage === 'filed' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
       atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
       ...(marked ? { publicMark: true } : {}),
+      ...(gateHeld ? { gateHeld: true as const } : {}),
       destination: affidavitDestination(e, stage),
       tip: tipFor(e.jobId, e.gcCustomerId, e.openBalance),
       pairKey: stage === 'needs_property' ? pairKeyByJob.get(e.jobId) ?? null : null,
@@ -798,12 +806,24 @@ export function lienBoardChipFor(board: Pick<LienBoard, 'notices' | 'affidavits'
  * stands in the bin its notices are in. A reminder, a served copy, a returned envelope and a retainage row have no bin.
  */
 export function lienBoardRowStage(board: Pick<LienBoard, 'notices' | 'affidavits'>, row: { key: string; kind: string; jobId: string | null; jobs?: ReadonlyArray<{ jobId: string }> }): string | null {
+  return lienBoardRowBin(board, row)?.label ?? null
+}
+
+/**
+ * The bin itself, with its place on the Board (punch list #362, step 4): the list under the Board is grouped by it, in
+ * this order, the notices' column first. The same rule as the name above: a row is its job's notice or affidavit, a
+ * run row stands in the notices' print or mail bin, and a reminder, a served copy, a returned envelope and a retainage row
+ * have none.
+ */
+export function lienBoardRowBin(board: Pick<LienBoard, 'notices' | 'affidavits'>, row: { key: string; kind: string; jobId: string | null; jobs?: ReadonlyArray<{ jobId: string }> }): { key: LienBoardBinKey; label: string; kind: LienBoardKind; order: number } | null {
+  const all = [...board.notices, ...board.affidavits]
+  const of = (bin: LienBoardBin | undefined) => (bin ? { key: bin.key, label: bin.label, kind: bin.kind, order: all.indexOf(bin) } : null)
   // A run row for the printed notices stands in *Approved · to mail*; a GC's row of approved ones in *Approved · to print* (v2.7448).
-  if (row.key.startsWith('run:')) return board.notices.find((b) => b.stage === (row.key === 'run:printed' ? 'in_mail' : 'to_print'))?.label ?? null
+  if (row.key.startsWith('run:')) return of(board.notices.find((b) => b.stage === (row.key === 'run:printed' ? 'in_mail' : 'to_print')))
   if (!row.jobId || (row.kind !== 'notice' && row.kind !== 'affidavit') || row.key !== `${row.kind}:${row.jobId}`) return null
   const chip = lienBoardChipFor(board, row.jobId, row.kind)
   if (!chip) return null
-  return [...board.notices, ...board.affidavits].find((b) => b.key === chip.bin)?.label ?? null
+  return of(all.find((b) => b.key === chip.bin))
 }
 
 /** The hover's words on a chip or a job number: where its press goes. */
