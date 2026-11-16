@@ -55,7 +55,7 @@ describe('EMAIL_CATALOG', () => {
     // 57 since v2.6607: Your week's Monday email (your-week-email).
     // 58 since v2.6603: Your people's week, the Monday email about the people a reader picks (people-week-email).
     // 57 since v2.6902: the Bridge's Monday sheet to whoever pressed for it left with its function (bridge-sheet-email).
-    // 58 since v2.7476: a sub's papers, mailed from the papers window (send-sub-paper-email, punch list #350).
+    // 58 since v2.7506: a sub's papers, mailed from the papers window (send-sub-paper-email, punch list #350).
     expect(EMAIL_CATALOG).toHaveLength(58)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
