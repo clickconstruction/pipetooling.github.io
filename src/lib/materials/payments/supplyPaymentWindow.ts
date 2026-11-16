@@ -44,9 +44,16 @@ export type PayWindowState = {
   useAccount: boolean
   /** Keep what is not on a bill on account with the house. */
   keepOnAccount: boolean
+  /** The house added interest or a late fee: a bill of its own, paid by this payment. Absent reads as none. */
+  interest?: PayWindowInterest
 }
 
-export const EMPTY_PAY_WINDOW: PayWindowState = { amountText: '', amountTyped: false, boxes: {}, credits: [], useAccount: false, keepOnAccount: false }
+/** `lateBillId` is the bill that ran late, when the person says which. */
+export type PayWindowInterest = { on: boolean; amountText: string; lateBillId: string | null }
+
+export const NO_INTEREST: PayWindowInterest = { on: false, amountText: '', lateBillId: null }
+
+export const EMPTY_PAY_WINDOW: PayWindowState = { amountText: '', amountTyped: false, boxes: {}, credits: [], useAccount: false, keepOnAccount: false, interest: NO_INTEREST }
 
 /** A typed amount as a number: commas and a dollar sign dropped, `NaN` when it is not one. */
 export function parsePayAmount(text: string): number {
@@ -71,6 +78,10 @@ export function orderBillsOldestFirst<T extends { dueYmd: string | null; number:
 
 const creditCents = (state: PayWindowState, ctx: PayWindowContext): number => ctx.credits.reduce((s, c) => (state.credits.includes(c.id) ? s + toCents(c.open) : s), 0)
 const accountCents = (state: PayWindowState, ctx: PayWindowContext): number => (state.useAccount ? ctx.account.reduce((s, a) => s + toCents(a.amount), 0) : 0)
+/** The interest line's amount, when it is switched on and reads as one. */
+const interestCents = (state: PayWindowState): number => (state.interest?.on ? validCents(state.interest.amountText) : 0)
+/** What a typed amount leaves for the bills: what was sent, the credits and the account money, less the interest. */
+const forBills = (sentCents: number, state: PayWindowState, ctx: PayWindowContext): number => sentCents + creditCents(state, ctx) + accountCents(state, ctx) - interestCents(state)
 
 /** The boxes a sum of money fills, oldest bill first. Without part payments a bill is taken whole, and the fill stops at the first that does not fit. */
 function boxesFor(availableCents: number, ctx: PayWindowContext): Record<string, string> {
@@ -92,7 +103,12 @@ function refill(state: PayWindowState, ctx: PayWindowContext): PayWindowState {
   if (!state.amountTyped) return state
   const sent = validCents(state.amountText)
   if (sent <= 0) return state
-  return { ...state, boxes: boxesFor(sent + creditCents(state, ctx) + accountCents(state, ctx), ctx) }
+  return { ...state, boxes: boxesFor(forBills(sent, state, ctx), ctx) }
+}
+
+/** The interest line switched on or off, its amount typed, or its late bill picked. A typed amount fills again. */
+export function setInterest(state: PayWindowState, patch: Partial<PayWindowInterest>, ctx: PayWindowContext): PayWindowState {
+  return refill({ ...state, interest: { ...(state.interest ?? NO_INTEREST), ...patch } }, ctx)
 }
 
 /** Tick or untick a bill. Ticked, its box is everything it has open. */
@@ -126,13 +142,13 @@ export function typeAmount(state: PayWindowState, text: string, ctx: PayWindowCo
   const next: PayWindowState = { ...state, amountText: text, amountTyped: typed }
   if (!typed) return next
   const sent = validCents(text)
-  return sent > 0 ? { ...next, boxes: boxesFor(sent + creditCents(next, ctx) + accountCents(next, ctx), ctx) } : next
+  return sent > 0 ? { ...next, boxes: boxesFor(forBills(sent, next, ctx), ctx) } : next
 }
 
 /** Fill oldest first: a typed amount is spread again; with none, every bill is ticked and the amount follows. */
 export function fillOldestFirst(state: PayWindowState, ctx: PayWindowContext): PayWindowState {
   const sent = state.amountTyped ? validCents(state.amountText) : 0
-  if (sent > 0) return { ...state, boxes: boxesFor(sent + creditCents(state, ctx) + accountCents(state, ctx), ctx) }
+  if (sent > 0) return { ...state, boxes: boxesFor(forBills(sent, state, ctx), ctx) }
   const boxes: Record<string, string> = {}
   for (const b of ctx.bills) boxes[b.id] = money(toCents(b.open))
   return { ...state, amountText: '', amountTyped: false, boxes }
@@ -198,7 +214,14 @@ export type PayWindowPlan = {
   /** Under a live press: what it will do. */
   afterWords: string
   /** The arguments of `record_supply_house_payment`, when the press is live. */
-  record: { amount: number; lines: { invoice_id: string; amount: number }[]; fromAccount: { payment_id: string; invoice_id: string; amount: number }[]; keepOnAccount: boolean } | null
+  record: {
+    amount: number
+    lines: { invoice_id: string; amount: number }[]
+    fromAccount: { payment_id: string; invoice_id: string; amount: number }[]
+    keepOnAccount: boolean
+    /** The interest or late fee this payment also paid, kept as a bill of its own. */
+    interest: { amount: number; lateInvoiceId: string | null } | null
+  } | null
 }
 
 const billsWord = (n: number): string => `${n} ${n === 1 ? 'bill' : 'bills'}`
@@ -236,6 +259,12 @@ export function planSupplyPayment(state: PayWindowState, ctx: PayWindowContext, 
     } else notes[b.id] = { words: 'Paid in full.', tone: 'plain' }
   }
 
+  // Interest or a late fee is one more thing the money was put on: a bill of its own that this payment pays whole.
+  const interest = state.interest ?? NO_INTEREST
+  const interestC = interestCents(state)
+  const badInterest = interest.on && interest.amountText.trim() !== '' && interestC <= 0
+  placedC += interestC
+
   const creditC = creditCents(state, ctx)
   const accountAvailC = accountCents(state, ctx)
   const needC = placedC - creditC
@@ -255,6 +284,7 @@ export function planSupplyPayment(state: PayWindowState, ctx: PayWindowContext, 
   let reason = ''
   if (badAmount) reason = 'Type the amount sent in dollars and cents.'
   else if (badBox) reason = 'One box is not an amount.'
+  else if (badInterest) reason = 'Type the interest or late fee as an amount above zero.'
   else if (placedC === 0 && sentC === 0) reason = creditC > 0 ? 'Tick the bills this credit goes on.' : 'Tick a bill, or type the amount sent.'
   else if (overBox) reason = 'One box is more than its bill has open.'
   else if (partBox && !ctx.parts) reason = 'A bill is paid whole here. Tick it, or leave it for the next payment.'
@@ -267,7 +297,8 @@ export function planSupplyPayment(state: PayWindowState, ctx: PayWindowContext, 
 
   let pressLabel = 'Record payment'
   if (sentC > 0) {
-    pressLabel = `Record ${usd(fromCents(sentC))} ${billCount > 0 ? `on ${billsWord(billCount)}` : 'on account'}`
+    const on = [billCount > 0 ? billsWord(billCount) : '', interestC > 0 ? 'interest' : ''].filter(Boolean).join(' and ')
+    pressLabel = `Record ${usd(fromCents(sentC))} ${on ? `on ${on}` : 'on account'}`
     if (creditC > 0) pressLabel += `, with a ${usd(fromCents(creditC))} credit`
     if (later) pressLabel += ', details later'
   } else if (billCount > 0 && placedC > 0) pressLabel = `Settle ${billsWord(billCount)} with no money sent`
@@ -296,7 +327,7 @@ export function planSupplyPayment(state: PayWindowState, ctx: PayWindowContext, 
       if (box > 0) lines.push({ invoice_id: b.id, amount: fromCents(box) })
     }
     for (const c of ctx.credits) if (state.credits.includes(c.id)) lines.push({ invoice_id: c.id, amount: -fromCents(toCents(c.open)) })
-    record = { amount: fromCents(sentC), lines, fromAccount, keepOnAccount: keep }
+    record = { amount: fromCents(sentC), lines, fromAccount, keepOnAccount: keep, interest: interestC > 0 ? { amount: fromCents(interestC), lateInvoiceId: interest.lateBillId } : null }
   }
 
   return {

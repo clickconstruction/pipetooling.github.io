@@ -32,6 +32,8 @@ export type RecordSupplyPaymentInput = {
   methodRef: string | null
   receiptLink: string | null
   memo: string | null
+  /** The house added interest or a late fee: made as a bill of its own, tied to the late bill, and paid by this payment. */
+  interest?: { amount: number; lateInvoiceId: string | null } | null
 }
 
 export type RecordSupplyPaymentResult = { payment_id: string | null; lines: number; placed: number; on_account: number; placed_from_account: number }
@@ -136,6 +138,8 @@ export const supabaseSupplyPaymentsIo: SupplyPaymentsIo = {
           p_memo: input.memo,
           p_keep_on_account: input.keepOnAccount,
           p_from_account: input.fromAccount,
+          // Sent only when there is interest, so a payment without it still records before the function gains the argument.
+          ...(input.interest ? { p_interest: { amount: input.interest.amount, late_invoice_id: input.interest.lateInvoiceId } } : {}),
         } as never) as never,
       'record the payment',
       // A payment is not asked for twice: a lost reply must not send the same money to the books again.
