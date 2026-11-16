@@ -4348,6 +4348,16 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPileHeadBtn { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 0.5rem; background: none; border: none; padding: 0; font: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; text-align: left; }
 .lienPileHeadBtn:hover, .lienPileHeadBtn:focus-visible { color: var(--text-strong); outline: none; }
 .lienPileHeadBtn .n { margin-left: auto; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+/* A notice's page bar: the two export presses at its right end (v2.7432, Taunya's ask of 2026-11-15). They read as the
+   bar's own links in the desk's door blue, beside the bar's button and never inside it. On a phone the arrows alone,
+   32px tall in the 40px bar. A press that is busy or waits on the other one greys with the muted words. */
+.lienPageExport { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.lienPageExportBtn { display: inline-flex; align-items: center; justify-content: center; height: 18px; padding: 0 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; font: inherit; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; text-transform: none; white-space: nowrap; color: var(--text-link); cursor: pointer; }
+.lienPageExportBtn:hover:not(:disabled), .lienPageExportBtn:focus-visible { background: var(--bg-blue-tint); outline: none; }
+.lienPageExportBtn:focus-visible { border-color: var(--text-link); }
+.lienPageExportBtn:disabled { color: var(--text-muted); cursor: default; }
+.lienPageExportSep { width: 1px; height: 12px; background: var(--border-strong); }
+.lienPageExport[data-phone='yes'] .lienPageExportBtn { height: 32px; min-width: 40px; padding: 0 10px; font-size: 0.875rem; }
 /* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
 .lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
 /* The list's find box as a quiet line (v2.7315): no pill — the ⌕ and the words on the list's own background with one hairline under them,
