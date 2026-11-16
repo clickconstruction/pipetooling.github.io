@@ -7,6 +7,8 @@ import {
   HISTORY_FOLD_AT,
   HISTORY_HEAD_CHARS,
   HISTORY_HEAD_COLUMNS,
+  MAIL_DOOR_WORDS,
+  TIED_MAIL_COLUMNS,
   aboutIsPiece,
   draftIsKeepable,
   entryBodyIsHead,
@@ -18,6 +20,7 @@ import {
   lineIsAbout,
   lineMatchesChip,
   localInputValue,
+  mailLines,
   narrowLines,
   narrowedWords,
   onRecordNotes,
@@ -26,7 +29,14 @@ import {
   type HistoryEntry,
   type HistoryHeadRow,
   type HistoryRow,
+  type TiedMailContact,
+  type TiedMailRow,
 } from './history'
+import { foldSameDayRuns } from './historyFolds'
+import { historyMark } from './historyLegend'
+import { buildWhatChanged, filterChangeLines } from './whatChanged'
+import { threadHrefByKind } from '../messages/customerThread'
+import type { ContactKind } from '../contacts/kernel'
 import type { MemberBid, MemberJob } from './overview'
 import type { ChangeAbout, ChangeKind, ChangeLine } from './whatChanged'
 
@@ -258,5 +268,138 @@ describe('localInputValue — the datetime-local box in the device’s own time'
   it('pads every part', () => {
     expect(localInputValue(new Date(2026, 9, 28, 14, 5).getTime())).toBe('2026-10-28T14:05')
     expect(localInputValue(new Date(2026, 0, 3, 7, 9).getTime())).toBe('2026-01-03T07:09')
+  })
+})
+
+describe('mailLines: the mail tied to a bid or a job in Messages', () => {
+  const contacts: TiedMailContact[] = [
+    { id: 'c-dana', kind: 'customer', name: 'Dana Whitfield', goes_by: null },
+    { id: 'c-trade', kind: 'trade', name: 'Northside Electric', goes_by: null },
+  ]
+  const names = new Map([['u-sam', 'Sam']])
+  const threadHref = (kind: string | null, contactId: string, messageId: string) => threadHrefByKind((kind ?? 'customer') as ContactKind, contactId, messageId)
+  const ctx = { job: labels.job, bid: labels.bid, contacts, names, threadHref }
+  function mail(over: Partial<TiedMailRow> & { id: string }): TiedMailRow {
+    return { contact_id: 'c-dana', bid_id: 'b401', jobs_ledger_id: null, direction: 'in', who_user_id: null, who_text: 'Dana Whitfield to the bids box', at: '2026-11-16T15:04:00.000Z', subject: 'Re: Phase 2 water', body: 'Can you hold the price to the new year?', gmail_id: `g-${over.id}`, ...over }
+  }
+
+  it('a mail on a bid and a mail on a job each draw one line: its time, the way, the piece, the subject, the words, who, and the door', () => {
+    const lines = mailLines(
+      [
+        mail({ id: 'm1' }),
+        mail({ id: 'm2', bid_id: null, jobs_ledger_id: 'j1102', direction: 'out', who_user_id: 'u-sam', who_text: 'Sam to Dana Whitfield · from Sam’s mail', at: '2026-11-16T16:30:00.000Z', subject: 'Lot 7 start', body: '  We start Monday.  ' }),
+      ],
+      ctx,
+    )
+    expect(lines).toEqual([
+      { id: 'mail:m1', at: '2026-11-16T15:04:00.000Z', kind: 'mail', verb: 'Email in', about: onBid, subject: 'Re: Phase 2 water', detail: 'Can you hold the price to the new year?', by: 'Dana Whitfield to the bids box', waitingDays: null, withTime: true, threadHref: '/messages?thread=c-dana&at=m1' },
+      { id: 'mail:m2', at: '2026-11-16T16:30:00.000Z', kind: 'mail', verb: 'Email out', about: onJob, subject: 'Lot 7 start', detail: 'We start Monday.', by: 'Sam to Dana Whitfield · from Sam’s mail', waitingDays: null, withTime: true, threadHref: '/messages?thread=c-dana&at=m2' },
+    ])
+  })
+
+  it('the door is Job activity’s own: a trade partner’s thread opens on GC projects’ Messages, and a reader with no Messages has no door', () => {
+    const trade = mailLines([mail({ id: 'm3', contact_id: 'c-trade' })], ctx)[0]!
+    expect(trade.threadHref).toBe(threadHrefByKind('trade', 'c-trade', 'm3'))
+    expect(trade.threadHref).not.toBe('/messages?thread=c-trade&at=m3')
+    // A person the read brought no row for still opens on the Messages page.
+    expect(mailLines([mail({ id: 'm4', contact_id: 'c-unread' })], ctx)[0]!.threadHref).toBe('/messages?thread=c-unread&at=m4')
+    const closed = mailLines([mail({ id: 'm5' })], { ...ctx, threadHref: null })[0]!
+    expect('threadHref' in closed).toBe(false)
+    expect(MAIL_DOOR_WORDS).toBe('Open in Messages')
+  })
+
+  it('who reads the row’s own words, else our person and theirs by name', () => {
+    const [inLine, outLine, bare] = mailLines(
+      [
+        mail({ id: 'm1', who_text: '  ' }),
+        mail({ id: 'm2', direction: 'out', who_text: null, who_user_id: 'u-sam' }),
+        mail({ id: 'm3', direction: 'out', who_text: '', who_user_id: null, contact_id: 'c-unread' }),
+      ],
+      ctx,
+    )
+    expect(inLine!.by).toBe('Dana Whitfield to us')
+    expect(outLine!.by).toBe('Sam to Dana Whitfield')
+    expect(bare!.by).toBe('us to someone')
+  })
+
+  it('one mail draws once: a row seen twice by its id, or by Gmail’s id, is dropped', () => {
+    const lines = mailLines([mail({ id: 'm1', gmail_id: 'g1' }), mail({ id: 'm1', gmail_id: 'g1' }), mail({ id: 'm9', gmail_id: 'g1' }), mail({ id: 'm2', gmail_id: null }), mail({ id: 'm3', gmail_id: null })], ctx)
+    expect(lines.map((l) => l.id)).toEqual(['mail:m1', 'mail:m2', 'mail:m3'])
+  })
+
+  it('a team line, a mail on a piece the page does not hold and a mail on no piece draw nothing', () => {
+    expect(mailLines([mail({ id: 'm1', direction: 'team' }), mail({ id: 'm2', bid_id: 'b-elsewhere' }), mail({ id: 'm3', bid_id: null, jobs_ledger_id: 'j-elsewhere' }), mail({ id: 'm4', bid_id: null })], ctx)).toEqual([])
+  })
+
+  it('a mail with no subject or no words still draws, with what it has', () => {
+    const [noSubject, noWords] = mailLines([mail({ id: 'm1', subject: '  ' }), mail({ id: 'm2', body: null })], ctx)
+    expect(noSubject).toMatchObject({ subject: null, detail: 'Can you hold the price to the new year?' })
+    expect(noWords).toMatchObject({ subject: 'Re: Phase 2 water', detail: null })
+  })
+
+  it('a long mail keeps every word, past the fold, so the feed folds it behind more › as it folds a long entry', () => {
+    const body = 'The whole of a long reply. '.repeat(40).trim()
+    const long = mailLines([mail({ id: 'm1', body })], ctx)[0]!
+    expect(long.detail).toBe(body)
+    expect(long.detail!.length).toBeGreaterThan(HISTORY_FOLD_AT)
+    expect(long.detailIsHead).toBeUndefined()
+  })
+
+  it('wears the kept email’s mark, sits under What happened, narrows to its piece and is found by its subject', () => {
+    const lines = mailLines([mail({ id: 'm1' }), mail({ id: 'm2', bid_id: null, jobs_ledger_id: 'j1102', subject: 'Lot 7 start' })], ctx)
+    expect(historyMark('mail')).toEqual(historyMark('entry', 'email'))
+    for (const l of lines) {
+      expect(lineMatchesChip(l, 'happened')).toBe(true)
+      expect(lineMatchesChip(l, 'all')).toBe(true)
+      for (const chip of ['wrote', 'plans', 'stages', 'money', 'questions', 'photos'] as HistoryChip[]) expect(lineMatchesChip(l, chip), chip).toBe(false)
+    }
+    expect(narrowLines(lines, 'happened', { jobId: 'j1102', bidId: null, label: 'JP1102' }).map((l) => l.id)).toEqual(['mail:m2'])
+    expect(filterChangeLines(lines, 'lot 7 START').map((l) => l.id)).toEqual(['mail:m2'])
+    expect(filterChangeLines(lines, 'whitfield bids').map((l) => l.id)).toEqual(['mail:m1', 'mail:m2'])
+  })
+
+  it('never folds into a run: three mails on one piece on one day stay three lines', () => {
+    const lines = mailLines([mail({ id: 'm1' }), mail({ id: 'm2' }), mail({ id: 'm3' })], ctx)
+    expect(foldSameDayRuns(lines, (iso) => iso.slice(0, 10))).toHaveLength(3)
+  })
+
+  it('a mail also kept by hand: the kept line stays as written and the tied mail draws once beside it, at its own time', () => {
+    // The hand-kept line carries no Gmail id, so nothing matches the two: the mail is never drawn twice from `messages`, and the kept line is never taken away.
+    const kept = entryLine(entry({ id: 'h7', about: { kind: 'bid', id: 'b401' }, happenedAt: '2026-11-16T15:04:00.000Z', body: 'Re: Phase 2 water. Can you hold the price to the new year?' }), labels)
+    const feed = buildWhatChanged({
+      members: { bids: [], jobs: [] },
+      requests: [],
+      submissionEntries: [],
+      bidChanges: [],
+      statusEvents: [],
+      invoices: [],
+      payments: [],
+      threadNotes: [],
+      bidNotes: [],
+      entryLines: [kept],
+      mailLines: mailLines([mail({ id: 'm1' }), mail({ id: 'm0', at: '2026-11-15T09:00:00.000Z', subject: 'Phase 2 water', body: 'Price attached.', direction: 'out' })], ctx),
+      customerContacts: [],
+      customerNames: new Map(),
+      names,
+      bidLabel: () => '',
+      jobLabel: () => '',
+      stageLabel: () => '',
+      money: () => '',
+      shortDay: () => '',
+      siteName: 'Harlow Ranch',
+      nowMs: NOW,
+    })
+    expect(feed.filter((l) => l.kind === 'mail').map((l) => l.id)).toEqual(['mail:m1', 'mail:m0'])
+    expect(feed.filter((l) => l.kind === 'entry')).toEqual([kept])
+    // Newest first, each mail at its own time, not the time it was tagged.
+    expect(feed.map((l) => l.at)).toEqual(['2026-11-16T15:04:00.000Z', '2026-11-16T15:04:00.000Z', '2026-11-15T09:00:00.000Z'])
+  })
+
+  it('reads only columns the messages table has', () => {
+    const types = readFileSync(join(process.cwd(), 'src/types/database.ts'), 'utf8')
+    const start = types.indexOf('      messages: {')
+    expect(start).toBeGreaterThan(0)
+    const table = types.slice(start, types.indexOf('Relationships:', start))
+    for (const column of TIED_MAIL_COLUMNS.split(', ')) expect(table, column).toContain(`          ${column}: `)
   })
 })

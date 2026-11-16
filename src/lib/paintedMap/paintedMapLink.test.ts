@@ -3,6 +3,7 @@ import {
   PAINTED_MAP_LINK_ALPHABET,
   linkDayWords,
   linkEndsWords,
+  linkMadeDayWords,
   linkOpenedWords,
   mintPaintedMapLinkCode,
   paintedMapHexOf,
@@ -105,6 +106,14 @@ describe('the sheet\'s words', () => {
     expect(linkEndsWords('2027-02-11')).toBe('The link ends by itself on Feb 11.')
     expect(linkDayWords('soon')).toBeNull()
     expect(linkEndsWords(null)).toBeNull()
+  })
+  it('says the day a link was made on the company\'s calendar, not the day in UTC', () => {
+    expect(linkMadeDayWords('2026-11-16T05:03:16Z')).toBe('Nov 15')
+    expect(linkMadeDayWords('2026-11-13T16:00:00Z')).toBe('Nov 13')
+    expect(linkMadeDayWords('2026-07-01T04:59:00Z')).toBe('Jun 30')
+    expect(linkMadeDayWords('2026-07-01T05:00:00Z')).toBe('Jul 1')
+    expect(linkMadeDayWords('soon')).toBeNull()
+    expect(linkMadeDayWords(null)).toBeNull()
   })
   it('says how often a link was opened', () => {
     expect(linkOpenedWords(0)).toBe('Not opened yet')

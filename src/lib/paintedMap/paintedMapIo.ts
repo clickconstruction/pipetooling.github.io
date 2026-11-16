@@ -223,14 +223,52 @@ export async function savePaintedMapWords(mapId: string, input: { name: string; 
   }
 }
 
-/** Throws a map away, its lines and places with it. `false` when nothing went: it was not the caller's to remove. */
+/**
+ * Throws a map away, its lines and places with it, and then its places' pictures. `false` when nothing went: it was
+ * not the caller's to remove, and then no picture is touched. The pictures go after the row and are not waited on:
+ * the map is gone either way.
+ */
 export async function deletePaintedMap(mapId: string): Promise<Landed<boolean>> {
   try {
     const res = (await supabase.from(MAPS).delete().eq('id' as never, mapId).select('id' as '*')) as unknown as Rows<{ id: string }>
     if (res.error) return fail(res.error, 'The map was not removed.')
-    return { ok: true, value: (res.data ?? []).length > 0 }
+    const gone = (res.data ?? []).length > 0
+    if (gone) void removePaintedMapPhotoFiles(mapId)
+    return { ok: true, value: gone }
   } catch (e) {
     return fail(e, 'The map was not removed.')
+  }
+}
+
+/** One list of a map's pictures, and the most a sweep reads. A map holds a handful; past the most, the rest stay. */
+const PHOTO_SWEEP_PAGE = 100
+const PHOTO_SWEEP_MAX = 1000
+
+/**
+ * Takes a thrown-away map's pictures out of the bucket, after its row is gone. The bucket then shows a caller only
+ * the files they may remove, their own uploads or every one for the office, so what is listed is what goes and a
+ * teammate's picture is not seen at all. Best effort and silent: a file left behind is only a file, no place points
+ * at it, and the office can remove it.
+ */
+export async function removePaintedMapPhotoFiles(mapId: string): Promise<void> {
+  // An id of any other shape lists nothing: an empty one would read the bucket's top folder.
+  if (!isPaintedPlacePhotoPath(paintedPlacePhotoPath(mapId, 'x'))) return
+  try {
+    const bucket = supabase.storage.from(PAINTED_MAP_PHOTOS_BUCKET)
+    const paths: string[] = []
+    for (let from = 0; from < PHOTO_SWEEP_MAX; from += PHOTO_SWEEP_PAGE) {
+      const { data, error } = await bucket.list(mapId, { limit: PHOTO_SWEEP_PAGE, offset: from })
+      if (error) break
+      const files = data ?? []
+      for (const file of files) {
+        const path = `${mapId}/${file.name}`
+        if (isPaintedPlacePhotoPath(path)) paths.push(path)
+      }
+      if (files.length < PHOTO_SWEEP_PAGE) break
+    }
+    for (let at = 0; at < paths.length; at += PHOTO_SWEEP_PAGE) await bucket.remove(paths.slice(at, at + PHOTO_SWEEP_PAGE))
+  } catch {
+    // Left behind.
   }
 }
 

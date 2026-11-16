@@ -14,8 +14,12 @@
 import { supabase } from '../../supabase'
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import type { SupplyPayment, SupplyPaymentLine } from './supplyPayment'
+import type { MoveReason, SupplyPaymentEvent } from './supplyPaymentMove'
 
-export type HousePayments = { payments: SupplyPayment[]; lines: SupplyPaymentLine[] }
+/** `events` is what happened to the house's payments since: each move, removal and putting back. */
+export type HousePayments = { payments: SupplyPayment[]; lines: SupplyPaymentLine[]; events?: SupplyPaymentEvent[] }
+
+export type MoveSupplyPaymentInput = { paymentId: string; fromInvoiceId: string | null; toInvoiceId: string | null; amount: number; reason: MoveReason; note?: string | null }
 
 export type RecordSupplyPaymentInput = {
   supplyHouseId: string
@@ -35,11 +39,18 @@ export type RecordSupplyPaymentResult = { payment_id: string | null; lines: numb
 export interface SupplyPaymentsIo {
   loadHouse(supplyHouseId: string): Promise<HousePayments>
   record(input: RecordSupplyPaymentInput): Promise<RecordSupplyPaymentResult>
-  /** Takes a payment off the books: it counts for nothing and its bills are read again. */
-  remove(paymentId: string, by: { id: string | null; name: string | null }, reason: string | null): Promise<void>
+  /** Takes a payment off the books, with why: it counts for nothing and its bills are read again. */
+  remove(paymentId: string, reason: string | null): Promise<void>
+  /** Puts a removed payment back, whole, within 30 days. */
+  restore(paymentId: string): Promise<void>
+  /** Moves an amount of one payment from one bill to another; null on either side is "on account". */
+  move(input: MoveSupplyPaymentInput): Promise<void>
+  /** Takes a move back. */
+  undoMove(eventId: string): Promise<void>
 }
 
-const PAYMENT_COLUMNS = 'id, supply_house_id, paid_on, amount, method, method_ref, receipt_link, memo, source, removed_at, created_by_name'
+const PAYMENT_COLUMNS = 'id, supply_house_id, paid_on, amount, method, method_ref, receipt_link, memo, source, removed_at, removed_by_name, removed_reason, created_by_name'
+const EVENT_COLUMNS = 'id, payment_id, kind, from_invoice_id, to_invoice_id, from_invoice_number, to_invoice_number, amount, reason, note, undoes_event_id, undone_by_event_id, actor_name, created_at'
 const PAGE = 1000
 
 type PaymentRow = Omit<SupplyPayment, 'amount'> & { amount: number | string }
@@ -98,7 +109,17 @@ export const supabaseSupplyPaymentsIo: SupplyPaymentsIo = {
           .range(from, to),
       ),
     ])
-    return foldHousePayments(typed, openLines)
+    // What happened to them since. A read that fails (the table comes with its own migration) leaves the list empty.
+    const events = await everyPage<SupplyPaymentEvent & { amount: number | string | null }>('read the payments’ moves', (from, to) =>
+      supabase
+        .from('supply_house_payment_events' as never)
+        .select(EVENT_COLUMNS)
+        .eq('supply_house_id', supplyHouseId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to),
+    ).catch(() => [])
+    return { ...foldHousePayments(typed, openLines), events: events.map((e) => ({ ...e, amount: e.amount == null ? null : Number(e.amount) })) }
   },
 
   async record(input) {
@@ -123,16 +144,32 @@ export const supabaseSupplyPaymentsIo: SupplyPaymentsIo = {
     return data as RecordSupplyPaymentResult
   },
 
-  async remove(paymentId, by, reason) {
+  // The four below each change the books once: none is asked for twice on a lost reply.
+  async remove(paymentId, reason) {
+    await withSupabaseRetry(() => supabase.rpc('remove_supply_house_payment' as never, { p_payment_id: paymentId, p_reason: reason } as never) as never, 'remove the payment', { maxRetries: 0 })
+  },
+
+  async restore(paymentId) {
+    await withSupabaseRetry(() => supabase.rpc('restore_supply_house_payment' as never, { p_payment_id: paymentId } as never) as never, 'put the payment back', { maxRetries: 0 })
+  },
+
+  async move(input) {
     await withSupabaseRetry(
       () =>
-        supabase
-          .from('supply_house_payments' as never)
-          .update({ removed_at: new Date().toISOString(), removed_by: by.id, removed_by_name: by.name, removed_reason: reason } as never)
-          .eq('id', paymentId)
-          .is('removed_at', null)
-          .select('id') as never,
-      'remove the payment',
+        supabase.rpc('move_supply_house_payment' as never, {
+          p_payment_id: input.paymentId,
+          p_from_invoice_id: input.fromInvoiceId,
+          p_to_invoice_id: input.toInvoiceId,
+          p_amount: input.amount,
+          p_reason: input.reason,
+          p_note: input.note ?? null,
+        } as never) as never,
+      'move the payment',
+      { maxRetries: 0 },
     )
+  },
+
+  async undoMove(eventId) {
+    await withSupabaseRetry(() => supabase.rpc('undo_supply_house_payment_move' as never, { p_event_id: eventId } as never) as never, 'take the move back', { maxRetries: 0 })
   },
 }
