@@ -22,6 +22,8 @@ import {
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { lienWindowPrintNote } from '../../lib/jobs/lienWindowPrintNote'
+import type { LienTimelineNoticeState } from '../../lib/jobs/lienTimeline'
 import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpNoticeMailBy, lienHelpNoticeSheetHtml, lienHelpPaperFromFields, lienHelpPrintHtml, type LienHelpNotice } from '../../lib/jobs/lienHelpSheet'
 import { LIEN_HELP_SHEET_BOX, LIEN_NOTICE_RECORD_BOX, useLienHelpSheetChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
 import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
@@ -118,6 +120,8 @@ export default function LienFilingTabs({
   monthsByHand = null,
   affidavitForm = 'short',
   affidavitFormUnread = false,
+  deskNoticeState = '',
+  onOpenDeskNotice,
   onClose,
 }: {
   job: JobWithDetails
@@ -158,6 +162,10 @@ export default function LienFilingTabs({
   affidavitForm?: LienAffidavitForm
   /** That read failed: the tab draws the earlier form and says to check the desk first. */
   affidavitFormUnread?: boolean
+  /** Where this job's notice stands on the Lien desk, when the opener holds the desk's queue (v2.7516): an approved or printed one draws a note over the tab's presses. */
+  deskNoticeState?: LienTimelineNoticeState
+  /** Opens the desk on this job's notice; absent, the note has no press. */
+  onOpenDeskNotice?: () => void
   /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
   onClose?: () => void
 }) {
@@ -219,6 +227,9 @@ export default function LienFilingTabs({
     setVoidPendingId(null)
     setFilingCounty(property.county)
   }, [activeTab, job.id, property.county])
+
+  // The desk holds this job's approved notice (v2.7516): this tab's print is a new, unsigned copy, and the tab says which paper to print.
+  const deskPrintNote = useMemo(() => lienWindowPrintNote(deskNoticeState), [deskNoticeState])
 
   // ---------- documents ----------
 
@@ -1096,6 +1107,19 @@ export default function LienFilingTabs({
                     <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>§ 53.056(a-3) lets the notice include an invoice or billing statement; it prints after the notice and rides the emailed PDF, stamped INVOICE.</span>
                   </span>
                 </label>
+              ) : null}
+              {deskPrintNote ? (
+                <div data-lien-window-desk-note={deskNoticeState} role="note" style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
+                  <b>{deskPrintNote.lead}</b> {deskPrintNote.words}
+                  {onOpenDeskNotice ? (
+                    <>
+                      {' '}
+                      <button type="button" onClick={onOpenDeskNotice} data-lien-window-desk-note-press style={{ font: 'inherit', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {deskPrintNote.press}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               ) : null}
               {recordStep === 'notice_sends' && !isMobile ? (
                 <div data-lien-record-box="notice_sends" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
