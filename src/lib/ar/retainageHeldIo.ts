@@ -3,7 +3,8 @@ import { supabase } from '../supabase'
 import { writeDraftInvoice } from '../jobs/draftInvoiceWrite'
 import { assembleRetainageHeld, type RetainageApplicationRow, type RetainageInvoiceRow, type RetainageJobRow, type RetainagePaymentRow } from './retainageHeldRows'
 import { RETAINAGE_RELEASE_MEMO, lienRetainageMirror } from './retainageHeld'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { noteSaysRetainage, retainageUnrecordedRows, type RetainageNoteSign, type RetainageUnrecordedRow } from './retainageSuggested'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * The reads behind AR's Retainage held section (punch list #165, PR 2) and the one job's line
@@ -160,4 +161,44 @@ export async function mirrorLienRetainageFromApplications(jobId: string): Promis
   const { error } = await supabase.from('jobs_ledger').update({ lien_retainage_held: figure } as never).eq('id', jobId)
   if (error) throw error
   return figure
+}
+
+/**
+ * The open jobs under a GC with no retainage answer whose own money or notes say retainage is
+ * held (`retainageSuggested.ts`, the owner's pick of 2026-11-16): the jobs with a GC, no figure
+ * in the lien details, not paid and not written off, then their bills, payments and the notes
+ * that name retainage. A job with a pay application is left out: its application is the source.
+ * Four tables, no RPC; RLS applies as the viewer. A refused read throws.
+ */
+export async function loadRetainageUnrecorded(): Promise<RetainageUnrecordedRow[]> {
+  const open = await supabase.from('jobs_ledger').select(JOB_COLS).not('gc_customer_id', 'is', null).is('lien_retainage_held', null).neq('status', 'paid').is('uncollectible_at', null).limit(2000)
+  if (open.error) throw open.error
+  const jobs = (open.data ?? []) as unknown as RetainageJobRow[]
+  if (jobs.length === 0) return []
+  const jobIds = jobs.map((j) => j.id)
+
+  const applications: RetainageApplicationRow[] = []
+  const notes: RetainageNoteSign[] = []
+  for (const ids of chunks(jobIds)) {
+    const apps = await supabase.from('job_pay_applications').select(APP_COLS).in('job_id', ids).is('deleted_at', null).limit(5000)
+    if (apps.error) throw apps.error
+    applications.push(...((apps.data ?? []) as unknown as RetainageApplicationRow[]))
+    const said = await supabase.from('jobs_ledger_thread_notes').select('job_id, body, created_at').in('job_id', ids).or('body.ilike.%retain%,body.ilike.%retention%').limit(2000)
+    if (said.error) throw said.error
+    for (const n of (said.data ?? []) as unknown as Array<{ job_id: string; body: string | null; created_at: string | null }>) {
+      if (n.created_at && noteSaysRetainage(n.body)) notes.push({ jobId: n.job_id, day: calendarYmdInAppTzFromIso(n.created_at) })
+    }
+  }
+
+  const { inputs, facts } = assembleRetainageHeld(jobs, applications, await readBills(jobIds), await readPayments(jobIds))
+  return retainageUnrecordedRows(inputs, facts, notes)
+}
+
+/**
+ * Write the retainage answer on a job: the figure the GC holds back, or 0 for none. The same
+ * column the lien details' box writes, so the Lien desk's readers and the monthly notice see it.
+ */
+export async function recordRetainageHeld(jobId: string, amount: number): Promise<void> {
+  const { error } = await supabase.from('jobs_ledger').update({ lien_retainage_held: amount } as never).eq('id', jobId)
+  if (error) throw error
 }

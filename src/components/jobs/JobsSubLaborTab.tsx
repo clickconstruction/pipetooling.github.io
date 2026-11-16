@@ -165,7 +165,7 @@ export default function JobsSubLaborTab({
   const [storySheetId, setStorySheetId] = useState<string | null>(null)
   /** Send a lien waiver from a pay row (v2.2970): the sheet + job facts the picker seeds into the form. */
   const [lienWaiverFor, setLienWaiverFor] = useState<LienWaiverSendTarget | null>(null)
-  /** Punch list #350: the papers window, opened on a sub's statement of account or a sheet's work statement. */
+  /** Punch list #350: the papers window, opened on a sub's statement of account, a sheet's work statement or a payment's record. */
   const [papers, setPapers] = useState<{ key: string; name: string; open: SubPapersOpen } | null>(null)
   // Taunya's rule of 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
   const teamRule = TEAM_SHEET_RULE
@@ -890,7 +890,15 @@ export default function JobsSubLaborTab({
                                           <td style={{ padding: '0.5rem 0.75rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}{p.sending_no ? <span data-sub-payment-sending style={{ color: 'var(--text-muted)' }}> · sending {p.sending_no}</span> : null}{p.credit_kept ? <span data-sub-payment-kept style={{ color: 'var(--text-green-700)' }}> · {creditNoteWords(p.credit_kept)} kept</span> : null}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}><AmountSmallCents value={Number(p.amount)} /></td>
-                                          <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo?.trim() ? p.memo : '—'}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                                            {p.memo?.trim() ? p.memo : '—'}
+                                            {/* Punch list #350: the payment's own paper. One per sending; a row with no sending is its own. */}
+                                            {Number(p.amount) > 0 && p.method !== SUB_PAY_FROM_CREDIT && papersOf ? (
+                                              <button type="button" onClick={() => setPapers({ key: papersOf.key, name: papersOf.name, open: { kind: 'payment', sendingKey: p.sending_id ?? `row:${p.id}` } })} style={{ marginLeft: 8, font: 'inherit', fontSize: '0.75rem', padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                                Payment record…
+                                              </button>
+                                            ) : null}
+                                          </td>
                                         </tr>
                                       ))}
                                       {(job.payments ?? []).length === 0 && (

@@ -42,6 +42,26 @@ Each bill is marked by itself. The card has no tick boxes. To pay several bills 
 
 Mark paid keeps the day and the amount. It does not say how the bill was paid. Use **Record a payment** when you know the method and its number.
 
+## Say how a payment was sent, later
+
+A bill you marked paid still needs how it was paid. Its row says *how it was paid is missing*, with **Finish…** beside it.
+
+1. Press **Finish…** on the row.
+2. Pick how it was sent: **Card**, **ACH**, **Check**, **Cash** or **Other**.
+3. Type the method's number in the box under the chips.
+4. Check **Date sent**. You may paste the **Receipt link**.
+5. Press {{button:green|Save how it was sent}}.
+
+The amount stays as it is. The row then names the payment, and its press becomes **See the payment**.
+
+Every payment that still waits is counted in one place. Accounts payable shows a line over the aging table, like **3 payments need how they were paid**. Press it to open the list, then press **Finish…** on a row. The longest wait is first.
+
+Needs you counts them too, under **Supply houses**. Its **Finish them** press opens the same list.
+
+A payment recorded with **Say later** waits on that list as well. A bill paid before payments were recorded never does.
+
+To change how a recorded payment was sent, press **See the payment** on a bill it paid. Then press **Edit how it was sent**.
+
 ## Record a payment
 
 Pay the house in its portal first, as you always have. The app never moves money. It writes down what you sent.
@@ -93,6 +113,25 @@ A credit covers bills, so tick the bills it goes on too. The button stays grey w
 Sometimes you send more than the bills you ticked. The line at the bottom says how much is not on a bill yet. A tick box under it names the amount, like **Keep $187.40 on account with Cedar Fork Supply**. Tick it and the button comes alive.
 
 The house's card then shows **On account** beside its other numbers. The next payment to that house offers the money first, like **Use $187.40 on account first**. Tick it and that money goes on the oldest bills you tick.
+
+## The house added interest or a late fee
+
+A house may add interest when a bill runs past 30 days. You record it with the payment that paid it.
+
+1. In **Record a payment**, press **+ The house added interest or a late fee** under the bills.
+2. Type the amount in the box on that line.
+3. Pick the bill that ran late under **Which bill was late**. Leave **Not tied to a bill** when you do not know.
+4. Tick the other bills the payment covered, and press the green button.
+
+**Amount sent** adds the interest in. The button's words end in *and interest*.
+
+The app keeps the interest as a bill of its own. It is marked {{chip:yellow|Interest}} and reads paid by this payment. Its row is named for the late bill, like **Interest on S4398120**, and says *not a job cost*.
+
+Interest is never put on a job. It stays off every job's cost, so the house's late charge does not look like materials.
+
+The house billed interest you have not paid yet? Press {{button:blue|Add Invoice}} and tick **This is interest or a late fee**. It then waits with the other bills until a payment covers it.
+
+Accounts payable adds the year up under its total, like *Interest and late fees in 2026: $61.20*, with each house's share.
 
 ## See a payment, or remove one
 

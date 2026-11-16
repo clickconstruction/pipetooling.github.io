@@ -18,7 +18,8 @@ describe('paperSamples — the paper a customer receives, from the sample (v2.35
     }
     const paperSteps = customerJourneys().flatMap((j) => j.steps).filter((s) => s.render.kind === 'paper')
     // Five until the lien letters (punch list #326): seven steps of that group are papers, and its demand letter is the homeowner's paper again.
-    expect(paperSteps.length).toBe(12)
+    // Thirteen since the sub's statement of account (punch list #350).
+    expect(paperSteps.length).toBe(13)
     expect(new Set(paperSteps.map((s) => (s.render as { paper: string }).paper)).size).toBe(PAPER_IDS.length)
     for (const s of paperSteps) expect(PAPER_IDS).toContain((s.render as { paper: string }).paper)
   })

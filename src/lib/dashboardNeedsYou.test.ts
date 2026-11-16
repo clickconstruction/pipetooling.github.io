@@ -1170,6 +1170,33 @@ describe('job-account gap items', () => {
   })
 })
 
+describe('supply-payments-how (the finish-later list’s Needs You line, v2.7469)', () => {
+  const find = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs(over)).find((i) => i.key === 'supply-payments-how')
+
+  it('counts the supply house payments that still need how they were paid', () => {
+    const item = find({ supplyPaymentsToFinishEnabled: true, supplyPaymentsToFinish: { count: 3 } })!
+    expect(item.kicker).toBe('Supply houses')
+    expect(item.title).toBe('3 supply house payments need how they were paid')
+    expect(item.detail).toBe('Each was marked paid with the day and the amount. Say card, ACH or check, with its number.')
+    expect(item.figure).toBe('3')
+    expect(item.actionLabel).toBe('Finish them')
+    expect(item.severity).toBe('gray')
+    expect(NEEDS_YOU_RANK['supply-payments-how']).toBe(60)
+  })
+
+  it('words one payment as one', () => {
+    const item = find({ supplyPaymentsToFinishEnabled: true, supplyPaymentsToFinish: { count: 1 } })!
+    expect(item.title).toBe('One supply house payment needs how it was paid')
+    expect(item.actionLabel).toBe('Finish it')
+  })
+
+  it('draws no line at zero, while loading, or when the source is off', () => {
+    expect(find({ supplyPaymentsToFinishEnabled: true, supplyPaymentsToFinish: { count: 0 } })).toBeUndefined()
+    expect(find({ supplyPaymentsToFinishEnabled: true, supplyPaymentsToFinish: null })).toBeUndefined()
+    expect(find({ supplyPaymentsToFinishEnabled: false, supplyPaymentsToFinish: { count: 4 } })).toBeUndefined()
+  })
+})
+
 describe('job-account-window (the move window’s Needs You line, punch list #132)', () => {
   const TODAY = '2026-10-21'
   const win: NonNullable<NeedsYouInputs['supplyMoveWindow']> = { count: 14, dollars: 7474.71, asked: 3, soonestDueYmd: '2026-10-25' }
