@@ -151,7 +151,7 @@ Press **Label** on a box to print that box alone, or **Print labels** for every 
 
 ## Print blank stickers
 
-A sticker is a label printed before its box. The sticker carries a code to scan and the box's name to read, such as G78. It also carries a short number, such as 0147. Stick one on each cage or box on site. The crew then scans it on the phone and says which box it is on. Read [stick a sticker on a box](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#stick-a-sticker-on-a-box) for that part.
+A sticker is a label printed before its box. The sticker carries a code to scan and the box's name to read, such as G78. The sticker also carries a short number, such as 0147. Stick one on each cage or box on site. The crew then scans it on the phone and says which box it is on. Read [stick a sticker on a box](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#stick-a-sticker-on-a-box) for that part.
 
 On a job's page, press **Print blank stickers** beside **Print labels**. On the Materials page, press **Print blank stickers** at the right end of the tabs and pick the job. New boxes made from the stickers go on that job. The office, a primary and a superintendent can print a run. For everyone else the press is grey and says why.
 
