@@ -44138,6 +44138,10 @@ export type Database = {
           n: number
         }[]
       }
+      gather_sub_payments_into_sending: {
+        Args: { p_payment_ids: string[]; p_person_id: string }
+        Returns: Json
+      }
       gc_accept_work: { Args: { p_package_id: string }; Returns: string }
       gc_add_company: { Args: { company: Json }; Returns: string }
       gc_add_punch_item: { Args: { p: Json }; Returns: string }

@@ -16,4 +16,4 @@ No new table, so no fence calls. One function, `CREATE OR REPLACE`: idempotent.
 
 **Order.** Push right after the merge. Until then the window says gathering is not switched on yet and changes nothing.
 
-**After the push:** the function's types and the dev seat's catalog, in a types PR.
+**Pushed** 2026-11-16, 09:39 UTC, alone, by `scripts/db-push.sh` from a checkout equal to `origin/main`, 48 minutes after the merge: a merge woke no session, and every site deploy of main failed on `check:calls-ahead` until the push, which re-ran the held deploy. Read back on prod: the function is `SECURITY DEFINER`, its body refuses rows on different bank lines, a signed-out call is refused with 42501, and the ledger holds the version once. The types and the dev seat's catalog followed in a types PR, which also drops the window's `as never` casts.
