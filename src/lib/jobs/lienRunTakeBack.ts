@@ -9,6 +9,7 @@ import { demandDate } from '../jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { recipientViaDocsmit, type RunNotice } from './lienDeskRun'
 import { shortDay } from './lienFootChip'
+import { LIEN_RUN_STEP } from './lienRunWords'
 
 /** Kept on the item's `fields` as `runTakenBack`: the latest take-back only. */
 export type LienRunTakenBack = {
@@ -89,6 +90,49 @@ export function runTakeBackConfirm(input: { count: number; printedAt: string | n
   if (input.typed > 0) lines.push(`The ${input.typed === 1 ? 'tracking number' : `${input.typed} tracking numbers`} typed here ${input.typed === 1 ? 'is' : 'are'} not saved.`)
   if (!input.all) lines.push('The notices in this run that have not printed stay as they are.')
   return { title: input.all ? 'Take back the run?' : `Take back the ${notices(input.count)} that printed?`, lines, button: `Take back ${notices(input.count)}` }
+}
+
+/**
+ * The confirm for ONE notice, asked from its own row (v2.7481, the office's ask of 2026-11-16: *"I clicked printed by
+ * accident. Can you un-print it?"*). The run's own take-back is every printed notice at once; her run had four printed,
+ * so it would have undone three real ones. The button names the act with the job. `typed` is the tracking numbers typed
+ * on this row and not recorded, which the take-back drops.
+ */
+export function runTakeBackOneConfirm(input: { jobNumber: string; printedAt: string | null; typed: number }): { title: string; lines: string[]; button: string } {
+  const job = input.jobNumber.trim() || 'this notice'
+  const day = dayOf(input.printedAt)
+  const lines = [
+    `The notice goes back to ${LIEN_RUN_STEP.toPrint}. The approval stands.`,
+    `A copy that printed here${day ? ` ${day}` : ''} stays in the job’s Documents, filed as printed.`,
+  ]
+  if (input.typed > 0) lines.push(`The ${input.typed === 1 ? 'tracking number' : `${input.typed} tracking numbers`} typed on this row ${input.typed === 1 ? 'is' : 'are'} not saved.`)
+  lines.push('The other notices in this run stay as they are.')
+  return { title: `Put ${job} back in ${LIEN_RUN_STEP.toPrint}?`, lines, button: `Put ${job} back in ${LIEN_RUN_STEP.toPrint}` }
+}
+
+/** The strip after one notice is taken back: "Taken back. 372 is in Approved · to print again. Its approval stands." */
+export function runTakenBackOneWords(jobNumber: string): string {
+  return `Taken back. ${jobNumber.trim() || 'The notice'} is in ${LIEN_RUN_STEP.toPrint} again. Its approval stands.`
+}
+
+/**
+ * The strip right after a row is marked printed by hand (v2.7481): that press is the one pressed by accident, so its
+ * undo is one press away while nothing was typed on the row. `jobNumber` names the row when it is one.
+ */
+export function runMarkedPrintedWords(count: number, jobNumber?: string | null): { words: string; button: string } {
+  const job = (jobNumber ?? '').trim()
+  if (count === 1) return { words: `${job || 'The notice'} is marked printed. Pressed it by mistake?`, button: 'Undo the Printed mark' }
+  return { words: `${notices(count)} are marked printed. Pressed it by mistake?`, button: `Undo ${count} Printed marks` }
+}
+
+/** The local facts of a sitting with these notices' prints dropped: the copies printed, the ids stamped, the stamps. */
+export function runSittingWithout(sitting: { copies: ReadonlySet<string>; ids: ReadonlyArray<string>; stamps: ReadonlyMap<string, { at: string; by: string | null }> }, itemIds: ReadonlyArray<string>): { copies: Set<string>; ids: string[]; stamps: Map<string, { at: string; by: string | null }> } {
+  const gone = new Set(itemIds)
+  return {
+    copies: new Set([...sitting.copies].filter((key) => !gone.has(key.split(':')[0]!))),
+    ids: sitting.ids.filter((id) => !gone.has(id)),
+    stamps: new Map([...sitting.stamps].filter(([id]) => !gone.has(id))),
+  }
 }
 
 /** The strip after a take-back: "Taken back. 19 notices are in Approved · to print again. Print the packet when it is ready." */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canTakeBackItem, fieldsWithTakeBack, runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackOf, runTakenBackWords, runTypedTrackingCount, takenBackChipWords } from './lienRunTakeBack'
+import { canTakeBackItem, fieldsWithTakeBack, runMarkedPrintedWords, runNoticesTakenBack, runPrintedItemIds, runSittingWithout, runTakeBackConfirm, runTakeBackOneConfirm, runTakenBackOf, runTakenBackOneWords, runTakenBackWords, runTypedTrackingCount, takenBackChipWords } from './lienRunTakeBack'
 import type { RunNotice } from './lienDeskRun'
 
 const rec = (tracking: string, method: RunNotice['recipients'][number]['method'] = 'certified_mail') => ({ key: 'owner' as const, label: 'Owner of record', name: 'A', address: '1 St', email: '', method, tracking })
@@ -76,5 +76,43 @@ describe('lienRunTakeBack', () => {
     expect(takenBackChipWords(null)).toBeNull()
     expect(takenBackChipWords({ at: '2026-10-08T15:00:00Z', by: 'u1', byName: 'Dana', printedAt: '2026-10-07T16:00:00Z' })).toEqual({ tail: 'taken back Oct 8', sentence: 'Printed Oct 7, taken back Oct 8 by Dana. Nothing was mailed.' })
     expect(takenBackChipWords({ at: '2026-10-08T15:00:00Z', by: null, byName: null, printedAt: null })!.sentence).toBe('Taken back Oct 8. Nothing was mailed.')
+  })
+})
+
+describe('un-print one notice from its own row (v2.7481)', () => {
+  it('the confirm names the job on its button and says what the take-back keeps and drops', () => {
+    const c = runTakeBackOneConfirm({ jobNumber: '372', printedAt: '2026-11-16T16:00:00Z', typed: 2 })
+    expect(c.title).toBe('Put 372 back in Approved · to print?')
+    expect(c.button).toBe('Put 372 back in Approved · to print')
+    expect(c.lines).toEqual([
+      'The notice goes back to Approved · to print. The approval stands.',
+      'A copy that printed here Nov 16 stays in the job’s Documents, filed as printed.',
+      'The 2 tracking numbers typed on this row are not saved.',
+      'The other notices in this run stay as they are.',
+    ])
+    // Nothing typed: no line about a number. One typed: the singular.
+    expect(runTakeBackOneConfirm({ jobNumber: '372', printedAt: null, typed: 0 }).lines).toEqual([
+      'The notice goes back to Approved · to print. The approval stands.',
+      'A copy that printed here stays in the job’s Documents, filed as printed.',
+      'The other notices in this run stay as they are.',
+    ])
+    expect(runTakeBackOneConfirm({ jobNumber: '372', printedAt: null, typed: 1 }).lines).toContain('The tracking number typed on this row is not saved.')
+    // A row with no job number still reads as a sentence.
+    expect(runTakeBackOneConfirm({ jobNumber: ' ', printedAt: null, typed: 0 }).button).toBe('Put this notice back in Approved · to print')
+  })
+
+  it('the strip after, and the undo of a mark by hand', () => {
+    expect(runTakenBackOneWords('372')).toBe('Taken back. 372 is in Approved · to print again. Its approval stands.')
+    expect(runMarkedPrintedWords(1, '372')).toEqual({ words: '372 is marked printed. Pressed it by mistake?', button: 'Undo the Printed mark' })
+    expect(runMarkedPrintedWords(1, null).words).toBe('The notice is marked printed. Pressed it by mistake?')
+    expect(runMarkedPrintedWords(13)).toEqual({ words: '13 notices are marked printed. Pressed it by mistake?', button: 'Undo 13 Printed marks' })
+  })
+
+  it('the sitting forgets these notices’ prints and keeps the others’', () => {
+    const at = { at: '2026-11-16T16:00:00Z', by: 'Dana' }
+    const left = runSittingWithout({ copies: new Set(['a:owner', 'a:original_contractor', 'b:owner']), ids: ['a', 'b'], stamps: new Map([['a', at], ['b', at]]) }, ['a'])
+    expect([...left.copies]).toEqual(['b:owner'])
+    expect(left.ids).toEqual(['b'])
+    expect([...left.stamps.keys()]).toEqual(['b'])
   })
 })
