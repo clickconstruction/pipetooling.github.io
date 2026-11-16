@@ -191,7 +191,7 @@ with the sends mocked.
 
 A (step 4) and D (steps 5 to 8) are not started and wait on the pick. The mock-up still draws all
 three; its B is what shipped, but for two things the build changed: the bin's name stands where the
-mock-up dropped the four dots, and *Print N affidavits ›* opens the affidavits list at Ready to file
+mock-up dropped the four dots, and *Print N for notarization ›* (*Print N affidavits ›* until v2.7398, renamed to the button it opens) opens the affidavits list at Ready to file
 and does not print from To do.
 
 The owner asked for this card on 2026-11-15 so another session can pick it up; the same day the Board

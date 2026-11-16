@@ -2,7 +2,7 @@
 name: "People → Subs shows what makes up what we owe each sub, by job and sheet, and a sheet with several names is counted once"
 number: 346
 group: ready
-status: looked at 2026-11-13 on the live app and read on prod through the dev seat, nothing written; the counting rule is fixed in its own PR (#7974, client only); the rest is drawn, the page as it is beside the recommended design and one alternative, at desktop and phone width
+status: looked at 2026-11-13 and the counting rule fixed in its own PR (#7974, v2.7169) · built 2026-11-15 as the sub labor train, after Taunya walked the design spike that day (one teammate and no sub is owed to the teammate; a sheet names one person; the form takes one name): v2.7383 the kernels, v2.7388 the row that opens with the band, the acts in place and the reach, v2.7389 a teammate's own sheet is owed on Jobs → Subs, v2.7394 the sheet form's one name, v2.7402 subs on this job in the Job window, v2.7403 the press that takes teammates off a sub's sheet · no migration · not built: the sub's own screens (PR 6), the statement to print (card #350) and the split of a shared sheet (PR 7), which *Whose is it…* does not offer
 summary: >
   The owner asked to dig into what makes up what we owe each sub on People → Subs, as he can on
   Jobs → Subs → Pay, and passed on the office's report that the app encourages double counting
@@ -12,9 +12,9 @@ summary: >
   two pages disagreed on one sub by $2,150, fixed in PR #7974. The card adds the row that opens
   into jobs, sheets and lines with a total that adds up, the same from a job, a band that says
   where a shared sheet's money is counted, and the Pay view's acts opened in place.
-next: the owner's look at the mock-up and his answer to question 1 (two subs on one sheet); PR 1 (the row opens, read only) needs no answer
+next: the press on **Take the teammates off…** for the older sheets, which nothing runs by itself and which moves sheet cost between People → Review panels, so the owner hears of it first (v2.7403); PR 6 on the owner's yes
 size: M as a train of seven (S · S · S · S · S · M · M)
-blocker: none for PR 1 to PR 5; PR 6 is an edge deploy and waits on the owner's yes; PR 7 waits on question 1
+blocker: none for what is left of PR 1 to PR 5; PR 6 is an edge deploy and waits on the owner's yes; PR 7 is not planned, since question 1 was answered with one person a sheet
 opinion: build PR 1 now, it reads what the page already loads and answers the ask by itself; take PR 2 next, since the band and the form are where a second sheet for the same work would start; PR 6 matters more than its place in the list says, because a sub's portal can state money a teammate's portal states too
 mockup: to-dos/people-subs-what-we-owe/mockup.html
 ---

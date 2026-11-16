@@ -2,7 +2,7 @@
 name: "Paint a map: walk it, drive it or draw it by hand, keep the line on the job, and share it by a link"
 number: 345
 group: close
-status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342, #8207) · both walked on the live app 2026-11-15 on a made-up map and task, nothing sent, each deleted after · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) · Taunya's yes the same day (*Yes, build it*), every call at the card's pick · its card for a map with no place built first (v2.7363, #8235) and the **Map** press in the New task window and Manage's Edit (v2.7364, #8242), then **Paint a new one** from the task (v2.7366, #8253) and the Roadmap's Add task and task card, picking only (v2.7368, #8261) · all four walked on the live app 2026-11-15 on made-up rows, each deleted after, the Roadmap looked at and not saved · Taunya's ask the same day (*Should we store all of our painted maps in the documents tab?*): a **Painted maps** section in the job's Documents tab that lists them and stores nothing (v2.7393, #8282, walked live the same day on a made-up map, deleted after) · Taunya's next ask the same day: the public link asks a signed-out reader's name and keeps the device, and where they are when they choose to show it; the plan is the section *A link that asks who is looking*, waiting on her picks · not yet tried on a real phone
+status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342, #8207) · both walked on the live app 2026-11-15 on a made-up map and task, nothing sent, each deleted after · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) · Taunya's yes the same day (*Yes, build it*), every call at the card's pick · its card for a map with no place built first (v2.7363, #8235) and the **Map** press in the New task window and Manage's Edit (v2.7364, #8242), then **Paint a new one** from the task (v2.7366, #8253) and the Roadmap's Add task and task card, picking only (v2.7368, #8261) · all four walked on the live app 2026-11-15 on made-up rows, each deleted after, the Roadmap looked at and not saved · Taunya's ask the same day (*Should we store all of our painted maps in the documents tab?*): a **Painted maps** section in the job's Documents tab that lists them and stores nothing (v2.7393, #8282, walked live the same day on a made-up map, deleted after) · Taunya's next ask the same day: the public link asks a signed-out reader's name and keeps the device, and where they are when they choose to show it; the plan is the section *A link that asks who is looking*, and she took all five calls at the card's pick the same day (the v2.7411 fragment) · the shared page says how a line was made in one sentence under its length (v2.7408, #8296) · a **Painted maps** tab on the Documents page lists every map (v2.7409, #8297) · the link's step A, the table (v2.7411, #8299), and step B, the function's side (v2.7413, #8301), are merged, and steps C, D and E are not built · not yet tried on a real phone
 summary: >
   The owner's idea: a person walks with precise location on, the phone draws their line on a map,
   and they share it. For measuring, for showing where to drive, how to get into a place, and what
@@ -14,7 +14,7 @@ summary: >
   above, and drawing by hand is the better way for a drive and for a length. One link with no
   sign-in shows it to a customer or a driver, with a dot for where they are. Location is read
   only while a red bar says Painting, and nothing leaves the phone until the person saves.
-next: Taunya's picks on *A link that asks who is looking*, then its train, A to E. Two small things are left on purpose: lift the painted map's window over the roadmap's windows so the Roadmap can paint and open a map, and draw each task's line on Today's map of a person's tasks. A walk of the Roadmap's saves wants a roadmap made for testing, since the company's are real. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
+next: The rest of *A link that asks who is looking*, steps C, D and E (the page's name step and its new words on Show where I am, the Share sheet's list of who opened each link with a Share press on each Documents row, and the function refusing a map with no name given). Steps A and B are merged. Two small things are left on purpose: lift the painted map's window over the roadmap's windows so the Roadmap can paint and open a map, and draw each task's line on Today's map of a person's tasks. A walk of the Roadmap's saves wants a roadmap made for testing, since the company's are real. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
 size: L as a train of eight after a one-day try (S · S · M · M · M · M · S · S · S)
 blocker: None for what is built. The walk, the screen held on, the pause on lock and the phone's share sheet have only been walked in a headless browser, so the first real walk is the proof.
 opinion: built as carded. Strong for the way in and what is where, weak for measuring. Count the maps painted and the links opened for two weeks before step 5.
@@ -57,9 +57,15 @@ below was taken at the card's pick. The guide is `/help/paint-a-map`.
 | 8 | #8253 | v2.7366 | **Paint a new one** from the task: the painting window opens on a map on no job, and the saved map comes back onto the task |
 | 10 | #8261 | v2.7368 | The Roadmap's Add task window and a roadmap task's card, picking only |
 | Documents | #8282 | v2.7393 | A **Painted maps** section in the job window's Documents tab: the job's maps and its development's, each a door to the map as it is now |
+| The shared page's words | #8296 | v2.7408 | On `/way/<code>` a line's length stands alone, and one sentence under it says how the line was made and whether the length is a guide |
+| Documents, every map | #8297 | v2.7409 | A **Painted maps** tab on the Documents page: every painted map the reader can open, with where it is, what is on it and who painted it |
+| The link, step A | #8299 | v2.7411 | The table `painted_map_link_visits`, alone: one row a device a link, read by the office and the map's painter |
+| The link, step B | #8301 | v2.7413 | `way.open` and `way.here` on `painted-map-link`: the name, the device, the first point and the latest. The plain `GET` still answers the page that is live |
 
 The first two migrations are pushed and `painted-map-link` is deployed, each on the owner's yes.
 The third, `20261115063000_task_painted_maps.sql`, was pushed on 2026-11-15 after #8204 merged.
+The fourth, `20261116173000_painted_map_link_visits.sql`, merged with #8299. `way.open` writes its
+table, so `painted-map-link` is deployed again only after it is pushed.
 Each version's fragment says what changed from this card and why.
 
 Not built, each on purpose:
@@ -701,7 +707,8 @@ Taunya's ask of 2026-11-15, after the Documents section: *I want to be able to s
 map with a public URL where anyone without having to sign in can see it and use it so long as if
 they're not signed in they enter their name. So we can record the fingerprint of the device that
 they were on and the location we'll be able to record if they choose to show where they are on a
-map in an additional step.* **A plan, waiting on her picks. Nothing of it is built.**
+map in an additional step.* **She took all five calls at the card's pick the same day.**
+**Steps A and B of the train below are merged (v2.7411, v2.7413). The page still opens a map with no name asked, until step C.**
 
 ### What is there today
 
@@ -742,6 +749,8 @@ On the map's Share sheet, under each link: who opened it, on what, when, how man
 
 ### The calls, each with my pick
 
+All five taken at the pick, 2026-11-15 (the v2.7411 fragment).
+
 1. **Does showing where I am share it, or is sharing a second press?** My pick: showing shares it,
    said on the press and at the name step. That is the ask as written. Or the dot stays private
    and a separate *Share where I am* sends it.
@@ -756,8 +765,8 @@ On the map's Share sheet, under each link: who opened it, on what, when, how man
 
 | Step | What | Size |
 |---|---|---|
-| A | A table for the visits, alone, pushed and proved | S |
-| B | The `painted-map-link` function: the name step, the device, the point, a signed-in reader. It keeps answering the page that is live. A deploy, on Taunya's go naming the function | M |
+| A | A table for the visits, alone, pushed and proved. **Merged, v2.7411 (#8299).** | S |
+| B | The `painted-map-link` function: the name step, the device, the point, a signed-in reader. It keeps answering the page that is live. A deploy, on Taunya's go naming the function. **Merged, v2.7413 (#8301).** | M |
 | C | The page: the name step, the new words on Show where I am, the privacy words | M |
 | D | The Share sheet's list of who opened each link, and a **Share** press on each Documents row | S |
 | E | The function refuses a map with no name given, once the new page is live. A second deploy | XS |

@@ -39,3 +39,5 @@ The client's press calls the function, so `supabase db push` follows the merge a
 ## Not changed
 
 `place_sticker`, the events' triggers and every policy. A numbered sticker has no name and is never placed by this function. A retired box of the name is not brought back: a new box is made, as a scan would make one.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); on 2026-11-16 the types regeneration was open as #8324, so `database.ts` on `main` did not yet carry `place_sticker_range`.

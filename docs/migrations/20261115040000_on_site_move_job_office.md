@@ -23,3 +23,5 @@ Merge, then **`supabase db push` right after the merge**: the client calls `on_s
 - A scratch Postgres 15 on this Mac could not start on 2026-11-15 (`shmget` refused every SysV segment with ENOMEM, the kernel's `shmall` at its 4 MB default), so the proof before the PR is the text assertions in `src/lib/devMcp/devMcpWrites.test.ts` (the shared body, the office door's gate, the body revoked) and CI's bed on the PR.
 
 **Not applied by this PR's author**: the push follows the merge.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `on_site_move_job_run`, `dev_on_site_move_job`, `on_site_move_job`.

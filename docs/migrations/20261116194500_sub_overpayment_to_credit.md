@@ -16,3 +16,5 @@ No new table, so no fence calls. One function, `CREATE OR REPLACE`: idempotent.
 **Order.** Push right after the merge. Until then the press says the repair is not switched on yet and changes nothing.
 
 **After the push:** the function's types and the dev seat's catalog, in a types PR.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); on 2026-11-16 the types regeneration was open as #8325, so `database.ts` on `main` did not yet carry `convert_sub_overpayment_to_credit`.
