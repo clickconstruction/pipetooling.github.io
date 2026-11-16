@@ -194,24 +194,186 @@ function firstName(name: string): string {
 }
 
 /**
- * The grey line under a note that tags someone: `waiting on Dana`. A first name stands alone
- * unless someone else on the list shares it, and then the name is written whole, so the line
- * says which Chris. Empty when nobody is tagged.
+ * Each name as the row says it: the first name alone, unless someone else on the list shares
+ * it, and then the name whole, so the line says which Chris. A name is said once.
  */
-export function waitingOnWords(tagged: readonly string[], everyone: readonly string[]): string {
-  const names = [...new Set(tagged.map((n) => n.trim()).filter(Boolean))]
-  if (names.length === 0) return ''
-  const all = new Map<string, string>()
-  for (const n of [...everyone, ...names]) {
+export function shortNames(names: readonly string[], everyone: readonly string[]): string[] {
+  const wanted = [...new Set(names.map((n) => n.trim()).filter(Boolean))]
+  const all = new Set<string>()
+  for (const n of [...everyone, ...wanted]) {
     const t = n.trim()
-    if (t) all.set(fold(t), t)
+    if (t) all.add(fold(t))
   }
-  const short = names.map((n) => {
+  return wanted.map((n) => {
     const first = fold(firstName(n))
-    const sharing = [...all.keys()].filter((k) => firstName(k) === first).length
+    const sharing = [...all].filter((k) => firstName(k) === first).length
     return sharing > 1 ? n : firstName(n)
   })
-  return `waiting on ${andList(short)}`
+}
+
+/** The grey line under a note that tags someone: `waiting on Dana`. Empty when nobody is tagged. */
+export function waitingOnWords(tagged: readonly string[], everyone: readonly string[]): string {
+  const short = shortNames(tagged, everyone)
+  return short.length === 0 ? '' : `waiting on ${andList(short)}`
+}
+
+/** One tag row as the screens read it (`jobs_ledger_note_tags`). */
+export type NoteTagRow = {
+  noteId: string
+  taggedUserId: string
+  taggedName: string
+  taggerUserId: string
+  createdAt: string
+  clearedAt: string | null
+  clearedHow: 'answered' | 'done' | null
+}
+
+/** A job's tag rows by the note they sit on. */
+export function tagsByNote(rows: readonly NoteTagRow[]): Map<string, NoteTagRow[]> {
+  const out = new Map<string, NoteTagRow[]>()
+  for (const r of rows) {
+    const list = out.get(r.noteId)
+    if (list) list.push(r)
+    else out.set(r.noteId, [r])
+  }
+  return out
+}
+
+/** What a note's tags add to its line: the names for its chips, the words after it, and its colour. */
+export type NoteTagMark = {
+  /** The tagged names, for the chips. */
+  names: string[]
+  /** The names that are the reader, whose chip is amber. */
+  mine: string[]
+  /** `waiting on Dana · 4d`, `answered by Dana`, `Dana: no reply needed`. */
+  words: string
+  /** Something still waits. */
+  waiting: boolean
+  /** It has waited two working days or more. */
+  late: boolean
+}
+
+/**
+ * The mark for one note's tags, or null when it has none. While anyone is still owed an answer
+ * the words say who and for how long, with the reader as `you`. Once all have cleared they say
+ * how: who answered, and who pressed No reply needed.
+ */
+export function noteTagMark(
+  tags: readonly NoteTagRow[],
+  opts: { viewerId: string | null; postedYmd: string; todayYmd: string; everyone?: readonly string[] },
+): NoteTagMark | null {
+  if (tags.length === 0) return null
+  const names = tags.map((t) => t.taggedName)
+  const everyone = [...(opts.everyone ?? []), ...names]
+  const mine = tags.filter((t) => t.taggedUserId === opts.viewerId).map((t) => t.taggedName)
+  const open = tags.filter((t) => t.clearedAt == null)
+  if (open.length > 0) {
+    const others = shortNames(open.filter((t) => t.taggedUserId !== opts.viewerId).map((t) => t.taggedName), everyone)
+    const who = open.some((t) => t.taggedUserId === opts.viewerId) ? ['you', ...others] : others
+    const age = tagAgeWords(opts.postedYmd, opts.todayYmd)
+    return {
+      names,
+      mine,
+      words: `waiting on ${andList(who)}${age ? ` · ${age}` : ''}`,
+      waiting: true,
+      late: tagIsLate(opts.postedYmd, opts.todayYmd),
+    }
+  }
+  const answered = shortNames(tags.filter((t) => t.clearedHow === 'answered').map((t) => t.taggedName), everyone)
+  const done = shortNames(tags.filter((t) => t.clearedHow === 'done').map((t) => t.taggedName), everyone)
+  const said = [
+    answered.length > 0 ? `answered by ${andList(answered)}` : '',
+    done.length > 0 ? `${andList(done)}: no reply needed` : '',
+  ].filter(Boolean)
+  return { names, mine, words: said.join(' · '), waiting: false, late: false }
+}
+
+/** The roles job_note_people() lists (punch list #363): the office, and the roles a job's crew is made of. */
+const TAGGING_ROLES: readonly string[] = ['dev', 'master_technician', 'assistant', 'controller', 'superintendent', 'helpers', 'primary']
+
+/**
+ * Who is offered the @ button and the list: every role the list itself can hold. A subcontractor
+ * and an estimator are not offered it, since nobody can tag them back. The server still decides
+ * job by job: a helper off a job's crew is refused its list.
+ */
+export function canTagInJobNotes(role: string | null | undefined): boolean {
+  return role != null && TAGGING_ROLES.includes(role)
+}
+
+/** One row of `job_note_tags_mine()`: a tag that waits on the reader, or one the reader made. */
+export type MyTag = {
+  tagId: string
+  kind: 'waiting' | 'asked'
+  noteId: string
+  jobId: string
+  jobName: string
+  jobNumber: string | null
+  jobKind: string | null
+  customerName: string | null
+  noteBody: string
+  noteCreatedAt: string
+  taggerUserId: string
+  taggerName: string
+  taggedUserId: string
+  taggedName: string
+  createdAt: string
+  clearedAt: string | null
+  clearedHow: 'answered' | 'done' | null
+  answerBody: string | null
+  askerSeenAt: string | null
+}
+
+/** The section's two lists and its number. */
+export type MyTagsView = {
+  /** What waits on the reader, the oldest on top. */
+  waiting: MyTag[]
+  /** What the reader asked: an answer not yet seen first, then what still waits, then the rest. */
+  asked: MyTag[]
+  /** Answers and No reply needed presses the reader has not seen. */
+  unseen: number
+  /** The number above Jobs. */
+  count: number
+}
+
+function askedRank(t: MyTag): number {
+  if (t.clearedAt != null && t.askerSeenAt == null) return 0
+  return t.clearedAt == null ? 1 : 2
+}
+
+export function myTagsView(tags: readonly MyTag[]): MyTagsView {
+  const waiting = oldestFirst(tags.filter((t) => t.kind === 'waiting'))
+  const asked = tags
+    .filter((t) => t.kind === 'asked')
+    .sort((a, b) => askedRank(a) - askedRank(b) || (askedRank(a) === 1 ? a.createdAt.localeCompare(b.createdAt) : (b.clearedAt ?? '').localeCompare(a.clearedAt ?? '')))
+  const unseen = asked.filter((t) => askedRank(t) === 0).length
+  return { waiting, asked, unseen, count: waiting.length + unseen }
+}
+
+/** What a You asked line says after the name: how the tag stands, and whether it is late. */
+export function askedLineWords(tag: MyTag, todayYmd: string, postedYmd: string): { words: string; tone: 'late' | 'waiting' | 'cleared' } {
+  if (tag.clearedAt == null) {
+    const age = tagAgeWords(postedYmd, todayYmd)
+    return { words: `no answer yet${age ? ` · ${age}` : ''}`, tone: tagIsLate(postedYmd, todayYmd) ? 'late' : 'waiting' }
+  }
+  if (tag.clearedHow === 'done') return { words: 'no reply needed', tone: 'cleared' }
+  const said = (tag.answerBody ?? '').trim()
+  return { words: said ? `answered: ${said}` : 'answered', tone: 'cleared' }
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+/** The Needs you line for tags (punch list #363): its title and the jobs under it. Null when nothing waits. */
+export function tagsNeed(view: Pick<MyTagsView, 'waiting' | 'unseen' | 'count'>): { count: number; title: string; detail: string } | null {
+  if (view.count === 0) return null
+  const parts = [
+    view.waiting.length > 0 ? `${plural(view.waiting.length, 'job note', 'job notes')} tagged you` : '',
+    view.unseen > 0 ? `${plural(view.unseen, 'answer', 'answers')} to a note you tagged` : '',
+  ].filter(Boolean)
+  const jobs = [...new Set(view.waiting.map((t) => t.jobName.trim()).filter(Boolean))]
+  const detail = jobs.length > 3 ? `${jobs.slice(0, 3).join(' · ')} and ${jobs.length - 3} more` : jobs.join(' · ')
+  return { count: view.count, title: parts.join(' · '), detail }
 }
 
 const YMD = /^(\d{4})-(\d{2})-(\d{2})$/

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { noteTagsChanged } from '../lib/jobs/noteTagsIo'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import {
   OperationTimeoutError,
@@ -158,6 +159,12 @@ const THREAD_NOTE_SELECT =
 
 /** Avoid oversized uuid[] payloads to jobs_ledger_thread_note_stats in one RPC. */
 export const THREAD_STATS_JOB_IDS_CHUNK = 200
+
+/**
+ * How a note posts (punch list #363). `tagged` are the teammates picked from the list under the box. `typed: false`
+ * marks a line the app composed, such as a % line: it keeps the plain insert, so it answers no tag.
+ */
+export type JobThreadNotePostOptions = { tagged?: readonly string[]; typed?: boolean }
 
 export function useJobThreadNotes(
   showToast: ToastFn,
@@ -419,7 +426,7 @@ export function useJobThreadNotes(
      * box) restore the typed text on FALSE — before v2.1673 a failed post
      * silently ate whatever had been typed on those surfaces.
      */
-    async (jobId: string, body: string, source: 'draft' | 'stamp'): Promise<boolean> => {
+    async (jobId: string, body: string, source: 'draft' | 'stamp', opts?: JobThreadNotePostOptions): Promise<boolean> => {
       const trimmed = body.trim()
       if (!authUserId || !trimmed) return false
       const optimistic = makeOptimisticThreadNote(trimmed, authorDisplayName ?? null)
@@ -456,24 +463,58 @@ export function useJobThreadNotes(
       }
       setJobThreadSubmittingId(jobId)
       try {
-        const inserted = await withOperationTimeout(
-          withSupabaseRetry(
-            async () =>
-              supabase
-                .from('jobs_ledger_thread_notes')
-                .insert({
-                  job_id: jobId,
-                  author_user_id: authUserId,
-                  body: trimmed,
-                })
-                .select(THREAD_NOTE_SELECT)
-                .single(),
-            'insert jobs_ledger_thread_note',
-          ),
-          THREAD_NOTE_SUBMIT_TIMEOUT_MS,
-          'Post note',
-        )
-        if (inserted == null) throw new Error('No note row returned')
+        // A typed note posts through job_note_post_tagged (punch list #363): the note and its tags in one
+        // transaction, and an answer to any tag that waits on its writer on this job. A stamp keeps the
+        // plain insert, which answers nothing.
+        const inserted =
+          source === 'draft' && opts?.typed !== false
+            ? await withOperationTimeout(
+                (async () => {
+                  const noteId = await withSupabaseRetry(
+                    async () => supabase.rpc('job_note_post_tagged', { p_job_id: jobId, p_body: trimmed, p_tagged: [...(opts?.tagged ?? [])] }),
+                    'post jobs_ledger_thread_note',
+                  )
+                  if (!noteId) throw new Error('No note id returned')
+                  // The note is on the job. If reading it back fails, the thread reads again and the post still counts.
+                  try {
+                    return await withSupabaseRetry(
+                      async () => supabase.from('jobs_ledger_thread_notes').select(THREAD_NOTE_SELECT).eq('id', noteId).single(),
+                      'read jobs_ledger_thread_note',
+                    )
+                  } catch {
+                    return null
+                  }
+                })(),
+                THREAD_NOTE_SUBMIT_TIMEOUT_MS,
+                'Post note',
+              )
+            : await withOperationTimeout(
+                withSupabaseRetry(
+                  async () =>
+                    supabase
+                      .from('jobs_ledger_thread_notes')
+                      .insert({
+                        job_id: jobId,
+                        author_user_id: authUserId,
+                        body: trimmed,
+                      })
+                      .select(THREAD_NOTE_SELECT)
+                      .single(),
+                  'insert jobs_ledger_thread_note',
+                ),
+                THREAD_NOTE_SUBMIT_TIMEOUT_MS,
+                'Post note',
+              )
+        // A typed note may have made a tag or answered one: the count above Jobs and the section read again.
+        if (source === 'draft' && opts?.typed !== false) noteTagsChanged()
+        if (inserted == null) {
+          if (source !== 'draft' || opts?.typed === false) throw new Error('No note row returned')
+          // Posted, but not read back: drop the optimistic row and let the thread read itself again.
+          inFlightThreadNoteRef.current = null
+          void loadJobThreadNotesForJob(jobId, { quiet: true })
+          void mergeJobThreadStatsForJobIds([jobId])
+          return true
+        }
         const row = inserted as unknown as JobThreadNoteRow
         setJobThreadActivityByJobId((prev) => {
           const list = prev[jobId] ?? []
@@ -531,7 +572,7 @@ export function useJobThreadNotes(
         setJobThreadSubmittingId(null)
       }
     },
-    [authUserId, authorDisplayName, mergeJobThreadStatsForJobIds, showToast],
+    [authUserId, authorDisplayName, loadJobThreadNotesForJob, mergeJobThreadStatsForJobIds, showToast],
   )
 
   const submitJobThreadNote = useCallback(

@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMessagesLive } from './gc/messages/useMessagesLive'
+import { NAV_BADGE_STYLE, navBadgeWords } from '../lib/navBadgeStyle'
 
 async function loadFollowUpCount(): Promise<number> {
   const { supabaseFollowUpIo } = await import('../lib/followUp/followUpIo')
@@ -39,29 +40,9 @@ export function MessagesBadge({ load = loadFollowUpCount }: { load?: () => Promi
     <span
       data-messages-badge
       aria-label={`${count} waiting on us`}
-      // The top-right corner of the word, as the Inbox dock and the stage bar wear their counts (v2.5762); the link's
-      // text is wrapped in a relative span for it.
-      style={{
-        position: 'absolute',
-        top: '-0.55rem',
-        right: '-0.9rem',
-        display: 'inline-block',
-        minWidth: '1.25rem',
-        padding: '0 0.35rem',
-        borderRadius: 999,
-        border: '2px solid var(--surface)',
-        // v2.6151: a red that stays deep in both themes, as the stage bar's badge keeps its amber. The text token
-        // `--text-red-700` turns `#f87171` in dark, where the white count read 2.77:1.
-        background: '#b91c1c',
-        color: 'white',
-        fontSize: '0.72rem',
-        fontWeight: 700,
-        lineHeight: '1.25rem',
-        textAlign: 'center',
-        pointerEvents: 'none',
-      }}
+      style={NAV_BADGE_STYLE}
     >
-      {count > 99 ? '99+' : count}
+      {navBadgeWords(count)}
     </span>
   )
 }

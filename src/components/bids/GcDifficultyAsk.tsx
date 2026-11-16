@@ -22,8 +22,8 @@ import { PhoneSheet } from '../PhoneSheet'
 import DifficultyRateSheet from './DifficultyRateSheet'
 
 const QUIET: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }
-const RATE: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, minHeight: 36, padding: '0 0.8rem', border: 0, borderRadius: 8, background: '#2563eb', color: '#fff', cursor: 'pointer' }
-const NOT_NOW: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, minHeight: 36, padding: '0 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
+const RATE: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, minHeight: 44, padding: '0 0.8rem', border: 0, borderRadius: 8, background: '#2563eb', color: '#fff', cursor: 'pointer' }
+const NOT_NOW: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, minHeight: 44, padding: '0 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
 
 /** Who is ever asked: a job's master, and a dev walking a test job. Everyone else makes no read. */
 function mayBeAsked(role: string | null | undefined): boolean {
@@ -128,7 +128,7 @@ export function GcDifficultyAsksPress({ style, io, sheetIo }: { style?: CSSPrope
                   <b style={{ color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.customerName.trim() || 'A GC'}</b>
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.groupLine(g)}</span>
                 </span>
-                <button type="button" style={{ ...RATE, minHeight: 44 }} aria-label={`${W.rate}: ${g.customerName}`} onClick={() => setRating(g.customerId)}>
+                <button type="button" style={RATE} aria-label={`${W.rate}: ${g.customerName}`} onClick={() => setRating(g.customerId)}>
                   {W.rate}
                 </button>
                 <button type="button" style={{ ...QUIET, minHeight: 44 }} aria-label={`${W.notNow}: ${g.customerName}`} onClick={() => void putAway(g.customerId)}>

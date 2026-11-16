@@ -117,6 +117,7 @@ export type NeedsYouItem = {
     | 'todays-sends'
     | 'while-off'
     | 'mail-saved'
+    | 'tagged-notes'
     | 'rating-low'
     | 'gc-review-weekly'
     | 'bulk-delete'
@@ -238,6 +239,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'while-off': 40,
   // The owner is told (v2.7068): news with nothing to do, so it sits below everything that asks for a press.
   'mail-saved': 90,
+  // Tagged job notes (punch list #363): a teammate waits on the viewer's answer, beside the customers who wait on the office.
+  'tagged-notes': 40,
   // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
   'rating-low': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
@@ -764,6 +767,9 @@ export type NeedsYouInputs = {
   /** The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job. */
   mailSavedEnabled?: boolean
   mailSaved?: MailSavedNeed | null
+  /** Tagged job notes (punch list #363): the job notes that tagged the viewer and still wait, and the answers to their own tags they have not seen. */
+  taggedNotesEnabled?: boolean
+  taggedNotes?: { count: number; title: string; detail: string } | null
   /**
    * The review ask (v2.5946, punch list #185): the answers at three stars or fewer that nobody has called, inside thirty
    * days, as `useLowRatings` reads them (`ratings/ratingsOffice.ts` → `lowRatingsNeed`). The GC office team, as Today's
@@ -1523,6 +1529,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: m.detail,
       figure: m.count > 99 ? '99+' : String(m.count),
       actionLabel: MAIL_SAVED_WORDS.action,
+    })
+  }
+
+  // Tagged job notes (punch list #363): amber, a teammate is waiting on an answer. The press opens the list in place.
+  if (inputs.taggedNotesEnabled && inputs.taggedNotes && inputs.taggedNotes.count > 0) {
+    const t = inputs.taggedNotes
+    items.push({
+      key: 'tagged-notes',
+      severity: 'amber',
+      kicker: 'Tagged job notes',
+      title: t.title,
+      detail: t.detail,
+      figure: t.count > 99 ? '99+' : String(t.count),
+      actionLabel: 'Open',
     })
   }
 
