@@ -30,6 +30,9 @@ import { PeopleSubsReach } from './PeopleSubsReach'
 import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../jobs/SubLaborPaymentModals'
 import { ScheduleSheet } from '../schedule/ScheduleBlockSheet'
 import { WhoseSheetWindow } from './WhoseSheetWindow'
+import { RideAlongCleanUpWindow } from './RideAlongCleanUpWindow'
+import { rideAlongCleanUp, rideAlongOfferWords } from '../../lib/subWorkOrders/rideAlongCleanUp'
+import { sheetLabel } from '../../lib/jobs/subPaymentMoveRemove'
 import { saveBlobAs } from '../../lib/storageSave'
 
 /**
@@ -141,6 +144,19 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
   const owed = useSubsOwed(ledger.laborJobs, ledger.laborJobAssigneesByJobId, teamRule)
   const breakdown = useMemo(() => buildSubOwedBreakdown(owed.inputs, { rule: teamRule }), [owed.inputs, teamRule])
   const owedReady = ledger.laborJobsLoadedOnce && owed.ready
+  // Punch list #346: the subs' sheets that also name a teammate, and the window that takes the teammates off.
+  const rideAlongs = useMemo(
+    () =>
+      rideAlongCleanUp(
+        owed.inputs.map((i) => {
+          const bal = subLaborJobBalance(i.sheet)
+          return { id: i.sheet.id, label: sheetLabel(i.sheet, ledger.laborJobNamesByJobId), day: (i.sheet.job_date ?? '').slice(0, 10) || (i.sheet.created_at ?? '').slice(0, 10), parties: i.parties, total: bal.totalCost, open: Math.max(0, bal.balance) }
+        }),
+      ),
+    [owed.inputs, ledger.laborJobNamesByJobId],
+  )
+  const rideAlongLine = owedReady ? rideAlongOfferWords(rideAlongs) : ''
+  const [rideAlongOpen, setRideAlongOpen] = useState(false)
   const tiles = useMemo(() => owedTiles(breakdown), [breakdown])
   /** Teammates with a row on this roster: kind `sub` behind a team login. The login's role, by people id. */
   const teammateRoleById = useMemo(() => new Map(owed.roster.filter((p) => p.kind === 'sub' && !isRosterSub(p)).map((p) => [p.id, (p.accountRole ?? '').replace(/_/g, ' ')] as const)), [owed.roster])
@@ -814,6 +830,14 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
       )}
       {archivedSummaryLine}
       {crewSummaryLine}
+      {rideAlongLine ? (
+        <p data-testid="subs-ride-along-line" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
+          {rideAlongLine}{' '}
+          <button type="button" onClick={() => setRideAlongOpen(true)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: 'inherit', color: 'var(--text-link)', fontFamily: 'inherit' }}>
+            Take the teammates off…
+          </button>
+        </p>
+      ) : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', margin: '0.5rem 0 0.35rem' }} role="group" aria-label="Show subs">
         {(
           [
@@ -1216,6 +1240,18 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
             )
           })}
         </div>
+      ) : null}
+
+      {rideAlongOpen ? (
+        <RideAlongCleanUpWindow
+          cleanUp={rideAlongs}
+          onDone={() => {
+            void ledger.loadLaborJobs()
+            void load()
+          }}
+          onOpenSheet={openSheetOnPay}
+          onClose={() => setRideAlongOpen(false)}
+        />
       ) : null}
 
       {(() => {
