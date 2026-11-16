@@ -249,6 +249,15 @@ export function lienChipSigned(row: LienDeskSignatureColumns, fieldsHash: string
   return { at: row.signed_at, mode, recordedBy: mode === 'pen' ? row.signed_recorded_by : null, confirmedAt: mode === 'pen' || mode === 'code' ? row.signed_leader_confirmed_at : null }
 }
 
+/**
+ * An approved notice with no signature on it as it stands (v2.7448): approved by a standing rule or on the leader's
+ * word, or changed since he signed. The run holds it until he signs. One rule for the Board's tile, the run door's
+ * small words and To do's row, so the three cannot count differently. False with no desk item.
+ */
+export function lienItemUnsigned(item: { fields: unknown } | null | undefined): boolean {
+  return item ? lienChipSigned(signatureColumnsOf(item), lienFieldsHash(item.fields)) === 'unsigned' : false
+}
+
 /** A pen record (the pen train, PR 3) or a code signature (v2.5788) the leader has not yet confirmed from his own sign-in: his row on the desk, and nothing waits on it. */
 export function lienPenAwaitsConfirm(row: LienDeskSignatureColumns, fieldsHash: string): boolean {
   const s = lienChipSigned(row, fieldsHash)

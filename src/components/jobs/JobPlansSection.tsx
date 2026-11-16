@@ -8,7 +8,8 @@
  * link gets its own folder under the job's Plans folder in Drive (punch list #239, PR 5, `plan-set-files`), and the
  * crew's as-built takes photos or a PDF, filed one by one past any that fails. A file that fails stays with its reason
  * and files again into the same set; an as-built takes more files later, and a set with no link can still make its
- * folder, so a job whose Drive folder comes tomorrow never needs a second row.
+ * folder, so a job whose Drive folder comes tomorrow never needs a second row. **Change the link** on a set (v2.7464)
+ * moves it to another Drive link on its own row, for a set whose link points at a file we do not own.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -24,6 +25,7 @@ import {
   defaultSetName,
   emptyNewSetDraft,
   jobShortLabel,
+  linkPressWords,
   newSetDraftProblem,
   otherPlansNotice,
   partNameForJob,
@@ -43,6 +45,7 @@ import { EmptyState } from '../EmptyState'
 import { JobPapersSection } from '../papers/JobPapersSection'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
+import { PlanSetLinkEditor } from '../plans/PlanSetLinkEditor'
 import { documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
 
 const OFFICE: ReadonlySet<string> = new Set(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
@@ -135,6 +138,8 @@ export function JobPlansSection({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  // The set whose link box is open (v2.7464).
+  const [linkFor, setLinkFor] = useState<string | null>(null)
   // The as-built's photos or PDF (PR 5): picked here, filed after the row saves, one by one past any that fails.
   const [asBuiltFiles, setAsBuiltFiles] = useState<File[]>([])
   const [filing, setFiling] = useState<{ done: number; total: number } | null>(null)
@@ -333,6 +338,37 @@ export function JobPlansSection({
     return ok
   }
 
+  /** A saved set moved to another Drive link, on its own row; true when it took, so the box closes. */
+  const saveLink = async (s: PlanSetRow, link: string, current: boolean): Promise<boolean> => {
+    let ok = false
+    await run(async () => {
+      await io.updateLink(s.id, link)
+      ok = true
+      setLinkFor(null)
+      // The database's mirror moved the job's old link; the window patches its own copy.
+      if (current) onPlansLinkChanged?.(link)
+    }, 'The link did not save.')
+    return ok
+  }
+
+  const linkPress = (s: PlanSetRow) =>
+    canWrite ? (
+      <button
+        type="button"
+        style={smallLinkBtn}
+        disabled={busy}
+        onClick={() => {
+          setProblem(null)
+          setLinkFor(s.id)
+        }}
+      >
+        {linkPressWords(s)}
+      </button>
+    ) : null
+
+  const linkEditor = (s: PlanSetRow, current: boolean, style?: CSSProperties) =>
+    canWrite && linkFor === s.id ? <PlanSetLinkEditor set={s} isCurrent={current} busy={busy} onSave={(_id, link) => saveLink(s, link, current)} onClose={() => setLinkFor(null)} {...(style ? { style } : {})} /> : null
+
   const goToSite = () => {
     if (!read?.job.development_id) return
     onLeave?.()
@@ -360,6 +396,7 @@ export function JobPlansSection({
             {makeFolderPress(s, current)}
           </>
         )}
+        {linkPress(s)}
         {canWrite && !current ? (
           <button type="button" style={smallLinkBtn} disabled={busy} onClick={() => void buildFrom(s)}>
             Build from this set
@@ -382,6 +419,7 @@ export function JobPlansSection({
           )
         ) : null}
       </span>
+      {linkEditor(s, current, { flexBasis: '100%' })}
     </li>
   )
 
@@ -503,8 +541,10 @@ export function JobPlansSection({
                   <>
                     <span style={muted}>· link still to come</span> {makeFolderPress(view.current, true)}
                   </>
-                )}
+                )}{' '}
+                {linkPress(view.current)}
               </p>
+              {linkEditor(view.current, true)}
               {view.current.memo ? <p style={muted}>{view.current.memo}</p> : null}
               <PlanSetChangesLine entry={timelineEntryFor(timeline, view.current)} canWrite={canWrite} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
               {buildingFromLine(view, nameOf(view.part?.current_set_by ?? null)) ? <p style={muted}>{buildingFromLine(view, nameOf(view.part?.current_set_by ?? null))}</p> : null}
@@ -541,6 +581,7 @@ export function JobPlansSection({
                       ) : (
                         <span style={muted}>link still to come</span>
                       )}
+                      {linkPress(s)}
                       {canWrite || (s.created_by && s.created_by === user?.id) ? <AddFilesPress setName={s.name} disabled={busy} onPick={(files) => addFilesTo(s.id, files)} /> : null}
                       {canWrite || (s.created_by && s.created_by === user?.id) ? (
                         pendingRemove === s.id ? (
@@ -559,6 +600,7 @@ export function JobPlansSection({
                         )
                       ) : null}
                     </span>
+                    {linkEditor(s, false, { flexBasis: '100%' })}
                   </li>
                 ))}
               </ul>

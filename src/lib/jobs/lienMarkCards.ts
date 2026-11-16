@@ -2,6 +2,7 @@ import { formatUsdNoCents } from './jobFormatting'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { lienCalendarMarks, type LienCalendarAxis, type LienCalendarGroup, type LienCalendarGroupFlag, type LienCalendarJob, type LienCalendarKeyGlyph, type LienCalendarMark } from './lienCalendar'
 import type { LienRunwayTone } from './lienPayRunway'
+import { LIEN_RUN_ACT, lienRunActLabel } from './lienRunWords'
 
 /**
  * The hover cards on the Lien desk's By date board (v2.5531). A mark's browser tooltip was one
@@ -214,7 +215,7 @@ export function lienMarkCard(m: LienCalendarMark, job: LienCalendarJob, todayYmd
           whenTone: passed ? 'amber' : deadlineTone(todayYmd, m.ymd),
           facts: [`${month}’s notice was printed from the desk and is on its way.`, passed ? 'Record its tracking number and the day it went out, and it is on file.' : 'Its certified number is not on record yet, so it is not on file.', moneyFact(job)],
           jobs: [],
-          door: doors.record ? { kind: 'record', label: 'Record the mailing ›', jobIds: [job.jobId] } : lienWindowDoor(),
+          door: doors.record ? { kind: 'record', label: `${LIEN_RUN_ACT.record} ›`, jobIds: [job.jobId] } : lienWindowDoor(),
           pct: m.pct,
         }
       }
@@ -372,7 +373,7 @@ export function lienGroupFlagCards(f: LienCalendarGroupFlag, group: Pick<LienCal
       whenTone: f.ymd < todayYmd ? 'amber' : deadlineTone(todayYmd, f.ymd),
       facts: [f.ymd < todayYmd ? 'Printed from the desk and on the way. Record the tracking numbers and the day they went out.' : 'Printed from the desk and on the way. The certified numbers are not on record yet.'],
       jobs: mailed,
-      door: doors.record ? { kind: 'record', label: mailed.length === 1 ? 'Record the mailing ›' : `Record the ${mailed.length} mailings ›`, jobIds: mailed.map((j) => j.jobId) } : null,
+      door: doors.record ? { kind: 'record', label: `${lienRunActLabel('record', mailed.length > 1 ? mailed.length : null)} ›`, jobIds: mailed.map((j) => j.jobId) } : null,
       pct: f.pct,
     })
   if (liens.length)

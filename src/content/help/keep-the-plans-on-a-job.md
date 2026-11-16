@@ -2,7 +2,7 @@
 title: keep the plans on a job
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator, subcontractor, helpers
-keywords: plans, plan set, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history, job from bid, priced on
+keywords: plans, plan set, change the link, set the link, drive link, our copy, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history, job from bid, priced on
 where: /jobs
 order: 60
 ---
@@ -52,6 +52,21 @@ To switch later, press {{button:outline|Build from this set}} on any older set.
 ## Say what changed on an older set
 
 Each set shows its change line under its memo. The line names the set before it. An older set with no line shows {{button:outline|Write what changed}} to the office. Press it, write what moved from the set before, and press {{button:blue|Save what changed}}. The site's **Plans** look shows the same line between its sets.
+
+## Change the link of a set
+
+A set's link can point at a file that is not ours. The sender may move it or take it away. Keep our own copy in Drive and point the set at it.
+
+1. Find the set under **Building from**, **Older sets** or **Our as-builts**.
+2. Press {{button:outline|Change the link}}. A set with no link says {{button:outline|Set the link}}.
+3. Paste the new Drive link in the box.
+4. Press {{button:blue|Save the link}}.
+
+The set stays the same set. Its name, its dates and its change line stay. The sets that came after it still follow it.
+
+When the job builds from that set, **Open plans** opens the new link. So does every other job on the same part. Nobody changes those jobs by hand.
+
+Only the office sees this press. The site's **Plans** look has the same press on each set.
 
 ## Save the crew's as-built
 
