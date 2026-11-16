@@ -43,7 +43,7 @@ export function buildHeldLienLines(
   notices: ReadonlyArray<HeldLienNoticeRow>,
   affidavits: ReadonlyArray<HeldLienAffidavitRow>,
   todayYmd: string,
-  /** Jobs the desk leaves off (`lienInKindJobIds`): no line, since the desk shows no row for them. */
+  /** Jobs the desk leaves off (`lienOffDeskJobIds`): no line, since the desk shows no row for them. */
   offDesk: ReadonlySet<string> = new Set(),
 ): Map<string, HeldLienLine> {
   const out = new Map<string, HeldLienLine>()

@@ -36,7 +36,9 @@ import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
 import { lienBilledOpen } from '../lib/jobs/lienBilledOpen'
-import { lienJobIdsOffDesk, withLienInKindColumn } from '../lib/jobs/lienInKind'
+import { lienJobIdsOffDesk, withLienOffDeskColumns } from '../lib/jobs/lienInKind'
+import { jobOffLienPath, lienJobPathStanding } from '../lib/jobs/lienJobPath'
+import type { LienOffPathJob } from '../lib/jobs/lienOffPathBin'
 import { lienJobIdsAskingPublic, lienJobIdsOffLienPath, type LienPublicJob } from '../lib/jobs/lienPublicProperty'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
@@ -86,10 +88,15 @@ export type LienDeskJob = {
   service_type?: { name: string } | null
   /** The open in-kind deal that pays the job (punch list #301); set, the job is off the desk (v2.7253, `lienInKind.ts`). */
   in_kind_arrangement_id?: string | null
+  /** The job's own answer (v2.7504, `lienJobPath.ts`): `'off_path'`, a person took it off the lien path and it is off the desk; with who, when and why. */
+  lien_path_answer?: string | null
+  lien_path_answered_at?: string | null
+  lien_path_answered_by?: string | null
+  lien_path_reason?: string | null
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, collections_at, service_type:service_types(name), created_at, invoices:jobs_ledger_invoices(status, billed_at, sent_to_customer_at)'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, collections_at, lien_path_answered_at, lien_path_answered_by, lien_path_reason, service_type:service_types(name), created_at, invoices:jobs_ledger_invoices(status, billed_at, sent_to_customer_at)'
 
 /** The desk's columns with the first work day (v2.6061): read first, and the list above when the column is not on prod yet. */
 export const LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY = `${LIEN_DESK_JOB_COLUMNS}, first_work_date`
@@ -132,6 +139,12 @@ export type LienDeskData = {
    * fields are the read's own: a hand-built set of desk data (the GC run's, a test's) may leave them out.
    */
   publicJobs?: LienPublicJob[]
+  /**
+   * The jobs a person took off the lien path for a reason of their own (`lienJobPath.ts`, v2.7521): out of every list
+   * above, as the public ones are, and handed on here for the bin *Off the lien path*, each with why, who and the day.
+   * Every such job that still owes money is here, whether or not a reader or a paper named it. Empty in light mode.
+   */
+  offPathJobs?: LienOffPathJob[]
   /** The jobs still on the lien path whose property reads as public and has no answer yet: the Board's amber line. */
   publicAskJobIds?: ReadonlySet<string>
   /** The property record under each job on the desk, and under each job off the path, by `customer_addresses.id`: the public property question reads it. */
@@ -184,7 +197,8 @@ const EMPTY_QUEUE: LienDeskQueue = {
  * The joined rows carry the job's and the customer's names, so no shared read is needed.
  *
  * A job an open in-kind deal pays (v2.7253) leaves at the same seam, always: paid in kind is paid, as far as the
- * desk goes (`lienInKind.ts`). Every list, count and total built below is without it.
+ * desk goes (`lienInKind.ts`). So does a job a person took off the lien path (v2.7521, `lienJobPath.ts`). Every
+ * list, count and total built below is without them.
  */
 export function useLienDeskData(
   enabled: boolean,
@@ -245,7 +259,7 @@ export function useLienDeskData(
             () =>
               supabase
                 .from('jobs_ledger')
-                .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_MONTH_CHECK))
+                .select(withLienOffDeskColumns(LIEN_DESK_JOB_COLUMNS_WITH_MONTH_CHECK))
                 .in('id', chunk),
             'lien desk: jobs',
           )
@@ -254,7 +268,7 @@ export function useLienDeskData(
                 () =>
                   supabase
                     .from('jobs_ledger')
-                    .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY))
+                    .select(withLienOffDeskColumns(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY))
                     .in('id', chunk),
                 'lien desk: jobs (without the month check)',
               ),
@@ -264,12 +278,27 @@ export function useLienDeskData(
                 () =>
                   supabase
                     .from('jobs_ledger')
-                    .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS))
+                    .select(withLienOffDeskColumns(LIEN_DESK_JOB_COLUMNS))
                     .in('id', chunk),
                 'lien desk: jobs (without the first work day)',
               ),
             )
           jobsRead.push(...((part ?? []) as LienDeskJob[]))
+        }
+        // The jobs a person took off the lien path that no reader and no paper named (v2.7521): read by their own answer,
+        // on the open desk only, so the bin *Off the lien path* holds every one that still owes money. A failed read
+        // leaves the bin to the jobs already read, never the desk dark.
+        if (!light) {
+          const known = new Set(jobsRead.map((j) => j.id))
+          const more = await withSupabaseRetry(
+            () =>
+              supabase
+                .from('jobs_ledger')
+                .select(withLienOffDeskColumns(LIEN_DESK_JOB_COLUMNS_WITH_MONTH_CHECK))
+                .eq('lien_path_answer', 'off_path'),
+            'lien desk: jobs off the lien path',
+          ).catch(() => null)
+          for (const j of (more ?? []) as LienDeskJob[]) if (!known.has(j.id) && jobOffLienPath(j)) jobsRead.push(j)
         }
         // The property record under every job read, whole, once, in light mode too. `select('*')` names no column, so the
         // read works before a migration that adds one is pushed. A failed read judges nothing, never the desk dark.
@@ -287,6 +316,10 @@ export function useLienDeskData(
         // here too, so the Board, the lists, the run, the notary print and the Dashboard drop them with no rule of their
         // own, and they are handed on as `publicJobs`. A job already off the desk (ZZ hidden, in kind) is not listed there.
         const publicJobsRead = jobsRead.filter((j) => !offDeskIds?.has(j.id) && lienJobIdsOffLienPath([j], propertiesById).has(j.id))
+        // Off the lien path by the job's own answer (`lienJobPath.ts`): `offDeskIds` already holds them, so they leave every
+        // list with the in-kind jobs, and they are handed on as `offPathJobs`. A hidden ZZ test job is not listed there.
+        const zzHiddenIds = hideZz ? zzTestJobIds(jobsRead) : null
+        const offPathJobsRead = light ? [] : jobsRead.filter((j) => jobOffLienPath(j) && !zzHiddenIds?.has(j.id))
         const offJobIds = publicJobsRead.length ? new Set<string>([...(offDeskIds ?? []), ...publicJobsRead.map((j) => j.id)]) : offDeskIds
         const kept = (jobId: string) => !offJobIds?.has(jobId)
         const rows = offJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
@@ -300,6 +333,7 @@ export function useLienDeskData(
         const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))
         for (const j of jobs) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
         for (const j of publicJobsRead) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
+        for (const j of offPathJobsRead) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
         for (const r of affidavitRowsKept) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         for (const r of retainageRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         const gcRows = gcIds.size
@@ -347,7 +381,7 @@ export function useLienDeskData(
         // On the open desk the jobs off the lien path are read too (v2.7439): the bin *Public jobs · bond claim* prints
         // their money. Their papers are cut above, so in light mode none of them is awaiting and none is read.
         const awaitingJobIds = new Set(items.filter((i) => i.status === 'awaiting_approval' && !i.voided_at).map((i) => i.job_id))
-        const billedOpenJobIds = [...jobs, ...publicJobsRead].filter((j) => !rowJobIds.has(j.id) && (!light || awaitingJobIds.has(j.id))).map((j) => j.id)
+        const billedOpenJobIds = [...jobs, ...publicJobsRead, ...offPathJobsRead].filter((j) => !rowJobIds.has(j.id) && (!light || awaitingJobIds.has(j.id))).map((j) => j.id)
         if (billedOpenJobIds.length > 0) {
           type InvoiceRow = { id: string; job_id: string; status: string | null; amount: number | null; sequence_order: number | null; billed_at: string | null }
           type PaymentRow = { job_id: string; invoice_id: string | null; amount: number | null }
@@ -362,7 +396,7 @@ export function useLienDeskData(
             const payByJob = new Map<string, PaymentRow[]>()
             for (const p of payRows as PaymentRow[]) payByJob.set(p.job_id, [...(payByJob.get(p.job_id) ?? []), p])
             for (const id of billedOpenJobIds) {
-              const j = jobsById[id] ?? publicJobsRead.find((x) => x.id === id)
+              const j = jobsById[id] ?? publicJobsRead.find((x) => x.id === id) ?? offPathJobsRead.find((x) => x.id === id)
               if (!j) continue
               queueJobs[id] = { ...j, billed_open: lienBilledOpen({ id: j.id, status: j.status ?? null, revenue: j.revenue, payments_made: j.payments_made }, invByJob.get(id) ?? [], payByJob.get(id) ?? []) }
             }
@@ -402,6 +436,27 @@ export function useLienDeskData(
             papers: itemsRead.filter((i) => i.job_id === j.id).map((i) => ({ kind: i.kind, status: i.status, months: i.months, sent_at: i.sent_at, approved_at: i.approved_at, voided_at: i.voided_at })),
           }
         })
+        // The jobs a person took off the lien path, for the bin *Off the lien path*: the money by the same rule, why, who and
+        // the day off the job's own row, and every paper of the desk's on it. A job that owes nothing any more is left out.
+        const offPathJobs: LienOffPathJob[] = offPathJobsRead
+          .map((j) => {
+            const listed = rowsRead.find((r) => r.job_id === j.id) ?? affidavitRowsRead.find((r) => r.job_id === j.id) ?? retainageRowsRead.find((r) => r.job_id === j.id)
+            const standing = lienJobPathStanding(j)
+            return {
+              jobId: j.id,
+              number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+              name: (j.job_name ?? '').trim(),
+              gcName: j.gc_customer_id ? (gcsById[j.gc_customer_id]?.name ?? '') : '',
+              unpaid: Number(listed?.open_balance ?? queueJobs[j.id]?.billed_open ?? 0) || 0,
+              reason: standing.reason,
+              since: standing.at,
+              byUserId: standing.by,
+              attorneySince: j.collections_at ?? null,
+              status: j.status ?? null,
+              papers: itemsRead.filter((i) => i.job_id === j.id).map((i) => ({ kind: i.kind, status: i.status, months: i.months, sent_at: i.sent_at, approved_at: i.approved_at, voided_at: i.voided_at })),
+            }
+          })
+          .filter((j) => j.unpaid > 0 || j.papers.length > 0)
         const publicAskJobIds = lienJobIdsAskingPublic(jobs, propertiesById)
         const gcNames: Record<string, string> = {}
         for (const g of Object.values(gcsById)) gcNames[g.id] = g.name
@@ -555,6 +610,7 @@ export function useLienDeskData(
           gcsById,
           addressesById,
           publicJobs,
+          offPathJobs,
           publicAskJobIds,
           propertiesById,
           ownerByJob,
@@ -586,6 +642,7 @@ export function useLienDeskData(
             gcsById: {},
             addressesById: {},
             publicJobs: [],
+            offPathJobs: [],
             publicAskJobIds: new Set(),
             propertiesById: {},
             ownerByJob: {},
