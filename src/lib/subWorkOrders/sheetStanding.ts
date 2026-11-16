@@ -5,7 +5,9 @@
  * The Pay view works this out per row inside `JobsSubLaborTab` (`spineFor`). People → Subs and the job's window
  * need the same answer for the same sheet, so the steps live here and call the same kernels in the same order:
  * work-order coverage, the stage the facts already know, the rail's no-agreement gap, the parties, then the rule.
- * The Pay view moves onto this kernel in the change that follows it, so there is one copy.
+ * The Pay view keeps its own row builder, since a row also needs the rail and the next move. The two rules that
+ * decide the money, `sheetOwedTo` and `teamSheetPayWhen`, are shared, so the two cannot disagree on whose a sheet is
+ * or when a teammate's own sheet pays.
  *
  * Pure: no React, no Supabase.
  */
