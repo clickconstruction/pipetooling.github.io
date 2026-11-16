@@ -885,7 +885,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read what was agreed, what was paid and what is still open, and keep the PDFs.',
           guide: 'make-a-statement-of-account-for-a-sub',
           reflects: ['Company name and address on the letterhead (the bill’s issuer block in Settings)', 'The six sentences that wait on counsel'],
-          render: { kind: 'soon', note: 'The papers print and download today. The Send press arrives with the next step of the sub papers train, and the function is deployed only on the office’s go.' },
+          render: { kind: 'paper', paper: 'sub-statement-of-account' },
         },
         {
           id: 'gc-trade-portal',
