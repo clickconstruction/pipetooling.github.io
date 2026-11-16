@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow } from './lienDesk'
-import { affidavitGateMissingWord, affidavitGates, buildLienAffidavitQueue, lienAffidavitGateHeld, lienAffidavitHoldingGate, contractorAddressGate, homesteadGate, lienOwnerIsPublic, ownerGate, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitRow } from './lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, affidavitGates, affidavitWaitsOnNoticeAlone, buildLienAffidavitQueue, lienAffidavitGateHeld, lienAffidavitHoldingGate, contractorAddressGate, homesteadGate, lienOwnerIsPublic, ownerGate, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitRow } from './lienDeskAffidavits'
 
 const TODAY = '2026-09-14'
 
@@ -58,6 +58,35 @@ describe('affidavit gates and piles', () => {
     expect(pileOf('held')).toBe('held')
     expect(q.entries[0]!.jobId).toBe('late')
     expect(q.entries.find((e) => e.jobId === 'ok')).toMatchObject({ daysLeft: 1, severity: 'red', ready: true })
+  })
+
+  it('an affidavit that waits on its notice alone has a pile of its own; a fact also missing keeps it in Needs the property facts (v2.7457)', () => {
+    const rows = [
+      row({ job_id: 'notice', noticed: false }),
+      row({ job_id: 'both', noticed: false, has_legal: false }),
+      row({ job_id: 'fact', has_legal: false }),
+      row({ job_id: 'direct', is_sub: false, noticed: false, gc_customer_id: null }),
+      row({ job_id: 'drafted', noticed: false }),
+      row({ job_id: 'approved', noticed: false }),
+    ]
+    const items = [item({ job_id: 'drafted', status: 'drafted' }), item({ job_id: 'approved', status: 'approved', approval_mode: 'leader' })]
+    const q = buildLienAffidavitQueue(rows, items, TODAY)
+    const pileOf = (id: string) => q.entries.find((e) => e.jobId === id)?.pile
+    expect(pileOf('notice')).toBe('needs_notice')
+    expect(pileOf('both')).toBe('needs_property')
+    expect(pileOf('fact')).toBe('needs_property')
+    // A job contracted with the owner needs no notice, so nothing holds it.
+    expect(pileOf('direct')).toBe('to_draft')
+    // A draft someone started waits on the notice all the same. An approved paper a gate holds is in Held (punch list #335), whatever the gate.
+    expect(pileOf('drafted')).toBe('needs_notice')
+    expect(pileOf('approved')).toBe('held')
+    expect(lienAffidavitGateHeld(q.entries.find((e) => e.jobId === 'approved'))).toBe(true)
+    expect(q.counts.needs_notice).toBe(2)
+    expect(q.piles.needs_notice.map((e) => e.jobId).sort()).toEqual(['drafted', 'notice'])
+    expect(LIEN_AFFIDAVIT_PILES.map((p) => p.label).slice(0, 3)).toEqual(['Needs the property facts', 'Waiting on its notice', 'To send for Master approval'])
+    expect(affidavitWaitsOnNoticeAlone([{ key: 'owner', ok: true }, { key: 'notice', ok: false }])).toBe(true)
+    expect(affidavitWaitsOnNoticeAlone([{ key: 'owner', ok: true }, { key: 'notice', ok: true }])).toBe(false)
+    expect(affidavitWaitsOnNoticeAlone([{ key: 'homestead', ok: false }, { key: 'notice', ok: false }])).toBe(false)
   })
 
   it('a filed item stays listed for 30 days, then drops', () => {

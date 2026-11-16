@@ -1,6 +1,6 @@
 /**
  * Runs (punch list #329, PR 2, v2.7272): the fold under a job's boxes on Jobs → Materials that lists each run of
- * stickers printed for the job, newest first: its range and count, how many are on boxes and not used yet, who
+ * stickers reserved for the job (a reserved sticker is `blank` in the code: printed, with its own link, on no box yet), newest first: its range and count, how many are on boxes and not used yet, who
  * printed it and when. **Reprint** prints the whole run again, the same codes, so nothing can collide; **Print the
  * rest** prints the stickers still blank. Both open the stickers window on a run already minted, which mints nothing.
  * Reads `sticker_runs` and `box_stickers` under the caller's own RLS (`stickerRunsIo.ts`); the words are
@@ -60,7 +60,7 @@ export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, on
     <details style={wrap} data-testid="sticker-runs-fold" open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
       <summary style={summary}>
         <span>{runsFoldWords(runs.length)}</span>
-        <span style={{ ...muted, fontWeight: 400 }}>Blank stickers printed for this job, and how many are on boxes.</span>
+        <span style={{ ...muted, fontWeight: 400 }}>Stickers reserved for this job, and how many are on boxes.</span>
       </summary>
       <div style={{ display: 'grid' }}>
         {runs.map(({ run, stickers }) => {

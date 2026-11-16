@@ -11,6 +11,12 @@ export type OnSiteFindJob = {
   jobId: string
   /** How the job reads in a row: its number and name. */
   label: string
+  /** The number and the name apart, and the job's street, where the caller knows them (v2.7482: Print labels' cards). */
+  number?: string
+  name?: string
+  address?: string
+  /** Why this job's boxes are not here, when its read failed; a card says so instead of leaving the job out. */
+  failed?: string | null
   containers: ReadonlyArray<Container>
   lines: ReadonlyArray<ContainerLine>
   places: ReadonlyArray<Place>

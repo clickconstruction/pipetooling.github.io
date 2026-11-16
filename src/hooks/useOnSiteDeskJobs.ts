@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { containerLines } from '../lib/materials/onSite'
 import type { OnSiteFindJob } from '../lib/materials/onSiteFind'
-import { jobIdsWithData, listContainers, listMovements, listPlaces } from '../lib/materials/onSiteStore'
+import { jobIdsWithData, jobLoadState, listContainers, listMovements, listPlaces, loadJob } from '../lib/materials/onSiteStore'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { onSiteJobNumber } from '../lib/materials/onSiteJobWords'
 import { useOnSiteDesk } from './useOnSiteStore'
@@ -20,7 +20,7 @@ export function onSiteJobLabel(row: Pick<OnSiteDeskJobRow, 'hcp_number' | 'click
  * the others. `known` is a list the caller already holds (the Tally's jobs), so a field role that
  * cannot read `jobs_ledger` still sees its jobs by name.
  */
-export function useOnSiteDeskJobs(enabled: boolean, known: ReadonlyArray<OnSiteDeskJobRow> = []): { jobs: OnSiteFindJob[]; rows: OnSiteDeskJobRow[]; loading: boolean; loaded: boolean; error: string | null; raw: unknown; retry: () => void } {
+export function useOnSiteDeskJobs(enabled: boolean, known: ReadonlyArray<OnSiteDeskJobRow> = []): { jobs: OnSiteFindJob[]; rows: OnSiteDeskJobRow[]; loading: boolean; loaded: boolean; error: string | null; raw: unknown; retry: () => void; /** Reads one job again, for a card that says it did not load (v2.7482). */ readAgain: (jobId: string) => void } {
   const desk = useOnSiteDesk(enabled)
   const [fetched, setFetched] = useState<OnSiteDeskJobRow[]>([])
   const askedRef = useRef(new Set<string>())
@@ -50,14 +50,19 @@ export function useOnSiteDeskJobs(enabled: boolean, known: ReadonlyArray<OnSiteD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey, knownKey])
 
+  const readAgain = useCallback((jobId: string) => { void loadJob(jobId, { force: true }) }, [])
   const rows = useMemo(() => [...known, ...fetched.filter((f) => !known.some((k) => k.id === f.id))], [known, fetched])
   // The store's version (through `useOnSiteDesk`) re-renders this hook on every press, so the lists stay live.
   const jobs: OnSiteFindJob[] = ids.map((id) => ({
     jobId: id,
     label: onSiteJobLabel(rows.find((r) => r.id === id), id),
+    number: onSiteJobNumber(rows.find((r) => r.id === id)) || undefined,
+    name: rows.find((r) => r.id === id)?.job_name?.trim() || undefined,
+    address: rows.find((r) => r.id === id)?.job_address?.trim() || undefined,
+    failed: jobLoadState(id).error,
     containers: listContainers(id),
     lines: containerLines(listMovements(id)),
     places: listPlaces(id),
   }))
-  return { jobs, rows, loading: desk.loading, loaded: desk.loaded, error: desk.error, raw: desk.raw, retry: desk.retry }
+  return { jobs, rows, loading: desk.loading, loaded: desk.loaded, error: desk.error, raw: desk.raw, retry: desk.retry, readAgain }
 }

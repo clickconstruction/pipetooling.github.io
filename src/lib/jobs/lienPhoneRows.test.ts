@@ -76,11 +76,6 @@ describe('lienPhoneGroups', () => {
     expect(lienPhoneGroups([g('now', 'Needs you now', [row('a')])], () => null)[0]!.amount).toBeNull()
   })
 
-  it('a pressed step’s two groups pass through as they are', () => {
-    const out = lienPhoneGroups([g('step_on', 'On File it', [row('a', { group: 'step_on' })]), g('step_other', 'Everything else', [row('b', { group: 'step_other' })])], () => null)
-    expect(out.map((x) => [x.key, x.label, x.left])).toEqual([['step_on', 'On File it', null], ['step_other', 'Everything else', null]])
-  })
-
   it('nothing in, nothing out', () => {
     expect(lienPhoneGroups([], () => null)).toEqual([])
   })

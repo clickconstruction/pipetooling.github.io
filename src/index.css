@@ -4690,6 +4690,10 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunCheckWho { color: var(--text-muted); font-size: 0.72rem; }
 .lienRunCheckLine { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
 .lienRunCheckHeld { color: var(--text-red-600); font-size: 0.72rem; font-weight: 600; }
+.lienRunCheckCopies { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; min-width: 0; font-size: 0.72rem; }
+.lienRunCheckCopies a { color: var(--text-link); font-weight: 600; overflow-wrap: anywhere; }
+.lienRunCheckCopyAdd { padding: 2px 9px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.lienRunCheckCopyAdd:disabled { cursor: default; opacity: 0.55; }
 .lienRunCheckTicks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-items: start; min-width: 0; }
 .lienRunCheckTick { display: grid; gap: 3px; min-width: 0; padding: 0.3rem 0.45rem; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border); }
 .lienRunCheckTick[data-on='yes'] { border-color: var(--text-green-700); background: var(--bg-green-tint); }
@@ -4726,13 +4730,6 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunChecklistBoxes { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.72rem; margin-top: 0.2rem; }
 .lienRunChecklistBoxes label { display: inline-flex; gap: 0.3rem; align-items: center; cursor: pointer; }
 @media (max-width: 700px) { .lienRunChecklistRow { grid-template-columns: 44px minmax(0, 1fr); } .lienRunChecklistRow > input { grid-column: 2; width: 100%; } }
-.lienRunDoorBar { display: inline-flex; width: 56px; height: 7px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; vertical-align: middle; margin-right: 0.45rem; box-shadow: 0 0 0 1px currentColor; }
-.lienRunDoorBar i { display: block; height: 100%; }
-.lienRunDoorSealed { background: var(--text-green-700); }
-.lienRunDoorWait { background: var(--border-amber); }
-.lienRunDoorPrinted { background: var(--text-link); }
-.lienRunDoorWords { display: inline-block; margin-left: 0.45rem; font-weight: 500; opacity: 0.85; }
-@media (max-width: 640px) { .lienRunDoorWords { display: none; } }
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
 .lienFootRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; }
 .lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; flex: 1 1 12rem; }

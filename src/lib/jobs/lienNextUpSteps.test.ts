@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienNextUpRow } from './lienNextUp'
-import { countLienSteps, lienLaddersShown, lienRunRungWords, lienStepCard, lienStepBrief, lienStepGroups, lienStepName, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
+import { LIEN_STEP_LADDERS, lienStepCard, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
   key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · AXO Schertz', sub: 'Notice to send', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
@@ -31,41 +31,9 @@ describe('lienStepOfRow (v2.4631)', () => {
     expect(card.items.map((i) => [i.state, i.title])).toEqual([['done', 'Notice sent'], ['now', 'Record what they promised']])
     expect(card.items[1]!.detail).toContain('the desk asks again on that date')
     expect(card.foot).toBe('After step 4 · paying it down')
-    expect(lienStepBrief({ ladder: 'reminder', step: 2 }, 'paying').usual?.press).toBe('Record what they promised')
-    expect(lienStepBrief({ ladder: 'reminder', step: 2 }, 'sent').usual?.press).toBe('Send the attorney’s letter')
   })
 })
 
-describe('countLienSteps + lienLaddersShown', () => {
-  it('adds the rows up per rung, takes the run count the desk hands over as the fourth rung, and shows a ladder only when something stands on it', () => {
-    const rows = [
-      row({ action: 'find_owner' }),
-      row({ key: 'n2', action: 'draft' }),
-      row({ key: 'n3', action: 'draft' }),
-      row({ key: 'n4', action: 'approve' }),
-      row({ key: 'run', jobId: null, action: 'send_run' }),
-      row({ key: 'a1', kind: 'affidavit', action: 'fix_property' }),
-      row({ key: 'm', action: 'note_missed' }),
-    ]
-    const counts = countLienSteps(rows, { notice: 11 })
-    expect(counts.notice).toEqual([1, 2, 1, 11])
-    expect(counts.affidavit).toEqual([1, 0, 0, 0])
-    expect(counts.retainage).toEqual([0, 0, 0, 0])
-    expect(lienLaddersShown(counts)).toEqual(['notice', 'affidavit'])
-    // Without a handed-over count the run rows are the fourth rung; notices always show.
-    expect(countLienSteps(rows).notice[3]).toBe(1)
-    expect(lienLaddersShown(countLienSteps([]))).toEqual(['notice'])
-  })
-  it('the REMINDERS ladder takes its four counts whole from the desk (punch list #262) and shows between notices and affidavits once something stands on it', () => {
-    const rows = [row({ action: 'courtesy', reminder: { step: 1, state: 'due', words: 'day 21 · nothing since the packet', day: 21, counted: true } }), row({ key: 'a1', kind: 'affidavit', action: 'fix_property' })]
-    const own = countLienSteps(rows)
-    expect(own.reminder).toEqual([1, 0, 0, 0])
-    const handed = countLienSteps(rows, {}, [7, 3, 2, 12])
-    expect(handed.reminder).toEqual([7, 3, 2, 12])
-    expect(lienLaddersShown(handed)).toEqual(['notice', 'reminder', 'affidavit'])
-    expect(lienLaddersShown(countLienSteps([row({})]))).toEqual(['notice'])
-  })
-})
 
 describe('lienStepCard', () => {
   it('an approved notice with a pay offer (v2.4713) says so on the Approve rung', () => {
@@ -155,76 +123,8 @@ describe('the printed run on the ladder (punch list #101)', () => {
     const card = lienStepCard({ ...r })
     expect(card.items[3]).toEqual({ state: 'now', title: 'Enter mail numbers', detail: 'Printed Oct 7. Mailed? Type each envelope’s number in. Not mailing them? Take the print back.' })
   })
-  it('the run rung says ready, printed, or both', () => {
-    expect(lienRunRungWords(3, 0)).toBe(' ready')
-    expect(lienRunRungWords(19, 19)).toBe(' printed')
-    expect(lienRunRungWords(22, 19)).toBe(' · 19 printed')
-  })
-})
-
-describe('lienStepGroups — the list under a pressed rung, sorted and never faded (v2.6574)', () => {
-  it('puts the rung’s rows first under On this step and the rest under On other steps, in the list’s own order', () => {
-    const rows = [row({ key: 'a', action: 'draft' }), row({ key: 'b', kind: 'affidavit', action: 'fix_property' }), row({ key: 'c', action: 'draft' }), row({ key: 'd', action: 'approve' })]
-    const g = lienStepGroups(rows, { ladder: 'notice', step: 2 })
-    expect(g.map((x) => [x.group, x.label, x.rows.map((y) => y.key)])).toEqual([
-      ['step_on', 'On this step', ['a', 'c']],
-      ['step_other', 'On other steps', ['b', 'd']],
-    ])
-    expect(lienStepGroups(rows, { ladder: 'affidavit', step: 4 })[0]!.rows).toEqual([])
-    expect(lienStepGroups([rows[0]!], { ladder: 'notice', step: 2 })).toHaveLength(1)
-  })
-  it('names the rung for the brief’s head', () => {
-    expect(lienStepName({ ladder: 'reminder', step: 3 })).toBe('3 · Attorney’s letter')
-    expect(lienStepName({ ladder: 'affidavit', step: 1 })).toBe('1 · Fix the property')
-    // v2.7448: the fourth rung of a notice is the press that does it (Send the run until then).
-    expect(lienStepName({ ladder: 'notice', step: 4 })).toBe('4 · Print and mail')
-    expect(lienStepName({ ladder: 'retainage', step: 4 })).toBe('4 · Print and mail')
-  })
-})
-
-describe('lienStepBrief — every rail’s step brief (v2.6577; plain words v2.6594)', () => {
-  it('gives each of the twelve rungs plain words, a why, the usual press with what it does, other presses with their meaning, a closer and what happens if nobody acts', () => {
-    for (const ladder of ['notice', 'affidavit', 'retainage'] as const) {
-      for (const step of [1, 2, 3, 4] as const) {
-        const b = lienStepBrief({ ladder, step })
-        expect(b.title.length, `${ladder} ${step}`).toBeGreaterThan(0)
-        expect(b.plain.length).toBeGreaterThan(30)
-        expect(b.why.length).toBeGreaterThan(10)
-        expect(b.usual?.press.length).toBeGreaterThan(3)
-        expect(b.usual?.means.length).toBeGreaterThan(10)
-        expect(b.instead.length).toBeGreaterThan(0)
-        for (const m of b.instead) expect(m.means.length, `${ladder} ${step} ${m.press}`).toBeGreaterThan(8)
-        expect(b.closes).toContain('paid')
-        expect(b.ifNobody.length).toBeGreaterThan(20)
-        expect(b.who).toBe(step === 3 ? 'leader' : 'office')
-      }
-    }
-  })
-  it('names the panes’ own presses with their meaning: the notice’s Sign and approve, the affidavit’s File the affidavit, retainage’s contract-end door; Refer to the Legal desk is gone', () => {
-    const approve = lienStepBrief({ ladder: 'notice', step: 3 })
-    expect(approve).toMatchObject({ title: 'Approve', who: 'leader' })
-    expect(approve.usual?.press).toBe('Sign and approve ▸')
-    expect(approve.instead[0]).toEqual({ press: 'Not yet', means: 'holds it with a reason, they promised or I’ll call first; the desk asks again' })
-    expect(lienStepBrief({ ladder: 'notice', step: 1 }).instead.map((m) => m.press)).toEqual(['Property record ›', 'Hold — they promised…', 'Hold — I’ll call first'])
-    expect(lienStepBrief({ ladder: 'affidavit', step: 4 }).usual?.press).toBe('File the affidavit')
-    expect(lienStepBrief({ ladder: 'affidavit', step: 1 }).instead.map((m) => m.press)).toEqual(['Fill in the record ›', 'Send the notice first ›'])
-    expect(lienStepBrief({ ladder: 'affidavit', step: 2 }).instead.map((m) => m.press)).not.toContain('Refer to the Legal desk ›')
-    expect(lienStepBrief({ ladder: 'retainage', step: 1 }).instead.map((m) => m.press)).toContain('Set the day our contract ended ›')
-    expect(lienStepBrief({ ladder: 'retainage', step: 2 }).plain).toContain('held-back money')
-  })
-  it('the fourth rung of a notice names the two presses as the desk does: Print and mail, then Enter mail numbers (v2.7448)', () => {
-    const b = lienStepBrief({ ladder: 'notice', step: 4 })
-    expect(b).toMatchObject({ title: 'Print and mail', who: 'office' })
-    expect(b.why).toBe('The notice is approved and waits to print, or is printed and waits on its mail number.')
-    expect(b.usual).toEqual({ press: 'Print and mail', means: 'prints every approved notice and its envelope; Enter mail numbers then takes each tracking number' })
-    expect(b.instead).toEqual([
-      { press: 'Enter mail numbers', means: 'once the envelopes are at the post office, type in each tracking number' },
-      { press: 'Back to the office', means: 'takes a notice back out of the packet' },
-    ])
-    expect(lienStepBrief({ ladder: 'retainage', step: 4 }).why).toBe('The retainage notice is approved and waits to print, or is printed and waits on its mail number.')
-  })
-  it('hands the REMINDERS rail to its own brief', () => {
-    expect(lienStepBrief({ ladder: 'reminder', step: 3 })).toMatchObject({ title: 'Attorney’s letter', who: 'leader' })
-    expect(lienStepBrief({ ladder: 'reminder', step: 3 }).usual?.press).toBe('Send the attorney’s letter')
+  it('the fourth rung of a notice is named as its press is: Print and mail (v2.7448)', () => {
+    expect(LIEN_STEP_LADDERS.find((l) => l.key === 'notice')!.steps[3]).toBe('Print and mail')
+    expect(LIEN_STEP_LADDERS.find((l) => l.key === 'retainage')!.steps[3]).toBe('Print and mail')
   })
 })

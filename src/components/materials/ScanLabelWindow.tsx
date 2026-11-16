@@ -34,7 +34,7 @@ export default function ScanLabelWindow({ onClose, onOpen }: { onClose: () => vo
           <h2 style={{ margin: 0, fontSize: '1.1rem', flex: '1 1 auto' }}>Scan a label</h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)', minHeight: 36, minWidth: 36 }}>×</button>
         </div>
-        <p style={{ margin: 0, lineHeight: 1.5 }}>Open your phone’s camera and point it at the label on a cage or box. The box opens on the On site tab. A blank sticker opens the sheet that puts it on a box.</p>
+        <p style={{ margin: 0, lineHeight: 1.5 }}>Open your phone’s camera and point it at the label on a cage or box. The box opens on the On site tab. A reserved sticker opens the sheet that puts it on its box.</p>
         <form onSubmit={submit} style={{ display: 'grid', gap: '0.5rem' }}>
           <label htmlFor="scan-label-code" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Or type the eight characters under the QR code</label>
           <input

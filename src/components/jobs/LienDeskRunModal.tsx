@@ -52,6 +52,8 @@ import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem } from '../../lib/jobs/lienMailedCopies'
+import { addLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
 import { LIEN_RUN_ACT, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 
 /** Which of the window's three stacks a notice's envelopes sit in, by its part (`lienRunParts`): what prints now, what printed, what is stopped. */
@@ -89,6 +91,7 @@ export default function LienDeskRunModal({
   stripeMode = 'live',
   viewer = null,
   focusMailItemId = null,
+  addMailedCopy = addLienMailedCopy,
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -122,6 +125,8 @@ export default function LienDeskRunModal({
   viewer?: { userId: string | null; name: string } | null
   /** A sheet's code was scanned (v2.7328, `?run=<itemId>&mail=1`): the checklist scrolls to this notice's Mailed box and puts the cursor in it. */
   focusMailItemId?: string | null
+  /** The upload behind *Add what was mailed*; a test hands its own. */
+  addMailedCopy?: typeof addLienMailedCopy
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
@@ -578,6 +583,28 @@ export default function LienDeskRunModal({
     if (noticesFullyPrinted(notices, next).length === notices.length && notices.length > 0) setPrintedAt((v) => v ?? new Date().toISOString())
   }
   // Printed ▸ on a checklist row (v2.7328): the paper printed elsewhere; every copy of it counts as printed, with who and when.
+  // What was mailed (the owner's ask of 2026-11-16): a printed row takes a scan or a photo of what goes in its envelope. The file goes
+  // into the job's Drive folder and the notice remembers it; a file that cannot go says why and nothing is saved.
+  const [addingCopy, setAddingCopy] = useState<string | null>(null)
+  const addCopy = async (row: LienRunRow, file: File) => {
+    const problem = lienMailedCopyProblem(file)
+    if (problem) {
+      showToast(problem, 'error')
+      return
+    }
+    setAddingCopy(row.itemId)
+    try {
+      const list = await addMailedCopy({ itemId: row.itemId, jobId: row.jobId, jobNumber: row.jobNumber, file, todayYmd, userId })
+      setNotices((prev) => prev.map((n) => (n.itemId === row.itemId ? { ...n, mailedCopies: list } : n)))
+      const last = list[list.length - 1]
+      if (last) showToast(lienMailedCopyAddedWords(last.name), 'success')
+      onRecorded()
+    } catch (e) {
+      showToast(formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.failed), 'error')
+    } finally {
+      setAddingCopy(null)
+    }
+  }
   const markPrintedByHand = (row: LienRunRow) => {
     const n = notices.find((x) => x.itemId === row.itemId)
     if (!n) return
@@ -1023,6 +1050,7 @@ export default function LienDeskRunModal({
             focusMailItemId={focusMailItemId}
             // Close… (v2.7353): a paid row's own press and the fold's ask for the confirm above; nothing is written until it is pressed.
             paid={onClosePaid ? { readyIds: paidSplit.ready, heldWhy: paidHeldWhy, onClose: (ids) => { setClosedPaid(null); setTakeBackOpen(false); setTakeBackOne(null); setClosePaidIds(ids) } } : undefined}
+            mailedCopies={{ onAdd: (row, file) => void addCopy(row, file), addingItemId: addingCopy }}
             // Un-print one (v2.7481): a ticked Printed is a press on every row the run could take back; the confirm above asks first.
             unprint={onTakeBack ? { ids: printedIds, onAsk: (row) => { setTakeBackOpen(false); setClosePaidIds(null); setTakenBack(null); setTakeBackOne(row.itemId) } } : undefined}
             // The groups (v2.7477): each row under its part's head, what is stopped first.
