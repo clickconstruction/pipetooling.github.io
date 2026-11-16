@@ -1979,6 +1979,10 @@ export type Database = {
           jp_precinct_note: string
           jp_precinct_source: string
           legal_description: string
+          lien_public_answer: string | null
+          lien_public_answered_at: string | null
+          lien_public_answered_by: string | null
+          lien_public_reason: string | null
           note: string | null
           owner_company: string
           owner_confirmed_at: string | null
@@ -2011,6 +2015,10 @@ export type Database = {
           jp_precinct_note?: string
           jp_precinct_source?: string
           legal_description?: string
+          lien_public_answer?: string | null
+          lien_public_answered_at?: string | null
+          lien_public_answered_by?: string | null
+          lien_public_reason?: string | null
           note?: string | null
           owner_company?: string
           owner_confirmed_at?: string | null
@@ -2043,6 +2051,10 @@ export type Database = {
           jp_precinct_note?: string
           jp_precinct_source?: string
           legal_description?: string
+          lien_public_answer?: string | null
+          lien_public_answered_at?: string | null
+          lien_public_answered_by?: string | null
+          lien_public_reason?: string | null
           note?: string | null
           owner_company?: string
           owner_confirmed_at?: string | null
@@ -2066,6 +2078,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_addresses_lien_public_answered_by_fkey"
+            columns: ["lien_public_answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {

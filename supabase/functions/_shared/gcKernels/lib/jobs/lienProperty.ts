@@ -35,6 +35,10 @@ export type CustomerAddressRow = {
   jp_precinct_note: string
   jp_precinct_source: string
   legal_description: string
+  lien_public_answer: string | null
+  lien_public_answered_at: string | null
+  lien_public_answered_by: string | null
+  lien_public_reason: string | null
   note: string | null
   owner_company: string
   owner_confirmed_at: string | null
