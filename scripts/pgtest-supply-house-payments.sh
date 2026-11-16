@@ -45,4 +45,11 @@ PSQL=(psql -h localhost -p "$PORT" -U postgres -v ON_ERROR_STOP=1 -q)
 ARGS=(-f "$BED/00_schema.sql" -f "$TMP/05_triggers.sql" -f "$BED/10_seed_before.sql")
 for m in "${MIGRATIONS[@]}"; do ARGS+=(-f "$m" -f "$m"); done
 for s in "$BED"/[2-9]*_*.sql; do ARGS+=(-f "$s"); done
-"${PSQL[@]}" "${ARGS[@]}" 2>&1 | grep -E "PASSED|ERROR|FAILED|CONTEXT" || true
+# The bed passes only when psql ran every file to the end and the closing notice was raised.
+rc=0
+OUT="$("${PSQL[@]}" "${ARGS[@]}" 2>&1)" || rc=$?
+printf '%s\n' "$OUT" | grep -E "PASSED|ERROR|FAILED|CONTEXT" || true
+if [ "$rc" -ne 0 ] || ! printf '%s\n' "$OUT" | grep -q "supply house payments: ALL PASSED"; then
+  echo "supply house payments: the bed FAILED (psql exit $rc)"
+  exit 1
+fi
