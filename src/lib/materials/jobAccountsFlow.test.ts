@@ -102,6 +102,12 @@ describe('buildJobAccountsView', () => {
     expect(view.unallocatedTotal).toBeCloseTo(50)
   })
 
+  it('does not count interest as a bill missing its job (v2.7467)', () => {
+    const view = buildJobAccountsView([job({ id: 'a' })], [invoice({ id: 'i1', amount: 18.6, is_interest: true }), invoice({ id: 'i2', amount: 40 })], [], HOUSES, [], TODAY)
+    expect(view.unallocatedTotal).toBeCloseTo(40)
+    expect(view.unallocatedCount).toBe(1)
+  })
+
   it('caps held at what the customer actually paid', () => {
     const view = buildJobAccountsView(
       [job({ id: 'a', revenue: 1000, payments_made: 100 })],

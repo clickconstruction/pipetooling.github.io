@@ -94,6 +94,25 @@ Sometimes you send more than the bills you ticked. The line at the bottom says h
 
 The house's card then shows **On account** beside its other numbers. The next payment to that house offers the money first, like **Use $187.40 on account first**. Tick it and that money goes on the oldest bills you tick.
 
+## The house added interest or a late fee
+
+A house may add interest when a bill runs past 30 days. You record it with the payment that paid it.
+
+1. In **Record a payment**, press **+ The house added interest or a late fee** under the bills.
+2. Type the amount in the box on that line.
+3. Pick the bill that ran late under **Which bill was late**. Leave **Not tied to a bill** when you do not know.
+4. Tick the other bills the payment covered, and press the green button.
+
+**Amount sent** adds the interest in. The button's words end in *and interest*.
+
+The app keeps the interest as a bill of its own. It is marked {{chip:yellow|Interest}} and reads paid by this payment. Its row is named for the late bill, like **Interest on S4398120**, and says *not a job cost*.
+
+Interest is never put on a job. It stays off every job's cost, so the house's late charge does not look like materials.
+
+The house billed interest you have not paid yet? Press {{button:blue|Add Invoice}} and tick **This is interest or a late fee**. It then waits with the other bills until a payment covers it.
+
+Accounts payable adds the year up under its total, like *Interest and late fees in 2026: $61.20*, with each house's share.
+
 ## See a payment, or remove one
 
 A bill paid by a recorded payment names it on its row. The row reads the paid day, the method with its number, and how many bills the payment covered.

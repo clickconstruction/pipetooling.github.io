@@ -78,6 +78,7 @@ describe('RecordSupplyPaymentModal', () => {
       lines: [{ invoice_id: 'b1', amount: 1240 }, { invoice_id: 'b2', amount: 812.4 }],
       fromAccount: [],
       keepOnAccount: false,
+      interest: null,
       method: 'ach',
       methodRef: '88213',
       receiptLink: null,
@@ -130,6 +131,34 @@ describe('RecordSupplyPaymentModal', () => {
     expect(recorded[0]?.amount).toBe(276.75)
     expect(recorded[0]?.fromAccount).toEqual([{ payment_id: 'p-old', invoice_id: 'b2', amount: 10.85 }])
     expect(recorded[0]?.lines).toEqual([{ invoice_id: 'b2', amount: 489.15 }, { invoice_id: 'c1', amount: -212.4 }])
+  })
+
+  it('adds interest or a late fee as a line, tied to the bill that ran late', async () => {
+    const { io, recorded } = fakeIo()
+    const { onRecorded } = await open(io, { parts: true })
+    expect(screen.queryByTestId('record-supply-payment-interest')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Pay 77120'))
+    fireEvent.click(screen.getByRole('button', { name: '+ The house added interest or a late fee' }))
+    const line = screen.getByTestId('record-supply-payment-interest')
+    expect(line.textContent).toContain('Kept as a bill of its own, marked Interest, and paid by this payment. It is not put on a job.')
+    // The open bills lead the list; a credit memo and a paid bill of the house follow or are left out.
+    const options = within(line).getAllByRole('option').map((o) => o.textContent)
+    expect(options.slice(0, 2)).toEqual(['Not tied to a bill', '77502 · No job yet'])
+    expect(options).not.toContain('CM-2291 · A return')
+    fireEvent.change(within(line).getByLabelText('Interest or late fee amount'), { target: { value: '18.60' } })
+    fireEvent.change(within(line).getByRole('combobox'), { target: { value: 'b1' } })
+    expect((screen.getByLabelText('Amount sent') as HTMLInputElement).value).toBe('1258.60')
+    expect(press().textContent).toBe('Record $1,258.60 on 1 bill and interest, details later')
+    fireEvent.click(press())
+    await waitFor(() => expect(onRecorded).toHaveBeenCalledTimes(1))
+    expect(recorded[0]?.interest).toEqual({ amount: 18.6, lateInvoiceId: 'b1' })
+    expect(recorded[0]?.lines).toEqual([{ invoice_id: 'b1', amount: 1240 }])
+  })
+
+  it('offers no interest line while a bill is paid whole or not at all', async () => {
+    const { io } = fakeIo()
+    await open(io)
+    expect(screen.queryByRole('button', { name: '+ The house added interest or a late fee' })).toBeNull()
   })
 
   it('says why when the payment is refused, and stays open', async () => {
