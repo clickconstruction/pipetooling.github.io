@@ -8,6 +8,8 @@ import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRo
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
 import { FilingSheetNote } from './FilingSheetNote'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
+import { isLienAppliedRow, lienAppliedRowWords, type LienAppliedRow } from '../../lib/jobs/lienNoticeApply'
+import { undoLienNoticeApply } from '../../lib/jobs/lienNoticeApplyIo'
 import LienRecordSheet from './LienRecordSheet'
 import { LienFiledScanPress } from './LienFiledScanPress'
 import { LIEN_CLERK_SCAN_NOTE } from '../../lib/jobs/lienScanFile'
@@ -784,6 +786,14 @@ export default function LienFilingTabs({
 
   const voidFiling = async (f: JobLienFilingRow) => {
     try {
+      // v2.7508: a row that applies a paper already on record is undone, and the notice it set aside goes back on the desk.
+      if (isLienAppliedRow(f as unknown as LienAppliedRow)) {
+        const { restored } = await undoLienNoticeApply({ id: f.id, job_id: f.job_id })
+        showToast(restored ? 'Undone. The notice it set aside is back on the desk.' : 'Undone. The record is voided.', 'success')
+        setVoidPendingId(null)
+        onChanged()
+        return
+      }
       await withSupabaseRetry(
         () => supabase.from('job_lien_filings').update({ voided_at: new Date().toISOString() }).eq('id', f.id),
         'void lien filing',
@@ -833,6 +843,12 @@ export default function LienFilingTabs({
               {f.kind === 'affidavit' && f.filed_at ? `filed ${demandDate(f.filed_at)} · #${f.recording_number || '—'} · ${f.served_at ? `served ${demandDate(f.served_at)}` : `serve by ${demandDate(f.serve_due ?? '')}`}` : ''}
               {f.kind === 'notice_53_056' || f.kind === 'retainage_53_057' ? demandMoney(String(f.amount ?? '')) : ''}
             </span>
+            {isLienAppliedRow(f as unknown as LienAppliedRow) ? (
+              <span style={{ color: 'var(--text-muted)' }} data-lien-applied-row title={(f as unknown as LienAppliedRow).applied_reason || undefined}>
+                {lienAppliedRowWords(f as unknown as LienAppliedRow, calendarYmdInAppTzFromIso(f.created_at ?? ''))}
+                {(f as unknown as LienAppliedRow).applied_reason ? ` · “${(f as unknown as LienAppliedRow).applied_reason}”` : ''}
+              </span>
+            ) : null}
             {(() => {
               const doc = f as unknown as LienFilingDocument
               const url = normalizeDocumentUrl(doc.document_url)
@@ -891,11 +907,11 @@ export default function LienFilingTabs({
               </button>
               {voidPendingId === f.id ? (
                 <button type="button" onClick={() => void voidFiling(f)} style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
-                  Confirm void
+                  {isLienAppliedRow(f as unknown as LienAppliedRow) ? 'Confirm undo' : 'Confirm void'}
                 </button>
               ) : (
                 <button type="button" onClick={() => setVoidPendingId(f.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
-                  Void
+                  {isLienAppliedRow(f as unknown as LienAppliedRow) ? 'Undo' : 'Void'}
                 </button>
               )}
             </span>
