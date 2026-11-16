@@ -234,7 +234,7 @@ export default function ChecklistAddModal({
         start_date: toLocalDateString(new Date()),
         due_date: '',
         show_until_completed: true,
-        notify_on_complete_user_id: '',
+        notify_on_complete_user_id: preset?.tellUserId ?? '',
         notify_creator_on_complete: true,
         reminder_time: '',
         reminder_daily: true,
@@ -243,7 +243,7 @@ export default function ChecklistAddModal({
         escalate_days: 3,
       })
       setFormError(null)
-      setPlace(null)
+      setPlace(preset?.place ?? null)
       setTaskMap(null)
       setSpotPhoto(null)
       // The job bar already shows its link, so the links stay closed behind it (v2.3751).

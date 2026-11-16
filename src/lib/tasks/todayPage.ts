@@ -160,3 +160,28 @@ export function stillOpenLabel(count: number): string {
 export function showMoreLabel(hidden: number): string {
   return `Show ${hidden} more`
 }
+
+/** The press under the day's tasks that opens New task for the person themself (punch list #369, step B1). */
+export const ADD_OWN_TASK_LABEL = '＋ Add a task for me'
+
+/** The press on a done task that opens New task for what the work turned up. */
+export const FOLLOW_UP_LABEL = 'Follow-up'
+
+/** A follow-up's words start from the task it follows, cut so the new words have room: *After Check the truck fluids: *. */
+export const FOLLOW_UP_TITLE_MAX = 60
+
+/**
+ * What New task opens with for a follow-up. The person types what comes next after the colon. `plainTitle` is the
+ * first task's words without their link marks.
+ */
+export function followUpTitle(plainTitle: string): string {
+  const words = plainTitle.replace(/\s+/g, ' ').trim()
+  if (!words) return ''
+  const cut = words.length > FOLLOW_UP_TITLE_MAX ? `${words.slice(0, FOLLOW_UP_TITLE_MAX - 1).trimEnd()}…` : words
+  return `After ${cut}: `
+}
+
+/** Who a follow-up tells when it is done: the first task's giver, unless that is the person writing it. */
+export function followUpTellsId(giverId: string | null | undefined, writerId: string | null): string | null {
+  return giverId && giverId !== writerId ? giverId : null
+}
