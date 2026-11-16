@@ -341,6 +341,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
     }
   }
+  const unsignedIn = (list: ReadonlyArray<LienDeskEntry>) => list.filter((e) => lienItemUnsigned(e.item)).length
   for (const [gcId, list] of readyByGc) {
     if (list.length < 2) continue
     const dated = list.filter((e) => e.earliestDeadline).sort((a, b) => (a.earliestDeadline! < b.earliestDeadline! ? -1 : 1))
@@ -352,6 +353,8 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       gcId,
       title: input.gcName(gcId),
       sub: `${list.length} notices approved · to print`,
+      // A computer's row starts with its bin, so the detail never says it again (v2.7448): how many, the tick they lack, and how many of them the leader has yet to sign.
+      detail: [`${list.length} notices`, lienRunRowLine(false, true, false), unsignedIn(list) > 0 ? `${unsignedIn(list)} not signed` : ''].filter(Boolean).join(' · '),
       dueOn: first?.earliestDeadline ?? null,
       daysLeft: first?.daysLeft ?? null,
       severity: list.some((e) => e.severity === 'red') ? 'red' : list.some((e) => e.severity === 'amber') ? 'amber' : 'quiet',

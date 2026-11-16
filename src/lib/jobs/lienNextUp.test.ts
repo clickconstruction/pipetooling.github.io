@@ -69,6 +69,12 @@ describe('buildLienNextUp — notices', () => {
 
     const run = one({ notices: [notice('j1', 'ready', { earliestDeadline: '2026-10-20', daysLeft: 15 }), notice('j2', 'ready', { earliestDeadline: '2026-10-09', daysLeft: 4, severity: 'red' })] })
     expect([run.key, run.action, run.button, run.title, run.sub]).toEqual(['run:gc1', 'send_run', 'Print and mail 2', 'GC gc1', '2 notices approved · to print'])
+    // A computer's row starts with the bin Approved · to print, so the GC row's detail says only the count and the tick they lack.
+    expect(run.detail).toBe('2 notices · not printed')
+    // One of the two approved on a rule and never signed: the row says how many the leader has yet to sign.
+    const ruled = { id: 'i-rule', status: 'approved', approval_mode: 'rule', fields: {}, signed_at: null } as unknown as LienDeskEntry['item']
+    const held = one({ notices: [notice('j1', 'ready', { item: ruled }), notice('j2', 'ready')] })
+    expect(held.detail).toBe('2 notices · not printed · 1 not signed')
     expect([run.jobId, run.gcId, run.dueOn, run.daysLeft, run.severity, run.group]).toEqual([null, 'gc1', '2026-10-09', 4, 'red', 'now'])
     expect(run.target).toEqual({ open: 'run', gcId: 'gc1' })
 
