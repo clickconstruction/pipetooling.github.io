@@ -58,10 +58,19 @@ export type LienAffidavitRow = {
   month_source?: LienMonthSource | null
 }
 
-export type LienAffidavitPile = 'needs_property' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'filed' | 'missed'
+/**
+ * `needs_notice` (v2.7457, the owner's pick of 2026-11-16): an affidavit not yet sent whose one closed gate is the
+ * § 53.056 notice. Until then it stood in `needs_property`, a pile named for a fact it did not lack. A paper that
+ * lacks a fact and a notice stays in `needs_property`: the fact is the affidavit's own work, the notice has its row.
+ */
+export type LienAffidavitPile = 'needs_property' | 'needs_notice' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'filed' | 'missed'
+
+/** The pile's name, and its bin's on the Board. */
+export const LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL = 'Waiting on its notice'
 
 export const LIEN_AFFIDAVIT_PILES: ReadonlyArray<{ key: LienAffidavitPile; label: string }> = [
   { key: 'needs_property', label: 'Needs the property facts' },
+  { key: 'needs_notice', label: LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL },
   { key: 'to_draft', label: 'To send for Master approval' },
   { key: 'awaiting', label: 'Awaiting Master approval' },
   { key: 'ready', label: 'Ready to file' },
@@ -185,7 +194,7 @@ export type LienAffidavitQueue = {
   counts: Record<LienAffidavitPile, number>
 }
 
-const EMPTY = (): Record<LienAffidavitPile, LienAffidavitEntry[]> => ({ needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] })
+const EMPTY = (): Record<LienAffidavitPile, LienAffidavitEntry[]> => ({ needs_property: [], needs_notice: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] })
 
 export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 'has_owner' | 'has_legal' | 'homestead' | 'has_contractor_address' | 'owner_public'> & Partial<Pick<LienAffidavitRow, 'property_kind' | 'homestead_answered'>>): LienAffidavitGate[] {
   return [
@@ -197,7 +206,18 @@ export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 
   ]
 }
 
-function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, daysLeft: number): LienAffidavitPile {
+/** Whether the § 53.056 notice is the one gate still closed: the paper waits on its notice and on nothing else. */
+export function affidavitWaitsOnNoticeAlone(gates: ReadonlyArray<Pick<LienAffidavitGate, 'key' | 'ok'>>): boolean {
+  const closed = gates.filter((g) => !g.ok)
+  return closed.length > 0 && closed.every((g) => g.key === 'notice')
+}
+
+/** A paper not yet sent: ready to send, waiting on its notice alone, or held by a fact. */
+function unsentPile(ready: boolean, noticeAlone: boolean): LienAffidavitPile {
+  return ready ? 'to_draft' : noticeAlone ? 'needs_notice' : 'needs_property'
+}
+
+function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, daysLeft: number, noticeAlone: boolean): LienAffidavitPile {
   if (item && item.voided_at == null) {
     switch (item.status) {
       case 'awaiting_approval':
@@ -211,12 +231,12 @@ function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, d
       case 'missed':
         return 'missed'
       default:
-        return ready ? 'to_draft' : 'needs_property'
+        return unsentPile(ready, noticeAlone)
     }
   }
   if (filed) return 'filed'
   if (daysLeft < 0) return 'missed'
-  return ready ? 'to_draft' : 'needs_property'
+  return unsentPile(ready, noticeAlone)
 }
 
 export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string): LienAffidavitQueue {
@@ -240,7 +260,7 @@ export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, i
     const daysLeft = daysBetweenYmd(todayYmd, r.deadline) ?? 0
     const filed = r.filed || (item?.status === 'sent')
     if (filed && !sent.has(r.job_id) && !live.has(r.job_id) && r.filed) continue // filed long ago, nothing to show
-    const pile = pileFor(item, ready, filed, daysLeft)
+    const pile = pileFor(item, ready, filed, daysLeft, affidavitWaitsOnNoticeAlone(gates))
     entries.push({
       jobId: r.job_id,
       isSub: r.is_sub,

@@ -200,6 +200,7 @@ const NOTICE_PILE_WORDS: Partial<Record<LienDeskEntry['pile'], string>> = {
 
 const AFFIDAVIT_PILE_WORDS: Partial<Record<LienAffidavitEntry['pile'], string>> = {
   needs_property: 'need the property facts',
+  needs_notice: 'wait on a notice',
   to_draft: 'to draft',
   awaiting: 'to approve',
   ready: 'to file',
@@ -315,7 +316,7 @@ export function buildLienMonth(input: LienMonthInput): LienMonth {
 
   const remindersZone = working('reminders', reminders, ['to send', 'before day 7'])
   const noticesZone = working('notices', notices, ['to find the owner', 'to draft', 'to approve', 'to send', 'to mail', 'missed'])
-  const liensZone = working('liens', liens, ['need the property facts', 'to draft', 'to approve', 'to file', 'missed'])
+  const liensZone = working('liens', liens, ['need the property facts', 'wait on a notice', 'to draft', 'to approve', 'to file', 'missed'])
 
   const catchSpan = lienMonthZoneSpan('catch_up', rule, daysInMonth)
   const slips = sortJobs([...remindersZone.jobs, ...noticesZone.jobs, ...liensZone.jobs].filter((j) => j.state === 'slipped').map((j) => ({ ...j })))

@@ -42,6 +42,23 @@ describe('lienAffidavitNoticeTag', () => {
   it('none on record on a job that needs one is the warning', () => {
     expect(lienAffidavitNoticeTag({ isSub: true, noticed: false, sentOn: ['2026-10-14'] })).toEqual({ tone: 'warn', words: 'No notice on record' })
   })
+
+  it('with the notice’s standing the warning says where it stands; the late notice and a missing standing keep *No notice on record*', () => {
+    const tag = (standing: Parameters<typeof lienAffidavitNoticeTag>[0]['standing']) => lienAffidavitNoticeTag({ isSub: true, noticed: false, sentOn: [], standing })
+    expect(tag('approved')).toEqual({ tone: 'warn', words: 'Notice approved · not mailed yet' })
+    expect(tag('printed').words).toBe('Notice printed · not mailed yet')
+    expect(tag('awaiting').words).toBe('Notice awaiting approval')
+    expect(tag('to_send').words).toBe('Notice not sent for approval yet')
+    expect(tag('held').words).toBe('Notice held')
+    expect(tag('needs_owner').words).toBe('Notice needs the owner')
+    expect(tag('unrecorded').words).toBe('Notice sent · no mailing on record')
+    expect(tag('late').words).toBe('No notice on record')
+    expect(tag(null).words).toBe('No notice on record')
+    // A standing that says the gate is open never overrules the gate itself.
+    expect(tag('on_record').words).toBe('No notice on record')
+    // On record, the days still lead whatever the newest notice is doing.
+    expect(lienAffidavitNoticeTag({ isSub: true, noticed: true, sentOn: ['2026-10-14'], standing: 'on_record' }).words).toBe('Notice sent Oct 14')
+  })
 })
 
 describe('lienHeadDay', () => {

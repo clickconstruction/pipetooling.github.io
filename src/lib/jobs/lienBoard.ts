@@ -2,8 +2,8 @@
  * The Lien desk's Board (the owner's ask of 2026-11-15): the whole month as one picture. Two
  * columns of bins, one per stage — the monthly notices on the left, the lien affidavits on the
  * right — every job in its bin as a small chip coloured by how soon its day is, thin arrows down
- * each column and one from Sent across to Needs the property facts (the notice on record is the
- * affidavit's gate), four tiles over the columns, the busiest bin lit, Held and Missed beside a
+ * each column and one from Sent across to Waiting on its notice (the notice on record is the
+ * affidavit's gate; the bin is its own since v2.7457, and Needs the property facts holds a missing fact alone), four tiles over the columns, the busiest bin lit, Held and Missed beside a
  * column only while a job is in one, and retainage as one line under the notices.
  *
  * Pure. It folds the queues the desk already builds (`buildLienDeskQueue`, `buildLienAffidavitQueue`,
@@ -19,7 +19,7 @@ import { batchWords, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
-import type { LienAffidavitEntry, LienAffidavitGateKey, LienAffidavitPile } from './lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL, type LienAffidavitEntry, type LienAffidavitGateKey, type LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 
 /** The two kinds of paper the Board draws; retainage is a line, not a column. */
@@ -28,7 +28,7 @@ export type LienBoardKind = 'notice' | 'affidavit'
 /** The notice column's bins in flow order, then the two beside it. */
 export type LienBoardNoticeStage = 'needs_owner' | 'to_send' | 'awaiting' | 'in_mail' | 'sent' | 'held' | 'missed'
 /** The affidavit column's bins in flow order, then the two beside it. */
-export type LienBoardAffidavitStage = 'needs_property' | 'to_send' | 'awaiting' | 'ready' | 'filed' | 'held' | 'missed'
+export type LienBoardAffidavitStage = 'needs_property' | 'needs_notice' | 'to_send' | 'awaiting' | 'ready' | 'filed' | 'held' | 'missed'
 
 export type LienBoardBinKey = `notice:${LienBoardNoticeStage}` | `affidavit:${LienBoardAffidavitStage}`
 
@@ -110,8 +110,8 @@ export type LienBoardTile = {
 
 export type LienBoardTileDestination = { kind: 'stage'; stage: 'awaiting' } | { kind: 'run' } | { kind: 'risk' }
 
-/** A job in both columns for one reason, cleared by one door. */
-export type LienBoardPair = { key: string; jobId: string; reason: 'owner'; destination: LienBoardDestination }
+/** A job in both columns for one reason, cleared by one door: no owner of record, or (v2.7457) an affidavit that waits on its notice alone, beside that notice. */
+export type LienBoardPair = { key: string; jobId: string; reason: 'owner' | 'notice'; destination: LienBoardDestination }
 
 /** One of the four dots on the Dashboard's Needs you card. */
 export type LienBoardDot = { key: LienBoardTileKey; figure: string; words: string; tone: LienBoardTile['tone'] }
@@ -155,6 +155,7 @@ export type LienBoardInput = {
 export const LIEN_BOARD_WORDS = {
   needs_owner: 'Needs the owner',
   needs_property: 'Needs the property facts',
+  needs_notice: LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL,
   to_send: 'To send for Master approval',
   awaiting: 'Awaiting Master approval',
   in_mail: 'Approved · to mail',
@@ -166,11 +167,11 @@ export const LIEN_BOARD_WORDS = {
 } as const
 
 export const LIEN_BOARD_NOTICE_STAGES: ReadonlyArray<LienBoardNoticeStage> = ['needs_owner', 'to_send', 'awaiting', 'in_mail', 'sent', 'held', 'missed']
-export const LIEN_BOARD_AFFIDAVIT_STAGES: ReadonlyArray<LienBoardAffidavitStage> = ['needs_property', 'to_send', 'awaiting', 'ready', 'filed', 'held', 'missed']
+export const LIEN_BOARD_AFFIDAVIT_STAGES: ReadonlyArray<LienBoardAffidavitStage> = ['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'held', 'missed']
 
 /** The flow's stages, in order; Held and Missed stand beside. */
 const NOTICE_FLOW: ReadonlyArray<LienBoardNoticeStage> = ['needs_owner', 'to_send', 'awaiting', 'in_mail', 'sent']
-const AFFIDAVIT_FLOW: ReadonlyArray<LienBoardAffidavitStage> = ['needs_property', 'to_send', 'awaiting', 'ready', 'filed']
+const AFFIDAVIT_FLOW: ReadonlyArray<LienBoardAffidavitStage> = ['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed']
 
 /** A chip inside this many days, or past its day, is red. */
 export const LIEN_BOARD_DAY_DAYS = 1
@@ -198,6 +199,8 @@ const AFFIDAVIT_TAIL = ['Send it for approval', '{leader} approves it', 'Notariz
 /** The stages still to pass before an affidavit is filed. */
 const AFFIDAVIT_STAGES_LEFT: Record<LienBoardAffidavitStage, ReadonlyArray<string>> = {
   needs_property: ['Clear what holds it', ...AFFIDAVIT_TAIL],
+  // Its first stage is the notice's last (`NOTICE_TAIL`), named as the affidavit's reader meets it.
+  needs_notice: ['Mail its notice and record the mailing', ...AFFIDAVIT_TAIL],
   to_send: AFFIDAVIT_TAIL,
   awaiting: AFFIDAVIT_TAIL.slice(1),
   ready: AFFIDAVIT_TAIL.slice(2),
@@ -237,6 +240,8 @@ function affidavitStage(pile: LienAffidavitPile): LienBoardAffidavitStage {
   switch (pile) {
     case 'needs_property':
       return 'needs_property'
+    case 'needs_notice':
+      return 'needs_notice'
     case 'to_draft':
       return 'to_send'
     case 'awaiting':
@@ -327,12 +332,17 @@ function noticeDestination(e: LienDeskEntry, stage: LienBoardNoticeStage): LienB
   }
 }
 
-function affidavitDestination(e: LienAffidavitEntry, stage: LienBoardAffidavitStage): LienBoardDestination {
+function affidavitDestination(e: LienAffidavitEntry, stage: LienBoardAffidavitStage, notice?: LienDeskEntry | null): LienBoardDestination {
   switch (stage) {
-    case 'needs_property': {
+    case 'needs_property':
+    case 'needs_notice': {
       const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
-      // The notice as the one gate left: the door is the notice, as the To do row's is (v2.4708).
-      if (failing.length === 1 && failing[0] === 'notice') return { kind: 'paper', tab: 'notices', jobId: e.jobId }
+      // The notice as the one gate left: the door is the notice, as the To do row's is (v2.4708). A notice already
+      // approved stands in the run, so the door is its envelope there, as its own chip's is.
+      if (failing.length === 1 && failing[0] === 'notice') {
+        if (notice?.item && noticeStage(notice.pile) === 'in_mail') return { kind: 'run', itemId: notice.item.id, jobId: e.jobId }
+        return { kind: 'paper', tab: 'notices', jobId: e.jobId }
+      }
       const focus = propertyFocus(e.gates)
       return focus ? { kind: 'property', jobId: e.jobId, focus } : { kind: 'paper', tab: 'affidavits', jobId: e.jobId }
     }
@@ -355,12 +365,12 @@ export function compareLienBoardChips(a: Pick<LienBoardChip, 'dueYmd' | 'label'>
   return a.label.localeCompare(b.label, undefined, { numeric: true })
 }
 
-/** The arrows: down each column between the flow's bins, and one across from Sent to Needs the property facts. */
+/** The arrows: down each column between the flow's bins, and one across from Sent to Waiting on its notice, the bin a recorded mailing empties. */
 export function lienBoardArrows(): LienBoardArrow[] {
   const arrows: LienBoardArrow[] = []
   for (let i = 1; i < NOTICE_FLOW.length; i += 1) arrows.push({ from: `notice:${NOTICE_FLOW[i - 1]!}`, to: `notice:${NOTICE_FLOW[i]!}`, kind: 'down' })
   for (let i = 1; i < AFFIDAVIT_FLOW.length; i += 1) arrows.push({ from: `affidavit:${AFFIDAVIT_FLOW[i - 1]!}`, to: `affidavit:${AFFIDAVIT_FLOW[i]!}`, kind: 'down' })
-  arrows.push({ from: 'notice:sent', to: 'affidavit:needs_property', kind: 'cross' })
+  arrows.push({ from: 'notice:sent', to: 'affidavit:needs_notice', kind: 'cross' })
   return arrows
 }
 
@@ -398,6 +408,15 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       pairs.push({ key, jobId: e.jobId, reason: 'owner', destination: { kind: 'property', jobId: e.jobId, focus: 'owner' } })
     }
   }
+  // An affidavit that waits on its notice alone stands beside that notice (v2.7457): point at one chip and both light,
+  // so the reader sees where the notice is. The one door is the notice's own.
+  const affidavitNeedsNotice = new Set(input.affidavits.filter((a) => a.pile === 'needs_notice').map((a) => a.jobId))
+  for (const e of input.notices) {
+    if (!affidavitNeedsNotice.has(e.jobId) || pairKeyByJob.has(e.jobId)) continue
+    const key = `notice:${e.jobId}`
+    pairKeyByJob.set(e.jobId, key)
+    pairs.push({ key, jobId: e.jobId, reason: 'notice', destination: noticeDestination(e, noticeStage(e.pile)) })
+  }
   // A job on a property that reads as public and has no answer yet (v2.7443): no paper can be made there, so its chip
   // loses its red day and its *!*, and carries the mark instead.
   const publicJob = (jobId: string) => Boolean(input.publicJobIds?.has(jobId))
@@ -427,6 +446,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       gcId: e.gcCustomerId,
     }
   })
+  const noticeByJob = new Map(input.notices.map((e) => [e.jobId, e] as const))
   const affidavits: LienBoardChip[] = input.affidavits.map((e) => {
     const stage = affidavitStage(e.pile)
     const stepsLeft = AFFIDAVIT_STAGES_LEFT[stage].length
@@ -445,9 +465,9 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       urgency: stage === 'filed' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
       atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
       ...(marked ? { publicMark: true } : {}),
-      destination: affidavitDestination(e, stage),
+      destination: affidavitDestination(e, stage, noticeByJob.get(e.jobId)),
       tip: tipFor(e.jobId, e.gcCustomerId, e.openBalance),
-      pairKey: stage === 'needs_property' ? pairKeyByJob.get(e.jobId) ?? null : null,
+      pairKey: stage === 'needs_property' || stage === 'needs_notice' ? pairKeyByJob.get(e.jobId) ?? null : null,
       openBalance: e.openBalance,
       pile: e.pile,
       gcId: e.gcCustomerId,

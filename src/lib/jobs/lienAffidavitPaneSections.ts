@@ -8,6 +8,7 @@
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import type { LienRetainageGateKey, LienPaymentBond } from './lienDeskRetainage'
 import { lienAffidavitGateShortWords } from './lienDeskGates'
+import type { LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, type OwnerCall } from './lienOwnerCall'
 import type { LienAffidavitForm } from './lienAffidavitForm'
 import type { LienPaneSection } from './lienPaneSections'
@@ -40,6 +41,8 @@ export type LienAffidavitPaneSectionsInput = {
   /** The timeline's next step, "File the affidavit — 9 days."; null with no timeline. */
   nextWords: string | null
   gates: ReadonlyArray<{ key: LienAffidavitGateKey; ok: boolean }>
+  /** Where the job's notice stands while its gate is closed (`lienAffidavitNoticeStanding.ts`); absent, the tail keeps *no § 53.056 notice on the job*. */
+  noticeStanding?: LienAffidavitNoticeStanding | null
   window: LienAffidavitWindow
   /** The owner's answers on the sent notice; null before any call. */
   ownerCall: OwnerCall | null
@@ -75,7 +78,7 @@ export function lienAffidavitPaneSections(i: LienAffidavitPaneSectionsInput): Li
     key: 'gates',
     label: 'Before it can be generated',
     fact: gatesFact(i.gates),
-    tail: missing.length ? missing.map((g) => lienAffidavitGateShortWords(g)).join(' · ') : `window from ${i.monthLabel(i.window.lastMonth)}`,
+    tail: missing.length ? missing.map((g) => lienAffidavitGateShortWords(g, { noticeStanding: i.noticeStanding })).join(' · ') : `window from ${i.monthLabel(i.window.lastMonth)}`,
   })
   out.push({ key: 'owner', label: "The owner's answers", fact: lienOwnerAnswersFact(i.ownerCall), tail: lienBondTail(i.bond) })
   if (i.months) {

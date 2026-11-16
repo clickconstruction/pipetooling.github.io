@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 190 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -1019,6 +1019,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### dev-mcp
+
+> **v2.7457 (server 0.91.0, unchanged) — an affidavit that waits on its notice is refused in its own words**: the Lien desk's affidavit queue has a pile of its own, `needs_notice`, for a paper whose one closed gate is its § 53.056 notice (`_shared/gcKernels/lib/jobs/lienDeskAffidavits.ts`, the copied kernel). **`plan_affidavit_draft`** refuses such a job by saying the notice must be mailed and recorded first, where it used to name a record to fill in. No new verb, no migration. Redeploy after the merge.
 
 > **v2.7428 (server 0.91.0) — a teammate's own sheet is theirs in the seat** (punch list #346; Taunya, 2026-11-15: "a sheet that names one teammate and no sub be counted: owed to the teamate"): `sheetSentTo` in `_shared/devMcpSubLabor.ts` mirrors `sheetParties` and `sendingSheetsFrom` under `teamSheetRule`'s `owed`, as the Pay view has read them since v2.7389. **`plan_sub_labor_payment`**'s `record` on a sheet with no sub and one teammate now names that teammate as who the sending is to (`sending.person_id`, `who_reads`: *a teammate, alone on a sheet of their own: sub labor paid to someone on payroll*), so `record_sub_sending` files the sending under them and their sheets can share one and hold a credit. It named nobody before (*a crew pay sheet*). Several teammates and no sub, or no name at all, still name nobody, each with its own words. **`plan_sub_labor`**'s plan for a primary reads `pay_ledger: 'Team · sub labor: a sheet of their own, which the Pay ledger counts as owed to them'` and its warning says the same, where both said *Crew pay* and *pays through payroll*. No new verb, no input change, no migration.
 

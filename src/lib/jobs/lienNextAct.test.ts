@@ -26,6 +26,18 @@ describe('lienNextActFor — what pressing the band does (v2.7321)', () => {
     expect(aff(['homestead', 'owner'])).toEqual({ kind: 'none', waiting: 'counsel' })
   })
 
+  it('the notice gate’s press says what the notice still needs: mailed when it is approved, sent first only when none was started', () => {
+    const aff = (noticeStanding: LienNextActFacts['noticeStanding']) => lienNextActFor(facts({ next: { kind: 'affidavit', affidavitState: 'needs_property' }, missingKeys: ['notice'], noticeStanding }))
+    expect(aff('approved')).toEqual({ kind: 'gate:notice', label: 'Mail the notice first ›' })
+    expect(aff('printed')).toEqual({ kind: 'gate:notice', label: 'Mail the notice first ›' })
+    expect(aff('awaiting')).toEqual({ kind: 'gate:notice', label: 'Open the notice ›' })
+    expect(aff('to_send')).toEqual({ kind: 'gate:notice', label: 'Open the notice ›' })
+    expect(aff('late')).toEqual({ kind: 'gate:notice', label: 'Send the notice first ›' })
+    expect(aff(null)).toEqual({ kind: 'gate:notice', label: 'Send the notice first ›' })
+    // A property fact still leads the notice, whatever the notice is doing.
+    expect(lienNextActFor(facts({ next: { kind: 'affidavit', affidavitState: 'needs_property' }, missingKeys: ['legal', 'notice'], noticeStanding: 'approved' }))).toEqual({ kind: 'gate:legal', label: 'Fill in the legal description ›' })
+  })
+
   it('an affidavit on the desk goes to the footer’s press for its step; filed, the copy and the release are the Lien window’s', () => {
     const aff = (affidavitState: NonNullable<LienNextActFacts['next']['affidavitState']>) => lienNextActFor(facts({ next: { kind: 'affidavit', affidavitState } }))
     expect(aff('to_draft')).toEqual({ kind: 'footer', label: 'Send for approval ›' })

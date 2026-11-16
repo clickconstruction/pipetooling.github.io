@@ -7,14 +7,15 @@ import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
  * lien month strip and Steps of each paper stood until v2.7332. Four tiles, then two columns of bins — the monthly
  * notices on the left, the lien affidavits on the right — every job a chip in the bin of its stage, coloured by how
- * soon its day is; thin grey arrows down each column and one across from Sent to Needs the property facts, drawn
+ * soon its day is; thin grey arrows down each column and one across from Sent to Waiting on its notice, drawn
  * from the bins' measured places so they stay attached when chips wrap, the crossing one gone when the columns stack;
  * the busiest bin lit; Held and Missed beside a column only while a job is in one; retainage one line under the notices.
  *
  * The picture and the queue are one screen: a bin's head is a press that narrows the list under the Board to that
  * bin's jobs (`onPick`), and a second press, or *Show every row*, puts the list back. A chip is a press to the right
  * place for its stage when the desk hands `onChip` (PR 3); until then it is a plain chip with its hover words. A chip
- * that stands in both columns for one reason lights in both on hover. The words and the rule are `lienBoard.ts`;
+ * that stands in both columns for one reason lights in both on hover: a job with no owner of record, or an affidavit
+ * that waits on its notice alone, beside that notice (v2.7457). The words and the rule are `lienBoard.ts`;
  * nothing here reads or writes.
  *
  * Since v2.7381 a chip pointed at, or reached by the keyboard, shows a card before any press (`cardFor`,
@@ -64,7 +65,7 @@ type Line = { key: string; kind: LienBoardArrow['kind']; d: string }
  * The arrows as SVG paths from the bins' measured boxes, relative to the grid. A down arrow runs from the bottom
  * middle of one bin to the top middle of the next; the crossing one leaves Sent's right edge, runs up the gutter
  * between the two columns (`col:notice` and `col:affidavit` boxes when measured, so a Held or Missed bin beside the
- * notices never has the line behind it) and enters Needs the property facts' left edge. Pure over the measurements.
+ * notices never has the line behind it) and enters Waiting on its notice's left edge. Pure over the measurements.
  */
 export function lienBoardArrowPaths(arrows: ReadonlyArray<LienBoardArrow>, boxes: Readonly<Record<string, { left: number; top: number; width: number; height: number } | undefined>>, stacked: boolean): Line[] {
   const out: Line[] = []

@@ -21,7 +21,7 @@ export type LienAffidavitRedrawPlan<E extends LienAffidavitRedrawEntry = LienAff
   held: E[]
 }
 
-const LIVE_PILES: ReadonlyArray<LienAffidavitEntry['pile']> = ['to_draft', 'needs_property', 'awaiting', 'held']
+const LIVE_PILES: ReadonlyArray<LienAffidavitEntry['pile']> = ['to_draft', 'needs_property', 'needs_notice', 'awaiting', 'held']
 
 export function lienAffidavitRedrawPlan<E extends LienAffidavitRedrawEntry>(entries: ReadonlyArray<E>): LienAffidavitRedrawPlan<E> {
   const earlier = entries.filter((e) => e.item != null && e.item.status !== 'sent' && e.item.status !== 'missed' && lienAffidavitFormForItem(e.item) === 'long')
