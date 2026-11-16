@@ -67,4 +67,27 @@ describe('LienDeskTimelineTab', () => {
     expect(all.textContent).toBe('No job has money open and a lien month.')
     expect(within(all).queryByRole('button')).toBeNull()
   })
+
+  it('on a phone the two pickers and Print the grid are a thumb tall, and a computer keeps its own (punch list #352)', () => {
+    const controls = () => {
+      const tab = document.querySelector('[data-lien-desk-timeline-tab]') as HTMLElement
+      const [gc, show] = [...tab.querySelectorAll('select')] as HTMLSelectElement[]
+      const print = within(tab).getByRole('button', { name: '⎙ Print the grid' }) as HTMLButtonElement
+      return { gc: gc!, show: show!, print, bar: tab.firstElementChild as HTMLElement }
+    }
+    // A computer: the small pickers and the small press, as they were.
+    const desk = render(<LienDeskTimelineTab book={book} loading={false} error="" gcId={null} onGcId={() => {}} show="all" onShow={() => {}} onOpenRow={() => {}} onPrint={() => {}} />)
+    const wide = controls()
+    expect([wide.gc.style.minHeight, wide.gc.style.fontSize, wide.gc.style.padding]).toEqual(['', '0.78rem', '2px 6px'])
+    expect([wide.print.style.minHeight, wide.print.style.fontSize, wide.print.style.padding]).toEqual(['', '0.78rem', '2px 10px'])
+    expect(wide.bar.style.position).toBe('sticky')
+    desk.unmount()
+    // A phone: 44 px, and 16 px words in a picker so an iPhone does not zoom the page.
+    render(<LienDeskTimelineTab book={book} loading={false} error="" gcId={null} onGcId={() => {}} show="all" onShow={() => {}} onOpenRow={() => {}} onPrint={() => {}} phone />)
+    const phone = controls()
+    for (const picker of [phone.gc, phone.show]) expect([picker.style.minHeight, picker.style.fontSize]).toEqual(['44px', '1rem'])
+    expect([phone.print.style.minHeight, phone.print.style.fontSize]).toEqual(['44px', '0.875rem'])
+    // The taller bar scrolls away with the list in place of staying pinned over it.
+    expect(phone.bar.style.position).toBe('static')
+  })
 })

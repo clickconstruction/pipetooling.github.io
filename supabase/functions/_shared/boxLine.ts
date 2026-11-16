@@ -9,8 +9,8 @@
  * (`job_containers.description`, at most 80 characters, null until someone says); the app's line is never stored, so
  * it is never stale.
  *
- * Pure and Deno-free on purpose: the screens read it through `src/lib/materials/boxLine.ts` and the scanned page's
- * function through `boxPage.ts` beside this file, so a signed-out page reads the same line the crew does.
+ * Pure and Deno-free on purpose: the screens read it through `src/lib/materials/boxLine.ts`. Until v2.7379 the scanned
+ * page's function read it too, through `boxPage.ts` beside this file; a signed-out scan is no longer told what a box holds.
  */
 
 /** `job_containers.description`'s own limit, and the most the app's own line runs to. */

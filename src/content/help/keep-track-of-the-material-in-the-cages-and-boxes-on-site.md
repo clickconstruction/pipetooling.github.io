@@ -82,7 +82,7 @@ Read [keep working when the signal drops](/help/keep-working-when-the-signal-dro
 
 Every box has one line that says what is in it. You never have to type it. Add a part and the app writes the line by itself. A box with one kind of part reads its name and count, like *Kohler toilets · 24*. A mixed box reads how many parts it holds and names the two it holds most of.
 
-The line shows under the box's name on the list and on the office page. The page a scan opens shows it too. Open a box and the line is under its name. A line the app wrote is marked *from its parts*.
+The line shows under the box's name on the list and on the office page. Open a box and the line is under its name. A line the app wrote is marked *from its parts*.
 
 Tap {{button:outline|Say it better}} to put the line in your own words, like PVC fittings, mixed. Then tap {{button:blue|Save the line}}. Your words show from then on. The parts under them still count.
 
@@ -148,15 +148,15 @@ After the first print the window opens on tape on that computer. Press **Change*
 
 Printing at the cage from Brother's phone app? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
 
-Signed out, the scan still opens a page. The top is a dark plate with the stencil in large letters and the code under it. The foot of the plate says how fresh the count is, such as Counted 2 days ago. It says Due a count once the last count is 14 days old. The page lists what is in the box and shows the newest photo. Tap the photo to see it whole. A part that ran out since the last count stays on the list as None left. A part the crew pressed Can't find on says how many could not be found. The page never names the job.
+Signed out, the scan still opens a page. The page does not say what is in the box. The top is a dark plate with the box's name in large letters and its code under it. Under the plate, the page says the material belongs to Click Plumbing and Electrical. The page never names the job.
 
-Looking for a part that is not in that box? Type the part, the maker or a stencil in the search field and press **Find**. The page lists the boxes on that site that hold it, with their counts. It never searches another site.
+Want a price from us? Press **Ask for a bid**. Your phone opens a text to the office that says which box you scanned. The press beside it shows the office's number. Press it to call.
 
-Is something missing or wrong with the box? Press **Text the office**. Your phone opens a text to the office with the box's name already in it. Press **Call the office** to ring them.
+Is the box moved, damaged or in the way? Press **Text the office about box G81**. Your phone opens a text with the box's name already in it. Looking for work? Press **Work with us** to text the office.
 
-To record a part used, moved or counted, press **Sign in to record a use or a count**. After you sign in you land on that box. You sign in once in a phone's browser. After that a scan opens the box's own screen.
+To see what is in the box, press **Sign in to see what is inside**. After you sign in you land on that box, with its parts and counts. You sign in once in a phone's browser. After that a scan opens the box's own screen.
 
-A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code, or search the site you scanned today.
+A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 

@@ -37,6 +37,11 @@ type PressProps = Reads & {
   paint?: (start: PaintedMapToPaint, onClosed: () => void) => boolean
   /** Reads the map back once the painting window closes. For a smoke. */
   loadMap?: (mapId: string) => Promise<Landed<PaintedMapWhole | null>>
+  /**
+   * False where the painting window would open under the window this press sits in (the roadmap's windows). The sheet
+   * then picks a map and does not paint one.
+   */
+  canPaint?: boolean
 }
 
 const newId = (): string => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
@@ -54,7 +59,7 @@ const newId = (): string => (typeof crypto !== 'undefined' && 'randomUUID' in cr
  * as on any map. When that window closes, the map is read back by the id made here, and if a line
  * or a place was saved it goes onto the task. Nothing saved is nothing changed.
  */
-export function TaskMapPress({ value, onChange, place, busy = false, sheetZIndex, loadMaps, loadWheres, taskWords = '', paint = paintPaintedMap, loadMap = loadPaintedMap }: PressProps) {
+export function TaskMapPress({ value, onChange, place, busy = false, sheetZIndex, loadMaps, loadWheres, taskWords = '', paint = paintPaintedMap, loadMap = loadPaintedMap, canPaint = true }: PressProps) {
   const [open, setOpen] = useState(false)
   const [paintRefused, setPaintRefused] = useState(false)
   const on = Boolean(value)
@@ -119,7 +124,7 @@ export function TaskMapPress({ value, onChange, place, busy = false, sheetZIndex
           {...(sheetZIndex != null ? { zIndex: sheetZIndex } : {})}
           {...(loadMaps ? { loadMaps } : {})}
           {...(loadWheres ? { loadWheres } : {})}
-          onPaint={paintNew}
+          {...(canPaint ? { onPaint: paintNew } : {})}
           paintRefused={paintRefused}
           onClose={() => setOpen(false)}
           onPick={(next) => {
@@ -140,7 +145,19 @@ const stripOff: CSSProperties = { font: 'inherit', fontSize: 12.5, fontWeight: 6
  * small picture of its line, and what it holds. A press on the name opens the painted map. ✕ takes
  * it off the task and leaves the map where it is. Draws nothing for a task with no map.
  */
-export function TaskMapSet({ value, onChange, loadMap = loadPaintedMap }: { value: TaskMapDraft | null; onChange: (next: TaskMapDraft | null) => void; /** The one map, for its name and picture. For a smoke. */ loadMap?: (mapId: string) => Promise<Landed<PaintedMapWhole | null>> }) {
+export function TaskMapSet({
+  value,
+  onChange,
+  loadMap = loadPaintedMap,
+  canOpen = true,
+}: {
+  value: TaskMapDraft | null
+  onChange: (next: TaskMapDraft | null) => void
+  /** The one map, for its name and picture. For a smoke. */
+  loadMap?: (mapId: string) => Promise<Landed<PaintedMapWhole | null>>
+  /** False where the painted map's window would open under the window this strip sits in. The name is then words, not a press. */
+  canOpen?: boolean
+}) {
   const read = useTaskMapWhole(value?.id ?? null, loadMap)
   const [pictureFailed, setPictureFailed] = useState(false)
   if (!value) return null
@@ -150,10 +167,17 @@ export function TaskMapSet({ value, onChange, loadMap = loadPaintedMap }: { valu
   return (
     <div data-task-map-set style={{ gridColumn: '1 / -1', display: 'grid', gap: 6, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-        <button type="button" data-task-map-set-open onClick={() => openPaintedMap(value.id)} title="Open this map" style={stripChip}>
-          <span aria-hidden style={{ width: 14, height: 4, borderRadius: 2, background: PAINT_COLOR, flex: 'none' }} />
-          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-        </button>
+        {canOpen ? (
+          <button type="button" data-task-map-set-open onClick={() => openPaintedMap(value.id)} title="Open this map" style={stripChip}>
+            <span aria-hidden style={{ width: 14, height: 4, borderRadius: 2, background: PAINT_COLOR, flex: 'none' }} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+          </button>
+        ) : (
+          <span data-task-map-set-name style={{ ...stripChip, cursor: 'default' }}>
+            <span aria-hidden style={{ width: 14, height: 4, borderRadius: 2, background: PAINT_COLOR, flex: 'none' }} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+          </span>
+        )}
         <button type="button" aria-label={TASK_MAP_PICK_WORDS.remove} title={TASK_MAP_PICK_WORDS.remove} onClick={() => onChange(null)} style={stripOff}>
           ✕
         </button>
@@ -198,7 +222,7 @@ function TaskMapSheet({
   loadWheres = loadPaintedMapsForSearch,
   onPaint,
   paintRefused = false,
-}: Reads & { value: TaskMapDraft | null; place: TaskPlacePoint | null; onPick: (next: TaskMapDraft | null) => void; onClose: () => void; zIndex?: number; /** Paint a new map for the task: by hand, or walked or driven. */ onPaint: (first: 'line' | 'walk') => void; /** The painting window could not open. */ paintRefused?: boolean }) {
+}: Reads & { value: TaskMapDraft | null; place: TaskPlacePoint | null; onPick: (next: TaskMapDraft | null) => void; onClose: () => void; zIndex?: number; /** Paint a new map for the task: by hand, or walked or driven. Left out where the painting window cannot open. */ onPaint?: (first: 'line' | 'walk') => void; /** The painting window could not open. */ paintRefused?: boolean }) {
   const isTopmost = useModalStackEntry()
   const [maps, setMaps] = useState<MapsRead>({ kind: 'reading' })
   const [find, setFind] = useState('')
@@ -265,6 +289,8 @@ function TaskMapSheet({
               {TASK_MAP_PICK_WORDS.remove}
             </button>
           ) : null}
+          {onPaint ? (
+          <>
           <p style={head}>{TASK_MAP_PICK_WORDS.paintHead}</p>
           <div data-task-map-sheet-paint style={{ display: 'grid', gridTemplateColumns: canWalk ? '1fr 1fr' : '1fr', gap: '0.5rem' }}>
             <button type="button" onClick={() => onPaint('line')} style={{ ...paintPress, border: '1px solid #2563eb', background: '#2563eb', color: '#fff' }}>
@@ -285,7 +311,9 @@ function TaskMapSheet({
               {TASK_MAP_PICK_WORDS.paintHint} {TASK_MAP_PICK_WORDS.paintHome}
             </p>
           )}
-          <p style={{ ...head, marginTop: '0.35rem' }}>{TASK_MAP_PICK_WORDS.pickHead}</p>
+          </>
+          ) : null}
+          <p style={{ ...head, marginTop: onPaint ? '0.35rem' : 0 }}>{onPaint ? TASK_MAP_PICK_WORDS.pickHead : TASK_MAP_PICK_WORDS.pickOnlyHead}</p>
           {maps.kind === 'read' && all.length >= FIND_FROM ? (
             <input
               type="search"
@@ -308,7 +336,7 @@ function TaskMapSheet({
           ) : null}
           {maps.kind === 'read' && offers.length === 0 ? (
             <p role="status" data-task-map-sheet-none style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {all.length === 0 ? TASK_MAP_PICK_WORDS.none : TASK_MAP_PICK_WORDS.noneFound}
+              {all.length === 0 ? (onPaint ? TASK_MAP_PICK_WORDS.none : TASK_MAP_PICK_WORDS.nonePickOnly) : TASK_MAP_PICK_WORDS.noneFound}
             </p>
           ) : null}
           {offers.length > 0 ? (

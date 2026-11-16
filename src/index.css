@@ -4374,6 +4374,11 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* …and each section is held to the pane's width, with a page of the paper sliding inside its own frame sooner than push the whole pane sideways. */
 [data-lien-pane-phone] [data-lien-pane-body] { grid-template-columns: minmax(0, 1fr); min-width: 0; }
 [data-lien-pane-phone] [data-lien-desk-months] { overflow-x: auto; }
+/* …and every press under 40 px inside the open paper gets a thumb's square (punch list #352, the leftovers): the pad `watchSmallPresses` marks, drawn unseen over the press, so nothing moves. */
+[data-lien-pane-phone] [data-press-pad] { position: relative; }
+[data-lien-pane-phone] [data-press-pad]::after { content: ''; position: absolute; top: calc(-1 * var(--press-pad-y, 0px)); bottom: calc(-1 * var(--press-pad-y, 0px)); left: calc(-1 * var(--press-pad-x, 0px)); right: calc(-1 * var(--press-pad-x, 0px)); }
+/* The notary's print box over the Affidavits list on a phone (punch list #352, the leftovers): folded, the bar hides what follows it in the box without unmounting it. */
+[data-lien-affidavit-print-fold][aria-expanded="false"] ~ * { display: none !important; }
 /* The affidavit's and the retainage notice's panes are the same one column: held to the screen's width while one is the whole desk. */
 .lienDeskTitleBar[data-lien-pane-open] + div > div { grid-template-columns: minmax(0, 1fr); }
 [data-lien-pane-phone] [data-lien-desk-cover], [data-lien-pane-phone] [data-lien-desk-release], [data-lien-pane-phone] [data-lien-desk-paper], [data-lien-pane-phone] [data-lien-desk-pay] { overflow-x: auto; padding: 0.9rem 0.8rem !important; }

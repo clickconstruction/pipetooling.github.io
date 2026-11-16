@@ -281,6 +281,27 @@ describe('Paint a new one, from the task', () => {
   })
 })
 
+describe('where the painted map\'s window cannot open', () => {
+  it('the sheet picks and does not paint, and an empty list names the doors that paint', async () => {
+    renderPress({ canPaint: false, loadMaps: landed([]) })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
+    expect(screen.queryByRole('button', { name: 'Draw it by hand' })).toBeNull()
+    expect(screen.getByText('Pick one that is painted')).toBeTruthy()
+    await waitFor(() => expect(document.querySelector('[data-task-map-sheet-none]')).toBeTruthy())
+    expect(document.querySelector('[data-task-map-sheet-none]')?.textContent).toBe('No painted map yet. Paint one from a job’s address, or search Paint a map, then pick it here.')
+  })
+
+  it('the set map\'s name is words and not a press, and ✕ still takes it off', async () => {
+    const changes: Array<TaskMapDraft | null> = []
+    render(<TaskMapSet value={{ id: 'way', name: 'The way in for deliveries' }} onChange={(next) => changes.push(next)} loadMap={async () => ({ ok: true, value: WAY })} canOpen={false} />)
+    expect(screen.queryByRole('button', { name: 'The way in for deliveries' })).toBeNull()
+    expect(document.querySelector('[data-task-map-set-name]')?.textContent).toBe('The way in for deliveries')
+    fireEvent.click(screen.getByRole('button', { name: 'Take the map off this task' }))
+    expect(changes).toEqual([null])
+    expect(asks).toEqual([])
+  })
+})
+
 describe('TaskMapSet', () => {
   const loadOne = (w: PaintedMapWhole | null) => async (): Promise<Landed<PaintedMapWhole | null>> => ({ ok: true, value: w })
 

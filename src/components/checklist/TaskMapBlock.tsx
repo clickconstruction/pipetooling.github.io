@@ -7,7 +7,7 @@ import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import type { PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
 import type { TaskMapRead } from '../../hooks/useTaskMapWhole'
 import { paintedLayerMaps } from '../../lib/paintedMap/paintedMapLayer'
-import { TASK_MAP_WORDS, taskMapFrame, taskMapHowFarWords, taskMapLineWords, taskMapPlaceKey, taskMapStart } from '../../lib/tasks/taskMap'
+import { TASK_MAP_WORDS, taskMapFrame, taskMapHowFarWords, taskMapLineParts, taskMapPlaceKey, taskMapStart } from '../../lib/tasks/taskMap'
 import { TASK_PLACE_NO_MAP_WORDS, TASK_PLACE_PRIVACY_WORDS, taskPlaceNoFixWords } from '../../lib/tasks/taskPlace'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { OnSiteMapPin } from '../materials/OnSiteMap'
@@ -28,11 +28,15 @@ const noMap: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--te
  */
 export function TaskMapLine({ map }: { map: TaskMapRead }) {
   if (map.kind === 'none' || map.kind === 'gone') return null
-  const words = map.kind === 'read' ? taskMapLineWords(map.whole.map.name, map.whole.lines, map.whole.places.length) : TASK_MAP_WORDS.reading
+  // The name gives way on a narrow card. The length and the places stay whole.
+  const parts = map.kind === 'read' ? taskMapLineParts(map.whole.map.name, map.whole.lines, map.whole.places.length) : { name: TASK_MAP_WORDS.reading, summary: '' }
   return (
     <span data-task-map-line style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem', fontSize: '0.875rem', color: 'var(--text-700)', fontWeight: 600, minWidth: 0 }}>
       <span role="img" aria-label={TASK_MAP_WORDS.mark} style={{ flex: 'none', width: 16, height: 4, borderRadius: 2, background: PAINT_COLOR }} />
-      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{words}</span>
+      <span style={{ display: 'flex', minWidth: 0 }}>
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parts.name}</span>
+        {parts.summary ? <span style={{ flex: 'none', whiteSpace: 'pre' }}>{` · ${parts.summary}`}</span> : null}
+      </span>
     </span>
   )
 }

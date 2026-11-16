@@ -1,7 +1,7 @@
 /**
  * How the last box added on this device sits (punch list #351, PR 1): the Add sheet on the phone and the Add row on
  * the office page open on the kind the person used last, since a site's boxes are mostly one kind. Kept on the device
- * alone, as `boxPageMemory.ts` keeps the last scan; browser io with the storage handed in, so the tests hand a map.
+ * alone, as `boxPageMemory.ts` kept the last scan until v2.7379; browser io with the storage handed in, so the tests hand a map.
  */
 import type { BoxKindChoice } from './editBox'
 import { BOX_KIND_CHOICES } from './editBox'

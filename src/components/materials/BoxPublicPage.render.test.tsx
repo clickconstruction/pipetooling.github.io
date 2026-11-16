@@ -1,27 +1,33 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BoxPublicPage } from './BoxPublicPage'
 import { POST_LOGIN_REDIRECT_KEY } from '../../lib/iosPwa'
 
-const box = {
+/** What the function answers since v2.7379: the name, the kind, the code and the office's number. */
+const box = { ok: true, box: { code: '849FDB0B', stencil: 'G81', kind: 'box' }, office: { phone: '(512) 555-0142' } }
+
+/** What it answered before: the place, the photo, the lines with their counts, what ran out. A page on the old function gets this. */
+const beforeTheSeal = {
   ok: true,
   box: {
-    code: '4F2A9C18', stencil: 'B3', kind: 'cage', place: 'Level 2', where: 'by the north stair',
-    lines: [{ partName: '3/4" copper 90° elbows', manufacturer: 'Mueller', onHand: 42 }, { partName: '1/2" PEX crimp rings', manufacturer: null, onHand: 200 }],
+    code: '849FDB0B', stencil: 'G81 COPPER 90', kind: 'box', place: 'Level 2', where: 'by the north stair', line: 'Copper fittings and valves',
+    lines: [{ partName: '3/4" copper 90° elbows', manufacturer: 'Mueller', onHand: 318, cannotFind: 2 }, { partName: '1/2" PEX crimp rings', manufacturer: null, onHand: 200 }],
+    gone: [{ partName: '1" copper tee', manufacturer: 'Mueller', onHand: 0 }],
     lastCountedOn: '2026-11-05',
-    photo: { id: 'ph1', takenOn: '2026-11-07', url: 'https://x.supabase.co/functions/v1/box-read?code=4F2A9C18&photo=ph1' },
+    photo: { id: 'ph1', takenOn: '2026-11-07', url: 'https://x.supabase.co/functions/v1/box-read?code=849FDB0B&photo=ph1' },
   },
+  office: { phone: '(512) 555-0142' },
 }
 
 function answer(status: number, body: unknown) {
   vi.stubGlobal('fetch', vi.fn(async () => ({ status, ok: status < 400, json: async () => body })))
 }
 
-function mount(code = '4F2A9C18') {
+function mount(code = '849FDB0B', entry = `/b/${code}`) {
   return render(
-    <MemoryRouter initialEntries={[`/b/${code}`]}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/b/:code" element={<BoxPublicPage code={code} />} />
         <Route path="/sign-in" element={<div data-testid="sign-in-page">sign in</div>} />
@@ -31,110 +37,110 @@ function mount(code = '4F2A9C18') {
   )
 }
 
-// The verdict reads the last count against today: hold the clock at noon Central on 2026-11-10 (timers stay real).
-beforeEach(() => {
-  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-10T18:00:00Z') })
-})
-
 afterEach(() => {
   cleanup()
-  vi.useRealTimers()
   vi.unstubAllGlobals()
   localStorage.clear()
 })
 
-describe('BoxPublicPage', () => {
-  it('draws the box, its photo, its lines and the last count, and never the job', async () => {
+describe('BoxPublicPage · what is inside needs a sign-in (v2.7379)', () => {
+  it('draws the name as the label prints it, whose the material is and the ways to the office, as Taunya drew it', async () => {
     answer(200, box)
     mount()
-    expect((await screen.findByTestId('box-page-title')).textContent).toBe('Cage B3')
-    expect(screen.getByTestId('box-page-place').textContent).toBe('Level 2 · by the north stair')
-    expect(screen.getByTestId('box-page-photo').getAttribute('src')).toContain('box-read?code=4F2A9C18&photo=ph1')
-    expect(screen.getByTestId('box-page-lines').textContent).toContain('3/4" copper 90° elbows')
-    expect(screen.getByTestId('box-page-lines').textContent).toContain('Mueller')
-    // v2.6868: the top reads as the label does, and the count is a verdict by the 14-day rule.
-    // v2.6899: the stencil is the plate's heading, large, with the kind read aloud before it.
-    expect(screen.getByTestId('box-page-tile').textContent).toBe('B3')
-    expect(screen.getByTestId('box-page-code').textContent).toBe('4F2A-9C18')
-    expect(screen.getByTestId('box-page-counted').textContent).toBe('Counted 5 days agoThursday, Nov 5')
-    expect(screen.getByTestId('box-page-counted').getAttribute('data-verdict')).toBe('fresh')
-    expect(screen.getByTestId('box-page-parts').textContent).toBe('2 parts')
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toContain('/functions/v1/box-read?code=4F2A9C18')
-    // The title is set by an effect after the box is drawn. On a slow runner the read above can land a tick before it (two
-    // CI runs failed here on 2026-11-10 reading 'Box label'), so wait for it instead of reading once.
-    await waitFor(() => expect(document.title).toBe('Cage B3 · Click Plumbing & Electrical'))
+    expect((await screen.findByTestId('box-page-title')).textContent).toBe('G81')
+    expect(screen.getByTestId('box-page-address').textContent).toBe('prts.co/b/849F-DB0B')
+    expect(screen.getByTestId('box-page-signed-out').textContent).toBe('Not signed in')
+    expect(screen.getByTestId('box-page-kind').textContent).toBe('Box on this site')
+    expect(screen.getByTestId('box-page-code').textContent).toBe('849F-DB0B')
+    expect(screen.getByTestId('box-page-watched').textContent).toBe('Counted and photographed by its crew.')
+    expect(screen.getByTestId('box-page-belongs').textContent).toContain('This material belongs toClick Plumbing and ElectricalYour reliable team is just a click away')
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(1)
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toContain('/functions/v1/box-read?code=849FDB0B')
+    // The title is set by an effect after the box is drawn, so wait for it instead of reading once.
+    await waitFor(() => expect(document.title).toBe('Box G81 · Click Plumbing & Electrical'))
   })
 
-  it('says what is in it under the name: the function’s line, or the app’s from the lines when an older function answers none (punch list #351, PR 2)', async () => {
-    answer(200, { ...box, box: { ...box.box, line: 'Elbows and rings for level 2' } })
-    mount()
-    expect((await screen.findByTestId('box-page-says')).textContent).toBe('Elbows and rings for level 2')
-    cleanup()
+  it('every press but the sign-in is a link to the office’s number, each text opening with its own words', async () => {
     answer(200, box)
     mount()
-    expect((await screen.findByTestId('box-page-says')).textContent).toBe('2 parts: 1/2" PEX crimp rings and 3/4" copper 90° elbows')
-    cleanup()
-    answer(200, { ...box, box: { ...box.box, lines: [], photo: null, line: '' } })
-    mount()
-    await screen.findByTestId('box-page-title')
-    expect(screen.queryByTestId('box-page-says')).toBeNull()
+    expect((await screen.findByTestId('box-page-bid')).getAttribute('href')).toBe(`sms:+15125550142?&body=${encodeURIComponent('I would like a bid. I scanned box G81, 849F-DB0B: ')}`)
+    expect(screen.getByTestId('box-page-bid').textContent).toBe('Ask for a bid')
+    expect(screen.getByTestId('box-page-call-office').getAttribute('href')).toBe('tel:+15125550142')
+    expect(screen.getByTestId('box-page-call-office').textContent).toBe('(512) 555-0142')
+    expect(screen.getByTestId('box-page-text-office').getAttribute('href')).toBe(`sms:+15125550142?&body=${encodeURIComponent('Box G81, 849F-DB0B: ')}`)
+    expect(screen.getByTestId('box-page-text-office').textContent).toBe('Text the office about box G81' + 'Moved, damaged or in the way.')
+    expect(screen.getByTestId('box-page-work').getAttribute('href')).toBe(`sms:+15125550142?&body=${encodeURIComponent('I would like to work with Click. I scanned box G81, 849F-DB0B: ')}`)
+    expect(screen.getByTestId('box-page-work').textContent).toBe('Work with us' + 'Plumbers and electricians wanted.')
   })
 
-  it('a cage last counted 14 days ago or more is due a count', async () => {
-    answer(200, { ...box, box: { ...box.box, lastCountedOn: '2026-10-19' } })
-    mount()
-    const counted = await screen.findByTestId('box-page-counted')
-    expect(counted.textContent).toBe('Due a countlast counted 22 days ago')
-    expect(counted.getAttribute('data-verdict')).toBe('due')
-  })
-
-  it('the photo is a band, and a tap opens it whole', async () => {
+  it('Sign in to see what is inside remembers the box and goes to the sign-in', async () => {
     answer(200, box)
     mount()
-    const press = await screen.findByTestId('box-page-photo-press')
-    expect(press.textContent).toContain('Photo from Saturday, Nov 7 · tap to see it whole')
-    expect(screen.getByTestId('box-page-photo').style.height).toBe('150px')
-    fireEvent.click(press)
-    expect(screen.getByTestId('box-page-photo').style.height).toBe('auto')
-    expect(press.getAttribute('aria-expanded')).toBe('true')
-  })
-
-  it('Sign in to record a use or a count remembers the box and goes to the sign-in', async () => {
-    answer(200, box)
-    mount()
-    // v2.6899: the press is a row, its title over one line of who it is for.
-    expect((await screen.findByTestId('box-page-sign-in')).textContent).toContain('Sign in to record a use or a countOn Click\'s crew? Once on this phone.')
-    fireEvent.click(await screen.findByTestId('box-page-sign-in'))
-    expect(localStorage.getItem(POST_LOGIN_REDIRECT_KEY)).toBe('/b/4f2a9c18')
+    expect((await screen.findByTestId('box-page-sign-in')).textContent).toBe('Sign in to see what is inside' + 'On Click\'s crew? Once on this phone.')
+    fireEvent.click(screen.getByTestId('box-page-sign-in'))
+    expect(localStorage.getItem(POST_LOGIN_REDIRECT_KEY)).toBe('/b/849fdb0b')
     expect(await screen.findByTestId('sign-in-page')).toBeTruthy()
   })
 
-  it('an empty box says so and still offers the sign-in', async () => {
-    answer(200, { ...box, box: { ...box.box, lines: [], photo: null, lastCountedOn: null } })
-    mount()
-    expect((await screen.findByTestId('box-page-empty')).textContent).toContain('Nothing is recorded in this cage yet')
-    expect(screen.getByTestId('box-page-counted').textContent).toContain('Never counted')
-    expect(screen.getByTestId('box-page-sign-in').textContent).toContain('Sign in to add a part')
-    // The search stays: an empty cage is when a person most needs the others.
-    expect(screen.getByTestId('box-page-find-form')).toBeTruthy()
+  it('draws no part, count, photo, place, freshness or search, even when an older function still sends them', async () => {
+    answer(200, beforeTheSeal)
+    const { container } = mount()
+    // The name is cut to what the label prints, whichever function sent it.
+    expect((await screen.findByTestId('box-page-title')).textContent).toBe('G81')
+    const words = container.textContent ?? ''
+    for (const never of ['copper', 'Copper', 'PEX', 'Mueller', '318', '200', 'Level 2', 'north stair', 'None left', 'could not be found', 'Counted 5', 'Due a count', 'Never counted', 'Photo from', 'Find']) expect(words).not.toContain(never)
+    expect(container.querySelector('img')).toBeNull()
+    expect(container.querySelector('input')).toBeNull()
+    expect(container.querySelector('form')).toBeNull()
+    for (const gone of ['box-page-lines', 'box-page-line', 'box-page-gone', 'box-page-photo', 'box-page-place', 'box-page-says', 'box-page-counted', 'box-page-parts', 'box-page-find-form', 'box-page-find']) expect(screen.queryByTestId(gone)).toBeNull()
   })
 
-  it('a cage counted down to nothing says nothing is on hand', async () => {
-    answer(200, { ...box, box: { ...box.box, lines: [], photo: null } })
-    mount()
-    expect((await screen.findByTestId('box-page-empty')).textContent).toContain('Nothing on hand in this cage')
+  it('asks the function once, for the box alone: never the search or a photo, whatever the address says', async () => {
+    answer(200, box)
+    mount('849FDB0B', '/b/849FDB0B?find=1')
+    await screen.findByTestId('box-page-title')
+    const asked = vi.mocked(fetch).mock.calls.map((c) => String(c[0]))
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).not.toContain('find=')
+    expect(asked[0]).not.toContain('photo=')
+    expect(screen.queryByTestId('box-page-find')).toBeNull()
   })
 
+  it('keeps nothing on the phone about the box that was scanned', async () => {
+    answer(200, box)
+    mount()
+    await screen.findByTestId('box-page-title')
+    expect(localStorage.getItem('pt.boxPage.last')).toBeNull()
+  })
+
+  it('an answer with no office number draws no press that needs one', async () => {
+    answer(200, { ...box, office: null })
+    mount()
+    await screen.findByTestId('box-page-title')
+    for (const press of ['box-page-bid', 'box-page-call-office', 'box-page-text-office', 'box-page-work']) expect(screen.queryByTestId(press)).toBeNull()
+    // Whose it is and the sign-in still stand.
+    expect(screen.getByTestId('box-page-company').textContent).toBe('Click Plumbing and Electrical')
+    expect(screen.getByTestId('box-page-sign-in')).toBeTruthy()
+  })
+
+  it('a cage reads as a cage', async () => {
+    answer(200, { ...box, box: { ...box.box, stencil: 'B3', kind: 'cage' } })
+    mount()
+    expect((await screen.findByTestId('box-page-kind')).textContent).toBe('Cage on this site')
+    expect(screen.getByTestId('box-page-text-office').textContent).toContain('Text the office about cage B3')
+  })
+})
+
+describe('BoxPublicPage · the answers that are not a box say what they said', () => {
   it('a code no box carries, a retired box and a locked source each say so in words', async () => {
     answer(404, { error: 'not_found' })
     mount('4F2A9C19')
     expect((await screen.findByTestId('box-page-not-found')).textContent).toContain('4F2A-9C19 is not a box on any job')
+    expect(screen.getByTestId('box-page-type-code').getAttribute('href')).toBe('/b')
     cleanup()
     answer(410, { error: 'retired', retiredOn: '2026-11-08' })
     mount()
     expect((await screen.findByTestId('box-page-retired')).textContent).toContain('It left the job on Sunday, Nov 8')
-    // v2.6868: no search from a retired label (the function refuses it); the way on is another label.
-    expect(screen.queryByTestId('box-page-find-open-press')).toBeNull()
     expect(screen.getByTestId('box-page-scan-another').getAttribute('href')).toBe('/b')
     cleanup()
     answer(429, { error: 'x', code: 'locked' })
@@ -142,73 +148,17 @@ describe('BoxPublicPage', () => {
     expect((await screen.findByTestId('box-page-locked')).textContent).toContain('Too many wrong codes')
   })
 
-  it('a code no box carries offers the typed code, and the site this phone last scanned', async () => {
+  it('a code no box carries offers no search, even on a phone that scanned a box before v2.7379', async () => {
+    localStorage.setItem('pt.boxPage.last', JSON.stringify({ code: 'AAAA1111', stencil: 'A1', kind: 'cage', at: Date.now() - 60_000 }))
     answer(404, { error: 'not_found' })
     mount('4F2A9C19')
     await screen.findByTestId('box-page-not-found')
-    expect(screen.getByTestId('box-page-type-code').getAttribute('href')).toBe('/b')
     expect(screen.queryByTestId('box-page-last-site')).toBeNull()
-    cleanup()
-    localStorage.setItem('pt.boxPage.last', JSON.stringify({ code: 'AAAA1111', stencil: 'A1', kind: 'cage', at: Date.now() - 60_000 }))
-    mount('4F2A9C19')
-    await screen.findByTestId('box-page-not-found')
-    expect(screen.getByTestId('box-page-last-site').getAttribute('href')).toBe('/b/aaaa1111?find=1')
-  })
-
-  it('a retired label opened on the search shows the retired words, not a search that cannot answer', async () => {
-    answer(410, { error: 'retired', retiredOn: '2026-11-08' })
-    render(
-      <MemoryRouter initialEntries={['/b/4F2A9C18?find=1']}>
-        <Routes>
-          <Route path="/b/:code" element={<BoxPublicPage code="4F2A9C18" />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-    expect(await screen.findByTestId('box-page-retired')).toBeTruthy()
-    expect(screen.queryByTestId('box-page-find')).toBeNull()
-  })
-
-  it('a line emptied since the count reads None left, a Can\'t find shows on its line, and Text the office is a link (v2.6874)', async () => {
-    answer(200, {
-      ...box,
-      box: { ...box.box, lines: [{ partName: '3/4" ball valves', manufacturer: 'Apollo', onHand: 10, cannotFind: 2 }], gone: [{ partName: '1" copper tees', manufacturer: 'Mueller', onHand: 0 }] },
-      office: { phone: '(512) 555-0142' },
-    })
-    mount()
-    expect((await screen.findByTestId('box-page-cannot-find')).textContent).toBe('2 could not be found since the count')
-    expect(screen.getByTestId('box-page-gone').textContent).toBe('1" copper teesMuellerNone left')
-    // The part count is what is on hand, and the line at zero lists after it.
-    expect(screen.getByTestId('box-page-parts').textContent).toBe('1 part')
-    expect(screen.getAllByRole('row').map((r) => r.getAttribute('data-testid'))).toEqual(['box-page-line', 'box-page-gone'])
-    const text = screen.getByTestId('box-page-text-office')
-    expect(text.textContent).toContain('Text the office about Cage B3')
-    expect(text.getAttribute('href')).toBe('sms:+15125550142?&body=Cage%20B3%2C%204F2A-9C18%3A%20')
-    // v2.6899: the call has a row of its own, with the number as its second line.
-    expect(screen.getByTestId('box-page-call-office').getAttribute('href')).toBe('tel:+15125550142')
-    expect(screen.getByTestId('box-page-call-office').textContent).toContain('Call the office(512) 555-0142')
-  })
-
-  it('a cage with only lines at zero lists them, not the empty words', async () => {
-    answer(200, { ...box, box: { ...box.box, lines: [], gone: [{ partName: '1" copper tees', manufacturer: null, onHand: 0 }], photo: null } })
-    mount()
-    expect((await screen.findByTestId('box-page-gone')).textContent).toContain('None left')
-    expect(screen.queryByTestId('box-page-empty')).toBeNull()
-    expect(screen.queryByTestId('box-page-parts')).toBeNull()
-  })
-
-  it('an answer with no office number draws no Text the office', async () => {
-    answer(200, box)
-    mount()
-    await screen.findByTestId('box-page-title')
-    expect(screen.queryByTestId('box-page-text-office')).toBeNull()
-    expect(screen.queryByTestId('box-page-call-office')).toBeNull()
-    // The sign-in row still stands alone in the card.
-    expect(screen.getByTestId('box-page-sign-in')).toBeTruthy()
   })
 
   it('a retired label names its box and offers the text when the function answers them', async () => {
     answer(410, { error: 'retired', retiredOn: '2026-11-08', stencil: 'B3', kind: 'cage', phone: '(512) 555-0142' })
-    mount()
+    mount('4F2A9C18')
     expect((await screen.findByTestId('box-page-retired')).textContent).toContain('Cage B3 was retired')
     expect(screen.getByTestId('box-page-text-office').getAttribute('href')).toBe('sms:+15125550142?&body=Cage%20B3%2C%204F2A-9C18%3A%20')
   })
@@ -219,60 +169,6 @@ describe('BoxPublicPage', () => {
     expect(await screen.findByTestId('box-page-error')).toBeTruthy()
     expect(screen.getByRole('button', { name: /try again/i })).toBeTruthy()
   })
-})
-
-describe('BoxPublicPage · Find a part on this site (v2.6799)', () => {
-  const found = { ok: true, find: { words: ['copper'], total: 2, boxes: [
-    { code: '4F2A9C18', stencil: 'B3', kind: 'cage', place: 'Level 2', where: '', thisBox: true, lines: [{ partName: '3/4" copper 90° elbows', manufacturer: 'Mueller', onHand: 42 }] },
-    { code: 'AAAA1111', stencil: 'A1', kind: 'cage', place: 'Laydown yard', where: '', thisBox: false, lines: [{ partName: '3/4" copper pipe, 20 ft', manufacturer: 'Cerro', onHand: 24 }] },
-  ] } }
-
-  it('opens the search from the press, asks the function with the words and the code, lists the hits with a door to each other box', async () => {
-    const fetchMock = vi.fn(async (url: string) => ({ status: 200, ok: true, json: async () => (url.includes('&find=') ? found : box) }))
-    vi.stubGlobal('fetch', fetchMock)
-    mount()
-    fireEvent.click(await screen.findByTestId('box-page-find-open-press'))
-    expect(await screen.findByTestId('box-page-find')).toBeTruthy()
-    fireEvent.change(screen.getByTestId('box-page-find-input'), { target: { value: '3/4 copper' } })
-    fireEvent.click(screen.getByTestId('box-page-find-go'))
-    expect((await screen.findByTestId('box-page-find-count')).textContent).toBe('2 boxes hold a line that matches.')
-    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('box-read?code=4F2A9C18&find=3%2F4%20copper'))).toBe(true)
-    const hits = screen.getAllByTestId('box-page-find-hit')
-    expect(hits).toHaveLength(2)
-    expect(hits[0]!.textContent).toContain('this cage')
-    expect(screen.getAllByTestId('box-page-find-open')).toHaveLength(1)
-    expect(screen.getByTestId('box-page-find-open').getAttribute('href')).toBe('/b/aaaa1111')
-    fireEvent.click(screen.getByTestId('box-page-find-back'))
-    expect(await screen.findByTestId('box-page-title')).toBeTruthy()
-  })
-
-  it('words typed in the field on the box\'s own page are asked at once (v2.6868)', async () => {
-    const fetchMock = vi.fn(async (url: string) => ({ status: 200, ok: true, json: async () => (url.includes('&find=') ? found : box) }))
-    vi.stubGlobal('fetch', fetchMock)
-    mount()
-    fireEvent.change(await screen.findByTestId('box-page-find-first'), { target: { value: 'copper' } })
-    fireEvent.click(screen.getByTestId('box-page-find-open-press'))
-    expect((await screen.findByTestId('box-page-find-count')).textContent).toBe('2 boxes hold a line that matches.')
-    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('box-read?code=4F2A9C18&find=copper'))).toBe(true)
-    expect((screen.getByTestId('box-page-find-input') as HTMLInputElement).value).toBe('copper')
-  })
-
-  it('nothing matching says so in words', async () => {
-    const fetchMock = vi.fn(async (url: string) => ({ status: 200, ok: true, json: async () => (url.includes('&find=') ? { ok: true, find: { words: ['wax', 'ring'], boxes: [], total: 0 } } : box) }))
-    vi.stubGlobal('fetch', fetchMock)
-    mount()
-    fireEvent.click(await screen.findByTestId('box-page-find-open-press'))
-    fireEvent.change(screen.getByTestId('box-page-find-input'), { target: { value: 'wax ring' } })
-    fireEvent.click(screen.getByTestId('box-page-find-go'))
-    expect((await screen.findByTestId('box-page-find-empty')).textContent).toContain('Nothing on this site matches wax ring')
-  })
-
-  it('remembers the box this phone scanned', async () => {
-    answer(200, box)
-    mount()
-    await screen.findByTestId('box-page-title')
-    expect(JSON.parse(localStorage.getItem('pt.boxPage.last') ?? '{}')).toMatchObject({ code: '4F2A9C18', stencil: 'B3', kind: 'cage' })
-  })
 
   // v2.7072 (punch list #329): a code may be a sticker's.
   it('a blank sticker says its number, offers the sign-in and nothing else', async () => {
@@ -281,27 +177,13 @@ describe('BoxPublicPage · Find a part on this site (v2.6799)', () => {
     const page = await screen.findByTestId('box-page-sticker-blank')
     expect(page.textContent).toBe('Sticker 0147 is not on a box yet' + 'Sign in to say what it is.' + 'Sign in')
     expect(document.title).toBe('Sticker 0147 · Click Plumbing & Electrical')
-    // no search, no site, no office number, and not the words of a wrong code
+    // no site, no office number, and not the words of a wrong code
     expect(screen.queryByTestId('box-page-not-found')).toBeNull()
-    expect(screen.queryByTestId('box-page-find-form')).toBeNull()
-    expect(screen.queryByTestId('box-page-last-site')).toBeNull()
     expect(screen.queryByTestId('box-page-text-office')).toBeNull()
+    expect(screen.queryByTestId('box-page-bid')).toBeNull()
     fireEvent.click(screen.getByTestId('box-page-sticker-sign-in'))
     expect(await screen.findByTestId('sign-in-page')).toBeTruthy()
     expect(localStorage.getItem(POST_LOGIN_REDIRECT_KEY)).toBe('/b/9b1c0d2e')
-  })
-
-  it('a blank sticker opened on the search still shows only its page', async () => {
-    answer(404, { error: 'sticker_blank', number: 147 })
-    render(
-      <MemoryRouter initialEntries={['/b/9B1C0D2E?find=1']}>
-        <Routes>
-          <Route path="/b/:code" element={<BoxPublicPage code="9B1C0D2E" />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-    expect(await screen.findByTestId('box-page-sticker-blank')).toBeTruthy()
-    expect(screen.queryByTestId('box-page-find')).toBeNull()
   })
 
   it('a lost sticker says so with its day and offers another scan', async () => {
@@ -318,10 +200,10 @@ describe('BoxPublicPage · Find a part on this site (v2.6799)', () => {
   it('a sticker on a box draws that box as a label does, with the sticker\'s number by the code', async () => {
     answer(200, { ...box, box: { ...box.box, code: '9B1C0D2E', stickerNumber: 147 } })
     mount('9B1C0D2E')
-    expect((await screen.findByTestId('box-page-title')).textContent).toBe('Cage B3')
+    expect((await screen.findByTestId('box-page-title')).textContent).toBe('G81')
     expect(screen.getByTestId('box-page-sticker').textContent).toBe('Sticker 0147, ')
     expect(screen.getByTestId('box-page-code').textContent).toBe('Sticker 0147, 9B1C-0D2E')
-    expect(screen.getByTestId('box-page-lines').textContent).toContain('Mueller')
+    expect(screen.getByTestId('box-page-address').textContent).toBe('prts.co/b/9B1C-0D2E')
   })
 
   it('a label\'s own code draws no sticker number', async () => {

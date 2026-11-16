@@ -40,6 +40,16 @@ export function lienPhoneFootFold(folded: boolean): { words: string; mark: strin
   return folded ? { words: 'Show the next step', mark: '▴', expanded: false } : { words: 'Hide the next step', mark: '▾', expanded: true }
 }
 
+/**
+ * The notary's print box over the Affidavits list on a phone (punch list #352, the leftovers): the count and the
+ * held papers stay, and one bar folds the print press, the three chips and the county away, about 300 px at the
+ * top of the list. It opens folded, since printing a stack for the notary is a computer's work. What the bar says
+ * and whether the box under it shows.
+ */
+export function lienPhonePrintBoxFold(folded: boolean): { words: string; mark: string; expanded: boolean } {
+  return folded ? { words: 'Show the print for the notary', mark: '▾', expanded: false } : { words: 'Hide the print for the notary', mark: '▴', expanded: true }
+}
+
 /** The least room the paper should open with, in px: under this the footer starts folded. */
 export const LIEN_PHONE_PAPER_MIN_PX = 140
 

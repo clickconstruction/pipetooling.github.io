@@ -59,8 +59,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
   { kind: 'route', ref: '/pay/:id', audience: 'homeowner', steps: [H('pay-code')] },
   // #294 (v2.6797): a cage or box label's QR, prts.co/b/<code>. Whoever stands at the box reads what is in it; no customer journey has it.
-  { kind: 'route', ref: '/b/:code', audience: 'staff', exempt: 'The box label page: what is in a cage or box on a job site, for whoever scans its QR. Not a customer surface.' },
-  { kind: 'route', ref: '/b', audience: 'staff', exempt: 'Scan a label, where bare prts.co lands: type a box code, or find a part on the site this phone last scanned. Not a customer surface.' },
+  { kind: 'route', ref: '/b/:code', audience: 'staff', exempt: 'The box label page: whose a cage or box on a job site is and how to reach the office, for whoever scans its QR; what is inside needs a sign-in. Not a customer surface.' },
+  { kind: 'route', ref: '/b', audience: 'staff', exempt: 'Scan a label, where bare prts.co lands: type a box code. Not a customer surface.' },
   // #319: a First look's link, the page where a caller adds photos and a video of the problem. On the tab since v2.7017, with the ask that carries it.
   { kind: 'route', ref: '/show/:code', audience: 'homeowner', steps: [H('first-look-page'), H('first-look-thanks')] },
   // #345 (v2.7223): a painted map, shared: the way in and what is where, for a customer or a driver.

@@ -158,7 +158,7 @@ import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseD
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
-import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from '../../lib/jobs/lienPhonePane'
+import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, lienPhonePrintBoxFold } from '../../lib/jobs/lienPhonePane'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
@@ -507,6 +507,8 @@ export default function LienDesk({
   const [mobileListShown, setMobileListShown] = useState(true)
   // A phone's open paper: the footer folded to one bar so the paper has the screen (punch list #352, PR 6).
   const [footFolded, setFootFolded] = useState(false)
+  // The notary's print box over the Affidavits list opens folded on a phone (punch list #352, the leftovers).
+  const [affPrintFolded, setAffPrintFolded] = useState(true)
   // The pile titles stack as the Notices list scrolls (v2.4672): the list's scroller, and the pile the reader is in.
   // Wording (v2.3522): the four typed values the office may shape, layered over the draft; the paper-first pane's scroll state.
   const [wordingEdits, setWordingEdits] = useState<Partial<LienNoticeFields>>({})
@@ -3484,6 +3486,16 @@ export default function LienDesk({
               </button>
             ) : null}
           </div>
+          {/* On a phone one bar folds the rest of the box away (punch list #352, the leftovers): the count and the held papers stay, and the print press, the chips and the county stay mounted under the bar, so a tick or a typed county is kept (`index.css`). */}
+          {isMobile ? (() => {
+            const fold = lienPhonePrintBoxFold(affPrintFolded)
+            return (
+              <button type="button" data-lien-affidavit-print-fold aria-expanded={fold.expanded} onClick={() => setAffPrintFolded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%', minHeight: 44, padding: '0 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+                <span>{fold.words}</span>
+                <span aria-hidden="true">{fold.mark}</span>
+              </button>
+            )
+          })() : null}
           <button type="button" onClick={printReadyAffidavits} style={{ ...btn('plain'), justifySelf: 'start' }}>
             {affPrintWords.button}
           </button>
@@ -4711,6 +4723,7 @@ export default function LienDesk({
               onShow={setBookShow}
               onOpenRow={openBookRow}
               onOpenJob={onOpenJob}
+              phone={isMobile}
               onPrint={(rows, title) => {
                 // A print counts as a send (docs/SENT_COPIES.md): counsel's grid is filed on every job in it.
                 printAndFile(lienGridHtml(rows, { title, todayYmd, companyName: issuer?.companyName ?? '' }), { kind: 'lien_grid', title, recipientName: 'Counsel', jobIds: rows.map((r) => r.jobId) })

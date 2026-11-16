@@ -1,14 +1,14 @@
 /**
  * Scan a label (punch list #294, v2.6799): the page bare `prts.co` lands on, outside the sign-in. Point the camera at a
- * label and its own page opens; or type the code under the QR; or, on a phone that scanned a box in the last day, find a
- * part on that site without a second scan. A signed-in person goes to the On site tab, which has the app's own search.
+ * label and its own page opens, or type the code under the QR. A signed-in person goes to the On site tab, which has
+ * the app's own search. Until v2.7379 a phone that had scanned a box that day could search that box's site from here;
+ * what is in a box needs a sign-in now, so that press is gone with the search.
  */
-import { useMemo, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { boxPageCode, boxPageFindPath, boxPageNoun, boxPagePath } from '../lib/materials/boxPage'
-import { readLastBox, typedCodeWords } from '../lib/materials/boxPageMemory'
-import { boxPageKind } from '../lib/materials/boxPage'
+import { boxPageCode, boxPagePath } from '../lib/materials/boxPage'
+import { typedCodeWords } from '../lib/materials/boxPageMemory'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
 
 export default function BoxScan() {
@@ -16,7 +16,6 @@ export default function BoxScan() {
   const navigate = useNavigate()
   const [typed, setTyped] = useState('')
   const [slip, setSlip] = useState<string | null>(null)
-  const last = useMemo(() => readLastBox(), [])
   if (loading) return null
   if (user) return <Navigate to="/tally?tab=on-site" replace />
 
@@ -58,14 +57,6 @@ export default function BoxScan() {
           {slip ? <div style={{ color: '#b42318', fontSize: 14 }} data-testid="box-scan-slip">{slip}</div> : null}
           <button type="submit" style={press} data-testid="box-scan-open">Open the box</button>
         </form>
-        {last ? (
-          <section style={{ display: 'grid', gap: 8, marginTop: 6 }} data-testid="box-scan-last">
-            <div style={{ textAlign: 'center', color: FAINT, fontSize: 13 }}>You scanned {boxPageNoun(boxPageKind(last.kind))} {last.stencil} today</div>
-            <Link to={boxPageFindPath(last.code)} style={{ ...press, background: '#2563eb', borderColor: '#2563eb', color: '#fff', textDecoration: 'none' }} data-testid="box-scan-find">
-              Find a part on that site
-            </Link>
-          </section>
-        ) : null}
         <p style={{ margin: '10px 0 0', color: FAINT, fontSize: 12.5, lineHeight: 1.45 }}>
           Work here? <Link to="/sign-in" style={{ color: 'var(--text-link)', fontWeight: 700, textDecoration: 'none' }}>Sign in</Link> to see every job's boxes.
         </p>
