@@ -84,8 +84,11 @@ describe('PaintedWay', () => {
     const places = [...document.querySelectorAll('[data-way-place]')].map((e) => e.textContent)
     expect(places[0]).toContain('1Truck gateClose it behind you.')
     expect(places[1]).toContain('2Meter')
-    expect(document.querySelector('[data-way-lines]')?.textContent).toContain('About 1,050 ft, give or take 40 ft · walked')
-    expect(screen.getByText(/A length here is a guide for how far\. It is not a measurement\./)).toBeTruthy()
+    // The length is one line. How it was made and what it is worth are one sentence, under it.
+    const lineRow = document.querySelector('[data-way-line]')
+    expect(lineRow?.firstElementChild?.textContent).toBe('About 1,050 ft, give or take 40 ft')
+    expect(lineRow?.querySelector('[data-way-line-under]')?.textContent).toBe('Walked, so the length is a guide for how far, not a measurement.')
+    expect(document.querySelector('[data-way-lines]')?.textContent).toBe('About 1,050 ft, give or take 40 ftWalked, so the length is a guide for how far, not a measurement.')
     expect(screen.getByText(/Made Up Plumbing shared this map with you\. The link ends by itself on Feb 11\./)).toBeTruthy()
     expect(document.querySelector('[data-theme="light"]')).not.toBeNull()
   })
