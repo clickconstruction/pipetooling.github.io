@@ -22,3 +22,5 @@ Proved by CI's `job-account-not-needed-stamp` bed (`scripts/pgtest-job-account-n
 ## Not changed
 
 The table's policies, the read-only and archived fences, `list_bid_job_account_strip` (the Bid Board's chips do not show the stamp), and the roster's read of the table.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `not_needed_by`, `not_needed_at`, `list_job_account_strip`.

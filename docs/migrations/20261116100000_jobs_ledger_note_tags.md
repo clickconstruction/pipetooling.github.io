@@ -34,3 +34,5 @@ Proved by CI's `job-note-tags` bed (`scripts/pgtest-job-note-tags.sh`, `supabase
 ## Not changed
 
 `jobs_ledger_thread_notes`, its policies and its plain insert. `helper_on_job`, whose two-week span `job_note_people` copies for the schedule.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `jobs_ledger_note_tags`, `job_note_people`, `job_note_caller_sees_test`, `job_note_taggable` and the rest.

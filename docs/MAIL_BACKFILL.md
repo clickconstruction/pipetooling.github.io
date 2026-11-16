@@ -5,10 +5,10 @@ file: MAIL_BACKFILL.md
 type: Runbook
 purpose: How to run the script that files old mail from the office's mailboxes onto Pipeline jobs, for the record
 audience: Devs + AI agents
-last_updated: 2026-11-13
+last_updated: 2026-11-16
 ---
 
-The runbook for `scripts/mail-backfill.ts` (punch list #332). The plan, the measurements and the calls are on the card, `to-dos/mail-backfill-onto-jobs.md`. The rule is `src/lib/myMail/backfillMatch.ts`. The customer's contact step is `src/lib/myMail/backfillContact.ts`.
+The runbook for `scripts/mail-backfill.ts` (punch list #332). The plan, the measurements and the calls are on the card, `to-dos/mail-backfill-onto-jobs.md`. The rule is `src/lib/myMail/backfillMatch.ts`. The rule and the runner came in v2.7084. The customer's contact step is `src/lib/myMail/backfillContact.ts` (v2.7144, with the office-hours refusal and the rehearsal).
 
 ## What it is
 

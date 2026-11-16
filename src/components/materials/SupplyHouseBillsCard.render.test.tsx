@@ -97,6 +97,27 @@ describe('SupplyHouseBillsCard', () => {
     expect(screen.getByText('Nothing here.')).toBeTruthy()
   })
 
+  it('a bill paid in part lists for what is left on it, and money on account has its own number', () => {
+    renderWithProviders(
+      card({
+        bills: [bill('9', { amount: 512.4, partPaid: '$300.00 paid · $512.40 left of $812.40' }), bill('10', { amount: 100 })],
+        onAccount: 187.4,
+      }),
+    )
+    const rows = screen.getAllByTestId('supply-bill-row')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-part-paid').textContent).toBe('$300.00 paid · $512.40 left of $812.40')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-amount').textContent).toBe('$512.40')
+    expect(within(rows[1] as HTMLElement).queryByTestId('supply-bill-part-paid')).toBeNull()
+    // The summary and the group count what is left, not what was billed.
+    expect(screen.getByTestId('supply-bills-stat-open').textContent).toContain('$612')
+    expect(screen.getByTestId('supply-bills-stat-account').textContent).toBe('On account$187.40sent past the bills, offered on the next payment')
+  })
+
+  it('shows no On account number when nothing waits there', () => {
+    renderWithProviders(card())
+    expect(screen.queryByTestId('supply-bills-stat-account')).toBeNull()
+  })
+
   it('a paid row names its payment, and opens it when a typed payment stands behind it', () => {
     const onTogglePaid = vi.fn()
     renderWithProviders(

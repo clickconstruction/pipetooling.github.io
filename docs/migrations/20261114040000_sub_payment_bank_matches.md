@@ -17,3 +17,5 @@ So a matched payment is always a checked one. Ends with the four fence calls. Id
 **Order.** Push right after the merge, after the two before it. Until then the matches read fails soft (nothing reads as matched), Find bank lines still reads the bank and offers lines, and choosing one says matching is not switched on yet.
 
 **After the push:** the types and the dev seat's catalog, in one types PR for all three.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `sub_payment_bank_matches`, `match_sub_payment`, `set_sub_payment_checked`, `unmatch_sub_payment`.
