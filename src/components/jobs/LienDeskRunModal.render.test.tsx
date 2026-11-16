@@ -590,8 +590,11 @@ describe('LienDeskRunModal · take back a printed run (punch list #101)', () => 
     await settle()
     expect(taken).toEqual([['it1', 'it2']])
     expect(screen.getByTestId('run-taken-back').textContent).toBe('Taken back. The 2 notices printed October 7, 2026 are in Approved · to print again. The leader signs them again. Then print the packet.')
-    // The window shows them unsigned at once: their envelopes are held until he signs.
-    expect(screen.getByTestId('run-held-1').textContent).toMatch(/^Held · Unsigned: /)
+    // The window shows them unsigned at once (the run window of v2.7477): both sit under the wait on his signature, and nothing can print.
+    expect(screen.getByTestId('run-group-head-wait').textContent).toContain('Wait on Avery Stone’s signature · 2 notices')
+    expect(screen.getByTestId('run-check-line-it1').textContent).toContain('not signed')
+    expect(screen.getByTestId('run-check-line-it2').textContent).toContain('not signed')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('Nothing can print yet.')
   })
 
   it('only what printed is taken back; a run with nothing printed, or a host without the door, offers none', async () => {
