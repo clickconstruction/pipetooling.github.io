@@ -1,19 +1,26 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { tagsByNote, type NoteTagRow } from '../lib/jobs/noteTags'
+import { onNoteTagsChanged } from '../lib/jobs/noteTagsIo'
 
 const EMPTY: ReadonlyMap<string, NoteTagRow[]> = new Map()
 
 /**
  * The tags on one job's notes, by note (punch list #363). `jobId` null reads nothing, so a row
  * that has not loaded its feed asks for none. `rev` is anything that changes when the feed does
- * (its length), so a note just posted brings its tags with it.
+ * (its length), so a note someone else posted brings its tags with it. The reader's own post is
+ * read when `noteTagsChanged` says so (v2.7426): the feed grows by the optimistic row before the
+ * tag exists, and swapping that row for the real one does not change the length.
  *
  * A read that fails leaves the notes as they were: the chips and the waiting words are an
  * addition to a line that already reads whole, so no error is drawn for them.
  */
 export function useJobNoteTags(jobId: string | null, rev: unknown): ReadonlyMap<string, NoteTagRow[]> {
   const [state, setState] = useState<{ jobId: string | null; byNote: ReadonlyMap<string, NoteTagRow[]> }>({ jobId: null, byNote: EMPTY })
+
+  // A tag made, answered or cleared in this tab: read this job's tags again.
+  const [changed, setChanged] = useState(0)
+  useEffect(() => (jobId ? onNoteTagsChanged(() => setChanged((n) => n + 1)) : undefined), [jobId])
 
   useEffect(() => {
     if (!jobId) return
@@ -38,7 +45,7 @@ export function useJobNoteTags(jobId: string | null, rev: unknown): ReadonlyMap<
     return () => {
       live = false
     }
-  }, [jobId, rev])
+  }, [jobId, rev, changed])
 
   return state.jobId === jobId ? state.byNote : EMPTY
 }

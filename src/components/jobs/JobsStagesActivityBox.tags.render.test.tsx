@@ -25,6 +25,9 @@ const TAG_ROWS = [
   },
 ]
 
+/** What the tags read answers: null for the rows above, or a test's own. */
+const held = vi.hoisted(() => ({ rows: null as unknown[] | null }))
+
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   const stub = makeSupabaseStub() as unknown as { from: (t: string) => unknown; rpc: (n: string, a?: unknown) => unknown }
@@ -37,7 +40,7 @@ vi.mock('../../lib/supabase', async () => {
     b.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data, error: null }).then(ok)
     return b
   }
-  stub.from = (table: string) => (table === 'jobs_ledger_note_tags' ? rows(TAG_ROWS) : from(table))
+  stub.from = (table: string) => (table === 'jobs_ledger_note_tags' ? rows(held.rows ?? TAG_ROWS) : from(table))
   stub.rpc = (name: string, args?: unknown) => (name === 'job_note_taggable' ? Promise.resolve({ data: TAGGABLE, error: null }) : rpc(name, args))
   return { supabase: stub }
 })
@@ -45,6 +48,7 @@ vi.mock('../../lib/supabase', async () => {
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { noteTagsChanged } from '../../lib/jobs/noteTagsIo'
 
 function makeCtx(over: Partial<StagesRowRenderContext> = {}): StagesRowRenderContext {
   return {
@@ -179,5 +183,20 @@ describe('JobsStagesActivityBox, tagging a teammate', () => {
     expect(container.querySelector('[data-note-tag-words]')?.textContent).toMatch(/^waiting on Dana/)
     // The untagged note reads as it did.
     expect(container.querySelectorAll('[data-note-tag-chip]')).toHaveLength(1)
+  })
+
+  it('reads the tags again when a tag changes in the tab, so the reader sees their own post tagged at once (v2.7426)', async () => {
+    // The feed already holds the note, as it does once the optimistic row is swapped for the real one, and no tag yet.
+    held.rows = []
+    try {
+      mount()
+      await settle()
+      expect(document.body.querySelector('[data-note-tag-chip]')).toBeNull()
+      held.rows = null
+      noteTagsChanged()
+      await vi.waitFor(() => expect(document.body.querySelector('[data-note-tag-chip]')?.textContent).toBe('@Dana Whitlock'))
+    } finally {
+      held.rows = null
+    }
   })
 })
