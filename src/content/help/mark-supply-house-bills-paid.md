@@ -104,9 +104,39 @@ A bill paid by a recorded payment names it on its row. The row reads the paid da
 
 Press {{button:outline|See the payment}} on that row. The window lists every bill the payment paid, with the amount on each. The line at the bottom says what the lines add up to.
 
-Recorded the wrong payment? Press **Remove this payment…** in that window. The app asks first and says what will change. Press {{button:outline|Remove payment}} and every bill it paid reads unpaid again. Then record it again with the right bills.
+A bill paid by a recorded payment has no **Mark unpaid**. The money was sent, so you move it or remove the payment instead.
 
-A bill paid by a recorded payment has no **Mark unpaid**. The money was sent, so the payment is removed instead.
+## The house applied the money to another bill
+
+A supply house sometimes puts your money on a different bill than you recorded. Move it here so both sides agree.
+
+1. Press {{button:outline|See the payment}} on a bill that payment paid.
+2. Press **Move…** beside the bill the money should leave.
+3. Check **How much to move**. It opens on everything the payment has on that bill. Type less to move part of it.
+4. Pick the bill it goes to. The house's open bills are listed oldest first. **On account, no bill** is last.
+5. Say why with a chip: **The house applied it differently**, **I picked the wrong bill** or **Something else**.
+6. Read **What changes**. It shows both bills before and after.
+7. Press the blue button. It names the move, like **Move $1,000.00 to S4398120**.
+
+:::example What changes
+S4393015 · paid $1,000.00 → $0.00 · open $0.00 → $1,000.00 · reads unpaid again. S4398120 · paid $0.00 → $1,000.00 · open $1,240.00 → $240.00. The payment still totals $5,000.00.
+:::
+
+The payment keeps its day, its amount and how it was sent. Only the bill changes.
+
+Each bill then says where the money went on its own row. The bill it left reads like *$1,000.00 moved to S4398120*, with who moved it and why. The bill it reached reads like *$1,000.00 moved here from S4393015*.
+
+Money on account moves the same way. Press **Put on a bill…** beside **On account** in the payment's window.
+
+Moved it by mistake? Open the payment again. **What happened to it** lists each move. Press **Take it back** beside the move.
+
+## Remove a payment, or put it back
+
+Recorded a payment that was never sent? Press **Remove this payment…** in the payment's window. The app says what will change and asks why. Type the reason and press {{button:outline|Remove payment}}. Every bill it paid reads unpaid again.
+
+A removed payment waits under the house's bills for 30 days, in **Removed in the last 30 days**. Press **Put it back** there and its bills read as they did.
+
+The app refuses to put a payment back when one of its bills was paid another way since. It names the bill. Record the payment again with the right bills.
 
 Tick **Show paid invoices** at the top of Accounts payable to list the paid bills too. Paid bills sit in a **Paid** group at the bottom of the card. A bill paid before payments were recorded reads its paid day alone.
 
