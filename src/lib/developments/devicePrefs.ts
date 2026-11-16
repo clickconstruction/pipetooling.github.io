@@ -104,6 +104,28 @@ export function writeMoneyView(developmentId: string, view: MoneyView): void {
   }
 }
 
+/** The Plans look's view: the parts table, or the sets by date; the device remembers it, and the table, the default, leaves no key. */
+export type PlansView = 'part' | 'date'
+
+const plansViewKey = (developmentId: string) => `pt.development.${developmentId}.plans.view`
+
+export function readPlansView(developmentId: string): PlansView {
+  try {
+    return window.localStorage.getItem(plansViewKey(developmentId)) === 'date' ? 'date' : 'part'
+  } catch {
+    return 'part'
+  }
+}
+
+export function writePlansView(developmentId: string, view: PlansView): void {
+  try {
+    if (view === 'part') window.localStorage.removeItem(plansViewKey(developmentId))
+    else window.localStorage.setItem(plansViewKey(developmentId), view)
+  } catch {
+    /* the page works without the memory */
+  }
+}
+
 /** The Scoreboard's cut and window (v2.6558, punch list #250 PR 4): the device remembers both; job and all time, the defaults, leave no key. */
 const cutKey = (developmentId: string) => `pt.development.${developmentId}.scoreboard.cut`
 const windowKey = (developmentId: string) => `pt.development.${developmentId}.scoreboard.window`

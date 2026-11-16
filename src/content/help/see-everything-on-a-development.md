@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
+keywords: development, site, subdivision, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, drawings over time, sets by date, when did the drawings change, print the plans chart
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -190,6 +190,30 @@ Two chips sit under the table. One counts the parts with no set. One counts the 
 
 Questions starts with two presses, {{button:outline|Ask the estimators}} and {{button:outline|Ask Dispatch}}. Under them sits one table for each lane with questions. Open questions come first, oldest first. Each shows how long it has waited, what it is about, the words and the answer so far. The answered ones fold under a count. With no question at all, the look says nothing is waiting.
 
+## Read the plans by date
+
+Press {{button:outline|By date}} at the top of Plans. The look turns into a chart of the site's drawings over time. Press {{button:outline|By part}} to go back to the table.
+
+Time runs from left to right. A dashed line marks today. Each row of the chart is a lane with its name at the left.
+
+The Bids lane shows a diamond on the day each bid was sent. A small open diamond marks the date of the plans it was priced from.
+
+Each part of the site has its own lane. A dot is a set of drawings, placed on the date printed on its sheets. The set the part builds from wears a ring and its name in bold. An open dot is a set with no date on its sheets. That dot sits on the day the set came. A square is one of our as-builts. Papers are left out. Sets too close to tell apart draw as one bar with their count. A dotted line between two lanes marks the day one design became two parts.
+
+The Crews on site lane shows a bar for the days the clock has on the site's jobs. A week with nobody on site ends a bar. A dashed open bar stands for a job with no clock days. The open bar runs from the job's first work day to its last.
+
+The History lane shows a tick for every line kept on History. A letter gets a flag.
+
+Four figures sit above the chart. The figures are the first drawings, the sets since the bid, the newest set and the days on site. The bid is the first one won. With none won, it is the first one sent.
+
+Rest the pointer on a mark to read its line. On a phone, press the mark. A name that does not fit on the chart stays in that line.
+
+Under the chart, every mark reads again as a dated line, oldest first. A bid's line is tinted. A long list opens on its newest lines. Press {{button:outline|Show the 12 older lines}} to read the rest.
+
+Press {{button:outline|Print or save as PDF}} above the list. One landscape page opens with the figures, the chart and the list.
+
+A bid with no sent day has no place on the chart. A quiet line under the chart names it. The page remembers the view you were in.
+
 ## The photos
 
 Photos is the last look on the page. It shows every photo the crews took on the site, newest at the left, in one row.
@@ -208,6 +232,8 @@ The row reads the same photos as Documents → Photos. The guide [find every pho
 ## What an estimator sees
 
 An estimator opens the same page with the jobs and bids, the history, the plans and the questions. The page shows no money. The Money look is one line that says the office reads it.
+
+An estimator sees the plans by date too. The clock's days read only to the office. An estimator's Crews on site lane shows each job's last work day.
 
 The crews' photos on the jobs read only to the office. An estimator's Photos look shows just the pictures sent by text or email. The look's heading says the crews' photos are for the office.
 
