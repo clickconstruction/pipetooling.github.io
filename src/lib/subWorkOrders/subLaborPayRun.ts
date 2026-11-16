@@ -108,6 +108,8 @@ export type PayRunSheet = {
   personId: string | null
   teammates: string[]
   crew: boolean
+  /** The sheet names one teammate and no sub: sub labor owed to someone on payroll (Taunya's rule of 2026-11-15). */
+  team?: boolean
   balance: number
   payWhen: SheetPayWhen
 }
@@ -130,6 +132,8 @@ export type PayRunSub = {
   personId: string | null
   teammates: string[]
   crew: boolean
+  /** Every sheet under this row is a teammate's own: the row wears *Team · sub labor*. */
+  team: boolean
   /** Sheets with money open (paid ones are history, not a count). */
   sheetCount: number
   /** Money open on sub sheets; 0 on crew groups (payroll). */
@@ -176,10 +180,11 @@ export function buildSubLaborPayRun(sheets: readonly PayRunSheet[], opts: { payR
     const seg = segmentOf(s.payWhen.kind)
     let sub = bySub.get(s.subKey)
     if (!sub) {
-      sub = { key: s.subKey, name: s.subName, personId: s.personId, teammates: [], crew: s.crew, sheetCount: 0, owed: 0, segments: { ready: 0, queued: 0, wait: 0, work: 0, hold: 0, gap: 0 }, readySheetIds: [], readyAmount: 0, whyNot: '', action: { kind: 'note', text: '' }, ready: [] }
+      sub = { key: s.subKey, name: s.subName, personId: s.personId, teammates: [], crew: s.crew, team: !!s.team, sheetCount: 0, owed: 0, segments: { ready: 0, queued: 0, wait: 0, work: 0, hold: 0, gap: 0 }, readySheetIds: [], readyAmount: 0, whyNot: '', action: { kind: 'note', text: '' }, ready: [] }
       bySub.set(s.subKey, sub)
     }
     sub.crew = sub.crew && s.crew
+    sub.team = sub.team && !!s.team
     if (sub.personId !== s.personId) sub.personId = null
     for (const t of s.teammates) if (!sub.teammates.includes(t)) sub.teammates.push(t)
     if (s.payWhen.kind === 'paid' || s.payWhen.kind === 'unpriced') continue
