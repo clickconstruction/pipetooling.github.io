@@ -13,3 +13,5 @@ Punch list #355 ([`to-dos/job-window-phone.md`](../../to-dos/job-window-phone.md
 **The bed.** `plan_sets_author`: Sam, a subcontractor whose roster person is on one of job A's two sheets, reads that sheet with its item, its payment and his portal's address, and none on job B; Hal, who is no one on the roster, reads nothing.
 
 **Apply order**: push right after the merge. The client fails soft: until the push the row is not drawn.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `my_sub_sheets_on_job`.

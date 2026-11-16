@@ -54,6 +54,7 @@
   .journey { display: grid; gap: 0; padding: 12px 18px; border-bottom: 1px solid var(--border); }
   .journey.six { grid-template-columns: repeat(6, 1fr); }
   .journey.three { grid-template-columns: repeat(3, 1fr); }
+  .journey.four { grid-template-columns: repeat(4, 1fr); }
   .node { position: relative; text-align: center; font-size: 0.78rem; color: var(--muted); padding-top: 22px; }
   .node::before { content: ''; position: absolute; top: 6px; left: 0; right: 0; height: 2px; background: var(--border-strong); }
   .node:first-child::before { left: 50%; } .node:last-child::before { right: 50%; }
@@ -63,10 +64,10 @@
   .node.now::after { background: var(--blue); border-color: var(--blue); }
   .node.blocked::after { background: var(--amber); border-color: var(--amber); }
   .node .note { color: var(--amber); font-weight: 600; }
-  .journey.three .node { text-align: left; padding: 26px 10px 0 0; }
-  .journey.three .node::before { left: 0; right: 0; }
-  .journey.three .node::after { left: 0; margin-left: 0; }
-  .journey.three .node b { font-size: 0.9rem; }
+  .journey.three .node, .journey.four .node { text-align: left; padding: 26px 10px 0 0; }
+  .journey.three .node::before, .journey.four .node::before { left: 0; right: 0; }
+  .journey.three .node::after, .journey.four .node::after { left: 0; margin-left: 0; }
+  .journey.three .node b, .journey.four .node b { font-size: 0.9rem; }
 
   /* One count, in parts */
   .parts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.86rem; }
@@ -102,19 +103,21 @@
   .counts th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
   .counts td:first-child { font-weight: 700; white-space: nowrap; }
   .two { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-  @media (max-width: 820px) { .two { grid-template-columns: 1fr; } .journey.six { grid-template-columns: repeat(3, 1fr); row-gap: 10px; } .row { grid-template-columns: minmax(0, 1fr) auto; } .row .act { grid-row: auto; grid-column: 1 / -1; } }
+  @media (max-width: 820px) { .two { grid-template-columns: 1fr; } .journey.six { grid-template-columns: repeat(3, 1fr); row-gap: 10px; } .journey.four { grid-template-columns: repeat(2, 1fr); row-gap: 10px; } .row { grid-template-columns: minmax(0, 1fr) auto; } .row .act { grid-row: auto; grid-column: 1 / -1; } }
 </style>
 </head>
 <body>
 <div class="page">
   <h1>The run window · today, and a redraw in three steps</h1>
   <p class="lead">The window that prints the notices and records their mailing. The owner asked on 2026-11-16 that it be cleaned up now that the batches open from To do. This is today's window beside one redraw, in the three steps of the run: get them right, print, mail and record. Nothing here is built.</p>
+  <p class="lead"><b>The owner, 2026-11-16, on the redraw:</b> "I think this run window is great for the notices, I do think the liens have one extra step where after they are filed we have to send them off. I like the run window and think we can build it." So the notices' window is approved to build as drawn. The last tab draws the liens' lane with that extra step. It answers his question and is not approved.</p>
 
   <div class="picker" role="group" aria-label="Which drawing">
     <button type="button" data-opt="today" aria-pressed="false">Today</button>
     <button type="button" data-opt="right" aria-pressed="true">Redraw · 1 Get them right</button>
     <button type="button" data-opt="print" aria-pressed="false">2 Print</button>
     <button type="button" data-opt="mail" aria-pressed="false">3 Mail and record</button>
+    <button type="button" data-opt="liens" aria-pressed="false">The liens · four steps</button>
     <button type="button" class="theme" id="theme">Light / dark</button>
   </div>
 
@@ -275,10 +278,58 @@
     </div>
   </section>
 
+  <!-- THE LIENS -->
+  <section class="option" id="opt-liens">
+    <div class="what"><b>The liens · the same window, four steps.</b> A lien affidavit leaves the office twice: once to the notary and the county clerk, and once more to the owner, since a copy must reach the owner and the original contractor within five days of the filing. So its lane is the notices' lane with one more step.
+      <ul>
+        <li><b>The same shape and the same words.</b> One total, in affidavits, with its parts. One primary press for the step the stack is on.</li>
+        <li><b>Steps 3 and 4 run on each paper's own day.</b> An affidavit filed Monday owes its copies by Saturday, whatever the rest of the stack does. The window can be closed for days and opens on the step the stack is on.</li>
+        <li><b>Step 4 is a mailing</b>, so it reads like the notices' step 3: an envelope, a number, a record. What goes in the envelope, a cover letter and the affidavit marked COPY, is punch list #366's, being built now.</li>
+        <li><b>One print for both kinds</b> (the owner's <i>one press, one stack</i>) joins the two lanes at step 2 only. After the print the notices go to the counter and the liens go to the notary, so each keeps its own steps.</li>
+      </ul>
+    </div>
+    <div class="win">
+      <div class="win-head"><div><h2>File the liens · 12 affidavits</h2><div class="sub">3 county clerks · Marlow 6 · Hill 3 · Oak 3 · last day to file Mon Nov 16</div></div><span class="x">×</span></div>
+      <div class="journey four">
+        <div class="node done"><b>1 · Get them right</b>10 of 12 were ready</div>
+        <div class="node done"><b>2 · Print for the notary</b>10 printed Nov 13</div>
+        <div class="node done"><b>3 · Notarize and file</b>10 of 10 filed Nov 16</div>
+        <div class="node now"><b>4 · Send the copies</b>4 of 10 served · 4 days left</div>
+      </div>
+      <div class="win-body">
+        <div class="parts"><span class="part"><span class="n">10</span> filed</span><span class="eq">=</span><span class="part ready"><span class="n">4</span> served</span><span class="part wait"><span class="n">5</span> copies to mail</span><span class="part held"><span class="n">1</span> held</span></div>
+        <div class="group">
+          <div class="group-head held">Held · 1 affidavit</div>
+          <div class="row"><span class="job">1047 · ZZ Test Builders, lot 3</span><span class="amt">$4,150</span><span class="btn act">Type the number ›</span><span class="why">Filed Nov 16 with no recording number. The copy cannot print without it.</span></div>
+        </div>
+        <div class="group">
+          <div class="group-head wait">Copies to mail · 5 affidavits in 9 envelopes · by Sat Nov 21 <span class="tot">0 of 9 numbers</span></div>
+          <div class="row"><span class="job">Envelope 1 · ZZ Test Builders · 3 copies inside</span><span class="numbox">9407 1118 …</span><span class="door">Scan ›</span><span class="why">The original contractor · certified mail, return receipt</span></div>
+          <div class="row"><span class="job">Envelope 2 · Owner · ZZ Test Marlow Trust</span><span class="numbox">9407 1118 …</span><span class="door">Scan ›</span><span class="why">1024 · ZZ Test Marlow, main house · filed Nov 16, recording 2026-118204</span></div>
+          <div class="fold">▸ 7 more envelopes</div>
+        </div>
+        <div class="group">
+          <div class="group-head ready">Served · 4 affidavits <span class="tot">mailed Nov 17</span></div>
+          <div class="fold">▸ The 4, each with its numbers</div>
+        </div>
+        <div class="group">
+          <div class="group-head">Not in this stack · 2 affidavits</div>
+          <div class="row"><span class="job">2 never filed</span><span></span><span class="door">See them ›</span><span class="why">One waits on the homestead answer. One is on public property.</span></div>
+        </div>
+      </div>
+      <div class="win-foot">
+        <div class="status"><b>5 copies to mail by Sat Nov 21. 1 is held.</b>Each prints as a cover letter and the affidavit marked COPY, one for the owner and one for the original contractor.</div>
+        <span class="btn">More ▾</span>
+        <span class="btn primary">Print 5 copies</span>
+      </div>
+    </div>
+    <div class="more" style="margin-top: 10px;"><b>The four steps, and the one press each ends in:</b> 1 Get them right → <i>Print 10 for notarization</i> · 2 Print for the notary → <i>Record the filings</i>, by county clerk, each with its recording number and day · 3 Notarize and file → <i>Print 5 copies</i> · 4 Send the copies → <i>Record 5 served</i>, once each envelope has its number.</div>
+  </section>
+
   <p class="sample">Sample jobs and sample figures. No live record is drawn here. A phone would draw the same window full screen: the three steps as one line, the parts wrapped, and the one press across the foot.</p>
 </div>
 <script>
-  const opts = ['today', 'right', 'print', 'mail']
+  const opts = ['today', 'right', 'print', 'mail', 'liens']
   function show(name) {
     for (const o of opts) {
       document.getElementById('opt-' + o).classList.toggle('on', o === name)

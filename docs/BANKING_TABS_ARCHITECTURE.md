@@ -11,7 +11,7 @@ covers:
   - src/components/banking/BankingMercuryDragSortTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-23
+last_updated: 2026-11-16
 ---
 
 ## What this surface is
@@ -145,7 +145,7 @@ The parent destructures each hook so downstream references (and the 28-prop Acco
 | `BankingLedgerAdvancedMenu` | [`BankingLedgerAdvancedMenu.tsx`](../src/components/banking/BankingLedgerAdvancedMenu.tsx) | 191 | Ledger's Advanced dropdown (Refresh / Backfill / Import CSV / Manual accounts / Reload); role-gated items via optional-prop presence |
 | `SortTh` | private in `BankingMercuryTable.tsx` (97–127) | 31 | sortable `<th>` with `aria-sort` |
 | `TransactionDetailPanel` | private in `BankingMercuryTable.tsx` (129–224) | 96 | expanded-row detail grid + raw JSON `<pre>` (the table's props type follows at 226–253) |
-| `BankingMercuryTable` | [`BankingMercuryTable.tsx`](../src/components/banking/BankingMercuryTable.tsx) (255–627) | 373 | the shared Ledger/User Sort table: expandable rows, notes preview/editor sub-rows (via `MercuryTxNotesDisclosure` pieces + `bankingMercuryNotesSubRowColSpans`), allocation Person/Jobs cells, excluded-duplicate strike-through badge, and 4 layout-variant flags (`allocationsAfterCounterparty`, `hideKindColumn`, `debitAndAccountAfterAmount`, `counterpartyNoteCombined`). Owns only `notesExpandedTxId` locally. Since v2.7152 it also draws the receipt's state beside a recent card charge's store (`ReceiptStateChip`, `useReceiptStates` over `receiptStateChargeIds`, punch list #299 PR 3), read apart from the ledger and never its failure. With `subPaymentMatch` (the Ledger tab alone, v2.7352, punch list #347) it says which lines paid a sub and offers **Match to a sub payment…** (`BankLineSubPayment` over `useBankLineSubPayments`), also read apart and failing soft. |
+| `BankingMercuryTable` | [`BankingMercuryTable.tsx`](../src/components/banking/BankingMercuryTable.tsx) (255–627) | 373 | the shared Ledger/User Sort table: expandable rows, notes preview/editor sub-rows (via `MercuryTxNotesDisclosure` pieces + `bankingMercuryNotesSubRowColSpans`), allocation Person/Jobs cells, excluded-duplicate strike-through badge, and 4 layout-variant flags (`allocationsAfterCounterparty`, `hideKindColumn`, `debitAndAccountAfterAmount`, `counterpartyNoteCombined`). Owns only `notesExpandedTxId` locally. Since v2.7152 it also draws the receipt's state beside a recent card charge's store (`ReceiptStateChip`, `useReceiptStates` over `receiptStateChargeIds`, punch list #299 PR 3), read apart from the ledger and never its failure. With `subPaymentMatch` (the Ledger tab alone, v2.7352, punch list #347) it says which lines paid a sub and offers **Match to a sub payment…** (`BankLineSubPayment` over `useBankLineSubPayments`), also read apart and failing soft; since v2.7362 neither it nor the Subs Ledger's **Find bank lines** offers a transfer between the company's own accounts (`bankLinesFromRows` in [`subPaymentBankMatch.ts`](../src/lib/subWorkOrders/subPaymentBankMatch.ts) drops Mercury's `internalTransfer` kind, and `useSubPaymentBank` reads `kind` for it). |
 
 All were props-only (no parent closure), so the moves were verbatim cut/paste (~924 lines off `Banking.tsx`, 3,104 → 2,180). `SortKey`, `formatCurrency`, and the private `formatDate`/`formatDateTime`/`formatMercuryCategory` helpers moved with the table (`SortKey` + `formatCurrency` are exported; the page imports them back). `sortMercuryRowsStable` and `parseBankingView` stayed in the page for their own Stage-A pass.
 

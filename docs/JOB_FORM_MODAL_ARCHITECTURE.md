@@ -8,13 +8,19 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-11
+last_updated: 2026-11-16
 ---
 
 ## Overview
 
 **Line numbers are exact as of `a05cef4c4` and rot with every commit — search the symbol, not the number.** Regenerate the facts with `npm run map -- src/components/jobs/JobFormModal.tsx` before trusting a range.
 
+> **v2.7402 (after `mapped_at`) — subs on this job:** the Costs region mounts [`JobSubsOwedBlock`](../src/components/jobs/JobSubsOwedBlock.tsx) between `JobFormLaborCostPanel` and `JobFormPartsCostSection`, handed the job's id, number and name. It is self-contained and read only: `useJobSheets` reads `people_labor_jobs` by `job_ledger_id`, and by number for a sheet that never got a link, with their items, payments and assignees, and [`useSubsOwed`](../src/hooks/useSubsOwed.ts) with `buildJobOwedBlock` (`lib/people/subOwedBreakdown.ts`) groups them by who they are owed to. It draws for dev, master technician, assistant and controller, and nothing on a job with no sub sheet. Its doors leave the form for Jobs → Subs → Pay (`?editLabor=`, `?subSearch=`) and People → Subs (`?owed=`). No form state, slice or save touches it.
+>
+> **v2.7283 / v2.7284 (after `mapped_at`) — the embedded form on a phone (punch list #355, PRs E and F):** the embedded form's root carries `data-job-form-embedded`, and one style at 640 px and under sets every text field, select and textarea inside it to 16 px, so an iPhone does not zoom the page on the Edit, Bill or Costs tab. On a phone (`embedded && narrowViewport`) the status rail's wrapper under the Stages read-out is `display: none` (the window's bar opens the same `JobStatusStepper` behind Status ▾), and the line items sit in a `data-job-form-lines` wrapper with `order: 9`, so the Bill region reads money card, Make a bill, bills, payments, then the lines. The desk's order is unchanged. The rows themselves are the children's: `JobFormFactRow` and `JobFormEditFactRows` (44 px rows with a chevron under five titles), `JobFormStagesGroup` (44 px stage rows), and `JobFormFixturesSection` (a line's Move up, Move down and Remove this line behind a ⋯ `PhoneSheet`).
+>
+> **v2.7358 (after `mapped_at`) — the ask at the end of a job:** `JobFormModal.tsx` draws `GcDifficultyAskLine` (`components/bids/GcDifficultyAsk.tsx`, `jobId={editing?.id ?? null}`) under `JobFormSourceEstimateBanner`. While `gc_difficulty_open_asks()` returns the job for its master (a dev: a ZZ test customer's job too), the line reads *This job is done. How was <GC> to work with?* with **Rate them** (the master's sheet, `DifficultyRateSheet`) and **Not now**. The component makes its own read (`useGcDifficultyAsks`, only for the owner role and a dev) and holds no form state (`docs/recent-features/v2.7358.md`, punch list #357).
+>
 > **v2.6300 (after `mapped_at`) — line budgets on the row:** the five `budget_*` columns of `jobs_ledger_fixtures` ride `FixtureRow` and the fixtures autosave writes them with the price (the spike had kept them in a store keyed on the grid's row id, and a reload lost a tuning); `LineBudgetQuietLine.tsx` under each line item's name on ① Line Items (the source glyph ◆ workbench · ≈ assumed · ✎ tuned, a labor | materials bar, the hours and dollars) opens the slider panel as a full-width row for the owner, read-only for the office, one line at a time (`useLineBudgets` holds which; `lib/jobs/lineBudgets.ts` is the kernel); `StageKindBadgePress` in `StageKindControls.tsx` flips a line between In order and Any time from its badge, so the two-button strip under each line is gone; the Costs tab draws `JobCostsLineBudgets.tsx` above the burn chart (`docs/recent-features/v2.6300.md`, punch list #234 PR 1).
 >
 > **v2.6288 — a job's Drive folder follows the form:** `placeJobFolderSoon` (module level) calls `makeJobDriveFolders` for a job the form creates and for the two places it writes `customer_id` on an existing job, so the folder goes under the customer now. Best effort: a refusal is logged and the sweep every 10 minutes places what the call did not. The identity autosave's customer change is left to the sweep.

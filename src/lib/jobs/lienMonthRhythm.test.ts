@@ -232,3 +232,17 @@ describe('buildLienMonth — the five zones over the desk’s book', () => {
     expect(lienMonthZoneHasRow(not!, { kind: 'notice', jobId: null, action: 'send_run' })).toBe(false)
   })
 })
+
+describe('buildLienMonth — an approved affidavit a gate moved to Held (punch list #335)', () => {
+  it('still counts as left to file this month; a paper the leader holds counts on neither side', () => {
+    const m = buildLienMonth({
+      todayYmd: '2026-11-08',
+      notices: [],
+      affidavits: [affidavit({ jobId: 'g', pile: 'held', item: item({ kind: 'affidavit', status: 'approved' }) as never }), affidavit({ jobId: 'h', pile: 'held', item: item({ kind: 'affidavit', status: 'held' }) as never })],
+      courtesyByJob: {},
+      jobTitle,
+    })
+    const liens = m.zones.find((z) => z.key === 'liens')!
+    expect(liens.left).toBe(1)
+  })
+})
