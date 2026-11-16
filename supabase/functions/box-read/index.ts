@@ -5,7 +5,7 @@ import { ESTIMATE_LINK_LOCKED_CODE, readEstimateLinkLock, recordEstimateLinkMiss
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings } from '../_shared/gcKernels/lib/messages/boxes.ts'
-import { BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAsksInside, boxPageCode, boxPageEarlyAnswer, boxPageKind, boxPageOfficePhone, boxPagePlate, boxPageStickerAnswer, buildBoxPagePayload, type BoxPageContainerRow, type BoxPageStickerRow } from '../_shared/boxPage.ts'
+import { BOX_PAGE_COMPANY_KEY, BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAsksInside, boxPageCode, boxPageCompanyPhone, boxPageEarlyAnswer, boxPageKind, boxPageOfficePhone, boxPagePlate, boxPageStickerAnswer, buildBoxPagePayload, type BoxPageContainerRow, type BoxPageStickerRow } from '../_shared/boxPage.ts'
 
 /**
  * box-read (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR reads
@@ -14,7 +14,7 @@ import { BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAsksInside, boxPa
  *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, stickerNumber? }, office }
  *                                             the live container by its code: its name as the label prints it
  *                                             (`boxPagePlate`), its kind, and `office.phone`, the office's number
- *                                             (the team box's line from Settings since v2.6910, the letterhead's before).
+ *                                             (the company block's Phone from Settings since v2.7390).
  *   GET ?code=<code>&find=<words>            → 401 { error: 'sign_in' }
  *   GET ?code=<code>&photo=<photo id>        → 401 { error: 'sign_in' }
  *
@@ -78,20 +78,24 @@ function json(body: unknown, status = 200): Response {
 }
 
 /**
- * The number the page's Text the office and Call the office use (v2.6910): the team box's line from Settings → Phone and
- * texts, which the Messages page reads, so a text about a cage lands in front of the office. The letterhead's number was
- * used until then; its texts go to a mailbox nobody reads in the app. A read that fails falls back to the letterhead.
+ * The number the page shows and its presses text and call: the company's number, the Phone of Settings' company block,
+ * whatever it is set to (v2.7390, Taunya's word of 2026-11-15). From v2.6910 to then it was the team box's line from
+ * Settings → Phone and texts, which is still the next in line when the company block's Phone is blank, before that
+ * box's fallback secret and the letterhead's constant. A read that fails falls back the same way.
  */
 // deno-lint-ignore no-explicit-any
 async function officePhone(admin: any): Promise<string> {
+  let company = ''
   let team = ''
   try {
-    const { data } = await admin.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle()
-    team = boxSetting('team', parseBoxSettings((data as { value_text: string | null } | null)?.value_text)).phone
+    const { data } = await admin.from('app_settings').select('key, value_text').in('key', [BOX_PAGE_COMPANY_KEY, BOXES_SETTINGS_KEY])
+    const rows = (data ?? []) as Array<{ key: string; value_text: string | null }>
+    company = boxPageCompanyPhone(rows.find((r) => r.key === BOX_PAGE_COMPANY_KEY)?.value_text)
+    team = boxSetting('team', parseBoxSettings(rows.find((r) => r.key === BOXES_SETTINGS_KEY)?.value_text)).phone
   } catch (e) {
-    console.warn('box-read: the boxes did not read', e)
+    console.warn('box-read: the settings did not read', e)
   }
-  return boxPageOfficePhone([team, Deno.env.get('QUO_COMPANY_PHONE'), PORTAL_COMPANY.phone])
+  return boxPageOfficePhone([company, team, Deno.env.get('QUO_COMPANY_PHONE'), PORTAL_COMPANY.phone])
 }
 
 serve(async (req) => {

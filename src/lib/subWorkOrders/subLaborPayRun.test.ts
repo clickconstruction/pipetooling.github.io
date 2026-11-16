@@ -105,3 +105,24 @@ describe('buildSubLaborPayRun', () => {
     expect(run.counts).toEqual({ due: 6, ready: 1, queued: 1, wait: 1, gap: 1, crew: 1, paid: 1 })
   })
 })
+
+describe("buildSubLaborPayRun — a teammate's own sheet is owed (Taunya, 2026-11-15)", () => {
+  // Made-up people. `team` is set by the Pay view for a sheet that names one teammate and no sub.
+  const READY = { kind: 'ready' as const, label: 'Ready', detail: 'sub labor to a teammate · $450.00 with nothing to wait on', tone: 'green' as const, rank: 0 }
+  const own = (id: string, balance: number): PayRunSheet => ({ id, subKey: 'id:dana', subName: 'Dana Whitlock', personId: 'dana', teammates: [], crew: false, team: true, balance, payWhen: { ...READY } })
+  const subs = (id: string, balance: number): PayRunSheet => ({ id, subKey: 'id:marlow', subName: 'Marlow Tile', personId: 'marlow', teammates: [], crew: false, balance, payWhen: { ...READY } })
+
+  it('counts it in what is owed and what is ready, on a row of its own that wears team', () => {
+    const run = buildSubLaborPayRun([own('a', 450), own('b', 300), subs('c', 900)], { payRunDay: null, todayYmd: '2026-11-15' })
+    expect(run.tiles).toMatchObject({ owed: 1650, owedSubs: 2, owedSheets: 3, ready: 1650, readySheets: 3 })
+    const dana = run.subs.find((x) => x.key === 'id:dana')!
+    expect(dana).toMatchObject({ team: true, crew: false, owed: 750, sheetCount: 2, personId: 'dana' })
+    expect(dana.action).toEqual({ kind: 'pay', amount: 750, sheets: 2 })
+    expect(run.subs.find((x) => x.key === 'id:marlow')!.team).toBe(false)
+  })
+  it('a row is team only when every sheet under it is', () => {
+    const mixed: PayRunSheet = { ...subs('d', 100), subKey: 'id:dana', subName: 'Dana Whitlock', personId: 'dana' }
+    const run = buildSubLaborPayRun([own('a', 450), mixed], { payRunDay: null, todayYmd: '2026-11-15' })
+    expect(run.subs.find((x) => x.key === 'id:dana')!.team).toBe(false)
+  })
+})

@@ -4,6 +4,8 @@
  * green first-day line — and the corner switch draws the same path as windows, remembered in
  * this browser. The mini row has no switch.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
@@ -43,6 +45,23 @@ describe('LienTimelineStrip — Steps · Windows', () => {
     expect(container.querySelector('[data-lien-timeline] [data-lien-timeline-switch]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Windows' }))
     expect(container.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('windows')
+  })
+
+  it('inside a phone’s open paper the switch’s two presses are a thumb tall (v2.7392): the switch clips a pad, so the stylesheet grows them', () => {
+    setLienTimelineView('steps')
+    const { container } = render(
+      <div data-lien-pane-phone="yes">
+        <LienTimelineStrip timeline={timeline} layout="list" />
+      </div>,
+    )
+    // The rule reaches the switch by these two hooks, and the switch still clips: that is why a pad would not do.
+    const group = container.querySelector('[data-lien-pane-phone] [data-lien-timeline-switch]') as HTMLElement
+    expect(group.style.overflow).toBe('hidden')
+    expect([...group.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Steps', 'Windows'])
+    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(css).toMatch(/\[data-lien-pane-phone\] \[data-lien-timeline-switch\] button \{[^}]*min-height: 40px;/)
+    // The pad the rest of the pane's small presses get is drawn by the same sheet.
+    expect(css).toMatch(/\[data-lien-pane-phone\] \[data-press-pad\]::after \{[^}]*position: absolute;/)
   })
 
   it('the Legal desk’s scope opens on Windows and remembers its own choice apart from the Lien window’s (v2.6104)', () => {

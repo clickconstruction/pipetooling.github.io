@@ -7,11 +7,13 @@
  * inside needs a sign-in: the function answers the name, the kind, the code and the office's number and nothing else.
  */
 export {
+  BOX_PAGE_COMPANY_KEY,
   BOX_PAGE_LOCKED_WORDS,
   BOX_PAGE_SIGN_IN_ERROR,
   boxPageAsksInside,
   boxPageCode,
   boxPageCodeWords,
+  boxPageCompanyPhone,
   boxPageEarlyAnswer,
   boxPageKind,
   boxPageNoun,

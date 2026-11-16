@@ -40,7 +40,7 @@ Every ledger row, one line in the pay list, carries the same spine as **Jobs →
 
 **Who the sheet is for**: a sheet is named for its subcontractor. Say teammates are on the same sheet, like *Malachi | Abraham | Behar Kraja*. Then the row reads **Behar Kraja** with a muted *with Malachi, Abraham* beneath. **Outstanding by contractor** rolls that money up under Behar. The sub is the contractor. The teammates rode along. Sheets with no sub at all keep every name. They wear the {{chip:purple|Crew pay}} tag in the rollup.
 
-**Crew pay** sheets have no roster sub on the sheet. They wear a {{chip:purple|Crew pay}} label and pay through payroll. Any sheet with a teammate on it draws only the four sub dots. It never needs a work order. The ledger groups sheets under their sub, payable first. The chips over it filter by **Pay when**. The choices are *Ready now*, *Queued*, *Waiting on customer*, *No agreement*, *Crew pay* and *Paid*. The whole pay-run read is in [see what I still owe each sub contractor](/help/sub-labor-outstanding).
+A sheet that names one teammate and no sub is owed to that teammate. It is sub labor paid on top of their wages, such as a bonus. Their group wears a {{chip:purple|Team · sub labor}} label and is paid from here like any sheet. It reads **Ready** unless you hold it or give it a later day. A sheet with no sub on it draws only the four sub dots. It never needs a work order. The ledger groups sheets under their sub, payable first. The chips over it filter by **Pay when**. The choices are *Ready now*, *Queued*, *Waiting on customer*, *No agreement*, *Crew pay* and *Paid*. The whole pay-run read is in [see what I still owe each sub contractor](/help/sub-labor-outstanding).
 
 ## Sending the sub a work order
 

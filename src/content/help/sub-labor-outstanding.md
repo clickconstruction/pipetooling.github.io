@@ -19,7 +19,7 @@ The toolbar still shows one grand total, like {{chip:gray|Sub Labor Due: $47,050
 | $47,050.00 · 5 subs · 7 sheets | $5,700.00 · 2 sheets | $1,000.00 · 1 sheet | $40,350.00 · $40,000.00 with no agreement · $350.00 waiting on customer |
 :::
 
-- **Owed to subs** is every sub sheet with money open. Crew sheets have no roster sub on them. Crew sheets show inside the tile, beside the counts, as *crew pay via payroll*. Crew sheets never count as owed here.
+- **Owed to subs** is every sheet with money open. A sheet that names one teammate and no sub counts here too, owed to that teammate. When one does, the tile reads **Owed for sub labor** and counts people.
 - **Ready to pay now** means the sheet is at *Post-inspection: Trigger draw*, with an agreement signed. Either every bill out on the job is paid, or the sheet's **payable-after** date has arrived. And there is no hold on it.
 - **Queued** means a payable-after date is set and still ahead. The tile names the next pay-run day. The controller or a dev sets that day in **Settings → People & teams**, under *Sub portal · pay schedule*. When no day is set, the tile says so.
 - **Not payable yet** means the sheet is still in work or at the inspection. Or the sheet is waiting on the customer with nothing promised, or on hold. Or the sheet has {{chip:red|No agreement}}, meaning work under way with nothing signed. The reasons are spelled out under the figure.
@@ -57,7 +57,7 @@ Each row keeps ***Agreed · Paid · Due*** and the rail. See [where the sheet st
 | {{chip:gray|After inspection}} · sub has not said "done" | still being earned |
 | {{chip:red|On hold}} · the reason for the hold | stopped until the hold comes off |
 | {{chip:red|Not payable}} · nothing signed | get it in writing first — the button is right there |
-| {{chip:purple|Payroll}} | a crew sheet |
+| {{chip:purple|Payroll}} | a sheet with no name on it, owed to nobody |
 :::
 
 **set payable after…** on a waiting row is the same move the sheet story offers. Pick the date and press {{button:green|Queue}}. The row reads Queued, and so does the sub's portal. *change payable after…* on a queued row lets you move or clear it.
