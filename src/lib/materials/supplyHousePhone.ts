@@ -82,6 +82,8 @@ export interface SupplyHousePhoneInvoice {
   /** v2.5035 · the kind and the pair, for the pair's words; optional until the types regenerate. */
   document_kind?: string | null
   credits_invoice_id?: string | null
+  /** On an unpaid bill a payment has taken part of: `$300.00 paid · $512.40 left of $812.40`. `amount` is then what is left. */
+  partPaid?: string
 }
 
 const tabOf = (inv: SupplyHousePhoneInvoice): SupplyHouseInvoiceTab => (inv.is_paid ? 'paid' : isSupplyCredit(inv.amount) ? 'credits' : 'unpaid')
@@ -123,6 +125,7 @@ export function supplyHousePhoneInvoiceRows(
       const parts: string[] = []
       if (inv.due_date) parts.push(`due ${shortDay(inv.due_date)}`)
       else if (!inv.is_paid && !credit) parts.push('no due date')
+      if (!inv.is_paid && inv.partPaid) parts.push(inv.partPaid)
       if (inv.on_job_account) parts.push('job account')
       parts.push(...jobs)
       // v2.5035 · a credit and the invoice it credits name each other.

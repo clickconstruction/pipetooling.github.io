@@ -656,7 +656,8 @@ export default function LienDesk({
   const confirmDialog = useConfirmDialog()
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
-  const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(null)
+  // The address can name the retainage notice to open on (v2.7478), as it names an affidavit: `/lien-desk?tab=retainage&job=…`.
+  const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(initialKind === 'retainage' ? (initialJobId ?? null) : null)
   const [retFooterEl, setRetFooterEl] = useState<HTMLDivElement | null>(null)
   // Letter two (v2.3760): the sent footer's two doors — the GC's written okay, and the second letter.
   const [letterTwoMenu, setLetterTwoMenu] = useState(false)
@@ -1109,7 +1110,9 @@ export default function LienDesk({
       waitingRows.map((r) => {
         const notice = r.kind === 'notice' ? data.queue.entries.find((e) => e.jobId === r.jobId) : undefined
         const affidavit = r.kind === 'affidavit' ? data.affidavits.entries.find((e) => e.jobId === r.jobId) : undefined
-        return { kind: r.kind, label: r.title, itemId: notice?.item?.id ?? affidavit?.item?.id ?? null, dueYmd: notice?.earliestDeadline ?? affidavit?.deadline ?? null }
+        // A retainage notice has its message since v2.7478: one each, as a notice's.
+        const retainage = r.kind === 'retainage' ? data.retainage.entries.find((e) => e.jobId === r.jobId) : undefined
+        return { kind: r.kind, label: r.title, itemId: notice?.item?.id ?? affidavit?.item?.id ?? retainage?.item?.id ?? null, dueYmd: notice?.earliestDeadline ?? affidavit?.deadline ?? retainage?.deadline ?? null }
       }),
     )
   }, [data, waitingRows])
