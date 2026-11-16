@@ -73,7 +73,7 @@ The paragraph names each house and what it is owed. It says the house's notice i
 
 Counsel's cover letter goes on the owner's copy of the notice. When a house is still owed, the letter ends with a paragraph about it. The paragraph names the house and what it is owed. It says when the house's own notice goes out. It says that notice is the house's own claim. Our release does not cover it, and it is not part of our claim. When our claim covers what the houses are owed, it says paying us is what clears that account.
 
-The box **Name the supply house owed** sits under the cover letter box above the paper. It starts ticked. Untick it, and the paragraph leaves the letter. The box shows only while the cover letter is on and a house is owed.
+The box **Name the supply house owed** sits under the cover letter box above the paper. The box starts ticked. Untick it, and the paragraph leaves the letter. The box shows only while the cover letter is on and a house is owed.
 
 :::example the paragraph, when the house told us its day
 You should also know that Reece sold materials for this job and is still owed $7,393.33. Reece told us its own notice goes out on October 14 unless that balance is paid. That notice is Reece's own claim for materials. It is not covered by our release, and it is not included in the $15,722.49. Paying us the $15,722.49 is what lets us clear that account.
