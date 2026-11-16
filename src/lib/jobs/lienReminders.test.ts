@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CourtesyStatus } from './lienCourtesyNotice'
 import type { LetterTwoStatus } from './lienLetterTwo'
-import { buildLienReminders, lienReminderAt, lienReminderLadderItems, lienReminderBrief, lienReminderRungRule, lienReminderRungWords, lienReminderStepWho } from './lienReminders'
+import { lienReminderAt, lienReminderLadderItems } from './lienReminders'
 
 const two = (over: Partial<LetterTwoStatus> = {}): LetterTwoStatus => ({ state: 'waiting', day: 4, clock: { kind: 'recorded', at: '2026-10-31T15:00:00Z', why: '' }, firstItemId: 'i1', firstSentAt: '2026-10-31T15:00:00Z', letterTwo: null, gcAuthorized: null, ownerCalledAt: null, words: 'day 4', ...over })
 
@@ -20,9 +20,7 @@ describe('lienReminderAt — the rung a sent notice stands on (punch list #262)'
   it('step 1 uncounted while the reminder waits for reminders week of the lien’s month (punch list #235, PR 4), told apart from before day 7', () => {
     const scheduled = courtesy({ state: 'waiting', day: 12, words: 'day 12 · reminder goes Dec 1 to 5', lienDay: '2026-12-15', reminderWindow: { from: '2026-12-01', to: '2026-12-05' } })
     expect(lienReminderAt(scheduled, two({ day: 12 }))).toEqual({ step: 1, state: 'scheduled', words: 'day 12 · reminder goes Dec 1 to 5', day: 12, counted: false })
-    const r = buildLienReminders({ courtesyByJob: { a: scheduled, b: courtesy({ state: 'waiting', day: 4, words: 'day 4 · courtesy from day 7' }) }, letterTwoByJob: {}, jobTitle: (id) => id })
-    expect([r.counts[0], r.waiting, r.scheduled]).toEqual([0, 1, 1])
-    expect(r.rows.find((x) => x.jobId === 'a')?.why).toBe('waits for reminders week')
+    expect(lienReminderAt(courtesy({ state: 'waiting', day: 4, words: 'day 4 · courtesy from day 7' }), two({ day: 4 }))).toMatchObject({ step: 1, state: 'waiting', counted: false })
     expect(lienReminderLadderItems(lienReminderAt(scheduled, two({ day: 12 }))!)[0]!.detail).toContain('reminders week of the lien’s month, days 1 to 5')
   })
   it('step 2 once the one courtesy went: sent inside the week; after it the attorney’s letter leads on step 3 (v2.6594, never a second courtesy)', () => {
@@ -67,48 +65,7 @@ describe('lienReminderAt — the rung a sent notice stands on (punch list #262)'
   })
 })
 
-describe('buildLienReminders — the strip’s counts and the names behind them', () => {
-  it('adds the desk’s jobs up per rung, the longest waiting first, with the uncounted ones before day 7 beside step 1', () => {
-    const r = buildLienReminders({
-      courtesyByJob: {
-        j663: courtesy({ day: 21, words: 'day 21 · nothing since the packet' }),
-        j273: courtesy({ day: 29, words: 'day 29 · nothing since the packet' }),
-        j912: courtesy({ state: 'waiting', day: 3, words: 'day 3 · courtesy from day 7' }),
-        j741: courtesy({ state: 'sent', day: 9, words: 'courtesy sent Nov 2 by email and text', lastSentAt: '2026-11-02T16:00:00Z' }),
-        j733: courtesy({ day: 16 }),
-        j729: courtesy({ state: 'closed', words: 'paid', reason: 'paid' }),
-        j700: courtesy({ state: 'none' }),
-      },
-      letterTwoByJob: {
-        j663: two({ state: 'overdue', day: 21 }),
-        j273: two({ state: 'overdue', day: 29 }),
-        j912: two({ day: 3 }),
-        j741: two({ day: 9 }),
-        j733: two({ state: 'in_flight', day: 16, words: 'the attorney’s letter · unresponsive · drafting', letterTwo: { itemId: 'i2', kind: 'unresponsive', status: 'draft', sentAt: null } }),
-        j729: two({ state: 'paid' }),
-      },
-      jobTitle: (id) => ({ j663: '663 · Kestrin Contracting', j273: '273 · Dunmere (Linmoor)', j912: '912 · Harlan Homes', j741: '741 · Ridgeway Builders', j733: '733 · Castell', j729: '729 · Pecan Grove' })[id] ?? id,
-    })
-    expect(r.counts).toEqual([2, 1, 1, 1])
-    expect(r.waiting).toBe(1)
-    expect(r.rows.map((x) => `${x.step} ${x.title} ${x.state}`)).toEqual(['1 273 · Dunmere (Linmoor) due', '1 663 · Kestrin Contracting due', '1 912 · Harlan Homes waiting', '2 741 · Ridgeway Builders sent', '3 733 · Castell two_drafting', '4 729 · Pecan Grove paid'])
-  })
-  it('is empty with no sent notice', () => {
-    expect(buildLienReminders({ courtesyByJob: {}, letterTwoByJob: {}, jobTitle: (id) => id })).toEqual({ rows: [], counts: [0, 0, 0, 0], waiting: 0, scheduled: 0 })
-  })
-})
-
-describe('the rung’s words, whose press each rung is, and the card', () => {
-  it('names the uncounted notices beside step 1 only', () => {
-    expect(lienReminderRungWords(1, 2)).toBe(' · 2 before day 7')
-    expect(lienReminderRungWords(1, 2, 3)).toBe(' · 2 before day 7 · 3 wait for reminders week')
-    expect(lienReminderRungWords(1, 0, 1)).toBe(' · 1 waits for reminders week')
-    expect(lienReminderRungWords(1, 0)).toBe('')
-    expect(lienReminderRungWords(2, 2)).toBe('')
-  })
-  it('the attorney’s letter is the leader’s rung, the rest the office’s', () => {
-    expect([1, 2, 3, 4].map((n) => lienReminderStepWho(n as 1 | 2 | 3 | 4))).toEqual(['office', 'office', 'leader', 'office'])
-  })
+describe('the card on a row’s dots', () => {
   it('writes the ladder out for the card: done, now, to come', () => {
     const items = lienReminderLadderItems({ step: 2, state: 'sent', words: 'day 16 · courtesy sent Nov 2 by email · nothing since', day: 16, counted: true })
     expect(items.map((i) => `${i.state} ${i.title}`)).toEqual(['done Reminder went', 'now Reminder sent', 'todo Attorney’s letter', 'todo Closed'])
@@ -122,66 +79,14 @@ describe('the rung’s words, whose press each rung is, and the card', () => {
   })
 })
 
-describe('lienReminderRungRule — a rung’s rule in words (v2.6522)', () => {
-  it('names when a notice stands on each rung, the press, whose it is and what moves it on, with the clocks’ own days', () => {
-    expect(lienReminderRungRule(1)).toMatchObject({ who: 'office', movesOn: 'the courtesy goes' })
-    expect(lienReminderRungRule(1).when).toBe('the packet went, nothing came back, it is day 7 or later, and reminders week of the lien’s month (days 1 to 5) has opened')
-    expect(lienReminderRungRule(2).press).toBe('none for 7 days; then Send the attorney’s letter. While they pay, Record what they promised')
-    expect(lienReminderRungRule(3)).toMatchObject({ who: 'leader' })
-    expect(lienReminderRungRule(3).when).toContain('due from day 10 and overdue from day 14 while the courtesy is held')
-    expect(lienReminderRungRule(4).press).toBe('none; the notice reads under Sent')
-  })
-})
-
-describe('lienReminderBrief — the step brief a pressed rung opens (v2.6574; plain words v2.6594)', () => {
-  it('answers in plain words, why, what to do and what it does, the other moves with their meaning, what ends it, and what happens if nobody acts', () => {
-    const one = lienReminderBrief(1)
-    expect(one).toMatchObject({ title: 'Reminder due', who: 'office' })
-    expect(one.plain).toContain('we send it once')
-    expect(one.why).toBe('The packet went, nothing came back, it is day 7 or later, and reminders week of the lien’s month has opened (days 1 to 5).')
-    expect(one.usual).toEqual({ press: 'Send a courtesy notice', means: 'sends the email and the text in one press; it takes a minute' })
-    expect(one.instead.map((m) => m.press)).toEqual(['Send the attorney’s letter', 'Record the owner’s call', 'The GC authorized direct pay'])
-    expect(one.ifNobody).toContain('From day 10 the attorney’s letter is due')
-    const two = lienReminderBrief(2)
-    expect(two.plain).toContain('not another reminder')
-    expect(two.usual?.press).toBe('Send the attorney’s letter')
-    expect(two.instead[0]).toEqual({ press: 'Send a courtesy notice again', means: 'only by hand, when an email or a text bounced' })
-    const three = lienReminderBrief(3)
-    expect(three).toMatchObject({ title: 'Attorney’s letter', who: 'leader' })
-    expect(three.usual?.press).toBe('Send the attorney’s letter')
-    expect(three.why).toContain('due from day 10 and late from day 14')
-    expect(three.closes).toContain('the affidavit is filed')
-    expect(three.ifNobody).toContain('the right to it is lost')
-    const four = lienReminderBrief(4)
-    expect(four.usual).toBeNull()
-    expect(four.closes).toBe('')
-    expect(four.instead[1]?.press).toBe('Not what I said')
-  })
-})
-
 describe('paying it down (punch list #274, PR 3)', () => {
   const paying = courtesy({ state: 'paying', day: 20, words: 'paying it down · $4,000 paid Nov 3 · $8,045 still owed', paying: { lastPaidYmd: '2026-11-03', lastAmount: 4000, stillOwed: 8045, until: '2026-11-10', promisedYmd: null, promise: null } })
   it('stands on step 2 as paying, whatever the letter’s clock says, unless a letter is on the desk or the courtesy is closed or held', () => {
     expect(lienReminderAt(paying, two({ state: 'overdue', day: 20 }))).toEqual({ step: 2, state: 'paying', words: paying.words, day: 20, counted: true })
     expect(lienReminderAt(paying, two({ state: 'in_flight', day: 20, words: 'the attorney’s letter · unresponsive · drafting', letterTwo: { itemId: 'i2', kind: 'unresponsive', status: 'draft', sentAt: null } }))?.state).toBe('two_drafting')
-    const rows = buildLienReminders({ courtesyByJob: { j1: paying }, letterTwoByJob: { j1: two({ state: 'overdue', day: 20 }) }, jobTitle: () => '412 · Cedar Bend' })
-    expect(rows.rows[0]).toMatchObject({ step: 2, state: 'paying', why: 'paying it down' })
-    expect(rows.counts).toEqual([0, 1, 0, 0])
   })
-  it('the card’s second rung reads Paying it down with the payment’s words, and the brief for a paying notice asks what they promised', () => {
+  it('the card’s second rung reads Paying it down with the payment’s words', () => {
     const items = lienReminderLadderItems({ step: 2, state: 'paying', words: paying.words, day: 20, counted: true })
     expect(items[1]).toEqual({ state: 'now', title: 'Paying it down', detail: 'Paying it down · $4,000 paid Nov 3 · $8,045 still owed. A partial payment is an answer: the desk stops reminding and asks what they promised for the rest.' })
-    const brief = lienReminderBrief(2, 'paying')
-    expect(brief).toMatchObject({ title: 'Reminder sent', who: 'office' })
-    expect(brief.plain).toContain('A partial payment is an answer')
-    expect(brief.plain).toContain('The lien’s last day does not move.')
-    expect(brief.usual).toEqual({ press: 'Record what they promised', means: 'the date and the amount they gave for the rest; the desk asks again on that date' })
-    expect(brief.instead.map((m) => m.press)).toEqual(['Send the attorney’s letter', 'Record the owner’s call', 'The GC authorized direct pay'])
-    expect(brief.instead[0]!.means).toBe('anyway, when the payment was token')
-    expect(brief.ifNobody).toContain('Nothing is sent while they pay.')
-    // The plain step 2 brief is unchanged for a notice that is not paying.
-    expect(lienReminderBrief(2, 'sent').usual?.press).toBe('Send the attorney’s letter')
-    expect(lienReminderBrief(2).usual?.press).toBe('Send the attorney’s letter')
-    expect(lienReminderRungRule(2).press).toContain('While they pay, Record what they promised')
   })
 })

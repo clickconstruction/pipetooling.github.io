@@ -23,6 +23,7 @@ import { lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilin
 import { mailPieceForCopy, type LienMailPieceRow } from '../mail/lienMailPieces'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_RUN_ACT, lienRunActFor, type LienRunAct } from './lienRunWords'
+import { parseLienMailedCopies, type LienMailedCopy } from './lienMailedCopies'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -116,6 +117,8 @@ export type RunNotice = {
   rowFields?: unknown
   /** The last day this notice can be mailed (`YYYY-MM-DD`), as the desk counts it: the earliest open month's day, or the retainage notice's. *Today's mail* prints it (punch list #314). Absent or null = the desk has none. */
   mailBy?: string | null
+  /** The scans or photos of what went in the envelope (`job_lien_desk_items.mailed_copies`, `lienMailedCopies.ts`); absent or empty = none added. */
+  mailedCopies?: LienMailedCopy[]
   /** The property record the job points at (v2.7489, `jobs_ledger.customer_address_id`): what *the same property* means on the desk. Absent or null = the job points at none. */
   propertyId?: string | null
   /** The property's street to show beside the job's name (v2.7489, `lienRunStreetBeside`): the record's own, and only when the name does not already say it. Absent or '' = none. */
@@ -249,6 +252,7 @@ export function buildLienDeskRun(
       street: lienRunStreetBeside(job?.job_name, address?.address),
       printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
       printedBy: runPrintedBy(item, opts),
+      mailedCopies: parseLienMailedCopies((item as { mailed_copies?: unknown }).mailed_copies),
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,

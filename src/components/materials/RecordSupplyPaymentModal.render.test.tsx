@@ -25,6 +25,9 @@ function fakeIo(loaded: HousePayments = { payments: [], lines: [] }) {
       return { payment_id: 'p-new', lines: input.lines.length, placed: input.amount, on_account: 0, placed_from_account: 0 }
     }),
     remove: vi.fn(async () => {}),
+    restore: vi.fn(async () => {}),
+    move: vi.fn(async () => {}),
+    undoMove: vi.fn(async () => {}),
   }
   return { io, recorded }
 }
@@ -145,7 +148,7 @@ describe('RecordSupplyPaymentModal', () => {
     const { io } = fakeIo()
     renderWithProviders(<RecordSupplyPaymentModal house={house} bills={bills.filter((b) => b.is_paid)} io={io} todayYmd={today} onClose={() => {}} onRecorded={() => {}} />)
     expect(await screen.findByText('Nothing waiting on a payment at Cedar Fork Supply.')).toBeTruthy()
-    const failing: SupplyPaymentsIo = { loadHouse: vi.fn(async () => Promise.reject({ message: 'permission denied for table supply_house_payments' })), record: vi.fn(), remove: vi.fn() }
+    const failing: SupplyPaymentsIo = { loadHouse: vi.fn(async () => Promise.reject({ message: 'permission denied for table supply_house_payments' })), record: vi.fn(), remove: vi.fn(), restore: vi.fn(), move: vi.fn(), undoMove: vi.fn() }
     renderWithProviders(<RecordSupplyPaymentModal house={{ ...house, name: 'Pecan Supply' }} bills={bills} io={failing} todayYmd={today} onClose={() => {}} onRecorded={() => {}} />)
     expect((await screen.findByRole('alert')).textContent).toContain('permission denied')
   })

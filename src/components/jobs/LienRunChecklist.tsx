@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { lienRunTickDay, type LienRunRow } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_RUN_GROUPS, lienRunPartOf, type LienRunPartKey, type LienRunStep } from '../../lib/jobs/lienRunParts'
 import { trackingShape } from '../../lib/jobs/lienDeskRun'
 import { runClosePaidPress, runPaidFoldWords } from '../../lib/jobs/lienRunClosePaid'
 import { lienSignatureWhen } from '../../lib/jobs/lienNoticeSignature'
+import { LIEN_MAILED_COPY_ACCEPT, LIEN_MAILED_COPY_WORDS } from '../../lib/jobs/lienMailedCopies'
 
 /**
  * The run as a checklist (v2.7328): one row per notice, three ticks across — Printed, Signed,
@@ -52,6 +53,36 @@ export type LienRunChecklistProps = {
   leaderName?: string | null
   /** The step the run is on: it picks which groups start folded. */
   step?: LienRunStep | null
+  /**
+   * What was mailed (the owner's ask of 2026-11-16): a printed row takes a scan or a photo of the papers in its
+   * envelope, and lists the ones it has with a way to open each. `addingItemId` is the row a file is going up for.
+   * Absent = the rows show the files they have and no press.
+   */
+  mailedCopies?: { onAdd: (row: LienRunRow, file: File) => void; addingItemId: string | null }
+}
+
+/** The press that takes the file: a button over a hidden picker, so the keyboard reaches it as any button. */
+function MailedCopyPress({ row, has, adding, dead, onAdd }: { row: LienRunRow; has: boolean; adding: boolean; dead: boolean; onAdd: (row: LienRunRow, file: File) => void }) {
+  const input = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        accept={LIEN_MAILED_COPY_ACCEPT}
+        hidden
+        data-testid={`run-check-copy-file-${row.itemId}`}
+        onChange={(ev) => {
+          const file = ev.target.files?.[0]
+          ev.target.value = ''
+          if (file) onAdd(row, file)
+        }}
+      />
+      <button type="button" onClick={() => input.current?.click()} disabled={dead} title={LIEN_MAILED_COPY_WORDS.title} className="lienRunCheckCopyAdd" data-testid={`run-check-copy-add-${row.itemId}`}>
+        {adding ? LIEN_MAILED_COPY_WORDS.adding : has ? LIEN_MAILED_COPY_WORDS.another : LIEN_MAILED_COPY_WORDS.add}
+      </button>
+    </>
+  )
 }
 
 const tickBtn = (kind: 'open' | 'primary', dead: boolean) =>
@@ -71,7 +102,7 @@ const tickBtn = (kind: 'open' | 'primary', dead: boolean) =>
 
 const field = { font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', width: '100%', minWidth: 0 } as const
 
-export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, onOpenSign, onTracking, paneFor, besideBox, focusMailItemId, paid, unprint, partOf, leaderName, step = null }: LienRunChecklistProps) {
+export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, onOpenSign, onTracking, paneFor, besideBox, focusMailItemId, paid, mailedCopies, unprint, partOf, leaderName, step = null }: LienRunChecklistProps) {
   // A head pressed by hand: its group stays as the person left it, whatever step the run moves to.
   const [folds, setFolds] = useState<Partial<Record<LienRunPartKey, boolean>>>({})
   // While the cursor is in a number box the rows stay in the groups they were in: a row that moved to *Ready to record*
@@ -137,6 +168,17 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
             ) : null
           ) : null}
         </div>
+        {/* What was mailed: the files the notice has, and on a printed paper row the press that adds one. A paid row and an emailed one have nothing in an envelope. */}
+        {!closed && !r.paperless && (r.mailedCopies.length > 0 || (mailedCopies && printedOk)) ? (
+          <div className="lienRunCheckCopies" data-testid={`run-check-copies-${r.itemId}`}>
+            {r.mailedCopies.map((c) => (
+              <a key={c.driveFileId || c.url} href={c.url} target="_blank" rel="noreferrer" title={`${c.name} · ${LIEN_MAILED_COPY_WORDS.open}`}>
+                ✓ {c.name} ›
+              </a>
+            ))}
+            {mailedCopies && printedOk ? <MailedCopyPress row={r} has={r.mailedCopies.length > 0} adding={mailedCopies.addingItemId === r.itemId} dead={busy || mailedCopies.addingItemId != null} onAdd={mailedCopies.onAdd} /> : null}
+          </div>
+        ) : null}
         <div className="lienRunCheckTicks" role="group" aria-label={`${r.label} — the three ticks`}>
           <div className="lienRunCheckTick" data-tick="printed" data-on={printedOk ? 'yes' : 'no'}>
             <span className="lienRunCheckTickName">Printed</span>
