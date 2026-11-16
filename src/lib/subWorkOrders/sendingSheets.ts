@@ -9,20 +9,23 @@ import { subLaborJobBalance, type SubLaborSheetAssignee } from '../subLaborOutst
 import type { NeedsWorkOrderRosterPerson } from './rosterSub'
 import { buildSheetPartiesLookup, sheetParties } from './sheetParties'
 import type { SendingSheet } from './subSending'
+import { sheetOwedToNobody, TEAM_SHEET_RULE, type TeamSheetRule } from './teamSheetRule'
 
 export function sendingSheetsFrom(
   laborJobs: readonly LaborJob[],
   assigneesByJobId: ReadonlyMap<string, readonly SubLaborSheetAssignee[]>,
   namesByJobId: Record<string, string>,
   roster: readonly NeedsWorkOrderRosterPerson[],
+  rule: TeamSheetRule = TEAM_SHEET_RULE,
 ): SendingSheet[] {
   const lookup = buildSheetPartiesLookup(roster)
   return laborJobs.map((job) => {
     const parties = sheetParties(job, assigneesByJobId.get(job.id), lookup)
     return {
       id: job.id,
-      // A crew sheet pays through payroll: it shares a sending with nobody and holds no credit.
-      key: parties.crew ? '' : parties.key,
+      // A sheet owed to nobody shares a sending with nobody and holds no credit. A teammate's own sheet is theirs:
+      // their sheets share a sending and can hold a credit, as a sub's do (Taunya, 2026-11-15).
+      key: sheetOwedToNobody(parties, rule) ? '' : parties.key,
       label: sheetLabel(job, namesByJobId),
       remaining: Math.round(subLaborJobBalance(job).balance * 100) / 100,
       day: (job.job_date ?? '').slice(0, 10) || (job.created_at ? calendarYmdInAppTzFromIso(job.created_at) : ''),

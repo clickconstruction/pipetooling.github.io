@@ -14,8 +14,9 @@
  *
  * Pure. The list it makes goes to `mint_sticker_run` as `p_names` (`20261115050000_sticker_run_names.sql`), where the
  * database holds what it can check on the list itself: each name under the rule, as many as the stickers, each once.
- * The database reads no range, so the shorthand has one home. The window's field is PR 8; the mock-up's rule table in
- * `to-dos/stickers-before-boxes/mockup-named-runs.html` is this file's test list.
+ * The database reads no range, so the shorthand has one home. The mock-up's rule table in
+ * `to-dos/stickers-before-boxes/mockup-named-runs.html` is this file's test list. The window's Names field (PR 8,
+ * v2.7391) reads through `stickerNamesAsk`, and its two notices at print are `liveNamesNotice` and `blankNamesNotice`.
  */
 import { BOX_NAME_RULE, BOX_NAME_RULE_WORDS, boxNameWords, parseBoxName, type BoxName, type SiteBox } from './boxName'
 import { STICKER_RUN_MAX } from './stickerRun'
@@ -170,3 +171,85 @@ export function nextTwinName(boxes: ReadonlyArray<SiteBox>, name: string): strin
 
 /** The rule as a name is held on a sticker: `BOX_NAME_RULE`, for a reader that has only this file. */
 export const STICKER_NAME_RULE = BOX_NAME_RULE
+
+// ---------------------------------------------------------------------------
+// The window's Names field (PR 8, v2.7391)
+// ---------------------------------------------------------------------------
+
+/** The field's label and what it shows while empty. */
+export const STICKER_NAMES_LABEL = 'Names'
+export const STICKER_NAMES_PLACEHOLDER = 'G78, or G78-300'
+
+/** Said under the field while the site's boxes are read: the press waits, so nobody prints a numbered run by being quick. */
+export const STICKER_NAMES_READING_WORDS = 'Reading the site’s names…'
+
+/** Said under the field when the site's boxes did not load: the field takes a typed range, and the two notices cannot be given. */
+export const STICKER_NAMES_UNREAD_WORDS = 'The site’s names did not load, so no name is offered and nothing is checked against the site.'
+
+/** What the field makes of what is typed, with How many: the range, the count the run will have and the line under the field. */
+export type StickerNamesAsk = {
+  range: StickerRange
+  /** The stickers the run will have: the names' count, or How many for a run of numbers. Zero when refused. */
+  count: number
+  /** The typed range set its own end, so How many shows the count and its presses are dead. */
+  countFollows: boolean
+  /** The line under the field. */
+  words: string
+  tone: 'ok' | 'refused'
+}
+
+/**
+ * The Names field read. `offered` is the site's next free name the field opened on: while it stands untouched the
+ * line says so, since nobody typed it.
+ */
+export function stickerNamesAsk(typed: string, howMany: number, offered?: string | null): StickerNamesAsk {
+  const range = readStickerRange(typed, howMany)
+  const countFollows = range.kind === 'names' && stickerRangeSetsCount(typed)
+  if (range.kind === 'refused') return { range, count: 0, countFollows: false, words: range.words, tone: 'refused' }
+  if (range.kind === 'numbered') return { range, count: Math.max(0, Math.floor(Number(howMany)) || 0), countFollows: false, words: stickerRangeWords(range), tone: 'ok' }
+  const n = range.names.length
+  const isOffer = !!offered && normalizeStickerRange(typed) === offered.toUpperCase() && !range.why.startsWith('Names stop')
+  const words = isOffer ? `${range.first} to ${range.last} · ${n} ${n === 1 ? 'sticker' : 'stickers'}. ${range.first} is the site’s next free name. Type a range to set the end, like ${range.first}-${Math.min(BOX_NUMBER_MAX, parseBoxName(range.first)!.number + 99)}.` : stickerRangeWords(range)
+  return { range, count: n, countFollows, words, tone: 'ok' }
+}
+
+/** Some of a run's names, in words: `G78`, `G78 and G80`, `G78 to G150` when they are one unbroken stretch of the run, `G78, G80 and 5 more` when not. */
+export function namesSpanWords(some: ReadonlyArray<string>, runNames: ReadonlyArray<string>): string {
+  if (some.length === 0) return ''
+  if (some.length === 1) return some[0]!
+  const at = runNames.indexOf(some[0]!)
+  const unbroken = at >= 0 && some.every((name, i) => runNames[at + i] === name)
+  if (unbroken) return `${some[0]} to ${some[some.length - 1]}`
+  if (some.length === 2) return `${some[0]} and ${some[1]}`
+  return `${some[0]}, ${some[1]} and ${some.length - 2} more`
+}
+
+/**
+ * The first notice at print: names of the run that are live boxes on the site already. This is the backfill, and the
+ * default, so it is a notice and never a hold: *77 of these are boxes on this site already, G1 to G77. Their stickers
+ * go on those boxes.* Null when none is.
+ */
+export function liveNamesNotice(names: ReadonlyArray<string>, boxes: ReadonlyArray<SiteBox>): { names: string[]; words: string } | null {
+  const live = new Set(boxes.filter((b) => !b.retiredAt && b.kind !== 'unsorted').map((b) => b.label.trim().toUpperCase()))
+  const taken = names.filter((n) => live.has(n))
+  if (taken.length === 0) return null
+  const span = namesSpanWords(taken, names)
+  const words = taken.length === 1 ? `1 of these is a box on this site already, ${span}. Its sticker goes on that box.` : `${taken.length} of these are boxes on this site already, ${span}. Their stickers go on those boxes.`
+  return { names: taken, words }
+}
+
+/**
+ * The second notice, and the one hold: names of the run that an earlier run printed and that are on no box yet.
+ * Printing them again leaves two stickers for one name in two drawers, so the press waits for **Print them anyway**.
+ * `blankNames` are the names on the site's stickers that are blank and not lost. Null when none overlaps.
+ */
+export function blankNamesNotice(names: ReadonlyArray<string>, blankNames: ReadonlyArray<string>): { names: string[]; words: string; anywayLabel: string } | null {
+  const blank = new Set(blankNames.map((n) => n.trim().toUpperCase()))
+  const again = names.filter((n) => blank.has(n))
+  if (again.length === 0) return null
+  const span = namesSpanWords(again, names)
+  const words = again.length === 1
+    ? `1 of these was printed on an earlier run and is not on a box yet, ${span}. Printing it again makes two stickers for one name.`
+    : `${again.length} of these were printed on an earlier run and are not on a box yet, ${span}. Printing them again makes two stickers for each name.`
+  return { names: again, words, anywayLabel: again.length === 1 ? 'Print it anyway' : 'Print them anyway' }
+}

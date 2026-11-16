@@ -89,4 +89,14 @@ describe('StickerPreviewFold', () => {
     render(<StickerPreviewFold lastNumber={undefined} count={200} copies={1} width={24} />)
     expect(screen.getByTestId('stickers-preview-reading').textContent).toBe('Reading where the last run ended…')
   })
+
+  it('a run that names its boxes draws the names, and says the names and the numbers are the run’s (section 10, v2.7391)', () => {
+    localStorage.setItem('pt.stickers.previewOpen', '1')
+    const names = Array.from({ length: 223 }, (_, i) => `G${78 + i}`)
+    render(<StickerPreviewFold lastNumber={224} count={223} copies={1} width={24} names={names} />)
+    expect(screen.getByTestId('stickers-preview-head').textContent).toBe('6 strips of 223 stickers, G78 to G83.')
+    expect(stripNames()).toEqual(['The strip for G78', 'The strip for G79', 'The strip for G80', 'The strip for G81', 'The strip for G82', 'The strip for G83', 'The strip for 0000'])
+    expect(screen.getByTestId('stickers-preview-more').textContent).toBe('and 217 more, to G300')
+    expect(screen.getByTestId('stickers-preview-code-words').textContent).toBe('The names and the numbers are the run’s. Each sticker’s code is given when the run prints.')
+  })
 })

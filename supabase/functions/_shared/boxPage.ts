@@ -121,11 +121,29 @@ export function boxPagePlate(label: string): string {
   return m ? m[1]!.toUpperCase() : name
 }
 
+/** The `app_settings` key of Settings' company block: the company's name, address, Phone and email. */
+export const BOX_PAGE_COMPANY_KEY = 'physical_invoice_issuer_v1'
+
+/** The Phone of Settings' company block, from the row's stored text. Empty when the row is blank, absent or unreadable. */
+export function boxPageCompanyPhone(valueText: string | null | undefined): string {
+  if (!valueText) return ''
+  try {
+    const o = JSON.parse(valueText) as unknown
+    if (!o || typeof o !== 'object') return ''
+    const phone = (o as Record<string, unknown>).phone
+    return typeof phone === 'string' ? phone.trim() : ''
+  } catch {
+    return ''
+  }
+}
+
 /**
- * The number *Text the office* and *Call the office* go to (v2.6910): the first of these that is there. The function
- * hands them in order: the team box's number from Settings → Phone and texts (`messages_boxes_v1`), the line the Messages
- * page sees, so a text about a cage lands where the office reads it; then that box's fallback secret; then the
- * letterhead's number, which rings but whose texts reach nobody in the app. Empty when none is there.
+ * The number the page shows and its presses text and call: the first of these that is there. The function hands them
+ * in order. First the company's number, the Phone of Settings' company block (`boxPageCompanyPhone`), since v2.7390 at
+ * Taunya's word of 2026-11-15: the page is the company's card and shows the number the company gives out, whatever
+ * Settings holds. Then, when that Phone is blank, the team box's number from Settings → Phone and texts
+ * (`messages_boxes_v1`, the page's number from v2.6910 to v2.7390), that box's fallback secret, and the letterhead's
+ * constant. Empty when none is there.
  */
 export function boxPageOfficePhone(candidates: ReadonlyArray<string | null | undefined>): string {
   for (const c of candidates) {

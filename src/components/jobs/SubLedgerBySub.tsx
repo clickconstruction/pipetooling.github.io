@@ -26,7 +26,7 @@ function Owed({ value }: { value: number }) {
 const right = { ...td, textAlign: 'right', whiteSpace: 'nowrap' } as const
 const footCell = { ...td, borderBottom: 'none', background: 'var(--bg-subtle)', fontWeight: 700, color: 'var(--text-strong)' } as const
 
-export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, onOpen }: { rows: readonly LedgerSubRow[]; totals: LedgerBySubTotals; periodLabel: string; narrow: boolean; withYear: boolean; onOpen: (key: string) => void }) {
+export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, onOpen, teamKeys }: { rows: readonly LedgerSubRow[]; totals: LedgerBySubTotals; periodLabel: string; narrow: boolean; withYear: boolean; onOpen: (key: string) => void; /** People whose sheets are a teammate's own (sub labor to someone on payroll). */ teamKeys?: ReadonlySet<string> }) {
   const paymentsWords = (r: LedgerSubRow) => (r.payments === 0 ? 'nothing paid' : r.payments === 1 ? '1 payment' : `${r.payments} payments`)
   if (narrow) {
     return (
@@ -35,7 +35,7 @@ export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, o
           <button key={r.key} type="button" data-ledger-sub={r.key} onClick={() => onOpen(r.key)} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 10px', padding: '0.55rem 0.7rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer', width: '100%' }}>
             <span style={{ minWidth: 0, fontWeight: 600 }}>
               {r.name}
-              {r.crew ? <span style={{ ...pill('gray'), marginLeft: 6 }}>crew</span> : null}
+              {r.crew ? <span style={{ ...pill('gray'), marginLeft: 6 }}>crew</span> : teamKeys?.has(r.key) ? <span style={{ ...pill('gray'), marginLeft: 6 }}>team</span> : null}
             </span>
             <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--text-strong)' }}>
               <AmountSmallCents value={r.paid} />
@@ -68,7 +68,7 @@ export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, o
                 <button type="button" onClick={() => onOpen(r.key)} title="Open their statement" style={{ ...jobLink, fontWeight: 600 }}>
                   {r.name}
                 </button>
-                {r.crew ? <span style={{ ...pill('gray'), marginLeft: 6 }}>crew</span> : null}
+                {r.crew ? <span style={{ ...pill('gray'), marginLeft: 6 }}>crew</span> : teamKeys?.has(r.key) ? <span style={{ ...pill('gray'), marginLeft: 6 }}>team</span> : null}
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.sheets === 1 ? '1 sheet' : `${r.sheets} sheets`}</div>
               </td>
               <td style={{ ...td, color: r.payments ? undefined : 'var(--text-muted)' }}>{paymentsWords(r)}</td>

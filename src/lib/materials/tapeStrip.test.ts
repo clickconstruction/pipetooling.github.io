@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { qrSquares, qrSquaresFromPath, tapeAddressLines, tapeStripBlock, tapeStripLayout, tapeStripLines } from './tapeStrip'
+import { dotTextHeight } from './tapeDotFont'
+import { qrSquares, qrSquaresFromPath, tapeAddressLines, tapeStencilPx, tapeStripBlock, tapeStripLayout, tapeStripLines } from './tapeStrip'
 
 describe('tapeStripLayout', () => {
   it('gives the code a whole number of dots a square, as tall as the tape prints', () => {
@@ -78,6 +79,55 @@ describe('the lines under the stencil (Taunya’s ask of 2026-11-15)', () => {
     const block = tapeStripBlock(l, tapeStripLines('PRTS.CO/B', 'Test strip'))
     expect(block.stencilBaseline).toBe(72)
     expect(block.lines.map((line) => [line.kind, line.px, line.baseline])).toEqual([['code', 17, 96], ['words', 13, 112]])
+  })
+})
+
+describe('a named sticker’s strip (punch list #329, section 10, v2.7391)', () => {
+  const lines = tapeStripLines('PRTS.CO/B/4F2A-9C18', undefined, '0159')
+
+  it('the number is its own line, before the address', () => {
+    expect(lines).toEqual([{ text: '0159', kind: 'code' }, { text: 'PRTS.CO/B/', kind: 'code' }, { text: '4F2A-9C18', kind: 'code' }])
+    // no number: a box's strip and a numbered sticker's are what they were
+    expect(tapeStripLines('PRTS.CO/B/4F2A-9C18', undefined, undefined)).toEqual(tapeStripLines('PRTS.CO/B/4F2A-9C18'))
+    expect(tapeStripLines('PRTS.CO/B/4F2A-9C18', '', '')).toHaveLength(2)
+  })
+
+  it('on 24 mm tape the three lines fit under the name at today’s sizes and spacing', () => {
+    const l = tapeStripLayout(128, 25)
+    const block = tapeStripBlock(l, lines)
+    expect(block.tight).toBe(false)
+    // the name's capitals start inside the tape and the code's ink ends inside it
+    expect(block.stencilBaseline - l.stencilPx * 0.78).toBeGreaterThanOrEqual(0)
+    expect(block.lines[2]!.baseline).toBeLessThanOrEqual(128)
+    expect(block.lines.map((line) => line.baseline - block.stencilBaseline)).toEqual([24, 45, 66])
+  })
+
+  it('on 18 mm tape the lines close up so the name keeps its size: six dots under the name, four between lines', () => {
+    const l = tapeStripLayout(112, 25)
+    const block = tapeStripBlock(l, lines)
+    expect(block.tight).toBe(true)
+    const cap = dotTextHeight(l.codeSquare)
+    expect(block.lines.map((line) => line.baseline - block.stencilBaseline)).toEqual([6 + cap, 6 + cap + cap + 4, 6 + cap + 2 * (cap + 4)])
+    expect(block.stencilBaseline - l.stencilPx * 0.78).toBeGreaterThanOrEqual(0)
+    expect(block.lines[2]!.baseline).toBeLessThanOrEqual(112)
+    // the two lines of a box's strip are never closed up
+    expect(tapeStripBlock(l, tapeStripLines('PRTS.CO/B/4F2A-9C18')).tight).toBe(false)
+  })
+
+  it('a name of five to seven characters is drawn at five sevenths of the size, the block centred again', () => {
+    for (const dots of [112, 128]) {
+      const l = tapeStripLayout(dots, 25)
+      const small = tapeStencilPx(l, true)
+      expect(small).toBe(Math.round((l.stencilPx * 5) / 7))
+      expect(tapeStencilPx(l)).toBe(l.stencilPx)
+      const block = tapeStripBlock(l, lines, small)
+      expect(block.tight).toBe(false)
+      const over = block.stencilBaseline - small * 0.78
+      const under = dots - block.lines[2]!.baseline
+      expect(over).toBeGreaterThanOrEqual(0)
+      expect(under).toBeGreaterThanOrEqual(0)
+      expect(Math.abs(over - under)).toBeLessThan(l.codePx)
+    }
   })
 })
 

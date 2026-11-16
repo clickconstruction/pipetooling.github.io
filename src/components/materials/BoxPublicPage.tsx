@@ -9,7 +9,7 @@
  * says the box's name as the label prints it on the navy plate (v2.6899), that the material belongs to the company,
  * and how to reach the office: **Ask for a bid**, the office's number, **Text the office about box G81**, **Work with
  * us** and **Sign in to see what is inside**. Every press but the sign-in is a link that opens the phone's own
- * Messages or dialler (the team text line since v2.6910), so nothing signed out writes to the app. The function sends
+ * Messages or dialler (the company's number from Settings since v2.7390), so nothing signed out writes to the app. The function sends
  * nothing else, so the page cannot draw what it was not sent.
  *
  * The sign-in writes the box's path into the app's one-shot return key and goes to the sign-in, which lands back on

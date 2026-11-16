@@ -45438,6 +45438,15 @@ export type Database = {
         }
         Returns: string
       }
+      job_lead_contact: {
+        Args: { p_job_id: string }
+        Returns: {
+          lead_name: string
+          lead_phone: string
+          lead_role: string
+          lead_user_id: string
+        }[]
+      }
       job_names_from_work_plan: {
         Args: never
         Returns: {

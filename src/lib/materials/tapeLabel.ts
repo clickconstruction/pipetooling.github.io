@@ -35,6 +35,13 @@ export type TapeLayout = {
   wordsMm: number
 }
 
+/**
+ * A named sticker's name (punch list #329, section 10): up to four characters print at the stencil's full size; five
+ * to seven, the box rule's longest, at five sevenths of it, the mock-up's 28 and 20.
+ */
+export const TAPE_NAME_FULL_CHARS = 4
+export const TAPE_NAME_SMALL_RATIO = 5 / 7
+
 /** The name length a strip is cut for when nobody says: a letter and three digits, or a sticker's four digits. */
 export const TAPE_NAME_CHARS_DEFAULT = 4
 

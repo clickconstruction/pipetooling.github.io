@@ -10,13 +10,21 @@
  * come from the kernel copy (`_shared/gcKernels`, generated from `src`), as the Bridge's weekly sheet runs the
  * Bridge's. The overhead scan's own header says why: no SQL re-implementation, no second kernel to drift.
  *
- * POST { windowDays: 28 | 56 | 90 }, signed in. Answers { ok: true, scores } where `scores` is `ScorecardWire`
- * (`scorecardWire.ts`), or { ok: false, error } with 401 (not signed in), 403 (not the scoreboard's gate), 400 (a
- * window the tab does not offer) or 500. Test jobs are left out, as on the Bridge. Nothing is written.
+ * POST { windowDays: 28 | 56 | 90, view?: 'full' | 'bids' | 'mine' }, signed in. Test jobs are left out, as on the
+ * Bridge. Nothing is written. Answers, by view (`scorecardWire.ts`):
  *
- * Who it answers: the scoreboard's gate, read here and not taken from the caller: a dev, the owner, or anyone the
- * database says has payroll access (`has_payroll_access()`, asked as the caller). A sample account, a digital twin,
- * the walk tester and an archived account are refused.
+ * - `full` (the default): { ok: true, scores }, the Scores tab's whole read as `ScorecardWire`;
+ * - `bids` (PR 5): { ok: true, estimating }, the estimating score alone as `EstimatorScoresWire`, everyone's, for the
+ *   Bid Board's closeout chips;
+ * - `mine` (PR 5): the same shape for the caller's own bids, the ones they estimated or manage: their own row.
+ *
+ * Or { ok: false, error } with 401 (not signed in), 403 (not allowed that view), 400 (a window the tab does not offer)
+ * or 500.
+ *
+ * Who it answers: `full` and `bids` are the scoreboard's gate, read here and not taken from the caller: a dev, the
+ * owner, or anyone the database says has payroll access (`has_payroll_access()`, asked as the caller). `mine` is any
+ * real account's, since it answers with that person's own bids and the hurdle as one figure, never the overhead or
+ * the hours behind it. A sample account, a digital twin, the walk tester and an archived account are refused.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -26,8 +34,8 @@ import { isArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 // it keeps.
 import type { Database } from '../_shared/gcKernels/types/database.ts'
 // The kernels straight from the copy, not its index.
-import { readScorecard } from '../_shared/gcKernels/lib/scorecard/scorecardReads.ts'
-import { mayReadTeamScores, scorecardToWire, teamScoresWindowDays } from '../_shared/gcKernels/lib/scorecard/scorecardWire.ts'
+import { readEstimatorScores, readScorecard } from '../_shared/gcKernels/lib/scorecard/scorecardReads.ts'
+import { estimatorScoresToWire, mayReadTeamScores, scorecardToWire, teamScoresView, teamScoresViewAllowed, teamScoresWindowDays } from '../_shared/gcKernels/lib/scorecard/scorecardWire.ts'
 import { readZzTestJobRows } from '../_shared/gcKernels/lib/jobs/zzTestJobReads.ts'
 import { todayYmdInAppTz } from '../_shared/gcKernels/utils/dateUtils.ts'
 
@@ -64,15 +72,24 @@ serve(async (req) => {
     if (!who || who.archived_at) return json({ ok: false, error: 'The scores are for the office.' }, 403)
     // Payroll access is the database's own answer for this person, asked as them.
     const { data: payroll } = await caller.rpc('has_payroll_access')
-    if (!mayReadTeamScores({ role: who.role, payrollAccess: payroll === true })) return json({ ok: false, error: 'The scores are for the owner, a dev and whoever has payroll access.' }, 403)
+    const gate = mayReadTeamScores({ role: who.role, payrollAccess: payroll === true })
 
-    const body = (await req.json().catch(() => null)) as { windowDays?: unknown } | null
+    const body = (await req.json().catch(() => null)) as { windowDays?: unknown; view?: unknown } | null
+    const view = teamScoresView(body?.view)
+    if (!teamScoresViewAllowed(view, gate)) return json({ ok: false, error: 'The scores are for the owner, a dev and whoever has payroll access.' }, 403)
     const windowDays = teamScoresWindowDays(body?.windowDays)
     if (windowDays == null) return json({ ok: false, error: 'Ask for the last 28, 56 or 90 days.' }, 400)
 
     const zzTestJobIds = new Set((await readZzTestJobRows(admin)).map((r) => r.id))
-    const read = await readScorecard(admin, { windowDays, todayYmd: todayYmdInAppTz(new Date()), zzTestJobIds })
-    return json({ ok: true, scores: scorecardToWire(read) })
+    const todayYmd = todayYmdInAppTz(new Date())
+    if (view === 'full') {
+      const read = await readScorecard(admin, { windowDays, todayYmd, zzTestJobIds })
+      return json({ ok: true, scores: scorecardToWire(read) })
+    }
+    // The estimating score alone (PR 5): everyone's for the gate, or the caller's own bids. The caller's id is the
+    // token's, never the body's, so nobody asks for another person's row.
+    const read = await readEstimatorScores(admin, { windowDays, todayYmd, zzTestJobIds, onlyUserId: view === 'mine' ? u.user.id : null })
+    return json({ ok: true, estimating: estimatorScoresToWire(read, view) })
   } catch (e) {
     console.error('[team-scores]', e)
     return json({ ok: false, error: e instanceof Error ? e.message : 'The scores could not be read.' }, 500)

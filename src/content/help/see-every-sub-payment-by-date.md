@@ -14,7 +14,7 @@ Jobs → Subs → Ledger lists every payment made to a sub, newest first. You ho
 Each line has seven facts.
 
 - **Date sent** is the day the money left.
-- **Paid to** is the sub the sheet belongs to. A teammate's crew sheet carries a {{chip:gray|crew}} chip.
+- **Paid to** is the person the sheet belongs to. A teammate paid as sub labor carries a {{chip:gray|team}} chip.
 - **Job** is the job's number and name. Press it to open the sheet.
 - **How paid** is the method picked when the payment was recorded, with its check number or id. Lines that were one check share a sending number under it.
 - **Memo** is what was typed when the payment was recorded.
@@ -111,7 +111,7 @@ Two chips at the top group the ledger. {{chip:gray|By date}} is the list above. 
 
 A row shows how many payments went out in the period and their first and last day. It shows what was paid and what was back-charged. **We owe today** is what is still open on their sheets, whatever the period.
 
-A sheet paid past its total shows a green note under the amount. A crew sheet reads *payroll*, because crew pay runs through payroll.
+A sheet paid past its total shows a green note under the amount. A sheet with no name on it reads *payroll*, because it is owed to nobody.
 
 On {{chip:gray|This year}} the paid column is the figure a 1099 starts from.
 

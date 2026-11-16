@@ -71,6 +71,51 @@ export async function readScorecardSettings(db: SupabaseClient<Database>): Promi
   }
 }
 
+/**
+ * The hurdle for a window, and the hours it is built from: the job day ledger's pool over its paid field hours, test
+ * jobs aside. Both reads of the scores start here, so the full read and a person's own row share one hurdle.
+ */
+async function readHurdle(db: SupabaseClient<Database>, args: { fromYmd: string; toYmd: string; windowDays: number; zzTestJobIds: ReadonlySet<string> | null; isCancelled?: () => boolean }) {
+  const [{ burden, setting }, inputs] = await Promise.all([readScorecardSettings(db), readOverheadPoolSnapshotInputs(db)])
+  const ledger = await readJobDayLedger(db, { startYmd: args.fromYmd, endYmd: args.toYmd, leadDays: 0, inputs, isCancelled: args.isCancelled })
+  if (!ledger) throw new Error('The hours could not be read.')
+  // Paid field hours and wages per job, test jobs aside; the hurdle's hours and pool over the same window.
+  const hoursByJob = new Map<string, { hours: number; laborUsd: number }>()
+  let zzHours = 0
+  for (const [jobId, j] of ledger.jobs) {
+    if (args.zzTestJobIds?.has(jobId)) {
+      zzHours += j.hours
+      continue
+    }
+    hoursByJob.set(jobId, { hours: j.hours, laborUsd: j.laborUsd })
+  }
+  const hurdle = buildHurdle({ overheadUsd: ledger.totals.poolUsd, paidFieldHours: ledger.totals.fieldHours - zzHours, windowDays: args.windowDays, setting })
+  return { burden, setting, ledger, hoursByJob, hurdle }
+}
+
+/** The estimating score alone (punch list #360, PR 5): everyone's for the Bid Board's chips, or one person's own row. */
+export type EstimatorScoresRead = {
+  fromYmd: string
+  toYmd: string
+  todayYmd: string
+  windowDays: number
+  hurdle: Hurdle
+  estimator: EstimatorScore
+  actualsUnread: number
+}
+
+/**
+ * The estimating score without the field score's reads: the hurdle, then the bids. With `onlyUserId`, only the bids
+ * that person estimated or manages, which is their own row. The hurdle is the same one the full read builds.
+ */
+export async function readEstimatorScores(db: SupabaseClient<Database>, args: { windowDays: number; todayYmd: string; zzTestJobIds: ReadonlySet<string> | null; onlyUserId?: string | null }): Promise<EstimatorScoresRead> {
+  const toYmd = args.todayYmd
+  const fromYmd = ymdAddDays(args.todayYmd, -(args.windowDays - 1))
+  const { burden, hurdle } = await readHurdle(db, { fromYmd, toYmd, windowDays: args.windowDays, zzTestJobIds: args.zzTestJobIds })
+  const estimator = await loadEstimatorScore(db, { fromYmd, toYmd, todayYmd: args.todayYmd, hurdle, burden, onlyUserId: args.onlyUserId ?? null })
+  return { fromYmd, toYmd, todayYmd: args.todayYmd, windowDays: args.windowDays, hurdle, estimator: estimator.score, actualsUnread: estimator.actualsUnread }
+}
+
 export type ScorecardReadArgs = { windowDays: number; todayYmd: string; zzTestJobIds: ReadonlySet<string> | null; isCancelled?: () => boolean }
 
 export async function readScorecard(db: SupabaseClient<Database>, args: ScorecardReadArgs): Promise<ScorecardRead> {
@@ -80,22 +125,8 @@ export async function readScorecard(db: SupabaseClient<Database>, args: Scorecar
   const zz = args.zzTestJobIds
   const cancelled = () => args.isCancelled?.() === true
 
-  const [{ burden, setting }, inputs] = await Promise.all([readScorecardSettings(db), readOverheadPoolSnapshotInputs(db)])
-  const ledger = await readJobDayLedger(db, { startYmd: fromYmd, endYmd: toYmd, leadDays: 0, inputs, isCancelled: args.isCancelled })
-  if (!ledger) throw new Error('The hours could not be read.')
+  const { burden, setting, ledger, hoursByJob, hurdle } = await readHurdle(db, { fromYmd, toYmd, windowDays, zzTestJobIds: zz, isCancelled: args.isCancelled })
   const officeJobId = ledger.officeJobLedgerId
-
-  // Paid field hours and wages per job, test jobs aside; the hurdle's hours and pool over the same window.
-  const hoursByJob = new Map<string, { hours: number; laborUsd: number }>()
-  let zzHours = 0
-  for (const [jobId, j] of ledger.jobs) {
-    if (zz?.has(jobId)) {
-      zzHours += j.hours
-      continue
-    }
-    hoursByJob.set(jobId, { hours: j.hours, laborUsd: j.laborUsd })
-  }
-  const hurdle = buildHurdle({ overheadUsd: ledger.totals.poolUsd, paidFieldHours: ledger.totals.fieldHours - zzHours, windowDays, setting })
 
   // Materials dated in the window, by job: card charges allocated to jobs, supply-house invoices allocated to jobs.
   const materialsByJob = new Map<string, number>()
@@ -249,22 +280,65 @@ type BidRow = {
   priced_revenue_usd: number | null
   priced_cost_usd: number | null
   priced_uncosted_usd: number | null
+  estimator_id: string | null
+  account_manager_id: string | null
   estimator: { name: string | null } | null
   account_manager: { name: string | null } | null
   customers: { name: string | null } | null
 }
 type LinkedJobRow = JobChargesTimelineJob & { status: string | null; bid_id: string | null; hcp_number: string | null; click_number: string | null; job_name: string | null }
 
-const BID_SELECT = 'id, bid_number, project_name, outcome, outcome_at, bid_date_sent, priced_revenue_usd, priced_cost_usd, priced_uncosted_usd, estimator:users!bids_estimator_id_fkey(name), account_manager:users!bids_account_manager_id_fkey(name), customers(name)'
+const BID_SELECT = 'id, bid_number, project_name, outcome, outcome_at, bid_date_sent, priced_revenue_usd, priced_cost_usd, priced_uncosted_usd, estimator_id, account_manager_id, estimator:users!bids_estimator_id_fkey(name), account_manager:users!bids_account_manager_id_fkey(name), customers(name)'
 /** How many finished jobs' actuals read at once: each is the Costs tab's own few reads. */
 const ACTUALS_CONCURRENCY = 4
 
-async function loadEstimatorScore(db: SupabaseClient<Database>, args: { fromYmd: string; toYmd: string; todayYmd: string; hurdle: Hurdle; burden: number }): Promise<{ score: EstimatorScore; actualsUnread: number }> {
-  const [awardedRes, waitingRes] = await Promise.all([
-    withSupabaseRetry(async () => db.from('bids').select(BID_SELECT).in('outcome', ['won', 'started_or_complete']).gte('outcome_at', `${args.fromYmd}T00:00:00-06:00`).order('outcome_at', { ascending: false }).limit(500), 'scorecard awarded bids'),
-    withSupabaseRetry(async () => db.from('bids').select(BID_SELECT).is('outcome', null).not('bid_date_sent', 'is', null).order('bid_date_sent', { ascending: false }).limit(500), 'scorecard waiting bids'),
-  ])
+async function loadEstimatorScore(db: SupabaseClient<Database>, args: { fromYmd: string; toYmd: string; todayYmd: string; hurdle: Hurdle; burden: number; onlyUserId?: string | null }): Promise<{ score: EstimatorScore; actualsUnread: number }> {
+  // One person's own row (PR 5): the bids they estimated or manage. A uuid from the session, never typed text.
+  const mine = args.onlyUserId && /^[0-9a-f-]{36}$/i.test(args.onlyUserId) ? `estimator_id.eq.${args.onlyUserId},account_manager_id.eq.${args.onlyUserId}` : null
+  const awardedQ = () => {
+    const q = db.from('bids').select(BID_SELECT).in('outcome', ['won', 'started_or_complete']).gte('outcome_at', `${args.fromYmd}T00:00:00-06:00`)
+    return (mine ? q.or(mine) : q).order('outcome_at', { ascending: false }).limit(500)
+  }
+  const waitingQ = () => {
+    const q = db.from('bids').select(BID_SELECT).is('outcome', null).not('bid_date_sent', 'is', null)
+    return (mine ? q.or(mine) : q).order('bid_date_sent', { ascending: false }).limit(500)
+  }
+  const [awardedRes, waitingRes] = await Promise.all([withSupabaseRetry(async () => awardedQ(), 'scorecard awarded bids'), withSupabaseRetry(async () => waitingQ(), 'scorecard waiting bids')])
   const bids = [...((awardedRes as BidRow[] | null) ?? []), ...((waitingRes as BidRow[] | null) ?? [])]
+
+  // A closeout moves the number on the day the job closes, whatever its award day (PR 5): a bid awarded before the
+  // window whose job was billed or paid inside it is read too. Fails soft to the bids above.
+  try {
+    const closedEvents = ((await withSupabaseRetry(
+      async () => db.from('job_status_events').select('job_id').in('to_status', ['billed', 'paid']).gte('changed_at', `${args.fromYmd}T00:00:00-06:00`).limit(2000),
+      'scorecard closeout events',
+    )) as Array<{ job_id: string }> | null) ?? []
+    const closedJobIds = [...new Set(closedEvents.map((e) => e.job_id))]
+    if (closedJobIds.length > 0) {
+      const closedJobs = await fetchAllRowsChunkedIn(
+        closedJobIds,
+        async (chunk, from, to) => ({ data: (await db.from('jobs_ledger').select('id, bid_id').in('id', chunk).not('bid_id', 'is', null).order('id').range(from, to)).data as Array<{ id: string; bid_id: string | null }> | null, error: null }),
+        'scorecard closeout jobs',
+        { chunkSize: 200 },
+      )
+      const have = new Set(bids.map((b) => b.id))
+      const moreIds = [...new Set(closedJobs.map((j) => j.bid_id).filter((id): id is string => !!id && !have.has(id)))]
+      if (moreIds.length > 0) {
+        const more = await fetchAllRowsChunkedIn(
+          moreIds,
+          async (chunk, from, to) => {
+            const q = db.from('bids').select(BID_SELECT).in('id', chunk).in('outcome', ['won', 'started_or_complete'])
+            return { data: (await (mine ? q.or(mine) : q).order('id').range(from, to)).data as BidRow[] | null, error: null }
+          },
+          'scorecard closeout bids',
+          { chunkSize: 100 },
+        )
+        bids.push(...more)
+      }
+    }
+  } catch {
+    /* the closeouts of older awards are left out; the bids awarded in the window stand */
+  }
   const bidIds = bids.map((b) => b.id)
 
   const linked = bidIds.length
@@ -348,6 +422,8 @@ async function loadEstimatorScore(db: SupabaseClient<Database>, args: { fromYmd:
       bidNumber: b.bid_number,
       projectName: b.project_name,
       customerName: b.customers?.name ?? null,
+      estimatorId: b.estimator_id,
+      accountManagerId: b.account_manager_id,
       estimatorName: b.estimator?.name ?? null,
       accountManagerName: b.account_manager?.name ?? null,
       outcome,
