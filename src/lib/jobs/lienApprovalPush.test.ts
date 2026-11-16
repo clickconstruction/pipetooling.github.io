@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { daysUntil, lienApprovalPush, lienApprovalUrl, shortDay } from './lienApprovalPush'
-import { leaderToldWords } from './lienDeskIo'
+import { lienNoticeToldWords } from './lienLeaderTold'
 import { plainWordsFailures } from '../plainWords'
 
 describe('the leader’s push (v2.4872)', () => {
@@ -28,15 +28,26 @@ describe('the leader’s push (v2.4872)', () => {
   })
 
   it('the office’s toast says which way it reached him', () => {
-    expect(leaderToldWords({ pushSent: 2, emailSent: false, leaderName: 'Malachi Whites' })).toBe("Sent for approval. Malachi's phone has it.")
-    expect(leaderToldWords({ pushSent: 0, emailSent: true, leaderName: 'Malachi Whites' })).toBe('Sent for approval. Malachi has it by email.')
-    expect(leaderToldWords({ pushSent: 0, emailSent: false, leaderName: null })).toBe('Sent for approval. The leader will see it on the Dashboard.')
-    expect(leaderToldWords(null)).toBe('Sent for approval. The leader will see it on the Dashboard.')
+    const said = (pushSent: number, emailSent: boolean, leaderName: string | null) => lienNoticeToldWords({ ok: true, told: { pushSent, emailSent, leaderName } }).said
+    expect(said(2, false, 'Malachi Whites')).toBe("Sent for approval. Malachi's phone has it.")
+    expect(said(0, true, 'Malachi Whites')).toBe('Sent for approval. Malachi has it by email.')
+    expect(said(0, false, null)).toBe('Sent for approval. The leader will see it on the Dashboard.')
+  })
+
+  it('a reminder says so in the email, names who pressed, and keeps the push’s one line (v2.7445)', () => {
+    const base = { jobLabel: '891 · Tune 5 Liberty Hill', jobId: 'j891', claim: 27_199, gcName: 'Brund & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Wendi Park' }
+    const first = lienApprovalPush(base)
+    const again = lienApprovalPush({ ...base, reminder: true })
+    expect(again.emailText.split('\n')[0]).toBe('Wendi is reminding you of a lien notice that waits for your approval.')
+    expect(lienApprovalPush({ ...base, senderName: null, reminder: true }).emailText.split('\n')[0]).toBe('The office is reminding you of a lien notice that waits for your approval.')
+    expect({ ...again, emailText: '' }).toEqual({ ...first, emailText: '' })
+    expect(again.emailText.split('\n').slice(1)).toEqual(first.emailText.split('\n').slice(1))
+    expect(plainWordsFailures(again.emailText.split('\n')[0]!)).toEqual([])
   })
 
   it('every sentence the leader or the office reads passes the plain-words rule', () => {
     const p = lienApprovalPush({ jobLabel: '891 · Tune 5 Liberty Hill', jobId: 'j891', claim: 27_199, gcName: 'Brund & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Taunya' })
     for (const line of p.emailText.split('\n').filter((l) => /[a-z]{3}/i.test(l) && !/^\d/.test(l))) expect(plainWordsFailures(line), line).toEqual([])
-    for (const w of [leaderToldWords({ pushSent: 1, emailSent: false, leaderName: 'Malachi' }), leaderToldWords({ pushSent: 0, emailSent: true, leaderName: 'Malachi' }), leaderToldWords(null)]) expect(plainWordsFailures(w), w).toEqual([])
+    for (const w of [lienNoticeToldWords({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi' } }).said, lienNoticeToldWords({ ok: true, told: { pushSent: 0, emailSent: true, leaderName: 'Malachi' } }).said, lienNoticeToldWords({ ok: true, told: { pushSent: 0, emailSent: false, leaderName: null } }).said]) expect(plainWordsFailures(w), w).toEqual([])
   })
 })

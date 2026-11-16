@@ -76,25 +76,27 @@ export async function submitLienDeskItem(itemId: string, outcome: LienSubmitOutc
   await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update(patch as never).eq('id', itemId), 'lien desk: submit')
 }
 
-/**
- * Tell the leader (v2.4872): his phone buzzes, or the same words go by email, when the office sends
- * a notice for his approval. Best effort — a failure here never undoes the send. The function
- * writes the words itself; the client hands it only the item and the mail-by day.
- */
-export async function tellLeaderOfLienApproval(itemId: string, dueYmd: string | null): Promise<{ pushSent: number; emailSent: boolean; leaderName: string | null }> {
-  const { data, error } = await supabase.functions.invoke('notify-lien-approval', { body: { item_id: itemId, due_ymd: dueYmd ?? undefined } })
-  if (error) throw error
-  const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null }
-  return { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null }
+/** One ask of `notify-lien-approval`, never thrown: what it answered, or why it could not be asked, for the office to read. */
+async function askLeaderTell(body: Record<string, unknown>): Promise<LienLeaderTellResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('notify-lien-approval', { body })
+    if (error) return { ok: false, reason: (await readEdgeFunctionErrorBody(error)) ?? formatErrorMessage(error, 'The message could not be sent.') }
+    const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null; held?: number; message?: string | null; told?: number | null }
+    return { ok: true, told: { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null, held: d.held ?? 0, said: d.message ?? null, told: d.told ?? null } }
+  } catch (e) {
+    return { ok: false, reason: formatErrorMessage(e, 'The message could not be sent.') }
+  }
 }
 
-/** The words the office reads after a send for approval (v2.4872): which way it reached the leader. */
-export function leaderToldWords(result: { pushSent: number; emailSent: boolean; leaderName: string | null } | null): string {
-  const who = result?.leaderName?.trim().split(/\s+/)[0] || 'the leader'
-  if (!result) return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)} will see it on the Dashboard.`
-  if (result.pushSent > 0) return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)}'s phone has it.`
-  if (result.emailSent) return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)} has it by email.`
-  return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)} will see it on the Dashboard.`
+/**
+ * Tell the leader (v2.4872): his phone buzzes, or the same words go by email, when the office sends
+ * a notice for his approval. The function writes the words itself; the client hands it only the item
+ * and the mail-by day. Best effort and, since v2.7445, never thrown: the paper is already sent, so a
+ * tell that fails comes back as its reason for the office to read (`lienNoticeToldWords`), where the
+ * send used to swallow it. `remind` marks the To do view's Remind press.
+ */
+export async function tellLeaderOfLienApproval(itemId: string, dueYmd: string | null, opts?: { remind?: boolean }): Promise<LienLeaderTellResult> {
+  return askLeaderTell({ item_id: itemId, due_ymd: dueYmd ?? undefined, ...(opts?.remind ? { remind: true } : {}) })
 }
 
 /**
@@ -102,20 +104,12 @@ export function leaderToldWords(result: { pushSent: number; emailSent: boolean; 
  * press, so a batch buzzes him once with the count. The function writes the words; the client hands it each item and
  * the last day to file. Best effort and never thrown: the papers are already sent, so a tell that fails comes back as
  * its reason for the office to read (`lienAffidavitToldWords`). The body carries no `item_id`, so the function as it
- * was before it learned the affidavit refuses it outright and never words an affidavit as a notice.
+ * was before it learned the affidavit refuses it outright and never words an affidavit as a notice. `remind` marks
+ * the To do view's Remind press (v2.7445): the function then tells him of a paper sent more than fifteen minutes ago.
  */
-export async function tellLeaderOfLienAffidavits(papers: ReadonlyArray<{ itemId: string; dueYmd: string | null }>): Promise<LienLeaderTellResult | null> {
+export async function tellLeaderOfLienAffidavits(papers: ReadonlyArray<{ itemId: string; dueYmd: string | null }>, opts?: { remind?: boolean }): Promise<LienLeaderTellResult | null> {
   if (papers.length === 0) return null
-  try {
-    const { data, error } = await supabase.functions.invoke('notify-lien-approval', {
-      body: { kind: 'affidavit', items: papers.map((p) => ({ item_id: p.itemId, due_ymd: p.dueYmd ?? undefined })) },
-    })
-    if (error) return { ok: false, reason: (await readEdgeFunctionErrorBody(error)) ?? formatErrorMessage(error, 'The message could not be sent.') }
-    const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null }
-    return { ok: true, told: { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null } }
-  } catch (e) {
-    return { ok: false, reason: formatErrorMessage(e, 'The message could not be sent.') }
-  }
+  return askLeaderTell({ kind: 'affidavit', items: papers.map((p) => ({ item_id: p.itemId, due_ymd: p.dueYmd ?? undefined })), ...(opts?.remind ? { remind: true } : {}) })
 }
 
 /** "Robert said to send it" — approved on the leader's spoken word, with who / when / how (or, v2.3813, that he is standing here / typing it in). */
