@@ -2,7 +2,7 @@
 title: see where a job stands with the customer
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: job window, where it stands, customer, summary, last word, promise, we owe, their word, our word, read again, keep as a note, stamp, job tab, messages
+keywords: job window, where it stands, customer, summary, last word, promise, we owe, they promised, we owe them, their word, our word, read again, keep as a note, stamp, job tab, messages
 order: 66
 ---
 The job window opens on three lines that say where the job stands with the customer. The lines come from what people already wrote down, and each one opens the line it came from.
@@ -13,8 +13,8 @@ The job window opens on three lines that say where the job stands with the custo
 2. The first thing on the tab is the card **Where it stands with Dana**. It holds three lines.
 
 - **Where it stands** says whose word came last and when. Then it says the job's stage and percent.
-- **Their word** is the newest promise of theirs that is written down, with its day.
-- **Our word** is what we owe them, with its day.
+- **They promised** is the newest promise of theirs that is written down, with its day.
+- **We owe them** is what we still owe them, with its day.
 
 Under the lines a small stamp says when the card was read. It reads *Read 8:10 AM from 41 lines and 12 events.* The lines are the calls, texts and emails on the job. The events are the job's notes, reports and moves.
 
@@ -24,7 +24,7 @@ The card names the customer by the name they go by. Without one, it uses their f
 
 A job with nothing written down shows one quiet line instead. It says there are no calls, texts or emails yet, and nothing promised either way.
 
-**Their word** and **Our word** read the customer's whole thread. A promise shows here even when no text is tied to this job.
+**They promised** and **We owe them** read the customer's whole thread. A promise shows here even when no text is tied to this job.
 
 ## Open the line it came from
 
@@ -46,6 +46,6 @@ Press the small arrow before the title. The card folds to its first line. It sta
 
 The card reads three places. To make it say more, write there.
 
-- **Their word** reads the promises under their lines. See [write down what a customer said](/help/reply-to-a-person-from-their-thread).
-- **Our word** reads what we owe them on their thread.
+- **They promised** reads the promises under their lines. See [write down what a customer said](/help/reply-to-a-person-from-their-thread).
+- **We owe them** reads what we owe them on their thread.
 - **Where it stands** reads the job's lines. See [text a customer from the job](/help/text-a-customer-from-the-job).

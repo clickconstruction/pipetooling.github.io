@@ -10,10 +10,12 @@ covers:
   - src/components/bids/BidsBuilderReviewTab.tsx
 mapped_at: 0e1405847
 audience: Developers, AI Agents
-last_updated: 2026-10-21
+last_updated: 2026-11-16
 ---
 
 > **Line numbers are exact as of `0e1405847`** (from `npm run map -- <file>`) and rot with every edit — **search the symbol name** that anchors every region below. Regenerate the fact sheet, re-read ranges, and bump `mapped_at` + `last_updated` when a region moves; flip its Status and point at the new file.
+
+> **v2.7347 (after `mapped_at`) — the *Can’t be scored* line under Mark sent:** `BidsCoverLetterTab.tsx` calls `useBidScoreHold(selectedBidForPricing?.id)` (`hooks/useBidScoreReadiness.ts`: the bid's priced margin and its labor rows read fresh when the bid opens, since v2.7370 with the labor count kept on its stamp; null while it reads and when it fails) and draws `BidScoreHoldLine` under **Mark sent today** in both letter shapes, only while the bid is unsent. That press is the moment `bids.priced_*` freezes; the line says so and never stops the send (`docs/recent-features/v2.7347.md`, punch list #360).
 
 ## What this surface is
 

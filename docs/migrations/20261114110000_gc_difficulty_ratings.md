@@ -8,3 +8,5 @@ GC difficulty rating, PR 2 of six (punch list #357, [`to-dos/gc-difficulty-ratin
 - Ends with the four fence calls.
 
 **Apply order**: push right after the merge. Until then the card and the chips read the table's refusal as "nothing" (the chip hook swallows a failed read; the card shows the reason with *Try again*). Regenerate types after the push as a `chore(types)` PR; `gcDifficultyRatingIo.ts` reads the table by name (`as never`) until then.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `gc_difficulty_ratings`.
