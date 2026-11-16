@@ -24081,6 +24081,84 @@ export type Database = {
           },
         ]
       }
+      jobs_ledger_note_tags: {
+        Row: {
+          answer_note_id: string | null
+          asker_seen_at: string | null
+          cleared_at: string | null
+          cleared_how: string | null
+          created_at: string
+          id: string
+          job_id: string
+          note_id: string
+          tagged_name: string
+          tagged_user_id: string
+          tagger_user_id: string
+        }
+        Insert: {
+          answer_note_id?: string | null
+          asker_seen_at?: string | null
+          cleared_at?: string | null
+          cleared_how?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          note_id: string
+          tagged_name: string
+          tagged_user_id: string
+          tagger_user_id: string
+        }
+        Update: {
+          answer_note_id?: string | null
+          asker_seen_at?: string | null
+          cleared_at?: string | null
+          cleared_how?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          note_id?: string
+          tagged_name?: string
+          tagged_user_id?: string
+          tagger_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_note_tags_answer_note_id_fkey"
+            columns: ["answer_note_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_thread_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_note_tags_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_note_tags_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_thread_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_note_tags_tagged_user_id_fkey"
+            columns: ["tagged_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_note_tags_tagger_user_id_fkey"
+            columns: ["tagger_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_ledger_payment_events: {
         Row: {
           actor_name: string | null
@@ -45438,6 +45516,15 @@ export type Database = {
         }
         Returns: string
       }
+      job_lead_contact: {
+        Args: { p_job_id: string }
+        Returns: {
+          lead_name: string
+          lead_phone: string
+          lead_role: string
+          lead_user_id: string
+        }[]
+      }
       job_names_from_work_plan: {
         Args: never
         Returns: {
@@ -45447,6 +45534,61 @@ export type Database = {
           old_name: string
           work: string
         }[]
+      }
+      job_note_caller_sees_test: { Args: never; Returns: boolean }
+      job_note_people: {
+        Args: { p_job_id: string; p_with_test: boolean }
+        Returns: {
+          name: string
+          on_job: boolean
+          role: string
+          user_id: string
+        }[]
+      }
+      job_note_post_tagged: {
+        Args: { p_body: string; p_job_id: string; p_tagged?: string[] }
+        Returns: string
+      }
+      job_note_tag_done: { Args: { p_tag_id: string }; Returns: boolean }
+      job_note_taggable: {
+        Args: { p_job_id: string }
+        Returns: {
+          name: string
+          on_job: boolean
+          role: string
+          user_id: string
+        }[]
+      }
+      job_note_tags_count: { Args: never; Returns: number }
+      job_note_tags_mine: {
+        Args: never
+        Returns: {
+          answer_body: string
+          answer_note_id: string
+          asker_seen_at: string
+          cleared_at: string
+          cleared_how: string
+          created_at: string
+          customer_name: string
+          job_id: string
+          job_kind: string
+          job_name: string
+          job_number: string
+          kind: string
+          note_body: string
+          note_created_at: string
+          note_id: string
+          tag_id: string
+          tagged_name: string
+          tagged_user_id: string
+          tagger_name: string
+          tagger_user_id: string
+        }[]
+      }
+      job_note_tags_seen: { Args: never; Returns: number }
+      job_note_tags_write: {
+        Args: { p_note_id: string; p_tagged: string[] }
+        Returns: number
       }
       job_rider_fees: { Args: { p_job_id: string }; Returns: number }
       jobs_ledger_row_visible_for_tally_assign: {

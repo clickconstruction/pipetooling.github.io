@@ -230,6 +230,27 @@ export const PTOUCH_LINK_NOT_COPIED = 'Could not copy. Copy the address from the
 /** Said when a run stops part way: a chained strip is printed but still short of the cutter. */
 export const PTOUCH_STRIP_INSIDE = 'A printed strip may still be inside the printer. Feed and cut the tape on the printer to get it out.'
 export const PTOUCH_CONNECT_LABEL = 'Connect the P-touch'
+/**
+ * A printer that is connected but cannot print as it stands: it reports an error, has no tape in, or has a tape the
+ * label is not laid out for. The window asks it again every few seconds, so a new cassette is seen without a press
+ * (Taunya, 2026-11-15: the tape ran out half way through G37 of a run, and the window never looked at the printer again).
+ */
+export function ptouchNeedsRecheck(status: PtouchStatus): boolean {
+  return !ptouchTapeFits(status)
+}
+/** Why a connected printer cannot print as it stands, as one sentence for the foot of the window, over the grey press. */
+export function ptouchCannotPrintWords(status: PtouchStatus): string {
+  if (status.errors.length > 0) return status.errors.join(' ')
+  if (status.tapeMm === 0) return 'There is no tape in the printer.'
+  return `The printer has ${status.tapeMm} mm tape in it. Load 18 or 24 mm tape for box labels.`
+}
+/** How often a printer that cannot print is asked again, in milliseconds. Only while nothing is printing. */
+export const PTOUCH_RECHECK_MS = 3000
+/** The quiet press beside the printer's line while it cannot print, for a person who does not want to wait. */
+export const PTOUCH_CHECK_AGAIN_LABEL = 'Check the printer again'
+/** Said under a printer that cannot print: what to do, and that nothing needs pressing after. */
+export const PTOUCH_RECHECK_WORDS = 'Put in the tape and close the cover. The window checks the printer by itself.'
+
 /** The press beside *Printing 6 of 455…*, and what it reads once pressed. */
 export const PTOUCH_STOP_LABEL = 'Stop printing'
 export const PTOUCH_STOPPING_LABEL = 'Stopping…'

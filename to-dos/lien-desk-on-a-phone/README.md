@@ -2,7 +2,7 @@
 name: "The Lien desk on a phone: one list of jobs with the money and the days, in place of a header that takes the screen"
 number: 352
 group: close
-status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · the three small leftovers in v2.7378 (Taunya picked Build one small PR, 2026-11-15) · left: the owner's look on his own phone
+status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · the three small leftovers in v2.7378 (Taunya picked Build one small PR, 2026-11-15), and the Steps and Windows switch in v2.7392 · left: the owner's look on his own phone
 summary: >
   The owner used the Lien desk on his phone, recorded the screen and called it terrible. The desk
   was laid out for a wide screen: a fixed header, and a list that scrolls in a window under it. On
@@ -184,7 +184,7 @@ Three small things were left after the train. Taunya picked *Build one small PR*
 - **Inside an open paper** 19 of an affidavit's 23 presses were under 40 px, the shortest 14: the gates, the months grid and the page's own edit marks are drawn for a computer. Each now has an unseen pad to a thumb's 44 px square, as the job window's presses got in v2.7309. Nothing moves.
 - **The By job grid's own controls** were two pickers at 23 px and *Print the grid* at 25. Each is 44 px now, the pickers at 16 px words, and the bar scrolls away with the list.
 
-What the pad cannot reach is still to do: a tick box and a picker inside an open paper are sized where they are drawn. Read on the live desk after the deploy, two presses are marked and gain nothing: **Steps** and **Windows**, whose switch clips its overflow, and the pad with it.
+What the pad cannot reach is still to do: a tick box and a picker inside an open paper are sized where they are drawn. Read on the live desk after the deploy, two presses were marked and gained nothing: **Steps** and **Windows**, whose switch clips its overflow, and the pad with it. v2.7392 grows those two to 40 px on a phone.
 
 Three things the train taught:
 

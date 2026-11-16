@@ -55,6 +55,8 @@ export type PtouchLink = {
    * sent as the run's last and the rest are not sent, so the caller reads a stop as fewer done than it handed over.
    */
   print(labels: ReadonlyArray<ReadonlyArray<Uint8Array>>, onLabel?: (done: number) => void, stopAsked?: () => boolean): Promise<void>
+  /** Asks the printer how it stands now and keeps the answer in `status`: a new cassette, a closed cover. Never while a label prints. */
+  refresh(): Promise<PtouchStatus>
   close(): Promise<void>
 }
 
@@ -128,6 +130,10 @@ async function openLink(device: UsbDevice): Promise<PtouchLink> {
           onLabel?.(n + 1)
           if (last) break
         }
+      },
+      async refresh() {
+        link.status = await ask(1)
+        return link.status
       },
       async close() {
         try {

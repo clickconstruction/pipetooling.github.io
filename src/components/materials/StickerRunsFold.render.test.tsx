@@ -85,4 +85,27 @@ describe('StickerRunsFold', () => {
     rerender(<StickerRunsFold jobId="job-juniper" onPrint={() => {}} fetch={async () => [old]} openKey={1} />)
     await waitFor(() => expect((screen.getByTestId('sticker-runs-fold') as HTMLDetailsElement).open).toBe(true))
   })
+
+  it('titles a named run by its names, keeps its numbers on the line under, and hands the names back to print (section 10, v2.7391)', async () => {
+    const names = ['G78', 'G79', 'G80', 'G81']
+    const named: StickerRunWithStickers = {
+      run: { id: 'run-3', jobId: 'job-juniper', count: 4, firstNumber: 301, lastNumber: 304, copies: 1, printedByName: 'Dana', printedAt: '2026-11-15T16:00:00Z', names },
+      stickers: names.map((boxName, i) => ({ id: `n-${301 + i}`, number: 301 + i, code: `0F6A2B${String(i).padStart(2, '0')}`, boxName, containerId: i === 0 ? 'box-g78' : null, lostAt: null })),
+    }
+    const onPrint = vi.fn()
+    renderWithProviders(<StickerRunsFold jobId="job-juniper" onPrint={onPrint} fetch={async () => [named]} />)
+    await screen.findByTestId('sticker-runs-fold')
+    const row = screen.getByTestId('sticker-run-row')
+    expect(row.textContent).toContain('Run of 4 · G78 to G81')
+    expect(row.textContent).toContain('Printed Nov 15 by Dana · numbers 0301 to 0304')
+    // the blank ones are still said by number: that is where the number carries news
+    expect(screen.getByTestId('sticker-run-counts').textContent).toBe('1 of 4 stickers are on boxes · 3 stickers not used yet, 0302 to 0304')
+    expect(screen.getByTestId('sticker-run-rest').textContent).toBe('Print the rest, G79 to G81')
+    fireEvent.click(screen.getByTestId('sticker-run-rest'))
+    expect(onPrint.mock.calls[0]![1].map((s: { boxName?: string | null }) => s.boxName)).toEqual(['G79', 'G80', 'G81'])
+    expect(onPrint.mock.calls[0]![2]).toBe('The rest, G79 to G81')
+    fireEvent.click(screen.getByTestId('sticker-run-reprint'))
+    expect(onPrint.mock.calls[1]![1].map((s: { boxName?: string | null }) => s.boxName)).toEqual(names)
+    expect(onPrint.mock.calls[1]![2]).toBe('Run of 4 · G78 to G81')
+  })
 })

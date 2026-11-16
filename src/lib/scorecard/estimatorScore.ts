@@ -23,6 +23,9 @@ export type EstimatorBidInput = {
   bidNumber: string | null
   projectName: string | null
   customerName: string | null
+  /** Who estimated the bid and who manages the account, by id (PR 5: a person's own row is the bids that name them). */
+  estimatorId?: string | null
+  accountManagerId?: string | null
   estimatorName: string | null
   accountManagerName: string | null
   outcome: 'won' | 'lost' | 'started_or_complete' | null
@@ -35,6 +38,12 @@ export type EstimatorBidInput = {
   pricedUncostedUsd: number | null
   /** The bid's labor estimate as `bid_estimate_breakdown` reads it; null when it could not be read. */
   labor: { usable: boolean; rowsWithHours: number; rowsTotal: number; rateSet: boolean } | null
+  /**
+   * The labor count kept with the priced margin (`bids.priced_labor_rows_*`, v2.7370): the rows the kept cost was made
+   * with. A sent bid is judged by it, so hours filled in after the send do not make it read as estimated. Null on a
+   * stamp older than the count, which is judged by the Labor tab as it stands, as before.
+   */
+  pricedLabor?: { rowsTotal: number; rowsWithHours: number } | null
   /** The award's labor hours (`job_budgets.awarded_labor_hours`), or the bid's own labor total when no job is linked yet. */
   awardedHours: number | null
   job: null | {
@@ -115,23 +124,27 @@ const daysBetween = (a: string, b: string): number => {
 
 /** The breakdown's own bar for the hours (nine rows in ten), the rate aside: the company crew rate stands in when none is typed. */
 export const LABOR_ROWS_WITH_HOURS_MIN = 0.9
-export function laborHoursEstimated(l: NonNullable<EstimatorBidInput['labor']>): boolean {
+export function laborHoursEstimated(l: { rowsTotal: number; rowsWithHours: number }): boolean {
   return l.rowsTotal > 0 && l.rowsWithHours / l.rowsTotal >= LABOR_ROWS_WITH_HOURS_MIN
 }
 
 /** "3 of 14 rows have hours", or the words for a Labor tab with no rows at all. */
-export function laborRowsWords(l: { rowsTotal: number; rowsWithHours: number }): string {
-  if (l.rowsTotal === 0) return 'the Labor tab has no rows'
-  return `${l.rowsWithHours} of ${l.rowsTotal} rows ${l.rowsWithHours === 1 ? 'has' : 'have'} hours`
+export function laborRowsWords(l: { rowsTotal: number; rowsWithHours: number }, past = false): string {
+  if (l.rowsTotal === 0) return past ? 'the Labor tab had no rows' : 'the Labor tab has no rows'
+  return `${l.rowsWithHours} of ${l.rowsTotal} rows ${past ? 'had' : l.rowsWithHours === 1 ? 'has' : 'have'} hours`
 }
 
 /**
  * Why a priced bid still cannot be judged: its labor was never estimated (hours on few rows, no rate), so the priced cost
  * has no labor in it; or rows went uncosted, so the margin is partial. Null when the estimate stands.
  */
-export function estimateHoldWords(b: Pick<EstimatorBidInput, 'labor' | 'pricedUncostedUsd' | 'pricedRevenueUsd' | 'pricedCostUsd'>): string | null {
+export function estimateHoldWords(b: Pick<EstimatorBidInput, 'labor' | 'pricedUncostedUsd' | 'pricedRevenueUsd' | 'pricedCostUsd'> & Partial<Pick<EstimatorBidInput, 'pricedLabor' | 'sentYmd'>>): string | null {
   if (b.pricedRevenueUsd == null || b.pricedCostUsd == null) return null
-  if (b.labor && !laborHoursEstimated(b.labor)) {
+  // A sent bid's margin is kept: judge its labor by the count kept with it, not by the Labor tab as it stands today.
+  const kept = b.sentYmd && b.pricedLabor ? b.pricedLabor : null
+  if (kept) {
+    if (!laborHoursEstimated(kept)) return `Labor not estimated when it went out: ${laborRowsWords(kept, true)}. The priced cost has little or no labor in it.`
+  } else if (b.labor && !laborHoursEstimated(b.labor)) {
     return `Labor not estimated: ${laborRowsWords(b.labor)}. The priced cost has little or no labor in it.`
   }
   if (b.pricedUncostedUsd != null && b.pricedUncostedUsd > 0) return `$${Math.round(b.pricedUncostedUsd).toLocaleString('en-US')} of rows uncosted at send: the priced margin is partial.`

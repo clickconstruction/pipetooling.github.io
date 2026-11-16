@@ -38,6 +38,8 @@ import {
 import { ScheduleDispatchAssignJobPickerModal } from '../schedule/ScheduleDispatchAssignJobPickerModal'
 import type { Database } from '../../types/database'
 import type { LaborJob, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
+import { SheetCrewWhoLine, SheetJobTeamOffer, SheetSameLineWarning } from './SheetCrewHints'
+import { crewStepTitle, nextCrewPick, SHEET_PRETICKS_JOB_TEAM } from '../../lib/subWorkOrders/sheetCrewWords'
 import { subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { Person, UserRow } from '../../pages/Jobs'
@@ -208,6 +210,8 @@ function JobsSubLaborFormModalInner(
   const [laborEntryTrimSet, setLaborEntryTrimSet] = useState('')
   const [savingLaborEntry, setSavingLaborEntry] = useState(false)
   const [laborAssignedTo, setLaborAssignedTo] = useState<string[]>([])
+  /** The picked job's team, offered under the chips and not ticked (punch list #346, the ride-along candidate). */
+  const [laborJobTeamOffer, setLaborJobTeamOffer] = useState<string[]>([])
   const [laborAddress, setLaborAddress] = useState('')
   const [laborDistance, setLaborDistance] = useState('0')
   const [laborJobNumber, setLaborJobNumber] = useState('')
@@ -226,7 +230,7 @@ function JobsSubLaborFormModalInner(
       null
     : null
   /**
-   * v2.1617: NEW entries walk a 3-step sheet — Job → Crew → Work and cost —
+   * v2.1617: NEW entries walk a 3-step sheet — Job → Paid to (it was Crew) → Work and cost —
    * so the phone-width modal shows one decision at a time. Edit mode keeps
    * the classic single-scroll form. Distance is gone from new entries (saved
    * as 0; the drive-cost rollups keep honoring old rows' stored miles).
@@ -317,7 +321,7 @@ function JobsSubLaborFormModalInner(
       return
     }
     await loadRoster()
-    setLaborAssignedTo((prev) => (prev.includes(trimmedName) ? prev : [...prev, trimmedName]))
+    setLaborAssignedTo((prev) => (prev.includes(trimmedName) ? prev : nextCrewPick(prev, trimmedName)))
     setShowAddSubcontractorModal(false)
     setNewSubcontractor({ name: '', email: '', phone: '', notes: '' })
     setSavingAddSubcontractor(false)
@@ -838,6 +842,7 @@ function JobsSubLaborFormModalInner(
 
   function resetLaborForm() {
     setLaborAssignedTo([])
+    setLaborJobTeamOffer([])
     setLaborAddress('')
     setLaborDistance('0')
     setLaborJobNumber('')
@@ -1103,7 +1108,7 @@ function JobsSubLaborFormModalInner(
     await loadLaborJobs()
   }
 
-  /** Picking a job fills Job #, Address, and pre-checks its crew (the old "fill", automatic). */
+  /** Picking a job fills Job # and Address and offers its team under the chips. `SHEET_PRETICKS_JOB_TEAM` brings the old fill back. */
   function applyPickedLaborJob(job: JobWithDetails, opts?: { keepAssigned?: boolean }) {
     setLaborPickedJobId(job.id)
     setLaborJobNumber(subLaborJobNumberForStorage(job))
@@ -1113,7 +1118,8 @@ function JobsSubLaborFormModalInner(
     const teamNames = (job.team_members ?? [])
       .map((t) => t.users?.name?.trim())
       .filter((n): n is string => !!n && rosterNames.includes(n))
-    setLaborAssignedTo(teamNames)
+    setLaborJobTeamOffer(teamNames)
+    if (SHEET_PRETICKS_JOB_TEAM) setLaborAssignedTo(teamNames)
   }
 
   useEffect(() => {
@@ -1177,7 +1183,9 @@ function JobsSubLaborFormModalInner(
         setLaborAddress(seed.address)
       }
       const rosterNames = [...rosterNamesSubcontractors(), ...rosterNamesEveryoneElse()]
-      setLaborAssignedTo(seed.teamMemberNames.filter((n) => rosterNames.includes(n)))
+      const seeded = seed.teamMemberNames.filter((n) => rosterNames.includes(n))
+      setLaborJobTeamOffer(seeded)
+      if (SHEET_PRETICKS_JOB_TEAM) setLaborAssignedTo(seeded)
       setLaborModalOpen(true)
     },
   }))
@@ -1220,13 +1228,13 @@ function JobsSubLaborFormModalInner(
         return { contractor, total, due: total - paid - backcharges }
       })()
     : null
-  const LABOR_STEP_TITLES: Record<1 | 2 | 3, string> = { 1: 'Job', 2: 'Crew', 3: 'Work and cost' }
+  const LABOR_STEP_TITLES: Record<1 | 2 | 3, string> = { 1: 'Job', 2: crewStepTitle(), 3: 'Work and cost' }
   const laborStepNextBlocked =
     laborStep === 1 ? (!laborPickedJobId ? 'Pick the job first' : !laborAddress.trim() ? 'The job has no address — add it in Edit Job first' : null)
     : laborStep === 2 ? (laborAssignedTo.length === 0 ? 'Pick at least one contractor' : null)
     : null
 
-  /** Crew chip (v2.1617): tap to toggle; replaces the checkbox rows in every group. */
+  /** A person chip (v2.1617). Since the step is one pick, pressing one takes the place of the one ticked before (`nextCrewPick`). */
   const renderLaborCrewChip = (n: string) => {
     const on = laborAssignedTo.includes(n)
     return (
@@ -1235,7 +1243,7 @@ function JobsSubLaborFormModalInner(
         type="button"
         aria-pressed={on}
         aria-label={n}
-        onClick={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+        onClick={() => setLaborAssignedTo((prev) => nextCrewPick(prev, n))}
         style={{
           padding: '0.35rem 0.8rem',
           borderRadius: 999,
@@ -1451,19 +1459,22 @@ function JobsSubLaborFormModalInner(
               <div style={{ display: laborStepVisible(2) ? undefined : 'none' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Crew <span style={{ color: 'var(--text-red-700)' }}>*</span></div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{crewStepTitle()} <span style={{ color: 'var(--text-red-700)' }}>*</span></div>
                     {laborAssignedTo.length > 0 ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: '0.35rem' }}>
                         {laborAssignedTo.map((n) => renderLaborCrewChip(n))}
                       </div>
                     ) : null}
+                    {/* Punch list #346, PR 2: whose the sheet is with the names picked; a second sub is warned, never blocked. */}
+                    <SheetJobTeamOffer team={laborJobTeamOffer} picked={laborAssignedTo} onPick={(n) => setLaborAssignedTo((prev) => (prev.includes(n) ? prev : nextCrewPick(prev, n)))} />
+                    <SheetCrewWhoLine names={laborAssignedTo} onTakeOff={(n) => setLaborAssignedTo((prev) => prev.filter((x) => x !== n))} onTakeOffAll={(off) => setLaborAssignedTo((prev) => prev.filter((x) => !off.includes(x)))} />
                     <input
                       id="labor-crew-search"
                       type="search"
                       value={laborCrewSearch}
                       onChange={(e) => setLaborCrewSearch(e.target.value)}
-                      placeholder="Search for crew"
-                      aria-label="Search for crew"
+                      placeholder="Search for a person"
+                      aria-label="Search for a person"
                       autoComplete="off"
                       style={{
                         display: 'block',
@@ -1484,7 +1495,7 @@ function JobsSubLaborFormModalInner(
                       laborModalExternalSubsShown.length === 0 &&
                       laborModalInternalSubsShown.length === 0 &&
                       laborModalOfficeTeamShown.length === 0 && (
-                      <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'crew', query: laborCrewSearch }), { onPress: () => setLaborCrewSearch('') })} />
+                      <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'people', query: laborCrewSearch }), { onPress: () => setLaborCrewSearch('') })} />
                     )}
                     {(!laborCrewSearchActive || laborModalExternalSubsShown.length > 0) && (
                       <>
@@ -1598,6 +1609,14 @@ function JobsSubLaborFormModalInner(
                 </div>
               </div>
               <div style={{ marginTop: '1rem', display: laborStepVisible(3) ? undefined : 'none' }}>
+                {/* Punch list #346, PR 2: a line this job already carries on another sheet, words and amount alike. */}
+                {(() => {
+                  const rate = editingLaborJob?.labor_rate ?? laborFixtureRows.find((r) => r.labor_rate != null && r.labor_rate !== 0)?.labor_rate ?? 20
+                  const onJobId = laborPickedJobId ?? editingLaborJob?.job_ledger_id ?? null
+                  const number = laborJobNumber.trim()
+                  const others = (allLaborJobs ?? []).filter((j) => j.id !== editingLaborJob?.id && (onJobId ? j.job_ledger_id === onJobId : !!number && (j.job_number ?? '').trim() === number))
+                  return <SheetSameLineWarning draft={laborFixtureRows.map((r) => ({ label: r.fixture, amount: lineLaborCost(r, rate) }))} others={others} />
+                })()}
                 {(() => {
                   const laborModalLineFallbackRate =
                     editingLaborJob?.labor_rate ??

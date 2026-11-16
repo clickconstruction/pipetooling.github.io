@@ -5,6 +5,7 @@
  * away. Keys in `localStorage`, nothing in the database; the browser itself remembers the printer and the paper for
  * the print window. The day says a print was asked for here, never that the printer answered: the app cannot see it.
  */
+import { stoppedRunOf, type StoppedRun } from './labelPick'
 import { TAPE_WIDTH_DEFAULT, clampTapeCopies, isTapeWidth, type LabelFormat, type TapeWidthMm } from './tapeLabel'
 
 const FORMAT_KEY = 'pt.labels.format'
@@ -77,6 +78,28 @@ export function writeTapeCopies(copies: number): void {
     window.localStorage.setItem(COPIES_KEY, String(clampTapeCopies(copies)))
   } catch {
     /* the window works without the memory */
+  }
+}
+
+const STOPPED_RUN_KEY = 'pt.labels.stoppedRun'
+
+/** The run that stopped part way on this device, if one is kept (`labelPick.ts` decides whether it still counts). */
+export function readStoppedRun(): StoppedRun | null {
+  try {
+    const raw = window.localStorage.getItem(STOPPED_RUN_KEY)
+    return raw ? stoppedRunOf(JSON.parse(raw)) : null
+  } catch {
+    return null
+  }
+}
+
+/** Keeps a stopped run, or forgets it with null: a run that printed whole, or a person starting over. */
+export function writeStoppedRun(run: StoppedRun | null): void {
+  try {
+    if (run) window.localStorage.setItem(STOPPED_RUN_KEY, JSON.stringify(run))
+    else window.localStorage.removeItem(STOPPED_RUN_KEY)
+  } catch {
+    /* private mode, or storage full: the window still works, it only forgets when closed */
   }
 }
 

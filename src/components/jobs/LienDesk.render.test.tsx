@@ -2056,6 +2056,26 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(submitManyMock.mock.calls[0]![0].map((p) => p.jobId)).toEqual(['j651'])
   })
 
+  it('To do’s door to the batch print reads as the button it leads to, and lands on the list where that button stands (v2.7398)', async () => {
+    openPrintMock.mockClear()
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    // Three ready affidavits due inside the week, so they stand under Needs you now, where the door is.
+    const d = three([ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')])
+    for (const e of d.affidavits.entries) Object.assign(e, { deadline: '2026-09-16', daysLeft: 2, severity: 'red' })
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const door = document.querySelector('[data-lien-next-up-track-press]') as HTMLButtonElement
+    expect(door.textContent).toBe('Print 3 for notarization ›')
+    fireEvent.click(door)
+    await settle()
+    // The list at Ready to file, with the button of the same name; the door printed nothing itself.
+    const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+    expect(within(bar).getByRole('button', { name: 'Print 3 for notarization' })).toBeTruthy()
+    expect(door.textContent).toBe(`${within(bar).getByRole('button', { name: 'Print 3 for notarization' }).textContent} ›`)
+    expect(document.querySelector('[data-lien-do-now]')).toBeNull()
+    expect(openPrintMock).not.toHaveBeenCalled()
+  })
+
   it('a find narrows the print to the rows it shows, and the help sheet lists no hidden paper as held (punch list #353, part 1)', async () => {
     openPrintMock.mockClear()
     const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow

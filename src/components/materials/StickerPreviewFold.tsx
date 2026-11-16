@@ -3,7 +3,8 @@
  * above its presses, closed until this device leaves it open (`labelPrefs.ts`). Opened, it draws the first six strips
  * of the run at the tape's width through the printer's own drawing (`TapeStripBitmap`), so the preview and the tape
  * agree: the run's real numbers, read as the foot line reads the last run's end, each sticker's copies together, the
- * QR and the dashed code from the sample code, and one line that says so. Then *and 194 more, to 0202* with **Show
+ * QR and the dashed code from the sample code, and one line that says so. A run that names its boxes (section 10,
+ * v2.7391) draws each name large with its number small over the address, as it will print. Then *and 194 more, to 0202* with **Show
  * all 200**, which draws the rest once each at half size, capped at 200 with its words. The test strip is drawn the
  * same way, so the fold also says what Print 1 test strip prints. The rows are `lib/materials/stickerPreview.ts`.
  */
@@ -13,6 +14,7 @@ import { ptouchTapeDots } from '../../lib/materials/ptouchRaster'
 import {
   previewHeadWords,
   STICKER_PREVIEW_CODE_WORDS,
+  STICKER_PREVIEW_NAMED_CODE_WORDS,
   STICKER_PREVIEW_NO_COUNT_WORDS,
   STICKER_PREVIEW_READING_WORDS,
   STICKER_PREVIEW_TEST_WORDS,
@@ -30,6 +32,8 @@ type Props = {
   count: number
   copies: number
   width: TapeWidthMm
+  /** The run's box names in print order (section 10, v2.7391), as many as `count`; null or left out for a run of numbers only. */
+  names?: ReadonlyArray<string> | null
 }
 
 const wrap: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.5rem 0.9rem' }
@@ -39,11 +43,11 @@ const quietLink: CSSProperties = { background: 'none', border: 'none', padding: 
 
 const noop = () => {}
 
-export default function StickerPreviewFold({ lastNumber, count, copies, width }: Props) {
+export default function StickerPreviewFold({ lastNumber, count, copies, width, names = null }: Props) {
   const [open, setOpen] = useState<boolean>(() => readStickerPreviewOpen())
   const [all, setAll] = useState(false)
   const dots = ptouchTapeDots(width) ?? 128
-  const preview = stickerPreview({ lastNumber: lastNumber ?? null, count, copies, all })
+  const preview = stickerPreview({ lastNumber: lastNumber ?? null, count, copies, all, names })
   return (
     <details style={wrap} data-testid="stickers-preview" open={open} onToggle={(e) => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(o); writeStickerPreviewOpen(o) }}>
       <summary style={summary}>{STICKER_PREVIEW_TITLE}</summary>
@@ -57,7 +61,7 @@ export default function StickerPreviewFold({ lastNumber, count, copies, width }:
             <>
               <span style={muted} data-testid="stickers-preview-head">{previewHeadWords(preview.head, count)}</span>
               <div style={{ display: 'grid', gap: '0.35rem', justifyItems: 'start' }} data-testid="stickers-preview-strips">
-                {preview.head.map((r) => <TapeStripBitmap key={`${r.strip.id}:${r.copy}`} id={r.strip.id} stencil={r.strip.stencil} address={r.strip.address} value={r.strip.value} words={r.strip.words} dots={dots} onDrawn={noop} />)}
+                {preview.head.map((r) => <TapeStripBitmap key={`${r.strip.id}:${r.copy}`} id={r.strip.id} stencil={r.strip.stencil} address={r.strip.address} value={r.strip.value} words={r.strip.words} number={r.strip.number} stencilSmall={r.strip.small} dots={dots} onDrawn={noop} />)}
               </div>
               {preview.moreWords || preview.showAllLabel ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -67,11 +71,11 @@ export default function StickerPreviewFold({ lastNumber, count, copies, width }:
               ) : null}
               {preview.rest.length > 0 ? (
                 <div style={{ display: 'grid', gap: '0.25rem', justifyItems: 'start' }} data-testid="stickers-preview-rest">
-                  {preview.rest.map((r) => <TapeStripBitmap key={r.strip.id} id={r.strip.id} stencil={r.strip.stencil} address={r.strip.address} value={r.strip.value} words={r.strip.words} dots={dots} height={Math.round(dots / 2)} onDrawn={noop} />)}
+                  {preview.rest.map((r) => <TapeStripBitmap key={r.strip.id} id={r.strip.id} stencil={r.strip.stencil} address={r.strip.address} value={r.strip.value} words={r.strip.words} number={r.strip.number} stencilSmall={r.strip.small} dots={dots} height={Math.round(dots / 2)} onDrawn={noop} />)}
                 </div>
               ) : null}
               {preview.cappedWords ? <span style={muted} data-testid="stickers-preview-capped">{preview.cappedWords}</span> : null}
-              <span style={muted} data-testid="stickers-preview-code-words">{STICKER_PREVIEW_CODE_WORDS}</span>
+              <span style={muted} data-testid="stickers-preview-code-words">{names && names.length > 0 ? STICKER_PREVIEW_NAMED_CODE_WORDS : STICKER_PREVIEW_CODE_WORDS}</span>
             </>
           )}
           <span style={{ ...muted, marginTop: '0.25rem' }} data-testid="stickers-preview-test-words">{STICKER_PREVIEW_TEST_WORDS}</span>

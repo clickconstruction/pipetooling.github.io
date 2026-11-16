@@ -153,7 +153,7 @@ Taunya, 2026-11-15, of the lines here once hand placement had gone to the sub la
 
 - **Built: the Banking side** (v2.7352). See *The match to Mercury* above.
 - **Built: the dev seat's sub payment** (v2.7357, server 0.90.0). `plan_sub_labor_payment` records a sending with its number, the method and its reference through `record_sub_sending`, as the Record payment window does, and the plan reads back what will be written.
-- **Placing a sending's lines by hand.** The fill is oldest first, on or off. With the sub labor spike (cards #346 and #350 together), prototyped there.
+- ~~Placing a sending's lines by hand.~~ Built in v2.7404: *By hand* beside *Oldest first* in the Record payment window.
 - **A sheet already paid past its total** becoming a credit. One sheet is in that state. With the same spike.
 - **Old payments typed one per sheet** are not gathered into sendings. They are ticked and matched row by row. With the same spike.
 

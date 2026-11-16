@@ -7,6 +7,8 @@ import type { LaborJob, SubLaborBackchargeTarget, SubLaborPaymentTarget, SubPaym
 import { AmountPaidField, PaidDateField, PayMethodPicker, PaymentNoteField, RecordPaymentFooter, RecordPaymentHelp, RecordPaymentShell, RecordPaymentSummary } from '../pay/RecordPaymentPieces'
 import { isSubPayMethod, planSubPayment, subPayMethodRefField, subPayMethodWrite, subPaymentAmountDefault, subPaymentSummaryWords, SUB_PAY_FROM_CREDIT, SUB_PAY_METHOD_OPTIONS, type SubPayMethod } from '../../lib/subWorkOrders/subPaymentWindow'
 import { creditOfferWords, creditUsableOn, planSubSending, sendingAfterWords, sendingContext, sendingSpillLines, type SendingPlan } from '../../lib/subWorkOrders/subSending'
+import { handBoxesFromFill, planSubSendingByHand, sendingConfirmLabel } from '../../lib/subWorkOrders/subSendingByHand'
+import { SendingByHandGrid } from './SendingByHandGrid'
 import { sendingSheetsFrom } from '../../lib/subWorkOrders/sendingSheets'
 import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
@@ -121,6 +123,9 @@ function SubLaborPaymentModalsInner(
   // v2.7235: the extra past the sheet fills their other open sheets unless this is switched off, and a refusal from the server shows here.
   const [makePaymentSpill, setMakePaymentSpill] = useState(true)
   const [makePaymentError, setMakePaymentError] = useState<string | null>(null)
+  // Punch list #347's residue: the payment placed on the sub's sheets by hand. Oldest first fills the boxes as a start.
+  const [makePaymentByHand, setMakePaymentByHand] = useState(false)
+  const [makePaymentBoxes, setMakePaymentBoxes] = useState<Record<string, string>>({})
   // Whose each sheet is needs the roster. It is read only while the window is open.
   const { roster } = useRosterSubKinds(!!makePaymentLaborJob && !!recordSubSending)
   const sendingSheets = useMemo(
@@ -170,6 +175,8 @@ function SubLaborPaymentModalsInner(
       setMakePaymentMethodRef('')
       setMakePaymentHideMemo(false)
       setMakePaymentSpill(true)
+      setMakePaymentByHand(false)
+      setMakePaymentBoxes({})
       setMakePaymentError(null)
       setMakePaymentLaborJob(target)
     },
@@ -202,7 +209,10 @@ function SubLaborPaymentModalsInner(
 const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
           // The roster is still loading on the first paint: until it lands the sheet's sub is not known, so nothing is planned past the sheet.
           const ctx = sendingSheets && roster.length > 0 ? sendingContext(target.id, sendingSheets, subCreditByPersonId) : null
-          const plan = recordSubSending ? planSubSending(makePaymentAmount, sheet, ctx, { spill: makePaymentSpill }) : legacyPlan(makePaymentAmount, sheet)
+          // By hand is offered when the sub has other open sheets to place it on.
+          const canPlaceByHand = !!recordSubSending && !!ctx && ctx.others.length > 0
+          const hand = canPlaceByHand && makePaymentByHand ? planSubSendingByHand(makePaymentAmount, sheet, ctx, makePaymentBoxes) : null
+          const plan = hand ? hand.plan : recordSubSending ? planSubSending(makePaymentAmount, sheet, ctx, { spill: makePaymentSpill }) : legacyPlan(makePaymentAmount, sheet)
           const refField = subPayMethodRefField(makePaymentMethod)
           const creditToUse = ctx?.personId && applySubCredit ? creditUsableOn(ctx.credit, remaining) : 0
           const close = () => {
@@ -262,7 +272,40 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
                 <strong>Record payment</strong> records this amount on the sheet. A part payment is fine: what is left stays due, and the sheet reads Paid once nothing is left.
                 {recordSubSending ? ' An amount past the sheet goes to their other open sheets, and the rest is kept as their credit.' : ''}
               </RecordPaymentHelp>
-              {plan.ok && plan.spills ? (
+              {canPlaceByHand ? (
+                <div role="group" aria-label="How the payment is placed" style={{ display: 'flex', gap: 6, margin: '-0.35rem 0 0.6rem' }}>
+                  {(
+                    [
+                      [false, 'Oldest first'],
+                      [true, 'By hand'],
+                    ] as Array<[boolean, string]>
+                  ).map(([on, label]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      aria-pressed={makePaymentByHand === on}
+                      disabled={makePaymentSaving}
+                      onClick={() => {
+                        if (on && !makePaymentByHand) setMakePaymentBoxes(handBoxesFromFill(makePaymentAmount, sheet, ctx))
+                        setMakePaymentByHand(on)
+                      }}
+                      style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.2rem 0.7rem', borderRadius: 999, border: `1px solid ${makePaymentByHand === on ? 'var(--border-blue)' : 'var(--border)'}`, background: makePaymentByHand === on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: makePaymentByHand === on ? 'var(--text-blue-700)' : 'var(--text-700)', cursor: 'pointer' }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {hand ? (
+                <>
+                  <SendingByHandGrid hand={hand} boxes={makePaymentBoxes} onBox={(id, value) => setMakePaymentBoxes((prev) => ({ ...prev, [id]: value }))} canCredit={!!ctx?.personId} disabled={makePaymentSaving} />
+                  {!hand.plan.ok && hand.plan.reason !== 'blank' ? (
+                    <p role="alert" data-sub-payment-refusal={hand.plan.reason} style={{ margin: '-0.35rem 0 0.75rem', padding: '0.5rem 0.65rem', fontSize: '0.8125rem', lineHeight: 1.4, color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                      {hand.plan.error}
+                    </p>
+                  ) : null}
+                </>
+              ) : plan.ok && plan.spills ? (
                 <div data-sub-sending-plan style={{ margin: '-0.35rem 0 0.75rem', padding: '0.55rem 0.7rem', fontSize: '0.8125rem', lineHeight: 1.45, background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6 }}>
                   <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{usd(plan.sent)} is more than this sheet needs. It is recorded as one sending:</div>
                   <ul style={{ margin: '4px 0 0', paddingLeft: '1.1rem' }}>
@@ -308,7 +351,7 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
                   Hide this memo from the sub&#8217;s portal (the amount still shows)
                 </label>
               </PaymentNoteField>
-              <RecordPaymentFooter onCancel={close} onConfirm={() => void record()} confirmLabel="Record payment" busy={makePaymentSaving} disabled={!plan.ok} />
+              <RecordPaymentFooter onCancel={close} onConfirm={() => void record()} confirmLabel={hand || (plan.ok && plan.spills) ? sendingConfirmLabel(plan) : 'Record payment'} busy={makePaymentSaving} disabled={!plan.ok} />
             </RecordPaymentShell>
           )
         })()}

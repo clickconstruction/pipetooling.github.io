@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienAffidavitClerkOrder, lienAffidavitGatedReason, lienAffidavitHiddenWords, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitShownEntries, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
+import { lienAffidavitClerkOrder, lienAffidavitGatedReason, lienAffidavitHiddenWords, lienAffidavitPrintDoorWords, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitShownEntries, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
 import { plainWordsFailures } from '../plainWords'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienDeskItemRow } from './lienDesk'
@@ -89,6 +89,9 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
       hidden: null,
     })
     expect(lienAffidavitPrintWords({ ready: [], held: plan.held }).dead).toBe(true)
+    // To do's door to this print (v2.7398) reads as the button it leads to, with the door's mark.
+    expect(lienAffidavitPrintDoorWords(plan)).toBe(`${lienAffidavitPrintWords(plan).button} ›`)
+    expect(lienAffidavitPrintDoorWords(plan)).toMatch(/^Print \d+ for notarization ›$/)
   })
 
   it('leaves out a ready paper a gate has closed since it was approved, with the gate’s own reason (punch list #314)', () => {

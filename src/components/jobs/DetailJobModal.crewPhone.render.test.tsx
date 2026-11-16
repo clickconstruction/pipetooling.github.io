@@ -19,6 +19,8 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 const stages = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>> }))
 // Our lead on the job as `job_lead_contact` answers; none until a test names one.
 const lead = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>> }))
+// A sub's own sheets on the job as `my_sub_sheets_on_job` answers; null is a function prod does not have yet.
+const subPay = vi.hoisted(() => ({ answer: null as Record<string, unknown> | null }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -56,7 +58,11 @@ vi.mock('../../lib/supabase', async () => {
       ...stub,
       from: (table: string) => (table === 'jobs_ledger' ? ledger() : stub.from()),
       rpc: (fn: string) =>
-        fn === 'list_job_stage_progress' ? Promise.resolve({ data: stages.rows, error: null }) : fn === 'job_lead_contact' ? Promise.resolve({ data: lead.rows, error: null }) : stub.rpc(),
+        fn === 'list_job_stage_progress' ? Promise.resolve({ data: stages.rows, error: null }) : fn === 'job_lead_contact'
+          ? Promise.resolve({ data: lead.rows, error: null })
+          : fn === 'my_sub_sheets_on_job'
+            ? Promise.resolve(subPay.answer ? { data: subPay.answer, error: null } : { data: null, error: { message: 'Could not find the function public.my_sub_sheets_on_job' } })
+            : stub.rpc(),
     },
   }
 })
@@ -91,6 +97,7 @@ afterEach(() => {
   narrowMatches = false
   stages.rows = []
   lead.rows = []
+  subPay.answer = null
   localStorage.removeItem(CREW_FOLDS_KEY)
 })
 
@@ -221,6 +228,46 @@ describe('DetailJobModal · the crew’s window on a phone', () => {
     expect(who.textContent).toContain('The office')
     expect(within(who).getByTestId('job-window-who-note').textContent).toBe('no one of ours is on this job yet')
     expect(document.body.textContent).not.toContain('(512) 555-0142')
+  })
+
+  it('a sub reads what is open on their own sheet, with the door to their portal', async () => {
+    subPay.answer = {
+      on_roster: true,
+      sheets: [{ id: 's1', address: null, job_number: '9001', job_ledger_id: 'job-1', job_date: null, labor_rate: null, stage: 'customer_pay', stage_changed_at: null, stage_source: null, payable_after: '2026-11-21', pay_hold_reason: null }],
+      items: [{ job_id: 's1', fixture: 'Top out', count: 1, hrs_per_unit: null, is_fixed: true, labor_rate: null, direct_labor_amount: 4200, sequence_order: 0 }],
+      payments: [{ job_id: 's1', amount: 2100, memo: null, payment_date: '2026-11-14', created_at: '2026-11-14T15:00:00Z', hidden_from_sub: false, sequence_order: 0 }],
+      portal_slug: null,
+      portal_token: 'tok',
+    }
+    await renderPlainWindow({ phone: true, role: 'subcontractor' })
+    const row = await screen.findByTestId('crew-window-your-pay')
+    expect(row.textContent).toContain('Your pay')
+    expect(row.textContent).toContain('$2,100.00 open')
+    expect(row.textContent).toContain('$4,200.00 agreed · $2,100.00 paid')
+    expect(row.textContent).toContain('Payable after Nov 21, 2026')
+    expect(within(row).getByRole('button', { name: 'Open your portal' })).toBeTruthy()
+    expect(sections()).toContain("What's happening")
+  })
+
+  it('a sub with no sheet on the job reads that, and gets no door without a portal', async () => {
+    subPay.answer = { on_roster: true, sheets: [], items: [], payments: [], portal_slug: null, portal_token: null }
+    await renderPlainWindow({ phone: true, role: 'subcontractor' })
+    const row = await screen.findByTestId('crew-window-your-pay')
+    expect(row.textContent).toContain('No sheet in your name here')
+    expect(within(row).queryByRole('button', { name: 'Open your portal' })).toBeNull()
+  })
+
+  it('draws no Your pay row when the read cannot be made', async () => {
+    await renderPlainWindow({ phone: true, role: 'subcontractor' })
+    await screen.findByTestId('job-window-who')
+    expect(screen.queryByTestId('crew-window-your-pay')).toBeNull()
+  })
+
+  it('a helper gets no Your pay row even when the read would answer', async () => {
+    subPay.answer = { on_roster: true, sheets: [], items: [], payments: [], portal_slug: null, portal_token: null }
+    await renderPlainWindow({ phone: true })
+    await screen.findByTestId('job-window-who')
+    expect(screen.queryByTestId('crew-window-your-pay')).toBeNull()
   })
 
   it('a sub on a desk reads our lead under the customer’s name', async () => {

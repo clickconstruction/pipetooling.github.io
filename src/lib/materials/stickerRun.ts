@@ -11,7 +11,7 @@ import { isOfficeRole } from '../doorRoles'
 import { csvEscapeField } from '../bids/bidCsvExport'
 import { BOX_LINK_HOST, BOX_LINK_SCHEME, dashedCode } from './labels'
 import { stickerNumberWords, stickerRangeWords, stickerRunCounts, type StickerCountRow, type StickerRunCounts } from './stickers'
-import { clampTapeCopies, TAPE_COPIES_MAX } from './tapeLabel'
+import { clampTapeCopies, TAPE_COPIES_MAX, TAPE_NAME_FULL_CHARS, TAPE_NAME_SMALL_RATIO } from './tapeLabel'
 
 /** The press on the job's On site strip and the Materials strip, and the window's title. */
 export const PRINT_STICKERS_LABEL = 'Print blank stickers'
@@ -48,7 +48,13 @@ export const STICKER_MINT_WHO = 'Only the office, a primary or a superintendent 
 // The request
 // ---------------------------------------------------------------------------
 
-export type StickerRunRequest = { jobId: string; count: number; copies: number }
+export type StickerRunRequest = {
+  jobId: string
+  count: number
+  copies: number
+  /** The run's box names in print order (section 10, v2.7391): as many as `count`, sent as `p_names`. Left out or null for a run of numbers only. */
+  names?: string[] | null
+}
 
 export type StickerRunVerdict = { ok: true; request: StickerRunRequest } | { ok: false; words: string }
 
@@ -56,20 +62,38 @@ export type StickerRunVerdict = { ok: true; request: StickerRunRequest } | { ok:
  * The checks the press makes before it asks the database, each in the words the database would answer with, so a
  * refusal reads the same from either side. The database judges again: these only keep a dead press honest.
  */
-export function stickerRunRequest(input: { jobId: string | null | undefined; count: unknown; copies: unknown; role: string | null | undefined }): StickerRunVerdict {
+export function stickerRunRequest(input: { jobId: string | null | undefined; count: unknown; copies: unknown; role: string | null | undefined; names?: ReadonlyArray<string> | null }): StickerRunVerdict {
   if (!canMintStickers(input.role)) return { ok: false, words: STICKER_MINT_WHO }
   if (!input.jobId) return { ok: false, words: 'A run names the job its new boxes go on.' }
-  const count = stickerCountOf(input.count)
+  // A named run is as many stickers as it has names: the count follows the names, never the other way.
+  const named = input.names && input.names.length > 0 ? [...input.names] : null
+  const count = stickerCountOf(named ? named.length : input.count)
   if (count == null) return { ok: false, words: STICKER_COUNT_RANGE_WORDS }
   const copies = Math.floor(Number(input.copies))
   if (!Number.isFinite(copies) || copies < 1 || copies > TAPE_COPIES_MAX) return { ok: false, words: `Copies of each is 1 to ${TAPE_COPIES_MAX}.` }
-  return { ok: true, request: { jobId: input.jobId, count, copies } }
+  return { ok: true, request: named ? { jobId: input.jobId, count, copies, names: named } : { jobId: input.jobId, count, copies } }
 }
 
-/** The press: *Print 200 stickers*, or *Print 200 sets* when each prints more than once. Dead at zero (*Print stickers*). */
-export function stickerRunPressLabel(count: number, copies: number): string {
+/** `mint_sticker_run`'s arguments for a request: the names as `p_names` only when the run carries them, so a numbered run calls as it always did. */
+export function mintStickerRunArgs(request: StickerRunRequest): Record<string, unknown> {
+  const args: Record<string, unknown> = { p_job_id: request.jobId, p_count: request.count, p_copies: request.copies }
+  if (request.names && request.names.length > 0) args.p_names = request.names
+  return args
+}
+
+/**
+ * The press: *Print 200 stickers*, or *Print 200 sets* when each prints more than once. Dead at zero (*Print
+ * stickers*). A named run says its names, known before the mint as the numbers are not: *Print 223 stickers, G78 to G300*.
+ */
+export function stickerRunPressLabel(count: number, copies: number, names?: ReadonlyArray<string> | null): string {
   const n = Math.max(0, count)
-  return clampTapeCopies(copies) > 1 ? countedLabel('Print', n, ['set', 'sets']) : countedLabel('Print', n, ['sticker', 'stickers'])
+  const head = clampTapeCopies(copies) > 1 ? countedLabel('Print', n, ['set', 'sets']) : countedLabel('Print', n, ['sticker', 'stickers'])
+  return n > 0 && names && names.length > 0 ? `${head}, ${nameSpanWords(names[0]!, names[names.length - 1]!)}` : head
+}
+
+/** A run's names: `G78 to G300`. One sticker reads as its name alone. */
+export function nameSpanWords(first: string, last: string): string {
+  return first === last ? first : `${first} to ${last}`
 }
 
 /** Under the title: *200 stickers, 2 strips each. 400 strips.* or *200 stickers, one strip each.* */
@@ -168,11 +192,15 @@ export function mintedRunOf(raw: unknown): MintedRun | null {
 // What one sticker prints
 // ---------------------------------------------------------------------------
 
-/** One strip's content, in the tape label's shape: the number where a box's stencil goes. */
+/** One strip's content, in the tape label's shape: the name, or the number, where a box's stencil goes. */
 export type StickerStrip = {
   id: string
-  /** Large: the number as printed, `0147`. */
+  /** Large: a named sticker's name, `G78`; a numbered one's number as printed, `0147`. */
   stencil: string
+  /** A named sticker's number, small on its own line before the address (section 10, v2.7391). A numbered sticker has none: its number is the stencil. */
+  number?: string
+  /** The name at the smaller size: five to seven characters. Up to four print at the full size. */
+  small?: boolean
   /** Under it, on two lines: `PRTS.CO/B/` and `4F2A-9C18`. */
   address: string
   /** What the QR carries: `HTTPS://PRTS.CO/B/4F2A9C18`. */
@@ -192,7 +220,34 @@ export function stickerAddressWords(code: string): string {
 }
 
 export function stickerStrip(s: MintedSticker): StickerStrip {
-  return { id: s.id, stencil: stickerNumberWords(s.number), address: stickerAddressWords(s.code), value: stickerUrl(s.code) }
+  const base = { id: s.id, address: stickerAddressWords(s.code), value: stickerUrl(s.code) }
+  if (!s.boxName) return { ...base, stencil: stickerNumberWords(s.number) }
+  return { ...base, stencil: s.boxName, number: stickerNumberWords(s.number), ...(s.boxName.length > TAPE_NAME_FULL_CHARS ? { small: true } : {}) }
+}
+
+/** What a person reads off a sticker first: its name when it carries one, its number when it does not. */
+export function stickerReadName(s: Pick<MintedSticker, 'number' | 'boxName'>): string {
+  return s.boxName || stickerNumberWords(s.number)
+}
+
+/**
+ * A block of stickers in words: `G78 to G300` when every one is named, `0101 to 0300` when not. One reads alone.
+ * `stickers` in number order.
+ */
+export function stickerSpanWords(stickers: ReadonlyArray<Pick<MintedSticker, 'number' | 'boxName'>>): string {
+  if (stickers.length === 0) return ''
+  const first = stickers[0]!
+  const last = stickers[stickers.length - 1]!
+  if (stickers.every((s) => s.boxName)) return nameSpanWords(first.boxName!, last.boxName!)
+  return stickerRangeWords(first.number, last.number)
+}
+
+/**
+ * The room a strip's stencil needs in the print window, in characters at the full size (`tapeLayout`): a name at the
+ * smaller size takes five sevenths of its own count.
+ */
+export function stripNameChars(strip: Pick<StickerStrip, 'stencil' | 'small'>): number {
+  return strip.small ? Math.ceil(strip.stencil.length * TAPE_NAME_SMALL_RATIO) : strip.stencil.length
 }
 
 /**
@@ -205,17 +260,27 @@ export const STICKER_TEST_STRIP: StickerStrip = { id: 'test-strip', stencil: '00
 // A run's words
 // ---------------------------------------------------------------------------
 
-/** *Run of 200 sets · 0101 to 0300*, or *Run of 200 · 0101 to 0300* with one strip each. */
-export function stickerRunTitle(run: Pick<StickerRun, 'count' | 'firstNumber' | 'lastNumber' | 'copies'>): string {
-  const of = run.copies > 1 ? `Run of ${run.count} sets` : `Run of ${run.count}`
-  return `${of} · ${stickerRangeWords(run.firstNumber, run.lastNumber)}`
+/** A run's own span: its names when it carries them, `G78 to G300`, its numbers when it does not, `0101 to 0300`. */
+export function runSpanWords(run: Pick<StickerRun, 'firstNumber' | 'lastNumber' | 'names'>): string {
+  const names = run.names
+  return names && names.length > 0 ? nameSpanWords(names[0]!, names[names.length - 1]!) : stickerRangeWords(run.firstNumber, run.lastNumber)
 }
 
-/** *Printed Nov 12 by Dana · 2 of each*. `day` is the printed day as words; the name is left out when the database kept none. */
-export function stickerRunByLine(run: Pick<StickerRun, 'printedByName' | 'copies'>, day: string): string {
+/** *Run of 200 sets · 0101 to 0300*, or *Run of 200 · 0101 to 0300* with one strip each; a named run by its names, *Run of 223 · G78 to G300*. */
+export function stickerRunTitle(run: Pick<StickerRun, 'count' | 'firstNumber' | 'lastNumber' | 'copies' | 'names'>): string {
+  const of = run.copies > 1 ? `Run of ${run.count} sets` : `Run of ${run.count}`
+  return `${of} · ${runSpanWords(run)}`
+}
+
+/**
+ * *Printed Nov 12 by Dana · 2 of each*. `day` is the printed day as words; the name is left out when the database kept
+ * none. A named run's numbers follow, since its title carries the names: *· numbers 0225 to 0447*.
+ */
+export function stickerRunByLine(run: Pick<StickerRun, 'printedByName' | 'copies'> & Partial<Pick<StickerRun, 'names' | 'firstNumber' | 'lastNumber'>>, day: string): string {
   const who = run.printedByName ? ` by ${run.printedByName}` : ''
   const copies = run.copies > 1 ? ` · ${run.copies} of each` : ''
-  return `Printed ${day}${who}${copies}`
+  const numbers = run.names && run.names.length > 0 && run.firstNumber != null && run.lastNumber != null ? ` · ${run.firstNumber === run.lastNumber ? 'number' : 'numbers'} ${stickerRangeWords(run.firstNumber, run.lastNumber)}` : ''
+  return `Printed ${day}${who}${copies}${numbers}`
 }
 
 /** The fold's summary: *1 run of stickers*, *3 runs of stickers*. */
@@ -232,13 +297,13 @@ export function reprintLabel(count: number): string {
  * The press that prints the stickers not yet on paper or not yet on a box: *Print the rest, 0163 to 0300* when they
  * are one unbroken block, *Print the rest, 96 stickers* when they are not, and *Print the rest* dead when there are none.
  */
-export function printRestLabel(rest: ReadonlyArray<Pick<MintedSticker, 'number'>>): string {
+export function printRestLabel(rest: ReadonlyArray<Pick<MintedSticker, 'number' | 'boxName'>>): string {
   if (rest.length === 0) return 'Print the rest'
-  const numbers = rest.map((s) => s.number).sort((a, b) => a - b)
-  const first = numbers[0]!
-  const last = numbers[numbers.length - 1]!
-  if (last - first + 1 === numbers.length) return `Print the rest, ${stickerRangeWords(first, last)}`
-  return `Print the rest, ${numbers.length} stickers`
+  const sorted = [...rest].sort((a, b) => a.number - b.number)
+  const first = sorted[0]!.number
+  const last = sorted[sorted.length - 1]!.number
+  if (last - first + 1 === sorted.length) return `Print the rest, ${stickerSpanWords(sorted)}`
+  return `Print the rest, ${sorted.length} stickers`
 }
 
 /** A run's rows as the fold reads them: the sticker, the box it is on and whether it was lost. */
@@ -287,20 +352,18 @@ export function stickersStoppedWords(doneStrips: number, totalStickers: number, 
 }
 
 /** The window's line on what the press will print, by stage: the ask, or a minted run's range. */
-export function runStripsWords(run: Pick<StickerRun, 'count' | 'copies' | 'firstNumber' | 'lastNumber'>, printing: number): string {
-  const head = printing === run.count ? stickerRangeWords(run.firstNumber, run.lastNumber) : `${printing} of ${stickerRangeWords(run.firstNumber, run.lastNumber)}`
+export function runStripsWords(run: Pick<StickerRun, 'count' | 'copies' | 'firstNumber' | 'lastNumber' | 'names'>, printing: number): string {
+  const head = printing === run.count ? runSpanWords(run) : `${printing} of ${runSpanWords(run)}`
   return run.copies > 1 ? `${head}, ${run.copies} strips each. ${printing * run.copies} strips.` : `${head}, one strip each.`
 }
 
 /** The press on a minted run: *Print 200 sets, 0101 to 0300*. */
-export function printRunLabel(stickers: ReadonlyArray<Pick<MintedSticker, 'number'>>, copies: number): string {
+export function printRunLabel(stickers: ReadonlyArray<Pick<MintedSticker, 'number' | 'boxName'>>, copies: number): string {
   const n = stickers.length
   if (n === 0) return stickerRunPressLabel(0, copies)
-  const numbers = stickers.map((s) => s.number)
-  const first = Math.min(...numbers)
-  const last = Math.max(...numbers)
-  const whole = last - first + 1 === n
-  const range = whole ? `, ${stickerRangeWords(first, last)}` : ''
+  const sorted = [...stickers].sort((a, b) => a.number - b.number)
+  const whole = sorted[n - 1]!.number - sorted[0]!.number + 1 === n
+  const range = whole ? `, ${stickerSpanWords(sorted)}` : ''
   return `${stickerRunPressLabel(n, copies)}${range}`
 }
 
@@ -314,14 +377,18 @@ export const STICKER_MINTING = 'Numbering the run…'
 // The CSV
 // ---------------------------------------------------------------------------
 
-export const STICKERS_CSV_COLUMNS = ['Number', 'Code', 'Address', 'QR'] as const
+export const STICKERS_CSV_COLUMNS = ['Name', 'Number', 'Code', 'Address', 'QR'] as const
 
-/** The run's stickers for Brother's P-touch Editor, as the labels window exports its boxes: the number, the dashed code, the address a person types and what the QR carries. */
+/**
+ * The run's stickers for Brother's P-touch Editor, as the labels window exports its boxes: the name the sticker
+ * prints large (empty on a run of numbers only), the number, the dashed code, the address a person types and what the
+ * QR carries.
+ */
 export function stickersCsvText(stickers: ReadonlyArray<MintedSticker>): string {
   const head = STICKERS_CSV_COLUMNS.map(csvEscapeField).join(',')
   const body = [...stickers]
     .sort((a, b) => a.number - b.number)
-    .map((s) => [stickerNumberWords(s.number), dashedCode(s.code), `${BOX_LINK_HOST}/b/${dashedCode(s.code)}`, stickerUrl(s.code)].map(csvEscapeField).join(','))
+    .map((s) => [s.boxName ?? '', stickerNumberWords(s.number), dashedCode(s.code), `${BOX_LINK_HOST}/b/${dashedCode(s.code)}`, stickerUrl(s.code)].map(csvEscapeField).join(','))
   return [head, ...body].join('\r\n') + '\r\n'
 }
 

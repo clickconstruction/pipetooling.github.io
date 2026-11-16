@@ -3,7 +3,7 @@
  * row for row, plus the twins and the shorthand ends.
  */
 import { describe, expect, it } from 'vitest'
-import { nextTwinName, normalizeStickerRange, readStickerRange, stickerRangeSetsCount, stickerRangeWords, type StickerRange } from './stickerNames'
+import { blankNamesNotice, liveNamesNotice, namesSpanWords, nextTwinName, normalizeStickerRange, readStickerRange, stickerNamesAsk, stickerRangeSetsCount, stickerRangeWords, type StickerRange } from './stickerNames'
 
 const names = (r: StickerRange) => (r.kind === 'names' ? r.names : null)
 const refused = (r: StickerRange) => (r.kind === 'refused' ? r.words : null)
@@ -163,5 +163,91 @@ describe('nextTwinName', () => {
   it('null past Z', () => {
     const full = [{ label: 'R1', kind: 'cage', retiredAt: null }].concat(Array.from({ length: 25 }, (_, i) => ({ label: `R1${String.fromCharCode(66 + i)}`, kind: 'cage', retiredAt: null })))
     expect(nextTwinName(full, 'R1')).toBeNull()
+  })
+})
+
+describe('the window’s Names field (PR 8, v2.7391)', () => {
+  it('a start alone takes How many, and the offered name says it was offered', () => {
+    const ask = stickerNamesAsk('G78', 200, 'G78')
+    expect(ask.count).toBe(200)
+    expect(ask.countFollows).toBe(false)
+    expect(ask.tone).toBe('ok')
+    expect(ask.words).toBe('G78 to G277 · 200 stickers. G78 is the site’s next free name. Type a range to set the end, like G78-177.')
+    // typed by hand, or another name than the offer: the parser's own line
+    expect(stickerNamesAsk('G90', 30, 'G78').words).toBe('G90 to G119 · 30 stickers. From G90, How many says how far.')
+    expect(stickerNamesAsk('g78', 200, null).words).toBe('G78 to G277 · 200 stickers. From G78, How many says how far.')
+  })
+
+  it('a typed range sets the count, and How many follows it', () => {
+    const ask = stickerNamesAsk('G78-300', 200, 'G78')
+    expect(ask.count).toBe(223)
+    expect(ask.countFollows).toBe(true)
+    expect(ask.words).toBe('G78 to G300 · 223 stickers. The number steps.')
+    expect(stickerNamesAsk('g78 to 300', 30).count).toBe(223)
+    expect(stickerNamesAsk('A1-D50', 30).count).toBe(200)
+  })
+
+  it('a refusal is said in the parser’s words and counts nothing', () => {
+    const ask = stickerNamesAsk('G300-78', 200)
+    expect(ask.tone).toBe('refused')
+    expect(ask.count).toBe(0)
+    expect(ask.countFollows).toBe(false)
+    expect(ask.words).toBe('The range runs upward: G78 to G300.')
+    expect(stickerNamesAsk('G1-600', 200).words).toBe('A run is 1 to 500 stickers. G1 to G600 is 600.')
+    expect(stickerNamesAsk('78', 200).tone).toBe('refused')
+  })
+
+  it('cleared, the run is numbered only and How many is the count', () => {
+    const ask = stickerNamesAsk('  ', 60, 'G78')
+    expect(ask.range.kind).toBe('numbered')
+    expect(ask.count).toBe(60)
+    expect(ask.words).toBe('Nothing typed: the stickers carry their number only. A leftover works on any site.')
+  })
+
+  it('names that stop at 999 say so even when the start is the offer', () => {
+    const ask = stickerNamesAsk('G990', 200, 'G990')
+    expect(ask.count).toBe(10)
+    expect(ask.words).toBe('G990 to G999 · 10 stickers. Names stop at G999, so the run is 10.')
+  })
+
+  it('some of a run’s names read as a stretch, a pair, or the first two and how many more', () => {
+    const run = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6']
+    expect(namesSpanWords([], run)).toBe('')
+    expect(namesSpanWords(['G3'], run)).toBe('G3')
+    expect(namesSpanWords(['G2', 'G3', 'G4'], run)).toBe('G2 to G4')
+    expect(namesSpanWords(['G2', 'G5'], run)).toBe('G2 and G5')
+    expect(namesSpanWords(['G1', 'G3', 'G5', 'G6'], run)).toBe('G1, G3 and 2 more')
+  })
+
+  const box = (label: string, over: Partial<{ retiredAt: string | null; kind: string }> = {}) => ({ label, kind: over.kind ?? 'cage', retiredAt: over.retiredAt ?? null })
+
+  it('names that are live boxes on the site are a notice: their stickers go on those boxes', () => {
+    const names = readStickerRange('G1-200', 0)
+    const run = names.kind === 'names' ? names.names : []
+    const site = [...Array.from({ length: 77 }, (_, i) => box(`G${i + 1}`)), box('R1'), box('G150', { retiredAt: '2026-11-01T00:00:00Z' })]
+    const notice = liveNamesNotice(run, site)!
+    expect(notice.names).toHaveLength(77)
+    expect(notice.words).toBe('77 of these are boxes on this site already, G1 to G77. Their stickers go on those boxes.')
+    // one, in the singular; a retired box and Unsorted are not live names
+    expect(liveNamesNotice(['G77', 'G78'], site)!.words).toBe('1 of these is a box on this site already, G77. Its sticker goes on that box.')
+    expect(liveNamesNotice(['G150'], site)).toBeNull()
+    expect(liveNamesNotice(['G78', 'G79'], [...site, box('g78 ', { kind: 'unsorted' })])).toBeNull()
+    // a name saved in small letters still counts
+    expect(liveNamesNotice(['G78'], [box(' g78')])!.names).toEqual(['G78'])
+  })
+
+  it('names an earlier run printed and that are on no box yet hold the press', () => {
+    const names = readStickerRange('G150-200', 0)
+    const run = names.kind === 'names' ? names.names : []
+    const blank = Array.from({ length: 23 }, (_, i) => `G${178 + i}`)
+    const notice = blankNamesNotice(run, blank)!
+    expect(notice.names).toHaveLength(23)
+    expect(notice.words).toBe('23 of these were printed on an earlier run and are not on a box yet, G178 to G200. Printing them again makes two stickers for each name.')
+    expect(notice.anywayLabel).toBe('Print them anyway')
+    const one = blankNamesNotice(['G178', 'G300'], ['g178'])!
+    expect(one.words).toBe('1 of these was printed on an earlier run and is not on a box yet, G178. Printing it again makes two stickers for one name.')
+    expect(one.anywayLabel).toBe('Print it anyway')
+    expect(blankNamesNotice(['G1', 'G2'], blank)).toBeNull()
+    expect(blankNamesNotice(run, [])).toBeNull()
   })
 })

@@ -6,7 +6,7 @@
  * The USB side and the canvas are mocked: a test's DOM has neither.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Container, ContainerLine } from '../../lib/materials/onSite'
 import type { PtouchStatus } from '../../lib/materials/ptouchRaster'
@@ -16,6 +16,8 @@ const usb = vi.hoisted(() => ({
   status: { tapeMm: 24, statusType: 0, phase: 0, errors: [] as string[] },
   print: vi.fn(),
   close: vi.fn(async () => {}),
+  refreshed: 0,
+  refreshFails: false,
   asked: [] as boolean[],
 }))
 vi.mock('../../lib/materials/ptouchUsb', () => {
@@ -26,7 +28,9 @@ vi.mock('../../lib/materials/ptouchUsb', () => {
     connectPtouch: async ({ ask }: { ask: boolean }) => {
       usb.asked.push(ask)
       if (!ask && !usb.granted) return null
-      return { model: 'PT-D610BT', status: usb.status as PtouchStatus, print: usb.print, close: usb.close }
+      // one link object, as the real one is: a refresh lands the printer's new answer on it
+      const link = { model: 'PT-D610BT', status: usb.status as PtouchStatus, print: usb.print, close: usb.close, refresh: async () => { usb.refreshed++; if (usb.refreshFails) throw new Error('gone'); link.status = usb.status as PtouchStatus; return link.status } }
+      return link
     },
   }
 })
@@ -54,6 +58,8 @@ beforeEach(() => {
   usb.status = { tapeMm: 24, statusType: 0, phase: 0, errors: [] }
   usb.asked = []
   usb.print.mockReset()
+  usb.refreshed = 0
+  usb.refreshFails = false
   usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void) => { labels.forEach((_, i) => onLabel?.(i + 1)) })
 })
 afterEach(() => {
@@ -205,6 +211,97 @@ describe('LabelsPrintModal · straight to the P-touch over USB', () => {
     setup()
     await waitFor(() => expect(screen.getByTestId('labels-printer-line').textContent).toContain('load 18 or 24 mm tape'))
     expect(screen.getByTestId('labels-print').hasAttribute('disabled')).toBe(true)
+  })
+
+  it('a new cassette is seen: the foot says why the press is grey, and Check the printer again brings it back (Taunya, 2026-11-15)', async () => {
+    usb.granted = true
+    usb.status = { tapeMm: 0, statusType: 0, phase: 0, errors: [] }
+    setup()
+    await waitFor(() => expect(screen.getByTestId('labels-recheck').textContent).toContain('There is no tape in the printer. Put in the tape and close the cover. The window checks the printer by itself.'))
+    expect(screen.getByTestId('labels-print').hasAttribute('disabled')).toBe(true)
+    // the cassette goes in
+    usb.status = { tapeMm: 24, statusType: 0, phase: 0, errors: [] }
+    fireEvent.click(screen.getByTestId('labels-check-printer'))
+    await waitFor(() => expect(screen.getByTestId('labels-print').hasAttribute('disabled')).toBe(false))
+    expect(usb.refreshed).toBe(1)
+    expect(screen.queryByTestId('labels-recheck')).toBeNull()
+    expect(screen.getByTestId('labels-printer-line').textContent).toContain('24 mm tape · ready')
+  })
+
+  it('the window looks at the printer by itself every few seconds while it cannot print, and stops once it can', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    try {
+      usb.granted = true
+      usb.status = { tapeMm: 0, statusType: 0, phase: 0, errors: [] }
+      setup()
+      await waitFor(() => expect(screen.getByTestId('labels-recheck')).toBeTruthy())
+      await act(async () => { vi.advanceTimersByTime(3100) })
+      expect(usb.refreshed).toBe(1)
+      expect(screen.getByTestId('labels-print').hasAttribute('disabled')).toBe(true)
+      usb.status = { tapeMm: 24, statusType: 0, phase: 0, errors: [] }
+      await act(async () => { vi.advanceTimersByTime(3100) })
+      await waitFor(() => expect(screen.getByTestId('labels-print').hasAttribute('disabled')).toBe(false))
+      expect(usb.refreshed).toBe(2)
+      // ready: nothing more is asked of the printer
+      await act(async () => { vi.advanceTimersByTime(10000) })
+      expect(usb.refreshed).toBe(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('the tape runs out mid run: a new cassette and one press prints the rest, with no window closed', async () => {
+    usb.granted = true
+    usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => {
+      onLabel?.(1)
+      // the cassette is empty from here: the printer says so, and says so again when the window reconnects
+      usb.status = { tapeMm: 0, statusType: 0, phase: 0, errors: [] }
+      throw new Error('There is no tape in the printer.')
+    })
+    setup()
+    fireEvent.click(await screen.findByTestId('labels-copies-more'))
+    fireEvent.click(screen.getByTestId('labels-print'))
+    await waitFor(() => expect(screen.getByTestId('labels-rest').textContent).toBe('A1 has 1 of its 2 strips to go. The press prints the rest.'))
+    // the window reconnected by itself to a printer with no tape: the press is there, grey, and the foot says why
+    await waitFor(() => expect(screen.getByTestId('labels-recheck')).toBeTruthy())
+    expect(screen.getByTestId('labels-print').hasAttribute('disabled')).toBe(true)
+    // and being back on the printer has not wiped how many strips went and why
+    expect(screen.getByTestId('labels-usb-slip').textContent).toBe('1 of 4 printed, then the printer stopped: There is no tape in the printer. A printed strip may still be inside the printer. Feed and cut the tape on the printer to get it out.')
+    usb.status = { tapeMm: 24, statusType: 0, phase: 0, errors: [] }
+    fireEvent.click(screen.getByTestId('labels-check-printer'))
+    await waitFor(() => expect(screen.getByTestId('labels-print').hasAttribute('disabled')).toBe(false))
+    // the place is kept: A1's one missing strip and B3's two
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 3 tape labels')
+    let sent = 0
+    usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void) => { sent = labels.length; labels.forEach((_, i) => onLabel?.(i + 1)) })
+    fireEvent.click(screen.getByTestId('labels-print'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-sent').textContent).toBe('3 tape labels printed.'))
+    expect(sent).toBe(3)
+    // a run that printed whole keeps nothing for later
+    expect(localStorage.getItem('pt.labels.stoppedRun')).toBeNull()
+  })
+
+  it('a window closed to change the tape opens on the rest, and Every box starts over', async () => {
+    usb.granted = true
+    usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => { onLabel?.(1); onLabel?.(2); onLabel?.(3); throw new Error('There is no tape in the printer.') })
+    setup()
+    fireEvent.click(await screen.findByTestId('labels-copies-more'))
+    fireEvent.click(screen.getByTestId('labels-print'))
+    await waitFor(() => expect(screen.getByTestId('labels-rest').textContent).toBe('A1 is done and unticked. B3 has 1 of its 2 strips to go. The press prints the rest.'))
+    expect(JSON.parse(localStorage.getItem('pt.labels.stoppedRun')!)).toMatchObject({ jobId: 'j1', copies: 2, left: [A1], partial: { id: B3, done: 1, copies: 2 } })
+    // the window is closed and opened again
+    cleanup()
+    setup()
+    await waitFor(() => expect(screen.getByTestId('labels-print').textContent).toBe('Print 1 tape label'))
+    expect(screen.getByTestId('labels-rest').textContent).toBe('Picked up where today’s run stopped. 1 box is done and unticked. B3 has 1 of its 2 strips to go. Press Every box to start over.')
+    expect(screen.getAllByTestId('labels-pick').map((c) => c.getAttribute('aria-pressed'))).toEqual(['false', 'true'])
+    expect(screen.getAllByTestId('labels-pick').map((c) => c.getAttribute('data-part'))).toEqual([null, 'true'])
+    expect(screen.getByTestId('labels-copies').textContent).toBe('2')
+    // starting over forgets it
+    fireEvent.click(screen.getByRole('button', { name: 'Every box' }))
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 4 tape labels')
+    expect(screen.queryByTestId('labels-rest')).toBeNull()
+    expect(localStorage.getItem('pt.labels.stoppedRun')).toBeNull()
   })
 
   it('the print window stays one press away, with the strips the window prints', async () => {

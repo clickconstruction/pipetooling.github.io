@@ -16,6 +16,8 @@ const usb = vi.hoisted(() => ({
   status: { tapeMm: 24, statusType: 0, phase: 0, errors: [] as string[] },
   print: vi.fn(),
   close: vi.fn(async () => {}),
+  refreshed: 0,
+  refreshFails: false,
 }))
 vi.mock('../../lib/materials/ptouchUsb', () => {
   class PtouchPickCancelled extends Error {}
@@ -24,7 +26,9 @@ vi.mock('../../lib/materials/ptouchUsb', () => {
     ptouchUsbAvailable: () => true,
     connectPtouch: async ({ ask }: { ask: boolean }) => {
       if (!ask && !usb.granted) return null
-      return { model: 'PT-D610BT', status: usb.status as PtouchStatus, print: usb.print, close: usb.close }
+      // one link object, as the real one is: a refresh lands the printer's new answer on it
+      const link = { model: 'PT-D610BT', status: usb.status as PtouchStatus, print: usb.print, close: usb.close, refresh: async () => { usb.refreshed++; if (usb.refreshFails) throw new Error('gone'); link.status = usb.status as PtouchStatus; return link.status } }
+      return link
     },
   }
 })
@@ -35,13 +39,14 @@ vi.mock('../../lib/materials/stickerRunsIo', () => ({
   mintStickerRun: vi.fn(),
   fetchLastStickerNumber: vi.fn(async () => 100),
   fetchStickerRuns: vi.fn(async () => []),
+  fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: [] })),
 }))
 
 import PrintStickersModal from './PrintStickersModal'
 
 function mintedRun(request: StickerRunRequest): MintedRun {
-  const stickers = Array.from({ length: request.count }, (_, i) => ({ id: `s-${101 + i}`, number: 101 + i, code: `4F2A9C${String(i).padStart(2, '0')}` }))
-  return { run: { id: 'run-1', jobId: request.jobId, count: request.count, firstNumber: 101, lastNumber: 100 + request.count, copies: request.copies, printedByName: 'Dana', printedAt: '2026-11-14T16:00:00Z' }, stickers }
+  const stickers = Array.from({ length: request.count }, (_, i) => ({ id: `s-${101 + i}`, number: 101 + i, code: `4F2A9C${String(i).padStart(2, '0')}`, boxName: request.names?.[i] ?? null }))
+  return { run: { id: 'run-1', jobId: request.jobId, count: request.count, firstNumber: 101, lastNumber: 100 + request.count, copies: request.copies, printedByName: 'Dana', printedAt: '2026-11-14T16:00:00Z', names: request.names ?? null }, stickers }
 }
 
 function setup() {
@@ -55,6 +60,8 @@ beforeEach(() => {
   usb.granted = false
   usb.status = { tapeMm: 24, statusType: 0, phase: 0, errors: [] }
   usb.print.mockReset()
+  usb.refreshed = 0
+  usb.refreshFails = false
   usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void) => { labels.forEach((_, i) => onLabel?.(i + 1)) })
 })
 afterEach(() => {
@@ -166,6 +173,19 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect((usb.print.mock.calls[0]![0] as unknown[]).length).toBe(8)
   })
 
+  it('a new cassette is seen: the foot says why the press is grey, and Check the printer again brings it back (Taunya, 2026-11-15)', async () => {
+    usb.granted = true
+    usb.status = { tapeMm: 0, statusType: 0, phase: 0, errors: [] }
+    setup()
+    await waitFor(() => expect(screen.getByTestId('stickers-recheck').textContent).toContain('There is no tape in the printer. Put in the tape and close the cover. The window checks the printer by itself.'))
+    expect(screen.getByTestId('stickers-print').hasAttribute('disabled')).toBe(true)
+    usb.status = { tapeMm: 24, statusType: 0, phase: 0, errors: [] }
+    fireEvent.click(screen.getByTestId('stickers-check-printer'))
+    await waitFor(() => expect(screen.getByTestId('stickers-print').hasAttribute('disabled')).toBe(false))
+    expect(usb.refreshed).toBe(1)
+    expect(screen.queryByTestId('stickers-recheck')).toBeNull()
+  })
+
   it('tape the sticker is not laid out for holds the press and says what to load', async () => {
     usb.granted = true
     usb.status = { tapeMm: 12, statusType: 0, phase: 0, errors: [] }
@@ -174,5 +194,23 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(screen.getByTestId('stickers-print').getAttribute('aria-disabled')).toBe('true')
     fireEvent.click(screen.getByTestId('stickers-print'))
     expect(mint).not.toHaveBeenCalled()
+  })
+
+  it('a run that names its boxes draws each strip by its name, and the range is picked by name (section 10, v2.7391)', async () => {
+    usb.granted = true
+    const { mint } = setup()
+    await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+    await waitFor(() => expect(screen.queryByTestId('stickers-names-reading')).toBeNull())
+    fireEvent.change(screen.getByTestId('stickers-names-input'), { target: { value: 'G78-81' } })
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 4 stickers, G78 to G81')
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('4 stickers printed.'))
+    expect(mint).toHaveBeenCalledWith({ jobId: 'job-juniper', count: 4, copies: 1, names: ['G78', 'G79', 'G80', 'G81'] })
+    expect(screen.getAllByTestId('labels-tape-bitmap').map((c) => c.getAttribute('aria-label'))).toEqual(['The strip for G78', 'The strip for G79', 'The strip for G80', 'The strip for G81'])
+    const from = screen.getByTestId('stickers-range-from') as HTMLSelectElement
+    expect(Array.from(from.options).map((o) => o.textContent)).toEqual(['G78', 'G79', 'G80', 'G81'])
+    fireEvent.change(from, { target: { value: 's-102' } })
+    fireEvent.change(screen.getByTestId('stickers-range-to'), { target: { value: 's-103' } })
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 stickers, G79 to G80')
   })
 })

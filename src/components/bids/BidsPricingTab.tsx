@@ -114,6 +114,7 @@ import BidDifficultyStrip from './BidDifficultyStrip'
 import BidScoreHoldLine from './BidScoreHoldLine'
 import BidSitePick from './BidSitePick'
 import { useBidDifficultyPicks } from '../../hooks/useBidDifficultyPicks'
+import { usePricedLabor } from '../../hooks/useBidScoreReadiness'
 import { bidScoreReadiness, laborCompleteness } from '../../lib/scorecard/scoreReadiness'
 import type {
   CostEstimate,
@@ -2420,9 +2421,11 @@ export function BidsPricingTab({
   // #360 PR 2: whether the Scores tab could judge this bid, said here while the estimator can still act. A bid on
   // the desk is read off the screen (the stamp's numbers as they stand); a sent bid off the margin it went out at.
   const scoreSent = !!selectedBidForPricing?.bid_date_sent
+  // v2.7370: a sent bid is judged by the labor count kept with its margin, not by the Labor tab as it stands.
+  const scoreKeptLabor = usePricedLabor(scoreSent ? selectedBidForPricing?.id : null)
   const scoreNumbers = scoreSent || !pricedStampLatest?.input ? pricedStamp : pricedStampLatest.input
   const scoreReadiness = selectedBidForPricing && scoreNumbers
-    ? bidScoreReadiness({ pricedRevenueUsd: scoreNumbers.revenueUsd, pricedCostUsd: scoreNumbers.costUsd, pricedUncostedUsd: scoreNumbers.uncostedUsd, labor: pricingCostEstimate ? laborCompleteness(pricingLaborRows, pricingCostEstimate.labor_rate) : null, sent: scoreSent })
+    ? bidScoreReadiness({ pricedRevenueUsd: scoreNumbers.revenueUsd, pricedCostUsd: scoreNumbers.costUsd, pricedUncostedUsd: scoreNumbers.uncostedUsd, labor: pricingCostEstimate ? laborCompleteness(pricingLaborRows, pricingCostEstimate.labor_rate) : null, sent: scoreSent, pricedLabor: scoreKeptLabor })
     : null
   const scoreHold = scoreReadiness?.kind === 'hold' ? scoreReadiness : null
   // #357 PR 4: what the difficulty lines are made from, refreshed every commit as the stamp's numbers are.
