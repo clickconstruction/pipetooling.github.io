@@ -65,7 +65,7 @@ below was taken at the card's pick. The guide is `/help/paint-a-map`.
 | A link that asks, D | #8330 | v2.7415 | **Who opened it** on the Share sheet, and **Share** on each Documents row |
 | A link that asks, E | #8331 | v2.7416 | The function opens a map and its photos only for a reader who gave a name |
 | A map's photos, the rule | #8352 | v2.7454 | Once a map is gone, a photo's uploader and the office may list and remove it, and nobody else reads it |
-| A map's photos, the delete | this PR | v2.7473 | Throwing a map away removes the photo files under its id, after the row is gone |
+| A map's photos, the delete | #8371 | v2.7473 | Throwing a map away removes the photo files under its id, after the row is gone |
 
 The first two migrations are pushed and `painted-map-link` is deployed, each on the owner's yes.
 The third, `20261115063000_task_painted_maps.sql`, was pushed on 2026-11-15 after #8204 merged. The fourth,
