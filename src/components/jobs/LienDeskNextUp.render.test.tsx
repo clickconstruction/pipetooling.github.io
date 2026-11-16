@@ -29,7 +29,9 @@ describe('LienDeskNextUp', () => {
     const first = document.querySelector('[data-lien-next-up-row="notice:j1"]') as HTMLElement
     expect(first.textContent).toContain('Notice')
     expect(first.textContent).toContain('650 · AXO Schertz')
-    expect(first.textContent).toContain('Oct 9 · 4 days left')
+    // The day both rows share is on the head (v2.7372), so no row says it again.
+    expect(now.querySelector('[data-lien-next-up-head-day]')!.textContent).toBe('due Fri Oct 9 · 4 days left')
+    expect(first.textContent).not.toContain('Oct 9')
     fireEvent.click(within(first).getByRole('button', { name: 'Open the notice' }))
     expect(onAct).toHaveBeenCalledTimes(1)
     expect(onAct.mock.calls[0]![0].key).toBe('notice:j1')
@@ -105,10 +107,11 @@ describe('LienDeskNextUp', () => {
     // A job with nothing known draws no amount.
     expect(document.querySelector('[data-lien-next-up-row="notice:c"] [data-lien-next-up-amount]')).toBeNull()
     cleanup()
-    // A computer keeps the desk's own groups and draws no money on the row.
+    // A computer keeps the desk's own groups; since v2.7372 its row carries the money too, and a job with nothing known draws none.
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} amountFor={(r) => (r.jobId ? owed[r.jobId] ?? null : null)} />)
     expect(Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)).toEqual(['Needs you now · 2', 'Coming up · 1'])
-    expect(document.querySelector('[data-lien-next-up-amount]')).toBeNull()
+    expect(Array.from(document.querySelectorAll('[data-lien-next-up-amount]')).map((el) => el.textContent)).toEqual(['$8,400', '$6,125'])
+    expect(document.querySelector('[data-lien-next-up-row="notice:c"] [data-lien-next-up-amount]')).toBeNull()
     expect(document.querySelector('[data-lien-phone-group]')).toBeNull()
   })
 
@@ -496,5 +499,81 @@ describe('LienDeskNextUp · the doors beside a row whose notice on record still 
     fireEvent.click(within(el).getByRole('button', { name: 'Open the notice' }))
     expect(onAct.mock.calls[2]![0].target).toEqual({ open: 'notices', jobId: 'j1', pile: 'to_draft' })
     expect(el.querySelectorAll('[data-lien-next-up-door]')).toHaveLength(2)
+  })
+})
+
+describe('LienDeskNextUp · a computer’s row in two lines (v2.7372, punch list #362 step 3)', () => {
+  const ready = row({ key: 'affidavit:j3', kind: 'affidavit', jobId: 'j3', title: '1052 · ZZ Service Visit, 12 Sample Rd', sub: 'Affidavit approved · ready to file', detail: '', action: 'file_affidavit', button: 'File the affidavit' })
+  const facts = row({ key: 'affidavit:j9', kind: 'affidavit', jobId: 'j9', title: '1077 · ZZ Locks', sub: 'Affidavit · nobody has answered whether this home is a homestead', detail: 'Nobody has answered whether this home is a homestead.', action: 'fix_property', button: 'Answer the homestead question' })
+  const send = row({ key: 'notice:j1', jobId: 'j1', title: '1110 · ZZ Oak Hollow', sub: 'Notice to send', detail: 'September 2026' })
+  const late = row({ key: 'notice:j4', jobId: 'j4', title: '891 · ZZ Builders', sub: 'Notice to send', detail: 'August 2026', dueOn: '2026-10-01', daysLeft: -4 })
+  const retainage = row({ key: 'retainage:j5', kind: 'retainage', jobId: 'j5', title: '700 · ZZ Pine St', sub: 'Retainage notice to send' })
+  const stageFor = (r: LienNextUpRow) => ({ 'affidavit:j3': 'Ready to file', 'affidavit:j9': 'Needs the property facts', 'notice:j1': 'To send', 'notice:j4': 'To send' })[r.key] ?? null
+  const noticeFor = (r: LienNextUpRow) => (r.key === 'affidavit:j3' ? { tone: 'ok' as const, words: 'Notice sent Oct 14' } : r.key === 'affidavit:j9' ? { tone: 'none' as const, words: 'No notice needed · contracted with the owner' } : null)
+  const amountFor = (r: LienNextUpRow) => ({ j3: 610, j9: 240, j1: 2900 })[r.jobId ?? ''] ?? null
+  const lineOf = (key: string) => document.querySelector(`[data-lien-next-up-row="${key}"] [data-lien-next-up-line]`) as HTMLElement
+  const draw = () => render(<LienDeskNextUp rows={[ready, facts, send, late, retainage]} loading={false} isMobile={false} onAct={() => {}} stageFor={stageFor} noticeFor={noticeFor} amountFor={amountFor} />)
+
+  it('under the job: the Board’s bin, the one thing to know, and where an affidavit’s notice stands; the row carries what it owes', () => {
+    // Every row shares Oct 9, so the head carries the day and the lines are the words alone.
+    render(<LienDeskNextUp rows={[ready, facts, send, retainage]} loading={false} isMobile={false} onAct={() => {}} stageFor={stageFor} noticeFor={noticeFor} amountFor={amountFor} />)
+    expect(document.querySelector('[data-lien-next-up-row="affidavit:j3"]')!.getAttribute('data-layout')).toBe('two-line')
+    // The stage says it all for a ready affidavit; its notice rides beside it.
+    expect(lineOf('affidavit:j3').textContent).toBe('Ready to fileNotice sent Oct 14')
+    expect(lineOf('affidavit:j3').querySelector('[data-lien-next-up-tag]')!.getAttribute('data-lien-next-up-tag')).toBe('ok')
+    // The held paper asks its one question, on the row and on its button.
+    expect(lineOf('affidavit:j9').textContent).toBe('Needs the property facts · Nobody has answered whether this home is a homestead.No notice needed · contracted with the owner')
+    expect(within(document.querySelector('[data-lien-next-up-row="affidavit:j9"]') as HTMLElement).getByRole('button', { name: 'Answer the homestead question' })).toBeTruthy()
+    expect(lineOf('notice:j1').textContent).toBe('To send · September 2026')
+    expect(Array.from(document.querySelectorAll('[data-lien-next-up-amount]')).map((el) => el.textContent)).toEqual(['$610', '$240', '$2,900'])
+  })
+
+  it('the bin’s name is the door to the card the dots opened; a row with no bin keeps its dots and its words', () => {
+    draw()
+    // No dots on a row the Board has a bin for.
+    expect(within(document.querySelector('[data-lien-next-up-row="affidavit:j3"]') as HTMLElement).queryByTestId('lien-step-mark')).toBeNull()
+    const door = document.querySelector('[data-lien-next-up-stage="affidavit:j3"]') as HTMLButtonElement
+    expect(door.textContent).toBe('Ready to file')
+    expect(door.getAttribute('aria-label')).toBe('Ready to file: where this stands')
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-step-card')).toBeTruthy()
+    // Retainage has no bin: its dots stand where the bin's name would, and its words are its own.
+    const ret = document.querySelector('[data-lien-next-up-row="retainage:j5"]') as HTMLElement
+    expect(within(ret).getByTestId('lien-step-mark')).toBeTruthy()
+    expect(ret.querySelector('[data-lien-next-up-stage]')).toBeNull()
+    expect(lineOf('retainage:j5').textContent).toContain('Retainage notice to send')
+  })
+
+  it('the head carries the day only when every row under it shares it; then a row says its day only when it is another', () => {
+    // Four rows due Oct 9 and one four days late: two days, so the head carries none and each row says its own.
+    const view = draw()
+    expect(document.querySelector('[data-lien-next-up-head-day]')).toBeNull()
+    expect(lineOf('notice:j4').querySelector('[data-lien-next-up-due]')!.textContent).toBe('Oct 1 · 4 days late')
+    expect(lineOf('affidavit:j3').querySelector('[data-lien-next-up-due]')!.textContent).toBe('Oct 9 · 4 days left')
+    view.unmount()
+    render(<LienDeskNextUp rows={[ready, facts, send]} loading={false} isMobile={false} onAct={() => {}} stageFor={stageFor} />)
+    expect(document.querySelector('[data-lien-next-up-head-day]')!.textContent).toBe('due Fri Oct 9 · 4 days left')
+    expect(document.querySelector('[data-lien-next-up-due]')).toBeNull()
+  })
+
+  it('one press on the head over the rows on track is the door to the batch print; absent, the head has none', () => {
+    const onPress = vi.fn()
+    const view = render(<LienDeskNextUp rows={[ready, send]} loading={false} isMobile={false} onAct={() => {}} trackPress={{ button: 'Print 12 affidavits ›', onPress }} />)
+    const press = document.querySelector('[data-lien-next-up-track-press]') as HTMLButtonElement
+    expect(press.textContent).toBe('Print 12 affidavits ›')
+    expect(document.querySelector('[data-lien-next-up-group="now"]')!.contains(press)).toBe(true)
+    fireEvent.click(press)
+    expect(onPress).toHaveBeenCalledTimes(1)
+    view.unmount()
+    render(<LienDeskNextUp rows={[ready, send]} loading={false} isMobile={false} onAct={() => {}} />)
+    expect(document.querySelector('[data-lien-next-up-track-press]')).toBeNull()
+  })
+
+  it('a phone’s row is untouched: its own lines, its dots, no bin name', () => {
+    render(<LienDeskNextUp rows={[ready]} loading={false} isMobile onAct={() => {}} stageFor={stageFor} noticeFor={noticeFor} />)
+    const phone = document.querySelector('[data-lien-next-up-row="affidavit:j3"]') as HTMLElement
+    expect(phone.getAttribute('data-layout')).toBe('lines')
+    expect(phone.querySelector('[data-lien-next-up-stage]')).toBeNull()
+    expect(within(phone).getByTestId('lien-step-mark')).toBeTruthy()
   })
 })

@@ -21,6 +21,8 @@ import { lienRunRowLine } from './lienRunChecklist'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_NOTICE_OWED_DOORS, lienNoticeOwedMonths, lienNoticeOwedWords } from './lienNoticeOwed'
+import { describeNoticeMonths } from './lienNoticeMonthWords'
+import { lienActFor } from './lienActWords'
 
 export type LienNextUpKind = 'notice' | 'affidavit' | 'retainage'
 
@@ -75,6 +77,12 @@ export type LienNextUpRow = {
   title: string
   /** What state the paper is in, in a few words. */
   sub: string
+  /**
+   * The one thing to know about the paper once its kind and its stage are said beside it (v2.7372, punch list #362
+   * step 3): the months a notice is for, the one fact an affidavit waits on, how long an approval has waited. Empty
+   * when the stage says it all; absent, `sub` stands. The desktop row reads it after the Board's bin name.
+   */
+  detail?: string
   /** The last day (YYYY-MM-DD); null when the row has no date of its own. */
   dueOn: string | null
   /** Whole days to `dueOn` (negative once past); null with no date. */
@@ -190,12 +198,17 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     rows.push({ ...r, button, group: groupOf(r.daysLeft, r.severity) })
   }
   /** Awaiting approval: the leader approves; the office waits on him by name, with no button. */
-  const awaiting = (jobId: string, item: { submitted_at?: string | null } | null | undefined): { action: LienNextUpAction; button: string | null; sub: string } => {
-    if (leads(jobId)) return { action: 'approve', button: BUTTON.approve, sub: 'Waiting on your approval' }
-    const name = input.leaderName?.(jobId)?.trim() || 'the leader'
+  const awaiting = (jobId: string, item: { submitted_at?: string | null } | null | undefined): { action: LienNextUpAction; button: string | null; sub: string; detail: string } => {
     const since = item?.submitted_at ? calendarYmdInAppTzFromIso(item.submitted_at) : ''
-    return { action: 'approve', button: null, sub: `Waiting on ${name}${/^\d{4}-\d{2}-\d{2}$/.test(since) ? ` · since ${formatYmdMonthDay(since)}` : ''}` }
+    const dated = /^\d{4}-\d{2}-\d{2}$/.test(since)
+    // How long it has waited (v2.7372): the day it was sent for approval, and the days since.
+    const detail = dated ? `Sent for approval ${formatYmdMonthDay(since)} · ${lienWaitedWords(daysBetween(since, input.todayYmd))}` : 'Sent for approval'
+    if (leads(jobId)) return { action: 'approve', button: BUTTON.approve, sub: 'Waiting on your approval', detail }
+    const name = input.leaderName?.(jobId)?.trim() || 'the leader'
+    return { action: 'approve', button: null, sub: `Waiting on ${name}${dated ? ` · since ${formatYmdMonthDay(since)}` : ''}`, detail }
   }
+  /** The months a notice is for, as the row's one thing to know: *September 2026*. */
+  const monthsOf = (e: LienDeskEntry) => describeNoticeMonths(e.dueMonths.filter((m) => /^\d{4}-\d{2}$/.test(m)))
 
   // ---- § 53.056 notices ----
   const readyByGc = new Map<string, LienDeskEntry[]>()
@@ -230,7 +243,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     }
     switch (e.pile) {
       case 'needs_owner':
-        push({ ...base, key: `notice:${e.jobId}`, sub: 'Needs the owner of record', action: 'find_owner', target: pane('needs_owner') })
+        push({ ...base, key: `notice:${e.jobId}`, sub: 'Needs the owner of record', detail: monthsOf(e), action: 'find_owner', target: pane('needs_owner') })
         break
       case 'to_draft': {
         // A notice on record that names other months (punch list #353, part 2): the row says which month still owes one, and
@@ -241,6 +254,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
           ...base,
           key: `notice:${e.jobId}`,
           sub: owedWords ?? 'Notice to send',
+          detail: owedWords ?? monthsOf(e),
           action: 'draft',
           target: pane('to_draft'),
           ...(owedWords && canAct
@@ -256,7 +270,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       }
       case 'awaiting': {
         const a = awaiting(e.jobId, e.item)
-        push({ ...base, key: `notice:${e.jobId}`, sub: a.sub, action: a.action, button: a.button, target: pane('awaiting') })
+        push({ ...base, key: `notice:${e.jobId}`, sub: a.sub, detail: a.detail, action: a.action, button: a.button, target: pane('awaiting') })
         break
       }
       case 'ready': {
@@ -290,17 +304,17 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         // Two or more printed are one run row below (punch list #101); one keeps its own row.
         if (printedCount > 1) break
         // In the run (v2.7328): the row names the tick the notice waits on, as the pile's row does.
-        push({ ...base, key: `notice:${e.jobId}`, sub: `In the run · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
+        push({ ...base, key: `notice:${e.jobId}`, sub: `In the run · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, detail: lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false), action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
         break
       case 'held':
-        push({ ...base, key: `notice:${e.jobId}`, sub: 'Held', action: 'review_hold', target: pane('held') })
+        push({ ...base, key: `notice:${e.jobId}`, sub: 'Held', detail: '', action: 'review_hold', target: pane('held') })
         break
       case 'sent':
         // Its rows are the reminders above (v2.6624); a Sent row has no notice of its own to draft.
         break
       case 'missed':
         // Months still open are drafted as on any other row; a closed window nobody wrote down is noted.
-        if (e.dueMonths.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'Notice to send · a window closed', action: 'draft', target: pane('missed') })
+        if (e.dueMonths.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'Notice to send · a window closed', detail: [monthsOf(e), 'a window closed'].filter(Boolean).join(' · '), action: 'draft', target: pane('missed') })
         else {
           // v2.4708: every window closed unsent, but the affidavit's own window is still open — a late notice can still carry it (the owner's reading, 2026-10-06).
           const aff = input.affidavits.find((a) => a.jobId === e.jobId)
@@ -361,27 +375,32 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'needs_property': {
         // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
         const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
-        if (failing.length === 1 && failing[0] === 'notice') push({ ...base, key, sub: 'Affidavit · send the § 53.056 notice first — late is allowed while this window is open', action: 'send_notice', button: office ? BUTTON.send_notice : null, target: { open: 'notices', jobId: e.jobId, pile: 'missed' } })
+        if (failing.length === 1 && failing[0] === 'notice') push({ ...base, key, sub: 'Affidavit · send the § 53.056 notice first — late is allowed while this window is open', detail: 'Send the § 53.056 notice first. Late is allowed while this window is open.', action: 'send_notice', button: office ? BUTTON.send_notice : null, target: { open: 'notices', jobId: e.jobId, pile: 'missed' } })
         // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
         // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
-        else if (failing.includes('public_owner')) push({ ...base, key, sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', action: 'fix_property', button: null })
-        else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: 'Affidavit · the general contractor has no address on file', action: 'fix_property', button: canAct ? 'Add the address' : null })
-        else push({ ...base, key, sub: 'Affidavit · the property record is not complete', action: 'fix_property' })
+        else if (failing.includes('public_owner')) push({ ...base, key, sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', detail: 'Public property, no lien attaches. Ask the attorney about the bond.', action: 'fix_property', button: null })
+        else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: 'Affidavit · the general contractor has no address on file', detail: 'The general contractor has no address on file.', action: 'fix_property', button: canAct ? 'Add the address' : null })
+        else {
+          // The hold by name (v2.7372, punch list #362 step 3): the one fact the affidavit waits on, in `gateAct`'s words, on
+          // the row and on its button. Until then every hold read *the property record is not complete*, whatever the gate.
+          const hold = lienGateHoldWords(failing)
+          push({ ...base, key, sub: `Affidavit · ${hold.sub}`, detail: hold.detail, action: 'fix_property', button: canAct ? hold.button : null })
+        }
         break
       }
       case 'to_draft':
-        push({ ...base, key, sub: 'Affidavit to send', action: 'draft', button: canAct ? 'Open the affidavit' : null })
+        push({ ...base, key, sub: 'Affidavit to send', detail: '', action: 'draft', button: canAct ? 'Open the affidavit' : null })
         break
       case 'awaiting': {
         const a = awaiting(e.jobId, e.item)
-        push({ ...base, key, sub: `Affidavit · ${a.sub.charAt(0).toLowerCase()}${a.sub.slice(1)}`, action: a.action, button: a.button })
+        push({ ...base, key, sub: `Affidavit · ${a.sub.charAt(0).toLowerCase()}${a.sub.slice(1)}`, detail: a.detail, action: a.action, button: a.button })
         break
       }
       case 'ready':
-        push({ ...base, key, sub: 'Affidavit approved · ready to file', action: 'file_affidavit', button: office ? BUTTON.file_affidavit : null })
+        push({ ...base, key, sub: 'Affidavit approved · ready to file', detail: '', action: 'file_affidavit', button: office ? BUTTON.file_affidavit : null })
         break
       case 'held':
-        push({ ...base, key, sub: 'Affidavit held', action: 'review_hold' })
+        push({ ...base, key, sub: 'Affidavit held', detail: '', action: 'review_hold' })
         break
       case 'filed':
       case 'missed':
@@ -428,6 +447,40 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
   }
 
   return rows.sort(compareRows)
+}
+
+/** How long an approval has waited: *today*, *1 day*, *39 days*. */
+export function lienWaitedWords(days: number): string {
+  if (days <= 0) return 'today'
+  return `waiting ${days} ${days === 1 ? 'day' : 'days'}`
+}
+
+/**
+ * An affidavit held by its property facts, by name (v2.7372): what the row says, the one thing to know after its
+ * stage, and the press, all from `gateAct` (`lienActWords.ts`), so the row, the Pipeline's lien line and the chip
+ * say one thing. One fact missing asks for that fact; several say the record is missing facts.
+ */
+export function lienGateHoldWords(missing: ReadonlyArray<string>): { sub: string; detail: string; button: string } {
+  const act = lienActFor({ paper: 'affidavit', action: 'fix_property', missing: missing as Parameters<typeof lienActFor>[0]['missing'] })
+  // Several facts missing: the row names each, so the press that opens the record is not a guess at what it wants.
+  const names = missing.map((k) => GATE_FACT[k]).filter((n): n is string => Boolean(n))
+  const several = missing.length > 1 && names.length === missing.length && !missing.includes('public_owner') && !missing.includes('homestead')
+  const whole = act?.why ?? 'The property record is missing facts the affidavit needs.'
+  const why = several ? `The affidavit still needs ${names.length === 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`}.` : whole.split(/(?<=\.)\s+/)[0]!
+  const lower = `${why.charAt(0).toLowerCase()}${why.slice(1)}`.replace(/\.$/, '')
+  // An act that is a finding and not a press (*Homestead, ask the attorney*) keeps both its sentences on the row, and
+  // the press says what it opens.
+  const finding = !several && /,/.test(act?.words ?? '')
+  return { sub: lower, detail: finding ? whole : why, button: finding ? 'Open the property record' : (act?.words ?? 'Fix the property record') }
+}
+
+/** A gate's fact as a few words, for a row that waits on more than one. */
+const GATE_FACT: Record<string, string> = {
+  owner: 'the owner of record',
+  legal: 'the legal description',
+  contractor: 'the GC’s address',
+  notice: 'a § 53.056 notice',
+  homestead_answer: 'the homestead answer',
 }
 
 /** "printed Oct 7", "printed Oct 7 to Oct 8", or "" with no day: the run row's title (punch list #101). */

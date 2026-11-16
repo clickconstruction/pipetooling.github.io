@@ -590,7 +590,8 @@ describe('LienDesk', () => {
     await settle()
     const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
     expect(titles).toEqual(['Waiting on Sam · 1'])
-    expect((document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement).textContent).toContain('Waiting on Sam · since Sep 12')
+    // The head names the leader; since v2.7372 the row under it says when the paper was sent and how long it has waited.
+    expect((document.querySelector('[data-lien-next-up-row="notice:j650"] [data-lien-next-up-line]') as HTMLElement).textContent).toContain('Awaiting approval · Sent for approval Sep 12 · waiting 2 days')
     expect(screen.getByRole('tab', { name: /^To do/ }).textContent).toBe('To do · 0')
   })
 
@@ -1749,6 +1750,33 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     const question = document.querySelector('[data-homestead-question]') as HTMLElement
     expect(question.getAttribute('data-homestead-question')).toBe('unanswered')
     expect(question.textContent).toContain("Is this the owner's homestead?")
+  })
+
+  it('To do names the held affidavit’s one question under the job, with its bin and its notice, and the press opens the property record on it (v2.7372, punch list #362 step 3)', async () => {
+    const d = data([], [], true, { property_kind: 'residential', homestead_answered_at: null })
+    const rows = withHomesteadAnswer([{ ...affRow, property_kind: 'residential' }], { j650: 'addr1' }, d.addressesById)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, [], TODAY)
+    d.filingsByJob = { j650: [notice] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const row = document.querySelector('[data-lien-next-up-row="affidavit:j650"]') as HTMLElement
+    expect(row.getAttribute('data-layout')).toBe('two-line')
+    // The Board's bin first, then the one fact, in the words the gate uses everywhere; no dots on a row with a bin.
+    expect(row.querySelector('[data-lien-next-up-stage]')!.textContent).toBe('Needs the property facts')
+    expect(row.querySelector('[data-lien-next-up-detail]')!.textContent).toBe(' · Nobody has answered whether this home is a homestead.')
+    expect(within(row).queryByTestId('lien-step-mark')).toBeNull()
+    // Where its notice stands rides beside it: the job has one on record.
+    expect(row.querySelector('[data-lien-next-up-tag]')!.getAttribute('data-lien-next-up-tag')).toBe('ok')
+    expect(row.querySelector('[data-lien-next-up-tag]')!.textContent).toMatch(/^Notice (sent|on record)/)
+    // The press says the act and opens the property record on the question, over the desk.
+    const press = within(row).getByRole('button', { name: 'Answer the homestead question' })
+    fireEvent.click(press)
+    await settle()
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+    expect((document.querySelector('[data-homestead-question]') as HTMLElement).getAttribute('data-homestead-question')).toBe('unanswered')
+    // To do is still the view behind it: the press did not move the desk to By paper.
+    expect(document.querySelector('[data-lien-do-now]')).not.toBeNull()
   })
 
   it('a home with a no on record passes the homestead gate, and a property record read before the column holds nothing', async () => {
@@ -3920,7 +3948,7 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     await settle()
     const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
     expect(titles).toEqual(['Waiting on Malachi Whites · 1'])
-    expect((document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement).textContent).toContain('Waiting on Malachi Whites · since Sep 14')
+    expect((document.querySelector('[data-lien-next-up-row="notice:j650"] [data-lien-next-up-line]') as HTMLElement).textContent).toContain('Awaiting approval · Sent for approval Sep 14 · today')
     expect(screen.getByRole('tab', { name: /^To do/ }).textContent).toBe('To do · 0')
     cleanup()
     // Ready, signed by Malachi's code on Robert's screen and not yet confirmed: Robert's footer draws no Yes, it was me; Malachi's own does.

@@ -96,8 +96,8 @@ import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardPickWords, lienBoardRiskPapers, lienBoardRiskPhrase, lienBoardRiskPick, lienBoardRowInPick, lienBoardRowRisk, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind, type LienBoardTileDestination } from '../../lib/jobs/lienBoard'
-import { batchOutcomeWords } from '../../lib/batchWords'
+import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardPickWords, lienBoardRiskPapers, lienBoardRiskPhrase, lienBoardRiskPick, lienBoardRowInPick, lienBoardRowRisk, lienBoardRowStage, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind, type LienBoardTileDestination } from '../../lib/jobs/lienBoard'
+import { batchOutcomeWords, countedLabel } from '../../lib/batchWords'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
 import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
@@ -127,7 +127,8 @@ import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type Ca
 import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
-import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
+import { lienAffidavitOwnerSends, lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
+import { lienAffidavitNoticeTag, type LienRowTag } from '../../lib/jobs/lienRowWords'
 import { lienNoticeNamedMonths, lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
 import { lienAffidavitMonthsByHandCheck } from '../../lib/jobs/lienAffidavitMonthsByHand'
 import { lienMonthCheckedFor, lienMonthCheckedSheetRow, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
@@ -938,6 +939,17 @@ export default function LienDesk({
   // The same rule orders the list (punch list #362, step 2): a row whose paper the Board marks stands first under Needs you now.
   const riskPapers = useMemo(() => (board ? lienBoardRiskPapers(board) : new Map<string, number>()), [board])
   const rowRisk = useCallback((row: LienNextUpRow) => lienBoardRowRisk(riskPapers, row), [riskPapers])
+  // A computer's row starts with its paper's bin, in the Board's words, and an affidavit row says where its notice stands (v2.7372, step 3).
+  const rowStage = useCallback((row: LienNextUpRow) => (board ? lienBoardRowStage(board, row) : null), [board])
+  const rowNotice = useCallback(
+    (row: LienNextUpRow): LienRowTag | null => {
+      if (!data || row.kind !== 'affidavit' || !row.jobId) return null
+      const entry = data.affidavits.entries.find((e) => e.jobId === row.jobId)
+      if (!entry) return null
+      return lienAffidavitNoticeTag({ isSub: entry.isSub, noticed: Boolean(entry.gates.find((g) => g.key === 'notice')?.ok), sentOn: lienAffidavitOwnerSends(data.filingsByJob[row.jobId]).map((send) => send.sentOn) })
+    },
+    [data],
+  )
   const riskLabel = useCallback(
     (n: number) => {
       const phrase = lienBoardRiskPhrase(board?.dayWords ?? null, n)
@@ -1190,6 +1202,15 @@ export default function LienDesk({
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
     setMobileListShown(false)
+    // A held affidavit's press answers its one question (v2.7372): the property record opens at the missing line, as
+    // the job's chip on the Board does. A paper whose fact is not on the property record opens its pane, as before.
+    if (row.action === 'fix_property' && row.button && row.jobId && board && office) {
+      const chip = lienBoardChipFor(board, row.jobId, 'affidavit')
+      if (chip?.destination.kind === 'property') {
+        setPaneFix({ jobId: chip.destination.jobId, focus: chip.destination.focus })
+        return
+      }
+    }
     if (t.open === 'run') {
       setRunTakeBack(Boolean(t.takeBack))
       setRunOpen(true)
@@ -4578,7 +4599,7 @@ export default function LienDesk({
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
-            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} stageFor={rowStage} noticeFor={rowNotice} trackPress={office && !isMobile && affPrintPlanAll.ready.length >= 2 ? { button: `${countedLabel('Print', affPrintPlanAll.ready.length, 'affidavit')} ›`, onPress: () => { setAffHeldOnlyPicked(false); setAffPile('ready'); setKind('affidavit') } } : null} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
