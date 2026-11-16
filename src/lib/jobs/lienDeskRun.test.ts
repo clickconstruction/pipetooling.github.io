@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_COVER_LETTER_CLASS, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, runRecordSplit, runRecordWords, stepRunPreview, trackingShape } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_COVER_LETTER_CLASS, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, stepRunPreview, trackingShape } from './lienDeskRun'
 import type { LienMailPieceRow } from '../mail/lienMailPieces'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
@@ -332,56 +332,11 @@ describe('the mailing (v2.4119): the number\u2019s shape, what records, the enve
     expect(trackingShape('hand', '')).toEqual({ ok: true, hint: '', digits: 0 })
   })
   const r = (method: 'certified_mail' | 'traceable_courier' | 'email' | 'hand', tracking = '') => ({ key: 'owner' as const, label: 'Owner of record', name: 'A', address: 'B', email: 'a@b.test', method, tracking })
-  const n = (itemId: string, recipients: ReturnType<typeof r>[]) => ({ itemId, jobId: itemId, kind: 'notice_53_056', label: itemId, jobNumber: itemId, months: [], amount: 1, fields: {} as never, extras: {} as never, coverLetter: null, coverNote: '', ownerUnconfirmed: false, recipients }) as unknown as Parameters<typeof runRecordSplit>[0][number]
   it('an envelope is mailed once it carries a number, or goes by email or hand', () => {
     expect(recipientMailed(r('certified_mail'))).toBe(false)
     expect(recipientMailed(r('certified_mail', '9407'))).toBe(true)
     expect(recipientMailed(r('email'))).toBe(true)
     expect(recipientMailed(r('hand'))).toBe(true)
-  })
-  it('runRecordSplit: numbered notices record now, the rest wait; with no number anywhere the run records whole', () => {
-    const a = n('a', [r('certified_mail', '9407 1118 9876 5432 1098'), r('certified_mail')])
-    const b = n('b', [r('certified_mail'), r('certified_mail')])
-    const split = runRecordSplit([a, b])
-    expect(split.partial).toBe(true)
-    expect(split.mailed.map((x) => x.itemId)).toEqual(['a'])
-    expect(split.waiting.map((x) => x.itemId)).toEqual(['b'])
-    const whole = runRecordSplit([b, n('c', [r('certified_mail')])])
-    expect(whole.partial).toBe(false)
-    expect(whole.mailed).toHaveLength(2)
-    expect(whole.waiting).toEqual([])
-    const all = runRecordSplit([a])
-    expect(all.partial).toBe(false)
-    expect(all.mailed).toHaveLength(1)
-  })
-  it('runRecordSplit with problems (v2.5533): a held notice waits whatever its numbers say, the ready ones record; nothing ready when every one is held', () => {
-    const a = n('a', [r('certified_mail', '9407 1118 9876 5432 1098'), r('certified_mail', '9407 1118 9876 5432 1099')])
-    const b = n('b', [r('certified_mail', '9407 1118 9876 5432 1100'), r('certified_mail')])
-    const c = n('c', [r('certified_mail'), r('certified_mail')])
-    const split = runRecordSplit([a, b, c], [[], [RUN_UNSIGNED_PROBLEM], []])
-    expect(split.mailed.map((x) => x.itemId)).toEqual(['a'])
-    expect(split.unnumbered.map((x) => x.itemId)).toEqual(['c'])
-    expect(split.held.map((x) => x.itemId)).toEqual(['b'])
-    expect(split.waiting.map((x) => x.itemId)).toEqual(['c', 'b'])
-    expect(split.partial).toBe(true)
-    expect(runRecordWords(split)).toEqual({ line1: '1 held · 1 with no number yet', line2: 'They stay in the pile with the reason in red. The 1 ready one records now.', button: 'Record 1 mailed · 2 stay in the pile ▸' })
-    // held only: no number split, so the button counts the held
-    const heldOnly = runRecordSplit([a, b], [[], [RUN_UNSIGNED_PROBLEM]])
-    expect(heldOnly.mailed.map((x) => x.itemId)).toEqual(['a'])
-    expect(runRecordWords(heldOnly)).toEqual({ line1: '1 notice is held', line2: 'It stays in the pile with the reason in red. The 1 ready one records now.', button: 'Record 1 · 1 held stays in the pile ▸' })
-    // with no number anywhere the clean ones still record whole, the held one waits
-    const whole = runRecordSplit([c, b], [[], ['Owner of record: no mailing address']])
-    expect(whole.mailed.map((x) => x.itemId)).toEqual(['c'])
-    expect(whole.waiting.map((x) => x.itemId)).toEqual(['b'])
-    // every one held: nothing is ready
-    const none = runRecordSplit([b], [[RUN_UNSIGNED_PROBLEM]])
-    expect(none.mailed).toEqual([])
-    expect(none.partial).toBe(false)
-    expect(runRecordWords(none)).toEqual({ line1: 'Nothing is ready to record', line2: 'Sign or fix what is marked in red, then record.', button: 'Record the run ▸' })
-    // nothing waits: no words of its own
-    expect(runRecordWords(runRecordSplit([a], [[]]))).toBeNull()
-    // the numbers' own split reads as before
-    expect(runRecordWords(runRecordSplit([a, c]))).toEqual({ line1: '1 envelope has no number yet', line2: 'It stays in the mail pile; the numbered ones record now.', button: 'Record 1 mailed · 1 stays in the pile ▸' })
   })
   it('envelope faces: one page per envelope, the certified line only when certified, no page for an email', () => {
     const html = runEnvelopeFacesHtml(
@@ -635,7 +590,6 @@ describe('a copy already mailed through Docsmit is built as mailed (v2.5532)', (
     expect(n.recipients[1]!.via).toBeUndefined()
     // So the next run's Docsmit door and packet skip it, and the record writes its piece.
     expect(recipientMailed(n.recipients[0]!)).toBe(true)
-    expect(runRecordSplit([n]).mailed).toHaveLength(1)
   })
 
   it('a piece still prepared, one Docsmit refused, a plain copy or another recipient’s leaves the copy on paper', () => {

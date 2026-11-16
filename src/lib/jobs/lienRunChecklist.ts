@@ -200,33 +200,13 @@ export function lienRunBatchPlans(rows: ReadonlyArray<LienRunRow>): LienRunBatch
   }
 }
 
-/** `batchWords`, and with nothing ready and nothing held the dead button keeps its noun (*Mark printed*), as `countedLabel` reads at zero. */
+/**
+ * `batchWords`, and with nothing ready the dead button keeps its noun (*Mark printed*), as `countedLabel` reads at zero.
+ * Since v2.7477 that holds with rows held too: the two Mark presses sit side by side under More, and both read *Mark ▸*.
+ */
 function words(verb: string, ready: number, held: number, heldWhy: BatchHeldWhy, noun: BatchNoun): BatchWords {
   const w = batchWords({ verb, ready, held, heldWhy, noun })
-  return ready === 0 && held === 0 ? { ...w, button: countedLabel(verb, 0, noun) } : w
-}
-
-/** "3 printed · 2 signed · 1 mailed of 7" — the checklist's own heading line; '' with no rows. */
-export function lienRunChecklistWords(rows: ReadonlyArray<Pick<LienRunRow, 'printed' | 'signed' | 'mailed' | 'paperless'>>): string {
-  if (rows.length === 0) return ''
-  const printed = rows.filter((r) => r.printed || r.paperless).length
-  const signed = rows.filter((r) => r.signed && r.signed !== 'not_needed').length
-  const mailed = rows.filter((r) => r.mailed).length
-  return `${printed} printed · ${signed} signed · ${mailed} mailed of ${rows.length}`
-}
-
-/** The foot's status line: what the run waits on most, in a few words. */
-export function lienRunFootWords(rows: ReadonlyArray<Pick<LienRunRow, 'waitsOn' | 'held'> & { nothingToClaim?: boolean }>): { line1: string; line2: string } {
-  if (rows.length === 0) return { line1: 'Nothing is in this run.', line2: 'Approve a notice, or put one back in.' }
-  const held = rows.filter((r) => r.held).length
-  const print = rows.filter((r) => !r.held && r.waitsOn === 'print').length
-  const sign = rows.filter((r) => !r.held && r.waitsOn === 'sign').length
-  const mail = rows.filter((r) => !r.held && r.waitsOn === 'mail').length
-  const done = rows.filter((r) => !r.held && r.waitsOn === null).length
-  const parts = [print ? `${print} to print` : '', sign ? `${sign} to sign` : '', mail ? `${mail} ${mail === 1 ? 'owes' : 'owe'} a number` : '', done ? `${done} ready to record` : '', held ? `${held} held` : ''].filter(Boolean)
-  const line1 = parts.join(' · ')
-  const line2 = print ? 'Print the packet, or tick Printed on a paper printed elsewhere.' : sign ? 'Tick Signed when the leader has signed the paper, and say how you know.' : mail ? 'Type each envelope’s number from the slip. Record takes the rows that have theirs.' : done ? 'Record the mailings. Each notice goes to its job with how it went.' : rows.every((r) => r.nothingToClaim) ? 'Nothing is owed on these jobs now, so nothing here goes out.' : 'Fix what is marked in red, then print.'
-  return { line1, line2 }
+  return ready === 0 ? { ...w, button: countedLabel(verb, 0, noun) } : w
 }
 
 /**
