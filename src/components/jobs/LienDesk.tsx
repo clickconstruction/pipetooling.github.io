@@ -961,9 +961,9 @@ export default function LienDesk({
       const job = data.jobsById[chip.jobId]
       const gcId = chip.gcId ?? job?.gc_customer_id ?? null
       const row = nextUpRows.find((r) => r.key === `${chip.kind}:${chip.jobId}`)
-      return lienBoardChipCard(chip, board, { todayYmd, jobName: job?.job_name, address: job?.job_address, customer: job?.customer_name, gc: gcId ? data.gcsById[gcId]?.name : null, detail: row ? (row.detail ?? row.sub) : null })
+      return lienBoardChipCard(chip, board, { todayYmd, jobName: job?.job_name, address: job?.job_address, customer: job?.customer_name, gc: gcId ? data.gcsById[gcId]?.name : null, detail: row ? (row.detail ?? row.sub) : null, leader: leaderNameFor?.(job?.master_user_id ?? null) })
     },
-    [data, board, nextUpRows, todayYmd],
+    [data, board, nextUpRows, todayYmd, leaderNameFor],
   )
   const riskLabel = useCallback(
     (n: number) => {

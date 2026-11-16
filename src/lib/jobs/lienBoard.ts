@@ -173,10 +173,41 @@ export const LIEN_BOARD_DAY_DAYS = 1
 /** A chip inside this many days is amber. */
 export const LIEN_BOARD_WEEK_DAYS = 7
 
+/**
+ * The stages a paper still has to pass, by name and in order, from the bin it stands in (v2.7419; Taunya's ask of
+ * 2026-11-15: the card said *3 stages left* and did not say which three). `{leader}` is the job's leader by name.
+ * The count the Board races against the working days is each list's length, so the names and the count cannot
+ * disagree. A held paper waits on the leader again, so it has what an awaiting one has.
+ */
+const NOTICE_TAIL = ['Send it for approval', '{leader} approves and signs it', 'Mail it and record the mailing'] as const
 /** The stages still to pass before a notice is mailed with its number on record. */
-const NOTICE_STEPS_LEFT: Record<LienBoardNoticeStage, number> = { needs_owner: 4, to_send: 3, awaiting: 2, in_mail: 1, sent: 0, held: 2, missed: 0 }
+const NOTICE_STAGES_LEFT: Record<LienBoardNoticeStage, ReadonlyArray<string>> = {
+  needs_owner: ['Name the owner on the property record', ...NOTICE_TAIL],
+  to_send: NOTICE_TAIL,
+  awaiting: NOTICE_TAIL.slice(1),
+  in_mail: NOTICE_TAIL.slice(2),
+  sent: [],
+  held: NOTICE_TAIL.slice(1),
+  missed: [],
+}
+const AFFIDAVIT_TAIL = ['Send it for approval', '{leader} approves it', 'Notarize it and file it with the county'] as const
 /** The stages still to pass before an affidavit is filed. */
-const AFFIDAVIT_STEPS_LEFT: Record<LienBoardAffidavitStage, number> = { needs_property: 4, to_send: 3, awaiting: 2, ready: 1, filed: 0, held: 2, missed: 0 }
+const AFFIDAVIT_STAGES_LEFT: Record<LienBoardAffidavitStage, ReadonlyArray<string>> = {
+  needs_property: ['Clear what holds it', ...AFFIDAVIT_TAIL],
+  to_send: AFFIDAVIT_TAIL,
+  awaiting: AFFIDAVIT_TAIL.slice(1),
+  ready: AFFIDAVIT_TAIL.slice(2),
+  filed: [],
+  held: AFFIDAVIT_TAIL.slice(1),
+  missed: [],
+}
+
+/** The stages a chip's paper still has to pass, in order and by name; `leader` absent reads *The leader*. Empty once it is sent, filed or missed. */
+export function lienBoardStagesLeft(chip: Pick<LienBoardChip, 'kind' | 'stage'>, leader?: string | null): string[] {
+  const list = chip.kind === 'notice' ? NOTICE_STAGES_LEFT[chip.stage as LienBoardNoticeStage] : AFFIDAVIT_STAGES_LEFT[chip.stage as LienBoardAffidavitStage]
+  const name = leader?.trim() || 'The leader'
+  return (list ?? []).map((s) => s.replace('{leader}', name))
+}
 
 function noticeStage(pile: LienDeskPile): LienBoardNoticeStage {
   switch (pile) {
@@ -365,7 +396,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
   }
   const notices: LienBoardChip[] = input.notices.map((e) => {
     const stage = noticeStage(e.pile)
-    const stepsLeft = NOTICE_STEPS_LEFT[stage]
+    const stepsLeft = NOTICE_STAGES_LEFT[stage].length
     const dueYmd = e.earliestDeadline
     const daysLeft = dueYmd ? e.daysLeft : null
     return {
@@ -389,7 +420,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
   })
   const affidavits: LienBoardChip[] = input.affidavits.map((e) => {
     const stage = affidavitStage(e.pile)
-    const stepsLeft = AFFIDAVIT_STEPS_LEFT[stage]
+    const stepsLeft = AFFIDAVIT_STAGES_LEFT[stage].length
     const dueYmd = e.deadline || null
     const daysLeft = dueYmd ? e.daysLeft : null
     return {
