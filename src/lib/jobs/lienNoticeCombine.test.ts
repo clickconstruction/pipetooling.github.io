@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { RunNotice } from './lienDeskRun'
+import { runNoticePrintRefusal, type RunNotice } from './lienDeskRun'
 import { combineKey, combineNoticesByProperty, combineSummary, combinedFilingPayloads } from './lienNoticeCombine'
 
 const fields = (claim: string, gc = 'RLC-Dunmere Mallin') => ({ noticeDate: '2026-09-23', projectDescription: '9703 Linmor Hl', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: gc, contractedWithIfDifferent: '', claimAmount: claim, contactPerson: 'Malachi Whites', claimantAddress: '5501 Balcones Dr' })
@@ -50,5 +50,12 @@ describe('one notice per property (#35 PR 3)', () => {
     expect(solo).toHaveLength(1)
     expect(solo[0]).toMatchObject({ job_id: 'j790', amount: 1_713, months_covered: ['2026-05'] })
     expect(solo[0]).not.toHaveProperty('packet_id')
+  })
+  it('a paper for several jobs is held when any job on it has parted from its bills, and the hold names that job (v2.7517)', () => {
+    const parted = { parts: ['claim' as const], paperClaim: 9_400, nowClaim: 7_902, paperRetainage: 0, nowRetainage: 0, source: 'bills' as const }
+    const out = combineNoticesByProperty([linmor[0]!, { ...linmor[1]!, parted }, linmor[2]!], { combine: true })
+    expect(out[0]!.parted).toEqual({ ...parted, job: '858' })
+    expect(runNoticePrintRefusal(out[0]!)).toBe('858: The paper claims $9,400.00. The bills now come to $7,902.00, $1,498.00 less. It prints once the notice is redrawn from the bills.')
+    expect(combineNoticesByProperty(linmor, { combine: true })[0]!.parted).toBeNull()
   })
 })

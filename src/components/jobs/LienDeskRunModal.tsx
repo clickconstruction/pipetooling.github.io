@@ -11,7 +11,7 @@ import { lienRunGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runEnvelopeHold, runMailing, type RunMailing } from '../../lib/jobs/lienRunPaper'
 import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
-import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticePrintRefusal, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
@@ -695,6 +695,12 @@ export default function LienDeskRunModal({
     notePrinted(runMailing(runEnvelopes(ns)).mailed.flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key)))))
   }
   const printCopy = (n: CombinedRunNotice, r: RunRecipient) => {
+    // v2.7517: a notice whose paper and bills have parted prints by no route, this one included.
+    const refused = runNoticePrintRefusal(n)
+    if (refused) {
+      showToast(refused, 'error')
+      return
+    }
     const filing = { kind: 'lien_notice', title: `${n.label} · copy for ${r.label.toLowerCase()}`, jobIds: partsIds(n).map((p) => p.jobId), recipientName: r.name || null }
     if (!printAndFile(runCopyHtml(n, r, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the copy.', 'error')
@@ -704,6 +710,11 @@ export default function LienDeskRunModal({
   }
   const printEnvelope = (env: RunEnvelope) => {
     const inside = env.contents.map((c) => c.notice as CombinedRunNotice)
+    const refused = inside.map((n) => runNoticePrintRefusal(n)).find(Boolean)
+    if (refused) {
+      showToast(refused, 'error')
+      return
+    }
     const filing = { kind: 'lien_notice', title: `Envelope ${env.n} · ${env.label} ${env.name}`.trim(), jobIds: inside.flatMap((n) => partsIds(n).map((p) => p.jobId)), recipientName: env.name || null }
     if (!printAndFile(runEnvelopeHtml(env, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the envelope.', 'error')
