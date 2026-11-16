@@ -1,6 +1,7 @@
 import { daysBetweenYmd, type LienPayRunway, type LienRunwayTone } from './lienPayRunway'
 import { filingDeadlineForMonth } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
+import { lienRunActLabel } from './lienRunWords'
 
 /**
  * The Lien calendar (v2.4101, punch list #55 PR B): every billed or
@@ -95,7 +96,7 @@ function groupWord(jobs: LienCalendarJob[], kind: LienCalendarGroupKind): { word
   // v2.5522: every notice due is printed and in the mail — the move is recording the numbers.
   if (due.length > 0 && owed.length === 0) {
     const min = Math.min(...due.map((j) => j.runway.daysToNotice ?? Number.MAX_SAFE_INTEGER))
-    return { word: `record ${due.length === 1 ? 'the mailing' : `${due.length} mailings`} · ${daysWords(min)}`, tone: 'amber' }
+    return { word: `${lienRunActLabel('record', due.length > 1 ? due.length : null).toLowerCase()} · ${daysWords(min)}`, tone: 'amber' }
   }
   if (owed.length > 0) {
     const min = Math.min(...owed.map((j) => j.runway.daysToNotice ?? Number.MAX_SAFE_INTEGER))
@@ -461,7 +462,7 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
     glyph: 'mailed',
     short: 'In the mail',
     label: 'that month’s notice is printed and in the mail — its tracking number is still owed',
-    long: 'That month’s § 53.056 notice was printed from the desk and is on its way, but the certified number is not on record yet, so it is not on file. Record the mailing on the Lien desk and this mark becomes Notice on file. Until then the desk lists it under Approved · to mail.',
+    long: 'That month’s § 53.056 notice was printed from the desk and is on its way, but the certified number is not on record yet, so it is not on file. Press Enter mail numbers on the Lien desk and this mark becomes Notice on file. Until then the desk lists it under Approved · to mail.',
     door: 'record',
   },
   {

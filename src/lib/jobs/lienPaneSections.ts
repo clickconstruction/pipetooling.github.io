@@ -8,6 +8,7 @@
  */
 
 import { LIEN_PILE_HEAD_H, LIEN_PILE_HEAD_H_PHONE } from './lienPhoneLists'
+import { LIEN_RUN_ACT } from './lienRunWords'
 
 /** The height of one head: the Notices list's title bar, one number for every bar on the desk (v2.7323). */
 export const LIEN_PANE_HEAD_H = LIEN_PILE_HEAD_H
@@ -102,13 +103,14 @@ export function lienNoticeFootHead(i: { pile: LienNoticeFootPile; signed: boolea
     case 'sent':
       return { label: 'After the send', fact: 'Sent' }
     case 'printed':
-      return { label: 'Record the mailing', fact: 'Printed, in the run' }
+      return { label: LIEN_RUN_ACT.record, fact: 'Printed, not mailed' }
     case 'missed':
       return i.dueMonths > 0 ? { label: 'Sign and send', fact: 'Not signed yet' } : { label: 'Window closed', fact: 'Nothing to sign' }
     case 'held':
       return { label: 'Sign and send', fact: 'On hold' }
     case 'ready':
-      return { label: 'Sign and send', fact: i.signed ? 'Signed, in the run' : 'Approved, not signed yet' }
+      // Approved (v2.7448): signed, the section holds the press to print and mail; unsigned, it holds the signature first.
+      return i.signed ? { label: LIEN_RUN_ACT.print, fact: 'Signed, to print' } : { label: 'Sign it', fact: 'Approved, not signed yet' }
     case 'awaiting':
       return { label: 'Sign and send', fact: who ? `Waiting on ${who}’s signature` : 'Waiting on the signature' }
     default:
