@@ -4708,13 +4708,6 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunLane { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 0.6rem; align-items: center; }
 .lienRunLaneKey { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
 @media (max-width: 640px) { .lienRunLane { grid-template-columns: 1fr; gap: 0.1rem; } }
-.lienRunDoorBar { display: inline-flex; width: 56px; height: 7px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; vertical-align: middle; margin-right: 0.45rem; box-shadow: 0 0 0 1px currentColor; }
-.lienRunDoorBar i { display: block; height: 100%; }
-.lienRunDoorSealed { background: var(--text-green-700); }
-.lienRunDoorWait { background: var(--border-amber); }
-.lienRunDoorPrinted { background: var(--text-link); }
-.lienRunDoorWords { display: inline-block; margin-left: 0.45rem; font-weight: 500; opacity: 0.85; }
-@media (max-width: 640px) { .lienRunDoorWords { display: none; } }
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
 .lienFootRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; }
 .lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; flex: 1 1 12rem; }
