@@ -2,7 +2,7 @@
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
 group: close
-status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents · left: the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage · left: the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -240,4 +240,6 @@ Taunya asked, as a subcontractor, what she would not want the GC, the people who
 
 **Who it costs** (the live accounts, 2026-11-15): Click's own crew can sign in, and 9 of the 10 live helpers have. 16 of the 19 live subcontractor rows never have, so a sub's person sees no contents until the office gets them online.
 
-**Left**: `box-read` deployed after the merge and proved signed out on a ZZ Test box; the three texts pressed once on a real phone.
+**Probed live** (2026-11-15, after #8258 merged and `box-read` was deployed on Taunya's go, with `?preview=1` so no view counted): the ZZ1 test cage, which holds a part, a count day and a photo, answers its name, kind and code and the office's number and nothing else; `&find=` and `&photo=` answer 401 `sign_in`; a retired pile still answers 410 with its name. The live page drawn signed out in a fresh browser reads as her picture does.
+
+**Left**: the three texts pressed once on a real phone.
