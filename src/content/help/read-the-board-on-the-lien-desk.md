@@ -64,7 +64,7 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 
 A paper opened from a chip is a step of its own in the browser. Press Back and the desk returns to To do with the Board in view. The property record and the run open over the Board. Close them and the Board is where it was.
 
-The same press sits on the job number of every To do row. It also sits on the number of every row on **By paper** and **By date**. A number is a zoom everywhere on the desk. On a To do row the job's name still opens the job itself.
+The same press sits on the job number of every To do row. It also sits on the number of every notice and affidavit row on **By paper**. Every row on **By date** has it too. A number is a zoom everywhere on the desk. On a To do row the job's name still opens the job itself.
 
 ## The print at the foot of each column
 

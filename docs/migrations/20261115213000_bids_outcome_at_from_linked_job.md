@@ -7,3 +7,5 @@ The migration gives those **16 rows** the earliest linked job's `created_at`, an
 What else an UPDATE of `bids` sets off, checked before the push: `bids_stamp_outcome_at` keeps a day the statement writes itself; `record_bid_change` adds one history line per bid (`outcome_at`, no person); `update_bids_updated_at` moves `updated_at` on the 16; `bids_clear_working_board_archive_on_progress` would bring an archived bid back on the working board, and none of the 16 is archived. Safe to run twice: it fills a NULL only.
 
 Order: any. No client reads a name this creates. Push after the merge as usual.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111).
