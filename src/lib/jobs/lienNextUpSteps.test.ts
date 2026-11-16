@@ -69,8 +69,10 @@ describe('countLienSteps + lienLaddersShown', () => {
 
 describe('lienStepCard', () => {
   it('an approved notice with a pay offer (v2.4713) says so on the Approve rung', () => {
-    const c = lienStepCard(row({ action: 'send', sub: 'Approved · ready to send', button: 'Send' }), { approvedOn: '2026-10-30T14:00:00Z', offer: { pct: 10, by: '2026-11-15' } })
+    const c = lienStepCard(row({ action: 'send', sub: 'Approved · to print', button: 'Print and mail' }), { approvedOn: '2026-10-30T14:00:00Z', offer: { pct: 10, by: '2026-11-15' } })
     expect(c.items[2]!.detail).toBe('Approved Oct 30 with a 10% offer, by Nov 15.')
+    // v2.7448: the rung it stands on is named as its press is (Send the run until then).
+    expect([c.items[3]!.state, c.items[3]!.title]).toEqual(['now', 'Print and mail'])
   })
   it("writes a notice's ladder out: done rungs carry the facts, the current rung says who is waiting, the foot counts", () => {
     const c = lienStepCard(row({ action: 'approve', sub: 'Waiting on your approval', button: 'Approve' }), { ownerName: 'Tune 5 Properties LLC', draftedOn: '2026-10-03T14:00:00Z', coverNote: true, readyToSend: 11, viewerIsLeader: true })
@@ -148,10 +150,10 @@ describe('lienStepTiles (v2.4881)', () => {
 
 describe('the printed run on the ladder (punch list #101)', () => {
   it('stands on step 4, and its card says it printed and asks whether it was mailed', () => {
-    const r = { key: 'run:printed', kind: 'notice', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: '', dueOn: '2026-10-15', daysLeft: 7, severity: 'red', group: 'now', action: 'record_mailing', button: 'Record the mailing', target: { open: 'run', gcId: null } } as const
+    const r = { key: 'run:printed', kind: 'notice', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: '', dueOn: '2026-10-15', daysLeft: 7, severity: 'red', group: 'now', action: 'record_mailing', button: 'Enter mail numbers', target: { open: 'run', gcId: null } } as const
     expect(lienStepOfRow(r)).toEqual({ ladder: 'notice', step: 4 })
     const card = lienStepCard({ ...r })
-    expect(card.items[3]).toEqual({ state: 'now', title: 'Record the mailing', detail: 'Printed Oct 7. Mailed? Type each envelope’s number in the run. Not mailing them? Take the run back.' })
+    expect(card.items[3]).toEqual({ state: 'now', title: 'Enter mail numbers', detail: 'Printed Oct 7. Mailed? Type each envelope’s number in. Not mailing them? Take the print back.' })
   })
   it('the run rung says ready, printed, or both', () => {
     expect(lienRunRungWords(3, 0)).toBe(' ready')
@@ -174,6 +176,9 @@ describe('lienStepGroups — the list under a pressed rung, sorted and never fad
   it('names the rung for the brief’s head', () => {
     expect(lienStepName({ ladder: 'reminder', step: 3 })).toBe('3 · Attorney’s letter')
     expect(lienStepName({ ladder: 'affidavit', step: 1 })).toBe('1 · Fix the property')
+    // v2.7448: the fourth rung of a notice is the press that does it (Send the run until then).
+    expect(lienStepName({ ladder: 'notice', step: 4 })).toBe('4 · Print and mail')
+    expect(lienStepName({ ladder: 'retainage', step: 4 })).toBe('4 · Print and mail')
   })
 })
 
@@ -206,6 +211,17 @@ describe('lienStepBrief — every rail’s step brief (v2.6577; plain words v2.6
     expect(lienStepBrief({ ladder: 'affidavit', step: 2 }).instead.map((m) => m.press)).not.toContain('Refer to the Legal desk ›')
     expect(lienStepBrief({ ladder: 'retainage', step: 1 }).instead.map((m) => m.press)).toContain('Set the day our contract ended ›')
     expect(lienStepBrief({ ladder: 'retainage', step: 2 }).plain).toContain('held-back money')
+  })
+  it('the fourth rung of a notice names the two presses as the desk does: Print and mail, then Enter mail numbers (v2.7448)', () => {
+    const b = lienStepBrief({ ladder: 'notice', step: 4 })
+    expect(b).toMatchObject({ title: 'Print and mail', who: 'office' })
+    expect(b.why).toBe('The notice is approved and waits to print, or is printed and waits on its mail number.')
+    expect(b.usual).toEqual({ press: 'Print and mail', means: 'prints every approved notice and its envelope; Enter mail numbers then takes each tracking number' })
+    expect(b.instead).toEqual([
+      { press: 'Enter mail numbers', means: 'once the envelopes are at the post office, type in each tracking number' },
+      { press: 'Back to the office', means: 'takes a notice back out of the packet' },
+    ])
+    expect(lienStepBrief({ ladder: 'retainage', step: 4 }).why).toBe('The retainage notice is approved and waits to print, or is printed and waits on its mail number.')
   })
   it('hands the REMINDERS rail to its own brief', () => {
     expect(lienStepBrief({ ladder: 'reminder', step: 3 })).toMatchObject({ title: 'Attorney’s letter', who: 'leader' })

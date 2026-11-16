@@ -150,13 +150,13 @@ describe('the one button at the foot (Run-1)', () => {
     const print = runFootAction(s1, { leaderName: 'Robert' })
     expect(print.kind).toBe('print')
     expect(print.label).toBe('Print the packet · 1 envelope ▸')
-    expect(print.line1).toBe('1 prints here · 1 waits on Robert')
+    expect(print.line1).toBe('1 prints here · 1 for Robert to sign')
     expect(print.line2).toContain('joins the next packet once Robert signs')
     const s2 = [runEnvelopeStage(envelope(1, 'owner', [notice('a', '650')]), { printed: true }), runEnvelopeStage(envelope(2, 'original_contractor', [unsigned]), { printed: false })]
     const wait = runFootAction(s2, { leaderName: 'Robert' })
     expect(wait.kind).toBe('wait')
     expect(wait.disabled).toBe(true)
-    expect(wait.line1).toBe('1 envelope owes a number · 1 waits on Robert')
+    expect(wait.line1).toBe('1 envelope owes a number · 1 for Robert to sign')
     const s3 = [runEnvelopeStage({ ...envelope(1, 'owner', [notice('a', '650')]), tracking: '9407 1118 9876 5432 1001' }, { printed: true }), runEnvelopeStage(envelope(3, 'owner', [notice('c', '688')]), { printed: true })]
     const record = runFootAction(s3)
     expect(record.kind).toBe('record')
