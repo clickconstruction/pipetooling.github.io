@@ -347,6 +347,8 @@ export default function LienFilingTabs({
         contactPerson: noticeFields.contactPerson,
         phone: (issuer?.phone ?? '').trim(),
         extras: docExtras,
+        // This window prints no cover letter, so its pay page never names one (v2.7514).
+        coverLetter: false,
       }),
     [payRows, payAssets, originalContractorName, noticeFields.claimantName, noticeFields.contactPerson, issuer, docExtras],
   )
