@@ -487,4 +487,11 @@ describe('a chip on a property that reads as public, unanswered (v2.7443)', () =
     expect(chip('notice:to_send', '2').urgency).toBe('day')
     expect(build({ notices: [notice('523', 'to_draft', { earliestDeadline: '2026-11-15', daysLeft: 0 })] }).notices.flatMap((x) => x.chips)[0]!.publicMark).toBeUndefined()
   })
+  it('the first tile counts no marked chip: its day has nothing to make', () => {
+    const due = { earliestDeadline: '2026-11-15', daysLeft: 0 }
+    const marked = build({ notices: [notice('523', 'to_draft', due), notice('2', 'to_draft', due)], affidavits: [affidavit('883', 'ready', { deadline: '2026-11-15', daysLeft: 0 })], publicJobIds: new Set(['523', '883']) })
+    expect(marked.tiles[0]).toMatchObject({ figure: '1', label: 'by today · 1 to send' })
+    const plain = build({ notices: [notice('523', 'to_draft', due), notice('2', 'to_draft', due)], affidavits: [affidavit('883', 'ready', { deadline: '2026-11-15', daysLeft: 0 })] })
+    expect(plain.tiles[0]).toMatchObject({ figure: '3', label: 'by today · 1 to file · 2 to send' })
+  })
 })

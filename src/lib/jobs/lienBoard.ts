@@ -491,7 +491,8 @@ function open(c: LienBoardChip): boolean {
 }
 
 function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, affidavits: ReadonlyArray<LienBoardChip>): { tiles: LienBoardTile[]; dayWords: string | null; atRisk: number } {
-  const liveChips = [...notices, ...affidavits].filter(open)
+  // A chip on a property that reads as public and is unanswered (v2.7443) has no day to make: no paper can be made there.
+  const liveChips = [...notices, ...affidavits].filter(open).filter((c) => !c.publicMark)
   const dated = liveChips.filter((c) => c.dueYmd && c.daysLeft != null && c.daysLeft >= 0).map((c) => c.dueYmd as string).sort()
   const day = dated[0] ?? null
   const dayWords = day ? lienBoardDayWords(input.todayYmd, day) : null
