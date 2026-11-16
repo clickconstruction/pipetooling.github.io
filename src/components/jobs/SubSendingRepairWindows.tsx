@@ -165,7 +165,7 @@ export function GatherSendingsWindow({ groups, onDone, onClose }: { groups: read
     setBusy(true)
     const result: GatherOutcome = { done: 0, payments: 0, failed: [] }
     for (const g of picked) {
-      const { error } = await supabase.rpc('gather_sub_payments_into_sending' as never, { p_person_id: g.personId, p_payment_ids: g.lines.map((l) => l.id) } as never)
+      const { error } = await supabase.rpc('gather_sub_payments_into_sending', { p_person_id: g.personId, p_payment_ids: g.lines.map((l) => l.id) })
       if (error) result.failed.push({ group: g, reason: notLive(error) ? 'Gathering is not switched on yet.' : formatErrorMessage(error) })
       else {
         result.done += 1
