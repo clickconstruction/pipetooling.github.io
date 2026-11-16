@@ -337,11 +337,11 @@ A notice approved on your word reaches *Approved · to print* unsigned. Open it 
 
 ### Signing a notice again
 
-Sometimes an approved notice carries the wrong signature. The leader drew it and the office wants his name in the cursive face. Or the drawing came out poor. Open the notice in *Approved · to print*. Press **Sign it again…** in the row at its foot. A window asks first. It names the job and says whose signature comes off. Press {{button:blue|Clear the signature}}. The signature comes off and the approval stands. The chip reads **unsigned**. The run holds the notice until it is signed again.
+Sometimes an approved notice carries the wrong signature. The leader drew it and the office wants his name in the cursive face. Or the drawing came out poor. Open the notice in *Approved · to print*. Press **Sign it again…** in the row at its foot. A window asks first. The window names the job and says whose signature comes off. Press {{button:blue|Clear the signature}}. The signature comes off and the approval stands. The chip reads **unsigned**. The run holds the notice until it is signed again.
 
-The signing line comes back at once. On the leader's own screen it is his signing box, with {{button:green|Sign ▸}}. On the office's screen it is his line, with his code field. He types his code and presses {{button:green|Sign ▸}}. He can press **Draw instead** and sign by hand. A line under the paper says who cleared the last signature and when. A drawing that came off stays on file.
+The signing line comes back at once. On the leader's own screen it is his signing box, with {{button:green|Sign ▸}}. On the office's screen it is his line, with his code field. The leader types his code and presses {{button:green|Sign ▸}}. The leader can press **Draw instead** and sign by hand. A line under the paper says who cleared the last signature and when. A drawing that came off stays on file.
 
-The office and the leader both have the press. A printed notice does not have it. Press {{button:outline|Back to Approved · to print}} on that notice first. A signature by code or by pen may still wait on the leader's word. His own screen then offers **Not me** or **Not what I signed** in its place.
+The office and the leader both have the press. A printed notice does not have it. Press {{button:outline|Back to Approved · to print}} on that notice first. A signature by code or by pen may still wait on the leader's word. The leader's own screen then offers **Not me** or **Not what I signed** in its place.
 
 :::example 4120, Halden Yard, signed with a drawing
 
