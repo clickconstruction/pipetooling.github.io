@@ -72,6 +72,7 @@ import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorWords } from '../../lib/jobs/lienDeskRun'
+import { lienRunOnePlan } from '../../lib/jobs/lienRunOne'
 import { lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_RUN_NOW_TO_PRINT, lienRunActLabel } from '../../lib/jobs/lienRunWords'
 import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
@@ -593,6 +594,8 @@ export default function LienDesk({
   const [runTakeBack, setRunTakeBack] = useState(false)
   // A To do row's Print and mail (v2.7442) opens the run on its GC's approved notices alone; null is every notice.
   const [runGcId, setRunGcId] = useState<string | null>(null)
+  // A ready notice's Just this one (v2.7512) opens the run on that one notice, by its desk item; null is the run's own list.
+  const [runOnlyItemId, setRunOnlyItemId] = useState<string | null>(null)
   // The sheet's code (v2.7328): the run opens on the notice the phone scanned, its Mailed box under the cursor.
   const [runFocus, setRunFocus] = useState<string | null>(null)
   useEffect(() => {
@@ -2363,6 +2366,19 @@ export default function LienDesk({
   const openWholeRun = () => {
     setRunTakeBack(false)
     setRunGcId(null)
+    setRunOnlyItemId(null)
+    setRunOpen(true)
+  }
+  // The monthly notices a run holds, built one way for the window and for Just this one's count (v2.7512): a GC's, one notice's, or every one.
+  const runSignOpts = { inks, onDeviceNameFor: (id: string | null) => leaderNameFor?.(id) ?? '', leaderFor: (id: string | null) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }
+  const monthlyRunNotices = (gcId: string | null, onlyItemId: string | null) =>
+    data ? buildLienDeskRun(lienRunEntriesFor(data.queue.piles.ready, data.queue.piles.printed, gcId, onlyItemId), data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, ...runSignOpts }) : []
+  // Just this one (v2.7512): the run window on one notice, so it prints as the run prints it. The Lien window's own print was one unsigned set to photocopy.
+  const openRunOnOne = (itemId: string) => {
+    setRunTakeBack(false)
+    setRunGcId(null)
+    setRunFocus(null)
+    setRunOnlyItemId(itemId)
     setRunOpen(true)
   }
   const onBoardPrint = (side: LienBoardPrintSide) => (side.act === 'print_affidavits' ? printReadyAffidavits() : openWholeRun())
@@ -4418,6 +4434,9 @@ export default function LienDesk({
       const codeAwaits = Boolean(penAwaits && readySigned && typeof readySigned === 'object' && readySigned.mode === 'code')
       // v2.7386: an unsigned ready notice's line is the footer's box; Sign ▸ sits beside the code and the row is the box's strip.
       const readyBoxed = (leader || (office && otherScreen)) && readySigned === 'unsigned'
+      // Just this one (v2.7512): what the run would print for this notice alone, counted by the run's own envelopes.
+      const readyItemId = selected.item?.id ?? null
+      const onePlan = lienRunOnePlan(readyItemId ? monthlyRunNotices(null, readyItemId)[0] : null)
       const readyRow = (
         <div className="lienFootRow" data-lien-desk-foot="ready">
           <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)), readySigned)} data-lien-desk-ready-words />
@@ -4439,8 +4458,8 @@ export default function LienDesk({
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand. Record it here instead of printing and mailing it again">
             Already mailed? Record it ›
           </button>
-          <button type="button" className="lienFootLink" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} title="One notice on its own: print or email it and record the sends in the Lien window">
-            Just this one ›
+          <button type="button" className="lienFootLink" onClick={() => (readyItemId ? openRunOnOne(readyItemId) : undefined)} disabled={!office || !readyItemId} title={onePlan.title} data-lien-desk-just-this-one data-envelopes={onePlan.sets.length} data-held={onePlan.held.length}>
+            {onePlan.label}
           </button>
           <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="Every approved notice as one packet and one tracking form">
             {lienRunActLabel('print', runCount)} ▸
@@ -5196,7 +5215,7 @@ export default function LienDesk({
             onChanged()
             return out
           }}
-          notices={[...buildLienDeskRun(lienRunEntriesFor(data.queue.piles.ready, data.queue.piles.printed, runGcId), data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }), ...buildLienRetainageRun(runGcId ? [] : data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) })]}
+          notices={[...monthlyRunNotices(runGcId, runOnlyItemId), ...buildLienRetainageRun(runGcId || runOnlyItemId ? [] : data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, runSignOpts)]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
@@ -5205,6 +5224,7 @@ export default function LienDesk({
             setRunOpen(false)
             setRunTakeBack(false)
             setRunGcId(null)
+            setRunOnlyItemId(null)
             setRunFocus(null)
           }}
           openOnTakeBack={runTakeBack}

@@ -127,7 +127,7 @@ The **Monthly notices** tab lists each job with a GC and an unpaid month whose w
 - **An owner from the roll may be unconfirmed.** Settings, Jobs, bills and liens has a switch to save owners from the appraisal roll automatically. When it is on, the app fills empty owners overnight. The pane marks each one unconfirmed, with a link to the county and {{button:blue|Confirm}}. You can draft and send for approval on it. Recording the run refuses while any notice in it has an unconfirmed owner. Open the county link, check the name and press Confirm.
 - {{chip:gray|To send for Master approval}} is ready for the office. The paper is drawn from the job and the record the moment you open it. Nothing is saved until you change something or send it on. Tick a month or type a value, and the desk saves the draft a moment later. *Saved* shows beside the state line. A save that fails says why in a toast.
 - {{chip:blue|Awaiting Master approval}} is with the master. When he is beside you, {{button:blue|Leader here, Approve ▸}} on the footer ends the wait. On his phone the notice is one screen. It shows the money owed, the mail-by day and the four steps by name. {{button:green|Approve ▸}} sends it. {{button:outline|Not yet}} offers the hold reasons. **Details** unfolds the rest.
-- {{chip:green|Approved · to print}} is approved. It goes out with the run, or one at a time from the Lien window.
+- {{chip:green|Approved · to print}} is approved. It goes out with the run, or alone through **Just this one** on its footer.
 - {{chip:gray|Held}} means the master is waiting on a promise or a call. The desk asks him again three days before the deadline.
 - {{chip:gray|Sent · 30d}} and {{chip:red|Missed}} keep the record in sight. Sent holds only the jobs with nothing left to notice.
 - A sent job with a new month due sits under To send for Master approval, not under Sent. Its row says when the notice went. Its footer keeps {{button:outline|Send a courtesy notice ▸}} and {{button:outline|Send the attorney’s letter ▸}}. They sit on a line above {{button:blue|Ask Malachi to approve ▸}}. The next notice is drawn below that line.
@@ -453,7 +453,13 @@ A notice recorded without its number is never stuck. Its row under Sent says the
 A notice mailed through Docsmit never owes a number. The mail service brings it within the hour. Its row under Sent says where each envelope is, like in transit or delivered and signed. Its footer lists each envelope with its number. The Sent title has a {{button:outline|Deliveries}} button once a notice went through Docsmit. Press it to see only those notices. An envelope that came back or went unclaimed is a red row on **To do**. Its {{button:outline|Open the notice}} button opens the notice under Sent. The footer has three doors for that envelope. {{button:outline|send a plain copy ›}} mails a plain copy to the same address through Docsmit. {{button:outline|mail to another address ›}} takes a name and one address line, then mails the same letter again. {{button:outline|handled by hand ›}} records a courier or a visit in a few words. Each door marks the envelope answered, and **To do** stops asking. The Dashboard's Needs you counts the mailed notices that still have no number. It also shows a card when Docsmit credit drops under the warn line. Add credit on Docsmit's own site before the next run.
 
 :::example One notice on its own
-A ready notice's footer also offers the link **Just this one ›**. It opens the § 53.056 tab with the desk's months filled in. Use it to print or email one notice by hand. Recording it there moves the desk row too.
+A ready notice's footer also offers a link like **Just this one · 2 envelopes ›**. It opens the run on that one notice. The count is the envelopes that will print.
+
+Press {{button:blue|Print 1 notice}}. The line beside it says how many envelopes that is. The first page is the checklist, with a box for each mail number. A divider page sits in front of each envelope's set. Each set is whole and carries the leader's signature. Nothing is photocopied, and nothing is signed in ink.
+
+Back from the post office, type the mail numbers in the same window. The notice is recorded as it is in the run.
+
+The link reads **held** when nothing can print yet, like a notice nobody has signed. Rest the pointer on it to read why. The window it opens has the way to sign.
 :::
 
 ## Affidavits
