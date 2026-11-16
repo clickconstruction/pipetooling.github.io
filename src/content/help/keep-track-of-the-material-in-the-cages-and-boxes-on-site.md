@@ -172,7 +172,7 @@ A box can also carry a manifest, a laminated page that lists what is in it. Unde
 
 A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box and tap {{button:outline|Edit}} beside its name. On the office page, press a box's name or the **Edit** press beside it.
 
-- **Its name** takes a new name. A name another box on the job carries is refused.
+- **Its name** takes a new name. A name another box on the site carries is refused.
 - **How it sits** is Cage, Box or Loose pile. A pallet is a loose pile, and so is a thing too big for a box.
 - **What is in it** takes your own words for what the box holds. Clear it and the app writes the line from the parts again.
 - **Where exactly** says where it stands, such as on a pallet by the north door.
