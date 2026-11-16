@@ -12,7 +12,7 @@
  * Pure: the list's shape as stored, the file's name in Drive, the one reason a file is refused, the record's saved
  * copy, and every word a person reads. The upload and the write are `lienMailedCopiesIo.ts`.
  */
-import { ADD_FILE_MAX_BYTES, addFileSizeWords, addFileTooBig } from './jobFolderAddFile'
+import { LIEN_SCAN_ACCEPT, lienScanExtension, lienScanProblem } from './lienScanFile'
 
 /** One file in the job's Drive folder, as the notice remembers it. */
 export type LienMailedCopy = {
@@ -49,27 +49,12 @@ export function lienMailedCopiesWith(list: ReadonlyArray<LienMailedCopy>, copy: 
   return [...rest, copy]
 }
 
-/** The kinds of file the press takes: a scan or a photo. */
-export const LIEN_MAILED_COPY_ACCEPT = 'application/pdf,image/*'
+/** The kinds of file the press takes: a scan or a photo. One rule with a filed affidavit's scan (`lienScanFile.ts`). */
+export const LIEN_MAILED_COPY_ACCEPT = LIEN_SCAN_ACCEPT
 
-/** Why a file cannot be added, in a sentence, or null when it can. */
+/** Why a file cannot be added, in a sentence, or null when it can. The shared rule, naming the notice as the paper to scan alone. */
 export function lienMailedCopyProblem(file: { size: number; type: string; name: string }): string | null {
-  const pdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
-  const image = file.type.startsWith('image/')
-  if (!pdf && !image) return 'That file is not a scan or a photo. Add a PDF or a picture.'
-  if (file.size <= 0) return 'That file is empty. Scan the papers again.'
-  if (addFileTooBig(file.size)) return `That file is ${addFileSizeWords(file.size)}. The most a file can be is ${addFileSizeWords(ADD_FILE_MAX_BYTES)}. Scan this notice alone, or at a lower quality.`
-  return null
-}
-
-/** The extension the Drive name keeps: the file's own, or one from its type. */
-function extensionOf(file: { type: string; name: string }): string {
-  const own = /\.([a-z0-9]{1,5})$/i.exec(file.name)?.[1]?.toLowerCase()
-  if (own) return own
-  if (file.type === 'application/pdf') return 'pdf'
-  if (file.type === 'image/png') return 'png'
-  if (file.type === 'image/heic') return 'heic'
-  return 'jpg'
+  return lienScanProblem(file, 'notice')
 }
 
 /**
@@ -79,7 +64,7 @@ function extensionOf(file: { type: string; name: string }): string {
 export function lienMailedCopyName(input: { jobNumber: string; ymd: string; already: number; file: { type: string; name: string } }): string {
   const job = input.jobNumber.trim()
   const parts = ['Lien notice as mailed', job, input.ymd, input.already > 0 ? String(input.already + 1) : ''].filter(Boolean)
-  return `${parts.join(' · ')}.${extensionOf(input.file)}`
+  return `${parts.join(' · ')}.${lienScanExtension(input.file)}`
 }
 
 /**
