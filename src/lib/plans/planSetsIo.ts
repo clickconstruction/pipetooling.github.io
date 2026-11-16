@@ -72,6 +72,8 @@ export interface JobPlansIo {
   updateMemo(setId: string, memo: string): Promise<void>
   /** What changed from the set before it, written or rewritten on a set already on the part (v2.6356). */
   updateChanges(setId: string, changes: string): Promise<void>
+  /** A saved set moved to another Drive link, on its own row (v2.7464); the job's old link follows by the database's mirror. */
+  updateLink(setId: string, link: string): Promise<void>
 }
 
 const PART_COLS = 'id, development_id, job_id, name, position, current_set_id, current_set_by, current_set_at, created_by, created_at, updated_at'
@@ -267,6 +269,13 @@ export function supabaseJobPlansIo(): JobPlansIo {
     async updateChanges(setId, changes) {
       const r = await supabase.from('plan_sets').update({ changes: changes.trim() }).eq('id', setId)
       if (r.error) throw r.error
+    },
+    async updateLink(setId, link) {
+      // The file facts were read behind the old link, so they go with it. The row is asked back: an update RLS lets
+      // through no row answers with no error, and the person would read a save that did not happen.
+      const r = await supabase.from('plan_sets').update({ link: link.trim(), file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null }).eq('id', setId).select('id')
+      if (r.error) throw r.error
+      if (!r.data?.length) throw new Error('This set is not yours to change.')
     },
   }
 }

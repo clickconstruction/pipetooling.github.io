@@ -2,7 +2,7 @@
 name: "A job's own pay terms: the override is built, the door to it is hidden, and four kinds of terms have no home"
 number: 341
 group: gated
-status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · Taunya's *build the entire PR train* 2026-11-15 · PR 3, the job's own record, built that day (v2.7339) on the card's first pick for call 2 · PR 4, one bill's own due day, built that day (v2.7341, migration 20261115170000) as carded, call 3 unanswered · PR 5, a number of days after the bill, built that day (v2.7343, migration 20261115190000) as carded, call 4 unanswered · the train is built · the morning run's two reads built 2026-11-16 on the owner's ask of that day (v2.7452), not deployed
+status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · Taunya's *build the entire PR train* 2026-11-15 · PR 3, the job's own record, built that day (v2.7339) on the card's first pick for call 2 · PR 4, one bill's own due day, built that day (v2.7341, migration 20261115170000) as carded, call 3 unanswered · PR 5, a number of days after the bill, built that day (v2.7343, migration 20261115190000) as carded, call 4 unanswered · the train is built · the morning run's two reads built 2026-11-16 on the owner's ask of that day (v2.7452) and deployed that day at 10:52 AM Central on Taunya's go
 summary: >
   The owner asked what it would take to set one job's payment terms so they win over its GC's or its
   customer's. Most of it shipped with the Pay calendar (#323): a job can carry its own calendar, or
@@ -12,8 +12,8 @@ summary: >
   sheet. No row says a job is on its own calendar, and a job switched off has no door back. Past
   that, four kinds of terms have no home: one bill due on a named date, a number of days after the
   bill, a real date for pay when paid, and dated draws not yet billed.
-next: someone sets the first real calendars, since none is set: the first real save on a job, on a bill and of terms in days is the live walk. The owner can still change calls 2 to 4, and each fragment says how. The morning run (`messages-nudge-dispatch`) reads a bill's own day and terms in days in the code since v2.7452, merged and not deployed: its deploy waits on Taunya's go that names the function.
-size: M as a train of five (S · S · S · M · M) and the morning run's two reads (XS); built. Left: the live walk (XS), and the morning run's deploy (XS)
+next: someone sets the first real calendars, since none is set: the first real save on a job, on a bill and of terms in days is the live walk. The owner can still change calls 2 to 4, and each fragment says how. The morning run (`messages-nudge-dispatch`) reads a bill's own day and terms in days since v2.7452, deployed 2026-11-16 at 10:52 AM Central on Taunya's go, so nothing here waits on a deploy.
+size: M as a train of five (S · S · S · M · M) and the morning run's two reads (XS); built and deployed. Left: the live walk (XS)
 blocker: the first real calendar. Only the owner knows which jobs are on their own terms and what each contract says.
 opinion: set one real calendar on the biggest GC job and walk it; nothing more to build here until that says something reads wrong
 ver: v2.7036 · v2.7039 · v2.7040 · v2.7127 · v2.7151 · v2.7153 · v2.7339 · v2.7341 · v2.7343 · v2.7452
@@ -270,8 +270,10 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
   terms in days in the code since v2.7452, built 2026-11-16 on the owner's ask of that day
   (`_shared/payTermsRead.ts`, each read soft alone). It is proved in tests alone: one made-up
   database read by the screen's loaders and by the function's own read gives each bill the same
-  due day (`morningRunPayTerms.test.ts`). **Merged, not deployed.** Until the deploy the run
-  reads neither, as before. It wants a deploy on Taunya's go that names the function.
+  due day (`morningRunPayTerms.test.ts`). **Deployed 2026-11-16 at 10:52 AM Central** (version
+  61), on Taunya's go that named the function, which the owner passed on that morning. It boots,
+  and `npm run check:edge-drift` no longer names it. The 9 AM run of 2026-11-17 is the first
+  morning on the new reads. Not proved on a real row: no calendar and no bill's own day is set.
 - **What is left is the live walk.** Three things have never been saved for real: a calendar on
   a job, a due day on one bill, and terms in days. Each is held by kernel tests, render smokes
   and the SQL bed.
