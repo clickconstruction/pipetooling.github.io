@@ -97,6 +97,7 @@ import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
 import { billDateWords, dueGroupKey } from '../lib/materials/supplyBillGroups'
 import { billMoveTrace, removedLately } from '../lib/materials/payments/supplyPaymentMove'
+import { interestByHouse, interestTitle } from '../lib/materials/payments/supplyInterest'
 import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
@@ -106,7 +107,8 @@ import { EmptyState } from './EmptyState'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
-type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
+// is_interest and late_invoice_id come with 20261117020000: the generated Row learns them after its push.
+type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row'] & { is_interest?: boolean | null; late_invoice_id?: string | null }
 type InvoiceJobAllocation = { job_id: string; pct: number }
 type SupplyHouseInvoiceWithAllocations = SupplyHouseInvoice & { job_allocations?: InvoiceJobAllocation[] }
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -143,6 +145,8 @@ type AgingInvoiceRow = {
   amount: number
   /** The bill's own amount, when a payment has taken part of it and `amount` is what is left. */
   billed?: number
+  /** Interest or a late fee: it is on no job by rule, so the row offers no Pick a job. */
+  is_interest?: boolean | null
   due_date: string | null
   on_job_account: boolean | null
   link: string | null
@@ -466,6 +470,11 @@ export function SupplyHousesTab({
   const [housePayments, setHousePayments] = useState<HousePayments>({ payments: [], lines: [] })
   /** The payment a paid row opened, by id. */
   const [paymentViewId, setPaymentViewId] = useState<string | null>(null)
+  /** The Edit window's "This is interest or a late fee", and the bill that ran late ('' for none). */
+  const [invoiceIsInterest, setInvoiceIsInterest] = useState(false)
+  const [invoiceLateInvoiceId, setInvoiceLateInvoiceId] = useState('')
+  /** `Interest and late fees in 2026: $61.20 · …`, under the Accounts payable total; empty in a year with none. */
+  const [interestYearWords, setInterestYearWords] = useState('')
   /** The removed payment whose Put it back is saving. */
   const [puttingBackPaymentId, setPuttingBackPaymentId] = useState<string | null>(null)
   /** The bill in the Edit window is paid by a typed payment: its status follows that payment. */
@@ -587,14 +596,20 @@ export function SupplyHousesTab({
     } else {
       housesList = (housesRes.data ?? []) as { id: string; name: string; monthly_payment_day: number | null }[]
     }
-    const { data: invoices } = await supabase
-      .from('supply_house_invoices')
-      .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, amount_paid, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id')
+    type SummaryInvoice = AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null; amount_paid: number | null; is_interest?: boolean | null }
+    const summaryColumns = 'id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, amount_paid, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id'
+    // is_interest comes with its own migration (20261117020000). Until that is pushed the read is refused for the
+    // column, so it is made again without it: the summary must never go empty over a column that only adds a line.
+    let invoicesRes = await supabase.from('supply_house_invoices').select(`${summaryColumns}, is_interest` as '*')
+    if (invoicesRes.error) invoicesRes = await supabase.from('supply_house_invoices').select(summaryColumns as '*')
+    const invoices = (invoicesRes.data ?? []) as unknown as SummaryInvoice[]
     // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole, here
     // or in the aging table. `billed` keeps the bill's own amount for the row that says so.
-    const invoicesList = ((invoices ?? []) as (AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null; amount_paid: number | null })[]).map((inv) =>
+    const invoicesList = invoices.map((inv) =>
       inv.is_paid ? inv : { ...inv, amount: openAmount(inv), billed: Number(inv.amount) },
     )
+    // What paying late cost this year, by house: every interest bill billed in it, paid or not.
+    setInterestYearWords(interestByHouse(invoices, housesList, todayYmdInAppTz().slice(0, 4)).words)
     setAgingUnpaidInvoices(invoicesList.filter((inv) => !inv.is_paid))
     setAgingBookLoaded(true)
     // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
@@ -1169,6 +1184,8 @@ export function SupplyHousesTab({
     setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
     setInvoiceAmount('')
     setInvoiceDocumentKind('invoice')
+    setInvoiceIsInterest(false)
+    setInvoiceLateInvoiceId('')
     setInvoiceCreditsInvoiceId('')
     setInvoiceLink('')
     setInvoiceIsPaid(false)
@@ -1192,6 +1209,8 @@ export function SupplyHousesTab({
     setInvoiceCreditsInvoiceId((inv as { credits_invoice_id?: string | null }).credits_invoice_id ?? '')
     setInvoiceLink(inv.link ?? '')
     setInvoiceIsPaid(inv.is_paid)
+    setInvoiceIsInterest(inv.is_interest === true)
+    setInvoiceLateInvoiceId(inv.late_invoice_id ?? '')
     setInvoicePaidOn(inv.is_paid ? paidOnYmdFromIso(inv.paid_at) : '')
     // === true: pre-migration rows fetched before the column existed read as undefined.
     setInvoiceOnJobAccount(inv.on_job_account === true)
@@ -1465,6 +1484,7 @@ export function SupplyHousesTab({
         onJobAccount: invoiceOnJobAccount,
         allocations: invoiceJobAllocations,
         creditsInvoiceId: invoiceCreditsInvoiceId,
+        interest: { on: invoiceIsInterest, lateInvoiceId: invoiceLateInvoiceId },
         // Supply-house bill capture (punch list #179): the read the row keeps when the bill was filled from its PDF.
         ...(billRead && billPlan
           ? {
@@ -1717,6 +1737,11 @@ export function SupplyHousesTab({
               <span aria-hidden="true" />
               <div style={{ fontSize: '1rem', fontWeight: 600, textAlign: 'center', alignSelf: 'center' }}>
                 Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
+                {interestYearWords ? (
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }} data-testid="supply-interest-year">
+                    {interestYearWords}
+                  </div>
+                ) : null}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', justifySelf: 'end' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
@@ -2128,6 +2153,7 @@ export function SupplyHousesTab({
                                           poMismatch: poGenCode != null && poGeneratorCodesForSelectedHouse != null && !poGeneratorCodesForSelectedHouse.has(poGenCode),
                                           // v2.5035 · a credit and the invoice it credits name each other; read against every row, paid ones too.
                                           pairLine: creditPairingLine(inv, supplyHouseInvoices),
+                                          interest: interestTitle(inv, supplyHouseInvoices),
                                           // Where a payment's money moved to or from this bill, and who moved it.
                                           trace: billMoveTrace(inv.id, housePayments.events ?? []),
                                           lines: rowLinesWords(paper, { link: inv.link, hasFile: !!inv.bill_read }, paper?.acceptedBy ? paperNames.get(paper.acceptedBy) : null),
@@ -2398,7 +2424,7 @@ export function SupplyHousesTab({
           const pair = creditPairingLine(inv, agingUnpaidInvoices)
           // A bill paid in part sits in the cell for what is left on it, and says what it was billed for.
           const partNote = inv.billed != null && Math.abs(inv.billed - inv.amount) > 0.005 ? `left of $${formatCurrency(Math.abs(inv.billed))}` : null
-          const rowNote = [partNote, pair, note].filter(Boolean).join(' · ')
+          const rowNote = [inv.is_interest ? 'interest, not a job cost' : null, partNote, pair, note].filter(Boolean).join(' · ')
           return (
             <div key={inv.id} className="aging-win-row">
               <AgingInvoiceDoor invoiceNumber={inv.invoice_number} busy={agingCellDoorBusy === inv.id} onOpen={() => void openInvoiceFromAgingCell(inv, null)} />
@@ -3310,6 +3336,34 @@ export function SupplyHousesTab({
               ) : null}
 
               {/* ⑤ Paid is a status with a date (paid_at already exists); the due-date hint says where the prefill came from. */}
+              {/* Interest or a late fee (2026-11-16): a bill of its own, tied to the bill that ran late, kept off every job's cost. */}
+              {invoiceDocumentKind === 'invoice' ? (
+                <div style={{ marginBottom: '1rem' }} data-testid="invoice-interest">
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                    <input type="checkbox" checked={invoiceIsInterest} onChange={(e) => setInvoiceIsInterest(e.target.checked)} />
+                    This is interest or a late fee
+                  </label>
+                  {invoiceIsInterest ? (
+                    <>
+                      <label style={{ display: 'block', marginTop: '0.4rem' }}>
+                        <span style={INVOICE_LABEL_STYLE}>Which bill was late (optional)</span>
+                        <select value={invoiceLateInvoiceId} onChange={(e) => setInvoiceLateInvoiceId(e.target.value)} style={{ ...INVOICE_INPUT_STYLE, width: 'auto', maxWidth: '100%' }}>
+                          <option value="">Not tied to a bill</option>
+                          {supplyHouseInvoices
+                            .filter((row) => row.amount > 0 && !row.is_interest && row.id !== editingInvoice?.id)
+                            .slice(0, 60)
+                            .map((row) => (
+                              <option key={row.id} value={row.id}>
+                                {row.invoice_number}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>It is owed and paid like any bill. It is kept off every job’s cost, so any job on it comes off when you save.</div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
               <InvoiceFormSection>{invoiceWords.statusCaption}</InvoiceFormSection>
               <div style={{ display: 'grid', gridTemplateColumns: narrowAging ? '1fr' : '1fr 1.6fr', gap: '0.75rem', marginBottom: '1rem' }}>
                 <div>
@@ -3444,7 +3498,7 @@ export function SupplyHousesTab({
               const d = supplyHouseJobDetailsMap[a.job_id]
               return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
             })
-            return { id: inv.id, invoice_number: inv.invoice_number, due_date: inv.due_date, amount: inv.amount, is_paid: inv.is_paid, title: jobs.join(', ') || inv.purchase_order_number?.trim() || 'No job on this bill' }
+            return { id: inv.id, invoice_number: inv.invoice_number, due_date: inv.due_date, amount: inv.amount, is_paid: inv.is_paid, is_interest: inv.is_interest, title: interestTitle(inv, supplyHouseInvoices) ?? (jobs.join(', ') || inv.purchase_order_number?.trim() || 'No job on this bill') }
           })}
           io={supabaseSupplyPaymentsIo}
           todayYmd={todayYmdInAppTz()}
@@ -3472,7 +3526,7 @@ export function SupplyHousesTab({
                 const d = supplyHouseJobDetailsMap[a.job_id]
                 return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
               })
-              return { id: inv.id, invoice_number: inv.invoice_number, title: jobs.join(', '), amount: inv.amount, is_paid: inv.is_paid, due_date: inv.due_date }
+              return { id: inv.id, invoice_number: inv.invoice_number, title: interestTitle(inv, supplyHouseInvoices) ?? jobs.join(', '), amount: inv.amount, is_paid: inv.is_paid, due_date: inv.due_date }
             })}
             events={housePayments.events}
             houseName={house.name.trim() || 'this house'}

@@ -54,7 +54,8 @@ import { lienFooter, type LienSignWay } from '../../lib/jobs/lienFooterMenu'
 import { LienFootMenu } from './LienFootMenu'
 import { penWordApproval } from '../../lib/jobs/lienPenRecord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
-import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
+import { clearLienSignatureToSignAgain, confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
+import { LIEN_SIGN_AGAIN_HINT, LIEN_SIGN_AGAIN_LABEL, signAgainConfirmWords, signAgainDoneWords, signAgainHow, signAgainJobWords, signAgainOffered, signatureClearedOf, signatureClearedWords } from '../../lib/jobs/lienSignAgain'
 import { lienCodeRefusalWords, lienCodeSignerFrom, lienCodeStatusStale, lienOtherScreen, type LienCodeStatusRead } from '../../lib/jobs/lienCodeSigner'
 import { lienChipSigned, lienFieldsHash, lienItemUnsigned, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
 import { LienNoticeSignLine, type LienNoticeSignLineCodeSigner, type LienNoticeSignLineFrame, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
@@ -1640,6 +1641,8 @@ export default function LienDesk({
     return lienNoticeSignatureFromRow(cols, { jobNumber, itemId: item.id, fieldsHash: lienFieldsHash(item.fields), onDeviceName: cols.signed_on_device_of ? (leaderNameFor?.(cols.signed_on_device_of) ?? null) : null, recordedByName: cols.signed_recorded_by ? (leaderNameFor?.(cols.signed_recorded_by) ?? null) : null, pngDataUrl: inks.get(item.id) ?? null })
   }, [item, job, leaderNameFor, inks])
   const paneSigned = useMemo(() => (paneSignature ? toFilingSignature(paneSignature) : null), [paneSignature])
+  // Sign it again (v2.7502): an approved notice with its last signature cleared says so under the paper until it is signed again.
+  const signClearedLine = !paneSignature && item?.status === 'approved' ? signatureClearedWords(signatureClearedOf(item.fields)) : null
   const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras, { ghostOptional: !wordingLocked, signature: paneSigned }), { marks: paperMarks }), [noticeFields, docExtras, paperMarks, paneSigned, wordingLocked])
   /** Click a shaded box: the value becomes a box in its place. A Back button under a changed value puts the job's wording back. */
   const startEdit = (key: LienNoticeFieldKey) => {
@@ -2055,6 +2058,28 @@ export default function LienDesk({
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
   const backToReady = () => run('Back to Approved · to print', async () => void (item && (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null }))), 'Back in Approved · to print.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
+  /**
+   * Sign it again (v2.7502): the signature comes off an approved notice after a confirm, and the approval stands. The
+   * re-read then finds the notice unsigned, so the footer draws the signing line again. A notice that printed or went
+   * in the meantime is left alone, the person is told, and the desk reads again.
+   */
+  const signAgain = async () => {
+    if (!item) return
+    const sig = signatureColumnsOf(item)
+    const how = signAgainHow({ leader, otherScreen })
+    const words = signAgainConfirmWords({ jobWords: signAgainJobWords(job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : null, job?.job_name), signedAtIso: sig.signed_at, signerName: sig.signer_printed_name, ownSignature: Boolean(authUserId && sig.signed_by === authUserId), how, leaderName })
+    if (!(await confirmDialog({ title: words.title, message: words.message, confirmLabel: words.confirmLabel }))) return
+    await run(
+      'Sign it again',
+      async () => {
+        const r = await clearLienSignatureToSignAgain(item.id, { userId: authUserId, userName: authName.trim() || null })
+        if (r.ok) return
+        onChanged()
+        throw new Error(r.message)
+      },
+      signAgainDoneWords({ how, leaderName }),
+    )
+  }
   const saveRule = (policy: LienNoticePolicy) =>
     run('Standing rule', async () => void (selected?.gcCustomerId && (await setCustomerLienNoticePolicy(selected.gcCustomerId, policy, ''))), `Rule saved for ${gc?.name ?? 'this GC'}.`)
 
@@ -3492,6 +3517,11 @@ export default function LienDesk({
         <p data-lien-desk-signature-record style={{ margin: '-0.2rem 0 0', fontSize: '0.72rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
           <strong style={{ color: 'var(--text-700)' }}>The signing record, kept here and not printed.</strong> {paneSignature.auditLine}
         </p>
+      ) : signClearedLine ? (
+        // Sign it again (v2.7502): while the notice waits to be signed again, the record says who cleared the last signature.
+        <p data-lien-desk-signature-cleared style={{ margin: '-0.2rem 0 0', fontSize: '0.72rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text-700)' }}>The signing record, kept here and not printed.</strong> {signClearedLine}
+        </p>
       ) : null}
 
       {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
@@ -4381,6 +4411,11 @@ export default function LienDesk({
           {office && readySigned === 'unsigned' ? (
             <button type="button" className="lienFootLink" onClick={() => setPenOpen(true)} disabled={busy} data-lien-desk-pen title="He signed the printed paper with a pen: write down who, when, how you know, and add the signed page">
               He signed the paper ›
+            </button>
+          ) : null}
+          {signAgainOffered({ item: selected.item, office, leader, disownOffered: Boolean(leader && !otherScreen && penAwaits) }) ? (
+            <button type="button" className="lienFootLink" onClick={() => void signAgain()} disabled={busy} data-lien-desk-sign-again title={LIEN_SIGN_AGAIN_HINT}>
+              {LIEN_SIGN_AGAIN_LABEL}
             </button>
           ) : null}
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand. Record it here instead of printing and mailing it again">

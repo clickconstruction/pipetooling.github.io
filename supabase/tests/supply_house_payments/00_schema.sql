@@ -36,6 +36,18 @@ CREATE TABLE public.supply_house_invoices (
   CONSTRAINT supply_house_invoices_amount_check CHECK ((document_kind = 'invoice' AND amount >= 0) OR (document_kind = 'credit' AND amount < 0))
 );
 
+-- A bill's jobs and bids, as far as 20261117020000 reads them: an interest bill takes neither.
+CREATE TABLE public.supply_house_invoice_job_allocations (
+  invoice_id uuid NOT NULL REFERENCES public.supply_house_invoices(id) ON DELETE CASCADE,
+  job_id uuid NOT NULL,
+  pct numeric(5,2) NOT NULL
+);
+CREATE TABLE public.supply_house_invoice_bid_allocations (
+  invoice_id uuid NOT NULL REFERENCES public.supply_house_invoices(id) ON DELETE CASCADE,
+  bid_id uuid NOT NULL,
+  pct numeric(5,2) NOT NULL
+);
+
 -- The four fences every CREATE TABLE migration ends with: no-ops here.
 CREATE OR REPLACE FUNCTION public.apply_read_only_write_blocks() RETURNS void LANGUAGE sql AS $$ SELECT $$;
 CREATE OR REPLACE FUNCTION public.apply_read_only_stmt_blocks() RETURNS void LANGUAGE sql AS $$ SELECT $$;

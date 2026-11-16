@@ -21,10 +21,10 @@ Open the Lien desk from the orange gavel on the Pipeline's stage bar. The ☰ **
 - An approved notice reads {{button:blue|Print and mail}}. It opens the run on that notice alone.
 - A GC with two or more notices ready is one row. Its button counts them, like {{button:blue|Print and mail 3}}. It opens the run on that GC's notices alone.
 - Two or more printed notices are one row too, tagged {{chip:yellow|Run}}. It says when they printed and asks whether they were mailed. {{button:blue|Enter mail numbers}} opens the run to type the tracking numbers. {{button:outline|Take back…}} opens the run on its take back question. Press **The N jobs** to see which jobs are in it. The find box opens that list.
-- Approving is the one step only the leader can take. The leader sees those rows first, under **Only you can approve**, each with {{button:blue|Approve}}. The office sees them under a heading like **Waiting on Malachi to approve**, above the rows on track. Each says when it was sent and how long it has waited, and shows {{button:outline|Open}}. One press on that heading reminds the leader. The same press reminds the leader of approved notices not yet signed. They are not in the office's count on the To do tab. A master's own jobs are the ones he is master of. Another master's notices wait on that master by name, for a dev too.
+- Approving is the one step only the leader can take. The leader sees those rows first, under **Only you can approve**, each with {{button:blue|Approve}}. The office sees them under a heading like **Waiting on Malachi to approve**, above the rows on track. Each says when it was sent and how long it has waited, and shows {{button:outline|Open}}. One press on that heading reminds the leader. They are not in the office's count on the To do tab. A master's own jobs are the ones he is master of. Another master's notices wait on that master by name, for a dev too.
 - Signing is the other step only the leader can take. An approved notice with no signature sits first, under **Only you can sign**, with {{button:blue|Sign}}. It opens the notice, where {{button:green|Sign ▸}} waits. The office's row says it waits on the leader by name. So does a dev's row on another master's job. The Dashboard's Needs you carries the same count for the leader.
 - The job's number and name underline when you point at them. The number is a zoom to the right place for the paper's stage. It is the same press as its chip on the Board. The name opens the job itself, over the desk. Close the job and the desk reads its rows again. The number is a zoom on **By date** and on the notice and affidavit lists too. On **By job** it opens the job itself.
-- The Board sits above the rows. It is the month as one picture, with four tiles and two columns of bins. Every job is a chip in the bin of its stage. Press a bin's name to see only its rows. Read [read the Board on the Lien desk](/help/read-the-board-on-the-lien-desk).
+- The Board sits above the rows. It is the month as one picture, with four tiles and two columns of bins. Every job is a chip in the bin of its stage. Press a bin's name to see only its rows. A line on the Board lets the office remind the leader of approved notices not yet signed. Read [read the Board on the Lien desk](/help/read-the-board-on-the-lien-desk).
 - The courtesy and the attorney’s letter rows sit under their own heading, **Reminders**. They are not in Needs you now. Their dots read 1/4 or 2/4 on the reminder's own ladder.
 - On a phone the rows are grouped by the day they are due, soonest first. Each heading says the day, how long is left and the money its jobs still owe. A heading reads red inside three days and amber inside a week. The groups that say whose move it is keep their names, like **Only you can approve** and **Reminders**.
 - A phone row has three lines. The first is the job and what it still owes. The second says where the paper stands. The third has the paper's chip, four dots and the row's button. A row with no button for you says whose step it is beside the dots, like *Approve · leader*.
@@ -336,6 +336,20 @@ The chip on a ready notice reads **signed** with the day. Edit a signed notice a
 
 A notice approved on your word reaches *Approved · to print* unsigned. Open it and press {{button:green|Sign ▸}} on its footer. Your name goes on the paper the same way.
 
+### Signing a notice again
+
+Sometimes an approved notice carries the wrong signature. The leader drew it and the office wants his name in the cursive face. Or the drawing came out poor. Open the notice in *Approved · to print*. Press **Sign it again…** in the row at its foot. A window asks first. The window names the job and says whose signature comes off. Press {{button:blue|Clear the signature}}. The signature comes off and the approval stands. The chip reads **unsigned**. The run holds the notice until it is signed again.
+
+The signing line comes back at once. On the leader's own screen it is his signing box, with {{button:green|Sign ▸}}. On the office's screen it is his line, with his code field. The leader types his code and presses {{button:green|Sign ▸}}. The leader can press **Draw instead** and sign by hand. A line under the paper says who cleared the last signature and when. A drawing that came off stays on file.
+
+The office and the leader both have the press. A printed notice does not have it. Press {{button:outline|Back to Approved · to print}} on that notice first. A signature by code or by pen may still wait on the leader's word. The leader's own screen then offers **Not me** or **Not what I signed** in its place.
+
+:::example 4120, Halden Yard, signed with a drawing
+
+Dana opens the notice and presses **Sign it again…**. The window says Avery's signature from Nov 16 comes off. She presses **Clear the signature**. Avery types his code on her screen and presses **Sign ▸**. The paper now carries his name in the cursive face.
+
+:::
+
 ### Your signing code
 
 A signing code lets you sign on someone else's screen. It is four to six digits that only you know. Open **Settings → Your account** and find **Your signing code**. Type the code twice and press {{button:blue|Set the code}}. The app keeps a scrambled copy and checks the code itself. Nobody can read it back. Five wrong tries lock the code for fifteen minutes. Press {{button:blue|Change the code}} to pick a new one. Press **Remove the code** to stop using one.
@@ -560,6 +574,7 @@ The offer lasts while Put a GC on notice stays open. It ends once the run is rec
 ## Who can do what
 
 - **Draft, send for approval and send on the leader's word:** a dev, an assistant or a controller. A master can draft and approve his own.
+- **Clear a signature to sign again:** a dev, an assistant, a controller or a master technician.
 - **Sign, approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It refuses a signature that is not the leader's own press or his own drawing. It also refuses a send on a spoken word without a note.
 - **Put a GC on notice:** the office opens it and readies the owners. Approving all of it is for the master or a dev. A send on the spoken word is for an assistant, a controller or a dev.
 

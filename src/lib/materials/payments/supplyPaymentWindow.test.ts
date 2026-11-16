@@ -10,6 +10,7 @@ import {
   payWindowSummaryWords,
   planSupplyPayment,
   setBillBox,
+  setInterest,
   setUseAccount,
   tickBill,
   tickCredit,
@@ -57,7 +58,7 @@ describe('ticking bills leads, and the amount follows', () => {
     expect(p.leftWords).toBe('Every dollar is placed.')
     expect(p.afterWords).toBe('Each bill paid in full will read paid on 11/16.')
     expect(p.notes.b1).toEqual({ words: 'Paid in full.', tone: 'plain' })
-    expect(p.record).toEqual({ amount: 2052.4, lines: [{ invoice_id: 'b1', amount: 1240 }, { invoice_id: 'b2', amount: 812.4 }], fromAccount: [], keepOnAccount: false })
+    expect(p.record).toEqual({ amount: 2052.4, lines: [{ invoice_id: 'b1', amount: 1240 }, { invoice_id: 'b2', amount: 812.4 }], fromAccount: [], keepOnAccount: false, interest: null })
   })
 
   it('unticks back to a dead press that says what to do', () => {
@@ -121,7 +122,7 @@ describe('typing the amount fills the oldest bills first', () => {
     const s: PayWindowState = { ...typeAmount(EMPTY_PAY_WINDOW, '250', ctx({ bills: [] })), keepOnAccount: true }
     const p = plan(s, ctx({ bills: [] }))
     expect(p.pressLabel).toBe('Record $250.00 on account')
-    expect(p.record).toEqual({ amount: 250, lines: [], fromAccount: [], keepOnAccount: true })
+    expect(p.record).toEqual({ amount: 250, lines: [], fromAccount: [], keepOnAccount: true, interest: null })
   })
 
   it('says so when more is placed than was sent', () => {
@@ -177,7 +178,41 @@ describe('a credit memo is a line to tick', () => {
     expect(p.sent).toBe(0)
     expect(p.reason).toBe('')
     expect(p.pressLabel).toBe('Settle 1 bill with no money sent')
-    expect(p.record).toEqual({ amount: 0, lines: [{ invoice_id: 'e1', amount: 212.4 }, { invoice_id: 'c1', amount: -212.4 }], fromAccount: [], keepOnAccount: false })
+    expect(p.record).toEqual({ amount: 0, lines: [{ invoice_id: 'e1', amount: 212.4 }, { invoice_id: 'c1', amount: -212.4 }], fromAccount: [], keepOnAccount: false, interest: null })
+  })
+})
+
+describe('the house added interest or a late fee', () => {
+  it('adds the interest to the amount sent, and records it as a bill of its own tied to the late bill', () => {
+    let s = tickBill(EMPTY_PAY_WINDOW, bill('b1'), true)
+    s = setInterest(s, { on: true, amountText: '18.60', lateBillId: 'b1' }, ctx())
+    const p = plan(s)
+    expect(p.sent).toBe(1258.6)
+    expect(p.placed).toBe(1258.6)
+    expect(p.billCount).toBe(1)
+    expect(p.pressLabel).toBe('Record $1,258.60 on 1 bill and interest')
+    expect(p.record).toEqual({ amount: 1258.6, lines: [{ invoice_id: 'b1', amount: 1240 }], fromAccount: [], keepOnAccount: false, interest: { amount: 18.6, lateInvoiceId: 'b1' } })
+  })
+
+  it('records interest alone, with no bill ticked and no late bill named', () => {
+    const p = plan(setInterest(EMPTY_PAY_WINDOW, { on: true, amountText: '5' }, ctx()))
+    expect(p.sent).toBe(5)
+    expect(p.reason).toBe('')
+    expect(p.pressLabel).toBe('Record $5.00 on interest')
+    expect(p.record?.interest).toEqual({ amount: 5, lateInvoiceId: null })
+  })
+
+  it('takes the interest out of a typed amount before the bills are filled', () => {
+    const s = setInterest(typeAmount(EMPTY_PAY_WINDOW, '1258.60', ctx()), { on: true, amountText: '18.60' }, ctx())
+    expect(s.boxes).toEqual({ b1: '1240.00' })
+    expect(plan(s).left).toBe(0)
+  })
+
+  it('counts nothing while the line is switched off or empty, and refuses an amount that is not one', () => {
+    const ticked = tickBill(EMPTY_PAY_WINDOW, bill('b4'), true)
+    expect(plan(setInterest(ticked, { on: false, amountText: '18.60' }, ctx())).sent).toBe(612.6)
+    expect(plan(setInterest(ticked, { on: true, amountText: '' }, ctx())).record?.interest).toBeNull()
+    expect(plan(setInterest(ticked, { on: true, amountText: 'abc' }, ctx())).reason).toBe('Type the interest or late fee as an amount above zero.')
   })
 })
 
@@ -196,6 +231,7 @@ describe('money on account is used first', () => {
       lines: [{ invoice_id: 'b1', amount: 1052.6 }],
       fromAccount: [{ payment_id: 'p-old', invoice_id: 'b1', amount: 100 }, { payment_id: 'p-new', invoice_id: 'b1', amount: 87.4 }],
       keepOnAccount: false,
+      interest: null,
     })
   })
 
@@ -205,7 +241,7 @@ describe('money on account is used first', () => {
     const p = plan(setUseAccount(tickBill(EMPTY_PAY_WINDOW, tiny, true), true, c), c)
     expect(p.accountUsed).toBe(60)
     expect(p.sent).toBe(0)
-    expect(p.record).toEqual({ amount: 0, lines: [], fromAccount: [{ payment_id: 'p-old', invoice_id: 't1', amount: 60 }], keepOnAccount: false })
+    expect(p.record).toEqual({ amount: 0, lines: [], fromAccount: [{ payment_id: 'p-old', invoice_id: 't1', amount: 60 }], keepOnAccount: false, interest: null })
   })
 })
 

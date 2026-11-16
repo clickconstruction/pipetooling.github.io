@@ -4,9 +4,9 @@
  *
  * Download and Print draw the PDF here with pdf-lib and file a sent copy, as the hours statement does.
  *
- * No paper has a number yet: each carries the day and time it was prepared in its foot. The numbers, the payment
- * record's press and Send are the card's next steps, so the view is handed no register, no `paymentRecords` and no
- * `onSend`.
+ * A payment record carries its sending's own number (card #347), printed `PR-<n>`. A work statement and a statement
+ * of account have none yet: each carries the day and time it was prepared in its foot. Their numbers and Send are
+ * the card's next steps, so the view is handed no register and no `onSend`.
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
@@ -84,6 +84,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       sheets={sheets}
       ctx={ctx}
       contact={NO_CONTACT}
+      paymentRecords
       canSend={false}
       busy={busy}
       said={said}
