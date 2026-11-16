@@ -51,7 +51,7 @@ export function lienAffidavitPrintBarStatus({ ready, gated }: { ready: number; g
       gated > 0
         ? {
             press: `${gated} held, not in this print`,
-            tip: count(gated, '1 ready affidavit is held by a gate and is left out. Its row says why.', '# ready affidavits are held by a gate and are left out. Each row says why.'),
+            tip: count(gated, '1 approved affidavit is held by a gate and is left out. Its row says why.', '# approved affidavits are held by a gate and are left out. Each row says why.'),
             showing: count(gated, 'Showing the 1 held paper. Its row says why.', 'Showing the # held papers. Each row says why.'),
             back: LIEN_PRINT_BAR_SHOW_EVERY_PAPER,
           }

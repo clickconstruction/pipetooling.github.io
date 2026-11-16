@@ -219,7 +219,9 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
     const closed = entry.gates.filter((g) => !g.ok).map((g) => g.label)
     return { ok: false, refused: `${label}: the desk will not draft this yet. Still missing: ${closed.join(' · ')}. Fill them in on the job's property record or the GC's customer record, then plan again.` }
   }
-  if (entry.pile !== 'to_draft') return { ok: false, refused: `${label}: ${PILE_REFUSALS[entry.pile] ?? `its affidavit is in ${entry.pile}`}. Open it on the Lien desk under Affidavits; the seat drafts only a paper still in To send.` }
+  // An approved paper a gate closed on sits in Held since v2.7449 (punch list #335): the refusal says which hold it is.
+  const gateHeld = entry.pile === 'held' && entry.item?.status === 'approved'
+  if (entry.pile !== 'to_draft') return { ok: false, refused: `${label}: ${gateHeld ? 'its affidavit is approved, and a fact on the record holds it' : (PILE_REFUSALS[entry.pile] ?? `its affidavit is in ${entry.pile}`)}. Open it on the Lien desk under Affidavits; the seat drafts only a paper still in To send.` }
   const standing = entry.item
   if (standing && standing.status !== 'drafted') return { ok: false, refused: `${label}: the desk holds an affidavit item in status ${standing.status}, which the seat does not rewrite. Open it on the Lien desk under Affidavits.` }
 

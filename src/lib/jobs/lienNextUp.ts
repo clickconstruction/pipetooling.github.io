@@ -10,7 +10,7 @@
  */
 import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type LienDeskSeverity } from './lienDesk'
 import { lienOtherScreen } from './lienCodeSigner'
-import type { LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
 import { COURTESY_BUTTON, PROMISE_BUTTON, courtesyIsDue, type CourtesyStatus } from './lienCourtesyNotice'
@@ -59,6 +59,8 @@ export type LienNextUpAction =
 export type LienNextUpTarget =
   | { open: 'notices'; jobId: string; pile: LienDeskPile }
   | { open: 'affidavits'; jobId: string }
+  /** The Affidavits list at one pile (punch list #362, step 4): a folded row's press, where the pile's own batch press stands. */
+  | { open: 'affidavit_pile'; pile: 'ready' | 'to_draft' }
   | { open: 'retainage'; jobId: string }
   /** The run window: a GC's ready notices, or (punch list #101) every printed notice, `takeBack` opening on its confirm. */
   | { open: 'run'; gcId: string | null; takeBack?: boolean }
@@ -391,41 +393,47 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
   for (const e of input.affidavits) {
     const base = { kind: 'affidavit' as const, jobId: e.jobId, gcId: e.gcCustomerId, title: input.jobTitle(e.jobId), dueOn: e.deadline || null, daysLeft: e.deadline ? e.daysLeft : null, severity: e.severity, target: { open: 'affidavits', jobId: e.jobId } as LienNextUpTarget }
     const key = `affidavit:${e.jobId}`
+    // A paper a fact holds, by that fact (the body of *Needs the property facts*). `approved` (punch list #335) is a paper
+    // a gate closed on after its approval: it sits in Held, the row still asks the one question, and says the approval stands.
+    const pushHold = (approved: boolean) => {
+      const stands = approved ? ' The approval stands.' : ''
+      const lead = approved ? 'Affidavit approved, held · ' : 'Affidavit · '
+      // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
+      const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
+      if (failing.length === 1 && failing[0] === 'notice') {
+        // Where that notice stands (`lienAffidavitNoticeStanding.ts`, v2.7457): the row says it, and the press goes to the step
+        // that is really next. A notice already approved is printed and mailed from the run, never *sent first* again.
+        const notice = input.notices.find((n) => n.jobId === e.jobId) ?? null
+        const found = lienAffidavitNoticeStanding(e, notice)
+        const standing = lienAffidavitNoticeWaits(found) ? found : 'late'
+        const words = lienAffidavitNoticeWords(standing, { leader: input.leaderName?.(e.jobId) })
+        const pane: LienNextUpTarget = { open: 'notices', jobId: e.jobId, pile: standing === 'late' ? 'missed' : lienAffidavitNoticePile(notice) }
+        const press: { button: string | null; target: LienNextUpTarget } =
+          standing === 'approved'
+            ? { button: office ? BUTTON.send : null, target: notice?.gcCustomerId ? { open: 'run', gcId: notice.gcCustomerId } : pane }
+            : standing === 'printed'
+              ? { button: office ? BUTTON.record_mailing : null, target: { open: 'run', gcId: null } }
+              : standing === 'late'
+                ? { button: office ? BUTTON.send_notice : null, target: pane }
+                : { button: canAct ? 'Open the notice' : null, target: pane }
+        push({ ...base, key, sub: `${lead}${words.sub}`, detail: `${words.detail}${stands}`, action: 'send_notice', ...press })
+      }
+      // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
+      // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
+      else if (failing.includes('public_owner')) push({ ...base, key, sub: `${lead}public property, no lien attaches. Ask the attorney about the bond`, detail: 'Public property, no lien attaches. Ask the attorney about the bond.', action: 'fix_property', button: null })
+      else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: `${lead}the general contractor has no address on file`, detail: `The general contractor has no address on file.${stands}`, action: 'fix_property', button: canAct ? 'Add the address' : null })
+      else {
+        // The hold by name (v2.7372, punch list #362 step 3): the one fact the affidavit waits on, in `gateAct`'s words, on
+        // the row and on its button. Until then every hold read *the property record is not complete*, whatever the gate.
+        const hold = lienGateHoldWords(failing)
+        push({ ...base, key, sub: `${lead}${hold.sub}`, detail: `${hold.detail}${stands}`, action: 'fix_property', button: canAct ? hold.button : null })
+      }
+    }
     switch (e.pile) {
       case 'needs_property':
-      case 'needs_notice': {
-        // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
-        const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
-        if (failing.length === 1 && failing[0] === 'notice') {
-          // Where that notice stands (`lienAffidavitNoticeStanding.ts`): the row says it, and the press goes to the step that
-          // is really next. A notice already approved is printed and mailed from the run, never *sent first* again.
-          const notice = input.notices.find((n) => n.jobId === e.jobId) ?? null
-          const found = lienAffidavitNoticeStanding(e, notice)
-          const standing = lienAffidavitNoticeWaits(found) ? found : 'late'
-          const words = lienAffidavitNoticeWords(standing, { leader: input.leaderName?.(e.jobId) })
-          const pane: LienNextUpTarget = { open: 'notices', jobId: e.jobId, pile: standing === 'late' ? 'missed' : lienAffidavitNoticePile(notice) }
-          const press: { button: string | null; target: LienNextUpTarget } =
-            standing === 'approved'
-              ? { button: office ? BUTTON.send : null, target: notice?.gcCustomerId ? { open: 'run', gcId: notice.gcCustomerId } : pane }
-              : standing === 'printed'
-                ? { button: office ? BUTTON.record_mailing : null, target: { open: 'run', gcId: null } }
-                : standing === 'late'
-                  ? { button: office ? BUTTON.send_notice : null, target: pane }
-                  : { button: canAct ? 'Open the notice' : null, target: pane }
-          push({ ...base, key, sub: `Affidavit · ${words.sub}`, detail: words.detail, action: 'send_notice', ...press })
-        }
-        // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
-        // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
-        else if (failing.includes('public_owner')) push({ ...base, key, sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', detail: 'Public property, no lien attaches. Ask the attorney about the bond.', action: 'fix_property', button: null })
-        else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: 'Affidavit · the general contractor has no address on file', detail: 'The general contractor has no address on file.', action: 'fix_property', button: canAct ? 'Add the address' : null })
-        else {
-          // The hold by name (v2.7372, punch list #362 step 3): the one fact the affidavit waits on, in `gateAct`'s words, on
-          // the row and on its button. Until then every hold read *the property record is not complete*, whatever the gate.
-          const hold = lienGateHoldWords(failing)
-          push({ ...base, key, sub: `Affidavit · ${hold.sub}`, detail: hold.detail, action: 'fix_property', button: canAct ? hold.button : null })
-        }
+      case 'needs_notice':
+        pushHold(false)
         break
-      }
       case 'to_draft':
         push({ ...base, key, sub: 'Affidavit to send', detail: '', action: 'draft', button: canAct ? 'Open the affidavit' : null })
         break
@@ -438,7 +446,9 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         push({ ...base, key, sub: 'Affidavit approved · ready to file', detail: '', action: 'file_affidavit', button: office ? BUTTON.file_affidavit : null })
         break
       case 'held':
-        push({ ...base, key, sub: 'Affidavit held', detail: '', action: 'review_hold' })
+        // Held by a gate that closed after the approval (punch list #335): the gate's question and its door. Held by the leader: his hold to review.
+        if (lienAffidavitGateHeld(e)) pushHold(true)
+        else push({ ...base, key, sub: 'Affidavit held', detail: '', action: 'review_hold' })
         break
       case 'filed':
       case 'missed':

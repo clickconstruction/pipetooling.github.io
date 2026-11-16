@@ -98,7 +98,7 @@ export type MaterialsJobAccountsTabProps = {
   /** Render gate — stays mounted across tab switches so loaded data survives. */
   active: boolean
   myRole: UserRole | null
-  /** Opens the Supply Houses tab; with a house id, opens that house's detail (Make Payment lives there). */
+  /** Opens the Supply Houses tab; with a house id, opens that house's detail (Record a payment lives there). */
   onOpenSupplyHouse: (houseId: string | null) => void
   /** The signed-in person's name: kept beside what a house told us (v2.4440). */
   authName?: string
@@ -984,7 +984,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                                 <div style={{ textAlign: 'right' }}>
                                   <button
                                     type="button"
-                                    title="Open this house on the Supply Houses tab — invoices and Make Payment live there"
+                                    title="Open this house on the Supply Houses tab — invoices and Record a payment live there"
                                     onClick={() => onOpenSupplyHouse(group.supplyHouseId)}
                                   >
                                     Open house

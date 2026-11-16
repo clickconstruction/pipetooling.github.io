@@ -217,13 +217,21 @@ function unsentPile(ready: boolean, noticeAlone: boolean): LienAffidavitPile {
   return ready ? 'to_draft' : noticeAlone ? 'needs_notice' : 'needs_property'
 }
 
+/**
+ * The pile a paper is shown in. An approved paper is **Ready to file** only while every gate is clear (punch list
+ * #335, the owner's call of 2026-11-14): when a fact comes to hold it after the approval (the homestead question
+ * unanswered, a homestead, a public owner, an address gone), it moves to **Held** with the gate's reason, as the print
+ * bar already left it out. Only the pile moves. The stored status stays `approved`, so once the gate is answered the
+ * paper is back in Ready to file by itself and the leader's approval stands (his call of 2026-11-16).
+ * `lienAffidavitGateHeld` tells this hold from the leader's own (`status: 'held'`).
+ */
 function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, daysLeft: number, noticeAlone: boolean): LienAffidavitPile {
   if (item && item.voided_at == null) {
     switch (item.status) {
       case 'awaiting_approval':
         return 'awaiting'
       case 'approved':
-        return 'ready'
+        return ready ? 'ready' : 'held'
       case 'held':
         return 'held'
       case 'sent':
@@ -237,6 +245,20 @@ function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, d
   if (filed) return 'filed'
   if (daysLeft < 0) return 'missed'
   return unsentPile(ready, noticeAlone)
+}
+
+/**
+ * A paper in Held because a gate closed after it was approved (punch list #335), not because the leader held it. Its
+ * door is the gate's, its approval stands, and nothing asks him again. Read off the pile and the stored status, so any
+ * reader that holds an entry's `pile` and `item` can tell the two holds apart.
+ */
+export function lienAffidavitGateHeld(e: { pile: LienAffidavitPile; item: Pick<LienDeskItemRow, 'status'> | null } | null | undefined): boolean {
+  return e?.pile === 'held' && e.item?.status === 'approved'
+}
+
+/** The first closed gate of a paper a gate holds, or null: the one fact to answer. */
+export function lienAffidavitHoldingGate(e: Pick<LienAffidavitEntry, 'pile' | 'item' | 'gates'> | null | undefined): LienAffidavitGate | null {
+  return e && lienAffidavitGateHeld(e) ? (e.gates.find((g) => !g.ok) ?? null) : null
 }
 
 export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string): LienAffidavitQueue {
