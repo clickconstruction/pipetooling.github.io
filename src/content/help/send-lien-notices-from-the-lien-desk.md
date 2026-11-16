@@ -217,17 +217,17 @@ The record lands on every one of those jobs, and the desk stops asking for them.
 
 ## A notice already on record
 
-Sometimes the paper that went is already on record. One paper went for several jobs at a property. It was recorded on some of those jobs and not on this one. Or the desk moved this job's money to a later month after the paper went. The desk then keeps asking this job for a notice. Do not print and mail a second one. Press **Already mailed? Record it…** on the notice.
+Sometimes the paper that went is already on record. One paper went for several jobs at a property. The paper was recorded on some of those jobs and not on this one. Or the desk moved this job's money to a later month after the paper went. The desk then keeps asking this job for a notice. Do not print and mail a second one. Press **Already mailed? Record it…** on the notice.
 
 When the property has a notice on record, the step first asks **Which paper went?** The list shows each paper on record at this property under the same contractor. Each line gives the day, how it went and its total. Under that it names the jobs, the months and who received it. Pick the paper. Then tick the month it stands for on this job.
 
 The desk checks the paper against the job. A green line says the owner of record and the contractor match. A red line stops the record and says why. A paper that went before the month began is one. An amber line is a warning. The month may not be printed on the paper. The copy to the contractor may not be on record. With a warning, type why the paper stands for the month. The reason stays on the record with your name and the day.
 
-Press the button, which reads like {{button:amber|Apply the Sep 22 notice to job 4107 ▸}}. One record is written on this job. It points at the paper and keeps the paper's day and mail number. The paper's own record does not change. The month reads as noticed, and the affidavit's notice line gives the paper's day. The notice that was waiting is set aside and not mailed. It keeps its approval and signature.
+Press the button, which reads like {{button:amber|Apply the Sep 22 notice to job 4107 ▸}}. One record is written on this job. The record points at the paper and keeps the paper's day and mail number. The paper's own record does not change. The month reads as noticed, and the affidavit's notice line gives the paper's day. The notice that was waiting is set aside and not mailed. The waiting notice keeps its approval and signature.
 
 To take it back, open the job's Lien window. Under **Filings on this job** the record reads *as part of the notice on job 4101*. Press **Undo**, then **Confirm undo**. The record is voided, and the waiting notice returns to the desk as it was.
 
-Is the paper not on the list? Press **It is not on this list. Record it now ›**. That opens the step for a notice sent by hand. A paper that went to another property is never on the list. A notice goes to one owner about one property. Whether one paper can stand for several jobs is a question for the attorney.
+Is the paper not on the list? Press **It is not on this list. Record it now ›**. The link opens the step for a notice sent by hand. A paper that went to another property is never on the list. A notice goes to one owner about one property. Whether one paper can stand for several jobs is a question for the attorney.
 
 ## A month nobody sends
 
