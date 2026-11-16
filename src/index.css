@@ -4255,6 +4255,23 @@ body.my-time-boundary-dragging {
 .lienMonthsHead strong { font-size: 0.875rem; }
 .lienMonthsHead span, .lienMonthsNote, .lienMonthsEmpty { font-size: 0.75rem; color: var(--text-muted); }
 .lienMonthsBody { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem 1.1rem; align-items: stretch; }
+/* A closed month is one line where the card has room (Taunya's ask of 2026-11-15): the hours sit beside the month, and the
+   window's chips, its noted line, its loss words and its press share a row. The loss words are the same on every missed
+   month, so they give way first, cut with an ellipsis; a press that does not fit drops under instead of leaving the card. */
+.lienMonthOne > div { display: inline; }
+.lienMonthOne .lienMonthName { margin-right: 8px; white-space: nowrap; }
+.lienMonthOne .lienMonthWorked { white-space: nowrap; }
+.lienMonthClosed { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
+.lienMonthClosed > * { flex: none; }
+/* One clamped line, not nowrap: a nowrap sentence would hold the column to its whole width and push the table out of the card. */
+.lienMonthClosed > .lienMonthClosedTail { flex: 1 1 0; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; overflow-wrap: anywhere; }
+@container lien-months (max-width: 560px) {
+  /* A phone: no room for one line, so the month stacks as an open month does and the words wrap whole. */
+  .lienMonthOne > div { display: block; }
+  .lienMonthOne .lienMonthName { margin-right: 0; }
+  .lienMonthOne .lienMonthWorked { white-space: normal; }
+  .lienMonthClosed > .lienMonthClosedTail { flex-basis: 100%; display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow-wrap: normal; }
+}
 .lienMonthsCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.4rem; min-width: 0; }
 .lienMonthCard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 0.55rem; align-items: start; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); cursor: pointer; }
 .lienMonthCard input { grid-row: 1 / span 3; margin-top: 0.2rem; }
