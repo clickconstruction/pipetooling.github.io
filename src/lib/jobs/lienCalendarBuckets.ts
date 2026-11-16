@@ -3,6 +3,7 @@ import { formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import { daysBetweenYmd } from './lienPayRunway'
 import { LIEN_DESK_LEAD_DAYS } from './lienDesk'
+import { lienRunActLabel } from './lienRunWords'
 
 /**
  * The Lien calendar's buckets (v2.4340): Overdue, This month, Next month, Later.
@@ -145,8 +146,8 @@ function wordUnderBar(g: LienCalendarGroup, ymd: string | null): LienCalendarGro
   if (!due.length || due.some((j) => j.runway.noticeByYmd !== ymd)) return g
   const owed = due.filter((j) => !j.runway.noticeMailed)
   const mailed = due.length - owed.length
-  // v2.5522: the printed ones say so — "send 2 notices · 10 in the mail", or just "record 10 mailings".
-  if (owed.length === 0) return { ...g, word: mailed === 1 ? 'record the mailing' : `record ${mailed} mailings` }
+  // v2.5522: the printed ones say so — "send 2 notices · 10 in the mail", or just "enter mail numbers · 10" (v2.7448; "record 10 mailings" until then).
+  if (owed.length === 0) return { ...g, word: lienRunActLabel('record', mailed > 1 ? mailed : null).toLowerCase() }
   const send = owed.length === 1 ? 'send the notice' : `send ${owed.length} notices`
   return { ...g, word: mailed ? `${send} · ${mailed} in the mail` : send }
 }
@@ -207,7 +208,7 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
   const draftYmd = draftable.map((j) => j.runway.noticeByYmd).sort()[0]
   const draft = key !== 'overdue' && draftable.length && draftYmd ? { ymd: draftYmd, jobIds: draftable.map((j) => j.jobId), label: draftLabel(draftable.length) } : null
   const mailedJobs = noticeJobs.filter((j) => j.runway.noticeMailed)
-  const record = key !== 'overdue' && mailedJobs.length ? { jobIds: mailedJobs.map((j) => j.jobId), label: `Record the mailing${mailedJobs.length > 1 ? ` · ${mailedJobs.length}` : ''}` } : null
+  const record = key !== 'overdue' && mailedJobs.length ? { jobIds: mailedJobs.map((j) => j.jobId), label: lienRunActLabel('record', mailedJobs.length > 1 ? mailedJobs.length : null) } : null
 
   const span =
     key === 'overdue'

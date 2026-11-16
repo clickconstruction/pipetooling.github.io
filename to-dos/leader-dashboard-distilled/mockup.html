@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#365 · The leader's Dashboard, distilled</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: a review page. First the stack the leader scrolls today, tagged by who it needs.
+     Then phones side by side: the recommended short Dashboard, then two alternatives.
+     Colours are the app's own token names and values (src/index.css), light then dark. */
+  :root {
+    --bg-page:#f0f2f5; --surface:#ffffff; --bg-subtle:#f9fafb; --bg-muted:#f3f4f6;
+    --text-base:#1a1a1a; --text-700:#374151; --text-muted:#6b7280;
+    --border:#cfd4db; --border-strong:#aab2bd;
+    --bg-blue-tint:#eff6ff; --text-blue-700:#1d4ed8;
+    --bg-red-tint:#fef2f2; --text-red-700:#b91c1c;
+    --bg-amber-tint:#fffbeb; --text-amber-800:#92400e;
+    --bg-green-tint:#f0fdf4; --text-green-700:#15803d;
+    --press:#2563eb; --press-words:#ffffff; --bezel:#1f2937;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg-page:#111827; --surface:#1f2937; --bg-subtle:#18212f; --bg-muted:#374151;
+    --text-base:#f3f4f6; --text-700:#d1d5db; --text-muted:#9ca3af;
+    --border:#374151; --border-strong:#4b5563;
+    --bg-blue-tint:#1e3358; --text-blue-700:#93c5fd;
+    --bg-red-tint:#3b1a1a; --text-red-700:#f87171;
+    --bg-amber-tint:#3a2f11; --text-amber-800:#fcd34d;
+    --bg-green-tint:#12301f; --text-green-700:#4ade80;
+    --bezel:#000; color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --bg-page:#111827; --surface:#1f2937; --bg-subtle:#18212f; --bg-muted:#374151;
+    --text-base:#f3f4f6; --text-700:#d1d5db; --text-muted:#9ca3af;
+    --border:#374151; --border-strong:#4b5563;
+    --bg-blue-tint:#1e3358; --text-blue-700:#93c5fd;
+    --bg-red-tint:#3b1a1a; --text-red-700:#f87171;
+    --bg-amber-tint:#3a2f11; --text-amber-800:#fcd34d;
+    --bg-green-tint:#12301f; --text-green-700:#4ade80;
+    --bezel:#000; color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 var(--font); color:var(--text-base); background:var(--bg-page); }
+  main { max-width:1180px; margin:0 auto; padding-block:22px 72px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+  h1 { font-size:26px; line-height:1.2; margin:0 0 6px; text-wrap:balance; }
+  h2 { font-size:20px; line-height:1.25; margin:48px 0 4px; text-wrap:balance; }
+  h2 small { font-weight:500; color:var(--text-muted); font-size:14px; margin-left:6px; white-space:nowrap; }
+  p { margin:0 0 10px; max-width:68ch; }
+  .lede { color:var(--text-muted); }
+  .made { display:inline-block; font-size:13px; color:var(--text-amber-800); background:var(--bg-amber-tint); border-radius:6px; padding:3px 9px; margin:4px 0 0; }
+
+  /* the three piles */
+  .tag { display:inline-flex; align-items:center; font-size:11.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; border-radius:999px; padding:2px 9px; white-space:nowrap; }
+  .tag.his { background:var(--bg-blue-tint); color:var(--text-blue-700); }
+  .tag.off { background:var(--bg-muted); color:var(--text-700); }
+  .tag.non { background:transparent; color:var(--text-muted); border:1px dashed var(--border-strong); }
+  .key { display:flex; flex-wrap:wrap; gap:8px 18px; margin:10px 0 14px; font-size:14px; color:var(--text-700); }
+  .key span { display:inline-flex; gap:7px; align-items:center; }
+  .stack { columns:330px; column-gap:22px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:4px 14px; }
+  .stack div { break-inside:avoid; display:grid; grid-template-columns:26px minmax(0,1fr) auto; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--border); font-size:14px; min-width:0; }
+  .stack div i { font-style:normal; color:var(--text-muted); font-variant-numeric:tabular-nums; font-size:12.5px; }
+  .stack div b { font-weight:600; }
+  .stack div b small { display:block; font-weight:400; color:var(--text-muted); font-size:12.5px; line-height:1.3; }
+  .tally { display:flex; flex-wrap:wrap; gap:10px; margin:14px 0 0; }
+  .tally div { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 14px; min-width:150px; flex:1; }
+  .tally b { display:block; font-size:26px; line-height:1.1; font-variant-numeric:tabular-nums; }
+  .tally span { font-size:13px; color:var(--text-muted); }
+
+  /* phones */
+  .walk { display:flex; flex-wrap:wrap; gap:26px 22px; align-items:flex-start; margin-top:14px; }
+  figure { margin:0; width:min(340px, 100%); }
+  figcaption { font-size:13px; color:var(--text-muted); margin:0 0 7px; min-height:40px; }
+  figcaption b { display:block; color:var(--text-base); font-size:14.5px; }
+  .ph { border:6px solid var(--bezel); border-radius:28px; overflow:hidden; background:var(--bg-page); display:flex; flex-direction:column; min-height:640px; }
+  .top { display:flex; align-items:center; gap:10px; height:46px; padding:0 14px; background:var(--surface); border-bottom:1px solid var(--border); font-weight:700; font-size:16px; flex:none; }
+  .top span { flex:1; } .top em { font-style:normal; font-weight:500; font-size:13px; color:var(--text-muted); }
+  .body { flex:1; padding:12px 12px 14px; display:flex; flex-direction:column; gap:12px; min-height:0; }
+  .tabs { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; text-align:center; font-size:11px; color:var(--text-muted); background:var(--surface); border-top:1px solid var(--border); padding:7px 0 9px; flex:none; }
+  .tabs span::before { content:""; display:block; width:20px; height:15px; border-radius:4px; background:var(--border-strong); margin:0 auto 3px; }
+  .tabs .on { color:var(--text-blue-700); font-weight:700; } .tabs .on::before { background:var(--press); }
+  .hi { font-size:20px; font-weight:700; line-height:1.2; margin:2px 2px 0; }
+  .hi small { display:block; font-size:13.5px; font-weight:400; color:var(--text-muted); margin-top:2px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .card > h3 { margin:0; padding:9px 12px; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-700); background:var(--bg-subtle); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; }
+  .card.you > h3 { background:var(--bg-blue-tint); color:var(--text-blue-700); }
+  .it { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; align-items:center; padding:11px 12px; border-bottom:1px solid var(--border); min-height:60px; }
+  .it:last-child { border-bottom:none; }
+  .it b { font-size:15.5px; line-height:1.25; }
+  .it small { grid-column:1; font-size:13px; color:var(--text-muted); line-height:1.3; }
+  .it .due { color:var(--text-red-700); font-weight:600; }
+  .btn { grid-row:1 / span 2; grid-column:2; display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:76px; padding:0 14px; border-radius:10px; background:var(--press); color:var(--press-words); font-weight:700; font-size:14.5px; white-space:nowrap; }
+  .btn.ghost { background:var(--surface); color:var(--text-700); border:1px solid var(--border-strong); font-weight:600; }
+  .btn.wide { grid-row:auto; grid-column:1 / -1; width:100%; min-height:50px; font-size:16px; }
+  .quiet { font-size:13.5px; color:var(--text-muted); margin:0 4px; }
+  .quiet b { color:var(--text-700); }
+  .door { display:flex; align-items:center; justify-content:space-between; min-height:50px; padding:0 14px; border-radius:12px; border:1px solid var(--border-strong); background:var(--surface); font-weight:650; font-size:15.5px; margin-top:auto; }
+  .door span { color:var(--text-muted); font-weight:400; }
+  .none { text-align:center; padding:26px 16px; }
+  .none b { display:block; font-size:17px; } .none span { font-size:13.5px; color:var(--text-muted); }
+  .ok { width:44px; height:44px; border-radius:50%; background:var(--bg-green-tint); color:var(--text-green-700); display:grid; place-items:center; font-size:22px; font-weight:700; margin:0 auto 8px; }
+  .paper { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:12.5px; color:var(--text-700); line-height:1.45; }
+  .paper u { display:block; height:7px; background:var(--bg-muted); border-radius:3px; margin:6px 0; text-decoration:none; }
+  .paper u.s { width:62%; }
+  .fold { display:flex; justify-content:space-between; gap:10px; align-items:center; min-height:48px; padding:0 12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-size:14.5px; font-weight:650; }
+  .fold span { font-weight:400; color:var(--text-muted); font-size:13px; text-align:right; min-width:0; }
+  .body.tight { gap:7px; }
+  .sms { align-self:flex-start; max-width:86%; background:var(--bg-muted); border-radius:16px 16px 16px 4px; padding:9px 12px; font-size:14.5px; line-height:1.35; }
+  .sms a { color:var(--text-blue-700); text-decoration:underline; }
+  .when { text-align:center; font-size:12px; color:var(--text-muted); }
+  .note { font-size:13px; color:var(--text-muted); margin:8px 2px 0; }
+
+  /* the setting and the compare table */
+  .set { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; max-width:560px; margin-top:14px; }
+  .set h3 { margin:0 0 2px; font-size:15.5px; } .set p { font-size:13.5px; color:var(--text-muted); margin:0 0 10px; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--border-strong); border-radius:10px; overflow:hidden; }
+  .seg span { min-height:46px; display:grid; place-items:center; text-align:center; font-weight:650; font-size:14.5px; line-height:1.2; padding:4px 8px; color:var(--text-700); }
+  .seg span small { display:block; font-weight:400; font-size:12px; color:inherit; opacity:.85; }
+  .seg .on { background:var(--press); color:var(--press-words); }
+  .scrollx { overflow-x:auto; margin-top:12px; }
+  table { border-collapse:collapse; width:100%; min-width:720px; font-size:14px; background:var(--surface); border:1px solid var(--border); }
+  th, td { text-align:left; padding:9px 11px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { background:var(--bg-subtle); font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); }
+  tr.pick td:first-child { box-shadow:inset 4px 0 0 var(--press); font-weight:700; }
+  ol.q { max-width:68ch; padding-left:22px; margin:10px 0 0; } ol.q li { margin:0 0 8px; }
+</style>
+</head><body>
+
+<main>
+  <h1>The leader's Dashboard, cut down to what only he can do</h1>
+  <p class="lede">A leader who uses the app only on a phone meets every section the office set meets, all open. This page shows that stack sorted by who each piece really needs, then a short Dashboard for him, with two other ways to get there.</p>
+  <span class="made">Every name, job and amount on this page is made up.</span>
+
+  <h2>What he scrolls today <small>375 px wide, top to bottom</small></h2>
+  <p>The phone folds that shorten this page for the office roles do not apply to the leader's role. So each section below is open, in this order. Sections marked <em>when there is something</em> hide on a quiet day.</p>
+  <div class="key">
+    <span><span class="tag his">His alone</span> his signature, approval, word or own day</span>
+    <span><span class="tag off">Office can</span> an assistant does it, or already does</span>
+    <span><span class="tag non">Nobody needs</span> he does not need to see it</span>
+  </div>
+  <div class="stack">
+    <div><i>1</i><b>Section chips<small>15 chips that float over the page</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>2</i><b>Trial helpers<small>His verdict on a helper he led today</small></b><span class="tag his">His alone</span></div>
+    <div><i>3</i><b>Turn on Job Mode<small>A first-run card, until dismissed</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>4</i><b>Tally square<small>His card purchases with no job</small></b><span class="tag off">Office can</span></div>
+    <div><i>5</i><b>Clock in<small>His hours are written from the schedule</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>6</i><b>Job Report square<small>A report from the field</small></b><span class="tag off">Office can</span></div>
+    <div><i>7</i><b>The customer's words<small>A new 4 or 5 star rating</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>8</i><b>Your week<small>Blank until the office picks a signal</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>9</i><b>Your record<small>His open sessions and missing reports</small></b><span class="tag off">Office can</span></div>
+    <div><i>10</i><b>My Schedule<small>Today and tomorrow, always shown</small></b><span class="tag his">His alone</span></div>
+    <div><i>11</i><b>Needs you<small>49 sources of lines. 5 lines are his alone</small></b><span class="tag his">His alone</span></div>
+    <div><i>12</i><b>Lien desk strip<small>Inside Needs you, the Board's tiles</small></b><span class="tag off">Office can</span></div>
+    <div><i>13</i><b>The office's round<small>Where the Quickfill round stands</small></b><span class="tag off">Office can</span></div>
+    <div><i>14</i><b>Accounts Receivable<small>Total, aging bar, over 30 days</small></b><span class="tag off">Office can</span></div>
+    <div><i>15</i><b>Accounts Payable<small>Total, aging bar, over 15 days</small></b><span class="tag off">Office can</span></div>
+    <div><i>16</i><b>Not Billed Out<small>Work done and not yet billed</small></b><span class="tag off">Office can</span></div>
+    <div><i>17</i><b>Overhead<small>Only with pay access</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>18</i><b>Money in<small>A strip, shut until pressed</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>19</i><b>Projects strip<small>Shut until pressed</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>20</i><b>Quick buttons and pins<small>9 buttons to make a Job, Bid, Part and more</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>21</i><b>Rate your crew<small>When a review round is on</small></b><span class="tag his">His alone</span></div>
+    <div><i>22</i><b>Who is clocked in<small>With approve, assign and edit</small></b><span class="tag off">Office can</span></div>
+    <div><i>23</i><b>Pending hours banner<small>Sessions that wait on approval</small></b><span class="tag off">Office can</span></div>
+    <div><i>24</i><b>Rejected clock sessions<small>Only with pay approval</small></b><span class="tag off">Office can</span></div>
+    <div><i>25</i><b>Crew Day<small>The whole company's day</small></b><span class="tag off">Office can</span></div>
+    <div><i>26</i><b>My Inbox<small>Tasks due today and overdue</small></b><span class="tag off">Office can</span></div>
+    <div><i>27</i><b>Your people<small>Open one-off cards on his people</small></b><span class="tag off">Office can</span></div>
+    <div><i>28</i><b>Teams Inbox<small>Dispatch and estimating requests</small></b><span class="tag off">Office can</span></div>
+    <div><i>29</i><b>My Bids<small>A list that folds</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>30</i><b>Recent Reports<small>Field reports as they come in</small></b><span class="tag off">Office can</span></div>
+    <div><i>31</i><b>Your jobs on a map<small>Can be hidden on this device</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>32</i><b>Assigned Jobs<small>With Send to Billing</small></b><span class="tag off">Office can</span></div>
+    <div><i>33</i><b>Ready to Bill<small>Billing pipeline, first half</small></b><span class="tag off">Office can</span></div>
+    <div><i>34</i><b>Billed Waiting for Payment<small>Billing pipeline, second half</small></b><span class="tag off">Office can</span></div>
+    <div><i>35</i><b>The lien month<small>Where the month's lien work stands</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>36</i><b>Upcoming inspections<small>The next 3 days</small></b><span class="tag off">Office can</span></div>
+    <div><i>37</i><b>Project stages<small>Assigned and subscribed</small></b><span class="tag off">Office can</span></div>
+    <div><i>38</i><b>Partner ledger and jobs<small>Only with a partnership</small></b><span class="tag his">His alone</span></div>
+    <div><i>39</i><b>HR Report<small>A form that is always there</small></b><span class="tag his">His alone</span></div>
+    <div><i>40</i><b>My Team<small>His people and their hours</small></b><span class="tag off">Office can</span></div>
+    <div><i>41</i><b>My crew<small>Job days he supervised</small></b><span class="tag off">Office can</span></div>
+    <div><i>42</i><b>My Time<small>His own week of hours</small></b><span class="tag non">Nobody needs</span></div>
+    <div><i>43</i><b>My Vehicle<small>Only if he holds one</small></b><span class="tag off">Office can</span></div>
+    <div><i>44</i><b>Training<small>When a course is required</small></b><span class="tag his">His alone</span></div>
+  </div>
+  <div class="tally">
+    <div><b>44</b><span>cards, strips and squares he can meet on the page</span></div>
+    <div><b>7</b><span>are his alone, and four of those show only now and then</span></div>
+    <div><b>24</b><span>the office can do, or already does</span></div>
+    <div><b>13</b><span>nobody needs him to see</span></div>
+  </div>
+  <p class="note">Around the page he also has a 5 tab bar, 14 menu entries, 17 gear entries and 6 header icons.</p>
+
+  <h2>Recommended: the short Dashboard <small>direction B</small></h2>
+  <p>One list of what waits on him alone. One line for his day. One door to everything else. The office sees the same list from its side, so it can prepare each paper and remind him.</p>
+  <div class="walk">
+    <figure>
+      <figcaption><b>1. Something waits on him</b>Each row is a thing only he can do. The button says the act.</figcaption>
+      <div class="ph">
+        <div class="top"><span>ClickTooling</span><em>Mon, Nov 16</em></div>
+        <div class="body">
+          <div class="hi">Morning, Marcus<small>3 things wait on you. Nothing else needs you.</small></div>
+          <div class="card you">
+            <h3><span>Waiting on you</span><span>3</span></h3>
+            <div class="it"><b>Sign 3 lien notices</b><span class="btn">Sign</span><small><span class="due">First goes out Thursday.</span> Dana has them ready.</small></div>
+            <div class="it"><b>Approve the run for Calloway Construction</b><span class="btn">Decide</span><small>4 owners get a notice on your word.</small></div>
+            <div class="it"><b>Dana asked you about Alder Creek Lofts</b><span class="btn">Answer</span><small>"Can the rough-in move to Wednesday?"</small></div>
+          </div>
+          <div class="card">
+            <h3><span>Today</span><span>2 stops</span></h3>
+            <div class="it"><b>8:00 Alder Creek Lofts</b><span class="btn ghost">Map</span><small>1420 Juniper Row. Rough-in inspection at 10.</small></div>
+            <div class="it"><b>1:30 Pine Hollow Clinic</b><span class="btn ghost">Map</span><small>88 Marlow Street. Walk with the GC.</small></div>
+          </div>
+          <p class="quiet">The office is handling <b>23 other things</b>.</p>
+          <div class="door">Everything else <span>›</span></div>
+        </div>
+        <div class="tabs"><span class="on">Home</span><span>Schedule</span><span>Messages</span><span>More</span></div>
+      </div>
+    </figure>
+
+    <figure>
+      <figcaption><b>2. He pressed Sign</b>One paper a screen. The next one loads by itself.</figcaption>
+      <div class="ph">
+        <div class="top"><span>‹ Notice 1 of 3</span><em>Skip</em></div>
+        <div class="body">
+          <div class="hi">Ridgeway Builders<small>Alder Creek Lofts. $12,480 unpaid for September.</small></div>
+          <div class="paper">
+            <b>Notice of unpaid balance</b>
+            <u></u><u></u><u class="s"></u>
+            Goes to the owner and to Ridgeway Builders by certified mail on Thursday.
+            <u></u><u class="s"></u>
+          </div>
+          <p class="quiet">Prepared by <b>Dana</b> on Friday. Read the whole paper with <b>Open the paper</b>.</p>
+          <div class="it" style="padding:0;border:none;margin-top:auto;gap:8px">
+            <span class="btn wide">Sign and approve</span>
+            <span class="btn ghost wide">Send it back to the office</span>
+          </div>
+        </div>
+        <div class="tabs"><span class="on">Home</span><span>Schedule</span><span>Messages</span><span>More</span></div>
+      </div>
+    </figure>
+
+    <figure>
+      <figcaption><b>3. Nothing waits on him</b>Empty is the good state, and the page says so.</figcaption>
+      <div class="ph">
+        <div class="top"><span>ClickTooling</span><em>Tue, Nov 17</em></div>
+        <div class="body">
+          <div class="card"><div class="none"><div class="ok">✓</div><b>Nothing waiting on you</b><span>The office will put it here when your signature or your word is needed.</span></div></div>
+          <div class="card">
+            <h3><span>Today</span><span>1 stop</span></h3>
+            <div class="it"><b>8:00 Marlow Street Duplex</b><span class="btn ghost">Map</span><small>212 Marlow Street. Top out.</small></div>
+          </div>
+          <p class="quiet">The office is handling <b>19 other things</b>.</p>
+          <div class="door">Everything else <span>›</span></div>
+        </div>
+        <div class="tabs"><span class="on">Home</span><span>Schedule</span><span>Messages</span><span>More</span></div>
+      </div>
+    </figure>
+
+    <figure>
+      <figcaption><b>4. He pressed Everything else</b>The door. Each row carries one line, then opens its page.</figcaption>
+      <div class="ph">
+        <div class="top"><span>‹ Everything else</span></div>
+        <div class="body tight">
+          <div class="fold">Money<span>$41,200 over 30 days</span></div>
+          <div class="fold">Crew today<span>9 in, 2 not yet</span></div>
+          <div class="fold">Jobs<span>14 open, 3 ready to bill</span></div>
+          <div class="fold">Lien desk<span>6 on track, 2 at risk</span></div>
+          <div class="fold">Hours<span>5 sessions to approve</span></div>
+          <div class="fold">Bids<span>2 due this week</span></div>
+          <div class="fold">People<span>HR report, your team</span></div>
+          <div class="fold">What the office is handling<span>23</span></div>
+          <div class="door">Open the full Dashboard <span>›</span></div>
+        </div>
+        <div class="tabs"><span class="on">Home</span><span>Schedule</span><span>Messages</span><span>More</span></div>
+      </div>
+    </figure>
+
+    <figure>
+      <figcaption><b>5. The office's side</b>A card on an assistant's Dashboard. Same rows as his list.</figcaption>
+      <div class="ph" style="min-height:0">
+        <div class="top"><span>Dashboard</span><em>Dana</em></div>
+        <div class="body">
+          <div class="card you">
+            <h3><span>Waiting on Marcus</span><span>3</span></h3>
+            <div class="it"><b>3 lien notices to sign</b><span class="btn ghost">Remind</span><small><span class="due">First goes out Thursday.</span> Asked Friday.</small></div>
+            <div class="it"><b>The run for Calloway Construction</b><span class="btn ghost">Remind</span><small>Asked today.</small></div>
+            <div class="it"><b>Your question on Alder Creek Lofts</b><span class="btn ghost">Remind</span><small>Asked today.</small></div>
+            <div class="it"><span class="btn wide">Marcus is here, sign with his code</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="note">The code, his pen on paper and his spoken word already exist on the Lien desk. This card only gathers them.</p>
+    </figure>
+  </div>
+
+  <div class="set">
+    <h3>Dashboard view</h3>
+    <p>One setting per person. He can change it, and so can the office from his desk on People. A leader who wants everything keeps Full.</p>
+    <div class="seg"><span class="on">Short<small>What waits on you, your day, one door</small></span><span>Full<small>Every section, as today</small></span></div>
+  </div>
+
+  <h2>Alternative: fold what is there <small>direction A</small></h2>
+  <p>Keep today's Dashboard and give the leader the folds the office roles already have. Needs you shows his lines first. Everything else shuts to one line each.</p>
+  <div class="walk">
+    <figure>
+      <figcaption><b>The same page, folded</b>Smallest build. Still a long list of bars.</figcaption>
+      <div class="ph">
+        <div class="top"><span>Dashboard</span><em>Mon, Nov 16</em></div>
+        <div class="body tight">
+          <div class="card you">
+            <h3><span>Needs you</span><span>3 yours, 23 the office's</span></h3>
+            <div class="it"><b>Sign 3 lien notices</b><span class="btn">Sign</span><small><span class="due">First goes out Thursday.</span></small></div>
+            <div class="it"><b>Approve the run for Calloway Construction</b><span class="btn">Decide</span><small>4 owners get a notice.</small></div>
+          </div>
+          <div class="fold">My Schedule<span>2 stops today</span></div>
+          <div class="fold">Money<span>$41,200 over 30 days</span></div>
+          <div class="fold">Who's in<span>9 clocked in</span></div>
+          <div class="fold">Crew Day<span>11 people, 6 jobs</span></div>
+          <div class="fold">My Inbox<span>2 due today</span></div>
+          <div class="fold">Teams Inbox<span>4 open</span></div>
+          <div class="fold">Recent reports<span>3 new</span></div>
+          <div class="fold">Jobs and billing<span>3 ready to bill</span></div>
+          <div class="fold">My Team<span>5 sessions pending</span></div>
+          <div class="fold">More sections<span>8</span></div>
+        </div>
+        <div class="tabs"><span class="on">Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+      </div>
+    </figure>
+  </div>
+
+  <h2>Alternative: bring it to him <small>direction C</small></h2>
+  <p>He does not open a Dashboard at all. When the office has a paper ready, a text takes him straight to the signing screen. One text a day at most, at an hour he picks.</p>
+  <div class="walk">
+    <figure>
+      <figcaption><b>A text, then one screen</b>The link lands on screen 2 above.</figcaption>
+      <div class="ph" style="min-height:0">
+        <div class="top"><span>Messages</span><em>ClickTooling</em></div>
+        <div class="body">
+          <div class="when">Today 7:30 AM</div>
+          <div class="sms">Marcus, 3 lien notices need your signature by Thursday. Dana has them ready. <a>Sign them now</a></div>
+          <div class="when">Thursday 7:30 AM</div>
+          <div class="sms">1 notice still waits and goes out today. <a>Sign it now</a></div>
+        </div>
+      </div>
+      <p class="note">Works best on top of the short Dashboard, since the link needs a place to land.</p>
+    </figure>
+  </div>
+
+  <h2>The three, side by side</h2>
+  <div class="scrollx">
+    <table>
+      <tr><th>Direction</th><th>What he sees</th><th>Build</th><th>What it risks hiding</th></tr>
+      <tr><td>A. Fold what is there</td><td>The same page as about 12 one-line bars, his lines first</td><td>Small. One role rule and one filter. No database change if it follows the role.</td><td>Little. But it is still a list of everything, and he is the reader who stopped reading lists.</td></tr>
+      <tr class="pick"><td>B. The short Dashboard</td><td>His list, his day, one door</td><td>Medium, as 3 or 4 small PRs. One new setting needs a database column the office may set for a person.</td><td>Money over 30 days, crew problems and hours to approve leave his first screen. Someone in the office must own each.</td></tr>
+      <tr><td>C. Bring it to him</td><td>A text, then one signing screen</td><td>Medium to large. A daily send, a schedule and the reminder press mended.</td><td>Texts can turn into the next thing he ignores. It leans on the office to prepare every paper.</td></tr>
+    </table>
+  </div>
+
+  <h2>Calls only the owner can make</h2>
+  <ol class="q">
+    <li>Which lines stay his alone? The rules name five: approve a notice, sign a notice, approve a GC's run, sign a waiver, review the line budgets.</li>
+    <li>May he sign several notices with one press after reading the list, or one paper at a time?</li>
+    <li>Who owns what leaves his screen: money over 30 days, hours to approve, bank label approvals?</li>
+    <li>Does his day belong on the page, or is the list of what waits on him the whole page?</li>
+    <li>Which four tabs sit at the bottom of his phone?</li>
+    <li>Should a text reach him when a paper is ready, and at what hour?</li>
+    <li>Is Short the default for every leader, or set person by person?</li>
+  </ol>
+</main>
+</body></html>

@@ -212,13 +212,13 @@ describe('DashboardNeedsYouCard: While you were off (v2.6060, punch list #141 PR
     const dots = [
       { key: 'by_day' as const, figure: '21', words: 'by tomorrow', tone: 'red' as const },
       { key: 'waiting' as const, figure: '3', words: 'waiting on Malachi', tone: 'violet' as const },
-      { key: 'in_mail' as const, figure: '7', words: 'in the mail', tone: 'amber' as const },
+      { key: 'in_mail' as const, figure: '7', words: 'to print and mail', tone: 'amber' as const },
       { key: 'unpaid' as const, figure: '$202,575', words: 'unpaid on the desk', tone: 'quiet' as const },
     ]
     render(<DashboardNeedsYouCard userId="u1" role="assistant" items={ITEMS} onAction={() => {}} lienBoardStrip={dots} onOpenBoard={onOpenBoard} />)
     const strip = screen.getByRole('button', { name: /Lien desk.*The Board/ })
     expect(strip.getAttribute('data-needs-you-lien-board')).not.toBeNull()
-    expect(Array.from(strip.querySelectorAll('[data-needs-you-lien-dot]')).map((el) => `${el.getAttribute('data-needs-you-lien-dot')}:${el.getAttribute('data-tone')}:${el.textContent}`)).toEqual(['by_day:red:21by tomorrow', 'waiting:violet:3waiting on Malachi', 'in_mail:amber:7in the mail', 'unpaid:quiet:$202,575unpaid on the desk'])
+    expect(Array.from(strip.querySelectorAll('[data-needs-you-lien-dot]')).map((el) => `${el.getAttribute('data-needs-you-lien-dot')}:${el.getAttribute('data-tone')}:${el.textContent}`)).toEqual(['by_day:red:21by tomorrow', 'waiting:violet:3waiting on Malachi', 'in_mail:amber:7to print and mail', 'unpaid:quiet:$202,575unpaid on the desk'])
     fireEvent.click(strip)
     expect(onOpenBoard).toHaveBeenCalledTimes(1)
     cleanup()

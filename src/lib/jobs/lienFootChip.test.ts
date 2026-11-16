@@ -9,23 +9,23 @@ describe('the footer chip (v2.4855)', () => {
     expect(shortDay(null)).toBe('')
   })
 
-  it('ready: the leader’s word with its day, the GC’s rule, or the approval day; the hover keeps the old sentence', () => {
+  it('ready: the leader’s word with its day, the GC’s rule, or the approval day; the hover says it now waits to print (v2.7448)', () => {
     const word = readyChip({ approval_mode: 'word', approved_at: '2026-10-07T18:00:00Z', word_note: 'Malachi Whites RMP #41130, October 7, 2026', word_channel: 'standing_over' }, 'Southern Pine', null)
-    expect(word).toEqual({ tone: 'green', words: 'Approved · leader’s word · Oct 7', title: 'On the leader’s word · Malachi Whites RMP #41130, October 7, 2026 · standing over the desk · in the run.' })
+    expect(word).toEqual({ tone: 'green', words: 'Approved · leader’s word · Oct 7', title: 'On the leader’s word · Malachi Whites RMP #41130, October 7, 2026 · standing over the desk. It now waits to print.' })
     expect(readyChip({ approval_mode: 'rule' }, 'Southern Pine', null).words).toBe('Approved · Southern Pine’s standing rule')
-    expect(readyChip({ approval_mode: 'rule' }, '', null).title).toBe("Approved by the GC's standing rule · in the run.")
-    expect(readyChip({ approval_mode: 'leader', approved_at: '2026-10-06T15:00:00Z' }, null, 'Offer 10% by Nov 15')).toEqual({ tone: 'green', words: 'Approved · Oct 6 · Offer 10% by Nov 15', title: 'Approved October 6, 2026 · Offer 10% by Nov 15 · in the run.' })
+    expect(readyChip({ approval_mode: 'rule' }, '', null).title).toBe("Approved by the GC's standing rule. It now waits to print.")
+    expect(readyChip({ approval_mode: 'leader', approved_at: '2026-10-06T15:00:00Z' }, null, 'Offer 10% by Nov 15')).toEqual({ tone: 'green', words: 'Approved · Oct 6 · Offer 10% by Nov 15', title: 'Approved October 6, 2026 · Offer 10% by Nov 15. It now waits to print.' })
   })
 
   it('ready after a take-back (punch list #101): the chip ends with the day, the hover says who and which print', () => {
     const chip = readyChip({ approval_mode: 'leader', approved_at: '2026-10-06T15:00:00Z' }, null, null, null, { tail: 'taken back Oct 8', sentence: 'Printed Oct 7, taken back Oct 8 by Dana. Nothing was mailed.' })
-    expect(chip).toEqual({ tone: 'green', words: 'Approved · Oct 6 · taken back Oct 8', title: 'Approved October 6, 2026 · in the run. Printed Oct 7, taken back Oct 8 by Dana. Nothing was mailed.' })
+    expect(chip).toEqual({ tone: 'green', words: 'Approved · Oct 6 · taken back Oct 8', title: 'Approved October 6, 2026. It now waits to print. Printed Oct 7, taken back Oct 8 by Dana. Nothing was mailed.' })
   })
 
   it('awaiting, printed and held say the day and the why', () => {
     expect(awaitingChip({ submitted_at: '2026-10-07T14:12:00Z' })).toEqual({ tone: 'blue', words: 'Waiting on the leader · since Oct 7', title: 'Waiting on the leader since October 7, 2026.' })
     expect(awaitingChip(null).words).toBe('Waiting on the leader')
-    expect(printedChip({ printed_at: '2026-09-14T16:00:00Z' })).toEqual({ tone: 'blue', words: 'Printed Sep 14 · in the mail', title: 'Printed September 14, 2026 · in the mail. Type its tracking numbers in the run to record it.' })
+    expect(printedChip({ printed_at: '2026-09-14T16:00:00Z' })).toEqual({ tone: 'blue', words: 'Printed Sep 14 · in the mail', title: 'Printed September 14, 2026 · in the mail. Press Enter mail numbers to record it.' })
     expect(heldChip({ hold_reason: 'promised', hold_until: '2026-10-20' }, null)).toEqual({ tone: 'amber', words: 'Held · they promised · asks again Oct 20', title: 'Held — they promised · asks again October 20, 2026.' })
     expect(heldChip({ hold_reason: 'rule', hold_until: '2026-10-20' }, 'RLC').words).toBe('Held · RLC’s standing rule · asks again Oct 20')
     expect(heldChip({ hold_reason: 'call_first' }, null).words).toBe('Held · the leader will call first')
@@ -43,7 +43,7 @@ describe('the ready chip’s word on the signature (v2.5082)', () => {
     const unsigned = readyChip({ approval_mode: 'word', approved_at: '2026-10-08T18:00:00Z', word_note: 'Robert Douglas, October 8, 2026', word_channel: 'phone' }, 'Brightline', null, 'Robert', null, 'unsigned')
     expect(unsigned.words).toBe('Approved · leader’s word · Oct 8 · unsigned')
     expect(unsigned.tone).toBe('amber')
-    expect(unsigned.title).toContain('the run holds it until the leader signs')
+    expect(unsigned.title).toContain('it cannot print until the leader signs')
   })
 })
 

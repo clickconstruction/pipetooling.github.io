@@ -56,10 +56,10 @@ describe('one job reads one way on the billed row, the AR chip and the Lien wind
     { state: 'needs_owner', action: 'find_owner', sub: 'Needs the owner of record', act: 'Find the owner' },
     { state: 'to_draft', action: 'draft', sub: 'Notice to draft', act: 'Draft the notice' },
     { state: 'awaiting', action: 'approve', sub: 'Waiting on your approval', act: 'Approve the notice' },
-    { state: 'ready', action: 'send', sub: 'Approved · ready to send', act: 'Send the notice' },
+    { state: 'ready', action: 'send', sub: 'Approved · to print', act: 'Print and mail the notice' },
     // v2.7077: a printed notice has its own step on the path, so the header no longer falls back to *Draft*.
     // The chip keeps the state it always said of a paper that is out (*In the mail*); the row and the header name the act.
-    { state: 'printed', action: 'add_tracking', sub: 'In the mail · tracking owed', act: 'Record the mailing', chipSaysState: true },
+    { state: 'printed', action: 'add_tracking', sub: 'In the mail · tracking owed', act: 'Enter mail numbers', chipSaysState: true },
   ]
   for (const step of NOTICE_STEPS) {
     it(`a notice at "${step.state}": ${step.act}`, () => {

@@ -142,13 +142,13 @@ describe('lienStatusText — the share sheet’s message (v2.4311)', () => {
     expect(text).toContain('We are about to send a lien notice on 1 RLC- Dunmere Mallin job.')
     expect(text).toContain('$17,585 is owed on it.')
     expect(text).toContain('It must be mailed tomorrow, Oct 15.')
-    expect(text).toContain('• 273 Dunmere (Linmoor), Aug, $17,585, approved for the next run')
+    expect(text).toContain('• 273 Dunmere (Linmoor), Aug, $17,585, approved to print')
     expect(text).toContain('1 RLC- Dunmere Mallin job has no property kind set. If it is a home, its dates come a month sooner.')
     expect(text).toContain('2 more jobs passed their lien window. $1,335 is still owed there, with no lien.')
 
     const desk = { ...OCT1, jobs: [job('1', 'A', 'G', 100, ['2026-09'], 'ready'), job('2', 'B', 'G', 50, ['2026-09'], 'held')], liens: [], kindsUnset: 0 }
     const t2 = lienStatusText(desk)
-    expect(t2).toContain('Approved for the next run: 1 notice, $100.')
+    expect(t2).toContain('Approved to print: 1 notice, $100.')
     expect(t2).toContain('Held for now: 1 notice, $50.')
     expect(t2).not.toContain('Waiting for approval:')
   })
