@@ -72,7 +72,8 @@ describe('lienReleaseRowSignatureWithInk', () => {
     const sig = await lienReleaseRowSignatureWithInk(ROW, 'Robert')
     expect(sig).toMatchObject({ mode: 'draw', printedName: 'Malachi Whites' })
     expect(sig?.pngDataUrl).toMatch(/^data:image\/png;base64,/)
-    expect(sig?.auditLine).toContain('on Robert’s screen')
+    // v2.7437: whose screen is the record's to say, not the paper's.
+    expect(sig).not.toHaveProperty('auditLine')
   })
 })
 

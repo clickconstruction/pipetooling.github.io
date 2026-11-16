@@ -3344,6 +3344,12 @@ export default function LienDesk({
           />
         ) : null}
       </div>
+      {/* The signing record (v2.7437, Taunya's ask): the paper prints the day alone, so the desk keeps the clock, the way and whose screen here, under the paper and outside it. */}
+      {paneSignature ? (
+        <p data-lien-desk-signature-record style={{ margin: '-0.2rem 0 0', fontSize: '0.72rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text-700)' }}>The signing record, kept here and not printed.</strong> {paneSignature.auditLine}
+        </p>
+      ) : null}
 
       {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
       {payHtml ? (

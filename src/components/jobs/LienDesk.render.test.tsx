@@ -4132,6 +4132,15 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     await settle()
     expect(document.querySelector('[data-lien-desk-foot="ready"]')).toBeTruthy()
     expect(document.querySelector('[data-lien-desk-pen-confirm]')).toBeNull()
+    // v2.7437 (Taunya's ask): the paper carries the day alone, with no clock and no sentence of how it was signed…
+    const paper = document.querySelector('[data-lien-desk-paper]') as HTMLElement
+    expect(paper.querySelector('[data-filing-signed-mode="code"]')).toBeTruthy()
+    expect(paper.textContent).toContain('Signed October 23, 2026')
+    for (const banned of [/ CT\b/, /\b[AP]M\b/, /Typed by/, /signing code/, /screen/]) expect(paper.textContent).not.toMatch(banned)
+    // …and the desk keeps the whole record under the paper, outside it.
+    const record = document.querySelector('[data-lien-desk-signature-record]') as HTMLElement
+    expect(paper.contains(record)).toBe(false)
+    expect(record.textContent).toBe('The signing record, kept here and not printed. Typed by Malachi Whites with his signing code in ClickTooling on October 23, 2026 at 2:14 PM CT, on Robert’s screen.')
     cleanup()
     renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" authUserId="u-malachi" authName="Malachi" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={ready} initialPile="ready" />)
     await settle()
