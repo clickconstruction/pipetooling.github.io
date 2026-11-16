@@ -30,7 +30,7 @@ function data(items: LienDeskItemRow[]): LienDeskData {
     summary: { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 1, next: { deadline: null, notices: 0, dollars: 0, gcIds: [], gcNames: [], toDraft: 0, needsOwner: 0, affidavitBy: null } }, leader: { jobs: 0, dollars: 0, earliestDeadline: null, affidavitBy: null }, held: 0, missed: { jobs: 0, months: 0, dollars: 0, lines: [], lateNotice: { jobs: 0, months: 0, dollars: 0, by: null }, gone: { jobs: 0, months: 0, dollars: 0 } } },
     rows,
     items,
-    affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
+    affidavits: { entries: [], piles: { needs_property: [], needs_notice: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, needs_notice: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
     affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
