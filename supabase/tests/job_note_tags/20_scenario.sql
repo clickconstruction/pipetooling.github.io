@@ -216,7 +216,7 @@ SET LOCAL ROLE authenticated;
 SELECT public.land_field_press('00000000-0000-0000-0000-0000003630e1', 'job_note', now() - interval '3 hours',
   jsonb_build_object('job_id', '00000000-0000-0000-0000-0000003630b1', 'body', '@Dana Office from the phone', 'typed', true, 'tagged', jsonb_build_array('00000000-0000-0000-0000-0000003630a1')));
 SELECT jnt.same('the late note carries its tag', (SELECT count(*) FROM public.jobs_ledger_note_tags t JOIN public.jobs_ledger_thread_notes n ON n.id = t.note_id WHERE n.body = '@Dana Office from the phone' AND t.tagged_name = 'Dana Office' AND n.created_at < now() - interval '2 hours')::text, '1');
-SELECT jnt.refused('a press that tags a sub', \ public.land_field_press('00000000-0000-0000-0000-0000003630e2', 'job_note', now(), jsonb_build_object('job_id', '00000000-0000-0000-0000-0000003630b1', 'body', 'Sam, from the phone', 'typed', true, 'tagged', jsonb_build_array('00000000-0000-0000-0000-0000003630a6')))\$, 'Sam Sub cannot be tagged');
+SELECT jnt.refused('a press that tags a sub', $q$SELECT public.land_field_press('00000000-0000-0000-0000-0000003630e2', 'job_note', now(), jsonb_build_object('job_id', '00000000-0000-0000-0000-0000003630b1', 'body', 'Sam, from the phone', 'typed', true, 'tagged', jsonb_build_array('00000000-0000-0000-0000-0000003630a6')))$q$, 'Sam Sub cannot be tagged');
 SELECT jnt.same('the refused press left no note', (SELECT count(*) FROM public.jobs_ledger_thread_notes WHERE body = 'Sam, from the phone')::text, '0');
 RESET ROLE;
 SELECT jnt.as_user('00000000-0000-0000-0000-0000003630a1');
