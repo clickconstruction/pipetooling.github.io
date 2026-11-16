@@ -4,10 +4,10 @@
  * the tables the tab loads produce two unmatched sheets on the same job with
  * the same raw name, and we assert the panel groups them into one row with the
  * job chip, raw-name echo, reason badge, summed balance, and all three actions
- * (Open → / Assign… / the conservative ✨ one-tap suggestion).
+ * (Open → / Whose is it… / the conservative ✨ one-tap suggestion).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import PeopleSubsTab from './PeopleSubsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -54,12 +54,12 @@ vi.mock('../../lib/supabase', () => {
 afterEach(cleanup)
 
 describe('PeopleSubsTab unattributed panel', () => {
-  it('groups sheets, shows the warning header, and offers Open/Assign/suggestion actions', async () => {
+  it('groups sheets, counts them once in the band head, and offers Open, Whose is it… and the suggestion', async () => {
     renderWithProviders(<PeopleSubsTab />)
 
     // Header + subline (2 sheets total, deduped into one group row).
-    expect(await screen.findByText(/aren't linked to anyone on the roster/)).toBeTruthy()
-    expect(screen.getByText(/missing from every sub's Balance due column/)).toBeTruthy()
+    expect(await screen.findByText(/2 sheets need one sub/)).toBeTruthy()
+    expect(screen.getByText(/Their money is counted once, here\. It is in no sub's Balance due until each sheet names one sub\./)).toBeTruthy()
 
     // Group row: job chip, dedupe count, assigned name as plain words, reason badge, summed balance.
     expect(screen.getByText('#892')).toBeTruthy()
@@ -72,7 +72,7 @@ describe('PeopleSubsTab unattributed panel', () => {
     // Actions: deep-link, roster picker, and the one-tap suggestion
     // ("J Ramos" → first-initial + last-name → exactly Jesse Ramos).
     expect(screen.getByRole('button', { name: 'Open →' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Assign…' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Whose is it…' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Link to Jesse Ramos/ })).toBeTruthy()
 
     // The old bottom text blob is gone.
@@ -89,7 +89,7 @@ describe('PeopleSubsTab unattributed panel', () => {
 })
 
 describe('PeopleSubsTab: a sheet with several names (v2.7169)', () => {
-  it('puts a sheet with a sub and a teammate on the sub’s Balance due, and says crew sheets pay through payroll', async () => {
+  it('puts a sheet with a sub and a teammate on the sub’s Balance due, and counts a teammate’s own sheet as owed to them', async () => {
     const saved = { ...TABLE_ROWS }
     Object.assign(TABLE_ROWS, {
       people: [
@@ -121,13 +121,20 @@ describe('PeopleSubsTab: a sheet with several names (v2.7169)', () => {
       const subRow = (await screen.findByText('Ridgeline Coring LLC')).closest('tr')
       expect(subRow?.textContent).toContain('$2,150.00')
       expect(subRow?.textContent).toContain('1 sheet')
-      // Nothing to fix: no band, no Multiple subs chip, no Assign press.
-      expect(screen.queryByText(/linked to anyone on the roster/)).toBeNull()
+      // Nothing to fix: no band, no Multiple subs chip, no Whose is it… press.
+      expect(screen.queryByText(/need one sub|needs one sub/)).toBeNull()
       expect(screen.queryByText('Multiple subs')).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Assign…' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Whose is it…' })).toBeNull()
       // The teammate keeps a row on the roster and is owed nothing on the sub's sheet.
       expect(screen.getByText('Dana Whitlock').closest('tr')?.textContent).toContain('0 sheets')
-      expect(screen.getByTestId('subs-crew-pay-line').textContent).toContain('1 crew sheet has teammates on it and no sub. Crew sheets pay through payroll')
+      // Taunya's rule of 2026-11-15: one teammate and no sub is that teammate's, owed as sub labor.
+      await waitFor(() => expect(screen.getByTestId('subs-crew-pay-line').textContent).toContain('1 sheet names a teammate and no sub. $4,000.00 is open on it, owed to the teammate as sub labor.'))
+      // The tiles count it: what is owed for sub labor is the sub's sheet and the teammate's.
+      expect(screen.getByTestId('subs-reach-tiles').textContent).toContain('$6,150.00')
+      // Balance due opens into its sheets under the row, with the check that they add up to the column.
+      fireEvent.click(within(subRow as HTMLElement).getByRole('button', { expanded: false }))
+      expect((await screen.findByTestId('sub-owed-check')).textContent).toContain('✓ the figure in the column')
+      expect(screen.getByTestId('sub-owed-block').textContent).toContain('with Owen Farris, Dana Whitlock')
     } finally {
       for (const k of Object.keys(TABLE_ROWS)) delete TABLE_ROWS[k]
       Object.assign(TABLE_ROWS, saved)
@@ -154,12 +161,12 @@ describe('PeopleSubsTab with nobody on the roster', () => {
 describe('PeopleSubsTab: Roster | Ledger (v2.7231)', () => {
   it('opens on the roster, and Ledger shows what was paid to each sub with the roster left out', async () => {
     renderWithProviders(<PeopleSubsTab />)
-    expect(await screen.findByText(/aren't linked to anyone on the roster/)).toBeTruthy()
+    expect(await screen.findByText(/2 sheets need one sub/)).toBeTruthy()
     const group = screen.getByRole('group', { name: 'Subs view' })
     expect([...group.querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([['Roster', 'true'], ['Ledger', 'false']])
     fireEvent.click(screen.getByRole('button', { name: 'Ledger' }))
     expect(document.querySelector('[data-people-subs-ledger]')).toBeTruthy()
-    expect(screen.queryByText(/aren't linked to anyone on the roster/)).toBeNull()
+    expect(screen.queryByText(/2 sheets need one sub/)).toBeNull()
     // The ledger opens on By sub here: this page is about people.
     expect((await screen.findByRole('button', { name: 'By sub' })).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Roster' }))
