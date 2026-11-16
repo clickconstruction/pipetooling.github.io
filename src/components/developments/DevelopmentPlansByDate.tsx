@@ -3,11 +3,11 @@
  * days crews were on site and the lines kept on History on the same axis, today's line across them all, and
  * every mark again as a dated line under the chart. The lanes, the shapes, the names that fit and the print
  * page are `lib/plans/plansByDate.ts`; this file draws those shapes in the theme's colours, shows a mark's
- * line on a hover, a focus or a press, and opens the print. It carries no money, so the overview door draws
- * it too. The view is a look: nothing here writes.
+ * line on a hover, a focus or a press, and opens the print, which files its copy. It carries no money, so
+ * the overview door draws it too. The view is a look: nothing here changes a record.
  */
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { PBD_PAINT, PLANS_BY_DATE_CLUSTER_WORDS, PLANS_BY_DATE_NARROW, dayWords, layoutPlansByDate, plansByDateGlyph, plansByDatePrintHtml, type PbdClass, type PbdGlyph, type PbdInk, type PbdPrim, type PlansByDateModel } from '../../lib/plans/plansByDate'
 import { EmptyState } from '../EmptyState'
 import { LinkButton } from './developmentPageBits'
@@ -72,7 +72,7 @@ function Glyph({ glyph }: { glyph: PbdGlyph }) {
 /** Past this many lines the list opens on the newest and folds the older ones behind a press. */
 export const PLANS_BY_DATE_LIST_FOLD = 40
 
-export type PlansByDatePrint = { siteName: string; customerName: string | null; printedBy: string | null }
+export type PlansByDatePrint = { siteName: string; customerName: string | null; printedBy: string | null; /** Where the printed page's copy is filed: a print counts as a send. */ developmentId: string; customerId: string | null }
 
 export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { model: PlansByDateModel | null; phone: boolean; /** Quiet lines under the chart: what is not on it, and why. */ notes?: ReadonlyArray<string>; print: PlansByDatePrint }) {
   const [tipKey, setTipKey] = useState<string | null>(null)
@@ -125,7 +125,9 @@ export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { mo
       printedAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
       printedBy: print.printedBy,
     })
-    setPrintNote(openHtmlPrintWindow(html) ? null : 'The print window was blocked. Allow pop-ups for this site and press again.')
+    // A print counts as a send (the owner's rule, `docs/SENT_COPIES.md`): the page that printed is filed in Documents under the site.
+    const printed = printAndFile(html, { kind: 'plans_by_date', title: `Plans by date · ${print.siteName}`, customerId: print.customerId, source: { table: 'developments', id: print.developmentId } })
+    setPrintNote(printed ? null : 'The print window was blocked. Allow pop-ups for this site and press again.')
   }
 
   return (

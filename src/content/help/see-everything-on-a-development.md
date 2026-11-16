@@ -210,7 +210,7 @@ Rest the pointer on a mark to read its line. On a phone, press the mark. A name 
 
 Under the chart, every mark reads again as a dated line, oldest first. A bid's line is tinted. A long list opens on its newest lines. Press {{button:outline|Show the 12 older lines}} to read the rest.
 
-Press {{button:outline|Print or save as PDF}} above the list. One landscape page opens with the figures, the chart and the list.
+Press {{button:outline|Print or save as PDF}} above the list. One landscape page opens with the figures, the chart and the list. A copy of the printed page is kept in Documents.
 
 A bid with no sent day has no place on the chart. A quiet line under the chart names it. The page remembers the view you were in.
 
