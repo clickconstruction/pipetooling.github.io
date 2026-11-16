@@ -103,6 +103,29 @@ function ensureMore() {
   if (!screen.queryByTestId('run-more-panel')) fireEvent.click(screen.getByTestId('run-more'))
 }
 
+/** v2.7477: every press but the one for the step the run is on sits under More. These open it and hand back the press. */
+function more(testId: string): HTMLElement {
+  ensureMore()
+  return screen.getByTestId(testId)
+}
+function moreQuery(testId: string): HTMLElement | null {
+  ensureMore()
+  return screen.queryByTestId(testId)
+}
+
+/** v2.7477: the envelope cards start folded under the rows. A smoke that reads a card opens the fold once, as a person would. */
+function renderRun(ui: Parameters<typeof renderWithProviders>[0]) {
+  const view = renderWithProviders(ui)
+  const fold = screen.queryByTestId('run-cards-fold')
+  if (fold && fold.getAttribute('aria-expanded') === 'false') fireEvent.click(fold)
+  return view
+}
+
+/** The one press at the foot (v2.7477): its act, its words, and whether it is dead. */
+function onePress(): HTMLButtonElement {
+  return screen.getByTestId('run-press') as HTMLButtonElement
+}
+
 const NUMBER = '9407 1118 9876 5432 1098'
 
 /**
@@ -110,14 +133,13 @@ const NUMBER = '9407 1118 9876 5432 1098'
  * records prints the packet (the print mock answers yes) and types a number into every card box first.
  */
 function printAndNumber() {
-  const print = screen.queryByRole('button', { name: /^Print the packet/ })
-  if (print) fireEvent.click(print)
+  if (onePress().getAttribute('data-act') === 'print' && !onePress().disabled) fireEvent.click(onePress())
   for (const box of screen.getAllByLabelText(/— tracking$/) as HTMLInputElement[]) if (!box.value) fireEvent.change(box, { target: { value: NUMBER } })
 }
 
 describe('LienDeskRunModal', () => {
   it('lists an envelope per recipient with the method and tracking, the notice inside it, counts the envelopes, and can record', async () => {
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByRole('dialog', { name: 'Print and mail' })).toBeTruthy()
     expect(screen.getByText('Print and mail · 1 notice')).toBeTruthy()
@@ -127,9 +149,14 @@ describe('LienDeskRunModal', () => {
     expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('cover note')
     expect(screen.getByTestId('run-row-j650-original_contractor').textContent).toContain('Copy for: original contractor')
     expect(screen.getAllByText('June and July 2026')).toHaveLength(2) // once per copy
-    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
-    // The checklist (v2.7328): Record is dead until the row is printed and every envelope has its number; the row says which tick it waits on.
-    expect((screen.getByTestId('run-record') as HTMLButtonElement).disabled).toBe(true)
+    // The one count (v2.7477): the second line names the copies and the envelopes once, the count line is in notices, and the one press prints what is ready.
+    expect(screen.getByTestId('run-sub').textContent).toBe('2 copies in 2 envelopes')
+    expect(screen.getByTestId('run-parts').textContent).toBe('1 notice=1 ready')
+    expect(onePress().textContent).toBe('Print 1 notice')
+    expect(onePress().getAttribute('data-act')).toBe('print')
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('1 can print now.The packet prints with its checklist sheet, in envelope order: 2 envelopes.')
+    // The checklist (v2.7328): the row says which tick it waits on, under its part's head.
+    expect(screen.getByTestId('run-group-head-ready').textContent).toBe('▾Ready · 1 notice$33,500')
     expect(screen.getByTestId('run-check-line-it1').textContent).toBe('not printed')
     fireEvent.change(screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking'), { target: { value: '9407 1118 9922' } })
     expect((screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking') as HTMLInputElement).value).toBe('9407 1118 9922')
@@ -137,8 +164,8 @@ describe('LienDeskRunModal', () => {
     expect((screen.getByLabelText('650 · AXO Schertz — owner tracking') as HTMLInputElement).value).toBe('9407 1118 9922')
     printAndNumber()
     expect(screen.getByTestId('run-check-line-it1').textContent).toBe('mailed · ready to record')
-    expect((screen.getByTestId('run-record') as HTMLButtonElement).disabled).toBe(false)
-    expect(screen.getByTestId('run-record').textContent).toBe('Record 1 mailing')
+    expect((screen.getByTestId('run-press') as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.getByTestId('run-press').textContent).toBe('Record 1 mailing')
     // Email is offered only where an address is on file.
     const gcMethod = screen.getByLabelText('Envelope 2 · Original contractor: Lowbeck Contracting — method') as HTMLSelectElement
     fireEvent.change(gcMethod, { target: { value: 'email' } })
@@ -147,11 +174,11 @@ describe('LienDeskRunModal', () => {
 
   it('offers to undo the approval only when the opener says the run was just started (v2.4541)', async () => {
     const onUndo = vi.fn()
-    const view = renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    const view = renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.queryByTestId('run-undo')).toBeNull()
     view.unmount()
-    renderWithProviders(
+    renderRun(
       <LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} undo={{ words: 'You just approved this notice for Lowbeck Contracting. Pressed it by mistake?', busy: false, onUndo }} />,
     )
     await settle()
@@ -166,12 +193,14 @@ describe('LienDeskRunModal', () => {
   it('a recipient with no mailing address holds the notice; alone in the run, nothing is ready and the button says so', async () => {
     const n = notice()
     n.recipients[0] = { ...n.recipients[0]!, name: '', address: '' }
-    renderWithProviders(<LienDeskRunModal notices={[n]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[n]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getAllByText(/Owner of record: nobody to send to/).length).toBeGreaterThan(0)
-    expect((screen.getByTestId('run-record') as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByTestId('run-record').textContent).toBe('Record ▸')
-    expect(screen.getByTestId('run-foot-status').textContent).toBe('1 heldFix what is marked in red, then print.')
+    expect(onePress().disabled).toBe(true)
+    expect(onePress().textContent).toBe('Print notices')
+    expect(screen.getByTestId('run-parts').textContent).toBe('1 notice=1 held')
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('Nothing can print yet.1 notice is held, with its reason.')
+    expect(screen.getByTestId('run-group-head-held').textContent).toBe('▾Held · 1 notice$33,500')
     // The held row's Printed press is dead too: nothing prints for nobody.
     expect((screen.getByTestId('run-check-mark-printed-it1') as HTMLButtonElement).disabled).toBe(true)
   })
@@ -183,11 +212,13 @@ describe('LienDeskRunModal', () => {
     const onClose = vi.fn()
     const ready = notice({ printedAt: '2026-09-13T16:00:00Z' })
     ready.recipients = ready.recipients.map((r) => ({ ...r, tracking: NUMBER }))
-    renderWithProviders(<LienDeskRunModal notices={[ready, held]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[ready, held]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
-    const button = screen.getByRole('button', { name: 'Record 1 mailing · 1 waits ▸' }) as HTMLButtonElement
+    const button = onePress()
+    expect(button.textContent).toBe('Record 1 mailing')
     expect(button.disabled).toBe(false)
-    expect(screen.getByText('1 is held. It stays here with the reason. The 1 ready one records now.')).toBeTruthy()
+    expect(screen.getByTestId('run-parts').textContent).toBe('1 printed=1 ready to record')
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('1 is ready to record.Recording writes each notice to its job with how it went and every month it covered.')
     expect(screen.getByTestId('run-held-list').textContent).toContain('651 · AXO Schertz II · Owner of record: nobody to send to')
     fireEvent.click(button)
     await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
@@ -204,10 +235,12 @@ describe('LienDeskRunModal', () => {
   it('two notices to one owner at one address share an envelope, and the GC gets one envelope with both inside — one tracking number each', async () => {
     const a = notice()
     const b = notice({ itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz II', jobNumber: '651', months: ['2026-07'] })
-    renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByText('Print and mail · 2 notices')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+    expect(screen.getByTestId('run-sub').textContent).toBe('4 copies in 2 envelopes')
+    expect(onePress().textContent).toBe('Print 2 notices')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('in envelope order: 2 envelopes.')
     // What the packet is sits behind the ? beside the title (v2.4621).
     expect(screen.queryByTestId('run-explainer')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'What the packet is' }))
@@ -233,7 +266,7 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
 
   it('the GC envelope carries the tick, on, naming the address; the owner envelope never does; unticking reaches the record', async () => {
     recordMock.mockClear()
-    renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.queryByTestId('run-courtesy-1')).toBeNull()
     expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@lowbeck.test, emailed when the run is recorded')
@@ -242,7 +275,7 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
     fireEvent.click(tick)
     expect((screen.getByLabelText(tickLabel) as HTMLInputElement).checked).toBe(false)
     printAndNumber()
-    fireEvent.click(screen.getByTestId('run-record'))
+    fireEvent.click(screen.getByTestId('run-press'))
     await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
     const [sent] = recordMock.mock.calls[0] as unknown as [RunNotice[]]
     expect(sent[0]!.recipients.map((r) => [r.key, r.courtesy])).toEqual([
@@ -252,7 +285,7 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
   })
 
   it('one GC envelope with two notices says one email per notice; switched to email, the tick goes because the email is the send', async () => {
-    renderWithProviders(<LienDeskRunModal notices={[ticked(), ticked({ itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz II', jobNumber: '651', months: ['2026-07'] })]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[ticked(), ticked({ itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz II', jobNumber: '651', months: ['2026-07'] })]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@lowbeck.test, emailed when the run is recorded, one email per notice')
     fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Lowbeck Contracting — method'), { target: { value: 'email' } })
@@ -262,17 +295,17 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
 
   it('the record names the courtesy PDF that went, and warns when one did not', async () => {
     recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [{ itemId: 'it1', label: '650 · AXO Schertz', email: 'office@lowbeck.test' }], courtesyFailed: [] }))
-    const view = renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    const view = renderRun(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     printAndNumber()
-    fireEvent.click(screen.getByTestId('run-record'))
+    fireEvent.click(screen.getByTestId('run-press'))
     expect(await screen.findByText('1 notice recorded — the desk reads them as sent. Courtesy PDF emailed to office@lowbeck.test.')).toBeTruthy()
     view.unmount()
     recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [], courtesyFailed: [{ itemId: 'it1', label: '650 · AXO Schertz', email: 'office@lowbeck.test', reason: 'Resend 502' }] }))
-    renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     printAndNumber()
-    fireEvent.click(screen.getByTestId('run-record'))
+    fireEvent.click(screen.getByTestId('run-press'))
     expect(await screen.findByText('Courtesy PDF not emailed: 650 · AXO Schertz to office@lowbeck.test (Resend 502). That notice is recorded all the same.')).toBeTruthy()
   })
 
@@ -298,7 +331,7 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
     buildPdfMock.mockClear()
     const tab = stubTab()
     try {
-      renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      renderRun(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
       await settle()
       expect(screen.queryByTestId('run-courtesy-preview-1')).toBeNull()
       const door = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
@@ -327,7 +360,7 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
 
   it('the door waits while the bills are read; an unticked box still previews, saying the email will not go', async () => {
     vi.mocked(fetchJobWithDetailsById).mockImplementationOnce(() => new Promise(() => {}))
-    const view = renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    const view = renderRun(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     const waiting = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
     expect(waiting.disabled).toBe(true)
@@ -335,7 +368,7 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
     view.unmount()
     const tab = stubTab()
     try {
-      renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      renderRun(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
       await settle()
       fireEvent.click(screen.getByLabelText(tickLabel))
       const door = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
@@ -352,7 +385,7 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
     buildPdfMock.mockClear()
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     try {
-      renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      renderRun(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
       await settle()
       const door = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
       await waitFor(() => expect(door.disabled).toBe(false))
@@ -368,7 +401,7 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
 describe('LienDeskRunModal · the saved copy (v2.3763)', () => {
   it('carries the Drive link and the note into the record', async () => {
     recordMock.mockClear()
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     ensureMore()
     expect(screen.getByTestId('run-saved-copy')).toBeTruthy()
@@ -377,7 +410,7 @@ describe('LienDeskRunModal · the saved copy (v2.3763)', () => {
     ensureMore()
     fireEvent.change(screen.getByLabelText('Saved copy — note'), { target: { value: 'the packet as printed' } })
     printAndNumber()
-    fireEvent.click(screen.getByTestId('run-record'))
+    fireEvent.click(screen.getByTestId('run-press'))
     await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
     const opts = (recordMock.mock.calls[0] as unknown as [unknown, { document?: { url?: string; note?: string } }])[1]
     expect(opts.document).toEqual({ url: 'drive.google.com/file/d/abc/view', note: 'the packet as printed' })
@@ -389,23 +422,28 @@ describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
     recordMock.mockClear()
     const a = notice()
     const b = { ...notice(), itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz annex', jobNumber: '651', amount: 4_500, months: ['2026-08'] }
-    renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByText('Print and mail · 2 notices')).toBeTruthy()
+    // Combine is a rare choice (v2.7477): it sits under More, where it says how many jobs could combine, and stays off unless ticked.
+    expect(screen.queryByTestId('run-combine')).toBeNull()
+    expect(more('run-combine').textContent).toContain('2 jobs could combine into 1 notice.')
     const tick = screen.getByLabelText('Combine the jobs at one property into one notice') as HTMLInputElement
     expect(tick.checked).toBe(false)
-    expect(screen.getByTestId('run-combine').textContent).toContain('2 jobs would print as 1 notice (1 combined)')
     fireEvent.click(tick)
-    expect(screen.getByText('Print and mail · 1 notice for 2 jobs')).toBeTruthy()
+    // The count stays in notices, one a job; the second line says what the tick did.
+    expect(screen.getByText('Print and mail · 2 notices')).toBeTruthy()
+    expect(screen.getByTestId('run-sub').textContent).toBe('2 copies in 2 envelopes · combined: 2 jobs print on 1 form')
     expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('650 + 651')
     expect(screen.getAllByTestId('run-combined-parts').map((el) => el.textContent)).toEqual(['650 $33,500 · 651 $4,500', '650 $33,500 · 651 $4,500']) // once per copy
-    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+    expect(onePress().textContent).toBe('Print 2 notices')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('in envelope order: 2 envelopes.')
     // The tracking typed on the envelope reaches both parts.
     fireEvent.change(screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking'), { target: { value: '9407 0000' } })
     printAndNumber()
     // Two rows, one combined notice: the press counts the rows it takes.
-    expect(screen.getByTestId('run-record').textContent).toBe('Record 2 mailings')
-    fireEvent.click(screen.getByTestId('run-record'))
+    expect(screen.getByTestId('run-press').textContent).toBe('Record 2 mailings')
+    fireEvent.click(screen.getByTestId('run-press'))
     await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
     const [sent] = recordMock.mock.calls[0] as unknown as [{ jobNumber: string; amount: number; months: string[]; parts?: { itemId: string }[]; recipients: { key: string; tracking: string }[] }[]]
     expect(sent).toHaveLength(1)
@@ -417,9 +455,9 @@ describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
     const a = notice()
     const b = { ...notice(), itemId: 'it2', jobId: 'j700', label: '700 · Elsewhere', jobNumber: '700' }
     b.recipients = [{ ...b.recipients[0]!, name: 'Someone Else', address: '1 Other St' }, b.recipients[1]!]
-    renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.queryByTestId('run-combine')).toBeNull()
+    expect(moreQuery('run-combine')).toBeNull()
   })
 })
 
@@ -429,12 +467,17 @@ describe('LienDeskRunModal — the mailing (v2.4119)', () => {
     const printed: string[][] = []
     const at = '2026-09-28T16:00:00Z'
     const two = [notice({ printedAt: at }), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', printedAt: at, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }, { key: 'original_contractor', label: 'Original contractor', name: 'Other GC', address: '1 GC Rd', email: '', method: 'certified_mail', tracking: '' }] })]
-    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
+    renderRun(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
     await settle()
-    expect(screen.getByTestId('run-journey-sent').getAttribute('data-state')).toBe('done')
+    // Both printed: the run is on its third step, and the count is what printed.
+    expect([1, 2, 3].map((n) => screen.getByTestId(`run-journey-${n}`).getAttribute('data-state'))).toEqual(['done', 'done', 'now'])
+    expect(screen.getByTestId('run-journey-3').textContent).toBe('3Mail and record0 of 4 numbers typed')
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 printed=2 owe a number')
     ensureMore()
     expect(screen.getByRole('button', { name: /Envelope faces/ })).toBeTruthy()
-    expect(screen.getByTestId('run-record').textContent).toBe('Record ▸')
+    expect(onePress().textContent).toBe('Record the mailing')
+    expect(onePress().disabled).toBe(true)
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('4 envelopes owe a number.Type each from its green slip, or scan it with a phone.')
     // The checklist's box is the envelope's: the card's shape line answers what is typed there.
     const owner = screen.getByLabelText('650 · AXO Schertz — owner tracking')
     fireEvent.change(owner, { target: { value: '9407 1118 9876 5432 10' } })
@@ -444,9 +487,11 @@ describe('LienDeskRunModal — the mailing (v2.4119)', () => {
     expect(screen.getByTestId('run-check-line-it1').textContent).toBe('printed · not mailed')
     fireEvent.change(screen.getByLabelText('650 · AXO Schertz — GC tracking'), { target: { value: '9407 1118 9876 5432 1111' } })
     expect(screen.getByTestId('run-check-line-it1').textContent).toBe('mailed · ready to record')
-    expect(screen.getByRole('button', { name: 'Record 1 mailing · 1 waits ▸' })).toBeTruthy()
+    expect(onePress().textContent).toBe('Record 1 mailing')
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 printed=1 ready to record1 owes a number')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('1 is ready to record. 1 stays here until its numbers are typed.')
     expect(screen.getByTestId('run-held-list').textContent).toBe('651 · Other · no tracking numbers yet')
-    fireEvent.click(screen.getByTestId('run-record'))
+    fireEvent.click(screen.getByTestId('run-press'))
     await settle()
     expect(recordMock).toHaveBeenCalledTimes(1)
     const [recordedNotices, opts] = recordMock.mock.calls[0] as unknown as [RunNotice[], { mailedOn?: string }]
@@ -460,34 +505,38 @@ describe('LienDeskRunModal · a run of printed notices opens on recording (v2.48
   it('every notice printed: the title and step 1 say so with the day, step 3 is current, printing is a second-time act, and the record still goes', async () => {
     recordMock.mockClear()
     const two = [notice({ printedAt: '2026-09-14T16:00:00Z' }), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', printedAt: '2026-09-15T16:00:00Z', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] })]
-    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByRole('dialog', { name: 'Enter mail numbers' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: /^Enter mail numbers · 2 notices/ })).toBeTruthy()
-    // Every envelope printed: the journey has Sent done and In the mail as the step that is now (Run-4 retired the step strip).
-    expect(screen.getByTestId('run-journey-sent').getAttribute('data-state')).toBe('done')
-    expect(screen.getByTestId('run-journey-mailed').getAttribute('data-state')).toBe('now')
-    expect(screen.getByText('Type each envelope’s number from the slip. Record takes the rows that have theirs.')).toBeTruthy()
-    expect(screen.getByTestId('run-foot-status').textContent).toContain('2 owe a number')
+    // Every notice printed: the journey has Print done and Mail and record as the step the run is on.
+    expect(screen.getByTestId('run-journey-2').textContent).toBe('✓Print2 of 2 printed')
+    expect(screen.getByTestId('run-journey-3').getAttribute('data-state')).toBe('now')
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 printed=2 owe a number')
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('3 envelopes owe a number.Type each from its green slip, or scan it with a phone.')
+    // The one press is the record, dead until a notice has every number; printing again is under More.
+    expect(onePress().getAttribute('data-act')).toBe('record')
+    expect(onePress().disabled).toBe(true)
     ensureMore()
     expect(screen.getByRole('button', { name: /^Print it again · 3 envelopes/ })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /^Print the packet/ })).toBeNull()
     // The Printed ticks carry the day each printed.
     expect(screen.getByTestId('run-check-printed-it1').textContent).toBe('✓ Sep 14')
     expect(screen.getByTestId('run-check-printed-it2').textContent).toBe('✓ Sep 15')
     printAndNumber()
-    expect(screen.getByTestId('run-record').textContent).toBe('Record 2 mailings')
-    fireEvent.click(screen.getByTestId('run-record'))
+    expect(screen.getByTestId('run-press').textContent).toBe('Record 2 mailings')
+    fireEvent.click(screen.getByTestId('run-press'))
     await settle()
     expect(recordMock).toHaveBeenCalledTimes(1)
   })
 
   it('one notice not yet printed: the run opens on printing as before', async () => {
-    renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-09-14T16:00:00Z' }), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651' })]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice({ printedAt: '2026-09-14T16:00:00Z' }), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651' })]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByRole('dialog', { name: 'Print and mail' })).toBeTruthy()
-    expect(screen.getByTestId('run-journey-sent').getAttribute('data-state')).toBe('now')
-    expect(screen.getByRole('button', { name: /^Print the packet · / })).toBeTruthy()
+    expect(screen.getByTestId('run-journey-2').getAttribute('data-state')).toBe('now')
+    // A second packet: what printed stays in the count beside what is ready.
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 notices=1 ready1 printed')
+    expect(onePress().textContent).toBe('Print 1 notice')
   })
 })
 
@@ -499,7 +548,7 @@ describe('LienDeskRunModal · take back a printed run (punch list #101)', () => 
 
   it('Take back… asks first, says what stays and what is dropped, then hands every printed item over and goes back to printing', async () => {
     const taken: string[][] = []
-    renderWithProviders(<LienDeskRunModal notices={printedTwo()} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    renderRun(<LienDeskRunModal notices={printedTwo()} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
     await settle()
     fireEvent.change(screen.getAllByLabelText(/tracking$/)[0]!, { target: { value: '9407111898765432101234' } })
     ensureMore()
@@ -519,8 +568,8 @@ describe('LienDeskRunModal · take back a printed run (punch list #101)', () => 
     expect(taken).toEqual([['it1', 'it2']])
     expect(screen.getByTestId('run-taken-back').textContent).toContain('Taken back. The 2 notices printed October 7, 2026 are in Approved · to print again.')
     expect(screen.getByRole('heading', { name: /^Print and mail · 2 notices/ })).toBeTruthy()
-    expect(screen.getByTestId('run-journey-sent').getAttribute('data-state')).toBe('now')
-    expect(screen.getByRole('button', { name: /^Print the packet · / })).toBeTruthy()
+    expect(screen.getByTestId('run-journey-2').getAttribute('data-state')).toBe('now')
+    expect(onePress().textContent).toBe('Print 2 notices')
     expect((screen.getAllByLabelText(/tracking$/)[0] as HTMLInputElement).value).toBe('')
     expect(screen.queryByTestId('run-take-back')).toBeNull()
   })
@@ -547,7 +596,7 @@ describe('LienDeskRunModal · take back a printed run (punch list #101)', () => 
 
   it('only what printed is taken back; a run with nothing printed, or a host without the door, offers none', async () => {
     const taken: string[][] = []
-    const { unmount } = renderWithProviders(<LienDeskRunModal notices={[printedTwo()[0]!, notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651' })]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    const { unmount } = renderRun(<LienDeskRunModal notices={[printedTwo()[0]!, notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651' })]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
     await settle()
     ensureMore()
     fireEvent.click(screen.getByTestId('run-take-back'))
@@ -557,16 +606,16 @@ describe('LienDeskRunModal · take back a printed run (punch list #101)', () => 
     await settle()
     expect(taken).toEqual([['it1']])
     unmount()
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => 0} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => 0} />)
     await settle()
     expect(screen.queryByTestId('run-take-back')).toBeNull()
   })
 
   it('a packet printed in this sitting can be taken back at once', async () => {
     const taken: string[][] = []
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: /^Print the packet · / }))
+    fireEvent.click(onePress())
     await settle()
     ensureMore()
     fireEvent.click(screen.getByTestId('run-take-back'))
@@ -576,7 +625,7 @@ describe('LienDeskRunModal · take back a printed run (punch list #101)', () => 
   })
 
   it('a failed take-back says so and keeps the run as it was', async () => {
-    renderWithProviders(<LienDeskRunModal notices={printedTwo()} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => { throw new Error('offline') }} />)
+    renderRun(<LienDeskRunModal notices={printedTwo()} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => { throw new Error('offline') }} />)
     await settle()
     ensureMore()
     fireEvent.click(screen.getByTestId('run-take-back'))
@@ -591,7 +640,7 @@ describe('LienDeskRunModal · print one item (v2.4853)', () => {
   it('Print › on a copy prints and files that copy alone; the notice is stamped printed only once both copies have printed; the envelope door prints every copy inside', async () => {
     printMock.mockClear()
     const printed: string[][] = []
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
     await settle()
     fireEvent.click(screen.getByTestId('run-print-j650-owner'))
     expect(printMock).toHaveBeenCalledTimes(1)
@@ -607,7 +656,7 @@ describe('LienDeskRunModal · print one item (v2.4853)', () => {
     await settle()
     expect(printMock).toHaveBeenCalledTimes(2)
     expect(printed).toEqual([['it1']])
-    expect(screen.getByTestId('run-journey-sent').getAttribute('data-state')).toBe('done')
+    expect(screen.getByTestId('run-journey-2').getAttribute('data-state')).toBe('done')
     // The envelope door: one document for everything inside envelope 1.
     fireEvent.click(screen.getByTestId('run-print-envelope-1'))
     const [envHtml, envFiling] = printMock.mock.calls[2] as unknown as [string, { title: string }]
@@ -617,7 +666,7 @@ describe('LienDeskRunModal · print one item (v2.4853)', () => {
 
   it('the preview has a Print this copy button that prints the copy on show', async () => {
     printMock.mockClear()
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     fireEvent.click(screen.getByTestId('run-preview-j650-original_contractor'))
     fireEvent.click(screen.getByTestId('lien-run-preview-print'))
@@ -629,7 +678,7 @@ describe('LienDeskRunModal · print one item (v2.4853)', () => {
 describe('LienDeskRunModal · read a copy before it prints (v2.4621)', () => {
   it('Preview on a copy row opens the pages that copy prints, the arrows walk the packet, Esc closes only the preview', async () => {
     const onClose = vi.fn()
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
     expect(screen.queryByTestId('lien-run-preview')).toBeNull()
     fireEvent.click(screen.getByTestId('run-preview-j650-owner'))
@@ -664,7 +713,7 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
     const bill = { id: 'inv-878', amount: 15200, sequence_order: 0, status: 'billed', billed_at: '2026-09-16T14:00:00Z', created_at: '2026-09-16T13:59:00Z', sent_to_customer_at: null, estimated_bill_date: null, stripe_invoice_id: 'in_878', stripe_invoice_memo: 'Paper checks can be sent to: Click Plumbing', external_send_note: '', stripe_invoice_footer: null }
     vi.mocked(fetchJobWithDetailsById).mockResolvedValue({ id: 'j650', hcp_number: '878', job_name: 'Tune 5- Seguin', job_address: '1 Example Rd', customer_name: 'Southern Pine Construction', customer_email: '', customer_id: 'c1', gc_customer_id: null, bill_to_party: 'customer', fixtures: [], materials: [], payments: [], invoices: [bill] } as never)
     vi.mocked(fetchStripeInvoiceFacts).mockResolvedValue({ 'inv-878': { invoiceNumber: '878-2609161138', dueYmd: '2026-10-16', lines: [] } })
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-07" userId="u1" onClose={() => {}} onRecorded={() => {}} stripeMode="live" />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-07" userId="u1" onClose={() => {}} onRecorded={() => {}} stripeMode="live" />)
     await settle()
     expect(vi.mocked(fetchStripeInvoiceFacts)).toHaveBeenCalledWith(['inv-878'], 'live')
     fireEvent.click(screen.getByTestId('run-preview-j650-original_contractor'))
@@ -692,7 +741,7 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
     const origClick = HTMLAnchorElement.prototype.click
     HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) { clicks.push(this.getAttribute('download') ?? '') }
     try {
-      renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      renderRun(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
       await settle()
       // The second notice's envelope is held (no address, $0): it is listed, never on the labels.
       expect(screen.getByTestId('run-held-3').textContent).toMatch(/^Held · /)
@@ -714,7 +763,7 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
 describe('a printed notice is not held for its signature (v2.5533)', () => {
   it('in the mail unsigned: no red hold, the amber line says it records as it went, both signing doors stay, and Record is live', async () => {
     recordMock.mockClear()
-    renderWithProviders(
+    renderRun(
       <LienDeskRunModal
         notices={[notice({ signature: null, printedAt: '2026-10-08T15:00:00Z', leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
         issuer={null}
@@ -746,7 +795,7 @@ describe('a printed notice is not held for its signature (v2.5533)', () => {
 describe('an unsigned notice at the run (v2.5086)', () => {
   it('its envelopes are held and listed in red with the reason; with the leader beside her, Leader here, sign ▸ opens the pad, and Sign ▸ records his drawing on her screen for every unsigned notice in the envelope', async () => {
     signMock.mockClear()
-    renderWithProviders(
+    renderRun(
       <LienDeskRunModal
         notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
         issuer={null}
@@ -760,7 +809,13 @@ describe('an unsigned notice at the run (v2.5086)', () => {
     await settle()
     expect(screen.getByTestId('run-held-1').textContent).toContain('Unsigned: the leader signs it from his phone')
     expect(screen.getByTestId('run-held-2').textContent).toContain('Unsigned')
-    expect(screen.getByRole('button', { name: /Print the packet · 0 envelopes/ })).toBeTruthy()
+    // The one count: it waits on his signature, under that head, and nothing can print.
+    expect(screen.getByTestId('run-parts').textContent).toBe('1 notice=1 waits on Robert Douglas’s signature')
+    expect(screen.getByTestId('run-group-head-wait').textContent).toBe('▾Waits on Robert Douglas’s signature · 1 notice$33,500')
+    expect(screen.getByTestId('run-check-line-it1').textContent).toBe('not signed · Robert Douglas signs from a phone, or here with Signed ▸')
+    expect(onePress().textContent).toBe('Print notices')
+    expect(onePress().disabled).toBe(true)
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('Nothing can print yet.1 waits on Robert Douglas’s signature.')
     fireEvent.click(screen.getByTestId('run-leader-here-sign-1'))
     const sheet = screen.getByTestId('run-sign-here-1')
     expect(sheet.textContent).toContain('Robert Douglas draws on this screen. The record names Taunya as whose screen it was.')
@@ -777,7 +832,9 @@ describe('an unsigned notice at the run (v2.5086)', () => {
     expect(args.fields).toEqual({ notice: { claimAmount: '33500' } })
     // Signed: the envelopes go back into the run, numbered 1 and 2, nothing held.
     await waitFor(() => expect(screen.queryByTestId('run-held-1')).toBeNull())
-    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+    expect(screen.getByTestId('run-parts').textContent).toBe('1 notice=1 ready')
+    expect(onePress().textContent).toBe('Print 1 notice')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('in envelope order: 2 envelopes.')
   })
 
   it('with his code set, the sheet opens on the code field (v2.6733, punch list #150): Sign ▸ hands the code to the RPC as his signature on her screen, with no approval, and the envelopes go back into the run', async () => {
@@ -785,7 +842,7 @@ describe('an unsigned notice at the run (v2.5086)', () => {
     codeState.signs = []
     signMock.mockClear()
     try {
-      renderWithProviders(
+      renderRun(
         <LienDeskRunModal
           notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
           issuer={null}
@@ -815,7 +872,8 @@ describe('an unsigned notice at the run (v2.5086)', () => {
       expect(codeState.signs[0]).toEqual({ itemId: 'it1', fields: { notice: { claimAmount: '33500' } }, signerUserId: 'u-robert', code: '2468', approve: false })
       expect(signMock).not.toHaveBeenCalled()
       await waitFor(() => expect(screen.queryByTestId('run-held-1')).toBeNull())
-      expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+      expect(onePress().textContent).toBe('Print 1 notice')
+      expect(screen.getByTestId('run-foot-status').textContent).toContain('in envelope order: 2 envelopes.')
     } finally {
       codeState.status = { set: false, setAtIso: null, lastUsedAtIso: null, lockedUntilIso: null }
     }
@@ -826,7 +884,7 @@ describe('an unsigned notice at the run (v2.5086)', () => {
     codeState.signs = []
     codeState.answer = { ok: false, reason: 'wrong', message: 'That is not Robert’s code.', triesLeft: 2, lockedUntilIso: null }
     try {
-      renderWithProviders(
+      renderRun(
         <LienDeskRunModal
           notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
           issuer={null}
@@ -853,7 +911,7 @@ describe('an unsigned notice at the run (v2.5086)', () => {
   })
 
   it('without a viewer, or a notice whose builder said nothing about signing, there is no door and nothing held for it', async () => {
-    renderWithProviders(<LienDeskRunModal notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' } })]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' } })]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByTestId('run-held-1')).toBeTruthy()
     expect(screen.queryByTestId('run-leader-here-sign-1')).toBeNull()
@@ -875,11 +933,11 @@ describe('Mail through Docsmit offers only the envelopes that go out (v2.5535)',
   ] as Array<[string, Partial<RunNotice>, RegExp]>)('%s notice offers no Docsmit envelope: its envelopes are held, the door is dim and says why, and prepare is never asked', async (_kind, partial, held) => {
     docsmitState.setUp = true
     prepareMock.mockClear()
-    renderWithProviders(<LienDeskRunModal notices={[notice({ ...partial, recipients: mailable(ELWICK, LOWBECK) })]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice({ ...partial, recipients: mailable(ELWICK, LOWBECK) })]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByTestId('run-held-1').textContent).toMatch(held)
     expect(screen.getByTestId('run-held-2').textContent).toMatch(held)
-    const door = screen.getByTestId('run-docsmit') as HTMLButtonElement
+    const door = more('run-docsmit') as HTMLButtonElement
     expect(door.textContent).toBe('Mail through Docsmit ▸')
     expect(door.disabled).toBe(true)
     expect(door.title).toBe('Every certified envelope is held. Its card says why.')
@@ -896,7 +954,7 @@ describe('Mail through Docsmit offers only the envelopes that go out (v2.5535)',
     const clean = notice({ recipients: mailable(ELWICK, LOWBECK) })
     const unsigned = notice({ itemId: 'it2', jobId: 'j712', label: '712 · AXO B', jobNumber: '712', signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, recipients: mailable(['Bandera Holdings', '2200 Bandera Rd, San Antonio, TX 78228'], ['Harlan Builders', '100 Main St, Seguin, TX 78155']) })
     const nothing = notice({ itemId: 'it3', jobId: 'j688', label: '688 · Cibolo', jobNumber: '688', amount: 0, recipients: mailable(['Cibolo Partners LLC', '5 Oak St, Cibolo, TX 78108'], ['Medina Contracting', '9 Elm St, Castroville, TX 78009']) })
-    renderWithProviders(<LienDeskRunModal notices={[clean, unsigned, nothing]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[clean, unsigned, nothing]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     // Envelopes 1 and 2 go out; 3 to 6 are held, each with its reason on its card.
     expect(screen.queryByTestId('run-held-1')).toBeNull()
@@ -905,10 +963,13 @@ describe('Mail through Docsmit offers only the envelopes that go out (v2.5535)',
     expect(screen.getByTestId('run-held-4').textContent).toMatch(/^Held · Unsigned: /)
     expect(screen.getByTestId('run-held-5').textContent).toMatch(/^Held · Nothing to send/)
     expect(screen.getByTestId('run-held-6').textContent).toMatch(/^Held · Nothing to send/)
-    const door = screen.getByTestId('run-docsmit') as HTMLButtonElement
+    const door = more('run-docsmit') as HTMLButtonElement
     expect(door.textContent).toBe('Mail through Docsmit · 2 envelopes ▸')
     expect(door.title).toBe('4 held envelopes wait in the run.')
-    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes$/ })).toBeTruthy()
+    // The same two the packet prints: one notice is ready, in two envelopes.
+    expect(screen.getByTestId('run-parts').textContent).toBe('3 notices=1 ready1 waits on Robert Douglas’s signature1 held')
+    expect(onePress().textContent).toBe('Print 1 notice')
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('1 can print now. 2 stay for the next packet.The packet prints with its checklist sheet, in envelope order: 2 envelopes.')
     fireEvent.click(door)
     await waitFor(() => expect(prepareMock).toHaveBeenCalledTimes(1))
     const asked = prepareMock.mock.calls[0]![0] as unknown as Array<{ n: number; name: string; contents: Array<{ notice: { itemId: string } }> }>
@@ -926,11 +987,13 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       notice({ printedAt: '2026-10-07T16:00:00Z', printedBy: 'Taunya', signature: null, leader: { userId: 'u-rob', name: 'Robert Douglas' } }),
       notice({ itemId: 'it2', jobId: 'j688', label: '688 · Harlan Dental', jobNumber: '688', printedAt: '2026-10-07T16:00:00Z', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Harlan Dental PLLC', address: '2200 Bandera Rd', email: '', method: 'hand', tracking: '' }, { key: 'original_contractor', label: 'Original contractor', name: 'Harlan Dental PLLC', address: '2200 Bandera Rd', email: '', method: 'hand', tracking: '' }] }),
     ]
-    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    const list = screen.getByTestId('run-check')
-    expect(list.textContent).toContain('The checklist')
-    expect(list.textContent).toContain('2 printed · 0 signed · 1 mailed of 2')
+    // The rows sit in groups by part (v2.7477), each under a head that counts notices; the heading that counted ticks is gone.
+    expect(screen.getByTestId('run-check').querySelector('h3')).toBeNull()
+    expect(screen.getByTestId('run-group-head-owe').textContent).toBe('▾Printed · 1 notice · owes a number$33,500')
+    expect(screen.getByTestId('run-group-head-record').textContent).toBe('▾Ready to record · 1 notice$33,500')
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 printed=1 ready to record1 owes a number')
     // 650: printed by Taunya on the 7th, unsigned (the Signed press opens the pen pane), two numbers owed.
     const row = screen.getByTestId('run-check-it1')
     expect(row.getAttribute('data-waits')).toBe('sign')
@@ -948,38 +1011,40 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     expect((screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking') as HTMLInputElement).value).toBe(NUMBER)
     fireEvent.change(screen.getByLabelText('650 · AXO Schertz — GC tracking'), { target: { value: '9407 1118 9876 5432 1111' } })
     expect(screen.getByTestId('run-check-it1').getAttribute('data-waits')).toBe('sign')
-    expect(list.textContent).toContain('2 printed · 0 signed · 2 mailed of 2')
+    // v2.5533: a paper that printed unsigned records as it went, so with its numbers in it is ready to record; its Signed press stays open.
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 printed=2 ready to record')
+    expect(screen.getByTestId('run-group-head-record').textContent).toBe('▾Ready to record · 2 notices$67,000')
     // Signed ▸ opens the pen pane under the row, for that notice alone.
     fireEvent.click(screen.getByTestId('run-check-sign-it1'))
     const pane = screen.getByTestId('lien-pen-pane')
-    expect(row.contains(pane)).toBe(true)
+    expect(screen.getByTestId('run-check-it1').contains(pane)).toBe(true)
     expect(pane.textContent).toContain('Robert Douglas')
     expect(screen.getByLabelText('650 · AXO Schertz signed with a pen')).toBeTruthy()
-    // Two ways to travel: certified and by hand, each a lane.
-    expect(screen.getByTestId('run-lane-certified').textContent).toContain('Certified')
-    expect(screen.getByTestId('run-lane-hand').textContent).toContain('By hand')
-    expect(screen.getByTestId('run-lane-hand').textContent).toContain('envelope 3')
+    // The journey is the run's three steps; the lanes strip under it is gone (v2.7477).
+    expect(screen.getByTestId('run-journey').querySelectorAll('[role="listitem"]')).toHaveLength(3)
+    expect(screen.queryByTestId('run-lanes')).toBeNull()
   })
 
   it('Printed ▸ on a row marks the paper printed by hand with who and when, and the desk is told; Mark N printed takes every unprinted row at once', async () => {
     const printed: string[][] = []
     const two = [notice(), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] })]
-    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
+    renderRun(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
     await settle()
-    expect(screen.getByTestId('run-mark-printed').textContent).toBe('Mark 2 printed')
+    expect(more('run-mark-printed').textContent).toBe('Mark 2 printed')
     expect(screen.getByTestId('run-check-it1').getAttribute('data-waits')).toBe('print')
     expect((screen.getByLabelText('650 · AXO Schertz — owner tracking') as HTMLInputElement).disabled).toBe(true)
     fireEvent.click(screen.getByTestId('run-check-mark-printed-it1'))
     expect(screen.getByTestId('run-check-printed-it1').textContent).toMatch(/^✓ \w{3} \d{1,2} · Taunya$/)
     expect(printed).toEqual([['it1']])
-    expect(screen.getByTestId('run-mark-printed').textContent).toBe('Mark 1 printed')
+    expect(more('run-mark-printed').textContent).toBe('Mark 1 printed')
     expect((screen.getByLabelText('650 · AXO Schertz — owner tracking') as HTMLInputElement).disabled).toBe(false)
-    fireEvent.click(screen.getByTestId('run-mark-printed'))
+    fireEvent.click(more('run-mark-printed'))
     expect(printed).toEqual([['it1'], ['it2']])
-    expect(screen.getByTestId('run-mark-printed').textContent).toBe('Mark printed')
-    expect((screen.getByTestId('run-mark-printed') as HTMLButtonElement).disabled).toBe(true)
-    // Every notice printed: the foot moves to recording and the packet press goes under More as Print it again.
-    expect(screen.queryByRole('button', { name: /^Print the packet/ })).toBeNull()
+    expect(more('run-mark-printed').textContent).toBe('Mark printed')
+    expect((more('run-mark-printed') as HTMLButtonElement).disabled).toBe(true)
+    // Every notice printed: the one press is the record, and printing again is under More.
+    expect(onePress().getAttribute('data-act')).toBe('record')
+    expect(more('run-print-again').textContent).toBe('Print it again · 3 envelopes')
   })
 
   it('a printed notice whose job was paid since is held on its row (v2.7337): the foot and Mark N signed leave it out, and its own Signed and Mailed are closed', async () => {
@@ -990,20 +1055,21 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       // The paper says $2,400; the job's open balance is $0 today.
       notice({ itemId: 'it2', jobId: 'j651', label: '651 · Paid since', jobNumber: '651', printedAt: at, signature: null, leader, amount: 0, fields: { ...notice().fields, claimAmount: '2400.00' }, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] }),
     ]
-    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     const why = 'Nothing to claim: the job owes $0 now. The paper says $2,400.'
-    // Paid rows fold under one line at the foot of the checklist (v2.7353); the heading counts the live ones.
+    // Paid rows fold under one line at the foot of the Held group (v2.7353, v2.7477); the count line reads what printed and is not held.
     expect(screen.queryByTestId('run-check-it2')).toBeNull()
-    expect(screen.getByTestId('run-check').querySelector('h3')?.textContent).toBe('The checklist 1 printed · 0 signed · 0 mailed of 1')
+    expect(screen.getByTestId('run-group-head-held').textContent).toBe('▸Held · 1 notice$0')
+    expect(screen.getByTestId('run-parts').textContent).toBe('1 printed=1 owes a number')
     expect(screen.getByTestId('run-paid-fold-toggle').textContent).toBe('1 paid notice · nothing to send ▾')
     // No close is offered when the host hands the window none.
     expect(screen.queryByTestId('run-close-paid')).toBeNull()
     fireEvent.click(screen.getByTestId('run-paid-fold-toggle'))
     expect(screen.queryByTestId('run-check-close-it2')).toBeNull()
     expect(screen.getByTestId('run-check-held-it2').textContent).toBe(`Held · ${why}`)
-    expect(screen.getByTestId('run-foot-status').textContent).toContain('1 to sign · 1 held')
-    const press = screen.getByTestId('run-mark-signed') as HTMLButtonElement
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('2 envelopes owe a number.')
+    const press = more('run-mark-signed') as HTMLButtonElement
     expect(press.textContent).toBe('Mark 1 signed · 1 waits ▸')
     expect(press.title).toBe(`651 · Paid since: ${why}`)
     // The live row keeps its doors; the paid one has no Signed press and a closed Mailed box.
@@ -1023,7 +1089,7 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     const leader = { userId: 'u-rob', name: 'Robert Douglas' }
     const paid = (itemId: string, n: string) => notice({ itemId, jobId: `j${n}`, label: `${n} · Paid since`, jobNumber: n, printedAt: at, signature: null, leader, amount: 0, fields: { ...notice().fields, claimAmount: '2400.00' }, recipients: [{ key: 'owner', label: 'Owner of record', name: `Owner ${n}`, address: `${n} Other St`, email: '', method: 'certified_mail', tracking: '' }] })
     const asked: string[][] = []
-    renderWithProviders(
+    renderRun(
       <LienDeskRunModal
         notices={[notice({ printedAt: at, signature: null, leader }), paid('it2', '651'), paid('it3', '652'), paid('it4', '653')]}
         issuer={null}
@@ -1080,7 +1146,7 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     expect(screen.getByTestId('run-check-it4')).toBeTruthy()
     // The live notice was never asked about, and its row is as it was.
     expect(screen.getByTestId('run-check-sign-it1').textContent).toBe('Signed ▸')
-    expect(screen.getByTestId('run-foot-status').textContent).toContain('1 to sign · 1 held')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('2 envelopes owe a number.')
   })
 
   it('Mark N signed ▸ opens one pen pane over every printed, unsigned notice of the leader; the record ticks each row', async () => {
@@ -1090,9 +1156,9 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', printedAt: at, signature: null, leader: { userId: 'u-rob', name: 'Robert Douglas' }, rowFields: { a: 2 }, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] }),
       notice({ itemId: 'it3', jobId: 'j652', label: '652 · Unprinted', jobNumber: '652', signature: null, leader: { userId: 'u-rob', name: 'Robert Douglas' }, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Third Owner', address: '3 Third St', email: '', method: 'certified_mail', tracking: '' }] }),
     ]
-    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    const press = screen.getByTestId('run-mark-signed') as HTMLButtonElement
+    const press = more('run-mark-signed') as HTMLButtonElement
     expect(press.textContent).toBe('Mark 2 signed · 1 waits ▸')
     expect(press.title).toBe('652 · Unprinted: not printed yet')
     fireEvent.click(press)
@@ -1107,7 +1173,7 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
   })
 
   it('nothing printed: the checklist still stands, every row waiting on Printed; no lanes', async () => {
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByTestId('run-check-it1').getAttribute('data-waits')).toBe('print')
     expect(screen.queryByTestId('run-lanes')).toBeNull()
@@ -1123,7 +1189,7 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     const opened: string[] = []
     const tab = { document: { open: vi.fn(), write: (h: string) => void opened.push(h), close: vi.fn(), images: [] }, focus: vi.fn(), close: vi.fn(), print: vi.fn(), addEventListener: vi.fn() }
     const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
-    renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-10-07T16:00:00Z', printedBy: 'Taunya' })]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice({ printedAt: '2026-10-07T16:00:00Z', printedBy: 'Taunya' })]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     ensureMore()
     fireEvent.click(screen.getByTestId('run-print-sheet'))
@@ -1145,12 +1211,12 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
       { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
-    renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    const door = screen.getByTestId('run-docsmit') as HTMLButtonElement
+    const door = more('run-docsmit') as HTMLButtonElement
     expect(door.textContent).toBe('Mail through Docsmit · 1 envelope ▸')
     expect(door.disabled).toBe(false)
-    expect(screen.getByTestId('run-docsmit-send-by').textContent).toMatch(/Docsmit/)
+    expect(more('run-docsmit-send-by').textContent).toMatch(/Docsmit/)
     fireEvent.click(door)
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     expect(prepareMock).toHaveBeenCalledTimes(1)
@@ -1165,7 +1231,8 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     expect(screen.getByTestId('run-chip-1').textContent).toBe('mailed through Docsmit · number coming')
     expect((screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking') as HTMLInputElement).disabled).toBe(true)
     // The GC's envelope stays on paper, so the foot still prints, and only that one: the Docsmit envelope left the packet.
-    expect(screen.getByRole('button', { name: /Print the packet · 1 envelope$/ })).toBeTruthy()
+    expect(onePress().textContent).toBe('Print 1 notice')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('in envelope order: 1 envelope.')
     docsmitState.setUp = false
   })
 
@@ -1183,9 +1250,9 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     const onPrinted = vi.fn()
     const onRecorded = vi.fn()
     const onClose = vi.fn()
-    renderWithProviders(<LienDeskRunModal notices={[both]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={onRecorded} onPrinted={onPrinted} />)
+    renderRun(<LienDeskRunModal notices={[both]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={onRecorded} onPrinted={onPrinted} />)
     await settle()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     fireEvent.click(screen.getByTestId('dsm-mail'))
     await waitFor(() => expect(screen.getByTestId('dsm-outcome').textContent).toBe('2 envelopes mailed through Docsmit.'))
@@ -1209,9 +1276,9 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     ] })
     const onPrinted = vi.fn()
     const onRecorded = vi.fn()
-    renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={onRecorded} onPrinted={onPrinted} />)
+    renderRun(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={onRecorded} onPrinted={onPrinted} />)
     await settle()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     fireEvent.click(screen.getByTestId('dsm-mail'))
     await waitFor(() => expect(screen.getByTestId('dsm-outcome').textContent).toBe('1 envelope mailed through Docsmit.'))
@@ -1220,7 +1287,8 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
     expect(onPrinted).not.toHaveBeenCalled()
     fireEvent.click(screen.getByTestId('dsm-close'))
     await waitFor(() => expect(screen.queryByTestId('dsm-review')).toBeNull())
-    fireEvent.click(screen.getByRole('button', { name: /Print the packet · 1 envelope$/ }))
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('in envelope order: 1 envelope.')
+    fireEvent.click(onePress())
     await waitFor(() => expect(onPrinted).toHaveBeenCalledWith(['it1']))
     docsmitState.setUp = false
   })
@@ -1236,9 +1304,9 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
       { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
-    renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={onRecorded} onPrinted={onPrinted} />)
+    renderRun(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={onRecorded} onPrinted={onPrinted} />)
     await settle()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     fireEvent.click(screen.getByTestId('dsm-mail'))
     await waitFor(() => expect(screen.getByTestId('dsm-outcome').textContent).toMatch(/^Nothing mailed\./))
@@ -1256,9 +1324,9 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
       { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
-    renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={onRecorded} onPrinted={onPrinted} />)
+    renderRun(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={onRecorded} onPrinted={onPrinted} />)
     await settle()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     fireEvent.click(screen.getByTestId('dsm-mail'))
     await waitFor(() => expect(screen.getByTestId('dsm-outcome').textContent).toMatch(/^Nothing mailed\. Docsmit credit is short/))
@@ -1275,19 +1343,19 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
       { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
-    renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={onPrinted} />)
+    renderRun(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={onPrinted} />)
     await settle()
     fireEvent.click(screen.getByTestId('run-print-envelope-2'))
     expect(onPrinted).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     fireEvent.click(screen.getByTestId('dsm-mail'))
     await waitFor(() => expect(onPrinted).toHaveBeenCalledWith(['it1']))
     fireEvent.click(screen.getByTestId('dsm-close'))
     await waitFor(() => expect(screen.queryByTestId('dsm-review')).toBeNull())
-    // The packet is printed, so the print press is gone from the foot; Record waits only on the paper envelope's number.
-    expect(screen.queryByRole('button', { name: /^Print the packet/ })).toBeNull()
-    expect(screen.getByTestId('run-foot-status').textContent).toContain('1 owes a number')
+    // The packet is printed, so the one press is the record; it waits only on the paper envelope's number.
+    expect(onePress().getAttribute('data-act')).toBe('record')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('1 envelope owes a number.')
     expect(screen.getByTestId('run-check-printed-it1').textContent).toMatch(/^✓ /)
     docsmitState.setUp = false
   })
@@ -1304,16 +1372,18 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       { key: 'owner', label: 'Owner of record', name: 'Bandera Holdings', address: '2200 Bandera Rd, San Antonio, TX 78228', email: '', method: 'certified_mail', tracking: '' },
       { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
-    renderWithProviders(<LienDeskRunModal notices={[after, unprinted]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => 0} />)
+    renderRun(<LienDeskRunModal notices={[after, unprinted]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => 0} />)
     await settle()
-    // Three envelopes: the owner's that went, the other owner's, and the GC's with both notices inside. Docsmit offers the two that did not go.
-    expect(screen.getByTestId('run-chip-1').textContent).toBe('mailed through Docsmit · 9407 1118 9922 0000 0000 01')
-    expect(screen.getByTestId('run-docsmit').textContent).toBe('Mail through Docsmit · 2 envelopes ▸')
-    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes$/ })).toBeTruthy()
+    // Four envelopes (v2.7477): the unprinted notice's two come first, as its packet numbers them, then the printed notice's two.
+    // The GC has two, since a copy that printed shares no envelope with one still to print. Docsmit offers the two that have not gone.
+    expect(screen.getByTestId('run-chip-3').textContent).toBe('mailed through Docsmit · 9407 1118 9922 0000 0000 01')
+    expect(more('run-docsmit').textContent).toBe('Mail through Docsmit · 2 envelopes ▸')
+    expect(onePress().textContent).toBe('Print 1 notice')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('in envelope order: 2 envelopes.')
     // The notice that went part by Docsmit is not offered back to Approved · to print.
     ensureMore()
     expect(screen.queryByTestId('run-take-back')).toBeNull()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(prepareMock).toHaveBeenCalledTimes(1))
     expect((prepareMock.mock.calls[0]![0] as unknown as Array<{ name: string }>).map((e) => e.name).sort()).toEqual(['Bandera Holdings', 'Lowbeck Contracting'])
     docsmitState.setUp = false
@@ -1331,14 +1401,14 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
       { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '9407 1', via: 'docsmit', pieceId: 'p1', pieceStatus: 'mailed', pieceProblem: null },
       { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: '', method: 'certified_mail', tracking: '9407 2', via: 'docsmit', pieceId: 'p2', pieceStatus: 'mailed', pieceProblem: null },
     ] })
-    renderWithProviders(<LienDeskRunModal notices={[fresh, went]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[fresh, went]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     // Four envelopes: B's two, then A's two. The GC has two, one mailed and one still to go.
     expect(screen.getByTestId('run-chip-2').textContent).not.toMatch(/mailed through Docsmit/)
     expect(screen.getByTestId('run-chip-4').textContent).toBe('mailed through Docsmit · 9407 2')
-    expect(screen.getByTestId('run-docsmit').textContent).toBe('Mail through Docsmit · 2 envelopes ▸')
-    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes$/ })).toBeTruthy()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    expect(more('run-docsmit').textContent).toBe('Mail through Docsmit · 2 envelopes ▸')
+    expect(onePress().textContent).toBe('Print 1 notice')
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(prepareMock).toHaveBeenCalledTimes(1))
     const asked = prepareMock.mock.calls[0]![0] as unknown as Array<{ name: string; contents: Array<{ notice: { itemId: string } }> }>
     expect(asked.map((e) => [e.name, e.contents.map((c) => c.notice.itemId)])).toEqual([['Bandera Holdings', ['it2']], ['Lowbeck Contracting', ['it2']]])
@@ -1348,20 +1418,20 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
   it('Mail through Docsmit: no door until a dev set the connection up, none while paused, and a dim one when every certified address is short', async () => {
     docsmitState.setUp = false
     docsmitState.settings.paused = false
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.queryByTestId('run-docsmit')).toBeNull()
+    expect(moreQuery('run-docsmit')).toBeNull()
     cleanup()
     docsmitState.setUp = true
     docsmitState.settings.paused = true
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.queryByTestId('run-docsmit')).toBeNull()
+    expect(moreQuery('run-docsmit')).toBeNull()
     cleanup()
     docsmitState.settings.paused = false
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    const door = screen.getByTestId('run-docsmit') as HTMLButtonElement
+    const door = more('run-docsmit') as HTMLButtonElement
     expect(door.disabled).toBe(true)
     expect(door.title).toMatch(/needs .*ZIP/)
     docsmitState.setUp = false
@@ -1372,7 +1442,7 @@ describe('LienDeskRunModal · the checklist (v2.7328) and the lanes (Run-5)', ()
 describe('Esc in the run window (v2.5530)', () => {
   it('closes a run with nothing typed; folds More first; holds over a typed number; leaves the preview its own Esc', async () => {
     const onClose = vi.fn()
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
     // More ▾ open: the first Esc folds it and the run stays.
     ensureMore()
@@ -1403,7 +1473,7 @@ describe('Esc in the run window (v2.5530)', () => {
 
   it('a changed send method or Mailed on day holds too; a click outside a run with nothing changed closes it', async () => {
     const onClose = vi.fn()
-    const view = renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    const view = renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
     const method = screen.getByLabelText('Envelope 2 · Original contractor: Lowbeck Contracting — method') as HTMLSelectElement
     fireEvent.change(method, { target: { value: 'hand' } })
@@ -1418,7 +1488,7 @@ describe('Esc in the run window (v2.5530)', () => {
     expect(onClose).not.toHaveBeenCalled()
     view.unmount()
     const onClose2 = vi.fn()
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose2} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose2} onRecorded={() => {}} />)
     await settle()
     fireEvent.click(screen.getByRole('dialog', { name: 'Print and mail' }))
     expect(onClose2).toHaveBeenCalledTimes(1)
@@ -1427,7 +1497,7 @@ describe('Esc in the run window (v2.5530)', () => {
   it('the take-back question closes on Esc before the run does', async () => {
     const onClose = vi.fn()
     const printed = [notice({ printedAt: '2026-10-07T16:00:00Z' })]
-    renderWithProviders(<LienDeskRunModal notices={printed} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} onTakeBack={async (ids) => ids.length} />)
+    renderRun(<LienDeskRunModal notices={printed} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} onTakeBack={async (ids) => ids.length} />)
     await settle()
     ensureMore()
     fireEvent.click(screen.getByTestId('run-take-back'))
@@ -1446,7 +1516,7 @@ describe('Esc in the run window (v2.5530)', () => {
   it('a signature pane on screen makes Esc wait; once it is gone, even with its twin pane left open on the other envelope, Esc closes', async () => {
     signMock.mockClear()
     const onClose = vi.fn()
-    renderWithProviders(
+    renderRun(
       <LienDeskRunModal
         notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
         issuer={null}
@@ -1483,9 +1553,9 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
   it('a Docsmit send holds the run on Esc and on a click outside, with words that say to record it', async () => {
     docsmitState.setUp = true
     const onClose = vi.fn()
-    renderWithProviders(<LienDeskRunModal notices={[docsmitNotice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[docsmitNotice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     fireEvent.click(screen.getByTestId('dsm-mail'))
     await waitFor(() => expect(screen.getByTestId('dsm-outcome').textContent).toBe('1 envelope mailed through Docsmit.'))
@@ -1506,9 +1576,9 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
     let release: () => void = () => {}
     sendMock.mockImplementationOnce(() => new Promise((resolve) => { release = () => resolve({ ok: true, sent: [] }) }))
     const onClose = vi.fn()
-    renderWithProviders(<LienDeskRunModal notices={[docsmitNotice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[docsmitNotice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     fireEvent.click(screen.getByTestId('dsm-mail'))
     // Mailing…: Esc closes the review (its own key); the run, mid-write, lets it be.
@@ -1520,7 +1590,7 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
     // The review stays closed and its door works again.
     expect(screen.queryByTestId('dsm-review')).toBeNull()
     prepareMock.mockClear()
-    fireEvent.click(screen.getByTestId('run-docsmit'))
+    fireEvent.click(more('run-docsmit'))
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     expect(prepareMock).toHaveBeenCalledTimes(1)
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -1537,7 +1607,7 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
 
   it('a click outside waits on a signature pane on screen, as Esc does', async () => {
     const onClose = vi.fn()
-    renderWithProviders(
+    renderRun(
       <LienDeskRunModal notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' } })]} issuer={null} todayYmd="2026-10-09" userId="u-taunya" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={onClose} onRecorded={() => {}} />,
     )
     await settle()
@@ -1550,7 +1620,7 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
 
   it('a run left open past midnight is not changed by it: Mailed on is measured against the day it opened', async () => {
     const onClose = vi.fn()
-    const view = renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    const view = renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
     view.rerender(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-15" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
@@ -1566,12 +1636,13 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
       notice({ printedAt: '2026-10-07T16:00:00Z' }),
       notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', printedAt: '2026-10-07T16:00:00Z', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Zed Holdings', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }, { key: 'original_contractor', label: 'Original contractor', name: 'Yarrow Builders', address: '1 GC Rd', email: '', method: 'certified_mail', tracking: '' }] }),
     ]
-    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
     // 650's two envelopes numbered on its row.
     fireEvent.change(screen.getByLabelText('650 · AXO Schertz — owner tracking'), { target: { value: '9407 1118 9876 5432 1098' } })
     fireEvent.change(screen.getByLabelText('650 · AXO Schertz — GC tracking'), { target: { value: '9407 1118 9876 5432 1099' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Record 1 mailing · 1 waits ▸' }))
+    expect(onePress().textContent).toBe('Record 1 mailing')
+    fireEvent.click(onePress())
     await settle()
     expect(recordMock).toHaveBeenCalledTimes(1)
     // 651 is left, with boxes of its own, empty.
@@ -1596,20 +1667,24 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
         { key: 'original_contractor', label: 'Original contractor', name: 'Yarrow Builders', address: '77 Third St', email: '', method: 'certified_mail', tracking: '' },
       ],
     })
-    renderWithProviders(<LienDeskRunModal notices={[n650, n652, n653]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[n650, n652, n653]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
+    ensureMore()
     fireEvent.click(screen.getByLabelText('Combine the jobs at one property into one notice'))
-    // With the pair joined, Combine holds.
+    // Esc closes More first. With the pair joined, Combine then holds.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('run-more-panel')).toBeNull()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).not.toHaveBeenCalled()
     // Number the joined notice's envelopes (shared with 652, so its row takes them too) and record it; 653 is left alone.
     fireEvent.change(screen.getByLabelText('650 · AXO Schertz — owner tracking'), { target: { value: '9407 1118 9922 1111 2222 01' } })
     fireEvent.change(screen.getByLabelText('650 · AXO Schertz — GC tracking'), { target: { value: '9407 1118 9922 1111 2222 02' } })
     expect((screen.getByLabelText('652 · AXO Schertz annex — owner tracking') as HTMLInputElement).value).toBe('9407 1118 9922 1111 2222 01')
-    fireEvent.click(screen.getByRole('button', { name: 'Record 2 mailings · 1 waits ▸' }))
+    expect(onePress().textContent).toBe('Record 2 mailings')
+    fireEvent.click(onePress())
     await settle()
     expect(recordMock).toHaveBeenCalledTimes(1)
-    expect(screen.queryByLabelText('Combine the jobs at one property into one notice')).toBeNull()
+    expect(moreQuery('run-combine')).toBeNull()
     if (screen.queryByTestId('run-more-panel')) fireEvent.keyDown(window, { key: 'Escape' })
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -1617,7 +1692,7 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
 
   it('a run opened on its take-back question with nothing printed closes on the first Esc', async () => {
     const onClose = vi.fn()
-    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} onTakeBack={async (ids) => ids.length} openOnTakeBack />)
+    renderRun(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} onTakeBack={async (ids) => ids.length} openOnTakeBack />)
     await settle()
     expect(screen.queryByTestId('run-take-back-confirm')).toBeNull()
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -1627,10 +1702,144 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
 
 describe('LienDeskRunModal · nothing left in the run (punch list #184, sweep C)', () => {
   it('says nothing approved is waiting, in the one empty shape, and prints nothing', async () => {
-    renderWithProviders(<LienDeskRunModal notices={[]} issuer={null} todayYmd="2026-10-26" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderRun(<LienDeskRunModal notices={[]} issuer={null} todayYmd="2026-10-26" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(document.querySelector('[data-empty-state]')!.textContent).toBe('Nothing approved is waiting.')
-    expect((screen.getByRole('button', { name: /Print the packet/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(onePress().textContent).toBe('Nothing to send')
+    expect(onePress().disabled).toBe(true)
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('Nothing is in this run.Approve a notice, or put one back in.')
+    // No count line and no second line over an empty run.
+    expect(screen.queryByTestId('run-parts')).toBeNull()
+    expect(screen.queryByTestId('run-sub')).toBeNull()
+  })
+})
+
+describe('LienDeskRunModal · one count, three steps, one press (v2.7477, punch list #362)', () => {
+  const sam = { userId: 'u-sam', name: 'Sam' }
+  const zz = (i: number, over: Partial<RunNotice> = {}): RunNotice =>
+    notice({
+      itemId: `z${i}`,
+      jobId: `jz${i}`,
+      label: `${1090 + i} · ZZ Test Lot ${i}`,
+      jobNumber: String(1090 + i),
+      amount: 1_000 + i * 100,
+      mailBy: i === 3 ? '2026-11-16' : '2026-11-20',
+      leader: sam,
+      signature: { mode: 'type', printedName: 'Sam Sample', pngDataUrl: null, signedAtIso: '2026-11-12T19:14:00Z' } as unknown as RunNotice['signature'],
+      recipients: [
+        { key: 'owner', label: 'Owner of record', name: `ZZ Test Owner ${i} LLC`, address: `${i} Sample Rd, Sampleton, TX 78000`, email: '', method: 'certified_mail', tracking: '' },
+        { key: 'original_contractor', label: 'Original contractor', name: 'ZZ Test Builders', address: '100 Example Pkwy, Sampleton, TX 78000', email: '', method: 'certified_mail', tracking: '' },
+      ],
+      ...over,
+    })
+  /** The drawing's batch: 15 notices for one contractor. 8 are ready, 5 wait on the signature, 2 are held. */
+  const fifteen = () => [
+    ...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => zz(i)),
+    ...[9, 10, 11, 12, 13].map((i) => zz(i, { signature: null })),
+    zz(14, { recipients: [{ ...zz(14).recipients[0]!, address: '' }, zz(14).recipients[1]!] }),
+    zz(15, { amount: 0 }),
+  ]
+  const partNumbers = () => [...screen.getByTestId('run-parts').querySelectorAll('[data-testid^="run-part-"] b')].map((b) => Number(b.textContent))
+
+  it('step 1: the head, the three steps, the count line and the groups all count the same notices, and the foot has one press', async () => {
+    renderWithProviders(<LienDeskRunModal notices={fifteen()} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByRole('heading', { name: 'Print and mail · 15 notices' })).toBeTruthy()
+    // Envelopes are named as envelopes, once: 15 owners, and the contractor's twice, since a stopped notice's copy waits for the next packet.
+    expect(screen.getByTestId('run-sub').textContent).toBe('30 copies in 17 envelopes · last day to mail Mon Nov 16')
+    expect([1, 2, 3].map((n) => `${screen.getByTestId(`run-journey-${n}`).textContent} ${screen.getByTestId(`run-journey-${n}`).getAttribute('data-state')}`)).toEqual([
+      '1Get them right8 of 15 are ready now',
+      '2Print0 of 15 printed todo',
+      '3Mail and record0 of 15 ready to record todo',
+    ])
+    expect(screen.getByTestId('run-parts').textContent).toBe('15 notices=8 ready5 wait on Sam’s signature2 held')
+    // The parts add up to the total.
+    expect(partNumbers().reduce((a, b) => a + b, 0)).toBe(Number(screen.getByTestId('run-parts-total').querySelector('b')!.textContent))
+    // The groups, what is stopped first, each under a head with its count; the ready rows are folded while the run stands on what stops a notice.
+    expect([...screen.getByTestId('run-check').querySelectorAll('.lienRunGroupHead')].map((h) => h.textContent)).toEqual([
+      '▾Held · 2 notices$2,400',
+      '▾Wait on Sam’s signature · 5 notices$10,500',
+      '▸Ready · 8 notices$11,600',
+    ])
+    expect(screen.getByTestId('run-check-held-z14').textContent).toBe('Held · Owner of record: no mailing address')
+    expect(screen.getByTestId('run-check-z9')).toBeTruthy()
+    expect(screen.queryByTestId('run-check-z1')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-group-head-ready'))
+    expect(screen.getByTestId('run-check-z1')).toBeTruthy()
+    // A row that waits on the signature offers Signed ▸ before it prints: the packet will not print it unsigned.
+    expect(screen.getByTestId('run-check-sign-z9').textContent).toBe('Signed ▸')
+    // The foot: two lines, More, and one press. Everything else is under More, and the cards are folded.
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('8 can print now. 7 stay for the next packet.The packet prints with its checklist sheet, in envelope order: 9 envelopes.')
+    expect([...screen.getByTestId('run-foot').querySelectorAll('button')].map((b) => b.textContent)).toEqual(['More ▾', 'Print 8 notices'])
+    expect(screen.getByTestId('run-cards-fold').getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByTestId('run-cards')).toBeNull()
+    for (const id of ['run-combine', 'run-mark-printed', 'run-mark-signed', 'run-print-sheet', 'run-label-addresses']) expect(screen.queryByTestId(id)).toBeNull()
+    fireEvent.click(screen.getByTestId('run-more'))
+    expect([...screen.getByTestId('run-more-panel').querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Mark 13 printed · 2 held ▸', 'Mark signed', 'Envelope faces', 'Addresses for the labels', 'Print the sheet'])
+  })
+
+  it('the press prints the ready notices, each whole: a waiting notice no longer keeps the contractor’s envelope out, and a number typed after reaches only what printed', async () => {
+    printMock.mockClear()
+    const printed: string[][] = []
+    renderWithProviders(<LienDeskRunModal notices={fifteen()} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
+    await settle()
+    fireEvent.click(onePress())
+    expect(printMock).toHaveBeenCalledTimes(1)
+    const [html, filing] = printMock.mock.calls[0] as unknown as [string, { title: string; jobIds: string[] }]
+    expect(filing.title).toBe('§ 53.056 notice packet · 8 notices')
+    expect(filing.jobIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8].map((i) => `jz${i}`))
+    // Nine envelopes go out, the contractor's among them with the eight ready notices inside; the eight that stay are listed in red.
+    expect(html.match(/data-run-sheet-envelope="\d+"(?! data-run-held)/g)).toHaveLength(9)
+    expect(html.match(/data-run-held="yes"/g)).toHaveLength(8)
+    expect(html).toContain('<b>8 notices</b>')
+    expect(printed).toEqual([[1, 2, 3, 4, 5, 6, 7, 8].map((i) => `z${i}`)])
+    // Step 3: the count is what printed, the stopped groups fold, and the press is the record, dead until a notice has every number.
+    expect(screen.getByTestId('run-journey-2').textContent).toBe('✓Print8 of 15 printed')
+    expect(screen.getByTestId('run-journey-3').textContent).toBe('3Mail and record0 of 9 numbers typed')
+    expect(screen.getByTestId('run-parts').textContent).toBe('8 printed=8 owe a number')
+    expect([...screen.getByTestId('run-check').querySelectorAll('.lienRunGroupHead')].map((h) => h.textContent)).toEqual([
+      '▸Held · 2 notices$2,400',
+      '▸Wait on Sam’s signature · 5 notices$10,500',
+      '▾Printed · 8 notices · owe a number$11,600',
+    ])
+    expect(onePress().textContent).toBe('Record the mailing')
+    expect(onePress().disabled).toBe(true)
+    expect(screen.getByTestId('run-foot-status').textContent).toBe('9 envelopes owe a number.Type each from its green slip, or scan it with a phone.')
+    // The contractor's number is the printed envelope's: every printed row takes it, and no waiting row does.
+    fireEvent.change(screen.getByLabelText('1091 · ZZ Test Lot 1 — GC tracking'), { target: { value: NUMBER } })
+    expect((screen.getByLabelText('1098 · ZZ Test Lot 8 — GC tracking') as HTMLInputElement).value).toBe(NUMBER)
+    fireEvent.click(screen.getByTestId('run-group-head-wait'))
+    expect((screen.getByLabelText('1099 · ZZ Test Lot 9 — GC tracking') as HTMLInputElement).value).toBe('')
+    expect(screen.getByTestId('run-journey-3').textContent).toBe('3Mail and record1 of 9 numbers typed')
+    // One owner's number in, and one notice is ready: the press records it and the list under it names what stays, with why.
+    fireEvent.change(screen.getByLabelText('1091 · ZZ Test Lot 1 — owner tracking'), { target: { value: '9407 1118 9876 5432 1001' } })
+    expect(screen.getByTestId('run-parts').textContent).toBe('8 printed=1 ready to record7 owe a number')
+    expect(onePress().textContent).toBe('Record 1 mailing')
+    expect(screen.getByTestId('run-foot-status').textContent).toContain('1 is ready to record. 7 stay here until their numbers are typed.')
+    const left = [...screen.getByTestId('run-held-list').querySelectorAll('li')].map((li) => li.textContent)
+    expect(left).toHaveLength(14)
+    expect(left).toContain('1092 · ZZ Test Lot 2 · no tracking number yet')
+    expect(left).toContain('1099 · ZZ Test Lot 9 · waits on Sam’s signature')
+    expect(left).toContain('1104 · ZZ Test Lot 14 · Owner of record: no mailing address')
+    // Printing again is under More, and it names envelopes as envelopes.
+    expect(more('run-print-again').textContent).toBe('Print it again · 9 envelopes')
+  })
+
+  it('a row stays in its group while its number is typed, and moves once the cursor leaves the box', async () => {
+    const at = '2026-11-16T15:00:00Z'
+    const one = zz(1, { printedAt: at, recipients: [{ ...zz(1).recipients[0]!, tracking: NUMBER }, zz(1).recipients[1]!] })
+    renderWithProviders(<LienDeskRunModal notices={[one, zz(2, { printedAt: at })]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    const box = screen.getByLabelText('1091 · ZZ Test Lot 1 — GC tracking') as HTMLInputElement
+    fireEvent.focus(box)
+    fireEvent.change(box, { target: { value: '9407 1118 9876 5432 1002' } })
+    // The count is live; the row has not jumped out from under the cursor.
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 printed=1 ready to record1 owes a number')
+    expect(screen.queryByTestId('run-group-record')).toBeNull()
+    expect(screen.getByTestId('run-group-owe').contains(screen.getByTestId('run-check-z1'))).toBe(true)
+    fireEvent.blur(screen.getByLabelText('1091 · ZZ Test Lot 1 — GC tracking'))
+    expect(screen.getByTestId('run-group-record').contains(screen.getByTestId('run-check-z1'))).toBe(true)
+    expect(screen.getByTestId('run-group-owe').contains(screen.getByTestId('run-check-z2'))).toBe(true)
   })
 })
 

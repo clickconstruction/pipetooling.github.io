@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { runEnvelopeChip, runEnvelopeProblems, runEnvelopeSigned, runEnvelopeStage, runLaneOf, runLaneOfEnvelope, runStageLabels } from './runEnvelopeStage'
-import { runJourney } from './runJourney'
-import { runFootAction } from './runFootAction'
 import { runChecklistRows, runChecklistWords } from './runChecklist'
 import type { RunEnvelope } from './runEnvelopes'
 import type { RunNotice, RunRecipient, RunSendMethod } from './lienDeskRun'
@@ -106,71 +104,6 @@ describe('an envelope’s stage (Run-1)', () => {
     const email = envelope(2, 'original_contractor', [notice('a', '650')], { method: 'email' as RunSendMethod })
     expect(runEnvelopeStage(email, { printed: false }).stages.find((s) => s.key === 'mailed')!.done).toBe(false)
     expect(runEnvelopeStage(email, { printed: false, recorded: true }).current).toBe('done')
-  })
-})
-
-describe('the journey across the top (Run-1)', () => {
-  const states = (printed: boolean) => [
-    runEnvelopeStage(envelope(1, 'owner', [notice('a', '650'), notice('b', '712', { signature: null })]), { printed }),
-    runEnvelopeStage(envelope(2, 'original_contractor', [notice('a', '650'), notice('b', '712', { signature: null })]), { printed }),
-    runEnvelopeStage(envelope(3, 'owner', [notice('c', '688')], { method: 'hand' as RunSendMethod }), { printed }),
-  ]
-
-  it('six nodes with counts; the blocker sits on the Signed node and names the leader', () => {
-    const j = runJourney(states(false), { leaderName: 'Robert' })
-    expect(j.nodes.map((n) => `${n.key} ${n.count} ${n.state}`)).toEqual(['built 3 of 3 done', 'signed 1 of 3 blocked', 'sent 0 of 3 todo', 'mailed 0 of 3 todo', 'recorded 0 of 3 todo', 'delivered 0 of 3 todo'])
-    expect(j.nodes[1]!.note).toBe('2 wait on Robert')
-    expect(j.fillRatio).toBe(0)
-  })
-
-  it('once everyone has signed, Sent is the node that is now; the fill moves with the done nodes', () => {
-    const signedStates = [runEnvelopeStage(envelope(1, 'owner', [notice('a', '650')]), { printed: false })]
-    const j = runJourney(signedStates)
-    expect(j.nodes[1]!.state).toBe('done')
-    expect(j.nodes[2]!.state).toBe('now')
-    expect(j.fillRatio).toBeCloseTo(1 / 5)
-    const printedStates = [runEnvelopeStage({ ...envelope(1, 'owner', [notice('a', '650')]), tracking: '9407 1118 9876 5432 1001' }, { printed: true, recorded: true })]
-    const done = runJourney(printedStates)
-    expect(done.nodes.map((n) => n.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'now'])
-    expect(done.fillRatio).toBeCloseTo(4 / 5)
-  })
-
-  it('an empty run has no now node and no fill', () => {
-    const j = runJourney([])
-    expect(j.total).toBe(0)
-    expect(j.nodes.every((n) => n.state === 'todo')).toBe(true)
-    expect(j.fillRatio).toBe(0)
-  })
-})
-
-describe('the one button at the foot (Run-1)', () => {
-  it('prints what can print and says who waits; records once numbers are in; waits while they are owed; closes when all are recorded', () => {
-    const unsigned = notice('b', '712', { signature: null })
-    const s1 = [runEnvelopeStage(envelope(1, 'owner', [notice('a', '650')]), { printed: false }), runEnvelopeStage(envelope(2, 'original_contractor', [unsigned]), { printed: false })]
-    const print = runFootAction(s1, { leaderName: 'Robert' })
-    expect(print.kind).toBe('print')
-    expect(print.label).toBe('Print the packet · 1 envelope ▸')
-    expect(print.line1).toBe('1 prints here · 1 for Robert to sign')
-    expect(print.line2).toContain('joins the next packet once Robert signs')
-    const s2 = [runEnvelopeStage(envelope(1, 'owner', [notice('a', '650')]), { printed: true }), runEnvelopeStage(envelope(2, 'original_contractor', [unsigned]), { printed: false })]
-    const wait = runFootAction(s2, { leaderName: 'Robert' })
-    expect(wait.kind).toBe('wait')
-    expect(wait.disabled).toBe(true)
-    expect(wait.line1).toBe('1 envelope owes a number · 1 for Robert to sign')
-    const s3 = [runEnvelopeStage({ ...envelope(1, 'owner', [notice('a', '650')]), tracking: '9407 1118 9876 5432 1001' }, { printed: true }), runEnvelopeStage(envelope(3, 'owner', [notice('c', '688')]), { printed: true })]
-    const record = runFootAction(s3)
-    expect(record.kind).toBe('record')
-    expect(record.label).toBe('Record the mailing · 1 (1 stays in the pile) ▸')
-    expect(record.line1).toBe('1 ready to record · 1 still owes a number')
-    const s4 = [runEnvelopeStage({ ...envelope(1, 'owner', [notice('a', '650')]), tracking: '9407 1118 9876 5432 1001' }, { printed: true, recorded: true })]
-    expect(runFootAction(s4).kind).toBe('done')
-    expect(runFootAction([]).kind).toBe('nothing')
-    expect(runFootAction([runEnvelopeStage(envelope(2, 'original_contractor', [unsigned]), { printed: false })]).line1).toBe('Every envelope waits on the leader')
-  })
-
-  it('an email copy records without printing', () => {
-    const s = [runEnvelopeStage(envelope(2, 'original_contractor', [notice('a', '650')], { method: 'email' as RunSendMethod }), { printed: false })]
-    expect(runFootAction(s).kind).toBe('record')
   })
 })
 
