@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -1109,6 +1109,14 @@ uuid3           | Supply House C    | 0
   - `vendor_kind` (text, `supply_house` | `insurer` | `rental_yard` | `sub_ledger` | `other`, v2.3172) - Only `supply_house` rows are quoted from, offered by the RFQ / quote pickers, or listed on the estimator's Supply houses tab
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: every Materials reader (dev, master_technician, assistant, estimator, primary, superintendent) reads; writes require `can_manage_supply_house_directory()` (dev, master_technician, assistant, controller, estimator — v2.3167)
+
+#### `public.supply_house_payments` · `public.supply_house_payment_lines`
+- **Purpose**: A payment to a supply house as a record of its own, and the bills it paid (v2.7450, `docs/migrations/20261116230000_supply_house_payments.md`)
+- **Key Fields**:
+  - `supply_house_payments`: `supply_house_id` (FK → `supply_houses.id`, cascade), `paid_on` (date, the day it was sent), `amount` (what was sent), `method` (`card` | `ach` | `check` | `cash` | `other`, nullable), `method_ref`, `receipt_link`, `memo`, `source` (`recorded` | `mark_paid` | `before`), `removed_at` / `removed_by` / `removed_by_name` / `removed_reason`, `created_by` / `created_by_name`
+  - `supply_house_payment_lines`: `payment_id` (FK, cascade), `invoice_id` (FK → `supply_house_invoices.id`, cascade), `amount` (above zero on a bill, below zero on a credit memo)
+- **Rules**: a bill's `is_paid`, `paid_at` and `supply_house_invoices.amount_paid` (what its live payments have put on it; an unpaid bill has `amount - amount_paid` open) are kept true by the lines, in both directions (a by-hand Mark paid makes a payment); what a payment sent past its lines is on account with the house and is stored nowhere else
+- **RLS**: office staff only (`is_office_staff()`), all four commands
 
 #### `public.supply_house_service_types`
 - **Purpose**: The trades a supply house serves (v2.3173). No rows for a house = serves every trade; the estimator directory's trade chips and the RFQ picker's bid-trade default keep untagged houses visible.
