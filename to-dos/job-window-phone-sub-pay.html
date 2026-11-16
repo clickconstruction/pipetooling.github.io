@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A Sub's Job Window: the Your Pay Row</title>
+<style>
+  /* Layout: three phones side by side, each a scrolling 375 px screen: today, the row when the sub's sheet is found,
+     and the row when it is not. They stack at phone width. Styles shared with job-window-phone-c.html. */
+  :root {
+    --ground: #F1F3F6; --surface: #FFFFFF; --subtle: #F6F8FA; --ink: #111827; --muted: #6B7280; --soft: #9CA3AF;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB; --blue: #2563EB; --blue-bg: #DBEAFE; --blue-ink: #1D4ED8;
+    --green: #16A34A; --green-bg: #DCFCE7; --green-ink: #15803D; --amber-bg: #FEF3C7; --amber-ink: #B45309;
+    --red: #DC2626; --red-bg: #FEE2E2; --brown: #92400E; --purple: #7C3AED;
+    --font: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  .lede { margin: 14px 0 0; color: var(--muted); max-width: 82ch; }
+  .lede b { color: var(--ink); }
+  h2 { font-size: 18px; margin: 34px 0 4px; }
+  h2 .who { color: var(--muted); font-weight: 600; font-size: 14px; margin-left: 8px; }
+  .pairnote { margin: 0; color: var(--muted); max-width: 82ch; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 399px)); gap: 18px; align-items: start; margin-top: 12px; }
+  @media (max-width: 800px) { .pair { grid-template-columns: minmax(0, 399px); } }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .panel .cap { padding: 9px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .panel .cap .tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .tag.today { background: var(--red-bg); color: var(--red); }
+  .tag.c { background: var(--amber-bg); color: var(--amber-ink); }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; border-top: 1px solid var(--line); }
+  .panel .verdict b { color: var(--ink); }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 18px; }
+  .panel .verdict li { margin: 2px 0; }
+
+  /* The phone */
+  .phone { margin: 12px auto; width: calc(100% - 22px); max-width: 375px; height: 760px; border: 1px solid var(--line-strong); border-radius: 22px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; font-size: 14px; position: relative; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+  .status { height: 28px; display: flex; justify-content: space-between; align-items: center; padding: 0 16px; font-size: 12px; font-weight: 700; color: var(--ink); flex-shrink: 0; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .scroll::-webkit-scrollbar { width: 6px; } .scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+  .flag { display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--red); background: var(--red-bg); border-radius: 999px; padding: 1px 8px; margin: 2px 0 6px; }
+  .flag.ok { color: var(--green-ink); background: var(--green-bg); }
+
+  /* The title row and the tab strip, as A built them */
+  .head { display: flex; align-items: flex-start; gap: 6px; padding: 8px 6px 6px 14px; flex-shrink: 0; }
+  .head .names { flex: 1; min-width: 0; }
+  .head .names b { font-size: 18px; line-height: 1.2; display: block; }
+  .head .names .quiet { margin: 2px 0 0; }
+  .head .pins { display: flex; flex-direction: column; flex-shrink: 0; }
+  .head .pin { width: 44px; height: 40px; display: grid; place-items: center; font-size: 22px; color: var(--muted); }
+  .head .pin.dots { font-size: 20px; letter-spacing: 1px; }
+  .tabs { display: flex; align-items: center; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+  .tabs .rail { display: flex; gap: 2px; overflow-x: auto; padding: 6px 10px; scrollbar-width: none; flex: 1; min-width: 0; }
+  .tabs .rail::-webkit-scrollbar { display: none; }
+  .tabs.fade .rail { -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); }
+  .tab { padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; border-radius: 999px; font-weight: 600; font-size: 14px; color: var(--muted); white-space: nowrap; }
+  .tab.on { background: var(--blue); color: #fff; }
+  .tab.more { border: 1px solid var(--line-strong); color: var(--ink); margin-left: auto; }
+
+  /* Body */
+  .body { padding: 8px 14px 16px; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .chip.status { background: var(--blue-bg); color: var(--blue-ink); }
+  .chip.kind { background: var(--blue-bg); color: var(--blue-ink); font-size: 11px; }
+  .chip.num { background: var(--blue-bg); color: var(--blue-ink); border-radius: 6px; padding: 2px 8px; }
+  .quiet { color: var(--muted); font-size: 12.5px; margin: -2px 0 6px; }
+  .press { min-height: 44px; border: 1px solid var(--line-strong); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 14px; background: var(--surface); padding: 0 10px; white-space: nowrap; }
+  .press.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .press.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .who { display: grid; gap: 6px; margin-top: 6px; }
+  .who .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+  .who .row.one { grid-template-columns: minmax(0, 1fr) auto; }
+  .who .press { justify-content: flex-start; min-width: 0; }
+  .who .press .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--link); }
+  .who .press .verb { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 700; padding-left: 8px; }
+  .who .press.sq { width: 52px; justify-content: center; }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .three .press { color: var(--link); }
+  .sv { position: relative; height: 104px; border-radius: 10px; overflow: hidden; margin: 2px 0 8px; background: linear-gradient(180deg, #bcd3ea 0%, #d9e4ee 48%, #8e9aa6 50%, #6b7480 100%); }
+  .sv::before { content: ''; position: absolute; left: 12%; right: 30%; top: 22%; height: 30%; background: #c9b79c; border-radius: 3px 3px 0 0; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .sv .pin { position: absolute; left: 8px; bottom: 8px; padding: 4px 10px; border-radius: 6px; background: rgba(17,24,39,.7); color: #f9fafb; font-size: 13px; font-weight: 600; text-decoration: underline; }
+  .maprow { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; min-height: 44px; }
+  .maprow .dot { display: inline-block; width: 22px; height: 6px; border-radius: 3px; background: #F97316; margin-right: 8px; vertical-align: middle; }
+  .maprow .dist { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .paintwords { text-align: center; color: var(--link); font-weight: 700; font-size: 14px; padding: 6px 0 2px; }
+  .photos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 6px -14px 0; padding: 0 14px 4px; }
+  .photos::-webkit-scrollbar { display: none; }
+  .photos .ph { flex: 0 0 72px; height: 72px; border-radius: 10px; position: relative; overflow: hidden; background: linear-gradient(135deg, #cbd5e1, #64748b); }
+  .ph .d { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 600; text-align: center; background: rgba(17,24,39,.55); color: #f9fafb; padding: 1px 0; }
+  .photos .add { flex: 0 0 72px; height: 72px; border-radius: 10px; border: 1.5px dashed var(--blue); display: grid; place-items: center; color: var(--link); font-weight: 700; font-size: 12px; text-align: center; line-height: 1.2; }
+  .cust { font-size: 17px; font-weight: 700; margin-top: 2px; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface); }
+  .card b.h { display: block; font-size: 15px; }
+  .card .sub { color: var(--muted); font-size: 13px; }
+  .kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); min-height: 44px; }
+  .kv .k { color: var(--muted); font-size: 13px; font-weight: 600; padding-top: 1px; }
+  .kv .v { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .kv .v .sub { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .kv .v .line2 { display: block; font-weight: 600; font-size: 15px; }
+  .act { color: var(--link); font-weight: 700; }
+  .fold { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; min-height: 44px; font-weight: 700; }
+  .fold .n { margin-left: auto; color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .fold .n.live { color: var(--blue-ink); }
+  .fold .chev { color: var(--soft); }
+  .fold .n + .chev { margin-left: 0; }
+  .fold > .chev:nth-child(2) { margin-left: auto; }
+  .fold .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; display: block; }
+  .sect { font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; margin: 16px -14px 8px; padding: 10px 14px 4px; border-top: 6px solid var(--ground); display: flex; align-items: center; gap: 8px; }
+  .sect .right { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--link); }
+  .sect .right .n { color: var(--muted); margin-right: 6px; }
+  .sect::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--blue); }
+  .body > .sect:first-child { border-top: none; margin-top: 0; }
+  .pct { height: 6px; background: var(--line); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .pct i { display: block; height: 100%; background: var(--green); }
+  .open { text-align: center; color: var(--link); font-weight: 700; font-size: 13px; padding: 10px 0 0; }
+
+  /* The plain window as it draws today: a white sheet over the dimmed Dashboard */
+  .phone.dim { background: #8f949c; }
+  .sheetwin { margin: 34px 14px 44px; background: var(--surface); border-radius: 12px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .sheetwin .body { padding: 18px 18px 12px; }
+  .oldtitle { font-size: 18px; font-weight: 800; line-height: 1.25; }
+  .oldicons { display: flex; justify-content: flex-end; gap: 14px; font-size: 17px; color: var(--muted); margin: 4px 0 8px; }
+  .oldicons .p { color: var(--purple); }
+  .paintbox { display: inline-block; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 12px; color: var(--link); font-weight: 600; margin-bottom: 8px; }
+  .label { font-size: 13px; color: var(--muted); margin: 6px 0 2px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px 10px; color: var(--link); font-size: 13px; margin: 4px 4px 0 0; }
+  .pill.plain { color: var(--ink); font-weight: 600; }
+  .pill.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .accounts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11.5px; letter-spacing: .04em; color: var(--muted); margin: 10px 0 8px; }
+  .accounts .lab { text-transform: uppercase; font-weight: 700; }
+  .accounts .acc { border: 1px dashed var(--line-strong); border-radius: 999px; padding: 2px 9px; letter-spacing: 0; font-size: 12.5px; }
+  .feedbox { height: 150px; overflow-y: auto; border-top: 1px solid var(--line); margin-top: 8px; font-size: 13px; }
+  .feedbox .ev { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .feedbox .ev .m { color: var(--muted); font-size: 12px; }
+  .composer { border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin-top: 8px; color: var(--soft); font-size: 13px; background: var(--subtle); }
+  .composer .btn { float: right; border: 1px solid var(--line-strong); border-radius: 6px; padding: 2px 8px; color: var(--muted); background: var(--surface); margin-top: 18px; }
+  .datebox { border: 1px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; color: var(--muted); margin-bottom: 8px; background: var(--subtle); }
+  .datebox b { display: block; color: var(--ink); }
+  .rail-old { text-align: center; color: var(--muted); margin: 4px 0 10px; }
+  .rail-old b { color: var(--ink); background: var(--subtle); padding: 2px 8px; border-radius: 6px; }
+  .costrow { display: flex; justify-content: space-between; padding: 9px 12px; border: 1px solid var(--line); margin-top: -1px; font-weight: 600; background: var(--subtle); }
+  .costrow:first-of-type { border-radius: 8px 8px 0 0; } .costrow:last-of-type { border-radius: 0 0 8px 8px; }
+  .err { color: var(--brown); }
+
+  /* The bar at the foot */
+  .bar { display: grid; gap: 6px; padding: 8px 10px 12px; border-top: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
+  .bar .press { min-height: 48px; }
+  .bar.three { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .bar.four { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .bar.crew { grid-template-columns: minmax(0, 1fr) auto auto; }
+
+  /* Tables and the closing blocks */
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--subtle); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: none; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tablewrap { overflow-x: auto; margin-top: 10px; max-width: 980px; }
+  .block { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px 18px; margin-top: 10px; max-width: 980px; }
+  .block p { margin: 0 0 8px; max-width: 84ch; }
+  .block ul { margin: 4px 0 0; padding-left: 20px; }
+  .block li { margin: 5px 0; max-width: 84ch; }
+  .pick { color: var(--green-ink); font-weight: 700; }
+  footer { margin-top: 30px; color: var(--muted); font-size: 12.5px; max-width: 980px; }
+  body.solo header.top, body.solo .lede, body.solo .tablewrap, body.solo .block, body.solo footer, body.solo h2.other, body.solo .hide-solo { display: none; }
+  body.solo h2 { margin-top: 14px; }
+  /* ?only=c1|c2|c3 draws one C phone alone at the width of the screen; &full=1 lets it run to its whole length
+     with a line where the first screen ends. Both are for pictures. */
+  body.only { padding: 0; background: var(--surface); }
+  body.only .phone { margin: 0; width: 100%; max-width: none; border: 0; border-radius: 0; box-shadow: none; height: 100vh; }
+  body.only.full .phone { height: auto; min-height: 812px; }
+  body.only.full .scroll { overflow: visible; }
+  .foldline { position: absolute; left: 0; right: 0; top: 744px; border-top: 2px dashed var(--red); z-index: 4; pointer-events: none; }
+  .foldline span { position: absolute; right: 6px; top: -19px; font-size: 10.5px; font-weight: 700; color: var(--red); background: var(--red-bg); border-radius: 999px; padding: 1px 8px; }
+
+  .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 399px)); gap: 18px; align-items: start; margin-top: 12px; }
+  @media (max-width: 1180px) { .trio { grid-template-columns: minmax(0, 399px); } }
+  /* Each phone runs to its whole length, so the row is on the picture without a scroll. */
+  .phone { height: auto; }
+  .scroll { overflow: visible; }
+  .tag.now { background: var(--green-bg); color: var(--green-ink); }
+  .tag.few { background: var(--amber-bg); color: var(--amber-ink); }
+  .tag.most { background: var(--red-bg); color: var(--red); }
+  .kv.new { background: #FFFBEB; margin: 0 -14px; padding: 10px 14px; border-top: 2px solid #F59E0B; border-bottom: 2px solid #F59E0B; }
+  .newtag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--amber-ink); margin-bottom: 2px; }
+  .money { font-variant-numeric: tabular-nums; }
+  .states { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; margin-top: 8px; }
+  @media (max-width: 800px) { .states { grid-template-columns: minmax(0, 1fr); } }
+  .states .kv { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--surface); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div><p class="eyebrow">Punch list #355 · the sub's second question</p><h1>A sub's job window: is a Your pay row drawn?</h1></div>
+  <div class="stamp">2026-11-15<br>every name, street and number here is invented</div>
+</header>
+<p class="lede"><b>The row is one line under What's happening.</b> It would tell a sub what is open on their own work on this job, from the sheet the office keeps and their portal already shows. The left phone is the window as it is today. The other two are the same window with the row, in the two ways it would read this week.</p>
+
+<div class="trio">
+  <div class="panel">
+    <div class="cap"><span>Before · today</span><span class="tag now">live, v2.7380</span></div>
+    <div class="phone">
+      <div class="status"><span>7:42</span><span>●●● 81</span></div>
+      <div class="head"><div class="names"><b>Ridgeway Walk <span class="chip status">Working</span></b><p class="quiet">1042 · Ridgeway Builders</p></div><div class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></div></div>
+      <div class="scroll">
+        <div class="body">
+          <div class="sect">Who</div>
+          <div class="cust">Dana Reyes <span style="font-weight:400;color:var(--muted);font-size:13px;display:block">runs this job</span></div>
+          <div class="who"><div class="row one"><span class="press">📞 <span class="v">(512) 555-0117</span><span class="verb">CALL</span></span><span class="press sq">⧉</span></div></div>
+          <div class="sect">Today's work</div>
+          <div class="card"><b class="h">Top Out <span style="float:right;color:var(--muted);font-size:13px">55%</span></b><span class="sub">Rough In done · Top Out 50% · Trim Set not started</span><div class="pct"><i style="width:55%;background:var(--blue)"></i></div></div>
+          <div class="fold"><span>Plans</span><span class="n">Issued set · came Nov 7</span><span class="chev">›</span></div>
+          <div class="fold"><span>Materials on site</span><span class="n">3 containers · 14 lines</span><span class="chev">›</span></div>
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Monday, November 16<span class="line2">8:00 AM – 12:00 PM</span><span class="sub">Gate code 4471</span></span></div>
+          <div class="kv"><span class="k">Last note</span><span class="v">Trim caps ordered<span class="sub">Sample office, 5 days ago <span class="act">Read the notes</span></span></span></div>
+          <div class="sect">More on this job</div>
+          <div class="fold"><span>Notes and reports</span><span class="n">8</span><span class="chev">›</span></div>
+        </div>
+      </div>
+      <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>No pay on the job window.</b>
+      <ul>
+        <li>A sub reads their pay on their portal, as today: agreed, paid, open and the pay date, sheet by sheet.</li>
+        <li>Nothing on this window can be wrong about money.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="cap"><span>After · the sheet is found</span><span class="tag few">1 to 3 of 12 today</span></div>
+    <div class="phone">
+      <div class="status"><span>7:42</span><span>●●● 81</span></div>
+      <div class="head"><div class="names"><b>Ridgeway Walk <span class="chip status">Working</span></b><p class="quiet">1042 · Ridgeway Builders</p></div><div class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></div></div>
+      <div class="scroll">
+        <div class="body">
+          <div class="sect">Who</div>
+          <div class="cust">Dana Reyes <span style="font-weight:400;color:var(--muted);font-size:13px;display:block">runs this job</span></div>
+          <div class="who"><div class="row one"><span class="press">📞 <span class="v">(512) 555-0117</span><span class="verb">CALL</span></span><span class="press sq">⧉</span></div></div>
+          <div class="sect">Today's work</div>
+          <div class="card"><b class="h">Top Out <span style="float:right;color:var(--muted);font-size:13px">55%</span></b><span class="sub">Rough In done · Top Out 50% · Trim Set not started</span><div class="pct"><i style="width:55%;background:var(--blue)"></i></div></div>
+          <div class="fold"><span>Plans</span><span class="n">Issued set · came Nov 7</span><span class="chev">›</span></div>
+          <div class="fold"><span>Materials on site</span><span class="n">3 containers · 14 lines</span><span class="chev">›</span></div>
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Monday, November 16<span class="line2">8:00 AM – 12:00 PM</span><span class="sub">Gate code 4471</span></span></div>
+          <div class="kv new"><span class="k"><span class="newtag">new</span><br>Your pay</span><span class="v money">$2,100 open<span class="sub">$4,200 agreed · $2,100 paid</span><span class="sub">Payable after Nov 21 <span class="act">Open your portal</span></span></span></div>
+          <div class="kv"><span class="k">Last note</span><span class="v">Trim caps ordered<span class="sub">Sample office, 5 days ago <span class="act">Read the notes</span></span></span></div>
+          <div class="sect">More on this job</div>
+          <div class="fold"><span>Notes and reports</span><span class="n">8</span><span class="chev">›</span></div>
+        </div>
+      </div>
+      <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What a sub wants to see.</b>
+      <ul>
+        <li>What is open, with the agreed price and what has been paid under it.</li>
+        <li>The pay date once the office sets one, and <b>Open your portal</b> for the rest.</li>
+        <li>Today the app finds a sub's own sheet by matching their name. On prod this week that works for <b>1 of 12</b> subs on a working job, or 3 of 12 counting sheets that carry several names.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="cap"><span>After · the sheet is not found</span><span class="tag most">9 to 11 of 12 today</span></div>
+    <div class="phone">
+      <div class="status"><span>7:42</span><span>●●● 81</span></div>
+      <div class="head"><div class="names"><b>Ridgeway Walk <span class="chip status">Working</span></b><p class="quiet">1042 · Ridgeway Builders</p></div><div class="pins"><span class="pin dots">⋯</span><span class="pin">✕</span></div></div>
+      <div class="scroll">
+        <div class="body">
+          <div class="sect">Who</div>
+          <div class="cust">Dana Reyes <span style="font-weight:400;color:var(--muted);font-size:13px;display:block">runs this job</span></div>
+          <div class="who"><div class="row one"><span class="press">📞 <span class="v">(512) 555-0117</span><span class="verb">CALL</span></span><span class="press sq">⧉</span></div></div>
+          <div class="sect">Today's work</div>
+          <div class="card"><b class="h">Top Out <span style="float:right;color:var(--muted);font-size:13px">55%</span></b><span class="sub">Rough In done · Top Out 50% · Trim Set not started</span><div class="pct"><i style="width:55%;background:var(--blue)"></i></div></div>
+          <div class="fold"><span>Plans</span><span class="n">Issued set · came Nov 7</span><span class="chev">›</span></div>
+          <div class="fold"><span>Materials on site</span><span class="n">3 containers · 14 lines</span><span class="chev">›</span></div>
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Monday, November 16<span class="line2">8:00 AM – 12:00 PM</span><span class="sub">Gate code 4471</span></span></div>
+          <div class="kv new"><span class="k"><span class="newtag">new</span><br>Your pay</span><span class="v">No sheet in your name here<span class="sub">The office has not put your work on this job yet. <span class="act">Open your portal</span></span></span></div>
+          <div class="kv"><span class="k">Last note</span><span class="v">Trim caps ordered<span class="sub">Sample office, 5 days ago <span class="act">Read the notes</span></span></span></div>
+          <div class="sect">More on this job</div>
+          <div class="fold"><span>Notes and reports</span><span class="n">8</span><span class="chev">›</span></div>
+        </div>
+      </div>
+      <div class="bar crew"><span class="press green">Arrived</span><span class="press blue">Leave report</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What most subs would see if it were drawn now.</b>
+      <ul>
+        <li>Four of the 12 are on jobs with no sheet at all. The rest have a sheet the app cannot tie to them by name.</li>
+        <li>A sub who is owed money would read that they have no sheet. That is the risk of drawing it now.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2>How the row would read as the work moves <span class="who">the same words the sub's portal uses</span></h2>
+<div class="states" style="max-width:820px">
+  <div class="kv"><span class="k">Your pay</span><span class="v money">$4,200 open<span class="sub">$4,200 agreed · nothing paid yet</span><span class="sub">Work under way</span></span></div>
+  <div class="kv"><span class="k">Your pay</span><span class="v money">$4,200 open<span class="sub">$4,200 agreed · nothing paid yet</span><span class="sub">Pre-inspection</span></span></div>
+  <div class="kv"><span class="k">Your pay</span><span class="v money">$2,100 open<span class="sub">$4,200 agreed · $2,100 paid</span><span class="sub">Payable after Nov 21</span></span></div>
+  <div class="kv"><span class="k">Your pay</span><span class="v money">Paid in full<span class="sub">$4,200 agreed · $4,200 paid</span><span class="sub">Last payment Nov 24</span></span></div>
+</div>
+
+<h2>What decides it</h2>
+<div class="block">
+  <p><b>The money is already in the app.</b> Each sub's sheet holds the agreed price, what has been paid, what is open and the pay date. Their portal shows all of it.</p>
+  <p><b>What is missing is whose sheet it is.</b> A sheet names its sub by a typed name, not by their login. Punch list #346 is the work that settles whose a sheet is; its first PR merged on 2026-11-15.</p>
+  <ul>
+    <li><span class="pick">Leave it off for now</span>, then draw the middle phone once #346 ties a sheet to a login. Every sub then gets the true row. Small, one PR.</li>
+    <li><b>Draw it now</b>: the middle phone for the few the name match finds, the right phone for the rest.</li>
+    <li><b>A door only</b>: no numbers, one row that reads <i>Your pay · Open your portal</i>. It cannot be wrong about money. It still needs the app to know which portal is theirs, the same tie the numbers need.</li>
+  </ul>
+</div>
+<footer>Mock-up for punch list #355 (<code>to-dos/job-window-phone.md</code>). The counts are from prod on 2026-11-15, working jobs only, counts and no names.</footer>
+</div>
+</body>
+</html>
