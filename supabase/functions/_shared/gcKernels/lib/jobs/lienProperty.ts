@@ -18,6 +18,8 @@ import { homesteadAnsweredOnRow } from '../customers/homesteadAnswer.ts'
  * Pure kernel; callers fetch the rows.
  */
 
+import { lienPublicAnswerOf, type LienPublicAnswer, type LienPublicRecord } from './lienPublicProperty.ts'
+
 export type CustomerAddressRow = {
   address: string
   county: string
@@ -72,6 +74,8 @@ export type ResolvedLienProperty = {
   homestead: boolean
   /** Whether a person answered the homestead question on the record (punch list #305): null with no linked record, or a row that does not carry the column. */
   homesteadAnswered?: boolean | null
+  /** The answer to *Is this public property?* on the record (`lienPublicProperty.ts`): null with no linked record, no answer yet, or a row that does not carry the column. */
+  publicAnswer?: LienPublicAnswer | null
   owner: LienPropertyOwner
 }
 
@@ -135,6 +139,7 @@ export function resolveLienProperty(
     propertyKind: (addressRow?.property_kind ?? '').trim(),
     homestead: addressRow?.homestead ?? false,
     homesteadAnswered: homesteadAnsweredOnRow(addressRow),
+    publicAnswer: lienPublicAnswerOf(addressRow as LienPublicRecord | null),
     owner,
   }
 }

@@ -17,7 +17,7 @@ import {
 } from '../lib/jobs/lienDesk'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
-import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
+import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, parsePaymentBond, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
 import { LIEN_DESK_STARTED_READ_DAYS, lienDeskKeepNoticeRows, lienDeskKeepRows } from '../lib/jobs/lienDeskStarted'
 import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
 import { lastCourtesyAtByJob } from '../lib/jobs/lienCourtesyReply'
@@ -37,6 +37,7 @@ import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
 import { lienBilledOpen } from '../lib/jobs/lienBilledOpen'
 import { lienJobIdsOffDesk, withLienInKindColumn } from '../lib/jobs/lienInKind'
+import { lienJobIdsAskingPublic, lienJobIdsOffLienPath, type LienPublicJob } from '../lib/jobs/lienPublicProperty'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
 export type LienDeskJob = {
@@ -79,6 +80,8 @@ export type LienDeskJob = {
   /** Unpaid subcontract retainage the GC holds (v2.3753); null = not recorded. */
   lien_retainage_held?: number | null
   lien_payment_bond?: string | null
+  /** When the job went on the attorney's list (the Collections flag); the bin *Public jobs · bond claim* reads it. */
+  collections_at?: string | null
   /** The job's trade (v2.3849) — the letters' "plumbing contractor" / "electrical contractor" and the form's default type of labor. */
   service_type?: { name: string } | null
   /** The open in-kind deal that pays the job (punch list #301); set, the job is off the desk (v2.7253, `lienInKind.ts`). */
@@ -86,7 +89,7 @@ export type LienDeskJob = {
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name), created_at, invoices:jobs_ledger_invoices(status, billed_at, sent_to_customer_at)'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, collections_at, service_type:service_types(name), created_at, invoices:jobs_ledger_invoices(status, billed_at, sent_to_customer_at)'
 
 /** The desk's columns with the first work day (v2.6061): read first, and the list above when the column is not on prod yet. */
 export const LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY = `${LIEN_DESK_JOB_COLUMNS}, first_work_date`
@@ -122,6 +125,17 @@ export type LienDeskData = {
   jobsById: Record<string, LienDeskJob>
   gcsById: Record<string, LienDeskGc>
   addressesById: Record<string, CustomerAddressRow>
+  /**
+   * The jobs off the lien path (`lienPublicProperty.ts`): every job whose property record says *public*. They are
+   * taken out of every list above where the lists are built, so no reader holds a rule of its own, and handed on here
+   * for the bin *Public jobs · bond claim*. Empty when none, and before the answer's migration is pushed. The three
+   * fields are the read's own: a hand-built set of desk data (the GC run's, a test's) may leave them out.
+   */
+  publicJobs?: LienPublicJob[]
+  /** The jobs still on the lien path whose property reads as public and has no answer yet: the Board's amber line. */
+  publicAskJobIds?: ReadonlySet<string>
+  /** The property record under each job on the desk, and under each job off the path, by `customer_addresses.id`: the public property question reads it. */
+  propertiesById?: Record<string, CustomerAddressRow>
   ownerByJob: Record<string, JobPropertyOwnerLike>
   promisesByJob: Record<string, PromisedPayDate>
   /** GCs that already received at least one live § 53.056 notice from us (any job). */
@@ -257,8 +271,23 @@ export function useLienDeskData(
             )
           jobsRead.push(...((part ?? []) as LienDeskJob[]))
         }
+        // The property record under every job read, whole, once, in light mode too. `select('*')` names no column, so the
+        // read works before a migration that adds one is pushed. A failed read judges nothing, never the desk dark.
+        const propertyIdsRead = [...new Set(jobsRead.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
+        const propertiesById: Record<string, CustomerAddressRow> = {}
+        for (const chunk of chunkIds(propertyIdsRead)) {
+          if (chunk.length === 0) continue
+          const part = await withSupabaseRetry(() => supabase.from('customer_addresses').select('*').in('id', chunk), 'lien desk: property records').catch(() => null)
+          for (const a of (part ?? []) as CustomerAddressRow[]) propertiesById[a.id] = a
+        }
+        if (cancelled) return
         // ZZ test jobs (punch list #61, PR 3) leave every list here, by the joined rows' own names; and (v2.7253) so does every job an open in-kind deal pays.
-        const offJobIds = lienJobIdsOffDesk(jobsRead, hideZz ? zzTestJobIds(jobsRead) : null)
+        const offDeskIds = lienJobIdsOffDesk(jobsRead, hideZz ? zzTestJobIds(jobsRead) : null)
+        // Off the lien path (`lienPublicProperty.ts`): every job whose property record says public. They leave every list
+        // here too, so the Board, the lists, the run, the notary print and the Dashboard drop them with no rule of their
+        // own, and they are handed on as `publicJobs`. A job already off the desk (ZZ hidden, in kind) is not listed there.
+        const publicJobsRead = jobsRead.filter((j) => !offDeskIds?.has(j.id) && lienJobIdsOffLienPath([j], propertiesById).has(j.id))
+        const offJobIds = publicJobsRead.length ? new Set<string>([...(offDeskIds ?? []), ...publicJobsRead.map((j) => j.id)]) : offDeskIds
         const kept = (jobId: string) => !offJobIds?.has(jobId)
         const rows = offJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
         const allItems = offJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
@@ -270,6 +299,7 @@ export function useLienDeskData(
         const retainage = buildLienRetainageQueue(retainageRows, allItems, todayYmd)
         const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))
         for (const j of jobs) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
+        for (const j of publicJobsRead) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
         for (const r of affidavitRowsKept) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         for (const r of retainageRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         const gcRows = gcIds.size
@@ -296,20 +326,12 @@ export function useLienDeskData(
         }
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
-        // The property records under the affidavits (punch lists #305 and #314), read once, whole and in light mode too, so the
-        // Dashboard's count and the desk agree: an affidavit holds when its owner is a public body, and a residential one
-        // while nobody has answered the homestead question. `select('*')` names no column, so the read works before
-        // migration 20261112080000 is pushed, and the rows then carry no answer either way. A failed read judges nothing,
-        // never the desk dark.
+        // The property records under the affidavits (punch lists #305 and #314) are the ones read above, so the Dashboard's
+        // count and the desk agree: an affidavit holds when its owner is a public body, and a residential one while
+        // nobody has answered the homestead question.
         const affidavitAddressIdByJob: Record<string, string | null> = {}
         for (const r of affidavitRowsKept) affidavitAddressIdByJob[r.job_id] = jobsById[r.job_id]?.customer_address_id ?? null
-        const affidavitAddressIds = [...new Set(Object.values(affidavitAddressIdByJob).filter((v): v is string => Boolean(v)))]
-        const affidavitPropertyRows = affidavitAddressIds.length
-          ? await withSupabaseRetry(() => supabase.from('customer_addresses').select('*').in('id', affidavitAddressIds), 'lien desk: the affidavits’ property records').catch(() => null)
-          : []
-        if (cancelled) return
-        const affidavitPropertiesById: Record<string, CustomerAddressRow> = {}
-        for (const a of (affidavitPropertyRows ?? []) as CustomerAddressRow[]) affidavitPropertiesById[a.id] = a
+        const affidavitPropertiesById = propertiesById
         // The affidavit queue is built once the GCs and those records are read (punch list #305): a job under a GC holds
         // while that GC's row has no address, any job holds while its owner is a public body, and a residential property
         // holds while nobody has answered the homestead question (the gate asks only a residential one).
@@ -320,7 +342,7 @@ export function useLienDeskData(
         // bills and payments of just those jobs. A failed read leaves the figure to the RPC's, never the desk dark.
         const queueJobs: Record<string, LienDeskQueueJob> = { ...jobsById }
         const rowJobIds = new Set(rows.map((r) => r.job_id))
-        const billedOpenJobIds = light ? [] : jobs.filter((j) => !rowJobIds.has(j.id)).map((j) => j.id)
+        const billedOpenJobIds = light ? [] : [...jobs, ...publicJobsRead].filter((j) => !rowJobIds.has(j.id)).map((j) => j.id)
         if (billedOpenJobIds.length > 0) {
           type InvoiceRow = { id: string; job_id: string; status: string | null; amount: number | null; sequence_order: number | null; billed_at: string | null }
           type PaymentRow = { job_id: string; invoice_id: string | null; amount: number | null }
@@ -335,7 +357,7 @@ export function useLienDeskData(
             const payByJob = new Map<string, PaymentRow[]>()
             for (const p of payRows as PaymentRow[]) payByJob.set(p.job_id, [...(payByJob.get(p.job_id) ?? []), p])
             for (const id of billedOpenJobIds) {
-              const j = jobsById[id]
+              const j = jobsById[id] ?? publicJobsRead.find((x) => x.id === id)
               if (!j) continue
               queueJobs[id] = { ...j, billed_open: lienBilledOpen({ id: j.id, status: j.status ?? null, revenue: j.revenue, payments_made: j.payments_made }, invByJob.get(id) ?? [], payByJob.get(id) ?? []) }
             }
@@ -359,6 +381,23 @@ export function useLienDeskData(
         const affidavitDayByJob: Record<string, string> = {}
         for (const r of affidavitRows) affidavitDayByJob[r.job_id] = r.deadline
         const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, queueJobs, affidavitDayByJob)
+        // The jobs off the lien path, for the bin *Public jobs · bond claim*: the money by the desk's own rule (a
+        // reader's row when one lists the job, else what its sent bills still owe), and every paper of the desk's on it.
+        const publicJobs: LienPublicJob[] = publicJobsRead.map((j) => {
+          const listed = rowsRead.find((r) => r.job_id === j.id) ?? affidavitRowsRead.find((r) => r.job_id === j.id) ?? retainageRowsRead.find((r) => r.job_id === j.id)
+          return {
+            jobId: j.id,
+            addressId: j.customer_address_id ?? '',
+            number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+            name: (j.job_name ?? '').trim(),
+            gcName: j.gc_customer_id ? (gcsById[j.gc_customer_id]?.name ?? '') : '',
+            unpaid: Number(listed?.open_balance ?? queueJobs[j.id]?.billed_open ?? 0) || 0,
+            bond: parsePaymentBond(j.lien_payment_bond),
+            attorneySince: j.collections_at ?? null,
+            papers: itemsRead.filter((i) => i.job_id === j.id).map((i) => ({ kind: i.kind, status: i.status, months: i.months, sent_at: i.sent_at, approved_at: i.approved_at, voided_at: i.voided_at })),
+          }
+        })
+        const publicAskJobIds = lienJobIdsAskingPublic(jobs, propertiesById)
         const gcNames: Record<string, string> = {}
         for (const g of Object.values(gcsById)) gcNames[g.id] = g.name
         const summaryWithBatches = summarizeLienDeskForNeedsYou(queue)
@@ -510,6 +549,9 @@ export function useLienDeskData(
           jobsById,
           gcsById,
           addressesById,
+          publicJobs,
+          publicAskJobIds,
+          propertiesById,
           ownerByJob,
           promisesByJob,
           gcsWithPriorNotice,
@@ -538,6 +580,9 @@ export function useLienDeskData(
             jobsById: {},
             gcsById: {},
             addressesById: {},
+            publicJobs: [],
+            publicAskJobIds: new Set(),
+            propertiesById: {},
             ownerByJob: {},
             promisesByJob: {},
             gcsWithPriorNotice: new Set(),

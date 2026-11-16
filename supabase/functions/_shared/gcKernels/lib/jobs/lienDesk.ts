@@ -705,10 +705,10 @@ export type LienDraftReadiness = { ready: true; reason: null } | { ready: false;
  * property; the remedy is a claim on the GC's payment bond. The order is the
  * order the pane lists its checks: GC, owner, months.
  */
-export function draftReadiness(input: { gcName: string; ownerName: string; ownerMailingAddress: string; monthsCount: number }): LienDraftReadiness {
+export function draftReadiness(input: { gcName: string; ownerName: string; ownerMailingAddress: string; monthsCount: number; /** The property's stored answer and every name read (`lienPropertyIsPublic`); absent, the printed name alone is asked, as before. */ ownerIsPublic?: boolean }): LienDraftReadiness {
   if (!input.gcName.trim()) return { ready: false, reason: 'no_gc' }
   if (!input.ownerName.trim() || !input.ownerMailingAddress.trim()) return { ready: false, reason: 'no_owner' }
-  if (ownerKind(input.ownerName) === 'public') return { ready: false, reason: 'public_owner' }
+  if (input.ownerIsPublic ?? ownerKind(input.ownerName) === 'public') return { ready: false, reason: 'public_owner' }
   if (input.monthsCount <= 0) return { ready: false, reason: 'no_months' }
   return { ready: true, reason: null }
 }

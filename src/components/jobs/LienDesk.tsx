@@ -1733,7 +1733,7 @@ export default function LienDesk({
     await run('Note it as missed', async () => noteLienWindowMissed({ jobId: selected.jobId, months, fields: draftFields(), userId: authUserId, userName: authName }), `Noted — ${describeNoticeMonths(months)} is on the record as missed.`)
   }
   // Readiness (v2.3450 kernel): GC, owner with a mailing address, months — and never a public owner.
-  const readiness = draftReadiness({ gcName: gc?.name ?? '', ownerName, ownerMailingAddress: property.owner.mailingAddress, monthsCount: monthsList.length })
+  const readiness = draftReadiness({ gcName: gc?.name ?? '', ownerName, ownerMailingAddress: property.owner.mailingAddress, monthsCount: monthsList.length, ownerIsPublic: lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany], property.publicAnswer) })
   // The fifth gate (v2.4969): nothing owed on the sent bills while money is still on the job — a notice claims what is billed, so the send waits.
   const nothingBilled = Boolean(selected) && openBalance <= 0.005 && unbilled > 0.005
   const ready = readiness.ready && !nothingBilled
@@ -2560,7 +2560,7 @@ export default function LienDesk({
   const { gates, verdict: gateVerdict } = buildLienDeskGates({
     ownerName,
     // Every name the record gives is asked (punch list #314): a city filed beside an attention line is still a city.
-    ownerIsPublic: lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany]),
+    ownerIsPublic: lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany], property.publicAnswer),
     ownerMailingAddress: property.owner.mailingAddress,
     gcName: gc?.name ?? '',
     gcAddress: gc?.address ?? '',

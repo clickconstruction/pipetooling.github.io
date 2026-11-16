@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDesk.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 ---
 
 > **Line numbers are as of `f423bd6e5`** (the `mapped_at` commit; re-anchored 2026-10-05 from `a05cef4c4` through the file's diff, 2,002 → 2,251 lines) and drift with every edit — search the symbol named beside each range. The file is 3,510 lines at `2ba1fb9c0` (v2.5462), so ranges after the first few hundred lines sit up to a thousand lines lower now. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDesk.tsx`. The file is one of the busiest components (119 commits in the 90 days to v2.5087); re-check ranges before any move. The dated notes below say what each version added; the regions under them carry the same facts by line.
@@ -358,6 +358,7 @@ What the run records also reaches Messages (v2.5404): [`messages/legalLines.ts`]
 | `lienTimelineDesk.ts` | 330 | 35 | `buildLienTimelineFromDesk`, `lienRetainageClockFromDesk` — the second **not named in its test** (it tests `buildLienTimelineFromWindow` and, since v2.7077, `lienWindowDeskNotice`: the job's desk entry read into `{ state, holdUntil }`, which the Lien window's openers pass as `deskNotice` so its header names the step a notice is on; a notice in the mail with no number typed is the timeline's `printed` state; since v2.7187 `lienWindowDeskAffidavit` reads the job's affidavit entry into `{ state, missing, holdUntil }` the same way, passed as `deskAffidavit`, and `buildLienTimelineFromDesk` hands the kernel the entry's pile too, so the header and the desk's own timeline name the step an affidavit is on: to draft, awaiting approval, ready, held, or held by a fact) |
 | `lienTimelineBook.ts` | 241 | 9 | print grid |
 | `lienDeskGates.ts` | 286 | 20 | the four gates + verdict (since v2.6954 gate 1's public-owner test is `ownerIsPublic` when the desk hands it, every name on the property record through `lienOwnerIsPublic`, else the printed name's `ownerKind`); the fifth, *Nothing billed*, drawn only when it blocks (v2.4969); the blocked footer's sentence (v2.4797), the chip and affidavit words (v2.4806); since v2.5031 an unset kind's gate 3 says residential dates are shown (`propertyKindClockWords`, `propertyKindRuleWords`), the clock every reader runs (`lienCommercialClock` in `lienDeadlines.ts`, `lien_notice_deadline` / `lien_filing_deadline` in SQL) |
+| `lienPublicProperty.ts` | 275 | 16 | *Is this public property?* (v2.7439): the answer on the property record over the name guess (`lienPropertyIsPublic`), the jobs off the lien path and the jobs that ask (`lienJobIdsOffLienPath`, `lienJobIdsAskingPublic`, which `useLienDeskData` applies where its lists are built, beside `lienJobIdsOffDesk`), what already went out on a job, and the words of the bin, the Board's line and the window that follow |
 | `lienClaimCorrection.ts` / `…Io.ts` | 122 / 74 | 7 / 0 (mocked) | hand-set claim math / writes, and the one-job read the Lien window makes (`readLienClaimCorrection`, v2.6814) |
 | `lienProperty.ts` | 131 | 12 | owner + property resolution |
 | `propertyKind.ts` / `propertyKindWrite.ts` | 47 / 49 | 4 / 0 (mocked) | kind words, shared property / write |
