@@ -57,4 +57,10 @@ The migration first, then the client. The app as it is today keeps working under
 
 ## Pushed
 
-Not pushed yet. The day and time are written here after the push.
+On prod by 2026-11-16 16:52 UTC. #8352 merged at 16:29 UTC, and when this session went to push at 16:52 the ledger already held `20261116234500 painted_map_photos_after_the_map`, with the two files either side of it: another session's `supabase db push` from `origin/main` had carried all three. The ledger's row has the repo's own version and name, so it was applied by `db push` and by nothing else.
+
+Proved on prod, read only:
+
+- **The ledger**: `supabase migration list` and the dev seat's `check_migration_ledger` both show the row.
+- **The helper**: a signed-out call to `painted_map_stands` answers `42501 permission denied for function painted_map_stands`, so the function is there and closed to `anon`.
+- **The two policies' definitions were not read.** This Mac has no door to `pg_policies`: Docker is down, so `supabase db dump` cannot run, and the dashboard's SQL is not a session's to use. What stands in for the read is the bed in CI on the same file, and the walk on the live app that the client's fragment (v2.7473) owes.

@@ -9,14 +9,15 @@ import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
  * lien month strip and Steps of each paper stood until v2.7332. Four tiles, then two columns of bins — the monthly
  * notices on the left, the lien affidavits on the right — every job a chip in the bin of its stage, coloured by how
- * soon its day is; thin grey arrows down each column and one across from Sent to Needs the property facts, drawn
+ * soon its day is; thin grey arrows down each column and one across from Sent to Waiting on its notice, drawn
  * from the bins' measured places so they stay attached when chips wrap, the crossing one gone when the columns stack;
  * the busiest bin lit; Held and Missed beside a column only while a job is in one; retainage one line under the notices.
  *
  * The picture and the queue are one screen: a bin's head is a press that narrows the list under the Board to that
  * bin's jobs (`onPick`), and a second press, or *Show every row*, puts the list back. A chip is a press to the right
  * place for its stage when the desk hands `onChip` (PR 3); until then it is a plain chip with its hover words. A chip
- * that stands in both columns for one reason lights in both on hover. The words and the rule are `lienBoard.ts`;
+ * that stands in both columns for one reason lights in both on hover: a job with no owner of record, or an affidavit
+ * that waits on its notice alone, beside that notice (v2.7457). The words and the rule are `lienBoard.ts`;
  * nothing here reads or writes.
  *
  * Since v2.7381 a chip pointed at, or reached by the keyboard, shows a card before any press (`cardFor`,
@@ -66,7 +67,7 @@ type Line = { key: string; kind: LienBoardArrow['kind']; d: string }
  * The arrows as SVG paths from the bins' measured boxes, relative to the grid. A down arrow runs from the bottom
  * middle of one bin to the top middle of the next; the crossing one leaves Sent's right edge, runs up the gutter
  * between the two columns (`col:notice` and `col:affidavit` boxes when measured, so a Held or Missed bin beside the
- * notices never has the line behind it) and enters Needs the property facts' left edge. Pure over the measurements.
+ * notices never has the line behind it) and enters Waiting on its notice's left edge. Pure over the measurements.
  */
 export function lienBoardArrowPaths(arrows: ReadonlyArray<LienBoardArrow>, boxes: Readonly<Record<string, { left: number; top: number; width: number; height: number } | undefined>>, stacked: boolean): Line[] {
   const out: Line[] = []
@@ -137,7 +138,10 @@ function Chip({ chip, lit, onChip, onHover, onCard }: { chip: LienBoardChip; lit
   )
 }
 
-function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
+/** A press that stands inside one bin, under its chips: its words and what it opens. */
+export type LienBoardBinPress = { label: string; onPress: () => void; title?: string }
+
+function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, press }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; press?: LienBoardBinPress | null; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
   const n = bin.chips.length
   const head = (
     <>
@@ -157,6 +161,12 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard }
       <div className="lienBoardChips" data-lien-board-chips={bin.key}>
         {n === 0 ? <span data-lien-board-empty style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>none</span> : bin.chips.map((c) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} onCard={onCard} />)}
       </div>
+      {/* The bin's own press (punch list #366): the act every paper in it shares. An outline, so each column's print stays the one filled press. */}
+      {press && n > 0 ? (
+        <button type="button" data-lien-board-bin-press={bin.key} onClick={press.onPress} title={press.title} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, margin: '6px 0 2px', padding: isMobile ? '0 12px' : '4px 12px', minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', justifySelf: 'start' }}>
+          {press.label}
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -283,6 +293,7 @@ export default function LienBoard({
   foot,
   over,
   underAffidavits,
+  binPress,
   onLayout,
   leader,
   cardFor,
@@ -308,6 +319,8 @@ export default function LienBoard({
   over?: ReactNode
   /** A bin of the desk's own under the affidavit column (v2.7443): *Public jobs · bond claim*. */
   underAffidavits?: ReactNode
+  /** A press inside a bin, by the bin's key (punch list #366): *Mail 12 liens’ copies ›* in *Filed · copies to mail*. The leader's own view draws none. */
+  binPress?: Partial<Record<LienBoardBinKey, LienBoardBinPress>>
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void
   /**
@@ -482,7 +495,7 @@ export default function LienBoard({
         <h3 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: kind === 'notice' ? 'var(--text-blue-700)' : 'var(--text-red-700)' }}>{title}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: beside.length && !layout ? 'minmax(0, 1fr) minmax(0, 0.55fr)' : '1fr', gap: '0 12px', alignItems: 'start' }}>
           <div data-lien-board-flow={kind} style={{ display: 'grid', gap: 22 }}>
-            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} />)}
+            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} press={mine ? null : binPress?.[b.key]} />)}
           </div>
           {beside.length ? (
             <div data-lien-board-beside={kind} style={{ display: 'grid', gap: 10, alignContent: 'start', marginTop: layout ? 10 : 0 }}>

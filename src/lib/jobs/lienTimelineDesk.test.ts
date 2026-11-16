@@ -231,6 +231,17 @@ describe('the Lien window’s header names the desk’s step on an affidavit in 
     expect(t.next).toMatchObject({ kind: 'affidavit', words: 'Approve the affidavit — 54 days.', affidavitState: 'awaiting' })
     expect(t.waitingOn).toEqual({ who: 'ours', words: 'the leader’s approval of the affidavit' })
   })
+
+  it('an affidavit held by its notice gate: the band’s press says what the job’s notice still needs', () => {
+    const affidavit = { ...entry('needs_property', ['notice']), jobId: 'j1', isSub: true, lastMonth: '2026-07', lastMonthFromCreation: false, deadline: '2026-11-16', daysLeft: 54 } as LienAffidavitEntry
+    const row = { job_id: 'j1', work_month: '2026-07', approved_hours: 20, deadline: '2026-10-15', noticed: true } as unknown as LienNoticeMonthRow
+    const sent = { id: 'i1', job_id: 'j1', kind: 'notice_53_056', status: 'sent', months: ['2026-07'], sent_at: '2026-09-01T15:00:00Z', voided_at: null, created_at: '2026-08-30T00:00:00Z', fields: {} } as unknown as LienDeskItemRow
+    const act = (notice: { pile: string; dueMonths: string[] } | null) =>
+      buildLienTimelineFromDesk('j1', { rows: [row], items: [sent], filings: [], entry: notice as never, affidavit, isSub: true, propertyKind: 'non_residential', openBalance: 5_000, todayYmd: TODAY }).next.act
+    expect(act({ pile: 'ready', dueMonths: [] })).toEqual({ kind: 'gate:notice', label: 'Mail the notice first ›' })
+    expect(act({ pile: 'awaiting', dueMonths: [] })).toEqual({ kind: 'gate:notice', label: 'Open the notice ›' })
+    expect(act(null)).toEqual({ kind: 'gate:notice', label: 'Send the notice first ›' })
+  })
 })
 
 describe('the day set by hand counts in the Lien window (v2.7193, punch list #335, row 1, the owner’s reading of 2026-11-13)', () => {
