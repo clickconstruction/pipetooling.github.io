@@ -38,6 +38,9 @@ export function boxPageCodeWords(code: string): string {
 
 export type BoxPageKind = 'cage' | 'box' | 'pile'
 
+/** The company's number and its two addresses, as the page's presses use them. `phone` is '' when Settings holds none. */
+export type BoxPageOffice = { phone: string; email?: string; bidsEmail?: string }
+
 export type BoxPagePayload = {
   ok: true
   box: {
@@ -49,7 +52,11 @@ export type BoxPagePayload = {
     stickerNumber?: number
   }
   /** The company's own number, for *Text the office* (v2.6874): the team box's line since v2.6910 (`boxPageOfficePhone`). Never a person's. */
-  office: { phone: string } | null
+  /**
+   * How to reach the company: its number, and since v2.7405 the company's own email and the address a bid ask goes
+   * to. Each is left out when Settings holds none. Null when none of the three is there.
+   */
+  office: BoxPageOffice | null
 }
 
 /**
@@ -124,17 +131,37 @@ export function boxPagePlate(label: string): string {
 /** The `app_settings` key of Settings' company block: the company's name, address, Phone and email. */
 export const BOX_PAGE_COMPANY_KEY = 'physical_invoice_issuer_v1'
 
-/** The Phone of Settings' company block, from the row's stored text. Empty when the row is blank, absent or unreadable. */
-export function boxPageCompanyPhone(valueText: string | null | undefined): string {
+/** One text field of Settings' company block, from the row's stored text. Empty when blank, absent or unreadable. */
+function companyBlockField(valueText: string | null | undefined, field: 'phone' | 'email'): string {
   if (!valueText) return ''
   try {
     const o = JSON.parse(valueText) as unknown
     if (!o || typeof o !== 'object') return ''
-    const phone = (o as Record<string, unknown>).phone
-    return typeof phone === 'string' ? phone.trim() : ''
+    const v = (o as Record<string, unknown>)[field]
+    return typeof v === 'string' ? v.trim() : ''
   } catch {
     return ''
   }
+}
+
+/** The Phone of Settings' company block, from the row's stored text. Empty when the row is blank, absent or unreadable. */
+export function boxPageCompanyPhone(valueText: string | null | undefined): string {
+  return companyBlockField(valueText, 'phone')
+}
+
+/** The Email of Settings' company block (v2.7405), read the same way; empty when it is not an address a mail link can take. */
+export function boxPageCompanyEmail(valueText: string | null | undefined): string {
+  return boxPageEmail(companyBlockField(valueText, 'email'))
+}
+
+/**
+ * An address as a `mailto:` link takes it, or '' (v2.7405): one `@`, a dot after it, and none of the characters that
+ * would start a second field of the link. The function and the page both read an address through this, so a setting
+ * typed wrong draws no press at all.
+ */
+export function boxPageEmail(value: string | null | undefined): string {
+  const v = (value ?? '').trim()
+  return /^[^\s@?&#%<>"',;:]+@[^\s@?&#%<>"',;:]+\.[^\s@?&#%<>"',;:]+$/.test(v) ? v : ''
 }
 
 /**
@@ -157,6 +184,10 @@ export function buildBoxPagePayload(input: {
   container: Pick<BoxPageContainerRow, 'label' | 'kind' | 'code'>
   /** The company's own number, as `boxPageOfficePhone` picked it. */
   officePhone?: string | null
+  /** The company's own email, the Email of Settings' company block (v2.7405). */
+  officeEmail?: string | null
+  /** Where a bid ask goes: the bids box's address from Settings → Phone and texts, which the app reads (v2.7405). */
+  bidsEmail?: string | null
   /** The code that was scanned, when it was a sticker's (v2.7072): the page keeps the code in the person's hand. */
   scannedCode?: string | null
   /** That sticker's number. */
@@ -173,13 +204,21 @@ export function buildBoxPagePayload(input: {
       kind: boxPageKind(c.kind),
       ...(stickerNumber ? { stickerNumber } : {}),
     },
-    office: phone ? { phone } : null,
+    office: boxPageOfficeOf(phone, input.officeEmail, input.bidsEmail),
   }
+}
+
+/** The office as the answer carries it: the number, each address that reads as one, or null when there is nothing. */
+function boxPageOfficeOf(phone: string, email: string | null | undefined, bidsEmail: string | null | undefined): BoxPageOffice | null {
+  const e = boxPageEmail(email)
+  const b = boxPageEmail(bidsEmail)
+  if (!phone && !e && !b) return null
+  return { phone, ...(e ? { email: e } : {}), ...(b ? { bidsEmail: b } : {}) }
 }
 
 /**
  * The function's answer read back on the client; null when it is not the shape. It reads the name, the kind, the code,
- * the sticker's number and the office's number and nothing else, so the page draws the same from a function deployed
+ * the sticker's number, the office's number and its two addresses and nothing else, so the page draws the same from a function deployed
  * before v2.7379, whose answer still carries the lines, the place and the photo: they are dropped here, unread.
  */
 export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
@@ -189,7 +228,8 @@ export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
   const x = b.box as Record<string, unknown>
   if (typeof x.code !== 'string' || typeof x.stencil !== 'string') return null
   const o = (body as { office?: unknown }).office
-  const officePhone = o && typeof o === 'object' && typeof (o as { phone?: unknown }).phone === 'string' ? ((o as { phone: string }).phone).trim() : ''
+  const office = o && typeof o === 'object' ? (o as { phone?: unknown; email?: unknown; bidsEmail?: unknown }) : {}
+  const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
   return {
     ok: true,
     box: {
@@ -198,7 +238,7 @@ export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
       kind: boxPageKind(typeof x.kind === 'string' ? x.kind : ''),
       ...(typeof x.stickerNumber === 'number' && x.stickerNumber > 0 ? { stickerNumber: x.stickerNumber } : {}),
     },
-    office: officePhone ? { phone: officePhone } : null,
+    office: boxPageOfficeOf(text(office.phone), text(office.email), text(office.bidsEmail)),
   }
 }
 

@@ -1499,7 +1499,9 @@ describe('LienDesk · an open paper on a phone (punch list #352, PR 6)', () => {
     expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBeNull()
     expect(document.querySelector('[data-lien-desk-pane]')!.getAttribute('data-lien-pane-phone')).toBeNull()
     expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
-    const wideHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    // The footer's blue head (v2.7422) is a computer's alone and pins at the bottom only, so it is not one of the stacked ones.
+    expect(document.querySelectorAll('[data-lien-pane-head][data-tone="blue"]').length).toBe(1)
+    const wideHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]:not([data-tone])')]
     expect(wideHeads.length).toBeGreaterThan(1)
     expect(wideHeads.map((h) => parseFloat(h.style.top))).toEqual(wideHeads.map((_, i) => i * 24))
     expect(wideHeads.every((h) => h.style.height === '24px')).toBe(true)
@@ -2594,11 +2596,15 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     d.addressesById = { addr1: { ...(d.addressesById.addr1 as Record<string, unknown>), property_kind: '' } as never }
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} onChanged={onChanged} />)
-    // The envelope line (v2.3776) sits above the paper, not in the footer; the cover-note switch rides with it.
+    // The envelope (v2.3776) sits above the paper, not in the footer; one card since v2.7427, who it goes to at the left and the ticks at the right.
     const send = document.querySelector('[data-lien-desk-send-line]') as HTMLElement
-    expect(send.textContent).toContain('by certified mail')
+    expect(send.querySelector('[data-lien-envelope-zone="to"]')?.textContent).toContain('Goes to · certified mail')
     expect(send.textContent).toContain('Lowbeck Contracting')
-    expect(send.textContent).toContain('courtesy PDF to office@lowbeck.test')
+    expect(send.textContent).toContain('and a courtesy PDF to office@lowbeck.test')
+    // The key to the shaded boxes and the preview door are the same card's foot line.
+    const legend = send.querySelector('[data-lien-desk-paper-legend]') as HTMLElement
+    expect(legend.textContent).toContain('A shaded box on the paper is yours to change. Hover says where the rest came from.')
+    expect(within(legend).getByRole('button', { name: 'Preview in a new window ↗' })).toBeTruthy()
     // Ready (v2.3776): ONE row — the state and its why, then Save draft and the one primary (Skip left in v2.4743).
     const next = document.querySelector('[data-lien-desk-next]') as HTMLElement
     expect(next.getAttribute('data-blocked')).toBe('no')
@@ -2608,7 +2614,7 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(screen.queryByRole('button', { name: /Go to gate/ })).toBeNull()
     // v2.4743: no Skip — a month nobody sends closes on its own and is noted as missed.
     expect(screen.queryByRole('button', { name: /^Skip / })).toBeNull()
-    expect(screen.getByLabelText(/Include counsel's cover letter/)).toBeTruthy()
+    expect(screen.getByLabelText(/Counsel's cover letter/)).toBeTruthy()
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(gatesBox.getAttribute('data-ready')).toBe('yes')
     // The verdict row is the pane's stacked head now (v2.4733).
@@ -2616,7 +2622,7 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(gatesBox.querySelector('.lienGatesHead')).toBeNull()
     expect([...gatesBox.querySelectorAll('[data-gate]')].map((g) => `${g.getAttribute('data-n')}:${g.getAttribute('data-tone')}`)).toEqual(['1:ok', '2:ok', '3:check', '4:ok'])
     expect((gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).textContent).toContain('3Property kind')
-    // The sections fold (v2.4718): the clear gates' rows wait behind Details ∨; the one to check is open on its own.
+    // The sections fold (v2.4718): the clear gates' rows wait behind More details ∨; the one to check is open on its own.
     expect(gatesBox.querySelector('[data-gate-detail="owner"]')).toBeNull()
     expect(gatesBox.querySelector('[data-gate-detail="gc"]')).toBeNull()
     fireEvent.click(gatesBox.querySelector('[data-lien-gates-fold="open"]') as HTMLElement)
@@ -2735,8 +2741,18 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(may.textContent).toContain('skipped')
     expect(may.textContent).toContain('Taunya: “Lowbeck paid the May invoice in full”')
     expect((screen.getByRole('checkbox', { name: 'May 2026' }) as HTMLInputElement).disabled).toBe(true)
-    // This notice is the last column, lettered after the papers (none here).
-    expect((box.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toContain('AThis notice')
+    // This notice is the last column, lettered after the papers (none here). Its head is the name alone.
+    expect((box.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toBe('AThis notice')
+    // The total sits at the foot of that column (Taunya's ask of 2026-11-15), under the ticks, beside the months it names.
+    const foot = box.querySelector('[data-lien-grid-foot]') as HTMLElement
+    expect(foot.closest('tfoot')).toBeTruthy()
+    expect(foot.textContent).toBe('This notice names Jun, Jul, Aug$33,5003 months')
+    expect((foot.querySelector('[data-lien-grid-total]') as HTMLElement).textContent).toBe('$33,5003 months')
+    // A skip is not a miss: no line under the grid says a lien right is gone.
+    expect(box.querySelector('[data-lien-months-missed]')).toBeNull()
+    // A closed month's cells are the one-line kind; an open month keeps its two lines.
+    expect(may.querySelector('td.lienMonthOne')).toBeTruthy()
+    expect(jul.querySelector('td.lienMonthOne')).toBeNull()
   })
 
   it('the claim box is the editor (v2.3682): one figure, one reason, one tick — and the notice claims the rest', async () => {
@@ -2783,8 +2799,15 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(may.getAttribute('data-window')).toBe('closed')
     expect(may.textContent).toContain('closed Sep 10')
     expect(may.textContent).toContain('not noted')
-    expect(may.textContent).toContain('lien right gone · the money still rides')
+    // What the missed window costs is said once, in a line under the grid that names the month, not on the row.
+    expect(may.textContent).not.toContain('lien right gone')
+    expect((document.querySelector('[data-lien-desk-month-grid] [data-lien-months-missed]') as HTMLElement).textContent).toBe('closed May · lien right gone · the money still rides')
     expect(within(may).getByRole('button', { name: 'Note it as missed' })).toBeTruthy()
+    // One line: the chips and the press share a row, with no trailing words in the Steps view.
+    const line = may.querySelector('.lienMonthClosed') as HTMLElement
+    expect(line.contains(within(may).getByRole('button', { name: 'Note it as missed' }))).toBe(true)
+    expect(line.querySelector('.lienMonthClosedTail')).toBeNull()
+    expect(may.querySelector('td.lienMonthOne')).toBeTruthy()
     // The strip above the card is gone — the row carries it.
     expect(document.querySelector('[data-lien-desk-missed-strip]')).toBeNull()
   })
@@ -2848,7 +2871,7 @@ describe('LienDesk · the cover page in the pane (v2.3540)', () => {
     expect(cover.textContent).not.toContain('routine notice')
     expect(screen.getByText('Page 1 of 2 · cover letter')).toBeTruthy()
     expect(document.body.textContent).toContain('Page 2 of 2 · the notice')
-    fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
+    fireEvent.click(screen.getByLabelText(/Counsel's cover letter/))
     expect(document.querySelector('[data-lien-desk-cover]')).toBeNull()
     expect(document.body.textContent).toContain('Page 1 of 1 · the notice')
     expect(document.querySelector('[data-lien-desk-paper]')).toBeTruthy()
@@ -2971,7 +2994,35 @@ describe('LienDesk · the footer is the pane’s own bottom bar (the owner’s a
     return d
   }
 
-  for (const kind of ['notice', 'affidavit', 'retainage'] as const) {
+  it('on a computer the notice footer is the pane’s last section, under the one blue head (v2.7422, Taunya’s ask of 2026-11-15)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind="notice" initialJobId="j650" />)
+    await waitFor(() => expect(document.querySelector('[data-lien-desk-footer="notice"]')).not.toBeNull())
+    const strip = document.querySelector<HTMLElement>('[data-lien-desk-footer="notice"]')!
+    const pane = document.querySelector<HTMLElement>('[data-lien-desk-pane]')!
+    // The footer scrolls with the paper: it is in the pane, in the section the blue head names.
+    expect(pane.contains(strip)).toBe(true)
+    const body = strip.closest<HTMLElement>('[data-lien-pane-body="sign"]')!
+    expect(body).not.toBeNull()
+    expect(body.parentElement).toBe(pane)
+    const head = pane.querySelector<HTMLElement>('[data-lien-pane-head="sign"]')!
+    expect(head.getAttribute('data-tone')).toBe('blue')
+    expect(head.nextElementSibling).toBe(body)
+    expect(head.textContent).toBe('Sign and sendNot signed yet')
+    // It is the last head, after every page, and the only blue one.
+    const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(heads[heads.length - 1]).toBe(head)
+    expect(pane.querySelectorAll('[data-lien-pane-head][data-tone="blue"]').length).toBe(1)
+    const labels = [...pane.querySelectorAll<HTMLElement>('[data-lien-desk-page-label]')]
+    expect(labels.length).toBeGreaterThan(0)
+    for (const l of labels) expect(l.compareDocumentPosition(head) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Nothing is pinned under the pane, and the list still has nothing below it.
+    const column = pane.closest<HTMLElement>('[data-lien-desk-pane-column]')!
+    expect(column.lastElementChild).toBe(pane)
+    expect(column.parentElement!.parentElement!.querySelector(':scope > [data-lien-desk-footer]')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+  })
+
+  for (const kind of ['affidavit', 'retainage'] as const) {
     it(`on a computer the ${kind} footer sits inside the pane column, not under the list, and the list has nothing below it`, async () => {
       renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind={kind} initialJobId="j650" />)
       await waitFor(() => expect(document.querySelector(`[data-lien-desk-footer="${kind}"]`)).not.toBeNull())
@@ -3022,7 +3073,7 @@ describe('LienDesk · the pay page in the pane (punch list #35, PR 3)', () => {
       expect(pay.textContent).toContain('Once these bills are paid, there will be no lien filed.')
       expect(pay.textContent).toContain('only if Lowbeck Contracting has told you in writing')
       expect(pay.querySelector('svg[data-code]')).toBeTruthy()
-      fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
+      fireEvent.click(screen.getByLabelText(/Counsel's cover letter/))
       expect(labels().find((t) => t.includes('· pay codes'))).toContain('Page 2 of 2 · pay codes')
     } finally {
       payPageState.rows = []
@@ -3182,7 +3233,7 @@ describe('LienDesk · the draft saves itself (v2.7327)', () => {
     const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
     fireEvent.click(boxes[0]!)
     vi.advanceTimersByTime(500)
-    fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
+    fireEvent.click(screen.getByLabelText(/Counsel's cover letter/))
     vi.advanceTimersByTime(700)
     expect(saveDraftMock).not.toHaveBeenCalled()
     vi.advanceTimersByTime(200)
@@ -3576,10 +3627,14 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     expect(text).toContain('Reece is owed $9,612.40. Its oldest unpaid materials are from July. We expect its own notice by October 15.')
     expect(within(card).getByRole('link', { name: 'Open in Held for suppliers ›' }).getAttribute('href')).toBe('/materials?tab=job-accounts&job=j650')
     // The owner's letter names the house (v2.4725): the tick starts on, the paragraph is the letter's last, the amber line waits for counsel; unticked, the paragraph leaves.
-    const tick = screen.getByLabelText(/Name the supply house owed · \$9,612/) as HTMLInputElement
+    const tick = screen.getByLabelText(/Name the supply house owed\s*\$9,612/) as HTMLInputElement
     expect(tick.checked).toBe(true)
     expect(document.querySelector('[data-lien-desk-cover]')?.textContent).toContain('You should also know that Reece sold materials for this job and is still owed $9,612.40. We expect Reece’s own notice by October 15. That notice is Reece’s own claim for materials. It is not covered by our release, and it is not included in the $33,500.00. Paying us the $33,500.00 is what lets us clear that account.')
-    expect(document.querySelector('[data-lien-desk-houses-counsel]')?.textContent).toBe('Counsel has not read the supply house paragraph yet.')
+    // The caution sits in its own tick's row (v2.7427), not at the card's foot.
+    const housesNote = document.querySelector('[data-lien-desk-houses-counsel]') as HTMLElement
+    expect(housesNote.textContent).toBe('Counsel has not read this paragraph yet.')
+    expect(housesNote.closest('[data-lien-envelope-tick]')).toBe(tick.closest('[data-lien-envelope-tick="houses"]'))
+    expect(document.querySelector('[data-lien-desk-release-counsel]')).toBeNull()
     fireEvent.click(tick)
     expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('You should also know')
     expect(document.querySelector('[data-lien-desk-houses-counsel]')).toBeNull()
@@ -3594,7 +3649,7 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     ])
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     await settle()
-    const tick = screen.getByLabelText(/Enclose a conditional release · \$33,500/) as HTMLInputElement
+    const tick = screen.getByLabelText(/A conditional release\s*\$33,500/) as HTMLInputElement
     expect(tick.checked).toBe(false)
     expect(document.querySelector('[data-lien-desk-release]')).toBeNull()
     expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('conditional release')
@@ -3616,7 +3671,9 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     expect(screen.getByText('Page 2 of 3 · conditional release', { exact: false })).toBeTruthy()
     expect(screen.getByText('Page 3 of 3 · the notice', { exact: false })).toBeTruthy()
     expect(document.querySelector('[data-lien-desk-release]')?.textContent).toContain('a check from Lowbeck Contracting in the sum of $33,500.00 payable to Click Plumbing')
-    expect(document.querySelector('[data-lien-desk-houses-counsel]')?.textContent).toBe('Counsel has not read the release paragraph yet.')
+    const releaseNote = document.querySelector('[data-lien-desk-release-counsel]') as HTMLElement
+    expect(releaseNote.textContent).toBe('Counsel has not read this paragraph yet.')
+    expect(releaseNote.closest('[data-lien-envelope-tick]')).toBe(tick.closest('[data-lien-envelope-tick="release"]'))
     fireEvent.click(tick)
     await settle()
     expect(voidReleaseMock).toHaveBeenCalledWith('rel-1', expect.anything())
@@ -3633,17 +3690,19 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     await settle()
     const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
-    expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'houses', 'months', 'envelope'])
-    expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this notice is', 'The four gates', 'Supply houses', 'Months on this job', 'In the envelope'])
+    expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'houses', 'months', 'envelope', 'sign'])
+    expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this notice is', 'The four gates', 'Supply houses', 'Months on this job', 'In the envelope', 'Sign and send'])
     expect(heads[1]!.textContent).toContain('✓ Ready to go out · All 4 clear')
     expect(heads[2]!.textContent).toBe('Supply houses1 house owed · $9,612 · from our books · Sep 14')
     expect(heads[3]!.textContent).toBe('Months on this jobJun + Jul + Aug · $33,500')
     expect(heads[4]!.textContent).toBe('In the envelope2 pages · owner + GC · courtesy PDF to the GC')
     // Stacked: passed heads at the top, coming ones at the bottom; the first is lit at the top of the pane.
     // 24 px a head since v2.7323 (30 before): the owner's ask that the bars sit closer with the words as they are.
-    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '96px'], ['24px', '72px'], ['48px', '48px'], ['72px', '24px'], ['96px', '0px']])
+    // The footer's head (v2.7422) is the last: the coming heads stack over it at the bottom, and it takes no place at the top.
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '120px'], ['24px', '96px'], ['48px', '72px'], ['72px', '48px'], ['96px', '24px'], ['auto', '0px']])
     expect(heads.every((h) => h.style.height === '24px')).toBe(true)
-    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no', 'no'])
+    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no', 'no', 'no'])
+    expect(heads.map((h) => h.getAttribute('data-tone'))).toEqual([null, null, null, null, null, 'blue'])
     // Every head sits before its section, as a sibling in the pane's grid.
     for (const key of ['path', 'gates', 'houses', 'months', 'envelope']) {
       const head = document.querySelector(`[data-lien-pane-head="${key}"]`)!
@@ -3859,7 +3918,8 @@ describe('LienDesk — the page labels stick (v2.4726)', () => {
     expect(labels.length).toBeGreaterThanOrEqual(2)
     // Stacked like the pile titles, under the pane's section heads (v2.4733: four on this job, which bought from no house) — the i-th label sits
     // heads + i bars from the top once passed; it does not stack at the foot, where the envelope head already names the pages.
-    const headCount = document.querySelectorAll('[data-lien-pane-head]').length
+    // The footer's blue head (v2.7422) pins at the pane's bottom and never over a page, so the labels do not count it.
+    const headCount = document.querySelectorAll('[data-lien-pane-head]:not([data-tone])').length
     expect(headCount).toBe(4)
     // 24 px a bar since v2.7323 (30 before), the same number as the pane's heads over them.
     expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${(headCount + i) * 24}px`))
@@ -3995,6 +4055,21 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('draw')
     expect(screen.getByTestId('lien-sign-line').textContent).toContain('Malachi signs here, in his own hand')
     codeState.answer = { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' }
+  })
+
+  it('the line previews his full name while the words around it keep the short one (v2.7395)', async () => {
+    codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    renderWithProviders(<LienDesk {...baseProps} authRole="dev" authUserId="u-robert" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi' : 'Robert')} signatureNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : id === 'u-robert' ? 'Robert Douglas' : '')} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
+    await settle()
+    await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi Whites')
+    expect(screen.getByTestId('lien-sign-line').textContent).toContain('Malachi signs here with his code')
+    cleanup()
+    // On his own sign-in the preview is his own full name, not the short name he is signed in under.
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" authUserId="u-malachi" authName="Malachi" leaderNameFor={() => 'Malachi'} signatureNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : '')} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
+    await settle()
+    expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('type')
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi Whites')
   })
 
   it('with no code set the line opens on the pad and says where he sets one; the office’s awaiting footer carries the same line and its own press', async () => {

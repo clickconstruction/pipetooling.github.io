@@ -7,13 +7,16 @@
  * status in the Board's own words (the column, the bin, the one thing to know, its day, whether it will make it,
  * what the job still owes), the job's other paper when it has one on the Board, and where the press goes.
  *
+ * A paper that will not make its day names the stages it still has to pass, in order (v2.7419; Taunya's ask of
+ * 2026-11-15: *3 stages left* did not say which three). The count is the list's own length.
+ *
  * Pure: the words from the chip and the facts the desk already holds, and where the card stands beside the chip.
  * Nothing here reads or writes.
  */
 import { formatUsdNoCents } from './jobFormatting'
 import { lienMonthDayWords } from './lienMonthLine'
 import { lienDayLeftWords } from './lienRowWords'
-import { lienBoardDoorWords, lienBoardWorkingDaysLeft, type LienBoard, type LienBoardChip, type LienBoardKind, type LienBoardUrgency } from './lienBoard'
+import { lienBoardDoorWords, lienBoardStagesLeft, lienBoardWorkingDaysLeft, type LienBoard, type LienBoardChip, type LienBoardKind, type LienBoardUrgency } from './lienBoard'
 
 export type LienBoardChipFacts = {
   todayYmd: string
@@ -24,6 +27,8 @@ export type LienBoardChipFacts = {
   gc: string | null | undefined
   /** The one thing to know about this paper, as its To do row says it (`LienNextUpRow.detail`, else its `sub`). */
   detail?: string | null
+  /** The job's leader by name, for the stage that waits on him; absent reads *The leader*. */
+  leader?: string | null
 }
 
 export type LienBoardChipCard = {
@@ -41,8 +46,10 @@ export type LienBoardChipCard = {
   /** *Due Mon Nov 16 · 1 day left*; null for a paper with no day of its own. */
   day: string | null
   urgency: LienBoardUrgency
-  /** Why it will not make its day, when it will not. */
+  /** That it will not make its day, and the working days left for what is still to do; null when it will. */
   risk: string | null
+  /** The stages still to pass, in order and by name, under `risk`; empty when it will make its day. */
+  left: string[]
   /** *$5,402 unpaid*; null when nothing is open. */
   owes: string | null
   /** The job's other paper on the Board, in a sentence; null when it has none. */
@@ -67,7 +74,7 @@ export function lienBoardChipCard(chip: LienBoardChip, board: Pick<LienBoard, 'n
   const done = chip.stage === 'sent' || chip.stage === 'filed'
   const day = chip.dueYmd && !done ? `${chip.daysLeft != null && chip.daysLeft < 0 ? 'Was due' : 'Due'} ${lienMonthDayWords(chip.dueYmd)}${chip.daysLeft == null ? '' : ` · ${lienDayLeftWords(chip.daysLeft)}`}` : null
   const working = chip.dueYmd ? lienBoardWorkingDaysLeft(facts.todayYmd, chip.dueYmd) : 0
-  const risk = chip.atRisk ? `Will not make its day as it stands. ${chip.stepsLeft} ${chip.stepsLeft === 1 ? 'stage' : 'stages'} left and ${working} working ${working === 1 ? 'day' : 'days'}.` : null
+  const risk = chip.atRisk ? `Will not make its day as it stands. Still to do, with ${working === 0 ? 'no working days' : `${working} working ${working === 1 ? 'day' : 'days'}`} left:` : null
   // The job's other paper: the chip of the same job in the other column.
   const otherKind: LienBoardKind = chip.kind === 'notice' ? 'affidavit' : 'notice'
   const otherChip = (otherKind === 'notice' ? board.notices : board.affidavits).flatMap((b) => b.chips).find((c) => c.jobId === chip.jobId) ?? null
@@ -84,6 +91,7 @@ export function lienBoardChipCard(chip: LienBoardChip, board: Pick<LienBoard, 'n
     day,
     urgency: chip.urgency,
     risk,
+    left: chip.atRisk ? lienBoardStagesLeft(chip, facts.leader) : [],
     owes: chip.openBalance > 0 ? `${formatUsdNoCents(chip.openBalance)} unpaid` : null,
     other: otherChip && otherStage ? `Its ${PAPER[otherKind].toLowerCase()} is in ${otherStage}.` : null,
     door: `Press to ${door.charAt(0).toLowerCase()}${door.slice(1)}.`,
@@ -94,6 +102,14 @@ export function lienBoardChipCard(chip: LienBoardChip, board: Pick<LienBoard, 'n
 export const LIEN_BOARD_CARD_WIDTH_PX = 320
 /** What the card is taken to stand tall when deciding whether it fits under the chip. */
 export const LIEN_BOARD_CARD_HEIGHT_PX = 230
+
+/** What each named stage adds to the card's height, in px. */
+export const LIEN_BOARD_CARD_STAGE_PX = 18
+
+/** How tall a card is taken to stand: the plain card, and a line for every stage it names. */
+export function lienBoardCardHeight(card: Pick<LienBoardChipCard, 'left'>): number {
+  return LIEN_BOARD_CARD_HEIGHT_PX + card.left.length * LIEN_BOARD_CARD_STAGE_PX
+}
 
 export type LienBoardCardPlace = { left: number; top: number; above: boolean }
 

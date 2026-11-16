@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import type { LienAffidavitEntry, LienAffidavitGate, LienAffidavitPile } from './lienDeskAffidavits'
 import { plainWordsFailures } from '../plainWords'
-import { buildLienBoard, lienBoardChipFor } from './lienBoard'
-import { lienBoardCardPlace, lienBoardChipCard, type LienBoardChipFacts } from './lienBoardChipCard'
+import { buildLienBoard, lienBoardChipFor, lienBoardStagesLeft } from './lienBoard'
+import { LIEN_BOARD_CARD_HEIGHT_PX, LIEN_BOARD_CARD_STAGE_PX, lienBoardCardHeight, lienBoardCardPlace, lienBoardChipCard, type LienBoardChipFacts } from './lienBoardChipCard'
 
 /** A Sunday; the 15th rolls to Monday the 16th. */
 const TODAY = '2026-11-15'
@@ -28,7 +28,7 @@ const board = () =>
     leaderName: 'Sam',
   })
 
-const facts = (over: Partial<LienBoardChipFacts> = {}): LienBoardChipFacts => ({ todayYmd: TODAY, jobName: 'ZZ Service Visit, 9703 Sample Hl', address: '9703 Sample Hl, Schertz, TX', customer: 'ZZ Homeowner', gc: 'ZZ Builders', detail: 'September 2026', ...over })
+const facts = (over: Partial<LienBoardChipFacts> = {}): LienBoardChipFacts => ({ todayYmd: TODAY, jobName: 'ZZ Service Visit, 9703 Sample Hl', address: '9703 Sample Hl, Schertz, TX', customer: 'ZZ Homeowner', gc: 'ZZ Builders', detail: 'September 2026', leader: 'Sam', ...over })
 
 describe('lienBoardChipCard', () => {
   it('says which job the number is: its name, its address and its customer, then the paper’s status in the Board’s words', () => {
@@ -44,7 +44,8 @@ describe('lienBoardChipCard', () => {
       detail: 'September 2026',
       day: 'Due Mon Nov 16 · 1 day left',
       urgency: 'day',
-      risk: 'Will not make its day as it stands. 3 stages left and 1 working day.',
+      risk: 'Will not make its day as it stands. Still to do, with 1 working day left:',
+      left: ['Send it for approval', 'Sam approves and signs it', 'Mail it and record the mailing'],
       owes: '$5,402 unpaid',
       other: 'Its lien affidavit is in Needs the property facts.',
       door: 'Press to open the notice.',
@@ -55,6 +56,8 @@ describe('lienBoardChipCard', () => {
     const b = board()
     const card = lienBoardChipCard(lienBoardChipFor(b, 'j858', 'affidavit')!, b, facts({ detail: 'The property record has no county and legal description.' }))
     expect([card.paper, card.stage, card.day, card.risk]).toEqual(['Lien affidavit', 'Needs the property facts', 'Due Tue Dec 15 · 30 days left', null])
+    // It will make its day, so the card names no stages: the bin and the press already say what is next.
+    expect(card.left).toEqual([])
     expect(card.other).toBe('Its monthly notice is in To send.')
     expect(card.door).toBe('Press to open the property record at the legal description.')
   })
@@ -77,10 +80,34 @@ describe('lienBoardChipCard', () => {
     expect(lienBoardChipCard(lienBoardChipFor(b, 'j858', 'notice')!, b, facts({ customer: 'ZZ Builders', gc: 'zz builders' })).gc).toBeNull()
   })
 
+  it('a paper that will not make its day names the stages left, as many as the Board counted, with the job’s leader by name (v2.7419)', () => {
+    const b = board()
+    const chip = lienBoardChipFor(b, 'j858', 'notice')!
+    const card = lienBoardChipCard(chip, b, facts())
+    // Taunya's ask of 2026-11-15: *3 stages left* did not say which three.
+    expect(card.risk).not.toMatch(/stages? left/)
+    expect(card.left).toHaveLength(chip.stepsLeft)
+    expect(card.left).toEqual(lienBoardStagesLeft(chip, 'Sam'))
+    // No leader known on the job: the stage still reads, and nobody is named who is not known.
+    expect(lienBoardChipCard(chip, b, facts({ leader: ' ' })).left[1]).toBe('The leader approves and signs it')
+    // The same day with nothing to work in: due on a Sunday, read on the Saturday.
+    const weekend = buildLienBoard({ todayYmd: '2026-11-14', notices: [notice('j1', 'to_draft', { earliestDeadline: '2026-11-15', daysLeft: 1 })], affidavits: [], retainage: [], jobNumber: (id) => id.slice(1), jobName: () => '', gcName: () => '' })
+    expect(lienBoardChipCard(lienBoardChipFor(weekend, 'j1', 'notice')!, weekend, facts({ todayYmd: '2026-11-14' })).risk).toBe('Will not make its day as it stands. Still to do, with no working days left:')
+  })
+
+  it('a card that names stages is taken to stand taller, so it is placed over a chip it would not fit under', () => {
+    expect(lienBoardCardHeight({ left: [] })).toBe(LIEN_BOARD_CARD_HEIGHT_PX)
+    expect(lienBoardCardHeight({ left: ['a', 'b', 'c'] })).toBe(LIEN_BOARD_CARD_HEIGHT_PX + 3 * LIEN_BOARD_CARD_STAGE_PX)
+    const chip = { left: 40, top: 520, width: 60, height: 22 }
+    const roomBelow = LIEN_BOARD_CARD_HEIGHT_PX + 20
+    expect(lienBoardCardPlace({ chip, hostWidth: 1392, roomBelow }).above).toBe(false)
+    expect(lienBoardCardPlace({ chip, hostWidth: 1392, roomBelow, cardHeight: lienBoardCardHeight({ left: ['a', 'b', 'c'] }) }).above).toBe(true)
+  })
+
   it('the sentences the card writes keep to plain words', () => {
     const b = board()
     const card = lienBoardChipCard(lienBoardChipFor(b, 'j858', 'notice')!, b, facts())
-    for (const s of [card.risk!, card.other!, card.door]) expect(plainWordsFailures(s)).toEqual([])
+    for (const s of [card.risk!, card.other!, card.door, ...card.left]) expect(plainWordsFailures(s)).toEqual([])
   })
 })
 

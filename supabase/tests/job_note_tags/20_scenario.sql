@@ -1,6 +1,6 @@
 -- Tagging a teammate in a job note (migration *_jobs_ledger_note_tags, punch list #363): who the list offers, a note
 -- posted with its tags in one transaction, what clears a tag and what does not, the count for both people, the
--- question back, and that no client writes a tag row. Fixtures are written as postgres; presses run as each user;
+-- question back, the note sent late from the job window, and that no client writes a tag row. Fixtures are written as postgres; presses run as each user;
 -- everything rolls back. Raises on the first failed assertion; ends with "job_note_tags PASSED".
 -- See scripts/pgtest-job-note-tags.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -206,6 +206,27 @@ RESET ROLE;
 SELECT jnt.as_user('00000000-0000-0000-0000-0000003630a1');
 SET LOCAL ROLE authenticated;
 SELECT jnt.same('Dana: one answer unseen and one tag waiting', public.job_note_tags_count()::text, '2');
+RESET ROLE;
+
+-- 12b · The job window's path (migration *_job_note_tags_from_the_job_window): a note the phone kept for three hours
+-- lands with its pressed time and still carries its tag. A press that is not a typed note answers nothing. A typed
+-- one answers. A person who cannot be tagged refuses the whole press.
+SELECT jnt.as_user('00000000-0000-0000-0000-0000003630a3');
+SET LOCAL ROLE authenticated;
+SELECT public.land_field_press('00000000-0000-0000-0000-0000003630e1', 'job_note', now() - interval '3 hours',
+  jsonb_build_object('job_id', '00000000-0000-0000-0000-0000003630b1', 'body', '@Dana Office from the phone', 'typed', true, 'tagged', jsonb_build_array('00000000-0000-0000-0000-0000003630a1')));
+SELECT jnt.same('the late note carries its tag', (SELECT count(*) FROM public.jobs_ledger_note_tags t JOIN public.jobs_ledger_thread_notes n ON n.id = t.note_id WHERE n.body = '@Dana Office from the phone' AND t.tagged_name = 'Dana Office' AND n.created_at < now() - interval '2 hours')::text, '1');
+SELECT jnt.refused('a press that tags a sub', $q$SELECT public.land_field_press('00000000-0000-0000-0000-0000003630e2', 'job_note', now(), jsonb_build_object('job_id', '00000000-0000-0000-0000-0000003630b1', 'body', 'Sam, from the phone', 'typed', true, 'tagged', jsonb_build_array('00000000-0000-0000-0000-0000003630a6')))$q$, 'Sam Sub cannot be tagged');
+SELECT jnt.same('the refused press left no note', (SELECT count(*) FROM public.jobs_ledger_thread_notes WHERE body = 'Sam, from the phone')::text, '0');
+RESET ROLE;
+SELECT jnt.as_user('00000000-0000-0000-0000-0000003630a1');
+SET LOCAL ROLE authenticated;
+SELECT jnt.same('Dana: one answer unseen and two tags waiting', public.job_note_tags_count()::text, '3');
+SELECT public.land_field_press('00000000-0000-0000-0000-0000003630e3', 'job_note', now(), jsonb_build_object('job_id', '00000000-0000-0000-0000-0000003630b1', 'body', 'Arrived'));
+SELECT jnt.same('a press with no typed mark answers nothing', public.job_note_tags_count()::text, '3');
+SELECT public.land_field_press('00000000-0000-0000-0000-0000003630e4', 'job_note', now(), jsonb_build_object('job_id', '00000000-0000-0000-0000-0000003630b1', 'body', 'The upstairs valve, and yes.', 'typed', true));
+SELECT jnt.same('a typed note from the job window answers both', public.job_note_tags_count()::text, '1');
+SELECT jnt.same('the same press again answers once', (public.land_field_press('00000000-0000-0000-0000-0000003630e4', 'job_note', now(), jsonb_build_object('job_id', '00000000-0000-0000-0000-0000003630b1', 'body', 'The upstairs valve, and yes.', 'typed', true)) ->> 'repeat'), 'true');
 RESET ROLE;
 
 -- 13 · Hector is taken off the crew while a tag waits on him. He reads no note on the job, and still reads that one.

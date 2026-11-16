@@ -31,15 +31,17 @@ Press a job on the Monthly notices tab. The card **Supply houses on this job** s
 
 - **House** names the house. Under it you see if a job account is open there.
 - **Unpaid since** names the oldest month with an unpaid invoice.
-- **Its own notice** is the date we expect the house's notice by.
+- **SupHse notice** is short for the supply house's notice. The date is when we expect that notice by. The small words under the date say *our estimate*.
 - **Paid** is what we have paid that house on this job.
 - **Owed** is what that house is still owed on this job.
 
 The last row adds up every house. The bold line under it compares the two debts. It says if the money owed to us covers the money owed to the houses.
 
+A house that is owed nothing takes one line. The line shows its invoices and its job account in small words. The house's **Owed** figure is grey.
+
 ## Know what the date means
 
-The date under **Its own notice** is our estimate. The desk counts it from the house's unpaid invoice dates. It uses the same rule as our own notices. The house keeps its own calendar, so call the house to be sure.
+The date under **SupHse notice** is our estimate. The desk counts it from the house's unpaid invoice dates. The desk uses the same rule as our own notices. The house keeps its own calendar, so call the house to be sure.
 
 A row that says *window closed* means that date has passed by our count.
 
@@ -73,7 +75,7 @@ The paragraph names each house and what it is owed. It says the house's notice i
 
 Counsel's cover letter goes on the owner's copy of the notice. When a house is still owed, the letter ends with a paragraph about it. The paragraph names the house and what it is owed. It says when the house's own notice goes out. It says that notice is the house's own claim. Our release does not cover it, and it is not part of our claim. When our claim covers what the houses are owed, it says paying us is what clears that account.
 
-The box **Name the supply house owed** sits beside the cover letter box above the paper. It starts ticked. Untick it, and the paragraph leaves the letter. The box shows only while the cover letter is on and a house is owed.
+The box **Name the supply house owed** sits under the cover letter box above the paper. The box starts ticked. Untick it, and the paragraph leaves the letter. The box shows only while the cover letter is on and a house is owed.
 
 :::example the paragraph, when the house told us its day
 You should also know that Reece sold materials for this job and is still owed $7,393.33. Reece told us its own notice goes out on October 14 unless that balance is paid. That notice is Reece's own claim for materials. It is not covered by our release, and it is not included in the $15,722.49. Paying us the $15,722.49 is what lets us clear that account.

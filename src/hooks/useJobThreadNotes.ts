@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { noteTagsChanged } from '../lib/jobs/noteTagsIo'
+import { noteTagsChanged, notifyNoteTag } from '../lib/jobs/noteTagsIo'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import {
   OperationTimeoutError,
@@ -475,6 +475,8 @@ export function useJobThreadNotes(
                     'post jobs_ledger_thread_note',
                   )
                   if (!noteId) throw new Error('No note id returned')
+                  // The notice to the people it tags, and to anyone whose tag it answers.
+                  notifyNoteTag({ noteId })
                   // The note is on the job. If reading it back fails, the thread reads again and the post still counts.
                   try {
                     return await withSupabaseRetry(
