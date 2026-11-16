@@ -268,7 +268,7 @@ send do not fold, because the desk has no press that sends several for approval 
 bin still narrows the list and does not scroll to its group. It was looked at with sample rows at
 1,280, 1,024 and 375 px, not on the live desk. D's steps 5 to 8 are picked (2026-11-16) and not built.
 Step 5 is next. The mock-up still draws all three; its B is what shipped, but for two things the build changed: the bin's name stands where the
-mock-up dropped the four dots, and *Print N affidavits ›* opens the affidavits list at Ready to file
+mock-up dropped the four dots, and *Print N for notarization ›* (*Print N affidavits ›* until v2.7398, renamed to the button it opens) opens the affidavits list at Ready to file
 and does not print from To do.
 
 The owner asked for this card on 2026-11-15 so another session can pick it up; the same day the Board

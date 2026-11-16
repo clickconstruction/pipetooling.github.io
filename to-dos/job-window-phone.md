@@ -2,7 +2,7 @@
 name: "The job window on a phone"
 number: 355
 group: waiting
-status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day · the six other tabs built, v2.7281 to v2.7285 · C shown to Taunya 2026-11-15 as three roles beside the live window · her pick the same day: build the crew half, the crew lead's tabs wait · the crew's window in B's order built as v2.7355 the same day · the crew reads their job's row (v2.7375) and Today's work is on the crew's window (v2.7376), both 2026-11-15 · Taunya's answer the same day, a sub sees our lead's number: v2.7380 · her pick after the before and after were drawn, "Draw it now": Your pay on a sub's window, v2.7399
+status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day · the six other tabs built, v2.7281 to v2.7285 · C shown to Taunya 2026-11-15 as three roles beside the live window · her pick the same day: build the crew half, the crew lead's tabs wait · the crew's window in B's order built as v2.7355 the same day · the crew reads their job's row (v2.7375) and Today's work is on the crew's window (v2.7376), both 2026-11-15 · Taunya's answer the same day, a sub sees our lead's number: v2.7380 · her pick after the before and after were drawn, "Draw it now": Your pay on a sub's window, v2.7399 · a follow-up the same evening, no door to a portal that is turned off: v2.7417
 summary: >
   The owner opened a job on his iPhone and did not like how it reads: the tab row wraps onto two
   lines, the top is eight small icons, and the Job tab runs six and a half screens before the bar.
@@ -602,7 +602,7 @@ and shows neither the customer's number nor their email; with no lead on the tea
 office's number. Job Mode's details card follows the same rule. Whether a *Your pay* row is drawn: she asked for the before and after as a picture
 (`job-window-phone-sub-pay.html`) and picked **"Draw it now"** the same day. Built as **v2.7399**
 (`docs/recent-features/v2.7399.md`): what is open on the sub's own sheets on the job, by the
-portal's own sums, with the door to their portal; a job with no sheet in their name says so.
+portal's own sums, with the door to their portal; a job with no sheet in their name says so. **v2.7417** the same evening (`docs/recent-features/v2.7417.md`): the door is offered only while a live portal link exists, since a short address outlives a revoked link.
 
 ## The plan
 
