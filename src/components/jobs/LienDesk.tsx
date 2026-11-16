@@ -95,7 +95,7 @@ import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPiece
 import LienMailPieceDoors from './LienMailPieceDoors'
 import { approveLienDeskItem, clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits, tellLeaderOfLienSignatures } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitBatchToldWords, lienAffidavitTellPapers } from '../../lib/jobs/lienAffidavitApprovalTell'
-import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
+import { runTakenBackOf, takeBackNoticeConfirm, takeBackNoticeDoneWords, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
@@ -2074,7 +2074,17 @@ export default function LienDesk({
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
-  const backToReady = () => run('Back to Approved · to print', async () => void (item && (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null }))), 'Back in Approved · to print.')
+  // v2.7503 (the owner's call): taking a notice back clears its signature, so a signed one asks first; an unsigned one goes back as it always has.
+  const backToReady = async () => {
+    if (!item) return
+    const sig = signatureColumnsOf(item)
+    const wasSigned = lienChipSigned(sig, lienFieldsHash(item.fields)) !== 'unsigned'
+    if (wasSigned) {
+      const words = takeBackNoticeConfirm({ jobWords: signAgainJobWords(job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : null, job?.job_name), signerName: sig.signer_printed_name, ownSignature: Boolean(authUserId && sig.signed_by === authUserId) })
+      if (!(await confirmDialog({ title: words.title, message: words.message, confirmLabel: words.confirmLabel }))) return
+    }
+    await run('Back to Approved · to print', async () => void (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null })), takeBackNoticeDoneWords(wasSigned))
+  }
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
   /**
    * Sign it again (v2.7502): the signature comes off an approved notice after a confirm, and the approval stands. The
@@ -4514,7 +4524,7 @@ export default function LienDesk({
         <div data-lien-desk-printed-footer className="lienFootRow" data-lien-desk-foot="printed">
           <FootChip chip={printedChip({ printed_at: printedAt })} />
           <span className="lienFootSpacer" />
-          <button type="button" className="lienFootLink" onClick={backToReady} disabled={!office || busy} title="It was not mailed: put it back in Approved · to print. The approval stands">
+          <button type="button" className="lienFootLink" onClick={() => void backToReady()} disabled={!office || busy} title="It was not mailed: put it back in Approved · to print. The approval stands, and a signature on it comes off">
             Back to Approved · to print
           </button>
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper already went out by hand. Record it here instead of entering mail numbers">

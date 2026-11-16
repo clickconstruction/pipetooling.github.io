@@ -4655,6 +4655,26 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
       expect(screen.queryByText(/^Cleared\./)).toBeNull()
     })
 
+    it('Back to Approved · to print on a signed notice asks first (v2.7503): the signature comes off, Cancel writes nothing, the button takes it back', async () => {
+      clearPrintedMock.mockReset()
+      clearPrintedMock.mockResolvedValue(undefined)
+      renderWithProviders(<LienDesk {...office} data={deskData(signedItem({ printed_at: '2026-09-14T16:00:00Z' }))} initialPile="printed" />)
+      await settle()
+      const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
+      const back = within(footer).getByRole('button', { name: 'Back to Approved · to print' })
+      expect(back.title).toBe('It was not mailed: put it back in Approved · to print. The approval stands, and a signature on it comes off')
+      fireEvent.click(back)
+      const ask = await screen.findByRole('alertdialog', { name: 'Take back the notice for AXO Schertz, job 650?' })
+      expect(ask.textContent).toContain('The notice goes back to Approved · to print. The approval stands. Avery Stone’s signature comes off, so the notice can be signed again. The run holds the notice until then.')
+      fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+      await settle()
+      expect(clearPrintedMock).not.toHaveBeenCalled()
+      fireEvent.click(back)
+      fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Take back the notice' }))
+      await waitFor(() => expect(clearPrintedMock).toHaveBeenCalledWith('it1'))
+      expect(await screen.findByText('Back in Approved · to print. It waits to be signed again.')).toBeTruthy()
+    })
+
     it('no press on a printed notice, on an unsigned one, or beside the leader’s own Not me', async () => {
       renderWithProviders(<LienDesk {...office} data={deskData(signedItem({ printed_at: '2026-09-14T16:00:00Z' }))} initialPile="printed" />)
       await settle()
