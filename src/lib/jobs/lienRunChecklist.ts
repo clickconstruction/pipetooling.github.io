@@ -3,6 +3,7 @@ import { recipientMailed, recipientViaDocsmit, RUN_UNSIGNED_PROBLEM, runNoticePr
 import { shortDay } from './lienFootChip'
 import { APP_ORIGIN } from '../appOrigin'
 import { LIEN_DESK_PATH } from '../lien/lienDeskRoute'
+import { lienRunActFor, lienRunActLabel } from './lienRunWords'
 
 /**
  * The run as a checklist (v2.7328, the owner's ask of 2026-11-15): one row per envelope's notice
@@ -225,9 +226,11 @@ export function lienRunFootWords(rows: ReadonlyArray<Pick<LienRunRow, 'waitsOn' 
 }
 
 /**
- * The desk's pill (v2.7328): *The run · 3 of 7 mailed*, with a meter — mailed, printed, still to
- * print. `mailed` is what the desk recorded as sent from this run; `printed` what sits in In the
- * run; `toPrint` what is approved and not yet printed. '' with nothing in the run.
+ * The desk's pill (v2.7328), with a meter — mailed, printed, still to print. Since v2.7448 it reads as the
+ * press it is: *Print and mail 15* while anything is to print, *Enter mail numbers · 4* once all are printed,
+ * and *· 3 of 18 mailed* after either once some are (*The run · 15 to print* and *The run · 3 of 7 mailed*
+ * until then). `mailed` is what the desk recorded as sent from this run; `printed` what sits in Approved · to
+ * mail; `toPrint` what is approved and not yet printed. '' with nothing to print or mail.
  */
 export type LienRunPill = { words: string; mailedPct: number; printedPct: number; total: number }
 
@@ -235,7 +238,9 @@ export function lienRunPill(counts: { toPrint: number; printed: number; mailed: 
   const total = counts.toPrint + counts.printed + counts.mailed
   if (total === 0) return { words: '', mailedPct: 0, printedPct: 0, total: 0 }
   const pct = (n: number) => Math.round((n / total) * 100)
-  const words = counts.printed + counts.mailed === 0 ? `The run · ${total} to print` : `The run · ${counts.mailed} of ${total} mailed`
+  const left = counts.toPrint + counts.printed
+  const act = left > 0 ? lienRunActLabel(lienRunActFor({ toPrint: counts.toPrint, printed: counts.printed }), left) : ''
+  const words = [act, counts.mailed > 0 ? `${counts.mailed} of ${total} mailed` : ''].filter(Boolean).join(' · ')
   return { words, mailedPct: pct(counts.mailed), printedPct: pct(counts.printed), total }
 }
 

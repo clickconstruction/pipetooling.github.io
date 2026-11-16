@@ -23,6 +23,7 @@ import {
   type PartReads,
   type PartWrites,
   type PlanPartWorld,
+  type SetLinkRow,
   type SetRow,
 } from '../../../supabase/functions/_shared/devMcpPlanSets'
 import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
@@ -32,6 +33,7 @@ const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const TWIN = readFileSync('supabase/functions/twin-mcp/index.ts', 'utf8')
 const PAPERS_MIGRATION = readFileSync('supabase/migrations/20261102010000_plan_sets_papers.sql', 'utf8')
 const PRICED_MIGRATION = readFileSync('supabase/migrations/20261102060000_bid_priced_on_set.sql', 'utf8')
+const PARTS_MIGRATION = readFileSync('supabase/migrations/20261101210000_plan_parts_and_sets.sql', 'utf8')
 const SWITCH_MIGRATION = readFileSync('supabase/migrations/20261102063000_plan_part_switch_history.sql', 'utf8')
 
 const PART = 'aaaaaaaa-1111-4111-8111-111111111111'
@@ -146,7 +148,7 @@ describe('the plan-part verbs mirror the Plans section (v2.6317, punch list #239
     expect(alreadyApplied('apply_plan_set', { target: PART, at: '2026-11-02T06:00:00Z' })).toContain('on this plan part')
     expect(alreadyApplied('apply_paper', { target: PART, at: null })).toContain('action: came')
     // The server: its own read of the part is the dry run, its table writes go through restRows and nowhere else, 0.14.0 (0.23.0 with the file index, v2.6367, get_person_file, the evidence verbs, the clock session verbs, the hours statement, the report verbs, get_job's paged reads and its card rule behind it).
-    expect(SERVER).toContain("const SERVER_VERSION = '0.91.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.92.0'")
     expect(SERVER).toContain('Writes are one hundred and nine verbs and nothing else')
     expect(SERVER).toContain('const world = await readPlanPartWorld(reads, p)')
     expect(SERVER).toContain('const dry = planPartDryRun(p, world, todayYmdInAppTz())')
@@ -446,6 +448,197 @@ describe('planPartApply — the rows planSetsIo writes, in its order', () => {
     expect(f.calls).toEqual(['insert plan_sets'])
     expect(f.written[0]?.row).toMatchObject({ ask_lane: null, ask_request_id: null, owed: false, came_at: `${TODAY}T12:00:00` })
     expect(reply).toMatchObject({ ask: null })
+  })
+})
+
+describe('the link of a set already saved, changed on its own row (0.92.0, v2.7458)', () => {
+  const OURS = 'https://drive.google.com/drive/folders/our-copy'
+  const THEIRS = 'https://drive.google.com/drive/folders/x'
+  const JOB2 = 'bbbbbbbb-2222-4222-8222-222222222222'
+  const target = (id: string, over: Partial<SetLinkRow> = {}): SetLinkRow => {
+    const row = world().sets.find((s) => s.id === id)!
+    return { ...row, memo: 'from the architect', dated: '2026-10-14', file_name: null, checked_at: null, updated_at: '2026-10-20T15:00:00+00:00', ...over }
+  }
+  const followers = [
+    { id: JOB, job_name: 'ZZ North plumbing', click_number: '9001', hcp_number: null, job_plans_link: THEIRS },
+    { id: JOB2, job_name: 'ZZ North billing', click_number: '9002', hcp_number: null, job_plans_link: THEIRS },
+  ]
+  const change = (over: Json = {}) => planPartInput('plan_plan_set', { set: { set_id: ISSUED, link: OURS, ...over } })
+
+  it('the input is set_id, link and a memo when passed, and nothing an add carries', () => {
+    expect(change()).toEqual({ ok: true, target: ISSUED, p: { action: 'change_link', set_id: ISSUED, link: OURS } })
+    expect(change({ set_id: ISSUED.toUpperCase(), link: ` ${OURS} `, memo: ' our copy ' })).toEqual({ ok: true, target: ISSUED, p: { action: 'change_link', set_id: ISSUED, link: OURS, memo: 'our copy' } })
+    expect(change({ memo: '' })).toMatchObject({ ok: true, p: { memo: '' } }) // an empty memo clears it; left out, the memo stays
+    expect(change({ link: '' })).toMatchObject({ ok: false, error: expect.stringContaining('a link change needs link') })
+    expect(change({ link: 'drive.google.com/x' })).toMatchObject({ ok: false, error: expect.stringContaining('https://') })
+    expect(change({ set_id: 'the issued set' })).toMatchObject({ ok: false, error: expect.stringContaining('needs set') })
+    expect(change({ name: 'Issued set', kind: 'issued' })).toMatchObject({ ok: false, error: expect.stringContaining('leave name, kind out') })
+    expect(change({ make_current: true })).toMatchObject({ ok: false, error: expect.stringContaining('leave make_current out') })
+    expect(change({ memo: 'a'.repeat(2001) })).toMatchObject({ ok: false })
+    expect(writeRpcBody('apply_plan_set', { set: { set_id: ISSUED, link: OURS }, plan_hash: HASH })).toMatchObject({ ok: true, step: 'apply', rpc: null, target: ISSUED, body: { p: { action: 'change_link', set_id: ISSUED } }, planHash: HASH })
+  })
+
+  it('the reads: the set first, its part, every set on it, and the jobs naming the part only when the part builds from the set', async () => {
+    const rows: Record<string, Json[]> = {
+      plan_sets: [{ ...target(ISSUED) }, { ...target(PERMIT) }],
+      plan_parts: [{ id: PART, development_id: DEV, job_id: null, name: 'North Wing', current_set_id: ISSUED }],
+      developments: [{ id: DEV, name: 'ZZ Test Meadows' }],
+      jobs_ledger: followers.map((j) => ({ ...j, part_id: PART })),
+    }
+    const f = fake(rows)
+    const built = change()
+    if (!built.ok) throw new Error(built.error)
+    const w = await readPlanPartWorld(f.reads, built.p)
+    expect(w.target?.name).toBe('Issued set')
+    expect(w.followers?.map((j) => j.id)).toEqual([JOB, JOB2])
+    expect(f.calls).toEqual([
+      `read plan_sets select=id,part_id,name,kind,source,link,owed,came_at,marks_up_set_id,replaces_set_id,job_id,memo,dated,file_name,checked_at,updated_at&id=eq.${ISSUED}`,
+      `read plan_parts select=id,development_id,job_id,name,current_set_id&id=eq.${PART}`,
+      `read developments select=id,name&id=eq.${DEV}`,
+      `read plan_sets select=id,part_id,name,kind,source,link,owed,came_at,marks_up_set_id,replaces_set_id,job_id&part_id=eq.${PART}&order=came_at.desc`,
+      `read jobs_ledger select=id,job_name,click_number,hcp_number,job_plans_link&plan_part_id=eq.${PART}&order=created_at&limit=200`,
+    ])
+    // A set the part does not build from: no job is read, since no job's link moves.
+    const g = fake(rows)
+    const older = change({ set_id: PERMIT })
+    if (!older.ok) throw new Error(older.error)
+    const w2 = await readPlanPartWorld(g.reads, older.p)
+    expect(w2.followers).toEqual([])
+    expect(g.calls.some((c) => c.startsWith('read jobs_ledger'))).toBe(false)
+  })
+
+  it('the plan reads back the set, the link before and after, that the part builds from it, and each job whose plans link follows', () => {
+    const built = change({ memo: 'our copy in the Shared Drive' })
+    if (!built.ok) throw new Error(built.error)
+    const dry = planPartDryRun(built.p, world({ target: target(ISSUED, { replaces_set_id: null }), followers }), TODAY)
+    if (!dry.ok) throw new Error(dry.refused)
+    expect(dry.reply).toMatchObject({
+      action: 'change_link',
+      part: { id: PART, name: 'North Wing', builds_from: { id: ISSUED, name: 'Issued set' } },
+      set: { id: ISSUED, name: 'Issued set', kind: 'issued', kind_words: 'Issued set', source_words: 'the GC', dated: '2026-10-14', memo: 'from the architect', link: THEIRS, line: 'Issued set · the GC · dated Oct 14, 2026' },
+      link: { before: THEIRS, after: OURS, note: null },
+      memo: { before: 'from the architect', after: 'our copy in the Shared Drive', changed: true },
+      file_facts: null,
+      builds_from_this_set: true,
+      job_plans_link: {
+        follows: true,
+        more: null,
+        jobs: [
+          { id: JOB, label: 'JP9001', before: THEIRS, after: OURS },
+          { id: JOB2, label: 'JP9002', before: THEIRS, after: OURS },
+        ],
+      },
+      history: 'A link change writes no History line.',
+    })
+    const follows = dry.reply.job_plans_link as { words: string; by: string }
+    expect(follows.words).toBe("North Wing builds from this set, so job_plans_link on the 2 jobs naming the part follows by the existing mirror the moment the link lands: each job's Open plans and the trade portal open the new link.")
+    expect(String(dry.reply.row)).toContain('The row keeps its id')
+    // The mirror is the database's, and it fires on a link change of any set: it writes the part's current set's link.
+    expect(follows.by).toContain('plan_sets_mirror_on_change')
+    expect(PARTS_MIGRATION).toContain('AFTER UPDATE OF link ON public.plan_sets\n  FOR EACH ROW EXECUTE FUNCTION public.plan_sets_mirror_on_change();')
+    expect(PARTS_MIGRATION).toContain('IF NEW.link IS DISTINCT FROM OLD.link THEN\n    PERFORM public.plan_part_mirror_job_links(NEW.part_id);')
+    expect(PARTS_MIGRATION).toContain('JOIN public.plan_sets s ON s.id = p.current_set_id\n  WHERE p.id = p_part_id;')
+  })
+
+  it('a set the part does not build from moves no job; a memo left out stays; file facts behind the old link are named as cleared', () => {
+    const built = change({ set_id: PERMIT })
+    if (!built.ok) throw new Error(built.error)
+    const dry = planPartDryRun(built.p, world({ target: target(PERMIT, { file_name: 'plans.pdf', checked_at: '2026-10-25T15:00:00+00:00' }), followers: [] }), TODAY)
+    if (!dry.ok) throw new Error(dry.refused)
+    expect(dry.reply).toMatchObject({ builds_from_this_set: false, memo: { before: 'from the architect', after: 'from the architect', changed: false }, job_plans_link: { follows: false, jobs: [] } })
+    expect((dry.reply.job_plans_link as { words: string }).words).toContain("North Wing builds from Issued set, not from this one, so no job's plans link moves.")
+    expect(String(dry.reply.file_facts)).toContain('are cleared')
+    // A link that differs only by Drive's tail is said to be the same target; a set with no link takes its first.
+    const tail = change({ link: `${THEIRS}?usp=sharing` })
+    if (!tail.ok) throw new Error(tail.error)
+    expect(planPartDryRun(tail.p, world({ target: target(ISSUED), followers }), TODAY)).toMatchObject({ ok: true, reply: { link: { note: expect.stringContaining('same Drive folder or file') } } })
+    expect(planPartDryRun(built.p, world({ target: target(PERMIT, { link: '' }), followers: [] }), TODAY)).toMatchObject({ ok: true, reply: { link: { before: '', note: expect.stringContaining('its first') } } })
+    // A current set no job names yet.
+    const lone = change()
+    if (!lone.ok) throw new Error(lone.error)
+    expect(planPartDryRun(lone.p, world({ target: target(ISSUED), followers: [] }), TODAY)).toMatchObject({ ok: true, reply: { job_plans_link: { follows: true, jobs: [], words: expect.stringContaining('no job names the part yet') } } })
+  })
+
+  it('refuses in words: a set that is not there, a paper, a part that is hidden, the link the set already has', () => {
+    const built = change()
+    if (!built.ok) throw new Error(built.error)
+    expect(planPartDryRun(built.p, world({ target: null, part: null, development: null, job: null, sets: [], followers: [] }), TODAY)).toMatchObject({ ok: false, refused: expect.stringContaining(`No set ${ISSUED} is visible to you`) })
+    const paper = change({ set_id: TASKLIST })
+    if (!paper.ok) throw new Error(paper.error)
+    expect(planPartDryRun(paper.p, world({ target: target(TASKLIST), followers: [] }), TODAY)).toMatchObject({ ok: false, refused: expect.stringContaining("is a task list, a paper and not a set of drawings. Papers are plan_paper's ground") })
+    expect(planPartDryRun(built.p, world({ target: target(ISSUED), part: null, followers: [] }), TODAY)).toMatchObject({ ok: false, refused: expect.stringContaining("The set's part") })
+    const same = change({ link: ` ${THEIRS} ` })
+    if (!same.ok) throw new Error(same.error)
+    expect(planPartDryRun(same.p, world({ target: target(ISSUED), followers }), TODAY)).toMatchObject({ ok: false, refused: `Issued set already has that link (${THEIRS}). Nothing to change.` })
+  })
+
+  it('the hash moves with the link the set has, its last save, the part’s current set and a job’s link, and holds across runs', async () => {
+    const built = change()
+    if (!built.ok) throw new Error(built.error)
+    const run = (w: PlanPartWorld) => {
+      const d = planPartDryRun(built.p, w, TODAY)
+      if (!d.ok) throw new Error(d.refused)
+      return planHash('plan_plan_set', built.p, d.reply)
+    }
+    const base = () => world({ target: target(ISSUED), followers })
+    const w = world()
+    const h = await Promise.all([
+      run(base()),
+      run(base()),
+      run(world({ target: target(ISSUED, { link: 'https://drive.google.com/drive/folders/elsewhere' }), followers })),
+      run(world({ target: target(ISSUED, { updated_at: '2026-11-02T10:00:00+00:00' }), followers })),
+      run(world({ part: { ...w.part!, current_set_id: PERMIT }, target: target(ISSUED), followers: [] })),
+      run(world({ target: target(ISSUED), followers: [followers[0]!, { ...followers[1]!, job_plans_link: OURS }] })),
+    ])
+    expect(h[0]).toBe(h[1])
+    for (const other of h.slice(2)) expect(other).not.toBe(h[0])
+  })
+
+  it('apply: one update on the set’s own row — the link, the memo when passed, the old file facts cleared — then the row and its jobs read back', async () => {
+    const built = change({ memo: 'our copy in the Shared Drive' })
+    if (!built.ok) throw new Error(built.error)
+    const dry = planPartDryRun(built.p, world({ target: target(ISSUED), followers }), TODAY)
+    if (!dry.ok) throw new Error(dry.refused)
+    const f = fake({ plan_sets: [{ id: ISSUED, link: OURS }], jobs_ledger: followers.map((j) => ({ id: j.id, job_plans_link: OURS })) })
+    const reply = await planPartApply({ ...f.writes, rows: f.reads.rows }, built.p, dry.reply, { userId: ME }, '2026-11-16T18:00:00.000Z')
+    expect(f.written).toEqual([{ op: 'update', table: 'plan_sets', query: `id=eq.${ISSUED}`, row: { link: OURS, file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null, memo: 'our copy in the Shared Drive' } }])
+    expect(f.calls).toEqual([`update plan_sets id=eq.${ISSUED}`, `read plan_sets select=id,link&id=eq.${ISSUED}`, `read jobs_ledger select=id,job_plans_link&plan_part_id=eq.${PART}&order=created_at&limit=200`])
+    expect(reply).toMatchObject({ ok: true, action: 'change_link', set_id: ISSUED, part_id: PART, name: 'Issued set', link_before: THEIRS, link: OURS, memo_changed: true, builds_from_this_set: true, jobs: [{ id: JOB, label: 'JP9001', follows: true }, { id: JOB2, label: 'JP9002', follows: true }] })
+    expect(String(reply.next)).toBe('Issued set carries the new link, and job_plans_link on all 2 jobs naming North Wing reads it: Open plans and the trade portal open the new link.')
+    // No insert, no touch of the part: the row's id and the part's current set stand.
+    expect(f.written.some((w) => w.op === 'insert' || w.table === 'plan_parts')).toBe(false)
+  })
+
+  it('apply says so when the row took nothing, and names a job the mirror did not reach', async () => {
+    const built = change()
+    if (!built.ok) throw new Error(built.error)
+    const dry = planPartDryRun(built.p, world({ target: target(ISSUED), followers }), TODAY)
+    if (!dry.ok) throw new Error(dry.refused)
+    // The update answered, and the row still reads the old link (RLS or training mode let no row through).
+    const held = fake({ plan_sets: [{ id: ISSUED, link: THEIRS }] })
+    await expect(planPartApply({ ...held.writes, rows: held.reads.rows }, built.p, dry.reply, { userId: ME }, 'now')).rejects.toThrow('Nothing changed: Issued set did not take the link.')
+    // One job still reads the old link.
+    const behind = fake({ plan_sets: [{ id: ISSUED, link: OURS }], jobs_ledger: [{ id: JOB, job_plans_link: OURS }, { id: JOB2, job_plans_link: THEIRS }] })
+    const reply = await planPartApply({ ...behind.writes, rows: behind.reads.rows }, built.p, dry.reply, { userId: ME }, 'now')
+    expect(reply).toMatchObject({ jobs: [{ label: 'JP9001', follows: true }, { label: 'JP9002', follows: false }] })
+    expect(String(reply.next)).toContain('JP9002 still reads another plans link: the mirror did not reach it.')
+    // A memo left out is not written; a set the part does not build from reads no job back.
+    const older = change({ set_id: PERMIT })
+    if (!older.ok) throw new Error(older.error)
+    const olderDry = planPartDryRun(older.p, world({ target: target(PERMIT), followers: [] }), TODAY)
+    if (!olderDry.ok) throw new Error(olderDry.refused)
+    const g = fake({ plan_sets: [{ id: PERMIT, link: OURS }] })
+    const olderReply = await planPartApply({ ...g.writes, rows: g.reads.rows }, older.p, olderDry.reply, { userId: ME }, 'now')
+    expect(g.written[0]?.row).not.toHaveProperty('memo')
+    expect(g.calls.some((c) => c.startsWith('read jobs_ledger'))).toBe(false)
+    expect(olderReply).toMatchObject({ builds_from_this_set: false, jobs: null, memo_changed: false })
+    expect(String(olderReply.next)).toContain("the part builds from another set, so no job's plans link moved")
+  })
+
+  it('the server hands the apply its own reads, and says the link change in the verb’s words', () => {
+    expect(SERVER).toContain('const writes: PartWrites = {\n        rows: reads.rows,')
+    expect(SERVER).toContain("To change a saved set\\'s link: { set_id, link, memo? }.")
+    expect(SERVER).toContain('since 0.92.0 set_id with a new link changes the Drive link of a set already saved, on its own row')
   })
 })
 

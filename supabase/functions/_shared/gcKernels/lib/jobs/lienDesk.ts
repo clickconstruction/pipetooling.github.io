@@ -91,6 +91,7 @@ export type LienDeskItemRow = {
   id: string
   job_id: string
   kind: string
+  mailed_copies: Json
   months: string[]
   offer_by: string | null
   offer_pct: number
@@ -145,7 +146,7 @@ export function lienEmptyPileWords(pile: LienDeskPile, onOtherPiles: number): { 
     to_draft: 'Nothing is left to send for approval.',
     awaiting: 'Nothing is waiting for approval.',
     ready: 'Nothing approved is waiting to print.',
-    printed: 'Nothing in the run is waiting on a tick.',
+    printed: 'Nothing printed is waiting on its mail numbers.',
     held: 'Nothing is held.',
     sent: 'Nothing went out in the last 30 days.',
     missed: 'No window was missed.',

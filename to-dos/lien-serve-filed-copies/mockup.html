@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serve a filed lien: mock-up</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--line:#d9d6cd;--ink:#1c1a17;--soft:#5f5a52;--mute:#7a756c;--red-bg:#fcebeb;--red:#791f1f;--amb-bg:#faeeda;--amb:#633806;--grn-bg:#eaf3de;--grn:#27500a;--chip:#eeece5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1a18;--card:#252422;--line:#3d3b37;--ink:#eceae4;--soft:#b9b5ab;--mute:#96928a;--red-bg:#501313;--red:#f7c1c1;--amb-bg:#412402;--amb:#fac775;--grn-bg:#173404;--grn:#c0dd97;--chip:#33312e}}
+:root[data-theme="dark"]{--bg:#1b1a18;--card:#252422;--line:#3d3b37;--ink:#eceae4;--soft:#b9b5ab;--mute:#96928a;--red-bg:#501313;--red:#f7c1c1;--amb-bg:#412402;--amb:#fac775;--grn-bg:#173404;--grn:#c0dd97;--chip:#33312e}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:20px;margin:0 0 4px}
+p.lead{color:var(--soft);margin:0 0 8px}
+h2{font-size:12px;font-weight:600;color:var(--mute);margin:26px 0 6px;text-transform:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;flex-wrap:wrap}
+.row:first-child{border-top:0}
+.t{flex:1;min-width:180px}
+.s{font-size:12px;color:var(--soft)}
+.pill{font-size:11px;padding:2px 8px;border-radius:8px;white-space:nowrap;background:var(--chip);color:var(--soft)}
+.late{background:var(--red-bg);color:var(--red)}.due{background:var(--amb-bg);color:var(--amb)}.done{background:var(--grn-bg);color:var(--grn)}
+button{font:inherit;font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.pages{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.pg{flex:0 0 96px;height:118px;border:1px solid var(--line);border-radius:4px;background:var(--card);padding:6px;font-size:11px;color:var(--soft);line-height:1.35}
+.pg b{display:block;color:var(--ink);margin-bottom:3px}
+.pg.sheet{border-style:dashed}.pg.copy{background:var(--chip)}
+input{font:inherit;font-size:12px;height:28px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);padding:0 8px;width:100%;box-sizing:border-box}
+.letter{font-family:Georgia,"Times New Roman",serif;font-size:13px;line-height:1.6}
+.letter .k{font:11px system-ui,sans-serif;color:var(--mute)}
+.note{font-size:12px;color:var(--amb)}
+</style>
+</head>
+<body>
+<main>
+<h1>Serve a filed lien from the Lien desk</h1>
+<p class="lead">Punch list #366. Made-up jobs, names and figures. The owner's picks of 2026-11-16 are drawn: the app's own COPY page, the letter live and marked unread, a filing with no recording number held.</p>
+
+<h2>1 · To do: each row carries its clock and a press that prints</h2>
+<div class="card">
+<div class="row"><span class="pill late">5 days late</span><div class="t">Job 2104 · Sample Dental<div class="s">Filed · copies to mail · were due Wed Nov 11. Mail them today.</div></div><button>Print the copies</button></div>
+<div class="row"><span class="pill due">due today</span><div class="t">Job 2291 · Cedar Hollow Lofts<div class="s">Filed · copies to mail · by Mon Nov 16 · owner and contractor</div></div><button>Print the copies</button></div>
+<div class="row"><span class="pill">2 days left</span><div class="t">Job 2317 · Maple Court Retail<div class="s">Filed · copies printed Nov 16 · mail by Wed Nov 18</div></div><button>Enter mail numbers</button></div>
+<div class="row"><span class="pill">7 days left</span><div class="t">Job 2340 · Ortega Residence<div class="s">Filed · copies to mail · held: no recording number yet</div></div><button>Type the number</button></div>
+</div>
+
+<h2>2 · Board, affidavit column: one bin becomes two, with one press for the batch</h2>
+<div class="grid">
+<div class="card"><b>Filed · copies to mail</b> <span class="s">· 12</span><div class="s" style="margin:4px 0 8px">Earliest mail-by day: today</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"><span class="pill late">2104</span><span class="pill due">2291</span><span class="pill">2317</span><span class="pill">2340</span><span class="pill">+8</span></div><button style="width:100%">Print the copies for 11 liens</button><div class="s" style="margin-top:6px">1 held, not in this print: no recording number yet</div></div>
+<div class="card"><b>Served</b> <span class="s">· 4</span><div class="s" style="margin:4px 0 8px">Copies mailed and the day recorded</div><div style="display:flex;flex-wrap:wrap;gap:4px"><span class="pill done">1988</span><span class="pill done">2010</span><span class="pill done">2044</span><span class="pill due">2051 · no mail number</span></div></div>
+</div>
+
+<h2>3 · What prints, in envelope order (a job under a contractor has two envelopes)</h2>
+<div class="pages">
+<div class="pg sheet"><b>Mail sheet</b>Every envelope in order, a blank for its mail number, a code to scan. Stays in the office.</div>
+<div class="pg"><b>Letter</b>To the owner, job 2291.</div>
+<div class="pg copy"><b>COPY</b>The affidavit as filed, with the county, the day and the document number in a box.</div>
+<div class="pg"><b>Letter</b>To the original contractor, job 2291.</div>
+<div class="pg copy"><b>COPY</b>The same affidavit again.</div>
+<div class="pg"><b>Letter</b>To the owner, job 2104…</div>
+</div>
+
+<h2>4 · After the post office: every mail number in one window</h2>
+<div class="card">
+<div class="row" style="border-top:0"><span class="s">Mailed on</span><input type="date" value="2026-11-16" style="width:150px"><span class="s" style="margin-left:auto">Scan or type. Enter moves to the next envelope.</span></div>
+<div class="row"><div class="t">2291 · owner<div class="s">Hollow Creek Holdings LLC</div></div><div style="flex:0 0 220px"><input value="9589 0710 5270 0000 1111 22" aria-label="Mail number, job 2291, owner"></div><button>Photo</button></div>
+<div class="row"><div class="t">2291 · original contractor<div class="s">Brightline Builders</div></div><div style="flex:0 0 220px"><input value="9589 0710 5270 0000 1111 39" aria-label="Mail number, job 2291, contractor"></div><button>Photo</button></div>
+<div class="row"><div class="t">2104 · owner<div class="s">Sample Dental Properties LP</div></div><div style="flex:0 0 220px"><input placeholder="the number on the receipt" aria-label="Mail number, job 2104, owner"></div><button>Photo</button></div>
+<div class="row"><span class="s" style="flex:1">A lien with no number yet is still recorded as served on this day. Its number can follow.</span><button>Record 11 liens served</button></div>
+</div>
+
+<h2>5 · The letter, to the owner, on a job under a contractor</h2>
+<div class="card letter">
+<p class="k">NOVEMBER 16, 2026 · BY CERTIFIED MAIL</p>
+<p style="text-align:center"><b>COPY OF LIEN AFFIDAVIT<br>TEXAS PROPERTY CODE § 53.055</b></p>
+<p><span class="k">To the owner or reputed owner</span> Hollow Creek Holdings LLC<br><span class="k">Address</span> 88 Sample Ridge Rd, Austin, TX 78700<br><span class="k">Property</span> 410 Sample Street, Kyle, TX 78640<br><span class="k">Filed</span> November 13, 2026, County Clerk of Hays County, Texas<br><span class="k">Document number</span> 2026-0041877<br><span class="k">Amount of the claim</span> $18,450.00</p>
+<p>Sample Plumbing LLC has filed an affidavit claiming a lien on the property named above. A copy of the affidavit is enclosed. It is sent to you as the owner or reputed owner of the property, as Texas Property Code § 53.055 requires.</p>
+<p>The affidavit states a claim of $18,450.00 for plumbing labor and materials furnished to improve the property under a contract with Brightline Builders, the original contractor.</p>
+<p>When the claim is paid, Sample Plumbing LLC will sign a release of the claim and of the lien in a form that can be filed with the county clerk. To pay, or to ask about the amount, call (512) 555-0142.</p>
+<p>Enclosed: a copy of the lien affidavit.</p>
+<p class="note" style="font-family:system-ui,sans-serif">Counsel has not read this letter yet.</p>
+</div>
+</main>
+</body>
+</html>

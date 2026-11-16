@@ -21563,6 +21563,7 @@ export type Database = {
           id: string
           job_id: string
           kind: string
+          mailed_copies: Json
           months: string[]
           offer_by: string | null
           offer_pct: number
@@ -21607,6 +21608,7 @@ export type Database = {
           id?: string
           job_id: string
           kind?: string
+          mailed_copies?: Json
           months?: string[]
           offer_by?: string | null
           offer_pct?: number
@@ -21651,6 +21653,7 @@ export type Database = {
           id?: string
           job_id?: string
           kind?: string
+          mailed_copies?: Json
           months?: string[]
           offer_by?: string | null
           offer_pct?: number
@@ -29704,6 +29707,106 @@ export type Database = {
           },
         ]
       }
+      painted_map_link_visits: {
+        Row: {
+          device_id: string
+          device_words: string
+          first_accuracy_m: number | null
+          first_lat: number | null
+          first_lng: number | null
+          first_located_at: string | null
+          first_opened_at: string
+          id: string
+          ip: string
+          language: string
+          last_accuracy_m: number | null
+          last_lat: number | null
+          last_lng: number | null
+          last_located_at: string | null
+          last_opened_at: string
+          link_id: string
+          map_id: string
+          open_count: number
+          screen: string
+          time_zone: string
+          user_agent: string
+          user_id: string | null
+          visitor_name: string
+        }
+        Insert: {
+          device_id: string
+          device_words?: string
+          first_accuracy_m?: number | null
+          first_lat?: number | null
+          first_lng?: number | null
+          first_located_at?: string | null
+          first_opened_at?: string
+          id?: string
+          ip?: string
+          language?: string
+          last_accuracy_m?: number | null
+          last_lat?: number | null
+          last_lng?: number | null
+          last_located_at?: string | null
+          last_opened_at?: string
+          link_id: string
+          map_id: string
+          open_count?: number
+          screen?: string
+          time_zone?: string
+          user_agent?: string
+          user_id?: string | null
+          visitor_name: string
+        }
+        Update: {
+          device_id?: string
+          device_words?: string
+          first_accuracy_m?: number | null
+          first_lat?: number | null
+          first_lng?: number | null
+          first_located_at?: string | null
+          first_opened_at?: string
+          id?: string
+          ip?: string
+          language?: string
+          last_accuracy_m?: number | null
+          last_lat?: number | null
+          last_lng?: number | null
+          last_located_at?: string | null
+          last_opened_at?: string
+          link_id?: string
+          map_id?: string
+          open_count?: number
+          screen?: string
+          time_zone?: string
+          user_agent?: string
+          user_id?: string | null
+          visitor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "painted_map_link_visits_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "painted_map_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_link_visits_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_link_visits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       painted_map_links: {
         Row: {
           code_hash: string
@@ -37535,6 +37638,7 @@ export type Database = {
       supply_house_invoices: {
         Row: {
           amount: number
+          amount_paid: number
           bill_attachment_id: string | null
           bill_read: Json | null
           created_at: string | null
@@ -37555,6 +37659,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_paid?: number
           bill_attachment_id?: string | null
           bill_read?: Json | null
           created_at?: string | null
@@ -37575,6 +37680,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_paid?: number
           bill_attachment_id?: string | null
           bill_read?: Json | null
           created_at?: string | null
@@ -37681,6 +37787,137 @@ export type Database = {
           },
           {
             foreignKeyName: "supply_house_job_accounts_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_house_payment_lines: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          payment_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          payment_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_payment_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_lines_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_house_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          id: string
+          memo: string | null
+          method: string | null
+          method_ref: string | null
+          paid_on: string
+          receipt_link: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_by_name: string | null
+          removed_reason: string | null
+          source: string
+          supply_house_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          memo?: string | null
+          method?: string | null
+          method_ref?: string | null
+          paid_on: string
+          receipt_link?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_by_name?: string | null
+          removed_reason?: string | null
+          source?: string
+          supply_house_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          memo?: string | null
+          method?: string | null
+          method_ref?: string | null
+          paid_on?: string
+          receipt_link?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_by_name?: string | null
+          removed_reason?: string | null
+          source?: string
+          supply_house_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payments_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payments_supply_house_id_fkey"
             columns: ["supply_house_id"]
             isOneToOne: false
             referencedRelation: "supply_houses"
@@ -47721,6 +47958,7 @@ export type Database = {
         Args: { p_development_id: string }
         Returns: boolean
       }
+      painted_map_stands: { Args: { p_map_id: string }; Returns: boolean }
       partner_job_cost_buckets: { Args: { p_job_id: string }; Returns: Json }
       partner_job_costing_payload: {
         Args: { p_job_id: string; p_partnership_id: string }
@@ -48232,6 +48470,21 @@ export type Database = {
           p_method_ref?: string
           p_payment_date?: string
           p_person_id: string
+        }
+        Returns: Json
+      }
+      record_supply_house_payment: {
+        Args: {
+          p_amount: number
+          p_from_account?: Json
+          p_keep_on_account?: boolean
+          p_lines?: Json
+          p_memo?: string
+          p_method?: string
+          p_method_ref?: string
+          p_paid_on: string
+          p_receipt_link?: string
+          p_supply_house_id: string
         }
         Returns: Json
       }
@@ -49355,6 +49608,10 @@ export type Database = {
       supervised_days_with: {
         Args: { p_month: string; p_subject: string }
         Returns: number
+      }
+      supply_house_invoice_sync_paid: {
+        Args: { p_invoice_id: string }
+        Returns: undefined
       }
       supply_paper_accept: {
         Args: { p_note?: string; p_paper_id: string }

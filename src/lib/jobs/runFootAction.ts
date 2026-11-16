@@ -32,7 +32,8 @@ export function runFootAction(states: ReadonlyArray<RunEnvelopeStageState>, opts
   const owe = movable.filter((s) => stageDone(s, 'printed') && !stageDone(s, 'mailed') && s.lane !== 'email')
   const recordable = movable.filter((s) => !stageDone(s, 'recorded') && (s.lane === 'email' || stageDone(s, 'mailed')))
   const recorded = states.filter((s) => stageDone(s, 'recorded'))
-  const waitWords = waits.length ? ` · ${plural(waits.length, 'waits', 'wait')} on ${leader}` : ''
+  // *7 for Sam to sign* (v2.7448): the word the Board's tile and the desk's door use for an approved notice with no signature.
+  const waitWords = waits.length ? ` · ${waits.length} for ${leader} to sign` : ''
   if (recorded.length === total) {
     return { kind: 'done', label: 'Close the run', count: total, disabled: false, line1: `Done. ${plural(total, 'envelope', 'envelopes')} recorded.`, line2: 'Each notice is on its job with how it went and every month it covered.' }
   }

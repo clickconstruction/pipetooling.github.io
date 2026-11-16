@@ -60,7 +60,7 @@ describe('lienMarkCard', () => {
     expect(c.door).toEqual({ kind: 'lien_window', label: 'Draft the notice ›' })
     expect(c.pct).toBeGreaterThan(0)
   })
-  it('a notice on file, and one in the mail with Record the mailing when the desk has the door', () => {
+  it('a notice on file, and one in the mail with Enter mail numbers when the desk has the door', () => {
     const j = job({ ...RLC, r: { workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] } })
     const done = lienMarkCard(mark(j, 'notice', (m) => m.kind === 'notice' && m.done), j, TODAY, ALL)
     expect(done.glyph).toBe('notice_done')
@@ -70,7 +70,7 @@ describe('lienMarkCard', () => {
     expect(mailed.glyph).toBe('mailed')
     expect(mailed.title).toBe('In the mail · August')
     expect(mailed.when).toBe('Record the number by Oct 15 · in 17 days')
-    expect(mailed.door).toEqual({ kind: 'record', label: 'Record the mailing ›', jobIds: ['j'] })
+    expect(mailed.door).toEqual({ kind: 'record', label: 'Enter mail numbers ›', jobIds: ['j'] })
     expect(lienMarkCard(mark(j, 'notice', (m) => m.kind === 'notice' && m.mailed), j, TODAY, NO_DOORS).door?.kind).toBe('lien_window')
     // v2.5529: a mailed notice whose date has passed is not to record "by" a day gone by
     const late = job({ ...RLC, r: { lastWorkYmd: '2026-07-20', workMonths: ['2026-07'], mailedMonths: ['2026-07'] } })
@@ -209,7 +209,12 @@ describe('lienGroupFlagCards / lienGroupWordCard', () => {
     ])
     expect(cards[0]!.facts).toEqual(['$17,702 across the 2.'])
     expect(cards[0]!.door).toEqual({ kind: 'draft', label: 'Draft the 2 ›', ymd: '2026-10-15', jobIds: ['a', 'b'] })
-    expect(cards[1]!.door).toEqual({ kind: 'record', label: 'Record the mailing ›', jobIds: ['c'] })
+    expect(cards[1]!.door).toEqual({ kind: 'record', label: 'Enter mail numbers ›', jobIds: ['c'] })
+    // Two in the mail: the press carries its count after a dot, as the title bar's door does (v2.7448).
+    const two = [...rows, job({ jobId: 'd', number: '259', name: 'Dunmere', ...RLC, openBalance: 300, r: { mailedMonths: ['2026-08'] } })]
+    const twoAxis = lienCalendarAxis(two, TODAY)
+    const twoOct = lienCalendarGroupFlags({ jobs: two }, twoAxis).find((f) => f.ymd === '2026-10-15')!
+    expect(lienGroupFlagCards(twoOct, { jobs: two, kind: 'gc' }, twoAxis, TODAY, ALL)[1]!.door).toEqual({ kind: 'record', label: 'Enter mail numbers · 2 ›', jobIds: ['c', 'd'] })
     const nov = flags.find((f) => f.ymd === '2026-11-16')!
     const liens = lienGroupFlagCards(nov, { jobs: rows, kind: 'gc' }, axis, TODAY, NO_DOORS)
     expect(liens.map((c) => c.title)).toEqual(['3 liens to file'])
