@@ -89,7 +89,7 @@ function deskData(): LienDeskData {
     summary: summarizeLienDeskForNeedsYou(queue),
     rows,
     items: [],
-    affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
+    affidavits: { entries: [], piles: { needs_property: [], needs_notice: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, needs_notice: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
     affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
