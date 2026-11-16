@@ -4665,6 +4665,10 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunCheckWho { color: var(--text-muted); font-size: 0.72rem; }
 .lienRunCheckLine { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
 .lienRunCheckHeld { color: var(--text-red-600); font-size: 0.72rem; font-weight: 600; }
+.lienRunCheckCopies { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; min-width: 0; font-size: 0.72rem; }
+.lienRunCheckCopies a { color: var(--text-link); font-weight: 600; overflow-wrap: anywhere; }
+.lienRunCheckCopyAdd { padding: 2px 9px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.lienRunCheckCopyAdd:disabled { cursor: default; opacity: 0.55; }
 .lienRunCheckTicks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-items: start; min-width: 0; }
 .lienRunCheckTick { display: grid; gap: 3px; min-width: 0; padding: 0.3rem 0.45rem; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border); }
 .lienRunCheckTick[data-on='yes'] { border-color: var(--text-green-700); background: var(--bg-green-tint); }

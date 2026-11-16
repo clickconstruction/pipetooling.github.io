@@ -12,6 +12,7 @@ import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
 import { noticeInvoiceExhibitInputs, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 import { buildLienWaiverPdfBlob } from '../jobsDocuments/lienWaiverRelease'
 import { issueNoticeRelease } from './lienNoticeReleaseIo'
+import { lienMailedCopyDocument } from './lienMailedCopies'
 
 /**
  * Recording the run: for every notice, email the envelopes sent by email (the
@@ -153,7 +154,7 @@ export async function recordLienDeskRun(
         // One notice for the jobs at a property (#35 PR 3): one filing per job on one packet, each item sent.
         const packetId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
         const rows = await withSupabaseRetry<{ id: string; job_id: string }[]>(
-          () => supabase.from('job_lien_filings').insert(combinedFilingPayloads(n, sends, { userId: opts.userId, packetId, document: opts.document ?? {} }) as never).select('id, job_id'),
+          () => supabase.from('job_lien_filings').insert(combinedFilingPayloads(n, sends, { userId: opts.userId, packetId, document: lienMailedCopyDocument(n.mailedCopies ?? [], opts.document ?? {}) }) as never).select('id, job_id'),
           'lien desk run: record combined notice',
         )
         const filingByJob = new Map((rows ?? []).map((r) => [r.job_id, r.id]))
@@ -171,7 +172,7 @@ export async function recordLienDeskRun(
         continue
       }
       const filing = await withSupabaseRetry<{ id: string }>(
-        () => supabase.from('job_lien_filings').insert(runFilingPayload(n, sends, opts.userId, opts.document ?? {}) as never).select('id').single(),
+        () => supabase.from('job_lien_filings').insert(runFilingPayload(n, sends, opts.userId, lienMailedCopyDocument(n.mailedCopies ?? [], opts.document ?? {})) as never).select('id').single(),
         'lien desk run: record notice',
       )
       // Recorded in a later sitting (v2.5532), the item says it went on the Mailed on day, not today (punch list #243).
