@@ -31,8 +31,8 @@ export interface PaintedWayIo {
   open(code: string, ask: PaintedWayAsk): Promise<PaintedWayView>
   /** Where the reader is, after they pressed Show where I am. Best effort: `false` when it was not kept. */
   here(code: string, deviceId: string, point: { lat: number; lng: number; accuracyM: number | null }): Promise<boolean>
-  /** The address of one place's photo. No key in it: the function takes the code alone. */
-  photoUrl(code: string, placeId: string): string
+  /** The address of one place's photo. It carries the code and this device's id: a photo opens for a device that gave a name. */
+  photoUrl(code: string, placeId: string, deviceId?: string | null): string
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
@@ -81,8 +81,8 @@ export const paintedWayIo: PaintedWayIo = {
       return false
     }
   },
-  photoUrl(code, placeId) {
-    return `${FUNCTION_URL}?code=${encodeURIComponent(code)}&photo=${encodeURIComponent(placeId)}`
+  photoUrl(code, placeId, deviceId) {
+    return `${FUNCTION_URL}?code=${encodeURIComponent(code)}&photo=${encodeURIComponent(placeId)}${deviceId ? `&device=${encodeURIComponent(deviceId)}` : ''}`
   },
 }
 

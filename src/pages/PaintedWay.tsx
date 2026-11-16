@@ -307,8 +307,8 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
                         {p.words ? <div style={{ color: MUTED }}>{p.words}</div> : null}
                       </div>
                       {p.photo && code ? (
-                        <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setPhoto({ url: io.photoUrl(code, p.id), name: p.name })} style={{ padding: 0, border: `1px solid ${HAIR}`, borderRadius: 8, overflow: 'hidden', background: NOTE_BAND, cursor: 'pointer', width: 84, height: 63 }}>
-                          <img src={io.photoUrl(code, p.id)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = 'none')} />
+                        <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setPhoto({ url: io.photoUrl(code, p.id, deviceId.current), name: p.name })} style={{ padding: 0, border: `1px solid ${HAIR}`, borderRadius: 8, overflow: 'hidden', background: NOTE_BAND, cursor: 'pointer', width: 84, height: 63 }}>
+                          <img src={io.photoUrl(code, p.id, deviceId.current)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = 'none')} />
                         </button>
                       ) : null}
                     </div>

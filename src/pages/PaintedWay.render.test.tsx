@@ -50,7 +50,7 @@ const fakeIo = (views: PaintedWayView[]): PaintedWayIo & { reads: string[]; asks
       points.push({ code, deviceId, point })
       return true
     },
-    photoUrl: (code, placeId) => `https://fn.test/?code=${code}&photo=${placeId}`,
+    photoUrl: (code, placeId, deviceId) => `https://fn.test/?code=${code}&photo=${placeId}${deviceId ? '&device=yes' : ''}`,
   }
 }
 const open = (io: PaintedWayIo, path = '/way/q7m2kd4x9p') =>
@@ -172,7 +172,7 @@ describe('PaintedWay', () => {
   it('opens a place\'s photo through the function, by the place and the code alone', async () => {
     open(fakeIo([OPEN]))
     fireEvent.click(await screen.findByRole('button', { name: 'Open the photo of Truck gate' }))
-    expect(document.querySelector('[data-way-photo] img')?.getAttribute('src')).toBe('https://fn.test/?code=q7m2kd4x9p&photo=p1')
+    expect(document.querySelector('[data-way-photo] img')?.getAttribute('src')).toBe('https://fn.test/?code=q7m2kd4x9p&photo=p1&device=yes')
     expect(screen.queryByRole('button', { name: 'Open the photo of Meter' })).toBeNull()
   })
 
