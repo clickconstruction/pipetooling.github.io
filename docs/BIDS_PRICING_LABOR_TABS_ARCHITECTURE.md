@@ -10,7 +10,7 @@ covers:
   - src/hooks/useBidPricingEngine.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-16
 sections:
   - What this surface is
   - The shared substrate
@@ -28,7 +28,11 @@ sections:
 
 > **Every line range in this map is as of `a05cef4c4`.** Ranges rot with each commit — search the symbol named beside the range, and regenerate the facts with `npm run map -- <file>` before trusting a number.
 
-> **v2.7279 (after `mapped_at`) — the GC's difficulty chip on the title line:** `BidsPricingTab.tsx` reads `useGcDifficultyStandings` for the open bid's GC and draws `GcDifficultyChip` (*Rated N points*, read only) on the title line beside the *Bids like this* slot, since v2.7296 outside the Workbench block so a bid with nothing to price shows it (`docs/recent-features/v2.7279.md`, `v2.7296.md`, punch list #357; the cost lines come in PR 4).
+> **v2.7279 (after `mapped_at`) — the GC's difficulty chip on the title line:** `BidsPricingTab.tsx` reads `useGcDifficultyStandings` for the open bid's GC and draws `GcDifficultyChip` (*Rated N points*, read only) on the title line beside the *Bids like this* slot, since v2.7296 outside the Workbench block so a bid with nothing to price shows it (`docs/recent-features/v2.7279.md`, `v2.7296.md`, punch list #357).
+
+> **v2.7301 / v2.7360 (after `mapped_at`) — the difficulty lines, the strip and the site's pick:** `BidsPricingTab.tsx` calls `useDifficultyPrice`, `useBidDifficultyPicks` (the bid's own picks, v2.7360) and `useBidDifficulty({ bidId, standing, bidPicks, published, price, ready, latest, reload, onWrote })`. The hook writes the GC's rating and the bid's picks as rows of `cost_estimate_other_rows` pinned in `bid_difficulty` once the numbers are settled (`ready` = `derivedNow != null`; `latest` = `bidDifficultyLatestRef`, refreshed every commit) and arms the priced-margin stamp (`onWrote: armPricedMarginStamp`); `bidDifficultyAmountOnRows` gives the stamp its `difficultyCost`. Under `PricedMarginLine` the tab draws `BidDifficultyStrip` (the fold, *Take a line off this bid…* → `takeOff`, *Read the new rating in* → `readIn`) and `BidSitePick`, whose `onPick` saves the pick and calls `readIn` where the Workbench may write (not sent, field hours and a labor rate on the bid). `BidsLaborTab.tsx` reads the pin by cost estimate (`supabaseBidDifficultyIo().loadByCostEstimate`) into `difficultyRowIds` and passes `BidsDirectCostsSection` a `locked` prop, so those Other rows draw with the chip **difficulty**, read only, and fall back to plain Other rows when the read fails. `useBidPricingEngine.ts` did not change (`docs/recent-features/v2.7301.md`, `v2.7360.md`, punch list #357).
+
+> **v2.7347 / v2.7370 (after `mapped_at`) — the *Can’t be scored* line:** `BidsPricingTab.tsx` builds `scoreReadiness` with `bidScoreReadiness` (`lib/scorecard/scoreReadiness.ts`): for a bid on the desk the stamp's inputs as they stand on screen (`pricedStampLatest.input`) and `laborCompleteness(pricingLaborRows, labor_rate)`; for a sent bid the kept stamp and, since v2.7370, the labor count kept with it (`usePricedLabor`). A hold draws `BidScoreHoldLine` under `PricedMarginLine`, its **Open Labor** (`onNavigateBidToTab(bid, 'labor')`) only while the bid is unsent, and rides to `PackageAndSendBidPricingModal` as the `scoreHold` prop for the same line at the top of the share window (`docs/recent-features/v2.7347.md`, `v2.7370.md`, punch list #360).
 
 > **v2.6225 (after `mapped_at`) — the robot's price beside hers on the Workbench grid:** `BidsPricingTab.tsx` calls `useRobotFixtures` for the open bid, and on every grid row a robot pull landed it draws a grey *robot $412* reference beside her price, a **robot's price** chip (with **Use my book** in its title) on a row her book could not price, and **Price N robot rows at the robot's prices** (`price_robot_fixtures`) above the P0 lock chip when rows landed before a price book was picked (`docs/recent-features/v2.6225.md`).
 

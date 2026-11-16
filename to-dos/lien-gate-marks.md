@@ -27,10 +27,10 @@ row's holds read without opening it?
 
 ## What shipped
 
-v2.7335 (#8197) is the spike's shape G. Each row of *Needs the property facts* and *To draft* carries five 9 px marks
+v2.7335 (#8197) is the spike's shape G. Each row of *Needs the property facts* and *To send* (the pile key is still `to_draft`) carries five 9 px marks
 after *last work*, in the pane's order. Green is a clear gate, a red ✕ a hold, and a hollow dot a gate the job is not
 asked: a job contracted with the owner has no GC and no notice. Hovering a mark names the gate and what is missing. On
-a computer the marks stand in for the row's *missing …* words; on a phone the words stay. Rows past *To draft* carry
+a computer the marks stand in for the row's *missing …* words; on a phone the words stay. Rows past *To send* carry
 no marks. The files and the measurements are in `docs/recent-features/v2.7335.md`.
 
 ## The spike's record

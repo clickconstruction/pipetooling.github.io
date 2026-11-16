@@ -27,3 +27,5 @@ The client calls nothing new until PR 8, so this push can follow the merge at le
 ## Not changed
 
 A run's names are not checked against the site at the mint. `on_site_carry_job` does not carry a run's job or names. `job_containers.label` is still the box's name, and `job_container_names` still keeps its history.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `names`, `name_first`, `name_last`, `box_name` and the rest.
