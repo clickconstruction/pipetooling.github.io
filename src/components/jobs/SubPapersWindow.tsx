@@ -8,7 +8,7 @@
  * with pdf-lib and files a sent copy.
  *
  * The train lands a step at a time, and the view draws only what its caller has: the payment record's pick shows
- * with `paymentRecords`, the send step with `canSend` and an `onSend`, and *Since the last statement* once a
+ * with `paymentRecords` (on since the payment record's own press landed), the send step with `canSend` and an `onSend`, and *Since the last statement* once a
  * `lastStatement` is handed in (null for a sub with none yet, absent while nothing records one).
  *
  * The set is checked before any paper is drawn (`subPapersAddUp`). A set that does not add up shows what is off in
@@ -49,7 +49,7 @@ export type SubPapersWindowViewProps = {
   contact: SubPaperContact
   /** The last statement of account sent to this person, from the register; null before one has gone. Absent while no register records one: the period offers no *Since the last statement* then. */
   lastStatement?: { number: string; endedOn: string } | null
-  /** Offer a payment record beside the other two papers. Off until the payment record's own press lands. */
+  /** Offer a payment record beside the other two papers. */
   paymentRecords?: boolean
   canSend: boolean
   /** Start on the send step (the window after Record payment does). */
@@ -144,7 +144,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
                   .reverse()
                   .map((p) => (
                     <option key={p.key} value={p.key}>
-                      {p.number || 'No number'} · {p.sentOn} · {paperMoney(p.amountSent)}
+                      {[p.number, p.sentOn, paperMoney(p.amountSent)].filter(Boolean).join(' · ')}
                     </option>
                   ))}
               </select>

@@ -70,7 +70,7 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-describe('SubPapersWindowView, as the first step ships it', () => {
+describe('SubPapersWindowView, with what its caller has not handed in left out', () => {
   it('opens on the statement of account: the period, what it will show, and the paper itself as the preview', () => {
     mountView()
     const dialog = screen.getByRole('dialog', { name: 'Papers for Harlan Mechanical' })
@@ -163,9 +163,9 @@ describe('SubPapersWindowView, as the first step ships it', () => {
 })
 
 describe('SubPapersWindow, on real rows', () => {
-  const mount = (open: 'statement' | 'work' = 'statement') => {
+  const mount = (open: 'statement' | 'work' | 'payment' = 'statement') => {
     const onClose = vi.fn()
-    render(<SubPapersWindow open={open === 'statement' ? { kind: 'statement' } : { kind: 'work', sheetId: 'ridge-1' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={onClose} />)
+    render(<SubPapersWindow open={open === 'statement' ? { kind: 'statement' } : open === 'work' ? { kind: 'work', sheetId: 'ridge-1' } : { kind: 'payment', sendingKey: 'snd226' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={onClose} />)
     return { onClose }
   }
 
@@ -185,6 +185,29 @@ describe('SubPapersWindow, on real rows', () => {
     expect(io.saveBlobAs).toHaveBeenCalledTimes(1)
     expect((io.saveBlobAs.mock.calls[0]![0] as Blob).type).toBe('application/pdf')
     expect(io.fileSentCopy).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sub_work_statement', how: 'download', recipientName: 'Harlan Mechanical', personId: 'harlan', jobIds: ['ridge'], source: { table: 'people_labor_jobs', id: 'ridge-1' } }), expect.objectContaining({ contentType: 'application/pdf' }))
+  })
+
+  it('a payment record shows the sending: how it went, what it was applied to and what stays open, with no number yet', async () => {
+    io.fileSentCopy.mockResolvedValue(true)
+    mount('payment')
+    const paper = (await screen.findByTestId('sub-paper-preview')).textContent ?? ''
+    expect(paper).toContain('Payment record')
+    expect(paper).toContain('Not numbered')
+    // The sending's own number is held back with the rest, until the names are settled.
+    expect(paper).not.toMatch(/PR-\d/)
+    expect(paper).toContain('Applied to')
+    expect(paper).toContain('$1,500.00')
+    expect(paper.replace(/It is not an invoice from [^.]+\./g, '')).not.toMatch(/\binvoice\b|\breceipt\b|\bowed\b/i)
+    expect((screen.getByRole('combobox', { name: 'A payment record' }) as HTMLSelectElement).options[1]!.textContent).toMatch(/^Oct 31, 2026 · \$1,500\.00$/)
+    fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
+    await waitFor(() => expect(io.fileSentCopy).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sub_payment_record', how: 'download', personId: 'harlan', jobIds: ['cedar'] }), expect.anything()))
+  })
+
+  it('a work statement leaves the payment record’s number off too', async () => {
+    render(<SubPapersWindow open={{ kind: 'work', sheetId: 'cedar-1' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
+    const paper = (await screen.findByTestId('sub-paper-preview')).textContent ?? ''
+    expect(paper).toContain('Paid on this statement')
+    expect(paper).not.toMatch(/PR-\d/)
   })
 
   it('says so when the copy could not be filed', async () => {

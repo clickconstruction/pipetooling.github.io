@@ -4,13 +4,14 @@
  *
  * Download and Print draw the PDF here with pdf-lib and file a sent copy, as the hours statement does.
  *
- * No paper has a number yet: each carries the day and time it was prepared in its foot. The numbers, the payment
- * record's press and Send are the card's next steps, so the view is handed no register, no `paymentRecords` and no
- * `onSend`.
+ * No paper has a number yet: each carries the day and time it was prepared in its foot. A sending has a number of
+ * its own (card #347), and the kernel would print it as the payment record's. It is held back here with the rest:
+ * the names are settled (the card's call 1) before any number prints under one. The numbers and Send are the card's
+ * next steps, so the view is handed no register and no `onSend`.
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
-import type { PaperCompany, PaperContext, StatementRange } from '../../../supabase/functions/_shared/subPapers'
+import type { PaperCompany, PaperContext, PaperSheet, StatementRange } from '../../../supabase/functions/_shared/subPapers'
 import { buildPaymentRecordPdf, buildStatementOfAccountPdf, buildWorkStatementPdf } from '../../../supabase/functions/_shared/subPapersPdf'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { fileSentCopy, printPdfAndFile } from '../../lib/sent/sentCopiesIo'
@@ -42,6 +43,11 @@ export type SubPapersWindowProps = {
 /** Nobody is sent a paper from this window yet, so it reads no address. */
 const NO_CONTACT: SubPaperContact = { email: null, phone: null, portalUrl: null }
 
+/** The sheets with every sending's number left off, until the papers' numbers land together. A sending is still one record: it is grouped by its id. */
+function withoutNumbers(sheets: PaperSheet[]): PaperSheet[] {
+  return sheets.map((s) => ({ ...s, money: s.money.map((m) => (m.sendingNo == null ? m : { ...m, sendingNo: null })) }))
+}
+
 async function drawPdf(paper: SubPaper, range: StatementRange): Promise<Blob> {
   const lib = (await import('pdf-lib')) as unknown as PdfLibLike
   const bytes = paper.kind === 'statement_of_account' ? await buildStatementOfAccountPdf(lib, paper, range) : paper.kind === 'work_statement' ? await buildWorkStatementPdf(lib, paper) : await buildPaymentRecordPdf(lib, paper)
@@ -69,7 +75,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
     }
   }, [role])
 
-  const sheets = useMemo(() => paperSheetsFor(subKey, laborJobs, assigneesByJobId, namesByJobId, roster, { rule }), [subKey, laborJobs, assigneesByJobId, namesByJobId, roster, rule])
+  const sheets = useMemo(() => withoutNumbers(paperSheetsFor(subKey, laborJobs, assigneesByJobId, namesByJobId, roster, { rule })), [subKey, laborJobs, assigneesByJobId, namesByJobId, roster, rule])
   const ctx = useMemo<PaperContext | null>(() => (company ? { company, sub: { name, lines: [] }, today: todayYmdInAppTz(), preparedAt: paperPreparedAt(new Date(), APP_CALENDAR_TZ), zone: 'Central time' } : null), [company, name])
   const jobIdsOf = (paper: SubPaper): string[] => {
     const ids = paper.kind === 'work_statement' ? [paper.sheetId] : paper.kind === 'payment_record' ? paper.applied.map((a) => a.sheetId) : paper.rows.map((r) => r.sheetId)
@@ -84,6 +90,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       sheets={sheets}
       ctx={ctx}
       contact={NO_CONTACT}
+      paymentRecords
       canSend={false}
       busy={busy}
       said={said}
