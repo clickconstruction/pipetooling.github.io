@@ -76,6 +76,11 @@ type Props = {
   onMap?: (next: TaskMapDraft | null) => void
   /** The task's words as typed: a map painted from the task starts with them as its name. */
   mapWords?: string
+  /**
+   * The window sits above the painted map's own window, as the roadmap's do. The map is then picked here, and neither
+   * painted nor opened from here.
+   */
+  mapPicksOnly?: boolean
   spotPhoto: TaskSpotPhotoDraft | null
   onSpotPhoto: (next: TaskSpotPhotoDraft | null) => void
   /** The window is saving: the photo press waits. */
@@ -365,8 +370,9 @@ export function TaskFormRows(props: Props) {
 
       {/* ── Where: the place and the photo of the spot on one row (#328) ── */}
       {props.hideWhere ? null : (
-        <div style={rowStyle}>
-          <span style={labStyle}>Where</span>
+        // With a map set the row is tall: its picture sits under the presses. The label then stays beside the presses.
+        <div style={onMap && taskMap ? { ...rowStyle, alignItems: 'start' } : rowStyle}>
+          <span style={onMap && taskMap ? { ...labStyle, paddingTop: 13 } : labStyle}>Where</span>
           <div style={{ display: 'grid', gridTemplateColumns: onMap ? 'minmax(0, 1fr) auto auto' : 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center', minWidth: 0 }}>
             <TaskPlaceRow
               value={onMap ? taskPlaceForRow(props.place, taskMap) : props.place}
@@ -377,9 +383,9 @@ export function TaskFormRows(props: Props) {
               variant="shelf"
               {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})}
             />
-            {onMap ? <TaskMapPress value={taskMap} onChange={onMap} place={props.place} busy={props.busy} taskWords={props.mapWords ?? ''} {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} /> : null}
+            {onMap ? <TaskMapPress value={taskMap} onChange={onMap} place={props.place} busy={props.busy} taskWords={props.mapWords ?? ''} canPaint={!props.mapPicksOnly} {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} /> : null}
             <TaskSpotPhotoField value={props.spotPhoto} onChange={props.onSpotPhoto} busy={props.busy} variant="press" />
-            {onMap ? <TaskMapSet value={taskMap} onChange={onMap} /> : null}
+            {onMap ? <TaskMapSet value={taskMap} onChange={onMap} canOpen={!props.mapPicksOnly} /> : null}
           </div>
         </div>
       )}

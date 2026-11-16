@@ -28,6 +28,7 @@ import { writeTaskLines } from '../../lib/taskLinesIo'
 import { setRoadmapTaskPercent, setTaskPercent } from '../../lib/taskProgressIo'
 import { fractionWords, stageFraction } from '../../lib/taskProgress'
 import { taskPlaceColumns, type TaskPlaceDraft } from '../../lib/tasks/taskPlace'
+import { taskMapColumn, type TaskMapDraft } from '../../lib/tasks/taskMapPick'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   layoutTechTreeFlow,
@@ -1012,7 +1013,7 @@ export function ChecklistTechTreeTab({
   }, [treeEdges, groups, linksSearchQuery])
 
   const addTaskToGroup = useCallback(
-    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = [], asksForPhoto = false, place: TaskPlaceDraft | null = null, spotPhoto: TaskSpotPhotoDraft | null = null): Promise<boolean> => {
+    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = [], asksForPhoto = false, place: TaskPlaceDraft | null = null, spotPhoto: TaskSpotPhotoDraft | null = null, map: TaskMapDraft | null = null): Promise<boolean> => {
       if (!canEditStructure || !authUserId || !title.trim()) return false
       try {
         setError(null)
@@ -1030,6 +1031,8 @@ export function ChecklistTechTreeTab({
                 ...({ asks_for_photo: asksForPhoto } as Record<string, boolean>),
                 // A place (#328, PR 5) is written only when one is set; the columns are younger than the generated types.
                 ...(place ? (taskPlaceColumns(place, authUserId, new Date().toISOString()) as Record<string, unknown>) : {}),
+                // The task's painted map (#345), with or without a place. A task with neither sends the row it always sent.
+                ...(place || map ? taskMapColumn(map) : {}),
               })
               .select('id')
               .single(),
@@ -2312,9 +2315,9 @@ export function ChecklistTechTreeTab({
         users={users}
         currentUserId={authUserId}
         onClose={() => setAddTaskModalGroupId(null)}
-        onSave={async (title, assigneeUserIds, lines, asksForPhoto, place, spotPhoto) => {
+        onSave={async (title, assigneeUserIds, lines, asksForPhoto, place, spotPhoto, map) => {
           if (addTaskModalGroupId) {
-            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines, asksForPhoto, place, spotPhoto)
+            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines, asksForPhoto, place, spotPhoto, map)
           }
           return false
         }}

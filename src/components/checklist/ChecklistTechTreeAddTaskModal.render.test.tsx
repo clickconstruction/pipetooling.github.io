@@ -20,6 +20,22 @@ vi.mock('./TaskSpotPhotoField', () => ({
   ),
 }))
 
+// The task's painted map (#345): the press is stood in for by one press that hands up a map and says whether it may
+// paint, and the set strip by one that names the map it holds, says whether it may open it, and takes it off.
+vi.mock('./TaskMapField', () => ({
+  TaskMapPress: (props: { onChange: (v: unknown) => void; canPaint?: boolean }) => (
+    <button type="button" onClick={() => props.onChange({ id: 'map-9', name: 'The trench' })}>
+      {`stub: pick the trench${props.canPaint === false ? ' (picks only)' : ''}`}
+    </button>
+  ),
+  TaskMapSet: (props: { value: { id: string; withPlace?: boolean } | null; onChange: (v: unknown) => void; canOpen?: boolean }) =>
+    props.value ? (
+      <button type="button" onClick={() => props.onChange(null)}>
+        {`stub: map ${props.value.id}${props.value.withPlace ? ' with the place' : ''}${props.canOpen === false ? ' (no open)' : ''}`}
+      </button>
+    ) : null,
+}))
+
 vi.mock('../../lib/supabase', () => {
   // The giver's last task went to Theo, so Theo has a face. No crews.
   const rows: Record<string, unknown[]> = { checklist_items: [{ id: 't1' }], checklist_item_assignees: [{ checklist_item_id: 't1', user_id: 'theo' }] }
@@ -92,6 +108,28 @@ describe("the roadmap's Add task window (punch list #331)", () => {
     expect(asksForPhoto).toBe(true)
     expect(place).toMatchObject({ name: 'North gate', lat: 29.7511, lng: -98.7491 })
     expect(photo).toMatchObject({ kind: 'new', id: 'p1' })
+    cleanup()
+  })
+
+  it('a map picked for the task rides to the roadmap, the sentence says so, and the window only picks', async () => {
+    const { words, onSave, onClose } = await openWindow()
+    fireEvent.change(words, { target: { value: 'Dig the trench to the trough' } })
+    fireEvent.click(screen.getByRole('button', { name: 'stub: pick the trench (picks only)' }))
+    expect(screen.getByRole('button', { name: 'stub: map map-9 (no open)' })).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe('It joins the stage North fence. Nobody has it yet. It comes with a map.')
+    fireEvent.click(screen.getByRole('button', { name: 'Add task' }))
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(onSave.mock.calls[0]![4]).toBeNull()
+    expect(onSave.mock.calls[0]![6]).toEqual({ id: 'map-9', name: 'The trench' })
+    cleanup()
+  })
+
+  it('a task with no map hands the roadmap none', async () => {
+    const { words, onSave, onClose } = await openWindow()
+    fireEvent.change(words, { target: { value: 'Set the corner posts' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add task' }))
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(onSave.mock.calls[0]![6]).toBeNull()
     cleanup()
   })
 

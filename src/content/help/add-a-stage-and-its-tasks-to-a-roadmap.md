@@ -2,7 +2,7 @@
 title: add a stage and its tasks to a roadmap
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: roadmap, stage, group, add stage, add task, sub task, map, connector, prerequisite, plus button, crew, team, assignees, place, where, spot
+keywords: roadmap, stage, group, add stage, add task, sub task, map, painted map, connector, prerequisite, plus button, crew, team, assignees, place, where, spot
 order: 42
 ---
 On **Roadmap → Map** every box is a **stage**, a numbered group of tasks. The lines between boxes say which stage must finish before the next unlocks.
@@ -59,6 +59,18 @@ A roadmap task can have a place, like *Pump house*. The Add task window has a ro
 - On the task's card each tap saves itself. There is no Save button.
 - The task's card also has **Photo of the spot**. A picture you take there saves itself too.
 - The place stays with the roadmap task. The person sees the place on their checklist once the task reaches it.
+
+### Add a painted map
+
+A roadmap task can carry a painted map too, with or without a place. Use it for work that is a line, like a trench.
+
+- In the Add task window, tap **Map** in the **Where** row. Then tap a map in the list.
+- On the task's card, tap **Map** under the places. The map you tap saves itself.
+- Tap the ✕ beside the map's name to take it off the task. The map itself stays where it is.
+
+The roadmap picks a map that is already painted. It does not paint one or open one. [Paint a map](/help/paint-a-map#start-a-map) shows how to paint one first.
+
+The person opens the map from the task on their checklist. [When a task comes with a map](/help/check-off-my-daily-tasks#when-a-task-comes-with-a-map) shows their side.
 
 ## Tasks run in order
 

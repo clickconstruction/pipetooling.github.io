@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { parseLines } from '../../lib/taskCriteria'
 import { asksForPhotoDefault } from '../../lib/taskProgress'
 import type { TaskPlaceDraft } from '../../lib/tasks/taskPlace'
+import { TASK_MAP_PICK_WORDS, type TaskMapDraft } from '../../lib/tasks/taskMapPick'
 import { roadmapTaskSentence, taskPersonName } from '../../lib/tasks/newTaskWindow'
 import { DONE_WHEN_HINT } from '../../lib/tasks/taskRowsOnAPhone'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -36,8 +37,9 @@ type Props = {
   /**
    * Task cards (#273, PR 2): the Done when… lines typed on a new task ride along, one a row, already parsed; PR 4: the
    * photo switch. #328: the place. #331: the giver's photo of the spot, which the parent files once the task has an id.
+   * #345: the task's painted map, with or without a place.
    */
-  onSave: (title: string, assigneeUserIds: string[], lines: string[], asksForPhoto: boolean, place: TaskPlaceDraft | null, spotPhoto: TaskSpotPhotoDraft | null) => Promise<boolean>
+  onSave: (title: string, assigneeUserIds: string[], lines: string[], asksForPhoto: boolean, place: TaskPlaceDraft | null, spotPhoto: TaskSpotPhotoDraft | null, map: TaskMapDraft | null) => Promise<boolean>
   /** e.g. roadmap canvas in Fullscreen API — modals must mount inside the fullscreen element */
   portalContainer?: HTMLElement | null
   /** When set, modal is in edit mode (title + assignees pre-filled). */
@@ -75,6 +77,8 @@ export function ChecklistTechTreeAddTaskModal({
   const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
   // Punch list #328, PR 5: where the work is. Null is a task with no place, the default.
   const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
+  // Punch list #345: the task's painted map. Picked here, never painted: the painting window sits under this one.
+  const [taskMap, setTaskMap] = useState<TaskMapDraft | null>(null)
   // #331: the giver's photo of the spot, held here until the parent has an id to file it under.
   const [spotPhoto, setSpotPhoto] = useState<TaskSpotPhotoDraft | null>(null)
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
@@ -96,6 +100,7 @@ export function ChecklistTechTreeAddTaskModal({
     setLinesText('')
     setAsksForPhotoPick(null)
     setPlace(null)
+    setTaskMap(null)
     setSpotPhoto(null)
     setRowsKey((k) => k + 1)
   }, [open, groupId, editingTaskId, initialEditTitle, initialEditAssigneeUserIds])
@@ -110,7 +115,7 @@ export function ChecklistTechTreeAddTaskModal({
     if (!trimmed || saving) return
     setSaving(true)
     try {
-      const ok = await onSave(trimmed, assigneeIds, lines, asksForPhoto, place, spotPhoto)
+      const ok = await onSave(trimmed, assigneeIds, lines, asksForPhoto, place, spotPhoto, taskMap)
       if (ok) {
         setLinesText('')
         setAsksForPhotoPick(null)
@@ -148,7 +153,7 @@ export function ChecklistTechTreeAddTaskModal({
       headActions={<TaskWindowClose onClose={onClose} />}
       bar={
         <TaskSendBar
-          sentence={sentence.text}
+          sentence={!sentence.dead && taskMap && !isEditMode ? `${sentence.text} ${TASK_MAP_PICK_WORDS.roadmapSentence}` : sentence.text}
           dead={sentence.dead}
           label={isEditMode ? 'Save' : 'Add task'}
           busyLabel={isEditMode ? 'Saving…' : 'Adding…'}
@@ -198,6 +203,9 @@ export function ChecklistTechTreeAddTaskModal({
         onAsksForPhoto={setAsksForPhotoPick}
         place={place}
         onPlace={setPlace}
+        map={taskMap}
+        onMap={setTaskMap}
+        mapPicksOnly
         spotPhoto={spotPhoto}
         onSpotPhoto={setSpotPhoto}
         busy={saving}
