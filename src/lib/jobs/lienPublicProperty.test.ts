@@ -9,11 +9,18 @@ import {
   lienPublicAnswerOf,
   lienPublicAttorneyNote,
   lienPublicBoardLine,
+  lienPublicAnsweredWords,
+  lienPublicBackLabel,
   lienPublicDefaultReason,
+  lienPublicListNote,
+  lienPublicNotListedWhy,
   lienPublicPressDoes,
+  lienPublicPressLabel,
   lienPublicPressOutcome,
+  lienPublicPressWords,
   lienPublicStanding,
   lienPublicWhatWentOut,
+  lienPublicWindowListsJob,
   type LienPublicJob,
 } from './lienPublicProperty'
 
@@ -117,6 +124,15 @@ describe('the bin: Public jobs · bond claim', () => {
     expect(bin.rows[0]).toMatchObject({ chip: null, line: 'ZZ Test Builders · there is a payment bond · not on the attorney’s list yet' })
     expect(bin.rows[1]).toMatchObject({ chip: null, line: 'ZZ Test Builders · a lien notice went out Oct 8 · no payment bond · with the attorney since Nov 16' })
   })
+  it('a job the Collections flag held never reads as if counsel has it', () => {
+    const bin = buildLienPublicBin([job({ status: 'working', attorneySince: null }), job({ jobId: 'w', number: 'ZZ3', status: 'waiting', attorneySince: null })])!
+    expect(bin.rows.map((r) => r.line)).toEqual([
+      'ZZ Test Builders · bond not known yet · not on the attorney’s list, the job is still being worked',
+      'ZZ Test Builders · bond not known yet · not on the attorney’s list, the job has not started',
+    ])
+    expect(lienPublicNotListedWhy('ready_to_bill')).toBe('is not billed yet')
+    expect(lienPublicNotListedWhy('billed')).toBeNull()
+  })
 })
 
 describe('the Board’s line', () => {
@@ -133,29 +149,99 @@ describe('the Board’s line', () => {
 })
 
 describe('the window', () => {
-  it('lists the jobs at the property with what went out, and fills the reason in', () => {
-    const w = buildLienPublicWindow({
+  const sent = { kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-08T15:00:00Z' }
+  const missed = (m: string) => ({ kind: 'notice_53_056', status: 'missed', months: [m] })
+  // The two jobs as they stood on 2026-11-16, with made-up names: 883 billed, 523 still being worked.
+  const property = () =>
+    buildLienPublicWindow({
       address: ' 100 Sample Rd, Sampletown ',
       ownerName: 'ZZ TEST CITY OF',
       jobs: [
-        { jobId: 'a', number: '523', name: 'ZZ Test Hills', unpaid: 29323.4, papers: [] },
-        { jobId: 'b', number: '883', name: 'ZZ Test Drains', unpaid: 2918.4, papers: [{ kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-08T15:00:00Z' }] },
+        { jobId: 'a', number: '523', name: 'ZZ Test Hills', status: 'working', unpaid: 29323.4, papers: [missed('2026-06'), missed('2026-07'), missed('2026-08'), missed('2026-09')] },
+        { jobId: 'b', number: '883', name: 'ZZ Test Drains', status: 'billed', unpaid: 2918.4, papers: [sent, { kind: 'affidavit', status: 'approved', approved_at: '2026-11-11T16:00:00Z' }] },
+        // Paid long ago, no paper: never on the lien path, so not listed.
+        { jobId: 'c', number: '200', name: 'ZZ Test Old Job', status: 'paid', unpaid: 0, papers: [] },
+        // Paid, but a paper sits on it: listed, unticked, and it says why it does not go on the list.
+        { jobId: 'd', number: '310', name: 'ZZ Test Paid', status: 'paid', unpaid: 0, papers: [sent] },
       ],
     })
+
+  it('lists the jobs that owe money or have a paper, the most money first, with what went out, and fills the reason in', () => {
+    const w = property()
     expect(w.title).toBe('Take this property off the lien path?')
     expect(w.sub).toBe('100 Sample Rd, Sampletown · owner of record ZZ TEST CITY OF')
-    expect(w.jobs.map((j) => [j.label, j.unpaidWords, j.wentOut])).toEqual([
-      ['883 · ZZ Test Drains', '$2,918', 'A lien notice was mailed Oct 8.'],
-      ['523 · ZZ Test Hills', '$29,323', 'No lien paper has gone out.'],
+    expect(w.jobs.map((j) => [j.label, j.unpaidWords, j.wentOut, j.ticked])).toEqual([
+      ['523 · ZZ Test Hills', '$29,323', 'No lien paper has gone out. Four months were missed.', true],
+      ['883 · ZZ Test Drains', '$2,918', 'A lien notice was mailed Oct 8. An affidavit was approved Nov 11 and not filed.', true],
+      ['310 · ZZ Test Paid', '$0', 'A lien notice was mailed Oct 8.', false],
     ])
     expect(w.reason).toBe('Public property. The owner of record is ZZ TEST CITY OF. A mechanic’s lien does not attach.')
     expect(lienPublicDefaultReason(' ')).toBe('Public property. A mechanic’s lien does not attach.')
   })
-  it('says what the press does for the jobs ticked', () => {
-    expect(lienPublicPressDoes(2)).toEqual(['Both jobs leave the lien bins. Nothing is filed and nothing is deleted.', 'Every job at this address, now and later, stays off the lien path.', 'Both go on the attorney’s list for a bond claim, with what already went out.'])
-    expect(lienPublicPressDoes(1)[0]).toBe('The job leaves the lien bins. Nothing is filed and nothing is deleted.')
-    expect(lienPublicPressDoes(1)[2]).toBe('It goes on the attorney’s list for a bond claim, with what already went out.')
-    expect(lienPublicPressDoes(4)[0]).toBe('All 4 jobs leave the lien bins. Nothing is filed and nothing is deleted.')
+
+  it('names, before the press, a job the Collections flag will hold, and says it still leaves the lien path', () => {
+    const w = property()
+    expect(w.jobs.map((j) => j.listNote)).toEqual([
+      '523 is still being worked, so it cannot go on the Collections list yet. It still leaves the lien path.',
+      null,
+      '310 is paid, so it does not go on the Collections list. It still leaves the lien path.',
+    ])
+    expect(lienPublicListNote('9', 'waiting')).toBe('9 has not started, so it cannot go on the Collections list yet. It still leaves the lien path.')
+    expect(lienPublicListNote('9', 'ready_to_bill')).toBe('9 is not billed yet, so it cannot go on the Collections list yet. It still leaves the lien path.')
+    expect(lienPublicListNote('9', 'billed')).toBeNull()
+    expect(lienPublicListNote('9', null)).toBeNull()
+    expect(lienPublicWindowListsJob({ unpaid: 0.4, papers: [] })).toBe(false)
+    expect(lienPublicWindowListsJob({ unpaid: 0, papers: [{ kind: 'notice_53_056', status: 'missed', voided_at: '2026-10-01T00:00:00Z' }] })).toBe(false)
+  })
+
+  it('says what the press does: every listed job leaves, a ticked billed job goes to the attorney', () => {
+    const w = property()
+    const ticked = (...ids: string[]) => new Set(ids)
+    expect(lienPublicPressDoes(w.jobs, ticked('a', 'b'))).toEqual([
+      'All 3 jobs leave the lien bins. Nothing is filed and nothing is deleted.',
+      'Every job at this address, now and later, stays off the lien path.',
+      '883 goes on the attorney’s list for a bond claim, with what already went out.',
+    ])
+    const two = w.jobs.slice(0, 2)
+    expect(lienPublicPressDoes(two, ticked('a', 'b'))[0]).toBe('Both jobs leave the lien bins. Nothing is filed and nothing is deleted.')
+    expect(lienPublicPressDoes(two, ticked())[2]).toBe('No job goes on the attorney’s list.')
+    const billed = [{ jobId: 'x', number: '1', listNote: null }, { jobId: 'y', number: '2', listNote: null }]
+    expect(lienPublicPressDoes(billed, ticked('x', 'y'))[2]).toBe('Both go on the attorney’s list for a bond claim, with what already went out.')
+    expect(lienPublicPressDoes([...billed, { jobId: 'z', number: '3', listNote: null }], ticked('x', 'y', 'z'))[2]).toBe('1, 2 and 3 go on the attorney’s list for a bond claim, with what already went out.')
+    expect(lienPublicPressDoes([billed[0]!], ticked('x'))[0]).toBe('The job leaves the lien bins. Nothing is filed and nothing is deleted.')
+    expect(lienPublicPressDoes([], ticked())[0]).toBe('No job here is on the lien path.')
+  })
+
+  it('labels the press with the act and its count', () => {
+    expect(lienPublicPressLabel(2)).toBe('Take 2 jobs off the lien path ▸')
+    expect(lienPublicPressLabel(1)).toBe('Take 1 job off the lien path ▸')
+    expect(lienPublicPressLabel(0)).toBe('Take this property off the lien path ▸')
+    expect(lienPublicBackLabel(2)).toBe('Put 2 jobs back on the lien path ▸')
+    expect(lienPublicBackLabel(0)).toBe('Put this property back on the lien path ▸')
+  })
+
+  it('after the press: the property is off the path, the listed jobs, and each held job with the function’s reason', () => {
+    const numberOf = (id: string) => ({ a: '523', b: '883' })[id] ?? id
+    const words = lienPublicPressWords(
+      [
+        { job_id: 'b', bond_set: false, on_attorney_list: true, already_on_list: false, held: null },
+        { job_id: 'a', bond_set: false, on_attorney_list: false, already_on_list: false, held: 'Job must be in Billed Awaiting Payment to change Collections' },
+      ],
+      numberOf,
+    )
+    expect(words).toEqual({
+      line: 'The property is off the lien path. 883 is on the attorney’s list. 523 did not go on it.',
+      tone: 'warning',
+      head: 'This job did not go on the attorney’s list. It left the lien path all the same.',
+      held: [{ jobId: 'a', number: '523', reason: 'Job must be in Billed Awaiting Payment to change Collections' }],
+    })
+    expect(lienPublicPressWords([{ job_id: 'b', bond_set: true, on_attorney_list: true, already_on_list: true, held: null }], numberOf)).toEqual({ line: 'The property is off the lien path. 883 is on the attorney’s list.', tone: 'success', head: null, held: [] })
+    expect(lienPublicPressWords([], numberOf).line).toBe('The property is off the lien path.')
+  })
+
+  it('says how a record was answered', () => {
+    expect(lienPublicAnsweredWords('public', '2026-11-16T18:00:00Z')).toBe('Public property, answered Nov 16. Every job here is off the lien path.')
+    expect(lienPublicAnsweredWords('private', null)).toBe('Not public property. Its lien papers can go out.')
   })
   it('writes the attorney’s note from the reason and what went out', () => {
     expect(lienPublicAttorneyNote(' Public property. ', 'A lien notice was mailed Oct 8.')).toBe('Public property. A lien notice was mailed Oct 8.')

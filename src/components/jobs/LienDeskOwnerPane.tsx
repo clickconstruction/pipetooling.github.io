@@ -5,10 +5,13 @@ import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCounty
 import { propertyLookupErrorMessage, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
 import { cachedLookupPropertyRecord, getCachedPropertyLookup } from '../../lib/customers/propertyLookupCache'
 import { titleCaseUpperWords } from '../../lib/customers/propertyRecord'
-import { careOfLine, ownerFromRollUnconfirmed, ownerKind, readsAs, rollProvenanceShort, type ReadsAsChip } from '../../lib/jobs/ownerConfirm'
+import { careOfLine, ownerFromRollUnconfirmed, readsAs, rollProvenanceShort, type ReadsAsChip } from '../../lib/jobs/ownerConfirm'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { confirmOwnerForProperty, stampOwnerConfirmed } from '../../lib/jobs/ownerConfirmWrite'
 import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
+import { lienOwnerIsPublic } from '../../lib/jobs/lienDeskAffidavits'
+import { lienPublicAnswerOf, type LienPublicRecord } from '../../lib/jobs/lienPublicProperty'
+import LienPublicQuestion from './LienPublicQuestion'
 import type { CustomerAddressRow, LienPropertyOwner } from '../../lib/jobs/lienProperty'
 import type { LienDeskJob } from '../../hooks/useLienDeskData'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -94,7 +97,12 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
 
   // ---------- owner on the record ----------
   if (hasOwner) {
-    const isPublic = ownerKind(ownerName) === 'public'
+    // The answer on the property record wins over the guess from the names (v2.7443, `lienPublicProperty.ts`); every
+    // name on the record is asked, as gate 1 asks them.
+    const publicAnswer = lienPublicAnswerOf(address as LienPublicRecord | null)
+    const isPublic = lienOwnerIsPublic([ownerName, owner.ownerName, owner.ownerCompany], publicAnswer)
+    // With a property record to answer on, the record asks once, for every job at the address.
+    const asks = isPublic && !publicAnswer && Boolean(address?.id)
     const unconfirmed = owner.source === 'property_record' && ownerFromRollUnconfirmed(address)
     if (!isPublic && !unconfirmed) return null
     const county = (address?.county ?? '').trim()
@@ -115,7 +123,13 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
     }
     return (
       <div style={{ display: 'grid', gap: '0.25rem' }} data-testid="lien-desk-owner-pane" data-state={isPublic ? 'public' : 'unconfirmed'}>
-        {isPublic ? <div style={{ fontSize: '0.78rem', color: 'var(--text-red-700)' }}>{PUBLIC_OWNER_DESK_SENTENCE}</div> : null}
+        {isPublic ? (
+          asks && address ? (
+            <LienPublicQuestion addressId={address.id} canAnswer onAnswered={() => onChanged()} />
+          ) : (
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-red-700)' }}>{PUBLIC_OWNER_DESK_SENTENCE}</div>
+          )
+        ) : null}
         {unconfirmed ? (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ ...faint, color: 'var(--text-amber-700)' }}>

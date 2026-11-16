@@ -40,6 +40,8 @@ import JobWorkOrderStrip from './JobWorkOrderStrip'
 import JobFormPropertyAddSheet from './JobFormPropertyAddSheet'
 import JobFormOwnerLookupBox from './JobFormOwnerLookupBox'
 import LienPaperPropertyWindow from './LienPaperPropertyWindow'
+import LienPublicQuestion, { LienPublicAnswerLine } from './LienPublicQuestion'
+import { lienPublicStanding } from '../../lib/jobs/lienPublicProperty'
 import type { CustomerAddressRow } from '../../lib/jobs/lienProperty'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
@@ -170,6 +172,9 @@ type JobFormEditFactRowsProps = {
     /** The owner's email and phone (v2.6497); absent until migration 20261104163131 lands = the rows are not drawn. */
     owner_email?: string | null
     owner_phone?: string | null
+    /** Is this public property? (v2.7443); absent until migration 20261116201500 lands = the question is not drawn. */
+    lien_public_answer?: string | null
+    lien_public_answered_at?: string | null
   }>
   /** Open the Property record row and flash its kind control — the lien screens' door (v2.3667). */
   propertyRecordFocus?: boolean
@@ -177,6 +182,10 @@ type JobFormEditFactRowsProps = {
   focusRow?: JobFormFocusRow | null
   /** After the kind (or its Homestead tick) is saved on the property — the parent patches its candidates. */
   onPropertyKindSaved?: (customerAddressId: string, patch: { property_kind?: string; homestead?: boolean }) => void
+  /** The lien office (v2.7443): the record's *Is this public property?* question shows its presses to them alone. */
+  canAnswerPublicProperty?: boolean
+  /** After the public property question is answered on the linked record (v2.7443): the parent patches its candidates. */
+  onPropertyPublicAnswered?: (customerAddressId: string, patch: { lien_public_answer: string | null; lien_public_answered_at: string | null }) => void
   customers: CustomerRow[]
   customersLoading: boolean
   masterForFormCustomer: string
@@ -278,6 +287,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     propertyRecordFocus = false,
     focusRow = null,
     onPropertyKindSaved,
+    canAnswerPublicProperty = false,
+    onPropertyPublicAnswered,
     customers,
     customersLoading,
     masterForFormCustomer,
@@ -955,6 +966,23 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
                           {f.value ? <span style={{ overflowWrap: 'anywhere' }}>{f.value}</span> : <span style={{ color: 'var(--text-muted)' }}>not on the record yet · the courtesy notice goes here</span>}
                         </div>
                       ))
+                    : null}
+                  {/* Is this public property? (v2.7443, Taunya's ask of 2026-11-16): asked once on the record when its names read as a public body; drawn once the row carries the answer's column. */}
+                  {linked.lien_public_answer !== undefined
+                    ? (() => {
+                        const standing = lienPublicStanding(linked)
+                        if (standing === 'clear') return null
+                        const answered = (answer: string | null) => onPropertyPublicAnswered?.(linked.id, { lien_public_answer: answer, lien_public_answered_at: answer ? new Date().toISOString() : null })
+                        return (
+                          <div data-testid="property-record-public" style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid var(--border)' }}>
+                            {standing === 'asks' ? (
+                              <LienPublicQuestion addressId={linked.id} canAnswer={canAnswerPublicProperty} onAnswered={answered} zIndex={1160} />
+                            ) : (
+                              <LienPublicAnswerLine addressId={linked.id} answer={standing === 'off_path' ? 'public' : 'private'} answeredAt={linked.lien_public_answered_at ?? null} canAnswer={canAnswerPublicProperty} onAnswered={answered} zIndex={1160} />
+                            )}
+                          </div>
+                        )
+                      })()
                     : null}
                   <div style={{ padding: '0.45rem 0.65rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button

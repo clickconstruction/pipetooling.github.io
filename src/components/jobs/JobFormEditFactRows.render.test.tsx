@@ -29,6 +29,12 @@ vi.mock('../../lib/jobs/ownerConfirmJobFormClient', () => ({
   fetchJobsAtProperty: (_a: string, self: unknown) => Promise.resolve([self]),
   fetchCustomerAddressRow: () => Promise.resolve(null),
 }))
+// Is this public property? (v2.7443): the record's one write, through its own module.
+const setLienPublicAnswerMock = vi.fn(async (..._args: unknown[]) => ({ answer: 'private', jobs: [] }))
+vi.mock('../../lib/jobs/lienPublicPropertyIo', () => ({
+  setLienPublicAnswer: (...args: unknown[]) => setLienPublicAnswerMock(...args),
+  readLienPublicProperty: () => new Promise(() => {}),
+}))
 // The Contract and Sub work order rows: their strips read their own rows (covered in each strip's own smoke); here only the rows' labels matter.
 vi.mock('./JobContractStrip', () => ({ default: () => <span data-testid="contract-strip-stub" /> }))
 vi.mock('./JobWorkOrderStrip', () => ({ default: () => <span data-testid="work-order-strip-stub" /> }))
@@ -91,7 +97,9 @@ function Harness({
   customerEmail = 'Todd@crayleproperties.example',
   customerPhone = '(210) 415-5375',
   paperJob = null,
+  canAnswerPublicProperty = false,
 }: {
+  canAnswerPublicProperty?: boolean
   paperJob?: JobWithDetails | null
   customerName?: string
   customerEmail?: string
@@ -153,6 +161,8 @@ function Harness({
       propertyCandidates={candidates}
       propertyRecordFocus={propertyRecordFocus}
       onPropertyKindSaved={(id, patch) => setCandidates((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
+      canAnswerPublicProperty={canAnswerPublicProperty}
+      onPropertyPublicAnswered={(id, patch) => setCandidates((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
       setJobAddress={() => {}}
       customers={gc ? [...CUSTOMERS, gc] : CUSTOMERS}
       customersLoading={false}
@@ -372,6 +382,45 @@ describe('JobFormEditFactRows', () => {
     fireEvent.click(screen.getByTestId('property-record-fill'))
     expect(screen.getByTestId('property-record-fill').textContent).toBe('Fill in the record')
     expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+  })
+
+  it('Property record: a public-sounding owner with no answer asks once, and No, it is private is answered in place (v2.7443)', async () => {
+    const city = { ...OFFICE_PROPERTY, id: 'addr-city', owner_name: 'ZZ TEST CITY OF', owner_company: 'ATTN REAL ESTATE MANAGER', lien_public_answer: null, lien_public_answered_at: null }
+    setLienPublicAnswerMock.mockClear()
+    renderWithProviders(<Harness propertyCandidates={[city]} customerAddressId="addr-city" propertyRecordFocus canAnswerPublicProperty />)
+    await settle()
+    const asked = screen.getByTestId('property-record-public')
+    expect(asked.textContent).toContain('This owner reads as a public body.')
+    fireEvent.click(screen.getByRole('button', { name: 'No, it is private' }))
+    await waitFor(() => expect(screen.getByTestId('property-record-public').textContent).toContain('Not public property, answered'))
+    expect(setLienPublicAnswerMock).toHaveBeenCalledWith({ addressId: 'addr-city', answer: 'private' })
+    expect(screen.getByRole('button', { name: 'Ask again' })).toBeTruthy()
+  })
+
+  it('Property record: the question shows its presses to the lien office alone, waits for the column, and stays quiet on a private-sounding owner (v2.7443)', async () => {
+    const city = { ...OFFICE_PROPERTY, id: 'addr-city', owner_name: 'ZZ TEST CITY OF', lien_public_answer: null }
+    const view = renderWithProviders(<Harness propertyCandidates={[city]} customerAddressId="addr-city" propertyRecordFocus />)
+    await settle()
+    expect(screen.getByTestId('property-record-public').textContent).toContain('The office answers this.')
+    expect(screen.queryByRole('button', { name: 'Yes, public property…' })).toBeNull()
+    view.unmount()
+    // A row read before the migration is pushed carries no answer's column: nothing is drawn.
+    const older = { ...OFFICE_PROPERTY, id: 'addr-city', owner_name: 'ZZ TEST CITY OF' }
+    const second = renderWithProviders(<Harness propertyCandidates={[older]} customerAddressId="addr-city" propertyRecordFocus canAnswerPublicProperty />)
+    await settle()
+    expect(screen.queryByTestId('property-record-public')).toBeNull()
+    second.unmount()
+    renderWithProviders(<Harness propertyCandidates={[{ ...OFFICE_PROPERTY, id: 'addr-home', lien_public_answer: null }]} customerAddressId="addr-home" propertyRecordFocus canAnswerPublicProperty />)
+    await settle()
+    expect(screen.queryByTestId('property-record-public')).toBeNull()
+  })
+
+  it('Property record: a property answered public says so, with the door back on the lien path (v2.7443)', async () => {
+    const city = { ...OFFICE_PROPERTY, id: 'addr-city', owner_name: 'ZZ TEST CITY OF', lien_public_answer: 'public', lien_public_answered_at: '2026-11-16T18:00:00Z' }
+    renderWithProviders(<Harness propertyCandidates={[city]} customerAddressId="addr-city" propertyRecordFocus canAnswerPublicProperty />)
+    await settle()
+    expect(screen.getByTestId('property-record-public').textContent).toContain('Public property, answered Nov 16. Every job here is off the lien path.')
+    expect(screen.getByRole('button', { name: 'Put it back on the lien path…' })).toBeTruthy()
   })
 
   it('Property record: an older caller that does not load the kind shows no kind control', async () => {
