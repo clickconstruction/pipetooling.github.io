@@ -318,9 +318,10 @@ export default function LienBoard({
   /** What a chip says when it is pointed at (v2.7381): the job and where its paper stands. Absent, a chip keeps the browser's one-line tip. */
   cardFor?: (chip: LienBoardChip) => LienBoardChipCard | null
   /**
-   * The print at the foot of each column (v2.7470, punch list #362; `lienBoardPrints.ts`): under the notices the whole run,
-   * under the affidavits the batch print, each with what it leaves out and the door to it. On a phone the two stand
-   * stacked over the folded bins. Absent, or on the leader's own bins, the columns end as before.
+   * The two prints (v2.7470, punch list #362; `lienBoardPrints.ts`): the whole run for the notices and the batch print for the
+   * affidavits, each with what it leaves out and the door to it. Since v2.7483 they stand between the tiles and the columns,
+   * each over its own column, so they show on arrival; where the columns stack, and on a phone, they stack. Absent, or on
+   * the leader's own bins, none is drawn.
    */
   prints?: { notice: LienBoardPrintSide | null; affidavit: LienBoardPrintSide | null; onPress: (side: LienBoardPrintSide) => void; onLeft: (side: LienBoardPrintSide) => void; onNote: (side: LienBoardPrintSide) => void; busy?: boolean } | null
 }) {
@@ -412,12 +413,13 @@ export default function LienBoard({
   const cardHandler = cardFor && !isMobile ? onCard : undefined
   // The column's own print (v2.7470): one press that names its count, then what it leaves out with its door.
   const lineDoor: CSSProperties = { border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', borderRadius: 3 }
-  // It stands at the column's foot under a rule, not as one more stage: no arrow leads to it, since the bins above it are the flow.
-  const printFoot = (side: LienBoardPrintSide | null | undefined, rule: boolean) => {
+  // It is not one more stage: no arrow leads to it, since the bins are the flow.
+  const drawPrints = Boolean(prints && !mine && (prints.notice || prints.affidavit))
+  const printFoot = (side: LienBoardPrintSide | null | undefined) => {
     if (!prints || !side || mine) return null
     const off = side.dead || Boolean(prints.busy)
     return (
-      <div data-lien-board-print={side.kind} style={{ display: 'grid', gap: 4, justifyItems: 'start', minWidth: 0, ...(rule ? { borderTop: `1px solid ${ARROW}`, paddingTop: 10 } : null) }}>
+      <div data-lien-board-print={side.kind} style={{ display: 'grid', gap: 4, justifyItems: 'start', minWidth: 0 }}>
         <button
           type="button"
           data-lien-board-print-press={side.act}
@@ -453,8 +455,6 @@ export default function LienBoard({
         <div style={{ display: 'grid', gridTemplateColumns: beside.length && !layout ? 'minmax(0, 1fr) minmax(0, 0.55fr)' : '1fr', gap: '0 12px', alignItems: 'start' }}>
           <div data-lien-board-flow={kind} style={{ display: 'grid', gap: 22 }}>
             {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} />)}
-            {/* The flow ends in its print on a computer (v2.7470); a phone draws the two over its folded bins. */}
-            {isMobile ? null : printFoot(kind === 'notice' ? prints?.notice : prints?.affidavit, flow.length > 0)}
           </div>
           {beside.length ? (
             <div data-lien-board-beside={kind} style={{ display: 'grid', gap: 10, alignContent: 'start', marginTop: layout ? 10 : 0 }}>
@@ -473,7 +473,8 @@ export default function LienBoard({
   return (
     <section ref={boardRef} aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ position: 'relative', display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
       <div data-lien-board-tiles style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-        {board.tiles.map((t) => <Tile key={t.key} tile={t} isMobile={isMobile} onTile={onTile} />)}
+        {/* The third tile's press opened the run. With the notices' print drawn right under the tiles it would be the same door twice, so there the tile only reads. */}
+        {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && drawPrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} />)}
       </div>
       {leader ? (
         <div data-lien-board-leader-bar style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
@@ -481,6 +482,15 @@ export default function LienBoard({
           <button type="button" data-lien-board-mine aria-pressed={mine} onClick={leader.onToggleMine} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', minHeight: isMobile ? 40 : undefined }}>
             {mine ? 'Every bin' : 'Only my bins'}
           </button>
+        </div>
+      ) : null}
+      {/* The two prints, between the tiles and the columns (v2.7483; they stood at each column's foot in v2.7470, 780 px and
+          890 px down a 768 px window). Each stands over its own column, the notices' on the left, so they show on arrival.
+          Where the columns stack, and on a phone, the two stack too. */}
+      {drawPrints ? (
+        <div data-lien-board-prints data-layout={isMobile || layout ? 'stacked' : 'columns'} style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', columnGap: 56, rowGap: 10, alignItems: 'start' }}>
+          {printFoot(prints?.notice) ?? (isMobile || layout ? null : <span aria-hidden="true" />)}
+          {printFoot(prints?.affidavit)}
         </div>
       ) : null}
       {over}
@@ -494,12 +504,6 @@ export default function LienBoard({
           <span style={{ flex: 1 }}>{binsOpen ? 'Hide the bins' : `Show the bins · ${chipCount}`}</span>
           <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>{binsOpen ? '▴' : '▾'}</span>
         </button>
-      ) : null}
-      {isMobile && prints && !mine && (prints.notice || prints.affidavit) ? (
-        <div data-lien-board-prints-phone style={{ display: 'grid', gap: 10 }}>
-          {printFoot(prints.notice, false)}
-          {printFoot(prints.affidavit, false)}
-        </div>
       ) : null}
       <div ref={gridRef} data-lien-board-grid style={{ position: 'relative', display: binsOpen ? 'grid' : 'none', gridTemplateColumns: layout ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', columnGap: 56, rowGap: 22, alignItems: 'start' }}>
         <svg aria-hidden="true" data-lien-board-arrows style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
