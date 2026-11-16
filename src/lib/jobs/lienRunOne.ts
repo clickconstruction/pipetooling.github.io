@@ -1,6 +1,8 @@
 import { pluralNoun } from '../batchWords'
 import { runCopyPages, type RunNotice } from './lienDeskRun'
-import { runMailing } from './lienRunPaper'
+import { lienRunChecklistRows } from './lienRunChecklist'
+import { runEnvelopeHold, runMailing } from './lienRunPaper'
+import { lienRunPartOf } from './lienRunParts'
 import { runEnvelopes } from './runEnvelopes'
 
 /**
@@ -16,6 +18,11 @@ import { runEnvelopes } from './runEnvelopes'
  * that go out, in packet order, with the documents the desk already knows are inside each (the pay page and the unpaid
  * bills join them once the window has read the bills), the envelopes the run holds back with the run's own reason, and
  * the link's words with its count. Pure.
+ *
+ * The hold is the window's own (v2.7477, `LienDeskRunModal`'s three stacks): a notice whose row is held
+ * (`lienRunChecklistRows`: nothing to claim, an owner nobody confirmed, a recipient with no address) or waits on a
+ * signature (`lienRunPartOf`) prints none of its envelopes, and each is listed with the envelope's own reason or
+ * *With its notice:* and the row's. So the link never promises pages the window will not print.
  */
 
 /** One envelope's set, as the packet stacks it. */
@@ -57,13 +64,21 @@ function envelopeCount(n: number): string {
  * The plan for one notice. `null` (no run notice for the row) reads the bare link and says the window opens on it.
  *
  * - Every envelope goes: *Just this one · 2 envelopes ›*.
- * - One goes and one is held (the contractor has no mailing address): *Just this one · 1 envelope, 1 held ›*.
- * - Nothing goes (unsigned, or no address anywhere): *Just this one · held ›*, and the hover gives the first reason.
- *   The window still opens, since the doors that clear a hold are inside it.
+ * - Nothing goes (unsigned, an owner nobody confirmed, a recipient with no mailing address, nothing to claim):
+ *   *Just this one · held ›*, and the hover gives the first reason. The window still opens, since the doors that
+ *   clear a hold are inside it.
+ * - Some go and some are held, should the window ever split one notice's envelopes: *· 1 envelope, 1 held ›*.
  */
 export function lienRunOnePlan(notice: RunNotice | null | undefined): LienRunOnePlan {
   if (!notice) return { sets: [], held: [], shared: false, label: LIEN_RUN_ONE_BARE, title: 'This notice alone, in the run window.' }
-  const mailing = runMailing(runEnvelopes([notice]))
+  const row = lienRunChecklistRows({ notices: [notice] })[0]!
+  const part = lienRunPartOf(row)
+  const going = runMailing(runEnvelopes([notice]))
+  // A stopped notice shares the window's rule: none of its envelopes print, whatever each could do alone.
+  const mailing =
+    part === 'held' || part === 'wait'
+      ? { mailed: [], held: going.all.map((env) => ({ env, why: runEnvelopeHold(env) ?? (row.held ? `With its notice: ${row.held}` : 'Its notice is not ready to print.') })), all: going.all }
+      : going
   const sets = mailing.mailed.map((env) => ({
     n: env.n,
     label: env.label,

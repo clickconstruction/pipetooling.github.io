@@ -453,7 +453,7 @@ A notice mailed through Docsmit never owes a number. The mail service brings it 
 :::example One notice on its own
 A ready notice's footer also offers a link like **Just this one · 2 envelopes ›**. It opens the run on that one notice. The count is the envelopes that will print.
 
-Press {{button:blue|Print the packet · 2 envelopes}}. The first page is the checklist, with a box for each mail number. A divider page sits in front of each envelope's set. Each set is whole and carries the leader's signature. Nothing is photocopied, and nothing is signed in ink.
+Press {{button:blue|Print 1 notice}}. The line beside it says how many envelopes that is. The first page is the checklist, with a box for each mail number. A divider page sits in front of each envelope's set. Each set is whole and carries the leader's signature. Nothing is photocopied, and nothing is signed in ink.
 
 Back from the post office, type the mail numbers in the same window. The notice is recorded as it is in the run.
 

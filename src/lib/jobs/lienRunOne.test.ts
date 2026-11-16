@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LIEN_RUN_ONE_BARE, lienRunOnePlan } from './lienRunOne'
-import { runPacketHtml, type RunNotice, type RunRecipient } from './lienDeskRun'
+import { RUN_OWNER_UNCONFIRMED_PROBLEM, runPacketHtml, type RunNotice, type RunRecipient } from './lienDeskRun'
 import { lienNoticeSignatureAfterSigning } from './lienNoticeSignature'
 import { plainWordsFailures } from '../plainWords'
 
@@ -53,13 +53,28 @@ describe('Just this one: the plan of what one notice prints (v2.7512)', () => {
     expect(plan.held).toEqual([])
   })
 
-  it('a contractor with no mailing address is held with the run’s reason, and the link counts the one that goes', () => {
+  it('a contractor with no mailing address holds the whole notice, as the window does: nothing prints, and each envelope says why', () => {
     const plan = lienRunOnePlan(notice({ recipients: [owner(), gc({ address: '' })] }))
-    expect(plan.label).toBe('Just this one · 1 envelope, 1 held ›')
-    expect(plan.sets.map((s) => s.name)).toEqual(['Avery Stone'])
-    expect(plan.held).toEqual([{ label: 'Original contractor', name: 'Birch Builders LLC', why: 'No mailing address. Set it on the customer, then print this envelope from the run.' }])
-    expect(plan.title).toContain('One envelope prints, with its set of pages.')
-    expect(plan.title).toContain('Held: Original contractor, Birch Builders LLC. No mailing address.')
+    expect(plan.label).toBe('Just this one · held ›')
+    expect(plan.sets).toEqual([])
+    expect(plan.held).toEqual([
+      { label: 'Owner of record', name: 'Avery Stone', why: 'With its notice: Original contractor: no mailing address' },
+      { label: 'Original contractor', name: 'Birch Builders LLC', why: 'No mailing address. Set it on the customer, then print this envelope from the run.' },
+    ])
+    expect(plan.title).toMatch(/^Nothing prints yet\. With its notice: Original contractor: no mailing address /)
+  })
+
+  it('an owner from the roll nobody confirmed holds the notice too, though each envelope could be mailed', () => {
+    const plan = lienRunOnePlan(notice({ ownerUnconfirmed: true }))
+    expect(plan.label).toBe('Just this one · held ›')
+    expect(plan.sets).toEqual([])
+    expect(plan.held.map((h) => h.why)).toEqual([`With its notice: ${RUN_OWNER_UNCONFIRMED_PROBLEM}`, `With its notice: ${RUN_OWNER_UNCONFIRMED_PROBLEM}`])
+  })
+
+  it('a job that owes nothing now is held: there is nothing to put on notice', () => {
+    const plan = lienRunOnePlan(notice({ amount: 0 }))
+    expect(plan.label).toBe('Just this one · held ›')
+    expect(plan.title).toContain('Nothing to send: the claim is $0.')
   })
 
   it('one name at one address is one envelope that carries both copies, and says so', () => {
