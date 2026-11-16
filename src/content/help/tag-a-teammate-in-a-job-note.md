@@ -58,6 +58,8 @@ Press **Jobs**. The **Tagged job notes** section is at the top of the Pipeline. 
 
 On a phone the number also rides on the menu button.
 
+Your phone also gets a notice, if phone notices are switched on in Settings. A notice outside your **Push me** hours is held until you are back.
+
 If you have no Pipeline, open the Dashboard. The **Needs you** card has a **Tagged job notes** line. Press **Open** and the same list opens.
 
 ## Answer a tag

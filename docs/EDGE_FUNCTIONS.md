@@ -198,6 +198,7 @@ when_to_read:
    - [notify-dispatch-request](#notify-dispatch-request)
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-bid-mark](#notify-bid-mark)
+   - [notify-note-tag](#notify-note-tag)
    - [notify-lien-approval](#notify-lien-approval)
    - [mail-send-docsmit](#mail-send-docsmit)
    - [mail-poll](#mail-poll)
@@ -3968,6 +3969,47 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 ```
 
 **Deploy**: `supabase functions deploy notify-bid-mark` after the `20261001170000_bid_mark_requests.sql` push (it reads `bid_mark_requests`).
+
+
+### notify-note-tag
+
+**Purpose** (v2.7410, punch list #363 PR 5): the phone notice for a teammate tagged in a job note, and for the person who asked when the answer lands. The client calls it right after a typed note posts on the Pipeline or from the Tagged job notes section (`notifyNoteTag` in `src/lib/jobs/noteTagsIo.ts`), and after a **No reply needed** press. A call that fails is dropped: the tag is already on the job and in the count above Jobs.
+
+**Endpoint**: `POST /functions/v1/notify-note-tag`
+
+**Required Role**: any signed-in user, but only the note's **writer** for `note_id` and only the **tagged person** for `tag_id`; anyone else gets 403. A note or a press more than fifteen minutes old returns 200 with `push_sent: 0`, so an old note cannot be replayed. An archived caller is refused (`refuseArchivedCaller`).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (missing VAPID keys send nothing and return 200).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer with `getUser` and reads the rows with the service role.
+
+#### Request body
+
+```json
+{ "note_id": "<jobs_ledger_thread_notes.id>" }
+```
+
+or, for a No reply needed press:
+
+```json
+{ "tag_id": "<jobs_ledger_note_tags.id>" }
+```
+
+The caller sends no text. The words come from `words.ts` beside the function (pure, tested from `src/lib/jobs/noteTagPush.test.ts`):
+
+- The people the note tags, still waiting: *Marcus tagged you on Cedar Bluff Lofts*, with the note cut to 140 characters. Template `note_tag`.
+- The people whose tags on that job the note answered: *Dana answered on Cedar Bluff Lofts*. Template `note_tag_answer`. A person the answer tags back gets the tag alone.
+- The asker of a tag cleared with no note: *Chris: no reply needed*, with the job and the note.
+
+The tap opens `/jobs?tab=stages` for the office, whose section is at the top of the Pipeline, and `/dashboard` for everyone else, whose door is the Needs you line. Every push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts), so a person outside their **Push me** hours is held with a row and no push, and **While you were off** names it a *tagged job note* or an *answer to your tag* (`heldKind`).
+
+#### Response
+
+```json
+{ "success": true, "push_sent": 1, "held": 0 }
+```
+
+**Deploy**: `supabase functions deploy notify-note-tag`. It reads `jobs_ledger_note_tags`, on prod since v2.7385. Until it is deployed the client's call answers 404 and is dropped.
 
 ---
 

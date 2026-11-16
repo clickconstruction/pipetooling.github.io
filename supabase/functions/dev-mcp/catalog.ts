@@ -2044,6 +2044,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "notify-estimator-request",
   "notify-help-feedback",
   "notify-lien-approval",
+  "notify-note-tag",
   "notify-team-lead-clock",
   "open-contract-form-pdf",
   "open-submittal-pdf",

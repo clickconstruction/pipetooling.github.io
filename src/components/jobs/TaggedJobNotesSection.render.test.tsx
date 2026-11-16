@@ -20,6 +20,7 @@ const io = vi.hoisted(() => ({
   postTaggedNote: vi.fn(),
   markTagDone: vi.fn(),
   markAnswersSeen: vi.fn(),
+  notifyNoteTag: vi.fn(),
   listeners: new Set<() => void>(),
 }))
 vi.mock('../../lib/jobs/noteTagsIo', () => ({
@@ -28,6 +29,7 @@ vi.mock('../../lib/jobs/noteTagsIo', () => ({
   postTaggedNote: io.postTaggedNote,
   markTagDone: io.markTagDone,
   markAnswersSeen: io.markAnswersSeen,
+  notifyNoteTag: io.notifyNoteTag,
   onNoteTagsChanged: (fn: () => void) => {
     io.listeners.add(fn)
     return () => io.listeners.delete(fn)
@@ -79,6 +81,7 @@ beforeEach(() => {
   io.postTaggedNote.mockReset().mockResolvedValue('note-9')
   io.markTagDone.mockReset().mockResolvedValue(true)
   io.markAnswersSeen.mockReset().mockResolvedValue(1)
+  io.notifyNoteTag.mockReset()
   io.listeners.clear()
   window.localStorage.clear()
 })
@@ -108,6 +111,8 @@ describe('TaggedJobNotesSection', () => {
     fireEvent.change(box, { target: { value: 'Yes, two bills.', selectionStart: 15 } })
     fireEvent.keyDown(box, { key: 'Enter' })
     await vi.waitFor(() => expect(io.postTaggedNote).toHaveBeenCalledWith('job-2', 'Yes, two bills.', []))
+    // The notice goes out for the note that was posted.
+    await vi.waitFor(() => expect(io.notifyNoteTag).toHaveBeenCalledWith({ noteId: 'note-9' }))
     // The post told the section to read again.
     await vi.waitFor(() => expect(io.loadMyTags.mock.calls.length).toBeGreaterThan(1))
   })
@@ -117,6 +122,7 @@ describe('TaggedJobNotesSection', () => {
     renderWithProviders(<TaggedJobNotesSection variant="pipeline" />)
     fireEvent.click(await screen.findByRole('button', { name: 'No reply needed' }))
     await vi.waitFor(() => expect(io.markTagDone).toHaveBeenCalledWith('w-new'))
+    await vi.waitFor(() => expect(io.notifyNoteTag).toHaveBeenCalledWith({ tagId: 'w-new' }))
     expect(io.postTaggedNote).not.toHaveBeenCalled()
   })
 
