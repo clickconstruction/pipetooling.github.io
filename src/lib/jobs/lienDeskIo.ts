@@ -333,7 +333,7 @@ export async function startLetterTwo(input: { first: Pick<LienDeskItemRow, 'id' 
   return saveLienDeskDraft({ itemId: null, jobId: input.first.job_id, months: input.first.months, fields: input.fields, coverNote: true, userId: input.userId })
 }
 
-/** The run printed these items' notices (v2.4119): they sit in "In the mail · tracking owed" until recorded. Best-effort — a failure only leaves them in Ready to send. */
+/** The run printed these items' notices (v2.4119): they sit in "In the mail · tracking owed" until recorded. Best-effort — a failure only leaves them in Approved · to print. */
 export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, userId: string | null): Promise<void> {
   if (itemIds.length === 0) return
   await withSupabaseRetry(
@@ -342,14 +342,14 @@ export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, u
   )
 }
 
-/** Back to Ready to send (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands. */
+/** Back to Approved · to print (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands. */
 export async function clearLienDeskItemPrinted(itemId: string, by: { userId: string | null; userName: string | null } = { userId: null, userName: null }): Promise<void> {
   await takeBackLienDeskItems([itemId], by)
 }
 
 /**
  * Take back a printed run (punch list #101): every listed item still printed and not sent goes
- * back to Ready to send, keeping its approval and a line saying who took it back
+ * back to Approved · to print, keeping its approval and a line saying who took it back
  * (`fields.runTakenBack`). Returns how many were taken back; a row sent or cleared meanwhile is left alone.
  */
 export async function takeBackLienDeskItems(itemIds: ReadonlyArray<string>, by: { userId: string | null; userName: string | null }): Promise<number> {

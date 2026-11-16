@@ -71,7 +71,7 @@ export const LIEN_RETAINAGE_PILES: ReadonlyArray<{ key: LienRetainagePile; label
   { key: 'needs_owner', label: 'Needs the owner' },
   { key: 'to_draft', label: 'To send for approval' },
   { key: 'awaiting', label: 'Awaiting approval' },
-  { key: 'ready', label: 'Ready to send' },
+  { key: 'ready', label: 'Approved · to mail' },
   { key: 'held', label: 'Held' },
   { key: 'sent', label: 'Sent · 30d' },
   { key: 'missed', label: 'Missed' },

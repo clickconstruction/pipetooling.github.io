@@ -547,7 +547,7 @@ describe('LienDesk', () => {
     const onChanged = vi.fn()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [printed], true)} initialJobId="j650" initialKind="notice" onChanged={onChanged} />)
     await settle()
-    // Nothing is Ready to send, one is printed: the header still offers the run, counting what the run lists —
+    // Nothing is in Approved · to print, one is printed: the header still offers the run, counting what the run lists —
     // and says what the run will do (v2.4823), as the printed footer does, instead of Send the run.
     // The pill reads the run's count with its meter (v2.7328): one printed, none mailed yet.
     expect(screen.getByRole('button', { name: 'The run · 0 of 1 mailed' })).toBeTruthy()
@@ -3833,7 +3833,7 @@ describe('LienDesk · the pile titles stack (v2.4672)', () => {
     await settle()
     expect(document.querySelector('[data-lien-pile-head="awaiting"]')).toBeTruthy()
     expect(document.querySelectorAll('[data-lien-pile-head]')).toHaveLength(1)
-    // The desk re-reads after the approval: the item is in Ready to send, the awaiting pile is empty.
+    // The desk re-reads after the approval: the item is in Approved · to print, the awaiting pile is empty.
     const approved = { ...awaiting, status: 'approved', approved_by: 'u-malachi', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader' } as LienDeskItemRow
     rerender(<LienDesk {...baseProps} authRole="master_technician" data={data(J650, [approved], true)} initialPile="awaiting" />)
     await settle()

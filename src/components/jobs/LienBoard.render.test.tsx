@@ -145,7 +145,7 @@ describe('LienBoard', () => {
     expect(section.getAttribute('data-lien-board-layout')).toBe('stacked')
     expect((section.querySelector('[data-lien-board-tiles]') as HTMLElement).style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))')
     expect(section.querySelectorAll('[data-lien-board-arrow][data-kind="cross"]')).toHaveLength(0)
-    expect(section.querySelector('[data-lien-board-column="notice"] [data-lien-board-retainage]')!.textContent).toBe('Retainage · 1 to send')
+    expect(section.querySelector('[data-lien-board-column="notice"] [data-lien-board-retainage]')!.textContent).toBe('Retainage · 1 to send for approval')
     // A phone keeps the bins behind one press, a thumb tall; the tiles always show.
     const fold = section.querySelector('[data-lien-board-fold]') as HTMLButtonElement
     expect(fold.textContent).toContain('Show the bins · 9')

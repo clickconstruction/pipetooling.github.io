@@ -340,9 +340,9 @@ export function lienBoardRetainageLine(retainage: ReadonlyArray<LienRetainageEnt
   const count = (pile: LienRetainageEntry['pile']) => live.filter((e) => e.pile === pile).length
   const parts = [
     [count('needs_owner'), 'needs the owner', 'need the owner'],
-    [count('to_draft'), 'to send', 'to send'],
+    [count('to_draft'), 'to send for approval', 'to send for approval'],
     [count('awaiting'), 'awaiting approval', 'awaiting approval'],
-    [count('ready'), 'ready to send', 'ready to send'],
+    [count('ready'), 'approved to mail', 'approved to mail'],
     [count('held'), 'held', 'held'],
     [count('missed'), 'missed', 'missed'],
   ] as const

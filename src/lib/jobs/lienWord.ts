@@ -1,6 +1,6 @@
 /**
  * The leader's word on a lien paper (v2.3405): the office records that he said to send it — who,
- * when, and how — and the paper goes to Ready to send on that record. v2.3813 adds the two
+ * when, and how — and the paper goes to Approved · to print on that record. v2.3813 adds the two
  * declarations the office makes when he is beside them: *he is standing over me* and *he is typing
  * it in*. No sign-in and no second session — the office writes it down, the row keeps the channel,
  * and he sees it in *Sent on your word* with *Not what I said* to pull it back.
@@ -71,7 +71,7 @@ export function presenceLine(channel: string | null | undefined, recorderName: s
 }
 
 export type WordRecordPreview = {
-  /** On the notice, in Ready to send: the footer's first words. */
+  /** On the notice, in Approved · to print: the footer's first words. */
   ready: string
   /** The desk's title bar, for the leader. */
   strip: string
@@ -110,7 +110,7 @@ export function defaultWordNote(leaderName: string | null | undefined, todayWord
   return `${leaderName?.trim() || 'the leader'}, ${todayWords}`
 }
 
-/** A notice that reached Ready to send, or went out, without the leader pressing Approve. */
+/** A notice that reached Approved · to print, or went out, without the leader pressing Approve. */
 export type LienFyiSend = { jobLabel: string; by: 'word' | 'rule'; gcName?: string | null }
 
 /**

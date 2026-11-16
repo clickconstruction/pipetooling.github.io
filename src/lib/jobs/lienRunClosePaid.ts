@@ -1,7 +1,7 @@
 /**
  * Close a paid notice (v2.7353). A notice in the run whose job owes $0 today is held
  * (`lienRunNothingToClaim`, v2.7337), and until now nothing let it leave: Take back only un-prints
- * it, so it sat in Ready to send, held again. Closing sets the desk item aside (`voided_at`, the
+ * it, so it sat in Approved · to print, held again. Closing sets the desk item aside (`voided_at`, the
  * column a job combine already uses), so every reader of the desk skips it: the run, the pill, the
  * To do row and the piles. A paid job has no months to draft, so it leaves the desk with its notice,
  * and it comes back by itself when it owes again. The item keeps one line saying who closed it and

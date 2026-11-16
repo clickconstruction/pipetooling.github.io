@@ -98,7 +98,7 @@ export function lienEmptyPileWords(pile: LienDeskPile, onOtherPiles: number): { 
     needs_owner: 'Every notice has its owner of record.',
     to_draft: 'Nothing is left to send for approval.',
     awaiting: 'Nothing is waiting for approval.',
-    ready: 'Nothing is ready to send.',
+    ready: 'Nothing approved is waiting to print.',
     printed: 'Nothing in the run is waiting on a tick.',
     held: 'Nothing is held.',
     sent: 'Nothing went out in the last 30 days.',
@@ -113,7 +113,7 @@ export const LIEN_DESK_PILES: ReadonlyArray<{ key: LienDeskPile; label: string }
   // *To send for approval* since v2.7434 (*To send* since v2.7327): the office sends the paper to the leader, who approves it; the key stays `to_draft`.
   { key: 'to_draft', label: 'To send for approval' },
   { key: 'awaiting', label: 'Awaiting approval' },
-  { key: 'ready', label: 'Ready to send' },
+  { key: 'ready', label: 'Approved · to print' },
   { key: 'printed', label: 'Approved · to mail' },
   { key: 'held', label: 'Held' },
   { key: 'sent', label: 'Sent · 30d' },
