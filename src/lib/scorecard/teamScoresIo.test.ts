@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { FunctionsHttpError } from '@supabase/functions-js'
+import { FunctionsFetchError, FunctionsHttpError } from '@supabase/functions-js'
 
 const invoke = vi.fn()
 vi.mock('../supabase', () => ({ supabase: { functions: { invoke: (name: string, opts: unknown) => invoke(name, opts) } } }))
@@ -42,6 +42,14 @@ describe('fetchTeamScores', () => {
   it('a function that is not deployed is missing, not a failure: the page reads as before', async () => {
     invoke.mockResolvedValue({ data: null, error: refusal(404, { code: 'NOT_FOUND', message: 'Requested function was not found' }) })
     expect(await fetchTeamScores(56)).toEqual({ kind: 'missing' })
+  })
+
+  it('a browser never sees that 404: the gateway sends no CORS headers, so the request fails, and that is missing too', async () => {
+    const blocked = new FunctionsFetchError(new TypeError('Failed to fetch'))
+    expect(teamScoresIsMissing(blocked)).toBe(true)
+    invoke.mockResolvedValue({ data: null, error: blocked })
+    expect(await fetchTeamScores(56)).toEqual({ kind: 'missing' })
+    expect(await fetchEstimatorScores(56, 'mine')).toEqual({ kind: 'missing' })
     expect(teamScoresIsMissing(refusal(403, {}))).toBe(false)
     expect(teamScoresIsMissing(new Error('network'))).toBe(false)
   })
