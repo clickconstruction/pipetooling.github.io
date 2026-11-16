@@ -129,7 +129,7 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(held.tone).toBe('amber')
     const printed = lienArChipFor(input({ nextUp: [row({ sub: 'In the mail · tracking owed', action: 'add_tracking', target: { open: 'notices', jobId: 'j273', pile: 'printed' } })], entry: entry({ pile: 'printed', item: { printed_at: '2026-10-09T16:00:00Z' } as never }) }))!
     expect(printed).toMatchObject({ tone: 'blue', state: 'out', words: 'In the mail · tracking owed' })
-    expect(printed.sentence).toContain('printed with the run Oct 9')
+    expect(printed.sentence).toContain('printed Oct 9 · press Enter mail numbers on the Lien desk to record it')
     const late = lienArChipFor(input({ nextUp: [row({ sub: 'Late notice to draft · the window closed, the affidavit is still open', action: 'draft_late', dueOn: '2026-11-16', daysLeft: 34, severity: 'amber', group: 'coming' })], entry: entry({ pile: 'missed', dueMonths: [] }) }))!
     expect(late.words).toBe('Draft the late notice · by Nov 16 · 34d')
     expect(late.tone).toBe('red')
@@ -139,9 +139,9 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     const run = row({ key: 'run:printed', jobId: null, gcId: null, action: 'record_mailing', sub: 'Mailed? Type each envelope’s number.', target: { open: 'run', gcId: null }, jobs: [{ jobId: 'j273', title: '273', dueOn: '2026-10-15' }, { jobId: 'j9', title: '9', dueOn: null }] })
     expect(lienArChipFor(input({ nextUp: [run], entry: entry({ pile: 'printed' }) }))!.door).toEqual({ to: 'desk', jobId: 'j273', kind: 'notice', pile: 'printed' })
     expect(lienArChipFor(input({ jobId: 'j8', nextUp: [run] }))).toBeNull()
-    const ready = row({ key: 'run:gc1', jobId: null, action: 'send_run', sub: '2 notices approved · ready to send', target: { open: 'run', gcId: 'gc1' } })
+    const ready = row({ key: 'run:gc1', jobId: null, action: 'send_run', sub: '2 notices approved · to print', target: { open: 'run', gcId: 'gc1' } })
     const chip = lienArChipFor(input({ nextUp: [ready], entry: entry({ pile: 'ready' }) }))!
-    expect(chip.words).toBe('Send the notice · by Oct 15 · 2d')
+    expect(chip.words).toBe('Print and mail the notice · by Oct 15 · 2d')
     expect(chip.door).toEqual({ to: 'desk', jobId: 'j273', kind: 'notice', pile: 'ready' })
     expect(lienArChipFor(input({ nextUp: [ready], entry: entry({ pile: 'ready', gcCustomerId: 'gc2' }) }))).toBeNull()
   })

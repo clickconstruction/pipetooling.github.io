@@ -152,6 +152,8 @@ describe('the Documents page groups', () => {
     expect(['job_contract', 'job_contract_reminder', 'person_contract', 'estimate', 'work_order', 'sub_labor_sheet'].every((k) => sentKindGroup(k) === 'contracts')).toBe(true)
     expect(['bid_cover_letter', 'bid_room_link', 'rfq', 'submittal_reply', 'procurement_update', 'purchase_order', 'supply_house_job_account'].every((k) => sentKindGroup(k) === 'bids')).toBe(true)
     expect(['gc_statement', 'gc_statement_print', 'gc_checks_applied', 'test_report', 'field_report', 'statement_of_charges'].every((k) => sentKindGroup(k) === 'statements')).toBe(true)
+    // Punch list #350: a sub's three papers are statements, though the printed sub sheet stays with the contracts.
+    expect(['sub_work_statement', 'sub_payment_record', 'sub_statement_of_account'].every((k) => sentKindGroup(k) === 'statements')).toBe(true)
     expect(sentKindGroup('something_new')).toBe('other')
     expect(SENT_KIND_GROUPS.map((g) => g.key)).toEqual(['all', 'bills', 'lien', 'contracts', 'bids', 'statements', 'other'])
   })
@@ -159,7 +161,7 @@ describe('the Documents page groups', () => {
   it('turns a group into a filter over kind', () => {
     expect(sentKindGroupFilter('all')).toBeNull()
     expect(sentKindGroupFilter('bills')).toEqual({ or: 'kind.like.bill*' })
-    expect(sentKindGroupFilter('statements')?.or).toBe('kind.like.gc_statement*,kind.like.gc_checks*,kind.like.test_report*,kind.like.field_report*,kind.like.statement_of_charges*')
+    expect(sentKindGroupFilter('statements')?.or).toBe('kind.like.gc_statement*,kind.like.gc_checks*,kind.like.test_report*,kind.like.field_report*,kind.like.statement_of_charges*,kind.like.sub_work_statement*,kind.like.sub_payment_record*,kind.like.sub_statement_of_account*')
     const other = sentKindGroupFilter('other')
     expect(other?.or).toBeUndefined()
     expect(other?.notLike).toContain('bill*')

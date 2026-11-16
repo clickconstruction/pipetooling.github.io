@@ -144,7 +144,7 @@ describe('buildLienStatusPayload — the desk folded into the message (v2.4311)'
     const text = lienStatusText(p)
     expect(text).toContain('We are about to send lien notices on 5 jobs.')
     expect(text).toContain('• Tune 5- Seguin, Southern Pine Construction, $38,625')
-    expect(text).toContain('Approved for the next run: 1 notice, $2,000.')
+    expect(text).toContain('Approved to print: 1 notice, $2,000.')
     expect(text).toContain('Type the tracking number on 1 mailed notice.')
   })
 })

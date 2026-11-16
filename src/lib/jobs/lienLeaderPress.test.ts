@@ -14,14 +14,17 @@ describe('lienLeaderPressWords · the three presses say whose okay it is (v2.730
     expect(w.askLine).toBe('Goes to Malachi. An affidavit is sworn and filed at the county, and Malachi signs it.')
   })
 
-  it('a notice or a retainage notice is sent, lands in the run, and the leader signs it himself', () => {
+  it('a notice or a retainage notice is sent, then waits to print, and the leader signs it himself', () => {
     const n = lienLeaderPressWords('Malachi Whites', 'notice')
     expect(n.onWord).toBe('Malachi said to send it…')
     expect(n.approve).toBe('Sign and approve ▸')
     expect(n.ask).toBe('Ask Malachi to approve ▸')
-    expect(n.onWordLine).toBe('Write down what Malachi said. It goes in the run on that word.')
-    expect(n.askLine).toBe('Goes to Malachi, then out with the run.')
-    expect(lienLeaderPressWords('Malachi Whites', 'retainage')).toEqual(n)
+    // v2.7448: his own press says where the paper waits next, in the step's plain words.
+    expect(n.approveLine).toBe('Your name goes on the paper. It then waits to print.')
+    expect(n.onWordLine).toBe('Write down what Malachi said. It then waits to print, on that word.')
+    expect(n.askLine).toBe('Goes to Malachi, then out with the next mailing.')
+    // A retainage notice reads as a notice, but for where it waits: its approved pile is Approved · to mail (v2.7434).
+    expect(lienLeaderPressWords('Malachi Whites', 'retainage')).toEqual({ ...n, onWordTitle: n.onWordTitle.replace('to print', 'to mail'), onWordLine: 'Write down what Malachi said. It then waits to mail, on that word.', approveLine: 'Your name goes on the paper. It then waits to mail.' })
   })
 
   it('falls back to the leader when the job has no master the desk knows', () => {
