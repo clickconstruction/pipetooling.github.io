@@ -270,3 +270,15 @@ describe('the sheet and its codes', () => {
     expect(LIEN_RUN_SHEET_CSS).toContain('.runchecklist')
   })
 })
+
+describe('a parted notice is the row’s hold (v2.7517)', () => {
+  it('the row is held with both figures, so Mark printed and Record leave it and say why', () => {
+    const parted = { parts: ['claim' as const], paperClaim: 51_000, nowClaim: 33_500, paperRetainage: 0, nowRetainage: 0, source: 'bills' as const }
+    const rows = lienRunChecklistRows({ notices: [notice({ parted })] })
+    expect(rows[0]!.held).toBe('The paper claims $51,000.00. The bills now come to $33,500.00, $17,500.00 less. It prints once the notice is redrawn from the bills.')
+    const plans = lienRunBatchPlans(rows)
+    expect(plans.print.ready).toHaveLength(0)
+    expect(plans.print.held.map((h) => h.why)).toEqual([rows[0]!.held])
+  })
+})
+
