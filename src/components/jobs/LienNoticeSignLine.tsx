@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import SignaturePad from 'signature_pad'
 import { ESTIMATE_ACCEPT_SIGNATURE_FONT } from '../estimates/EstimateAcceptTypedSignatureLine'
 import { SIGNATURE_INK_COLOR, SIGNATURE_PAPER_COLOR } from '../contracts/SignatureTypeOrDrawInput'
@@ -20,6 +20,12 @@ import type { LienNoticeSignLineCodeSigner } from '../../lib/jobs/lienCodeSigner
  * The signed-in user's name is never shown as the signature. *Draw instead* stays, attributed
  * to him. With no code set, a locked code, or the database side not live yet, the pad leads and
  * the line says why.
+ *
+ * With `frame` (v2.7382, Taunya's ask): the leader's desk footer is one box. The paper sits on the
+ * left, the host's call and its press sit beside it with the code field, and the host's quiet
+ * presses run in a strip underneath. The box lays itself out by its own width (`.lienSignFrame`
+ * in index.css): three across at the desk, the call as a title line on a laptop, one column on
+ * a narrow pane. The way between modes moves onto the paper's corner.
  */
 export type LienNoticeSignLineMode = 'type' | 'draw' | 'code'
 
@@ -38,6 +44,18 @@ export type LienNoticeSignLineHandle = {
 
 /** Who signs with a code on this screen, and whether his code can be taken right now (`lienCodeSignerFrom` builds it from the status read). */
 export type { LienNoticeSignLineCodeSigner }
+
+/** What the host puts inside the framed box (v2.7382): its call, its one press, and its quiet strip. */
+export type LienNoticeSignLineFrame = {
+  /** The title beside the paper: "→ Your call on July and August 2026". */
+  call: ReactNode
+  /** A quieter line under the title, after the signed day: the rule this call keeps. */
+  note?: ReactNode
+  /** The one press that signs, beside the code field. */
+  press: ReactNode
+  /** The quiet presses under the box's rule. */
+  strip?: ReactNode
+}
 
 const LINE_HEIGHT_PX = 84
 const linkBtn: CSSProperties = {
@@ -84,8 +102,10 @@ export const LienNoticeSignLine = forwardRef<
     ownToggle?: boolean
     /** Every mode the line lands on, the first included, so the host's state line can say what reaches the paper. */
     onModeChange?: (mode: LienNoticeSignLineMode) => void
+    /** The desk's one-box footer (v2.7382): the host's call, press and strip are drawn inside the box, beside and under the paper. */
+    frame?: LienNoticeSignLineFrame
   }
->(function LienNoticeSignLine({ printedName, under, signedLabel, allowPress = true, codeSigner = null, codeProblem = null, disabled = false, compact = false, initialMode, ownToggle = true, onModeChange }, ref) {
+>(function LienNoticeSignLine({ printedName, under, signedLabel, allowPress = true, codeSigner = null, codeProblem = null, disabled = false, compact = false, initialMode, ownToggle = true, onModeChange, frame }, ref) {
   const codeReady = codeSigner?.status === 'ready'
   const [mode, setMode] = useState<LienNoticeSignLineMode>(initialMode ?? (codeSigner ? (codeReady ? 'code' : 'draw') : allowPress ? 'type' : 'draw'))
   const tellMode = useRef(onModeChange)
@@ -173,6 +193,99 @@ export const LienNoticeSignLine = forwardRef<
   const codeWords = codeSigner ? lienSignLineCodeWords(codeSigner) : null
   const canToggle = codeSigner ? codeReady : allowPress
   const toggleLabel = mode === 'draw' ? (codeSigner ? 'Code instead' : 'Press instead') : 'Draw instead'
+  const clearPad = () => {
+    padRef.current?.clear()
+    setStarted(false)
+  }
+  const switchMode = () => {
+    setMode((m) => (m === 'draw' ? (codeSigner ? 'code' : 'type') : 'draw'))
+    setStarted(false)
+    setCode('')
+  }
+
+  if (frame) {
+    const hint = mode === 'code' && codeSigner ? (codeProblem ?? 'Four to six digits, his alone. The record names this screen.') : mode === 'draw' ? codeWords : null
+    return (
+      <div className="lienSignFrameWrap" data-testid="lien-sign-line" data-lien-sign-mode={mode} data-lien-sign-frame>
+        <div className="lienSignFrame">
+          <span className="lienSignFrameTag">{tag}</span>
+          <div className="lienSignFrameGrid">
+            <div className="lienSignFrameCall">
+              <span className="lienSignFrameCallTitle">{frame.call}</span>
+              <span className="lienSignFrameCallNote">
+                {signedLabel}
+                {frame.note}
+              </span>
+            </div>
+            <div className="lienSignFramePaperCol">
+              <div ref={wrapRef} className="lienSignFramePaper" style={{ background: SIGNATURE_PAPER_COLOR }}>
+                {mode === 'draw' ? (
+                  <canvas
+                    ref={canvasRef}
+                    aria-label="Sign on the line"
+                    onPointerDown={() => setStarted(true)}
+                    style={{ display: 'block', width: '100%', height: LINE_HEIGHT_PX, touchAction: 'none', cursor: disabled ? 'default' : 'crosshair' }}
+                  />
+                ) : (
+                  <div data-testid="lien-sign-line-name" className="lienSignFrameName" style={{ fontFamily: ESTIMATE_ACCEPT_SIGNATURE_FONT }}>
+                    {printedName.trim() || 'Your name'}
+                  </div>
+                )}
+                {mode === 'draw' && !started ? (
+                  <span aria-hidden="true" className="lienSignFramePadWords">
+                    {codeSigner ? `${codeSigner.firstName} draws with a finger or the mouse` : 'Draw with a finger or the mouse'}
+                  </span>
+                ) : null}
+                <span className="lienSignFrameCorner">
+                  {mode === 'draw' ? (
+                    <button type="button" disabled={disabled} onClick={clearPad}>
+                      Clear
+                    </button>
+                  ) : null}
+                  {canToggle && ownToggle ? (
+                    <button type="button" disabled={disabled} onClick={switchMode} data-testid="lien-sign-line-toggle">
+                      {toggleLabel}
+                    </button>
+                  ) : null}
+                </span>
+              </div>
+              <div className="lienSignFrameUnder">
+                {under.filter((l) => l.trim()).map((l, i) => (i === 0 ? <strong key={l}>{l}</strong> : <span key={`${l}-${i}`}>, {l}</span>))}
+              </div>
+            </div>
+            <div className="lienSignFrameAct">
+              <div className="lienSignFrameActRow" data-lien-sign-code-row={mode === 'code' && codeSigner ? '' : undefined}>
+                {mode === 'code' && codeSigner ? (
+                  <label className="lienSignFrameCode">
+                    <span>{codeSigner.firstName}’s code</span>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{4,6}"
+                      maxLength={6}
+                      value={code}
+                      disabled={disabled}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                      aria-label={`${codeSigner.firstName}’s signing code`}
+                      style={{ borderColor: codeProblem ? 'var(--text-red-600)' : undefined }}
+                    />
+                  </label>
+                ) : null}
+                {frame.press}
+              </div>
+              {hint ? (
+                <span className="lienSignFrameHint" style={{ color: mode === 'code' && codeProblem ? 'var(--text-red-600)' : undefined }} data-lien-sign-code-words>
+                  {hint}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          {frame.strip ? <div className="lienSignFrameStrip">{frame.strip}</div> : null}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
