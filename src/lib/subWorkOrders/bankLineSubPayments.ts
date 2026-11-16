@@ -13,6 +13,7 @@
 import { BANK_MATCH_DAYS, bankLinesFromRows, daysApart, matchUnits, payeeReadsLike, type BankLine, type BankRow, type MatchUnit } from './subPaymentBankMatch'
 import { ledgerDayWords, sendingTagWords, type LedgerLine, type LedgerSheet } from './subPaymentsLedger'
 import { buildSheetPartiesLookup, sheetParties } from './sheetParties'
+import { sheetOwedToNobody } from './teamSheetRule'
 import type { NeedsWorkOrderRosterPerson } from './sheetsNeedingWorkOrder'
 import { sheetLabel } from '../jobs/subPaymentMoveRemove'
 import type { LaborJobPayment } from '../../types/laborJob'
@@ -31,7 +32,9 @@ export type BankSideRead = {
 
 /**
  * The read as the ledger's sheets, so the lines and the units come from the ledger's own kernel. *Paid to* is the
- * Pay view's rule (`sheetParties`). What a sheet was agreed at is not read: Banking draws no *Left on the sheet*.
+ * Pay view's rule (`sheetParties`), and *crew* is the ledger's: a sheet owed to nobody (`sheetOwedToNobody`). A
+ * teammate's own sheet is owed like any sheet (Taunya, 2026-11-15), so its payment reads as theirs here too. What a
+ * sheet was agreed at is not read: Banking draws no *Left on the sheet*.
  */
 export function bankSideSheets(read: BankSideRead, roster: readonly NeedsWorkOrderRosterPerson[]): LedgerSheet[] {
   const lookup = buildSheetPartiesLookup(roster)
@@ -47,7 +50,7 @@ export function bankSideSheets(read: BankSideRead, roster: readonly NeedsWorkOrd
       id: s.id,
       paidTo: parties.label || (s.assigned_to_name ?? '').trim() || 'nobody named',
       paidToKey: parties.key || `sheet:${s.id}`,
-      crew: roster.length > 0 && parties.crew,
+      crew: roster.length > 0 && sheetOwedToNobody(parties),
       job: sheetLabel({ job_number: s.job_number, job_ledger_id: s.job_ledger_id, address: s.address ?? '' }, read.jobNamesById as Record<string, string>),
       address: (s.address ?? '').trim(),
       agreed: 0,
