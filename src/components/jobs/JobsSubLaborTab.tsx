@@ -62,6 +62,8 @@ import { subLaborPayRunEmptyWords } from '../../lib/subWorkOrders/subLaborPayRun
 import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
 import { SUB_PAY_FROM_CREDIT, subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
+import { SubPapersWindow } from './SubPapersWindowConnected'
+import type { SubPapersOpen } from './SubPapersWindow'
 import { OverToCreditWindow } from './SubSendingRepairWindows'
 import { overToCreditPlan, type OverToCreditPlan } from '../../lib/subWorkOrders/subSendingRepair'
 import { ledgerDayWords, paymentDay } from '../../lib/subWorkOrders/subPaymentsLedger'
@@ -163,6 +165,8 @@ export default function JobsSubLaborTab({
   const [storySheetId, setStorySheetId] = useState<string | null>(null)
   /** Send a lien waiver from a pay row (v2.2970): the sheet + job facts the picker seeds into the form. */
   const [lienWaiverFor, setLienWaiverFor] = useState<LienWaiverSendTarget | null>(null)
+  /** Punch list #350: the papers window, opened on a sub's statement of account or a sheet's work statement. */
+  const [papers, setPapers] = useState<{ key: string; name: string; open: SubPapersOpen } | null>(null)
   // Taunya's rule of 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
   const teamRule = TEAM_SHEET_RULE
   /** Punch list #347's residue: a sheet paid past its total, about to become a credit. */
@@ -620,6 +624,12 @@ export default function JobsSubLaborTab({
                             What we owe ›
                           </Link>
                         ) : null}
+                        {/* Punch list #350: the statement of account, as a paper to hand the sub. */}
+                        {sub?.personId && !sub.crew ? (
+                          <button type="button" data-testid={`sublabor-statement-${sub.personId}`} onClick={() => setPapers({ key: `id:${sub.personId}`, name: sub.name, open: { kind: 'statement' } })} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.12rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            Statement of account…
+                          </button>
+                        ) : null}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {g.rows.length} sheet{g.rows.length === 1 ? '' : 's'}
                           {sub && sub.teammates.length > 0 ? ` · with ${sub.teammates.join(', ')}` : ''}
@@ -640,6 +650,8 @@ export default function JobsSubLaborTab({
                 )
                 const body = g.rows.flatMap((r) => {
                   const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView, paidLine, paidInFull } = r
+                  // Punch list #350: whose paper this sheet makes. One person's sheet (a sub's, or a teammate's own) and nobody else's.
+                  const papersOf = !r.crew && parties.contractors.length === 1 && parties.contractors[0]!.id ? { key: `id:${parties.contractors[0]!.id}`, name: parties.contractors[0]!.name } : null
                   const jobRate = job.labor_rate ?? 0
                   const dateInputValue = job.job_date ?? (job.created_at ? calendarYmdInAppTzFromIso(job.created_at) : '')
                   const expanded = expandedSubLaborJobIds.has(job.id)
@@ -757,7 +769,12 @@ export default function JobsSubLaborTab({
                             {balance > 0 ? <button type="button" role="menuitem" style={{ ...menuItem, color: 'var(--text-green-700)', fontWeight: 600 }} onClick={() => { setMenuJobId(null); onOpenMakePayment(payTarget(r), String(balance)) }}>Payment…</button> : null}
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onOpenBackcharge({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid }) }}>Back-charge…</button>
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onEditLaborJob(job) }}>Edit sheet</button>
-                            <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onPrintJobSubSheet(job) }}>Print</button>
+                            {/* Punch list #350: Work statement… takes Print's place on a sheet that is one person's. A crew or shared sheet keeps Print. */}
+                            {papersOf ? (
+                              <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setPapers({ key: papersOf.key, name: papersOf.name, open: { kind: 'work', sheetId: job.id } }) }}>Work statement…</button>
+                            ) : (
+                              <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onPrintJobSubSheet(job) }}>Print</button>
+                            )}
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setStorySheetId(job.id) }}>Story…</button>
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setLienWaiverFor(lienWaiverTarget(r)) }}>Lien waiver…</button>
                             {/* Punch list #347's residue: a sheet paid past its total. The extra becomes the sub's credit. */}
@@ -959,6 +976,7 @@ export default function JobsSubLaborTab({
       <WorkOrderAssemblerModal open={assembler != null} onClose={() => setAssembler(null)} jobs={jobs} initial={assembler} authUserId={authUserId} onChanged={() => { void loadCommitments(); emitWorkOrderChanged() }} />
       <SubPortalVisitsModal personId={visitsFor?.personId ?? null} personName={visitsFor?.name ?? ''} onClose={() => { setVisitsFor(null); visits.reload() }} />
       {lienWaiverFor ? <LienWaiverSendModal target={lienWaiverFor} onClose={() => setLienWaiverFor(null)} /> : null}
+      {papers ? <SubPapersWindow open={papers.open} subKey={papers.key} name={papers.name} laborJobs={laborJobs} assigneesByJobId={laborJobAssigneesByJobId} namesByJobId={laborJobNamesByJobId} roster={roster} rule={teamRule} onClose={() => setPapers(null)} /> : null}
       {overFor ? <OverToCreditWindow title={overFor.title} plan={overFor.plan} personId={overFor.personId} onDone={() => onReloadLaborJobs?.()} onClose={() => setOverFor(null)} /> : null}
       <SheetStoryModal sheetId={storySheetId} onClose={() => setStorySheetId(null)} jobs={jobs} authUserId={authUserId} onOpenSheet={(id) => { const j = laborJobs.find((x) => x.id === id); if (j) onEditLaborJob(j) }} onSheetChanged={() => { void loadCommitments(); onReloadLaborJobs?.() }} />
     </div>

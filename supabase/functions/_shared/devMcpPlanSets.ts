@@ -14,6 +14,11 @@
 // The kinds and sources here are the papers migration's CHECKs (20261102010000) and the Plans section's picker
 // (src/lib/plans/planSets.ts PLAN_SET_KINDS, PLAN_SET_SOURCES), which the test holds them to; the paper kinds'
 // labels follow the client's src/lib/papers/papers.ts (PAPER_KINDS, PAPER_FROMS).
+//
+// 0.92.0 (v2.7458): plan_plan_set / apply_plan_set also change the Drive link of a set already saved — set_id with a
+// new link, and a memo when passed — on the row's own id, so the sets that replace or mark it up, the papers that go
+// with it and the part's current set keep pointing at it. The job's old plans link follows by the trigger on
+// plan_sets.link (plan_sets_mirror_on_change, migration 20261101210000) when the part builds from the set.
 
 export const PLAN_PART_VERBS = ['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper'] as const
 export type PlanPartVerb = (typeof PLAN_PART_VERBS)[number]
@@ -73,6 +78,8 @@ export type SetPayload = {
   marks_up_set_id?: string
   make_current?: boolean
 }
+/** The link of a set already saved, changed on its own row (0.92.0); memo replaces the set's memo when passed. */
+export type SetLinkPayload = { action: 'change_link'; set_id: string; link: string; memo?: string }
 export type PaperKeepPayload = {
   action: 'keep'
   part_id?: string
@@ -89,11 +96,13 @@ export type PaperKeepPayload = {
   ask?: { lane: string; words: string }
 }
 export type PaperCamePayload = { action: 'came'; paper_id: string; link: string }
-export type PlanPartPayload = SetPayload | PaperKeepPayload | PaperCamePayload
+export type PlanPartPayload = SetPayload | SetLinkPayload | PaperKeepPayload | PaperCamePayload
 
 export type PlanPartInput = { ok: true; p: PlanPartPayload; target: string } | { ok: false; error: string }
 
-const SET_SHAPE = `needs set — { part_id (a plan_parts.id: read_rows on plan_parts by development_id or job_id) and/or job_id (a jobs_ledger.id — find_job; the job's own plan part is used, and an as-built needs it), name (what the office calls it, under 200 characters), kind (${DRAWING_KINDS.map((k) => k.kind).join(' | ')} — a paper is plan_paper), source (gc | architect | ours), dated? (YYYY-MM-DD, the date on the sheets), memo? (under 2000), link? (the Drive folder or file, https://…; leave it out while the files are on their way), replaces_set_id? (a set on the same part; the current set when make_current and left out), marks_up_set_id? (the set an as-built marks up; the current set when left out), make_current? (build from it: true when the part has no set yet, false otherwise when left out; never for an as-built) }.`
+const SET_SHAPE = `needs set — { part_id (a plan_parts.id: read_rows on plan_parts by development_id or job_id) and/or job_id (a jobs_ledger.id — find_job; the job's own plan part is used, and an as-built needs it), name (what the office calls it, under 200 characters), kind (${DRAWING_KINDS.map((k) => k.kind).join(' | ')} — a paper is plan_paper), source (gc | architect | ours), dated? (YYYY-MM-DD, the date on the sheets), memo? (under 2000), link? (the Drive folder or file, https://…; leave it out while the files are on their way), replaces_set_id? (a set on the same part; the current set when make_current and left out), marks_up_set_id? (the set an as-built marks up; the current set when left out), make_current? (build from it: true when the part has no set yet, false otherwise when left out; never for an as-built) }. To change the Drive link of a set already saved: set — { set_id (a plan_sets.id: read_rows on plan_sets by part_id), link (the new one, https://…), memo? (replaces the set's memo when passed) } and nothing else.`
+/** What a link change may not carry: the set keeps everything else it has. */
+const ADD_ONLY_KEYS = ['part_id', 'job_id', 'name', 'kind', 'source', 'dated', 'replaces_set_id', 'marks_up_set_id', 'make_current'] as const
 const PAPER_SHAPE = `needs paper — { action?: keep | came (keep when left out); keep: part_id (a plan_parts.id) and/or job_id (the job it is kept on; its plan part is used), kind (${PAPER_KINDS.map((k) => k.kind).join(' | ')}), name (under 200 characters), from (gc | architect | engineer | supplier | ours), came_on? (YYYY-MM-DD, the day it came; today when left out), memo? (under 2000), link? (https://…), goes_with_set_id? (the drawing set it travels with), replaces_paper_id? (the paper it replaces), owed? (true for a paper we are waiting on: no link, and the ask says who owes it), ask? { lane: estimators | dispatch, words (what it asks of us, one line under 500) } — required when owed; came: paper_id (an owed paper's plan_sets.id), link (where it landed, https://…) }.`
 
 /** The verb's input as the payload the dry run and the write take. Refuses in words when it is not the shape the Plans section writes. */
@@ -107,6 +116,20 @@ export function planPartInput(verb: PlanPartVerb, input: Json): PlanPartInput {
     const v = str(k)
     if (!v) return null
     return UUID_RE.test(v) ? v.toLowerCase() : false
+  }
+  if (isSet && str('set_id')) {
+    const setId = id('set_id')
+    if (!setId) return { ok: false, error: shape }
+    const extra = ADD_ONLY_KEYS.filter((k) => src[k] !== undefined)
+    if (extra.length) return { ok: false, error: `${verb}: set_id changes the link of a set already saved, and takes link and memo only — leave ${extra.join(', ')} out. The set keeps its name, its kind, its dates and its place on the part.` }
+    const link = str('link')
+    if (!link || !LINK_RE.test(link) || link.length > 2000) return { ok: false, error: `${verb}: a link change needs link — the set's new Drive folder or file, starting with https://.` }
+    const p: SetLinkPayload = { action: 'change_link', set_id: setId, link }
+    if (src.memo !== undefined) {
+      if (typeof src.memo !== 'string' || src.memo.trim().length > 2000) return { ok: false, error: shape }
+      p.memo = src.memo.trim()
+    }
+    return { ok: true, p, target: setId }
   }
   if (isSet) {
     const partId = id('part_id')
@@ -194,6 +217,12 @@ export type PartRow = { id: string; development_id: string | null; job_id: strin
 export type SetRow = { id: string; part_id: string; name: string; kind: string; source: string; link: string; owed: boolean; came_at: string; marks_up_set_id: string | null; replaces_set_id: string | null; job_id: string | null }
 export type JobRow = { id: string; job_name: string | null; click_number: string | null; hcp_number: string | null; plan_part_id: string | null; development_id: string | null }
 export type DevelopmentRow = { id: string; name: string | null }
+/** A set whose link changes, with what the plan reads back beside the link: its memo, the date on the sheets, the file facts read behind the old link. */
+export type SetLinkRow = SetRow & { memo: string; dated: string | null; file_name: string | null; checked_at: string | null; updated_at: string }
+/** A job naming the part, with the plans link it carries today. */
+export type FollowerRow = { id: string; job_name: string | null; click_number: string | null; hcp_number: string | null; job_plans_link: string | null }
+/** The most jobs a link change names; a part with more says so. */
+export const FOLLOWER_CAP = 200
 
 /** The reads, as the dev: a table and a PostgREST query string; RLS applies, so a row the dev cannot see is a row that is not there. */
 export type PartReads = { rows: (table: string, query: string) => Promise<Json[]> }
@@ -206,20 +235,29 @@ export type PlanPartWorld = {
   sets: SetRow[]
   /** For `came`: the paper itself. */
   paper: SetRow | null
+  /** For `change_link` (0.92.0): the set itself, and the jobs naming its part when the part builds from it. */
+  target?: SetLinkRow | null
+  followers?: FollowerRow[]
 }
 
 const PART_COLS = 'id,development_id,job_id,name,current_set_id'
 const SET_COLS = 'id,part_id,name,kind,source,link,owed,came_at,marks_up_set_id,replaces_set_id,job_id'
 const JOB_COLS = 'id,job_name,click_number,hcp_number,plan_part_id,development_id'
+const SET_LINK_COLS = `${SET_COLS},memo,dated,file_name,checked_at,updated_at`
+const FOLLOWER_COLS = 'id,job_name,click_number,hcp_number,job_plans_link'
 
 export async function readPlanPartWorld(reads: PartReads, p: PlanPartPayload): Promise<PlanPartWorld> {
   const one = async <T>(table: string, query: string): Promise<T | null> => ((await reads.rows(table, query))[0] as T | undefined) ?? null
   let paper: SetRow | null = null
   let partId: string | null = null
   let job: JobRow | null = null
+  let target: SetLinkRow | null = null
   if (p.action === 'came') {
     paper = await one<SetRow>('plan_sets', `select=${SET_COLS}&id=eq.${p.paper_id}`)
     partId = paper?.part_id ?? null
+  } else if (p.action === 'change_link') {
+    target = await one<SetLinkRow>('plan_sets', `select=${SET_LINK_COLS}&id=eq.${p.set_id}`)
+    partId = target?.part_id ?? null
   } else {
     if (p.job_id) job = await one<JobRow>('jobs_ledger', `select=${JOB_COLS}&id=eq.${p.job_id}`)
     partId = p.part_id ?? job?.plan_part_id ?? null
@@ -229,6 +267,11 @@ export async function readPlanPartWorld(reads: PartReads, p: PlanPartPayload): P
   const developmentId = part?.development_id ?? job?.development_id ?? null
   const development = developmentId ? await one<DevelopmentRow>('developments', `select=id,name&id=eq.${developmentId}`) : null
   const sets = part ? ((await reads.rows('plan_sets', `select=${SET_COLS}&part_id=eq.${part.id}&order=came_at.desc`)) as SetRow[]) : []
+  if (p.action === 'change_link') {
+    // The jobs whose old plans link the mirror moves: read only when the part builds from this set.
+    const followers = part && target && part.current_set_id === target.id ? ((await reads.rows('jobs_ledger', `select=${FOLLOWER_COLS}&plan_part_id=eq.${part.id}&order=created_at&limit=${FOLLOWER_CAP}`)) as FollowerRow[]) : []
+    return { part, development, job, sets, paper, target, followers }
+  }
   return { part, development, job, sets, paper }
 }
 
@@ -314,7 +357,7 @@ export function planPartDryRun(p: PlanPartPayload, world: PlanPartWorld, todayYm
   if (p.action === 'came') {
     const paper = world.paper
     if (!paper) return { ok: false, refused: `No paper ${p.paper_id} is visible to you — read_rows on plan_sets (kind in the paper kinds) by part_id finds it.` }
-    if (DRAWING_KIND_SET.has(paper.kind)) return { ok: false, refused: `${paper.name} is a ${drawingKindLabel(paper.kind).toLowerCase()}, not a paper: its link changes on the job's Plans section.` }
+    if (DRAWING_KIND_SET.has(paper.kind)) return { ok: false, refused: `${paper.name} is a ${drawingKindLabel(paper.kind).toLowerCase()}, not a paper: its link changes with plan_plan_set { set_id, link }.` }
     if (!paper.owed) return { ok: false, refused: `${paper.name} already came${paper.link ? ` (${paper.link})` : ''}. A new copy is a new paper: plan_paper with replaces_paper_id.` }
     if (!world.part) return { ok: false, refused: `The paper's part ${paper.part_id} is not visible to you.` }
     return {
@@ -325,6 +368,77 @@ export function planPartDryRun(p: PlanPartPayload, world: PlanPartWorld, todayYm
         paper: { id: paper.id, name: paper.name, kind: paper.kind, kind_words: paperKindLabel(paper.kind), from: paper.source, owed: true, link_before: paper.link, asked_on: paper.came_at },
         after: { owed: false, link: p.link, came_at: 'the moment of apply' },
         history: 'No new History line: the Owed line stays as it was kept; the paper now reads under its set with its link.',
+      },
+    }
+  }
+  if (p.action === 'change_link') {
+    const set = world.target ?? null
+    if (!set) return { ok: false, refused: `No set ${p.set_id} is visible to you — read_rows on plan_sets by part_id lists a part's sets.` }
+    if (!DRAWING_KIND_SET.has(set.kind)) {
+      return { ok: false, refused: `${set.name} is a ${paperKindLabel(set.kind).toLowerCase()}, a paper and not a set of drawings. Papers are plan_paper's ground: an owed one takes its link with action came, and a new copy is a new paper with replaces_paper_id.` }
+    }
+    if (!world.part) return { ok: false, refused: `The set's part ${set.part_id} is not visible to you.` }
+    const before = (set.link ?? '').trim()
+    if (before === p.link) return { ok: false, refused: `${set.name} already has that link (${before}). Nothing to change.` }
+    const part = world.part
+    const current = world.sets.find((s) => s.id === part.current_set_id) ?? null
+    const isCurrent = part.current_set_id === set.id
+    const followers = isCurrent ? (world.followers ?? []) : []
+    const jobs = followers.map((j) => ({ id: j.id, label: jobLabel(j), before: (j.job_plans_link ?? '').trim(), after: p.link }))
+    const memoAfter = p.memo ?? set.memo
+    const hadFacts = !!(set.file_name || set.checked_at)
+    return {
+      ok: true,
+      reply: {
+        action: 'change_link',
+        part: partWords(world),
+        set: {
+          id: set.id,
+          name: set.name,
+          kind: set.kind,
+          kind_words: drawingKindLabel(set.kind),
+          source: set.source,
+          source_words: setSourceWords(set.source),
+          dated: set.dated ?? null,
+          came_at: set.came_at,
+          // The row's last save: the hash commits to it, so a link changed back and forth is planned afresh each time.
+          updated_at: set.updated_at,
+          memo: set.memo,
+          link: before,
+          replaces: named(world.sets.find((s) => s.id === set.replaces_set_id)),
+          marks_up: named(world.sets.find((s) => s.id === set.marks_up_set_id)),
+          line: `${drawingKindLabel(set.kind)} · ${setSourceWords(set.source)}${set.dated ? ` · dated ${datedWords(set.dated)}` : ''}`,
+        },
+        link: {
+          before,
+          after: p.link,
+          note: !before
+            ? 'The set had no link yet; this is its first.'
+            : planLinkKey(before) === planLinkKey(p.link)
+              ? 'Both links read as the same Drive folder or file: only the tail differs.'
+              : null,
+        },
+        memo: { before: set.memo, after: memoAfter, changed: memoAfter !== set.memo },
+        file_facts: hadFacts ? 'The file facts read behind the old link (its file name, size, count and the day it was checked) are cleared: they described the old file.' : null,
+        builds_from_this_set: isCurrent,
+        row: 'The row keeps its id: every set that replaces or marks up this one, every paper that goes with it and the part\'s current set still point at it. Its name, kind, source and dates stay.',
+        job_plans_link: isCurrent
+          ? {
+              follows: true,
+              by: 'the database\'s trigger on plan_sets.link (plan_sets_mirror_on_change → plan_part_mirror_job_links)',
+              jobs,
+              more: followers.length >= FOLLOWER_CAP ? `Only the first ${FOLLOWER_CAP} jobs are named; the mirror moves every job naming the part.` : null,
+              words: jobs.length
+                ? `${part.name} builds from this set, so job_plans_link on ${jobs.length === 1 ? 'the 1 job' : `the ${jobs.length} jobs`} naming the part follows by the existing mirror the moment the link lands: each job's Open plans and the trade portal open the new link.`
+                : `${part.name} builds from this set and no job names the part yet; a job that names it later takes the link then.`,
+            }
+          : {
+              follows: false,
+              jobs: [],
+              more: null,
+              words: `${part.name} builds from ${current ? current.name : 'no set yet'}, not from this one, so no job's plans link moves. The set reads with its new link where it sits on the job's Plans section and the site's Plans look.`,
+            },
+        history: 'A link change writes no History line.',
       },
     }
   }
@@ -441,6 +555,8 @@ export type PartWrites = {
   insert: (table: string, row: Json) => Promise<Json>
   update: (table: string, query: string, patch: Json) => Promise<void>
   invoke: (fn: string, body: Json) => Promise<{ ok: boolean; error: string | null }>
+  /** A read after the write, as the dev (0.92.0): a link change reads the row and its jobs back, so the reply says what stands. */
+  rows?: (table: string, query: string) => Promise<Json[]>
 }
 
 /**
@@ -453,6 +569,47 @@ export async function planPartApply(writes: PartWrites, p: PlanPartPayload, repl
     const paper = reply.paper as { id: string; name: string }
     await writes.update('plan_sets', `id=eq.${paper.id}`, { owed: false, link: p.link, came_at: nowIso })
     return { ok: true, action: 'came', paper_id: paper.id, name: paper.name, link: p.link, part_id: part.id, next: `${paper.name} reads under its set on the job's Plans section with its link; the Owed chip is gone.` }
+  }
+  if (p.action === 'change_link') {
+    const set = reply.set as { id: string; name: string; link: string }
+    const follows = reply.job_plans_link as { follows: boolean; jobs: Array<{ id: string; label: string }> }
+    const patch: Json = { link: p.link, file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null }
+    if (p.memo !== undefined) patch.memo = p.memo
+    await writes.update('plan_sets', `id=eq.${set.id}`, patch)
+    // Read back: an update RLS or training mode let through no row answers without an error, and the mirror is the database's.
+    let jobsRead: Array<{ id: string; label: string; follows: boolean }> | null = null
+    if (writes.rows) {
+      const after = (await writes.rows('plan_sets', `select=id,link&id=eq.${set.id}`))[0]
+      if (String(after?.link ?? '') !== p.link) throw new Error(`Nothing changed: ${set.name} did not take the link. The update reached no row — RLS or training mode held it. Its link still reads ${String(after?.link ?? set.link) || '(none)'}.`)
+      if (follows.follows && follows.jobs.length) {
+        const now = await writes.rows('jobs_ledger', `select=id,job_plans_link&plan_part_id=eq.${part.id}&order=created_at&limit=${FOLLOWER_CAP}`)
+        const linkOf = new Map(now.map((r) => [String(r.id), String(r.job_plans_link ?? '')]))
+        jobsRead = follows.jobs.map((j) => ({ id: j.id, label: j.label, follows: linkOf.get(j.id) === p.link }))
+      }
+    }
+    const behind = jobsRead ? jobsRead.filter((j) => !j.follows) : []
+    return {
+      ok: true,
+      action: 'change_link',
+      set_id: set.id,
+      part_id: part.id,
+      part: part.name,
+      name: set.name,
+      link_before: set.link,
+      link: p.link,
+      memo_changed: (reply.memo as { changed: boolean }).changed,
+      builds_from_this_set: follows.follows,
+      jobs: jobsRead,
+      next: !follows.follows
+        ? `${set.name} carries the new link on ${part.name}; the part builds from another set, so no job's plans link moved.`
+        : !follows.jobs.length
+          ? `${set.name} carries the new link and ${part.name} builds from it; no job names the part yet.`
+          : jobsRead === null
+            ? `${set.name} carries the new link; the database's mirror moves job_plans_link on the ${follows.jobs.length} job${follows.jobs.length === 1 ? '' : 's'} naming ${part.name} — get_job reads one back.`
+            : behind.length
+              ? `${set.name} carries the new link, but ${behind.map((j) => j.label).join(', ')} still ${behind.length === 1 ? 'reads' : 'read'} another plans link: the mirror did not reach ${behind.length === 1 ? 'it' : 'them'}. get_job shows the row.`
+              : `${set.name} carries the new link, and job_plans_link on ${jobsRead.length === 1 ? jobsRead[0]!.label : `all ${jobsRead.length} jobs naming ${part.name}`} reads it: Open plans and the trade portal open the new link.`,
+    }
   }
   if (p.action === 'add_set') {
     const set = reply.set as { replaces: { id: string } | null; marks_up: { id: string } | null; job: { id: string } | null }

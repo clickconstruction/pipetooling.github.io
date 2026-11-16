@@ -122,6 +122,7 @@ import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
+import { lienLastWorkAffidavitMonths } from '../../lib/jobs/lienLastWorkDayPreview'
 import LienDeskNextUp from './LienDeskNextUp'
 import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../../lib/jobs/lienDoNowFrame'
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
@@ -637,7 +638,8 @@ export default function LienDesk({
   }, [kind])
   /** ZZ test jobs off the book for every role but a dev who shows them (punch list #61, PR 3). */
   const hideZzTestJobs = useZzTestJobsHidden(authRole)
-  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(bookOpened && data != null, todayYmd, data?.items ?? null, hideZzTestJobs)
+  // v2.7463: the book's read starts with the tab, beside the desk's own, and folds once the desk's items are in hand.
+  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(bookOpened, todayYmd, data?.items ?? null, hideZzTestJobs)
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
   // The print bar's amber press (v2.7209): the list narrowed to the ready papers a gate holds out of the print.
   const [affHeldOnlyPicked, setAffHeldOnlyPicked] = useState(false)
@@ -3263,7 +3265,7 @@ export default function LienDesk({
       <LienDeskMonths
         headless
         grid={monthGrid!}
-        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} propertyKind={selected.propertyKind} />}
+        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} affidavitMonths={lienLastWorkAffidavitMonths(data?.affidavits.entries.find((a) => a.jobId === selected.jobId))} propertyKind={selected.propertyKind} />}
         claimNode={
           <LienClaimBox
             openSignal={claimOpenSignal}
