@@ -56,7 +56,7 @@ import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDa
 import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
 import { lienCodeRefusalWords, lienCodeSignerFrom, lienCodeStatusStale, lienOtherScreen, type LienCodeStatusRead } from '../../lib/jobs/lienCodeSigner'
 import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
-import { LienNoticeSignLine, type LienNoticeSignLineCodeSigner, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
+import { LienNoticeSignLine, type LienNoticeSignLineCodeSigner, type LienNoticeSignLineFrame, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienOriginalContractor, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
@@ -3790,14 +3790,14 @@ export default function LienDesk({
     const offerAmounts = payPage.rows.filter((r) => r.payable).map((r) => r.openAmount)
     const offerProblem = offer ? lienOfferDayProblem(offer.by, todayYmd, affidavitDueOn) : null
     // The notice's own signature line (v2.5082): his name waiting in cursive, or a pad; the press writes the mark and the record.
-    const signLine = (compact = false) => (
-      <LienNoticeSignLine key={`${selected.jobId}:${otherScreen ? 'other' : 'own'}`} ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} codeSigner={codeSigner} codeProblem={codeProblem} disabled={busy} compact={compact} />
+    const signLine = (compact = false, frame?: LienNoticeSignLineFrame) => (
+      <LienNoticeSignLine key={`${selected.jobId}:${otherScreen ? 'other' : 'own'}`} ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} codeSigner={codeSigner} codeProblem={codeProblem} disabled={busy} compact={compact} frame={frame} />
     )
     // The draft's line (v2.7324): his typed name needs no box, so the line is drawn only for the pad or his code, and
     // Sign another way ▾ in the footer is the way between them (the line's own toggle is off). Keyed by the way, so a
     // pick starts the line clean, as the toggle did.
-    const draftSignLine = () => (
-      <LienNoticeSignLine key={`${selected.jobId}:${otherScreen ? 'other' : 'own'}:${draftSignWay}`} ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} codeSigner={codeSigner} codeProblem={codeProblem} disabled={busy} initialMode={draftSignWay} ownToggle={false} onModeChange={setSignWay} />
+    const draftSignLine = (frame?: LienNoticeSignLineFrame) => (
+      <LienNoticeSignLine key={`${selected.jobId}:${otherScreen ? 'other' : 'own'}:${draftSignWay}`} ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} codeSigner={codeSigner} codeProblem={codeProblem} disabled={busy} initialMode={draftSignWay} ownToggle={false} onModeChange={setSignWay} frame={frame} />
     )
     // v2.4745 (the owner's ask): the switch rides in the footer's bottom row; the details open above that row only while it is on.
     const offerBox = (onSave?: () => void, saved?: boolean) => (
@@ -3962,6 +3962,10 @@ export default function LienDesk({
                     : askReason && askReason !== 'no_rule'
                       ? LIEN_ASK_REASON_LABELS[askReason]
                       : `no standing rule for ${gc?.name ?? 'this GC'}`
+      // v2.7386: with a pad or his code on the draft, the line's box holds the footer (the awaiting footer's shape, v2.7382); his typed name still needs no box.
+      const draftBoxed = leader && !blocked && draftSignWay !== 'type' && foot.primary?.key === 'approve'
+      const draftApprove = () => run('Sign and approve', async () => { const id = await ensureDraft(); await setLienDeskItemOffer(id, offer); await signItem(id, draftFields(), true) }, offer ? `Signed and approved with a ${offer.pct}% offer — it is in the run.` : 'Signed and approved — it is in the run.')
+      const draftSavedWords = draftSave !== 'idle' ? <span className="lienFootWhy" data-lien-desk-saved={draftSave}> · {draftSave === 'saving' ? 'Saving…' : '✓ Saved'}</span> : null
       footer = (
         <>
           {byHandPane ? (
@@ -3988,7 +3992,7 @@ export default function LienDesk({
           ) : (
             <>
             {leader && !blocked ? offerBox() : null}
-            {leader && !blocked && draftSignWay !== 'type' ? draftSignLine() : null}
+            {leader && !blocked && draftSignWay !== 'type' && !draftBoxed ? draftSignLine() : null}
             {selected.sentItem && first ? (
               // The notice that went (v2.6624, punch list #248): its day, letter two's clock and its two doors ride above the draft row, so the next months draft while the reminders stay one press away.
               <div className="lienFootRow" data-lien-desk-sent-doors style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -4002,11 +4006,46 @@ export default function LienDesk({
                 {letterTwoDoor}
               </div>
             ) : null}
+            {draftBoxed ? (
+              <div data-lien-desk-next data-blocked="no">
+                {draftSignLine({
+                  call: (
+                    <>
+                      <span aria-hidden="true">→</span> {stateWhy ? stateWords.replace(/\.$/, '') : stateWords}
+                    </>
+                  ),
+                  note: (
+                    <>
+                      {stateWhy ? <span className="lienFootWhy"> · {stateWhy}</span> : null}
+                      {draftSavedWords}
+                    </>
+                  ),
+                  press: (
+                    <button type="button" className="lienSignFramePress" onClick={draftApprove} disabled={busy || Boolean(offerProblem)} title={foot.primary?.line} data-lien-desk-approve>
+                      {foot.primary?.label}
+                    </button>
+                  ),
+                  strip: (
+                    <>
+                      {foot.menus.map((m) => (
+                        <LienFootMenu key={m.key} menu={m} disabled={busy} style={btn('plain', busy)} onPick={pickDoor} />
+                      ))}
+                      <span className="lienSignFramePush">
+                        {offerSwitch()}
+                        {foot.links.includes('by_hand') && monthsList.length > 0 ? (
+                          <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={busy} data-lien-desk-by-hand title="The paper was printed here and went out by hand — record when, how, what it claimed, and which jobs at the property it covered">Already mailed? Record it ›</button>
+                        ) : null}
+                      </span>
+                    </>
+                  ),
+                })}
+              </div>
+            ) : (
             <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
               <span className="lienFootState">
                 <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWhy ? stateWords.replace(/\.$/, '') : stateWords}
                 {stateWhy ? <span className="lienFootWhy"> · {stateWhy}</span> : null}
-                {draftSave !== 'idle' ? <span className="lienFootWhy" data-lien-desk-saved={draftSave}> · {draftSave === 'saving' ? 'Saving…' : '✓ Saved'}</span> : null}
+                {draftSavedWords}
               </span>
               <span className="lienFootSpacer" />
               {leader && !blocked ? offerSwitch() : null}
@@ -4024,7 +4063,7 @@ export default function LienDesk({
                     {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
                   </button>
                 ) : foot.primary?.key === 'approve' ? (
-                  <button type="button" onClick={() => run('Sign and approve', async () => { const id = await ensureDraft(); await setLienDeskItemOffer(id, offer); await signItem(id, draftFields(), true) }, offer ? `Signed and approved with a ${offer.pct}% offer — it is in the run.` : 'Signed and approved — it is in the run.')} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))} title={foot.primary.line} data-lien-desk-approve>
+                  <button type="button" onClick={draftApprove} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))} title={foot.primary.line} data-lien-desk-approve>
                     {foot.primary.label}
                   </button>
                 ) : (
@@ -4034,6 +4073,7 @@ export default function LienDesk({
                 )}
               </div>
             </div>
+            )}
             </>
           )}
         </>
@@ -4069,19 +4109,31 @@ export default function LienDesk({
           ) : (
             <>
             {offerBox()}
-            {signLine()}
-            <div className="lienFootRow" data-lien-desk-next data-blocked="no">
-              <span className="lienFootState">
-                <span aria-hidden="true">→</span> Your call on {monthsWord}
-                {rulePick ? <span className="lienFootWhy"> · keeps the rule “{LIEN_NOTICE_POLICIES.find((p) => p.key === rulePick)?.label}”</span> : null}
-              </span>
-              <span className="lienFootSpacer" />
-              {offerSwitch()}
-              <button type="button" onClick={() => setHoldOpen('promised')} disabled={busy} style={btn('plain', busy)}>Hold — they promised…</button>
-              <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
-              <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
-              <button type="button" onClick={() => setByHandOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of approving"><span className="lienByHandWords">Already mailed?{' '}<br />Record it…</span></button>
-              <button type="button" onClick={approve} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>Sign and approve &amp; next ▸</button>
+            {/* v2.7382 (Taunya's ask): one box. The paper on the left, the call and the one press beside it with the code, the other ways out as a quiet strip. */}
+            <div data-lien-desk-next data-blocked="no">
+              {signLine(false, {
+                call: (
+                  <>
+                    <span aria-hidden="true">→</span> Your call on {monthsWord}
+                  </>
+                ),
+                note: rulePick ? <span className="lienFootWhy"> · keeps the rule “{LIEN_NOTICE_POLICIES.find((p) => p.key === rulePick)?.label}”</span> : null,
+                press: (
+                  <button type="button" className="lienSignFramePress" onClick={approve} disabled={busy || Boolean(offerProblem)}>Sign and approve &amp; next ▸</button>
+                ),
+                strip: (
+                  <>
+                    <span className="lienSignFrameLead">Not yet</span>
+                    <button type="button" className="lienFootLink" onClick={() => setHoldOpen('promised')} disabled={busy}>Hold — they promised…</button>
+                    <button type="button" className="lienFootLink" onClick={() => setHoldOpen('call_first')} disabled={busy}>Hold — I'll call first</button>
+                    <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy}>Back to the office</button>
+                    <span className="lienSignFramePush">
+                      {offerSwitch()}
+                      <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of approving">Already mailed? Record it ›</button>
+                    </span>
+                  </>
+                ),
+              })}
             </div>
             </>
           )}
@@ -4108,12 +4160,18 @@ export default function LienDesk({
         <>
         {otherScreen && office ? (
           // v2.5791: the master signs on the office's screen with his code or his hand; the spoken word stays the other door.
-          <div data-lien-desk-office-sign style={{ display: 'grid', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            {signLine()}
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)} data-lien-desk-office-sign-press>Sign and approve ▸</button>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>His code or his hand here. The record names your screen.</span>
-            </div>
+          <div data-lien-desk-office-sign style={{ marginBottom: '0.5rem' }}>
+            {signLine(false, {
+              call: (
+                <>
+                  <span aria-hidden="true">→</span> His code or his hand here
+                </>
+              ),
+              note: <span className="lienFootWhy"> · The record names your screen.</span>,
+              press: (
+                <button type="button" className="lienSignFramePress" onClick={approve} disabled={busy} data-lien-desk-office-sign-press>Sign and approve ▸</button>
+              ),
+            })}
           </div>
         ) : null}
         <div className="lienFootRow" data-lien-desk-foot="awaiting">
@@ -4150,11 +4208,51 @@ export default function LienDesk({
       // The pen train, PR 3, and the code (v2.5791): a signature placed for him — by the office's pen record, or by his own code on someone else's screen — waits on his word; nothing blocks on it.
       const penAwaits = readySigned && readySigned !== 'unsigned' && (readySigned.mode === 'pen' || readySigned.mode === 'code') && !readySigned.confirmedAt
       const codeAwaits = Boolean(penAwaits && readySigned && typeof readySigned === 'object' && readySigned.mode === 'code')
+      // v2.7386: an unsigned ready notice's line is the footer's box; Sign ▸ sits beside the code and the row is the box's strip.
+      const readyBoxed = (leader || (office && otherScreen)) && readySigned === 'unsigned'
+      const readyRow = (
+        <div className="lienFootRow" data-lien-desk-foot="ready">
+          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)), readySigned)} data-lien-desk-ready-words />
+          {leader && selected.item?.approval_mode === 'word' ? (
+            <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
+          ) : null}
+          <span className="lienFootSpacer" />
+          {leader ? offerSwitch() : null}
+          {office && readySigned === 'unsigned' ? (
+            <button type="button" className="lienFootLink" onClick={() => setPenOpen(true)} disabled={busy} data-lien-desk-pen title="He signed the printed paper with a pen: write down who, when, how you know, and add the signed page">
+              He signed the paper ›
+            </button>
+          ) : null}
+          <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of sending the run">
+            Already mailed? Record it ›
+          </button>
+          <button type="button" className="lienFootLink" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} title="One notice on its own: print or email it and record the sends in the Lien window">
+            Just this one ›
+          </button>
+          <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="Every approved notice as one packet and one tracking form">
+            Send the run · {runCount} ▸
+          </button>
+        </div>
+      )
       footer = byHandPane ?? penPane ?? (
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
         {/* v2.6733 (punch list #150): the office's Ready footer carries the master's line too — his code or his hand on this screen, beside the pen record. */}
-        {(leader || (office && otherScreen)) && readySigned === 'unsigned' ? signLine() : null}
+        {readyBoxed
+          ? signLine(false, {
+              call: (
+                <>
+                  <span aria-hidden="true">→</span> {otherScreen ? `${codeSigner?.firstName ?? 'The leader'}’s signature` : 'Your signature'} on {monthsWord}
+                </>
+              ),
+              press: leader ? (
+                <button type="button" className="lienSignFramePress" onClick={signOnly} disabled={busy} data-lien-desk-sign title={otherScreen ? `Approved on his word; ${codeSigner?.firstName ?? 'the leader'} signs here with his code or his hand, and the record names your screen` : 'Approved on your word; your signature goes on the paper'}>Sign ▸</button>
+              ) : (
+                <button type="button" className="lienSignFramePress" onClick={signOnly} disabled={busy} data-lien-desk-office-sign-press title="His code or his hand here. The record names your screen">Sign ▸</button>
+              ),
+              strip: readyRow,
+            })
+          : null}
         {leader && !otherScreen && penAwaits && selected.item ? (
           // The pen train, PR 3: the office wrote down his pen signature; his word strengthens the record, his No clears it.
           // v2.6734: his word alone — on another master's job the group is not drawn, since the guard takes a confirm only from the signer's own sign-in.
@@ -4174,33 +4272,7 @@ export default function LienDesk({
             <button type="button" className="lienFootLink" onClick={() => run(codeAwaits ? 'Disown the code signature' : 'Disown the pen signature', () => disownLienPenSignature(selected.item!.id), 'Cleared — the notice is unsigned again and the run holds it.')} disabled={busy} data-lien-desk-pen-no title="The record is wrong: it clears, the approval stands, and the run holds the notice until it is signed again">{codeAwaits ? 'Not me' : 'Not what I signed'}</button>
           </div>
         ) : null}
-        <div className="lienFootRow" data-lien-desk-foot="ready">
-          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)), readySigned)} data-lien-desk-ready-words />
-          {leader && selected.item?.approval_mode === 'word' ? (
-            <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
-          ) : null}
-          <span className="lienFootSpacer" />
-          {leader ? offerSwitch() : null}
-          {leader && readySigned === 'unsigned' ? (
-            <button type="button" onClick={signOnly} disabled={busy} style={btn('green', busy)} data-lien-desk-sign title={otherScreen ? `Approved on his word; ${codeSigner?.firstName ?? 'the leader'} signs here with his code or his hand, and the record names your screen` : 'Approved on your word; your signature goes on the paper'}>Sign ▸</button>
-          ) : !leader && office && otherScreen && readySigned === 'unsigned' ? (
-            <button type="button" onClick={signOnly} disabled={busy} style={btn('green', busy)} data-lien-desk-office-sign-press title="His code or his hand here. The record names your screen">Sign ▸</button>
-          ) : null}
-          {office && readySigned === 'unsigned' ? (
-            <button type="button" className="lienFootLink" onClick={() => setPenOpen(true)} disabled={busy} data-lien-desk-pen title="He signed the printed paper with a pen: write down who, when, how you know, and add the signed page">
-              He signed the paper ›
-            </button>
-          ) : null}
-          <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of sending the run">
-            Already mailed? Record it ›
-          </button>
-          <button type="button" className="lienFootLink" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} title="One notice on its own: print or email it and record the sends in the Lien window">
-            Just this one ›
-          </button>
-          <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="Every approved notice as one packet and one tracking form">
-            Send the run · {runCount} ▸
-          </button>
-        </div>
+        {readyBoxed ? null : readyRow}
         </>
       )
     } else if (state === 'printed') {
@@ -4222,9 +4294,7 @@ export default function LienDesk({
         </div>
       )
     } else if (state === 'held') {
-      footer = byHandPane ?? (
-        <>
-        {leader ? signLine() : null}
+      const heldRow = (
         <div className="lienFootRow" data-lien-desk-foot="held">
           <FootChip chip={heldChip(selected.item, gc?.name)} data-lien-desk-held-words />
           {monthsList[0] ? <span className="lienFootRed">{`${workMonthLabel(monthsList[0])}'s lien right ends ${selected.earliestDeadline ? demandDate(selected.earliestDeadline) : ''}.`}</span> : null}
@@ -4235,12 +4305,28 @@ export default function LienDesk({
           {leader ? (
             <>
               <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy || !office}>Back to draft</button>
-              <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold, sign and approve ▸</button>
             </>
           ) : (
             <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Back to draft</button>
           )}
         </div>
+      )
+      footer = byHandPane ?? (
+        <>
+        {/* v2.7386: his line is the footer's box. The press that releases the hold sits beside the code and the row is the box's strip. */}
+        {leader
+          ? signLine(false, {
+              call: (
+                <>
+                  <span aria-hidden="true">→</span> Your call on {monthsWord}
+                </>
+              ),
+              press: (
+                <button type="button" className="lienSignFramePress" onClick={approve} disabled={busy}>Release the hold, sign and approve ▸</button>
+              ),
+              strip: heldRow,
+            })
+          : heldRow}
         </>
       )
     } else if (state === 'sent') {

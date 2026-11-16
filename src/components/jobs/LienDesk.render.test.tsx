@@ -1318,6 +1318,12 @@ describe('LienDesk', () => {
     // footer's bottom row and the box opens above that row only once it is on.
     expect(screen.queryByTestId('lien-offer-box')).toBeNull()
     expect(screen.getByTestId('lien-offer-switch').closest('[data-lien-desk-next]')).toBeTruthy()
+    // v2.7382 (Taunya's ask): the footer is one box. The call, the press and the other ways out sit inside the signature's box.
+    const box = screen.getByTestId('lien-sign-line')
+    expect(box.hasAttribute('data-lien-sign-frame')).toBe(true)
+    expect((box.querySelector('.lienSignFrameCall') as HTMLElement).textContent).toContain('Your call on')
+    expect(box.contains(screen.getByRole('button', { name: /Sign and approve & next/ }))).toBe(true)
+    expect((box.querySelector('.lienSignFrameStrip') as HTMLElement).textContent).toBe("Not yetHold — they promised…Hold — I'll call firstBack to the officeOffer a discountAlready mailed? Record it ›")
     fireEvent.click(screen.getByTestId('lien-offer-switch'))
     expect(screen.getByTestId('lien-offer-box').closest('[data-lien-desk-next]')).toBeNull()
     expect(screen.getByTestId('lien-offer-box').getAttribute('data-on')).toBe('yes')
@@ -3095,6 +3101,11 @@ describe('LienDesk · one press per draft footer (v2.7324)', () => {
     // The line's own toggle is off: the menu is the way between the ways.
     expect(screen.queryByTestId('lien-sign-line-toggle')).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Your signature on the line goes on it, and it goes in the run')
+    // v2.7386: with the pad, the line's box holds the footer. The press sits beside the paper and the menu in the box's strip.
+    const draftBox = screen.getByTestId('lien-sign-line')
+    expect(draftBox.hasAttribute('data-lien-sign-frame')).toBe(true)
+    expect(draftBox.contains(document.querySelector('[data-lien-desk-approve]'))).toBe(true)
+    expect((draftBox.querySelector('.lienSignFrameStrip') as HTMLElement).contains(screen.getByRole('button', { name: 'Sign another way ▾' }))).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Sign another way ▾' }))
     expect(screen.getAllByRole('menuitem').map((r) => r.querySelector('strong')?.textContent)).toEqual(['Type my name'])
     fireEvent.click(screen.getByRole('menuitem', { name: /Type my name/ }))
@@ -3990,6 +4001,12 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     expect(document.querySelector('[data-lien-sign-code-words]')!.textContent).toBe('Malachi has not set a signing code yet. He sets it under Settings, Your account. He can draw here instead.')
     expect(screen.queryByTestId('lien-sign-line-toggle')).toBeNull()
     expect(document.querySelector('[data-lien-desk-office-sign-press]')).toBeTruthy()
+    // v2.7386: the line is a box with the office's press inside it; the awaiting row stays under the box.
+    const officeBox = screen.getByTestId('lien-sign-line')
+    expect((officeBox.querySelector('.lienSignFrameCallTitle') as HTMLElement).textContent).toBe('→ His code or his hand here')
+    expect((officeBox.querySelector('.lienSignFrameCallNote') as HTMLElement).textContent).toContain(' · The record names your screen.')
+    expect(officeBox.contains(document.querySelector('[data-lien-desk-office-sign-press]'))).toBe(true)
+    expect(officeBox.contains(document.querySelector('[data-lien-desk-foot="awaiting"]'))).toBe(false)
     // The spoken word is still a door.
     expect(screen.getByRole('button', { name: /Leader here, Approve/ })).toBeTruthy()
     codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
@@ -4010,14 +4027,36 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     expect(foot).toBeTruthy()
     await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
     expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi Whites')
-    expect(foot.querySelector('[data-lien-desk-sign]')).toBeNull()
+    // v2.7386: the line is the footer's box. Sign ▸ sits beside the code and the Ready row is the box's strip.
+    const box = screen.getByTestId('lien-sign-line')
+    expect((box.querySelector('.lienSignFrameStrip') as HTMLElement).contains(foot)).toBe(true)
+    expect((box.querySelector('.lienSignFrameCallTitle') as HTMLElement).textContent).toBe('→ Malachi’s signature on June 2026')
+    expect(box.querySelector('[data-lien-desk-sign]')).toBeNull()
     expect(foot.querySelector('[data-lien-desk-pen]')).toBeTruthy()
-    const press = foot.querySelector('[data-lien-desk-office-sign-press]') as HTMLButtonElement
+    const press = box.querySelector('[data-lien-desk-office-sign-press]') as HTMLButtonElement
+    expect(foot.contains(press)).toBe(false)
     expect(press.textContent).toBe('Sign ▸')
     fireEvent.change(screen.getByLabelText('Malachi’s signing code'), { target: { value: '1357' } })
     fireEvent.click(press)
     await waitFor(() => expect(codeState.signs).toHaveLength(1))
     expect(codeState.signs[0]).toMatchObject({ itemId: 'it1', signerUserId: 'u-malachi', code: '1357', approve: false })
+  })
+
+  it('a held notice on the master’s own sign-in (v2.7386): his line is the footer’s box, the release press sits inside it and the held row is its strip', async () => {
+    const heldItem = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'held', hold_reason: 'call_first', hold_until: '2026-12-01', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '',
+    } as unknown as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650, [heldItem], true)} initialPile="held" />)
+    await settle()
+    const box = screen.getByTestId('lien-sign-line')
+    expect(box.hasAttribute('data-lien-sign-frame')).toBe(true)
+    expect((box.querySelector('.lienSignFrameCallTitle') as HTMLElement).textContent).toBe('→ Your call on June 2026')
+    expect(box.contains(screen.getByRole('button', { name: /Release the hold, sign and approve/ }))).toBe(true)
+    const row = document.querySelector('[data-lien-desk-foot="held"]') as HTMLElement
+    expect((box.querySelector('.lienSignFrameStrip') as HTMLElement).contains(row)).toBe(true)
+    expect(row.querySelector('[data-lien-desk-held-words]')).toBeTruthy()
+    expect(within(row).getByRole('button', { name: 'Back to draft' })).toBeTruthy()
+    expect(within(row).queryByRole('button', { name: /Release the hold/ })).toBeNull()
   })
 
   it('a dev on another master’s job reads To do as the office does (v2.6734): the row waits on Malachi, out of his count, and his code signature’s confirm group is not drawn on the dev’s Ready footer', async () => {
