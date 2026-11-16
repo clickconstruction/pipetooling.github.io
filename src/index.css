@@ -4651,12 +4651,15 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienSignFrameHint { font-size: 0.78rem; line-height: 1.35; color: var(--text-muted); }
 .lienSignFrameStrip { margin: 12px -14px 0; padding: 5px 14px 6px; border-top: 1px solid color-mix(in srgb, #2563eb 45%, transparent); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 18px; font-size: 0.8125rem; }
 .lienSignFrameStrip .lienFootLink { padding-left: 0; padding-right: 0; }
+/* v2.7386: a footer that keeps its own row (the Ready and held footers) hands it over whole as the strip. */
+.lienSignFrameStrip > .lienFootRow { flex: 1 1 100%; min-width: 0; justify-content: flex-end; }
 .lienSignFrameLead { color: var(--text-muted); }
 .lienSignFramePush { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 18px; }
 @container lien-sign-frame (min-width: 380px) {
   .lienSignFrameActRow { flex-direction: row; align-items: flex-end; gap: 12px; }
   .lienSignFrameCode { flex-direction: column; align-items: flex-start; gap: 3px; font-size: 0.75rem; }
-  .lienSignFramePress { min-height: 0; height: 36px; padding: 0 16px; font-size: 0.875rem; white-space: nowrap; }
+  /* One line where it fits; a long press (Release the hold, sign and approve ▸) takes two beside the code. */
+  .lienSignFramePress { min-height: 36px; padding: 3px 16px; font-size: 0.875rem; text-wrap: balance; }
 }
 @container lien-sign-frame (min-width: 580px) {
   .lienSignFrameGrid { grid-template-columns: minmax(0, 1fr) 320px; grid-template-areas: 'call call' 'paper act'; }
