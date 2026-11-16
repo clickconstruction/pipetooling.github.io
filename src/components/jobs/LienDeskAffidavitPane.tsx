@@ -30,7 +30,7 @@ import { holdUntilFor, isLienLeader, isLienOffice, monthFromBill, monthIsStandIn
 import { lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
 import { LIEN_MONTH_FLAG_DOOR_WORDS, LIEN_MONTH_CHECK_CANCEL_WORDS, LIEN_MONTH_CHECK_CHANGE_WORDS, LIEN_MONTH_CHECK_NOTE_HINT, LIEN_MONTH_CHECK_SAVES_WORDS, LIEN_MONTH_SET_LAST_DAY_WORDS, lienMonthAskWords, lienMonthCheckProblem, lienMonthCheckState, lienMonthCheckedRowWords, lienMonthCheckedWords, lienMonthConfirmWords, lienMonthName, lienMonthQuestion, lienMonthYesWords, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
 import { saveLienMonthCheck } from '../../lib/jobs/lienMonthCheckIo'
-import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
+import { lienAffidavitGateHeld, lienAffidavitHoldingGate, type LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, LIEN_DRAFT_AUTOSAVE_MS, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitToldWords } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
@@ -408,6 +408,8 @@ export default function LienDeskAffidavitPane({
       'Redrawn on the short form. It is back in To send for Master approval and needs approval again.',
     )
 
+  // A paper in Held because a gate closed after its approval (punch list #335), not because the leader held it.
+  const gateHeld = lienAffidavitGateHeld(entry)
   // The door on the contractor's-address gate (punch list #305): the GC's own customer record.
   const contractorGcId = entry.gcCustomerId
   const contractorDoor = onFixContractor && contractorGcId ? () => onFixContractor(contractorGcId) : null
@@ -425,6 +427,8 @@ export default function LienDeskAffidavitPane({
     if (timeline.next.kind === 'retainage') return { kind: 'footer', label: 'Open it on Retainage notices ›' }
     if (timeline.next.kind !== 'affidavit') return { kind: 'footer', label: 'Open it on Monthly notices ›' }
     const waitOnLeader: LienNextAct = { kind: 'none', waiting: null, words: `Waiting on ${leaderName || 'the leader'}` }
+    // Held by a gate after its approval (punch list #335): the kernel's own act stands, since nothing here is the leader's to release.
+    if (gateHeld) return kernel
     switch (entry.pile) {
       case 'to_draft':
         return leader ? { kind: 'footer', label: press.approve.replace(/ ▸$/, ' ›') } : office ? kernel : waitOnLeader
@@ -465,6 +469,7 @@ export default function LienDeskAffidavitPane({
         if (busy) return bringLienFooterUp(footerEl)
         if ((entry.pile === 'to_draft' || entry.pile === 'needs_property') && entry.ready) return leader ? approve() : office ? submit() : bringLienFooterUp(footerEl)
         if (entry.pile === 'awaiting' && leader) return approve()
+        if (gateHeld) return bringLienFooterUp(footerEl)
         if (entry.pile === 'held') return leader ? approve() : office ? pullBack() : bringLienFooterUp(footerEl)
         if (entry.pile === 'ready' && office) return onOpenLienAffidavit(entry.jobId)
         return bringLienFooterUp(footerEl)
@@ -571,6 +576,32 @@ export default function LienDeskAffidavitPane({
         {leader && item?.approval_mode === 'word' ? <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Not what I said</button> : null}
         <span style={{ flex: 1 }} />
         <button type="button" onClick={() => onOpenLienAffidavit(entry.jobId)} disabled={!office} style={btn('primary', !office)}>Open the affidavit tab ›</button>
+      </div>
+    )
+  } else if (entry.pile === 'held' && gateHeld) {
+    // Held by a gate that closed after the approval (punch list #335, the owner's calls of 2026-11-14 and 2026-11-16): the
+    // gate's reason and its door. Nothing is the leader's to release, and his approval stands once the gate is answered.
+    const gate = lienAffidavitHoldingGate(entry)
+    const why = lienAffidavitFootBlockedSentence(gate).replace(/^Don't file yet\.\s*/, '')
+    const fix = (focus: 'owner' | 'legal' | 'homestead_answer') => (onFixProperty ? onFixProperty(entry.jobId, focus) : onOpenEditJob(entry.jobId))
+    const door: { label: string; onPress: () => void } | null =
+      gate?.key === 'owner' || gate?.key === 'legal'
+        ? { label: 'Fix the property record ›', onPress: () => fix(gate.key === 'owner' ? 'owner' : 'legal') }
+        : gate?.key === 'homestead_answer'
+          ? { label: HOMESTEAD_QUESTION_DOOR, onPress: () => fix('homestead_answer') }
+          : gate?.key === 'notice'
+            ? { label: 'Open it on Monthly notices ›', onPress: () => onShowNotices(entry.jobId) }
+            : gate?.key === 'contractor' && contractorDoor
+              ? { label: 'Add the address ›', onPress: contractorDoor }
+              : null
+    footer = (
+      <div data-lien-affidavit-gate-held={gate?.key ?? ''} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+        <span>
+          Approved, and held. {why} Once that is answered the paper goes back to Ready to file by itself, and the approval stands. {forfeit}
+        </span>
+        <span style={{ flex: 1 }} />
+        {leader && item?.approval_mode === 'word' ? <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Not what I said</button> : null}
+        {door ? <button type="button" onClick={door.onPress} disabled={!office} style={btn('primary', !office)} data-lien-affidavit-gate-door>{door.label}</button> : null}
       </div>
     )
   } else if (entry.pile === 'held') {

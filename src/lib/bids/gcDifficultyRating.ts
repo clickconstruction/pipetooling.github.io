@@ -95,6 +95,8 @@ export const GC_DIFFICULTY_WORDS = {
   byHandLabel: 'Why the bills do not tell it',
   byHandUse: 'Use this',
   byHandClear: 'Read from the bills again',
+  /** The same press for someone who cannot read the bills: back to the point the rating holds. */
+  byHandBack: 'Take it back',
   byHandNoReason: 'Say why. A point set by hand needs a reason.',
   noNote: 'Say what happened. A rating with no reason is the problem this card fixes.',
   noPick: 'Pick at least one sentence.',
@@ -199,4 +201,15 @@ export function gcDifficultyStoredBillsPick(standing: GcDifficultyStanding | nul
   const points = standing?.rating.picks[key]
   if (points == null) return null
   return { points, reason: standing?.rating.pickReasons[key] ?? '' }
+}
+
+/**
+ * The stored bills pick a save may keep when the bills cannot be read here (v2.7468): only while the published version
+ * still has that scale and that rung, the carry-over rule. A point the version no longer has is not kept, so the
+ * card never says it keeps what the save would drop.
+ */
+export function gcDifficultyKeepableBillsPick(standing: GcDifficultyStanding | null, key: string, body: DifficultyCriteriaBody | null): { points: number; reason: string } | null {
+  const stored = gcDifficultyStoredBillsPick(standing, key)
+  const scale = body ? difficultyScale(body, key) : null
+  return stored && scale && difficultyScaleHasPoints(scale, stored.points) ? stored : null
 }

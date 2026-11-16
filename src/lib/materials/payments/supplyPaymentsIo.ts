@@ -1,0 +1,138 @@
+/**
+ * Supply house payments: the reads and the one write the screens make.
+ *
+ * A house may hold thousands of bills paid before payments were rows, each with one payment "from before" that says
+ * nothing a row did not already say. So a house's read leaves those out and takes two small sets:
+ *   - every payment that is not from before, with its lines (what the paid rows name, what waits on account, how
+ *     the house was paid last);
+ *   - every line on a bill that is still open, with its payment (what a part-paid bill has had put on it, whatever
+ *     made the line).
+ *
+ * The screens take a `SupplyPaymentsIo`, so a test hands them a fake.
+ */
+
+import { supabase } from '../../supabase'
+import { withSupabaseRetry } from '../../../utils/errorHandling'
+import type { SupplyPayment, SupplyPaymentLine } from './supplyPayment'
+
+export type HousePayments = { payments: SupplyPayment[]; lines: SupplyPaymentLine[] }
+
+export type RecordSupplyPaymentInput = {
+  supplyHouseId: string
+  paidOn: string
+  amount: number
+  lines: { invoice_id: string; amount: number }[]
+  fromAccount: { payment_id: string; invoice_id: string; amount: number }[]
+  keepOnAccount: boolean
+  method: string | null
+  methodRef: string | null
+  receiptLink: string | null
+  memo: string | null
+}
+
+export type RecordSupplyPaymentResult = { payment_id: string | null; lines: number; placed: number; on_account: number; placed_from_account: number }
+
+export interface SupplyPaymentsIo {
+  loadHouse(supplyHouseId: string): Promise<HousePayments>
+  record(input: RecordSupplyPaymentInput): Promise<RecordSupplyPaymentResult>
+  /** Takes a payment off the books: it counts for nothing and its bills are read again. */
+  remove(paymentId: string, by: { id: string | null; name: string | null }, reason: string | null): Promise<void>
+}
+
+const PAYMENT_COLUMNS = 'id, supply_house_id, paid_on, amount, method, method_ref, receipt_link, memo, source, removed_at, created_by_name'
+const PAGE = 1000
+
+type PaymentRow = Omit<SupplyPayment, 'amount'> & { amount: number | string }
+type LineRow = { id: string; payment_id: string; invoice_id: string; amount: number | string }
+
+const paymentOf = (r: PaymentRow): SupplyPayment => ({ ...r, amount: Number(r.amount) })
+const lineOf = (r: LineRow): SupplyPaymentLine => ({ id: r.id, payment_id: r.payment_id, invoice_id: r.invoice_id, amount: Number(r.amount) })
+
+/** Every page of a read, so a busy house is never cut at the API's row cap. */
+async function everyPage<T>(label: string, page: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T[]> {
+  const out: T[] = []
+  for (let from = 0; ; from += PAGE) {
+    const rows = ((await withSupabaseRetry(() => page(from, from + PAGE - 1) as never, label)) ?? []) as T[]
+    out.push(...rows)
+    if (rows.length < PAGE) return out
+  }
+}
+
+/** Two reads folded into one set, each payment and each line once. */
+export function foldHousePayments(typed: ReadonlyArray<PaymentRow & { supply_house_payment_lines?: LineRow[] | null }>, openLines: ReadonlyArray<LineRow & { supply_house_payments?: PaymentRow | null }>): HousePayments {
+  const payments = new Map<string, SupplyPayment>()
+  const lines = new Map<string, SupplyPaymentLine>()
+  for (const p of typed) {
+    const { supply_house_payment_lines: own, ...row } = p
+    payments.set(row.id, paymentOf(row))
+    for (const l of own ?? []) lines.set(l.id, lineOf(l))
+  }
+  for (const l of openLines) {
+    lines.set(l.id, lineOf(l))
+    if (l.supply_house_payments && !payments.has(l.supply_house_payments.id)) payments.set(l.supply_house_payments.id, paymentOf(l.supply_house_payments))
+  }
+  return { payments: [...payments.values()], lines: [...lines.values()] }
+}
+
+export const supabaseSupplyPaymentsIo: SupplyPaymentsIo = {
+  async loadHouse(supplyHouseId) {
+    // The two tables are not in the generated types until the regeneration after the push.
+    const [typed, openLines] = await Promise.all([
+      everyPage<PaymentRow & { supply_house_payment_lines?: LineRow[] | null }>('read the supply house payments', (from, to) =>
+        supabase
+          .from('supply_house_payments' as never)
+          .select(`${PAYMENT_COLUMNS}, supply_house_payment_lines(id, payment_id, invoice_id, amount)`)
+          .eq('supply_house_id', supplyHouseId)
+          .or('source.neq.before,method.not.is.null')
+          .order('paid_on', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      ),
+      everyPage<LineRow & { supply_house_payments?: PaymentRow | null }>('read what is on the open bills', (from, to) =>
+        supabase
+          .from('supply_house_payment_lines' as never)
+          .select(`id, payment_id, invoice_id, amount, supply_house_payments(${PAYMENT_COLUMNS}), supply_house_invoices!inner(supply_house_id, is_paid)`)
+          .eq('supply_house_invoices.supply_house_id', supplyHouseId)
+          .eq('supply_house_invoices.is_paid', false)
+          .order('id', { ascending: true })
+          .range(from, to),
+      ),
+    ])
+    return foldHousePayments(typed, openLines)
+  },
+
+  async record(input) {
+    const data = await withSupabaseRetry(
+      () =>
+        supabase.rpc('record_supply_house_payment' as never, {
+          p_supply_house_id: input.supplyHouseId,
+          p_paid_on: input.paidOn,
+          p_amount: input.amount,
+          p_lines: input.lines,
+          p_method: input.method,
+          p_method_ref: input.methodRef,
+          p_receipt_link: input.receiptLink,
+          p_memo: input.memo,
+          p_keep_on_account: input.keepOnAccount,
+          p_from_account: input.fromAccount,
+        } as never) as never,
+      'record the payment',
+      // A payment is not asked for twice: a lost reply must not send the same money to the books again.
+      { maxRetries: 0 },
+    )
+    return data as RecordSupplyPaymentResult
+  },
+
+  async remove(paymentId, by, reason) {
+    await withSupabaseRetry(
+      () =>
+        supabase
+          .from('supply_house_payments' as never)
+          .update({ removed_at: new Date().toISOString(), removed_by: by.id, removed_by_name: by.name, removed_reason: reason } as never)
+          .eq('id', paymentId)
+          .is('removed_at', null)
+          .select('id') as never,
+      'remove the payment',
+    )
+  },
+}

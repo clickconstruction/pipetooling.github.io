@@ -50,7 +50,7 @@ describe('AgingCellDoors', () => {
   it('a house-scoped modal makes a payment; the credits cell and the footer row do not', () => {
     const onMakePayment = vi.fn()
     render(<AgingMakePaymentDoor doors={agingCellModalDoors('h1', 'past60_90')} busy={false} onMakePayment={onMakePayment} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Make a payment ›' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Record a payment ›' }))
     expect(onMakePayment).toHaveBeenCalledTimes(1)
     cleanup()
     const credits = render(<AgingMakePaymentDoor doors={agingCellModalDoors('h1', 'credits')} busy={false} onMakePayment={vi.fn()} />)
