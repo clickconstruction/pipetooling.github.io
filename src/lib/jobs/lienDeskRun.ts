@@ -523,11 +523,18 @@ export function runPacketHtml(
   payPagesByJob?: RunPayPages,
   /** The code on the first page that opens the run's guide (punch list #314), as the caller draws it; absent, the page prints none. */
   guideCode?: string,
+  /**
+   * Envelopes that stay out of this packet (v2.7477): the run window prints the ready notices alone, and hands in the
+   * envelopes of the ones it stopped, each with its reason, so the sheet still lists in red what did not print.
+   */
+  alsoHeld?: ReadonlyArray<{ env: RunEnvelope; why: string }>,
 ): string {
   // The run on paper (v2.4971): the checklist sheet, then for each envelope that goes out its divider and
   // its copies, every page with its foot. A held envelope — no mailing address, nothing to claim — prints
   // nothing; the sheet lists it in red with the reason.
-  const mailing = runMailing(runEnvelopes(notices))
+  const own = runMailing(runEnvelopes(notices))
+  const held = [...own.held, ...(alsoHeld ?? [])].map((h, i) => ({ env: { ...h.env, n: own.mailed.length + i + 1 }, why: h.why }))
+  const mailing = { mailed: own.mailed, held, all: [...own.mailed, ...held.map((h) => h.env)] }
   const copyPages = (env: RunEnvelope) => env.contents.flatMap(({ notice: n, recipient: r }) => runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((pg) => ({ n, r, pg })))
   const pages: string[] = [runSheetHtml({ mailing, todayYmd, issuer, docsFor: (env) => copyPages(env).map((x) => x.pg.label), ...(guideCode ? { guideCode } : {}) })]
   for (const env of mailing.mailed) {
@@ -651,59 +658,6 @@ export function trackingShape(method: RunSendMethod, tracking: string): Tracking
 /** An envelope counts as mailed once it carries a number, or goes by email or hand (v2.4119). */
 export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking' | 'via' | 'pieceId' | 'pieceStatus'>): boolean {
   return r.method === 'email' || r.method === 'hand' || (r.tracking ?? '').trim().length > 0 || recipientViaDocsmit(r)
-}
-
-/**
- * Recording after the post office (v2.4119): a notice with at least one
- * mailed envelope records now; the rest stay in the printed pile. When no
- * envelope carries a number the run records whole, as it always did — an
- * office that does not track is not stopped.
- */
-export type RunRecordSplit<T> = {
-  /** What records now. */
-  mailed: T[]
-  /** What stays in the pile: the unnumbered, then the held. */
-  waiting: T[]
-  /** Held for a problem in red (v2.5533): unsigned, an owner nobody confirmed, no address. They wait whatever their numbers say. */
-  held: T[]
-  /** Clean, but with no number yet while others have theirs (v2.4119). */
-  unnumbered: T[]
-  /** Something records and something waits. */
-  partial: boolean
-}
-
-/**
- * Back from the post office (v2.4119): the clean notices with a number record now, the rest wait; with no number
- * anywhere every clean notice records (the numbers are typed later). Since v2.5533 a notice with a problem
- * (`problems[i]`, as `runNoticeProblems` lists them) is held: it waits in the pile with its reason whatever its
- * numbers say, and the ready ones record now — the run is never all or nothing.
- */
-export function runRecordSplit<T extends RunNotice>(notices: ReadonlyArray<T>, problems?: ReadonlyArray<ReadonlyArray<string>>): RunRecordSplit<T> {
-  const held: T[] = []
-  const clean: T[] = []
-  notices.forEach((n, i) => ((problems?.[i]?.length ?? 0) > 0 ? held : clean).push(n))
-  const numbered = clean.filter((n) => n.recipients.some(recipientMailed))
-  const mailed = numbered.length === 0 || numbered.length === clean.length ? clean : numbered
-  const unnumbered = clean.filter((n) => !mailed.includes(n))
-  const waiting = [...unnumbered, ...held]
-  return { mailed, waiting, held, unnumbered, partial: mailed.length > 0 && waiting.length > 0 }
-}
-
-/** The foot's words and the button's label for a split that waits on something (v2.5533); null when everything records. */
-export function runRecordWords(split: Pick<RunRecordSplit<unknown>, 'mailed' | 'waiting' | 'held' | 'unnumbered'>): { line1: string; line2: string; button: string } | null {
-  const m = split.mailed.length
-  const h = split.held.length
-  const u = split.unnumbered.length
-  const w = split.waiting.length
-  if (m === 0 && h > 0) return { line1: 'Nothing is ready to record', line2: 'Sign or fix what is marked in red, then record.', button: 'Record the run ▸' }
-  if (w === 0) return null
-  const stays = w === 1 ? 'stays' : 'stay'
-  const line1 = h && u ? `${h} held · ${u} with no number yet` : h ? `${h} ${h === 1 ? 'notice is' : 'notices are'} held` : `${u} ${u === 1 ? 'envelope has' : 'envelopes have'} no number yet`
-  const line2 = h
-    ? `${w === 1 ? 'It stays' : 'They stay'} in the pile with the reason in red. The ${m} ready ${m === 1 ? 'one records' : 'ones record'} now.`
-    : `${w === 1 ? 'It stays' : 'They stay'} in the mail pile; the numbered ones record now.`
-  const button = u ? `Record ${m} mailed · ${w} ${stays} in the pile ▸` : `Record ${m} · ${w} held ${stays} in the pile ▸`
-  return { line1, line2, button }
 }
 
 function esc(s: string): string {
