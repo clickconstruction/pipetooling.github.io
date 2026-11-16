@@ -5,7 +5,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { EMPTY_SCHEDULE, sameSchedule, scheduleColumns, scheduleDraftProblem, scheduleDraftWords, type BidScheduleColumns, type BidScheduleDraft } from '../../lib/bids/bidSchedule'
+import { EMPTY_SCHEDULE, SCHEDULE_NO_END_LABEL, sameSchedule, scheduleColumns, scheduleDraftProblem, scheduleDraftWords, type BidScheduleColumns, type BidScheduleDraft } from '../../lib/bids/bidSchedule'
 
 const inputStyle: CSSProperties = { width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }
 const pressStyle = (primary: boolean, dead: boolean): CSSProperties => ({
@@ -39,7 +39,7 @@ export function BidScheduleFields({ draft, onChange, today, showProblem, idPrefi
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 12px', marginTop: 8, fontSize: '0.8rem' }}>
         <label htmlFor={`${idPrefix}-noend`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-700)', cursor: 'pointer' }}>
           <input id={`${idPrefix}-noend`} type="checkbox" checked={draft.noEnd} onChange={(e) => onChange({ ...draft, noEnd: e.target.checked })} />
-          No end date
+          {SCHEDULE_NO_END_LABEL}
         </label>
         {words ? (
           <span style={{ color: 'var(--text-muted)' }} data-testid="bid-schedule-words">

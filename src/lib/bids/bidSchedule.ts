@@ -13,6 +13,9 @@ export type BidScheduleColumns = { schedule_start: string | null; schedule_end: 
 
 const YMD = /^(\d{4})-(\d{2})-(\d{2})$/
 
+/** The tick's own name, as the row draws it and as the words that point at it say it. */
+export const SCHEDULE_NO_END_LABEL = 'No end date'
+
 /** A date box caught half typed: the year "2026" arrives as `0002-…`, `0020-…`, `0202-…`. */
 function unfinished(ymd: string): boolean {
   const m = YMD.exec(ymd)
@@ -37,7 +40,7 @@ export function scheduleDraftProblem(d: BidScheduleDraft): string | null {
   if (!start) return end || d.noEnd ? 'Type the day the schedule starts.' : null
   if (unfinished(start)) return 'Finish the start date.'
   if (d.noEnd) return null
-  if (!end) return 'Type the day the schedule ends, or tick No end date.'
+  if (!end) return `Type the day the schedule ends, or tick ${SCHEDULE_NO_END_LABEL}.`
   if (unfinished(end)) return 'Finish the end date.'
   if (end < start) return 'The end is before the start.'
   return null
