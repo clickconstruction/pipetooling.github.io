@@ -85,6 +85,8 @@ export const PAINTED_MAP_LINK_WORDS = {
   needsDevice: 'This page could not be opened here. Reload it and try again.',
   /** A point that is not a point. The reader's dot still shows on their own phone. */
   badPoint: 'That place could not be kept.',
+  /** A page from before the name step asked for the map the old way. */
+  reload: 'This page is out of date. Reload it to open the map.',
 } as const
 
 // ---------------------------------------------------------------------------------------------------------------------

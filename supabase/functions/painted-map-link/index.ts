@@ -28,16 +28,17 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  * signed-out reader has to a painted map, and the only thing that writes a link.
  *
  * The page, no auth (`verify_jwt = false`; the ten-letter code is the capability, as an estimate's link is):
- *   GET  ?code=<ten letters>              → { ok, map, company, endsOn } the map as `sharedPaintedMap` tells it: named
- *                                           fields only. Never who painted it, when, the job, the customer, a price or
- *                                           any other thing in the app. 404 `gone` for a wrong code, an ended link and
- *                                           an expired one alike, so a guess learns nothing (a wrong code is a miss,
- *                                           counted; 429 `locked` past 20 in the hour).
- *   GET  ?code=<code>&photo=<place id>    → the bytes of one place's photo, for a place on this link's map alone. From
- *                                           the painted-map-photos bucket. The page never learns the file's name.
+ *   GET  ?code=<ten letters>              → 403 `name` since v2.7416: the map opens by `way.open` alone, for a reader
+ *                                           who gave a name. A page from before v2.7414 reads *This page is out of
+ *                                           date. Reload it to open the map.* 404 `gone` for a wrong code, an ended
+ *                                           link and an expired one alike, so a guess learns nothing (a wrong code is a
+ *                                           miss, counted; 429 `locked` past 20 in the hour).
+ *   GET  ?code=<code>&photo=<place id>&device=<id> → the bytes of one place's photo, for a place on this link's map
+ *                                           alone, and since v2.7416 only for a device that has a visit on this link.
+ *                                           From the painted-map-photos bucket. The page never learns the file's name.
  *
- * Who is looking (v2.7413, Taunya's ask of 2026-11-15). The page that asks a signed-out reader's name opens the map
- * here, and the plain GET above stays for the page that is live until the new one has replaced it:
+ * Who is looking (v2.7413, Taunya's ask of 2026-11-15). The page opens the map here, as `sharedPaintedMap` tells it:
+ * named fields only, never who painted it, when, the job, the customer, a price or any other thing in the app:
  *   POST { action: 'way.open', code, name?, device: { id, screen?, language?, timeZone? } }
  *                                         → { ok, needsName: true, mapName, company, endsOn } when this device has given
  *                                           no name on this link and none came with the call. Nothing of the map but
@@ -339,10 +340,15 @@ serve(async (req) => {
     if ('refused' in found) return found.refused
     const link = found.link
 
-    // One place's photo: only a place on this link's map, and only a name of the one shape under that map.
+    // One place's photo: only a place on this link's map, only a name of the one shape under that map, and only for
+    // a device that gave a name on this link. Anything else reads as a link that is gone.
     const photoOf = url.searchParams.get('photo')
     if (photoOf) {
       if (!UUID_RE.test(photoOf)) return gone()
+      const deviceId = paintedMapDeviceId(url.searchParams.get('device'))
+      if (!deviceId) return gone()
+      const { data: visit } = await admin.from('painted_map_link_visits').select('id').eq('link_id', link.id).eq('device_id', deviceId).maybeSingle()
+      if (!visit) return gone()
       const { data: place } = await admin.from('painted_map_places').select('photo_path').eq('id', photoOf.toLowerCase()).eq('map_id', link.map_id).maybeSingle()
       const path = (place as { photo_path: string | null } | null)?.photo_path ?? ''
       if (!PHOTO_PATH_RE.test(path) || !path.toLowerCase().startsWith(`${link.map_id.toLowerCase()}/`)) return gone()
@@ -352,14 +358,10 @@ serve(async (req) => {
       return new Response(blob, { status: 200, headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=300', 'Content-Type': mime, 'X-Content-Type-Options': 'nosniff' } })
     }
 
-    const shared = await loadMap(admin, link.map_id)
-    if (!shared || sharedMapIsEmpty(shared)) return gone()
-    // Each open is counted on the link; a `?preview=1` from the sheet that made it is not.
-    if (url.searchParams.get('preview') !== '1') {
-      void admin.from('painted_map_links').update({ opened_at: link.opened_at ?? nowIso, last_opened_at: nowIso, open_count: (link.open_count ?? 0) + 1 }).eq('id', link.id).then(() => {}, () => {})
-    }
-    console.log(JSON.stringify({ event: 'painted_map_link_open', link: link.id, state: 'open', lines: shared.lines.length, places: shared.places.length }))
-    return json({ ok: true, map: shared, company: { name: PORTAL_COMPANY.name, phone: PORTAL_COMPANY.phone }, endsOn: calendarYmdInAppTzFromIso(link.expires_at) })
+    // The map itself opens by `way.open` alone, for a reader who gave a name. A page from before the name step asks
+    // this way: it is told to reload, and learns nothing of the map.
+    console.log(JSON.stringify({ event: 'painted_map_link_open', link: link.id, state: 'old_page' }))
+    return json({ error: 'name', words: PAINTED_MAP_LINK_WORDS.reload }, 403)
   } catch (e) {
     console.error('painted-map-link failed', e)
     return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 500)
