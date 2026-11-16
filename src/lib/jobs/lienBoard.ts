@@ -268,6 +268,16 @@ function affidavitStage(pile: LienAffidavitPile): LienBoardAffidavitStage {
   }
 }
 
+/**
+ * A pile's name as the Board says it, for a reader that holds a desk entry and no Board: the property card
+ * (`lienPropertyPapers.ts`, v2.7485) names each job's notice and affidavit in the words of the bin they stand in.
+ */
+export function lienBoardPileWords(kind: 'notice', pile: LienDeskPile): string
+export function lienBoardPileWords(kind: 'affidavit', pile: LienAffidavitPile): string
+export function lienBoardPileWords(kind: LienBoardKind, pile: LienDeskPile | LienAffidavitPile): string {
+  return LIEN_BOARD_WORDS[kind === 'notice' ? noticeStage(pile as LienDeskPile) : affidavitStage(pile as LienAffidavitPile)]
+}
+
 function utcDay(ymd: string): number {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
   if (!m) return -1

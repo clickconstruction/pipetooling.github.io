@@ -277,6 +277,14 @@ last_updated: 2026-11-16
 > a started paper further out lands under Coming up by its day.
 > 10 cases in `lienDeskStarted.test.ts`.
 
+> **v2.7485 (one property whole, PR 1 of 3, the kernel;
+> the owner's ask of 2026-11-16):** [`lienPropertyPapers.ts`](../src/lib/jobs/lienPropertyPapers.ts) gathers By job's book by property record (`buildLienProperties` over `LienBookJob.addressId`, which is `jobs_ledger.customer_address_id`;
+> never a typed address;
+> the jobs with no record under the key `''`) and says where each job's papers stand with no rule of its own: `lienPropertyNoticeLine` and `lienPropertyAffidavitLine` read the desk's piles in the Board's words (`lienBoardPileWords` in `lienBoard.ts`), the day a notice went in the To do row's (`lienAffidavitNoticeTag`), and a filed affidavit from the timeline's own steps;
+> `lienPropertyTally` is the property's one line, `sameOwner` an owner's other property when the name and the mailing address both match, and `lienNotInRunGroups` / `lienNotInRunWords` the one wording of why a property's other jobs are not in a run (the run window's envelope line calls them).
+> For this the book's rows keep `notice`, `affidavit` and `noticeSentOn`, `LienBookJob` carries `addressId`, `propertyAddress`, `ownerMailingAddress` and `publicStanding`, and `useLienTimelineBook`'s filings read takes `notice_53_056` too.
+> The desk's own read is not the source: it asks 180 days ahead and keeps started rows, so only the book (400 days) holds every job at a property.
+
 > **v2.7253 (a job paid in kind is off the desk, the owner's rule of 2026-11-14):** [`lienInKind.ts`](../src/lib/jobs/lienInKind.ts) is the one rule: a job whose `jobs_ledger.in_kind_arrangement_id` is set (an open in-kind deal, punch list #301;
 > ending the deal clears the link by trigger) is paid, as far as the desk goes.
 > Every read of the desk's jobs calls it.
@@ -1034,7 +1042,7 @@ No e2e spec names the desk.
 
 - **State:** `bookOpened` 340 (true once the tab is visited;
   effect 349–351), `bookGcId` 347, `bookShow` 348 (setters only passed to the tab).
-  **Hook:** `useLienTimelineBook(bookOpened, todayYmd, data?.items, hideZzTestJobs)` — its own reads (`jobs_ledger`, `customers`, `customer_addresses`, `job_property_owners`, `job_lien_filings`, `job_demand_letters`;
+  **Hook:** `useLienTimelineBook(bookOpened, todayYmd, data?.items, hideZzTestJobs)` — its own reads (`jobs_ledger`, `customers`, `customer_addresses`, `job_property_owners`, `job_lien_filings` (affidavits, releases and, since v2.7485, the recorded notices), `job_demand_letters`;
   RPCs `list_lien_notice_months`, `list_lien_affidavit_windows`), kept for the modal's life.
   Since v2.7463 the read starts with the tab and does not wait on `data` (the desk's own read runs beside it), in the three steps [`lienTimelineBookRead.ts`](../src/lib/jobs/lienTimelineBookRead.ts) names: the two RPCs, then everything read by the job together, then the GCs and the property records.
   The book is folded once its rows and the desk's `items` are both in hand, so on an open by By job's own address the first row still waits for the desk's read to end.
