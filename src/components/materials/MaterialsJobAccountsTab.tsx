@@ -263,7 +263,9 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 () =>
                   supabase
                     .from('supply_house_invoices')
-                    .select('id, supply_house_id, amount, amount_paid, is_paid, due_date, invoice_date, invoice_number, on_job_account')
+                    // is_interest comes with 20261117020000 and is read as written here: the generated types learn it
+                    // after the push, and until then this read is refused and the one below stands in.
+                    .select('id, supply_house_id, amount, amount_paid, is_paid, is_interest, due_date, invoice_date, invoice_number, on_job_account' as 'id, supply_house_id, amount, amount_paid, is_paid, due_date, invoice_date, invoice_number, on_job_account')
                     .order('id')
                     .range(from, to),
                 'load supply house invoices',
