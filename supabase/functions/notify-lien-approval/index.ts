@@ -3,9 +3,9 @@
 // nobody; he learned of it only by opening the Dashboard.
 //
 // The body is the item id and, optionally, the mail-by day. The function reads the item with the
-// service role, refuses unless the caller is the drafter and the item is awaiting approval, and
-// writes the words itself (_shared/lienApprovalPush.ts), so a caller can never push arbitrary text
-// to the leader. One push per device of the job's master (else every leader); with no device
+// service role, refuses unless the caller is the office and the item is a notice awaiting approval,
+// and writes the words itself (_shared/lienApprovalPush.ts), so a caller can never push arbitrary
+// text to the leader. One push per device of the job's master (else every leader); with no device
 // registered the same words go by email. Logged to notification_history.
 //
 // A person's hours (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, which pushes the
@@ -15,6 +15,12 @@
 // An affidavit (punch list #305, v2.7180): `{ kind: 'affidavit', items: [{ item_id, due_ymd }] }` tells the leader that
 // one affidavit, or every affidavit of one press, waits for his approval. The caller is the office, each row must be an
 // affidavit sent for approval in the last fifteen minutes, and each leader gets ONE message whatever the count.
+//
+// Whoever in the office presses (v2.7445): the notice's ask was the drafter's alone, and `drafted_by` names whoever
+// first saved the draft. A second office person who sent the paper, or pressed Remind, was answered 403 and the leader
+// was never told. The gate is the office now, as the affidavit's is. `remind: true` marks the To do view's Remind
+// press: the words say a reminder, and an affidavit's fifteen-minute rule is lifted, since a reminder is by its
+// nature a later call (without it the function answered a reminder 200 with nothing sent).
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
@@ -123,7 +129,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser(token)
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
-    const { item_id, due_ymd, kind, release_id, items } = (await req.json().catch(() => ({}))) as { item_id?: string; due_ymd?: string; kind?: string; release_id?: string; items?: unknown }
+    const { item_id, due_ymd, kind, release_id, items, remind } = (await req.json().catch(() => ({}))) as { item_id?: string; due_ymd?: string; kind?: string; release_id?: string; items?: unknown; remind?: unknown }
     const dueYmd = typeof due_ymd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(due_ymd) ? due_ymd : null
     // The pen train (PR 3): `kind: 'pen_recorded'` tells the leader the office wrote down his pen signature. The caller is the recorder, the leader is the signer.
     const penRecorded = kind === 'pen_recorded'
@@ -133,6 +139,9 @@ serve(async (req) => {
     const waiverCodeUsed = kind === 'waiver_code_used'
     // Punch list #305 (v2.7180): `kind: 'affidavit'` + items tells the leader of one affidavit, or of every affidavit of one press.
     const affidavitAsk = kind === 'affidavit'
+    // v2.7445: the plain body, `item_id` and no kind, is a notice sent for approval. `remind: true` is the To do view's Remind press.
+    const noticeAsk = !penRecorded && !codeUsed && !waiverCodeUsed && !affidavitAsk
+    const reminder = remind === true
     const asked = affidavitAsk ? lienAffidavitAskItems(items) : []
     if (affidavitAsk && asked.length === 0) return json({ error: 'Missing items' }, 400)
     if (!affidavitAsk && (waiverCodeUsed ? !release_id : !item_id)) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
@@ -141,15 +150,19 @@ serve(async (req) => {
     const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
     if (archivedRefusal) return archivedRefusal
 
+    // The office's two asks, a notice and an affidavit: whoever in the office presses, never the drafter alone (v2.7445).
+    const { data: caller } = affidavitAsk || noticeAsk
+      ? await admin.from('users').select('name, role, archived_at').eq('id', user.id).maybeSingle()
+      : { data: null }
+    if ((affidavitAsk || noticeAsk) && (!caller || caller.archived_at || !OFFICE_ROLES.includes(String(caller.role)))) return json({ error: 'Not the office' }, 403)
+
     if (affidavitAsk) {
-      const { data: caller } = await admin.from('users').select('name, role, archived_at').eq('id', user.id).maybeSingle()
-      if (!caller || caller.archived_at || !OFFICE_ROLES.includes(String(caller.role))) return json({ error: 'Not the office' }, 403)
       const { data: rows } = await admin
         .from('job_lien_desk_items')
         .select('id, job_id, kind, status, submitted_at, voided_at')
         .in('id', asked.map((a) => a.itemId))
       const nowMs = Date.now()
-      const waiting = (rows ?? []).filter((r) => r.job_id && lienAffidavitAskable(r, nowMs))
+      const waiting = (rows ?? []).filter((r) => r.job_id && lienAffidavitAskable(r, nowMs, { reminder }))
       const nothing = { success: true, push_sent: 0, email_sent: false, held: 0, told: 0, leader_name: null }
       if (waiting.length === 0) return json({ ...nothing, message: 'Not awaiting approval' })
       const [{ data: jobs }, { data: roster }] = await Promise.all([
@@ -178,7 +191,7 @@ serve(async (req) => {
       for (const t of tells) {
         const leader = leaderById.get(t.leaderId)
         if (!leader) continue
-        const sent = await tellLeaders(admin, [leader], lienAffidavitApprovalPush({ papers: t.papers, todayYmd, senderName: caller.name ?? null }), 'lien_affidavit_approval_ask', 'Open the Lien desk')
+        const sent = await tellLeaders(admin, [leader], lienAffidavitApprovalPush({ papers: t.papers, todayYmd, senderName: caller?.name ?? null, reminder }), 'lien_affidavit_approval_ask', 'Open the Lien desk')
         pushSent += sent.pushSent
         emailSent += sent.emailSent
         held += sent.held
@@ -211,7 +224,7 @@ serve(async (req) => {
     } else {
       const { data: noticeItem } = await admin
         .from('job_lien_desk_items')
-        .select('id, job_id, status, drafted_by, fields, signed_by, signed_at, signer_signature_mode, signed_recorded_by, signed_witness_how, signed_on_device_of')
+        .select('id, job_id, kind, status, voided_at, fields, signed_by, signed_at, signer_signature_mode, signed_recorded_by, signed_witness_how, signed_on_device_of')
         .eq('id', item_id)
         .maybeSingle()
       if (penRecorded) {
@@ -220,8 +233,10 @@ serve(async (req) => {
         if (!noticeItem || noticeItem.signer_signature_mode !== 'code' || !noticeItem.signed_by) return json({ error: 'Not a code signature' }, 403)
         if (noticeItem.signed_on_device_of !== user.id) return json({ error: noticeItem.signed_on_device_of ? 'Not your screen' : 'Signed on his own screen' }, noticeItem.signed_on_device_of ? 403 : 200)
       } else {
-        if (!noticeItem || noticeItem.drafted_by !== user.id) return json({ error: 'Not your draft' }, 403)
-        if (noticeItem.status !== 'awaiting_approval') return json({ success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' })
+        // The office was checked above. These words are a notice's: an affidavit has its own kind, and a retainage notice has no message yet.
+        if (!noticeItem) return json({ error: 'Paper not found' }, 404)
+        if (noticeItem.kind !== 'notice_53_056') return json({ error: 'Not a lien notice' }, 400)
+        if (noticeItem.status !== 'awaiting_approval' || noticeItem.voided_at) return json({ success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' })
       }
       item = noticeItem
     }
@@ -290,6 +305,7 @@ serve(async (req) => {
           dueYmd,
           todayYmd: todayYmdInAppTz(new Date()),
           senderName: sender?.name ?? null,
+          reminder,
         })
 
     const templateType = waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask'

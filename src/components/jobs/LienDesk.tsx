@@ -42,7 +42,7 @@ import {
   sendLienDeskItemOnWord,
   setCustomerLienNoticePolicy,
   noteLienWindowMissed,
-  submitLienDeskItem, tellLeaderOfLienApproval, leaderToldWords,
+  submitLienDeskItem, tellLeaderOfLienApproval,
   noteGcAuthorizedDirectPay,
   startLetterTwo,
   noteOwnerCall,
@@ -126,6 +126,7 @@ import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienReminderOutcome, lienReminderPlan, lienReminderWords } from '../../lib/jobs/lienLeaderReminder'
+import { lienNoticeToldWords, lienReminderAffidavitLabel, lienReminderTally } from '../../lib/jobs/lienLeaderTold'
 import LienDoNowBar from './LienDoNowBar'
 import { useLienDoNowRoom } from './useLienDoNowRoom'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
@@ -1099,18 +1100,16 @@ export default function LienDesk({
     let done = 0
     const failed: Array<{ label: string; reason: string }> = []
     try {
+      // A reminder counts only when a message went (v2.7445): the function answers 200 when it sends nothing, and the tally reads why.
       for (const p of reminderPlan.notices) {
-        try {
-          await tellLeaderOfLienApproval(p.itemId, p.dueYmd)
-          done += 1
-        } catch (e) {
-          failed.push({ label: p.label, reason: formatErrorMessage(e, 'The message could not be sent.') })
-        }
+        const t = lienReminderTally(await tellLeaderOfLienApproval(p.itemId, p.dueYmd, { remind: true }), 1)
+        done += t.done
+        if (t.reason) failed.push({ label: p.label, reason: t.reason })
       }
       if (reminderPlan.affidavits.length > 0) {
-        const told = await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })))
-        if (told && !told.ok) failed.push({ label: reminderPlan.affidavits.length === 1 ? reminderPlan.affidavits[0]!.label : `the ${reminderPlan.affidavits.length} affidavits`, reason: told.reason })
-        else done += reminderPlan.affidavits.length
+        const t = lienReminderTally(await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })), { remind: true }), reminderPlan.affidavits.length)
+        done += t.done
+        if (t.reason) failed.push({ label: lienReminderAffidavitLabel(reminderPlan.affidavits.map((p) => p.label), t.missed), reason: t.reason })
       }
       const said = lienReminderOutcome({ done, failed }, nextUpWaitingOn)
       showToast(said.line, said.tone)
@@ -1891,10 +1890,10 @@ export default function LienDesk({
           ? ({ status: 'awaiting_approval', reason: 'claim_by_hand' } as const)
           : submitOutcome(selected, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(selected.gcCustomerId && data.gcsWithPriorNotice.has(selected.gcCustomerId)), gcHeldBefore: Boolean(selected.gcCustomerId && data.gcsHeldBefore.has(selected.gcCustomerId)) }, todayYmd)
         await submitLienDeskItem(id, outcome)
-        // His phone buzzes (v2.4872): best effort, after the write, with the mail-by day the desk knows.
+        // His phone buzzes (v2.4872): best effort, after the write, with the mail-by day the desk knows. A tell that fails is said with its reason (v2.7445), never swallowed.
         if (outcome.status === 'awaiting_approval') {
-          const told = await tellLeaderOfLienApproval(id, selected.earliestDeadline).catch(() => null)
-          showToast(leaderToldWords(told), 'success')
+          const told = lienNoticeToldWords(await tellLeaderOfLienApproval(id, selected.earliestDeadline), leaderName)
+          showToast(told.said, told.tone)
         }
       },
       ruleLive && !promise && !claimGate ? 'Approved by the standing rule — it is in the run.' : selected?.policy === 'hold' ? 'Held by the standing rule — it re-asks before the deadline.' : undefined,
