@@ -10,8 +10,12 @@ import type { LienSubmitOutcome } from './lienDesk'
  * undoes or blocks the send for approval, and the office reads why.
  */
 
-/** What `notify-lien-approval` answered for one press. */
-export type LienLeaderTold = { pushSent: number; emailSent: boolean; leaderName: string | null }
+/**
+ * What `notify-lien-approval` answered for one press. Since v2.7445 it carries what the function says when it sent
+ * nothing: `held` (leaders outside their Push me hours), `said` (its `message`: *Not awaiting approval*, *No leader
+ * to tell*) and `told` (the affidavits it told the leader of).
+ */
+export type LienLeaderTold = { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null }
 
 /** The tell as the office hears of it: what the function answered, or why it could not be asked. */
 export type LienLeaderTellResult = { ok: true; told: LienLeaderTold } | { ok: false; reason: string }
@@ -43,7 +47,7 @@ const leaderWord = (name: string | null | undefined) => {
 
 /**
  * After the pane's **Send for approval ▸** on one affidavit: which way it reached the leader, in the words the notice
- * send uses (`leaderToldWords`), or that he was not told and why.
+ * send uses (`lienNoticeToldWords`, `lienLeaderTold.ts`), or that he was not told and why.
  */
 export function lienAffidavitToldWords(result: LienLeaderTellResult | null): string {
   if (result && !result.ok) return `Sent for approval. The leader was not told. ${lienTellFailureReason(result.reason)} The paper is on the Dashboard.`

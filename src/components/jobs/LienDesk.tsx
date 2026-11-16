@@ -42,7 +42,7 @@ import {
   sendLienDeskItemOnWord,
   setCustomerLienNoticePolicy,
   noteLienWindowMissed,
-  submitLienDeskItem, tellLeaderOfLienApproval, leaderToldWords,
+  submitLienDeskItem, tellLeaderOfLienApproval,
   noteGcAuthorizedDirectPay,
   startLetterTwo,
   noteOwnerCall,
@@ -127,6 +127,7 @@ import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienReminderOutcome, lienReminderPlan, lienReminderWords } from '../../lib/jobs/lienLeaderReminder'
+import { lienNoticeToldWords, lienReminderAffidavitLabel, lienReminderTally } from '../../lib/jobs/lienLeaderTold'
 import LienDoNowBar from './LienDoNowBar'
 import { useLienDoNowRoom } from './useLienDoNowRoom'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
@@ -401,7 +402,8 @@ const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, let
 /** The page labels (v2.4726) stack like the Notices list's pile titles (v2.4651): one bar each, as tall as the pane's heads (one number since v2.7323). */
 const PAGE_LABEL_H = LIEN_PANE_HEAD_H
 /** The paper stays light in both themes — `data-theme="light"` re-pins the tokens and the text color (index.css). */
-const paperStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }
+// A page of the paper cannot narrow past its own letterhead, so in a pane too narrow for it the page slides inside its frame (v2.7446) and never drags the pane.
+const paperStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem', overflowX: 'auto' }
 const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }
 /** How far into the pane the gates scroll away and the one-line strip takes over (v2.3522). */
 const STRIP_COLLAPSE_PX = 72
@@ -1111,18 +1113,16 @@ export default function LienDesk({
     let done = 0
     const failed: Array<{ label: string; reason: string }> = []
     try {
+      // A reminder counts only when a message went (v2.7445): the function answers 200 when it sends nothing, and the tally reads why.
       for (const p of reminderPlan.notices) {
-        try {
-          await tellLeaderOfLienApproval(p.itemId, p.dueYmd)
-          done += 1
-        } catch (e) {
-          failed.push({ label: p.label, reason: formatErrorMessage(e, 'The message could not be sent.') })
-        }
+        const t = lienReminderTally(await tellLeaderOfLienApproval(p.itemId, p.dueYmd, { remind: true }), 1)
+        done += t.done
+        if (t.reason) failed.push({ label: p.label, reason: t.reason })
       }
       if (reminderPlan.affidavits.length > 0) {
-        const told = await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })))
-        if (told && !told.ok) failed.push({ label: reminderPlan.affidavits.length === 1 ? reminderPlan.affidavits[0]!.label : `the ${reminderPlan.affidavits.length} affidavits`, reason: told.reason })
-        else done += reminderPlan.affidavits.length
+        const t = lienReminderTally(await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })), { remind: true }), reminderPlan.affidavits.length)
+        done += t.done
+        if (t.reason) failed.push({ label: lienReminderAffidavitLabel(reminderPlan.affidavits.map((p) => p.label), t.missed), reason: t.reason })
       }
       const said = lienReminderOutcome({ done, failed }, nextUpWaitingOn)
       showToast(said.line, said.tone)
@@ -1903,10 +1903,10 @@ export default function LienDesk({
           ? ({ status: 'awaiting_approval', reason: 'claim_by_hand' } as const)
           : submitOutcome(selected, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(selected.gcCustomerId && data.gcsWithPriorNotice.has(selected.gcCustomerId)), gcHeldBefore: Boolean(selected.gcCustomerId && data.gcsHeldBefore.has(selected.gcCustomerId)) }, todayYmd)
         await submitLienDeskItem(id, outcome)
-        // His phone buzzes (v2.4872): best effort, after the write, with the mail-by day the desk knows.
+        // His phone buzzes (v2.4872): best effort, after the write, with the mail-by day the desk knows. A tell that fails is said with its reason (v2.7445), never swallowed.
         if (outcome.status === 'awaiting_approval') {
-          const told = await tellLeaderOfLienApproval(id, selected.earliestDeadline).catch(() => null)
-          showToast(leaderToldWords(told), 'success')
+          const told = lienNoticeToldWords(await tellLeaderOfLienApproval(id, selected.earliestDeadline), leaderName)
+          showToast(told.said, told.tone)
         }
       },
       ruleLive && !promise && !claimGate ? `Approved by the standing rule. ${LIEN_RUN_NOW_TO_PRINT}` : selected?.policy === 'hold' ? 'Held by the standing rule — it re-asks before the deadline.' : undefined,
@@ -2527,17 +2527,19 @@ export default function LienDesk({
       />
     )
   }
-  const pageLabel = (key: string, words: string, extra: ReactNode) => {
+  // A bar is one line in a pane of any width (v2.7446): the muted words after the page's name give way first and end in an ellipsis,
+  // then the name itself, and the two presses at the right never do. The whole line is the cut words' `title`.
+  const pageLabel = (key: string, words: string, extra: { words: string; amber?: boolean; pay?: boolean } | null) => {
     const i = pageKeys.indexOf(key)
     const on = (litPage ?? pageKeys[0]) === key
     return (
       <div className="lienPileHead" data-lien-desk-page-label={key} data-on={on ? 'yes' : 'no'} style={{ top: stripH + headsOverPages() + i * pageLabelH, bottom: 'auto', height: pageLabelH, zIndex: 1, margin: '0 -1.1rem -0.3rem', padding: '0 1.1rem', ...(isMobile ? { fontSize: '0.75rem' } : null) }}>
         <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPage(key, i)} title="Go to this page" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-          <span>{words}</span>
+          <span className="lienPageLabelName">{words}</span>
           {extra ? (
             <>
               {' '}
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra}</span>
+              <span className="lienPageLabelMore" title={`${words} ${extra.words}`} data-lien-desk-pay-label={extra.pay ? true : undefined} style={extra.amber ? { color: 'var(--text-amber-800)' } : undefined}>{extra.words}</span>
             </>
           ) : null}
         </button>
@@ -2894,8 +2896,9 @@ export default function LienDesk({
         relightPages(ev.currentTarget)
         relightPane(ev.currentTarget)
       }}
-      // On a phone the one column is held to the pane's width, so a wide head or strip cannot push the paper sideways (punch list #352, PR 6).
-      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0, ...(isMobile ? { gridTemplateColumns: 'minmax(0, 1fr)' } : null) }}
+      // The one column is held to the pane's width on every screen (a phone since punch list #352, PR 6; a computer since v2.7446), so a
+      // bar's one line of words cannot set the pane's width and slide the whole paper sideways: an `auto` column is as wide as its widest word-run.
+      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
     >
       {paneScrolled ? (
         <div
@@ -3334,7 +3337,7 @@ export default function LienDesk({
       {/* The conditional release (v2.4729): the § 53.284 form behind the letter, as the Release of Lien window would print it. */}
       {releaseHtml ? (
         <>
-          {pageLabel('release', `Page ${coverHtml ? 2 : 1} of ${pageTotal} · conditional release`, <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {noticeRelease?.signature ? 'signed in the app' : 'the master signs it with the notice'} · change it in the Release of Lien window</span>)}
+          {pageLabel('release', `Page ${coverHtml ? 2 : 1} of ${pageTotal} · conditional release`, { words: `· ${noticeRelease?.signature ? 'signed in the app' : 'the master signs it with the notice'} · change it in the Release of Lien window` })}
           <div data-theme="light" data-lien-desk-release style={paperStyle}>
             <div dangerouslySetInnerHTML={{ __html: releaseHtml }} />
           </div>
@@ -3343,9 +3346,7 @@ export default function LienDesk({
       {pageLabel(
         'notice',
         `Page ${noticePageNumber} of ${pageTotal} · the notice`,
-        <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: wordingDiff.length ? 'var(--text-amber-800)' : undefined }}>
-          · {wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}
-        </span>,
+        { words: `· ${wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}`, amber: wordingDiff.length > 0 },
       )}
       <div data-theme="light" data-lien-desk-paper ref={paperRef} onClick={onPaperClick} style={{ ...paperStyle, position: 'relative' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
@@ -3381,7 +3382,7 @@ export default function LienDesk({
       {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
       {payHtml ? (
         <>
-          {pageLabel('pay', `Page ${pageTotal} of ${pageTotal} · pay codes`, <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: payChangedCount ? 'var(--text-amber-800)' : undefined }} data-lien-desk-pay-label>· {payPageSummary(payPage.rows)} · {payChangedCount ? `${payChangedCount} ${payChangedCount === 1 ? 'line' : 'lines'} changed on this page, the bills keep their own` : wordingLocked ? 'the lines under the codes are read from the bills' : 'a shaded line is yours to change, on this page only'}</span>)}
+          {pageLabel('pay', `Page ${pageTotal} of ${pageTotal} · pay codes`, { words: `· ${payPageSummary(payPage.rows)} · ${payChangedCount ? `${payChangedCount} ${payChangedCount === 1 ? 'line' : 'lines'} changed on this page, the bills keep their own` : wordingLocked ? 'the lines under the codes are read from the bills' : 'a shaded line is yours to change, on this page only'}`, amber: payChangedCount > 0, pay: true })}
           <div data-theme="light" data-lien-desk-pay ref={payPaperRef} onClick={onPayPaperClick} style={{ ...paperStyle, position: 'relative' }}>
             <div dangerouslySetInnerHTML={{ __html: payHtml }} />
             {payEditing ? (

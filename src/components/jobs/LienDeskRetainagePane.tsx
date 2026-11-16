@@ -303,8 +303,8 @@ export default function LienDeskRetainagePane({
       data-lien-retainage-pane
       data-lien-pane-phone={isMobile ? 'yes' : undefined}
       onScroll={heads.onScroll}
-      // The pane is the scrolling box its heads stick in (v2.7320), the notice pane's shape: its gutter is the pane's padding, which the heads cancel to run across; a phone holds the one column to the pane's width.
-      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0, ...(isMobile ? { gridTemplateColumns: 'minmax(0, 1fr)' } : null) }}
+      // The pane is the scrolling box its heads stick in (v2.7320), the notice pane's shape: its gutter is the pane's padding, which the heads cancel to run across; the one column is held to the pane's width on every screen (v2.7446).
+      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? '0.6rem' : '0.9rem' }}>
         <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
@@ -368,11 +368,11 @@ export default function LienDeskRetainagePane({
       {heads.head('paper')}
       <div data-lien-pane-body="paper" style={{ display: 'grid', gap: '0.7rem', paddingBottom: '0.9rem' }}>
       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Page 1 of 2 · cover letter (counsel's retainage rules, 2026-09-22)</div>
-      <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
+      <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem', overflowX: 'auto' }}>
         <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
       </div>
       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Page 2 of 2 · the form, as § 53.057(a-2) prescribes it</div>
-      <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
+      <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem', overflowX: 'auto' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
       </div>
       </div>
