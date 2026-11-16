@@ -443,7 +443,7 @@ one count dropped from the kernel's copy disagreed on that line. The types and t
   `dev_on_site_write` (`docs/MATERIALS_ON_SITE_ARCHITECTURE.md` → The agent's door);
 - ~~a count recorded under the wrong job could not be moved~~ built 2026-11-09 as v2.6808: the seat's
   `plan_materials_move` → `apply_materials_move` moves everything a job holds on site to another job, every box
-  keeping its id and printed code; no office press yet, and the photos' Drive files follow since v2.6885 (any change of job since v2.6915, #297);
+  keeping its id and printed code; the office's own press since v2.7305, **Move everything on site to another job…** under a job's boxes and on the desk's site row (`on_site_move_job`, the roles that may combine two jobs; the source page lets go of its photos and stickers at once since v2.7329), the carry taking the job's part renames, sticker runs and own Same part? answers and prices since v2.7265, and the photos' Drive files follow since v2.6885 (any change of job since v2.6915, #297);
 - ~~the Needs you line for stale containers and missing money~~ built 2026-11-08 as v2.6728: two lines on
   the office's Needs you card, the week's shortfalls with the parts book's money (amber) and the boxes not
   counted in 14 days (gray), each opening the desk or the one job that holds every row; ~~the Procure
@@ -459,6 +459,7 @@ one count dropped from the kernel's copy disagreed on that line. The types and t
   back full, and every summary reader takes the database's sums; a capped job's lists still draw from the newest
   5,000 rows, the next step if a job gets there; the Drive thumbnail on the office panel once the bucket copy is
   gone;
+- ~~a job's materials archived in one go~~ built 2026-11-15 as v2.7303, the owner's ask of 2026-11-14: one press under a job's boxes on the office page retires every empty box at once, a box with parts held and named beside it, with Undo for a minute (`lib/materials/retireAll.ts`);
 - the real-phone checks: the camera scan of a printed label and the share sheet on iPhone and
   Android;
 - a sent-copy record of the manifest if the week of use asks for it;

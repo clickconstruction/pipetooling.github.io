@@ -19,3 +19,5 @@ Proved by CI's `job-note-tags` bed, which now re-applies both migrations and add
 ## Not changed
 
 `jobs_ledger_note_tags`, its policy and the other `job_note_*` functions. `field_presses` and the other three kinds of press.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `job_note_tags_write`, `job_note_post_tagged`, `land_field_press`.

@@ -7,3 +7,5 @@ GC difficulty rating, PR 3 of six (punch list #357, [`to-dos/gc-difficulty-ratin
 - No table created, so no fence calls; no policy changes.
 
 **Apply order**: push right after the merge. The client of this PR reads `pick_reasons` by name and writes it on every save; before the push a save that carries a Paying point is refused by PostgREST for the missing column and the card shows the reason, while a save with no Paying point (fewer than three bills) still lands. Regenerate types after the push as a `chore(types)` PR.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `pick_reasons`.

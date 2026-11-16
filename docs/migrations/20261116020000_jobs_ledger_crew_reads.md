@@ -15,3 +15,5 @@ Punch list #355 ([`to-dos/job-window-phone.md`](../../to-dos/job-window-phone.md
 **The bed.** `plan_sets_author` gains two lines: Hal, a helper on job A's crew with no clock session, reads job A's row and not job B's.
 
 **Apply order**: push any time after the merge. No client names it; the crew's window and the Plans section read the row they already ask for.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111).
