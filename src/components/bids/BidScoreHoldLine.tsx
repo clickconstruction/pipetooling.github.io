@@ -22,7 +22,7 @@ export default function BidScoreHoldLine({ hold, onOpenLabor, style }: { hold: E
         <button
           type="button"
           onClick={onOpenLabor}
-          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
+          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', display: 'inline-block', padding: '13px 0', margin: '-13px 0', textDecoration: 'underline', textUnderlineOffset: 2 }}
         >
           Open Labor
         </button>

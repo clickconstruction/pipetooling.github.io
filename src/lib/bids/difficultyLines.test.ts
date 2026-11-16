@@ -84,6 +84,11 @@ describe('difficultyLines (punch list #357, PR 4)', () => {
     expect(difficultyCapWords(d)).toBe('The lines came to $6,265; the price list holds them to $2,000, 31.9% of that, so each shrank by the same share.')
     // PR 6: a capped line's words say what the cap left, so the words and the dollars agree on the Labor tab's row.
     expect(d.lines[1]!.words).toBe('10% of 480 field hours at $80, held to $1,226 by the cap')
+    // Where the paying point came from closes its line, after the cap's words and never around them (the viewport
+    // walk read "…on another system, held to $113 by the cap: They pay slow.").
+    expect(d.lines[0]!.words).toBe('carrying $172k for 17 days past 45, at 1.5% a month, held to $468 by the cap. Read from their bills.')
+    const byHand = difficultyLines(canvas({ ownCost: 20000, payingMedianDays: null, payingReason: 'By hand: their bills are on another system' }))
+    expect(byHand.lines[0]!.words).toMatch(/^carrying \$172k for 45 days past 45, at 1\.5% a month, held to \$[\d,]+ by the cap\. Set by hand: their bills are on another system$/)
     expect(difficultyCapWords(difficultyLines(canvas()))).toBeNull()
   })
 

@@ -73,6 +73,7 @@ export function difficultyPayingDays(price: DifficultyPriceList, medianDays: num
 export function difficultyLines(input: DifficultyLinesInput): DifficultyLines {
   const { price } = input
   const lines: DifficultyLine[] = []
+  let payingSource = ''
   const skipped: DifficultyLines['skipped'] = []
   let points = 0
   for (const s of input.scales) {
@@ -109,7 +110,9 @@ export function difficultyLines(input: DifficultyLinesInput): DifficultyLines {
       }
       const byHand = difficultyPayingByHandOf(input.payingReason)
       const source = byHand != null ? `Set by hand: ${byHand}` : input.payingMedianDays != null ? 'Read from their bills.' : ''
-      const words = `carrying ${moneyShort(input.carried)} for ${days} day${days === 1 ? '' : 's'} past ${price.payingDaysPast}, at ${pctWords(price.payingMonthlyRate)} a month${source ? `. ${source}` : ''}`
+      // The source is said after the arithmetic, and after the cap's words when the cap bit (see below).
+      if (source) payingSource = source
+      const words = `carrying ${moneyShort(input.carried)} for ${days} day${days === 1 ? '' : 's'} past ${price.payingDaysPast}, at ${pctWords(price.payingMonthlyRate)} a month`
       lines.push({ key: s.key, name: s.name, points: s.points, hours: 0, rate: 0, amount, sentence: s.sentence, words })
       continue
     }
@@ -129,6 +132,9 @@ export function difficultyLines(input: DifficultyLinesInput): DifficultyLines {
     }
     capped = { before, cap }
   }
+  // Where a point came from closes the paying line: on the Workbench the cap's words once landed in the middle of a
+  // reason set by hand ("…on another system, held to $113 by the cap: They pay slow.").
+  if (payingSource) for (const l of lines) if (l.key === DIFFICULTY_PAYING_KEY) l.words = `${l.words}. ${payingSource}`
   const total = round2(lines.reduce((n, l) => n + l.amount, 0))
   return { lines, total, points, capped, skipped }
 }
