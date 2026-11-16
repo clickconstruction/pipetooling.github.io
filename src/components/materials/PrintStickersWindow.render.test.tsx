@@ -62,7 +62,7 @@ describe('PrintStickersWindow', () => {
     const first = within(screen.getAllByTestId('print-stickers-card')[0]!)
     expect(first.getByTestId('print-stickers-job-facts').textContent).toBe('1 cage · R12')
     expect(first.getByTestId('print-stickers-job-runs').textContent).toBe('1 run so far · 3 stickers · 1 on boxes')
-    await waitFor(() => expect(first.getByTestId('print-stickers-job-next').textContent).toBe('A new run opens on R16.'))
+    await waitFor(() => expect(first.getByTestId('print-stickers-job-next').textContent).toBe('Print future stickers reserves new ones. A new run opens on R16.'))
     expect(first.getByTestId('print-stickers-job-where').textContent).toBe('Juniper Ridge Estates · 12 Kiln Road')
     expect(runs).toHaveBeenCalledWith(['j1', 'j3'])
     // The band's sticker carries that name over the stand-in link.
@@ -79,6 +79,38 @@ describe('PrintStickersWindow', () => {
     expect(second.queryByTestId('print-stickers-door-job')).toBeNull()
     fireEvent.click(second.getByTestId('print-stickers-door-reserve'))
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Print future stickers · JP1071 · Larkspur Dental')
+  })
+
+  it('the reserved line carries the press that prints those stickers, and it opens the window on their run with nothing minted (v2.7523)', async () => {
+    const runs = vi.fn(async (_ids: ReadonlyArray<string>) => new Map([['j1', [run('j1', ['R13', 'R14', 'R15'], [sticker(1, 'R13', '7d759246-8476-4a37-884f-ed1562d5663f'), sticker(2, 'R14'), sticker(3, 'R15')])]]]))
+    const sites = vi.fn(async (_ids: ReadonlyArray<string>) => new Map([['j1', { site: '', names: { boxes: [{ label: 'R12', kind: 'cage', retiredAt: null }], blankNames: ['R14', 'R15'] } }], ['j3', { site: '', names: { boxes: [], blankNames: [] } }]]))
+    renderWithProviders(<PrintStickersWindow jobs={[bare, juniper]} role="assistant" loading={false} failure={quiet} reads={reads({ runs, sites })} onOpenJob={() => {}} onClose={() => {}} />)
+    const press = await screen.findByTestId('print-stickers-reserved-press')
+    const first = within(screen.getAllByTestId('print-stickers-card')[0]!)
+    // the press counts what it prints and names it, and the line under it says it is no new reservation
+    expect(press.textContent).toBe('Print the 2 reserved stickers, R14 to R15')
+    expect(first.getByTestId('print-stickers-reserved-note').textContent).toBe('This prints the same stickers with the same links. It reserves nothing new.')
+    // the other press is told apart: it reserves new ones
+    await waitFor(() => expect(first.getByTestId('print-stickers-job-next').textContent).toBe('Print future stickers reserves new ones. A new run opens on R16.'))
+    expect(first.getByTestId('print-stickers-door-reserve').textContent).toBe('Print future stickers›')
+    // a job with nothing reserved has no such press, and its line reads as it did
+    expect(within(screen.getAllByTestId('print-stickers-card')[1]!).queryByTestId('print-stickers-reserved-press')).toBeNull()
+    fireEvent.click(press)
+    // the stickers window, on the run: its two reserved stickers, with From and to over the whole run
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Reserved stickers, R14 to R15 · JP1204 · Juniper Ridge')
+    expect(screen.queryByTestId('stickers-ask')).toBeNull()
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 stickers, R14 to R15')
+    expect(within(screen.getByTestId('stickers-range-from')).getAllByRole('option').map((o) => o.textContent)).toEqual(['R13', 'R14', 'R15'])
+    const { mintStickerRun } = await import('../../lib/materials/stickerRunsIo')
+    expect(mintStickerRun).not.toHaveBeenCalled()
+  })
+
+  it('a role that may not print a run sees the card’s reserved press dead with its reason', async () => {
+    const runs = vi.fn(async (_ids: ReadonlyArray<string>) => new Map([['j1', [run('j1', ['R14', 'R15'], [sticker(2, 'R14'), sticker(3, 'R15')])]]]))
+    renderWithProviders(<PrintStickersWindow jobs={[bare, juniper]} role="subcontractor" loading={false} failure={quiet} reads={reads({ runs })} onClose={() => {}} />)
+    const press = (await screen.findByTestId('print-stickers-reserved-press')) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(screen.getByTestId('print-stickers-reserved-note').textContent).toBe('Only the office, a primary or a superintendent prints a run of stickers.')
   })
 
   it('the band says the tape and the printer’s own line once it answers, and lets the printer go before the next window', async () => {
