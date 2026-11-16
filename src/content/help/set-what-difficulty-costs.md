@@ -47,7 +47,7 @@ All lines together add at most a percent of the bid's own cost. Past it, every l
 
 :::
 
-The sheet also says who may rate a GC: the office, the estimators, the masters. Tick the ones who may.
+The sheet also says who may rate a GC: the office, the estimators, the masters. Tick the ones who may. Version 2 ticks all three. A group you untick reads the rating and cannot save.
 
 ## Change a rule
 

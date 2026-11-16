@@ -7,6 +7,7 @@ import {
   gcDifficultyChipWords,
   gcDifficultyDraftProblems,
   gcDifficultyHistoryLine,
+  gcDifficultyKeepableBillsPick,
   gcDifficultyOpeningPicks,
   gcDifficultyPicksChanged,
   gcDifficultyPicksToSave,
@@ -98,6 +99,18 @@ describe('gcDifficultyRating', () => {
     expect(gcDifficultyPicksToSave({ field: 2, paying: 1 }, V1.body, { paying: ' Read from their bills: paid in 52 days. ', field: 'ignored' })).toEqual({ picks: { field: 2, paying: 1 }, reasons: { paying: 'Read from their bills: paid in 52 days.' } })
     expect(gcDifficultyStoredBillsPick(gcDifficultyStanding(rating({ picks: { paying: 1, field: 2 }, pickReasons: { paying: 'By hand: slow.' } }), [V1], V1), 'paying')).toEqual({ points: 1, reason: 'By hand: slow.' })
     expect(gcDifficultyStoredBillsPick(null, 'paying')).toBeNull()
+  })
+
+  it('a stored bills pick is kept only while the published version still has its scale and rung (v2.7468)', () => {
+    const stored = { points: 1, reason: 'Read from their bills: Paid in 52 days, the median of 7 bills.' }
+    const standing = gcDifficultyStanding(rating({ picks: { paying: 1, field: 2 }, pickReasons: { paying: stored.reason } }), [V1], V1)
+    expect(gcDifficultyKeepableBillsPick(standing, 'paying', V1.body)).toEqual(stored)
+    // No Paying scale under the published version, or one that stops below the stored point: nothing to keep.
+    expect(gcDifficultyKeepableBillsPick(standing, 'paying', { scales: [field] })).toBeNull()
+    const paying = DIFFICULTY_CRITERIA_V1.scales[0]!
+    expect(gcDifficultyKeepableBillsPick(standing, 'paying', { scales: [{ ...paying, max: 0, rungs: paying.rungs.filter((r) => r.points === 0) }] })).toBeNull()
+    expect(gcDifficultyKeepableBillsPick(standing, 'paying', null)).toBeNull()
+    expect(gcDifficultyKeepableBillsPick(null, 'paying', V1.body)).toBeNull()
   })
 
   it('the press wakes only when the picks differ from the rating that stands', () => {
