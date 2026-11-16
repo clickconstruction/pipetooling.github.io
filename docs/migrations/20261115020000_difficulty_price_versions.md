@@ -9,3 +9,5 @@ GC difficulty rating, PR 4 of six (punch list #357, [`to-dos/gc-difficulty-ratin
 - The four fence calls, as every CREATE TABLE.
 
 **Apply order**: push right after the merge. The Bid Board's *Pricing rules* door, the GC card's rater gate and the Workbench's lines read the table by name; before the push the reads fail soft (version 1's numbers for the gate and the rule, no lines written). Regenerate types after the push as a `chore(types)` PR.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `difficulty_price_versions`.

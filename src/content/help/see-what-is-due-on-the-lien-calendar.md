@@ -92,7 +92,7 @@ A phone shows the same pills with their counts only, and the months without the 
 ## Good to know
 
 - Press a job's row to open its Lien window.
-- Press the job's number to open the job itself. That window has its history, its bills and **Edit**. Close it and you are back on the desk.
+- Press the job's number to go where its chip on the Board goes. That is the place for its paper's stage, like the notice or the property record. A job with no chip on the Board opens the job itself. See [read the Board on the Lien desk](/help/read-the-board-on-the-lien-desk#press-a-chip).
 - Office users can press a pay dot to record when they said they will pay. On a GC's line, **Record what they said ›** records one pay date for all of its jobs.
 - A storefront on a row means a supply house is still owed on that job. Press the storefront button beside the search box to see only those jobs. See [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).
 - The whole flow of the desk is in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).

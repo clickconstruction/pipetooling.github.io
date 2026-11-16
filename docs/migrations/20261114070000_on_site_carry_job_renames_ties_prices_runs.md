@@ -24,3 +24,5 @@ Merge, then **`supabase db push`**: the three functions are swapped in place, an
 Run on a throwaway Postgres 15 on 2026-11-14 over stub tables with the four tables' real CHECKs and unique indexes (the file applied twice, the second time changing nothing): both scopes, the pair that keeps the newer answer on each side, the words, the refusal of an empty job and a move of a run alone, 29 `ok:` lines. The real RLS, fences and trigger functions are CI's bed's.
 
 **Not applied by this PR's author**: the push follows the merge.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `on_site_carry_job`, `on_site_job_counts`, `dev_on_site_move_job`.

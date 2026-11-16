@@ -4601,3 +4601,36 @@ describe('LienDesk · Lien affidavits and Retainage notices stack their pile tit
     }
   })
 })
+
+describe('LienDesk · serve the filed liens together (punch list #366)', () => {
+  // Two filed affidavits that owe their copies. Every name here is made up.
+  const filed = (id: string, job_id: string) => ({ id, job_id, kind: 'affidavit', months_covered: [], voided_at: null, filed_at: '2026-09-10', serve_due: '2026-09-15', served_at: null, county: 'Guadalupe', recording_number: `2026-${id}`, sends: [], fields: { ownerName: 'Elwick Holdings LLC', ownerAddress: '4 Example Way, Schertz, TX', propertyAddress: '1204 Elwick Rd, Schertz, TX', unpaidAmount: '33500.00', originalContractorName: 'Lowbeck Contracting', originalContractorAddress: '2904 Corporate Cr, Flower Mound, TX', isSub: true }, created_at: '2026-09-10T15:00:00Z' })
+  const desk = (jobs: string[]) => {
+    const d = data([], [], true)
+    d.jobsById = Object.fromEntries(jobs.map((id, i) => [id, { ...d.jobsById.j650!, id, hcp_number: String(650 + i) }]))
+    d.filingsByJob = Object.fromEntries(jobs.map((id) => [id, [filed(`f-${id}`, id)]])) as unknown as LienDeskData['filingsByJob']
+    return d
+  }
+  const serveRows = () => screen.getAllByRole('button', { name: 'Record service' })
+
+  it('two filed liens: the row opens one window that prints both and takes their mail numbers', async () => {
+    const onOpenLienInstruments = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk(['j650', 'j651'])} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    fireEvent.click(serveRows()[0]!)
+    const win = within(screen.getByTestId('lien-serve-window'))
+    expect(win.getByText('2 filed liens owe their copies. The soonest is due Sep 15.')).toBeTruthy()
+    expect(win.getByRole('button', { name: 'Print 2 liens’ copies' })).toBeTruthy()
+    expect(win.getByRole('textbox', { name: 'Job 650, owner, certified mail number' })).toBeTruthy()
+    expect(onOpenLienInstruments).not.toHaveBeenCalled()
+  })
+
+  it('one filed lien keeps its own Lien window', async () => {
+    const onOpenLienInstruments = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk(['j650'])} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    fireEvent.click(serveRows()[0]!)
+    expect(screen.queryByTestId('lien-serve-window')).toBeNull()
+    expect(onOpenLienInstruments).toHaveBeenCalledWith('j650')
+  })
+})
