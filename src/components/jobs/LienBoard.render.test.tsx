@@ -377,6 +377,21 @@ describe('LienBoard · the two prints, between the tiles and the columns (v2.747
     expect(h.onNote).toHaveBeenCalledTimes(1)
   })
 
+  it('the line that counts the notices waiting on his signature carries the office’s reminder, on the notices’ side alone; dead it reads when it went (v2.7491)', () => {
+    const onPress = vi.fn()
+    const view = render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ ...sides(), ...handlers(), remind: { button: 'Remind Malachi of 7 papers', dead: false, onPress } }} />)
+    const left = document.querySelector('[data-lien-board-print="notice"] [data-lien-board-print-left]') as HTMLElement
+    expect(left.textContent).toBe('7 wait on Malachi’s signature · See them › · Remind Malachi of 7 papers ›')
+    expect(document.querySelector('[data-lien-board-print="affidavit"] [data-lien-board-remind]')).toBeNull()
+    fireEvent.click(left.querySelector('[data-lien-board-remind]') as HTMLButtonElement)
+    expect(onPress).toHaveBeenCalledTimes(1)
+    view.unmount()
+    render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ ...sides(), ...handlers(), remind: { button: 'Reminded at 2:14 PM', dead: true, onPress } }} />)
+    const sent = document.querySelector('[data-lien-board-remind]') as HTMLButtonElement
+    expect(sent.textContent).toBe('Reminded at 2:14 PM')
+    expect(sent.disabled).toBe(true)
+  })
+
   it('a press with nothing ready is dead and still says why; a column with no approved paper ends with no press', () => {
     const h = handlers()
     render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ notice: lienBoardNoticePrint({ toPrint: 2, waits: 2, printed: 0 }), affidavit: null, ...h }} />)

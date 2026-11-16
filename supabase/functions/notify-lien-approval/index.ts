@@ -25,6 +25,11 @@
 // A retainage notice (v2.7478): the plain body on a `retainage_53_057` item. It told nobody on a send and the Remind
 // press left it out, so the paper waited until the leader opened the desk. The same gate and the same answer as a
 // notice, its own words (`lienRetainageApprovalPush`) and its own door, the Retainage list on that job.
+//
+// A notice that waits on his signature (v2.7491): `{ kind: 'signature', items: [{ item_id, due_ymd }] }`. An approved
+// notice with no signature cannot print, and no press told him of it: Remind covered a paper awaiting approval alone.
+// The office's gate, the affidavit's batch rule (one message for each leader, whatever the count), and its own row
+// rule (`lienSignatureAskable`): a monthly notice, approved, not printed, unsigned as the desk counts it.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
@@ -41,6 +46,8 @@ import {
   lienCodeUsedPush,
   lienPenRecordedPush,
   lienRetainageApprovalPush,
+  lienSignatureAskable,
+  lienSignatureReminderPush,
   lienWaiverCodeUsedPush,
   signedYmdOf,
   type LienAffidavitApprovalPaper,
@@ -145,31 +152,36 @@ serve(async (req) => {
     // Punch list #305 (v2.7180): `kind: 'affidavit'` + items tells the leader of one affidavit, or of every affidavit of one press.
     const affidavitAsk = kind === 'affidavit'
     // v2.7445: the plain body, `item_id` and no kind, is a notice sent for approval, the monthly one or (v2.7478) the retainage one. `remind: true` is the To do view's Remind press.
-    const noticeAsk = !penRecorded && !codeUsed && !waiverCodeUsed && !affidavitAsk
+    // v2.7491: `kind: 'signature'` + items reminds the leader of approved notices that wait on his signature, one message for the lot.
+    const signatureAsk = kind === 'signature'
+    // The two asks that name many papers in one call, and tell each leader once.
+    const batchAsk = affidavitAsk || signatureAsk
+    const noticeAsk = !penRecorded && !codeUsed && !waiverCodeUsed && !batchAsk
     const reminder = remind === true
-    const asked = affidavitAsk ? lienAffidavitAskItems(items) : []
-    if (affidavitAsk && asked.length === 0) return json({ error: 'Missing items' }, 400)
-    if (!affidavitAsk && (waiverCodeUsed ? !release_id : !item_id)) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
+    const asked = batchAsk ? lienAffidavitAskItems(items) : []
+    if (batchAsk && asked.length === 0) return json({ error: 'Missing items' }, 400)
+    if (!batchAsk && (waiverCodeUsed ? !release_id : !item_id)) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
     const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
     if (archivedRefusal) return archivedRefusal
 
-    // The office's two asks, a notice and an affidavit: whoever in the office presses, never the drafter alone (v2.7445).
-    const { data: caller } = affidavitAsk || noticeAsk
+    // The office's asks, a notice, an affidavit and a signature: whoever in the office presses, never the drafter alone (v2.7445).
+    const { data: caller } = batchAsk || noticeAsk
       ? await admin.from('users').select('name, role, archived_at').eq('id', user.id).maybeSingle()
       : { data: null }
-    if ((affidavitAsk || noticeAsk) && (!caller || caller.archived_at || !OFFICE_ROLES.includes(String(caller.role)))) return json({ error: 'Not the office' }, 403)
+    if ((batchAsk || noticeAsk) && (!caller || caller.archived_at || !OFFICE_ROLES.includes(String(caller.role)))) return json({ error: 'Not the office' }, 403)
 
-    if (affidavitAsk) {
+    if (batchAsk) {
       const { data: rows } = await admin
         .from('job_lien_desk_items')
-        .select('id, job_id, kind, status, submitted_at, voided_at')
+        .select(signatureAsk ? 'id, job_id, kind, status, voided_at, printed_at, fields, signed_at, signer_printed_name, signed_fields_hash' : 'id, job_id, kind, status, submitted_at, voided_at')
         .in('id', asked.map((a) => a.itemId))
       const nowMs = Date.now()
-      const waiting = (rows ?? []).filter((r) => r.job_id && lienAffidavitAskable(r, nowMs, { reminder }))
+      // deno-lint-ignore no-explicit-any
+      const waiting = ((rows ?? []) as any[]).filter((r) => r.job_id && (signatureAsk ? lienSignatureAskable(r) : lienAffidavitAskable(r, nowMs, { reminder })))
       const nothing = { success: true, push_sent: 0, email_sent: false, held: 0, told: 0, leader_name: null }
-      if (waiting.length === 0) return json({ ...nothing, message: 'Not awaiting approval' })
+      if (waiting.length === 0) return json({ ...nothing, message: signatureAsk ? 'Not waiting on a signature' : 'Not awaiting approval' })
       const [{ data: jobs }, { data: roster }] = await Promise.all([
         admin.from('jobs_ledger').select('id, job_name, hcp_number, click_number, master_user_id').in('id', [...new Set(waiting.map((r) => r.job_id as string))]),
         admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null),
@@ -196,7 +208,10 @@ serve(async (req) => {
       for (const t of tells) {
         const leader = leaderById.get(t.leaderId)
         if (!leader) continue
-        const sent = await tellLeaders(admin, [leader], lienAffidavitApprovalPush({ papers: t.papers, todayYmd, senderName: caller?.name ?? null, reminder }), 'lien_affidavit_approval_ask', 'Open the Lien desk')
+        const words = signatureAsk
+          ? lienSignatureReminderPush({ papers: t.papers.map((p) => ({ jobLabel: p.jobLabel, jobId: p.jobId, mailByYmd: p.fileByYmd })), todayYmd, senderName: caller?.name ?? null })
+          : lienAffidavitApprovalPush({ papers: t.papers, todayYmd, senderName: caller?.name ?? null, reminder })
+        const sent = await tellLeaders(admin, [leader], words, signatureAsk ? 'lien_signature_ask' : 'lien_affidavit_approval_ask', 'Open the Lien desk')
         pushSent += sent.pushSent
         emailSent += sent.emailSent
         held += sent.held
