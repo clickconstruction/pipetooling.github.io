@@ -57,7 +57,7 @@ The top of the desk has four tabs. **To do** is the work. The other three show t
 
 On a phone the top of the desk is one row. The row holds the way back, the desk's name and {{button:outline|⋯}}. The four tabs sit under it, each as tall as a thumb. On a narrow phone a tab's words wrap onto a second line. The kinds of paper wrap the same way, so neither row of tabs slides sideways.
 
-Press {{button:outline|⋯}} to open **More**. More holds the doors that sit in the top bar on a computer.
+Press {{button:outline|⋯}} to open **More**. More holds the door to the run. It also holds the doors that sit in the top bar on a computer.
 
 - **Print and mail** or **Enter mail numbers**, with its count. It shows while a notice waits. The {{button:outline|⋯}} button wears the same count.
 - **Put a GC on notice…** shows while **Monthly notices** is open.
@@ -373,7 +373,7 @@ A bill paid in full by the day is written down by the percent once the money lan
 
 ## Sending the run
 
-Approved notices go out together. The run's pill sits on the desk's title line, right after the four views. It carries the same name as every other door to the run. While any notice is still to print it reads {{button:blue|Print and mail 7}}. The number counts every approved notice not yet recorded as mailed. Once all of them have printed it reads {{button:blue|Enter mail numbers · 4}}. After some are mailed it adds the tally, like *3 of 10 mailed*. A small meter rides on it. Green is what was mailed and recorded this week. Blue is what printed. Grey is what is still to print. When an approved notice has no signature yet, small words beside the pill split the count. They read like *4 to print · 3 for Robert to sign*. The Board's second tile counts the same three under **to sign**.
+Approved notices go out together, in one run. On **To do** the press stands under the Board's tiles, over the notices' column. While any notice is still to print it reads {{button:blue|Print and mail 7 notices}}. It counts the notices that can print now. Once all of them have printed it reads {{button:blue|Enter mail numbers · 4}}. A line under it says how many wait on a signature. On **By paper** the press is on the head of the {{chip:green|Approved · to print}} pile. It is in an approved notice's footer too. **By date** offers the mail numbers on a printed notice. **By job** has no door to the run, so open **To do** to print. On a phone the run is the first row of **More**. The desk's title bar no longer carries a door to the run.
 
 The run opens with a journey across the top. The journey has six steps. The steps are **Built**, **Signed**, **Sent**, **In the mail**, **Recorded** and **Delivered**. Under each step is a count, like *2 of 3*. The step the run is on is blue. A step that blocks the run is amber, and it says why. The fill between the steps runs as far as every envelope has come. On a phone the run fills the screen and the six steps are one line. The line names the step the run is on, like *Step 2 of 6 · Signed*, with its count. Press the line to see all six in two rows of three.
 
