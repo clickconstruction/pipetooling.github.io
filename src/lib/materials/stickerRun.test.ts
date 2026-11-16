@@ -73,9 +73,9 @@ describe('how many', () => {
   })
 
   it('no word a person reads says a sticker is blank: the press reserves, and the window says what is held (v2.7484)', () => {
-    expect(PRINT_STICKERS_LABEL).toBe('Reserve stickers')
+    expect(PRINT_STICKERS_LABEL).toBe('Print future stickers')
     expect(STICKERS_GUIDE_HEADING).toBe(PRINT_STICKERS_LABEL)
-    expect(STICKERS_GUIDE_QUESTION).toBe('How do I reserve stickers?')
+    expect(STICKERS_GUIDE_QUESTION).toBe('How do I print future stickers?')
     expect(stickerReserveWords(true)).toBe('Printing reserves each name and gives each sticker its own link. You say which box it is on later.')
     expect(stickerReserveWords(false)).toBe('Printing gives each sticker its own link and holds it for a box. You say which box it is on later.')
     for (const words of [stickerReserveWords(true), stickerReserveWords(false), STICKERS_RESERVED_WORDS, PRINT_STICKERS_LABEL, STICKERS_GUIDE_QUESTION]) {

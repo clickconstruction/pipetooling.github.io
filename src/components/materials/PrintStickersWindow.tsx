@@ -1,5 +1,5 @@
 /**
- * Reserve stickers from the Materials strip (punch list #329, PR 2, v2.7272): a run belongs to the job its new
+ * Print future stickers from the Materials strip (punch list #329, PR 2, v2.7272): a run belongs to the job its new
  * boxes go on, so the press asks *Which job?* as Print labels does, over the jobs the on-site desk holds, then opens
  * that job's stickers window (`PrintStickersModal`). One job skips the question. A job with no box yet is listed too:
  * stickers come before boxes, and the first run is often for a site the app has not seen.

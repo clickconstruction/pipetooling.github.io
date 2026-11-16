@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Reserve stickers from the Materials strip (punch list #329, PR 2, v2.7272): two jobs ask *Which
+ * Render smoke for Print future stickers from the Materials strip (punch list #329, PR 2, v2.7272): two jobs ask *Which
  * job?*, a job with no box is listed too, a pick opens that job's stickers window, one job skips the question, and no
  * job at all names the next press.
  */
@@ -34,23 +34,23 @@ afterEach(() => {
 describe('PrintStickersWindow', () => {
   it('asks which job, lists a job with no box yet, and opens the pick', () => {
     renderWithProviders(<PrintStickersWindow jobs={[juniper, bare]} role="assistant" loading={false} failure={quiet} onClose={() => {}} />)
-    expect(screen.getByRole('dialog', { name: 'Reserve stickers' }).textContent).toContain('Which job?')
+    expect(screen.getByRole('dialog', { name: 'Print future stickers' }).textContent).toContain('Which job?')
     const rows = screen.getAllByTestId('print-stickers-job')
     expect(rows.map((r) => r.textContent)).toEqual(['JP1071 · Larkspur Dentalno box yet', 'JP1204 · Juniper Ridge1 box'])
     fireEvent.click(rows[1]!)
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Reserve stickers · JP1204 · Juniper Ridge')
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Print future stickers · JP1204 · Juniper Ridge')
     expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 200 stickers')
   })
 
   it('one job skips the question', () => {
     renderWithProviders(<PrintStickersWindow jobs={[bare]} role="dev" loading={false} failure={quiet} onClose={() => {}} />)
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Reserve stickers · JP1071 · Larkspur Dental')
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Print future stickers · JP1071 · Larkspur Dental')
   })
 
   it('no job at all names the next press', () => {
     const onAddFirst = vi.fn()
     renderWithProviders(<PrintStickersWindow jobs={[]} role="dev" loading={false} failure={quiet} onAddFirst={onAddFirst} onClose={() => {}} />)
-    expect(screen.getByRole('dialog', { name: 'Reserve stickers' }).querySelector('[data-empty-state]')?.textContent).toContain('No job has anything on site yet.')
+    expect(screen.getByRole('dialog', { name: 'Print future stickers' }).querySelector('[data-empty-state]')?.textContent).toContain('No job has anything on site yet.')
     fireEvent.click(screen.getByRole('button', { name: 'On site' }))
     expect(onAddFirst).toHaveBeenCalled()
   })

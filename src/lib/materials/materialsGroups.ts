@@ -67,7 +67,7 @@ export const MATERIALS_PRESS_LABELS: Record<MaterialsPress, string> = {
 }
 
 /**
- * The presses at the right end of On site's row, in order: Scan a label, then Print labels (the owner, 2026-11-10), then Reserve stickers (punch list #329, v2.7272). Whoever may open a job's boxes may print its labels (the card's call
+ * The presses at the right end of On site's row, in order: Scan a label, then Print labels (the owner, 2026-11-10), then Print future stickers (punch list #329, v2.7272). Whoever may open a job's boxes may print its labels (the card's call
  * 3): a label shows a stencil and a code, no money. A run of stickers is the office's, a primary's or a superintendent's (`sticker_can_mint`, the card's call 6), so the press is theirs alone.
  */
 export function materialsPressesFor(role: string | null | undefined): MaterialsPress[] {

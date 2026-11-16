@@ -309,7 +309,7 @@ export function reservedByWords(of: Pick<ReservedOfJob, 'runs' | 'printedByName'
   return of.printedByName ? `Printed ${day} by ${of.printedByName}.` : `Printed ${day}.`
 }
 
-/** The Reserve stickers window's line, before a new run: *This job has 12 stickers reserved and not on a box yet.* Empty at none. */
+/** The Print future stickers window's line, before a new run: *This job has 12 stickers reserved and not on a box yet.* Empty at none. */
 export function jobBlankWords(n: number): string {
   const head = notYetOnBoxWords(n)
   return head ? `This job has ${head}.` : ''

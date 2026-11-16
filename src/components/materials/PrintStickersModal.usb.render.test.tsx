@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Reserve stickers straight to the P-touch over USB (punch list #329, PR 2, v2.7272): the press
+ * Render smoke for Print future stickers straight to the P-touch over USB (punch list #329, PR 2, v2.7272): the press
  * is the connection until a printer is connected; the press then mints the run and the strips go as soon as they are
  * drawn, a set together; a printer that stops says how many stickers went and the press becomes Print the rest. The
  * USB side and the canvas are mocked, as the labels window's test mocks them: a test's DOM has neither.

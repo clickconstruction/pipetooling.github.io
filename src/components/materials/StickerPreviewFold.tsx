@@ -1,5 +1,5 @@
 /**
- * What the stickers will look like (punch list #329, v2.7304): the fold at the foot of the Reserve stickers window,
+ * What the stickers will look like (punch list #329, v2.7304): the fold at the foot of the Print future stickers window,
  * above its presses, closed until this device leaves it open (`labelPrefs.ts`). Opened, it draws the run's strips at
  * the tape's width through the printer's own drawing (`TapeStripBitmap`), so the preview and the tape agree. A run
  * that names its boxes draws its first six strips, each name large over the link, each sticker's copies together,

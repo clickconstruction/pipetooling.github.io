@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Reserve stickers (punch list #329, PR 2, v2.7272) through the browser's print window, where the
+ * Render smoke for Print future stickers (punch list #329, PR 2, v2.7272) through the browser's print window, where the
  * test's browser has no USB: the ask with its quick counts and Copies of each; a count out of range and a role that may
  * not mint each hold the press with the database's words; the press mints the run and the strips print once they are
  * on the page; a refusal is said and nothing prints; a run handed in prints and mints nothing. Since v2.7438
@@ -56,7 +56,7 @@ afterEach(() => {
 describe('PrintStickersModal · the ask', () => {
   it('opens on 200 with the quick counts, Copies of each, where new boxes go and the browser note, and no number', async () => {
     setup()
-    expect(screen.getByRole('dialog', { name: 'Reserve stickers' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Print future stickers' })).toBeTruthy()
     expect(screen.getAllByTestId('stickers-count-preset').map((b) => b.textContent)).toEqual(['30', '60', '100', '200'])
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('200 stickers, one strip each.')
     expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 200 stickers')
@@ -66,10 +66,10 @@ describe('PrintStickersModal · the ask', () => {
     // what the press holds is said before it (v2.7484): a link of its own for each sticker, and nowhere the word blank
     expect(screen.getByTestId('stickers-reserve-words').textContent).toBe('Printing gives each sticker its own link and holds it for a box. You say which box it is on later.')
     expect(screen.queryByTestId('stickers-reserved-words')).toBeNull()
-    expect(screen.getByRole('dialog', { name: 'Reserve stickers' }).textContent).not.toMatch(/blank/i)
+    expect(screen.getByRole('dialog', { name: 'Print future stickers' }).textContent).not.toMatch(/blank/i)
     // the window says no running number: not where the last run ended, not where this one starts
     expect(screen.queryByTestId('stickers-last-run')).toBeNull()
-    expect(screen.getByRole('dialog', { name: 'Reserve stickers' }).textContent).not.toMatch(/last run|numbers start|\b0\d{3}\b/)
+    expect(screen.getByRole('dialog', { name: 'Print future stickers' }).textContent).not.toMatch(/last run|numbers start|\b0\d{3}\b/)
     expect(screen.queryByTestId('stickers-blank-count')).toBeNull()
     // no USB in this browser: the way out is said, and the test strip and the setup steps are still offered
     expect(screen.getByTestId('stickers-no-usb')).toBeTruthy()

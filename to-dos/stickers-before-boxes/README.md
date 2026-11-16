@@ -655,7 +655,7 @@ print blank stickers I am taken to this page where there is no URL for a part. I
 sticker, I want to print a future sticker where me printing it reserves a slot so to speak to be back filled later.*
 That is what the database has done since PR 1: the press mints a `box_stickers` row for each sticker, with a code of
 its own and its name, and the row waits with no box until a scan or **These are on boxes** says which box it is. The
-screens said it badly. So the press and the window are **Reserve stickers**, the ask says what the press holds
+screens said it badly. So the press and the window are **Print future stickers**, the ask says what the press holds
 (*Printing reserves each name and gives each sticker its own link. You say which box it is on later.*), the press
 reads *Reserve and print 109 stickers, G92 to G200*, a run that is made says *These stickers are reserved*, the Runs
 fold reads *Stickers reserved for this job*, and a reserved sticker scanned with no sign-in reads *This sticker is
@@ -669,5 +669,5 @@ names, who printed them and when, with **These are on boxes** beside **Runs**, a
 the last reserved one (`nextNameToReserve`) where it opened on the first run's names and met the hold. One thing is
 not held and is the owner's call: **Add a container** offers the site's next free name from its boxes alone, so with
 G92 to G200 reserved it still offers G92. A box made by hand as G92 takes sticker G92 when it is scanned, so the tape
-and the box agree as long as the stickers go on in order. The name of the press is the owner's to
-change: *Print future stickers* was the other one offered.
+and the box agree as long as the stickers go on in order. The name of the press is the owner's pick
+of the same day: offered *Reserve stickers* and *Print future stickers*, he took the second, his own phrase.

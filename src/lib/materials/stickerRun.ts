@@ -1,5 +1,5 @@
 /**
- * Reserve stickers (punch list #329, PR 2, v2.7272; the press read *Print blank stickers* until v2.7484, when the
+ * Print future stickers (punch list #329, PR 2, v2.7272; the press read *Print blank stickers* until v2.7484, when the
  * owner said a sticker is never blank: printing one reserves a name and a link for a box filled in later): the
  * window's words, the run request's checks and what one sticker prints, for a run of stickers minted before their
  * boxes. In the code and the database a reserved sticker's state is still `blank`. A sticker is a code to scan and,
@@ -20,7 +20,7 @@ import { stickerRunCounts, type StickerCountRow, type StickerRunCounts } from '.
 import { clampTapeCopies, TAPE_COPIES_MAX, TAPE_NAME_FULL_CHARS, TAPE_NAME_SMALL_RATIO } from './tapeLabel'
 
 /** The press on the job's On site strip and the Materials strip, and the window's title. One home: `materialsGroups.ts` reads it. */
-export const PRINT_STICKERS_LABEL = 'Reserve stickers'
+export const PRINT_STICKERS_LABEL = 'Print future stickers'
 
 /** The verb of the press that makes a new run: the database reserves the stickers and the strips print, in one press. A run already made prints with *Print*. */
 export const STICKER_RESERVE_VERB = 'Reserve and print'
@@ -424,5 +424,5 @@ export function stickersCsvFileName(run: Pick<StickerRun, 'count' | 'names'>, ym
 
 /** The guide the window links to, its heading (the guide's own `##` line, so the door and the section cannot drift) and the link's words. */
 export const STICKERS_GUIDE = 'see-what-is-on-every-job-site-and-what-walked-away'
-export const STICKERS_GUIDE_HEADING = 'Reserve stickers'
-export const STICKERS_GUIDE_QUESTION = 'How do I reserve stickers?'
+export const STICKERS_GUIDE_HEADING = 'Print future stickers'
+export const STICKERS_GUIDE_QUESTION = 'How do I print future stickers?'

@@ -1,5 +1,5 @@
 /**
- * Reserve stickers (punch list #329, PR 2, v2.7272; *Print blank stickers* until v2.7484): the window that mints a
+ * Print future stickers (punch list #329, PR 2, v2.7272; *Print blank stickers* until v2.7484): the window that mints a
  * run of stickers before their boxes and prints it on Brother tape. Minting is the reserving: each sticker gets a
  * code of its own, and its name when the run has names, held for a box someone says later. The ask says so in a line
  * under the names, and a run that is made says it is reserved. It asks how many (the card's quick presses or a typed

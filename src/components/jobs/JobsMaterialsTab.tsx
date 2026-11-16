@@ -85,7 +85,7 @@ type Props = {
   driveBackfill?: boolean
   /** A row's doors on the desk (the Materials page's mount): Labels for the job's boxes, and the job on the phone screen. */
   rowDoors?: { onLabels: (jobId: string) => void }
-  /** The signed-in role (punch list #329, v2.7272): Reserve stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
+  /** The signed-in role (punch list #329, v2.7272): Print future stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
   role?: string | null
 }
 
@@ -646,7 +646,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
   /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
   const [manifestOpen, setManifestOpen] = useState<{ only: string | null } | null>(null)
-  /** Reserve stickers (punch list #329, v2.7272): a new run, or a run the fold hands back to print again. */
+  /** Print future stickers (punch list #329, v2.7272): a new run, or a run the fold hands back to print again. */
   const [stickersOpen, setStickersOpen] = useState<{ run: StickerRunToPrint | null } | null>(null)
   /** These are on boxes (section 10, PR 10): the form, opened from a named run's row on that run's blank names. */
   const [onBoxesOpen, setOnBoxesOpen] = useState<{ initial: string } | null>(null)

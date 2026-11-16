@@ -3,7 +3,7 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.7486',
   date: '2026-11-16',
-  title: 'Reserve stickers: the preview no longer reads as a sticker with no link',
+  title: 'Print future stickers: the preview no longer reads as a sticker with no link',
   kind: 'fix',
   highlights: [
     'What the stickers will look like now says, right over the strips, that each sticker gets its own link when it prints.',
