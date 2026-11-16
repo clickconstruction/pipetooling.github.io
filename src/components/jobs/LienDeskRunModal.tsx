@@ -9,9 +9,9 @@ import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../../lib/jobsDocu
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { lienRunGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
-import { runMailing } from '../../lib/jobs/lienRunPaper'
+import { runEnvelopeHold, runMailing, type RunMailing } from '../../lib/jobs/lienRunPaper'
 import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
-import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticePrintRefusal, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticePrintRefusal, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
@@ -35,13 +35,13 @@ import LienPenSignaturePane, { type PenPaneRecorded } from './LienPenSignaturePa
 import LienRunJourney from './LienRunJourney'
 import LienRunEnvelopeGlyph from './LienRunEnvelopeGlyph'
 import { runEnvelopeChip, runEnvelopeStage, type RunEnvelopeStageState } from '../../lib/jobs/runEnvelopeStage'
-import { lienRunBatchPlans, lienRunChecklistRows, lienRunFootWords, lienRunSheetHtml, LIEN_RUN_SHEET_CSS, type LienRunRow, type LienRunTickPrinted } from '../../lib/jobs/lienRunChecklist'
+import { lienRunBatchPlans, lienRunChecklistRows, lienRunSheetHtml, LIEN_RUN_SHEET_CSS, type LienRunRow, type LienRunTickPrinted } from '../../lib/jobs/lienRunChecklist'
 import LienRunChecklist from './LienRunChecklist'
 import LienRunScanPress from './LienRunScanPress'
 import { lienRunMailCode } from '../../lib/jobs/lienHelpGuideCode'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { runLaneOfEnvelope, runStageLabels, type RunLane } from '../../lib/jobs/runEnvelopeStage'
-import { runJourney } from '../../lib/jobs/runJourney'
+import { lienRunMailByWords, lienRunParts, lienRunSubLine, type LienRunPartKey } from '../../lib/jobs/lienRunParts'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import DocsmitReviewModal from './DocsmitReviewModal'
 import { EmptyState } from '../EmptyState'
 import { LIEN_RUN_EMPTY } from '../../lib/jobs/lienDeskEmptyWords'
@@ -56,6 +56,9 @@ import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem
 import { addLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
 import { LIEN_RUN_ACT, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 
+/** Which of the window's three stacks a notice's envelopes sit in, by its part (`lienRunParts`): what prints now, what printed, what is stopped. */
+const stackOf = (part: LienRunPartKey | undefined): 'ready' | 'printed' | 'rest' => (part === 'ready' ? 'ready' : part === 'owe' || part === 'record' ? 'printed' : 'rest')
+
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
  * sheet listing the envelopes, then what goes in each — the owner's copy
@@ -64,6 +67,14 @@ import { LIEN_RUN_ACT, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
  * address share an envelope (v2.3720): two jobs at one property, and every
  * copy for the one original contractor. Record the run writes each notice to
  * its job with every month it named and marks the desk items sent.
+ *
+ * Since v2.7477 (punch list #362, the owner's go on `to-dos/lien-to-do-one-run/run-window.html`) the window has one
+ * count, in notices, from `lienRunParts`: the journey's three steps, the count line under it, the rows' groups and
+ * the foot's one press all read it. The press does what its count says: *Print N notices* prints the ready notices,
+ * each whole, and *Record N mailings* takes the ones ready to record. So a notice that is stopped (held, or waiting
+ * on the signature) no longer keeps a ready notice's copy out of the packet by sharing its envelope: the envelopes
+ * are stacked by part, and a stopped notice's copy goes in the next packet's envelope. Everything rarely pressed is
+ * under More.
  */
 export default function LienDeskRunModal({
   notices: initial,
@@ -136,8 +147,8 @@ export default function LienDeskRunModal({
   // (`item:<itemId>`) or the batch pane's (`batch`) under Mark N signed ▸.
   const [penOpen, setPenOpen] = useState<string | null>(null)
   const isMobile = useIsMobile()
-  // The envelope cards and their copies (v2.7328): under the checklist, open on a computer, folded on a phone where the checklist is the run.
-  const [cardsOpen, setCardsOpen] = useState(!isMobile)
+  // The envelope cards and their copies (v2.7328): under the rows, folded since v2.7477 on a computer as on a phone. The rows are the run.
+  const [cardsOpen, setCardsOpen] = useState(false)
   // More ▾ (Run-4): the foot's secondary doors, folded.
   const [moreOpen, setMoreOpen] = useState(false)
   // Mail through Docsmit (the Docsmit train, PR 5b): the switches, what prepare made of the certified envelopes, the review, the send's outcome.
@@ -241,16 +252,43 @@ export default function LienDeskRunModal({
     [payBlocksByJob],
   )
   const payCodes = shown.reduce((s, n) => s + ((partsOf(n) ?? [{ jobId: n.jobId }]).reduce((t, x) => t + (payByJob[x.jobId]?.rows.filter((r) => r.payable).length ?? 0), 0)), 0)
-  const problems = useMemo(() => shown.map((n) => runNoticeProblems(n)), [shown])
-  // Record what is ready (v2.5533): a notice with a problem in red is held and stays in the pile with its reason and
-  // its doors; the ready ones record now. The button is dead only when nothing is ready.
-  const split = useMemo(() => runRecordSplit(shown, problems), [shown, problems])
-  // The run on paper (v2.4971): an envelope with no mailing address or nothing to claim is held — listed, numbered after
-  // the ones that go out, never printed. The window lists them in the paper's order so the numbers agree.
-  const mailing = useMemo(() => runMailing(runEnvelopes(shown)), [shown])
+  const problemsOf = useMemo(() => new Map(shown.map((n) => [n.itemId, runNoticeProblems(n)])), [shown])
+  // The checklist (v2.7328): one row per notice with its three ticks, and what each batch press takes and holds.
+  const rows = useMemo(() => lienRunChecklistRows({ notices, printedNow: printedNowAt }), [notices, printedNowAt])
+  const plans = useMemo(() => lienRunBatchPlans(rows), [rows])
+  const leaderName = useMemo(() => notices.find((n) => n.leader?.name)?.leader?.name ?? null, [notices])
+  // The one count (v2.7477): every notice in one part. Jobs combined onto one form go at the pace of the most stopped.
+  const together = useMemo(() => shown.flatMap((n) => (n.parts && n.parts.length > 1 ? [n.parts.map((p) => p.itemId)] : [])), [shown])
+  const partOfItem = useMemo(() => lienRunParts(rows, [], { together }).partOf, [rows, together])
+  // The run on paper (v2.4971, v2.7477): the envelopes in three stacks, so the window lists them as the paper does. What
+  // prints now comes first, numbered as the packet numbers them; then what printed; then what is stopped, each held
+  // with its reason and never printed by the packet. A stopped notice shares no envelope with a ready one: its copy
+  // goes out in the next packet's envelope, with a number of its own.
+  const mailing = useMemo<RunMailing>(() => {
+    const stack = (which: 'ready' | 'printed' | 'rest') => runEnvelopes(shown.filter((n) => stackOf(partOfItem.get(n.itemId)) === which)).map((env) => ({ ...env, key: `${which}:${env.key}` }))
+    const going = runMailing([...stack('ready'), ...stack('printed')])
+    const heldOf = new Map(rows.map((r) => [r.itemId, r.held]))
+    const stopped = stack('rest').map((env) => {
+      const notice = env.contents.map((c) => heldOf.get(c.notice.itemId)).find(Boolean)
+      return { env, why: runEnvelopeHold(env) ?? (notice ? `With its notice: ${notice}` : 'Its notice is not ready to print.') }
+    })
+    const held = [...going.held, ...stopped].map((h, i) => ({ env: { ...h.env, n: going.mailed.length + i + 1 }, why: h.why }))
+    return { mailed: going.mailed, held, all: [...going.mailed, ...held.map((h) => h.env)] }
+  }, [shown, partOfItem, rows])
   const envelopes = mailing.all
   const heldWhy = useMemo(() => new Map(mailing.held.map((h) => [h.env.key, h.why])), [mailing])
   const shared = envelopes.length < runCopies(shown)
+  // Who the waiting notices wait on: their leader when they share one, else *the leader*.
+  const waitLeader = useMemo(() => {
+    const names = new Set(rows.filter((r) => partOfItem.get(r.itemId) === 'wait').map((r) => (r.leader?.name ?? '').trim()))
+    return names.size === 1 ? [...names][0] || null : names.size === 0 ? leaderName : null
+  }, [rows, partOfItem, leaderName])
+  const parts = useMemo(() => lienRunParts(rows, envelopes, { leaderName: waitLeader, together }), [rows, envelopes, waitLeader, together])
+  // The window's second line: the copies and the envelopes, named once, and the first of the notices' last days to mail.
+  const subLine = useMemo(() => {
+    const line = lienRunSubLine({ copies: runCopies(shown), envelopes: envelopes.length, mailByWords: lienRunMailByWords(notices.map((n) => n.mailBy)) })
+    return line && combine && shown.length !== notices.length ? `${line} · combined: ${notices.length} jobs print on ${shown.length} ${shown.length === 1 ? 'form' : 'forms'}` : line
+  }, [shown, envelopes, notices, combine])
   // Read a copy before it prints (v2.4621): one entry per copy in packet order, its pages the ones the packet stacks.
   const previewEntries = useMemo<LienRunPreviewEntry[]>(
     () =>
@@ -309,50 +347,31 @@ export default function LienDeskRunModal({
   // stamped printed only once every copy of it has printed this sitting, so a half-printed notice never reads as in the mail.
   const [printedCopies, setPrintedCopies] = useState<ReadonlySet<string>>(() => new Set())
   const partsIds = (n: CombinedRunNotice) => partsOf(n) ?? [{ itemId: n.itemId, jobId: n.jobId }]
-  // The journey (Run-2): each envelope's stage from the same facts the rows show — printed when the packet printed before this sitting or every copy inside printed in it.
-  const leaderName = useMemo(() => notices.find((n) => n.leader?.name)?.leader?.name ?? null, [notices])
+  // Each envelope's stage, for its card: printed when it sits in the printed stack, or every copy inside printed in this sitting.
   const stageByKey = useMemo(() => {
     const out = new Map<string, RunEnvelopeStageState>()
-    for (const env of envelopes) out.set(env.key, runEnvelopeStage(env, { printed: printedAt != null || env.contents.every((c) => partsIds(c.notice as CombinedRunNotice).every((p) => printedCopies.has(runCopyKey(p.itemId, c.recipient.key)))) }))
+    for (const env of envelopes) out.set(env.key, runEnvelopeStage(env, { printed: env.key.startsWith('printed:') || env.contents.every((c) => partsIds(c.notice as CombinedRunNotice).every((p) => printedCopies.has(runCopyKey(p.itemId, c.recipient.key)))) }))
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [envelopes, printedAt, printedCopies])
-  const journey = useMemo(() => runJourney(envelopes.map((env) => stageByKey.get(env.key)!), { leaderName }), [envelopes, stageByKey, leaderName])
-  // The checklist (v2.7328): one row per notice with its three ticks, and what each batch press takes and holds.
-  const rows = useMemo(() => lienRunChecklistRows({ notices, printedNow: printedNowAt }), [notices, printedNowAt])
-  const plans = useMemo(() => lienRunBatchPlans(rows), [rows])
-  const checkFoot = useMemo(() => lienRunFootWords(rows), [rows])
-  // The lanes (Run-5): once the packet printed and the envelopes travel more than one way, each way is a line with its envelopes and how far they are.
-  const lanes = useMemo(() => {
-    if (printedAt == null) return []
-    const byLane = new Map<RunLane, RunEnvelope[]>()
-    for (const env of envelopes) {
-      const lane = runLaneOfEnvelope(env)
-      byLane.set(lane, [...(byLane.get(lane) ?? []), env])
-    }
-    if (byLane.size < 2) return []
-    const words: Record<string, string> = { certified: 'Certified', courier: 'Courier', hand: 'By hand', email: 'Email', docsmit: 'Docsmit' }
-    return [...byLane.entries()].map(([lane, envs]) => {
-      const states = envs.map((env) => stageByKey.get(env.key)!)
-      const labels = runStageLabels(lane)
-      const done = (key: string) => states.filter((st) => st.stages.find((x) => x.key === key)?.done).length
-      return { lane, label: words[lane] ?? lane, envelopes: envs.map((e) => e.n), steps: [{ label: labels.printed, done: done('printed'), now: false }, { label: labels.mailed, done: done('mailed'), now: done('mailed') < envs.length }, { label: labels.recorded, done: done('recorded'), now: false }], total: envs.length }
-    })
-  }, [envelopes, printedAt, stageByKey])
+  }, [envelopes, printedCopies])
   // Mail through Docsmit (PR 5b): the door shows once a dev saved the connection and while not paused, before anything printed;
   // an envelope already mailed through Docsmit leaves the paper paths and its card says so.
   const envelopeViaDocsmit = (env: RunEnvelope) => env.contents.some((c) => recipientViaDocsmit(c.recipient))
-  // What is still to go: the mailed envelopes less the ones Docsmit carries, and the notices with a copy among them.
-  // The packet prints these and the Docsmit door offers these (v2.5535), so an envelope the run holds back reaches neither.
+  // What goes on paper: the envelopes that go out less the ones Docsmit carries, and the notices with a copy among them.
+  // The packet prints the ready ones and the Docsmit door offers the same (v2.5535, v2.7477), so an envelope the run
+  // holds back reaches neither, and one that already printed is never offered to Docsmit again.
   const paperMailed = useMemo(() => mailing.mailed.filter((e) => !envelopeViaDocsmit(e)), [mailing])
+  const readyPaper = useMemo(() => paperMailed.filter((e) => e.key.startsWith('ready:')), [paperMailed])
+  const printedPaper = useMemo(() => paperMailed.filter((e) => e.key.startsWith('printed:')), [paperMailed])
   const paperShown = useMemo(() => shown.map((n) => ({ ...n, recipients: n.recipients.filter((r) => !recipientViaDocsmit(r)) })).filter((n) => n.recipients.length > 0), [shown])
   const docsmitDoor = useMemo(() => {
-    const cands = docsmitCandidates(paperMailed)
+    const cands = docsmitCandidates(readyPaper)
     // The certified envelopes the run holds back are never candidates; they only name the door's reason.
     const held = docsmitCandidates(mailing.held.map((h) => h.env).filter((e) => !envelopeViaDocsmit(e))).length
     return { cands, door: docsmitRunDoor(docsmit.settings, cands, { held }) }
-  }, [paperMailed, mailing, docsmit.settings])
-  const showDocsmit = docsmit.loaded && docsmit.setUp && docsmitDoor.door.show && printedAt == null && !recording
+  }, [readyPaper, mailing, docsmit.settings])
+  // Under More while something can still go that way: hidden once the run is on the mail numbers with nothing left to print.
+  const showDocsmit = docsmit.loaded && docsmit.setUp && docsmitDoor.door.show && (parts.counts.ready > 0 || parts.counts.owe + parts.counts.record === 0)
   // The send-by strip: the tightest window in the run (the earliest month's deadline on the residential clock), less the buffer, at Docsmit's cutoff.
   const windowLastYmd = useMemo(() => notices.flatMap((n) => n.months.map((m) => noticeDeadlineForMonth(`${m}-01`, ''))).filter(Boolean).sort()[0] ?? null, [notices])
   const sendBy = useMemo(() => {
@@ -365,13 +384,15 @@ export default function LienDeskRunModal({
     setBusy(true)
     setDsm({ stage: 'preparing', outcome: null, sent: null })
     try {
-      const outcome = await prepareDocsmitRun(paperMailed, {
+      const outcome = await prepareDocsmitRun(readyPaper, {
         receipt: docsmit.settings.returnReceipt,
         invoiceDocsByJob: invoiceDocsShown,
         payBlocksByJob,
         payRowsByJob: Object.fromEntries(Object.entries(payByJob).map(([id, v]) => [id, v.rows])),
       })
       setDsm({ stage: 'review', outcome, sent: null })
+      // The door sits under More (v2.7477): with the review up, More folds, so Esc after the review answers for the run.
+      setMoreOpen(false)
       if (outcome.held.length) showToast(docsmitHeldWords(outcome.held), 'warning')
     } finally {
       setBusy(false)
@@ -418,8 +439,8 @@ export default function LienDeskRunModal({
         void Promise.resolve(onPrinted?.(out)).catch(() => undefined)
       }
       if (result.mailedKeys.length > 0 || (!answer.ok && !answer.stopped_at)) onRecorded()
-      // Every envelope that goes on paper is already through Docsmit, or every notice is out: the foot moves to recording.
-      const paperLeft = paperMailed.filter((e) => !result.mailedKeys.includes(e.key))
+      // Every envelope that was to print is through Docsmit, or every notice is out: the run is past its print.
+      const paperLeft = readyPaper.filter((e) => !result.mailedKeys.includes(e.key))
       if (result.mailedKeys.length > 0 && (paperLeft.length === 0 || outNow.length === notices.length)) setPrintedAt((v) => v ?? new Date().toISOString())
     } finally {
       setBusy(false)
@@ -637,17 +658,21 @@ export default function LienDeskRunModal({
     const page = `<style>${LIEN_RUN_SHEET_CSS}</style>` + lienRunSheetHtml({ rows, todayYmd, dayWords: demandDate(todayYmd), issuerName: (issuer?.companyName ?? '').trim() || 'The run', codeFor: lienRunMailCode })
     if (!openHtmlPrintWindow(runPagesHtml([page], `The run — ${demandDate(todayYmd)}`))) showToast('Popup blocked — allow popups to print the sheet.', 'error')
   }
-  const printPacket = () => {
+  // The one print (v2.7477): the ready notices, each whole, in envelope order. `printed` prints again what already printed.
+  const printPacket = (which: 'ready' | 'printed' = 'ready') => {
+    const ns = paperShown.filter((n) => stackOf(partOfItem.get(n.itemId)) === which)
+    if (ns.length === 0) return
     // A print counts as a send (docs/SENT_COPIES.md): the packet is filed as it printed, on every job in it.
-    const packetJobIds = shown.flatMap((n) => (partsOf(n) ?? [{ jobId: n.jobId }]).map((p) => p.jobId))
-    const filing = { kind: 'lien_notice_packet', title: shown.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${shown.length} notices`, jobIds: packetJobIds }
-    if (!printAndFile(runPacketHtml(paperShown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob, lienRunGuideCode()), filing)) {
+    const packetJobIds = ns.flatMap((n) => (partsOf(n) ?? [{ jobId: n.jobId }]).map((p) => p.jobId))
+    const filing = { kind: 'lien_notice_packet', title: ns.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${ns.length} notices`, jobIds: packetJobIds }
+    // The sheet still lists in red what stayed out: the stopped notices' envelopes, each with its reason.
+    if (!printAndFile(runPacketHtml(ns, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob, lienRunGuideCode(), which === 'ready' ? mailing.held : []), filing)) {
       showToast('Popup blocked — allow popups to print the packet.', 'error')
       return
     }
     // Printed is a state (v2.4119): the desk shows these items in their own pile until the mailing is recorded. Best-effort.
-    // Only the copies inside the envelopes that printed count (v2.4971): a notice whose other envelope is held stays half-printed.
-    notePrinted(paperMailed.flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key)))))
+    // The copies counted are the ones the packet printed: its own envelopes, as it stacks them.
+    notePrinted(runMailing(runEnvelopes(ns)).mailed.flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key)))))
   }
   const printCopy = (n: CombinedRunNotice, r: RunRecipient) => {
     // v2.7517: a notice whose paper and bills have parted prints by no route, this one included.
@@ -744,10 +769,15 @@ export default function LienDeskRunModal({
       setBusy(false)
     }
   }
-  // Record N mailings ▸ (v2.7328): the rows whose every envelope has its number, and are printed — the checklist's own count.
-  const readyToRecord = useMemo(() => new Set(plans.mail.ready.map((r) => r.itemId)), [plans])
-  const recordable = useMemo(() => split.mailed.filter((n) => (partsOf(n) ?? [{ itemId: n.itemId }]).every((p) => readyToRecord.has(p.itemId))), [split, readyToRecord])
+  // Record N mailings (v2.7328, v2.7477): the notices the one count reads as ready to record: printed, and every envelope with its number.
+  const recordable = useMemo(() => shown.filter((n) => partOfItem.get(n.itemId) === 'record'), [shown, partOfItem])
   const nothingToRecord = recordable.length === 0
+  // What a record leaves, each with its reason, under the press.
+  const leftByRecord = useMemo(() => {
+    const why = new Map(plans.mail.held.map((h) => [h.itemId, h.why]))
+    const leader = (waitLeader ?? '').trim() || 'the leader'
+    return rows.filter((r) => partOfItem.get(r.itemId) !== 'record').map((r) => ({ itemId: r.itemId, label: r.label, why: partOfItem.get(r.itemId) === 'wait' ? `waits on ${leader}’s signature` : (why.get(r.itemId) ?? 'not ready to record') }))
+  }, [rows, plans, partOfItem, waitLeader])
   const record = async () => {
     if (busy || nothingToRecord || notices.length === 0) return
     setBusy(true)
@@ -833,7 +863,7 @@ export default function LienDeskRunModal({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{lienRunWindowTitle(recording ? 'record' : 'print', shown.length)}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
+              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{lienRunWindowTitle(recording ? 'record' : 'print', notices.length)}</h2>
               <button
                 type="button"
                 aria-label="What the packet is"
@@ -847,9 +877,10 @@ export default function LienDeskRunModal({
                 ?
               </button>
             </div>
+            {subLine ? <div data-testid="run-sub" style={{ marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{subLine}</div> : null}
             {explainerOpen ? (
               <p data-testid="run-explainer" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-                One packet with every approved notice: a checklist sheet listing the {paperMailed.length} {paperMailed.length === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back — no mailing address, nothing to claim, or unsigned — and listed in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
+                One packet with every notice that is ready: a checklist sheet listing its {(readyPaper.length || printedPaper.length)} {(readyPaper.length || printedPaper.length) === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope stays' : 'envelopes stay'} out. A notice inside is held or waits on the signature, and the sheet lists ${mailing.held.length === 1 ? 'it' : 'them'} in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
               </p>
             ) : null}
           </div>
@@ -864,23 +895,14 @@ export default function LienDeskRunModal({
             </button>
           </div>
         ) : null}
-        {/* The journey (Run-2): where the run stands, shown. Run-4 retired the step strip under it. */}
-        <LienRunJourney journey={journey} />
-        {lanes.length ? (
-          <div className="lienRunLanes" data-testid="run-lanes">
-            {lanes.map((l) => (
-              <div key={l.lane} className="lienRunLane" data-testid={`run-lane-${l.lane}`}>
-                <span className="lienRunLaneKey">{l.label}</span>
-                <span className="lienRunSteps" style={{ margin: 0 }}>
-                  {l.steps.map((st, i) => (
-                    <span key={st.label} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                      {i > 0 ? <span className="lienRunStepGap" aria-hidden="true" /> : null}
-                      <span className="lienRunStep" data-done={st.done === l.total ? 'yes' : 'no'} data-now={st.done < l.total && st.now ? 'yes' : 'no'}>{st.label}{st.done > 0 && st.done < l.total ? ` ${st.done} of ${l.total}` : ''}</span>
-                    </span>
-                  ))}
-                  <span className="lienRunChip" data-tone="gray" style={{ marginLeft: '0.5rem' }}>{l.envelopes.length === 1 ? `envelope ${l.envelopes[0]}` : `envelopes ${l.envelopes.join(', ')}`}</span>
-                </span>
-              </div>
+        {/* The journey (v2.7477): the run's three steps, each counting notices. Then the one count: the total and its parts, in the words the groups and the press use. */}
+        <LienRunJourney nodes={parts.nodes} />
+        {parts.total > 0 ? (
+          <div className="lienRunParts" data-testid="run-parts" role="status" aria-label="What is in this run">
+            <span className="lienRunPart" data-testid="run-parts-total"><b>{parts.line.total.n}</b> {parts.line.total.words}</span>
+            {parts.line.parts.length ? <span className="lienRunPartsEq" aria-hidden="true">=</span> : null}
+            {parts.line.parts.map((part) => (
+              <span key={part.key} className="lienRunPart" data-tone={part.tone} data-testid={`run-part-${part.key}`}><b>{part.n}</b> {part.words}</span>
             ))}
           </div>
         ) : null}
@@ -946,15 +968,6 @@ export default function LienDeskRunModal({
         ) : null}
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
           {notices.length === 0 ? <EmptyState compact {...LIEN_RUN_EMPTY} /> : null}
-          {combinable.combined > 0 ? (
-            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.8125rem', padding: '0.4rem 0.6rem', margin: '0.2rem 0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-amber-tint)' }} data-testid="run-combine">
-              <input type="checkbox" checked={combine} onChange={(ev) => setCombine(ev.target.checked)} aria-label="Combine the jobs at one property into one notice" style={{ marginTop: 3 }} />
-              <span>
-                <strong>Combine the jobs at one property into one notice</strong> — one form to the same owner from the same original contractor, the claims summed, the months joined; still one record per job, on one packet.{' '}
-                <span style={{ color: 'var(--text-muted)' }}>{combinable.jobs} jobs would print as {combinable.notices} {combinable.notices === 1 ? 'notice' : 'notices'} ({combinable.combined} combined). The form's claim changes when jobs combine — off unless the office says so.</span>
-              </span>
-            </label>
-          ) : null}
           <LienRunChecklist
             rows={rows}
             busy={busy}
@@ -969,13 +982,12 @@ export default function LienDeskRunModal({
             // Close… (v2.7353): a paid row's own press and the fold's ask for the confirm above; nothing is written until it is pressed.
             paid={onClosePaid ? { readyIds: paidSplit.ready, heldWhy: paidHeldWhy, onClose: (ids) => { setClosedPaid(null); setTakeBackOpen(false); setClosePaidIds(ids) } } : undefined}
             mailedCopies={{ onAdd: (row, file) => void addCopy(row, file), addingItemId: addingCopy }}
+            // The groups (v2.7477): each row under its part's head, what is stopped first.
+            partOf={parts.partOf}
+            leaderName={waitLeader}
+            step={parts.step}
           />
           {penOpen === 'batch' ? <div data-testid="run-sign-batch">{penPaneFor('batch', false)}</div> : null}
-          {showDocsmit && sendBy ? (
-            <div data-testid="run-docsmit-send-by" style={{ margin: '0 0 0.5rem', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.78rem', background: sendBy.late ? 'var(--bg-red-tint))' : 'var(--bg-page)', color: sendBy.late ? 'var(--text-red-600)' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
-              {sendBy.words}
-            </div>
-          ) : null}
           {envelopes.length ? (
             <button type="button" className="lienRunCardsFold" onClick={() => setCardsOpen((v) => !v)} aria-expanded={cardsOpen} data-testid="run-cards-fold">
               Envelopes and copies · {envelopes.length} {cardsOpen ? '▴' : '▾'}
@@ -1086,8 +1098,8 @@ export default function LienDeskRunModal({
                         ) : null
                       })()}
                       <div className="lienRunCopies">
-                      {env.contents.map(({ notice: n, recipient: r, noticeIndex: ni }) => {
-                    const mine = problems[ni]!.filter((p) => p.startsWith(`${r.label}:`))
+                      {env.contents.map(({ notice: n, recipient: r }) => {
+                    const mine = (problemsOf.get(n.itemId) ?? []).filter((p) => p.startsWith(`${r.label}:`))
                     return (
                       <div key={`${n.itemId}-${r.key}`} className="lienRunCopyRow" data-testid={`run-row-${n.jobId}-${r.key}`}>
                         <div className="lienRunJob">
@@ -1151,37 +1163,36 @@ export default function LienDeskRunModal({
           </div>
           ) : null}
         </div>
+        {/* The foot (v2.7477): what the one press takes and what stays, then More and the press for the step the run is on. Every other press is under More. */}
         <div className="lienRunFoot2" data-testid="run-foot">
           <div className="lienRunFootStatus" data-testid="run-foot-status">
-            <b>{checkFoot.line1}</b>
-            <span>{plans.mail.ready.length && plans.mail.words.foot ? plans.mail.words.foot : checkFoot.line2}</span>
+            <b>{parts.press.line1}</b>
+            <span>{parts.press.line2}</span>
           </div>
           <button type="button" onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} data-testid="run-more" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
             More {moreOpen ? '▴' : '▾'}
           </button>
-          {!printedAt && showDocsmit ? (
-            <button type="button" onClick={() => void openDocsmit()} disabled={busy || !docsmitDoor.door.enabled} title={docsmitDoor.door.why || 'Each certified envelope goes to Docsmit as a PDF; you review every one before anything mails.'} data-testid="run-docsmit" style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', cursor: busy || !docsmitDoor.door.enabled ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
-              {dsm.stage === 'preparing' ? 'Preparing…' : `${docsmitDoor.door.label} ▸`}
-            </button>
-          ) : null}
-          {!printedAt ? (
-            <button type="button" onClick={printPacket} disabled={notices.length === 0} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
-              Print the packet · {paperMailed.length} {paperMailed.length === 1 ? 'envelope' : 'envelopes'}
-            </button>
-          ) : null}
-          {/* The batch presses (v2.7328): each counted, dead when nothing is ready, holding the rest with the reason under the list. */}
-          <button type="button" onClick={markPrintedBatch} disabled={busy || plans.print.words.dead} title={plans.print.held.length ? plans.print.held.map((h) => `${h.label}: ${h.why}`).join('\n') : 'The papers printed elsewhere: tick every unprinted row at once, with your name and the time'} data-testid="run-mark-printed" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: plans.print.words.dead ? 'default' : 'pointer', opacity: plans.print.words.dead ? 0.55 : 1 }}>
-            {plans.print.words.button}
-          </button>
-          <button type="button" onClick={() => setPenOpen('batch')} disabled={busy || plans.sign.words.dead || !viewer} title={plans.sign.held.length ? plans.sign.held.map((h) => `${h.label}: ${h.why}`).join('\n') : 'The leader signed the printed papers with a pen: one record for every printed, unsigned notice'} data-testid="run-mark-signed" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: plans.sign.words.dead ? 'default' : 'pointer', opacity: plans.sign.words.dead || !viewer ? 0.55 : 1 }}>
-            {plans.sign.words.button}
-          </button>
-          <button type="button" onClick={() => void record()} disabled={busy || plans.mail.words.dead || notices.length === 0} title={plans.mail.held.length ? plans.mail.held.map((h) => `${h.label}: ${h.why}`).join('\n') : 'Each notice goes to its job with how it went and every month it covered'} data-testid="run-record" style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || plans.mail.words.dead ? 'default' : 'pointer', opacity: busy || plans.mail.words.dead || notices.length === 0 ? 0.55 : 1 }}>
-            {busy ? 'Recording…' : plans.mail.words.button}
-          </button>
-          {plans.mail.held.length && plans.mail.ready.length ? (
+          {(() => {
+            const press = parts.press
+            const dead = busy || press.dead || (press.act === 'record' && nothingToRecord)
+            return (
+              <button
+                type="button"
+                className="lienRunPress"
+                data-testid="run-press"
+                data-act={press.act}
+                onClick={() => (press.act === 'print' ? printPacket('ready') : press.act === 'record' ? void record() : undefined)}
+                disabled={dead}
+                title={press.act === 'print' ? 'Prints every ready notice, each with both its copies, and files the packet on its jobs' : press.act === 'record' ? 'Each notice goes to its job with how it went and every month it covered' : undefined}
+                style={{ padding: '7px 16px', borderRadius: 7, border: '1px solid transparent', background: dead ? DEAD_PRESS_FILL : '#2563eb', color: dead ? DEAD_PRESS_TEXT : '#ffffff', fontSize: '0.875rem', fontWeight: 700, cursor: dead ? 'default' : 'pointer' }}
+              >
+                {busy && press.act === 'record' ? 'Recording…' : press.label}
+              </button>
+            )
+          })()}
+          {parts.press.act === 'record' && !parts.press.dead && leftByRecord.length ? (
             <ul className="lienRunHeldList" data-testid="run-held-list">
-              {plans.mail.held.map((h) => (
+              {leftByRecord.map((h) => (
                 <li key={h.itemId}>
                   <b>{h.label}</b> · {h.why}
                 </li>
@@ -1190,6 +1201,32 @@ export default function LienDeskRunModal({
           ) : null}
           {moreOpen ? (
             <div className="lienRunMore" data-testid="run-more-panel">
+              {combinable.combined > 0 ? (
+                <label style={{ flexBasis: '100%', display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.8125rem' }} data-testid="run-combine">
+                  <input type="checkbox" checked={combine} onChange={(ev) => setCombine(ev.target.checked)} aria-label="Combine the jobs at one property into one notice" style={{ marginTop: 3 }} />
+                  <span>
+                    <strong>Combine the jobs at one property into one notice</strong> · {combinable.jobs - (combinable.notices - combinable.combined)} jobs could combine into {combinable.combined} {combinable.combined === 1 ? 'notice' : 'notices'}.{' '}
+                    <span style={{ color: 'var(--text-muted)' }}>One form to the same owner from the same original contractor, with the claims summed and the months joined. Each job keeps its own record. The form’s claim changes when jobs combine, so this stays off unless the office says so.</span>
+                  </span>
+                </label>
+              ) : null}
+              {showDocsmit ? (
+                <button type="button" onClick={() => void openDocsmit()} disabled={busy || !docsmitDoor.door.enabled} title={docsmitDoor.door.why || 'Each certified envelope goes to Docsmit as a PDF; you review every one before anything mails.'} data-testid="run-docsmit" style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', cursor: busy || !docsmitDoor.door.enabled ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
+                  {dsm.stage === 'preparing' ? 'Preparing…' : `${docsmitDoor.door.label} ▸`}
+                </button>
+              ) : null}
+              {showDocsmit && sendBy ? (
+                <span data-testid="run-docsmit-send-by" style={{ padding: '0.3rem 0.6rem', borderRadius: 6, fontSize: '0.78rem', background: sendBy.late ? 'var(--bg-red-tint)' : 'var(--bg-page)', color: sendBy.late ? 'var(--text-red-600)' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                  {sendBy.words}
+                </span>
+              ) : null}
+              {/* The checklist's batch presses (v2.7328): each counted, dead when nothing is ready, its hover naming what it leaves and why. */}
+              <button type="button" onClick={markPrintedBatch} disabled={busy || plans.print.words.dead} title={plans.print.held.length ? plans.print.held.map((h) => `${h.label}: ${h.why}`).join('\n') : 'The papers printed elsewhere: tick every unprinted row at once, with your name and the time'} data-testid="run-mark-printed" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: plans.print.words.dead ? 'default' : 'pointer', opacity: plans.print.words.dead ? 0.55 : 1 }}>
+                {plans.print.words.button}
+              </button>
+              <button type="button" onClick={() => { setPenOpen('batch'); setMoreOpen(false) }} disabled={busy || plans.sign.words.dead || !viewer} title={plans.sign.held.length ? plans.sign.held.map((h) => `${h.label}: ${h.why}`).join('\n') : 'The leader signed the printed papers with a pen: one record for every printed, unsigned notice'} data-testid="run-mark-signed" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: plans.sign.words.dead ? 'default' : 'pointer', opacity: plans.sign.words.dead || !viewer ? 0.55 : 1 }}>
+                {plans.sign.words.button}
+              </button>
           <div style={{ flexBasis: '100%', display: 'grid', gridTemplateColumns: 'auto minmax(160px, 2fr) minmax(120px, 1fr)', gap: '0.4rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="run-saved-copy">
             <span title="Where the packet lives once you saved it — a Drive link. Every notice's record carries it, so the paper can be found from the job later.">Saved copy</span>
             <input value={docUrl} onChange={(ev) => setDocUrl(ev.target.value)} placeholder="Drive link to the packet as printed (optional)" aria-label="Saved copy — link" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
@@ -1208,9 +1245,9 @@ export default function LienDeskRunModal({
               <button type="button" onClick={printSheet} disabled={rows.length === 0} data-testid="run-print-sheet" title="One page for the batch: every row with its three boxes, and a code per row that opens its Mailed box on your phone. A desk paper, not a sent copy." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
                 Print the sheet
               </button>
-              {printedAt ? (
-                <button type="button" onClick={printPacket} disabled={notices.length === 0} title="It already printed. Print it again only if the first copy was lost; every copy is filed on the job, and the Printed tick re-marks with now." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 400, cursor: 'pointer' }}>
-                  Print it again · {paperMailed.length} {paperMailed.length === 1 ? 'envelope' : 'envelopes'}
+              {printedPaper.length > 0 ? (
+                <button type="button" data-testid="run-print-again" onClick={() => printPacket('printed')} title="It already printed. Print it again only if the first copy was lost; every copy is filed on the job, and the Printed tick re-marks with now." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 400, cursor: 'pointer' }}>
+                  Print it again · {printedPaper.length} {printedPaper.length === 1 ? 'envelope' : 'envelopes'}
                 </button>
               ) : null}
               {onTakeBack && printedIds.length > 0 && !takeBackOpen ? (

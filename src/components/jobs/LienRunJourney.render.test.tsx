@@ -1,57 +1,59 @@
 // @vitest-environment jsdom
 /**
- * The journey across the top of the run (Run-2): six nodes with their counts, the blocker's note on
- * its node, the done ticks, and the fill as wide as the done nodes reach.
+ * The journey across the top of the run (v2.7477): the run's three steps with a count of notices under
+ * each, a tick on a done step, the step the run is on marked. One line on a phone.
  */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LienRunJourney from './LienRunJourney'
-import type { RunJourney } from '../../lib/jobs/runJourney'
+import { lienRunParts } from '../../lib/jobs/lienRunParts'
 
-const journey: RunJourney = {
-  total: 3,
-  fillRatio: 0.2,
-  nodes: [
-    { key: 'built', label: 'Built', count: '3 of 3', done: true, state: 'done', note: null },
-    { key: 'signed', label: 'Signed', count: '1 of 3', done: false, state: 'blocked', note: '2 wait on Robert' },
-    { key: 'sent', label: 'Sent', count: '0 of 3', done: false, state: 'todo', note: null },
-    { key: 'mailed', label: 'In the mail', count: '0 of 3', done: false, state: 'todo', note: null },
-    { key: 'recorded', label: 'Recorded', count: '0 of 3', done: false, state: 'todo', note: null },
-    { key: 'delivered', label: 'Delivered', count: '0 of 3', done: false, state: 'todo', note: null },
-  ],
-}
+const signed = { how: 'typed' as const, at: '2026-11-12T15:00:00Z', by: 'Sam' }
+const row = (itemId: string, over: Partial<Parameters<typeof lienRunParts>[0][number]> = {}) => ({ itemId, held: null, signed, printed: null, paperless: false, mailed: null, ...over })
+/** Three notices: two ready, one waiting on the signature. The run stands on step 1. */
+const stepOne = lienRunParts([row('a'), row('b'), row('c', { signed: null })], [], { leaderName: 'Sam' }).nodes
+/** All three printed: the run stands on step 3. */
+const stepThree = lienRunParts(['a', 'b', 'c'].map((id) => row(id, { printed: { at: '2026-11-16T15:00:00Z', by: 'ZZ Office' } })), []).nodes
 
 describe('LienRunJourney', () => {
-  it('draws six nodes, a tick on the done one, the blocker on its node, and the fill', () => {
-    renderWithProviders(<LienRunJourney journey={journey} />)
-    expect(screen.getAllByRole('listitem')).toHaveLength(6)
-    expect(screen.getByTestId('run-journey-built').textContent).toBe('✓Built3 of 3')
-    expect(screen.getByTestId('run-journey-signed').getAttribute('data-state')).toBe('blocked')
-    expect(screen.getByTestId('run-journey-signed').textContent).toBe('2Signed1 of 3 · 2 wait on Robert')
-    expect(screen.getByTestId('run-journey-delivered').textContent).toBe('6Delivered0 of 3')
-    const fill = screen.getByTestId('run-journey').querySelector('.lienRunJourneyFill') as HTMLElement
-    expect(fill.style.width).toBe('20%')
+  it('draws the run’s three steps, each counting notices, with the step the run is on marked', () => {
+    renderWithProviders(<LienRunJourney nodes={stepOne} />)
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByTestId('run-journey-1').textContent).toBe('1Get them right2 of 3 are ready')
+    expect(screen.getByTestId('run-journey-1').getAttribute('data-state')).toBe('now')
+    expect(screen.getByTestId('run-journey-1').getAttribute('aria-current')).toBe('step')
+    expect(screen.getByTestId('run-journey-2').textContent).toBe('2Print0 of 3 printed')
+    expect(screen.getByTestId('run-journey-3').textContent).toBe('3Mail and record0 of 3 ready to record')
+    // Delivered is not a step of the run.
+    expect(screen.getByTestId('run-journey').textContent).not.toContain('Delivered')
   })
 
-  it('on a phone the six nodes are one line, the step the run stands on, and a press unfolds them (punch list #352, PR 7)', () => {
+  it('ticks the steps the run is past', () => {
+    renderWithProviders(<LienRunJourney nodes={stepThree} />)
+    expect(screen.getByTestId('run-journey-1').textContent).toBe('✓Get them right3 of 3 were ready')
+    expect(screen.getByTestId('run-journey-2').textContent).toBe('✓Print3 of 3 printed')
+    expect(screen.getByTestId('run-journey-3').getAttribute('data-state')).toBe('now')
+  })
+
+  it('on a phone the steps are one line, the step the run is on, and a press unfolds them (punch list #352, PR 7)', () => {
     const before = window.matchMedia
     window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
     try {
-      renderWithProviders(<LienRunJourney journey={journey} />)
+      renderWithProviders(<LienRunJourney nodes={stepOne} />)
       const line = screen.getByTestId('run-journey-line')
       expect(line.getAttribute('aria-expanded')).toBe('false')
       expect(line.style.minHeight).toBe('44px')
+      // Amber while the run stands on what stops a notice.
       expect(line.getAttribute('data-warn')).toBe('yes')
-      expect(screen.getByTestId('run-journey-line-head').textContent).toBe('Step 2 of 6 · Signed')
-      expect(screen.getByTestId('run-journey-line-count').textContent).toBe('1 of 3 · 2 wait on Robert')
-      // Folded: no node is drawn.
+      expect(screen.getByTestId('run-journey-line-head').textContent).toBe('Step 1 of 3 · Get them right')
+      expect(screen.getByTestId('run-journey-line-count').textContent).toBe('2 of 3 are ready')
+      // Folded: no step is drawn.
       expect(screen.queryByTestId('run-journey')).toBeNull()
       expect(screen.queryAllByRole('listitem')).toHaveLength(0)
       fireEvent.click(line)
       expect(line.getAttribute('aria-expanded')).toBe('true')
-      expect(screen.getAllByRole('listitem')).toHaveLength(6)
-      expect(screen.getByTestId('run-journey-signed').textContent).toBe('2Signed1 of 3 · 2 wait on Robert')
+      expect(screen.getAllByRole('listitem')).toHaveLength(3)
       fireEvent.click(line)
       expect(screen.queryByTestId('run-journey')).toBeNull()
     } finally {
