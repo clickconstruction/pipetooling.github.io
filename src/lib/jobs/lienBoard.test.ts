@@ -472,3 +472,19 @@ describe('a To do row’s stage, in the Board’s own words (v2.7372)', () => {
     expect(lienBoardRowStage(b, { key: 'notice:99', kind: 'notice', jobId: '99' })).toBeNull()
   })
 })
+
+describe('a chip on a property that reads as public, unanswered (v2.7443)', () => {
+  it('carries the mark and loses its red day and its risk, in both columns; any other chip is as before', () => {
+    const b = build({
+      notices: [notice('523', 'to_draft', { earliestDeadline: '2026-11-15', daysLeft: 0 }), notice('2', 'to_draft', { earliestDeadline: '2026-11-15', daysLeft: 0 })],
+      affidavits: [affidavit('883', 'ready', { deadline: '2026-11-16', daysLeft: 1 })],
+      publicJobIds: new Set(['523', '883']),
+    })
+    const chip = (key: string, jobId: string) => bin(b, key).chips.find((c) => c.jobId === jobId)!
+    expect(chip('notice:to_send', '523')).toMatchObject({ publicMark: true, urgency: 'later', atRisk: false })
+    expect(chip('affidavit:ready', '883')).toMatchObject({ publicMark: true, urgency: 'later', atRisk: false })
+    expect(chip('notice:to_send', '2').publicMark).toBeUndefined()
+    expect(chip('notice:to_send', '2').urgency).toBe('day')
+    expect(build({ notices: [notice('523', 'to_draft', { earliestDeadline: '2026-11-15', daysLeft: 0 })] }).notices.flatMap((x) => x.chips)[0]!.publicMark).toBeUndefined()
+  })
+})

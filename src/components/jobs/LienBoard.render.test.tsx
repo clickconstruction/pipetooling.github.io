@@ -298,3 +298,19 @@ describe('LienBoard', () => {
     expect(chip().getAttribute('title')).toBeTruthy()
   })
 })
+
+describe('LienBoard · public property (v2.7443)', () => {
+  it('a marked chip draws ⊘ and says why in its words; the desk’s line sits over the bins and its bin under the affidavits', () => {
+    render(<LienBoard board={board({ publicJobIds: new Set(['3']) })} isMobile={false} columnsOnly over={<div data-test-over>over</div>} underAffidavits={<div data-test-under>under</div>} />)
+    const chip = document.querySelector('[data-lien-board-chip="3"]') as HTMLElement
+    expect(chip.getAttribute('data-public')).toBe('yes')
+    expect(chip.querySelector('[data-lien-board-public-mark]')!.textContent).toBe('⊘')
+    expect(chip.getAttribute('data-urgency')).toBe('later')
+    expect(chip.getAttribute('title')).toContain('public property, no paper until the property is answered')
+    const grid = document.querySelector('[data-lien-board-grid]') as HTMLElement
+    const over = document.querySelector('[data-test-over]') as HTMLElement
+    expect(over.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect((document.querySelector('[data-lien-board-column="affidavit"]') as HTMLElement).querySelector('[data-test-under]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-board-chip="2"]')!.getAttribute('data-public')).toBeNull()
+  })
+})

@@ -99,7 +99,7 @@ export function lienBoardArrowPaths(arrows: ReadonlyArray<LienBoardArrow>, boxes
 function Chip({ chip, lit, onChip, onHover, onCard }: { chip: LienBoardChip; lit: boolean; onChip?: (chip: LienBoardChip) => void; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
   const tone = TONE[chip.urgency]
   // The hover: the job's name, its GC and its money, how soon its day is, the risk, and where the press goes (v2.7333).
-  const title = [chip.tip, lienBoardUrgencyWords(chip.urgency), chip.atRisk ? 'will not make its day as it stands' : '', onChip ? lienBoardDoorWords(chip.destination) : ''].filter(Boolean).join(' · ')
+  const title = [chip.tip, chip.publicMark ? 'public property, no paper until the property is answered' : lienBoardUrgencyWords(chip.urgency), chip.atRisk ? 'will not make its day as it stands' : '', onChip ? lienBoardDoorWords(chip.destination) : ''].filter(Boolean).join(' · ')
   const style: CSSProperties = { color: tone.fg, background: tone.bg, borderColor: tone.border }
   // Pointed at or focused: the pair lights (a job in both columns), and the card shows when the desk hands one.
   const enter = (el: HTMLElement) => {
@@ -117,9 +117,10 @@ function Chip({ chip, lit, onChip, onHover, onCard }: { chip: LienBoardChip; lit
     <>
       {chip.label}
       {chip.atRisk ? <span aria-hidden="true" data-lien-board-risk style={{ marginLeft: 3, fontWeight: 800 }}>!</span> : null}
+      {chip.publicMark ? <span aria-hidden="true" data-lien-board-public-mark style={{ marginLeft: 4, color: 'var(--text-amber-800)', fontWeight: 700 }}>⊘</span> : null}
     </>
   )
-  const marks = { 'data-lien-board-chip': chip.jobId, 'data-kind': chip.kind, 'data-urgency': chip.urgency, 'data-at-risk': chip.atRisk ? 'yes' : undefined, 'data-pair': chip.pairKey ?? undefined, 'data-pair-lit': lit ? 'yes' : undefined }
+  const marks = { 'data-lien-board-chip': chip.jobId, 'data-kind': chip.kind, 'data-urgency': chip.urgency, 'data-at-risk': chip.atRisk ? 'yes' : undefined, 'data-public': chip.publicMark ? 'yes' : undefined, 'data-pair': chip.pairKey ?? undefined, 'data-pair-lit': lit ? 'yes' : undefined }
   if (onChip) {
     return (
       <button type="button" className="lienBoardChip" title={tip} aria-label={`${chip.label}: ${title}`} onClick={() => onChip(chip)} style={style} {...marks} {...hover}>
@@ -278,6 +279,8 @@ export default function LienBoard({
   onChip,
   columnsOnly,
   foot,
+  over,
+  underAffidavits,
   onLayout,
   leader,
   cardFor,
@@ -298,6 +301,10 @@ export default function LienBoard({
   columnsOnly?: boolean
   /** A line under the bins the desk adds (the leader's one press, PR 4). */
   foot?: ReactNode
+  /** A line over the bins the desk adds (v2.7443): the jobs on public property still on the lien path, with *Review them ›*. */
+  over?: ReactNode
+  /** A bin of the desk's own under the affidavit column (v2.7443): *Public jobs · bond claim*. */
+  underAffidavits?: ReactNode
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void
   /**
@@ -431,6 +438,7 @@ export default function LienBoard({
           </button>
         </div>
       ) : null}
+      {over}
       {board.empty ? (
         <div data-lien-board-empty-board style={{ fontSize: '0.875rem', color: 'var(--text-muted)', padding: '0.4rem 0' }}>
           Nothing is on the desk. Every lien paper is sent, filed or waiting on its day.
@@ -452,7 +460,7 @@ export default function LienBoard({
           {lines.map((l) => <path key={l.key} data-lien-board-arrow={l.key} data-kind={l.kind} d={l.d} fill="none" stroke={ARROW} strokeWidth="1.3" strokeDasharray={l.kind === 'cross' ? '4 3' : undefined} markerEnd="url(#lienBoardArrowHead)" />)}
         </svg>
         {column('notice', 'Monthly notices', notices, retainage)}
-        {column('affidavit', 'Lien affidavits', affidavits, null)}
+        {column('affidavit', 'Lien affidavits', affidavits, underAffidavits ?? null)}
       </div>
       {leader && mine ? (
         <div data-lien-board-leader style={{ display: 'grid', gap: 6, padding: '2px 0' }}>
