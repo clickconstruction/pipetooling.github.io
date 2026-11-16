@@ -161,7 +161,7 @@ describe('LienDeskPage (/lien-desk)', () => {
   it('a view press writes the address; To do leaves it bare; Notices carries the open notice', async () => {
     renderWithProviders(<Harness start="/lien-desk" />)
     await settle()
-    await waitFor(() => expect(screen.getByRole('tab', { name: /^To do/ }).getAttribute('aria-selected')).toBe('true'))
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^Lien desk/ }).getAttribute('aria-selected')).toBe('true'))
     expect(screen.getByTestId('where').textContent).toBe('/lien-desk')
     fireEvent.click(screen.getByRole('tab', { name: 'By date' }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=deadlines'))
@@ -170,7 +170,7 @@ describe('LienDeskPage (/lien-desk)', () => {
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&job=j650'))
     fireEvent.click(screen.getByRole('tab', { name: /^By job/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=timeline'))
-    fireEvent.click(screen.getByRole('tab', { name: /^To do/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /^Lien desk/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk'))
   })
 
