@@ -59,7 +59,9 @@ export function lienPileHeadCount(rows: number, total: number, counted: number |
 }
 
 export const LIEN_PILE_HEAD_GO = 'Go to this pile'
-export const LIEN_PILE_SHOW_EVERY = 'show every pile'
+/** The way back on a narrowed list's title. Two words since v2.7434, so *To send for Master approval* and a two-digit count hold one line beside it; the hover and a screen reader get the whole act. */
+export const LIEN_PILE_SHOW_EVERY = 'every pile'
+export const LIEN_PILE_SHOW_EVERY_TITLE = 'Show every pile'
 
 type LienPileHeadProps<P extends string> = {
   pile: P
@@ -91,7 +93,7 @@ export function LienPileHead<P extends string>({ pile, label, count, i, n, phone
       </button>
       {children}
       {onShowEvery ? (
-        <button type="button" data-lien-pile-all onClick={onShowEvery} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap', ...(phone ? { fontSize: '0.8125rem', minHeight: 40 } : null) }}>
+        <button type="button" data-lien-pile-all onClick={onShowEvery} title={LIEN_PILE_SHOW_EVERY_TITLE} aria-label={LIEN_PILE_SHOW_EVERY_TITLE} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap', ...(phone ? { fontSize: '0.8125rem', minHeight: 40 } : null) }}>
           {LIEN_PILE_SHOW_EVERY}
         </button>
       ) : null}

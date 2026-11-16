@@ -508,7 +508,7 @@ describe('LienDeskNextUp · a computer’s row in two lines (v2.7372, punch list
   const send = row({ key: 'notice:j1', jobId: 'j1', title: '1110 · ZZ Oak Hollow', sub: 'Notice to send', detail: 'September 2026' })
   const late = row({ key: 'notice:j4', jobId: 'j4', title: '891 · ZZ Builders', sub: 'Notice to send', detail: 'August 2026', dueOn: '2026-10-01', daysLeft: -4 })
   const retainage = row({ key: 'retainage:j5', kind: 'retainage', jobId: 'j5', title: '700 · ZZ Pine St', sub: 'Retainage notice to send' })
-  const stageFor = (r: LienNextUpRow) => ({ 'affidavit:j3': 'Ready to file', 'affidavit:j9': 'Needs the property facts', 'notice:j1': 'To send', 'notice:j4': 'To send' })[r.key] ?? null
+  const stageFor = (r: LienNextUpRow) => ({ 'affidavit:j3': 'Ready to file', 'affidavit:j9': 'Needs the property facts', 'notice:j1': 'To send for Master approval', 'notice:j4': 'To send for Master approval' })[r.key] ?? null
   const noticeFor = (r: LienNextUpRow) => (r.key === 'affidavit:j3' ? { tone: 'ok' as const, words: 'Notice sent Oct 14' } : r.key === 'affidavit:j9' ? { tone: 'none' as const, words: 'No notice needed · contracted with the owner' } : null)
   const amountFor = (r: LienNextUpRow) => ({ j3: 610, j9: 240, j1: 2900 })[r.jobId ?? ''] ?? null
   const lineOf = (key: string) => document.querySelector(`[data-lien-next-up-row="${key}"] [data-lien-next-up-line]`) as HTMLElement
@@ -524,7 +524,7 @@ describe('LienDeskNextUp · a computer’s row in two lines (v2.7372, punch list
     // The held paper asks its one question, on the row and on its button.
     expect(lineOf('affidavit:j9').textContent).toBe('Needs the property facts · Nobody has answered whether this home is a homestead.No notice needed · contracted with the owner')
     expect(within(document.querySelector('[data-lien-next-up-row="affidavit:j9"]') as HTMLElement).getByRole('button', { name: 'Answer the homestead question' })).toBeTruthy()
-    expect(lineOf('notice:j1').textContent).toBe('To send · September 2026')
+    expect(lineOf('notice:j1').textContent).toBe('To send for Master approval · September 2026')
     expect(Array.from(document.querySelectorAll('[data-lien-next-up-amount]')).map((el) => el.textContent)).toEqual(['$610', '$240', '$2,900'])
   })
 

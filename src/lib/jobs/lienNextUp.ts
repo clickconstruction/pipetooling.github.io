@@ -197,7 +197,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     const button = r.button !== undefined ? r.button : canAct ? BUTTON[r.action] : null
     rows.push({ ...r, button, group: groupOf(r.daysLeft, r.severity) })
   }
-  /** Awaiting approval: the leader approves; the office waits on him by name, with no button. */
+  /** Awaiting Master approval: the leader approves; the office waits on him by name, with no button. */
   const awaiting = (jobId: string, item: { submitted_at?: string | null } | null | undefined): { action: LienNextUpAction; button: string | null; sub: string; detail: string } => {
     const since = item?.submitted_at ? calendarYmdInAppTzFromIso(item.submitted_at) : ''
     const dated = /^\d{4}-\d{2}-\d{2}$/.test(since)
@@ -303,8 +303,8 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'printed':
         // Two or more printed are one run row below (punch list #101); one keeps its own row.
         if (printedCount > 1) break
-        // In the run (v2.7328): the row names the tick the notice waits on, as the pile's row does.
-        push({ ...base, key: `notice:${e.jobId}`, sub: `In the run · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, detail: lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false), action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
+        // Approved · to mail (the pile's name since v2.7434; *In the run* since v2.7328): the row names the tick the notice waits on, as the pile's row does.
+        push({ ...base, key: `notice:${e.jobId}`, sub: `Approved · to mail · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, detail: lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false), action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
         break
       case 'held':
         push({ ...base, key: `notice:${e.jobId}`, sub: 'Held', detail: '', action: 'review_hold', target: pane('held') })

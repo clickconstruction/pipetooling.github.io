@@ -10,7 +10,7 @@ import type { LienAffidavitEntry } from './lienDeskAffidavits'
  * The press acts on what is ready and nothing else (`CLAUDE.md` → *Do what is ready*): an affidavit in **Ready to
  * file**, on the earlier form, not yet filed. An earlier-form paper in another pile stays where it is: one waiting on
  * the leader or held by him is his to decide, and a draft is redrawn from its own pane. Each redrawn paper goes back
- * to **To send** and needs approval again, so the person who approves it reads the paper that will be filed.
+ * to **To send for Master approval** and needs approval again, so the person who approves it reads the paper that will be filed.
  */
 export type LienAffidavitRedrawEntry = Pick<LienAffidavitEntry, 'jobId' | 'pile' | 'item'>
 
@@ -48,7 +48,7 @@ export function lienAffidavitRedrawWords(plan: Pick<LienAffidavitRedrawPlan, 're
   return {
     button: `${counted}…`,
     title: ready === 1 ? 'Redraw 1 affidavit on the short form?' : `Redraw ${ready} affidavits on the short form?`,
-    message: ready === 1 ? 'The affidavit goes back to To send on the short form. It needs approval again before it is filed.' : 'Each affidavit goes back to To send on the short form. Each needs approval again before it is filed.',
+    message: ready === 1 ? 'The affidavit goes back to To send for Master approval on the short form. It needs approval again before it is filed.' : 'Each affidavit goes back to To send for Master approval on the short form. Each needs approval again before it is filed.',
     confirmLabel: counted,
     foot: held > 0 ? `${held} on the earlier form ${held === 1 ? 'is' : 'are'} not in Ready to file. Redraw ${held === 1 ? 'it from its own paper' : 'each from its own paper'}.` : null,
     dead: base.dead,

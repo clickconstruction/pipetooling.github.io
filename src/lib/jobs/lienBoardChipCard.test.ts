@@ -40,7 +40,7 @@ describe('lienBoardChipCard', () => {
       customer: 'ZZ Homeowner',
       gc: 'ZZ Builders',
       paper: 'Monthly notice',
-      stage: 'To send',
+      stage: 'To send for Master approval',
       detail: 'September 2026',
       day: 'Due Mon Nov 16 · 1 day left',
       urgency: 'day',
@@ -58,7 +58,7 @@ describe('lienBoardChipCard', () => {
     expect([card.paper, card.stage, card.day, card.risk]).toEqual(['Lien affidavit', 'Needs the property facts', 'Due Tue Dec 15 · 30 days left', null])
     // It will make its day, so the card names no stages: the bin and the press already say what is next.
     expect(card.left).toEqual([])
-    expect(card.other).toBe('Its monthly notice is in To send.')
+    expect(card.other).toBe('Its monthly notice is in To send for Master approval.')
     expect(card.door).toBe('Press to open the property record at the legal description.')
   })
 
@@ -68,7 +68,7 @@ describe('lienBoardChipCard', () => {
     expect(late.day).toBe('Was due Tue Nov 10 · 5 days late')
     expect(late.other).toBeNull()
     const waiting = lienBoardChipCard(lienBoardChipFor(b, 'j804', 'notice')!, b, facts({ detail: '  ' }))
-    expect([waiting.stage, waiting.day, waiting.owes, waiting.detail, waiting.urgency]).toEqual(['Awaiting approval', null, null, null, 'waiting'])
+    expect([waiting.stage, waiting.day, waiting.owes, waiting.detail, waiting.urgency]).toEqual(['Awaiting Master approval', null, null, null, 'waiting'])
     // A notice that went has no day to race.
     expect(lienBoardChipCard(lienBoardChipFor(b, 'j700', 'notice')!, b, facts()).day).toBeNull()
   })
@@ -129,7 +129,7 @@ describe('lienBoardCardPlace', () => {
   })
 
   it('is placed by its real height once it is drawn: a tall card on a short screen goes over its chip, not off the bottom (v2.7425)', () => {
-    // A chip in To send at 1280 x 720, as measured on 2026-11-15: 270 px of screen under it, 430 over, and a card 338 px tall.
+    // A chip in To send for Master approval at 1280 x 720, as measured on 2026-11-15: 270 px of screen under it, 430 over, and a card 338 px tall.
     const toSend = { left: 54, top: 290, width: 44, height: 22 }
     // By the old guess of 230 px it went under, and ran 72 px off the screen.
     expect(lienBoardCardPlace({ chip: toSend, hostWidth: 1232, roomBelow: 270, roomAbove: 430 })).toEqual({ left: 54, top: 318, above: false })
@@ -140,7 +140,7 @@ describe('lienBoardCardPlace', () => {
   })
 
   it('with room on neither side it stands beside its chip, inside what can show it, and the chip stays in view', () => {
-    // A late notice in To send at 1280 x 720, as measured on 2026-11-15: the list's frame leaves 272 px under the
+    // A late notice in To send for Master approval at 1280 x 720, as measured on 2026-11-15: the list's frame leaves 272 px under the
     // chip and 331 over, and the card with its three named stages stands 395 px tall.
     const toSend = { left: 54, top: 290, width: 44, height: 22 }
     const placed = lienBoardCardPlace({ chip: toSend, hostWidth: 1232, roomBelow: 272, roomAbove: 331, cardHeight: 395 })
