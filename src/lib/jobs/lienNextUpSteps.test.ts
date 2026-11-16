@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienNextUpRow } from './lienNextUp'
-import { lienStepCard, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
+import { LIEN_STEP_LADDERS, lienStepCard, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
   key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · AXO Schertz', sub: 'Notice to send', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
@@ -37,8 +37,10 @@ describe('lienStepOfRow (v2.4631)', () => {
 
 describe('lienStepCard', () => {
   it('an approved notice with a pay offer (v2.4713) says so on the Approve rung', () => {
-    const c = lienStepCard(row({ action: 'send', sub: 'Approved · ready to send', button: 'Send' }), { approvedOn: '2026-10-30T14:00:00Z', offer: { pct: 10, by: '2026-11-15' } })
+    const c = lienStepCard(row({ action: 'send', sub: 'Approved · to print', button: 'Print and mail' }), { approvedOn: '2026-10-30T14:00:00Z', offer: { pct: 10, by: '2026-11-15' } })
     expect(c.items[2]!.detail).toBe('Approved Oct 30 with a 10% offer, by Nov 15.')
+    // v2.7448: the rung it stands on is named as its press is (Send the run until then).
+    expect([c.items[3]!.state, c.items[3]!.title]).toEqual(['now', 'Print and mail'])
   })
   it("writes a notice's ladder out: done rungs carry the facts, the current rung says who is waiting, the foot counts", () => {
     const c = lienStepCard(row({ action: 'approve', sub: 'Waiting on your approval', button: 'Approve' }), { ownerName: 'Tune 5 Properties LLC', draftedOn: '2026-10-03T14:00:00Z', coverNote: true, readyToSend: 11, viewerIsLeader: true })
@@ -116,9 +118,13 @@ describe('lienStepTiles (v2.4881)', () => {
 
 describe('the printed run on the ladder (punch list #101)', () => {
   it('stands on step 4, and its card says it printed and asks whether it was mailed', () => {
-    const r = { key: 'run:printed', kind: 'notice', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: '', dueOn: '2026-10-15', daysLeft: 7, severity: 'red', group: 'now', action: 'record_mailing', button: 'Record the mailing', target: { open: 'run', gcId: null } } as const
+    const r = { key: 'run:printed', kind: 'notice', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: '', dueOn: '2026-10-15', daysLeft: 7, severity: 'red', group: 'now', action: 'record_mailing', button: 'Enter mail numbers', target: { open: 'run', gcId: null } } as const
     expect(lienStepOfRow(r)).toEqual({ ladder: 'notice', step: 4 })
     const card = lienStepCard({ ...r })
-    expect(card.items[3]).toEqual({ state: 'now', title: 'Record the mailing', detail: 'Printed Oct 7. Mailed? Type each envelope’s number in the run. Not mailing them? Take the run back.' })
+    expect(card.items[3]).toEqual({ state: 'now', title: 'Enter mail numbers', detail: 'Printed Oct 7. Mailed? Type each envelope’s number in. Not mailing them? Take the print back.' })
+  })
+  it('the fourth rung of a notice is named as its press is: Print and mail (v2.7448)', () => {
+    expect(LIEN_STEP_LADDERS.find((l) => l.key === 'notice')!.steps[3]).toBe('Print and mail')
+    expect(LIEN_STEP_LADDERS.find((l) => l.key === 'retainage')!.steps[3]).toBe('Print and mail')
   })
 })

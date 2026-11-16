@@ -5,10 +5,13 @@
 // one PATCH on jobs_ledger under RLS — lien_last_work_on, lien_last_work_note, lien_last_work_set_at now and
 // lien_last_work_set_by the caller; clear nulls the day, the moment and the person and blanks the note, back to the clock
 // hours or the job's creation. The window's rules hold, because the dry run runs the window's own kernels from the
-// mirror (gcKernels/lib/jobs/lienLastWorkDay.ts and lienLastWorkDayPreview.ts): a day after today or earlier than the
-// clock hours is refused, the day the job already reads is refused, a reason is required as the window's Set the day
-// requires it, and a day far from the clock hours (the window's amber second look, Set the day anyway) is refused until
-// the ask carries anyway: true. The plan replies with the window's own table: the months the notice names, the
+// mirror (gcKernels/lib/jobs/lienLastWorkDay.ts and lienLastWorkDayPreview.ts): a day after today is refused, the day
+// the job already reads is refused, a reason is required as the window's Set the day requires it, and a day the
+// window asks a second look at (its amber Set the day anyway) is refused until the ask carries anyway: true. Since
+// v2.7447 (punch list #335) a day earlier than the clock hours is planned like any other, where it was
+// refused: the later hours stay and do not move it, the reply names the months with hours that leave the lien clock,
+// and the second look is a day far from the hours, a day before the first month with hours, a day that takes away a
+// month a recorded notice names, or a day that puts the affidavit's last day in the past. The plan replies with the window's own table: the months the notice names, the
 // § 53.056 day of the last month, the § 53.052 affidavit day and the § 53.158 suit day, before and after.
 // Clock hours and pay are never touched. No wrapper RPC and no migration: the dry run is this server's read of the
 // job, its property's kind, its approved clock months and the months its live notices name, hashed with the payload.
@@ -41,7 +44,7 @@ export type LastWorkDayPayload =
 
 export type LastWorkDayInput = { ok: true; p: LastWorkDayPayload; target: string; planHash: string | null } | { ok: false; error: string }
 
-const DAY_SHAPE = `needs day — { job_id (a jobs_ledger.id — find_job), last_work_on (YYYY-MM-DD, the last day anyone worked on the job), reason (one line, under ${LAST_WORK_REASON_MAX}: what was done that day, and why the hours do not show it), anyway? (true, only for a day the plan called far from the clock hours) } or { job_id, clear: true } to go back to the clock hours or the job's creation.`
+const DAY_SHAPE = `needs day — { job_id (a jobs_ledger.id — find_job), last_work_on (YYYY-MM-DD, the last day anyone worked on the job), reason (one line, under ${LAST_WORK_REASON_MAX}: what was done that day, and why the hours do not show it), anyway? (true, only for a day the plan asked a second look at) } or { job_id, clear: true } to go back to the clock hours or the job's creation.`
 
 /** plan_last_work_day / apply_last_work_day's input, shaped. */
 export function lastWorkDayInput(verb: LastWorkDayVerb, input: Json): LastWorkDayInput {
@@ -143,7 +146,7 @@ const SOURCE_ROW_WORDS: Record<'hand' | 'hours' | 'created', string> = { hand: '
 /**
  * What the plan says and what the hash commits to: the job as it stands (label, status, the day it reads and where
  * that comes from, the four hand-set columns) and the day as it will read, with the window's own table of dates.
- * Refuses a job not visible, whatever the window refuses (a day after today, earlier than the clock hours, or the day
+ * Refuses a job not visible, whatever the window refuses (a day after today, or the day
  * the job already reads), a far day without anyway: true, anyway: true on a day that is not far, and a clear on a job
  * whose day is not set by hand.
  */
@@ -177,14 +180,14 @@ export function lastWorkDayDryRun(p: LastWorkDayPayload, world: LastWorkWorld, w
   if (preview.verdict === 'look' && !p.anyway) {
     return { ok: false, refused: `${label}: ${preview.shiftWords} ${preview.sayWords} The Lien window asks for a second look here (its button reads Set the day anyway). Say this to the person who knows the day; once they confirm it, plan again with anyway: true.` }
   }
-  if (preview.verdict !== 'look' && p.anyway) return { ok: false, refused: `${label}: anyway: true is for a day the plan called far from the clock hours. This day is not; plan again without it.` }
+  if (preview.verdict !== 'look' && p.anyway) return { ok: false, refused: `${label}: anyway: true is for a day the plan asked a second look at. This day is not one; plan again without it.` }
   return {
     ok: true,
     reply: {
       ...head,
       before,
       after: { reads: p.last_work_on, from: SOURCE_ROW_WORDS.hand, ...lastWorkDayPatch(p, who, 'now') },
-      verdict: preview.verdict === 'look' ? 'far from the clock hours, set anyway' : 'fine',
+      verdict: preview.verdict === 'look' ? 'a second look, set anyway' : 'fine',
       shift: preview.shiftWords,
       says: preview.sayWords,
       dates: preview.rows,

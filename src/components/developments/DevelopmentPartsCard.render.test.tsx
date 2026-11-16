@@ -57,7 +57,7 @@ const bids = [{ id: 'b1', label: 'BP340', plans_link: 'https://drive.google.com/
 const view = buildSitePlansView({ parts, sets, jobs, bids })
 
 function writes(over: Partial<SitePlansWrites> = {}): SitePlansWrites {
-  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), writeChanges: vi.fn(async () => true), putJobsOnPart: vi.fn(async () => true), movePaper: vi.fn(async () => true), removePaper: vi.fn(async () => true), ...over }
+  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), writeChanges: vi.fn(async () => true), changeLink: vi.fn(async () => true), putJobsOnPart: vi.fn(async () => true), movePaper: vi.fn(async () => true), removePaper: vi.fn(async () => true), ...over }
 }
 
 describe('DevelopmentPartsCard', () => {
@@ -123,6 +123,40 @@ describe('DevelopmentPartsCard', () => {
     await waitFor(() => expect(w.buildFrom).toHaveBeenCalledWith('p2', 's1'))
     fireEvent.click(screen.getAllByRole('button', { name: 'Open ↗' })[0]!)
     expect(opened.length).toBe(1)
+  })
+
+  it('Change the link on the set a part builds from and on an older one saves through the writes; a set with none says Set the link; a reader gets no press', async () => {
+    const w = writes()
+    const { unmount } = renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
+    // The Bunker's current set.
+    fireEvent.click(within(screen.getByTestId('site-part-p2')).getAllByRole('button', { name: 'Change the link' })[0]!)
+    expect(screen.getByTestId('plan-set-link-editor-s2').textContent).toContain('Open plans on every job that names the part opens the new link.')
+    fireEvent.change(screen.getByLabelText('New link for Bunker addendum 1'), { target: { value: 'https://drive.google.com/drive/folders/ours' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the link' }))
+    await waitFor(() => expect(w.changeLink).toHaveBeenCalledWith('s2', 'https://drive.google.com/drive/folders/ours'))
+    await waitFor(() => expect(screen.queryByTestId('plan-set-link-editor-s2')).toBeNull())
+    // An older set with a link, and the one with none.
+    fireEvent.click(screen.getByTestId('site-older-p2'))
+    const older = screen.getByTestId('site-older-list-p2')
+    expect(within(older).getAllByRole('button', { name: 'Change the link' })).toHaveLength(1)
+    fireEvent.click(within(older).getByRole('button', { name: 'Set the link' }))
+    expect(screen.getByTestId('plan-set-link-editor-s0').textContent).toContain('Only where its Open ↗ leads changes.')
+    fireEvent.change(screen.getByLabelText('Link for Bunker permit set'), { target: { value: 'https://drive.google.com/drive/folders/permit' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the link' }))
+    await waitFor(() => expect(w.changeLink).toHaveBeenLastCalledWith('s0', 'https://drive.google.com/drive/folders/permit'))
+    // A save that did not take keeps the box open.
+    const held = writes({ changeLink: vi.fn(async () => false) })
+    unmount()
+    const second = renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={held} />)
+    fireEvent.click(within(screen.getByTestId('site-part-p1')).getByRole('button', { name: 'Change the link' }))
+    fireEvent.change(screen.getByLabelText('New link for Lodge issued set'), { target: { value: 'https://drive.google.com/drive/folders/lodge' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the link' }))
+    await waitFor(() => expect(held.changeLink).toHaveBeenCalledWith('s3', 'https://drive.google.com/drive/folders/lodge'))
+    expect(screen.getByTestId('plan-set-link-editor-s3')).toBeTruthy()
+    second.unmount()
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    expect(screen.queryByRole('button', { name: 'Change the link' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Set the link' })).toBeNull()
   })
 
   it('reads the change line under a set, offers Write what changed on one that followed another with none, and saves it', async () => {

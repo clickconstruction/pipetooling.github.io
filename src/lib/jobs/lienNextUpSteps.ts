@@ -10,16 +10,17 @@ import { formatYmdMonthDay } from './billedExpectedPay'
 import type { LienNextUpKind, LienNextUpRow } from './lienNextUp'
 import { lienOfferApprovedWords, type LienPayOffer } from './lienPayOffer'
 import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderLadderItems } from './lienReminders'
+import { LIEN_RUN_ACT } from './lienRunWords'
 
 /** The three kinds of paper, and the REMINDERS ladder a sent notice walks (punch list #262). */
 export type LienStepLadder = LienNextUpKind | 'reminder'
 export type LienStepN = 1 | 2 | 3 | 4
 
 export const LIEN_STEP_LADDERS: ReadonlyArray<{ key: LienStepLadder; label: string; steps: readonly [string, string, string, string] }> = [
-  { key: 'notice', label: 'Notices', steps: ['Find the owner', 'Open the notice', 'Approve', 'Send the run'] },
+  { key: 'notice', label: 'Notices', steps: ['Find the owner', 'Open the notice', 'Approve', LIEN_RUN_ACT.print] },
   { key: 'reminder', label: 'Reminders', steps: LIEN_REMINDER_STEPS },
   { key: 'affidavit', label: 'Affidavits', steps: ['Fix the property', 'Open the affidavit', 'Approve', 'File it'] },
-  { key: 'retainage', label: 'Retainage', steps: ['Find the owner', 'Open the notice', 'Approve', 'Send the run'] },
+  { key: 'retainage', label: 'Retainage', steps: ['Find the owner', 'Open the notice', 'Approve', LIEN_RUN_ACT.print] },
 ]
 
 export type LienStepAt = { ladder: LienStepLadder; step: LienStepN }
@@ -137,7 +138,7 @@ function ladderItems(ladder: LienStepLadder, at: LienStepN, f: LienStepFacts): L
       title: s(3) === 'done' ? 'Approved' : 'Approve',
       detail: s(3) === 'done' ? `Approved${f.approvedOn ? ` ${dayWords(f.approvedOn)}` : ''}${f.offer ? ` ${lienOfferApprovedWords(f.offer)}` : ''}.` : s(3) === 'now' ? leaderNow : 'The leader approves it, once per notice or once per GC.',
     },
-    { state: s(4), title: 'Send the run', detail: `Goes out in the next packet${ready}. Certified mail, one tracking number per envelope.` },
+    { state: s(4), title: LIEN_RUN_ACT.print, detail: `Goes out in the next packet${ready}. Certified mail, one tracking number per envelope.` },
   ]
 }
 
@@ -155,7 +156,7 @@ function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienS
     case 'add_tracking':
       return {
         items: [
-          { state: 'done', title: 'Sent the run', detail: 'The packet printed and went to the post office.' },
+          { state: 'done', title: 'Printed and mailed', detail: 'The packet printed and went to the post office.' },
           { state: 'now', title: 'Add tracking', detail: 'Type the tracking number from the receipt. The record is not complete without it.' },
         ],
         foot: 'After step 4 · tracking owed',
@@ -213,7 +214,7 @@ export function lienStepCard(row: LienNextUpRow, facts: LienStepFacts = {}): Lie
   // The REMINDERS ladder's words come from its own kernel (punch list #262): the rung, the courtesy's words, letter two's, the closer's.
   const items = at.ladder === 'reminder' && row.reminder ? lienReminderLadderItems(row.reminder) : ladderItems(at.ladder, at.step, facts)
   // The printed run (punch list #101): step 4 is half done — it printed — and the app cannot tell whether it was mailed.
-  if (row.action === 'record_mailing') items[3] = { state: 'now', title: 'Record the mailing', detail: `${row.title.replace(/^\d+ notices printed/, 'Printed')}. Mailed? Type each envelope’s number in the run. Not mailing them? Take the run back.` }
+  if (row.action === 'record_mailing') items[3] = { state: 'now', title: LIEN_RUN_ACT.record, detail: `${row.title.replace(/^\d+ notices printed/, 'Printed')}. Mailed? Type each envelope’s number in. Not mailing them? Take the print back.` }
   const done = items.filter((i) => i.state === 'done').length
   const blocked = at.step === 1 && at.ladder !== 'reminder' ? (at.ladder === 'affidavit' ? 'the property record' : 'the owner of record') : null
   return { ...base, items, blocked, foot: `Step ${at.step} of 4 · ${done} done · ${4 - done} to go` }

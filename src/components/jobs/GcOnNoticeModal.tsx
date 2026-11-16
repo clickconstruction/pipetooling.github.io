@@ -954,7 +954,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                       </div>
                                     )
                                   })()}
-                                  {j.readiness === 'already_sent' ? <div><span style={chip('var(--bg-green-tint)', 'var(--text-green-800)')}>approved · in the run</span></div> : j.item?.status === 'awaiting_approval' ? <div><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>awaiting the leader</span></div> : j.item?.status === 'held' ? <div><span style={chip('var(--bg-muted)', 'var(--text-muted)')}>held · folded into this run</span></div> : null}
+                                  {j.readiness === 'already_sent' ? <div><span style={chip('var(--bg-green-tint)', 'var(--text-green-800)')}>approved · to print</span></div> : j.item?.status === 'awaiting_approval' ? <div><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>awaiting the leader</span></div> : j.item?.status === 'held' ? <div><span style={chip('var(--bg-muted)', 'var(--text-muted)')}>held · folded into this run</span></div> : null}
                                 </td>
                                 <td style={td}>
                                   {j.months.length === 0 ? <span style={faint}>every month is already noticed{j.noticedMonths.length ? ` (${j.noticedMonths.map(workMonthShort).join(', ')})` : ''}</span> : split.open.length === 0 ? <span style={openMonthChip('none')}>None open</span> : (
@@ -1206,8 +1206,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                 <strong>{gcNoticeFooterWords(s, { foundOnRoll: foundJobs })}</strong>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}> · {s.envelopes} envelope{s.envelopes === 1 ? '' : 's'} · {formatUsdNoCents(s.claimTotal)} claimed</span>
                 <div style={faint}>
-                  Approving hands every ready notice to the run. Nothing is mailed or recorded until <em>Record the run</em>.
-                  {runEntries.length > 0 ? ` ${runEntries.length} approved notice${runEntries.length === 1 ? '' : 's'} already wait${runEntries.length === 1 ? 's' : ''} in the run.` : ''}
+                  Approving moves every ready notice to <em>Approved · to print</em>. Nothing is mailed or recorded until the Lien desk prints and mails them.
+                  {runEntries.length > 0 ? ` ${runEntries.length} approved notice${runEntries.length === 1 ? '' : 's'} already wait${runEntries.length === 1 ? 's' : ''} to print.` : ''}
                 </div>
               </div>
               {wordOpen ? null : (
