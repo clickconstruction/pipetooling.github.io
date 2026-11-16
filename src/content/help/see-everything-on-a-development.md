@@ -206,7 +206,15 @@ The History lane shows a tick for every line kept on History. A letter gets a fl
 
 Four figures sit above the chart. The figures are the first drawings, the sets since the bid, the newest set and the days on site. The bid is the first one won. With none won, it is the first one sent.
 
-Rest the pointer on a mark to read its line. On a phone, press the mark. A name that does not fit on the chart stays in that line.
+Rest the pointer on anything in the view. A card opens beside it with its details. The marks, the bars, the lane names, the four figures and the lines of the list all answer. Press the item to keep its card open. Press Escape to close it. On a phone, press the item. The card opens as a sheet from the bottom.
+
+A set's card shows the date on its sheets, the day it came, its memo and what changed. Press {{button:outline|Open ↗}} to open its link. Press {{button:outline|Build from this set}} to make the part build from it. A window asks first and names the set. Press {{button:outline|See it in By part}} to go to its row in the table. Press {{button:outline|Ask the estimators}} to ask about it.
+
+A bid's card shows when it was sent and how it ended. The card lists the sets that came since. Press {{button:outline|Open the bid}} to open it. A crew bar's card lists the jobs on it with their days. Press a job to see its card. Then press {{button:outline|Open the job}}. A History line's card shows its words. Press {{button:outline|Read the whole line}} for all of it.
+
+A part's name opens its sets, newest first. Press {{button:outline|+ New set}} there to add a set to that part. A figure's card lists what the number counts. Press a line in any card to go to that item's card. Press {{button:outline|‹ Back}} to return. Today's card offers {{button:outline|Write a line}}, which opens a History line.
+
+The item with an open card stands out on the chart and in the list at once.
 
 Under the chart, every mark reads again as a dated line, oldest first. A bid's line is tinted. A long list opens on its newest lines. Press {{button:outline|Show the 12 older lines}} to read the rest.
 
@@ -233,7 +241,7 @@ The row reads the same photos as Documents → Photos. The guide [find every pho
 
 An estimator opens the same page with the jobs and bids, the history, the plans and the questions. The page shows no money. The Money look is one line that says the office reads it.
 
-An estimator sees the plans by date too. The clock's days read only to the office. An estimator's Crews on site lane shows each job's last work day.
+An estimator sees the plans by date too. The clock's days read only to the office. An estimator's Crews on site lane shows each job's last work day. A job's card says that a job opens for the office and Dispatch.
 
 The crews' photos on the jobs read only to the office. An estimator's Photos look shows just the pictures sent by text or email. The look's heading says the crews' photos are for the office.
 

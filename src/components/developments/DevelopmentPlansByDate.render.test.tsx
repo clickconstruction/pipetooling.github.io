@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 /**
- * The Plans look's By date view: the four figures, the key, a mark's line on a hover, a focus and a press,
- * the dated list with its fold, the print, and the reading and empty states. Made-up site only.
+ * The Plans look's By date view: the four figures, the key, an item's card on a hover, a focus and a press
+ * (a sheet on a phone), the card's rows and presses, the dated list with its fold, the print, and the
+ * reading and empty states. Made-up site only.
  */
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 import { buildPlansByDate, type PlansByDateInput } from '../../lib/plans/plansByDate'
+import { buildPlansByDateCards, type PbdCardAction, type PbdCaps } from '../../lib/plans/plansByDateCards'
+import { PBD_CARD_ENTER_MS, PBD_CARD_LEAVE_MS } from '../../hooks/usePlansByDateItemCard'
 import { DevelopmentPlansByDate, PLANS_BY_DATE_LIST_FOLD } from './DevelopmentPlansByDate'
 
 vi.mock('../../lib/supabase', async () => {
@@ -38,7 +41,7 @@ function site(over: Partial<PlansByDateInput> = {}): PlansByDateInput {
       { id: 'pB', name: 'ZZ Building B', position: 2, created_at: '2025-05-02T00:00:00Z', current_set_id: null },
     ],
     sets: [
-      { id: 'a1', part_id: 'pA', name: 'Issued set', kind: 'issued', source: 'gc', dated: '2025-05-20', came_at: '2025-05-22T15:00:00Z', replaces_set_id: null },
+      { id: 'a1', part_id: 'pA', name: 'Issued set', kind: 'issued', source: 'gc', dated: '2025-05-20', came_at: '2025-05-22T15:00:00Z', replaces_set_id: null, link: 'https://drive.example/a1' },
       { id: 'a2', part_id: 'pA', name: 'Permit set', kind: 'permit', source: 'gc', dated: '2026-05-08', came_at: '2026-05-12T15:00:00Z', replaces_set_id: null },
     ],
     bids: [{ id: 'bid1', label: 'B9001', sent: '2025-06-12', plansDated: '2025-05-20', outcome: 'won', outcomeAt: '2025-07-30' }],
@@ -50,6 +53,7 @@ function site(over: Partial<PlansByDateInput> = {}): PlansByDateInput {
     ...over,
   }
 }
+const caps: PbdCaps = { canWritePlans: true, canOpenJobs: true, canKeep: true, canAsk: true }
 const print = { siteName: 'ZZ Test Ridge', customerName: 'ZZ Test Builders', printedBy: 'ZZ Test Person' }
 
 describe('DevelopmentPlansByDate', () => {
@@ -70,28 +74,99 @@ describe('DevelopmentPlansByDate', () => {
     expect(within(chart).getByText('Permit set')).toBeTruthy()
   })
 
-  it('shows a mark’s line on a hover and a focus, and puts it away', () => {
-    renderWithProviders(<DevelopmentPlansByDate model={buildPlansByDate(site())} phone={false} print={print} />)
-    expect(screen.queryByTestId('pbd-tip')).toBeNull()
-    const mark = screen.getByTestId('pbd-mark-set-a2')
-    expect(mark.getAttribute('aria-label')).toBe('Permit set · the GC · dated May 8, 2026 · came May 12 · ZZ Building A builds from it')
-    fireEvent.mouseEnter(mark)
-    expect(screen.getByTestId('pbd-tip').textContent).toBe('Permit set · the GC · dated May 8, 2026 · came May 12 · ZZ Building A builds from it')
-    fireEvent.mouseLeave(mark)
-    expect(screen.queryByTestId('pbd-tip')).toBeNull()
-    fireEvent.focus(screen.getByTestId('pbd-mark-bid-bid1'))
-    expect(screen.getByTestId('pbd-tip').textContent).toContain('B9001 sent Jun 12, 2025')
-    fireEvent.blur(screen.getByTestId('pbd-mark-bid-bid1'))
-    expect(screen.queryByTestId('pbd-tip')).toBeNull()
+  it('opens an item’s card after a beat on a hover, keeps it while the pointer is on the card, and puts it away', () => {
+    vi.useFakeTimers()
+    try {
+      const input = site()
+      const model = buildPlansByDate(input)
+      renderWithProviders(<DevelopmentPlansByDate model={model} phone={false} print={print} cards={buildPlansByDateCards(input, model, caps)} />)
+      expect(screen.queryByTestId('pbd-card')).toBeNull()
+      const mark = screen.getByTestId('pbd-mark-set-a2')
+      expect(mark.getAttribute('aria-label')).toBe('Permit set · the GC · dated May 8, 2026 · came May 12 · ZZ Building A builds from it')
+      fireEvent.mouseEnter(mark)
+      expect(screen.queryByTestId('pbd-card')).toBeNull()
+      act(() => void vi.advanceTimersByTime(PBD_CARD_ENTER_MS + 5))
+      const card = screen.getByTestId('pbd-card')
+      expect(within(card).getByTestId('pbd-card-title').textContent).toBe('Permit set')
+      expect(within(card).getByTestId('pbd-card-kicker').textContent).toBe('ZZ Building A · the GC · the set it builds from')
+      expect(card.getAttribute('data-pinned')).toBe('false')
+      // The pointer crosses the gap onto the card: it stays.
+      fireEvent.mouseLeave(mark)
+      fireEvent.mouseEnter(card)
+      act(() => void vi.advanceTimersByTime(PBD_CARD_LEAVE_MS + 50))
+      expect(screen.getByTestId('pbd-card')).toBeTruthy()
+      fireEvent.mouseLeave(card)
+      act(() => void vi.advanceTimersByTime(PBD_CARD_LEAVE_MS + 50))
+      expect(screen.queryByTestId('pbd-card')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  it('on a phone a press opens the line and a press on the chart’s ground closes it', () => {
-    renderWithProviders(<DevelopmentPlansByDate model={buildPlansByDate(site())} phone print={print} />)
+  it('pins the card on a press, hands its press to the page, and Escape closes it', () => {
+    const input = site()
+    const model = buildPlansByDate(input)
+    const acted: PbdCardAction[] = []
+    renderWithProviders(<DevelopmentPlansByDate model={model} phone={false} print={print} cards={buildPlansByDateCards(input, model, caps)} onAct={(a) => acted.push(a)} />)
+    fireEvent.click(screen.getByTestId('pbd-mark-set-a1'))
+    const card = screen.getByTestId('pbd-card')
+    expect(card.getAttribute('data-pinned')).toBe('true')
+    expect(within(card).getByTestId('pbd-card-facts').textContent).toContain('On the sheetsMay 20, 2025')
+    expect(within(card).getByTestId('pbd-card-act-open-link').getAttribute('href')).toBe('https://drive.example/a1')
+    fireEvent.click(within(card).getByRole('button', { name: 'Build from this set' }))
+    expect(acted).toEqual([{ kind: 'build-from', label: 'Build from this set', partId: 'pA', setId: 'a1', message: 'Build ZZ Building A from Issued set? Every job on ZZ Building A follows the set its part builds from.', confirmLabel: 'Build from Issued set' }])
+    // The press put the card away; a new one, then Escape.
+    expect(screen.queryByTestId('pbd-card')).toBeNull()
+    fireEvent.click(screen.getByTestId('pbd-mark-bid-bid1'))
+    expect(screen.getByTestId('pbd-card-title').textContent).toBe('B9001')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('pbd-card')).toBeNull()
+  })
+
+  it('answers a figure, a lane’s name and a line of the list, and a row leads to its own card and back', () => {
+    const input = site()
+    const model = buildPlansByDate(input)
+    renderWithProviders(<DevelopmentPlansByDate model={model} phone={false} print={print} cards={buildPlansByDateCards(input, model, caps)} />)
+    fireEvent.click(screen.getByTestId('pbd-figure-since'))
+    expect(screen.getByTestId('pbd-card-title').textContent).toBe('Sets since the bid')
+    fireEvent.click(screen.getByTestId('pbd-card-row-set-a2'))
+    expect(screen.getByTestId('pbd-card-title').textContent).toBe('Permit set')
+    fireEvent.click(screen.getByTestId('pbd-card-back'))
+    expect(screen.getByTestId('pbd-card-title').textContent).toBe('Sets since the bid')
+    fireEvent.click(screen.getByTestId('pbd-name-lane-pA'))
+    expect(screen.getByTestId('pbd-card-title').textContent).toBe('ZZ Building A')
+    expect(within(screen.getByTestId('pbd-card')).getByRole('button', { name: '+ New set' })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('pbd-row-hist-h1'))
+    expect(screen.getByTestId('pbd-card-title').textContent).toBe('Letter')
+    expect(screen.getByTestId('pbd-card-words').textContent).toBe('Notice of delay sent to the GC.')
+    fireEvent.click(screen.getByTestId('pbd-name-today'))
+    expect(screen.getByTestId('pbd-card-title').textContent).toBe('Today')
+    // A press anywhere else puts it away.
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByTestId('pbd-card')).toBeNull()
+  })
+
+  it('on a phone a press opens the card as a sheet, with no hover, and its × closes it', () => {
+    const input = site()
+    const model = buildPlansByDate(input)
+    renderWithProviders(<DevelopmentPlansByDate model={model} phone print={print} cards={buildPlansByDateCards(input, model, caps)} />)
+    fireEvent.mouseEnter(screen.getByTestId('pbd-mark-set-a2'))
+    expect(screen.queryByTestId('pbd-sheet')).toBeNull()
     fireEvent.click(screen.getByTestId('pbd-mark-crew-' + String(Math.round(Date.UTC(2025, 8, 8) / 86_400_000))))
-    expect(screen.getByTestId('pbd-tip').textContent).toBe('Crews on site Sep 8 to Sep 9, 2025 · 2 days · J9101')
-    fireEvent.click(screen.getByTestId('pbd-chart'))
-    expect(screen.queryByTestId('pbd-tip')).toBeNull()
-    expect(screen.getByTestId('pbd-note').textContent).toContain('Press a mark for its line.')
+    const sheet = screen.getByTestId('pbd-sheet')
+    expect(sheet.getAttribute('role')).toBe('dialog')
+    expect(within(sheet).getByTestId('pbd-card-title').textContent).toBe('Crews on site')
+    expect(within(sheet).getByTestId('pbd-card-kicker').textContent).toBe('Sep 8 to Sep 9, 2025 · 2 days')
+    fireEvent.click(within(sheet).getByTestId('pbd-card-close'))
+    expect(screen.queryByTestId('pbd-sheet')).toBeNull()
+    expect(screen.getByTestId('pbd-note').textContent).toContain('Press anything on the chart or in the list for its details.')
+  })
+
+  it('with no cards handed in, an item still answers with its one line', () => {
+    renderWithProviders(<DevelopmentPlansByDate model={buildPlansByDate(site())} phone={false} print={print} />)
+    fireEvent.click(screen.getByTestId('pbd-mark-set-a2'))
+    expect(screen.getByTestId('pbd-card-title').textContent).toBe('Permit set')
+    expect(screen.getByTestId('pbd-card-kicker').textContent).toBe('the GC · dated May 8, 2026 · came May 12 · ZZ Building A builds from it')
   })
 
   it('lists every mark as a dated line, oldest first, with the bid tinted and today last', () => {

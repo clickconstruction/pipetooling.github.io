@@ -74,7 +74,9 @@ import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
 import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../lib/plans/sitePlans'
 import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
-import { buildPlansByDate, plansByDateCrewNote, plansByDateUnsentWords, type PlansByDateClock } from '../lib/plans/plansByDate'
+import { buildPlansByDate, plansByDateCrewNote, plansByDateUnsentWords, type PlansByDateClock, type PlansByDateInput } from '../lib/plans/plansByDate'
+import { buildPlansByDateCards, type PbdCardAction } from '../lib/plans/plansByDateCards'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { moveLineForPaper, papersFromRows, type Paper } from '../lib/papers/papers'
 import { canSeeSiteCosts } from '../lib/developments/siteCosts'
 import { useSiteCosts } from '../hooks/useSiteCosts'
@@ -377,24 +379,45 @@ export default function DevelopmentPage() {
   const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen || (moneyShown && plansByDateOpen))
   // By date: the site's sets, bids, work days and kept History lines against time; no money, so both doors draw it.
   const plansByDateClock: PlansByDateClock = !moneyShown ? 'closed' : !laborRead || laborRead.state === 'reading' ? 'reading' : laborRead.state === 'failed' ? 'failed' : laborRead.labor.daysKnown ? 'read' : 'closed'
-  const plansByDate = useMemo(() => {
+  const plansByDateInput = useMemo<PlansByDateInput | null>(() => {
     if (!plansByDateOpen || !counted || !data || !siteRead) return null
     const labor = laborRead?.state === 'read' ? laborRead.labor : null
-    return buildPlansByDate({
+    const aboutWords = (a: { kind: string; id?: string }) => {
+      if (a.kind === 'job') {
+        const j = counted.jobs.find((x) => x.id === a.id)
+        return j ? jobLabel(j) : null
+      }
+      if (a.kind === 'bid') {
+        const b = counted.bids.find((x) => x.id === a.id)
+        return b ? bidLabel(b) : null
+      }
+      return a.kind === 'customer' ? 'the customer' : null
+    }
+    return {
       parts: siteRead.parts,
       sets: siteRead.sets,
-      bids: counted.bids.map((b) => ({ id: b.id, label: bidLabel(b), sent: b.bid_date_sent, plansDated: b.design_drawing_plan_date, outcome: b.outcome, outcomeAt: b.outcome_at })),
+      bids: counted.bids.map((b) => ({ id: b.id, label: bidLabel(b), name: b.project_name, sent: b.bid_date_sent, plansDated: b.design_drawing_plan_date, outcome: b.outcome, outcomeAt: b.outcome_at })),
       jobs: counted.jobs.map((j) => {
         const days = new Set<string>()
         for (const person of labor?.byJobId.get(j.id)?.people ?? []) for (const d of person.byWorkDate ?? []) days.add(d.ymd)
-        return { id: j.id, label: jobLabel(j), days: plansByDateClock === 'read' ? [...days] : null, firstWorkDay: j.first_work_date ?? null, lastWorkDay: j.last_work_date }
+        return { id: j.id, label: jobLabel(j), name: j.job_name?.trim() || j.job_address?.trim() || null, partId: j.plan_part_id ?? null, days: plansByDateClock === 'read' ? [...days] : null, firstWorkDay: j.first_work_date ?? null, lastWorkDay: j.last_work_date }
       }),
-      history: data.historyEntries.map((h) => ({ id: h.id, happenedAt: h.happenedAt, source: h.source, body: h.body })),
+      history: data.historyEntries.map((h) => ({ id: h.id, happenedAt: h.happenedAt, source: h.source, body: h.body, byName: h.byName ?? h.agentLabel, about: aboutWords(h.about), bodyChars: h.bodyChars })),
+      names: siteRead.names,
       clock: plansByDateClock,
       today: todayYmdInAppTz(),
       toYmd: (raw) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso),
-    })
+    }
   }, [plansByDateOpen, counted, data, siteRead, laborRead, plansByDateClock, bidLabel, jobLabel])
+  const plansByDate = useMemo(() => (plansByDateInput ? buildPlansByDate(plansByDateInput) : null), [plansByDateInput])
+  // Every item's card: its details and the presses this reader has. A job opens for the office door only; anyone on the page can ask and keep a line.
+  const plansByDateCards = useMemo(
+    () => (plansByDateInput && plansByDate ? buildPlansByDateCards(plansByDateInput, plansByDate, { canWritePlans, canOpenJobs: moneyShown, canKeep: true, canAsk: true }) : null),
+    [plansByDateInput, plansByDate, canWritePlans, moneyShown],
+  )
+  // The By date view's *+ New set* lands on the parts table's own form.
+  const [startSetOn, setStartSetOn] = useState<{ partId: string; nonce: number } | null>(null)
+  const confirmDialog = useConfirmDialog()
   const overheadRead = useSiteOverhead(shownJobIds, (scoreboardOpen || timelineOpen) && canSeeSiteCosts(role))
   // Who holds the card each counted charge went on (v2.6457): the card id alone out of each bank record, while the board is open.
   const cardTxIds = useMemo(() => (costsByJobId?.state === 'read' ? [...costsByJobId.byJobId.values()].flatMap((r) => r.breakdown.cardLines.map((l) => l.txId).filter((id): id is string => !!id)) : []), [costsByJobId])
@@ -1123,6 +1146,32 @@ export default function DevelopmentPage() {
     ? `${siteMoney.band.pct != null ? `${siteMoney.band.pct}% done · ` : ''}${money(siteMoney.band.value)} · ${money(siteMoney.band.left)} left${siteMoney.band.pastDue ? ` · ${siteMoney.band.pastDue} past due` : ''}`
     : 'no job yet'
   const goToQuestions = () => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.questions)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // A press on one of the By date view's cards (punch list #367). Every act is one the page already has; the card only reaches it.
+  const showPartRow = (partId: string) => window.setTimeout(() => document.querySelector(`[data-testid="site-part-${partId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+  const actOnPlansByDate = async (a: PbdCardAction) => {
+    if (a.kind === 'open-bid') openBid(a.bidId)
+    else if (a.kind === 'open-job') openJob(a.jobId)
+    else if (a.kind === 'ask') openAsk({ lane: 'estimators', title: a.title })
+    else if (a.kind === 'show-part') {
+      setPlansViewMode('part')
+      showPartRow(a.partId)
+    } else if (a.kind === 'new-set') {
+      setPlansViewMode('part')
+      setStartSetOn({ partId: a.partId, nonce: Date.now() })
+      showPartRow(a.partId)
+    } else if (a.kind === 'read-line') {
+      const line = feed.find((l) => l.id === `history:${a.entryId}`)
+      if (line) setLineOpen(line)
+    } else if (a.kind === 'keep') {
+      if (isFolded(lookFolds, 'changed', false)) toggleLook('changed')
+      setComposing(true)
+      window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    } else if (a.kind === 'build-from') {
+      if (!siteWrites) return
+      if (!(await confirmDialog({ message: a.message, confirmLabel: a.confirmLabel }))) return
+      if (await siteWrites.buildFrom(a.partId, a.setId)) showToast('The part builds from that set now.', 'success')
+    }
+  }
   const openCountRow = (door: CountDoor) => {
     if (door.kind === 'bid') openBid(door.id)
     else if (door.kind === 'job') openJob(door.id)
@@ -1596,9 +1645,11 @@ export default function DevelopmentPage() {
               phone={phone}
               notes={[plansByDateCrewNote(plansByDateClock), plansByDate ? plansByDateUnsentWords(plansByDate.unsentBids) : null].filter((n): n is string => !!n)}
               print={{ siteName: dev.name, customerName: data.customer?.name ?? null, printedBy: profileName ?? null }}
+              cards={plansByDateCards}
+              onAct={(a) => void actOnPlansByDate(a)}
             />
           ) : (
-          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} papers={sitePapers} />
+          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} papers={sitePapers} startSetOn={startSetOn} />
           )}
         </Card>
 
