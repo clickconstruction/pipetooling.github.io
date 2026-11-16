@@ -16,7 +16,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 const CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)', cursor: 'pointer', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }
 const FOLD: CSSProperties = { marginTop: '0.45rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.6rem 0.8rem', display: 'grid', gap: '0.35rem', fontSize: '0.8rem', lineHeight: 1.45, color: 'var(--text-700)' }
 const MUTED: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.75rem' }
-const QUIET: CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }
+const QUIET: CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', display: 'inline-block', padding: '13px 0', margin: '-13px 0', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }
 const PRESS: CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-base)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, height: 34, padding: '0 0.7rem', cursor: 'pointer' }
 const INPUT: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', minWidth: 0 }
 
@@ -66,9 +66,10 @@ export default function BidDifficultyStrip(p: BidDifficultyStripProps) {
         </button>
         {onPrice ? <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>{onPrice}</span> : null}
         {p.stale && !p.sent ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--text-amber-700)' }} data-testid="bid-difficulty-stale">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem 0.5rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-amber-700)' }} data-testid="bid-difficulty-stale">
             <span>{p.stale.words}</span>
-            <button type="button" style={QUIET} onClick={() => void p.onReadIn()} disabled={p.busy != null}>
+            {/* On a narrow Workbench the press drops under the words whole; it used to break into three lines beside them. */}
+            <button type="button" style={{ ...QUIET, whiteSpace: 'nowrap' }} onClick={() => void p.onReadIn()} disabled={p.busy != null}>
               {p.busy === 'reading-in' ? W.readInBusy : W.readIn}
             </button>
           </span>

@@ -11,7 +11,7 @@ import type { DifficultyCriteriaBody, DifficultyPicks } from '../../lib/bids/dif
 import { formatErrorMessage } from '../../utils/errorHandling'
 import DifficultyScalesPicker from './DifficultyScalesPicker'
 
-const QUIET: CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }
+const QUIET: CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', display: 'inline-block', padding: '13px 0', margin: '-13px 0', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }
 const MUTED: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.75rem' }
 
 export default function BidSitePick({ bidId, body, picks, sent, onPick }: { bidId: string; body: DifficultyCriteriaBody | null; picks: DifficultyPicks; sent: boolean; onPick: (key: string, points: number | null) => Promise<void> }) {
