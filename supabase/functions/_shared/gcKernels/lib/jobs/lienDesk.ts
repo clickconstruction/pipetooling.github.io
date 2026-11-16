@@ -380,7 +380,11 @@ export function buildLienDeskQueue(
     // The deadline the entry is judged by: the item's months when it has
     // them (a draft names its months), else what a new notice would name.
     const named = live && live.months.length > 0 ? live.months : dueMonths
-    const deadlines = months.filter((m) => named.includes(m.key)).map((m) => m.deadline)
+    // A closed month the notice still names (a late one for the affidavit) does not judge the row while a named month is
+    // open (v2.7441, job 804 on 2026-11-16: Jul + Aug + Sep read *window closed* by July's Oct 15 on August's last day).
+    const namedMonths = months.filter((m) => named.includes(m.key))
+    const openNamed = namedMonths.filter((m) => m.daysLeft >= 0)
+    const deadlines = (openNamed.length > 0 ? openNamed : namedMonths).map((m) => m.deadline)
     const earliestDeadline = deadlines.length ? deadlines.slice().sort()[0]! : null
     const daysLeft = earliestDeadline ? daysBetweenYmd(todayYmd, earliestDeadline) : null
     // The affidavit's day (v2.7273): the affidavit windows' when they list the job, else the last month's filing deadline.
