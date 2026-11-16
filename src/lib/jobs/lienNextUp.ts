@@ -58,6 +58,8 @@ export type LienNextUpAction =
 export type LienNextUpTarget =
   | { open: 'notices'; jobId: string; pile: LienDeskPile }
   | { open: 'affidavits'; jobId: string }
+  /** The Affidavits list at one pile (punch list #362, step 4): a folded row's press, where the pile's own batch press stands. */
+  | { open: 'affidavit_pile'; pile: 'ready' | 'to_draft' }
   | { open: 'retainage'; jobId: string }
   /** The run window: a GC's ready notices, or (punch list #101) every printed notice, `takeBack` opening on its confirm. */
   | { open: 'run'; gcId: string | null; takeBack?: boolean }

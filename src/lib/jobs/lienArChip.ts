@@ -175,6 +175,8 @@ function doorFor(row: LienNextUpRow, jobId: string): LienArDoor {
     case 'notices':
       return { to: 'desk', jobId, kind: 'notice', pile: t.pile }
     case 'affidavits':
+    // A folded To do row's press (v2.7456) never reaches a job's chip: the desk's rows are one a paper here. Its door would be the same list.
+    case 'affidavit_pile':
       return { to: 'desk', jobId, kind: 'affidavit', pile: null }
     case 'retainage':
       return { to: 'desk', jobId, kind: 'retainage', pile: null }
