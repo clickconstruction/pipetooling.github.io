@@ -11,10 +11,14 @@
  * the window says them:
  *
  * - **held**: the run cannot send it as it stands (no mailing address, an owner nobody confirmed, nothing to claim).
- * - **wait**: it waits on the leader's signature.
+ * - **wait**: it has not printed and waits on the leader's signature.
  * - **ready**: it can print now.
  * - **owe**: it printed, and an envelope it is in still owes its mail number.
  * - **record**: it printed and every envelope it is in has its number, so it can be recorded.
+ *
+ * The window's two presses follow the parts, so a count is what its press takes: the print prints the ready notices,
+ * each whole, and the record takes the ones ready to record. A paper that already printed is past the signature
+ * (v2.5533: it records as it went), so it never reads as waiting.
  *
  * Envelopes are named as envelopes, where the paper is: how many the ready notices print into, how many numbers are
  * typed. The journey is the run's three steps (get them right, print, mail and record), not the envelope's six, and
@@ -24,20 +28,28 @@
  */
 import { countedLabel } from '../batchWords'
 import type { LienRunRow } from './lienRunChecklist'
-import type { RunEnvelope } from './runEnvelopes'
+import { recipientViaDocsmit, type RunEnvelope } from './runEnvelopes'
+import type { RunRecipient } from './lienDeskRun'
 
 export type LienRunPartKey = 'held' | 'wait' | 'ready' | 'owe' | 'record'
 
 type Row = Pick<LienRunRow, 'itemId' | 'held' | 'signed' | 'printed' | 'paperless' | 'mailed'>
-type Envelope = Pick<RunEnvelope, 'key' | 'method' | 'tracking'> & { contents: ReadonlyArray<{ notice: { itemId: string }; recipient: { via?: string | null } }> }
+type Envelope = Pick<RunEnvelope, 'key' | 'method' | 'tracking'> & { contents: ReadonlyArray<{ notice: { itemId: string }; recipient: Pick<RunRecipient, 'via' | 'pieceId' | 'pieceStatus'> }> }
 
-/** The one part a notice is in. A hold comes first: an address can be fixed, a signature cannot lift it. */
+/**
+ * The one part a notice is in. A hold comes first: an address can be fixed, a signature cannot lift it. The signature
+ * stops a notice only until its paper prints: one printed by hand and signed with a pen keeps its open Signed tick,
+ * and records as it went.
+ */
 export function lienRunPartOf(r: Row): LienRunPartKey {
   if (r.held) return 'held'
-  if (r.signed === null) return 'wait'
+  if (r.signed === null && !r.printed) return 'wait'
   if (!r.printed && !r.paperless) return 'ready'
   return r.mailed ? 'record' : 'owe'
 }
+
+/** The parts from the most stopped to the furthest along: jobs that print on one form go at the pace of the slowest. */
+const PART_ORDER: ReadonlyArray<LienRunPartKey> = ['held', 'wait', 'ready', 'owe', 'record']
 
 export type LienRunPart = { key: LienRunPartKey | 'printed'; n: number; words: string; tone: 'ready' | 'wait' | 'held' }
 
@@ -66,7 +78,7 @@ export type LienRunParts = {
   nodes: LienRunNode[]
   /** *15 notices = 8 ready · 5 wait on Malachi's signature · 2 held*: the total's parts for the step the run is on. */
   line: { total: { n: number; words: string }; parts: LienRunPart[] }
-  /** The paper envelopes: all of them, the ones the ready notices print into, and the numbers owed and typed for what printed. */
+  /** The envelopes: the ones the packet can print, the ones the ready notices print into, and the mail numbers owed and typed for what printed. */
   envelopes: { total: number; forReady: number; numbersOwed: number; numbersTyped: number }
   press: LienRunPress
 }
@@ -74,28 +86,41 @@ export type LienRunParts = {
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
 const notices = (n: number) => `${n} ${plural(n, 'notice', 'notices')}`
 
-/** An envelope that goes on paper and so carries a mail number: not an email copy, not one a mail service sends. */
-function onPaper(e: Envelope): boolean {
-  return e.method !== 'email' && !e.contents.some((c) => c.recipient.via === 'docsmit')
+/** An envelope the packet prints: every one but those a mail service sends. */
+function inPacket(e: Envelope): boolean {
+  return !e.contents.some((c) => recipientViaDocsmit(c.recipient))
 }
 
-export function lienRunParts(rows: ReadonlyArray<Row>, envelopes: ReadonlyArray<Envelope>, opts: { leaderName?: string | null } = {}): LienRunParts {
+/** An envelope that carries a mail number: certified mail or a courier, on paper. An email, a hand delivery and a mail service's piece owe none here. */
+function owesNumber(e: Envelope): boolean {
+  return inPacket(e) && (e.method === 'certified_mail' || e.method === 'traceable_courier')
+}
+
+export type LienRunPartsOpts = {
+  leaderName?: string | null
+  /** Jobs combined onto one form (*Combine the jobs at one property*): each list of item ids prints as one paper, so all take the part of the most stopped. */
+  together?: ReadonlyArray<ReadonlyArray<string>>
+}
+
+export function lienRunParts(rows: ReadonlyArray<Row>, envelopes: ReadonlyArray<Envelope>, opts: LienRunPartsOpts = {}): LienRunParts {
   const leader = (opts.leaderName ?? '').trim() || 'the leader'
   const partOf = new Map<string, LienRunPartKey>()
   const counts: Record<LienRunPartKey, number> = { held: 0, wait: 0, ready: 0, owe: 0, record: 0 }
-  for (const r of rows) {
-    const part = lienRunPartOf(r)
-    partOf.set(r.itemId, part)
-    counts[part] += 1
+  for (const r of rows) partOf.set(r.itemId, lienRunPartOf(r))
+  for (const ids of opts.together ?? []) {
+    const inRun = ids.filter((id) => partOf.has(id))
+    const slowest = PART_ORDER.find((p) => inRun.some((id) => partOf.get(id) === p))
+    if (slowest) for (const id of inRun) partOf.set(id, slowest)
   }
+  for (const part of partOf.values()) counts[part] += 1
   const total = rows.length
   const printed = counts.owe + counts.record
   const stopped = counts.held + counts.wait
 
-  const paper = envelopes.filter(onPaper)
+  const paper = envelopes.filter(inPacket)
   const holds = (e: Envelope, parts: ReadonlyArray<LienRunPartKey>) => e.contents.some((c) => parts.includes(partOf.get(c.notice.itemId) ?? 'held'))
   const forReady = paper.filter((e) => holds(e, ['ready'])).length
-  const ofPrinted = paper.filter((e) => holds(e, ['owe', 'record']))
+  const ofPrinted = envelopes.filter((e) => owesNumber(e) && holds(e, ['owe', 'record']))
   const numbersTyped = ofPrinted.filter((e) => e.tracking.trim() !== '').length
 
   // The step the run is on. It opens on what stops a notice while nothing has printed, since a paper that needs
@@ -162,7 +187,7 @@ export function lienRunParts(rows: ReadonlyArray<Row>, envelopes: ReadonlyArray<
       label: countedLabel('Print', 0, 'notice'),
       dead: true,
       line1: 'Nothing can print yet.',
-      line2: [counts.wait ? `${counts.wait} ${waitWords}.` : '', counts.held ? `${notices(counts.held)} ${plural(counts.held, 'is', 'are')} held, each with its reason.` : ''].filter(Boolean).join(' '),
+      line2: [counts.wait ? `${counts.wait} ${waitWords}.` : '', counts.held ? `${notices(counts.held)} ${plural(counts.held, 'is held, with its reason', 'are held, each with its reason')}.` : ''].filter(Boolean).join(' '),
     }
 
   return { total, counts, partOf, step, nodes, line, envelopes: { total: paper.length, forReady, numbersOwed: ofPrinted.length, numbersTyped }, press }
@@ -173,6 +198,15 @@ export function lienRunSubLine(c: { copies: number; envelopes: number; mailByWor
   if (c.copies <= 0) return ''
   const day = (c.mailByWords ?? '').trim()
   return `${c.copies} ${plural(c.copies, 'copy', 'copies')} in ${c.envelopes} ${plural(c.envelopes, 'envelope', 'envelopes')}${day ? ` · last day to mail ${day}` : ''}`
+}
+
+/** The first of the notices' last days to mail, as the second line reads it: *Mon Nov 16*. Null when no notice carries a day. */
+export function lienRunMailByWords(days: ReadonlyArray<string | null | undefined>): string | null {
+  const first = days.map((d) => (d ?? '').trim()).filter((d) => /^\d{4}-\d{2}-\d{2}/.test(d)).sort()[0]
+  if (!first) return null
+  const at = new Date(`${first.slice(0, 10)}T12:00:00Z`)
+  if (Number.isNaN(at.getTime())) return null
+  return at.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '')
 }
 
 /** The groups the window draws its rows in, in this order; a group with no notice is not drawn. */

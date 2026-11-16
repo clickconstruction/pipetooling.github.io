@@ -430,7 +430,8 @@ describe('GcOnNoticeModal', () => {
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="assistant" onChanged={onChanged} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Open the run · 1/ }))
-    fireEvent.click(await screen.findByRole('button', { name: /Print the packet/ }))
+    // The run's one press (v2.7477): Print 1 notice.
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 1 notice' }))
     await waitFor(() => expect(io.printed).toEqual([{ ids: ['it-994'], userId: 'u1' }]))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     expect(refetch).toHaveBeenCalled()

@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -16,7 +16,7 @@ summary: >
 next: Step 4, the list by bin (M), which is A and the first half of D. Then the run's four steps, 5 to 8, each shipped when it is ready.
 size: M for A alone (step 4); L for D as the five steps left (M · M · M · S · M); B, the first three, is built
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7477
 ---
 
 # Lien desk To do: one run (#362)
@@ -196,6 +196,30 @@ by itself.
   built 2026-11-16). Step 5's checklist reads the same gates.
 - #356: the affidavit's months line on a job whose notice names other months. One of D's step 1
   questions.
+
+## The run window (the notices' window built, v2.7477)
+
+Drawing: [`run-window.html`](./run-window.html), served at `/to-dos/lien-to-do-one-run/run-window.html`.
+Tabs **Today**, **1 Get them right**, **2 Print**, **3 Mail and record** and **The liens**.
+
+- **Redraw the run window with D**: built for notices, v2.7477. The owner's screenshot of 2026-11-16
+  counted one batch several ways on one screen. He approved the redraw for notices the same day: "I
+  think this run window is great for the notices … I like the run window and think we can build it."
+  The window now has one total in notices with its parts in the same words everywhere (ready, wait on
+  the signature, held; after the print, ready to record and owe a number), the run's three steps on
+  the journey, the rows in groups by part, *Combine the jobs at one property* under More, and one
+  primary press for the step the run is on. The count kernel is `src/lib/jobs/lienRunParts.ts`.
+- **The presses follow the count.** *Print N notices* prints the ready notices, each whole. A notice
+  that waits on a signature no longer keeps the original contractor's envelope out of the packet: its
+  copy goes in the next packet's envelope. What each number counts is in
+  `docs/recent-features/v2.7477.md`.
+- **The liens' lane is drawn and not approved.** He said the liens have one more step, sending the
+  copies after filing. The last tab draws it as a fourth step. It answers his question and is not
+  built. What goes in that envelope is punch list #366.
+- **Left open by the drawing.** Its step 3 lists envelopes; the build keeps one row a notice with a
+  box an envelope. Two packets to one contractor printed before either is recorded share one number
+  box, as two prints to one address always have.
+- **Not checked on the live desk.** It was looked at with sample ZZ rows at 1,280, 1,024 and 375 px.
 
 ## How to verify
 

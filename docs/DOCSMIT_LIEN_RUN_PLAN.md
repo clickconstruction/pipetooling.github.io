@@ -5,7 +5,7 @@ file: docs/DOCSMIT_LIEN_RUN_PLAN.md
 type: Engineering plan (draft, not yet agreed)
 purpose: Give the company one certified-mail door (a vendor-agnostic mail_pieces table, an edge function per provider, an hourly poll) and open it first on the Lien desk's run, so a notice's envelope goes out through the Docsmit API (US-Letter PDF in, USPS number and delivery status back) instead of being printed and walked to the post office; then let delivery drive the collections cadence (owner call on day 3, a per-piece short link that says when the owner read it, letter two from the later clock) and send standing-rule GCs by cron. Written 2026-10-12 from a read of the Docsmit API reference and the run's code, widened the same day after the "is this the best we can do" pass; mockups linked below; of the PR train PRs 1 to 5, 6a, 6b through its credit line (v2.5521), 8 and 9 are on main (2026-10-14; the list under *PR train*, below, carries each version).
 audience: Owner, Developers, AI Agents
-last_updated: 2026-10-14
+last_updated: 2026-11-16
 sections:
   - The thesis
   - What stays the same
@@ -194,7 +194,7 @@ Approved 2026-10-12 from the before-and-after page (https://claude.ai/artifact/Q
 
 **What it is.**
 
-- **The journey** replaces the step strip: six nodes (Built, Signed, Sent, In the mail, Recorded, Delivered), a count under each (`2 of 3`), the blocker drawn on the node it blocks (`1 waits on the leader`, amber), the fill moving as envelopes move. On a phone it wraps to two rows of three.
+- **The journey** (the run's three steps since v2.7477, which also retired the lanes and `runFootAction`; see `recent-features/v2.7477.md`) replaces the step strip: six nodes (Built, Signed, Sent, In the mail, Recorded, Delivered), a count under each (`2 of 3`), the blocker drawn on the node it blocks (`1 waits on the leader`, amber), the fill moving as envelopes move. On a phone it wraps to two rows of three.
 - **The envelope card** replaces the table row: an envelope glyph that is open, sealed, postmarked or delivered; the envelope's own dots (Built, Checked, Signed, then Sent/Mailed/Delivered for Docsmit, Printed/Mailed/Recorded for paper, Printed/Handed over/Recorded by hand); one state chip; only the buttons that move it (Sign here, He signed the paper, Preview the pages, Print this envelope); the notices inside with their in-this-run ticks; the how-it-goes-out menu and its add-ons. Held and waiting are the card's colour, not a sentence.
 - **The foot** is one status line (what pressing does, what will not go) and one big button named for the next thing with its count and price: Review and mail N, then Print the packet N, then Record the mailing N. Envelope faces, labels, Mailed on, Saved copy, Print again and Take back live under **More**.
 - **Step 2 gets a screen**: the printed checklist sheet, live, one row per paper envelope with stuffed, slip on, mailed and the number box; it appears when the packet prints and reads back into the cards.

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_RUN_GROUPS, lienRunPartOf, lienRunParts, lienRunSubLine } from './lienRunParts'
+import { LIEN_RUN_GROUPS, lienRunMailByWords, lienRunPartOf, lienRunParts, lienRunSubLine } from './lienRunParts'
 
 type RowIn = Parameters<typeof lienRunParts>[0][number]
 const row = (itemId: string, over: Partial<RowIn> = {}): RowIn => ({ itemId, held: null, signed: { how: 'typed', at: '2026-11-12T15:00:00Z', by: 'Malachi' }, printed: null, paperless: false, mailed: null, ...over })
 const printed = { at: '2026-11-16T15:00:00Z', by: 'Taunya' }
 const mailed = { tracking: '9407 1118 9956 0031 2245 17', sentOn: null }
-const env = (key: string, ids: string[], over: { tracking?: string; method?: 'certified_mail' | 'email'; via?: 'docsmit' } = {}) => ({ key, method: over.method ?? ('certified_mail' as const), tracking: over.tracking ?? '', contents: ids.map((itemId) => ({ notice: { itemId }, recipient: { via: over.via } })) })
+const env = (key: string, ids: string[], over: { tracking?: string; method?: 'certified_mail' | 'email' | 'hand'; via?: 'docsmit' } = {}) => ({ key, method: over.method ?? ('certified_mail' as const), tracking: over.tracking ?? '', contents: ids.map((itemId) => ({ notice: { itemId }, recipient: over.via ? { via: over.via, pieceId: 'p1', pieceStatus: 'sent' as const } : {} })) })
 
 /** The drawing's batch: 15 notices, 8 ready, 5 waiting on the signature, 2 held. */
 const fifteen = () => [
@@ -18,7 +18,12 @@ const fifteen = () => [
 describe('lienRunPartOf — every notice is in one part', () => {
   it('a hold comes before the signature, the signature before the print, the print before the numbers', () => {
     expect(lienRunPartOf(row('a', { held: 'no mailing address', signed: null }))).toBe('held')
-    expect(lienRunPartOf(row('a', { signed: null, printed }))).toBe('wait')
+    expect(lienRunPartOf(row('a', { signed: null }))).toBe('wait')
+    // v2.5533: a paper that printed unsigned is past the signature. It records as it went, and its Signed tick stays open.
+    expect(lienRunPartOf(row('a', { signed: null, printed }))).toBe('owe')
+    expect(lienRunPartOf(row('a', { signed: null, printed, mailed }))).toBe('record')
+    // An email copy that nobody signed has not gone anywhere: it waits.
+    expect(lienRunPartOf(row('a', { signed: null, paperless: true }))).toBe('wait')
     expect(lienRunPartOf(row('a'))).toBe('ready')
     expect(lienRunPartOf(row('a', { signed: 'not_needed' }))).toBe('ready')
     expect(lienRunPartOf(row('a', { printed }))).toBe('owe')
@@ -42,9 +47,9 @@ describe('lienRunParts — one total in notices, its parts in the same words (v2
     expect(p.line.parts.map((x) => [x.key, x.n, x.words])).toEqual([['ready', 8, 'ready'], ['wait', 5, 'wait on Malachi’s signature'], ['held', 2, 'held']])
     // The parts add up to the total: nothing is counted twice or left out.
     expect(p.line.parts.reduce((n, x) => n + x.n, 0)).toBe(p.line.total.n)
-    // Envelopes are named as envelopes: the paper ones the ready notices print into. The email copy carries no number.
-    expect(p.envelopes).toMatchObject({ total: 4, forReady: 3 })
-    expect(p.press).toEqual({ act: 'print', label: 'Print 8 notices', dead: false, line1: '8 can print now. 7 stay for the next packet.', line2: 'The packet prints with its checklist sheet, in envelope order: 3 envelopes.' })
+    // Envelopes are named as envelopes: the ones the ready notices print into, the email copy's among them since the packet prints it.
+    expect(p.envelopes).toMatchObject({ total: 5, forReady: 4 })
+    expect(p.press).toEqual({ act: 'print', label: 'Print 8 notices', dead: false, line1: '8 can print now. 7 stay for the next packet.', line2: 'The packet prints with its checklist sheet, in envelope order: 4 envelopes.' })
   })
 
   it('with nothing stopped the run is on the print; with nothing ready it says why nothing can print', () => {
@@ -55,7 +60,7 @@ describe('lienRunParts — one total in notices, its parts in the same words (v2
     expect(all.press).toMatchObject({ label: 'Print 2 notices', line1: '2 can print now.' })
     const none = lienRunParts([row('w', { signed: null }), row('h', { held: 'no mailing address' })], [])
     expect(none.step).toBe(1)
-    expect(none.press).toEqual({ act: 'print', label: 'Print notices', dead: true, line1: 'Nothing can print yet.', line2: '1 waits on the leader’s signature. 1 notice is held, each with its reason.' })
+    expect(none.press).toEqual({ act: 'print', label: 'Print notices', dead: true, line1: 'Nothing can print yet.', line2: '1 waits on the leader’s signature. 1 notice is held, with its reason.' })
   })
 
   it('step 3: after the print the count is what printed, and the press is dead until a notice has every number', () => {
@@ -87,9 +92,18 @@ describe('lienRunParts — one total in notices, its parts in the same words (v2
     expect(p.press.label).toBe('Print 1 notice')
   })
 
-  it('an envelope a mail service sends carries no number here, and an empty run says so', () => {
-    const p = lienRunParts([row('a', { printed })], [env('d', ['a'], { via: 'docsmit' }), env('o', ['a'])])
-    expect(p.envelopes).toMatchObject({ total: 1, numbersOwed: 1 })
+  it('jobs combined onto one form go at the pace of the most stopped: one unsigned job keeps the form out of the print', () => {
+    const rows = [row('a'), row('b', { signed: null }), row('c')]
+    expect(lienRunParts(rows, []).counts).toMatchObject({ ready: 2, wait: 1 })
+    const p = lienRunParts(rows, [], { together: [['a', 'b']] })
+    expect(p.counts).toMatchObject({ ready: 1, wait: 2 })
+    expect(p.partOf.get('a')).toBe('wait')
+    expect(p.press.label).toBe('Print 1 notice')
+  })
+
+  it('an envelope a mail service sends, an email and a hand delivery carry no number here, and an empty run says so', () => {
+    const p = lienRunParts([row('a', { printed })], [env('d', ['a'], { via: 'docsmit' }), env('o', ['a']), env('h', ['a'], { method: 'hand' }), env('m', ['a'], { method: 'email' })])
+    expect(p.envelopes).toMatchObject({ total: 3, numbersOwed: 1 })
     const empty = lienRunParts([], [])
     expect(empty).toMatchObject({ total: 0, step: null, press: { act: 'none', label: 'Nothing to send', dead: true } })
     expect(empty.nodes.every((n) => n.state === 'todo')).toBe(true)
@@ -101,6 +115,10 @@ describe('the window’s second line and its groups', () => {
     expect(lienRunSubLine({ copies: 30, envelopes: 16, mailByWords: 'Mon Nov 16' })).toBe('30 copies in 16 envelopes · last day to mail Mon Nov 16')
     expect(lienRunSubLine({ copies: 1, envelopes: 1 })).toBe('1 copy in 1 envelope')
     expect(lienRunSubLine({ copies: 0, envelopes: 0 })).toBe('')
+  })
+  it('reads the first of the notices’ last days as a day of the week', () => {
+    expect(lienRunMailByWords(['2026-11-20', null, '2026-11-16', ''])).toBe('Mon Nov 16')
+    expect(lienRunMailByWords([null, undefined, ''])).toBeNull()
   })
   it('draws the rows in the parts’ order, what is stopped first, each head with its count', () => {
     expect(LIEN_RUN_GROUPS.map((g) => g.key)).toEqual(['held', 'wait', 'ready', 'owe', 'record'])
