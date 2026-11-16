@@ -66,6 +66,18 @@ A paper opened from a chip is a step of its own in the browser. Press Back and t
 
 The same press sits on the job number of every To do row. It also sits on the number of every row on **By paper** and **By date**. A number is a zoom everywhere on the desk. On a To do row the job's name still opens the job itself.
 
+## The print at the foot of each column
+
+Each column ends in its own print, under a thin line. Only the lien office sees them.
+
+Under the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
+
+Under the affidavits the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under it says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
+
+A press with nothing ready is grey. The line under it still says what waits. A column with no approved paper has no press.
+
+Scroll down and the same two presses stand beside the find box, in fewer words. The notices' press is on the left, as its column is. On a phone the two presses stand one over the other, above the bins.
+
 ## Press a bin
 
 Press a bin's name and the list under the Board shows only that bin's rows. A line under the bins says how many it is showing. Press {{button:outline|Show every row}} to see every row again. Pressing the same bin a second time does the same. A pressed bin also brings the list up to you, on a phone and on a computer.

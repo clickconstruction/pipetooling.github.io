@@ -587,6 +587,20 @@ describe('LienDesk', () => {
     expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('Take back the run?')
   })
 
+  it('the Board’s notice column ends in the run’s own press: with every approved notice printed it reads Enter mail numbers and opens the whole run (v2.7470, punch list #362)', async () => {
+    const item = (id: string, job: string) =>
+      ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', printed_at: '2026-09-14T16:00:00Z' }) as unknown as LienDeskItemRow
+    const rows = [...J650, row('j651', '2026-07', '2026-10-15')]
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(rows, [item('it1', 'j650'), item('it2', 'j651')], true)} initialKind="next" />)
+    await settle()
+    const foot = document.querySelector('[data-lien-board-column="notice"] [data-lien-board-print="notice"]') as HTMLElement
+    expect(document.querySelector('[data-lien-board-print="affidavit"]')).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(within(foot).getByRole('button', { name: 'Enter mail numbers · 2' }))
+    await settle()
+    expect(screen.getAllByRole('dialog').length).toBeGreaterThan(0)
+  })
+
   it('public property (v2.7443): a job whose property asks is marked on the Board under one amber line, Review opens its property, and the jobs already off the path sit in their own bin', async () => {
     readPublicPropertyMock.mockReturnValue(new Promise(() => {}))
     const base = data(J650, [], true)
@@ -2146,6 +2160,35 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(door.textContent).toBe(`${within(bar).getByRole('button', { name: 'Print 3 for notarization' }).textContent} ›`)
     expect(document.querySelector('[data-lien-do-now]')).toBeNull()
     expect(openPrintMock).not.toHaveBeenCalled()
+  })
+
+  it('the Board’s affidavit column ends in the print itself: it prints from To do, with what it leaves out and what it prints with (v2.7470, punch list #362)', async () => {
+    openPrintMock.mockClear()
+    window.localStorage.removeItem('pt.lienHelpSheet.v1')
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    const d = three([ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')])
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const foot = document.querySelector('[data-lien-board-print="affidavit"]') as HTMLElement
+    expect(foot.querySelector('[data-lien-board-print-note]')!.textContent).toContain('Prints with the help sheet')
+    const press = within(foot).getByRole('button', { name: 'Print 3 for notarization' })
+    fireEvent.click(press)
+    await settle()
+    // The stack printed, and the desk is still on To do: the press is the print, not a door.
+    expect(openPrintMock).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[data-lien-do-now]')).toBeTruthy()
+    // Change › is the door to By paper's print bar, where the pages in front of the stack are ticked.
+    fireEvent.click(within(foot).getByRole('button', { name: 'Change ›' }))
+    await settle()
+    expect(document.querySelector('[data-lien-affidavit-print-all]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-do-now]')).toBeNull()
+  })
+
+  it('a reader who is not the lien office gets no print at the Board’s foot', async () => {
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={three([ready('aff1', 'j650'), ready('aff2', 'j651')])} initialKind="next" />)
+    await settle()
+    expect(document.querySelector('[data-lien-board-print]')).toBeNull()
   })
 
   it('a find narrows the print to the rows it shows, and the help sheet lists no hidden paper as held (punch list #353, part 1)', async () => {

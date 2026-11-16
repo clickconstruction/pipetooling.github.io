@@ -19,13 +19,13 @@ const PARTS: LienDoNowBarPart[] = [
 ]
 
 /** A scroller whose page has moved `scrollTop` px, with the bar at its top (`barTop` 0) or still under the Board. */
-function mount(over: { pins?: boolean; pick?: { head: string; clear: string } | null } = {}) {
+function mount(over: { pins?: boolean; pick?: { head: string; clear: string } | null; prints?: Parameters<typeof LienDoNowBar>[0]['prints'] } = {}) {
   const scrollerRef = createRef<HTMLDivElement>()
   const onPart = vi.fn()
   const onClearPick = vi.fn()
   const view = render(
     <div ref={scrollerRef} data-scroller>
-      <LienDoNowBar pins={over.pins ?? true} scrollerRef={scrollerRef} parts={PARTS} onPart={onPart} pick={over.pick ?? null} onClearPick={onClearPick}>
+      <LienDoNowBar pins={over.pins ?? true} scrollerRef={scrollerRef} parts={PARTS} onPart={onPart} pick={over.pick ?? null} onClearPick={onClearPick} prints={over.prints}>
         <input aria-label="Find on the list" />
       </LienDoNowBar>
     </div>,
@@ -100,5 +100,20 @@ describe('LienDoNowBar', () => {
     scrollTo(700, 100)
     expect(bar().getAttribute('data-stuck')).toBe('no')
     expect(document.querySelector('[data-lien-do-now-bar-extras]')).toBeNull()
+  })
+
+  it('pinned, it carries the Board’s two prints in short form, the notices’ first; a dead one cannot be pressed (v2.7470)', () => {
+    const printNotices = vi.fn()
+    const printAffidavits = vi.fn()
+    const { scrollTo } = mount({ prints: [{ key: 'notice', label: 'Print and mail 8 notices', left: '7 wait', dead: false, onPress: printNotices }, { key: 'affidavit', label: 'Print for notarization', left: '2 held', dead: true, onPress: printAffidavits }] })
+    // Not while the Board's own are in view.
+    expect(document.querySelector('[data-lien-do-now-bar-print]')).toBeNull()
+    scrollTo(700, 100)
+    const prints = Array.from(document.querySelectorAll('[data-lien-do-now-bar-print]')) as HTMLButtonElement[]
+    expect(prints.map((b) => [b.getAttribute('data-lien-do-now-bar-print'), b.textContent, b.disabled])).toEqual([['notice', 'Print and mail 8 notices · 7 wait', false], ['affidavit', 'Print for notarization · 2 held', true]])
+    fireEvent.click(prints[0]!)
+    fireEvent.click(prints[1]!)
+    expect(printNotices).toHaveBeenCalledTimes(1)
+    expect(printAffidavits).not.toHaveBeenCalled()
   })
 })

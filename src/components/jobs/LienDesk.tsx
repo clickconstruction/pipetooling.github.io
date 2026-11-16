@@ -99,6 +99,7 @@ import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienRunEntriesFor, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardPickWords, lienBoardRiskPapers, lienBoardRiskPhrase, lienBoardRiskPick, lienBoardRowInPick, lienBoardRowBin, lienBoardRowRisk, lienBoardRowStage, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind, type LienBoardTileDestination } from '../../lib/jobs/lienBoard'
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
+import { lienBoardAffidavitPrint, lienBoardNoticePrint, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
@@ -2230,6 +2231,47 @@ export default function LienDesk({
   // The door as a pill (Run-5): the run's bar and who waits, read from the desk's own rows.
   const readyWaits = (data?.queue.piles.ready ?? []).filter((e) => e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned').length
   const runPill = runDoorPill({ ready: counts?.ready ?? 0, printed: counts?.printed ?? 0, retReady, waits: readyWaits }, leaderName)
+  // The print at the foot of each Board column (v2.7470, punch list #362, the owner's *Yes, build this* of 2026-11-16): the
+  // whole run under the notices, the batch print itself under the affidavits, counted as the run's door and By paper's
+  // print bar count. The lien office's alone, as those two are.
+  // Whose signature the unsigned notices wait on, by name when it is one leader's; else *the leader*.
+  const unsignedLeaderIds = new Set((data?.queue.piles.ready ?? []).filter((e) => e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned').map((e) => data?.jobsById[e.jobId]?.master_user_id ?? null))
+  const unsignedLeaderName = unsignedLeaderIds.size === 1 ? (leaderNameFor?.([...unsignedLeaderIds][0] ?? null) ?? '') : ''
+  const boardPrints =
+    office && data
+      ? {
+          notice: lienBoardNoticePrint({ toPrint: (counts?.ready ?? 0) + retReady, waits: readyWaits, printed: counts?.printed ?? 0, leaderName: unsignedLeaderName }),
+          affidavit: lienBoardAffidavitPrint({ ready: affPrintPlan.ready.length, held: affPrintPlan.gated.length, earlierForm: affPrintPlan.held.length, with: [affHelpSheet ? 'the help sheet' : '', affNoticeRecord ? 'the notice records' : '', affNoticeCopies && affNoticeCopyCount > 0 ? 'copies of the notices' : ''].filter(Boolean), shown: Boolean(affShown) }),
+        }
+      : null
+  const openWholeRun = () => {
+    setRunTakeBack(false)
+    setRunGcId(null)
+    setRunOpen(true)
+  }
+  const onBoardPrint = (side: LienBoardPrintSide) => (side.act === 'print_affidavits' ? printReadyAffidavits() : openWholeRun())
+  // What a print leaves out, by its door: the approved notices on By paper, where a row says it is unsigned; the held affidavits, narrowed to them.
+  const onBoardPrintLeft = (side: LienBoardPrintSide) => {
+    setMobileListShown(false)
+    if (side.kind === 'notice') {
+      setCalendarJobFilter(null)
+      setKind('notice')
+      setPile('ready')
+      return
+    }
+    setKind('affidavit')
+    if (affPrintPlan.gated.length > 0) showHeldAffidavits(true)
+    else {
+      setAffHeldOnlyPicked(false)
+      setAffPile('ready')
+    }
+  }
+  // The pages that print in front of the stack are ticked on By paper's print bar, at Ready to file.
+  const onBoardPrintNote = () => {
+    setAffHeldOnlyPicked(false)
+    setAffPile('ready')
+    setKind('affidavit')
+  }
   // *Record the mailing · 7 sealed*, not *· 7  7 sealed* (v2.6569): the pill's words drop the count the door already says.
   const runTail = runDoorTail(runDoor.count, runPill.words)
   // The pill reads the run's count (v2.7328, the owner's ask): *The run · 3 of 7 mailed*, the meter mailed · printed · to print.
@@ -4766,8 +4808,8 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null} /> : <div />}
-            <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)}>
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} prints={boardPrints ? { ...boardPrints, onPress: onBoardPrint, onLeft: onBoardPrintLeft, onNote: onBoardPrintNote } : null} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null} /> : <div />}
+            <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)} prints={boardPrints && !(leaderView && boardMine) ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.short.label, left: side.short.left, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} stageFor={rowStage} noticeFor={rowNotice} byBin={board && !isMobile ? { binFor: rowBin, folds: lienBinFolds({ office, printReady: affPrintPlanAll.ready.length, printButton: lienAffidavitPrintDoorWords(affPrintPlanAll), sendReady: affSendPlanAll.ready.length }), narrowed: Boolean(boardPick) } : null} trackPress={office && !isMobile && affPrintPlanAll.ready.length >= 2 ? { button: lienAffidavitPrintDoorWords(affPrintPlanAll), onPress: () => { setAffHeldOnlyPicked(false); setAffPile('ready'); setKind('affidavit') } } : null} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
