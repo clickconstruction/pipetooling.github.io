@@ -39,7 +39,7 @@ export type LienBookReads = {
   jobs: (jobIds: string[]) => Promise<LienBookRawJob[]>
   /** `job_property_owners` by job. The reader turns a failure into no rows. */
   owners: (jobIds: string[]) => Promise<LienBookOwnerRow[]>
-  /** `job_lien_filings` by job, one chunk: the affidavits and releases. The reader turns a failure into no rows. */
+  /** `job_lien_filings` by job, one chunk: the affidavits, the releases and (v2.7485) the recorded notices. The reader turns a failure into no rows. */
   filings: (jobIds: string[]) => Promise<JobLienFilingRow[]>
   /** `job_demand_letters` by job, one chunk. The reader turns a failure into no rows. */
   demandLetters: (jobIds: string[]) => Promise<JobDemandLetterRow[]>
