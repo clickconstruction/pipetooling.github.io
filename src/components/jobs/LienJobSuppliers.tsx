@@ -348,9 +348,9 @@ export function LienJobSuppliersCard({
       <div role="row" style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0 12px', padding: '0.4rem 0.8rem 0.3rem', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
         <span role="columnheader">HOUSE</span>
         <span role="columnheader">UNPAID SINCE</span>
-        {/* Taunya's title (2026-11-15), in her casing; "our estimate" left it for each row's small line. */}
+        {/* Taunya's title (2026-11-15), in capitals as the other four; "our estimate" left it for each row's small line. */}
         <span role="columnheader" aria-label="Supply house notice" title={ESTIMATE_NOTE} style={{ cursor: 'help', whiteSpace: 'nowrap' }}>
-          SupHse Notice
+          SUPHSE NOTICE
         </span>
         <span role="columnheader" style={{ textAlign: 'right' }}>PAID</span>
         <span role="columnheader" style={{ textAlign: 'right' }}>OWED</span>

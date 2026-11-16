@@ -19,7 +19,7 @@ Each job with a balance at that house has one row.
 
 - **Job** shows the job, its address and what the customer still owes you. A job the customer paid in full says so in red.
 - **Our books** shows what your books say the house is owed.
-- **SupHse Notice** shows when the house can send its lien notice. The date is our estimate until the house tells you.
+- **SupHse notice** shows when the house can send its lien notice. The date is our estimate until the house tells you.
 
 The jobs with the soonest date come first.
 

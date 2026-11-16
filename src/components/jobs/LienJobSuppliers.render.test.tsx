@@ -33,10 +33,10 @@ const job = byJob.get('j')!
 const base = { job, propertyKind: 'non_residential', todayYmd: TODAY, openBalance: 12_000, payerName: 'Brund & Assoc.', jobLabel: '891', isMobile: false }
 
 describe('LienJobSuppliersCard · the notice column (v2.7424)', () => {
-  it('titles the column SupHse Notice on one line, and says our estimate on the row instead', () => {
+  it('titles the column SUPHSE NOTICE on one line, and says our estimate on the row instead', () => {
     renderWithProviders(<LienJobSuppliersCard {...base} />)
     const heads = [...document.querySelectorAll('[role="columnheader"]')] as HTMLElement[]
-    expect(heads.map((h) => h.textContent?.trim())).toEqual(['HOUSE', 'UNPAID SINCE', 'SupHse Notice', 'PAID', 'OWED'])
+    expect(heads.map((h) => h.textContent?.trim())).toEqual(['HOUSE', 'UNPAID SINCE', 'SUPHSE NOTICE', 'PAID', 'OWED'])
     expect(heads[2]!.style.whiteSpace).toBe('nowrap')
     expect(heads[2]!.getAttribute('aria-label')).toBe('Supply house notice')
     expect(heads[2]!.title).toContain('Our estimate')
