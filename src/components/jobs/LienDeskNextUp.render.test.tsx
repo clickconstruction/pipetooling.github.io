@@ -19,7 +19,7 @@ describe('LienDeskNextUp', () => {
     const onAct = vi.fn()
     const rows = [
       row({}),
-      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } }),
+      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · to print', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } }),
       row({ key: 'affidavit:j2', kind: 'affidavit', jobId: 'j2', title: '977 · Stonewick', sub: 'Affidavit approved · ready to file', dueOn: '2026-11-16', daysLeft: 42, severity: 'quiet', group: 'coming', action: 'file_affidavit', button: 'File the affidavit', target: { open: 'affidavits', jobId: 'j2' } }),
     ]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} />)
@@ -144,7 +144,7 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
   it('with onOpenJob the number and name are a text button that opens the job and not the row; a GC run row stays plain', () => {
     const onAct = vi.fn()
     const onOpenJob = vi.fn()
-    const rows = [row({}), row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } })]
+    const rows = [row({}), row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · to print', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } })]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenJob={onOpenJob} />)
     const door = screen.getByTestId('lien-next-up-job-j1')
     expect(door.tagName).toBe('BUTTON')
@@ -294,7 +294,7 @@ describe('LienDeskNextUp · the chip as a door to the paper (v2.4632)', () => {
     const rows = [
       row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner' }),
       row({ key: 'notice:j2', jobId: 'j2', title: '651 · AXO Schertz II', action: 'approve', button: 'Approve' }),
-      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
+      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } }),
       row({ key: 'retainage:j3', jobId: 'j3', kind: 'retainage', title: '700 · Retainage', action: 'draft', button: 'Open the notice', target: { open: 'retainage', jobId: 'j3' } }),
     ]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenPaper={onOpenPaper} gapsFor={(r) => (r.jobId === 'j1' ? 1 : 0)} />)
@@ -321,7 +321,7 @@ describe('LienDeskNextUp · the chip as a door to the paper (v2.4632)', () => {
 
 describe('LienDeskNextUp · the printed run (punch list #101)', () => {
   const run = row({
-    key: 'run:printed', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: 'Mailed? Type each envelope’s number. Not mailing them? Take the run back.', action: 'record_mailing', button: 'Record the mailing', target: { open: 'run', gcId: null },
+    key: 'run:printed', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: 'Mailed? Type each envelope’s number. Not mailing them? Take the run back.', action: 'record_mailing', button: 'Enter mail numbers', target: { open: 'run', gcId: null },
     secondary: { words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } },
     jobs: [{ jobId: 'j2', title: '712 · Cedar Park', dueOn: '2026-10-15' }, { jobId: 'j3', title: '715 · Leander', dueOn: '2026-11-15' }],
   })
@@ -334,7 +334,7 @@ describe('LienDeskNextUp · the printed run (punch list #101)', () => {
     expect(el.textContent).toContain('19 notices printed Oct 7')
     fireEvent.click(within(el).getByRole('button', { name: 'Take back…' }))
     expect(onAct.mock.calls[0]![0].target).toEqual({ open: 'run', gcId: null, takeBack: true })
-    fireEvent.click(within(el).getByRole('button', { name: 'Record the mailing' }))
+    fireEvent.click(within(el).getByRole('button', { name: 'Enter mail numbers' }))
     expect(onAct.mock.calls[1]![0].target).toEqual({ open: 'run', gcId: null })
     expect(document.querySelector('[data-lien-next-up-fold-body]')).toBeNull()
     fireEvent.click(within(el).getByRole('button', { name: '▸ The 2 jobs' }))
@@ -362,9 +362,9 @@ describe('LienDeskNextUp · only you can approve, first (punch list #101 PR 3)',
     cleanup()
     render(<LienDeskNextUp rows={[row({}), { ...approve, button: null, sub: 'Waiting on Sam' }]} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" />)
     // One head over the parts, then each part's own: the approvals that wait, then what is on track.
-    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 1and 1 waiting on Sam')
+    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 1and 1 waiting on Sam to approve')
     expect(Array.from(document.querySelectorAll('[data-lien-next-up-group]')).map((g) => [g.getAttribute('data-lien-next-up-group'), g.getAttribute('data-part'), g.querySelector('h4')?.textContent])).toEqual([
-      ['waiting', 'yes', 'Waiting on Sam · 1'],
+      ['waiting', 'yes', 'Waiting on Sam to approve · 1'],
       ['now', 'yes', 'On track · 1'],
     ])
   })
@@ -385,10 +385,10 @@ describe('LienDeskNextUp · Needs you now in three parts (v2.7371, punch list #3
 
   it('first what will not make its day, the longest road first; then waiting on the leader; then on track, largest first; Coming up follows', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} riskLabel={riskLabel} amountFor={amountFor} />)
-    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 4and 1 waiting on Sam')
+    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 4and 1 waiting on Sam to approve')
     expect(parts()).toEqual([
       ['risk', 'Will not make tomorrow as they stand · 2', ['notice:j1', 'affidavit:j9']],
-      ['waiting', 'Waiting on Sam · 1', ['notice:j2']],
+      ['waiting', 'Waiting on Sam to approve · 1', ['notice:j2']],
       ['now', 'On track · 2', ['affidavit:j4', 'affidavit:j3']],
       ['coming', 'Coming up · 1', ['notice:j5']],
     ])
@@ -405,7 +405,7 @@ describe('LienDeskNextUp · Needs you now in three parts (v2.7371, punch list #3
     // It sits on the waiting head and nowhere else, and the head keeps its own words.
     expect(document.querySelectorAll('[data-lien-next-up-remind]')).toHaveLength(1)
     expect(document.querySelector('[data-lien-next-up-group="waiting"]')!.contains(press())).toBe(true)
-    expect((document.querySelector('[data-lien-next-up-group="waiting"] h4') as HTMLElement).textContent).toBe('Waiting on Sam · 1')
+    expect((document.querySelector('[data-lien-next-up-group="waiting"] h4') as HTMLElement).textContent).toBe('Waiting on Sam to approve · 1')
     fireEvent.click(press())
     expect(onPress).toHaveBeenCalledTimes(1)
     view.rerender(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} remind={{ button: 'Reminded at 2:14 PM', dead: true, onPress }} />)

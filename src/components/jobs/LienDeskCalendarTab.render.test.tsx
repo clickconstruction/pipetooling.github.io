@@ -583,13 +583,13 @@ describe('the pen (v2.4153)', () => {
 })
 
 describe('the In the mail mark (v2.5522)', () => {
-  it('a printed notice draws the amber circle, sits beside Notice on file in the key, counts on the bar, and its doors open Record the mailing', () => {
+  it('a printed notice draws the amber circle, sits beside Notice on file in the key, counts on the bar, and its doors open Enter mail numbers', () => {
     const onRecord = vi.fn()
     const onDraft = vi.fn()
     const mailedRows: LienCalendarJob[] = [
       // August's notice printed and in the mail (Oct 15), July's on file (Sep 15): one circle of each colour on the row.
       { jobId: 'm', number: '878 PLUM', name: 'Tune 5- Seguin', customer: 'Southern Pine', gcId: 'gc9', gcName: 'Southern Pine Construction', address: '410 TX-123', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 38625, lastWorkYmd: '2026-08-20', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] }) },
-      // A plain owed notice on the same date, another GC: the bar keeps Draft the one beside Record the mailing.
+      // A plain owed notice on the same date, another GC: the bar keeps Draft the one beside Enter mail numbers.
       { jobId: 'o', number: '891 PLUM', name: 'Tune 5- Liberty Hill', customer: 'Brund', gcId: 'gc8', gcName: 'Brund & Assoc.', address: '11730 TX-29', openBalance: 6258, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 6258, lastWorkYmd: '2026-08-20', isSub: true }) },
     ]
     render(<LienDeskCalendarTab rows={mailedRows} todayYmd={TODAY} onOpenJob={() => {}} onDraft={onDraft} onRecord={onRecord} canWrite />)
@@ -604,6 +604,8 @@ describe('the In the mail mark (v2.5522)', () => {
     expect(bar.textContent).toContain('2 notices across 2 GCs · 1 in the mail')
     expect(bar.textContent).toContain('1 notice owed')
     expect(bar.textContent).toContain('1 in the mail')
+    // One printed notice: the bar's press is the bare act, with no count (v2.7448; Record the mailing until then).
+    expect(within(bar).getByTestId('lien-cal-record').textContent).toBe('Enter mail numbers ›')
     fireEvent.click(within(bar).getByTestId('lien-cal-record'))
     expect(onRecord).toHaveBeenCalledWith(['m'])
     fireEvent.click(mark)
@@ -611,13 +613,13 @@ describe('the In the mail mark (v2.5522)', () => {
     expect(within(bar).getByRole('button', { name: 'Draft the one ›' })).toBeTruthy()
     // The key's own door for the mark.
     fireEvent.click(within(key).getByRole('button', { name: /In the mail/ }))
-    fireEvent.click(within(screen.getByTestId('lien-cal-key-panel')).getByRole('button', { name: 'Record the mailing ›' }))
+    fireEvent.click(within(screen.getByTestId('lien-cal-key-panel')).getByRole('button', { name: 'Enter mail numbers ›' }))
     expect(onRecord).toHaveBeenCalledTimes(3)
   })
 })
 
 describe('a notice in the mail whose date has passed (v2.5529)', () => {
-  it('its mark says the date has passed, with no "by" a day gone by, and still opens Record the mailing', () => {
+  it('its mark says the date has passed, with no "by" a day gone by, and still opens Enter mail numbers', () => {
     const onRecord = vi.fn()
     // Today Sep 28: June's date (Aug 17) has passed; July is on file.
     const rows: LienCalendarJob[] = [

@@ -39,6 +39,7 @@ import { EmptyState } from '../EmptyState'
 import { LIEN_CALENDAR_EMPTY, lienCalendarSearchEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
 import { lienMarkCard, lienMarkClusters, type LienMarkCard, type LienMarkCardDoor, type LienMarkDoors } from '../../lib/jobs/lienMarkCards'
 import { LIEN_BILLED_AGE_NONE_TITLE, lienLaterLines, type LienBilledAgeTone, type LienLaterLine } from '../../lib/jobs/lienBilledAge'
+import { LIEN_RUN_ACT } from '../../lib/jobs/lienRunWords'
 
 /**
  * The Lien desk's Calendar tab (v2.4101 the shell; v2.4152 the body — punch
@@ -856,7 +857,7 @@ function BucketBar({ b, open, onToggle, onDraft, onRecord, top, phone }: { b: Li
       {draft || record ? (
         <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
           {record ? (
-            <button type="button" className="lienCalDraft" data-testid="lien-cal-record" onClick={() => onRecord?.(record.jobIds)} title="Open the run on Record the mailing: these notices are printed and in the mail, their numbers owed">
+            <button type="button" className="lienCalDraft" data-testid="lien-cal-record" onClick={() => onRecord?.(record.jobIds)} title="Enter mail numbers: these notices are printed and in the mail, their numbers owed">
               {record.label} ›
             </button>
           ) : null}
@@ -994,7 +995,7 @@ function KeyStrip({ openGlyph, onToggle, doors, onDoor }: { openGlyph: LienCalen
             <div style={{ fontSize: '0.75rem', lineHeight: 1.45, color: 'var(--text-700)' }}>{open.long}</div>
             {open.door && doors.has(open.door) ? (
               <button type="button" onClick={() => onDoor(open.door!)} style={{ marginTop: 6, font: 'inherit', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-                {open.door === 'kinds' ? 'Set kinds, biggest first ›' : open.door === 'record' ? 'Record the mailing ›' : 'Draft the notices ›'}
+                {open.door === 'kinds' ? 'Set kinds, biggest first ›' : open.door === 'record' ? `${LIEN_RUN_ACT.record} ›` : 'Draft the notices ›'}
               </button>
             ) : null}
           </div>
