@@ -1329,6 +1329,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "job_activity_send_words": [{"args":{"p_method":"string"},"returns":"string"}],
   "job_baseline_rates": [{"args":{},"returns":"{ bid_id: string grade: string hours_per_thousand: number job_id: string kept_at: string kept_on: string people_count: number price_usd: number team_hours: numb…"}],
   "job_bill_payer_customer_id": [{"args":{"p_bill_to_party":"string","p_customer_id":"string","p_gc_customer_id":"string"},"returns":"string"}],
+  "job_lead_contact": [{"args":{"p_job_id":"string"},"returns":"{ lead_name: string lead_phone: string lead_role: string lead_user_id: string }[]"}],
   "job_names_from_work_plan": [{"args":{},"returns":"{ hcp_number: string job_id: string new_name: string old_name: string work: string }[]"}],
   "job_rider_fees": [{"args":{"p_job_id":"string"},"returns":"number"}],
   "jobs_ledger_row_visible_for_tally_assign": [{"args":{"p_job_id":"string","p_user_id":"string"},"returns":"boolean"}],
