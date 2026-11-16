@@ -3,6 +3,7 @@ import { buildJobAccountsView } from '../materials/jobAccountsFlow'
 import {
   buildLienSupplierCard,
   buildLienSupplierJobs,
+  lienSupplierQuietLine,
   lienSupplierEmailText,
   lienSupplierLetterParagraph,
   lienSupplierLetterParagraphFor,
@@ -322,5 +323,55 @@ describe('the owner’s cover letter paragraph (v2.4725)', () => {
     expect(lienSupplierLetterParagraphFor(paidUp.get('j'), { propertyKind: '', todayYmd: TODAY, payerName: 'Alder', claim: 18400 })).toBe('')
     expect(lienSupplierLetterParagraphFor(undefined, { propertyKind: '', todayYmd: TODAY, payerName: 'Alder', claim: 18400 })).toBe('')
     expect(lienSupplierLetterParagraphFor(oneHouse(), { propertyKind: 'non_residential', todayYmd: TODAY, payerName: 'Alder', claim: 17585 })).toContain('We expect Reece’s own notice by November 16.')
+  })
+})
+
+describe('a house that is owed nothing takes one line (v2.7431)', () => {
+  const quiet = { owed: 0, notice: { kind: 'none' as const }, theirBalanceWords: '', invoiceWords: '2 invoices, all paid', accountWords: 'no job account', accountOpen: false, repWords: '', word: null }
+
+  it('reads its invoices, then its job account, with the whole line as the title', () => {
+    expect(lienSupplierQuietLine(quiet)).toEqual({
+      parts: [
+        { text: '2 invoices, all paid', tone: 'muted' },
+        { text: 'no job account', tone: 'muted' },
+      ],
+      title: '2 invoices, all paid · no job account',
+    })
+  })
+
+  it('answers null for a house that is owed, which keeps its whole row', () => {
+    expect(lienSupplierQuietLine({ ...quiet, owed: 5402.63, notice: { kind: 'open', ymd: '2026-11-16', daysLeft: 1, soon: true } })).toBeNull()
+    // A cent of rounding is not a debt; a real balance is.
+    expect(lienSupplierQuietLine({ ...quiet, owed: 0.004 })).not.toBeNull()
+    expect(lienSupplierQuietLine({ ...quiet, owed: 0.01 })).toBeNull()
+  })
+
+  it('drops nothing a paid row drew: the house’s own balance leads, an open job account keeps its ink, the rep and the note follow', () => {
+    const word = { balance: 250, noticeYmd: null, saidBy: 'Dana', note: 'a credit memo is coming', notedByName: 'Grace', notedYmd: '2026-10-02' }
+    const line = lienSupplierQuietLine({ ...quiet, theirBalanceWords: 'Reece says $250.00', accountWords: 'job account open · F-20417', accountOpen: true, repWords: 'rep Dana Ortiz', word })!
+    expect(line.parts).toEqual([
+      { text: 'Reece says $250.00', tone: 'said' },
+      { text: '2 invoices, all paid', tone: 'muted' },
+      { text: 'job account open · F-20417', tone: 'open' },
+      { text: 'rep Dana Ortiz', tone: 'muted' },
+      { text: '“a credit memo is coming”', tone: 'muted' },
+    ])
+    expect(line.title).toBe('Reece says $250.00 · 2 invoices, all paid · job account open · F-20417 · rep Dana Ortiz · “a credit memo is coming”')
+  })
+
+  it('is what the card builds for a paid house, and never for an owed one', () => {
+    const jobs = buildLienSupplierJobs({
+      invoices: [
+        { id: 'a', supply_house_id: 'h', amount: 4120, is_paid: false, invoice_date: '2026-07-14', paidYmd: null, on_job_account: false, invoice_number: 'A-1' },
+        { id: 'c', supply_house_id: 'f', amount: 300, is_paid: true, invoice_date: '2026-07-01', paidYmd: '2026-07-20', on_job_account: false, invoice_number: 'F-1' },
+      ],
+      allocations: [{ invoice_id: 'a', job_id: 'j', pct: 100 }, { invoice_id: 'c', job_id: 'j', pct: 100 }],
+      houses: [{ id: 'h', name: 'Reece' }, { id: 'f', name: 'Ferguson' }],
+    })
+    const rows = buildLienSupplierCard(jobs.get('j')!, { propertyKind: 'non_residential', todayYmd: '2026-10-02', openBalance: 12000, payerName: 'Alder' }).rows
+    expect(rows.map((r) => [r.name, lienSupplierQuietLine(r)?.title ?? null])).toEqual([
+      ['Reece', null],
+      ['Ferguson', '1 invoice, all paid · no job account'],
+    ])
   })
 })

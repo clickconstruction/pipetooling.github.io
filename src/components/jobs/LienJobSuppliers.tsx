@@ -6,12 +6,14 @@ import { formatCurrency } from '../../lib/format'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildLienSupplierCard,
+  lienSupplierQuietLine,
   lienSupplierEmailText,
   lienSupplierMark,
   parseSupplierWordBalance,
   type LienSupplierCardRow,
   type LienSupplierJob,
   type LienSupplierMark,
+  type LienSupplierQuietPart,
 } from '../../lib/jobs/lienJobSuppliers'
 import { clearSupplierWord, saveSupplierWord } from '../../lib/jobs/lienSupplierWordIo'
 import { supplierPaidButtonWords, supplierPaidDraftProblem, supplierPaidInvoiceWords, supplierPaidPicked, supplierPaidSavedWords, supplierPaidSplitWarning, type LienSupplierPaidDraft } from '../../lib/jobs/lienSupplierPaid'
@@ -21,7 +23,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 const TEAL = 'var(--text-teal-700)'
 const money: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
 const small: CSSProperties = { fontSize: '0.6875rem', color: 'var(--text-muted)' }
-const COLS = 'minmax(0, 1.5fr) minmax(0, 1.25fr) minmax(0, 1.35fr) minmax(0, 0.8fr) minmax(0, 0.9fr)'
+const oneLine: CSSProperties = { minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+const COLS ='minmax(0, 1.5fr) minmax(0, 1.25fr) minmax(0, 1.35fr) minmax(0, 0.8fr) minmax(0, 0.9fr)'
 
 /**
  * The mark on a desk row (v2.4404): a storefront and the money, only while a
@@ -48,6 +51,17 @@ function noticeWords(r: LienSupplierCardRow): { top: string; sub: string; tone: 
   if (r.notice.kind === 'open') return { top: `by ${formatYmdMonthDay(r.notice.ymd)}`, sub: `${r.notice.daysLeft} ${r.notice.daysLeft === 1 ? 'day' : 'days'}`, tone: r.notice.soon ? 'amber' : 'plain' }
   if (r.notice.kind === 'closed') return { top: `window closed ${formatYmdMonthDay(r.notice.ymd)}`, sub: '', tone: 'muted' }
   return null
+}
+
+const QUIET_INK: Record<LienSupplierQuietPart['tone'], CSSProperties> = { said: { color: 'var(--text-700)' }, open: { color: TEAL, fontWeight: 600 }, muted: {} }
+/** The words of a house that is owed nothing (v2.7431), each part in its ink with a dot between. */
+function quietWords(parts: LienSupplierQuietPart[]) {
+  return parts.map((part, i) => (
+    <span key={i}>
+      {i > 0 ? ' · ' : ''}
+      <span style={QUIET_INK[part.tone]}>{part.text}</span>
+    </span>
+  ))
 }
 
 const NOTICE_INK = { amber: 'var(--text-amber-800)', plain: 'var(--text-700)', muted: 'var(--text-muted)' } as const
@@ -307,6 +321,21 @@ export function LienJobSuppliersCard({
     <>
       {card.rows.map((r) => {
         const n = noticeWords(r)
+        const quiet = lienSupplierQuietLine(r)
+        // A house that is owed nothing (v2.7431): its name and a grey $0.00, then one small line. A phone has no hover, so the words wrap here and nothing is cut.
+        if (quiet)
+          return (
+            <div key={r.houseId} data-lien-supplier-house={r.name} data-lien-supplier-line="one" style={{ borderBottom: '1px solid var(--border)', padding: '0.35rem 0.8rem', display: 'grid', gap: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontWeight: 600, minWidth: 0 }}>{r.name}</span>
+                <span style={{ ...money, color: 'var(--text-muted)' }}>${formatCurrency(r.owed)}</span>
+              </div>
+              <div data-lien-supplier-quiet style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {quietWords(quiet.parts)}
+                {r.paid > 0.005 ? ` · paid $${formatCurrency(r.paid)}` : ''}
+              </div>
+            </div>
+          )
         return (
           <div key={r.houseId} data-lien-supplier-house={r.name} style={{ borderBottom: '1px solid var(--border)' }}>
           <div style={{ padding: '0.55rem 0.8rem', display: 'grid', gap: 1 }}>
@@ -355,6 +384,23 @@ export function LienJobSuppliersCard({
       </div>
       {card.rows.map((r) => {
         const n = noticeWords(r)
+        const quiet = lienSupplierQuietLine(r)
+        // A house that is owed nothing takes one line (v2.7431, Taunya's ask): its name, its words across the two middle columns, its paid figure and a grey $0.00.
+        if (quiet)
+          return (
+            <div key={r.houseId} role="rowgroup" style={{ borderTop: '1px solid var(--border)' }}>
+              <div role="row" data-lien-supplier-house={r.name} data-lien-supplier-line="one" style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0 12px', padding: '0.3rem 0.8rem', alignItems: 'baseline' }}>
+                <div role="cell" style={{ ...oneLine, fontWeight: 600 }} title={r.name}>
+                  {r.name}
+                </div>
+                <div role="cell" aria-colspan={2} data-lien-supplier-quiet title={quiet.title} style={{ ...oneLine, gridColumn: '2 / 4', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {quietWords(quiet.parts)}
+                </div>
+                <div role="cell" style={money}>${formatCurrency(r.paid)}</div>
+                <div role="cell" style={{ ...money, color: 'var(--text-muted)' }}>${formatCurrency(r.owed)}</div>
+              </div>
+            </div>
+          )
         return (
           <div key={r.houseId} role="rowgroup" style={{ borderTop: '1px solid var(--border)' }}>
           <div role="row" data-lien-supplier-house={r.name} style={{ display: 'grid', gridTemplateColumns: COLS, gap: '0 12px', padding: '0.45rem 0.8rem', alignItems: 'start' }}>
