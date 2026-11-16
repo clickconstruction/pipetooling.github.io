@@ -2,6 +2,7 @@ import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
 import type { RunEnvelope } from './runEnvelopes'
+import { LIEN_RUN_ACT } from './lienRunWords'
 
 /**
  * The run on paper (v2.4971, the owner's ask on the October 8 packet — 154 pages for 18 envelopes
@@ -163,7 +164,7 @@ export function runSheetHtml(i: RunSheetInput): string {
     certified ? 'Every envelope goes certified mail with a return receipt.' : 'The method is under each name.',
     'Each envelope has a divider page in front of it with the same number as this list.',
     'Write the number from the certified label in the box under its row.',
-    'Back at the desk, type the numbers into Send the run › Record the mailing. The run checks each one as you type.',
+    `Back at the desk, press ${LIEN_RUN_ACT.record} and type the numbers in. The desk checks each one as you type.`,
     mailing.held.length ? `<b>${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back</b> and marked in red: the run did not print ${mailing.held.length === 1 ? 'it' : 'them'}, and the reason is beside each one.` : '',
   ]
     .filter(Boolean)

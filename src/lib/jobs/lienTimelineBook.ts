@@ -1,5 +1,7 @@
-import { buildLienDeskQueue, LIEN_DESK_LEAD_DAYS, type LienDeskItemRow, type LienNoticeMonthRow, type LienNoticePolicy } from './lienDesk'
-import { buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
+import { buildLienDeskQueue, LIEN_DESK_LEAD_DAYS, type LienDeskEntry, type LienDeskItemRow, type LienNoticeMonthRow, type LienNoticePolicy } from './lienDesk'
+import { buildLienAffidavitQueue, type LienAffidavitEntry, type LienAffidavitRow } from './lienDeskAffidavits'
+import { lienAffidavitOwnerSends } from './lienAffidavitNotices'
+import type { LienPublicStanding } from './lienPublicProperty'
 import type { JobLienFilingRow } from './lienDeadlines'
 import type { JobDemandLetterRow } from './demandLetterTracking'
 import { buildLienTimelineFromDesk, lienTimelineMonthsFromDesk } from './lienTimelineDesk'
@@ -39,6 +41,14 @@ export interface LienBookJob {
   /** v2.3753's facts when the job carries them; the grid prints them, else a blank. */
   paymentBond?: string | null
   contractEndedOn?: string | null
+  /** The job's property record (`jobs_ledger.customer_address_id`, v2.7485): the key the property view gathers by. Null with no record. */
+  addressId?: string | null
+  /** The record's own address, '' with no record. The job's typed address is `address`. */
+  propertyAddress?: string
+  /** Where the owner of record takes mail, '' when none: with the name, what tells one owner from another. */
+  ownerMailingAddress?: string
+  /** Where the record stands on *Is this public property?* (`lienPublicStanding`); absent with no record. */
+  publicStanding?: LienPublicStanding
 }
 
 export interface LienTimelineBookInput {
@@ -64,6 +74,12 @@ export interface LienTimelineBookRow {
   lens: LienBookLens
   /** The next step's date, '' when none — the sort key. */
   sortDate: string
+  /** The job's notice as the desk's queue holds it (v2.7485), null with none: the pile is the paper's state, and no reader works it out again. */
+  notice?: LienDeskEntry | null
+  /** The job's affidavit as the desk's queue holds it (v2.7485), null with none. */
+  affidavit?: LienAffidavitEntry | null
+  /** The days a recorded § 53.056 notice went to the owner (v2.7485), oldest first, from the job's filings: a run's record and one made by hand both write it. Empty when the reader hands no notice filings. */
+  noticeSentOn?: string[]
 }
 
 export interface LienTimelineBook {
@@ -109,7 +125,8 @@ export function buildLienTimelineBook(input: LienTimelineBookInput): LienTimelin
       todayYmd,
       demandLetters: input.demandLettersByJob?.[jobId] ?? null,
     })
-    rows.push({ jobId, job, timeline, months: lienTimelineMonthsFromDesk(jobId, input.rows, input.items, todayYmd), lens: lensFor(timeline), sortDate: timeline.next.date })
+    const noticeSentOn = lienAffidavitOwnerSends(input.filingsByJob[jobId]).map((s) => s.sentOn)
+    rows.push({ jobId, job, timeline, months: lienTimelineMonthsFromDesk(jobId, input.rows, input.items, todayYmd), lens: lensFor(timeline), sortDate: timeline.next.date, notice: entry, affidavit, noticeSentOn })
   }
   rows.sort((a, b) => {
     const da = a.sortDate || '9999-99-99'

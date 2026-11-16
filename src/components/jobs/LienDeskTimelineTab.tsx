@@ -8,6 +8,8 @@ import LienTimelineStrip from './LienTimelineStrip'
 import { lienMoveWords } from '../../lib/jobs/lienTimeline'
 import { EmptyState } from '../EmptyState'
 import { lienBookEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
+import { lienPropertyRowDoor } from '../../lib/jobs/lienPropertyCard'
+import type { LienProperty } from '../../lib/jobs/lienPropertyPapers'
 
 /**
  * The Lien desk's Timeline tab (v2.3768): every job in the book, one row
@@ -15,7 +17,9 @@ import { lienBookEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
  * by the next date. A GC filter, a *Something due / All* lens, and *Print
  * the grid*. The tab has no verbs of its own: a row opens the job on the
  * pane its next step belongs to. Under Next, *Waiting on* says whose move it
- * is and for what (v2.3890) — the line the job's own strip carries.
+ * is and for what (v2.3890) — the line the job's own strip carries. Since v2.7488 a row on a property that holds
+ * more than one job says so under its GC (*412 Ridgeline Dr · 7 jobs here ›*), a press that opens the property card;
+ * a row with no property record says that, with the door to set one.
  */
 
 export type LienDeskTimelineTabProps = {
@@ -30,6 +34,12 @@ export type LienDeskTimelineTabProps = {
   /** A row's job number opens the job itself (v2.4535): the Job window, with its history and Edit. */
   onOpenJob?: (jobId: string) => void
   onPrint: (rows: LienTimelineBookRow[], title: string) => void
+  /** The whole book gathered by property (v2.7488), not the rows a filter left: a row's count is every job at its property. */
+  properties?: ReadonlyArray<LienProperty>
+  /** Open the property card on a row's property, from that row's job. */
+  onOpenProperty?: (addressId: string, fromJobId: string) => void
+  /** The door to set a property record on a job that has none; absent for a reader who may not. */
+  onSetProperty?: (jobId: string) => void
   /** On a phone the two pickers and the print press are a thumb tall (punch list #352, the leftovers). */
   phone?: boolean
 }
@@ -45,7 +55,7 @@ const selectStyle: CSSProperties = { padding: '2px 6px', border: '1px solid var(
 const PHONE_PRESS_PX = 44
 const phoneSelectStyle: CSSProperties = { ...selectStyle, minHeight: PHONE_PRESS_PX, padding: '0 10px', borderRadius: 8, fontSize: '1rem', minWidth: 0, maxWidth: '100%' }
 
-export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId, show, onShow, onOpenRow, onOpenJob, onPrint, phone = false }: LienDeskTimelineTabProps) {
+export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId, show, onShow, onOpenRow, onOpenJob, onPrint, properties, onOpenProperty, onSetProperty, phone = false }: LienDeskTimelineTabProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const picker = phone ? phoneSelectStyle : selectStyle
   const [stacked, setStacked] = useState(false)
@@ -104,6 +114,8 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
       {rows.map((r) => {
         const t = r.timeline
         const kind = normalizePropertyKind(r.job.propertyKind)
+        const door = properties ? lienPropertyRowDoor(properties, r) : null
+        const doorStyle: CSSProperties = { border: 'none', background: 'none', padding: 0, font: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-blue-700)', cursor: 'pointer', textAlign: 'left', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(phone ? { minHeight: PHONE_PRESS_PX, fontSize: '0.875rem' } : null) }
         return (
           // The row opens the job's pane wherever it is clicked; its number is its own door to the job (v2.4535).
           <div
@@ -125,6 +137,36 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
               <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {r.job.isSub ? r.job.gcName || 'GC' : 'with the owner'} · {propertyKindWords(kind)}
               </span>
+              {door?.shared && door.addressId && onOpenProperty ? (
+                <button
+                  type="button"
+                  data-lien-book-property={door.addressId}
+                  title="Every job at this property, with where each paper stands"
+                  style={doorStyle}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenProperty(door.addressId!, r.jobId)
+                  }}
+                >
+                  {door.words} ›
+                </button>
+              ) : door && !door.addressId ? (
+                <span data-lien-book-no-property style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>
+                  {door.words}
+                  {onSetProperty ? (
+                    <button
+                      type="button"
+                      style={doorStyle}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onSetProperty(r.jobId)
+                      }}
+                    >
+                      Set the property ›
+                    </button>
+                  ) : null}
+                </span>
+              ) : null}
               <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(r.job.openBalance)}</span>
             </span>
             <LienTimelineStrip timeline={t} layout="mini" withNext={false} />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow } from './lienDesk'
-import { affidavitGateMissingWord, affidavitGates, buildLienAffidavitQueue, contractorAddressGate, homesteadGate, lienOwnerIsPublic, ownerGate, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitRow } from './lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, affidavitGates, affidavitWaitsOnNoticeAlone, buildLienAffidavitQueue, lienAffidavitGateHeld, lienAffidavitHoldingGate, contractorAddressGate, homesteadGate, lienOwnerIsPublic, ownerGate, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitRow } from './lienDeskAffidavits'
 
 const TODAY = '2026-09-14'
 
@@ -60,6 +60,35 @@ describe('affidavit gates and piles', () => {
     expect(q.entries.find((e) => e.jobId === 'ok')).toMatchObject({ daysLeft: 1, severity: 'red', ready: true })
   })
 
+  it('an affidavit that waits on its notice alone has a pile of its own; a fact also missing keeps it in Needs the property facts (v2.7457)', () => {
+    const rows = [
+      row({ job_id: 'notice', noticed: false }),
+      row({ job_id: 'both', noticed: false, has_legal: false }),
+      row({ job_id: 'fact', has_legal: false }),
+      row({ job_id: 'direct', is_sub: false, noticed: false, gc_customer_id: null }),
+      row({ job_id: 'drafted', noticed: false }),
+      row({ job_id: 'approved', noticed: false }),
+    ]
+    const items = [item({ job_id: 'drafted', status: 'drafted' }), item({ job_id: 'approved', status: 'approved', approval_mode: 'leader' })]
+    const q = buildLienAffidavitQueue(rows, items, TODAY)
+    const pileOf = (id: string) => q.entries.find((e) => e.jobId === id)?.pile
+    expect(pileOf('notice')).toBe('needs_notice')
+    expect(pileOf('both')).toBe('needs_property')
+    expect(pileOf('fact')).toBe('needs_property')
+    // A job contracted with the owner needs no notice, so nothing holds it.
+    expect(pileOf('direct')).toBe('to_draft')
+    // A draft someone started waits on the notice all the same. An approved paper a gate holds is in Held (punch list #335), whatever the gate.
+    expect(pileOf('drafted')).toBe('needs_notice')
+    expect(pileOf('approved')).toBe('held')
+    expect(lienAffidavitGateHeld(q.entries.find((e) => e.jobId === 'approved'))).toBe(true)
+    expect(q.counts.needs_notice).toBe(2)
+    expect(q.piles.needs_notice.map((e) => e.jobId).sort()).toEqual(['drafted', 'notice'])
+    expect(LIEN_AFFIDAVIT_PILES.map((p) => p.label).slice(0, 3)).toEqual(['Needs the property facts', 'Waiting on its notice', 'To send for Master approval'])
+    expect(affidavitWaitsOnNoticeAlone([{ key: 'owner', ok: true }, { key: 'notice', ok: false }])).toBe(true)
+    expect(affidavitWaitsOnNoticeAlone([{ key: 'owner', ok: true }, { key: 'notice', ok: true }])).toBe(false)
+    expect(affidavitWaitsOnNoticeAlone([{ key: 'homestead', ok: false }, { key: 'notice', ok: false }])).toBe(false)
+  })
+
   it('a filed item stays listed for 30 days, then drops', () => {
     const fresh = item({ job_id: 'f1', status: 'sent', sent_at: '2026-09-01T10:00:00Z' })
     const old = item({ job_id: 'f2', status: 'sent', sent_at: '2026-07-01T10:00:00Z' })
@@ -89,13 +118,13 @@ describe("the general contractor's address (punch list #305)", () => {
     expect(rows.map((r) => [r.job_id, r.has_contractor_address])).toEqual([['has', true], ['blank', false], ['gone', false], ['direct', undefined]])
   })
 
-  it('the hold changes the pile of a paper not yet sent for approval, and leaves an approved one where its item put it', () => {
+  it('the hold changes the pile of a paper not yet sent for approval, and moves an approved one to Held (punch list #335; it stayed in Ready to file until v2.7449)', () => {
     const rows = withContractorAddress([row({ job_id: 'new', gc_customer_id: 'g2' }), row({ job_id: 'drafted', gc_customer_id: 'g2' }), row({ job_id: 'approved', gc_customer_id: 'g2' }), row({ job_id: 'fine', gc_customer_id: 'g1' })], { g1: { address: '9 Yard St' }, g2: { address: '' } })
     const q = buildLienAffidavitQueue(rows, [item({ job_id: 'drafted', status: 'drafted' }), item({ job_id: 'approved', status: 'approved', approval_mode: 'leader' })], TODAY)
     const of = (id: string) => q.entries.find((e) => e.jobId === id)!
     expect([of('new').pile, of('new').ready]).toEqual(['needs_property', false])
     expect(of('drafted').pile).toBe('needs_property')
-    expect([of('approved').pile, of('approved').ready]).toEqual(['ready', false])
+    expect([of('approved').pile, of('approved').ready]).toEqual(['held', false])
     expect([of('fine').pile, of('fine').ready]).toEqual(['to_draft', true])
     expect(of('new').gates.filter((g) => !g.ok).map((g) => g.key)).toEqual(['contractor'])
   })
@@ -147,7 +176,7 @@ describe('the homestead question (punch list #305)', () => {
     const of = (id: string) => q.entries.find((e) => e.jobId === id)!
     expect([of('new').pile, of('new').ready]).toEqual(['needs_property', false])
     expect(of('new').gates.filter((g) => !g.ok).map((g) => g.key)).toEqual(['homestead_answer'])
-    expect([of('approved').pile, of('approved').ready]).toEqual(['ready', false])
+    expect([of('approved').pile, of('approved').ready]).toEqual(['held', false])
     expect([of('answered').pile, of('answered').ready]).toEqual(['to_draft', true])
     expect([of('shop').pile, of('shop').ready]).toEqual(['to_draft', true])
     expect(affidavitGateMissingWord('homestead_answer')).toBe('the homestead answer')
@@ -208,5 +237,44 @@ describe('an affidavit filed in the evening keeps its day (v2.4468)', () => {
     expect(buildLienAffidavitQueue(rows, evening, '2027-01-01').entries).toEqual([])
     const noon = [item({ job_id: 'f1', status: 'sent', sent_at: '2026-12-02T12:00:00Z' })]
     expect(buildLienAffidavitQueue(rows, noon, '2027-01-01').entries.map((e) => e.jobId)).toEqual(['f1'])
+  })
+})
+
+describe('an approved paper moves to Held when a gate closes (punch list #335)', () => {
+  const approved = (job_id: string) => item({ job_id, status: 'approved', approval_mode: 'leader' })
+  it('approved with every gate clear is Ready to file; approved with a gate closed is Held, and the status is not touched', () => {
+    const rows = [row({ job_id: 'clear' }), row({ job_id: 'unanswered', property_kind: 'residential', homestead_answered: false }), row({ job_id: 'homestead', homestead: true }), row({ job_id: 'public', owner_public: true }), row({ job_id: 'no-notice', noticed: false })]
+    const q = buildLienAffidavitQueue(rows, rows.map((r) => approved(r.job_id)), TODAY)
+    const pile = (id: string) => q.entries.find((e) => e.jobId === id)!.pile
+    expect(pile('clear')).toBe('ready')
+    expect([pile('unanswered'), pile('homestead'), pile('public'), pile('no-notice')]).toEqual(['held', 'held', 'held', 'held'])
+    expect(q.counts.ready).toBe(1)
+    expect(q.counts.held).toBe(4)
+    expect(q.entries.every((e) => e.item?.status === 'approved')).toBe(true)
+  })
+  it('the hold is the gate’s, not the leader’s: lienAffidavitGateHeld tells them apart and names the gate', () => {
+    const rows = [row({ job_id: 'gate', property_kind: 'residential', homestead_answered: false }), row({ job_id: 'leader' }), row({ job_id: 'clear' })]
+    const q = buildLienAffidavitQueue(rows, [approved('gate'), item({ job_id: 'leader', status: 'held', hold_reason: 'call_first', hold_until: '2026-09-12' }), approved('clear')], TODAY)
+    const of = (id: string) => q.entries.find((e) => e.jobId === id)!
+    expect(of('gate').pile).toBe('held')
+    expect(of('leader').pile).toBe('held')
+    expect(lienAffidavitGateHeld(of('gate'))).toBe(true)
+    expect(lienAffidavitGateHeld(of('leader'))).toBe(false)
+    expect(lienAffidavitGateHeld(of('clear'))).toBe(false)
+    expect(lienAffidavitGateHeld(null)).toBe(false)
+    expect(lienAffidavitHoldingGate(of('gate'))?.key).toBe('homestead_answer')
+    expect(lienAffidavitHoldingGate(of('leader'))).toBeNull()
+  })
+  it('the approval stands: once the gate is answered the same approved paper is back in Ready to file', () => {
+    const it0 = approved('j')
+    const held = buildLienAffidavitQueue([row({ job_id: 'j', property_kind: 'residential', homestead_answered: false })], [it0], TODAY)
+    expect(held.entries[0]!.pile).toBe('held')
+    const answered = buildLienAffidavitQueue([row({ job_id: 'j', property_kind: 'residential', homestead_answered: true })], [it0], TODAY)
+    expect(answered.entries[0]!.pile).toBe('ready')
+    expect(answered.entries[0]!.item).toBe(it0)
+  })
+  it('a paper waiting on the leader stays where it is when a gate closes: only an approved one moves', () => {
+    const q = buildLienAffidavitQueue([row({ job_id: 'w', homestead: true })], [item({ job_id: 'w', status: 'awaiting_approval' })], TODAY)
+    expect(q.entries[0]!.pile).toBe('awaiting')
   })
 })

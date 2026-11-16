@@ -118,8 +118,8 @@ describe('LienDeskRunModal', () => {
   it('lists an envelope per recipient with the method and tracking, the notice inside it, counts the envelopes, and can record', async () => {
     renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
-    expect(screen.getByText('Send the run · 1 notice')).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Print and mail' })).toBeTruthy()
+    expect(screen.getByText('Print and mail · 1 notice')).toBeTruthy()
     expect(screen.getByTestId('run-envelope-1').textContent).toContain('Envelope 1 · Owner of record Elwick Holdings LLC')
     expect(screen.getByTestId('run-envelope-2').textContent).toContain('office@lowbeck.test')
     expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('650 · AXO Schertz')
@@ -205,7 +205,7 @@ describe('LienDeskRunModal', () => {
     const b = notice({ itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz II', jobNumber: '651', months: ['2026-07'] })
     renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
+    expect(screen.getByText('Print and mail · 2 notices')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
     // What the packet is sits behind the ? beside the title (v2.4621).
     expect(screen.queryByTestId('run-explainer')).toBeNull()
@@ -390,12 +390,12 @@ describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
     const b = { ...notice(), itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz annex', jobNumber: '651', amount: 4_500, months: ['2026-08'] }
     renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
+    expect(screen.getByText('Print and mail · 2 notices')).toBeTruthy()
     const tick = screen.getByLabelText('Combine the jobs at one property into one notice') as HTMLInputElement
     expect(tick.checked).toBe(false)
     expect(screen.getByTestId('run-combine').textContent).toContain('2 jobs would print as 1 notice (1 combined)')
     fireEvent.click(tick)
-    expect(screen.getByText('Send the run · 1 notice for 2 jobs')).toBeTruthy()
+    expect(screen.getByText('Print and mail · 1 notice for 2 jobs')).toBeTruthy()
     expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('650 + 651')
     expect(screen.getAllByTestId('run-combined-parts').map((el) => el.textContent)).toEqual(['650 $33,500 · 651 $4,500', '650 $33,500 · 651 $4,500']) // once per copy
     expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
@@ -461,8 +461,8 @@ describe('LienDeskRunModal · a run of printed notices opens on recording (v2.48
     const two = [notice({ printedAt: '2026-09-14T16:00:00Z' }), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', printedAt: '2026-09-15T16:00:00Z', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] })]
     renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.getByRole('dialog', { name: 'Record the mailing' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: /^Record the mailing · 2 notices/ })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Enter mail numbers' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /^Enter mail numbers · 2 notices/ })).toBeTruthy()
     // Every envelope printed: the journey has Sent done and In the mail as the step that is now (Run-4 retired the step strip).
     expect(screen.getByTestId('run-journey-sent').getAttribute('data-state')).toBe('done')
     expect(screen.getByTestId('run-journey-mailed').getAttribute('data-state')).toBe('now')
@@ -484,7 +484,7 @@ describe('LienDeskRunModal · a run of printed notices opens on recording (v2.48
   it('one notice not yet printed: the run opens on printing as before', async () => {
     renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-09-14T16:00:00Z' }), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651' })]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Print and mail' })).toBeTruthy()
     expect(screen.getByTestId('run-journey-sent').getAttribute('data-state')).toBe('now')
     expect(screen.getByRole('button', { name: /^Print the packet · / })).toBeTruthy()
   })
@@ -517,7 +517,7 @@ describe('LienDeskRunModal · take back a printed run (punch list #101)', () => 
     await settle()
     expect(taken).toEqual([['it1', 'it2']])
     expect(screen.getByTestId('run-taken-back').textContent).toContain('Taken back. The 2 notices printed October 7, 2026 are in Approved · to print again.')
-    expect(screen.getByRole('heading', { name: /^Send the run · 2 notices/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /^Print and mail · 2 notices/ })).toBeTruthy()
     expect(screen.getByTestId('run-journey-sent').getAttribute('data-state')).toBe('now')
     expect(screen.getByRole('button', { name: /^Print the packet · / })).toBeTruthy()
     expect((screen.getAllByLabelText(/tracking$/)[0] as HTMLInputElement).value).toBe('')
@@ -561,7 +561,7 @@ describe('LienDeskRunModal · take back a printed run (punch list #101)', () => 
     fireEvent.click(screen.getByTestId('run-take-back'))
     fireEvent.click(screen.getByTestId('run-take-back-yes'))
     await settle()
-    expect(screen.getByRole('heading', { name: /^Record the mailing · 2 notices/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /^Enter mail numbers · 2 notices/ })).toBeTruthy()
     expect(screen.queryByTestId('run-taken-back')).toBeNull()
   })
 })
@@ -631,7 +631,7 @@ describe('LienDeskRunModal · read a copy before it prints (v2.4621)', () => {
     // Esc closes the preview and leaves the run open.
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByTestId('lien-run-preview')).toBeNull()
-    expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Print and mail' })).toBeTruthy()
     expect(onClose).not.toHaveBeenCalled()
   })
 })
@@ -1372,7 +1372,7 @@ describe('Esc in the run window (v2.5530)', () => {
     expect(await screen.findByText(/The run stays open over the numbers you typed/)).toBeTruthy()
     expect((box as HTMLInputElement).value).toBe('9407 1118 9922')
     // A click outside holds the same way.
-    fireEvent.click(screen.getByRole('dialog', { name: 'Send the run' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Print and mail' }))
     expect(onClose).not.toHaveBeenCalled()
     // Cleared again: nothing changed since it opened, so Esc closes.
     fireEvent.change(box, { target: { value: '' } })
@@ -1399,7 +1399,7 @@ describe('Esc in the run window (v2.5530)', () => {
     const onClose2 = vi.fn()
     renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose2} onRecorded={() => {}} />)
     await settle()
-    fireEvent.click(screen.getByRole('dialog', { name: 'Send the run' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Print and mail' }))
     expect(onClose2).toHaveBeenCalledTimes(1)
   })
 
@@ -1475,7 +1475,7 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).not.toHaveBeenCalled()
     expect(await screen.findByText(/Envelopes went through Docsmit in this run\. Record the run so the desk keeps them/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('dialog', { name: 'Send the run' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Print and mail' }))
     expect(onClose).not.toHaveBeenCalled()
     docsmitState.setUp = false
   })
@@ -1521,7 +1521,7 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
     )
     await settle()
     fireEvent.click(screen.getByTestId('run-leader-here-sign-1'))
-    fireEvent.click(screen.getByRole('dialog', { name: 'Send the run' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Print and mail' }))
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByTestId('run-sign-here-1')).toBeTruthy()
     expect(await screen.findByText('Finish the signature first, or close its pane.')).toBeTruthy()
@@ -1610,5 +1610,66 @@ describe('LienDeskRunModal · nothing left in the run (punch list #184, sweep C)
     await settle()
     expect(document.querySelector('[data-empty-state]')!.textContent).toBe('Nothing approved is waiting.')
     expect((screen.getByRole('button', { name: /Print the packet/ }) as HTMLButtonElement).disabled).toBe(true)
+  })
+})
+
+describe('LienDeskRunModal · what was mailed (the owner’s ask of 2026-11-16)', () => {
+  const scan = () => new File(['%PDF-1.4 the scan'], 'SCAN0007.PDF', { type: 'application/pdf' })
+  const kept = { url: 'https://drive.google.com/file/d/f1/view', driveFileId: 'f1', name: 'Lien notice as mailed · 650 · 2026-10-08.pdf', at: '2026-10-08T18:00:00.000Z', by: 'u1' }
+  const other = (partial: Partial<RunNotice> = {}) => notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }], ...partial })
+
+  it('a printed row takes a scan: the file goes up for that notice, the row lists it with its Drive link, and the desk is told; a row not printed yet has no press', async () => {
+    cleanup()
+    const added: Array<{ itemId: string; jobId: string; jobNumber: string; fileName: string; todayYmd: string; userId: string | null }> = []
+    const onRecorded = vi.fn()
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z' }), other()]}
+        issuer={null}
+        todayYmd="2026-10-08"
+        userId="u1"
+        onClose={() => {}}
+        onRecorded={onRecorded}
+        addMailedCopy={async (a) => {
+          added.push({ itemId: a.itemId, jobId: a.jobId, jobNumber: a.jobNumber, fileName: a.file.name, todayYmd: a.todayYmd, userId: a.userId })
+          return [kept]
+        }}
+      />,
+    )
+    await settle()
+    expect(screen.queryByTestId('run-check-copy-add-it2')).toBeNull()
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
+    fireEvent.change(screen.getByTestId('run-check-copy-file-it1'), { target: { files: [scan()] } })
+    await waitFor(() => expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).not.toBeNull())
+    expect(added).toEqual([{ itemId: 'it1', jobId: 'j650', jobNumber: '650', fileName: 'SCAN0007.PDF', todayYmd: '2026-10-08', userId: 'u1' }])
+    const link = screen.getByTestId('run-check-copies-it1').querySelector('a') as HTMLAnchorElement
+    expect([link.getAttribute('href'), link.textContent, link.getAttribute('target')]).toEqual([kept.url, `✓ ${kept.name} ›`, '_blank'])
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add another')
+    expect(document.body.textContent).toContain(`Added ${kept.name}. It is in the job’s Drive folder, under Sent by us.`)
+    expect(onRecorded).toHaveBeenCalledTimes(1)
+  })
+
+  it('a file that is not a scan or a photo is refused with its reason, and an upload that fails says why; neither lists a file', async () => {
+    cleanup()
+    const addMailedCopy = vi.fn(async () => {
+      throw new Error('This job has no Drive folder yet.')
+    })
+    renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z' })]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} addMailedCopy={addMailedCopy} />)
+    await settle()
+    fireEvent.change(screen.getByTestId('run-check-copy-file-it1'), { target: { files: [new File(['notes'], 'notes.txt', { type: 'text/plain' })] } })
+    await waitFor(() => expect(document.body.textContent).toContain('That file is not a scan or a photo. Add a PDF or a picture.'))
+    expect(addMailedCopy).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByTestId('run-check-copy-file-it1'), { target: { files: [scan()] } })
+    await waitFor(() => expect(document.body.textContent).toContain('This job has no Drive folder yet.'))
+    expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).toBeNull()
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
+  })
+
+  it('a notice that already has its file shows it when the run opens again, on a printed row and with the press reading Add another', async () => {
+    cleanup()
+    renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z', mailedCopies: [kept] })]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-check-copies-it1').querySelector('a')!.getAttribute('href')).toBe(kept.url)
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add another')
   })
 })

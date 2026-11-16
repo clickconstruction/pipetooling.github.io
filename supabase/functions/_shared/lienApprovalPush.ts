@@ -80,6 +80,65 @@ export function lienApprovalPush(input: LienApprovalPushInput): LienApprovalPush
   return { title, body, url: lienApprovalUrl(input.jobId), tag: `lien-approval-${input.jobId}`, subject: `Approve a lien notice · ${input.jobLabel}`, emailText: lines.join('\n') }
 }
 
+// ---------- a retainage notice sent for approval (v2.7478) ----------
+
+export type LienRetainageApprovalPushInput = {
+  /** "891 · Take 5 Liberty Hill" */
+  jobLabel: string
+  jobId: string
+  /** The retainage on the draft, dollars; null when the draft has none. */
+  retainage: number | null
+  /** The GC that holds it; null when unknown. */
+  gcName: string | null
+  /** The day the § 53.057 window closes, YYYY-MM-DD; null when the client did not say. */
+  dueYmd: string | null
+  /** Today in the app's time zone, YYYY-MM-DD. */
+  todayYmd: string
+  /** Who pressed: the caller of the function; null when their row has no name. */
+  senderName: string | null
+  /** The To do view's Remind press: the paper was sent earlier, and the email says a reminder. */
+  reminder?: boolean
+}
+
+/** The door that exists: the desk's Retainage list, opened on the job. */
+export function lienRetainageApprovalUrl(jobId: string): string {
+  return jobId ? `/lien-desk?tab=retainage&job=${encodeURIComponent(jobId)}` : '/lien-desk?tab=retainage'
+}
+
+/**
+ * The words the leader gets when the office sends a § 53.057 retainage notice for approval: the job, the retainage
+ * and who holds it, and the day the notice must be in the mail. A monthly notice's words name a claim owed
+ * (`lienApprovalPush`); these name retainage held, and the tap lands on the Retainage list, where the paper is.
+ * Until v2.7478 a retainage notice sent for approval told nobody, and the Remind press left it out. A day that has
+ * passed is named without a count.
+ */
+export function lienRetainageApprovalPush(input: LienRetainageApprovalPushInput): LienApprovalPush {
+  const who = (input.senderName ?? '').trim().split(/\s+/)[0] || 'The office'
+  const held = input.retainage != null && input.retainage > 0 ? `${money(input.retainage)} retainage${input.gcName ? ` held by ${input.gcName}` : ''}` : null
+  const day = shortDay(input.dueYmd)
+  const days = day ? daysUntil(input.dueYmd, input.todayYmd) : null
+  const count = days != null && days >= 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : null
+  const title = 'Approve a retainage notice'
+  const lines = [
+    input.reminder ? `${who} is reminding you of a retainage notice that waits for your approval.` : `${who} sent a retainage notice for your approval.`,
+    '',
+    input.jobLabel,
+    // A GC's name can end in its own full stop.
+    held ? (held.endsWith('.') ? held : `${held}.`) : null,
+    day ? `Mail by ${day}${count ? `, ${count} from now` : ''}.` : null,
+    '',
+    'Open the Lien desk to approve it or hold it.',
+  ].filter((l) => l !== null) as string[]
+  return {
+    title,
+    body: [input.jobLabel, held, day ? `mail by ${day}${count ? ` · ${count}` : ''}` : null].filter(Boolean).join(' · '),
+    url: lienRetainageApprovalUrl(input.jobId),
+    tag: `lien-retainage-approval-${input.jobId}`,
+    subject: `${title} · ${input.jobLabel}`,
+    emailText: lines.join('\n'),
+  }
+}
+
 export type LienPenRecordedPushInput = {
   /** "891 · Take 5 Liberty Hill" */
   jobLabel: string

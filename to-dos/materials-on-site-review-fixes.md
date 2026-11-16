@@ -195,7 +195,7 @@ its own PR, open and armed. Three are the client alone. PR 9 carries one edge fu
 **Not proved by these four:** a real delivery landing through PR 8's one press, since the review
 writes nothing on prod, and the sweep's new order on the project, which waits on the deploy.
 
-**Left open, each said in its PR:** a delivery refused part way leaves its first lines landed; an
+**Left open, each said in its PR:** a delivery refused part way leaves its first lines landed (mended as v2.7267: the lines keep their ids and are answered one by one, so a second press lands none twice); an
 invoice landed with no number is not known again; the scan page cannot tell a box on another job
 from a retired one without a read past the reader's own RLS; the checklist photo source has the
 sweep's old read; more than twenty failed box photos with no new ones retry the same twenty.

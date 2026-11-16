@@ -45,7 +45,7 @@ describe('lienBoardChipCard', () => {
       day: 'Due Mon Nov 16 · 1 day left',
       urgency: 'day',
       risk: 'Will not make its day as it stands. Still to do, with 1 working day left:',
-      left: ['Send it for approval', 'Sam approves and signs it', 'Mail it and record the mailing'],
+      left: ['Send it for approval', 'Sam approves and signs it', 'Print it, mail it and enter its mail number'],
       owes: '$5,402 unpaid',
       other: 'Its lien affidavit is in Needs the property facts.',
       door: 'Press to open the notice.',

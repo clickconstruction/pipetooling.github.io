@@ -76,7 +76,7 @@ describe('LienDeskJobScreen (punch list #352, PR 4)', () => {
   })
 
   it('a run row lists its jobs as doors to each job and keeps its second press', () => {
-    const run = row({ key: 'run:printed', jobId: null, kind: 'notice', title: '2 notices printed Nov 9', sub: 'Mailed? Type each number.', action: 'record_mailing', button: 'Record the mailing', target: { open: 'run', gcId: null }, secondary: { words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } }, jobs: [{ jobId: 'a', title: '455 · Service visit', dueOn: '2026-11-15' }, { jobId: 'b', title: '461 · Calder duplex', dueOn: null }] })
+    const run = row({ key: 'run:printed', jobId: null, kind: 'notice', title: '2 notices printed Nov 9', sub: 'Mailed? Type each number.', action: 'record_mailing', button: 'Enter mail numbers', target: { open: 'run', gcId: null }, secondary: { words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } }, jobs: [{ jobId: 'a', title: '455 · Service visit', dueOn: '2026-11-15' }, { jobId: 'b', title: '461 · Calder duplex', dueOn: null }] })
     const on = draw(run)
     expect(document.querySelectorAll('[data-lien-job-screen-door]')).toHaveLength(0)
     const jobs = [...document.querySelectorAll<HTMLElement>('[data-lien-job-screen-job]')]
@@ -85,6 +85,6 @@ describe('LienDeskJobScreen (punch list #352, PR 4)', () => {
     expect(on.job).toHaveBeenCalledWith('b')
     fireEvent.click(document.querySelector('[data-lien-job-screen-secondary]')!)
     expect(on.secondary).toHaveBeenCalledTimes(1)
-    expect(document.querySelector('[data-lien-job-screen-act]')!.textContent).toBe('Record the mailing')
+    expect(document.querySelector('[data-lien-job-screen-act]')!.textContent).toBe('Enter mail numbers')
   })
 })

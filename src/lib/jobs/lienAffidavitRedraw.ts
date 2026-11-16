@@ -1,6 +1,6 @@
 import { batchOutcomeWords, batchWords, countedLabel, type BatchOutcome } from '../batchWords'
 import { lienAffidavitFormForItem } from './lienAffidavitForm'
-import type { LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
 
 /**
  * Redraw every ready affidavit on the short form in one press (punch list #305, the owner's ask of 2026-11-10 once
@@ -21,11 +21,13 @@ export type LienAffidavitRedrawPlan<E extends LienAffidavitRedrawEntry = LienAff
   held: E[]
 }
 
-const LIVE_PILES: ReadonlyArray<LienAffidavitEntry['pile']> = ['to_draft', 'needs_property', 'awaiting', 'held']
+const LIVE_PILES: ReadonlyArray<LienAffidavitEntry['pile']> = ['to_draft', 'needs_property', 'needs_notice', 'awaiting', 'held']
 
 export function lienAffidavitRedrawPlan<E extends LienAffidavitRedrawEntry>(entries: ReadonlyArray<E>): LienAffidavitRedrawPlan<E> {
   const earlier = entries.filter((e) => e.item != null && e.item.status !== 'sent' && e.item.status !== 'missed' && lienAffidavitFormForItem(e.item) === 'long')
-  return { ready: earlier.filter((e) => e.pile === 'ready'), held: earlier.filter((e) => LIVE_PILES.includes(e.pile)) }
+  // A paper a gate moved from Ready to file to Held (punch list #335) is still an approved paper: the press redraws it, as it did while it sat in Ready.
+  const approved = (e: E) => e.pile === 'ready' || lienAffidavitGateHeld(e)
+  return { ready: earlier.filter(approved), held: earlier.filter((e) => !approved(e) && LIVE_PILES.includes(e.pile)) }
 }
 
 export type LienAffidavitRedrawWords = {

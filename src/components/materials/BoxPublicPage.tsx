@@ -22,8 +22,8 @@
  *
  * The other answers say what they said. A code no box carries offers the typed code (v2.6868). A retired label names
  * its box and offers another scan and the text (v2.6874). Since v2.7072 (punch list #329) the code may be a sticker's:
- * one on a box draws that box; a blank one reads *This sticker is not on a
- * box yet*, the sign-in and nothing else; a lost one says so and offers another scan.
+ * one on a box draws that box; a reserved one (on no box yet, `blank` in the code) reads *This sticker is reserved
+ * for a box*, that it is on none yet, the sign-in and nothing else; a lost one says so and offers another scan.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -33,7 +33,7 @@ import { publicFunctionHeaders } from '../../lib/customerSampleMode'
 import { KIT_ASSET_PATHS } from '../../lib/brandKit/assets'
 import { BOX_PAGE_KNOW_LINE_ES, BOX_PAGE_WEBSITE, BOX_SCAN_PATH, boxPageBidHref, boxPageCallHref, boxPageCodeWords, boxPageDayWords, boxPageEmail, boxPageKnowLine, boxPageNameWords, boxPageNoun, boxPageOursWords, boxPagePath, boxPageSheet, boxPageTextHref, boxPageTextWords, boxPageView, type BoxPageSheet, type BoxPageSheetKind, type BoxPageView } from '../../lib/materials/boxPage'
 import { ORANGE_UNDER_WORDS } from '../../lib/orangeUnderWords'
-import { BLANK_STICKER_TITLE, LOST_STICKER_TITLE } from '../../lib/materials/stickers'
+import { BLANK_STICKER_PUBLIC_DETAIL, BLANK_STICKER_TITLE, LOST_STICKER_TITLE } from '../../lib/materials/stickers'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { portalFailure } from '../../lib/portal/portalFailure'
 import { PortalFailureNote } from '../portal/PortalFailureNote'
@@ -81,7 +81,7 @@ export function BoxPublicPage({ code }: { code: string }) {
 
   const payload = view.kind === 'box' ? view.payload : null
   useEffect(() => {
-    const sticker = view.kind === 'sticker_blank' ? 'Blank sticker' : view.kind === 'sticker_lost' ? 'Lost sticker' : null
+    const sticker = view.kind === 'sticker_blank' ? 'Reserved sticker' : view.kind === 'sticker_lost' ? 'Lost sticker' : null
     document.title = payload ? `${boxPageNoun(payload.box.kind)} ${payload.box.stencil} · Click Plumbing & Electrical` : `${sticker ?? 'Box label'} · Click Plumbing & Electrical`
   }, [payload, view])
 
@@ -242,11 +242,11 @@ export function BoxPublicPage({ code }: { code: string }) {
           </section>
         ) : null}
 
-        {/* A sticker on no box yet (v2.7072): that it is on none, the sign-in, and nothing else. */}
+        {/* A reserved sticker, on no box yet (v2.7072): that it is reserved and on none, the sign-in, and nothing else. */}
         {view.kind === 'sticker_blank' ? (
           <section data-testid="box-page-sticker-blank">
             <h1 style={h1}>{BLANK_STICKER_TITLE}</h1>
-            <p style={para}>Sign in to say what it is.</p>
+            <p style={para}>{BLANK_STICKER_PUBLIC_DETAIL}</p>
             <button type="button" onClick={signIn} style={{ ...press, marginTop: 14 }} data-testid="box-page-sticker-sign-in">
               Sign in
             </button>

@@ -10,19 +10,21 @@
  */
 import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type LienDeskSeverity } from './lienDesk'
 import { lienOtherScreen } from './lienCodeSigner'
-import type { LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
 import { COURTESY_BUTTON, PROMISE_BUTTON, courtesyIsDue, type CourtesyStatus } from './lienCourtesyNotice'
 import { lienReminderAt, type LienReminderAt } from './lienReminders'
+import { LIEN_RUN_ACT, LIEN_RUN_STEP } from './lienRunWords'
 import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
-import { lienChipSigned, lienFieldsHash, lienPenAwaitsConfirm, signatureColumnsOf } from './lienNoticeSignature'
+import { lienChipSigned, lienFieldsHash, lienItemUnsigned, lienPenAwaitsConfirm, signatureColumnsOf } from './lienNoticeSignature'
 import { lienRunRowLine } from './lienRunChecklist'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_NOTICE_OWED_DOORS, lienNoticeOwedMonths, lienNoticeOwedWords } from './lienNoticeOwed'
 import { describeNoticeMonths } from './lienNoticeMonthWords'
 import { lienActFor } from './lienActWords'
+import { lienAffidavitNoticePile, lienAffidavitNoticeStanding, lienAffidavitNoticeWaits, lienAffidavitNoticeWords } from './lienAffidavitNoticeStanding'
 
 export type LienNextUpKind = 'notice' | 'affidavit' | 'retainage'
 
@@ -57,6 +59,8 @@ export type LienNextUpAction =
 export type LienNextUpTarget =
   | { open: 'notices'; jobId: string; pile: LienDeskPile }
   | { open: 'affidavits'; jobId: string }
+  /** The Affidavits list at one pile (punch list #362, step 4): a folded row's press, where the pile's own batch press stands. */
+  | { open: 'affidavit_pile'; pile: 'ready' | 'to_draft' }
   | { open: 'retainage'; jobId: string }
   /** The run window: a GC's ready notices, or (punch list #101) every printed notice, `takeBack` opening on its confirm. */
   | { open: 'run'; gcId: string | null; takeBack?: boolean }
@@ -66,7 +70,7 @@ export type LienNextUpTarget =
   | { open: 'notice_record_months'; jobId: string; months: string[] }
 
 /** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. Since v2.7371 (punch list #362, step 2) `risk` holds the `now` rows that will not make their day as they stand, first, and `waiting` (on the leader) stands right after it, above the rest of `now`. */
-export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting' | 'step_on' | 'step_other'
+export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting'
 
 export type LienNextUpRow = {
   key: string
@@ -113,10 +117,10 @@ const BUTTON: Record<LienNextUpAction, string> = {
   sign: 'Sign',
   confirm_pen: 'Yes, I signed it',
   // Print and mail (v2.7442, Taunya's words of 2026-11-16): the act at the counter, not the desk's word for it. A GC's row adds its count.
-  send: 'Print and mail',
-  send_run: 'Print and mail',
+  send: LIEN_RUN_ACT.print,
+  send_run: LIEN_RUN_ACT.print,
   add_tracking: 'Add tracking',
-  record_mailing: 'Enter mail numbers',
+  record_mailing: LIEN_RUN_ACT.record,
   review_hold: 'Review the hold',
   letter_two: 'Send the attorney’s letter',
   courtesy: COURTESY_BUTTON,
@@ -285,7 +289,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       }
       case 'ready': {
         // Unsigned (v2.5087): the run holds it until the leader's name is on it — his own row with Sign, whatever the GC's count; the office's row says it waits.
-        const unsigned = e.item ? lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' : false
+        const unsigned = lienItemUnsigned(e.item)
         if (unsigned && leads(e.jobId)) {
           push({ ...base, key: `notice:${e.jobId}`, sub: e.item?.approval_mode === 'word' ? 'Approved on your word · unsigned' : 'Approved · unsigned', action: 'sign', button: BUTTON.sign, target: pane('ready') })
           break
@@ -308,14 +312,18 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         // its GC, which holds this one notice, as the GC's row does; the row itself still opens the notice.
         if (e.gcCustomerId && (readyByGc.get(e.gcCustomerId)?.length ?? 0) > 1) break
         const offer = lienOfferFromItem(e.item)
-        push({ ...base, key: `notice:${e.jobId}`, sub: `${offer ? `Approved · ${lienOfferChipWords(offer).replace(/^Offer/, 'offer')} · ready to send` : 'Approved · ready to send'}${unsigned ? ` · unsigned, waits on ${input.leaderName?.(e.jobId)?.trim() || 'the leader'}` : ''}`, action: 'send', button: office ? BUTTON.send : null, target: e.gcCustomerId ? { open: 'run', gcId: e.gcCustomerId } : pane('ready') })
+        // The line on a phone is the pile's name (v2.7448; *Approved · ready to send* until then). A computer's row starts with its bin, so `detail` says
+        // only what the bin does not: the tick the notice lacks, in the run checklist's words, the offer, and who has yet to sign.
+        const offerWords = offer ? lienOfferChipWords(offer).replace(/^Offer/, 'offer') : ''
+        const unsignedWords = unsigned ? `not signed, waits on ${input.leaderName?.(e.jobId)?.trim() || 'the leader'}` : ''
+        push({ ...base, key: `notice:${e.jobId}`, sub: [LIEN_RUN_STEP.toPrint, offerWords, unsignedWords].filter(Boolean).join(' · '), detail: [lienRunRowLine(false, !unsigned, false), offerWords, unsignedWords].filter(Boolean).join(' · '), action: 'send', button: office ? BUTTON.send : null, target: e.gcCustomerId ? { open: 'run', gcId: e.gcCustomerId } : pane('ready') })
         break
       }
       case 'printed':
         // Two or more printed are one run row below (punch list #101); one keeps its own row.
         if (printedCount > 1) break
         // Approved · to mail (the pile's name since v2.7434; *In the run* since v2.7328): the row names the tick the notice waits on, as the pile's row does.
-        push({ ...base, key: `notice:${e.jobId}`, sub: `Approved · to mail · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, detail: lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false), action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
+        push({ ...base, key: `notice:${e.jobId}`, sub: `${LIEN_RUN_STEP.toMail} · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, detail: lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false), action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
         break
       case 'held':
         push({ ...base, key: `notice:${e.jobId}`, sub: 'Held', detail: '', action: 'review_hold', target: pane('held') })
@@ -336,6 +344,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
     }
   }
+  const unsignedIn = (list: ReadonlyArray<LienDeskEntry>) => list.filter((e) => lienItemUnsigned(e.item)).length
   for (const [gcId, list] of readyByGc) {
     if (list.length < 2) continue
     const dated = list.filter((e) => e.earliestDeadline).sort((a, b) => (a.earliestDeadline! < b.earliestDeadline! ? -1 : 1))
@@ -346,7 +355,9 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       jobId: null,
       gcId,
       title: input.gcName(gcId),
-      sub: `${list.length} notices approved · ready to send`,
+      sub: `${list.length} notices approved · to print`,
+      // A computer's row starts with its bin, so the detail never says it again (v2.7448): how many, the tick they lack, and how many of them the leader has yet to sign.
+      detail: [`${list.length} notices`, lienRunRowLine(false, true, false), unsignedIn(list) > 0 ? `${unsignedIn(list)} not signed` : ''].filter(Boolean).join(' · '),
       dueOn: first?.earliestDeadline ?? null,
       daysLeft: first?.daysLeft ?? null,
       severity: list.some((e) => e.severity === 'red') ? 'red' : list.some((e) => e.severity === 'amber') ? 'amber' : 'quiet',
@@ -366,7 +377,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       jobId: null,
       gcId: null,
       title: `${printedCount} notices ${lienPrintedDaysWords(printed.map((e) => (e.item as { printed_at?: string | null } | null)?.printed_at ?? null))}`.trim(),
-      sub: 'The run as a checklist: tick Printed, Signed and Mailed on each. Mailed? Type each envelope’s number. Not mailing them? Take the run back.',
+      sub: 'A checklist: tick Printed, Signed and Mailed on each. Mailed? Type each envelope’s number. Not mailing them? Take the print back.',
       dueOn: first?.earliestDeadline ?? null,
       daysLeft: first?.daysLeft ?? null,
       severity: printed.some((e) => e.severity === 'red') ? 'red' : printed.some((e) => e.severity === 'amber') ? 'amber' : 'quiet',
@@ -382,23 +393,47 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
   for (const e of input.affidavits) {
     const base = { kind: 'affidavit' as const, jobId: e.jobId, gcId: e.gcCustomerId, title: input.jobTitle(e.jobId), dueOn: e.deadline || null, daysLeft: e.deadline ? e.daysLeft : null, severity: e.severity, target: { open: 'affidavits', jobId: e.jobId } as LienNextUpTarget }
     const key = `affidavit:${e.jobId}`
-    switch (e.pile) {
-      case 'needs_property': {
-        // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
-        const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
-        if (failing.length === 1 && failing[0] === 'notice') push({ ...base, key, sub: 'Affidavit · send the § 53.056 notice first — late is allowed while this window is open', detail: 'Send the § 53.056 notice first. Late is allowed while this window is open.', action: 'send_notice', button: office ? BUTTON.send_notice : null, target: { open: 'notices', jobId: e.jobId, pile: 'missed' } })
-        // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
-        // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
-        else if (failing.includes('public_owner')) push({ ...base, key, sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', detail: 'Public property, no lien attaches. Ask the attorney about the bond.', action: 'fix_property', button: null })
-        else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: 'Affidavit · the general contractor has no address on file', detail: 'The general contractor has no address on file.', action: 'fix_property', button: canAct ? 'Add the address' : null })
-        else {
-          // The hold by name (v2.7372, punch list #362 step 3): the one fact the affidavit waits on, in `gateAct`'s words, on
-          // the row and on its button. Until then every hold read *the property record is not complete*, whatever the gate.
-          const hold = lienGateHoldWords(failing)
-          push({ ...base, key, sub: `Affidavit · ${hold.sub}`, detail: hold.detail, action: 'fix_property', button: canAct ? hold.button : null })
-        }
-        break
+    // A paper a fact holds, by that fact (the body of *Needs the property facts*). `approved` (punch list #335) is a paper
+    // a gate closed on after its approval: it sits in Held, the row still asks the one question, and says the approval stands.
+    const pushHold = (approved: boolean) => {
+      const stands = approved ? ' The approval stands.' : ''
+      const lead = approved ? 'Affidavit approved, held · ' : 'Affidavit · '
+      // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
+      const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
+      if (failing.length === 1 && failing[0] === 'notice') {
+        // Where that notice stands (`lienAffidavitNoticeStanding.ts`, v2.7457): the row says it, and the press goes to the step
+        // that is really next. A notice already approved is printed and mailed from the run, never *sent first* again.
+        const notice = input.notices.find((n) => n.jobId === e.jobId) ?? null
+        const found = lienAffidavitNoticeStanding(e, notice)
+        const standing = lienAffidavitNoticeWaits(found) ? found : 'late'
+        const words = lienAffidavitNoticeWords(standing, { leader: input.leaderName?.(e.jobId) })
+        const pane: LienNextUpTarget = { open: 'notices', jobId: e.jobId, pile: standing === 'late' ? 'missed' : lienAffidavitNoticePile(notice) }
+        const press: { button: string | null; target: LienNextUpTarget } =
+          standing === 'approved'
+            ? { button: office ? BUTTON.send : null, target: notice?.gcCustomerId ? { open: 'run', gcId: notice.gcCustomerId } : pane }
+            : standing === 'printed'
+              ? { button: office ? BUTTON.record_mailing : null, target: { open: 'run', gcId: null } }
+              : standing === 'late'
+                ? { button: office ? BUTTON.send_notice : null, target: pane }
+                : { button: canAct ? 'Open the notice' : null, target: pane }
+        push({ ...base, key, sub: `${lead}${words.sub}`, detail: `${words.detail}${stands}`, action: 'send_notice', ...press })
       }
+      // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
+      // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
+      else if (failing.includes('public_owner')) push({ ...base, key, sub: `${lead}public property, no lien attaches. Ask the attorney about the bond`, detail: 'Public property, no lien attaches. Ask the attorney about the bond.', action: 'fix_property', button: null })
+      else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: `${lead}the general contractor has no address on file`, detail: `The general contractor has no address on file.${stands}`, action: 'fix_property', button: canAct ? 'Add the address' : null })
+      else {
+        // The hold by name (v2.7372, punch list #362 step 3): the one fact the affidavit waits on, in `gateAct`'s words, on
+        // the row and on its button. Until then every hold read *the property record is not complete*, whatever the gate.
+        const hold = lienGateHoldWords(failing)
+        push({ ...base, key, sub: `${lead}${hold.sub}`, detail: `${hold.detail}${stands}`, action: 'fix_property', button: canAct ? hold.button : null })
+      }
+    }
+    switch (e.pile) {
+      case 'needs_property':
+      case 'needs_notice':
+        pushHold(false)
+        break
       case 'to_draft':
         push({ ...base, key, sub: 'Affidavit to send', detail: '', action: 'draft', button: canAct ? 'Open the affidavit' : null })
         break
@@ -411,7 +446,9 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         push({ ...base, key, sub: 'Affidavit approved · ready to file', detail: '', action: 'file_affidavit', button: office ? BUTTON.file_affidavit : null })
         break
       case 'held':
-        push({ ...base, key, sub: 'Affidavit held', detail: '', action: 'review_hold' })
+        // Held by a gate that closed after the approval (punch list #335): the gate's question and its door. Held by the leader: his hold to review.
+        if (lienAffidavitGateHeld(e)) pushHold(true)
+        else push({ ...base, key, sub: 'Affidavit held', detail: '', action: 'review_hold' })
         break
       case 'filed':
       case 'missed':
@@ -440,7 +477,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
       }
       case 'ready':
-        push({ ...base, key, sub: 'Retainage notice approved · ready to send', action: 'send', button: office ? BUTTON.send : null })
+        push({ ...base, key, sub: 'Retainage notice approved · to mail', action: 'send', button: office ? BUTTON.send : null })
         break
       case 'held':
         push({ ...base, key, sub: 'Retainage held', action: 'review_hold' })
@@ -587,7 +624,8 @@ export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: LienNe
     ...(pen.length ? [{ group: 'pen' as const, label: pen.every((r) => r.sub.startsWith('Signed with your code')) ? 'Signed with your code, as recorded' : pen.some((r) => r.sub.startsWith('Signed with your code')) ? 'Signed by pen or code, as recorded' : 'Signed by pen, as recorded', rows: pen }] : []),
     ...(mine.length ? [{ group: 'mine' as const, label: 'Only you can approve', rows: mine }] : []),
     ...(risk.length ? [{ group: 'risk' as const, label: opts.riskLabel?.(risk.length).trim() || `Will not make ${risk.length === 1 ? 'its day as it stands' : 'their day as they stand'}`, rows: risk, ...part }] : []),
-    ...(waiting.length ? [{ group: 'waiting' as const, label: `Waiting on ${opts.waitingOn?.trim() || 'the leader'}`, rows: waiting, ...part }] : []),
+    // *to approve* since v2.7448: these rows are the papers the leader has yet to approve, one of the two parts the Board's tile counts.
+    ...(waiting.length ? [{ group: 'waiting' as const, label: `Waiting on ${opts.waitingOn?.trim() || 'the leader'} to approve`, rows: waiting, ...part }] : []),
     ...(track.length ? [{ group: 'now' as const, label: parts ? 'On track' : 'Needs you now', rows: track, ...part }] : []),
     ...(reminders.length ? [{ group: 'reminders' as const, label: 'Reminders', rows: reminders }] : []),
     ...(coming.length ? [{ group: 'coming' as const, label: 'Coming up', rows: coming }] : []),

@@ -29,3 +29,5 @@ name, a leader with no title line in his account name, a sign-only press at his 
 no device, the messages keep the short name, and the function stays closed to `anon`.
 
 **Rollback.** Re-apply the function from `20261023150000_lien_sign_code.sql`.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `sign_lien_desk_item_with_code`.

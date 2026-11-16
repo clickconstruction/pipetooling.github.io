@@ -56,7 +56,7 @@ describe('StickersOnBoxes', () => {
     await read()
     expect(screen.getByTestId('on-boxes-read').textContent).toBe('G78 to G83 · 6 names.')
     const plan = within(screen.getByTestId('on-boxes-plan')).getAllByText(/./).map((p) => p.textContent)
-    expect(plan).toEqual(['4 boxes will be made, G78, G79 and 2 more.', '1 is a box on this site already, G80. Its sticker goes on it.', '1 has no blank sticker, G83. Nothing is done for it.'])
+    expect(plan).toEqual(['4 boxes will be made, G78, G79 and 2 more.', '1 is a box on this site already, G80. Its sticker goes on it.', '1 has no reserved sticker, G83. Nothing is done for it.'])
     expect(screen.getByTestId('on-boxes-press').textContent).toBe('Put 5 stickers on their boxes')
     expect((screen.getByTestId('on-boxes-press') as HTMLButtonElement).disabled).toBe(false)
   })
@@ -97,7 +97,7 @@ describe('StickersOnBoxes', () => {
     const { place } = mount()
     type('G90-92')
     await read()
-    expect(screen.getByTestId('on-boxes-plan').textContent).toBe('3 have no blank sticker, G90 to G92. Nothing is done for them.')
+    expect(screen.getByTestId('on-boxes-plan').textContent).toBe('3 have no reserved sticker, G90 to G92. Nothing is done for them.')
     const press = screen.getByTestId('on-boxes-press') as HTMLButtonElement
     expect(press.textContent).toBe('Put stickers on boxes')
     expect(press.disabled).toBe(true)

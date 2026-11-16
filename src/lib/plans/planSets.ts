@@ -310,5 +310,34 @@ export function changesPlaceholder(replaces: Pick<PlanSetRow, 'name'> | null): s
   return replaces ? `What moved from ${replaces.name}: which sheets or areas, and what it means for our work. Nothing, for a reissue.` : 'What this set settles, in a line. Leave it empty on a first set.'
 }
 
+/**
+ * The presses that move a saved set to another Drive link (v2.7464): the one on a set with a link, the one on a set
+ * with none, and the one that saves. The set stays the same row, so what replaces it, what marks it up and the part
+ * that builds from it are untouched.
+ */
+export const LINK_PRESS = { change: 'Change the link', set: 'Set the link', save: 'Save the link' } as const
+
+/** The press a set's row offers: *Change the link*, or *Set the link* while it has none. */
+export function linkPressWords(s: Pick<PlanSetRow, 'link'>): string {
+  return s.link.trim() ? LINK_PRESS.change : LINK_PRESS.set
+}
+
+/** What a set's new link still needs before it saves; null when it can. `current` is the link the set has. */
+export function linkChangeProblem(current: string, draft: string): string | null {
+  const next = draft.trim()
+  if (!next) return 'Paste the set’s link, starting with https://.'
+  if (!/^https?:\/\//i.test(next)) return 'A link starts with https://. Copy it whole from Drive.'
+  if (next.length > 2000) return 'That link is too long to keep. Copy the folder’s or the file’s own link.'
+  if (next === current.trim()) return 'That is the link the set already has.'
+  return null
+}
+
+/** The line under the link box: what the save moves, and what it leaves. */
+export function linkChangeNote(isCurrent: boolean): string {
+  return isCurrent
+    ? 'The part builds from this set. Open plans on every job that names the part opens the new link.'
+    : 'The set stays where it is on the part. Only where its Open ↗ leads changes.'
+}
+
 /** The presses around the change line: the one on a set with none, the one that edits it, and the one that saves. */
 export const CHANGES_PRESS = { write: 'Write what changed', edit: 'Edit what changed', save: 'Save what changed' } as const

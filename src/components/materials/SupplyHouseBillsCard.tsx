@@ -32,6 +32,12 @@ export type SupplyBillCardRow = {
   is_paid: boolean
   /** The day it was paid, company time, as `YYYY-MM-DD`; null while unpaid. */
   paidYmd: string | null
+  /** What paid it, after the paid day: `ACH 88213 · one of 4 bills on $5,000.00`. Empty for a bill paid before payments were rows. */
+  paidBy?: string
+  /** On an unpaid bill a payment has taken part of: `$300.00 paid · $512.40 left of $812.40`. `amount` is then what is left. */
+  partPaid?: string
+  /** A typed payment stands behind this paid bill: the press opens that payment, since Mark unpaid would not unmake it. */
+  seePayment?: boolean
   link: string | null
   payment_link: string | null
   on_job_account: boolean | null
@@ -41,6 +47,8 @@ export type SupplyBillCardRow = {
   poMismatch: boolean
   /** "Credits S-123", or the like, when a credit and a bill name each other. */
   pairLine: string | null
+  /** Where a payment's money moved to or from this bill: `$1,000.00 moved to S4398120 · Dana · the house applied it differently`. */
+  trace?: ReadonlyArray<string>
   /** The lines check: its words, its tone, and whether there is a paper to look at. */
   lines: { words: string; tone: 'ok' | 'accepted' | 'off' | 'none'; look: boolean }
 }
@@ -66,10 +74,14 @@ export function SupplyHouseBillsCard({
   jobAccountsInUse,
   paidThisVisit,
   payingId,
+  onAccount = 0,
   empty,
   onTogglePaid,
   onEdit,
   onLook,
+  removedPayments = [],
+  puttingBackId = null,
+  onPutBack,
 }: {
   /** The bills to list: the unpaid ones, the ones paid on this visit, and every paid one when the page shows them. */
   bills: ReadonlyArray<SupplyBillCardRow>
@@ -79,11 +91,17 @@ export function SupplyHouseBillsCard({
   paidThisVisit: ReadonlySet<string>
   /** The bill whose Mark paid is saving; every press waits while one saves. */
   payingId: string | null
+  /** What earlier payments sent past their bills, still with the house. Shown when above zero. */
+  onAccount?: number
   /** What to say when there is no bill to list. */
   empty: ReactNode
   onTogglePaid: (id: string) => void
   onEdit: (id: string) => void
   onLook: (id: string) => void
+  /** The payments removed in the last 30 days, each in its own words: they can still be put back. */
+  removedPayments?: ReadonlyArray<{ id: string; words: string }>
+  puttingBackId?: string | null
+  onPutBack?: (paymentId: string) => void
 }) {
   const dayName = (ymd: string): string => billDayName(ymd, todayYmd)
   const stats = supplyBillSummary(
@@ -106,6 +124,8 @@ export function SupplyHouseBillsCard({
     const facts: ReactNode[] = []
     if (paidNow) facts.push(<b key="paidnow">Paid today</b>)
     else if (b.is_paid && b.paidYmd) facts.push(<span key="paid">paid {billDateWords(b.paidYmd, todayYmd)}</span>)
+    if (b.is_paid && b.paidBy) facts.push(<span key="paidby" data-testid="supply-bill-paid-by">{b.paidBy}</span>)
+    if (!b.is_paid && b.partPaid) facts.push(<b key="part" data-testid="supply-bill-part-paid">{b.partPaid}</b>)
     facts.push(<span key="inv">{b.invoice_number}</span>)
     // The PO's words lead the row when there is no job; they are not said twice.
     if (po && b.jobs.length > 0) {
@@ -163,7 +183,7 @@ export function SupplyHouseBillsCard({
               </a>
             )}
             {b.payment_link && (
-              <a href={b.payment_link} target="_blank" rel="noreferrer" title="Payment or receipt (Make Payment)" style={link}>
+              <a href={b.payment_link} target="_blank" rel="noreferrer" title="The payment's receipt" style={link}>
                 Receipt ›
               </a>
             )}
@@ -173,6 +193,11 @@ export function SupplyHouseBillsCard({
               {b.pairLine}
             </div>
           )}
+          {(b.trace ?? []).map((t) => (
+            <div key={t} style={{ ...quiet, fontSize: '0.72rem' }} data-testid="supply-bill-trace">
+              {t}
+            </div>
+          ))}
         </div>
         {/* The amount and the two presses stay together, so a narrow card wraps them as one and Edit never drops alone. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: '0 0 auto', marginLeft: 'auto' }}>
@@ -185,11 +210,11 @@ export function SupplyHouseBillsCard({
             type="button"
             disabled={payingId != null}
             onClick={() => onTogglePaid(b.id)}
-            aria-label={`${b.is_paid ? 'Mark unpaid' : 'Mark paid'}: ${b.invoice_number}`}
+            aria-label={`${b.is_paid ? (b.seePayment ? 'See the payment' : 'Mark unpaid') : 'Mark paid'}: ${b.invoice_number}`}
             data-testid="supply-bill-mark-paid"
             style={{ minHeight: 36, minWidth: 104, padding: '0.3rem 0.8rem', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', background: 'var(--surface)', color: b.is_paid ? 'var(--text-muted)' : 'var(--text-green-700)', border: `1px solid ${b.is_paid ? 'var(--border-strong)' : 'var(--text-green-700)'}`, borderRadius: 6, cursor: payingId != null ? 'default' : 'pointer' }}
           >
-            {payingId === b.id ? 'Saving…' : b.is_paid ? 'Mark unpaid' : 'Mark paid'}
+            {payingId === b.id ? 'Saving…' : b.is_paid ? (b.seePayment ? 'See the payment' : 'Mark unpaid') : 'Mark paid'}
           </button>
           <button type="button" onClick={() => onEdit(b.id)} title="Edit" aria-label={`Edit ${b.invoice_number}`} style={{ minHeight: 36, minWidth: 36, padding: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--text-muted)' }}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={16} height={16} fill="currentColor" aria-hidden="true">
@@ -211,6 +236,13 @@ export function SupplyHouseBillsCard({
             <div style={quiet}>{s.sub}</div>
           </div>
         ))}
+        {onAccount > 0.005 ? (
+          <div data-testid="supply-bills-stat-account" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.55rem 0.75rem', minWidth: 0 }}>
+            <div style={label}>On account</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', color: 'var(--text-green-700)' }}>${formatCurrency(onAccount)}</div>
+            <div style={quiet}>sent past the bills, offered on the next payment</div>
+          </div>
+        ) : null}
       </div>
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
         {groups.length === 0
@@ -225,6 +257,22 @@ export function SupplyHouseBillsCard({
               </div>
             ))}
       </div>
+      {/* A payment removed by mistake is one press to put back, for 30 days. */}
+      {removedPayments.length > 0 ? (
+        <div data-testid="supply-bills-removed" style={{ marginTop: '0.6rem', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
+          <div style={label}>Removed in the last 30 days</div>
+          {removedPayments.map((r) => (
+            <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 12px', fontSize: '0.8125rem', lineHeight: 1.6 }}>
+              <span style={{ flex: '1 1 260px', minWidth: 0, color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{r.words}</span>
+              {onPutBack ? (
+                <button type="button" disabled={puttingBackId != null} onClick={() => onPutBack(r.id)} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: puttingBackId != null ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
+                  {puttingBackId === r.id ? 'Putting it back…' : 'Put it back'}
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }

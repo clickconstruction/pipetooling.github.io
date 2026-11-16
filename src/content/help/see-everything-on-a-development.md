@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
+keywords: development, site, subdivision, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -72,6 +72,10 @@ History is one dated list, newest first. It holds what the records did and what 
 
 The crews' photos draw lines too, at the time they were taken. Photos on one job by one person within an hour read as one line with up to four small pictures. A **+ N** tile stands for the rest. Press a picture to open it at full size. Press {{chip:blue|Photos}} under the search box to see the photo lines alone. The search finds a photo by its caption.
 
+Mail tied to a job or a bid draws lines too. Each email reads at its own time, as *Email in* or *Email out*. The line shows the subject, the first words and who it was from and to. Press **Open in Messages** on the line to read the mail in its thread. Press {{chip:blue|What happened}} to see the mail with the calls and visits you kept.
+
+You see these lines when you can open Messages. The lines hold the same mail Messages shows you. The guide [save an email to a job from your own mail](/help/save-an-email-to-a-job-from-your-own-mail) shows how to tie a mail.
+
 1. Press a chip under the search box to narrow the list. Press {{chip:blue|Plans}} to see every plan set filed, newest first. On a phone the chips sit in one row. Slide the row sideways to reach the rest.
 2. Type a name, a number or a word into the search box, marked with a spyglass, to find a line.
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
@@ -93,6 +97,8 @@ An email came in, a call was made, someone walked the site. History keeps those 
 5. Press {{button:blue|Keep it}}.
 
 The line reads at the top at once. A kept line never changes. To correct one, keep a second line that says so.
+
+A mail tied to a job or a bid needs no line kept by hand. The mail draws its own line at its own time. A line you kept by hand before stays as you wrote it.
 
 
 Notes a record carries with no date sit under the chips in a block called On record. A bid's notes, a job's collections note and the customer's terms live there.
@@ -184,7 +190,7 @@ The reads start when you open the view. On a big site the icons mark the biggest
 
 Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part. A **Papers** column counts the specs, schedules and lists kept with each part's sets. Press the count to read them. An amber chip counts the questions still waiting and the papers we are owed. On a phone each part is a card with the same facts. See [keep the papers with the plans](/help/keep-the-papers-with-the-plans).
 
-Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Build from this set}} on an older set to go back to it.
+Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Change the link}} on a set to point it at our own copy in Drive. See [change the link of a set](/help/keep-the-plans-on-a-job#change-the-link-of-a-set). Press {{button:outline|Build from this set}} on an older set to go back to it.
 
 Two chips sit under the table. One counts the parts with no set. One counts the jobs that follow no plans yet. Press a chip to see them. Under that chip, each job is a row with its number and its name. Tick the jobs that belong on one part. Pick the part in the box. Press {{button:blue|Put 3 jobs on Lodge}}. The button counts the ticked jobs and names the part. A job can also name its part on its Documents tab, under Plans. A job that only carries bills needs no plans. A service call needs no plans either. The look leaves both out of the count. A quiet line under the chips says how many it left out and why. Ask the estimators about the rest from the card. The card keeps the question in view while it waits, and shows the answer when it comes. Bids keep their own set and are listed under the table.
 

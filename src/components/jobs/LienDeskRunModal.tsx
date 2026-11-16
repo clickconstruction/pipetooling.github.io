@@ -52,6 +52,9 @@ import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem } from '../../lib/jobs/lienMailedCopies'
+import { addLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
+import { LIEN_RUN_ACT, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -77,6 +80,7 @@ export default function LienDeskRunModal({
   stripeMode = 'live',
   viewer = null,
   focusMailItemId = null,
+  addMailedCopy = addLienMailedCopy,
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -110,6 +114,8 @@ export default function LienDeskRunModal({
   viewer?: { userId: string | null; name: string } | null
   /** A sheet's code was scanned (v2.7328, `?run=<itemId>&mail=1`): the checklist scrolls to this notice's Mailed box and puts the cursor in it. */
   focusMailItemId?: string | null
+  /** The upload behind *Add what was mailed*; a test hands its own. */
+  addMailedCopy?: typeof addLienMailedCopy
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
@@ -499,7 +505,7 @@ export default function LienDeskRunModal({
       if (signed.length) {
         setNotices((prev) => prev.map((n) => signed.find((x) => x.itemId === n.itemId) ?? n))
         setSignOpen(null)
-        showToast(signed.length === 1 ? 'Signed — the notice is in the run.' : `Signed — ${signed.length} notices are in the run.`)
+        showToast(signed.length === 1 ? 'Signed. The notice can print now.' : `Signed. ${signed.length} notices can print now.`)
         onRecorded()
       }
     } finally {
@@ -547,6 +553,28 @@ export default function LienDeskRunModal({
     if (noticesFullyPrinted(notices, next).length === notices.length && notices.length > 0) setPrintedAt((v) => v ?? new Date().toISOString())
   }
   // Printed ▸ on a checklist row (v2.7328): the paper printed elsewhere; every copy of it counts as printed, with who and when.
+  // What was mailed (the owner's ask of 2026-11-16): a printed row takes a scan or a photo of what goes in its envelope. The file goes
+  // into the job's Drive folder and the notice remembers it; a file that cannot go says why and nothing is saved.
+  const [addingCopy, setAddingCopy] = useState<string | null>(null)
+  const addCopy = async (row: LienRunRow, file: File) => {
+    const problem = lienMailedCopyProblem(file)
+    if (problem) {
+      showToast(problem, 'error')
+      return
+    }
+    setAddingCopy(row.itemId)
+    try {
+      const list = await addMailedCopy({ itemId: row.itemId, jobId: row.jobId, jobNumber: row.jobNumber, file, todayYmd, userId })
+      setNotices((prev) => prev.map((n) => (n.itemId === row.itemId ? { ...n, mailedCopies: list } : n)))
+      const last = list[list.length - 1]
+      if (last) showToast(lienMailedCopyAddedWords(last.name), 'success')
+      onRecorded()
+    } catch (e) {
+      showToast(formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.failed), 'error')
+    } finally {
+      setAddingCopy(null)
+    }
+  }
   const markPrintedByHand = (row: LienRunRow) => {
     const n = notices.find((x) => x.itemId === row.itemId)
     if (!n) return
@@ -716,7 +744,7 @@ export default function LienDeskRunModal({
       const result = await recordLienDeskRun(recordable, { userId, todayYmd, mailedOn, invoiceDocsByJob: invoiceDocsShown, payBlocksByJob, document: { url: docUrl, note: docNote } })
       const courtesy = runCourtesyResultWords(result.courtesySent, result.courtesyFailed)
       const stay = notices.length - recordable.reduce((s, n) => s + (partsOf(n)?.length ?? 1), 0)
-      if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.${courtesy.sent ? ` ${courtesy.sent}` : ''}${stay > 0 ? ` ${stay} ${stay === 1 ? 'stays' : 'stay'} in the run until its ticks are in.` : ''}`, 'success')
+      if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.${courtesy.sent ? ` ${courtesy.sent}` : ''}${stay > 0 ? ` ${stay} ${stay === 1 ? 'stays' : 'stay'} here until its ticks are in.` : ''}`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
       if (courtesy.failed) showToast(courtesy.failed, 'warning')
       if (result.releaseFailed.length) showToast(`The enclosed release was not issued on ${result.releaseFailed.map((f) => `${f.label} (${f.reason})`).join('; ')}. Issue it from the Release of Lien window.`, 'warning')
@@ -779,7 +807,7 @@ export default function LienDeskRunModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={recording ? 'Record the mailing' : 'Send the run'}
+      aria-label={LIEN_RUN_ACT[recording ? 'record' : 'print']}
       style={{ position: 'fixed', inset: 0, paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 790 }}
       onClick={(e) => {
         // The Lien desk and Put a GC on notice draw the run inside their own backdrop: a click
@@ -794,7 +822,7 @@ export default function LienDeskRunModal({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{recording ? 'Record the mailing' : 'Send the run'} · {shown.length} {shown.length === 1 ? 'notice' : 'notices'}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
+              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{lienRunWindowTitle(recording ? 'record' : 'print', shown.length)}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
               <button
                 type="button"
                 aria-label="What the packet is"
@@ -929,6 +957,7 @@ export default function LienDeskRunModal({
             focusMailItemId={focusMailItemId}
             // Close… (v2.7353): a paid row's own press and the fold's ask for the confirm above; nothing is written until it is pressed.
             paid={onClosePaid ? { readyIds: paidSplit.ready, heldWhy: paidHeldWhy, onClose: (ids) => { setClosedPaid(null); setTakeBackOpen(false); setClosePaidIds(ids) } } : undefined}
+            mailedCopies={{ onAdd: (row, file) => void addCopy(row, file), addingItemId: addingCopy }}
           />
           {penOpen === 'batch' ? <div data-testid="run-sign-batch">{penPaneFor('batch', false)}</div> : null}
           {showDocsmit && sendBy ? (

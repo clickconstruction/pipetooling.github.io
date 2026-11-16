@@ -73,7 +73,7 @@ export function onBoxesPlanLines(plan: OnBoxesPlan, names: ReadonlyArray<string>
   const none = plan.none.length
   if (make > 0) lines.push(make === 1 ? `1 box will be made, ${namesSpanWords(plan.make, names)}.` : `${make} boxes will be made, ${namesSpanWords(plan.make, names)}.`)
   if (take > 0) lines.push(take === 1 ? `1 is a box on this site already, ${namesSpanWords(plan.take, names)}. Its sticker goes on it.` : `${take} are boxes on this site already, ${namesSpanWords(plan.take, names)}. Their stickers go on them.`)
-  if (none > 0) lines.push(none === 1 ? `1 has no blank sticker, ${namesSpanWords(plan.none, names)}. Nothing is done for it.` : `${none} have no blank sticker, ${namesSpanWords(plan.none, names)}. Nothing is done for them.`)
+  if (none > 0) lines.push(none === 1 ? `1 has no reserved sticker, ${namesSpanWords(plan.none, names)}. Nothing is done for it.` : `${none} have no reserved sticker, ${namesSpanWords(plan.none, names)}. Nothing is done for them.`)
   return lines
 }
 
