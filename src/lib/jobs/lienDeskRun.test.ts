@@ -243,6 +243,10 @@ describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
     expect(run).toHaveLength(1)
     const n = run[0]!
     expect(n.kind).toBe('retainage_53_057')
+    // What was mailed (v2.7525): the retainage notice carries its scans as the monthly notice does, so its row has the press.
+    expect(n.mailedCopies).toEqual([])
+    const scan = { url: 'https://drive.google.com/file/d/f1/view', driveFileId: 'f1', name: 'Retainage notice as mailed · 650 · 2026-09-14.pdf', at: '2026-09-14T18:00:00.000Z', by: 'u1' }
+    expect(buildLienRetainageRun([{ ...entry, item: { ...retItem, mailed_copies: [scan] } as LienDeskItemRow }], d, null, () => 'Robert', TODAY)[0]!.mailedCopies).toEqual([scan])
     // The last day to mail rides on the notice, for Today's mail (punch list #314).
     expect(n.mailBy).toBe('2026-10-05')
     expect(runPacketHtml([n], TODAY, null)).toContain('<b>Mail every envelope by October 5, 2026.</b>')
