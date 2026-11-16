@@ -2,7 +2,7 @@
 name: "Paint a map: walk it, drive it or draw it by hand, keep the line on the job, and share it by a link"
 number: 345
 group: close
-status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342, #8207) · both walked on the live app 2026-11-15 on a made-up map and task, nothing sent, each deleted after · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) · Taunya's yes the same day (*Yes, build it*), every call at the card's pick · its card for a map with no place built first (v2.7363, #8235) and the **Map** press in the New task window and Manage's Edit (v2.7364), then **Paint a new one** from the task (v2.7366) and the Roadmap's Add task and task card, picking only (v2.7368) · not yet tried on a real phone
+status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342, #8207) · both walked on the live app 2026-11-15 on a made-up map and task, nothing sent, each deleted after · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) · Taunya's yes the same day (*Yes, build it*), every call at the card's pick · its card for a map with no place built first (v2.7363, #8235) and the **Map** press in the New task window and Manage's Edit (v2.7364, #8242), then **Paint a new one** from the task (v2.7366, #8253) and the Roadmap's Add task and task card, picking only (v2.7368, #8261) · all four walked on the live app 2026-11-15 on made-up rows, each deleted after, the Roadmap looked at and not saved · not yet tried on a real phone
 summary: >
   The owner's idea: a person walks with precise location on, the phone draws their line on a map,
   and they share it. For measuring, for showing where to drive, how to get into a place, and what
@@ -14,7 +14,7 @@ summary: >
   above, and drawing by hand is the better way for a drive and for a length. One link with no
   sign-in shows it to a customer or a driver, with a dot for where they are. Location is read
   only while a red bar says Painting, and nothing leaves the phone until the person saves.
-next: A walk of *A map on a task* on the live app, on a made-up task and map, each deleted after. Then two small things left on purpose: lift the painted map's window over the roadmap's windows so the Roadmap can paint and open a map, and draw each task's line on Today's map of a person's tasks. The owner's try on a real phone still stands, as below. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
+next: Nothing is in hand. Two small things are left on purpose: lift the painted map's window over the roadmap's windows so the Roadmap can paint and open a map, and draw each task's line on Today's map of a person's tasks. A walk of the Roadmap's saves wants a roadmap made for testing, since the company's are real. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
 size: L as a train of eight after a one-day try (S · S · M · M · M · M · S · S · S)
 blocker: None for what is built. The walk, the screen held on, the pause on lock and the phone's share sheet have only been walked in a headless browser, so the first real walk is the proof.
 opinion: built as carded. Strong for the way in and what is where, weak for measuring. Count the maps painted and the links opened for two weeks before step 5.
@@ -52,6 +52,10 @@ below was taken at the card's pick. The guide is `/help/paint-a-map`.
 | *Text it…* | #8202 | v2.7338 | The link texted to the job's customer from the company's number, on the Share sheet, for the office |
 | 5, the column | #8204 | v2.7340 | `painted_map_id` on a task and a roadmap task, a second way to read a map (whoever reads the task), and a guard so a task points only at a map its writer can open |
 | 5, the screen | #8207 | v2.7342 | **＋ Add the way in** on *Where is it?*, the paint's stroke on a place chip, and on the task the line, **Directions to the start** and **Open the map** |
+| 9, a map on a task | #8235 | v2.7363 | A task's card shows a painted map that has no place: its name and length under the title and, opened, the line with **Open the map**, **Directions to the start** and **How far am I?** |
+| 7 | #8242 | v2.7364 | The **Map** press in the New task window and Manage's Edit, and *A map for this task* to pick one |
+| 8 | #8253 | v2.7366 | **Paint a new one** from the task: the painting window opens on a map on no job, and the saved map comes back onto the task |
+| 10 | #8261 | v2.7368 | The Roadmap's Add task window and a roadmap task's card, picking only |
 
 The first two migrations are pushed and `painted-map-link` is deployed, each on the owner's yes.
 The third, `20261115063000_task_painted_maps.sql`, was pushed on 2026-11-15 after #8204 merged.
@@ -61,8 +65,9 @@ Not built, each on purpose:
 
 - **Step 0, the one-day try.** Skipped, since he asked for all of it and said he would test it
   live. His first real walk stands in for it.
-- **A painted map on a task with no place, and painting one from a task.** Designed in *A map on a
-  task* below. It waits on Taunya's yes.
+- **Painting or opening a map from the Roadmap.** The painted map's window sits under the
+  roadmap's windows, so the Roadmap picks a map and no more. *A map on a task* below has it as a
+  later step.
 - ***File it on the job* as a press.** A print files itself, so the press had nothing left to do.
 
 Not tried anywhere: a real phone. The walk, the screen held on, the pause on lock and the share
@@ -674,6 +679,7 @@ and a fragment.
 | 9 | The card for a task with a map and no place: the line under the due line, the picture, the three presses. **Built first, v2.7363 (#8235),** so no task carries a map its reader cannot see. | S |
 | 10 | The Roadmap: Add task and a roadmap task's card. **Built, v2.7368, picking only:** the painted map's window sits under the roadmap's windows, so the Roadmap neither paints a map nor opens one. | S |
 | later | Today's map of a person's tasks draws each task's line with its dot. | S |
+| later | A task's draft that still names a map thrown away while the task was being written: take it off the draft when the map is read as gone after it was read once. Today the send is refused with the reason. | XS |
 | later | Lift the painted map's window over the roadmap's windows (its window, its sheets, its confirms and the text box), so the Roadmap can **Paint a new one** and **Open the map**. | S |
 
 ### Taunya's calls

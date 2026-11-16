@@ -184,7 +184,7 @@ Three small things were left after the train. Taunya picked *Build one small PR*
 - **Inside an open paper** 19 of an affidavit's 23 presses were under 40 px, the shortest 14: the gates, the months grid and the page's own edit marks are drawn for a computer. Each now has an unseen pad to a thumb's 44 px square, as the job window's presses got in v2.7309. Nothing moves.
 - **The By job grid's own controls** were two pickers at 23 px and *Print the grid* at 25. Each is 44 px now, the pickers at 16 px words, and the bar scrolls away with the list.
 
-What the pad cannot reach is still to do: a tick box and a picker inside an open paper are sized where they are drawn.
+What the pad cannot reach is still to do: a tick box and a picker inside an open paper are sized where they are drawn. Read on the live desk after the deploy, two presses are marked and gain nothing: **Steps** and **Windows**, whose switch clips its overflow, and the pad with it.
 
 Three things the train taught:
 

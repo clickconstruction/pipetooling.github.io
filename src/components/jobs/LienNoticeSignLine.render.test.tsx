@@ -87,3 +87,55 @@ describe('LienNoticeSignLine · the master’s code on someone else’s screen (
     expect(document.querySelector('[data-lien-sign-code-words]')!.textContent).toBe('That is not Malachi’s code. 3 tries left.')
   })
 })
+
+describe('LienNoticeSignLine · the desk’s one-box footer (v2.7382)', () => {
+  const frame = () => ({
+    call: <>→ Your call on July and August 2026</>,
+    note: <span> · keeps the rule “Ask me each time”</span>,
+    press: <button type="button">Sign and approve &amp; next ▸</button>,
+    strip: <button type="button">Hold — they promised…</button>,
+  })
+
+  it('the call, the code and the host’s press sit inside the box beside the paper; the strip runs under them', () => {
+    const ref = createRef<LienNoticeSignLineHandle>()
+    renderWithProviders(<LienNoticeSignLine ref={ref} printedName="Malachi Whites" under={['Malachi Whites, Master Plumber', 'Click Plumbing']} signedLabel="Signed November 15, 2026" codeSigner={{ firstName: 'Malachi', status: 'ready' }} frame={frame()} />)
+    const line = screen.getByTestId('lien-sign-line')
+    expect(line.hasAttribute('data-lien-sign-frame')).toBe(true)
+    expect(line.getAttribute('data-lien-sign-mode')).toBe('code')
+    expect(line.textContent).toContain('Malachi signs here with his code')
+    // The call is the box's title, with the signed day and the rule's note under it.
+    const call = line.querySelector('.lienSignFrameCall') as HTMLElement
+    expect(call.textContent).toBe('→ Your call on July and August 2026Signed November 15, 2026 · keeps the rule “Ask me each time”')
+    // The code field and the press share one row; the label is short and the field keeps its full name for a screen reader.
+    const row = line.querySelector('[data-lien-sign-code-row]') as HTMLElement
+    expect(row.textContent).toBe('Malachi’s codeSign and approve & next ▸')
+    fireEvent.change(screen.getByLabelText('Malachi’s signing code'), { target: { value: '24x68' } })
+    expect(ref.current?.code()).toBe('2468')
+    expect(document.querySelector('[data-lien-sign-code-words]')!.textContent).toBe('Four to six digits, his alone. The record names this screen.')
+    expect((line.querySelector('.lienSignFrameStrip') as HTMLElement).textContent).toBe('Hold — they promised…')
+    // The way to the pad sits on the paper's corner, and the pad has Clear beside the way back.
+    const corner = line.querySelector('.lienSignFramePaper .lienSignFrameCorner') as HTMLElement
+    expect(corner.textContent).toBe('Draw instead')
+    fireEvent.click(screen.getByTestId('lien-sign-line-toggle'))
+    expect(line.getAttribute('data-lien-sign-mode')).toBe('draw')
+    expect(line.textContent).toContain('Malachi signs here, in his own hand')
+    expect(corner.textContent).toBe('ClearCode instead')
+    expect(line.querySelector('[data-lien-sign-code-row]')).toBeNull()
+    expect(screen.getByRole('button', { name: /Sign and approve & next/ })).toBeTruthy()
+  })
+
+  it('his own sign-in: no code field, the press alone beside the paper; a wrong code or a locked one still reads in the box', () => {
+    const { unmount } = renderWithProviders(<LienNoticeSignLine printedName="Robert Douglas" under={['Robert Douglas, Owner']} signedLabel="Signed November 15, 2026" frame={{ ...frame(), strip: undefined, note: undefined }} />)
+    const line = screen.getByTestId('lien-sign-line')
+    expect(line.getAttribute('data-lien-sign-mode')).toBe('type')
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Robert Douglas')
+    expect(line.querySelector('.lienSignFrameCode')).toBeNull()
+    expect(line.querySelector('.lienSignFrameStrip')).toBeNull()
+    expect(document.querySelector('[data-lien-sign-code-words]')).toBeNull()
+    unmount()
+    renderWithProviders(<LienNoticeSignLine printedName="Malachi Whites" under={['Malachi Whites']} signedLabel="Signed November 15, 2026" codeSigner={{ firstName: 'Malachi', status: 'locked', lockedUntilClock: '2:29 PM' }} frame={frame()} />)
+    expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('draw')
+    expect(document.querySelector('[data-lien-sign-code-words]')!.textContent).toBe('His code is locked until 2:29 PM after five wrong tries. He can draw here instead.')
+    expect(screen.queryByTestId('lien-sign-line-toggle')).toBeNull()
+  })
+})

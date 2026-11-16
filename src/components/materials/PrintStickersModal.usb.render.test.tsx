@@ -16,6 +16,8 @@ const usb = vi.hoisted(() => ({
   status: { tapeMm: 24, statusType: 0, phase: 0, errors: [] as string[] },
   print: vi.fn(),
   close: vi.fn(async () => {}),
+  refreshed: 0,
+  refreshFails: false,
 }))
 vi.mock('../../lib/materials/ptouchUsb', () => {
   class PtouchPickCancelled extends Error {}
@@ -24,7 +26,9 @@ vi.mock('../../lib/materials/ptouchUsb', () => {
     ptouchUsbAvailable: () => true,
     connectPtouch: async ({ ask }: { ask: boolean }) => {
       if (!ask && !usb.granted) return null
-      return { model: 'PT-D610BT', status: usb.status as PtouchStatus, print: usb.print, close: usb.close }
+      // one link object, as the real one is: a refresh lands the printer's new answer on it
+      const link = { model: 'PT-D610BT', status: usb.status as PtouchStatus, print: usb.print, close: usb.close, refresh: async () => { usb.refreshed++; if (usb.refreshFails) throw new Error('gone'); link.status = usb.status as PtouchStatus; return link.status } }
+      return link
     },
   }
 })
@@ -56,6 +60,8 @@ beforeEach(() => {
   usb.granted = false
   usb.status = { tapeMm: 24, statusType: 0, phase: 0, errors: [] }
   usb.print.mockReset()
+  usb.refreshed = 0
+  usb.refreshFails = false
   usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void) => { labels.forEach((_, i) => onLabel?.(i + 1)) })
 })
 afterEach(() => {
@@ -165,6 +171,19 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     fireEvent.click(screen.getByTestId('stickers-print'))
     await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('8 stickers printed.'))
     expect((usb.print.mock.calls[0]![0] as unknown[]).length).toBe(8)
+  })
+
+  it('a new cassette is seen: the foot says why the press is grey, and Check the printer again brings it back (Taunya, 2026-11-15)', async () => {
+    usb.granted = true
+    usb.status = { tapeMm: 0, statusType: 0, phase: 0, errors: [] }
+    setup()
+    await waitFor(() => expect(screen.getByTestId('stickers-recheck').textContent).toContain('There is no tape in the printer. Put in the tape and close the cover. The window checks the printer by itself.'))
+    expect(screen.getByTestId('stickers-print').hasAttribute('disabled')).toBe(true)
+    usb.status = { tapeMm: 24, statusType: 0, phase: 0, errors: [] }
+    fireEvent.click(screen.getByTestId('stickers-check-printer'))
+    await waitFor(() => expect(screen.getByTestId('stickers-print').hasAttribute('disabled')).toBe(false))
+    expect(usb.refreshed).toBe(1)
+    expect(screen.queryByTestId('stickers-recheck')).toBeNull()
   })
 
   it('tape the sticker is not laid out for holds the press and says what to load', async () => {
