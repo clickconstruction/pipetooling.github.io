@@ -68,6 +68,18 @@ describe('a house’s invoices as rows', () => {
   })
 })
 
+describe('a bill paid in part says what was paid, on the phone rows', () => {
+  it('in the row’s second line, while it is unpaid', () => {
+    const list: SupplyHousePhoneInvoice[] = [
+      { id: 'p1', invoice_number: '77264', purchase_order_number: null, due_date: '2026-10-31', amount: 512.4, is_paid: false, partPaid: '$300.00 paid · $512.40 left of $812.40' },
+      { id: 'p2', invoice_number: '77001', purchase_order_number: null, due_date: '2026-10-01', amount: 99, is_paid: true, partPaid: 'ignored once paid' },
+    ]
+    const opts = { todayYmd: '2026-09-27', jobLabel: (id: string) => id, formatMoney: (n: number) => `$${n}` }
+    expect(supplyHousePhoneInvoiceRows(list, 'unpaid', opts)[0]).toMatchObject({ sub: 'due Oct 31 · $300.00 paid · $512.40 left of $812.40', amountWords: '$512.4' })
+    expect(supplyHousePhoneInvoiceRows(list, 'paid', opts)[0]?.sub).toBe('due Oct 1')
+  })
+})
+
 describe('v2.5035 · a credit and the invoice it credits name each other on the phone rows', () => {
   it('in the row’s second line', () => {
     const list: SupplyHousePhoneInvoice[] = [
