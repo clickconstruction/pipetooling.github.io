@@ -5,7 +5,9 @@
  * that names its boxes draws its first six strips, each name large over the link, each sticker's copies together,
  * then *and 217 more, to G300* with **Show all 223**, which draws the rest once each at half size, capped at 200 with
  * its words. A run with no names draws one sticker, since every other differs only by its code (v2.7438: no strip
- * carries a running number). The QR and the dashed code are a sample, and one line says so. The test strip is drawn
+ * carries a running number). The QR and the dashed code are a stand-in, `XXXX-XXXX`, and a line over the strips says
+ * so and that each sticker gets its own link at the press (v2.7486, the owner's word of 2026-11-16: the line sat
+ * under the strips in grey, and the zeros drawn then read as a sticker with no link). The test strip is drawn
  * the same way, so the fold also says what Print 1 test strip prints. The rows are `lib/materials/stickerPreview.ts`.
  */
 import { useState, type CSSProperties } from 'react'
@@ -18,6 +20,7 @@ import {
   STICKER_PREVIEW_NO_COUNT_WORDS,
   STICKER_PREVIEW_TEST_WORDS,
   STICKER_PREVIEW_TITLE,
+  STICKER_SAMPLE_WORDS,
   stickerPreview,
 } from '../../lib/materials/stickerPreview'
 import { STICKER_TEST_STRIP } from '../../lib/materials/stickerRun'
@@ -36,6 +39,8 @@ type Props = {
 const wrap: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.5rem 0.9rem' }
 const summary: CSSProperties = { cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-muted)', minHeight: 36, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
+/** The stand-in's line: the fold's one line in the strong colour, set off by a rule, straight over the strips it speaks of. */
+const standIn: CSSProperties = { margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-strong)', borderLeft: '3px solid var(--border-strong)', paddingLeft: '0.6rem' }
 const quietLink: CSSProperties = { background: 'none', border: 'none', padding: 0, minHeight: 28, color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
 
 const noop = () => {}
@@ -45,6 +50,7 @@ export default function StickerPreviewFold({ count, copies, width, names = null 
   const [all, setAll] = useState(false)
   const dots = ptouchTapeDots(width) ?? 128
   const preview = stickerPreview({ count, copies, all, names })
+  const standInWords = names && names.length > 0 ? STICKER_PREVIEW_NAMED_CODE_WORDS : STICKER_PREVIEW_CODE_WORDS
   return (
     <details style={wrap} data-testid="stickers-preview" open={open} onToggle={(e) => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(o); writeStickerPreviewOpen(o) }}>
       <summary style={summary}>{STICKER_PREVIEW_TITLE}</summary>
@@ -55,6 +61,10 @@ export default function StickerPreviewFold({ count, copies, width, names = null 
           ) : (
             <>
               <span style={muted} data-testid="stickers-preview-head">{previewHeadWords(preview.head, count)}</span>
+              <p role="note" style={standIn} data-testid="stickers-preview-code-words">
+                {/* The stand-in is kept on one line and set as the strip sets it, so the eye ties the words to the strips. */}
+                {standInWords.split(STICKER_SAMPLE_WORDS).flatMap((part, i) => (i === 0 ? [part] : [<span key={i} style={{ whiteSpace: 'nowrap', fontFamily: 'ui-monospace, Menlo, monospace' }}>{STICKER_SAMPLE_WORDS}</span>, part]))}
+              </p>
               <div style={{ display: 'grid', gap: '0.35rem', justifyItems: 'start' }} data-testid="stickers-preview-strips">
                 {preview.head.map((r) => <TapeStripBitmap key={`${r.strip.id}:${r.copy}`} id={r.strip.id} stencil={r.strip.stencil} address={r.strip.address} value={r.strip.value} words={r.strip.words} stencilSmall={r.strip.small} dots={dots} onDrawn={noop} />)}
               </div>
@@ -70,7 +80,6 @@ export default function StickerPreviewFold({ count, copies, width, names = null 
                 </div>
               ) : null}
               {preview.cappedWords ? <span style={muted} data-testid="stickers-preview-capped">{preview.cappedWords}</span> : null}
-              <span style={muted} data-testid="stickers-preview-code-words">{names && names.length > 0 ? STICKER_PREVIEW_NAMED_CODE_WORDS : STICKER_PREVIEW_CODE_WORDS}</span>
             </>
           )}
           <span style={{ ...muted, marginTop: '0.25rem' }} data-testid="stickers-preview-test-words">{STICKER_PREVIEW_TEST_WORDS}</span>

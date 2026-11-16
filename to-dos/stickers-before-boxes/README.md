@@ -17,7 +17,7 @@ summary: >
 next: Taunya's first named run off the P-touch, which is the walk of section 10; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
 size: L as a train of ten (M · M · M · S · M · S · M · M · S · M); left: M, PRs 4 to 6 (S · M · S)
 blocker: PRs 4 to 6 wait for the walk of the site, by the owner's order of 2026-11-14.
-ver: v2.7484
+ver: v2.7486
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -661,5 +661,8 @@ reads *Reserve and print 109 stickers, G92 to G200*, a run that is made says *Th
 fold reads *Stickers reserved for this job*, and a reserved sticker scanned with no sign-in reads *This sticker is
 reserved for a box*. One name for the idea on every screen and in the guides: **reserved**. In the code and the
 database the state is still `blank`, and both mock-ups keep the old name as drawn. No migration. The fold's stand-in
-code and the job's line for its reserved stickers follow as their own PRs. The name of the press is the owner's to
+code followed as v2.7486: the strips read `XXXX-XXXX`, which no sticker's code can be, and a line over them, where
+the eye lands, says *Each sticker gets its own link when it prints. XXXX-XXXX stands in for it here.* The link is
+still given at the press and not shown ahead; reserving first and printing second is the owner's call, drawn in
+`docs/recent-features/v2.7486.md`. The job's line for its reserved stickers follows as its own PR. The name of the press is the owner's to
 change: *Print future stickers* was the other one offered.
