@@ -319,7 +319,7 @@ The desk shows the master only what needs a decision. He sees what is open with 
 - {{button:outline|Hold — I'll call first}} asks him again three days before the deadline.
 - **Back to the office** sends it back to be fixed.
 
-On a computer the answers sit in one box at the foot of the notice. His signature is on the left. The green press sits beside it. The other answers run along the bottom of the box, after the words *Not yet*. They read as links there. **Already mailed? Record it ›** ends that row.
+On a computer the answers sit in one box at the foot of the notice. The master's signature is on the left. The green press sits beside the signature. The other answers run along the bottom of the box, after the words *Not yet*. Those answers read as links. **Already mailed? Record it ›** ends that row.
 
 ### Signing a notice
 
