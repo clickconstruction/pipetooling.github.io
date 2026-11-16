@@ -21,6 +21,8 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSPropertie
 import { useNavigate } from 'react-router-dom'
 import { Sheet } from './OnSiteSheet'
 import StickerNewSheet from './StickerNewSheet'
+import StickersOnBoxes from '../materials/StickersOnBoxes'
+import { ON_BOXES_LABEL } from '../../lib/materials/stickersOnBoxes'
 import { useJobStickers } from '../../hooks/useJobStickers'
 import { notYetOnBoxLine, stickerMarksWords, stickerReadsOtherWords, type PlaceOutcome } from '../../lib/materials/stickerPlace'
 import { lostStickerTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../../lib/materials/stickers'
@@ -179,6 +181,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const pendingContainerRef = useRef<string | null>(null)
   /** The blank sticker in hand (v2.7298): its code while its sheet is open, and what the code resolved to. It outlives a change of job, so *Change* under the new box keeps the sticker. */
   const [stickerCode, setStickerCode] = useState<string | null>(null)
+  /** These are on boxes (section 10, PR 10): the form that puts a range of named stickers on their boxes with no scan. */
+  const [onBoxesOpen, setOnBoxesOpen] = useState(false)
   const [stickerFound, setStickerFound] = useState<CodeLookup | 'looking' | null>(null)
   useEffect(() => { if (initialStickerCode) setStickerCode(initialStickerCode) }, [initialStickerCode, askSeq])
   useEffect(() => { onOpenSticker?.(stickerCode) }, [stickerCode, onOpenSticker])
@@ -531,10 +535,13 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
             {containers.length > 0 ? <button type="button" style={{ ...btn, ...btnBlock, borderStyle: 'dashed', background: 'transparent', color: 'var(--text-700)' }} onClick={() => setSheet({ kind: 'add-container', moveAfter: null })}><span aria-hidden style={{ fontSize: '1.2rem', lineHeight: 1 }}>+</span> Add a container</button> : null}
             {/* Stickers not yet on a box (punch list #329, PR 3): the job's blank stickers, from its runs. */}
             {jobStickers.blank > 0 ? <p style={{ ...muted, margin: 0, textAlign: 'center' }} data-testid="on-site-stickers-blank">{notYetOnBoxLine(jobStickers.blank)}</p> : null}
+            {/* These are on boxes (section 10, PR 10): for whoever stuck a roll of named stickers, a range of them in one press. */}
+            {jobStickers.blank > 0 ? <button type="button" style={{ ...btn, ...btnBlock, background: 'transparent', color: 'var(--text-700)' }} onClick={() => setOnBoxesOpen(true)} data-testid="on-site-on-boxes">{ON_BOXES_LABEL}</button> : null}
           </>
         )}
         {stickerFound === 'looking' ? <p style={{ ...muted, margin: 0 }} data-testid="on-site-sticker-looking">Reading the sticker…</p> : null}
         {stickerSheet}
+        {onBoxesOpen && jobId && job ? <StickersOnBoxes sheet jobId={jobId} jobLabel={onSiteJobWords(job)} places={places} onClose={() => setOnBoxesOpen(false)} onPlaced={() => { void loadJob(jobId, { force: true }); jobStickers.refresh() }} /> : null}
         {sheet?.kind === 'add-container' ? <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { setSheet(null); setView({ kind: 'container', id: c.id }) }} /> : null}
         {sheet?.kind === 'places' ? (
           <Sheet title="Places on this site" sub={`${boxCount} ${boxCount === 1 ? 'box' : 'boxes'} in ${places.length} ${places.length === 1 ? 'place' : 'places'}. Tap a place to see only its boxes.`} onClose={closeSheet} footer={<button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setSheet({ kind: 'map', focusId: null })}>Show the site map · {pinnedCount} pinned</button>}>

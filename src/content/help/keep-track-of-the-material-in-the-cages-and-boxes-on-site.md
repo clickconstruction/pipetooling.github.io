@@ -124,6 +124,8 @@ Two stickers can sit on one box. Both open it. A sticker that carries a number o
 
 If someone else put the sticker on a box a moment ago, the sheet says who and when. Tap **Open R76** to see that box. A sticker printed for another job asks once. Use it here, and it belongs to the box it lands on. A sticker on a box of a job you are not on says so. Ask the office to add you to that job.
 
+Did you stick on a whole roll of named stickers? Tap **These are on boxes** under the boxes. Type the names you used, like `G78-150`. Pick how the boxes sit and their place. Tap {{button:blue|Put 73 stickers on their boxes}}. Each name gets its box with its sticker on it. Scan one later to add what is inside.
+
 Placing a sticker needs signal. With none, the press is grey and the sheet says so. Nothing is kept for later, because two phones might hold the same sticker. Try again when the phone has a bar.
 
 Under the boxes, a line counts the job's stickers not yet on a box. Scan one to say which box it is on.
