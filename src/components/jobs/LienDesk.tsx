@@ -107,6 +107,8 @@ import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
 import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
 import LienBoard from './LienBoard'
 import LienPublicPropertyWindow from './LienPublicPropertyWindow'
+import LienServeWindow from './LienServeWindow'
+import { lienServeJobsFromDesk } from '../../lib/jobs/lienServePackets'
 import LienPublicPutBackWindow from './LienPublicPutBackWindow'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
 import { buildLienPublicBin, lienPublicBoardLine } from '../../lib/jobs/lienPublicProperty'
@@ -865,6 +867,8 @@ export default function LienDesk({
         : [],
     [data],
   )
+  // The same filings with where each envelope goes today, for the window that serves them together (punch list #366). No read of its own.
+  const serveJobs = useMemo(() => (data ? lienServeJobsFromDesk(data) : []), [data])
   const nextUpRows = useMemo(() => {
     if (!data) return []
     return buildLienNextUp({
@@ -935,6 +939,8 @@ export default function LienDesk({
   const publicBin = useMemo(() => buildLienPublicBin(data?.publicJobs ?? []), [data])
   // The properties left to review, one window at a time; and the property being put back on the lien path.
   const [publicReview, setPublicReview] = useState<string[] | null>(null)
+  // Serve the filed liens (punch list #366): one window prints every filed lien's copies and takes their mail numbers.
+  const [serveOpen, setServeOpen] = useState(false)
   const [publicPutBack, setPublicPutBack] = useState<string | null>(null)
   const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
   // The leader's Board (v2.7334): a master opens on his two Awaiting Master approval bins alone, the jobs he leads, with one
@@ -1278,6 +1284,11 @@ export default function LienDesk({
         setPaneFix({ jobId: chip.destination.jobId, focus: chip.destination.focus })
         return
       }
+    }
+    // Two or more filed liens owe their copies: the row opens the window that prints and records them together (punch list #366). One alone keeps its own Lien window.
+    if (row.action === 'record_service' && office && serveJobs.length >= 2) {
+      setServeOpen(true)
+      return
     }
     if (t.open === 'run') {
       setRunTakeBack(Boolean(t.takeBack))
@@ -4782,6 +4793,21 @@ export default function LienDesk({
               />
             )
           })() : null}
+          {serveOpen ? (
+            <LienServeWindow
+              jobs={serveJobs}
+              todayYmd={todayYmd}
+              issuer={issuer}
+              isMobile={isMobile}
+              zIndex={805}
+              onOpenJob={(jobId) => {
+                setServeOpen(false)
+                ;(onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)
+              }}
+              onChanged={onChanged}
+              onClose={() => setServeOpen(false)}
+            />
+          ) : null}
           {publicReview?.[0] ? (
             <LienPublicPropertyWindow
               key={publicReview[0]}
