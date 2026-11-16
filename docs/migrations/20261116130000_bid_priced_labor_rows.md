@@ -1,4 +1,4 @@
-# 20261116090000_bid_priced_labor_rows.sql (2026-11-15, v2.7370)
+# 20261116130000_bid_priced_labor_rows.sql (2026-11-15, v2.7370)
 
 Team scorecard (punch list #360), the train's one residual: the labor count is kept with the priced margin.
 
