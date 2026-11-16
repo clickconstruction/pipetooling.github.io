@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAddressWords, boxPageAsksInside, boxPageBidWords, boxPageCallHref, boxPageCode, boxPageCodeWords, boxPageDayWords, boxPageDialNumber, boxPageEarlyAnswer, boxPageNoun, boxPageOfficePhone, boxPagePath, boxPagePlate, boxPageSiteWords, boxPageStickerAnswer, boxPageTextHref, boxPageTextWords, boxPageView, boxPageWorkWords, buildBoxPagePayload, parseBoxPageResponse } from './boxPage'
+import { APP_SETTINGS_KEY_PHYSICAL_INVOICE_ISSUER_V1 } from '../appSettingsKeys'
+import { BOX_PAGE_COMPANY_KEY, BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAddressWords, boxPageAsksInside, boxPageBidWords, boxPageCallHref, boxPageCode, boxPageCodeWords, boxPageCompanyPhone, boxPageDayWords, boxPageDialNumber, boxPageEarlyAnswer, boxPageNoun, boxPageOfficePhone, boxPagePath, boxPagePlate, boxPageSiteWords, boxPageStickerAnswer, boxPageTextHref, boxPageTextWords, boxPageView, boxPageWorkWords, buildBoxPagePayload, parseBoxPageResponse } from './boxPage'
 import { typedCodeWords } from './boxPageMemory'
 import { labelPlate } from './labels'
 
@@ -146,12 +147,28 @@ describe('the presses that reach the office', () => {
   })
 })
 
-describe('the office number (v2.6910)', () => {
-  it('is the team box\'s line when Settings has one, then the fallback, then the letterhead', () => {
+describe('the office number (the company block\'s Phone since v2.7390)', () => {
+  it('is the first number that is there, in the order the function hands them', () => {
     expect(boxPageOfficePhone(['(512) 555-0144', '(512) 555-0100', '(512) 555-0199'])).toBe('(512) 555-0144')
     expect(boxPageOfficePhone(['', ' (512) 555-0100 ', '(512) 555-0199'])).toBe('(512) 555-0100')
     expect(boxPageOfficePhone([null, undefined, '(512) 555-0199'])).toBe('(512) 555-0199')
     expect(boxPageOfficePhone(['', null])).toBe('')
+  })
+
+  it('reads the Phone of Settings\' company block, whatever it is set to', () => {
+    expect(BOX_PAGE_COMPANY_KEY).toBe(APP_SETTINGS_KEY_PHYSICAL_INVOICE_ISSUER_V1)
+    expect(boxPageCompanyPhone(JSON.stringify({ companyName: 'Click Plumbing and Electrical', phone: ' (512) 555-0177 ', email: 'office@example.com' }))).toBe('(512) 555-0177')
+    expect(boxPageCompanyPhone(JSON.stringify({ companyName: 'Click Plumbing and Electrical', phone: '' }))).toBe('')
+    expect(boxPageCompanyPhone(JSON.stringify({ phone: 5125550177 }))).toBe('')
+    expect(boxPageCompanyPhone('not json')).toBe('')
+    expect(boxPageCompanyPhone('null')).toBe('')
+    expect(boxPageCompanyPhone(null)).toBe('')
+  })
+
+  it('the function asks the company block first, then the team box, the fallback and the letterhead', () => {
+    const source = readFileSync(resolve(process.cwd(), 'supabase/functions/box-read/index.ts'), 'utf8')
+    expect(source).toContain(".in('key', [BOX_PAGE_COMPANY_KEY, BOXES_SETTINGS_KEY])")
+    expect(source).toContain("boxPageOfficePhone([company, team, Deno.env.get('QUO_COMPANY_PHONE'), PORTAL_COMPANY.phone])")
   })
 })
 
