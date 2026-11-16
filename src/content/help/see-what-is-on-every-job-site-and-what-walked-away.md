@@ -151,9 +151,11 @@ Press **Label** on a box to print that box alone, or **Print labels** for every 
 
 On the Materials page, press **Print labels** at the right end of the tabs. A window lists every job that holds a cage or a box. The band on top shows what this computer prints on, with one label drawn at its printed size. Press **Change to paper** or **Change to Brother tape** to switch.
 
-Each job is a card. It says how many boxes and cages the job has, their names, and how many stand in each place. A green chip counts the boxes added this week. A blue chip counts the boxes that already wear a sticker. A line says how much tape the job takes, or how many pages.
+Each job is a card. It says how many boxes and cages the job has, their names, and how many stand in each place. An amber chip counts the boxes whose label has not printed yet. A green chip says every box is labelled. A blue chip counts the boxes that already wear a sticker. A line says how much tape the job takes, or how many pages.
 
-Press a job's name to open its labels. The buttons under a card open a part of them. **The 6 new** ticks only the boxes added this week. **All 91** ticks every box. When a run stopped earlier today, the card says so, and **The rest, 51 boxes** picks it up. Nothing prints until you press the print button in the next window.
+Press a job's name to open its labels. The buttons under a card open a part of them. **The 6 not printed yet** ticks only the boxes that still wait for a label. **All 91** ticks every box. When a run stopped earlier today, the card says so, and **The rest, 51 boxes** picks it up. Nothing prints until you press the print button in the next window.
+
+The app marks a box as labelled when its label prints. On paper, the mark is made when the print window closes. If the labels did not come out, press **Take the mark off 12 boxes** under the print button. For a box that already wears a label, tick it and press **Mark 1 box as labelled**. A box that wears a sticker counts as labelled. The app began keeping the mark on November 17, 2026. A box made before that day is not counted until its label prints.
 
 ## Print future stickers
 

@@ -40,6 +40,11 @@ export type Container = {
   lng: number | null
   retiredAt: string | null
   createdAt: string
+  /**
+   * When its label last went out (`job_containers.label_printed_at`, v2.7519): by the P-touch, by the print window,
+   * or by a person saying it already wears one. Null or absent: the app has not seen it printed (`labelMark.ts`).
+   */
+  labelPrintedAt?: string | null
 }
 
 /** A place on a site: a building level, the laydown yard, the mech room. Per job; a box moves between them. */

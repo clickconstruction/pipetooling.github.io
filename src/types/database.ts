@@ -20775,6 +20775,7 @@ export type Database = {
           job_id: string
           kind: string
           label: string
+          label_printed_at: string | null
           lat: number | null
           lng: number | null
           place_id: string | null
@@ -20790,6 +20791,7 @@ export type Database = {
           job_id: string
           kind: string
           label: string
+          label_printed_at?: string | null
           lat?: number | null
           lng?: number | null
           place_id?: string | null
@@ -20805,6 +20807,7 @@ export type Database = {
           job_id?: string
           kind?: string
           label?: string
+          label_printed_at?: string | null
           lat?: number | null
           lng?: number | null
           place_id?: string | null
@@ -44352,6 +44355,7 @@ export type Database = {
           job_id: string
           kind: string
           label: string
+          label_printed_at: string | null
           lat: number | null
           lng: number | null
           place_id: string | null

@@ -3,7 +3,8 @@
  * Render smoke for Print labels from anywhere (punch list #304): two jobs with boxes ask *Which job?*, a pick opens
  * that job's labels, one job skips the question, a row's job opens straight, and no box at all names the next press.
  * Since v2.7482 each job is a card that says what it holds, a band says what the labels print on, and a card's doors
- * open the labels window on the rest of a stopped run, on the new boxes or on every box.
+ * open the labels window on the rest of a stopped run, on the new boxes or on every box. Since v2.7519 the new boxes
+ * are the boxes whose label the app has not seen print (`labelMark.ts`).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -22,7 +23,6 @@ vi.mock('../../hooks/useAuth', async () => {
   return useAuthModuleMock()
 })
 
-const NOW = Date.parse('2026-11-16T15:00:00Z')
 const box = (id: string, jobId: string, label: string, over: Partial<Container> = {}): Container => ({ id, jobId, label, kind: 'cage', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z', ...over })
 const A1 = '7d759246-8476-4a37-884f-ed1562d5663f'
 const A2 = '4f2a9c18-0000-4000-8000-000000000003'
@@ -33,16 +33,16 @@ const oak: OnSiteFindJob = {
   number: 'JP1042',
   name: 'Oak Hollow',
   address: '410 Mill Road',
-  containers: [box(A1, 'j1', 'A1', { locationId: 'p1' }), box(A2, 'j1', 'A2', { kind: 'box', locationId: 'p1' }), box(A3, 'j1', 'A3', { kind: 'box', createdAt: '2026-11-15T00:00:00Z' }), box('un', 'j1', 'Unsorted', { kind: 'unsorted' })],
+  containers: [box(A1, 'j1', 'A1', { locationId: 'p1' }), box(A2, 'j1', 'A2', { kind: 'box', locationId: 'p1' }), box(A3, 'j1', 'A3', { kind: 'box', createdAt: '2026-11-18T00:00:00Z' }), box('un', 'j1', 'Unsorted', { kind: 'unsorted' })],
   lines: [{ containerId: A1, partName: '2 in 90', manufacturer: null, onHand: 4 } as ContainerLine],
   places: [{ id: 'p1', jobId: 'j1', name: 'Level 2', createdAt: '2026-11-01T00:00:00Z' }],
 }
 const mill: OnSiteFindJob = { jobId: 'j2', label: 'JP1063 · Mill Street Lofts', number: 'JP1063', name: 'Mill Street Lofts', containers: [box('9c184f2a-0000-4000-8000-000000000001', 'j2', 'B1', { kind: 'box' })], lines: [], places: [] }
 const bare: OnSiteFindJob = { jobId: 'j3', label: 'JP1071 · Larkspur Dental', containers: [box('un3', 'j3', 'Unsorted', { kind: 'unsorted' })], lines: [], places: [] }
 const quiet = { error: null, raw: null, retry: () => {} }
-/** The cards' reads as spies that never answer, so a card is read as it stands without them; no printer, and a fixed clock. */
+/** The cards' reads as spies that never answer, so a card is read as it stands without them; no printer. */
 const never = <T,>() => new Promise<T>(() => {})
-const reads = (over: Partial<NonNullable<Parameters<typeof PrintLabelsWindow>[0]['reads']>> = {}) => ({ sites: vi.fn(() => never<Map<string, string>>()), stickered: vi.fn(() => never<Set<string>>()), connect: vi.fn(() => never<PtouchLink | null>()), usbHere: false, now: () => NOW, ...over })
+const reads = (over: Partial<NonNullable<Parameters<typeof PrintLabelsWindow>[0]['reads']>> = {}) => ({ sites: vi.fn(() => never<Map<string, string>>()), stickered: vi.fn(() => never<Set<string>>()), connect: vi.fn(() => never<PtouchLink | null>()), usbHere: false, ...over })
 
 afterEach(() => {
   cleanup()
@@ -53,7 +53,7 @@ describe('PrintLabelsWindow', () => {
   it('asks which job when two hold boxes, leaves out a job with none, and the head opens the pick', () => {
     renderWithProviders(<PrintLabelsWindow jobs={[mill, oak, bare]} loading={false} failure={quiet} reads={reads()} onClose={() => {}} />)
     const rows = screen.getAllByTestId('print-labels-job')
-    // Oak Hollow has a box added this week, so it comes first.
+    // Nothing is read yet, so the jobs stand in the order of their numbers.
     expect(rows.map((r) => r.textContent)).toEqual(['JP1042Oak Hollow410 Mill Road3labels', 'JP1063Mill Street Lofts1label'])
     expect(screen.getByTestId('print-labels-jobs-count').textContent).toBe('2 jobs hold a cage or a box.')
     fireEvent.click(rows[0]!)
@@ -72,7 +72,7 @@ describe('PrintLabelsWindow', () => {
     expect(card.getByTestId('print-labels-job-need').textContent).toBe('3 strips · about 12 cm of 24 mm tape')
     // The site and the stickers land after their reads; the card stands without them until then.
     await waitFor(() => expect(card.getByTestId('print-labels-job-where').textContent).toBe('Oak Hollow Apartments · 410 Mill Road'))
-    await waitFor(() => expect(card.getByTestId('print-labels-job-chips').textContent).toBe('1 added this week1 already wears a sticker2 empty'))
+    await waitFor(() => expect(card.getByTestId('print-labels-job-chips').textContent).toBe('1 not printed yet1 already wears a sticker2 empty'))
     expect(sites).toHaveBeenCalledWith(['j1', 'j2'])
     expect(stickered.mock.calls[0]![0]).toHaveLength(4)
     // A job with nothing new and nothing read has no chips, and one door.
@@ -121,10 +121,13 @@ describe('PrintLabelsWindow', () => {
     expect(screen.getByTestId('print-labels-band').getAttribute('data-band')).toBe('sheet')
   })
 
-  it('the doors open the labels window on the new boxes alone, or on every box', () => {
-    renderWithProviders(<PrintLabelsWindow jobs={[oak, mill]} loading={false} failure={quiet} reads={reads()} onClose={() => {}} />)
-    expect(screen.getByTestId('print-labels-door-new').textContent).toBe('The 1 new›')
-    fireEvent.click(screen.getByTestId('print-labels-door-new'))
+  it('the doors open the labels window on the boxes not printed yet alone, or on every box', async () => {
+    // A3 was made since the app began keeping the mark and its label was never seen to print. The stickers could not
+    // be read, so what waits stands on the mark alone.
+    const stickered = vi.fn(async (_boxIds: ReadonlyArray<string>): Promise<Set<string>> => { throw new Error('no signal') })
+    renderWithProviders(<PrintLabelsWindow jobs={[oak, mill]} loading={false} failure={quiet} reads={reads({ stickered })} onClose={() => {}} />)
+    expect((await screen.findByTestId('print-labels-door-unprinted')).textContent).toBe('The 1 not printed yet›')
+    fireEvent.click(screen.getByTestId('print-labels-door-unprinted'))
     expect(screen.getAllByTestId('labels-sheet')).toHaveLength(1)
     expect(screen.getAllByTestId('labels-pick').map((c) => c.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true'])
     cleanup()
