@@ -83,6 +83,22 @@ describe('buildLienDeskRun', () => {
     expect(runNoticeProblems(n)).toEqual(['Owner of record: no mailing address'])
   })
 
+  it('a notice carries the property record it points at, and the record’s street when the job’s name does not say it (v2.7489)', () => {
+    const d = data([approved])
+    d.addressesById.addr1 = { ...(d.addressesById.addr1 as unknown as Record<string, unknown>), address: '1204 Elwick Rd, Schertz, TX 78154' } as unknown as LienDeskData['addressesById'][string]
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(n.propertyId).toBe('addr1')
+    expect(n.street).toBe('1204 Elwick Rd')
+    // A name that already says the street shows none beside it.
+    d.jobsById.j650 = { ...d.jobsById.j650!, job_name: 'AXO Schertz, 1204 Elwick Rd' }
+    expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!.street).toBe('')
+    // A job that points at no property record has neither.
+    d.jobsById.j650 = { ...d.jobsById.j650!, customer_address_id: null }
+    const none = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(none.propertyId).toBeNull()
+    expect(none.street).toBe('')
+  })
+
   it('an owner the nightly run saved from the roll blocks Record the run until a person confirms it (v2.3450)', () => {
     const d = data([approved])
     const addr = d.addressesById.addr1 as unknown as Record<string, unknown>

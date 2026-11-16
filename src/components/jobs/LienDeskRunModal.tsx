@@ -52,7 +52,7 @@ import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { LIEN_RUN_ACT, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
+import { LIEN_RUN_ACT, lienRunWhatWords, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 
 /** Which of the window's three stacks a notice's envelopes sit in, by its part (`lienRunParts`): what prints now, what printed, what is stopped. */
 const stackOf = (part: LienRunPartKey | undefined): 'ready' | 'printed' | 'rest' => (part === 'ready' ? 'ready' : part === 'owe' || part === 'record' ? 'printed' : 'rest')
@@ -285,6 +285,8 @@ export default function LienDeskRunModal({
     return names.size === 1 ? [...names][0] || null : names.size === 0 ? leaderName : null
   }, [rows, partOfItem, leaderName])
   const parts = useMemo(() => lienRunParts(rows, envelopes, { leaderName: waitLeader, together }), [rows, envelopes, waitLeader, together])
+  // What the run holds (v2.7489): the paper and the stage, said in the head, so nobody counts a property's affidavits or its sent notices against it.
+  const what = useMemo(() => lienRunWhatWords({ monthly: notices.filter((n) => n.kind !== 'retainage_53_057').length, retainage: notices.filter((n) => n.kind === 'retainage_53_057').length }), [notices])
   // The window's second line: the copies and the envelopes, named once, and the first of the notices' last days to mail.
   const subLine = useMemo(() => {
     const line = lienRunSubLine({ copies: runCopies(shown), envelopes: envelopes.length, mailByWords: lienRunMailByWords(notices.map((n) => n.mailBy)) })
@@ -892,9 +894,12 @@ export default function LienDeskRunModal({
               </button>
             </div>
             {subLine ? <div data-testid="run-sub" style={{ marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{subLine}</div> : null}
+            <div data-testid="run-what" style={{ marginTop: 2, fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
+              <span style={{ color: 'var(--text-700)', fontWeight: 600 }}>{what.line}</span> {what.not}
+            </div>
             {explainerOpen ? (
               <p data-testid="run-explainer" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-                One packet with every notice that is ready: a checklist sheet listing its {(readyPaper.length || printedPaper.length)} {(readyPaper.length || printedPaper.length) === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope stays' : 'envelopes stay'} out. A notice inside is held or waits on the signature, and the sheet lists ${mailing.held.length === 1 ? 'it' : 'them'} in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
+                One packet with every notice that is ready: a checklist sheet listing its {(readyPaper.length || printedPaper.length)} {(readyPaper.length || printedPaper.length) === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope stays' : 'envelopes stay'} out. A notice inside is held or waits on the signature, and the sheet lists ${mailing.held.length === 1 ? 'it' : 'them'} in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it. {what.more}
               </p>
             ) : null}
           </div>
@@ -1147,6 +1152,7 @@ export default function LienDeskRunModal({
                       <div key={`${n.itemId}-${r.key}`} className="lienRunCopyRow" data-testid={`run-row-${n.jobId}-${r.key}`}>
                         <div className="lienRunJob">
                           {n.label}
+                          {n.street ? <span className="lienRunStreet"> · {n.street}</span> : null}
                           {partsOf(n as CombinedRunNotice) ? <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.72rem' }} data-testid="run-combined-parts">{partsOf(n as CombinedRunNotice)!.map((p) => `${p.jobNumber} ${formatUsdNoCents(p.amount)}`).join(' · ')}</div> : null}
                           <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{r.key === 'owner' ? (n.coverLetter ? ' · cover letter' : n.coverNote ? ' · cover note' : '') : ''}</div>
                           {mine.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{mine.join(' · ')}</div> : null}

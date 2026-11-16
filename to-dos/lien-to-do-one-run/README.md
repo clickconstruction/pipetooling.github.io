@@ -16,7 +16,7 @@ summary: >
 next: Step 5, the Get it right checklist with Leave out (M), the first step of the run. Ask where a left-out paper is remembered and whether the next run takes it by itself, before it is built.
 size: L for D as five steps (M · M · M · S · M); B, the first three, and step 4, the list by bin, are built; left: steps 5 to 8 (M · M · S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7489
 ---
 
 # Lien desk To do: one run (#362)
@@ -246,6 +246,16 @@ Tabs **Today**, **1 Get them right**, **2 Print**, **3 Mail and record** and **T
   you un-print it?" The owner said to pass it on. A row's Printed tick is a press that asks first and
   puts that notice alone back in *Approved · to print*, and a mark by hand has a one-press undo right
   after. The run's own *Take back…* is still every printed notice.
+- **The window says which paper it holds, built, v2.7489.** Taunya counted a property's invoices,
+  then its lien affidavits, against an envelope of the notices' run. Both times the envelope was
+  right and nothing on screen said why. The head now reads *Monthly notices (§ 53.056), approved and
+  not yet mailed*, and says a job whose notice already went and the lien affidavits are not here. A
+  row shows the property's street after a job's name that does not say it.
+- **Waiting: the line that counts a property's other jobs** (*At this property: 1 notice in this
+  envelope · 4 notices mailed Oct 14 · 6 lien affidavits ready to file*), with a press to see them.
+  Its reasons come from the whole-property view's kernel (`lienPropertyPapers.ts`), so it is built
+  once that kernel is on `main`. The owner picks first whether a contractor's envelope gets one line
+  a property or one line for the envelope.
 - **Not checked on the live desk.** It was looked at with sample ZZ rows at 1,280, 1,024 and 375 px.
 
 ## How to verify

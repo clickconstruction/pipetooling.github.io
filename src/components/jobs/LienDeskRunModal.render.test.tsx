@@ -1940,3 +1940,36 @@ describe('LienDeskRunModal · un-print one notice from its own row (v2.7481)', (
     expect(screen.getByTestId('run-check-printed-u372').textContent).toMatch(/^✓ \w{3} \d{1,2} · ZZ Office$/)
   })
 })
+
+describe('LienDeskRunModal · which paper the run holds, and the street beside a job’s name (v2.7489)', () => {
+  it('the head names the paper and the stage and says what is not here; the ? says where the affidavits print', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-what').textContent).toBe('Monthly notices (§ 53.056), approved and not yet mailed. A job whose notice already went is not here. Lien affidavits are not here either.')
+    expect(screen.queryByTestId('run-explainer')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'What the packet is' }))
+    expect(screen.getByTestId('run-explainer').textContent).toContain('Lien affidavits print from the Board, with Print N for notarization. Their copies to the owner and the original contractor go out after the filing.')
+  })
+
+  it('a retainage notice in the run is named beside the monthly ones', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[notice(), notice({ itemId: 'r1', jobId: 'j700', label: '700 · ZZ Test Tower', jobNumber: '700', kind: 'retainage_53_057' })]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-what').textContent).toContain('Monthly notices (§ 53.056) and retainage notices (§ 53.057), approved and not yet mailed.')
+  })
+
+  it('two jobs at one address read as two at that address: the street shows on the row and on the envelope’s copy line, and not where the name says it', async () => {
+    const gc = { key: 'original_contractor' as const, label: 'Original contractor', name: 'ZZ Test Builders', address: '100 Example Pkwy, Sampleton, TX 78000', email: '', method: 'certified_mail' as const, tracking: '' }
+    const owner = { key: 'owner' as const, label: 'Owner of record', name: 'ZZ Test Kettle LLC', address: '9 Owner Way, Sampleton, TX 78000', email: '', method: 'certified_mail' as const, tracking: '' }
+    const a = notice({ itemId: 'k1', jobId: 'jk1', label: '401 · ZZ Test Kettle shop', jobNumber: '401', propertyId: 'p1', street: '212 Kettle Dr', recipients: [owner, gc] })
+    const b = notice({ itemId: 'k2', jobId: 'jk2', label: '402 · ZZ Test 212 Kettle Dr, phase 2', jobNumber: '402', propertyId: 'p1', street: '', recipients: [owner, gc] })
+    renderRun(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-check-street-k1').textContent).toBe(' · 212 Kettle Dr')
+    expect(screen.getByTestId('run-check-k1').querySelector('b')!.textContent).toBe('401 · ZZ Test Kettle shop · 212 Kettle Dr')
+    expect(screen.queryByTestId('run-check-street-k2')).toBeNull()
+    // The contractor's envelope lists both jobs, the first with its street.
+    expect(screen.getByTestId('run-row-jk1-original_contractor').textContent).toContain('401 · ZZ Test Kettle shop · 212 Kettle Dr')
+    expect(screen.getByTestId('run-row-jk2-original_contractor').textContent).toContain('402 · ZZ Test 212 Kettle Dr, phase 2')
+    expect(screen.getByTestId('run-row-jk2-original_contractor').textContent).not.toContain('phase 2 · 212 Kettle Dr')
+  })
+})

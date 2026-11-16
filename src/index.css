@@ -4687,6 +4687,8 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunCheckHead { display: grid; gap: 1px; min-width: 0; }
 .lienRunCheckHead b { color: var(--text-strong); }
 .lienRunCheckAmt { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* The property's street beside a job's name (v2.7489), on a row and on an envelope's copy line: quieter than the name. */
+.lienRunStreet { font-weight: 500; color: var(--text-muted); }
 .lienRunCheckWho { color: var(--text-muted); font-size: 0.72rem; }
 .lienRunCheckLine { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
 .lienRunCheckHeld { color: var(--text-red-600); font-size: 0.72rem; font-weight: 600; }
