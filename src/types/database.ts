@@ -40945,6 +40945,7 @@ export type Database = {
           charge_standing: string | null
           counttooling_user_id: string | null
           created_at: string | null
+          dashboard_view: string | null
           dispatch_mode_enabled: boolean | null
           email: string | null
           estimator_prospects_access: boolean
@@ -40988,6 +40989,7 @@ export type Database = {
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
+          dashboard_view?: string | null
           dispatch_mode_enabled?: boolean | null
           email?: string | null
           estimator_prospects_access?: boolean
@@ -41031,6 +41033,7 @@ export type Database = {
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
+          dashboard_view?: string | null
           dispatch_mode_enabled?: boolean | null
           email?: string | null
           estimator_prospects_access?: boolean
@@ -49189,6 +49192,10 @@ export type Database = {
       }
       set_customer_portal_slug: {
         Args: { p_customer_id: string; p_slug: string }
+        Returns: Json
+      }
+      set_dashboard_view: {
+        Args: { p_user_id: string; p_view: string }
         Returns: Json
       }
       set_default_job: {

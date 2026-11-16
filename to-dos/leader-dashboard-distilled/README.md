@@ -2,7 +2,7 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: assessed and drawn 2026-11-16 · the owner picked direction B, the short Dashboard · PR 1 built the same day (v2.7466, on branch claude/leader-dashboard-distilled-51e127) · the live screen as the leader was not walked
+status: assessed and drawn 2026-11-16 · the owner picked direction B, the short Dashboard · PR 1 merged the same day (v2.7466) and its migration is pushed · nobody is on Short yet · the live screen as the leader was not walked
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
@@ -127,6 +127,6 @@ PR 1 took the default in brackets for each.
 
 ## Where it stands
 
-PR 1 is built and its tests pass. The page was looked at with sample rows at phone width in both themes.
-The live page as the leader has not been walked, and he has not been set to Short. That press is the
-owner's or the office's.
+PR 1 is on `main` (v2.7466) and its migration is pushed (2026-11-16). The page was looked at with sample
+rows at phone width in both themes. The live page as the leader has not been walked, and he has not been
+set to Short: every leader's and dev's row reads Full. That press is the owner's or the office's.
