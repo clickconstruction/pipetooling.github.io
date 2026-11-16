@@ -135,6 +135,12 @@ describe('PeopleSubsTab: a sheet with several names (v2.7169)', () => {
       fireEvent.click(within(subRow as HTMLElement).getByRole('button', { expanded: false }))
       expect((await screen.findByTestId('sub-owed-check')).textContent).toContain('✓ the figure in the column')
       expect(screen.getByTestId('sub-owed-block').textContent).toContain('with Owen Farris, Dana Whitlock')
+      // The sub's sheet also names two teammates: the page offers to take them off, and the window names its count.
+      expect(screen.getByTestId('subs-ride-along-line').textContent).toContain("1 sub's sheet also names a teammate. The teammate is not paid from it.")
+      fireEvent.click(screen.getByRole('button', { name: 'Take the teammates off…' }))
+      expect(screen.getAllByTestId('ride-along-row')).toHaveLength(1)
+      expect(screen.getByRole('button', { name: 'Take teammates off 1 sheet' })).toBeTruthy()
+      expect(screen.getByTestId('ride-along-effect').textContent).toContain('$2,150.00 is open on it before, and $2,150.00 after.')
     } finally {
       for (const k of Object.keys(TABLE_ROWS)) delete TABLE_ROWS[k]
       Object.assign(TABLE_ROWS, saved)
