@@ -8,7 +8,7 @@ const note: ReleaseNote = {
   highlights: [
     'The morning run that plans a customer’s Paid reminder now reads a bill’s own due day, as the Pipeline row shows it.',
     'It also reads pay terms set as a number of days after the bill. Before, such a bill was judged by the payer’s usual pace.',
-    'Nothing changes for a bill with neither. No bill has a due day of its own yet, and no payer is on terms in days.',
+    'This starts with the morning run’s next update, which waits on the office’s go. No bill has a due day of its own yet, and no payer is on terms in days.',
   ],
 }
 
