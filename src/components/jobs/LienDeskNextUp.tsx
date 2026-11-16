@@ -407,7 +407,7 @@ export default function LienDeskNextUp({
   const phoneGroup = (g: LienPhoneGroup) => {
     const whose = g.group === 'mine' || g.group === 'sign' || g.group === 'pen'
     const violet = g.group === 'reminders'
-    const fg = g.group === 'day' ? PHONE_TONE[g.tone].fg : whose ? 'var(--text-link)' : violet ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : 'var(--text-muted)'
+    const fg = g.group === 'day' ? PHONE_TONE[g.tone].fg : whose ? 'var(--text-link)' : violet ? 'var(--text-violet-700)' : 'var(--text-muted)'
     const bg = g.group === 'day' ? PHONE_TONE[g.tone].bg : 'var(--bg-subtle)'
     return (
       <section key={g.key} aria-label={g.label} data-lien-next-up-group={g.group} data-lien-phone-group={g.key} style={{ margin: '0 -0.75rem' }}>
@@ -473,7 +473,7 @@ export default function LienDeskNextUp({
               </h4>
             ) : (
               <>
-                <h3 style={{ minWidth: 0, margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' || g.group === 'waiting' ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
+                <h3 style={{ minWidth: 0, margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' || g.group === 'waiting' ? 'var(--text-violet-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
                   {g.label} · {g.rows.length}
                 </h3>
                 <span style={{ flex: 1, minWidth: 0, fontSize: '0.72rem' }}>{dayWords(headDayOf(g))}</span>

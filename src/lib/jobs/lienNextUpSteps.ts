@@ -1,15 +1,15 @@
 /**
  * The steps behind the Lien desk's To do rows (v2.4631, the owner's ask): each kind of paper
  * walks a ladder of four, and a row stands on one rung of it. `lienStepOfRow` says which;
- * `countLienSteps` adds the rows up per rung for the rail above the list; `lienStepCard`
- * writes one row's ladder out for the card that opens on its dots — what is done, what is
- * being done now, what is still to come, the deadline and what blocks it. Pure: every word
- * comes from the row and the facts the desk already holds. Nothing here reads or writes.
+ * `lienStepCard` writes one row's ladder out for the card that opens on its dots — what is
+ * done, what is being done now, what is still to come, the deadline and what blocks it. The
+ * rail's counts and the brief a pressed rung opened left with the rail (v2.7451). Pure: every
+ * word comes from the row and the facts the desk already holds. Nothing here reads or writes.
  */
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { LienNextUpKind, LienNextUpRow } from './lienNextUp'
 import { lienOfferApprovedWords, type LienPayOffer } from './lienPayOffer'
-import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderBrief, lienReminderLadderItems, type LienBriefMove, type LienReminderBrief, type LienReminderState } from './lienReminders'
+import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderLadderItems } from './lienReminders'
 
 /** The three kinds of paper, and the REMINDERS ladder a sent notice walks (punch list #262). */
 export type LienStepLadder = LienNextUpKind | 'reminder'
@@ -48,34 +48,6 @@ export function lienStepOfRow(row: Pick<LienNextUpRow, 'kind' | 'action' | 'remi
     default:
       return null
   }
-}
-
-export type LienStepCounts = Record<LienStepLadder, [number, number, number, number]>
-
-/**
- * Rows per rung. The notice and retainage ladders' fourth rung is how many notices are
- * approved and waiting for the run, which the desk counts itself (a GC with several ready
- * is one row that names them all), so it is handed in; a ladder with no such count takes
- * its rows. The REMINDERS ladder's four counts come whole from `buildLienReminders` when the
- * desk hands them in (punch list #262) — its rungs count sent notices that have no row here.
- */
-export function countLienSteps(rows: ReadonlyArray<Pick<LienNextUpRow, 'kind' | 'action' | 'reminder'>>, ready: Partial<Record<LienStepLadder, number>> = {}, reminders?: readonly [number, number, number, number]): LienStepCounts {
-  const counts: LienStepCounts = { notice: [0, 0, 0, 0], reminder: [0, 0, 0, 0], affidavit: [0, 0, 0, 0], retainage: [0, 0, 0, 0] }
-  for (const r of rows) {
-    const at = lienStepOfRow(r)
-    if (at) counts[at.ladder][at.step - 1] = (counts[at.ladder][at.step - 1] ?? 0) + 1
-  }
-  for (const key of ['notice', 'retainage'] as const) {
-    const n = ready[key]
-    if (n != null) counts[key][3] = n
-  }
-  if (reminders) counts.reminder = [...reminders]
-  return counts
-}
-
-/** Notices always; the other ladders only when something stands on them. */
-export function lienLaddersShown(counts: LienStepCounts): LienStepLadder[] {
-  return LIEN_STEP_LADDERS.filter((l) => l.key === 'notice' || counts[l.key].some((n) => n > 0)).map((l) => l.key)
 }
 
 /** What the desk already knows about the row's job, for the card. Every field is optional: the card says less, never wrong. */
@@ -271,79 +243,4 @@ export function lienStepTiles(at: LienStepAt | null, ladder: LienStepLadder, vie
     const who: LienStepTile['who'] = state !== 'now' ? null : leaders === viewerIsLeader ? 'you' : leaders ? 'leader' : 'office'
     return { n, label: names[n - 1]!, state, who }
   })
-}
-
-/** The run rung's word after its count (punch list #101): " ready", " printed", or " · 19 printed" when both wait. */
-export function lienRunRungWords(n: number, printed: number): string {
-  if (printed <= 0) return ' ready'
-  if (printed >= n) return ' printed'
-  return ` · ${printed} printed`
-}
-
-/**
- * The list under a pressed rung (v2.6574): the rows on the rung first under *On this step*, the rest
- * at full strength under *On other steps*, each in the order the list already had. Until v2.6574 a
- * pressed rung faded the rows off it to a third (v2.4631), and the pale rows were read as blocked;
- * the sort says the same thing with nothing greyed, so every row keeps its button and its look.
- */
-export function lienStepGroups(rows: ReadonlyArray<LienNextUpRow>, on: LienStepAt): Array<{ group: 'step_on' | 'step_other'; label: string; rows: LienNextUpRow[] }> {
-  const isOn = (r: LienNextUpRow) => {
-    const at = lienStepOfRow(r)
-    return !!at && at.ladder === on.ladder && at.step === on.step
-  }
-  const here = rows.filter(isOn)
-  const other = rows.filter((r) => !isOn(r))
-  return [
-    { group: 'step_on', label: 'On this step', rows: here },
-    ...(other.length ? [{ group: 'step_other' as const, label: 'On other steps', rows: other }] : []),
-  ]
-}
-
-/** A pressed rung's name, *3 · Letter two*, for the brief's head on any rail. */
-export function lienStepName(on: LienStepAt): string {
-  const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
-  return `${on.step} · ${ladder.steps[on.step - 1]}`
-}
-
-const HOLDS: LienBriefMove[] = [
-  { press: 'Hold — they promised…', means: 'they gave a date; the desk waits for it and asks again' },
-  { press: 'Hold — I’ll call first', means: 'you want to phone before anything goes out' },
-]
-const PAID = 'the bill is paid first'
-
-/**
- * The step brief for any rail (v2.6577; rewritten v2.6594 for a first-week employee, punch list #274):
- * in plain words, why a row is here, the usual press and what it does, the other presses the paper's
- * own pane offers with what each means, what ends the step on its own, and what happens if nobody acts.
- * The words agree with the row's card (`ladderItems`) and the row's button (`BUTTON`). `state` (PR 3 of
- * #274) is the picked notice's rung state on the REMINDERS rail, so a paying notice reads its own brief.
- */
-export function lienStepBrief(on: LienStepAt, state?: LienReminderState | null): LienReminderBrief {
-  if (on.ladder === 'reminder') return lienReminderBrief(on.step, state)
-  const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
-  const title = ladder.steps[on.step - 1] ?? ''
-  if (on.ladder === 'affidavit') {
-    switch (on.step) {
-      case 1:
-        return { title, who: 'office', plain: 'An affidavit is the lien itself, filed at the county. It must say exactly which property and who owns it. This property record is missing part of that, so the affidavit cannot be written yet.', why: 'The property record is missing the owner, the legal description or the county.', usual: { press: 'Fix the property', means: 'opens the property record with the missing lines marked; fill them and the affidavit moves to Draft by itself' }, instead: [{ press: 'Fill in the record ›', means: 'the same record, opened in full' }, { press: 'Send the notice first ›', means: 'when no lien notice ever went for this month; the affidavit needs one before it' }], closes: `${PAID}, or the filing window closes`, ifNobody: 'On the lien’s day the window closes and the lien is gone for good. The money becomes a collections matter.' }
-      case 2:
-        return { title, who: 'office', plain: 'The property record is complete and the lien’s last day is coming. The desk can write the affidavit from the notice we already mailed.', why: 'The property record is complete and the affidavit’s day is coming.', usual: { press: 'Open the affidavit', means: 'the paper is drawn from the record; read it once, then send it to the leader, who signs it in front of a notary' }, instead: [{ press: 'He already okayed it ▾', means: 'he already told you to file it; the menu writes down his word and it goes straight to Ready' }, ...HOLDS], closes: PAID, ifNobody: 'The affidavit is not written. On the lien’s day the window closes and the lien is gone for good.' }
-      case 3:
-        return { title, who: 'leader', plain: 'The affidavit is written. The leader signs it in front of a notary and says it may be filed.', why: 'The affidavit is drafted and waits on the leader.', usual: { press: 'Approve — file it ▸', means: 'marks it signed and ready for the county' }, instead: [{ press: 'Hold', means: 'keeps it with a reason; the desk asks again' }, { press: 'Pull back to draft', means: 'the office changes something first' }, { press: 'Back to the office', means: 'hands it back without a change' }], closes: PAID, ifNobody: 'Nothing is filed. On the lien’s day the window closes and the lien is gone for good.' }
-      default:
-        return { title, who: 'office', plain: 'Take or send the signed affidavit to the county clerk before its last day. Then mail a copy to the owner within five days, which the law requires.', why: 'The affidavit is approved and its day is coming, or it is filed and waits on service.', usual: { press: 'File the affidavit', means: 'records the filing with the county’s stamp' }, instead: [{ press: 'Record service ›', means: 'records the copy you mailed to the owner' }, { press: 'Open the affidavit tab ›', means: 'the paper and its record on the job' }], closes: PAID, ifNobody: 'Unfiled on the lien’s day, the lien is gone for good. Filed but not served within five days, it can be challenged.' }
-    }
-  }
-  const retainage = on.ladder === 'retainage'
-  const paper = retainage ? 'retainage notice' : 'notice'
-  switch (on.step) {
-    case 1:
-      return { title, who: 'office', plain: retainage ? 'Retainage is the part of our money a GC holds back until the end. A separate notice protects it, and it must reach the owner. We do not know the owner yet.' : 'A lien notice has to reach the person who owns the land, not only the GC we worked for. We do not know who that is yet for these jobs.', why: 'Nobody is named as the owner of record on the property yet.', usual: { press: 'Find the owner', means: 'opens the property record with the owner line empty; type the name from the county’s record or the GC’s contract' }, instead: retainage ? [{ press: 'Property record ›', means: 'the record in full' }, { press: 'Set the day our contract ended ›', means: 'starts the 30-day clock the retainage notice runs on' }] : [{ press: 'Property record ›', means: 'the record in full' }, ...HOLDS], closes: `the owner is named on the property record, or ${PAID}`, ifNobody: `The ${paper} cannot be written, and its day keeps coming. After it the lien right for that month is lost.` }
-    case 2:
-      return { title, who: 'office', plain: retainage ? 'Our work on the job is finished and the held-back money is unpaid. The notice must go within 30 days of the finish.' : 'The owner is known and a month of our work is unpaid. The desk can write the notice from the job. Each month gets its own notice.', why: retainage ? 'Our contract on the job ended and the retainage is unpaid.' : 'The owner is named and a work month is unpaid with its window still open.', usual: { press: 'Open the notice', means: 'the state’s form is drawn from the job and the record; read it once, then send it to the leader' }, instead: retainage ? [{ press: 'He already okayed it ▾', means: 'he already told you to send it; the menu writes down his word and it goes straight to Ready' }, ...HOLDS, { press: 'The monthly notices on this job ›', means: 'the month notices this one sits beside' }] : [{ press: 'He already okayed it ▾', means: 'he already told you to send it; the menu writes down his word and it goes straight to Ready' }, ...HOLDS], closes: retainage ? PAID : `${PAID}, or the month’s window closes and the notice is noted missed`, ifNobody: retainage ? 'After 30 days from the finish the retainage notice is late, and the lien right on the retainage weakens.' : 'Nothing is mailed. After the notice’s day the lien right for that month is lost.' }
-    case 3:
-      return { title, who: 'leader', plain: retainage ? 'Written and waiting for the leader, who signs it as he signs any notice.' : 'A lien notice is the letter the law makes us send to the owner before we can ever lien their property. The office has written it. Only the leader may approve one, because it is sent in his name.', why: `The ${paper} is drafted and waits on the leader’s approval.`, usual: { press: 'Sign and approve ▸', means: 'signs it with the leader’s code and puts it in the next certified run; one press per notice' }, instead: retainage ? [{ press: 'Hold', means: 'keeps it with a reason; the desk asks again' }, { press: 'Pull back to draft', means: 'the office changes something first' }, { press: 'Back to the office', means: 'hands it back without a change' }] : [{ press: 'Not yet', means: 'holds it with a reason, they promised or I’ll call first; the desk asks again' }, { press: 'Pull back to draft', means: 'the office changes something first' }, { press: 'Ask counsel to sign off…', means: 'the attorney reads it before it goes' }, { press: 'Send notices without asking', means: 'the GC’s standing rule; every future month approves itself' }], closes: PAID, ifNobody: 'Nothing is mailed. A late notice still goes, but every day past its day weakens the claim, and after the month’s window the lien right is lost.' }
-    default:
-      return { title, who: 'office', plain: retainage ? 'It mails with the other notices, by certified mail.' : 'Approved notices wait to be printed and mailed together, by certified mail so we can prove they arrived.', why: `The ${paper} is approved and waits for the run, or is printed and waits on its tracking number.`, usual: { press: 'Send the run', means: 'prints every approved notice and its envelope; Record the mailing then takes each tracking number' }, instead: [{ press: 'Record the mailing', means: 'once the envelopes are at the post office, type in each tracking number' }, { press: 'Back to the office', means: 'takes a notice out of the run' }], closes: PAID, ifNobody: 'The notices sit printed and unmailed; each day past a notice’s day weakens its claim.' }
-  }
 }

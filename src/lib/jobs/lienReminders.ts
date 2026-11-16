@@ -1,5 +1,5 @@
-import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_AGAIN_DAYS, COURTESY_FROM_DAY, PROMISE_BUTTON, type CourtesyStatus } from './lienCourtesyNotice'
-import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY, type LetterTwoStatus } from './lienLetterTwo'
+import { COURTESY_FROM_DAY, type CourtesyStatus } from './lienCourtesyNotice'
+import { LETTER_TWO_FROM_DAY, type LetterTwoStatus } from './lienLetterTwo'
 import { LIEN_MONTH_RULE } from './lienMonthRhythm'
 
 /**
@@ -13,8 +13,9 @@ import { LIEN_MONTH_RULE } from './lienMonthRhythm'
  *
  * Pure. `lienReminderAt` reads one job's rung from its courtesy status (`courtesyStatus`, which
  * owns every rule of when a courtesy may go) and letter two's clock (`letterTwoStatus`);
- * `buildLienReminders` adds the desk's jobs up per rung with the names behind each. Nothing here
- * reads, writes or changes a rule: a closer closes here only because `courtesyStatus` closed it.
+ * `lienReminderLadderItems` writes that rung out for the card on a row's dots. The rail itself
+ * gave its place to the Board in v2.7332, and its counts and step briefs left in v2.7451. Nothing
+ * here reads, writes or changes a rule: a closer closes here only because `courtesyStatus` closed it.
  */
 
 export type LienReminderStep = 1 | 2 | 3 | 4
@@ -117,73 +118,6 @@ export function lienReminderAt(courtesy: CourtesyStatus | null | undefined, two:
   return at(1, (courtesy.day ?? 0) >= COURTESY_FROM_DAY && courtesy.reminderWindow ? 'scheduled' : 'waiting', courtesy.words, false)
 }
 
-export type LienReminderRow = LienReminderAt & { jobId: string; title: string; /** Why this notice is on its rung, in the courtesy's or the letter's own words (PR 2 of #274): the step brief counts the step's notices by it. */ why?: string }
-
-export type LienRemindersInput = {
-  courtesyByJob: Readonly<Record<string, CourtesyStatus>>
-  letterTwoByJob: Readonly<Record<string, LetterTwoStatus>>
-  jobTitle: (jobId: string) => string
-}
-
-export type LienReminders = {
-  /** Every job on the ladder, by rung, the longest-waiting first within a rung. */
-  rows: LienReminderRow[]
-  /** Per rung: the counted rows. */
-  counts: [number, number, number, number]
-  /** Sent notices before day 7 — on step 1 but not in its count. */
-  waiting: number
-  /** Sent notices past day 7 waiting for reminders week of the lien's month (punch list #235, PR 4) — on step 1, not in its count. */
-  scheduled: number
-}
-
-export const LIEN_REMINDERS_EMPTY: LienReminders = { rows: [], counts: [0, 0, 0, 0], waiting: 0, scheduled: 0 }
-
-/** Why a notice stands on its rung, short enough for a chip: the hold's reason, the letter's state, the courtesy's. */
-export function lienReminderWhy(courtesy: CourtesyStatus, two: LetterTwoStatus | null | undefined, at: LienReminderAt): string {
-  if (courtesy.state === 'closed') return courtesy.reason || 'closed'
-  if (at.state === 'paying') return 'paying it down'
-  if (courtesy.state === 'held') return courtesy.reason.replace(/\s—.*$/, '')
-  if (courtesy.state === 'affidavit_week') return 'the affidavit’s week'
-  if (two && two.state === 'in_flight') return 'the attorney’s letter is drafted'
-  if (two && two.state === 'sent') return 'the attorney’s letter went'
-  if (at.step === 3) return 'the courtesy went and a week passed'
-  if (courtesy.state === 'sent') return courtesy.waitingForAnswer ? 'the courtesy went this week' : 'the courtesy went, nothing since'
-  if (at.state === 'scheduled') return 'waits for reminders week'
-  if (courtesy.state === 'waiting') return 'before day 7'
-  return 'nothing since the packet'
-}
-
-export function buildLienReminders(input: LienRemindersInput): LienReminders {
-  const rows: LienReminderRow[] = []
-  for (const [jobId, courtesy] of Object.entries(input.courtesyByJob)) {
-    const two = input.letterTwoByJob[jobId]
-    const at = lienReminderAt(courtesy, two)
-    if (at) rows.push({ ...at, jobId, title: input.jobTitle(jobId), why: lienReminderWhy(courtesy, two, at) })
-  }
-  rows.sort((a, b) => a.step - b.step || (b.day ?? -1) - (a.day ?? -1) || a.title.localeCompare(b.title))
-  const counts: [number, number, number, number] = [0, 0, 0, 0]
-  let waiting = 0
-  let scheduled = 0
-  for (const r of rows) {
-    if (r.counted) counts[r.step - 1] = (counts[r.step - 1] ?? 0) + 1
-    else if (r.state === 'scheduled') scheduled += 1
-    else waiting += 1
-  }
-  return { rows, counts, waiting, scheduled }
-}
-
-/** The grey words after a rung's count: step 1's uncounted notices before day 7, and the ones waiting for reminders week (punch list #235, PR 4). */
-export function lienReminderRungWords(step: LienReminderStep, waiting: number, scheduled = 0): string {
-  if (step !== 1) return ''
-  const parts = [waiting > 0 ? `${waiting} before day ${COURTESY_FROM_DAY}` : '', scheduled > 0 ? `${scheduled} ${scheduled === 1 ? 'waits' : 'wait'} for reminders week` : ''].filter(Boolean)
-  return parts.length ? ` · ${parts.join(' · ')}` : ''
-}
-
-/** Whose press the rung is — every rung of this ladder is the office's; the leader approves letter two as he approves any notice. */
-export function lienReminderStepWho(step: LienReminderStep): 'office' | 'leader' {
-  return step === 3 ? 'leader' : 'office'
-}
-
 export type LienReminderCardItem = { state: 'done' | 'now' | 'todo'; title: string; detail: string }
 
 /** The row's ladder written out for the card on its dots: what went, what is being done now, what is still to come. */
@@ -226,120 +160,4 @@ export function lienReminderLadderItems(at: LienReminderAt): LienReminderCardIte
       detail: s(4) === 'now' ? `${at.words[0]?.toUpperCase() ?? ''}${at.words.slice(1)}.` : 'Paid, the GC authorized direct pay, the owner called, they answered, or the affidavit is filed.',
     },
   ]
-}
-
-export type LienReminderRungRule = { when: string; press: string; who: 'office' | 'leader'; movesOn: string }
-
-/**
- * A rung's rule in words, for the list under the rail when the rung is pressed (v2.6522): when a
- * sent notice stands here, what the row's press is, whose it is and what moves it on. The days are
- * the clocks' own constants, so the words follow a rule when it changes.
- */
-export function lienReminderRungRule(step: LienReminderStep): LienReminderRungRule {
-  switch (step) {
-    case 1:
-      return { when: `the packet went, nothing came back, it is day ${COURTESY_FROM_DAY} or later, and reminders week of the lien’s month (days ${LIEN_MONTH_RULE.reminders.from} to ${LIEN_MONTH_RULE.reminders.to}) has opened`, press: 'Send a courtesy notice, one email and one text from the notice’s own facts, never certified mail', who: 'office', movesOn: 'the courtesy goes' }
-    case 2:
-      return { when: 'the one courtesy notice went, or a payment came in after the packet and money is still owed', press: `none for ${COURTESY_AGAIN_DAYS} days; then Send the attorney’s letter. While they pay, ${PROMISE_BUTTON}`, who: 'office', movesOn: 'the attorney’s letter is drafted, the promised day passes, or something closes it' }
-    case 3:
-      return { when: `the attorney’s letter is due from day ${LETTER_TWO_FROM_DAY} and overdue from day ${LETTER_TWO_BY_DAY} while the courtesy is held, or an attorney’s letter is drafting, awaiting the leader, in the run or sent`, press: 'Send the attorney’s letter, counsel’s certified second letter, drafted on the notice and approved and run like any notice', who: 'leader', movesOn: 'something closes it, or the affidavit is filed' }
-    default:
-      return { when: 'paid, the GC authorized direct pay, the owner called, they answered, the affidavit is filed, or no reminder may go', press: 'none; the notice reads under Sent', who: 'office', movesOn: 'nothing; this is the end of the ladder' }
-  }
-}
-
-/** One move a brief names: the press as the row or the pane reads it, and what it means in a first-week employee's words. */
-export type LienBriefMove = { press: string; means: string }
-
-export type LienReminderBrief = {
-  title: string
-  /** Whose step it is: the usual move's owner. */
-  who: 'office' | 'leader'
-  /** In plain words: what this thing is, before any rule. */
-  plain: string
-  /** Why a notice stands here. */
-  why: string
-  /** What to do now: the usual press and what happens when it is pressed; null on Closed. */
-  usual: LienBriefMove | null
-  /** If that is not right: the other moves the row or the notice's footer offers, each with its meaning — named, never invented. */
-  instead: LienBriefMove[]
-  /** What moves a notice off this step with no press at all; '' on Closed. */
-  closes: string
-  /** If nobody acts: what the calendar does to this notice. */
-  ifNobody: string
-}
-
-const CLOSERS = 'the bill is paid, the GC okays direct pay in writing, the owner’s call is recorded, they answer, or the affidavit is filed'
-const OWNER_CALL: LienBriefMove = { press: 'Record the owner’s call', means: 'the owner phoned about it; that ends the reminders' }
-const GC_OKAY: LienBriefMove = { press: 'The GC authorized direct pay', means: 'the GC told the owner in writing to pay us' }
-
-/**
- * The step brief a pressed rung opens on To do (v2.6574; rewritten v2.6594 for a first-week employee,
- * punch list #274). Six parts, always in this order: in plain words · why a notice is here · what to do
- * now and what the press does · if that is not right, each other move with its meaning · what ends the
- * step on its own · what happens if nobody acts. The days are the clocks' own constants. The other moves
- * are the presses a sent notice's footer offers: *Record the owner’s call…*, *The GC authorized direct
- * pay…*, *Send a courtesy notice ▸* (again, by hand), *Send the attorney’s letter ▸* while unpaid.
- * `state` (PR 3 of #274) is the picked notice's own: step 2 while *paying it down* reads the payment's
- * brief — the usual move is *Record what they promised*, and the attorney's letter waits.
- */
-export function lienReminderBrief(step: LienReminderStep, state?: LienReminderState | null): LienReminderBrief {
-  if (step === 2 && state === 'paying') {
-    return {
-      title: LIEN_REMINDER_STEPS[1],
-      who: 'office',
-      plain: `We mailed the lien notice, and they have started paying. A partial payment is an answer, so the desk stops reminding and asks what they promised for the rest. The lien’s last day does not move.`,
-      why: `A payment came in after the packet and money is still owed.`,
-      usual: { press: PROMISE_BUTTON, means: 'the date and the amount they gave for the rest; the desk asks again on that date' },
-      instead: [{ press: 'Send the attorney’s letter', means: 'anyway, when the payment was token' }, OWNER_CALL, GC_OKAY],
-      closes: 'the rest is paid, the GC okays direct pay in writing, the owner’s call is recorded, or the affidavit is filed',
-      ifNobody: `Nothing is sent while they pay. On the promised day, or a week after the payment, the desk asks again. The affidavit’s week and the lien’s day still come.`,
-    }
-  }
-  switch (step) {
-    case 1:
-      return {
-        title: LIEN_REMINDER_STEPS[0],
-        who: 'office',
-        plain: `We mailed the lien notice a week or more ago and heard nothing. A courtesy reminder is a plain email and text that says the notice stands. It is not a legal paper, and we send it once.`,
-        why: `The packet went, nothing came back, it is day ${COURTESY_FROM_DAY} or later, and reminders week of the lien’s month has opened (days ${LIEN_MONTH_RULE.reminders.from} to ${LIEN_MONTH_RULE.reminders.to}).`,
-        usual: { press: 'Send a courtesy notice', means: 'sends the email and the text in one press; it takes a minute' },
-        instead: [{ press: 'Send the attorney’s letter', means: 'skip the light step; counsel’s certified letter goes now' }, OWNER_CALL, GC_OKAY],
-        closes: CLOSERS,
-        ifNobody: `Nothing goes out. From day ${LETTER_TWO_FROM_DAY} the attorney’s letter is due, from day ${LETTER_TWO_BY_DAY} it is late, and the lien’s day keeps coming.`,
-      }
-    case 2:
-      return {
-        title: LIEN_REMINDER_STEPS[1],
-        who: 'office',
-        plain: `We sent the one reminder. Give them a week to answer. If nothing comes, the next step is the attorney’s letter, not another reminder.`,
-        why: `A courtesy notice went inside the last ${COURTESY_AGAIN_DAYS} days.`,
-        usual: { press: 'Send the attorney’s letter', means: `after ${COURTESY_AGAIN_DAYS} days of silence; counsel’s certified letter, the leader approves it` },
-        instead: [{ press: 'Send a courtesy notice again', means: 'only by hand, when an email or a text bounced' }, OWNER_CALL, GC_OKAY],
-        closes: CLOSERS,
-        ifNobody: `After the week this notice moves to the attorney’s letter by itself. The lien’s day keeps coming.`,
-      }
-    case 3:
-      return {
-        title: LIEN_REMINDER_STEPS[2],
-        who: 'leader',
-        plain: `Nobody paid or answered. The attorney’s letter is the stronger letter our attorney wrote for exactly this. It goes by certified mail, like the first notice.`,
-        why: `The attorney’s letter is due from day ${LETTER_TWO_FROM_DAY} and late from day ${LETTER_TWO_BY_DAY}: the courtesy went and a week passed, or it could not go. A notice is also here while the letter is drafting, awaiting the leader, in the run or sent.`,
-        usual: { press: 'Send the attorney’s letter', means: 'you pick one of the attorney’s two letters, the leader approves, it goes in the next certified run' },
-        instead: [{ press: 'Send a courtesy notice', means: 'the plain email and text, by hand, once its hold has cleared' }, OWNER_CALL, GC_OKAY, { press: 'Open the notice', means: 'read the notice and its record under Sent' }],
-        closes: CLOSERS,
-        ifNobody: `Inside the ${COURTESY_AFFIDAVIT_MARGIN_DAYS} days before the lien’s day the desk asks for the affidavit instead. On the lien’s day the affidavit must be on file at the county or the right to it is lost.`,
-      }
-    default:
-      return {
-        title: LIEN_REMINDER_STEPS[3],
-        who: 'office',
-        plain: `This one is over: they paid, called, answered, the GC okayed paying us, or the lien is filed. Nothing is left to send. The notice stays under Sent as a record.`,
-        why: `Paid, the GC authorized direct pay, the owner called, they answered, the affidavit is filed, or the lien cannot go on.`,
-        usual: null,
-        instead: [{ press: 'Open the notice', means: 'see what ended it, under Sent' }, { press: 'Not what I said', means: 'pulls back a notice sent on your word or a GC’s rule while it has not gone out' }],
-        closes: '',
-        ifNobody: `Nothing. A closed notice needs nobody.`,
-      }
-  }
 }
