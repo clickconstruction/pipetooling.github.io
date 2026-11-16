@@ -81,7 +81,7 @@ describe('buildPlansByDateCards', () => {
       { label: 'On the sheets', value: 'May 20, 2025' },
       { label: 'Came', value: 'May 22, 2025 · 543 days ago' },
     ])
-    expect(c.actions.map((a) => a.kind)).toEqual(['open-link', 'build-from', 'show-part', 'ask'])
+    expect(c.actions.map((a) => a.kind)).toEqual(['open-link', 'build-from', 'set-sheets', 'show-part', 'ask'])
     const build = c.actions.find((a) => a.kind === 'build-from')
     expect(build && build.kind === 'build-from' ? [build.message, build.confirmLabel] : null).toEqual(['Build ZZ Building A from Issued set? Every job on ZZ Building A follows the set its part builds from.', 'Build from Issued set'])
   })
@@ -232,6 +232,49 @@ describe('a bid’s schedule', () => {
     expect(set).toContainEqual({ kind: 'set-schedule', label: 'Set the schedule', bidId: 'bid1' })
     expect(need(cardsFor(site(), office).cards, 'bid-bid1').actions.some((a) => a.kind === 'set-schedule')).toBe(false)
     expect(need(scheduled(office), 'sched-bid1').actions).toEqual([{ kind: 'open-bid', label: 'Open the bid', bidId: 'bid1' }])
+  })
+})
+
+describe('sheets in hand', () => {
+  const counted = (over: Record<string, number | null> = {}) =>
+    site({
+      sets: [
+        { ...set('a1', 'pA', 'Issued set', 'issued', '2025-05-20', '2025-05-22'), sheet_count: 64 },
+        { ...set('a3', 'pA', 'Permit set', 'permit', '2026-05-08', '2026-05-12'), sheet_count: 'a3' in over ? over.a3 : 118 },
+        { ...set('b1', 'pB', 'Revised set', 'revised', '2025-11-04', '2025-11-06'), sheet_count: 'b1' in over ? over.b1 : 94 },
+      ],
+    })
+
+  it('shows a set’s count on its card and offers to change it, or to set it on a set nobody counted', () => {
+    const cards = cardsFor(counted({ b1: null }), office).cards
+    expect(need(cards, 'set-a3').facts).toContainEqual({ label: 'Sheets', value: '118 sheets' })
+    expect(need(cards, 'set-a3').actions).toContainEqual({ kind: 'set-sheets', label: 'Change the sheet count', setId: 'a3', setName: 'Permit set', count: 118 })
+    expect(need(cards, 'set-b1').actions).toContainEqual({ kind: 'set-sheets', label: 'Set the sheet count', setId: 'b1', setName: 'Revised set', count: null })
+    expect(need(cards, 'set-b1').facts.some((f) => f.label === 'Sheets')).toBe(false)
+  })
+
+  it('adds the sets being built from, against what was in hand when the bid was sent', () => {
+    const { model, cards } = cardsFor(counted(), office)
+    const figure = model.figures.find((f) => f.key === 'sheets')
+    // Now: Permit set 118 + Revised set 94. At the bid (Jun 12, 2025): the Issued set, 64.
+    expect(figure).toEqual({ key: 'sheets', label: 'Sheets in hand', value: '212', sub: '64 at the bid' })
+    expect(need(cards, 'figure-sheets').rows.map((r) => [r.to, r.soft])).toEqual([
+      ['set-a3', '118 sheets'],
+      ['set-b1', '94 sheets'],
+    ])
+  })
+
+  it('says how many of the sets being built from nobody has counted', () => {
+    const { model, cards } = cardsFor(counted({ b1: null }), office)
+    expect(model.figures.find((f) => f.key === 'sheets')?.sub).toBe('64 at the bid · 1 set not counted')
+    expect(need(cards, 'figure-sheets').rows.map((r) => r.soft)).toEqual(['118 sheets', 'not counted yet'])
+  })
+
+  it('draws no sheets figure until someone has counted a set, and offers no press to a reader who cannot write plans', () => {
+    expect(cardsFor(site(), office).model.figures.some((f) => f.key === 'sheets')).toBe(false)
+    const read = cardsFor(counted(), { canWritePlans: false, canOpenJobs: false, canKeep: false, canAsk: false }).cards
+    expect(need(read, 'set-a3').actions.some((a) => a.kind === 'set-sheets')).toBe(false)
+    expect(need(read, 'set-a3').facts).toContainEqual({ label: 'Sheets', value: '118 sheets' })
   })
 })
 

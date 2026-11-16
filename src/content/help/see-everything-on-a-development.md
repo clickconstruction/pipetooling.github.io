@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
+keywords: development, site, subdivision, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, sheet count, sheets in hand, how many sheets, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -184,7 +184,7 @@ The reads start when you open the view. On a big site the icons mark the biggest
 
 Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part. A **Papers** column counts the specs, schedules and lists kept with each part's sets. Press the count to read them. An amber chip counts the questions still waiting and the papers we are owed. On a phone each part is a card with the same facts. See [keep the papers with the plans](/help/keep-the-papers-with-the-plans).
 
-Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Change the link}} on a set to point it at our own copy in Drive. See [change the link of a set](/help/keep-the-plans-on-a-job#change-the-link-of-a-set). Press {{button:outline|Build from this set}} on an older set to go back to it.
+Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. The form has a Sheets box for how many sheets the set has. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Change the link}} on a set to point it at our own copy in Drive. See [change the link of a set](/help/keep-the-plans-on-a-job#change-the-link-of-a-set). Press {{button:outline|Build from this set}} on an older set to go back to it.
 
 Two chips sit under the table. One counts the parts with no set. One counts the jobs that follow no plans yet. Press a chip to see them. Under that chip, each job is a row with its number and its name. Tick the jobs that belong on one part. Pick the part in the box. Press {{button:blue|Put 3 jobs on Lodge}}. The button counts the ticked jobs and names the part. A job can also name its part on its Documents tab, under Plans. A job that only carries bills needs no plans. A service call needs no plans either. The look leaves both out of the count. A quiet line under the chips says how many it left out and why. Ask the estimators about the rest from the card. The card keeps the question in view while it waits, and shows the answer when it comes. Bids keep their own set and are listed under the table.
 
@@ -217,6 +217,10 @@ A set's card shows the date on its sheets, the day it came, its memo and what ch
 A bid's card shows when it was sent and how it ended. The card lists the sets that came since. Press {{button:outline|Open the bid}} to open it. A crew bar's card lists the jobs on it with their days. Press a job to see its card. Then press {{button:outline|Open the job}}. A History line's card shows its words. Press {{button:outline|Read the whole line}} for all of it.
 
 A part's name opens its sets, newest first. Press {{button:outline|+ New set}} there to add a set to that part. A figure's card lists what the number counts. Press a line in any card to go to that item's card. Press {{button:outline|‹ Back}} to return. Today's card offers {{button:outline|Write a line}}, which opens a History line.
+
+A set's card also shows how many sheets the set has. Press {{button:outline|Set the sheet count}} to type the number. On a set that has one, the press reads {{button:outline|Change the sheet count}}. Leave the box empty to clear it. You can also type the count in the Sheets box when you add a set.
+
+Once a set has a count, a fifth figure appears, Sheets in hand. The figure adds the sheets of the sets each part builds from. Under the number is what was in hand the day the bid was sent. The same line says how many sets nobody has counted yet.
 
 The item with an open card stands out on the chart and in the list at once.
 

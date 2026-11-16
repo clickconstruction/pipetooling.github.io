@@ -2,17 +2,17 @@
 name: "Plans by date"
 number: 367
 group: close
-status: design picked by the owner 2026-11-16 ("build it all") · PR 1 the view (v2.7494), PR 2 the item card (v2.7499), PR 3 the columns (its own PR, #8397) and PR 4 the schedule (v2.7500) built · PR 5 to build
+status: design picked by the owner 2026-11-16 ("build it all") · PR 1 the view (v2.7494), PR 2 the item card (v2.7499), PR 3 the columns (its own PR, #8397) PR 4 the schedule (v2.7500) and PR 5 sheets in hand (v2.7501) built · waiting on the merges and the migration push
 summary: >
   The owner had a one-page chart drawn by hand for one site: its drawings set against time, with the bid's
   schedule, the crews' days and a letter on the same axis, a dated list under it and four figures on top.
   The Development page's Plans look now offers it as a second view, By date. What is left is a card on
   every item with its details and its presses, a schedule on a bid with a typed start and end, and a sheet
   count on a set.
-next: Push migration 20261117070000 once PR 3 merges, then merge PR 4. Then PR 5, sheets in hand.
-size: M as a train of five (M · M · S · M · S); left: PR 5 (S)
+next: Push migration 20261117070000 once PR 3 merges, then see PRs 2, 4 and 5 to their merges and walk the live page. Then delete this card.
+size: M as a train of five (M · M · S · M · S); left: nothing to build
 blocker: none
-ver: v2.7500
+ver: v2.7501
 opinion: build — the first PR changes nothing until someone presses By date, and the two database changes are additive columns nothing reads until the PR after them
 ---
 
@@ -60,7 +60,7 @@ Three more asks came while the design was on the screen:
 4. **The schedule on screen** (v2.7500, built). The Start and End row on Edit Bid under Bid Date Sent, the Schedule lane,
    the days-left figure (red and counting the days over once past the end), and **Set the schedule** or
    **Change** on the bid's card.
-5. **Sheets in hand.** A sheet count typed on a set, shown on its card, and two figures: sheets at the bid
+5. **Sheets in hand** (v2.7501, built). A sheet count typed on a set, shown on its card, and two figures: sheets at the bid
    and sheets now.
 
 PRs 4 and 5 read columns only PR 3's migration creates, so each waits for that push.
