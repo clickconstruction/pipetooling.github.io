@@ -231,6 +231,7 @@ when_to_read:
    - [gc-word-ask](#gc-word-ask)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-lien-release-email](#send-lien-release-email)
+   - [send-sub-paper-email](#send-sub-paper-email)
    - [send-test-report](#send-test-report)
    - [open-test-report-pdf](#open-test-report-pdf)
    - [auto-send-test-reports](#auto-send-test-reports)
@@ -5073,6 +5074,27 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 **v2.4304 — the account card**: when the recipient has a portal, the email ends with the bill emails' **Your account, any time** card — the QR code (inline `cid:portal-qr` attachment) beside the short address, *Every lien waiver and bill for your jobs, with no login.* — and the text body gains the address. The recipient's customer row is the GC when `customer_email` is the GC's billing email, else the job's customer (`waiverEmailRecipientCustomerId` in [`_shared/lienWaiverEmailCard.ts`](../supabase/functions/_shared/lienWaiverEmailCard.ts)); the address is read with the service role (`ensurePortalShortAddress` + `loadPortalReturnUrl`, as `send-stripe-invoice`), never from the body. Any failure sends the waiver without the card. New secret read: `SUPABASE_SERVICE_ROLE_KEY` (`APP_ORIGIN` optional).
 
 > **v2.6080 — redeploy only**: bundles [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose statement card's link takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
+### send-sub-paper-email
+
+**Purpose** (punch list #350, the sub papers train): email a sub their papers with the PDFs attached. One message carries a Work statement, a Payment record, a Statement of account, or several. **Deployed only on Taunya's go that names it.** Until the Send press lands in the papers window (`SubPapersWindow`), nothing in the app calls it.
+
+**Endpoint**: `POST /functions/v1/send-sub-paper-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, `verify_jwt = false` on the gateway (the send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`.
+
+Body: `{ person_id, by: 'email', subject?, message?, papers: [{ kind, title?, file_name, job_ids?, pdf_base64 }] }`. The PDFs arrive from the client, drawn by the kernel the window previews ([`_shared/subPapers.ts`](../supabase/functions/_shared/subPapers.ts), [`_shared/subPapersPdf.ts`](../supabase/functions/_shared/subPapersPdf.ts)).
+
+Guards, each answered with its reason before anything is sent:
+
+- **Who.** The caller is one of the office roles who see sub pay (dev, master technician, assistant, controller), read from `users` with the service role. An account in training (`read_only`) and an archived account (`refuseArchivedCaller`) are refused.
+- **Where it goes.** The recipient is the roster's own `people.email` for `person_id`, read under the caller's policies. No address in the body is read, so a paper about one sub cannot be mailed to another address. A person with no email is refused with the door to add one.
+- **What.** 1 to 12 papers. Each `kind` is `sub_work_statement`, `sub_payment_record` or `sub_statement_of_account`. Each PDF is at most 3,000,000 base64 characters, and 9,000,000 in all. A file name loses any path and always ends in `.pdf`.
+- **How.** `by: 'text'` is refused: a texted link is not built, and is never sent as an email.
+
+The send goes through `sendEmailViaResend` as the company ([`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts)), logged as `email_type` `sub_paper`. The message is the office's words, escaped. After a successful send each paper is filed as a sent copy of its own through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts): its own `kind`, the person, the jobs it names, the message and that paper's PDF. A refused send files nothing. [`SENT_COPIES.md`](./SENT_COPIES.md).
+
+Returns `{ ok: true, to, papers, resend_email_id }`, or `{ error }` with 400, 401, 403 or 502.
+
+Run under vitest with a recorded `fetch`: `src/lib/subWorkOrders/sendSubPaperEmail.run.test.ts`.
 
 ### send-lien-filing-email
 
