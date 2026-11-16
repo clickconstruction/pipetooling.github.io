@@ -1,5 +1,6 @@
 import { LIEN_RELEASE_DOCUMENTS_BUCKET } from './lienReleaseDocuments'
-import { lienFieldsHash, type LienPenWitnessHow } from './lienNoticeSignature'
+import { LIEN_DESK_SIGNATURE_CLEAR, lienFieldsHash, type LienPenWitnessHow } from './lienNoticeSignature'
+import { LIEN_SIGN_AGAIN_GONE, canClearSignatureRow, fieldsWithSignatureCleared, signatureClearedRecord } from './lienSignAgain'
 import { lienSignatureName } from './lienSigner'
 import { penPageFileProblem, penPagePath, penWitnessHowWithPage } from './lienPenRecord'
 import { validateReportSignatureDataUrlForSubmit } from '../reportSignatureField'
@@ -134,8 +135,37 @@ export async function confirmLienPenSignature(itemId: string): Promise<void> {
 
 /** Not what I signed (the pen train, PR 3): the leader disowns a pen record; the ten signature columns clear, the approval stands, and the run holds the notice until it is signed again. */
 export async function disownLienPenSignature(itemId: string): Promise<void> {
-  const { LIEN_DESK_SIGNATURE_CLEAR } = await import('./lienNoticeSignature')
   await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ ...LIEN_DESK_SIGNATURE_CLEAR } as never).eq('id', itemId), 'lien desk: disown a pen signature')
+}
+
+/**
+ * Sign it again (v2.7502): the office or the leader takes the signature off an approved notice so it can be
+ * signed again. The ten signature columns clear and nothing else moves: the approval stands, and the notice
+ * keeps one line of who cleared which signature (`fields.signatureCleared`). The row is read first and the
+ * write names what it read, so a notice that printed, went, was set aside or was signed afresh in the
+ * meantime is left alone and the person is told. A drawing or a signed page in storage is kept; the line names it.
+ */
+export async function clearLienSignatureToSignAgain(itemId: string, by: { userId: string | null; userName: string | null }): Promise<{ ok: true } | { ok: false; message: string }> {
+  const row = (await withSupabaseRetry(
+    () => supabase.from('job_lien_desk_items').select('id, fields, status, printed_at, voided_at, signed_at, signed_by, signer_printed_name, signer_signature_mode, signer_signature_storage_path').eq('id', itemId).maybeSingle(),
+    'lien desk: read the signature to clear',
+  )) as { id: string; fields: unknown; status: string | null; printed_at: string | null; voided_at: string | null; signed_at: string | null } | null
+  if (!row || !canClearSignatureRow(row)) return { ok: false, message: LIEN_SIGN_AGAIN_GONE }
+  const fields = fieldsWithSignatureCleared(row.fields, signatureClearedRecord(row, by, new Date().toISOString()))
+  const moved = await withSupabaseRetry(
+    () =>
+      supabase
+        .from('job_lien_desk_items')
+        .update({ ...LIEN_DESK_SIGNATURE_CLEAR, fields } as never)
+        .eq('id', itemId)
+        .eq('status', 'approved')
+        .eq('signed_at', row.signed_at as string)
+        .is('printed_at', null)
+        .is('voided_at', null)
+        .select('id'),
+    'lien desk: clear the signature to sign again',
+  )
+  return ((moved ?? []) as unknown as Array<{ id: string }>).length > 0 ? { ok: true } : { ok: false, message: LIEN_SIGN_AGAIN_GONE }
 }
 
 export type RecordLienPenSignatureResult ={ ok: true; signedAtIso: string; how: LienPenWitnessHow; pagePath: string | null } | { ok: false; message: string }

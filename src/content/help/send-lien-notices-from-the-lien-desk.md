@@ -335,6 +335,20 @@ The chip on a ready notice reads **signed** with the day. Edit a signed notice a
 
 A notice approved on your word reaches *Approved · to print* unsigned. Open it and press {{button:green|Sign ▸}} on its footer. Your name goes on the paper the same way.
 
+### Signing a notice again
+
+Sometimes an approved notice carries the wrong signature. The leader drew it and the office wants his name in the cursive face. Or the drawing came out poor. Open the notice in *Approved · to print*. Press **Sign it again…** in the row at its foot. A window asks first. It names the job and says whose signature comes off. Press {{button:blue|Clear the signature}}. The signature comes off and the approval stands. The chip reads **unsigned**. The run holds the notice until it is signed again.
+
+The signing line comes back at once. On the leader's own screen it is his signing box, with {{button:green|Sign ▸}}. On the office's screen it is his line, with his code field. He types his code and presses {{button:green|Sign ▸}}. He can press **Draw instead** and sign by hand. A line under the paper says who cleared the last signature and when. A drawing that came off stays on file.
+
+The office and the leader both have the press. A printed notice does not have it. Press {{button:outline|Back to Approved · to print}} on that notice first. A signature by code or by pen may still wait on the leader's word. His own screen then offers **Not me** or **Not what I signed** in its place.
+
+:::example 4120, Halden Yard, signed with a drawing
+
+Dana opens the notice and presses **Sign it again…**. The window says Avery's signature from Nov 16 comes off. She presses **Clear the signature**. Avery types his code on her screen and presses **Sign ▸**. The paper now carries his name in the cursive face.
+
+:::
+
 ### Your signing code
 
 A signing code lets you sign on someone else's screen. It is four to six digits that only you know. Open **Settings → Your account** and find **Your signing code**. Type the code twice and press {{button:blue|Set the code}}. The app keeps a scrambled copy and checks the code itself. Nobody can read it back. Five wrong tries lock the code for fifteen minutes. Press {{button:blue|Change the code}} to pick a new one. Press **Remove the code** to stop using one.
@@ -557,6 +571,7 @@ The offer lasts while Put a GC on notice stays open. It ends once the run is rec
 ## Who can do what
 
 - **Draft, send for approval and send on the leader's word:** a dev, an assistant or a controller. A master can draft and approve his own.
+- **Clear a signature to sign again:** a dev, an assistant, a controller or a master technician.
 - **Sign, approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It refuses a signature that is not the leader's own press or his own drawing. It also refuses a send on a spoken word without a note.
 - **Put a GC on notice:** the office opens it and readies the owners. Approving all of it is for the master or a dev. A send on the spoken word is for an assistant, a controller or a dev.
 
