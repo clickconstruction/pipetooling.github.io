@@ -1761,11 +1761,12 @@ export default function LienDesk({
             contactPerson: noticeFields.contactPerson,
             phone: (issuer?.phone ?? '').trim(),
             extras: docExtras,
+            coverLetter: coverBlocks.length > 0,
             offer,
             lines: payLinesNow,
           })
         : [],
-    [selected, payPage, noticeFields, issuer, docExtras, offer, payLinesNow],
+    [selected, payPage, noticeFields, issuer, docExtras, offer, payLinesNow, coverBlocks.length],
   )
   const payMarks = useMemo(() => {
     const m: Record<string, FilingFieldMark> = {}
