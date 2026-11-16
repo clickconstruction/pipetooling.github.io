@@ -1,8 +1,8 @@
 ---
 name: "Sub payments as a ledger: every payment made to a sub, by date, on Jobs → Subs and People → Subs"
 number: 347
-group: ready
-status: asked 2026-11-13 · all five PRs and the credit are built the same day (v2.7172 dates, v2.7174 by date, v2.7176 the window, v2.7231 by sub, v2.7235 the credit and sendings, v2.7237 the check mark, v2.7239 the match to Mercury) · the owner 2026-11-13: an overpayment becomes a credit, and "build it all"
+group: close
+status: asked 2026-11-13 · all five PRs and the credit are built the same day (v2.7172 dates, v2.7174 by date, v2.7176 the window, v2.7231 by sub, v2.7235 the credit and sendings, v2.7237 the check mark, v2.7239 the match to Mercury) · the owner 2026-11-13: an overpayment becomes a credit, and "build it all" · the last three under *Not built* came with the sub labor train, 2026-11-15 and 2026-11-16 (v2.7404 by hand, v2.7420 a sheet paid past its total to a credit, v2.7440 old payments gathered into sendings)
 mockup: to-dos/subs-payments-ledger/mockup.html
 summary: >
   The owner wants to reconcile the payments made to subs and cannot see them by date. The Pay
@@ -15,10 +15,10 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: the owner's look, now that the three migrations are in prod's ledger (read 2026-11-15); then the residue under *Not built*
+next: the owner's look, and a month's statement read on it; then close the card
 size: M as a train of six (XS · S · S · S · S · M)
 blocker: none
-opinion: use it for a month's statement before building more; the first real sitting will say whether hand placement or the Banking side is worth it
+opinion: your call — all of it is built, hand placement and the Banking side included; a month's statement is the test before anything more
 ---
 
 # Sub payments as a ledger (#347)
@@ -137,7 +137,7 @@ Built with this card's edit, between PR 2 and PR 3:
 - **Offered first.** A sub with a credit gets *Use $… on this sheet* at the top of the window. It makes a payment row with the method *From credit*, and no money leaves.
 - **Where it shows:** the Pay row's payment, the Ledger by date (a green note, a *From credit* chip, the sending's number), the Ledger by sub, a statement (*Credit kept*, *Credit used*), and under Balance due on People → Subs.
 - **It cannot drift.** A payment that carries a credit stays on its sheet. One made from a credit keeps its amount. Removing a use puts the credit back, and removing a payment whose credit was already used is refused.
-- **Not built:** placing a sending's lines by hand (card #350's ask 2 wanted the fill as the start and the hand as the override), and turning a sheet that is already paid past its total into a credit. One sheet is in that state today.
+- **Not built on 2026-11-13, both built since:** placing a sending's lines by hand (card #350's ask 2 wanted the fill as the start and the hand as the override), in v2.7404, and turning a sheet that is already paid past its total into a credit, in v2.7420. One sheet was in that state that day.
 
 ## The match to Mercury, built 2026-11-13 (v2.7239)
 
@@ -149,7 +149,7 @@ Built with this card's edit, between PR 2 and PR 3:
 
 ## Not built
 
-Taunya, 2026-11-15, of the lines here once hand placement had gone to the sub labor spike: "Build all four". Two are built. Three are with the spike.
+Taunya, 2026-11-15, of the lines here once hand placement had gone to the sub labor spike: "Build all four". All five are built, two before the sub labor train and three by it.
 
 - **Built: the Banking side** (v2.7352). See *The match to Mercury* above.
 - **Built: the dev seat's sub payment** (v2.7357, server 0.90.0). `plan_sub_labor_payment` records a sending with its number, the method and its reference through `record_sub_sending`, as the Record payment window does, and the plan reads back what will be written. Since v2.7428 (server 0.91.0) a teammate alone on a sheet is who its sending names, by the rule of card #346.
