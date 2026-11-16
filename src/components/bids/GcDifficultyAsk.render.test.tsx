@@ -24,6 +24,13 @@ vi.mock('../../hooks/useAuth', async () => {
   return { ...mod, useOptionalAuth: () => ({ role: auth.role }) }
 })
 
+// The published price list the ask reads for who may rate; null is none read (every group may).
+const priceList = vi.hoisted(() => ({ raters: null as null | string[] }))
+vi.mock('../../hooks/useDifficultyPrice', async () => {
+  const { DIFFICULTY_PRICE_V1: v1 } = await import('../../lib/bids/difficultyPrice')
+  return { useDifficultyPrice: (enabled = true) => (enabled && priceList.raters ? { id: 'p', version: 2, status: 'published', body: { ...v1, raters: priceList.raters }, note: '', publishedAt: null, publishedByName: '', updatedAt: '' } : null) }
+})
+
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
@@ -53,6 +60,7 @@ function sheetIo(): RateSheetIo {
 afterEach(() => {
   cleanup()
   auth.role = 'master_technician'
+  priceList.raters = null
 })
 
 describe('GcDifficultyAskLine', () => {
@@ -90,6 +98,36 @@ describe('GcDifficultyAskLine', () => {
     const quiet = askIo()
     renderWithProviders(<GcDifficultyAskLine jobId="1042" io={quiet} sheetIo={sheetIo()} />)
     expect(quiet.loadOpen).not.toHaveBeenCalled()
+  })
+})
+
+describe('the ask and the price list (v2.7468)', () => {
+  it('a master the price list names is asked, in the job and on the board', async () => {
+    priceList.raters = ['office', 'estimator', 'master']
+    const io = askIo()
+    renderWithProviders(<GcDifficultyAskLine jobId="1042" io={io} sheetIo={sheetIo()} />)
+    expect(await screen.findByTestId('gc-difficulty-ask-line')).toBeTruthy()
+    cleanup()
+    renderWithProviders(<GcDifficultyAsksPress io={askIo()} sheetIo={sheetIo()} />)
+    expect(await screen.findByTestId('gc-difficulty-asks-press')).toBeTruthy()
+  })
+
+  it('with the masters off the list nobody is asked to rate what they cannot save, and no read is made', async () => {
+    priceList.raters = ['office', 'estimator']
+    const line = askIo()
+    const a = renderWithProviders(<GcDifficultyAskLine jobId="1042" io={line} sheetIo={sheetIo()} />)
+    expect(line.loadOpen).not.toHaveBeenCalled()
+    expect(a.container.querySelector('[data-testid="gc-difficulty-ask-line"]')).toBeNull()
+    cleanup()
+    const board = askIo()
+    const b = renderWithProviders(<GcDifficultyAsksPress io={board} sheetIo={sheetIo()} />)
+    expect(board.loadOpen).not.toHaveBeenCalled()
+    expect(b.container.textContent).toBe('')
+    cleanup()
+    // A dev walking a test job is asked whatever the list says.
+    auth.role = 'dev'
+    renderWithProviders(<GcDifficultyAskLine jobId="1042" io={askIo()} sheetIo={sheetIo()} />)
+    expect(await screen.findByTestId('gc-difficulty-ask-line')).toBeTruthy()
   })
 })
 

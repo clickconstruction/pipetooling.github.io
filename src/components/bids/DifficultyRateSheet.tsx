@@ -157,7 +157,8 @@ export default function DifficultyRateSheet({ customerId, customerName, bid = nu
   const payingScale = body?.scales.find((s) => s.key === DIFFICULTY_PAYING_KEY && s.source === 'bills') ?? null
   const storedPaying = gcDifficultyStoredBillsPick(standing, DIFFICULTY_PAYING_KEY)
   const storedByHand = storedPaying ? difficultyPayingByHandOf(storedPaying.reason) : null
-  const payingPick = payingScale ? difficultyPayingPick(paying, storedPaying && storedByHand != null ? { points: storedPaying.points, reason: storedByHand } : null) : null
+  // v2.7468: bills that could not be read here keep the point the rating holds (an estimator's save, a failed read).
+  const payingPick = payingScale ? difficultyPayingPick(paying, storedPaying && storedByHand != null ? { points: storedPaying.points, reason: storedByHand } : null, storedPaying) : null
   const allPicks: DifficultyPicks = useMemo(() => (payingPick ? { ...picks, [DIFFICULTY_PAYING_KEY]: payingPick.points } : picks), [picks, payingPick])
   const total = (body ? difficultyTotalPoints(allPicks, body, 'gc').points : 0) + Object.values(bidPicksNow).reduce((n, p) => n + p, 0)
   const problems = gcDifficultyDraftProblems(allPicks, note, body)

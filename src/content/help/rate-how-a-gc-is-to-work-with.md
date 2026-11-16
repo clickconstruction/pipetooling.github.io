@@ -25,7 +25,7 @@ The card shows one scale at a time. Each scale has rungs. A rung is a number of 
 
 :::
 
-Who may rate is set on the Bid Board's price list. See [set what difficulty costs](/help/set-what-difficulty-costs). The list starts with the office and the masters. An estimator reads the card and cannot save until the list names the estimators.
+Who may rate is set on the Bid Board's price list. See [set what difficulty costs](/help/set-what-difficulty-costs). The list names the office, the estimators and the masters. A group taken off the list reads the card and cannot save.
 
 **Paying** is not picked. The app reads it from the GC's bills. See the next section.
 
@@ -34,6 +34,8 @@ Who may rate is set on the Bid Board's price list. See [set what difficulty cost
 Under **Paying** the card says what it found. Paid in 52 days, the median of 7 bills. The GC pace here. How many bills in the last year went past their pay calendar. The rule sits under it. A point when the median is past 45 days, or two bills in a year are late. Fewer than three bills reads no point, and the line says so. The numbers are the Bid Board's price list's.
 
 The point counts in the total. When you save, it goes into the rating with its words. When the bills later read a different point, an amber line says so and {{button:blue|Save 4 points}} wakes. Save again to read it in.
+
+An estimator does not read the bills. The card then says the bills could not be read here. The rating keeps the Paying point it already holds. A save carries that point on with its words.
 
 Press {{button:outline|Set by hand…}} when the bills do not tell it. Pick the points, write why, and press {{button:outline|Use this}}. The rating carries your reason. Press **Read from the bills again** to take it back.
 

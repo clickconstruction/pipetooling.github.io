@@ -20,11 +20,13 @@ import {
   DIFFICULTY_PAYING_KEY,
   difficultyPayingByHandOf,
   difficultyPayingDriftWords,
+  difficultyPayingKeptWords,
   difficultyPayingPick,
+  type DifficultyPayingPick,
+  type DifficultyPayingRead,
   difficultyPayingRuleWords,
   difficultyPayingWords,
   readDifficultyPaying,
-  type DifficultyPayingRead,
 } from '../../lib/bids/difficultyPaying'
 import {
   GC_DIFFICULTY_WORDS as W,
@@ -134,7 +136,9 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
 
   const body = published?.body ?? null
   const payingScale = body?.scales.find((s) => s.key === DIFFICULTY_PAYING_KEY && s.source === 'bills') ?? null
-  const payingPick = payingScale ? difficultyPayingPick(paying, byHand) : null
+  const storedPaying = gcDifficultyStoredBillsPick(standing, DIFFICULTY_PAYING_KEY)
+  // v2.7468: bills that could not be read here keep the point the rating holds (an estimator's save, a failed read).
+  const payingPick = payingScale ? difficultyPayingPick(paying, byHand, storedPaying) : null
   const allPicks: DifficultyPicks = useMemo(() => (payingPick ? { ...picks, [DIFFICULTY_PAYING_KEY]: payingPick.points } : picks), [picks, payingPick])
   const reasons = useMemo(() => {
     const out: Record<string, string> = {}
@@ -146,7 +150,6 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
   const changed = gcDifficultyPicksChanged(allPicks, standing)
   const dead = saving || problems.length > 0 || (!changed && standing != null)
   const carryLine = standing ? gcDifficultyCarryLine(standing) : null
-  const storedPaying = gcDifficultyStoredBillsPick(standing, DIFFICULTY_PAYING_KEY)
   const driftLine = payingScale && !byHand ? difficultyPayingDriftWords(storedPaying, paying) : null
 
   const save = async () => {
@@ -166,7 +169,7 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
   }
 
   const billsLine = (scale: DifficultyScale) => (
-    <PayingLine scale={scale} read={paying} byHand={byHand} open={byHandOpen} canRate={canRate} driftLine={driftLine} storedByHand={storedPaying ? difficultyPayingByHandOf(storedPaying.reason) : null} onOpen={() => setByHandOpen(true)} onClose={() => setByHandOpen(false)} onSet={(v) => { setByHand(v); setByHandOpen(false) }} onClear={() => { setByHand(null); setByHandOpen(false) }} />
+    <PayingLine scale={scale} read={paying} kept={payingPick?.kept ? payingPick : null} byHand={byHand} open={byHandOpen} canRate={canRate} driftLine={driftLine} storedByHand={storedPaying ? difficultyPayingByHandOf(storedPaying.reason) : null} onOpen={() => setByHandOpen(true)} onClose={() => setByHandOpen(false)} onSet={(v) => { setByHand(v); setByHandOpen(false) }} onClear={() => { setByHand(null); setByHandOpen(false) }} />
   )
 
   return (
@@ -236,6 +239,7 @@ export default function GcDifficultyCard({ customerId, customerName, role, io = 
 function PayingLine({
   scale,
   read,
+  kept,
   byHand,
   open,
   canRate,
@@ -248,6 +252,8 @@ function PayingLine({
 }: {
   scale: DifficultyScale
   read: DifficultyPayingRead | null
+  /** The point the rating holds, kept because the bills could not be read here (v2.7468). */
+  kept: DifficultyPayingPick | null
   byHand: ByHand | null
   open: boolean
   canRate: boolean
@@ -264,7 +270,7 @@ function PayingLine({
   const rungs = scale.rungs.length > 0 ? scale.rungs.map((r) => r.points) : Array.from({ length: scale.max + 1 }, (_, i) => i)
   return (
     <div style={BILLS_BOX} data-testid="gc-difficulty-paying">
-      <span data-testid="gc-difficulty-paying-words">{read ? difficultyPayingWords(read) : 'Reading their bills…'}</span>
+      <span data-testid="gc-difficulty-paying-words">{kept ? difficultyPayingKeptWords(kept) : read ? difficultyPayingWords(read) : 'Reading their bills…'}</span>
       <span style={MUTED}>{difficultyPayingRuleWords(read?.rule ?? { daysPast: 45, lateBillsInYear: 2, minBills: 3 })}</span>
       {byHand ? (
         <span style={AMBER} data-testid="gc-difficulty-paying-by-hand">
