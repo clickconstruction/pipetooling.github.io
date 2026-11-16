@@ -786,12 +786,11 @@ describe('a notice whose stored paper and bills have parted is held (v2.7517)', 
     expect(n.parted?.parts).toEqual(['retainage'])
   })
 
-  it('the hold is the first problem, the record waits, and the packet prints no page of it', () => {
+  it('the hold is the first problem, and the packet prints no page of it', () => {
     const d = data([stale])
     const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas, Master Plumber', TODAY)
-    const problems = runNoticeProblems(run[0]!)
-    expect(problems[0]).toBe(HOLD)
-    expect(runRecordSplit(run, [problems]).held).toHaveLength(1)
+    // The row's own hold, which the print and the record both leave, is this problem (`lienRunChecklist.test.ts`).
+    expect(runNoticeProblems(run[0]!)[0]).toBe(HOLD)
     const html = runPacketHtml(run, TODAY, null)
     expect(html).toContain('650: The paper claims $51,000.00.')
     expect(html).not.toContain('Claim amount')
