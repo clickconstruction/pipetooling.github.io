@@ -6,6 +6,7 @@
 import { haversineMeters } from '../jobTravelEstimate'
 import { taskPlaceAccuracyWords, taskPlaceDirection, taskPlaceDistanceWords } from '../tasks/taskPlace'
 import { nearestOnLine, type PaintedPoint } from './paintedLine'
+import { lineHowWords, type PaintedLine } from './paintedMap'
 
 /** Nearer the line than this, the reader is on it: about 80 ft, a phone's margin on a bad day. */
 export const WAY_ON_LINE_METERS = 25
@@ -43,6 +44,24 @@ export function wayWords(me: PaintedPoint & { accuracyM?: number | null }, lines
   if (nearest <= WAY_ON_LINE_METERS) return { lead: 'You are on the painted line.', sure }
   if (start) return { lead: `The start is ${taskPlaceDistanceWords(haversineMeters(me, start))} ${taskPlaceDirection(me, start)} of you.`, sure }
   return { lead: 'You are off the map’s line.', sure }
+}
+
+/** Under several lines whose lengths are about: said once, at the foot of the list. */
+export const WAY_LENGTH_GUIDE_WORDS = 'A length here is a guide for how far, not a measurement.'
+
+/**
+ * The sentence under a line's length on the shared page (Taunya, 2026-11-15: how the line was made
+ * and what its length is worth are one sentence, below the length).
+ *
+ * A map's only line says both. A measured length is a measurement, so its line says only how it
+ * was made. Among several lines each says how, and the page says the guide once at the foot.
+ *   'Drawn by hand, so the length is a guide for how far, not a measurement.'
+ *   'Walked, a part drawn by hand.'
+ */
+export function wayLineUnderWords(line: Pick<PaintedLine, 'how' | 'fixedByHand'>, measured: boolean, alone: boolean): string {
+  const how = lineHowWords(line)
+  const lead = how.charAt(0).toUpperCase() + how.slice(1)
+  return alone && !measured ? `${lead}, so the length is a guide for how far, not a measurement.` : `${lead}.`
 }
 
 /** Why the page could not show the reader's dot. The map and Directions never needed it. */
