@@ -169,7 +169,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienEnabled, hideZzTestJobs, authUserId)
   const { watch: lienWatch } = useLienWatchNudge(lienEnabled, hideZzTestJobs)
   const docsmit = useDocsmitSettings()
-  const { data: lienDeskData } = useLienDeskData(lienEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
+  const { data: lienDeskData, loading: lienDeskLoading } = useLienDeskData(lienEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
   // The Board's four numbers as dots (v2.7334): the Needs you card's one-line strip for the office, a door to the desk at the Board.
   const lienBoardStrip = useMemo<LienBoardDot[] | null>(() => {
     if (!lienEnabled || !lienDeskData || !isLienOffice(role)) return null
@@ -473,6 +473,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     officeEligible,
     /** The Board's four dots for the Needs you card's strip (v2.7334); null off the office, with no desk, or with nothing on it. */
     lienBoardStrip,
+    /** Whether the leader's lien sources are still being read: the short Dashboard holds its list back until they are in, so it never says nothing waits too early. */
+    reading: { lienDesk: lienDeskLoading, lienWaivers: lienSignature.loading },
     /** The hosts' windows and nudges: what a press opens, what a close refetches, what a secondary link snoozes. */
     handles: {
       tallyUnlinkedCount,
