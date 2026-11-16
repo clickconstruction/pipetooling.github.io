@@ -56,10 +56,14 @@ export function bidScoreReadiness(args: {
   pricedUncostedUsd: number | null | undefined
   labor: LaborCompleteness | null
   sent: boolean
+  /** The count kept with the priced margin (v2.7370). A sent bid is judged by it; null on an older stamp. */
+  pricedLabor?: { rowsTotal: number; rowsWithHours: number } | null
 }): ScoreReadiness {
   if (args.pricedRevenueUsd == null || args.pricedCostUsd == null || !(Number(args.pricedRevenueUsd) > 0)) return { kind: 'unpriced' }
-  if (args.labor && !laborHoursEstimated(args.labor)) {
-    const rows = laborRowsWords(args.labor)
+  // A sent bid's margin is kept, so its labor is the labor that margin was made with, when the stamp carries the count.
+  const labor = args.sent && args.pricedLabor ? args.pricedLabor : args.labor
+  if (labor && !laborHoursEstimated(labor)) {
+    const rows = laborRowsWords(labor, args.sent && args.pricedLabor != null)
     return {
       kind: 'hold',
       reason: 'labor',
@@ -88,6 +92,12 @@ export function bidScoreReadiness(args: {
 /** The chip's hover: the reason and what to do about it, one line. */
 export function scoreHoldTitle(r: Extract<ScoreReadiness, { kind: 'hold' }>): string {
   return `${r.words} ${r.fix}`
+}
+
+/** The count kept with a bid's stamp, off its row; null when the stamp is older than the count. */
+export function pricedLaborOf(row: { priced_labor_rows_total?: number | null; priced_labor_rows_with_hours?: number | null } | null | undefined): { rowsTotal: number; rowsWithHours: number } | null {
+  if (row?.priced_labor_rows_total == null || row.priced_labor_rows_with_hours == null) return null
+  return { rowsTotal: Number(row.priced_labor_rows_total), rowsWithHours: Number(row.priced_labor_rows_with_hours) }
 }
 
 /**

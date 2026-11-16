@@ -53,7 +53,7 @@ Press {{button:outline|Open the bids}} to see the drill-down. It lists the bids 
 
 ## Before a bid can score
 
-A bid can be judged only when three things are true. The bid carries a priced stamp from the Pricing workbench. Its Labor tab has hours on nine rows in ten. Every row was costed at send.
+A bid can be judged only when three things are true. The bid carries a priced stamp from the Pricing workbench. Its Labor tab has hours on nine rows in ten. Every row was costed at send. A sent bid is judged by the labor it went out with. Hours filled in after the send do not change that.
 
 Until the first judged bid is awarded, the card shows how many priced bids can be judged. Under the bids, **Finish these before they can score** lists each one with its reason. Press **open the Labor tab** on a row to fill the hours.
 
