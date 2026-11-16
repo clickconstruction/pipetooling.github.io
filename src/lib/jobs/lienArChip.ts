@@ -32,6 +32,7 @@ import { workMonthLabel } from './forecastWorkMonths'
 import { filingMailTail, type LienMailPieceRow } from '../mail/lienMailPieces'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { lienActFor, type LienAct } from './lienActWords'
+import { lienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import { LIEN_RUN_STEP } from './lienRunWords'
 
@@ -444,7 +445,9 @@ function actOf(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string) => 
   // With no affidavit entry in hand the desk's row still says which of two holds it is.
   const missing: LienAffidavitGateKey[] = gates.length > 0 ? gates : /public property/i.test(row.sub) ? ['public_owner'] : /general contractor has no address/i.test(row.sub) ? ['contractor'] : []
   const yours = /your approval/i.test(row.sub)
-  const act = lienActFor({ paper: row.kind, action: row.action, yours, waitingOn: row.action === 'approve' && !yours ? waitingOnOf(row.sub) : null, missing })
+  // An affidavit that waits on its notice (v2.7527): the act is the notice's own next step, from where the notice stands on the desk.
+  const noticeStanding = row.kind === 'affidavit' && input.affidavit ? lienAffidavitNoticeStanding(input.affidavit, input.entry ?? null) : null
+  const act = lienActFor({ paper: row.kind, action: row.action, yours, waitingOn: row.action === 'approve' && !yours ? waitingOnOf(row.sub) : null, missing, noticeStanding })
   if (act && row.action === 'review_hold') {
     const until = dayOf(input.entry?.item?.hold_until)
     return { ...act, under: `Held · ${heldWhy(input.entry)}${until ? ` · asks again ${fmt(until)}` : ''}` }
