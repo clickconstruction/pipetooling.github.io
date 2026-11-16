@@ -2617,17 +2617,18 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     window.localStorage.removeItem('pt.lienHelpSheet.v1')
     const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
     const d = three([ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')])
-    // j652's owner turned out to be a public body after the paper was approved: it stays in Ready to file with a gate closed.
+    // j652's owner turned out to be a public body after the paper was approved: the closed gate moves it to Held (punch list #335; it stayed in Ready to file until v2.7449).
     d.affidavitRows = d.affidavitRows.map((r) => (r.job_id === 'j652' ? { ...r, owner_public: true } : r))
     d.affidavits = buildLienAffidavitQueue(d.affidavitRows, [ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')], TODAY)
-    expect(d.affidavits.entries.find((e) => e.jobId === 'j652')).toMatchObject({ pile: 'ready', ready: false })
+    expect(d.affidavits.entries.find((e) => e.jobId === 'j652')).toMatchObject({ pile: 'held', ready: false })
+    expect(d.affidavits.entries.find((e) => e.jobId === 'j652')?.item?.status).toBe('approved')
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
     await settle()
     const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
     expect(bar.querySelector('[data-lien-affidavit-print-ready]')?.textContent).toBe('2 ready to print')
     // The held paper is an amber press beside the count (v2.7209), not a grey line at the foot. Its tip keeps the old sentence.
     const held = within(bar).getByRole('button', { name: /1 held, not in this print/ })
-    expect(held.getAttribute('title')).toBe('1 ready affidavit is held by a gate and is left out. Its row says why.')
+    expect(held.getAttribute('title')).toBe('1 approved affidavit is held by a gate and is left out. Its row says why.')
     expect(held.getAttribute('aria-pressed')).toBe('false')
     expect(bar.querySelector('[data-lien-affidavit-print-all-foot]')).toBeNull()
     // Pressed, the list narrows to the held paper, whose row says why, and a line over it offers the way back.
@@ -2638,6 +2639,12 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(rowJobs()).toHaveLength(1)
     expect(rowJobs()[0]).toContain('652')
     expect(rowJobs()[0]).toContain('missing')
+    // Its pane's footer is the gate's (punch list #335): approved and held, with the reason, and nothing for the leader to release.
+    const gateFoot = document.querySelector('[data-lien-affidavit-gate-held]') as HTMLElement
+    expect(gateFoot.getAttribute('data-lien-affidavit-gate-held')).toBe('public_owner')
+    expect(gateFoot.textContent).toContain('Approved, and held. This is public property, so no lien can be filed.')
+    expect(gateFoot.textContent).toContain('Once that is answered the paper goes back to Ready to file by itself, and the approval stands.')
+    expect(screen.queryByRole('button', { name: /Release the hold and approve/ })).toBeNull()
     const strip = document.querySelector('[data-lien-affidavit-held-only]') as HTMLElement
     expect(strip.textContent).toContain('Showing the 1 held paper. Its row says why.')
     fireEvent.click(within(strip).getByRole('button', { name: 'Show every paper' }))
@@ -4596,5 +4603,38 @@ describe('LienDesk · Lien affidavits and Retainage notices stack their pile tit
     } finally {
       window.matchMedia = before
     }
+  })
+})
+
+describe('LienDesk · serve the filed liens together (punch list #366)', () => {
+  // Two filed affidavits that owe their copies. Every name here is made up.
+  const filed = (id: string, job_id: string) => ({ id, job_id, kind: 'affidavit', months_covered: [], voided_at: null, filed_at: '2026-09-10', serve_due: '2026-09-15', served_at: null, county: 'Guadalupe', recording_number: `2026-${id}`, sends: [], fields: { ownerName: 'Elwick Holdings LLC', ownerAddress: '4 Example Way, Schertz, TX', propertyAddress: '1204 Elwick Rd, Schertz, TX', unpaidAmount: '33500.00', originalContractorName: 'Lowbeck Contracting', originalContractorAddress: '2904 Corporate Cr, Flower Mound, TX', isSub: true }, created_at: '2026-09-10T15:00:00Z' })
+  const desk = (jobs: string[]) => {
+    const d = data([], [], true)
+    d.jobsById = Object.fromEntries(jobs.map((id, i) => [id, { ...d.jobsById.j650!, id, hcp_number: String(650 + i) }]))
+    d.filingsByJob = Object.fromEntries(jobs.map((id) => [id, [filed(`f-${id}`, id)]])) as unknown as LienDeskData['filingsByJob']
+    return d
+  }
+  const serveRows = () => screen.getAllByRole('button', { name: 'Record service' })
+
+  it('two filed liens: the row opens one window that prints both and takes their mail numbers', async () => {
+    const onOpenLienInstruments = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk(['j650', 'j651'])} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    fireEvent.click(serveRows()[0]!)
+    const win = within(screen.getByTestId('lien-serve-window'))
+    expect(win.getByText('2 filed liens owe their copies. The soonest is due Sep 15.')).toBeTruthy()
+    expect(win.getByRole('button', { name: 'Print 2 liens’ copies' })).toBeTruthy()
+    expect(win.getByRole('textbox', { name: 'Job 650, owner, certified mail number' })).toBeTruthy()
+    expect(onOpenLienInstruments).not.toHaveBeenCalled()
+  })
+
+  it('one filed lien keeps its own Lien window', async () => {
+    const onOpenLienInstruments = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk(['j650'])} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    fireEvent.click(serveRows()[0]!)
+    expect(screen.queryByTestId('lien-serve-window')).toBeNull()
+    expect(onOpenLienInstruments).toHaveBeenCalledWith('j650')
   })
 })

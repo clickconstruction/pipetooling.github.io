@@ -52,6 +52,8 @@ export type SupplyHousePhoneScreenProps = {
   onEditHouse: () => void
   onAddInvoice: () => void
   onMakePayment: () => void
+  /** Paid bills a typed payment stands behind: their action opens the payment. */
+  typedPaidIds?: ReadonlySet<string>
   onTogglePaid: (invoiceId: string) => void
   onEditInvoice: (invoiceId: string) => void
   /** Saves the house's notes; resolves true when they are stored. */
@@ -159,7 +161,7 @@ export function SupplyHousePhoneScreen(props: SupplyHousePhoneScreenProps) {
           Add invoice
         </button>
         <button type="button" onClick={props.onMakePayment} style={{ ...btn, flex: 1, borderColor: 'var(--border-green)', color: 'var(--text-green-700)' }}>
-          Make payment
+          Record a payment
         </button>
       </div>
 
@@ -175,7 +177,7 @@ export function SupplyHousePhoneScreen(props: SupplyHousePhoneScreenProps) {
           compact
           {...((): EmptyStateWords => {
             if (tab === 'credits') return { main: 'No open credits with this house.' }
-            if (tab === 'paid') return counts.unpaid > 0 ? { main: 'No paid invoices yet.', next: { label: 'Make payment', onPress: props.onMakePayment }, tail: 'marks one paid.' } : { main: 'No paid invoices yet.' }
+            if (tab === 'paid') return counts.unpaid > 0 ? { main: 'No paid invoices yet.', next: { label: 'Record a payment', onPress: props.onMakePayment }, tail: 'pays the bills you tick.' } : { main: 'No paid invoices yet.' }
             return invoices.length === 0 ? { main: 'No invoices from this house yet.', next: { label: 'Add invoice', onPress: props.onAddInvoice }, tail: 'adds the first.' } : { main: 'Nothing unpaid with this house.' }
           })()}
         />
@@ -204,8 +206,8 @@ export function SupplyHousePhoneScreen(props: SupplyHousePhoneScreenProps) {
       {sheetInvoice && sheetRow ? (
         <ScheduleSheet title={sheetRow.title} subtitle={[sheetRow.amountWords, sheetRow.sub].filter(Boolean).join(' · ')} onClose={() => setSheetId(null)}>
           <ScheduleSheetAction
-            label={sheetInvoice.is_paid ? 'Mark unpaid' : sheetRow.credit ? 'Mark applied' : 'Mark paid'}
-            hint={sheetInvoice.is_paid ? 'Puts it back on the balance' : 'Takes it off the balance'}
+            label={sheetInvoice.is_paid ? (props.typedPaidIds?.has(sheetInvoice.id) ? 'See the payment' : 'Mark unpaid') : sheetRow.credit ? 'Mark applied' : 'Mark paid'}
+            hint={sheetInvoice.is_paid ? (props.typedPaidIds?.has(sheetInvoice.id) ? 'What paid it, and every bill it paid' : 'Puts it back on the balance') : 'Takes it off the balance'}
             primary={!sheetInvoice.is_paid}
             onClick={() => {
               const id = sheetInvoice.id
@@ -214,7 +216,7 @@ export function SupplyHousePhoneScreen(props: SupplyHousePhoneScreenProps) {
             }}
           />
           {(sheetInvoice.link ?? '').trim() ? <ScheduleSheetAction label="View the invoice" hint="Opens the scan in a new tab" onClick={() => window.open(sheetInvoice.link!, '_blank', 'noopener,noreferrer')} /> : null}
-          {(sheetInvoice.payment_link ?? '').trim() ? <ScheduleSheetAction label="View the receipt" hint="The payment's link, from Make Payment" onClick={() => window.open(sheetInvoice.payment_link!, '_blank', 'noopener,noreferrer')} /> : null}
+          {(sheetInvoice.payment_link ?? '').trim() ? <ScheduleSheetAction label="View the receipt" hint="The payment's link" onClick={() => window.open(sheetInvoice.payment_link!, '_blank', 'noopener,noreferrer')} /> : null}
           <ScheduleSheetAction
             label="Edit"
             hint="Number, dates, amount, jobs"

@@ -9,3 +9,5 @@ A lien notice closed because the job was paid gets its line in the job's trail. 
 No table or column changes; idempotent (`CREATE OR REPLACE`, `DROP TRIGGER IF EXISTS`). Apply order: with v2.7359's merge, `supabase db push`. The client calls nothing new, so nothing waits on the push; until it lands a close keeps its record on the notice and the History shows no line, and the backfill writes it then.
 
 Bed: `npm run test:pg:lien-closed-paid-activity` (`supabase/tests/lien_closed_paid_activity/`, stand-in tables): the backfill, a close now, no second line on a later update, the rows that write nothing, a thin record, and the revokes.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `job_activity_line_lien_closed_paid`.

@@ -23,7 +23,7 @@ describe('the print bar over the Affidavits list says each thing once (v2.7209)'
   it('one held paper: the press, its tip, the line over the narrowed list and the way back', () => {
     expect(lienAffidavitPrintBarStatus({ ready: 12, gated: 1 }).held).toEqual({
       press: '1 held, not in this print',
-      tip: '1 ready affidavit is held by a gate and is left out. Its row says why.',
+      tip: '1 approved affidavit is held by a gate and is left out. Its row says why.',
       showing: 'Showing the 1 held paper. Its row says why.',
       back: 'Show every paper',
     })
@@ -32,7 +32,7 @@ describe('the print bar over the Affidavits list says each thing once (v2.7209)'
   it('many held papers say each row says why', () => {
     expect(lienAffidavitPrintBarStatus({ ready: 12, gated: 3 }).held).toEqual({
       press: '3 held, not in this print',
-      tip: '3 ready affidavits are held by a gate and are left out. Each row says why.',
+      tip: '3 approved affidavits are held by a gate and are left out. Each row says why.',
       showing: 'Showing the 3 held papers. Each row says why.',
       back: 'Show every paper',
     })
