@@ -13,6 +13,7 @@
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { lienMonthDayWords } from './lienMonthLine'
 import type { LienNextUpRow } from './lienNextUp'
+import { lienAffidavitNoticeWaits, lienAffidavitNoticeWords, type LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 
 export type LienRowTag = { tone: 'ok' | 'none' | 'warn'; words: string }
 
@@ -38,11 +39,12 @@ const joinDays = (days: ReadonlyArray<string>) => (days.length === 1 ? days[0]! 
 /**
  * Where an affidavit's § 53.056 notice stands, for its row. A job contracted with the owner needs none, and says so,
  * so nobody reads a missing notice as a fault. A notice on record says the day it went (the last three, oldest
- * first). None on record on a job that needs one is the warning.
+ * first). None on record on a job that needs one is the warning, and it says where that notice stands when the desk
+ * knows (`standing`, `lienAffidavitNoticeStanding.ts`): approved and not mailed is not *No notice on record*.
  */
-export function lienAffidavitNoticeTag(a: { isSub: boolean; noticed: boolean; sentOn: ReadonlyArray<string> }): LienRowTag {
+export function lienAffidavitNoticeTag(a: { isSub: boolean; noticed: boolean; sentOn: ReadonlyArray<string>; standing?: LienAffidavitNoticeStanding | null }): LienRowTag {
   if (!a.isSub) return { tone: 'none', words: 'No notice needed · contracted with the owner' }
-  if (!a.noticed) return { tone: 'warn', words: 'No notice on record' }
+  if (!a.noticed) return lienAffidavitNoticeWaits(a.standing) ? lienAffidavitNoticeWords(a.standing).tag : { tone: 'warn', words: 'No notice on record' }
   const days = [...new Set(a.sentOn.map((d) => d.slice(0, 10)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort()
   if (days.length === 0) return { tone: 'ok', words: 'Notice on record' }
   const shown = days.slice(-3).map(formatYmdMonthDay)

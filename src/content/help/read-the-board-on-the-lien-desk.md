@@ -21,9 +21,11 @@ The fourth tile is the money still unpaid on the desk. Each job counts once.
 
 The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send for Master approval**, **Awaiting Master approval**, *Approved · to print*, *Approved · to mail* and **Sent**. An approved notice stands in *Approved · to print* until its packet prints. Then it stands in *Approved · to mail* until its mail numbers are typed in. The Monthly notices list uses the same two names. A thin grey arrow joins each bin to the next.
 
-The right column is the lien affidavits. Its bins are **Needs the property facts**, **To send for Master approval**, **Awaiting Master approval**, **Ready to file** and *Filed · Served*.
+The right column is the lien affidavits. Its first two bins are **Needs the property facts** and **Waiting on its notice**. Then come **To send for Master approval**, **Awaiting Master approval** and **Ready to file**. Its last two are *Filed · copies to mail* and *Served*. A filed lien owes a copy of its affidavit to the owner within five days. It stands in *Filed · copies to mail* until the copies are mailed and the day is recorded. Then it stands in *Served*. Its chip there is coloured by the day the copies must be mailed by. That bin has a press of its own, like **Mail 12 liens’ copies ›**. The press opens one window that prints the copies and takes their mail numbers.
 
-One arrow crosses from Sent on the left to Needs the property facts on the right. The notice on record is the affidavit's gate. On a phone the columns stand one over the other and that arrow is not drawn.
+**Needs the property facts** holds an affidavit that still needs a fact. The fact is on the property record or on the GC's customer record. **Waiting on its notice** holds an affidavit that needs nothing but its notice. A job with a GC needs a notice mailed and on record before its affidavit can go. An affidavit that needs both a fact and a notice stays in **Needs the property facts**.
+
+One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the columns stand one over the other and that arrow is not drawn.
 
 The busiest bin has a blue border. Each bin's count sits at its right.
 
@@ -39,6 +41,8 @@ A chip is a job's number. Its colour says how soon its day is.
 A chip with a red mark after its number will not make its day as it stands. It has more stages to pass than working days left.
 
 A job that needs its owner stands in both columns. Point at either chip and both light up. One press on the owner clears both.
+
+An affidavit in **Waiting on its notice** lights with its notice chip the same way. The notice chip shows where the notice stands.
 
 ## Point at a chip
 
@@ -57,10 +61,11 @@ The last line says where a press will take you. Move the pointer away and the ca
 Every chip is a press to the right place for its stage. Point at a chip to read where it goes.
 
 - A chip in **Needs the owner** or **Needs the property facts** opens the property record at the missing line.
+- A chip in **Waiting on its notice** opens the job's notice. When the notice is approved, the chip opens the run on that envelope.
 - A chip in **To send for Master approval** or **Awaiting Master approval** opens that job's paper on **By paper**.
 - A chip in *Approved · to print* or *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
-- A chip in *Filed · Served* opens the job's Lien window.
+- A chip in *Filed · copies to mail* or *Served* opens the job's Lien window.
 
 A paper opened from a chip is a step of its own in the browser. Press Back and the desk returns to To do with the Board in view. The property record and the run open over the Board. Close them and the Board is where it was.
 
@@ -118,7 +123,9 @@ On a computer each row is two lines. The first line is the paper, the job and wh
 
 The second line says the one thing to know. Under **Later** it starts with the paper's bin, in the Board's own words, like **Ready to file**. Under a bin's own heading the row does not say the bin again. A notice says its months. A paper waiting on approval says when it was sent and how long it has waited. A paper that waits on a fact says the fact, and its press answers it. {{button:blue|Answer the homestead question}} opens the property record on that question.
 
-An affidavit row also says where its notice stands. It reads like *Notice sent Oct 14*, *No notice needed* or *No notice on record*.
+An affidavit row also says where its notice stands. It reads like *Notice sent Oct 14*, *No notice needed* or *No notice on record*. A notice that is started and not mailed says so, like *Notice approved · not mailed yet*.
+
+A row in **Waiting on its notice** says where the notice stands in a sentence. Its press goes to the notice's next step. For an approved notice that step is the run.
 
 Point at a bin's name on a row to read where that paper stands. It opens the card the four dots used to open. A row with nothing else to say keeps the name for that. A row with no bin, like a retainage notice, keeps its dots.
 

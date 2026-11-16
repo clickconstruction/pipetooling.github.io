@@ -8,6 +8,7 @@ import { cleanup, fireEvent, render, within } from '@testing-library/react'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { buildLienTimelineBook, type LienBookJob } from '../../lib/jobs/lienTimelineBook'
 import type { LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
+import { buildLienProperties } from '../../lib/jobs/lienPropertyPapers'
 
 afterEach(cleanup)
 
@@ -89,5 +90,29 @@ describe('LienDeskTimelineTab', () => {
     expect([phone.print.style.minHeight, phone.print.style.fontSize]).toEqual(['44px', '0.875rem'])
     // The taller bar scrolls away with the list in place of staying pinned over it.
     expect(phone.bar.style.position).toBe('static')
+  })
+
+  it('a row on a property with more jobs says so, and the press opens the property card and not the row (v2.7488)', () => {
+    const shared = buildLienTimelineBook({
+      rows: [row('j891', '2026-07', '2026-10-15'), row('j892', '2026-07', '2026-10-15'), row('j900', '2026-07', '2026-10-15')],
+      affidavitRows: [],
+      items: [],
+      filingsByJob: {},
+      jobs: { j891: { ...job('j891'), addressId: 'p1', propertyAddress: '412 Ridgeline Dr' }, j892: { ...job('j892'), addressId: 'p1', propertyAddress: '412 Ridgeline Dr' }, j900: { ...job('j900'), addressId: null } },
+      policyByCustomer: { gc1: 'ask' },
+      todayYmd: TODAY,
+    })
+    const onOpenRow = vi.fn()
+    const onOpenProperty = vi.fn()
+    const onSetProperty = vi.fn()
+    render(<LienDeskTimelineTab book={shared} loading={false} error="" gcId={null} onGcId={() => {}} show="all" onShow={() => {}} onOpenRow={onOpenRow} onPrint={() => {}} properties={buildLienProperties(shared.rows)} onOpenProperty={onOpenProperty} onSetProperty={onSetProperty} />)
+    const door = within(document.querySelector('[data-lien-book-row="j892"]') as HTMLElement).getByRole('button', { name: '412 Ridgeline Dr · 2 jobs here ›' })
+    fireEvent.click(door)
+    expect(onOpenProperty).toHaveBeenCalledWith('p1', 'j892')
+    const bare = document.querySelector('[data-lien-book-row="j900"] [data-lien-book-no-property]') as HTMLElement
+    expect(bare.textContent).toContain('No property record')
+    fireEvent.click(within(bare).getByRole('button', { name: 'Set the property ›' }))
+    expect(onSetProperty).toHaveBeenCalledWith('j900')
+    expect(onOpenRow).not.toHaveBeenCalled()
   })
 })

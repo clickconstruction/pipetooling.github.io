@@ -372,6 +372,6 @@ BEGIN
 
   DELETE FROM public.supply_houses;
   PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_payments) = 0 AND (SELECT count(*) FROM public.supply_house_payment_lines) = 0 AND (SELECT count(*) FROM public.supply_house_invoices) = 0, 'deleting the houses takes their bills, payments and lines, with no refusal');
-  RAISE NOTICE 'supply house payments: ALL PASSED';
+  RAISE NOTICE 'H the ground agrees PASSED';
 END;
 $$;

@@ -23,7 +23,8 @@ const LIEN_BOOK_READS: LienBookReads = {
     ((await withSupabaseRetry(() => supabase.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address, owner_email').in('job_id', jobIds), 'lien book: owner overrides').catch(() => [])) ?? []) as LienBookOwnerRow[],
   filings: async (jobIds) =>
     ((await withSupabaseRetry(
-      () => supabase.from('job_lien_filings').select('*').in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
+      // The recorded § 53.056 notices ride the same read since v2.7485: the property view says the day each went.
+      () => supabase.from('job_lien_filings').select('*').in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record', 'notice_53_056']).is('voided_at', null),
       'lien book: filings',
     ).catch(() => [])) ?? []) as JobLienFilingRow[],
   // The demand letters (v2.3880) — the row's strip carries the letter the job's own strip draws.

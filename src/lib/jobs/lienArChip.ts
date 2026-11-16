@@ -187,6 +187,9 @@ function doorFor(row: LienNextUpRow, jobId: string): LienArDoor {
     // The *paper named it too* door (punch list #353) is a press on the desk's To draft row; the chip's door is that row.
     case 'notice_record_months':
       return { to: 'desk', jobId, kind: 'notice', pile: 'to_draft' }
+    // The folded row that mails every filed lien's copies (punch list #366) never reaches a job's chip either; a job's own row opens its Lien window.
+    case 'serve_copies':
+      return { to: 'window', jobId, tab: 'affidavit' }
   }
 }
 
