@@ -37,19 +37,19 @@ import { boxChipWords } from '../../lib/materials/boxLine'
 import { boxKindWords } from '../../lib/materials/editBox'
 import { boxAddressWords, boxCodeWords, boxUrl, labelPrintName, labelPrintNames, labelRows, shortenedLabelsNote } from '../../lib/materials/labels'
 import { labelsCsvFileName, labelsCsvRows, labelsCsvText } from '../../lib/materials/labelsCsv'
-import { readLabelFormat, readTapeCopies, readTapePrintedDay, readTapeWidth, writeLabelFormat, writeTapeCopies, writeTapePrintedDay, writeTapeWidth } from '../../lib/materials/labelPrefs'
+import { readLabelFormat, readTapeCopies, readTapePrintedDay, readTapeWidth, writeLabelFormat, writeTapeCopies, writeTapePrintedDay, writeTapeWidth, readStoppedRun, writeStoppedRun } from '../../lib/materials/labelPrefs'
 import { helpGuideHref } from '../../lib/helpGuideAnchors'
 import { linesOf, type Container, type ContainerLine } from '../../lib/materials/onSite'
 import { downloadFile } from '../../lib/materials/photoShare'
 import { printRootCss } from '../../lib/printRoot'
-import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NEEDS_BROWSER, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
+import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NEEDS_BROWSER, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_CHECK_AGAIN_LABEL, PTOUCH_NOT_ANSWERING, PTOUCH_RECHECK_MS, PTOUCH_RECHECK_WORDS, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchCannotPrintWords, ptouchNeedsRecheck, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
 import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import TapeStripBitmap from './TapeStripBitmap'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { LABEL_OUTPUTS, TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, labelCountWords, longestNameChars, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps, tapeStoppedWords, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { tapeAddressLines } from '../../lib/materials/tapeStrip'
-import { LABEL_RANGE_FROM, LABEL_RANGE_TO, afterStop, leftAfterRangePick, partialThatHolds, rangeCountWords, restCountWords, runStrips, stoppedDetailWords, tickedRange, type PartialBox, type RunStrip } from '../../lib/materials/labelPick'
+import { LABEL_RANGE_FROM, LABEL_RANGE_TO, afterStop, leftAfterRangePick, partialThatHolds, rangeCountWords, restCountWords, resumedRunWords, runStrips, stoppedDetailWords, stoppedRunToKeep, stoppedRunToResume, tickedRange, type PartialBox, type RunStrip } from '../../lib/materials/labelPick'
 
 const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
@@ -77,11 +77,18 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   const one = candidates.length === 1 ? candidates[0] : null
   const [format, setFormatState] = useState<LabelFormat>(() => readLabelFormat())
   const [width, setWidthState] = useState<TapeWidthMm>(() => readTapeWidth())
-  const [left, setLeft] = useState<ReadonlySet<string>>(() => new Set())
+  /** The job these boxes are on: what a stopped run is kept under. */
+  const jobId = candidates[0]?.jobId ?? null
+  /**
+   * A run that stopped part way earlier today on this device (the tape ran out, the window was closed to change it):
+   * read once as the window opens, so it comes back on the rest and not on every box.
+   */
+  const [resumed] = useState(() => (only ? null : stoppedRunToResume(readStoppedRun(), containers[0]?.jobId, todayYmdInAppTz(), containers.map((c) => c.id))))
+  const [left, setLeft] = useState<ReadonlySet<string>>(() => resumed?.left ?? new Set())
   const setFormat = (f: LabelFormat) => { setFormatState(f); writeLabelFormat(f) }
   const setWidth = (w: TapeWidthMm) => { setWidthState(w); writeTapeWidth(w) }
   /** Strips of each box (v2.6878): a box with more than one side takes more than one. Tape only. */
-  const [copiesState, setCopiesState] = useState<number>(() => readTapeCopies())
+  const [copiesState, setCopiesState] = useState<number>(() => resumed?.copies ?? readTapeCopies())
   const setCopies = (n: number) => { const c = clampTapeCopies(n); setCopiesState(c); writeTapeCopies(c) }
   const shown = candidates.filter((c) => !left.has(c.id))
   const candidateIds = useMemo(() => candidates.map((c) => c.id), [candidates])
@@ -124,9 +131,16 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   const [progress, setProgress] = useState<{ done: number; total: number; strips: RunStrip[] } | null>(null)
   const [sentWords, setSentWords] = useState<string | null>(null)
   /** After a run that ended part way: which boxes are done, which is part way and what the press does now, on a line of its own. */
-  const [restWords, setRestWords] = useState<string | null>(null)
+  const [restWords, setRestWords] = useState<string | null>(() => {
+    if (!resumed) return null
+    const names = labelPrintNames(containers)
+    const box = resumed.partial ? containers.find((c) => c.id === resumed.partial?.id) : undefined
+    return resumedRunWords(resumed.left.size, resumed.partial && box ? { name: labelPrintName(names, box), toGo: resumed.partial.copies - resumed.partial.done, copies: resumed.partial.copies } : null)
+  })
   /** The one box a stopped run left part way through its copies; the next press prints only what it is missing. */
-  const [partialState, setPartial] = useState<PartialBox | null>(null)
+  const [partialState, setPartial] = useState<PartialBox | null>(() => resumed?.partial ?? null)
+  /** Every box, from the start: a kept run is forgotten with it. */
+  const startOver = () => { setLeft(new Set()); setPartial(null); setRestWords(null); writeStoppedRun(null) }
   /** Stop printing was pressed: the loop reads the ref before each strip, the press reads the state. */
   const stopRef = useRef(false)
   const [stopping, setStopping] = useState(false)
@@ -139,7 +153,8 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   }, [])
   const adopt = useCallback((l: PtouchLink) => {
     setLink(l)
-    setUsbSlip(null)
+    // The red line is left as it is: a printer that stopped for want of tape still answers, so the window is back on
+    // it at once, and how many strips went and why must outlast that. The Connect press and the next run clear it.
     // The printer says what tape is in it; the strips are drawn for that.
     if (isTapeWidth(l.status.tapeMm)) { setWidthState(l.status.tapeMm); writeTapeWidth(l.status.tapeMm) }
   }, [])
@@ -150,6 +165,34 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
     void connectPtouch({ ask: false }).then((l) => { if (!l) return; if (live) adopt(l); else void l.close() }).catch(() => { /* the press says why */ })
     return () => { live = false }
   }, [direct, link, adopt])
+  /**
+   * A connected printer that cannot print (no tape, the cover open, a tape the label is not laid out for) is asked
+   * again every few seconds while nothing prints, so a new cassette is seen with no press (Taunya, 2026-11-15). The
+   * printer's answer lands on the link; the tick redraws the window with it. One that stops answering is let go, and
+   * the press becomes Connect the P-touch.
+   */
+  const [, setStatusTick] = useState(0)
+  const checking = useRef(false)
+  const recheck = useCallback(async (l: PtouchLink) => {
+    if (checking.current) return
+    checking.current = true
+    try {
+      const status = await l.refresh()
+      if (isTapeWidth(status.tapeMm)) { setWidthState(status.tapeMm); writeTapeWidth(status.tapeMm) }
+      setStatusTick((t) => t + 1)
+    } catch {
+      void l.close()
+      setLink((now) => (now === l ? null : now))
+    } finally {
+      checking.current = false
+    }
+  }, [])
+  const needsRecheck = direct && link != null && usbBusy == null && ptouchNeedsRecheck(link.status)
+  useEffect(() => {
+    if (!needsRecheck || !link) return
+    const timer = window.setInterval(() => { void recheck(link) }, PTOUCH_RECHECK_MS)
+    return () => window.clearInterval(timer)
+  }, [needsRecheck, link, recheck])
   const linkRef = useRef<PtouchLink | null>(null)
   linkRef.current = link
   useEffect(() => () => { void linkRef.current?.close() }, [])
@@ -213,6 +256,8 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
       // A stop before the part-way box was reached leaves it as it was.
       const kept = now ?? (partial && !wholeIds.includes(partial.id) ? partial : null)
       setPartial(kept)
+      // Kept on this device for the day, so a window closed to change the tape opens on the rest.
+      writeStoppedRun(stoppedRunToKeep(jobId, todayYmdInAppTz(), copies, new Set([...left, ...wholeIds]), kept))
       const nameOf = (id: string) => { const c = shown.find((b) => b.id === id); return c ? labelPrintName(printNames, c) : '' }
       return stoppedDetailWords(wholeIds.map(nameOf), kept ? { name: nameOf(kept.id), toGo: kept.copies - kept.done, copies: kept.copies } : null, labels.length - done)
     }
@@ -228,7 +273,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
         setRestWords(keepTheRest() || null)
       } else {
         setSentWords(tapeSentWords(done, labels.length))
-        if (!test) setPartial(null)
+        if (!test) { setPartial(null); writeStoppedRun(null) }
       }
     } catch (e) {
       // A run that stops part way leaves its last printed strip short of the cutter: the strips share one lead-in (v2.6881).
@@ -371,7 +416,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
                 {/* As the manifest window has: one new cage's label without unticking the rest. */}
                 <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.75rem' }}>
                   <button type="button" style={quietLink} onClick={() => setLeft(new Set(candidates.map((c) => c.id)))}>None</button>
-                  <button type="button" style={quietLink} onClick={() => setLeft(new Set())}>Every box</button>
+                  <button type="button" style={quietLink} onClick={startOver}>Every box</button>
                 </span>
               </div>
             )}
@@ -460,6 +505,13 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
         {/* The press is the last thing done, so it is the last thing in the window, and it stays in reach while the strips scroll (v2.6878). A sticky box is held inside its parent's content box, so `bottom` gives back the window's own bottom padding. */}
         <div className="on-site-labels-chrome" style={{ position: 'sticky', bottom: '-1rem', margin: '0.75rem -1.25rem -1rem', padding: '0.6rem 1.25rem 0.8rem', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'grid', gap: '0.4rem' }} data-testid="labels-foot">
           {usbSlip ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="labels-usb-slip">{usbSlip}</div> : null}
+          {needsRecheck && link ? (
+            /* Why the press is grey, right above it: what the printer says, what to do, and that the window is looking. */
+            <div role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', color: 'var(--text-amber-800)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-recheck">
+              <span>{ptouchCannotPrintWords(link.status)} {PTOUCH_RECHECK_WORDS}</span>
+              <button type="button" style={quietLink} onClick={() => void recheck(link)} data-testid="labels-check-printer">{PTOUCH_CHECK_AGAIN_LABEL}</button>
+            </div>
+          ) : null}
           {progress ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
               <span role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-usb-progress">{stopping ? PTOUCH_STOPPING : tapeProgressWords(progress.done, progress.total, progressAt)}</span>
