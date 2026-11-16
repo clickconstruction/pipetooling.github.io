@@ -91,9 +91,11 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailNeedsYouRows, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
 import LienMailPieceDoors from './LienMailPieceDoors'
-import { approveLienDeskItem, clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, redrawLienDeskItem, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitBatchToldWords, lienAffidavitTellPapers } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
+import { lienNoticeParted } from '../../lib/jobs/lienNoticeParted'
+import { canRedrawItem, fieldsRedrawn, lienNoticePartedBand, lienNoticeRedrawConfirm, lienNoticeRedrawnToast, lienNoticeRedrawnWords, lienNoticeSignFields, redrawnLine, redrawnOf } from '../../lib/jobs/lienNoticeRedraw'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
@@ -1569,9 +1571,23 @@ export default function LienDesk({
   )
   // The stored draft wins when there is one (the leader approves those exact values); the office's typed wording layers on top.
   // The claim is re-read live (v2.3682): the balance and a hand-set correction are sources, and the paper follows its source.
+  // The date too, until the paper is signed (v2.7520): a notice not yet signed is dated the day it is read, so the form
+  // carries the day the leader signs it and never the day a draft was first made. A signed, printed or sent paper keeps its own.
+  const paperDateStands = useMemo(() => {
+    const it = selected?.item
+    if (!it || it.status === 'drafted') return false
+    if (it.status === 'sent' || it.status === 'missed' || (it as { printed_at?: string | null }).printed_at) return true
+    return lienChipSigned(signatureColumnsOf(it), lienFieldsHash(it.fields)) !== 'unsigned'
+  }, [selected?.item])
   const noticeFields = useMemo(
-    () => applyWordingEdits({ ...(storedDraft?.notice ?? jobDefaults), claimAmount: jobDefaults.claimAmount, ...(jobDefaults.claimSplit ? { claimSplit: jobDefaults.claimSplit } : { claimSplit: undefined }), ...(jobDefaults.retainageIncluded ? { retainageIncluded: jobDefaults.retainageIncluded } : { retainageIncluded: undefined }) }, wordingEdits),
-    [storedDraft, jobDefaults, wordingEdits],
+    () => applyWordingEdits({ ...(storedDraft?.notice ?? jobDefaults), ...(paperDateStands ? {} : { noticeDate: jobDefaults.noticeDate }), claimAmount: jobDefaults.claimAmount, ...(jobDefaults.claimSplit ? { claimSplit: jobDefaults.claimSplit } : { claimSplit: undefined }), ...(jobDefaults.retainageIncluded ? { retainageIncluded: jobDefaults.retainageIncluded } : { retainageIncluded: undefined }) }, wordingEdits),
+    [storedDraft, jobDefaults, wordingEdits, paperDateStands],
+  )
+  // The stored paper beside the bills (v2.7517's rule, read on the desk since v2.7520): past a draft, the row keeps the paper
+  // as it was sent for approval while this pane draws today's figures. When they differ the band over the paper says so.
+  const paneParted = useMemo(
+    () => (item && item.status !== 'drafted' && storedDraft ? lienNoticeParted(storedDraft.notice, jobDefaults, claimed.corrected ? 'hand' : 'bills') : null),
+    [item, storedDraft, jobDefaults, claimed.corrected],
   )
   const wordingDiff = useMemo(() => noticeWordingDiff(noticeFields, jobDefaults), [noticeFields, jobDefaults])
   const wordingTouched = Object.keys(wordingEdits).length > 0
@@ -1596,7 +1612,7 @@ export default function LienDesk({
           door === 'gc' ? 'Filled from the job · the GC — click to change it there'
           : door === 'company' ? 'Filled from Settings → Company — click to change it there'
           : door === 'claim' ? 'Set on the claim box above — click, and it opens there'
-          : g.key === 'noticeDate' ? 'The day it is drafted or sent — nothing to change'
+          : g.key === 'noticeDate' ? 'The day it is signed — nothing to change'
           : `Filled from ${g.source}`
         m[g.key] = { kind: 'derived', title, ...(door && (door !== 'company' || onOpenCompanySettings) ? { door } : {}), ring: ringField === g.key }
       }
@@ -2012,13 +2028,26 @@ export default function LienDesk({
       : await signLienDeskItem({ itemId, fields, signer: { userId: authUserId, printedName: signerName }, payload, onDevice: null, approve: approveToo })
     if (!r.ok) throw new Error(r.message)
   }
+  /**
+   * The paper a signing press signs (v2.7520): the one this pane shows, dated today. When the stored paper is not that
+   * (a bill changed since it was sent for approval, or it was drafted on an earlier day) the row is rewritten first, so
+   * the hash the signature binds is of the pages the leader read. A printed paper is signed as it printed.
+   */
+  const fieldsToSign = async (): Promise<unknown> => {
+    if (!item) return null
+    if (!canRedrawItem(item)) return item.fields
+    const fresh = lienNoticeSignFields(item.fields, noticeFields, paneParted, { at: new Date().toISOString(), by: authUserId, byName: authName })
+    if (lienFieldsHash(JSON.parse(JSON.stringify(fresh))) === lienFieldsHash(item.fields)) return item.fields
+    if (!(await redrawLienDeskItem(item.id, fresh))) throw new Error('This notice moved on since this screen read it. Nothing was signed. Open it again.')
+    return fresh
+  }
   const approve = () =>
     run(
       'Sign and approve',
       async () => {
         if (!item) return
         await setLienDeskItemOffer(item.id, offer)
-        await signItem(item.id, item.fields, true)
+        await signItem(item.id, await fieldsToSign(), true)
       },
       offer ? `Signed and approved with a ${offer.pct}% offer. ${LIEN_RUN_NOW_TO_PRINT}` : `Signed and approved. ${LIEN_RUN_NOW_TO_PRINT}`,
     )
@@ -2027,10 +2056,43 @@ export default function LienDesk({
       'Sign',
       async () => {
         if (!item) return
-        await signItem(item.id, item.fields, false)
+        await signItem(item.id, await fieldsToSign(), false)
       },
       `Signed. ${LIEN_RUN_NOW_TO_PRINT}`,
     )
+  // Redraw from the bills (v2.7520): the stored paper replaced by today's, dated today, the signature cleared. It asks first.
+  const redrawFromBills = async () => {
+    if (!item || !paneParted || !canRedrawItem(item)) return
+    const signed = paneSignature != null
+    const words = lienNoticeRedrawConfirm(paneParted, { signed, leaderName })
+    if (!(await confirmDialog({ title: words.title, message: words.message, confirmLabel: words.confirmLabel }))) return
+    await run(
+      'Redraw from the bills',
+      async () => {
+        const fresh = fieldsRedrawn(item.fields, { ...noticeFields, noticeDate: todayYmd }, redrawnLine(storedDraft?.notice, { at: new Date().toISOString(), by: authUserId, byName: authName }))
+        if (!(await redrawLienDeskItem(item.id, fresh))) throw new Error('This notice printed or moved on since this screen read it. Nothing was changed.')
+      },
+      lienNoticeRedrawnToast(signed, leaderName),
+    )
+  }
+  // The band over the paper (v2.7520): what parted with both figures, what happens next, and the press. A redrawn paper keeps a quiet line saying so.
+  const partedStanding = !item ? null : (item as { printed_at?: string | null }).printed_at ? ('printed' as const) : paneSignature != null ? ('signed' as const) : ('unsigned' as const)
+  const partedBand = paneParted && partedStanding ? lienNoticePartedBand(paneParted, partedStanding, leaderName) : null
+  const redrawnRecord = item && !paneParted ? redrawnOf(item.fields) : null
+  const partedBandNode = partedBand ? (
+    <div data-lien-desk-parted={partedStanding ?? undefined} role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', padding: '0.6rem 0.75rem', margin: '0 0 0.5rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
+      <span style={{ flex: '1 1 18rem' }}>
+        <strong>{partedBand.head}.</strong> {partedBand.words} {partedBand.next}
+      </span>
+      {(office || leader) && canRedrawItem(item) ? (
+        <button type="button" onClick={() => void redrawFromBills()} disabled={busy} style={btn('amber', busy)} data-lien-desk-redraw title="Replace the stored paper with today’s figures and date. A signature on it comes off and is asked for again">
+          Redraw from the bills ▸
+        </button>
+      ) : null}
+    </div>
+  ) : redrawnRecord ? (
+    <div data-lien-desk-redrawn style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{lienNoticeRedrawnWords(redrawnRecord, footShortDay)}</div>
+  ) : null
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
@@ -3444,6 +3506,7 @@ export default function LienDesk({
         `Page ${noticePageNumber} of ${pageTotal} · the notice`,
         { words: `· ${wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}`, amber: wordingDiff.length > 0 },
       )}
+      {partedBandNode}
       <div data-theme="light" data-lien-desk-paper ref={paperRef} onClick={onPaperClick} style={{ ...paperStyle, position: 'relative' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
         {editing ? (
