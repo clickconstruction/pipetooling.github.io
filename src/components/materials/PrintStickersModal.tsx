@@ -1,8 +1,11 @@
 /**
- * Print blank stickers (punch list #329, PR 2, v2.7272): the window that mints a run of stickers before their boxes
- * and prints it on Brother tape. It asks how many (the card's quick presses or a typed number), **Copies of each** as
- * the labels window has, and the tape width, remembered on the device by `labelPrefs.ts`. One press, *Print 200
- * sets*, calls `mint_sticker_run` as the caller (`stickerRunsIo.ts`): the database numbers the run and makes the
+ * Print future stickers (punch list #329, PR 2, v2.7272; *Print blank stickers* until v2.7484): the window that mints a
+ * run of stickers before their boxes and prints it on Brother tape. Minting is the reserving: each sticker gets a
+ * code of its own, and its name when the run has names, held for a box someone says later. The ask says so in a line
+ * under the names, and a run that is made says it is reserved. It asks how many (the card's quick presses or a typed
+ * number), **Copies of each** as the labels window has, and the tape width, remembered on the device by
+ * `labelPrefs.ts`. One press, *Print 200 sets of future stickers*, calls `mint_sticker_run` as the caller
+ * (`stickerRunsIo.ts`): the database numbers the run and makes the
  * stickers, and the strips print as soon as they are drawn. A refusal is said in the database's own words, and a run
  * refused before its numbers takes none.
  *
@@ -32,11 +35,12 @@ import { readTapeCopies, readTapePrintedDay, readTapeWidth, writeTapeCopies, wri
 import { downloadFile } from '../../lib/materials/photoShare'
 import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_CHECK_AGAIN_LABEL, PTOUCH_NOT_ANSWERING, PTOUCH_RECHECK_MS, PTOUCH_RECHECK_WORDS, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchCannotPrintWords, ptouchNeedsRecheck, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
 import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
-import { nextFreeName } from '../../lib/materials/boxName'
-import { blankNamesNotice, liveNamesNotice, STICKER_NAMES_LABEL, STICKER_NAMES_PLACEHOLDER, STICKER_NAMES_READING_WORDS, STICKER_NAMES_UNREAD_WORDS, stickerNamesAsk } from '../../lib/materials/stickerNames'
+import { blankNamesNotice, liveNamesNotice, nextNameToReserve, STICKER_NAMES_LABEL, STICKER_NAMES_PLACEHOLDER, STICKER_NAMES_READING_WORDS, STICKER_NAMES_UNREAD_WORDS, stickerNamesAsk } from '../../lib/materials/stickerNames'
 import {
+  PRINT_STICKERS_LABEL,
   printRestLabel,
   printRunLabel,
+  futureRunPressLabel,
   restAfterStop,
   runStripsWords,
   STICKER_COUNT_PRESETS,
@@ -46,10 +50,12 @@ import {
   STICKER_TEST_STRIP,
   STICKERS_GUIDE,
   STICKERS_GUIDE_HEADING,
+  STICKERS_GUIDE_QUESTION,
+  STICKERS_RESERVED_WORDS,
   stickerCountOf,
   stickerReadName,
+  stickerReserveWords,
   stickerRunCountWords,
-  stickerRunPressLabel,
   stickerRunRequest,
   stickerSpanWords,
   stripNameChars,
@@ -130,12 +136,13 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   }, [given, jobId, blankCount])
   /**
    * The site's boxes and its blank named stickers (section 10): undefined while they are read, null when the read
-   * failed. The Names field opens on the site's next free name once they land, unless someone typed first.
+   * failed. The Names field opens on the site's next free name once they land, unless someone typed first: one past
+   * its boxes and past every name an earlier run reserved (v2.7487), so a second run starts after the first.
    */
   const [site, setSite] = useState<SiteStickerNames | null | undefined>(given ? null : undefined)
   const [namesText, setNamesText] = useState('')
   const namesTouched = useRef(false)
-  const offered = useMemo(() => (site ? nextFreeName(site.boxes) : null), [site])
+  const offered = useMemo(() => (site ? nextNameToReserve(site.boxes, site.blankNames) : null), [site])
   useEffect(() => {
     if (given) return
     let live = true
@@ -143,7 +150,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
       .then((got) => {
         if (!live) return
         setSite(got)
-        const first = nextFreeName(got.boxes)
+        const first = nextNameToReserve(got.boxes, got.blankNames)
         if (first && !namesTouched.current) setNamesText(first)
       })
       .catch(() => { if (live) setSite(null) })
@@ -371,7 +378,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     downloadFile(new File([stickersCsvText(minted.stickers)], stickersCsvFileName(minted.run, todayYmdInAppTz()), { type: 'text/csv' }))
   }
 
-  const pressLabel = stage === 'ask' ? stickerRunPressLabel(count, copies, askNames) : printing.length < (minted?.stickers.length ?? 0) && isRest ? printRestLabel(printing) : printRunLabel(printing, copies)
+  const pressLabel = stage === 'ask' ? futureRunPressLabel(count, copies, askNames) : printing.length < (minted?.stickers.length ?? 0) && isRest ? printRestLabel(printing) : printRunLabel(printing, copies)
   /** Everything that holds the ask's press but the one hold **Print them anyway** lifts. */
   const askBlocked = !verdict.ok || rangeRefused || site === undefined || minting || printerHolds
   const dead = stage === 'ask' ? askBlocked || held : printing.length === 0 || printerHolds
@@ -380,7 +387,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const showSetup = tapeDay == null || setupOpen
   const routeSwitch = usbHere ? <button type="button" style={quietLink} onClick={() => { setViaWindow((v) => !v); setSlip(null); setSentWords(null) }}>{viaWindow ? TAPE_VIA_USB_LABEL : TAPE_VIA_WINDOW_LABEL}</button> : null
   const stepBtn = (off: boolean): CSSProperties => ({ ...btn, minHeight: 32, width: 32, padding: 0, justifyContent: 'center', borderRadius: 999, fontSize: '1rem', ...(off ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}) })
-  const title = given ? `${given.title} · ${jobLabel}` : minted ? `${stickerSpanWords(minted.stickers) ? `Stickers ${stickerSpanWords(minted.stickers)}` : `${minted.stickers.length} ${minted.stickers.length === 1 ? 'sticker' : 'stickers'}`} · ${jobLabel}` : `Print blank stickers · ${jobLabel}`
+  const title = given ? `${given.title} · ${jobLabel}` : minted ? `${stickerSpanWords(minted.stickers) ? `Stickers ${stickerSpanWords(minted.stickers)}` : `${minted.stickers.length} ${minted.stickers.length === 1 ? 'sticker' : 'stickers'}`} · ${jobLabel}` : `${PRINT_STICKERS_LABEL} · ${jobLabel}`
   /** The run as its words read it: the names off the stickers when the run's own row came back without them. */
   const runForWords = minted ? { ...minted.run, names: minted.run.names ?? (minted.stickers.length > 0 && minted.stickers.every((s) => s.boxName) ? minted.stickers.map((s) => s.boxName!) : null) } : null
   const countWords = runForWords ? runStripsWords(runForWords, printing.length) : stickerRunCountWords(count, copies)
@@ -421,12 +428,14 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     <div className="on-site-stickers" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
       {/* Printed alone at full size, as the labels window is (lib/printRoot.ts, v2.6432); the tape's @page rule comes last so it wins. */}
       <style>{`${printRootCss('on-site-stickers')} @media print { .on-site-stickers-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-stickers-chrome { display: none !important; } .on-site-stickers-list { display: block !important; } .on-site-tape-copy { display: grid !important; } } ${tapePrintCss(width, 'on-site-tape', nameChars)}`}</style>
-      <div role="dialog" aria-modal="true" aria-label={given ? given.title : 'Print blank stickers'} className="on-site-stickers-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label={given ? given.title : PRINT_STICKERS_LABEL} className="on-site-stickers-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="on-site-stickers-chrome" style={{ display: 'grid', gap: '0.6rem', marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
             <div style={{ flex: '1 1 auto', minWidth: 0 }}>
               <h2 style={{ margin: 0, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{title}</h2>
               <span style={muted} data-testid="stickers-count-words">{countWords}</span>
+              {/* A run that is made is reserved (the owner, 2026-11-16): said over the strips, which carry each sticker's own link. */}
+              {stage === 'run' ? <span style={{ ...muted, display: 'block' }} data-testid="stickers-reserved-words">{STICKERS_RESERVED_WORDS}</span> : null}
             </div>
             <button type="button" style={{ ...btn, flex: '0 0 auto' }} onClick={onClose}>Close</button>
           </div>
@@ -457,7 +466,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
                 {tapeSetupSteps(width, direct).map((step) => <li key={step}>{step}</li>)}
               </ol>
               <span>Then press {TAPE_TEST_STRIP_LABEL} before a whole run. The test strip is not a sticker.</span>
-              <a href={helpGuideHref(STICKERS_GUIDE, STICKERS_GUIDE_HEADING)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-amber-800)', fontWeight: 600, justifySelf: 'start' }}>How do I print blank stickers?</a>
+              <a href={helpGuideHref(STICKERS_GUIDE, STICKERS_GUIDE_HEADING)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-amber-800)', fontWeight: 600, justifySelf: 'start' }}>{STICKERS_GUIDE_QUESTION}</a>
               {!viaWindow ? <span style={{ justifySelf: 'start' }}>{routeSwitch}</span> : null}
             </div>
           ) : null}
@@ -515,6 +524,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
                 <button type="button" aria-label="One more copy" disabled={copies >= TAPE_COPIES_MAX} aria-disabled={copies >= TAPE_COPIES_MAX} style={stepBtn(copies >= TAPE_COPIES_MAX)} onClick={() => setCopies(copies + 1)} data-testid="stickers-copies-more">+</button>
                 <span style={muted}>{copies > 1 ? 'A set is one sticker printed more than once, for a box with more than one side. Every copy opens the same box.' : 'For a box with more than one side, print each sticker more than once.'}</span>
               </div>
+              {/* What the press holds (the owner, 2026-11-16): the window never prints a sticker with no link, and says so before the press. */}
+              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-strong)' }} data-testid="stickers-reserve-words">{stickerReserveWords(askNames != null)}</p>
               <p style={{ ...muted, margin: 0 }} data-testid="stickers-goes-on">
                 New boxes made from these stickers go on {jobLabel}.{blank > 0 ? <> <span data-testid="stickers-blank-count">{jobBlankWords(blank)}</span></> : null}
               </p>

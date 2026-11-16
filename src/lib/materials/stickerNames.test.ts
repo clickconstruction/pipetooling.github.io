@@ -3,7 +3,7 @@
  * row for row, plus the twins and the shorthand ends.
  */
 import { describe, expect, it } from 'vitest'
-import { blankNamesNotice, liveNamesNotice, namesSpanWords, nextTwinName, normalizeStickerRange, readStickerRange, stickerNamesAsk, stickerRangeSetsCount, stickerRangeWords, type StickerRange } from './stickerNames'
+import { blankNamesNotice, liveNamesNotice, namesSpanWords, nextNameToReserve, nextTwinName, normalizeStickerRange, readStickerRange, stickerNamesAsk, stickerRangeSetsCount, stickerRangeWords, type StickerRange } from './stickerNames'
 
 const names = (r: StickerRange) => (r.kind === 'names' ? r.names : null)
 const refused = (r: StickerRange) => (r.kind === 'refused' ? r.words : null)
@@ -143,6 +143,24 @@ describe('the words', () => {
   })
 })
 
+describe('nextNameToReserve (v2.7487)', () => {
+  const box = (label: string, retiredAt: string | null = null) => ({ id: label, label, kind: 'cage', retiredAt })
+  it('opens a new run one past the site’s boxes and past every name an earlier run reserved', () => {
+    const boxes = [box('G90'), box('G91')]
+    // no reserved name: the site's own next free name, as before
+    expect(nextNameToReserve(boxes, [])).toBe('G92')
+    // G92 to G200 are reserved and on no box: the next run starts at G201, never on the first run's names
+    expect(nextNameToReserve(boxes, Array.from({ length: 109 }, (_, i) => `G${92 + i}`))).toBe('G201')
+    // a reserved name under the highest box changes nothing, and a retired box's number is still never offered
+    expect(nextNameToReserve([...boxes, box('G300', '2026-11-01T00:00:00Z')], ['G95'])).toBe('G301')
+  })
+  it('a site with no box yet takes its letters from the reserved names, and one with neither offers nothing', () => {
+    expect(nextNameToReserve([], ['G1', 'G2', 'G3'])).toBe('G4')
+    expect(nextNameToReserve([], [])).toBeNull()
+    expect(nextNameToReserve([{ id: 'u', label: 'Unsorted', kind: 'unsorted', retiredAt: null }], [])).toBeNull()
+  })
+})
+
 describe('nextTwinName', () => {
   const boxes = [
     { label: 'G78', kind: 'cage', retiredAt: null },
@@ -242,10 +260,10 @@ describe('the window’s Names field (PR 8, v2.7391)', () => {
     const blank = Array.from({ length: 23 }, (_, i) => `G${178 + i}`)
     const notice = blankNamesNotice(run, blank)!
     expect(notice.names).toHaveLength(23)
-    expect(notice.words).toBe('23 of these were printed on an earlier run and are not on a box yet, G178 to G200. Printing them again makes two stickers for each name.')
+    expect(notice.words).toBe('23 of these are reserved by an earlier run and are not on a box yet, G178 to G200. Printing them again makes two stickers for each name.')
     expect(notice.anywayLabel).toBe('Print them anyway')
     const one = blankNamesNotice(['G178', 'G300'], ['g178'])!
-    expect(one.words).toBe('1 of these was printed on an earlier run and is not on a box yet, G178. Printing it again makes two stickers for one name.')
+    expect(one.words).toBe('1 of these is reserved by an earlier run and is not on a box yet, G178. Printing it again makes two stickers for one name.')
     expect(one.anywayLabel).toBe('Print it anyway')
     expect(blankNamesNotice(['G1', 'G2'], blank)).toBeNull()
     expect(blankNamesNotice(run, [])).toBeNull()

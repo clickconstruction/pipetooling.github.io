@@ -18,7 +18,7 @@
  * `to-dos/stickers-before-boxes/mockup-named-runs.html` is this file's test list. The window's Names field (PR 8,
  * v2.7391) reads through `stickerNamesAsk`, and its two notices at print are `liveNamesNotice` and `blankNamesNotice`.
  */
-import { BOX_NAME_RULE, BOX_NAME_RULE_WORDS, boxNameWords, parseBoxName, type BoxName, type SiteBox } from './boxName'
+import { BOX_NAME_RULE, BOX_NAME_RULE_WORDS, boxNameWords, nextFreeName, parseBoxName, type BoxName, type SiteBox } from './boxName'
 import { STICKER_RUN_MAX } from './stickerRun'
 import { BOX_NUMBER_MAX } from './boxName'
 
@@ -225,6 +225,15 @@ export function namesSpanWords(some: ReadonlyArray<string>, runNames: ReadonlyAr
 }
 
 /**
+ * The name a new run opens on (v2.7487): one past the highest number the site's boxes carry and the highest a
+ * reserved sticker holds, so a second run starts after the first where it used to open on the first's own names and
+ * meet the hold. A reserved name counts as a box of that name does. Null on a site with no name yet.
+ */
+export function nextNameToReserve(boxes: ReadonlyArray<SiteBox>, reservedNames: ReadonlyArray<string>): string | null {
+  return nextFreeName([...boxes, ...reservedNames.map((label) => ({ label, kind: 'box', retiredAt: null }))])
+}
+
+/**
  * The first notice at print: names of the run that are live boxes on the site already. This is the backfill, and the
  * default, so it is a notice and never a hold: *77 of these are boxes on this site already, G1 to G77. Their stickers
  * go on those boxes.* Null when none is.
@@ -249,7 +258,7 @@ export function blankNamesNotice(names: ReadonlyArray<string>, blankNames: Reado
   if (again.length === 0) return null
   const span = namesSpanWords(again, names)
   const words = again.length === 1
-    ? `1 of these was printed on an earlier run and is not on a box yet, ${span}. Printing it again makes two stickers for one name.`
-    : `${again.length} of these were printed on an earlier run and are not on a box yet, ${span}. Printing them again makes two stickers for each name.`
+    ? `1 of these is reserved by an earlier run and is not on a box yet, ${span}. Printing it again makes two stickers for one name.`
+    : `${again.length} of these are reserved by an earlier run and are not on a box yet, ${span}. Printing them again makes two stickers for each name.`
   return { names: again, words, anywayLabel: again.length === 1 ? 'Print it anyway' : 'Print them anyway' }
 }
