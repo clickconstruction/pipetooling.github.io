@@ -111,18 +111,42 @@ export function lienBoardCardHeight(card: Pick<LienBoardChipCard, 'left'>): numb
   return LIEN_BOARD_CARD_HEIGHT_PX + card.left.length * LIEN_BOARD_CARD_STAGE_PX
 }
 
-export type LienBoardCardPlace = { left: number; top: number; above: boolean }
+/** How far the card keeps from the edge of the screen, in px. */
+export const LIEN_BOARD_CARD_EDGE_PX = 8
+
+/** Where the card's own top-left corner stands, in the Board's box. `above` says it stands over its chip; `beside` that it stands next to it. */
+export type LienBoardCardPlace = { left: number; top: number; above: boolean; beside?: boolean }
 
 /**
  * Where the card stands, in the Board's own box: under the chip and flush with its left edge, held inside the
- * Board's width; over the chip when there is not room under it on the screen. `chip` is the chip's box measured from
- * the Board's top-left corner; `roomBelow` is the screen left under the chip.
+ * Board's width; over the chip when the screen has no room under it and has room over it. `chip` is the chip's box
+ * measured from the Board's top-left corner; `roomBelow` and `roomAbove` are what can show the card under and over
+ * the chip: the screen, cut by every box around the Board that cuts its contents.
+ *
+ * `cardHeight` is the card's real height once it is drawn (v2.7425): the card was placed by a guess of 230 px while
+ * it stood 244 to 395, so on a short screen it hung off the bottom. When neither side holds it, it stands beside
+ * its chip, to the right, or to the left when the Board has no room on the right, and as near the chip's own height
+ * as what shows it allows. The chip stays in view under the pointer.
  */
-export function lienBoardCardPlace(at: { chip: { left: number; top: number; width: number; height: number }; hostWidth: number; roomBelow: number; cardWidth?: number; cardHeight?: number }): LienBoardCardPlace {
+export function lienBoardCardPlace(at: { chip: { left: number; top: number; width: number; height: number }; hostWidth: number; roomBelow: number; roomAbove?: number; cardWidth?: number; cardHeight?: number }): LienBoardCardPlace {
   const width = at.cardWidth ?? LIEN_BOARD_CARD_WIDTH_PX
   const height = at.cardHeight ?? LIEN_BOARD_CARD_HEIGHT_PX
   const gap = 6
   const left = Math.round(Math.max(0, Math.min(at.chip.left, at.hostWidth - width)))
-  const above = at.roomBelow < height + gap && at.chip.top > height + gap
-  return { left, top: Math.round(above ? at.chip.top - gap : at.chip.top + at.chip.height + gap), above }
+  const need = height + gap + LIEN_BOARD_CARD_EDGE_PX
+  const under = at.roomBelow
+  const over = at.roomAbove ?? at.chip.top
+  const underTop = at.chip.top + at.chip.height + gap
+  const overTop = at.chip.top - gap - height
+  if (under >= need) return { left, top: Math.round(underTop), above: false }
+  if (over >= need) return { left, top: Math.round(overTop), above: true }
+  // Neither side holds it: beside the chip, kept inside what can show it from top to bottom.
+  const min = at.chip.top - over + LIEN_BOARD_CARD_EDGE_PX
+  const max = at.chip.top + at.chip.height + under - LIEN_BOARD_CARD_EDGE_PX - height
+  const top = Math.round(max < min ? min : Math.min(Math.max(at.chip.top, min), max))
+  const right = at.chip.left + at.chip.width + gap
+  const leftSide = at.chip.left - gap - width
+  if (right + width <= at.hostWidth) return { left: Math.round(right), top, above: false, beside: true }
+  if (leftSide >= 0) return { left: Math.round(leftSide), top, above: false, beside: true }
+  return { left, top, above: false, beside: true }
 }

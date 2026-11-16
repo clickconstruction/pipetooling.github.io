@@ -148,7 +148,7 @@ describe('devMcpSubLabor — the verbs on the allowlist', () => {
     expect(isSubLaborPaymentVerb('apply_sub_labor_payment')).toBe(true)
     expect(planVerbFor('apply_sub_labor')).toBe('plan_sub_labor')
     expect(planVerbFor('apply_sub_labor_payment')).toBe('plan_sub_labor_payment')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.90.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.91.0'")
     expect(SERVER).toContain('Writes are one hundred and nine verbs and nothing else:')
     expect(README).toContain("eighty-seven since v2.6944's sub labor pairs")
     expect(README).toContain('one hundred and nine `plan_` / `apply_` / `revert_` verbs')
@@ -238,16 +238,18 @@ describe('devMcpSubLabor — who a sheet is for', () => {
     const office = standingWorld({ users: [subUser({ role: 'assistant' })] })
     expect(await say(SUB_ROW, office)).toContain('on the roster as a sub with a assistant account')
   })
-  it('a primary is taken as the form’s Subcontractors list offers one, and the plan says the Pay ledger files the sheet under Crew pay', async () => {
+  it('a primary is taken as the form’s Subcontractors list offers one, and the plan says the sheet is their own, owed to them', async () => {
     for (const asked of ['ZZ Sample Primary', PRIMARY_ROW, PRIMARY_USER]) {
       expect(await facts(asked)).toMatchObject({ ok: true, person: { name: 'ZZ Sample Primary', people_id: PRIMARY_ROW, user_id: PRIMARY_USER, kind: 'primary', role: 'primary', pay_ledger: 'crew' } })
     }
     const r = await reply({ ...FLAT, person: PRIMARY_USER })
-    expect(r.person).toEqual({ name: 'ZZ Sample Primary', people_id: PRIMARY_ROW, user_id: PRIMARY_USER, kind: 'primary', pay_ledger: 'Crew pay: the Pay ledger files the sheet under Crew pay' })
+    expect(r.person).toEqual({ name: 'ZZ Sample Primary', people_id: PRIMARY_ROW, user_id: PRIMARY_USER, kind: 'primary', pay_ledger: 'Team · sub labor: a sheet of their own, which the Pay ledger counts as owed to them' })
     expect(r.sheet).toMatchObject({ assigned_to_name: 'ZZ Sample Primary' })
     const warned = (r.warnings as string[]).join(' ')
     expect(warned).toContain('ZZ Sample Primary is a primary, not a roster sub')
-    expect(warned).toContain('under Crew pay')
+    expect(warned).toContain('A sheet that names them alone is their own: the Pay ledger counts what is open on it as owed to them')
+    expect(warned).not.toContain('Crew pay')
+    expect(warned).not.toContain('payroll)')
     expect(warned).toContain('still counts on JP9102 as sub labor')
     expect(FORM).toContain("const fromPrimaries = byKind('primary')")
     // A primary with no account is offered by the roster row alone.
@@ -590,8 +592,12 @@ describe('devMcpSubLabor — a payment on a sheet', () => {
     const on = (ids: string[]) => ids.map((person_id) => ({ labor_job_id: SHEET, person_id }))
     // One sub on the roster, with a teammate riding along: the sub.
     expect(sheetSentTo(sheet(), on([SUB_ROW, MASTER_ROW]), [sub, mate], users)).toEqual({ person_id: SUB_ROW, name: 'ZZ Sample Sub', reads: 'ZZ Sample Sub, the sheet\'s one sub, on the roster' })
-    // A roster sub row behind a teammate's login is a teammate: crew pay, nobody.
-    expect(sheetSentTo(sheet({ assigned_to_name: 'ZZ Sample Master' }), on([MASTER_ROW]), [masterRow({ kind: 'sub' })], users)).toMatchObject({ person_id: null, reads: expect.stringContaining('crew pay sheet') })
+    // A roster sub row behind a teammate's login is a teammate. Alone on the sheet, it is their own (Taunya, 2026-11-15).
+    expect(sheetSentTo(sheet({ assigned_to_name: 'ZZ Sample Master' }), on([MASTER_ROW]), [masterRow({ kind: 'sub' })], users)).toEqual({ person_id: MASTER_ROW, name: 'ZZ Sample Master', reads: 'ZZ Sample Master, a teammate, alone on a sheet of their own: sub labor paid to someone on payroll' })
+    // Two teammates and no sub: shared, so no one person.
+    expect(sheetSentTo(sheet({ assigned_to_name: 'ZZ Sample Master | ZZ Second Master' }), on([MASTER_ROW, BENCH_ROW]), [masterRow({ kind: 'sub' }), { ...masterRow({ kind: 'sub' }), id: BENCH_ROW, name: 'ZZ Second Master' }], users)).toEqual({ person_id: null, name: 'ZZ Sample Master | ZZ Second Master', reads: '2 teammates share the sheet and no sub is on it, so the sending names no one person' })
+    // No name at all.
+    expect(sheetSentTo(sheet({ assigned_to_name: '' }), [], [], [])).toEqual({ person_id: null, name: 'nobody named', reads: 'nobody is named on the sheet, so the sending names no person' })
     // Two subs share the sheet: no one person.
     expect(sheetSentTo(sheet(), on([SUB_ROW, BENCH_ROW]), [sub, { ...sub, id: BENCH_ROW, name: 'ZZ Bench Sub', account_user_id: null }], users)).toMatchObject({ person_id: null, name: 'ZZ Sample Sub | ZZ Bench Sub', reads: '2 subs share the sheet, so the sending names no one person' })
     // No assignee row: the typed name, found on the roster in any case, or not found.

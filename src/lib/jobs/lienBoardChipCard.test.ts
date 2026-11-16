@@ -3,7 +3,7 @@ import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import type { LienAffidavitEntry, LienAffidavitGate, LienAffidavitPile } from './lienDeskAffidavits'
 import { plainWordsFailures } from '../plainWords'
 import { buildLienBoard, lienBoardChipFor, lienBoardStagesLeft } from './lienBoard'
-import { LIEN_BOARD_CARD_HEIGHT_PX, LIEN_BOARD_CARD_STAGE_PX, lienBoardCardHeight, lienBoardCardPlace, lienBoardChipCard, type LienBoardChipFacts } from './lienBoardChipCard'
+import { LIEN_BOARD_CARD_EDGE_PX, LIEN_BOARD_CARD_HEIGHT_PX, LIEN_BOARD_CARD_STAGE_PX, lienBoardCardHeight, lienBoardCardPlace, lienBoardChipCard, type LienBoardChipFacts } from './lienBoardChipCard'
 
 /** A Sunday; the 15th rolls to Monday the 16th. */
 const TODAY = '2026-11-15'
@@ -124,8 +124,37 @@ describe('lienBoardCardPlace', () => {
   })
 
   it('stands over the chip when the screen has no room under it, and there is room over it', () => {
-    expect(lienBoardCardPlace({ chip: { ...chip, top: 520 }, hostWidth: 1392, roomBelow: 80 })).toEqual({ left: 40, top: 514, above: true })
-    // No room either way: under it, where the page can scroll.
-    expect(lienBoardCardPlace({ chip, hostWidth: 1392, roomBelow: 80 }).above).toBe(false)
+    // The card's own top: its height and the gap over the chip.
+    expect(lienBoardCardPlace({ chip: { ...chip, top: 520 }, hostWidth: 1392, roomBelow: 80 })).toEqual({ left: 40, top: 520 - 6 - LIEN_BOARD_CARD_HEIGHT_PX, above: true })
+  })
+
+  it('is placed by its real height once it is drawn: a tall card on a short screen goes over its chip, not off the bottom (v2.7425)', () => {
+    // A chip in To send at 1280 x 720, as measured on 2026-11-15: 270 px of screen under it, 430 over, and a card 338 px tall.
+    const toSend = { left: 54, top: 290, width: 44, height: 22 }
+    // By the old guess of 230 px it went under, and ran 72 px off the screen.
+    expect(lienBoardCardPlace({ chip: toSend, hostWidth: 1232, roomBelow: 270, roomAbove: 430 })).toEqual({ left: 54, top: 318, above: false })
+    const placed = lienBoardCardPlace({ chip: toSend, hostWidth: 1232, roomBelow: 270, roomAbove: 430, cardHeight: 338 })
+    expect(placed).toEqual({ left: 54, top: 290 - 6 - 338, above: true })
+    // A card that fits under stays under, as it always was.
+    expect(lienBoardCardPlace({ chip: toSend, hostWidth: 1232, roomBelow: 270, roomAbove: 430, cardHeight: 244 })).toEqual({ left: 54, top: 318, above: false })
+  })
+
+  it('with room on neither side it stands beside its chip, inside what can show it, and the chip stays in view', () => {
+    // A late notice in To send at 1280 x 720, as measured on 2026-11-15: the list's frame leaves 272 px under the
+    // chip and 331 over, and the card with its three named stages stands 395 px tall.
+    const toSend = { left: 54, top: 290, width: 44, height: 22 }
+    const placed = lienBoardCardPlace({ chip: toSend, hostWidth: 1232, roomBelow: 272, roomAbove: 331, cardHeight: 395 })
+    // To the right of the chip, a gap away.
+    expect(placed).toMatchObject({ left: 54 + 44 + 6, above: false, beside: true })
+    // From top to bottom inside what shows it, 8 px from each edge at the least.
+    const viewTop = toSend.top - 331
+    const viewBottom = toSend.top + toSend.height + 272
+    expect(placed.top).toBeGreaterThanOrEqual(viewTop + LIEN_BOARD_CARD_EDGE_PX)
+    expect(placed.top + 395).toBeLessThanOrEqual(viewBottom - LIEN_BOARD_CARD_EDGE_PX)
+    // A chip at the Board's right edge has no room on its right: the card stands on its left.
+    const last = { left: 1180, top: 290, width: 44, height: 22 }
+    expect(lienBoardCardPlace({ chip: last, hostWidth: 1232, roomBelow: 272, roomAbove: 331, cardHeight: 395 })).toMatchObject({ left: 1180 - 6 - 320, beside: true })
+    // A view shorter than the card keeps the card's head in view, where it starts.
+    expect(lienBoardCardPlace({ chip: toSend, hostWidth: 1232, roomBelow: 100, roomAbove: 100, cardHeight: 395 }).top).toBe(toSend.top - 100 + LIEN_BOARD_CARD_EDGE_PX)
   })
 })
