@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the Print blank stickers window's *What the stickers will look like* fold (punch list #329,
+ * Render smoke for the Print future stickers window's *What the stickers will look like* fold (punch list #329,
  * v2.7304): closed until opened, and the device remembers; opened, a named run's first six strips by name with the
  * sample code, the copies together, *and N more* with Show all; a run past the cap says so; a run with no names draws
  * one sticker, since every other differs only by its code (v2.7438: no strip carries a running number); the test
@@ -45,9 +45,13 @@ describe('StickerPreviewFold', () => {
     expect(stripNames()).toEqual(['The strip for G78', 'The strip for G79', 'The strip for G80', 'The strip for G81', 'The strip for G82', 'The strip for G83', 'The strip for TEST'])
     expect(screen.getByTestId('stickers-preview-more').textContent).toBe('and 217 more, to G300')
     expect(screen.getByTestId('stickers-preview-show-all').textContent).toBe('Show all 223')
-    expect(screen.getByTestId('stickers-preview-code-words').textContent).toBe('The names are the run’s. Each sticker’s code is given when the run prints.')
+    expect(screen.getByTestId('stickers-preview-code-words').textContent).toBe('The names are the run’s own. Each sticker gets its own link when it prints. XXXX-XXXX stands in for it here.')
     expect(screen.getByTestId('stickers-preview-test-words').textContent).toBe('Print 1 test strip prints this strip. It is not a sticker.')
     expect(screen.queryByTestId('stickers-preview-rest')).toBeNull()
+    // the stand-in's line sits over the strips it speaks of, never under them (v2.7486): the eye lands on the strips
+    const line = screen.getByTestId('stickers-preview-code-words')
+    expect(line.getAttribute('role')).toBe('note')
+    expect(line.compareDocumentPosition(screen.getByTestId('stickers-preview-strips')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // the strips are drawn at the tape's dots: 128 across 24 mm
     expect((screen.getAllByTestId('labels-tape-bitmap')[0] as HTMLCanvasElement).style.height).toBe('128px')
   })
@@ -85,12 +89,12 @@ describe('StickerPreviewFold', () => {
   it('a run with no names draws one sticker with its code larger in the name’s place, and no Show all', () => {
     localStorage.setItem('pt.stickers.previewOpen', '1')
     render(<StickerPreviewFold count={200} copies={1} width={24} />)
-    expect(screen.getByTestId('stickers-preview-head').textContent).toBe('1 sticker of 200, with a sample code.')
+    expect(screen.getByTestId('stickers-preview-head').textContent).toBe('1 sticker of 200.')
     // the strip is named by its code, as the tape will read it
-    expect(stripNames()).toEqual(['The strip for 0000-0000', 'The strip for TEST'])
-    expect(screen.getByTestId('stickers-preview-more').textContent).toBe('and 199 more, each with its own code')
+    expect(stripNames()).toEqual(['The strip for XXXX-XXXX', 'The strip for TEST'])
+    expect(screen.getByTestId('stickers-preview-more').textContent).toBe('and 199 more, each with its own link')
     expect(screen.queryByTestId('stickers-preview-show-all')).toBeNull()
-    expect(screen.getByTestId('stickers-preview-code-words').textContent).toBe('Each sticker’s code is given when the run prints. The code drawn here is a sample.')
+    expect(screen.getByTestId('stickers-preview-code-words').textContent).toBe('Each sticker gets its own link when it prints. XXXX-XXXX stands in for it here.')
     expect(screen.getByTestId('stickers-preview').textContent).not.toMatch(/\b0\d{3}\b/)
   })
 

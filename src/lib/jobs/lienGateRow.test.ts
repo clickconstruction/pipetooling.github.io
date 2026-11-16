@@ -22,6 +22,19 @@ describe('lienGateRow · every gate row is a press that opens its home (v2.7313)
     expect(lienGateRow({ key: 'notice', ok: true }, facts, doors)).toMatchObject({ fact: 'sent Sep 22', doorWords: 'See it ›' })
   })
 
+  it('a closed notice row says where the notice stands: only the late notice is *Send the notice first ›*', () => {
+    const closed = (noticeStanding: NonNullable<Parameters<typeof lienGateRow>[1]['noticeStanding']>, leaderName?: string) => lienGateRow({ key: 'notice', ok: false }, { ...facts, noticeStanding, leaderName }, doors)
+    expect(closed('approved')).toEqual({ fact: 'approved · not mailed yet', door: 'notices', doorWords: 'Open the notice ›', title: 'Opens Monthly notices on this job' })
+    expect(closed('printed')).toMatchObject({ fact: 'printed · not mailed yet', doorWords: 'Open the notice ›' })
+    expect(closed('awaiting')).toMatchObject({ fact: 'awaiting approval', doorWords: 'Open the notice ›' })
+    expect(closed('to_send')).toMatchObject({ fact: 'not sent for approval yet', doorWords: 'Open the notice ›' })
+    expect(closed('late')).toMatchObject({ fact: '', doorWords: 'Send the notice first ›' })
+    // A standing that says the gate is open never overrules the gate: the row keeps its old words.
+    expect(closed('on_record')).toMatchObject({ fact: '', doorWords: 'Send the notice first ›' })
+    // Open, the standing changes nothing.
+    expect(lienGateRow({ key: 'notice', ok: true }, { ...facts, noticeStanding: 'on_record' }, doors)).toMatchObject({ fact: 'sent Sep 22', doorWords: 'See it ›' })
+  })
+
   it('a job contracted with the owner has no GC row and no notice row to open; a GC row with no record wired is words alone', () => {
     const none = { fact: '', door: null, doorWords: '', title: '' }
     expect(lienGateRow({ key: 'contractor', ok: true }, { ...facts, isSub: false }, doors)).toEqual(none)

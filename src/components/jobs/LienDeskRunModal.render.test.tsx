@@ -1821,3 +1821,64 @@ describe('LienDeskRunModal · one count, three steps, one press (v2.7477, punch 
     expect(screen.getByTestId('run-group-owe').contains(screen.getByTestId('run-check-z2'))).toBe(true)
   })
 })
+
+describe('LienDeskRunModal · what was mailed (the owner’s ask of 2026-11-16)', () => {
+  const scan = () => new File(['%PDF-1.4 the scan'], 'SCAN0007.PDF', { type: 'application/pdf' })
+  const kept = { url: 'https://drive.google.com/file/d/f1/view', driveFileId: 'f1', name: 'Lien notice as mailed · 650 · 2026-10-08.pdf', at: '2026-10-08T18:00:00.000Z', by: 'u1' }
+  const other = (partial: Partial<RunNotice> = {}) => notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }], ...partial })
+
+  it('a printed row takes a scan: the file goes up for that notice, the row lists it with its Drive link, and the desk is told; a row not printed yet has no press', async () => {
+    cleanup()
+    const added: Array<{ itemId: string; jobId: string; jobNumber: string; fileName: string; todayYmd: string; userId: string | null }> = []
+    const onRecorded = vi.fn()
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z' }), other()]}
+        issuer={null}
+        todayYmd="2026-10-08"
+        userId="u1"
+        onClose={() => {}}
+        onRecorded={onRecorded}
+        addMailedCopy={async (a) => {
+          added.push({ itemId: a.itemId, jobId: a.jobId, jobNumber: a.jobNumber, fileName: a.file.name, todayYmd: a.todayYmd, userId: a.userId })
+          return [kept]
+        }}
+      />,
+    )
+    await settle()
+    expect(screen.queryByTestId('run-check-copy-add-it2')).toBeNull()
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
+    fireEvent.change(screen.getByTestId('run-check-copy-file-it1'), { target: { files: [scan()] } })
+    await waitFor(() => expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).not.toBeNull())
+    expect(added).toEqual([{ itemId: 'it1', jobId: 'j650', jobNumber: '650', fileName: 'SCAN0007.PDF', todayYmd: '2026-10-08', userId: 'u1' }])
+    const link = screen.getByTestId('run-check-copies-it1').querySelector('a') as HTMLAnchorElement
+    expect([link.getAttribute('href'), link.textContent, link.getAttribute('target')]).toEqual([kept.url, `✓ ${kept.name} ›`, '_blank'])
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add another')
+    expect(document.body.textContent).toContain(`Added ${kept.name}. It is in the job’s Drive folder, under Sent by us.`)
+    expect(onRecorded).toHaveBeenCalledTimes(1)
+  })
+
+  it('a file that is not a scan or a photo is refused with its reason, and an upload that fails says why; neither lists a file', async () => {
+    cleanup()
+    const addMailedCopy = vi.fn(async () => {
+      throw new Error('This job has no Drive folder yet.')
+    })
+    renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z' })]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} addMailedCopy={addMailedCopy} />)
+    await settle()
+    fireEvent.change(screen.getByTestId('run-check-copy-file-it1'), { target: { files: [new File(['notes'], 'notes.txt', { type: 'text/plain' })] } })
+    await waitFor(() => expect(document.body.textContent).toContain('That file is not a scan or a photo. Add a PDF or a picture.'))
+    expect(addMailedCopy).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByTestId('run-check-copy-file-it1'), { target: { files: [scan()] } })
+    await waitFor(() => expect(document.body.textContent).toContain('This job has no Drive folder yet.'))
+    expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).toBeNull()
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
+  })
+
+  it('a notice that already has its file shows it when the run opens again, on a printed row and with the press reading Add another', async () => {
+    cleanup()
+    renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z', mailedCopies: [kept] })]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-check-copies-it1').querySelector('a')!.getAttribute('href')).toBe(kept.url)
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add another')
+  })
+})

@@ -70,7 +70,7 @@ export function lienGateMarksSummary(marks: ReadonlyArray<LienGateMark>): string
 }
 
 /** The piles whose rows wear the strip: the two where a hold is still possible. Past *To draft* every row has passed, and five greens would say nothing the pile's title did not. */
-export const LIEN_GATE_STRIP_PILES: ReadonlyArray<LienAffidavitPile> = ['needs_property', 'to_draft']
+export const LIEN_GATE_STRIP_PILES: ReadonlyArray<LienAffidavitPile> = ['needs_property', 'needs_notice', 'to_draft']
 
 /**
  * What a list row draws for its gates: the strip in the two early piles, and the *missing …* words where the strip

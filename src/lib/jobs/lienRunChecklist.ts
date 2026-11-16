@@ -4,6 +4,7 @@ import { shortDay } from './lienFootChip'
 import { APP_ORIGIN } from '../appOrigin'
 import { LIEN_DESK_PATH } from '../lien/lienDeskRoute'
 import { lienRunActFor, lienRunActLabel } from './lienRunWords'
+import type { LienMailedCopy } from './lienMailedCopies'
 
 /**
  * The run as a checklist (v2.7328, the owner's ask of 2026-11-15): one row per envelope's notice
@@ -59,6 +60,8 @@ export type LienRunRow = {
   leader: { userId: string | null; name: string } | null
   /** Every recipient goes by email or through Docsmit: nothing prints here. */
   paperless: boolean
+  /** The scans or photos of what went in the envelope, oldest first (`lienMailedCopies.ts`); empty when none was added. */
+  mailedCopies: LienMailedCopy[]
 }
 
 export type LienRunChecklistInput = {
@@ -139,6 +142,7 @@ export function lienRunChecklistRows(input: LienRunChecklistInput): LienRunRow[]
       nothingToClaim: nothing != null,
       leader: n.leader ?? null,
       paperless,
+      mailedCopies: n.mailedCopies ?? [],
     }
   })
 }

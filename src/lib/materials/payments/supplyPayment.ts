@@ -69,6 +69,8 @@ export type SupplyPayment = {
   /** `recorded` typed in the window · `mark_paid` made by Mark paid · `before` made for a bill already paid. */
   source: string
   removed_at: string | null
+  removed_by_name?: string | null
+  removed_reason?: string | null
   created_by_name?: string | null
 }
 
