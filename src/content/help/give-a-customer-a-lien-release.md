@@ -59,7 +59,7 @@ Step 5 offers three ways.
 - **Send it to his desk** asks the leader to sign later. The window says it is waiting for his signature. The release locks so nobody edits what he is signing. **Cancel request** unlocks it.
 - Signing on paper instead? Press **Print it**, then **Mark issued**.
 
-His signature then prints on every copy. Under it the paper prints the day he signed, with no time. A grey line gives the two statutes. The Release of Lien window keeps how he signed and at what time.
+His signature then prints on every copy. Under the signature the paper prints the day he signed, with no time. A grey line gives the two statutes. The Release of Lien window keeps how he signed and at what time.
 
 ## Send it
 
