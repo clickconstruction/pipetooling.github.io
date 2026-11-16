@@ -76,7 +76,7 @@ export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, on
               </div>
               <span style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {restIsOwn ? <button type="button" style={press} onClick={() => onPrint(run, blank, printRestLabel(blank).replace(/^Print the rest, ?/, 'The rest, '))} data-testid="sticker-run-rest">{printRestLabel(blank)}</button> : null}
-                <button type="button" style={press} disabled={stickers.length === 0} onClick={() => onPrint(run, stickers.map(({ id, number, code }) => ({ id, number, code })), title)} data-testid="sticker-run-reprint">{reprintLabel(stickers.length)}</button>
+                <button type="button" style={press} disabled={stickers.length === 0} onClick={() => onPrint(run, stickers.map(({ id, number, code, boxName }) => ({ id, number, code, boxName })), title)} data-testid="sticker-run-reprint">{reprintLabel(stickers.length)}</button>
               </span>
             </div>
           )

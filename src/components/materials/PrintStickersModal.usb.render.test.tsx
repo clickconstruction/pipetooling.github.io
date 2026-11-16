@@ -35,13 +35,14 @@ vi.mock('../../lib/materials/stickerRunsIo', () => ({
   mintStickerRun: vi.fn(),
   fetchLastStickerNumber: vi.fn(async () => 100),
   fetchStickerRuns: vi.fn(async () => []),
+  fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: [] })),
 }))
 
 import PrintStickersModal from './PrintStickersModal'
 
 function mintedRun(request: StickerRunRequest): MintedRun {
-  const stickers = Array.from({ length: request.count }, (_, i) => ({ id: `s-${101 + i}`, number: 101 + i, code: `4F2A9C${String(i).padStart(2, '0')}` }))
-  return { run: { id: 'run-1', jobId: request.jobId, count: request.count, firstNumber: 101, lastNumber: 100 + request.count, copies: request.copies, printedByName: 'Dana', printedAt: '2026-11-14T16:00:00Z' }, stickers }
+  const stickers = Array.from({ length: request.count }, (_, i) => ({ id: `s-${101 + i}`, number: 101 + i, code: `4F2A9C${String(i).padStart(2, '0')}`, boxName: request.names?.[i] ?? null }))
+  return { run: { id: 'run-1', jobId: request.jobId, count: request.count, firstNumber: 101, lastNumber: 100 + request.count, copies: request.copies, printedByName: 'Dana', printedAt: '2026-11-14T16:00:00Z', names: request.names ?? null }, stickers }
 }
 
 function setup() {
@@ -174,5 +175,23 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(screen.getByTestId('stickers-print').getAttribute('aria-disabled')).toBe('true')
     fireEvent.click(screen.getByTestId('stickers-print'))
     expect(mint).not.toHaveBeenCalled()
+  })
+
+  it('a run that names its boxes draws each strip by its name, and the range is picked by name (section 10, v2.7391)', async () => {
+    usb.granted = true
+    const { mint } = setup()
+    await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+    await waitFor(() => expect(screen.queryByTestId('stickers-names-reading')).toBeNull())
+    fireEvent.change(screen.getByTestId('stickers-names-input'), { target: { value: 'G78-81' } })
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 4 stickers, G78 to G81')
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('4 stickers printed.'))
+    expect(mint).toHaveBeenCalledWith({ jobId: 'job-juniper', count: 4, copies: 1, names: ['G78', 'G79', 'G80', 'G81'] })
+    expect(screen.getAllByTestId('labels-tape-bitmap').map((c) => c.getAttribute('aria-label'))).toEqual(['The strip for G78', 'The strip for G79', 'The strip for G80', 'The strip for G81'])
+    const from = screen.getByTestId('stickers-range-from') as HTMLSelectElement
+    expect(Array.from(from.options).map((o) => o.textContent)).toEqual(['G78', 'G79', 'G80', 'G81'])
+    fireEvent.change(from, { target: { value: 's-102' } })
+    fireEvent.change(screen.getByTestId('stickers-range-to'), { target: { value: 's-103' } })
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 stickers, G79 to G80')
   })
 })

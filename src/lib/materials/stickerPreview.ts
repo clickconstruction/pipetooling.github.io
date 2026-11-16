@@ -7,8 +7,8 @@
  * the printer's own drawing (`TapeStripBitmap`, `tapeStripCanvas.ts`), so the preview and the tape agree. Pure: the
  * rows, the words and the sample. The fold is in `PrintStickersModal.tsx`.
  */
-import { stickerNumberWords, stickerRangeWords } from './stickers'
-import { stickerAddressWords, stickerUrl, type StickerStrip } from './stickerRun'
+import { stickerNumberWords } from './stickers'
+import { nameSpanWords, stickerStrip, type StickerStrip } from './stickerRun'
 import { clampTapeCopies } from './tapeLabel'
 
 /** The fold's summary. */
@@ -16,6 +16,9 @@ export const STICKER_PREVIEW_TITLE = 'What the stickers will look like'
 
 /** Under the strips: what is real and what is a sample. */
 export const STICKER_PREVIEW_CODE_WORDS = 'The numbers are the run’s. Each sticker’s code is given when the run prints.'
+
+/** The same line for a run that names its boxes (section 10, v2.7391). */
+export const STICKER_PREVIEW_NAMED_CODE_WORDS = 'The names and the numbers are the run’s. Each sticker’s code is given when the run prints.'
 
 /** Over the test strip's drawing. */
 export const STICKER_PREVIEW_TEST_WORDS = 'Print 1 test strip prints this strip. It is not a sticker.'
@@ -38,9 +41,12 @@ export const STICKER_PREVIEW_MAX_STICKERS = 200
  */
 export const STICKER_SAMPLE_CODE = '00000000'
 
-/** One strip of the preview: the number as it will print, the QR and the address from the sample code. */
-export function previewStrip(number: number): StickerStrip {
-  return { id: `preview-${stickerNumberWords(number)}`, stencil: stickerNumberWords(number), address: stickerAddressWords(STICKER_SAMPLE_CODE), value: stickerUrl(STICKER_SAMPLE_CODE) }
+/**
+ * One strip of the preview, through the run's own `stickerStrip`: the number as it will print, or the name large with
+ * the number small under it, and the QR and the address from the sample code.
+ */
+export function previewStrip(number: number, name?: string | null): StickerStrip {
+  return stickerStrip({ id: `preview-${stickerNumberWords(number)}`, number, code: STICKER_SAMPLE_CODE, boxName: name ?? null })
 }
 
 /** The run's numbers from where the last run ended and how many: 0003 to 0202 after a last of 2; 0001 on for the first run. */
@@ -70,9 +76,9 @@ export type StickerPreview = {
   cappedWords: string | null
 }
 
-/** *and 194 more, to 0202*; *and 1 more, 0202*. */
-export function previewMoreWords(more: number, last: number): string {
-  return more === 1 ? `and 1 more, ${stickerNumberWords(last)}` : `and ${more} more, to ${stickerNumberWords(last)}`
+/** *and 194 more, to 0202*; *and 1 more, 0202*; a named run by its last name, *and 217 more, to G300*. `last` as the strip reads it. */
+export function previewMoreWords(more: number, last: string): string {
+  return more === 1 ? `and 1 more, ${last}` : `and ${more} more, to ${last}`
 }
 
 /** *Show all 200*: a view press, so *all* is honest with its count beside it. */
@@ -85,34 +91,37 @@ export function previewCappedWords(drawn: number, count: number): string {
   return `The first ${drawn} of ${count} are drawn. The rest print the same way.`
 }
 
-/** *6 strips of 200 stickers, 0003 to 0008.*: the head's line. */
+/** *6 strips of 200 stickers, 0003 to 0008.*: the head's line; a named run's by its names, *G78 to G83*. */
 export function previewHeadWords(head: ReadonlyArray<PreviewRow>, count: number): string {
   if (head.length === 0) return ''
-  const first = head[0]!.number
-  const last = head[head.length - 1]!.number
+  const first = head[0]!.strip.stencil
+  const last = head[head.length - 1]!.strip.stencil
   const strips = head.length === 1 ? '1 strip' : `${head.length} strips`
   const of = count === 1 ? '1 sticker' : `${count} stickers`
-  return `${strips} of ${of}, ${stickerRangeWords(first, last)}.`
+  return `${strips} of ${of}, ${nameSpanWords(first, last)}.`
 }
 
 /**
  * The preview's rows for a run: the first six strips in the order they print, each sticker's copies together, and
  * with `all` the stickers after them once each up to the cap. A count of zero draws nothing.
  */
-export function stickerPreview(input: { lastNumber: number | null; count: number; copies: number; all: boolean }): StickerPreview {
-  const numbers = previewNumbers(input.lastNumber, input.count)
+export function stickerPreview(input: { lastNumber: number | null; count: number; copies: number; all: boolean; names?: ReadonlyArray<string> | null }): StickerPreview {
+  // A named run is as many stickers as it has names, each sticker taking its name in number order as the mint gives them.
+  const names = input.names && input.names.length > 0 ? input.names : null
+  const numbers = previewNumbers(input.lastNumber, names ? names.length : input.count)
+  const nameOf = (number: number) => (names ? names[number - (numbers[0] ?? 0)] ?? null : null)
   const copies = clampTapeCopies(input.copies)
   const first = numbers[0] ?? 0
   const last = numbers[numbers.length - 1] ?? 0
   const head: PreviewRow[] = []
   for (const number of numbers) {
     if (head.length >= STICKER_PREVIEW_FIRST_STRIPS) break
-    const strip = previewStrip(number)
+    const strip = previewStrip(number, nameOf(number))
     for (let copy = 0; copy < copies && head.length < STICKER_PREVIEW_FIRST_STRIPS; copy++) head.push({ number, copy, strip })
   }
   const headStickers = head.length === 0 ? 0 : head[head.length - 1]!.number - first + 1
   const restNumbers = input.all ? numbers.slice(headStickers, Math.max(headStickers, STICKER_PREVIEW_MAX_STICKERS)) : []
-  const rest = restNumbers.map((number) => ({ number, copy: 0, strip: previewStrip(number) }))
+  const rest = restNumbers.map((number) => ({ number, copy: 0, strip: previewStrip(number, nameOf(number)) }))
   const drawn = headStickers + rest.length
   const more = numbers.length - drawn
   const capped = input.all && more > 0
@@ -122,7 +131,7 @@ export function stickerPreview(input: { lastNumber: number | null; count: number
     head,
     rest,
     more,
-    moreWords: more > 0 && !capped ? previewMoreWords(more, last) : null,
+    moreWords: more > 0 && !capped ? previewMoreWords(more, previewStrip(last, nameOf(last)).stencil) : null,
     showAllLabel: more > 0 && !input.all ? showAllLabel(numbers.length) : null,
     cappedWords: capped ? previewCappedWords(drawn, numbers.length) : null,
   }

@@ -14,6 +14,7 @@ vi.mock('../../lib/materials/stickerRunsIo', () => ({
   mintStickerRun: vi.fn(),
   fetchLastStickerNumber: vi.fn(async () => null),
   fetchStickerRuns: vi.fn(async () => []),
+  fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: [] })),
 }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')

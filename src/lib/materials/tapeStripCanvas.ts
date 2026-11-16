@@ -5,7 +5,7 @@
  */
 import { inkWidth, rasterLinesFromRgba } from './ptouchRaster'
 import { dotFontCovers, dotTextCells, dotTextHeight, dotTextWidth } from './tapeDotFont'
-import { tapeStripBlock, tapeStripLayout, tapeStripLines } from './tapeStrip'
+import { tapeStencilPx, tapeStripBlock, tapeStripLayout, tapeStripLines } from './tapeStrip'
 
 export type TapeStripInput = {
   /** The dots the tape prints across. */
@@ -17,6 +17,10 @@ export type TapeStripInput = {
   address: string
   /** A line of words under the address; the test strip alone has one. */
   words?: string
+  /** A named sticker's number, `0159`, small on its own line before the address (punch list #329, section 10). */
+  number?: string
+  /** The stencil at the smaller size: a named sticker's name of five to seven characters. */
+  stencilSmall?: boolean
 }
 
 export type TapeStripDrawn = { width: number; height: number; lines: Uint8Array[] }
@@ -29,10 +33,11 @@ export function drawTapeStrip(canvas: HTMLCanvasElement, input: TapeStripInput):
   canvas.width = 1200
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) return null
-  const stencilFont = `900 ${l.stencilPx}px Helvetica, Arial, sans-serif`
+  const stencilPx = tapeStencilPx(l, input.stencilSmall)
+  const stencilFont = `900 ${stencilPx}px Helvetica, Arial, sans-serif`
   const fontOf = (kind: 'code' | 'words', px: number) => (kind === 'code' ? `700 ${px}px Menlo, Consolas, "Courier New", monospace` : `${px}px Helvetica, Arial, sans-serif`)
   // The stencil and the lines under it, as one block centred on the strip's height (`tapeStripBlock`).
-  const block = tapeStripBlock(l, tapeStripLines(input.address, input.words))
+  const block = tapeStripBlock(l, tapeStripLines(input.address, input.words, input.number), stencilPx)
   // The address is drawn in the label's own dot font, every edge on a dot; a line with a character the font lacks keeps the old face.
   const inDots = (line: { kind: 'code' | 'words'; text: string }) => line.kind === 'code' && dotFontCovers(line.text)
   ctx.font = stencilFont
