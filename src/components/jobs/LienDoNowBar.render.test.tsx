@@ -14,18 +14,18 @@ afterEach(cleanup)
 
 const PARTS: LienDoNowBarPart[] = [
   { key: 'by_day', words: '21 by tomorrow', tone: 'red', destination: null },
-  { key: 'waiting', words: '3 waiting on Sam', tone: 'violet', destination: { kind: 'stage', stage: 'awaiting' } },
-  { key: 'in_mail', words: '7 in the run', tone: 'amber', destination: { kind: 'run' } },
+  { key: 'waiting', words: '3 waiting on Sam', tone: 'violet', destination: { kind: 'leader' } },
+  { key: 'in_mail', words: '7 to print and mail', tone: 'amber', destination: { kind: 'run' } },
 ]
 
 /** A scroller whose page has moved `scrollTop` px, with the bar at its top (`barTop` 0) or still under the Board. */
-function mount(over: { pins?: boolean; pick?: { head: string; clear: string } | null } = {}) {
+function mount(over: { pins?: boolean; pick?: { head: string; clear: string } | null; prints?: Parameters<typeof LienDoNowBar>[0]['prints'] } = {}) {
   const scrollerRef = createRef<HTMLDivElement>()
   const onPart = vi.fn()
   const onClearPick = vi.fn()
   const view = render(
     <div ref={scrollerRef} data-scroller>
-      <LienDoNowBar pins={over.pins ?? true} scrollerRef={scrollerRef} parts={PARTS} onPart={onPart} pick={over.pick ?? null} onClearPick={onClearPick}>
+      <LienDoNowBar pins={over.pins ?? true} scrollerRef={scrollerRef} parts={PARTS} onPart={onPart} pick={over.pick ?? null} onClearPick={onClearPick} prints={over.prints}>
         <input aria-label="Find on the list" />
       </LienDoNowBar>
     </div>,
@@ -63,11 +63,11 @@ describe('LienDoNowBar', () => {
     scrollTo(700, 100)
     expect(bar().getAttribute('data-stuck')).toBe('yes')
     const parts = document.querySelector('[data-lien-do-now-bar-parts]') as HTMLElement
-    expect(parts.textContent).toBe('21 by tomorrow·3 waiting on Sam·7 in the run')
+    expect(parts.textContent).toBe('21 by tomorrow·3 waiting on Sam·7 to print and mail')
     // The day's count only reads; the other two are presses to where their tiles go.
     expect(document.querySelector('[data-lien-do-now-bar-part="by_day"]')!.tagName).toBe('SPAN')
     fireEvent.click(document.querySelector('button[data-lien-do-now-bar-part="waiting"]') as HTMLButtonElement)
-    expect(onPart).toHaveBeenCalledWith({ kind: 'stage', stage: 'awaiting' })
+    expect(onPart).toHaveBeenCalledWith({ kind: 'leader' })
     fireEvent.click(document.querySelector('button[data-lien-do-now-bar-part="in_mail"]') as HTMLButtonElement)
     expect(onPart).toHaveBeenLastCalledWith({ kind: 'run' })
     const up = document.querySelector('[data-lien-do-now-bar-up]') as HTMLButtonElement
@@ -100,5 +100,20 @@ describe('LienDoNowBar', () => {
     scrollTo(700, 100)
     expect(bar().getAttribute('data-stuck')).toBe('no')
     expect(document.querySelector('[data-lien-do-now-bar-extras]')).toBeNull()
+  })
+
+  it('pinned, it carries the Board’s two prints in short form, the notices’ first; a dead one cannot be pressed (v2.7470)', () => {
+    const printNotices = vi.fn()
+    const printAffidavits = vi.fn()
+    const { scrollTo } = mount({ prints: [{ key: 'notice', label: 'Print and mail 8 notices', left: '7 wait', dead: false, onPress: printNotices }, { key: 'affidavit', label: 'Print for notarization', left: '2 held', dead: true, onPress: printAffidavits }] })
+    // Not while the Board's own are in view.
+    expect(document.querySelector('[data-lien-do-now-bar-print]')).toBeNull()
+    scrollTo(700, 100)
+    const prints = Array.from(document.querySelectorAll('[data-lien-do-now-bar-print]')) as HTMLButtonElement[]
+    expect(prints.map((b) => [b.getAttribute('data-lien-do-now-bar-print'), b.textContent, b.disabled])).toEqual([['notice', 'Print and mail 8 notices · 7 wait', false], ['affidavit', 'Print for notarization · 2 held', true]])
+    fireEvent.click(prints[0]!)
+    fireEvent.click(prints[1]!)
+    expect(printNotices).toHaveBeenCalledTimes(1)
+    expect(printAffidavits).not.toHaveBeenCalled()
   })
 })

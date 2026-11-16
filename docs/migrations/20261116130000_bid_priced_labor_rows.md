@@ -9,3 +9,5 @@ Team scorecard (punch list #360), the train's one residual: the labor count is k
 Why: the stamp freezes when a bid is sent, and the estimating score will not judge a bid whose labor was not estimated. That was read from the Labor tab as it stands today, so hours filled in after a bid went out made it read as judged while its kept cost still had no labor in it.
 
 **Apply order**: any. The client reads the two columns in their own read, failing soft to none, so before the push every bid is judged as before. Regenerate types after the push as a `chore(types)` PR.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `priced_labor_rows_total`, `priced_labor_rows_with_hours`, `stamp_bid_priced_margin`.

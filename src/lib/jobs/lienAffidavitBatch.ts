@@ -10,7 +10,7 @@ import type { SentFiling } from '../sent/sentCopies'
 import { lienAffidavitFormForItem } from './lienAffidavitForm'
 import { submitOutcome, type LienNoticePolicy, type LienSubmitOutcome } from './lienDesk'
 import { lienAffidavitFootBlockedSentence } from './lienDeskGates'
-import type { LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
 
 /**
  * Two presses on the Affidavits list (punch list #305, v2.6918), for re-issuing a month's affidavits on the short
@@ -119,8 +119,8 @@ export type LienAffidavitPrintPlan<E extends PrintEntry = PrintEntry> = {
   /** In Ready to file on the earlier form: redrawn first, or printed from its own Lien window. */
   held: E[]
   /**
-   * In Ready to file on the short form with a gate closed since it was approved (punch list #314): a public owner, a
-   * homestead, an address gone. Its Lien window draws no paper, so the batch does not print one either, and the help
+   * Approved on the short form with a gate closed since (punch list #314): a public owner, a homestead, an address
+   * gone. Since v2.7449 such a paper sits in Held, not Ready to file (`lienAffidavitGateHeld`). Its Lien window draws no paper, so the batch does not print one either, and the help
    * sheet lists it with the reason. An entry that carries no gates is not judged.
    */
   gated: Array<{ entry: E; reason: string }>
@@ -133,7 +133,8 @@ export function lienAffidavitGatedReason(entry: Pick<PrintEntry, 'gates'>): stri
 }
 
 export function lienAffidavitPrintPlan<E extends PrintEntry>(entries: ReadonlyArray<E>): LienAffidavitPrintPlan<E> {
-  const readyPile = entries.filter((e) => e.pile === 'ready' && e.item != null)
+  // Every approved paper: the ones in Ready to file, and the ones a gate moved to Held (punch list #335), which the plan leaves out with the reason.
+  const readyPile = entries.filter((e) => (e.pile === 'ready' || lienAffidavitGateHeld(e)) && e.item != null)
   const short = readyPile.filter((e) => lienAffidavitFormForItem(e.item) === 'short')
   const closed = (e: E) => e.ready === false || (e.gates ?? []).some((g) => !g.ok)
   return {

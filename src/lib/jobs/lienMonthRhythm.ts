@@ -1,5 +1,5 @@
 import type { LienDeskEntry } from './lienDesk'
-import type { LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
 import type { CourtesyStatus } from './lienCourtesyNotice'
 import type { LienNextUpRow } from './lienNextUp'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -203,6 +203,8 @@ const AFFIDAVIT_PILE_WORDS: Partial<Record<LienAffidavitEntry['pile'], string>> 
   to_draft: 'to draft',
   awaiting: 'to approve',
   ready: 'to file',
+  // Only a paper a gate holds reaches the count from Held (punch list #335); the leader's own hold is skipped above.
+  held: 'need the property facts',
 }
 
 function breakdownWords(jobs: ReadonlyArray<LienMonthJob>, order: ReadonlyArray<string>): string {
@@ -282,7 +284,8 @@ export function buildLienMonth(input: LienMonthInput): LienMonth {
   const liens: LienMonthJob[] = []
   let queueLiens = 0
   for (const a of input.affidavits) {
-    if (a.pile === 'held') continue
+    // The leader's hold is his standing decision and counts on neither side. A paper a gate holds after its approval (punch list #335) is still the office's to clear, so it counts as left.
+    if (a.pile === 'held' && !lienAffidavitGateHeld(a)) continue
     const due = monthOf(a.deadline)
     if (a.pile === 'filed') {
       const filedMonth = monthOfIso(a.item?.sent_at) || due

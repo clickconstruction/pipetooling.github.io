@@ -145,6 +145,24 @@ describe('DifficultyRateSheet', () => {
     expect((screen.getByRole('radio', { name: 'Field and superintendent: 3 points' }) as HTMLInputElement).disabled).toBe(true)
   })
 
+  it('an estimator the price list names rates from a bid, and the Paying point they cannot read is kept (v2.7468)', async () => {
+    const reason = 'Read from their bills: Paid in 52 days, the median of 7 bills.'
+    const rated: GcDifficultyRating = { ...RATED, picks: { paying: 1, field: 2, office: 1 }, pickReasons: { paying: reason } }
+    const io = fakeIo([rated], {
+      loadPrice: vi.fn(async () => ({ ...DIFFICULTY_PRICE_V1, raters: ['office' as const, 'estimator' as const, 'master' as const] })),
+      // The pay-speed read is the money roles': an estimator's comes back unreadable.
+      loadPaying: vi.fn(async () => ({ readable: false, own: null, receipts: [], gcPace: null, calendar: null, todayYmd: '2026-11-16' })),
+    })
+    renderWithProviders(<DifficultyRateSheet customerId="c1" customerName="Seguin Ridge Builders" bid={BID} role="estimator" io={io} onClose={() => {}} />)
+    expect(await screen.findByLabelText(W.noteLabel)).toBeTruthy()
+    expect(screen.queryByText(S.cannotRate)).toBeNull()
+    await waitFor(() => expect(screen.getByTestId('rate-sheet-paying').textContent).toBe(`1 point from their bills · Paid in 52 days, the median of 7 bills. ${S.notMine}`))
+    fireEvent.click(screen.getByRole('radio', { name: 'Field and superintendent: 3 points' }))
+    fireEvent.change(screen.getByLabelText(W.noteLabel), { target: { value: 'The super moved us twice.' } })
+    fireEvent.click(screen.getByRole('button', { name: W.save(5) }))
+    await waitFor(() => expect(io.saveRating).toHaveBeenCalledWith('c1', 'v1', { paying: 1, field: 3, office: 1 }, 'The super moved us twice.', { paying: reason }))
+  })
+
   it('PR 6: under version 2 the site is picked on the bid; the site alone saves with no reason asked, and the rating is left as it stands', async () => {
     const V2: DifficultyVersionLite = { id: 'v2', version: 2, body: DIFFICULTY_CRITERIA_V2 }
     const io = fakeIo([{ ...RATED, criteriaVersionId: 'v2' }], {

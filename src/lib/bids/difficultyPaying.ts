@@ -136,16 +136,31 @@ export function difficultyPayingByHandOf(reason: string | null | undefined): str
   return reason.slice(DIFFICULTY_PAYING_BY_HAND.length)
 }
 
-export type DifficultyPayingPick = { points: number; reason: string }
+export type DifficultyPayingPick = {
+  points: number
+  reason: string
+  /** The point the rating that stands holds, kept because the bills could not be read here. */
+  kept?: boolean
+}
 
 /**
  * The Paying pick the card carries into the next save: the by-hand pick when one is set, else the read's point with
- * its words, else nothing (the scale stays unrated).
+ * its words. When the bills could not be read here, the point the rating that stands holds is kept with its words
+ * (v2.7468): the pay-speed read is the money roles', so an estimator's rating, or one saved while the read failed,
+ * would otherwise take Paying off the GC and its line off every later bid. Else nothing (the scale stays unrated).
  */
-export function difficultyPayingPick(read: DifficultyPayingRead | null, byHand: { points: number; reason: string } | null): DifficultyPayingPick | null {
+export function difficultyPayingPick(read: DifficultyPayingRead | null, byHand: { points: number; reason: string } | null, stored: { points: number; reason: string } | null = null): DifficultyPayingPick | null {
   if (byHand && byHand.reason.trim() !== '') return { points: byHand.points, reason: difficultyPayingByHandReason(byHand.reason) }
   if (read && read.points != null) return { points: read.points, reason: difficultyPayingReadReason(read) }
+  if (read?.why === 'unreadable' && stored && stored.reason.trim() !== '') return { points: stored.points, reason: stored.reason, kept: true }
   return null
+}
+
+/** What the card says under Paying when the point is kept: that the bills were not read here, and what the rating holds. */
+export function difficultyPayingKeptWords(kept: { points: number; reason: string }): string {
+  const byHand = difficultyPayingByHandOf(kept.reason)
+  const behind = byHand != null ? `It was set by hand: ${byHand}` : kept.reason.replace(/^Read from their bills:\s*/, '')
+  return `Their bills could not be read here. The rating keeps the ${kept.points === 1 ? '1 point' : `${kept.points} points`} it holds. ${behind}`.trim()
 }
 
 /** The line that says where the rating that stands and the bills now disagree; null when they agree or nothing is read. */

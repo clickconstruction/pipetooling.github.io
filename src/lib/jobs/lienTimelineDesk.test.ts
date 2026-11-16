@@ -107,8 +107,8 @@ describe('the Lien window’s header names the desk’s step on a notice in work
     ['needs_owner', 'Find the owner, then send the Jul notice — 22 days.', 'the owner’s name for the notice', '22 days · owner of record missing'],
     ['to_draft', 'Draft the Jul notice — 22 days.', 'the notice to be drafted and mailed', '22 days · to draft'],
     ['awaiting', 'Approve the Jul notice — 22 days.', 'the leader’s approval of the notice', '22 days · awaiting approval'],
-    ['ready', 'Send the Jul notice — 22 days.', 'the notice to be mailed', '22 days · ready to send'],
-    ['printed', 'Record the mailing of the Jul notice — 22 days.', 'the envelope’s certified number to be typed in', '22 days · in the mail · tracking owed'],
+    ['ready', 'Print and mail the Jul notice — 22 days.', 'the notice to be mailed', '22 days · approved to print'],
+    ['printed', 'Enter mail numbers for the Jul notice — 22 days.', 'the envelope’s certified number to be typed in', '22 days · in the mail · tracking owed'],
   ])('a notice on the %s pile: %s', (pile, next, waiting, stepWords) => {
     const t = buildLienTimelineFromWindow({ ...src, deskNotice: lienWindowDeskNotice(entry(pile)) })
     expect(t.next.kind).toBe('notice')
@@ -163,6 +163,17 @@ describe('the Lien window’s header names the desk’s step on an affidavit in 
     expect(t.next).toMatchObject({ kind: 'affidavit', words: next, affidavitState: pile, date: '2026-11-16', daysLeft: 54 })
     expect(t.waitingOn).toEqual({ who: 'ours', words: waiting })
     expect(affidavitStep(t).words).toBe(stepWords)
+  })
+
+  it('an approved paper a gate moved to Held is handed over as held by that fact, not as the leader’s hold (punch list #335)', () => {
+    const e = { ...(entry('held', ['homestead_answer']) as object), item: { status: 'approved', hold_until: null } } as unknown as LienAffidavitEntry
+    expect(lienWindowDeskAffidavit(e)).toEqual({ state: 'needs_property', missing: ['homestead_answer'], holdUntil: null })
+    const t = buildLienTimelineFromWindow({ ...src, deskAffidavit: lienWindowDeskAffidavit(e) })
+    expect(t.next.words).toBe('Answer the homestead question, then file the affidavit — 54 days.')
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'a yes or a no on the homestead question' })
+    // The leader's own hold reads as before.
+    const led = { ...(entry('held', [], '2026-11-10') as object), item: { status: 'held', hold_until: '2026-11-10' } } as unknown as LienAffidavitEntry
+    expect(lienWindowDeskAffidavit(led)).toMatchObject({ state: 'held', missing: [] })
   })
 
   it.each([

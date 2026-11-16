@@ -7,7 +7,7 @@ import { lienDeskMoreRows } from '../../lib/jobs/lienDeskPhoneMore'
 
 afterEach(cleanup)
 
-const rows = lienDeskMoreRows({ run: { label: 'Record the mailing', count: 4, hint: 'Type each envelope\u2019s tracking number' }, gcNotice: false, legendLabel: 'What this desk holds', caller: true, share: true, ownerRecords: true })
+const rows = lienDeskMoreRows({ run: { label: 'Enter mail numbers', count: 4, hint: 'Type each envelope\u2019s tracking number' }, gcNotice: false, legendLabel: 'What this desk holds', caller: true, share: true, ownerRecords: true })
 
 describe('LienDeskMoreSheet', () => {
   it('draws every door as a row with its name and its hint, the run first with its count', () => {
@@ -15,7 +15,7 @@ describe('LienDeskMoreSheet', () => {
     const sheet = screen.getByRole('dialog', { name: 'More on the Lien desk' })
     const drawn = [...sheet.querySelectorAll('[data-lien-desk-more-row]')] as HTMLElement[]
     expect(drawn.map((r) => r.getAttribute('data-lien-desk-more-row'))).toEqual(['run', 'rules', 'caller', 'legend', 'share', 'owner_records'])
-    expect(drawn[0]!.textContent).toContain('Record the mailing')
+    expect(drawn[0]!.textContent).toContain('Enter mail numbers')
     expect((drawn[0]!.querySelector('[data-lien-desk-more-count]') as HTMLElement).textContent).toBe('4')
     expect(within(sheet).getByText('The Texas lien rules the app follows')).toBeTruthy()
     // Only the run wears a count.
