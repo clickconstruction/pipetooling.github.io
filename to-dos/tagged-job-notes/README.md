@@ -11,9 +11,9 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: A two-login walk, which one pane login cannot do: tag a real teammate on a ZZ Test job, and have them see the red count above Jobs, answer from the section, and press No reply needed on a second tag. Also a phone width, the floating window's box, and a phone that takes the notice.
+next: Taunya looks at the tag that waits on her, on the ZZ Test Walk Project job, which is the tagged side of the walk. Then a phone width, the floating window's box, and a phone with notices on that takes one. Nothing waits to be built.
 size: L as a train of six (S · M · M · M · S · M)
-blocker: a second person's login. Two ZZ test notes and their two tags sit on the ZZ Test Walk Project job, waiting on the Sample superintendent account: a job note cannot be deleted through the app by anyone.
+blocker: none. The tagged side waits on Taunya's own look, which she asked for.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
 ---
 
@@ -41,7 +41,9 @@ opinion: build, it is the cheapest way to make a job note reach a person, and th
 
 **Not walked**: the tagged person's screen (the red count, the cards, an answer, No reply needed, the question back), the floating window's box, a phone width, and a notice arriving on a phone. The render tests and the `job-note-tags` SQL bed cover the rules; no person has seen those screens with a tag on them.
 
-**Left on prod**: two notes on that ZZ job, *ZZ Test tag walk, please ignore* and *ZZ Test job window tag walk, please ignore*, each tagging the Sample superintendent account. `jobs_ledger_thread_notes` has no delete policy, so they stay, and their two tags wait on that sample account.
+**Cleaned up**: the walk's two notes on that ZZ job, each tagging the Sample superintendent account, were deleted on 2026-11-16 by one SQL delete on their ids, and their tags went with them. `jobs_ledger_thread_notes` has no delete policy, so the app cannot remove a note.
+
+**Left on prod, on purpose**: one note on that ZZ job tagging Taunya, *ZZ Test: this is the tagging walk for you*, posted at her ask so she sees a tag land on her own screen. Her answer or **No reply needed** clears the tag. The note itself stays on the hidden test job.
 
 **Seen as built**: the ZZ Walk tester account is in training mode, so the list does not offer it. A dev is offered the sample accounts.
 
