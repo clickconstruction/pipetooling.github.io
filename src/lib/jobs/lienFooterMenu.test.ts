@@ -16,20 +16,20 @@ describe('lienFooter · one press per draft footer, the rare doors behind a menu
     expect(f.links).toEqual(['by_hand'])
   })
 
-  it('a live send rule puts it in the run; the hold rule parks it; a notice with no months has no pen row', () => {
-    expect(lienFooter({ role: 'assistant', paper: 'notice', leaderName: M, blocked: false, route: 'run', pen: true }).primary).toEqual({ key: 'run', label: 'Put it in the run ▸', line: 'Straight into the run.' })
+  it('a live send rule moves it to print; the hold rule parks it; a notice with no months has no pen row', () => {
+    expect(lienFooter({ role: 'assistant', paper: 'notice', leaderName: M, blocked: false, route: 'run', pen: true }).primary).toEqual({ key: 'run', label: 'Move it to print ▸', line: 'The standing rule approves it. It then waits to print.' })
     expect(lienFooter({ role: 'assistant', paper: 'notice', leaderName: M, blocked: false, route: 'hold', pen: true }).primary).toEqual({ key: 'ask', label: 'Ask Malachi to approve ▸', line: 'Parks under the hold rule.' })
     expect(lienFooter({ role: 'assistant', paper: 'notice', leaderName: M, blocked: false, pen: false }).menus[0]!.rows.map((r) => r.key)).toEqual(['word'])
   })
 
   it('the leader on his own notice: Sign and approve ▸ with his typed name, Sign another way ▾ offering the pad alone, no okayed menu for a master', () => {
     const f = lienFooter({ role: 'master_technician', paper: 'notice', leaderName: M, blocked: false, sign: { way: 'type', otherScreen: false, codeReady: false }, pen: false })
-    expect(f.primary).toEqual({ key: 'approve', label: 'Sign and approve ▸', line: 'Your typed name goes on it, and it goes in the run.' })
+    expect(f.primary).toEqual({ key: 'approve', label: 'Sign and approve ▸', line: 'Your typed name goes on it. It then waits to print.' })
     expect(f.menus.map((m) => m.label)).toEqual(['Sign another way ▾'])
     expect(f.menus[0]!.rows.map((r) => [r.key, r.label])).toEqual([['sign:draw', 'Draw it']])
     // Drawing, the menu offers the typed name back, and the line says what reaches the paper.
     const drawing = lienFooter({ role: 'master_technician', paper: 'notice', leaderName: M, blocked: false, sign: { way: 'draw', otherScreen: false, codeReady: false } })
-    expect(drawing.primary!.line).toBe('Your signature on the line goes on it, and it goes in the run.')
+    expect(drawing.primary!.line).toBe('Your signature on the line goes on it. It then waits to print.')
     expect(drawing.menus[0]!.rows.map((r) => r.key)).toEqual(['sign:type'])
     // A master is office too, so he keeps the quiet link on a notice.
     expect(f.links).toEqual(['by_hand'])
@@ -40,11 +40,11 @@ describe('lienFooter · one press per draft footer, the rare doors behind a menu
     expect(lienSignWays(true, false)).toEqual(['draw'])
     expect(lienSignWays(false, true)).toEqual(['type', 'draw'])
     const code = lienFooter({ role: 'dev', paper: 'notice', leaderName: M, blocked: false, sign: { way: 'code', otherScreen: true, codeReady: true }, pen: true })
-    expect(code.primary!.line).toBe('Malachi’s code signs it, and it goes in the run.')
+    expect(code.primary!.line).toBe('Malachi’s code signs it. It then waits to print.')
     const sign = code.menus.find((m) => m.key === 'sign')!
     expect(sign.rows.map((r) => r.label)).toEqual(['Draw it'])
     const draw = lienFooter({ role: 'dev', paper: 'notice', leaderName: M, blocked: false, sign: { way: 'draw', otherScreen: true, codeReady: true } })
-    expect(draw.primary!.line).toBe('Malachi signs on the line, and it goes in the run.')
+    expect(draw.primary!.line).toBe('Malachi signs on the line. It then waits to print.')
     expect(draw.menus.find((m) => m.key === 'sign')!.rows.map((r) => r.label)).toEqual(['Use Malachi’s signing code'])
     // No code set: the pad is the only way, so there is nothing to switch to and no menu.
     const padOnly = lienFooter({ role: 'master_technician', paper: 'notice', leaderName: M, blocked: false, sign: { way: 'draw', otherScreen: true, codeReady: false } })
@@ -69,12 +69,12 @@ describe('lienFooter · one press per draft footer, the rare doors behind a menu
     expect(office.links).toEqual([])
   })
 
-  it('a retainage notice reads as a notice for the office; the leader’s okay puts it in the run with no sign menu', () => {
+  it('a retainage notice reads as a notice for the office; the leader’s okay approves it to mail with no sign menu', () => {
     const office = lienFooter({ role: 'controller', paper: 'retainage', leaderName: M, blocked: false })
     expect(office.primary!.label).toBe('Ask Malachi to approve ▸')
     expect(office.menus[0]!.rows.map((r) => r.label)).toEqual(['Malachi said to send it…'])
     const leader = lienFooter({ role: 'master_technician', paper: 'retainage', leaderName: M, blocked: false })
-    expect(leader.primary).toEqual({ key: 'approve', label: 'Sign and approve ▸', line: 'Your okay puts it in the run.' })
+    expect(leader.primary).toEqual({ key: 'approve', label: 'Sign and approve ▸', line: 'Your okay approves it. It then waits to mail.' })
     expect(leader.menus).toEqual([])
   })
 

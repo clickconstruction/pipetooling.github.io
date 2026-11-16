@@ -40,7 +40,7 @@ This month, by Oct 15 in 14 days. 24 notices across 9 GCs. 31 jobs.
 
 Inside a month, each job sits under its GC. The GC's name is one small line above its jobs. The line counts its jobs and the notices owed, and says how many to send. Jobs with no GC sit together under *Direct to owner*. Press a line to fold its jobs away.
 
-A notice the desk printed but has not recorded reads differently. The band counts it as *in the mail*. The GC's line says *record the mailing* when every notice it owes is printed.
+A notice the desk printed but has not recorded reads differently. The band counts it as *in the mail*. The GC's line says *enter mail numbers* when every notice it owes is printed.
 
 A job with no approved hours has a small amber chip beside its name, like *Sep · no hours*. That job's dates count from a stand-in month, not from clock hours. Rest the pointer on the chip to read why. Office users can press the chip to set the last day of work.
 
@@ -59,7 +59,7 @@ The oldest bill is first. The age is grey under 30 days, amber from 30 days and 
 
 ## Draft the notices
 
-When a month's notices can go out, its band shows a button like {{button:amber|Draft the 24 ›}}. Press it to open the Monthly notices tab on those jobs. The desk lists a notice once its date is 30 days away or less. A notice already printed is not drafted again. The band offers {{button:amber|Record the mailing · 10 ›}} for those instead. It opens the run on its recording step, where the certified numbers go in.
+When a month's notices can go out, its band shows a button like {{button:amber|Draft the 24 ›}}. Press it to open the Monthly notices tab on those jobs. The desk lists a notice once its date is 30 days away or less. A notice already printed is not drafted again. The band offers {{button:amber|Enter mail numbers · 10 ›}} for those instead. It opens the run on its recording step, where the certified numbers go in.
 
 ## Use the date row
 
@@ -75,7 +75,7 @@ Office users on a computer can press it. Everyone else sees the count.
 
 ## Read a mark
 
-Rest the pointer on any mark and a card opens under it. The card says what the mark is, its date and how many days away that is. It says the money owed on the job. It ends on a button for the next move, such as {{button:amber|Draft the notice ›}} or {{button:amber|Record the mailing ›}}.
+Rest the pointer on any mark and a card opens under it. The card says what the mark is, its date and how many days away that is. It says the money owed on the job. It ends on a button for the next move, such as {{button:amber|Draft the notice ›}} or {{button:amber|Enter mail numbers ›}}.
 
 Marks that touch share one card, with a column for each mark in the same order. A card wider than the board scrolls sideways. A GC's line has no marks of its own. The line's counts are in its words, and each job under the line carries its own marks.
 

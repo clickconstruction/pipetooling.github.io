@@ -90,10 +90,10 @@ const CASES: { name: string; render: (onClose: () => void) => ReactElement; back
     backdrop: backdropOfDialog(),
   },
   {
-    name: 'Send the run (Lien desk, Put a GC on notice)',
+    name: 'Print and mail, the run window (Lien desk, Put a GC on notice)',
     render: (onClose) => <LienDeskRunModal notices={[]} issuer={null} todayYmd="2026-10-01" userId="u1" onClose={onClose} onRecorded={() => {}} />,
     // The run's backdrop is the dialog itself.
-    backdrop: () => screen.getByRole('dialog', { name: 'Send the run' }),
+    backdrop: () => screen.getByRole('dialog', { name: 'Print and mail' }),
   },
   {
     name: 'The owner called (Lien desk)',
