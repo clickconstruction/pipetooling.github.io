@@ -32,6 +32,8 @@ import { useStatementRoundNudge } from './useStatementRoundNudge'
 import { useDemandDeadlinesNudge } from './useDemandDeadlinesNudge'
 import { useJobContractsNudge } from './useJobContractsNudge'
 import { useUnpricedWorkOrders } from './useUnpricedWorkOrders'
+import { useMyNoteTags } from './useMyNoteTags'
+import { myTagsView, tagsNeed } from '../lib/jobs/noteTags'
 import { useJobKindGaps } from './useJobKindGaps'
 import { useInKindCreditsDue } from './useInKindCreditsDue'
 import { useBaselineGaps } from './useBaselineGaps'
@@ -238,6 +240,10 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   // The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job.
   const mailSavedEnabled = on('mailSaved')
   const mailSaved = useMailSavedForYou(mailSavedEnabled, authUserId)
+  // Tagged job notes (punch list #363): the tab's one read of the viewer's tags, shared with the count above Jobs.
+  const taggedNotesEnabled = on('taggedNotes')
+  const taggedNotesRead = useMyNoteTags(taggedNotesEnabled)
+  const taggedNotes = useMemo(() => (taggedNotesRead.tags ? tagsNeed(myTagsView(taggedNotesRead.tags)) : null), [taggedNotesRead.tags])
   // The day back (punch list #256 PR 9): an Away note's countdown has ended and the office asked to be told.
   const awayBackDayEnabled = on('awayBackDay')
   const awayBackDay = useAwayBackDay(awayBackDayEnabled)
@@ -348,6 +354,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     whileOff: whileOff.need,
     mailSavedEnabled,
     mailSaved: mailSaved.need,
+    taggedNotesEnabled,
+    taggedNotes,
     awayBackDayEnabled,
     awayBackDay: awayBackDay.need,
     lowRatingsEnabled,

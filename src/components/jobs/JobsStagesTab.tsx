@@ -114,6 +114,7 @@ import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackColl
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
+import { TaggedJobNotesSection } from './TaggedJobNotesSection'
 import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
 import { useBoardDots } from '../../hooks/useBoardDots'
 import { useBoardCustomerLines } from '../../hooks/useBoardCustomerLines'
@@ -3429,6 +3430,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           {(error || jobsListError) && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
+          {/* Tagged job notes (punch list #363): what waits on the reader, above everything. Nothing is drawn when nothing waits. */}
+          <TaggedJobNotesSection variant="pipeline" onOpenJob={(jobId) => navigate(`/jobs?edit=${jobId}`)} />
           {/* The money story and Today's Money Opportunities (v2.3823, owner call): read before the search box; the phone board keeps them in its Overview fold. */}
           {phoneBoard ? null : renderPipelineOverview()}
           <JobsStagesCommandBar
