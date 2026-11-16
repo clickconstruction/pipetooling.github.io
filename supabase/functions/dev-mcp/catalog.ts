@@ -1042,6 +1042,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "fts_prefilter": [{"args":{"p_q":"unknown"},"returns":"unknown"}],
   "fts_query_tokens": [{"args":{"p_q":"unknown"},"returns":"string[]"}],
   "fts_windows": [{"args":{"p_step":"number","p_text":"string","p_words":"number"},"returns":"{ body: string n: number }[]"}],
+  "gather_sub_payments_into_sending": [{"args":{"p_payment_ids":"string[]","p_person_id":"string"},"returns":"Json"}],
   "gc_accept_work": [{"args":{"p_package_id":"string"},"returns":"string"}],
   "gc_add_company": [{"args":{"company":"Json"},"returns":"string"}],
   "gc_add_punch_item": [{"args":{"p":"Json"},"returns":"string"}],
