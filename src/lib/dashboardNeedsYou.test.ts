@@ -3,6 +3,7 @@ import { formatYmdMonthDay } from './jobs/billedExpectedPay'
 import { NEEDS_YOU_RANK, buildNeedsYouItems, needsYouKind, rankNeedsYouItems, supplyMoveWindowSeverity, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
 import { SUPPLY_MOVE_WINDOW_CLOSE } from './ageState'
 import type { BankReturnedPayments } from './jobs/bankReturnedDeposits'
+import type { LienLeaderSignCard } from './jobs/lienLeaderSignCard'
 import type { BulkHoursAlert } from './clock/bulkHoursAlert'
 import { todayYmdInAppTz, ymdAddDays } from '../utils/dateUtils'
 
@@ -849,19 +850,42 @@ describe('buildNeedsYouItems', () => {
     expect(office[0]?.severity).toBe('gray')
     expect(office[0]?.detail).toBe('3 notices to Harborline Builders. 1 on the desk to draft, 2 waiting on the owner of record. 1 approved and waiting to go out.')
     expect(office[0]?.figure).toBe('$52,000')
-    const leader = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: true }))
+    // The leader's notices are a card of their own since v2.7435: the line reads off `buildLienLeaderSignCard`, and with no card there is no line.
+    const sign = (over: Partial<LienLeaderSignCard> = {}): LienLeaderSignCard => ({
+      count: 2,
+      tone: 'blue',
+      kicker: 'Lien notices · your signature',
+      title: '2 lien notices wait on your signature',
+      line: [{ text: '$40,304', strong: true }, { text: ' on 2 jobs' }],
+      phoneLines: [[{ text: '$40,304', strong: true }, { text: ' on 2 jobs' }]],
+      detail: '$40,304 on 2 jobs',
+      figure: '$40,304',
+      rows: [{ jobId: 'j1', label: '650 · ZZ Test Job', number: '650', claim: 40_304, claimWords: '$40,304', gcName: 'ZZ Test GC', chips: [], monthsWords: 'Jul', monthNamed: false, href: '/lien-desk?tab=notices&job=j1&pile=awaiting', pressLabel: 'Open 650 to sign ▸', pressTitle: 'Open the notice for 650 ZZ Test Job on the Lien desk', primary: true }],
+      more: null,
+      ...over,
+    })
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: true })).map((i) => i.key)).toEqual(['lien-notice-draft'])
+    const leader = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: true, lienLeaderSign: sign() }))
     expect(leader.map((i) => i.key)).toEqual(['lien-notice-draft', 'lien-notice-approve'])
-    expect(leader[1]?.title).toBe('Approve 2 lien notices the office drafted')
-    expect(leader[1]?.figure).toBe('2')
-    expect(leader[1]?.actionLabel).toBe('Decide')
+    expect(leader[1]).toMatchObject({ severity: 'blue', kicker: 'Lien notices · your signature', title: '2 lien notices wait on your signature', detail: '$40,304 on 2 jobs.', figure: '2', actionLabel: 'Open 650 to sign', openHref: '/lien-desk?tab=notices&job=j1&pile=awaiting' })
+    expect(leader[1]?.lienSign?.rows).toHaveLength(1)
+    expect(leader[1]?.first).toBeUndefined()
+    // Red, with a window inside the week or closed: the card leads the whole list, whatever the other lines' tiers.
+    const red = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: true, lienLeaderSign: sign({ tone: 'red', title: 'Sign 1 lien notice today' }) }))
+    expect(red.map((i) => i.key)).toEqual(['lien-notice-approve', 'lien-notice-draft'])
+    expect(red[0]).toMatchObject({ severity: 'red', first: true, title: 'Sign 1 lien notice today' })
+    expect(rankNeedsYouItems([{ ...red[1]!, key: 'bulk-delete' }, red[0]!]).map((i) => i.key)).toEqual(['lien-notice-approve', 'bulk-delete'])
+    // The office seat never gets it, and the card alone is not enough with the desk switched off.
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: false, lienLeaderSign: sign() })).map((i) => i.key)).toEqual(['lien-notice-draft'])
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: false, lienDesk: desk, lienDeskLeader: true, lienLeaderSign: sign() }))).toEqual([])
     // Put a GC on notice (v2.3479): a prepared run is one card per GC, taken out of the per-notice count.
     const withBatch = { ...desk, leader: { ...desk.leader, jobs: 9, dollars: 100_000, batches: [{ gcId: 'harborline', gcName: 'Harborline Builders', jobs: 7, dollars: 76_000, reason: 'GC is not paying its subs — the draw was spent', earliestDeadline: '2099-01-10' }] } }
-    const batched = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: withBatch, lienDeskLeader: true }))
+    const batched = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: withBatch, lienDeskLeader: true, lienLeaderSign: sign() }))
     expect(batched.map((i) => i.key)).toEqual(['lien-notice-draft', 'lien-notice-batch', 'lien-notice-approve'])
     expect(batched[1]?.title).toBe('Approve the run for Harborline Builders')
     expect(batched[1]?.detail).toContain('$76,000 claimed on 7 notices. GC is not paying its subs — the draw was spent. The earliest window closes 2099-01-10.')
     expect(batched[1]?.figure).toBe('7')
-    expect(batched[2]?.title).toBe('Approve 2 lien notices the office drafted')
+    expect(batched[2]?.title).toBe('2 lien notices wait on your signature')
     expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: withBatch, lienDeskLeader: false })).map((i) => i.key)).toEqual(['lien-notice-draft'])
     const empty = { ...desk, office: { ...desk.office, jobs: 0 }, leader: { ...desk.leader, jobs: 0 } }
     expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: empty, lienDeskLeader: true }))).toEqual([])

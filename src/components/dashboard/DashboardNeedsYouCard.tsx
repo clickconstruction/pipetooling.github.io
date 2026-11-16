@@ -16,6 +16,7 @@ import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type F
 import { EmptyState } from '../EmptyState'
 import type { LienBoardDot } from '../../lib/jobs/lienBoard'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
+import LienLeaderSignCardView from './LienLeaderSignCardView'
 
 /**
  * The dashboard "Needs you" card (v2.2339, CX-audit Phase 3 — owner-approved
@@ -131,6 +132,14 @@ export function DashboardNeedsYouCard({
     onAction(item)
   }
 
+  // A press on the leader's lien card (v2.7435): the line's own door, opened at the notice the press names.
+  const openLienNotice = (item: NeedsYouItem, href: string, press: 'sign' | 'row' | 'more') => {
+    touched.current = true
+    recordNavClick(userId, role, 'needs-you', `#${item.key}-${press}`)
+    setHandled((t) => pushNeedsYouHandled(t, item, 'acted'))
+    onAction({ ...item, openHref: href })
+  }
+
   const openFill = () => {
     touched.current = true
     recordNavClick(userId, role, 'needs-you', '#mode-fill')
@@ -186,8 +195,11 @@ export function DashboardNeedsYouCard({
   const upNext = order.filter((it) => it.key !== current.key).slice(0, 2)
   const trail = needsYouTrailChips(handled, walkItems)
 
-  // One line of the Cards view (the viewer's, or a fold's once opened).
-  const row = (it: NeedsYouItem) => (
+  // One line of the Cards view (the viewer's, or a fold's once opened). The leader's lien notices are a card of their own (v2.7435).
+  const row = (it: NeedsYouItem) =>
+    it.lienSign ? (
+      <LienLeaderSignCardView key={it.key} card={it.lienSign} phone={isPhone} rail={RAIL[it.severity]} onOpen={(href, press) => openLienNotice(it, href, press)} />
+    ) : (
             <div
               key={it.key}
               style={{
@@ -228,7 +240,7 @@ export function DashboardNeedsYouCard({
                 {actionLabelOf(it)}
               </button>
             </div>
-  )
+    )
 
   const chip = (key: string, label: string, active: boolean, onClick: () => void) => (
     <button

@@ -320,7 +320,10 @@ export function useLienDeskData(
         // bills and payments of just those jobs. A failed read leaves the figure to the RPC's, never the desk dark.
         const queueJobs: Record<string, LienDeskQueueJob> = { ...jobsById }
         const rowJobIds = new Set(rows.map((r) => r.job_id))
-        const billedOpenJobIds = light ? [] : jobs.filter((j) => !rowJobIds.has(j.id)).map((j) => j.id)
+        // In light mode the read is held to the notices that wait on the leader (v2.7435): the Dashboard's card prints
+        // each one's claim, and without it a job with no month row read $0 there and its own figure on the open desk.
+        const awaitingJobIds = new Set(items.filter((i) => i.status === 'awaiting_approval' && !i.voided_at).map((i) => i.job_id))
+        const billedOpenJobIds = jobs.filter((j) => !rowJobIds.has(j.id) && (!light || awaitingJobIds.has(j.id))).map((j) => j.id)
         if (billedOpenJobIds.length > 0) {
           type InvoiceRow = { id: string; job_id: string; status: string | null; amount: number | null; sequence_order: number | null; billed_at: string | null }
           type PaymentRow = { job_id: string; invoice_id: string | null; amount: number | null }
