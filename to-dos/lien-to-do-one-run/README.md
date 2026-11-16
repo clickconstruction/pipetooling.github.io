@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: gated
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · the owner leaned to D, not yet picked · B's three steps in build
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner leaned to D, not yet picked
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -13,10 +13,10 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: Build B in three small steps (one page, the order of the groups, the clearer rows). Then the pick between stopping at A and going on to D.
-size: L as a train of eight (S · S · S · M · M · M · S · M) for D; B is the first three, A the first four
-blocker: None for B. For D's single print, whether notices and affidavits can come out of one print run.
-ver: v2.4583 · v2.6515 · v2.7247
+next: The pick between stopping at B, going on to A (the list by bin), or on to D (the run). B needs nothing more.
+size: M for A alone (step 4); L for D as the five steps left (M · M · M · S · M); B, the first three, is built
+blocker: The pick. For D's single print, whether notices and affidavits can come out of one print run.
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372
 ---
 
 # Lien desk To do: one run (#362)
@@ -133,14 +133,16 @@ go further toward the batch; D is that. He has not picked between A and D.
 
 ## A train for D
 
-1. **One page** (S): To do scrolls as one page wherever the Board leaves the list too little room, and
-   the find box pins with the Board's numbers, each a press, the line that says what the list is
-   narrowed to, and the way back.
-2. **The order** (S): inside Needs you now, the papers the Board marks **!** first, then *Waiting on the
-   leader* with its reminder press, then the rest as *On track*, largest first; the tile's red line as
-   a press. Kernel work in `lienNextUp.ts` over `lienBoard.ts`.
-3. **The clearer rows** (S): the bin's name first, the one question from `gateAct`, the notice line on
-   every affidavit row, dollars on the desktop row, the day on the head. With step 2 this is B.
+1. **One page** (S), built, v2.7367: To do scrolls as one page wherever the Board leaves the list under
+   320 px, and the find box pins with the Board's numbers, each a press, the line that says what the
+   list is narrowed to, and the way back. A screen tall enough for both keeps the Board put.
+2. **The order** (S), built, v2.7371: inside Needs you now, the papers the Board marks **!** first, then
+   *Waiting on the leader* with its reminder press, then the rest as *On track*, largest first; the
+   tile's red line as a press. `lienNextUp.ts` over `lienBoard.ts`, with `lienLeaderReminder.ts`.
+3. **The clearer rows** (S), built, v2.7372: the bin's name first, the one question from `gateAct`, the
+   notice line on every affidavit row, dollars on the desktop row, the day on the head
+   (`lienRowWords.ts`). The bin's name opens the card the four dots opened, and a row with no bin keeps
+   its dots. With step 2 this is B.
 4. **The list by bin** (M): the groups under the Board's own names and the batch rows. This is A.
 5. **The checklist** (M): step 1 as a kernel over the desk's queues, every open question with its
    button and a *Leave out* that the run remembers.
@@ -173,11 +175,24 @@ go further toward the batch; D is that. He has not picked between A and D.
 
 - Open the mock-up on the dev server and walk the tabs, D's three states, light and dark; scroll B
   until the find box pins, and press a bin's name in Today, B and A.
-- When built: kernel tests over a desk with ready, held, approved and printed papers due the same day;
-  then a ZZ test run walked end to end before a live one.
+- B, on the live desk: scroll To do until the find box pins; read *Needs you now* in its three parts;
+  press the first tile's red line and *Show every row*; point at a row's bin name for its card.
+- When A or D is built: kernel tests over a desk with ready, held, approved and printed papers due the
+  same day; then a ZZ test run walked end to end before a live one.
 
 ## Where it stands
 
-Nothing is built. The mock-up is the whole of the design so far. The owner asked for this card on
-2026-11-15 so another session can pick it up; the same day the Board landed and Taunya had the mock-up
-redrawn with it in place.
+B is built and live: steps 1 to 3 of the train, v2.7367, v2.7371 and v2.7372, each with its fragment in
+`docs/recent-features/`. Checked on the live desk on 2026-11-15, read only: 38 of 38 rows in two lines
+with no job name cut off, eight rows at risk matching the Board's eight marked chips, three waiting
+with the reminder press, twelve on track, the day on the head, the notice line on every affidavit row.
+The reminder press was never pressed on a live paper: it messages the leader, and its smokes cover it
+with the sends mocked.
+
+A (step 4) and D (steps 5 to 8) are not started and wait on the pick. The mock-up still draws all
+three; its B is what shipped, but for two things the build changed: the bin's name stands where the
+mock-up dropped the four dots, and *Print N affidavits ›* opens the affidavits list at Ready to file
+and does not print from To do.
+
+The owner asked for this card on 2026-11-15 so another session can pick it up; the same day the Board
+landed, Taunya had the mock-up redrawn with it in place, picked B and had it built.
