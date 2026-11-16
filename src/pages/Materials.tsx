@@ -1498,6 +1498,9 @@ export default function Materials() {
           jobId={printLabels.jobId}
           onAddFirst={() => { setPrintLabels(null); openTab('on-site') }}
           onClose={() => setPrintLabels(null)}
+          onStickers={stripPresses.includes('print-stickers') ? () => { setPrintLabels(null); setPrintStickers(true) } : undefined}
+          onScan={() => { setPrintLabels(null); setScanLabelOpen(true) }}
+          onReadAgain={onSiteDesk.readAgain}
         />
       ) : null}
       {printStickers ? (

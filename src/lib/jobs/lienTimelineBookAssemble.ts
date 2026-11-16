@@ -4,6 +4,7 @@ import type { LienAffidavitRow } from './lienDeskAffidavits'
 import type { JobLienFilingRow } from './lienDeadlines'
 import type { JobDemandLetterRow } from './demandLetterTracking'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from './lienProperty'
+import { lienPublicStanding, type LienPublicRecord } from './lienPublicProperty'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import type { LienBookJob, LienTimelineBookInput } from './lienTimelineBook'
 
@@ -40,7 +41,7 @@ export type LienBookRaw = {
   rows: LienNoticeMonthRow[]
   affidavitRows: LienAffidavitRow[]
   items: LienDeskItemRow[]
-  /** Affidavits and releases (the tail); notices come through the RPC rows. */
+  /** Affidavits and releases (the tail). The months' notices come through the RPC rows; since v2.7485 the hook also hands the recorded notices, for the day each went (`noticeSentOn`). */
   filings: JobLienFilingRow[]
   /** The jobs' live demand letters (v2.3880); absent from a payload that does not carry them. */
   demandLetters?: JobDemandLetterRow[]
@@ -99,6 +100,10 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
       isSub: isSubByJob[j.id] ?? Boolean(j.gc_customer_id),
       paymentBond: j.lien_payment_bond ?? null,
       contractEndedOn: j.lien_contract_ended_on ?? null,
+      addressId: address ? address.id : null,
+      propertyAddress: (address?.address ?? '').trim(),
+      ownerMailingAddress: property.owner.mailingAddress,
+      ...(address ? { publicStanding: lienPublicStanding(address as LienPublicRecord) } : {}),
     }
   }
   return { rows, affidavitRows, items: raw.items, filingsByJob, demandLettersByJob, jobs, policyByCustomer, todayYmd }

@@ -82,7 +82,7 @@ import { markWonConfirm, markedWonBack, pairAllConfirm, pairConfirm, pairedAllBa
 import { markBidsWon, pairJobToBid, pairMany, unmarkBidsWon, unpairJob, unpairMany } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
-import { aboutIsPiece, entryBodyIsHead, entryLine, narrowLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
+import { aboutIsPiece, entryBodyIsHead, entryLine, mailLines, narrowLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
 import { keepHistoryEntry } from '../lib/developments/historyWrites'
 import { DevelopmentHistoryChips, DevelopmentHistoryComposer } from '../components/developments/DevelopmentHistoryTools'
 import { aboutGroups, aboutKeyOfPiece, aboutRows, type AboutGroup } from '../lib/developments/aboutPicker'
@@ -95,6 +95,9 @@ import { extractContactFromCustomer } from '../lib/jobs/jobFormCustomerDisplay'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { canOpenMessages } from '../lib/gc/access'
+import { threadHrefByKind } from '../lib/messages/customerThread'
+import type { ContactKind } from '../lib/contacts/kernel'
 import type { Database } from '../types/database'
 import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
 import SiteMaterialsReportModal from '../components/materials/SiteMaterialsReportModal'
@@ -156,6 +159,8 @@ export default function DevelopmentPage() {
   const { user: authUser, role, loading: authLoading, profileName } = useAuth()
   // The reader's door (PR 6): the office reads every table and the money; an estimator reads the pieces through the definer read and sees no dollar and no Job window.
   const door = developmentDoorFor(role)
+  // Who reads the mail tied to the site's bids and jobs, and gets its door: the roles that open Messages (v2.7479).
+  const readsMail = canOpenMessages(role)
   const moneyShown = door === 'office'
   const { showToast, showActionToast } = useToastContext()
 
@@ -233,13 +238,14 @@ export default function DevelopmentPage() {
     setLoading(true)
     setFailure(null)
     try {
-      setData(await fetchDevelopmentPage(developmentId, includeAddress, door))
+      // The tied mail is read for the roles that open Messages, under the rows' own policies (v2.7479).
+      setData(await fetchDevelopmentPage(developmentId, includeAddress, door, { mail: readsMail }))
     } catch (e) {
       setFailure(recoveryFailureFromError(e, 'The development could not be read.'))
     } finally {
       setLoading(false)
     }
-  }, [developmentId, includeAddress, authLoading, door])
+  }, [developmentId, includeAddress, authLoading, door, readsMail])
 
   useEffect(() => {
     void load()
@@ -442,6 +448,27 @@ export default function DevelopmentPage() {
         : [],
     [shown, data, sitePhotos.rows, jobLabel, bidLabel],
   )
+  // The mail tied to the site's bids and jobs in Messages (v2.7479): one line a mail, at its own time, with the door to its thread.
+  const tiedMailLines = useMemo<ChangeLine[]>(
+    () =>
+      shown && data
+        ? mailLines(data.tiedMail ?? [], {
+            job: (id) => {
+              const j = shown.jobs.find((x) => x.id === id)
+              return j ? { kind: 'job', id, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim() } : null
+            },
+            bid: (id) => {
+              const b = shown.bids.find((x) => x.id === id)
+              return b ? { kind: 'bid', id, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim() } : null
+            },
+            contacts: data.mailContacts ?? [],
+            names: data.names,
+            // Job activity's own door for a tied line: the Messages page, or GC projects' Messages for a trade partner or an architect.
+            threadHref: readsMail ? (kind, contactId, messageId) => threadHrefByKind((kind ?? 'customer') as ContactKind, contactId, messageId) : null,
+          })
+        : [],
+    [shown, data, jobLabel, bidLabel, readsMail],
+  )
   const feed = useMemo<ChangeLine[]>(
     () =>
       shown && data
@@ -470,6 +497,7 @@ export default function DevelopmentPage() {
               }),
             ),
             photoLines,
+            mailLines: tiedMailLines,
             customerContacts: data.customerContacts,
             customerNames: new Map(data.customers.map((c) => [c.id, c.name])),
             names: data.names,
@@ -482,7 +510,7 @@ export default function DevelopmentPage() {
             nowMs,
           })
         : [],
-    [shown, data, entries, photoLines, bidLabel, jobLabel, nowMs],
+    [shown, data, entries, photoLines, tiedMailLines, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
   // The runs fold (the Gray Fox spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
@@ -1166,7 +1194,7 @@ export default function DevelopmentPage() {
     <JobCardsProvider cardFor={jobCardFor}>
     <div data-testid="development-page">
       {/* The whole of a long History line (the owner, 2026-10-29: the rest in a modal). */}
-      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} />
+      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} onOpenThread={(href) => navigate(href)} />
       <DevelopmentAskSheet open={ask !== null} preset={ask} options={askOptions} siteName={dev.name} busy={asking} onSend={sendAskDraft} onClose={() => setAsk(null)} />
       <div style={{ marginBottom: '0.4rem', display: 'flex', gap: 12, fontSize: '0.8rem' }}>
         <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(moneyShown ? '/jobs?tab=stages' : '/bids'))}>← Back</LinkButton>
@@ -1380,6 +1408,11 @@ export default function DevelopmentPage() {
                 </div>
               )}
               <DevelopmentHistoryChips chip={histChip} onChip={setHistChip} piece={histPiece} onClearPiece={() => setHistPiece(null)} phone={phone} />
+              {data.tiedMailError ? (
+                <p role="status" data-testid="history-mail-failed" style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  The mail tied to this site’s jobs and bids did not come: {data.tiedMailError} Every other line is here.
+                </p>
+              ) : null}
               {onRecordShown.length > 0 ? (
                 <div data-testid="history-on-record" style={{ marginBottom: 10, padding: '6px 10px', border: '1px dashed var(--border-strong)', borderRadius: 6, fontSize: '0.8rem' }}>
                   <div style={{ ...capStyle, marginBottom: 2 }} title="Notes the records carry with no date: a bid's notes, a job's collections note, the customer's terms">
@@ -1414,7 +1447,7 @@ export default function DevelopmentPage() {
                   </LinkButton>
                 </div>
               ) : (
-                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} photoIo={sitePhotos.io.photos} onPerson={setFeedQuery} />
+                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} photoIo={sitePhotos.io.photos} onPerson={setFeedQuery} onOpenThread={(href) => navigate(href)} />
               )}
             </>
           ) : null}

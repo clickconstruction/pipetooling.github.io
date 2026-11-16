@@ -193,9 +193,8 @@ describe('a notice sent for approval: whoever in the office presses (v2.7445)', 
 
   it('a paper that is not on the desk, and a paper that is not a notice, are refused', async () => {
     expect(await post({ item_id: 'nope' })).toEqual({ status: 404, body: { error: 'Paper not found' } })
-    world.items = [affidavit('it1'), notice({ id: 'ret1', kind: 'retainage_53_057' })]
+    world.items = [affidavit('it1')]
     expect(await post({ item_id: 'it1' })).toEqual({ status: 400, body: { error: 'Not a lien notice' } })
-    expect(await post({ item_id: 'ret1' })).toEqual({ status: 400, body: { error: 'Not a lien notice' } })
     expect(await post({})).toEqual({ status: 400, body: { error: 'Missing item_id' } })
     expect(nothingSent()).toBe(true)
   })
@@ -215,6 +214,43 @@ describe('a notice sent for approval: whoever in the office presses (v2.7445)', 
     const res = await post({ item_id: 'it1' })
     expect(res.body).toMatchObject({ success: true, push_sent: 2, leader_name: null })
     expect([...(world.pushes[0]!.userIds as string[])].sort()).toEqual(['u-malachi', 'u-robert'])
+  })
+})
+
+describe('a retainage notice sent for approval: it has a message (v2.7478)', () => {
+  const retainage = (over: Row = {}): Row => notice({ id: 'ret1', kind: 'retainage_53_057', fields: { notice: { claimAmount: 12_400 } }, ...over })
+  beforeEach(() => {
+    world.items = [retainage()]
+  })
+
+  it('the send tells the leader in the retainage notice’s own words, and the tap lands on the Retainage list', async () => {
+    const res = await post({ item_id: 'ret1', due_ymd: '2026-12-15' })
+    expect(res).toEqual({ status: 200, body: { success: true, push_sent: 1, email_sent: false, held: 0, leader_name: 'Malachi Whites' } })
+    expect(world.pushes).toHaveLength(1)
+    expect(world.pushes[0]).toMatchObject({ userIds: ['u-malachi'], title: 'Approve a retainage notice', templateType: 'lien_retainage_approval_ask', url: '/lien-desk?tab=retainage&job=j650', tag: 'lien-retainage-approval-j650' })
+    expect(String(world.pushes[0]!.body)).toContain('650 · Tune 5 Liberty Hill · $12,400 retainage held by Brund & Assoc. · mail by Dec 15')
+    expect(world.history).toEqual([expect.objectContaining({ recipient_user_id: 'u-malachi', template_type: 'lien_retainage_approval_ask', channel: 'push' })])
+  })
+
+  it('with no phone the same words go by email, naming who pressed; a reminder says so', async () => {
+    world.devices = new Set()
+    expect((await post({ item_id: 'ret1' })).body).toMatchObject({ success: true, push_sent: 0, email_sent: true })
+    expect(world.emails[0]!.to).toBe('u-malachi@office.test')
+    expect(world.emails[0]!.text.split('\n')[0]).toBe('Wendi sent a retainage notice for your approval.')
+    expect(world.emails[0]!.text).not.toContain('lien notice')
+    await post({ item_id: 'ret1', remind: true })
+    expect(world.emails[1]!.text.split('\n')[0]).toBe('Wendi is reminding you of a retainage notice that waits for your approval.')
+  })
+
+  it('the gate is the notice’s: the office only, and only while it waits for approval', async () => {
+    world.callerId = 'u-hank'
+    expect(await post({ item_id: 'ret1' })).toEqual({ status: 403, body: { error: 'Not the office' } })
+    world.callerId = 'u-carla'
+    for (const over of [{ status: 'approved' }, { status: 'held' }, { voided_at: '2026-11-10T00:00:00Z' }]) {
+      world.items = [retainage(over)]
+      expect(await post({ item_id: 'ret1', remind: true })).toEqual({ status: 200, body: { success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' } })
+    }
+    expect(nothingSent()).toBe(true)
   })
 })
 

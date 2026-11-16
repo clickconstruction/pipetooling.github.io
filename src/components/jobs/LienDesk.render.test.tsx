@@ -216,7 +216,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     summary: summarizeLienDeskForNeedsYou(queue),
     rows,
     items,
-    affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
+    affidavits: { entries: [], piles: { needs_property: [], needs_notice: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, needs_notice: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
     affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
@@ -600,7 +600,7 @@ describe('LienDesk', () => {
     const rows = [...J650, row('j651', '2026-07', '2026-10-15')]
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(rows, [item('it1', 'j650'), item('it2', 'j651')], true)} initialKind="next" />)
     await settle()
-    const foot = document.querySelector('[data-lien-board-column="notice"] [data-lien-board-print="notice"]') as HTMLElement
+    const foot = document.querySelector('[data-lien-board-prints] [data-lien-board-print="notice"]') as HTMLElement
     expect(document.querySelector('[data-lien-board-print="affidavit"]')).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
     fireEvent.click(within(foot).getByRole('button', { name: 'Enter mail numbers · 2' }))
@@ -684,6 +684,53 @@ describe('LienDesk', () => {
     expect(await screen.findByText(/^Sam was not reminded\. 1 reminder did not send: .+ \(not waiting for approval now\)\.$/)).toBeTruthy()
     expect(press().textContent).toBe('Remind Sam of 1 paper')
     expect(press().disabled).toBe(false)
+  })
+
+  it('a retainage notice has its message: the send for approval tells the leader with the day its window closes, and Remind takes it as a notice (v2.7478)', async () => {
+    const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+    const withRetainage = (items: LienDeskItemRow[]) => {
+      const d = data(J650, [], true)
+      d.retainageRows = [retRow]
+      d.retainage = buildLienRetainageQueue([retRow], items, TODAY)
+      return d
+    }
+    saveDraftMock.mockClear()
+    submitMock.mockClear()
+    tellLeaderMock.mockClear()
+    // The pane's send: the paper lands in Awaiting Master approval, and the leader is told after the write.
+    const pane = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRetainage([])} initialKind="retainage" initialJobId="j650" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    fireEvent.click(within(document.querySelector('[data-lien-desk-footer="retainage"]') as HTMLElement).getByRole('button', { name: /approve ▸/ }))
+    await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
+    expect(submitMock.mock.calls[0]).toEqual(['it-new', { status: 'awaiting_approval', reason: 'first_notice' }])
+    await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledWith('it-new', '2026-10-05'))
+    expect(await screen.findByText("Sent for approval. Malachi's phone has it.")).toBeTruthy()
+    pane.unmount()
+    // A message that does not go is said with its reason, and the paper is still sent.
+    submitMock.mockClear()
+    tellLeaderMock.mockClear()
+    tellLeaderMock.mockImplementationOnce(async () => ({ ok: false, reason: 'Not a lien notice' }))
+    const miss = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRetainage([])} initialKind="retainage" initialJobId="j650" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    fireEvent.click(within(document.querySelector('[data-lien-desk-footer="retainage"]') as HTMLElement).getByRole('button', { name: /approve ▸/ }))
+    expect(await screen.findByText('Sent for approval. The message to Sam did not go. The part of the app that tells the leader is waiting for its update. The paper is on the Dashboard. Tell Sam another way.')).toBeTruthy()
+    expect(submitMock).toHaveBeenCalledTimes(1)
+    miss.unmount()
+    // The To do view's Remind: the retainage notice that waits is one of the papers, sent through the notice's own call.
+    tellLeaderMock.mockClear()
+    const awaiting = { id: 'ret1', job_id: 'j650', kind: 'retainage_53_057', months: [], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z' } as unknown as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRetainage([awaiting])} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    const press = () => document.querySelector('[data-lien-next-up-remind]') as HTMLButtonElement
+    expect(press().textContent).toBe('Remind Sam of 1 paper')
+    fireEvent.click(press())
+    const asked = await screen.findByText(/Sam gets one message for the notice\./)
+    expect(asked.textContent).not.toContain('stays out')
+    const confirms = screen.getAllByRole('button', { name: 'Remind Sam' })
+    fireEvent.click(confirms[confirms.length - 1]!)
+    await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledTimes(1))
+    expect(tellLeaderMock.mock.calls[0]).toEqual(['ret1', '2026-10-05', { remind: true }])
+    expect(await screen.findByText('Sam was reminded of 1 paper.')).toBeTruthy()
   })
 
   it('a chip on the Board, pointed at, says which job it is before any press: its name, address, customer and GC, and where its notice stands (v2.7381)', async () => {
@@ -1140,7 +1187,7 @@ describe('LienDesk', () => {
     expect(board.getAttribute('data-lien-board-layout')).toBe('columns')
     expect(board.querySelectorAll('[data-lien-board-tile]')).toHaveLength(4)
     expect(Array.from(board.querySelectorAll('[data-lien-board-column="notice"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_print', 'in_mail', 'sent'])
-    expect(Array.from(board.querySelectorAll('[data-lien-board-column="affidavit"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_property', 'to_send', 'awaiting', 'ready', 'filed'])
+    expect(Array.from(board.querySelectorAll('[data-lien-board-column="affidavit"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed'])
     // J650 is one chip in the notice column, and its bin is lit as the busiest.
     const chip = board.querySelector('[data-lien-board-chip="j650"][data-kind="notice"]') as HTMLElement
     const bin = chip.closest('[data-lien-board-bin]') as HTMLElement
@@ -1877,6 +1924,45 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(onOpenEditJob).not.toHaveBeenCalled()
     fireEvent.click(screen.getByTestId('lien-paper-property-discard'))
     expect(screen.getByRole('button', { name: /Send the notice first ›/ })).toBeTruthy()
+  })
+
+  it('an affidavit that waits on a notice already approved says where that notice stands, on its pane and on its To do row', async () => {
+    // The job's notice is approved and stands in the run, with no mailing on record yet: the affidavit's one closed gate.
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-08', deadline: '2026-12-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null }
+    const approved = { id: 'it-a', job_id: 'j650', kind: 'notice_53_056', months: ['2026-08'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T14:20:00Z', approval_mode: 'manual', printed_at: null, created_at: '2026-09-14T14:00:00Z', voided_at: null, sent_at: null, sent_filing_id: null, hold_reason: null, hold_until: null, hold_note: null } as unknown as LienDeskItemRow
+    const d = data([row('j650', '2026-08', '2026-11-16', { has_owner: true, property_kind: 'non_residential' })], [approved], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    expect(d.queue.entries.find((e) => e.jobId === 'j650')?.pile).toBe('ready')
+    expect(d.affidavits.entries[0]!.gates.filter((g) => !g.ok).map((g) => g.key)).toEqual(['notice'])
+    // Its pile is its own (v2.7457): nothing on the property record is missing.
+    expect(d.affidavits.entries[0]!.pile).toBe('needs_notice')
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    // The gates head and the gate row say approved and not mailed; nobody is told to send the notice first.
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe('Before it can be generated✗ 1 missing · § 53.056 notice not mailed yet')
+    const gates = document.querySelector<HTMLElement>('[data-lien-pane-body="gates"]')!
+    expect(within(gates).getByRole('button', { name: /approved · not mailed yet.*Open the notice ›$/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Send the notice first/ })).toBeNull()
+    expect(screen.queryByText(/no § 53\.056 notice on the job/)).toBeNull()
+    // By paper lists it under the pile of the same name, and Needs the property facts is empty.
+    expect(document.querySelector('[data-lien-pile-rows="needs_notice"]')?.querySelectorAll('button').length).toBeGreaterThan(0)
+    expect(document.querySelector('[data-lien-pile-rows="needs_property"]')?.querySelectorAll('button').length ?? 0).toBe(0)
+    view.unmount()
+    // To do: the row's tag and its press.
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const affidavitRow = document.querySelector<HTMLElement>('[data-lien-next-up-row="affidavit:j650"]')
+    expect(affidavitRow).not.toBeNull()
+    expect(affidavitRow!.textContent).toContain('Its § 53.056 notice is approved and not mailed yet.')
+    expect(affidavitRow!.querySelector('[data-lien-next-up-tag]')?.textContent).toBe('Notice approved · not mailed yet')
+    // The row starts with its bin, and on the Board the affidavit's chip and its notice's chip are one pair.
+    expect(affidavitRow!.querySelector('[data-lien-next-up-stage]')?.textContent).toBe('Waiting on its notice')
+    expect(document.querySelector('[data-lien-board-bin="affidavit:needs_notice"] [data-lien-board-chip="j650"]')?.getAttribute('data-pair')).toBe('notice:j650')
+    expect(document.querySelector('[data-lien-board-bin="notice:to_print"] [data-lien-board-chip="j650"]')?.getAttribute('data-pair')).toBe('notice:j650')
+    expect(within(affidavitRow!).getByRole('button', { name: 'Print and mail' })).toBeTruthy()
+    expect(affidavitRow!.textContent).not.toContain('No notice on record')
+    expect(affidavitRow!.textContent).not.toContain('Send the notice first')
   })
 
   it('on a phone the gate marks keep the missing words beside them, since a phone has no hover (v2.7335)', async () => {
