@@ -140,6 +140,13 @@ describe('the promised schedule (punch list #367)', () => {
     expect(build({ start: '2025-07-01', end: '2026-12-31', noEnd: true })).toMatchObject({ schedule_start: '2025-07-01', schedule_end: null, schedule_open_ended: true })
     expect(build({ start: '', end: '', noEnd: false })).toMatchObject({ schedule_start: null, schedule_end: null, schedule_open_ended: false })
   })
+  it('a new bid with no schedule sends no schedule column, and one with a schedule sends all three', () => {
+    const fresh = buildBidSavePayload({ values: formValues(), bidDateSent: '', editing: false, canEditBidNumber: false })
+    expect('schedule_start' in fresh).toBe(false)
+    expect('schedule_open_ended' in fresh).toBe(false)
+    const withOne = buildBidSavePayload({ values: formValues({ schedule: { start: '2025-07-01', end: '', noEnd: true } }), bidDateSent: '', editing: false, canEditBidNumber: false })
+    expect(withOne).toMatchObject({ schedule_start: '2025-07-01', schedule_end: null, schedule_open_ended: true })
+  })
   it('leaves the columns out while the row still has a problem, so a half-said schedule is never written', () => {
     for (const half of [
       { start: '2025-07-01', end: '', noEnd: false },

@@ -18,7 +18,7 @@ import { addressSearchPattern, memberAddressKeys, splitMembers, type MemberBid, 
 import { parseDevelopmentOverview, stripBidMoney, type DevelopmentDoor, type DevelopmentOverview } from './readDoor'
 
 const BID_COLUMNS =
-  'id, bid_number, project_name, address, customer_id, estimator_id, account_manager_id, development_id, outcome, outcome_at, bid_value, agreed_value, priced_revenue_usd, bid_date_sent, bid_due_date, estimated_job_start_date, plans_link, design_drawing_plan_date, schedule_start, schedule_end, schedule_open_ended, gc_contact_name, gc_contact_phone, gc_contact_email, created_at, updated_at, working_board_archived_at, working_board_archived_by, service_type_id, last_contact, notes'
+  'id, bid_number, project_name, address, customer_id, estimator_id, account_manager_id, development_id, outcome, outcome_at, bid_value, agreed_value, priced_revenue_usd, bid_date_sent, bid_due_date, estimated_job_start_date, plans_link, design_drawing_plan_date, gc_contact_name, gc_contact_phone, gc_contact_email, created_at, updated_at, working_board_archived_at, working_board_archived_by, service_type_id, last_contact, notes'
 /** The same bid without its three money columns: what the overview door reads at the address. */
 const BID_COLUMNS_NO_MONEY = BID_COLUMNS.split(', ')
   .filter((c) => c !== 'bid_value' && c !== 'agreed_value' && c !== 'priced_revenue_usd')
@@ -85,6 +85,24 @@ function fail(label: string, error: { message: string } | null): void {
  * definer read, then the same address search over bids alone (with no money column), since this
  * reader has no `jobs_ledger` policy and the *not in it* line counts what the reader can see.
  */
+type BidScheduleRow = Pick<MemberBid, 'schedule_start' | 'schedule_end' | 'schedule_open_ended'>
+
+/** Each bid's promised schedule by bid id; an empty map when the read is refused (the columns are newer than the database) or fails. */
+async function readBidSchedules(developmentId: string): Promise<Map<string, BidScheduleRow>> {
+  const out = new Map<string, BidScheduleRow>()
+  try {
+    const { data, error } = await supabase.from('bids').select('id, schedule_start, schedule_end, schedule_open_ended' as never).eq('development_id', developmentId).limit(500)
+    if (error) {
+      console.warn('development: bid schedules not read', error.message)
+      return out
+    }
+    for (const r of (data ?? []) as unknown as Array<{ id: string } & BidScheduleRow>) out.set(r.id, { schedule_start: r.schedule_start ?? null, schedule_end: r.schedule_end ?? null, schedule_open_ended: r.schedule_open_ended === true })
+  } catch (e) {
+    console.warn('development: bid schedules not read', e)
+  }
+  return out
+}
+
 async function readMembers(developmentId: string, door: DevelopmentDoor): Promise<{ inIt: Members; atAddress: Members; overview: DevelopmentOverview | null }> {
   let memberBids: MemberBid[]
   let memberJobs: MemberJob[]
@@ -98,6 +116,10 @@ async function readMembers(developmentId: string, door: DevelopmentDoor): Promis
     ])
     memberBids = ((bidsRaw ?? []) as unknown as MemberBid[]) ?? []
     memberJobs = ((jobsRaw ?? []) as unknown as MemberJob[]) ?? []
+    // The schedule's three columns (punch list #367) are read apart from the bid, so a database that does not
+    // have them yet answers this one read with a refusal and the page still draws, with no schedule on it.
+    const schedules = await readBidSchedules(developmentId)
+    if (schedules.size) memberBids = memberBids.map((b) => ({ ...b, ...(schedules.get(b.id) ?? {}) }))
   } else {
     // The RPC is not in the generated types until the post-push types PR lands.
     const raw = await withSupabaseRetry(() => supabase.rpc('list_development_overview' as never, { p_development_id: developmentId } as never), 'read the development')

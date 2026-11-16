@@ -86,7 +86,8 @@ export function buildBidSavePayload({ values: v, bidDateSent, editing, canEditBi
     bid_submission_link: v.bidSubmissionLink.trim() || null,
     itb_links: serializeItbLinks(v.itbLinks),
     design_drawing_plan_date: v.designDrawingPlanDate.trim() ? v.designDrawingPlanDate : null,
-    ...(scheduleDraftProblem(v.schedule) ? {} : scheduleColumns(v.schedule)),
+    // A new bid with no schedule sends no schedule column at all, so its insert does not depend on the columns being there yet.
+    ...(scheduleDraftProblem(v.schedule) || (!editing && !v.schedule.start.trim()) ? {} : scheduleColumns(v.schedule)),
     customer_id: v.gcCustomerId || null,
     gc_builder_id: null,
     ...(editing && canEditBidNumber ? { bid_number: v.bidNumber.trim() || null } : {}),
