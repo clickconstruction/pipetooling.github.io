@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task Mode Refresh</title>
+<style>
+/* Layout: a reading column of findings, with the app drawn inside phone and desk frames using the app's own theme tokens. */
+:root{
+  --bg-page:#f0f2f5;--surface:#ffffff;--bg-subtle:#f9fafb;--bg-muted:#f3f4f6;--bg-200:#e5e7eb;
+  --text-strong:#111827;--text-700:#374151;--text-600:#4b5563;--text-muted:#6b7280;
+  --border:#cfd4db;--border-strong:#aab2bd;--border-rule:#b8bec8;
+  --bg-blue-tint:#eff6ff;--text-blue-800:#1e40af;--text-blue-700:#1d4ed8;
+  --bg-green-tint:#f0fdf4;--border-green:#bbf7d0;--text-green-800:#166534;--text-green-700:#15803d;
+  --bg-red-100:#fee2e2;--text-red-700:#b91c1c;
+  --bg-amber-tint:#fffbeb;--text-amber-800:#92400e;--border-amber:#fcd34d;
+  --blue:#2563eb;--red:#dc2626;--green:#16a34a;
+  --frame:#1f2937;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;--bg-200:#374151;
+  --text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--border-strong:#4b5563;--border-rule:#374151;
+  --bg-blue-tint:#1e3358;--text-blue-800:#93c5fd;--text-blue-700:#93c5fd;
+  --bg-green-tint:#12301f;--border-green:#166534;--text-green-800:#86efac;--text-green-700:#4ade80;
+  --bg-red-100:#4c1d1d;--text-red-700:#f87171;
+  --bg-amber-tint:#3a2f11;--text-amber-800:#fcd34d;--border-amber:#92400e;
+  --frame:#4b5563;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;--bg-200:#374151;
+  --text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--border-strong:#4b5563;--border-rule:#374151;
+  --bg-blue-tint:#1e3358;--text-blue-800:#93c5fd;--text-blue-700:#93c5fd;
+  --bg-green-tint:#12301f;--border-green:#166534;--text-green-800:#86efac;--text-green-700:#4ade80;
+  --bg-red-100:#4c1d1d;--text-red-700:#f87171;
+  --bg-amber-tint:#3a2f11;--text-amber-800:#fcd34d;--border-amber:#92400e;
+  --frame:#4b5563;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg-page);color:var(--text-strong);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:44px}
+h1{font-size:30px;line-height:1.15;margin:0;letter-spacing:-0.01em;text-wrap:balance}
+h2{font-size:21px;margin:0 0 4px;text-wrap:balance}
+h3{font-size:15.5px;margin:0}
+p{margin:0;max-width:68ch}
+.lede{color:var(--text-700);font-size:16px;margin-top:10px}
+.sub{color:var(--text-muted);font-size:14px;margin-bottom:16px}
+.lab{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:18px}
+.fact{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.fact b{display:block;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
+.fact span{font-size:13px;color:var(--text-700)}
+.note{font-size:12.5px;color:var(--text-muted);margin-top:10px}
+
+/* frames */
+.pair{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.col{display:grid;gap:8px;min-width:0}
+.phone{width:336px;max-width:100%;border:6px solid var(--frame);border-radius:30px;background:var(--bg-page);overflow:hidden}
+.scroller{overflow-x:auto;max-width:100%}
+.desk{width:880px;border:1px solid var(--border-strong);border-radius:10px;background:var(--bg-page);overflow:hidden}
+.apphead{display:flex;align-items:center;justify-content:space-between;background:var(--bg-subtle);border-bottom:1px solid var(--border);padding:8px 12px}
+.apphead a{color:var(--blue);font-weight:700;text-decoration:underline}
+.hbtn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:5px;background:var(--blue);color:#fff;font-size:15px}
+.gear{font-size:17px;margin-left:10px}
+.strip{display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;background:var(--bg-green-tint);border-bottom:1px solid var(--border-green);color:var(--text-green-800);font-size:13px}
+.strip b{font-weight:700}
+.exit{border:1px solid var(--border-green);background:var(--surface);border-radius:999px;padding:1px 11px;font-weight:700}
+.page{padding:6px 14px 16px}
+.desk .page{padding:6px 24px 22px}
+
+/* BEFORE */
+.b-tabs{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:16px}
+.b-tabs .t{padding:7px 16px;font-size:14px;color:var(--text-muted)}
+.b-tabs .t.on{background:var(--blue);color:#fff;font-weight:700}
+.b-tabs h4{margin:0;font-size:22px}
+.b-h2{font-size:22px;font-weight:700;margin:0 0 12px}
+.b-card{border:1.5px solid var(--border-strong);border-radius:12px;padding:12px;margin-bottom:22px;background:transparent}
+.b-top{display:flex;gap:11px;align-items:flex-start}
+.b-tick{width:34px;height:34px;border-radius:9px;background:var(--green);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.b-title{font-weight:500;font-size:15.5px;color:var(--text-muted);text-decoration:line-through;line-height:1.35}
+.b-chip{display:inline-block;background:var(--blue);color:#fff;font-size:12.5px;font-weight:600;border-radius:8px;padding:3px 9px;margin-top:7px}
+.b-done{font-size:12.5px;color:var(--text-700);margin-left:6px}
+.b-acts{display:flex;gap:7px;flex:none}
+.b-bell{border:1px solid var(--border-strong);border-radius:4px;background:var(--surface);padding:5px;font-size:15px;line-height:1}
+.b-fwd{background:var(--blue);color:#fff;border-radius:4px;font-size:12.5px;font-weight:500;padding:6px 9px}
+.b-noterow{display:flex;gap:8px;margin-top:11px}
+.b-noterow i{flex:1}
+.b-note{flex:1;min-height:48px;border:2px solid var(--text-600);border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15.5px}
+.b-out{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.b-out b{font-size:17px}
+.b-pill{font-size:12px;font-weight:600;color:var(--text-red-700);background:var(--bg-red-100);border:1px solid var(--red);border-radius:999px;padding:1px 9px}
+.b-list{border:1.5px solid var(--red);border-radius:12px;overflow:hidden}
+.b-row{display:flex;gap:11px;align-items:center;padding:10px 11px;border-bottom:1px solid var(--border)}
+.b-row:last-child{border-bottom:none}
+.ring{width:34px;height:34px;border-radius:50%;border:2.5px solid var(--text-600);flex:none;background:var(--surface)}
+.b-row .w{flex:1;min-width:0}
+.b-row .w div{font-size:14.5px}
+.b-tag{display:inline-block;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--bg-blue-tint);color:var(--text-blue-800);font-size:12px;font-weight:600;padding:0 7px;border-radius:4px;vertical-align:bottom}
+.b-due{display:block;color:var(--text-red-700);font-size:12.5px}
+.b-arrow{color:var(--text-muted);font-size:11px}
+
+/* AFTER — the New task window's language */
+.dayhead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;margin:8px 0 12px}
+.dayhead h4{margin:0;font-size:21px;line-height:1.15}
+.sentence{font-size:13px;color:var(--text-green-700);line-height:1.4}
+.seg{display:flex;border:1px solid var(--border-strong);border-radius:10px;overflow:hidden}
+.seg span{flex:1 1 auto;min-height:38px;display:flex;align-items:center;justify-content:center;padding:0 16px;font-size:13px;background:var(--surface);border-left:1px solid var(--border);white-space:nowrap}
+.seg span:first-child{border-left:none}
+.seg .on{background:var(--bg-blue-tint);color:var(--text-blue-800);font-weight:700;box-shadow:inset 0 0 0 1.5px var(--blue);border-radius:9px 0 0 9px}
+.a-lab{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:16px 2px 6px}
+.a-lab a{font-size:12.5px;color:var(--text-blue-700);font-weight:600;text-decoration:none}
+.next{background:var(--surface);border:2px solid var(--text-600);border-radius:14px;padding:13px}
+.next .ttl{font-size:17px;font-weight:600;line-height:1.3}
+.meta{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.lines{display:grid;gap:5px;margin:10px 0 2px}
+.line{display:flex;align-items:center;gap:8px;font-size:14px}
+.box{width:20px;height:20px;border-radius:5px;border:2px solid var(--text-600);flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
+.box.on{background:var(--green);border-color:var(--green)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:10px}
+.pill{font-size:12.5px;min-height:32px;display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;background:var(--bg-muted);color:var(--text-700);border:1px solid transparent;white-space:nowrap}
+.pill.lit{background:var(--bg-blue-tint);color:var(--text-blue-800);border-color:var(--blue);font-weight:700}
+.pill.new{border:1px dashed var(--blue);background:transparent;color:var(--text-blue-800)}
+.go{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:10px;background:var(--blue);color:#fff;font-weight:700;font-size:15px;margin-top:11px}
+.go.quiet{background:var(--surface);color:var(--text-strong);border:1px solid var(--border-strong);font-weight:600}
+.rows{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.row{display:flex;gap:11px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:none}
+.tick{width:30px;height:30px;border-radius:8px;border:2.5px solid var(--text-600);flex:none;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+.tick.on{background:var(--green);border-color:var(--green)}
+.ring2{width:30px;height:30px;border-radius:50%;border:2.5px solid var(--text-600);flex:none;background:var(--surface)}
+.row .w{flex:1;min-width:0}
+.row .w .t{font-size:14.5px;line-height:1.3}
+.row .w .t.done{color:var(--text-muted);text-decoration:line-through}
+.age{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--bg-amber-tint);color:var(--text-amber-800);border:1px solid var(--border-amber);white-space:nowrap;flex:none}
+.age.late{background:var(--bg-red-100);color:var(--text-red-700);border-color:var(--red)}
+.age.soft{background:var(--bg-muted);color:var(--text-700);border-color:transparent}
+.more{padding:10px 12px;font-size:13px;color:var(--text-blue-700);font-weight:600;text-align:center}
+.desk .col2{max-width:680px;margin:0 auto}
+.mapcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:12px}
+.maphead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 12px}
+.maphead a{font-size:12.5px;color:var(--text-blue-700);font-weight:600}
+.mapview{position:relative;height:132px;background:
+  linear-gradient(115deg,transparent 46%,var(--border) 46%,var(--border) 49%,transparent 49%),
+  linear-gradient(8deg,transparent 58%,var(--border) 58%,var(--border) 61%,transparent 61%),
+  var(--bg-muted)}
+.desk .mapview{height:150px}
+.mapview .me{position:absolute;right:8px;bottom:8px;font-size:12px;font-weight:700;min-height:32px;display:inline-flex;align-items:center;padding:0 10px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface)}
+.dot{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;font-size:11.5px;font-weight:700;flex:none;vertical-align:2px}
+.dot.old{background:#b45309}
+.mapview .dot{position:absolute;width:24px;height:24px;font-size:13px;box-shadow:0 0 0 2px var(--surface)}
+.mapview svg{position:absolute;inset:0;width:100%;height:100%}
+.pt{position:absolute;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;background:var(--surface);border:1px solid var(--border-strong);border-radius:999px;padding:1px 8px 1px 3px;white-space:nowrap}
+.pt::before{content:"";width:12px;height:12px;border-radius:50%;background:#ea580c;box-shadow:0 0 0 2px var(--surface)}
+.opt{display:grid;gap:1px}
+.opt b{font-size:14.5px;font-weight:600}
+.opt span{font-size:12.5px;color:var(--text-muted)}
+.plan td:first-child{white-space:nowrap;font-weight:700}
+.plan td:nth-child(3),.plan td:nth-child(4){white-space:nowrap}
+.mapfoot{padding:7px 12px;font-size:12.5px;color:var(--text-muted);border-top:1px solid var(--border)}
+
+/* text blocks */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:grid;gap:8px;align-content:start;min-width:0}
+.card p{font-size:14px;color:var(--text-700)}
+ul{margin:0;padding-left:18px;display:grid;gap:6px;max-width:72ch}
+li{font-size:14.5px;color:var(--text-700)}
+li b{color:var(--text-strong)}
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{text-align:left;padding:8px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-subtle)}
+td.y{color:var(--text-green-700);font-weight:700;white-space:nowrap}
+td.n{color:var(--text-red-700);font-weight:700;white-space:nowrap}
+.tool{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.tool .num{font-size:12px;font-weight:700;color:var(--text-blue-800);background:var(--bg-blue-tint);border-radius:999px;padding:1px 9px;justify-self:start}
+.demo{background:var(--bg-subtle);border:1px solid var(--border);border-radius:12px;padding:12px;display:grid;gap:8px}
+.demo .q{font-size:14px;font-weight:600}
+.demo .say{font-size:13px;color:var(--text-green-700)}
+.demo .pills{justify-content:flex-start;margin-top:0}
+dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:13.5px}
+dt{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);padding-top:2px}
+dd{margin:0;color:var(--text-700)}
+.size{font-weight:700;color:var(--text-strong)}
+.stuck{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--bg-amber-tint);color:var(--text-amber-800);border:1px solid var(--border-amber);display:inline-block}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+<header>
+  <div class="lab">A look and a proposal · nothing is built · made-up task names</div>
+  <h1>Task Mode, redrawn in the New task family</h1>
+  <p class="lede">Task Mode is the Checklist page with everything else taken away. It still wears the card drawn for sunlight in August, at every width. The New task window set a calmer language in November. This page puts the two side by side, then lists what a task can hold and eight tools that let a person sort out their own tasks. A build plan closes the page.</p>
+</header>
+
+<section>
+  <h2>On a phone</h2>
+  <p class="sub">The width that matters most. Left is today's page, drawn from the code. Right is the refresh alone, with no new tools in it.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="lab">Today</div>
+      <div class="phone">
+        <div class="apphead"><a>Checklist</a><span><span class="hbtn">✓</span><span class="gear">⚙</span></span></div>
+        <div class="strip">☑ <b>Task Mode</b> · <span class="exit">Exit</span></div>
+        <div class="page">
+          <div class="b-tabs"><span style="display:flex"><span class="t on">Today</span><span class="t">History</span></span><h4>Checklist</h4></div>
+          <div class="b-h2">Today</div>
+          <div class="b-card">
+            <div class="b-top">
+              <span class="b-tick">✓</span>
+              <div style="flex:1;min-width:0"><div class="b-title">Match this week's payments to their bills</div><span class="b-chip">Waiting on review</span><span class="b-done">Done 12:22 PM</span></div>
+              <div class="b-acts"><span class="b-bell">🔕</span></div>
+            </div>
+            <div class="b-noterow"><i></i><span class="b-note">＋ Add a note</span></div>
+          </div>
+          <div class="b-out"><b>Outstanding</b><span class="b-pill">8 need doing</span></div>
+          <div class="b-list">
+            <div class="b-row"><span class="ring"></span><div class="w"><div>Give every carpentry tool a home</div><span class="b-tag">Shop: every tool is easy to reach by anyone</span><span class="b-due">due Thu, Aug 20 · 88 days ago</span></div><span class="b-arrow">▸</span></div>
+            <div class="b-row"><span class="ring"></span><div class="w"><div>Give the pipe and fittings a home</div><span class="b-tag">Shop: every tool is easy to reach by anyone</span><span class="b-due">due Thu, Aug 20 · 88 days ago · 💬 2 notes</span></div><span class="b-arrow">▸</span></div>
+            <div class="b-row"><span class="ring"></span><div class="w"><div>Clear the back half of the floor</div><span class="b-tag">Shop floor</span><span class="b-due">due Mon, Aug 24 · 84 days ago</span></div><span class="b-arrow">▸</span></div>
+            <div class="b-row"><span class="ring"></span><div class="w"><div>Set a marker at every mile</div><span class="b-tag">Trail markers for distance</span><span class="b-due">due Mon, Aug 24 · 84 days ago</span></div><span class="b-arrow">▸</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="lab">Refreshed</div>
+      <div class="phone">
+        <div class="apphead"><span class="strip" style="background:none;border:none;padding:0">☑ <b>Task Mode</b> · <span class="exit">Exit</span></span><span><span class="pill" style="min-height:30px">＋ Task</span><span class="gear">⚙</span></span></div>
+        <div class="page">
+          <div class="dayhead">
+            <div><h4>Monday, Nov 16</h4><div class="sentence">1 of 3 done today. 8 older tasks are still open.</div></div>
+          </div>
+          <div class="seg"><span class="on">Today</span><span>History</span></div>
+
+          <div class="mapcard">
+            <div class="maphead"><span class="lab">Where my tasks are · 2 places</span><a>Hide map</a></div>
+            <div class="mapview"><span class="dot" style="left:34%;top:30%">1</span><span class="dot old" style="left:62%;top:56%">2</span><span class="me">Show where I am</span></div>
+            <div class="mapfoot">9 more tasks have no place. They are in the list below.</div>
+          </div>
+
+          <div class="a-lab"><span class="lab">Next</span></div>
+          <div class="next">
+            <div class="ttl"><span class="dot">1</span> Check the truck fluids</div>
+            <div class="meta">📍 Shop yard · from Imani · every Monday</div>
+            <div class="lines">
+              <div class="line"><span class="box on">✓</span>Oil</div>
+              <div class="line"><span class="box"></span>Coolant</div>
+              <div class="line"><span class="box"></span>Washer fluid</div>
+            </div>
+            <div class="pills"><span class="pill">＋ Note</span><span class="pill">📷 Photo</span></div>
+            <div class="go">Mark done</div>
+          </div>
+
+          <div class="a-lab"><span class="lab">Then · 1</span></div>
+          <div class="rows">
+            <div class="row"><span class="tick"></span><div class="w"><div class="t">Sweep the shop bays</div><div class="meta">from Imani · today</div></div></div>
+          </div>
+
+          <div class="a-lab"><span class="lab">Done today · 1</span></div>
+          <div class="rows">
+            <div class="row"><span class="tick on">✓</span><div class="w"><div class="t done">Match this week's payments to their bills</div><div class="meta">12:22 PM · Imani hears it is done</div></div><span class="pill">＋ Note</span></div>
+          </div>
+
+          <div class="a-lab"><span class="lab">Still open · 8</span><span class="meta" style="margin:0">oldest first</span></div>
+          <div class="rows">
+            <div class="row"><span class="ring2"></span><div class="w"><div class="t"><span class="dot old">2</span> Give every carpentry tool a home</div><div class="meta">📍 Tool wall · Shop: every tool is easy to reach by anyone · given Aug 20</div></div><span class="age">88 days</span></div>
+            <div class="row"><span class="ring2"></span><div class="w"><div class="t">Give the pipe and fittings a home</div><div class="meta">Shop: every tool is easy to reach by anyone · given Aug 20 · 2 notes</div></div><span class="age">88 days</span></div>
+            <div class="row"><span class="ring2"></span><div class="w"><div class="t">Order the shelf brackets</div><div class="meta">from Theo · due Fri, Nov 6</div></div><span class="age late">10 days late</span></div>
+            <div class="more">Show 5 more</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>At a desk</h2>
+  <p class="sub">Today the phone card stretches to the full window, so the note button sits alone across half the screen. Refreshed, the page is one column and a done task is one line.</p>
+  <div class="col" style="gap:22px">
+    <div class="col">
+      <div class="lab">Today</div>
+      <div class="scroller"><div class="desk">
+        <div class="apphead"><a>Checklist</a><span><span class="hbtn">✓</span><span class="gear">⚙</span></span></div>
+        <div class="strip">☑ <b>Task Mode</b> · <span class="exit">Exit</span></div>
+        <div class="page">
+          <div class="b-tabs"><span style="display:flex"><span class="t on">Today</span><span class="t">History</span></span><h4>Checklist</h4></div>
+          <div class="b-h2">Today</div>
+          <div class="b-card">
+            <div class="b-top">
+              <span class="b-tick">✓</span>
+              <div style="flex:1;min-width:0"><div class="b-title">Match this week's payments to their bills</div><span class="b-chip">Waiting on review</span><span class="b-done">Done 12:22 PM</span></div>
+              <div class="b-acts"><span class="b-bell">🔕</span><span class="b-fwd">FWD</span></div>
+            </div>
+            <div class="b-noterow"><i></i><span class="b-note">＋ Add a note</span></div>
+          </div>
+          <div class="b-out"><b>Outstanding</b><span class="b-pill">8 need doing</span></div>
+          <div class="b-list">
+            <div class="b-row"><span class="ring"></span><div class="w"><div>Give every carpentry tool a home</div><span class="b-tag">Shop: every tool is easy to reach by anyone</span><span class="b-due">due Thu, Aug 20 · 88 days ago</span></div><span class="b-arrow">▸</span></div>
+            <div class="b-row"><span class="ring"></span><div class="w"><div>Give the pipe and fittings a home</div><span class="b-tag">Shop: every tool is easy to reach by anyone</span><span class="b-due">due Thu, Aug 20 · 88 days ago · 💬 2 notes</span></div><span class="b-arrow">▸</span></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="lab">Refreshed</div>
+      <div class="scroller"><div class="desk">
+        <div class="apphead"><span class="strip" style="background:none;border:none;padding:0">☑ <b>Task Mode</b> · <span class="exit">Exit</span></span><span><span class="pill" style="min-height:30px">＋ Task</span><span class="gear">⚙</span></span></div>
+        <div class="page"><div class="col2">
+          <div class="dayhead">
+            <div><h4>Monday, Nov 16</h4><div class="sentence">1 of 3 done today. 8 older tasks are still open.</div></div>
+            <div class="seg"><span class="on">Today</span><span>History</span></div>
+          </div>
+          <div class="mapcard" style="margin-top:0">
+            <div class="maphead"><span class="lab">Where my tasks are · 2 places</span><a>Hide map</a></div>
+            <div class="mapview"><span class="dot" style="left:30%;top:32%">1</span><span class="dot old" style="left:58%;top:58%">2</span><span class="me">Show where I am</span></div>
+            <div class="mapfoot">9 more tasks have no place. They are in the list below.</div>
+          </div>
+          <div class="a-lab"><span class="lab">Next</span></div>
+          <div class="next" style="display:grid;grid-template-columns:1fr auto;gap:6px 18px;align-items:center">
+            <div><div class="ttl"><span class="dot">1</span> Check the truck fluids</div><div class="meta">📍 Shop yard · from Imani · every Monday · 1 of 3 done when…</div></div>
+            <div style="display:flex;gap:6px;align-items:center"><span class="pill">＋ Note</span><span class="pill">📷 Photo</span><span class="go" style="margin:0;padding:0 22px">Mark done</span></div>
+          </div>
+          <div class="a-lab"><span class="lab">Then · 1</span></div>
+          <div class="rows"><div class="row"><span class="tick"></span><div class="w"><div class="t">Sweep the shop bays</div><div class="meta">from Imani · today</div></div></div></div>
+          <div class="a-lab"><span class="lab">Done today · 1</span></div>
+          <div class="rows"><div class="row"><span class="tick on">✓</span><div class="w"><div class="t done">Match this week's payments to their bills</div><div class="meta">12:22 PM · Imani hears it is done</div></div><span class="pill">＋ Note</span><span class="pill">Mute alerts</span><span class="pill">Hand on</span></div></div>
+          <div class="a-lab"><span class="lab">Still open · 8</span><span class="meta" style="margin:0">oldest first</span></div>
+          <div class="rows">
+            <div class="row"><span class="ring2"></span><div class="w"><div class="t"><span class="dot old">2</span> Give every carpentry tool a home</div><div class="meta">📍 Tool wall · Shop: every tool is easy to reach by anyone · given Aug 20</div></div><span class="age">88 days</span></div>
+            <div class="row"><span class="ring2"></span><div class="w"><div class="t">Order the shelf brackets</div><div class="meta">from Theo · due Fri, Nov 6</div></div><span class="age late">10 days late</span></div>
+            <div class="more">Show 6 more</div>
+          </div>
+        </div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What the refresh changes</h2>
+  <p class="sub">Each line is something in the drawing above. None needs the database.</p>
+  <div class="grid2">
+    <div class="card"><h3>One head that says where you stand</h3><p>Today the word Checklist appears twice and Today twice. The refresh keeps the date and one green sentence, the way New task's bar says what Send will do.</p></div>
+    <div class="card"><h3>A Next card</h3><p>Nothing says what to do first. The first open task of the day is drawn open, with its place, its Done when… lines and the page's one solid blue press.</p></div>
+    <div class="card"><h3>The map stays first</h3><p><i>Where my tasks are</i> already opens Today when an open task has a place. It keeps that seat under the head. Each numbered dot matches the number on its task, and an old task with no due day gets an amber dot in place of red.</p></div>
+    <div class="card"><h3>A done task is one line</h3><p>The finished card keeps a 48 px note button and a solid blue chip. Refreshed it folds to a struck line with a quiet ＋ Note.</p></div>
+    <div class="card"><h3>Presses have names</h3><p>🔕 becomes <i>Mute alerts</i> and FWD becomes <i>Hand on</i>. Both are quiet pills, like New task's Add row. ＋ Task gets its words back in the header.</p></div>
+    <div class="card"><h3>Red means late, and only late</h3><p>A task with no due day shows its age in amber and reads <i>given Aug 20</i>. Red is kept for a real due day that has passed.</p></div>
+    <div class="card"><h3>The whole tag, and a fold</h3><p>The blue tag is cut off at 190 px. Refreshed it is a muted line that wraps. The old list shows three rows and folds the rest.</p></div>
+    <div class="card"><h3>Kept from the sunlight pass</h3><p>The tick and Mark done keep their thick dark borders and big targets. Tints only repeat what words already say, since glare takes tints first.</p></div>
+    <div class="card"><h3>Today and History as one bar</h3><p>The two tabs become the joined bar New task uses for When, lit the same way.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>What a task can hold</h2>
+  <p class="sub">From the schema and the code on main.</p>
+  <div class="tbl"><table>
+    <tr><th>It holds</th><th>What that is</th></tr>
+    <tr><td>Words and links</td><td>A title, with links that stand in the title as [1], [2].</td></tr>
+    <tr><td>When</td><td>A start day. Once, on chosen weekdays, or so many days after it was last done, with an end day. A due day on a one-off only.</td></tr>
+    <tr><td>Who</td><td>One or more people it is for. The giver. One person who hears when it is done.</td></tr>
+    <tr><td>Stays until done</td><td>On for most one-offs. Off, a missed day drops away.</td></tr>
+    <tr><td>Done when…</td><td>Lines to tick. The card reads its percent from the ticks.</td></tr>
+    <tr><td>Percent</td><td>0 to 100 on a one-off or roadmap task. 100 closes it.</td></tr>
+    <tr><td>Photos</td><td>A photo of the spot from the giver. Photos from the doer at a percent, a line or the finish. A switch that asks for a photo at the finish. Images only.</td></tr>
+    <tr><td>Where</td><td>A named place with a pin, or a painted map.</td></tr>
+    <tr><td>Notes</td><td>A thread of notes on each day, with the done, reopened and signed-off marks in it.</td></tr>
+    <tr><td>Reminders</td><td>A time of day, the day before, and a nudge to the giver after so many days.</td></tr>
+    <tr><td>Roadmap</td><td>A link to a roadmap task and its stage.</td></tr>
+    <tr><td>Not there</td><td>No job. No tags. No reviewer of its own. No file that is not an image.</td></tr>
+  </table></div>
+  <p class="note" style="margin-bottom:22px">States: open, waiting on review, signed off, reopened with a reason. There is no snooze, no skip, no "does not apply" and no handed-on mark.</p>
+
+  <h2>What the person doing it can do alone</h2>
+  <p class="sub">In Task Mode, as a field role.</p>
+  <div class="tbl"><table>
+    <tr><th>Can they</th><th></th><th>How it works now</th></tr>
+    <tr><td>Mark done, undo it, tick lines, set a percent</td><td class="y">Yes</td><td>On the card.</td></tr>
+    <tr><td>Add a note</td><td class="y">Yes</td><td>Rarely used.</td></tr>
+    <tr><td>Add a photo</td><td class="y">Yes</td><td>Asked for only when the giver switched it on.</td></tr>
+    <tr><td>Add a missing place</td><td class="y">Yes</td><td>From where they stand, when the task has none.</td></tr>
+    <tr><td>Give themselves a task</td><td class="y">Mostly</td><td>The header's unlabelled ✓ button. A superintendent cannot.</td></tr>
+    <tr><td>Move it to another day</td><td class="n">No</td><td>Only the giver or the office can, from Manage.</td></tr>
+    <tr><td>Say it no longer applies</td><td class="n">No</td><td>There is no such state. It sits in the list.</td></tr>
+    <tr><td>Say they cannot do it</td><td class="n">No</td><td>Only as a free note. Nobody is told.</td></tr>
+    <tr><td>Hand it to someone</td><td class="n">No</td><td>FWD is office only. It makes a copy and deletes the first task, with its notes, place and lines.</td></tr>
+    <tr><td>Choose what comes first</td><td class="n">No</td><td>The office sets the order on Review.</td></tr>
+    <tr><td>Do several at once</td><td class="n">No</td><td>One tick at a time.</td></tr>
+    <tr><td>Know if anyone will look</td><td class="n">No</td><td>Every finished task says Waiting on review.</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>Eight tools</h2>
+  <p class="sub">Each is a quiet press on the task's card. Sizes: S is one small PR, M is two or three with a migration.</p>
+  <div class="grid2">
+
+    <div class="tool"><span class="num">1</span><h3>Not today</h3>
+      <div class="demo"><div class="q">Give every carpentry tool a home</div>
+        <div class="seg"><span>Tomorrow</span><span class="on" style="border-radius:0">Fri, Nov 20</span><span>Pick a day</span></div>
+        <div class="say">It moves to Friday. Imani is told.</div></div>
+      <dl><dt>Lets you</dt><dd>Move your own task to a day you can do it. The line then reads <i>due Fri</i> and stops reading late.</dd>
+      <dt>For</dt><dd>Anyone holding a task. The giver hears of each move.</dd>
+      <dt>Size</dt><dd><span class="size">M.</span> The due day and its change log exist. A field person may not write them yet.</dd>
+      <dt>Risk</dt><dd>A task pushed forever. The card counts its moves.</dd></dl></div>
+
+    <div class="tool"><span class="num">2</span><h3>Can't do it</h3>
+      <div class="demo"><div class="q">What is in the way?</div>
+        <div class="pills"><span class="pill lit">Waiting on a part</span><span class="pill">Need a hand</span><span class="pill">Not sure how</span><span class="pill">Not mine</span></div>
+        <div><span class="stuck">Stuck · waiting on a part</span></div>
+        <div class="say">Imani is told now. The task stays yours and moves below the rest.</div></div>
+      <dl><dt>Lets you</dt><dd>Say why in one press and ask for help, without finding the giver.</dd>
+      <dt>For</dt><dd>Field people first. The office sees every stuck task in one place.</dd>
+      <dt>Size</dt><dd><span class="size">S to M.</span> A note and the push that already exist carry it. A mark of its own needs a migration.</dd>
+      <dt>Risk</dt><dd>A place to park work. A stuck task must show on Review until someone answers.</dd></dl></div>
+
+    <div class="tool"><span class="num">3</span><h3>No longer applies</h3>
+      <div class="demo"><div class="q">Set a marker at every mile</div>
+        <div class="pills"><span class="pill lit">Already done another way</span><span class="pill">Plans changed</span><span class="pill">A double</span></div>
+        <div class="say">It leaves your list. Theo can put it back.</div></div>
+      <dl><dt>Lets you</dt><dd>Close a task without doing it, with the reason kept in History.</dd>
+      <dt>For</dt><dd>Anyone with old tasks. A task you gave yourself closes at once.</dd>
+      <dt>Size</dt><dd><span class="size">M.</span> A new mark in the thread, and History and Review learn to draw it.</dd>
+      <dt>Risk</dt><dd>Real work waved away. The giver hears of each and has one press to put it back.</dd></dl></div>
+
+    <div class="tool"><span class="num">4</span><h3>Go through the old ones</h3>
+      <div class="demo"><div class="lab">2 of 8</div><div class="q">Give the pipe and fittings a home</div><div class="meta">given Aug 20 · 88 days · 2 notes</div>
+        <div class="pills"><span class="pill">Done</span><span class="pill">Still on it…</span><span class="pill">Can't do it…</span><span class="pill">No longer applies…</span><span class="pill">Skip</span></div>
+        <div class="say">3 sorted. 5 to go.</div></div>
+      <dl><dt>Lets you</dt><dd>Clear a pile one task at a time. Each answer is tool 1, 2 or 3.</dd>
+      <dt>For</dt><dd>Whoever has a pile of old tasks.</dd>
+      <dt>Size</dt><dd><span class="size">S,</span> once 1 to 3 exist.</dd>
+      <dt>Risk</dt><dd>Low. It acts on what is answered and leaves the rest as they were.</dd></dl></div>
+
+    <div class="tool"><span class="num">5</span><h3>What done looks like, and proof</h3>
+      <div class="demo"><div class="q">Done. Add anything for Imani?</div>
+        <div class="pills"><span class="pill">📷 Photo</span><span class="pill">＋ Note</span><span class="pill">🗺 Map</span></div>
+        <div class="go" style="margin-top:2px">Just done</div></div>
+      <dl><dt>Lets you</dt><dd>See before you start who hears and what they want. Add a photo or a note as you finish.</dd>
+      <dt>For</dt><dd>The doer and whoever looks it over.</dd>
+      <dt>Size</dt><dd><span class="size">S.</span> The finish sheet exists for tasks that ask for a photo.</dd>
+      <dt>Risk</dt><dd>One more tap on every done. <i>Just done</i> is the big press.</dd></dl></div>
+
+    <div class="tool"><span class="num">6</span><h3>My own task, and a follow-up</h3>
+      <div class="demo"><div class="rows"><div class="row"><span class="tick on">✓</span><div class="w"><div class="t done">Check the truck fluids</div></div><span class="pill new">Follow-up</span></div></div>
+        <div class="go quiet" style="margin-top:2px;border-style:dashed">＋ Add a task for me</div></div>
+      <dl><dt>Lets you</dt><dd>Write down what you found. A follow-up opens New task with the place and the giver filled in.</dd>
+      <dt>For</dt><dd>Field people. A superintendent cannot add a task today.</dd>
+      <dt>Size</dt><dd><span class="size">S.</span> New task already does the work.</dd>
+      <dt>Risk</dt><dd>Low. Lists fill with small things.</dd></dl></div>
+
+    <div class="tool"><span class="num">7</span><h3>Hand it on</h3>
+      <div class="demo"><div class="q">Who takes it?</div>
+        <div class="pills"><span class="pill lit">Back to Imani</span><span class="pill">Theo</span><span class="pill">Someone else</span></div>
+        <div class="say">Theo gets it with its notes and its place. Imani is told.</div></div>
+      <dl><dt>Lets you</dt><dd>Pass a task to the right person, or give it back, and keep its history.</dd>
+      <dt>For</dt><dd>Everyone. The office's FWD becomes the same press and stops deleting the first task.</dd>
+      <dt>Size</dt><dd><span class="size">M.</span> A swap of who it is for, with a mark in the thread.</dd>
+      <dt>Risk</dt><dd>A task passed around. The thread shows every hand, and a field person could be held to <i>Back to the giver</i>.</dd></dl></div>
+
+    <div class="tool"><span class="num">8 · new</span><h3>Draw a map, leave a point</h3>
+      <div class="demo"><div class="q">A map for this task</div>
+        <div class="mapview" style="border-radius:8px;overflow:hidden">
+          <svg viewBox="0 0 300 132" preserveAspectRatio="none" aria-hidden="true"><path d="M18 112 C70 96 84 44 150 52 S246 34 284 18" fill="none" stroke="#ea580c" stroke-width="4" stroke-linecap="round"/></svg>
+          <span class="pt" style="left:44%;top:26%">Shut-off valve</span>
+        </div>
+        <div class="pills"><span class="pill">Draw it by hand</span><span class="pill">Walk or drive it</span><span class="pill">Leave a point</span></div>
+        <div class="say">The map is on the task. 1 line, about 240 ft. 1 point. Imani can open it.</div></div>
+      <dl><dt>Lets you</dt><dd>Show where the work is or where you left it. Draw a line, or tap one point and give it a name, words and a photo.</dd>
+      <dt>For</dt><dd>The person doing the task, beside ＋ Note and 📷 Photo. Also offered as you finish.</dd>
+      <dt>Size</dt><dd><span class="size">S, then M.</span> A task that has a map: the press opens it at <i>Add to it</i>, which works today. A task with none needs one small function so the doer's map lands on it.</dd>
+      <dt>Risk</dt><dd>Maps tied to no job pile up. The office can put one on a job later, as it does for a map painted from New task.</dd></dl></div>
+
+    <div class="tool" style="background:var(--bg-subtle)"><span class="num">Smaller</span><h3>Three more, each small</h3>
+      <ul>
+        <li><b>Do first.</b> A press that lifts one task into Next on this device.</li>
+        <li><b>Mark 3 done.</b> One press for a round of daily tasks, with its count on the button.</li>
+        <li><b>Yesterday.</b> A missed repeating task asks once: did it, or skipped.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>The card with every tool on it</h2>
+  <p class="sub">Three presses stay on the card with ＋ Note. The rest wait behind More, so a phone never shows a wall of pills.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="lab">The Next card</div>
+      <div class="phone"><div class="page" style="padding-top:14px">
+        <div class="next">
+          <div class="ttl"><span class="dot">1</span> Check the truck fluids</div>
+          <div class="meta">📍 Shop yard · from Imani · every Monday</div>
+          <div class="lines">
+            <div class="line"><span class="box on">✓</span>Oil</div>
+            <div class="line"><span class="box"></span>Coolant</div>
+            <div class="line"><span class="box"></span>Washer fluid</div>
+          </div>
+          <div class="pills"><span class="pill">＋ Note</span><span class="pill">📷 Photo</span><span class="pill">🗺 Map</span><span class="pill">⋯ More</span></div>
+          <div class="go">Mark done</div>
+        </div>
+        <div class="a-lab"><span class="lab">After a map is added</span></div>
+        <div class="next">
+          <div class="ttl">Find the leak behind bay 3</div>
+          <div class="meta">from Theo · today</div>
+          <div class="pills"><span class="pill">＋ Note</span><span class="pill">📷 Photo</span><span class="pill lit">🗺 Shut-off run · 240 ft · 1 point</span><span class="pill">⋯ More</span></div>
+          <div class="go">Mark done</div>
+        </div>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="lab">More</div>
+      <div class="phone"><div class="page" style="padding-top:14px">
+        <div class="rows">
+          <div class="row"><div class="w opt"><b>Not today</b><span>Move it to a day you can do it.</span></div></div>
+          <div class="row"><div class="w opt"><b>Can't do it</b><span>Say what is in the way. The giver is told.</span></div></div>
+          <div class="row"><div class="w opt"><b>No longer applies</b><span>Close it with a reason.</span></div></div>
+          <div class="row"><div class="w opt"><b>Hand it on</b><span>Give it to the right person, notes and all.</span></div></div>
+          <div class="row"><div class="w opt"><b>Do first</b><span>Lift it into Next on this device.</span></div></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="lab">🗺 Map</div>
+      <div class="phone"><div class="page" style="padding-top:14px">
+        <div class="lab" style="margin:0 2px 6px">A map for this task</div>
+        <div class="mapcard" style="margin-top:0">
+          <div class="mapview" style="height:190px">
+            <svg viewBox="0 0 300 190" preserveAspectRatio="none" aria-hidden="true"><path d="M20 164 C76 140 88 66 152 76 S250 50 284 24" fill="none" stroke="#ea580c" stroke-width="4" stroke-linecap="round"/></svg>
+            <span class="pt" style="left:42%;top:30%">Shut-off valve</span>
+            <span class="me">Show where I am</span>
+          </div>
+          <div class="mapfoot">1 line, about 240 ft. 1 point.</div>
+        </div>
+        <div class="rows" style="margin-top:10px">
+          <div class="row"><div class="w opt"><b>Draw it by hand</b><span>Trace the line with a finger.</span></div></div>
+          <div class="row"><div class="w opt"><b>Walk or drive it</b><span>The phone paints the line as you go.</span></div></div>
+          <div class="row"><div class="w opt"><b>Leave a point</b><span>Tap the spot. Add a name, words and a photo.</span></div></div>
+        </div>
+        <div class="sentence" style="margin:10px 2px 0">The map goes on the task when you save. Theo can open it.</div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The build plan</h2>
+  <p class="sub">The refresh and all eight tools, in the order I would ship them. Each line is one small PR with its guide and release note. Nothing starts until you say go.</p>
+  <div class="tbl"><table class="plan">
+    <tr><th>Step</th><th>What lands</th><th>Database</th><th>Size</th></tr>
+    <tr><td>A1</td><td>The refresh, top half: one head with its sentence, the Today and History bar, the Next card, a done task as one line, presses with names, the map in its seat.</td><td>none</td><td>M</td></tr>
+    <tr><td>A2</td><td>The refresh, lower half: Still open with amber age, <i>given</i> in place of <i>due</i>, the whole tag, the fold, and the desk column.</td><td>none</td><td>S</td></tr>
+    <tr><td>B1</td><td>Tool 6: ＋ Add a task for me, and Follow-up on a done task.</td><td>none</td><td>S</td></tr>
+    <tr><td>B2</td><td>Tool 5: who hears, and the finish sheet with Photo, Note and Map.</td><td>none</td><td>S</td></tr>
+    <tr><td>B3</td><td>Tool 8, first half: 🗺 Map on a task that has a map opens it at Add to it.</td><td>none</td><td>S</td></tr>
+    <tr><td>C1</td><td>The ground for the rest, with no screen: new marks in a task's thread, and one narrow function per act so the doer may do it.</td><td>migration</td><td>M</td></tr>
+    <tr><td>C2</td><td>Tool 8, second half: a doer paints a map or leaves a point on a task that has none, and it lands on the task.</td><td>uses C1</td><td>S</td></tr>
+    <tr><td>C3</td><td>Tool 1: Not today.</td><td>uses C1</td><td>S</td></tr>
+    <tr><td>C4</td><td>Tool 3: No longer applies, drawn in History and Review.</td><td>uses C1</td><td>M</td></tr>
+    <tr><td>C5</td><td>Tool 4: Go through the old ones.</td><td>none</td><td>S</td></tr>
+    <tr><td>C6</td><td>Tool 2: Can't do it, with the stuck list on Review.</td><td>uses C1</td><td>M</td></tr>
+    <tr><td>C7</td><td>Tool 7: Hand it on. FWD becomes the same press and keeps the task whole.</td><td>uses C1</td><td>M</td></tr>
+    <tr><td>D</td><td>The three small ones: Do first, Mark 3 done, Yesterday.</td><td>none</td><td>S each</td></tr>
+  </table></div>
+  <ul style="margin-top:14px">
+    <li><b>Another session is designing tags in task notes.</b> It adds an @ to the note box and a block above Today's list. A1 leaves room for both, and whichever lands second rebases.</li>
+    <li><b>A walk on a real phone</b> follows A1 and C2. I have not seen either drawn in the app yet.</li>
+  </ul>
+  <h2 style="margin-top:26px">Calls that are yours</h2>
+  <ul>
+    <li><b>Review.</b> Finished tasks are rarely looked over. Either the chip goes quiet, as drawn, or only a task whose giver asked to hear waits on review.</li>
+    <li><b>Red.</b> Should a task with no due day ever read late? Drawn here it shows its age in amber.</li>
+    <li><b>What comes first.</b> Drawn: today's open tasks in the office's order, then tasks sent back, then the oldest.</li>
+    <li><b>Sunlight.</b> The August card avoided tints on purpose. The refresh keeps thick borders on the tick and Mark done and uses tints elsewhere.</li>
+    <li><b>The note press.</b> You asked for it on the right half so a thumb misses the tick. It stays on the right, smaller.</li>
+    <li><b>Who may close or hand on a task without a yes.</b> Tools 3 and 7 are drawn as tell the giver, not ask the giver.</li>
+    <li><b>A map on a task that has one.</b> Drawn: the doer adds to that map and cannot swap it. Only a task with no map takes a new one.</li>
+    <li><b>A point and the task's place.</b> Drawn: a point stays on the map. The task's own place still comes only from where the person stands.</li>
+    <li><b>Where my tasks are.</b> A task with a map and no place has no dot today. It could show at its line's start.</li>
+  </ul>
+</section>
+
+</div>
+
+</body>
+</html>
