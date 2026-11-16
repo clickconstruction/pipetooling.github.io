@@ -230,6 +230,8 @@ const filing = (over: Row = {}): Row => ({
   matched_because: 'The paper names 14 Maple Ct and Pat Sample, and swears $4,180.00.',
   ...over,
 })
+/** The newest row of the call log. */
+const lastLog = (): Row | undefined => world.log[world.log.length - 1]
 const STAGE = `${DEV}/lien-scans/`
 const stagePath = () => `${STAGE}${PDF_SHA.slice(0, 32)}.pdf`
 
@@ -253,7 +255,7 @@ describe('plan_lien_filing — a visit to the clerk', () => {
     expect(world.writes).toEqual([])
     expect(world.signed).toEqual([stagePath()])
     expect(world.drive).toEqual([])
-    expect(world.log.at(-1)).toMatchObject({ verb: 'plan_lien_filing', status: 'ok', target: '3 filings', row_count: 1 })
+    expect(lastLog()).toMatchObject({ verb: 'plan_lien_filing', status: 'ok', target: '3 filings', row_count: 1 })
   })
 
   it('a plan of one reads the whole row back', async () => {
@@ -295,9 +297,9 @@ describe('apply_lien_filing — one filing', () => {
     expect(world.writes).toHaveLength(3)
     expect(world.removed).toEqual([stagePath()])
     expect(world.tables.job_lien_desk_items!.find((i) => i.id === ITEM)).toMatchObject({ status: 'sent', sent_filing_id: 'new-1' })
-    expect(world.log.at(-1)).toMatchObject({ verb: 'apply_lien_filing', status: 'ok', target: JOB })
+    expect(lastLog()).toMatchObject({ verb: 'apply_lien_filing', status: 'ok', target: JOB })
     // The log keeps the hash and the clerk's facts, never the long words: one apply per plan reads the hash back.
-    expect(world.log.at(-1)!.args).toEqual({ filing: { job_id: JOB, county: 'Marlow', recording_number: '20260222921', filed_on: '2026-11-16', scan: f.scan, saved_copy: null, filed_outside_the_desk: false, accept_differences: false }, plan_hash: hash })
+    expect(lastLog()!.args).toEqual({ filing: { job_id: JOB, county: 'Marlow', recording_number: '20260222921', filed_on: '2026-11-16', scan: f.scan, saved_copy: null, filed_outside_the_desk: false, accept_differences: false }, plan_hash: hash })
   })
 
   it('cannot land twice: the job now holds its filing, and the other job is untouched', async () => {
@@ -343,7 +345,7 @@ describe('apply_lien_filing — one filing', () => {
     expect(out.text).toContain('the filing was not recorded, and nothing else was written')
     expect(world.drive).toEqual([])
     expect(world.removed).toEqual([])
-    expect(world.log.at(-1)).toMatchObject({ verb: 'apply_lien_filing', status: 'error' })
+    expect(lastLog()).toMatchObject({ verb: 'apply_lien_filing', status: 'error' })
     expect(world.tables.job_lien_desk_items!.find((i) => i.id === ITEM)).toMatchObject({ status: 'approved' })
   })
 
