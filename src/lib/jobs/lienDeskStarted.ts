@@ -14,7 +14,7 @@ import { LIEN_DESK_LEAD_DAYS, type LienDeskItemRow } from './lienDesk'
  * day is inside the lead, or when its job holds a started desk item of the same kind. A started item is one that is
  * not voided, not sent and not missed: the rule `itemIsLive` already uses for the notice queue. A notice row further
  * out stays only when the started notice names its month, so a draft for September never brings October's window
- * onto To send for approval with it. A row with no day (a retainage clock not started) is the reader's own to keep. Pure.
+ * onto To send for Master approval with it. A row with no day (a retainage clock not started) is the reader's own to keep. Pure.
  */
 
 /** How far ahead the desk's read asks each reader, so a started paper further out than the lead is in the rows. */

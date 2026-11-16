@@ -17,7 +17,7 @@ import type { LienAffidavitEntry } from './lienDeskAffidavits'
  * form: send every drafted one for approval, then print every ready one for the notary. Pure: which papers each
  * press moves, which it leaves with the reason, the words around it, and the print document.
  *
- * After **Redraw N on the short form…** every redrawn paper sits in To send for approval and wants the same two things the
+ * After **Redraw N on the short form…** every redrawn paper sits in To send for Master approval and wants the same two things the
  * pane offers one paper at a time: **Send for approval ▸**, then the Lien window's **Print for notarization**. Each
  * press acts on what is ready (`CLAUDE.md` → *Do what is ready*) and makes the same call the pane makes.
  */
@@ -45,9 +45,9 @@ export function lienAffidavitSubmitOutcome(entry: Pick<SendEntry, 'jobId' | 'dea
 }
 
 export type LienAffidavitSendPlan<E extends SendEntry = SendEntry> = {
-  /** In To send for approval with a row a person made (opened and changed, or approved): the press sends these, each to where its rule takes it. */
+  /** In To send for Master approval with a row a person made (opened and changed, or approved): the press sends these, each to where its rule takes it. */
   ready: Array<{ entry: E; outcome: LienSubmitOutcome }>
-  /** In To send for approval with no row: nobody has opened the paper, so the batch never sends it; it is opened from its own pane. */
+  /** In To send for Master approval with no row: nobody has opened the paper, so the batch never sends it; it is opened from its own pane. */
   held: E[]
 }
 
@@ -100,13 +100,13 @@ export function lienAffidavitSendWords(plan: Pick<LienAffidavitSendPlan, 'ready'
     title: count(ready, 'Send 1 affidavit for approval?', 'Send # affidavits for approval?'),
     message: ways.join(' '),
     confirmLabel: counted,
-    foot: held > 0 ? count(held, '1 in To send for approval was never opened. Open it from its own paper.', '# in To send for approval were never opened. Open each from its own paper.') : null,
+    foot: held > 0 ? count(held, '1 in To send for Master approval was never opened. Open it from its own paper.', '# in To send for Master approval were never opened. Open each from its own paper.') : null,
     dead: batchWords({ verb: 'Send', ready, held }).dead,
     hidden: shown ? lienAffidavitHiddenWords('send', shown.hiddenReady, 'drafted') : null,
   }
 }
 
-/** After the send: what took and what did not; a paper that did not take stays in To send for approval, with its reason. */
+/** After the send: what took and what did not; a paper that did not take stays in To send for Master approval, with its reason. */
 export function lienAffidavitSendOutcome(done: number, failed: number): BatchOutcome {
   return batchOutcomeWords({ verb: 'send', past: 'Sent', done, failed, noun: 'affidavit' })
 }

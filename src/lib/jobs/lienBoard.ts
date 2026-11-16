@@ -12,7 +12,7 @@
  * walks through it. Every line a person reads keeps to `plainWords.ts`; the `·` in a tile's label
  * is the desk's own mark, as on every pile chip, never glue inside a sentence.
  *
- * Two names say the step (v2.7434, Taunya's ask): *To send for approval* for the `to_draft` pile and *Approved · to mail* for the
+ * Two names say the step (v2.7434, Taunya's ask): *To send for Master approval* for the `to_draft` pile and *Approved · to mail* for the
  * approved and printed notices (v2.7328). `LIEN_BOARD_WORDS` holds both.
  */
 import { batchWords, type BatchWords } from '../batchWords'
@@ -151,8 +151,8 @@ export type LienBoardInput = {
 export const LIEN_BOARD_WORDS = {
   needs_owner: 'Needs the owner',
   needs_property: 'Needs the property facts',
-  to_send: 'To send for approval',
-  awaiting: 'Awaiting approval',
+  to_send: 'To send for Master approval',
+  awaiting: 'Awaiting Master approval',
   in_mail: 'Approved · to mail',
   sent: 'Sent',
   ready: 'Ready to file',
@@ -647,7 +647,7 @@ export function lienBoardRowRisk(papers: ReadonlyMap<string, number>, row: { key
 /** A pressed bin, a tile's stage across both columns, or the day tile's red line: what the list under the Board is narrowed to. */
 export type LienBoardPick = {
   bins: LienBoardBinKey[]
-  /** The bins' name: *To send for approval*, or *Awaiting approval* for the stage on both columns. */
+  /** The bins' name: *To send for Master approval*, or *Awaiting Master approval* for the stage on both columns. */
   label: string
   /** The papers themselves, by `kind:jobId`, when the pick is narrower than a job (the red line, v2.7371); absent, every row of a picked job is in. */
   papers?: ReadonlySet<string>

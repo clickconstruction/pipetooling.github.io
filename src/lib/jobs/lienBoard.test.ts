@@ -61,13 +61,13 @@ describe('buildLienBoard — the bins', () => {
     const board = build({})
     expect(board.notices.map((b) => b.stage)).toEqual(LIEN_BOARD_NOTICE_STAGES)
     expect(board.affidavits.map((b) => b.stage)).toEqual(LIEN_BOARD_AFFIDAVIT_STAGES)
-    expect(board.notices.map((b) => b.label)).toEqual(['Needs the owner', 'To send for approval', 'Awaiting approval', 'Approved · to mail', 'Sent', 'Held', 'Missed'])
-    expect(board.affidavits.map((b) => b.label)).toEqual(['Needs the property facts', 'To send for approval', 'Awaiting approval', 'Ready to file', 'Filed · Served', 'Held', 'Missed'])
+    expect(board.notices.map((b) => b.label)).toEqual(['Needs the owner', 'To send for Master approval', 'Awaiting Master approval', 'Approved · to mail', 'Sent', 'Held', 'Missed'])
+    expect(board.affidavits.map((b) => b.label)).toEqual(['Needs the property facts', 'To send for Master approval', 'Awaiting Master approval', 'Ready to file', 'Filed · Served', 'Held', 'Missed'])
     expect(board.notices.filter((b) => b.beside).map((b) => b.stage)).toEqual(['held', 'missed'])
     expect(board.empty).toBe(true)
     expect(board.lit).toBeNull()
   })
-  it('puts every notice pile in its bin: To draft reads To send for approval, approved and printed are both Approved · to mail', () => {
+  it('puts every notice pile in its bin: To draft reads To send for Master approval, approved and printed are both Approved · to mail', () => {
     const board = build({
       notices: [
         notice('1', 'needs_owner'),
@@ -344,7 +344,7 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
   it('a pressed bin narrows the list to its jobs, a run row for one of their GCs, and the words say what shows (the picture and the queue)', () => {
     const board = build({ notices: [notice('1', 'to_draft'), notice('2', 'to_draft', { gcCustomerId: 'gc9' }), notice('3', 'awaiting')], affidavits: [affidavit('4', 'awaiting'), affidavit('5', 'ready')] })
     const pick = lienBoardPick(board, ['notice:to_send'])
-    expect(pick).toMatchObject({ bins: ['notice:to_send'], label: 'To send for approval', count: 2 })
+    expect(pick).toMatchObject({ bins: ['notice:to_send'], label: 'To send for Master approval', count: 2 })
     expect([...pick.jobIds]).toEqual(['1', '2'])
     expect([...pick.gcIds]).toEqual(['gc1', 'gc9'])
     expect(lienBoardRowInPick(pick, { jobId: '1', gcId: 'gc1' })).toBe(true)
@@ -356,10 +356,10 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     // A tile's stage is both columns' bins of that name.
     expect(lienBoardStageBins(board, 'awaiting')).toEqual(['notice:awaiting', 'affidavit:awaiting'])
     const both = lienBoardPick(board, lienBoardStageBins(board, 'awaiting'))
-    expect(both).toMatchObject({ label: 'Awaiting approval', count: 2 })
+    expect(both).toMatchObject({ label: 'Awaiting Master approval', count: 2 })
     expect([...both.jobIds]).toEqual(['3', '4'])
-    expect(lienBoardPickWords(pick, 2)).toEqual({ head: 'Showing 2 rows in To send for approval.', clear: 'Show every row' })
-    expect(lienBoardPickWords(pick, 1).head).toBe('Showing 1 row in To send for approval.')
+    expect(lienBoardPickWords(pick, 2)).toEqual({ head: 'Showing 2 rows in To send for Master approval.', clear: 'Show every row' })
+    expect(lienBoardPickWords(pick, 1).head).toBe('Showing 1 row in To send for Master approval.')
     expect(plainWordsFailures(lienBoardPickWords(both, 2).head)).toEqual([])
   })
   it('a job number stands for its chip (v2.7333): the column asked for, or the notice first, and the door words say where the press goes', () => {
@@ -454,12 +454,12 @@ describe('a To do row’s stage, in the Board’s own words (v2.7372)', () => {
     const b = board()
     const stage = (key: string, kind: string, jobId: string | null, jobs?: Array<{ jobId: string }>) => lienBoardRowStage(b, { key, kind, jobId, jobs })
     expect(stage('notice:1', 'notice', '1')).toBe(LIEN_BOARD_WORDS.needs_owner)
-    expect(stage('notice:2', 'notice', '2')).toBe('To send for approval')
-    expect(stage('notice:3', 'notice', '3')).toBe('Awaiting approval')
+    expect(stage('notice:2', 'notice', '2')).toBe('To send for Master approval')
+    expect(stage('notice:3', 'notice', '3')).toBe('Awaiting Master approval')
     expect(stage('affidavit:5', 'affidavit', '5')).toBe('Ready to file')
     expect(stage('affidavit:6', 'affidavit', '6')).toBe('Needs the property facts')
     // Job 2 has a notice to send and an affidavit to send: each row reads its own column.
-    expect(stage('affidavit:2', 'affidavit', '2')).toBe('To send for approval')
+    expect(stage('affidavit:2', 'affidavit', '2')).toBe('To send for Master approval')
     // A run row stands in the notices' mail bin, whatever it lists.
     expect(stage('run:printed', 'notice', null, [{ jobId: '7' }])).toBe(b.notices.find((x) => x.stage === 'in_mail')!.label)
   })

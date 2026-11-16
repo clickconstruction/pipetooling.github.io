@@ -898,7 +898,7 @@ export default function LienDesk({
     [data, todayYmd, boardLeaderName],
   )
   const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
-  // The leader's Board (v2.7334): a master opens on his two Awaiting approval bins alone, the jobs he leads, with one
+  // The leader's Board (v2.7334): a master opens on his two Awaiting Master approval bins alone, the jobs he leads, with one
   // counted press for the lot; a dev, who reads every job, opens on every bin. Session-only; the bar's press switches.
   const [boardMine, setBoardMine] = useState<boolean>(() => authRole === 'master_technician')
   const leaderView = useMemo(() => (board && leader ? lienBoardForLeader(board, { leads: (jobId) => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (id) => data?.jobsById[id]?.master_user_id ?? null }, jobId) }) : null), [board, leader, authRole, authUserId, data])
@@ -4582,7 +4582,7 @@ export default function LienDesk({
           {!isMobile && (kind === 'retainage' || kind === 'affidavit') && (kind === 'retainage' ? retPileChips : affPileChips).length > 0 ? (
             <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
           ) : null}
-          {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *show every pile*. */}
+          {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *every pile* (*show every pile* until v2.7434). */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door (on every view's second line since v2.7311) and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
           {/* Drawn only when it holds something (v2.7213): empty, it would still take a column gap and push the title line's tools off the edge. */}
           {/* The span ends the second line with the owner-records door on every view (v2.7311, the owner's ask); a pile line too narrow for the piles and the span together breaks here, so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}

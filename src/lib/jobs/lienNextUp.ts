@@ -197,7 +197,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     const button = r.button !== undefined ? r.button : canAct ? BUTTON[r.action] : null
     rows.push({ ...r, button, group: groupOf(r.daysLeft, r.severity) })
   }
-  /** Awaiting approval: the leader approves; the office waits on him by name, with no button. */
+  /** Awaiting Master approval: the leader approves; the office waits on him by name, with no button. */
   const awaiting = (jobId: string, item: { submitted_at?: string | null } | null | undefined): { action: LienNextUpAction; button: string | null; sub: string; detail: string } => {
     const since = item?.submitted_at ? calendarYmdInAppTzFromIso(item.submitted_at) : ''
     const dated = /^\d{4}-\d{2}-\d{2}$/.test(since)

@@ -200,7 +200,7 @@ export async function redrawLienAffidavitsShort(
 
 /**
  * Send every drafted affidavit for approval (punch list #305, v2.6918): each paper is its own write, the pane's own
- * **Send for approval ▸**, and the batch keeps going past one that fails. A paper that did not take stays in To send for approval.
+ * **Send for approval ▸**, and the batch keeps going past one that fails. A paper that did not take stays in To send for Master approval.
  */
 export async function submitLienAffidavits(
   papers: ReadonlyArray<{ jobId: string; itemId: string; outcome: LienSubmitOutcome }>,

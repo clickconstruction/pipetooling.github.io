@@ -3,7 +3,7 @@ import { lienAffidavitNoticeTag, lienDayLeftWords, lienHeadDay, lienRowLine } fr
 
 describe('lienRowLine', () => {
   it('the Board’s bin first, then the one thing to know; a stage that says it all stands alone', () => {
-    expect(lienRowLine({ kind: 'notice', sub: 'Notice to send', detail: 'September 2026' }, { stage: 'To send for approval' })).toEqual({ stage: 'To send for approval', detail: 'September 2026', tags: [] })
+    expect(lienRowLine({ kind: 'notice', sub: 'Notice to send', detail: 'September 2026' }, { stage: 'To send for Master approval' })).toEqual({ stage: 'To send for Master approval', detail: 'September 2026', tags: [] })
     expect(lienRowLine({ kind: 'affidavit', sub: 'Affidavit approved · ready to file', detail: '' }, { stage: 'Ready to file' })).toEqual({ stage: 'Ready to file', detail: '', tags: [] })
     // The detail never repeats the stage.
     expect(lienRowLine({ kind: 'notice', sub: 'Held', detail: 'held' }, { stage: 'Held' }).detail).toBe('')
@@ -20,7 +20,7 @@ describe('lienRowLine', () => {
   it('an affidavit row carries where its notice stands; a notice row never does', () => {
     const notice = { tone: 'ok' as const, words: 'Notice sent Oct 14' }
     expect(lienRowLine({ kind: 'affidavit', sub: 'x', detail: '' }, { stage: 'Ready to file', notice }).tags).toEqual([notice])
-    expect(lienRowLine({ kind: 'notice', sub: 'x', detail: '' }, { stage: 'To send for approval', notice }).tags).toEqual([])
+    expect(lienRowLine({ kind: 'notice', sub: 'x', detail: '' }, { stage: 'To send for Master approval', notice }).tags).toEqual([])
     expect(lienRowLine({ kind: 'affidavit', sub: 'Lien filed · not yet served' }, { stage: null, notice }).tags).toEqual([notice])
   })
 })

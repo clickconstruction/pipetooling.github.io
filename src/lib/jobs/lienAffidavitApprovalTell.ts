@@ -17,7 +17,7 @@ export type LienLeaderTold = { pushSent: number; emailSent: boolean; leaderName:
 export type LienLeaderTellResult = { ok: true; told: LienLeaderTold } | { ok: false; reason: string }
 
 /**
- * The papers of a press the leader is told of: the ones the send landed in Awaiting approval. A paper a standing
+ * The papers of a press the leader is told of: the ones the send landed in Awaiting Master approval. A paper a standing
  * rule approved or held is not his to decide, and one whose send failed is still a draft.
  */
 export function lienAffidavitTellPapers<P extends { jobId: string; outcome: LienSubmitOutcome }>(sent: ReadonlyArray<P>, doneJobIds: ReadonlyArray<string>): P[] {

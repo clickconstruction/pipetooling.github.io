@@ -99,21 +99,21 @@ describe('LienBoard', () => {
     const { rerender } = render(<LienBoard board={b} isMobile={false} onPick={onPick} />)
     expect(document.querySelector('[data-lien-board-pick]')).toBeNull()
     const head = () => document.querySelector('button[data-lien-board-bin-head="notice:to_send"]') as HTMLButtonElement
-    expect(head().textContent).toBe('To send for approval2')
+    expect(head().textContent).toBe('To send for Master approval2')
     fireEvent.click(head())
     expect(onPick).toHaveBeenCalledWith('notice:to_send')
     rerender(<LienBoard board={b} isMobile={false} onPick={onPick} pick={lienBoardPick(b, ['notice:to_send'])} shown={2} />)
     expect(document.querySelector('[data-lien-board-bin="notice:to_send"]')!.getAttribute('data-picked')).toBe('yes')
     expect(document.querySelector('[data-lien-board-bin="affidavit:to_send"]')!.getAttribute('data-picked')).toBeNull()
     expect(head().getAttribute('aria-pressed')).toBe('true')
-    expect(document.querySelector('[data-lien-board-pick-words]')!.textContent).toBe('Showing 2 rows in To send for approval.')
+    expect(document.querySelector('[data-lien-board-pick-words]')!.textContent).toBe('Showing 2 rows in To send for Master approval.')
     fireEvent.click(screen.getByRole('button', { name: 'Show every row' }))
     expect(onPick).toHaveBeenLastCalledWith(null)
     // Without onPick the heads are plain words.
     cleanup()
     render(<LienBoard board={b} isMobile={false} />)
     expect(document.querySelector('button[data-lien-board-bin-head]')).toBeNull()
-    expect(document.querySelector('[data-lien-board-bin-head="notice:to_send"]')!.textContent).toBe('To send for approval2')
+    expect(document.querySelector('[data-lien-board-bin-head="notice:to_send"]')!.textContent).toBe('To send for Master approval2')
   })
   it('a job in both columns for one reason lights in both on hover, and only those two', () => {
     render(<LienBoard board={board()} isMobile={false} />)
@@ -256,7 +256,7 @@ describe('LienBoard', () => {
       ['customer', 'ZZ Homeowner'],
       ['gc', 'ZZ Builders'],
     ])
-    expect(card.querySelector('[data-lien-board-card-status]')!.textContent).toContain('Monthly noticeTo send for approval')
+    expect(card.querySelector('[data-lien-board-card-status]')!.textContent).toContain('Monthly noticeTo send for Master approval')
     expect(card.querySelector('[data-lien-board-card-detail]')!.textContent).toBe('September 2026')
     expect(card.querySelector('[data-lien-board-card-door]')!.textContent).toBe('Press to open the notice.')
     // It will make its day, so the card names no stages (v2.7419).

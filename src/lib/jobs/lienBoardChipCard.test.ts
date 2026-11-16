@@ -40,7 +40,7 @@ describe('lienBoardChipCard', () => {
       customer: 'ZZ Homeowner',
       gc: 'ZZ Builders',
       paper: 'Monthly notice',
-      stage: 'To send for approval',
+      stage: 'To send for Master approval',
       detail: 'September 2026',
       day: 'Due Mon Nov 16 · 1 day left',
       urgency: 'day',
@@ -58,7 +58,7 @@ describe('lienBoardChipCard', () => {
     expect([card.paper, card.stage, card.day, card.risk]).toEqual(['Lien affidavit', 'Needs the property facts', 'Due Tue Dec 15 · 30 days left', null])
     // It will make its day, so the card names no stages: the bin and the press already say what is next.
     expect(card.left).toEqual([])
-    expect(card.other).toBe('Its monthly notice is in To send for approval.')
+    expect(card.other).toBe('Its monthly notice is in To send for Master approval.')
     expect(card.door).toBe('Press to open the property record at the legal description.')
   })
 
@@ -68,7 +68,7 @@ describe('lienBoardChipCard', () => {
     expect(late.day).toBe('Was due Tue Nov 10 · 5 days late')
     expect(late.other).toBeNull()
     const waiting = lienBoardChipCard(lienBoardChipFor(b, 'j804', 'notice')!, b, facts({ detail: '  ' }))
-    expect([waiting.stage, waiting.day, waiting.owes, waiting.detail, waiting.urgency]).toEqual(['Awaiting approval', null, null, null, 'waiting'])
+    expect([waiting.stage, waiting.day, waiting.owes, waiting.detail, waiting.urgency]).toEqual(['Awaiting Master approval', null, null, null, 'waiting'])
     // A notice that went has no day to race.
     expect(lienBoardChipCard(lienBoardChipFor(b, 'j700', 'notice')!, b, facts()).day).toBeNull()
   })

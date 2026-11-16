@@ -53,7 +53,7 @@ describe('send every drafted affidavit for approval (punch list #305, v2.6918)',
       title: 'Send 13 affidavits for approval?',
       message: '10 are approved at once by a GC’s standing rule and move to Ready to file. 2 go to the leader for approval. 1 is held by its GC’s standing rule.',
       confirmLabel: 'Send 13 for approval',
-      foot: '1 in To send for approval was never opened. Open it from its own paper.',
+      foot: '1 in To send for Master approval was never opened. Open it from its own paper.',
       dead: false,
       hidden: null,
     })

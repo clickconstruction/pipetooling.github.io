@@ -110,9 +110,9 @@ export function lienEmptyPileWords(pile: LienDeskPile, onOtherPiles: number): { 
 
 export const LIEN_DESK_PILES: ReadonlyArray<{ key: LienDeskPile; label: string }> = [
   { key: 'needs_owner', label: 'Needs the owner' },
-  // *To send for approval* since v2.7434 (*To send* since v2.7327): the office sends the paper to the leader, who approves it; the key stays `to_draft`.
-  { key: 'to_draft', label: 'To send for approval' },
-  { key: 'awaiting', label: 'Awaiting approval' },
+  // *To send for Master approval* since v2.7434 (*To send* since v2.7327): the office sends the paper to the leader, who approves it; the key stays `to_draft`.
+  { key: 'to_draft', label: 'To send for Master approval' },
+  { key: 'awaiting', label: 'Awaiting Master approval' },
   { key: 'ready', label: 'Approved · to print' },
   { key: 'printed', label: 'Approved · to mail' },
   { key: 'held', label: 'Held' },
