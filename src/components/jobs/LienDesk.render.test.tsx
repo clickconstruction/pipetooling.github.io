@@ -2741,8 +2741,18 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(may.textContent).toContain('skipped')
     expect(may.textContent).toContain('Taunya: “Lowbeck paid the May invoice in full”')
     expect((screen.getByRole('checkbox', { name: 'May 2026' }) as HTMLInputElement).disabled).toBe(true)
-    // This notice is the last column, lettered after the papers (none here).
-    expect((box.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toContain('AThis notice')
+    // This notice is the last column, lettered after the papers (none here). Its head is the name alone.
+    expect((box.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toBe('AThis notice')
+    // The total sits at the foot of that column (Taunya's ask of 2026-11-15), under the ticks, beside the months it names.
+    const foot = box.querySelector('[data-lien-grid-foot]') as HTMLElement
+    expect(foot.closest('tfoot')).toBeTruthy()
+    expect(foot.textContent).toBe('This notice names Jun, Jul, Aug$33,5003 months')
+    expect((foot.querySelector('[data-lien-grid-total]') as HTMLElement).textContent).toBe('$33,5003 months')
+    // A skip is not a miss: no line under the grid says a lien right is gone.
+    expect(box.querySelector('[data-lien-months-missed]')).toBeNull()
+    // A closed month's cells are the one-line kind; an open month keeps its two lines.
+    expect(may.querySelector('td.lienMonthOne')).toBeTruthy()
+    expect(jul.querySelector('td.lienMonthOne')).toBeNull()
   })
 
   it('the claim box is the editor (v2.3682): one figure, one reason, one tick — and the notice claims the rest', async () => {
@@ -2789,8 +2799,15 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(may.getAttribute('data-window')).toBe('closed')
     expect(may.textContent).toContain('closed Sep 10')
     expect(may.textContent).toContain('not noted')
-    expect(may.textContent).toContain('lien right gone · the money still rides')
+    // What the missed window costs is said once, in a line under the grid that names the month, not on the row.
+    expect(may.textContent).not.toContain('lien right gone')
+    expect((document.querySelector('[data-lien-desk-month-grid] [data-lien-months-missed]') as HTMLElement).textContent).toBe('closed May · lien right gone · the money still rides')
     expect(within(may).getByRole('button', { name: 'Note it as missed' })).toBeTruthy()
+    // One line: the chips and the press share a row, with no trailing words in the Steps view.
+    const line = may.querySelector('.lienMonthClosed') as HTMLElement
+    expect(line.contains(within(may).getByRole('button', { name: 'Note it as missed' }))).toBe(true)
+    expect(line.querySelector('.lienMonthClosedTail')).toBeNull()
+    expect(may.querySelector('td.lienMonthOne')).toBeTruthy()
     // The strip above the card is gone — the row carries it.
     expect(document.querySelector('[data-lien-desk-missed-strip]')).toBeNull()
   })
