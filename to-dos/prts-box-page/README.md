@@ -2,7 +2,7 @@
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
 group: close
-status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage; the page's number is the company's from Settings (v2.7390) · left: the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage; the page's number is the company's from Settings (v2.7390); the page redrawn as the company's card from her drawing the same evening (v2.7405) · left: the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -19,7 +19,7 @@ summary: >
   CSV for Brother's label editor, and a Copy the label code press on the phone for Brother's app.
   His third ask: the code reads 4F2A-9C18 everywhere a person reads it, so it can be relayed by
   voice, while the bare code keeps working and the QR stays as small as it is.
-next: Taunya's walk of the sealed page (v2.7379, the last section) on a phone with no session; press Ask for a bid, Text the office and Work with us once each on a real phone and see where the texts land (since v2.7390 they go to the company's number from Settings, which is not one of the app's lines today, so they do not reach the Messages page). The owner makes the second Cloudflare rule for bare prts.co from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in v2.6797's fragment on a phone with no session; the tape walk on the PT-E720BT and on 18 mm tape, from Labels → Brother tape (the PT-D610BT printed 24 mm straight over USB from Chrome, v2.6865 and v2.6881). Retire the card once the walks pass.
+next: Taunya's walk of the company's card (v2.7405, the last section) on a phone with no session; press Ask for a bid, the call, and Send a text and Send an email in each sheet once on a real phone, and see the bid ask land in the app from bids@ (the texts go to the company's number from Settings, which is not one of the app's lines today, so they do not reach the Messages page). The owner makes the second Cloudflare rule for bare prts.co from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in v2.6797's fragment on a phone with no session; the tape walk on the PT-E720BT and on 18 mm tape, from Labels → Brother tape (the PT-D610BT printed 24 mm straight over USB from Chrome, v2.6865 and v2.6881). Retire the card once the walks pass.
 size: M as a train of five (XS · S · S · XS · S), all five shipped; left: the walks (S)
 blocker: None. The second Cloudflare rule is the owner's step and nothing waits on it; the tape walk needs the printers on the office Mac.
 opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
@@ -242,4 +242,21 @@ Taunya asked, as a subcontractor, what she would not want the GC, the people who
 
 **Probed live** (2026-11-15, after #8258 merged and `box-read` was deployed on Taunya's go, with `?preview=1` so no view counted): the ZZ1 test cage, which holds a part, a count day and a photo, answers its name, kind and code and the office's number and nothing else; `&find=` and `&photo=` answer 401 `sign_in`; a retired pile still answers 410 with its name. The live page drawn signed out in a fresh browser reads as her picture does.
 
-**Left**: the three texts pressed once on a real phone.
+**Left**: see the last section.
+
+## The company's card (2026-11-15, the same evening)
+
+With the sealed page live, Taunya asked whether it could be better and more professional. [`company-card.html`](./company-card.html) is where that ended after nine drawings beside the page as it was, each change hers: the company first and the box right under it on one plate, no line about what the company does, no license or address or regulators, the sign-in in an orange outline under Work with us, *Always hiring motivated teammates*, and both rows opening a choice of a text or an email. v2.7405 builds it:
+
+- **One navy plate.** The company's mark, name and tagline. Then *Our cage on this site*, **Cage ZZ1** large with its code beside it, and *Counted and photographed by its crew.* The line across the top that read `prts.co/b/…` and *Not signed in* is gone.
+- **Ask for a bid** is an email to the bids box, which the app reads, with the scanned box in the words. **Call (512) 360-0599** says Call.
+- **Moved, damaged or in the way?** opens a sheet: *Let us know. Send us a photo and we will work to make it right.*, **Send a text**, **Send an email**, *Not now*. A line in Spanish sits under the row.
+- **Work with us** (*Always hiring motivated teammates.*) opens the same sheet under its own words.
+- **Sign in to see what is inside** stands on its own in an orange outline: *For Click's crew. You stay signed in.*
+- The website and the company's email at the foot.
+
+**Where each press goes.** The number is the Phone of Settings' company block and the email its Email; the bid ask goes to the bids box's address from Settings → Phone and texts. `box-read` answers the two addresses beside the number, each left out when Settings holds none, and a press with nowhere to go is not drawn. The website is a constant, since no setting holds one. On a function from before v2.7405 the page still draws: the bid is a text and the sheets offer the text alone.
+
+**Picked while building, each hers to reverse.** The Spanish line (*¿Estorba o está dañada? Avísenos.*). The row's own line, *Let us know about cage ZZ1.* The two presses sit side by side on a phone 390 wide and one over the other on a narrower one, so the words never wrap inside a press.
+
+**Left**: `box-read` deployed after the merge and the page proved signed out on a ZZ Test box; each press pressed once on a real phone.
