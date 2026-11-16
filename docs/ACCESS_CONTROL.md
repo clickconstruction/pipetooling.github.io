@@ -875,6 +875,8 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Our lead, for a subcontractor** (v2.7380, `20261116040000_job_lead_contact.sql`): a subcontractor's job window shows who runs the job for us and their number, never the customer's number or email (Taunya, 2026-11-15). `job_lead_contact(job)`, a SECURITY DEFINER read, answers the first master technician on the job's team, else the first superintendent, to a caller on the job's crew or in the office. The rule is the window's: the job's row, which a subcontractor on the crew reads, still holds the customer's number.
 
+**Your pay, for a subcontractor** (v2.7399, `20261116123000_my_sub_sheets_on_job.sql`): `my_sub_sheets_on_job(job)`, a SECURITY DEFINER read, hands a signed-in account its own sub labor sheets on one job (the roster person tied to the account, through `people_labor_job_assignees`), with their items, payments and the person's own portal address. It is what their portal already shows them; nothing of anyone else's is returned, and the sheet tables stay the office's.
+
 ---
 
 ### estimator (Estimator)
