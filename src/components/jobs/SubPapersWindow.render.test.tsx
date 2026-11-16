@@ -76,7 +76,7 @@ describe('SubPapersWindowView, with what its caller has not handed in left out',
     const dialog = screen.getByRole('dialog', { name: 'Papers for Harlan Mechanical' })
     expect(within(dialog).getAllByRole('heading')[0]!.textContent).toBe('Statement of account · Harlan Mechanical')
     expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('2 work statements · 1 payment · 1 back-charge · $5,100.00 still open')
-    expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('No paper carries a number yet. Each one says the day and time it was prepared.')
+    expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('No work statement carries a number yet. Each paper says the day and time it was prepared.')
     const paper = screen.getByTestId('sub-paper-preview')
     expect(paper.getAttribute('data-theme')).toBe('light')
     expect(paper.textContent).toContain('Statement of account')
@@ -187,27 +187,27 @@ describe('SubPapersWindow, on real rows', () => {
     expect(io.fileSentCopy).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sub_work_statement', how: 'download', recipientName: 'Harlan Mechanical', personId: 'harlan', jobIds: ['ridge'], source: { table: 'people_labor_jobs', id: 'ridge-1' } }), expect.objectContaining({ contentType: 'application/pdf' }))
   })
 
-  it('a payment record shows the sending: how it went, what it was applied to and what stays open, with no number yet', async () => {
+  it('a payment record shows the sending under its own number: how it went, what it was applied to and what stays open', async () => {
     io.fileSentCopy.mockResolvedValue(true)
     mount('payment')
     const paper = (await screen.findByTestId('sub-paper-preview')).textContent ?? ''
     expect(paper).toContain('Payment record')
-    expect(paper).toContain('Not numbered')
-    // The sending's own number is held back with the rest, until the names are settled.
-    expect(paper).not.toMatch(/PR-\d/)
+    // The sending's own number, never reused (card #347). The names were settled on 2026-11-16, so it prints.
+    expect(paper).toContain('No. PR-0226')
     expect(paper).toContain('Applied to')
     expect(paper).toContain('$1,500.00')
     expect(paper.replace(/It is not an invoice from [^.]+\./g, '')).not.toMatch(/\binvoice\b|\breceipt\b|\bowed\b/i)
-    expect((screen.getByRole('combobox', { name: 'A payment record' }) as HTMLSelectElement).options[1]!.textContent).toMatch(/^Oct 31, 2026 · \$1,500\.00$/)
+    expect((screen.getByRole('combobox', { name: 'A payment record' }) as HTMLSelectElement).options[1]!.textContent).toBe('PR-0226 · Oct 31, 2026 · $1,500.00')
     fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
     await waitFor(() => expect(io.fileSentCopy).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sub_payment_record', how: 'download', personId: 'harlan', jobIds: ['cedar'] }), expect.anything()))
   })
 
-  it('a work statement leaves the payment record’s number off too', async () => {
+  it('a work statement names the payment record each payment is on', async () => {
     render(<SubPapersWindow open={{ kind: 'work', sheetId: 'cedar-1' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
     const paper = (await screen.findByTestId('sub-paper-preview')).textContent ?? ''
     expect(paper).toContain('Paid on this statement')
-    expect(paper).not.toMatch(/PR-\d/)
+    expect(paper).toContain('PR-0226')
+    expect(paper).toContain('Not numbered yet')
   })
 
   it('says so when the copy could not be filed', async () => {

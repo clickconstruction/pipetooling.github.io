@@ -73,7 +73,8 @@ This window does not send the paper. Give the sub the printed page, or attach th
 
 ## What the papers do not have yet
 
-- **No number.** Each paper says the day and time it was prepared. A payment record reads *Not numbered*. Numbers come in a later change.
+- **No number on two of them.** A work statement and a statement of account say the day and time they were prepared. Their numbers come in a later change.
+- **A payment record has one.** It carries its payment's own number, like *PR-0231*. A payment recorded before those numbers reads *Not numbered*.
 - **Draft sentences.** A few sentences are boxed and marked §. The boxed sentences are draft wording until our lawyer has read them.
 
 ## When the papers do not add up
