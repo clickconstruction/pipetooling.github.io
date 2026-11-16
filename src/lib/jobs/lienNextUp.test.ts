@@ -132,8 +132,17 @@ describe('buildLienNextUp — affidavits and retainage', () => {
 
   it('a lien filed and not served opens the job’s Lien window on the Lien affidavit tab', () => {
     const r = one({ serveDue: [{ jobId: 'j9', serveDue: '2026-10-07' }] })
-    expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Record service', '2026-10-07', 2, 'now'])
+    expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Mail the copies', '2026-10-07', 2, 'now'])
     expect(r.target).toEqual({ open: 'lien_window', jobId: 'j9', tab: 'affidavit' })
+  })
+
+  it('a filed lien’s row says what is owed and by when, and turns red the day before its day (punch list #366)', () => {
+    const row = (serveDue: string) => one({ serveDue: [{ jobId: 'j9', serveDue }] })
+    // Today is 2026-10-05 in this file's rows.
+    expect([row('2026-10-07').sub, row('2026-10-07').severity]).toEqual(['Lien filed · mail its copies by Oct 7', 'amber'])
+    expect([row('2026-10-06').sub, row('2026-10-06').severity, row('2026-10-06').daysLeft]).toEqual(['Lien filed · mail its copies by Oct 6', 'red', 1])
+    expect([row('2026-10-05').sub, row('2026-10-05').severity]).toEqual(['Lien filed · mail its copies today', 'red'])
+    expect([row('2026-10-01').sub, row('2026-10-01').severity, row('2026-10-01').daysLeft]).toEqual(['Lien filed · its copies were due Oct 1. Mail them today.', 'red', -4])
   })
 
   it('retainage piles: find the owner, draft, approve, send, review; the rest ask nothing', () => {
