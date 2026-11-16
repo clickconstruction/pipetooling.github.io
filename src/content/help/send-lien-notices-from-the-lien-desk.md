@@ -175,6 +175,7 @@ The last work was in August. July's notice window closed on Sep 15, and nobody n
 The **By job** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first.
 
 - **GC** turns the list into one GC's book.
+- A blue line like *412 Ridgeline Dr · 7 jobs here ›* opens [every job at that property](/help/see-every-job-at-one-property-on-the-lien-desk).
 - **Show** switches between *Something due* and *All*. Something due holds the next 30 days, plus any closed window nobody noted. All adds the filed liens whose year is running and the dimmed jobs whose lien is gone. When nothing is due, the list offers **Show All ›**.
 - A row opens the job on the pane its next step belongs to. A job the desk does not list yet opens its Lien window.
 - {{button:outline|⎙ Print the grid}} prints counsel's table for the rows shown, one job per row. A blank with a footnote marks a fact the app does not hold yet.

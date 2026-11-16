@@ -52,6 +52,8 @@ export type LienDeskAddress = {
   records: { jobId: string | null } | null
   /** The run, opened over the desk (v2.7328): `&run=<item id>` from the sheet's code, `&mail=1` landing on that notice's Mailed box; a door the page consumes once. */
   run: { itemId: string; mail: boolean } | null
+  /** The property card, opened over the desk (v2.7488): `&property=<property record id>`, every job at that property; a door the page consumes once. */
+  property: string | null
 }
 
 /** The view an address word names, or null for a word the desk does not know. */
@@ -69,7 +71,7 @@ function pileFromWord(word: string | null | undefined): LienDeskPile | null {
 }
 
 /** The address of a view, a notice and a pile: `/lien-desk?tab=notices&job=…&pile=…`; the default view is never written. */
-export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string | null; pile?: LienDeskPile | null; records?: { jobId: string | null } | null; run?: { itemId: string; mail: boolean } | null } = {}): string {
+export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string | null; pile?: LienDeskPile | null; records?: { jobId: string | null } | null; run?: { itemId: string; mail: boolean } | null; property?: string | null } = {}): string {
   const q = new URLSearchParams()
   if (parts.kind && parts.kind !== LIEN_DESK_DEFAULT_KIND) q.set('tab', WORD_BY_KIND[parts.kind])
   if (parts.job) q.set('job', parts.job)
@@ -79,6 +81,7 @@ export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string |
     q.set('run', parts.run.itemId)
     if (parts.run.mail) q.set('mail', '1')
   }
+  if (parts.property) q.set('property', parts.property)
   const s = q.toString()
   return s ? `${LIEN_DESK_PATH}?${s}` : LIEN_DESK_PATH
 }
@@ -98,6 +101,7 @@ export function lienDeskFromSearch(search: URLSearchParams): LienDeskAddress {
     pile,
     records: records == null || records === '' ? null : { jobId: records === '1' || records === 'true' ? null : records },
     run: run ? { itemId: run, mail: mail === '1' || mail === 'true' } : null,
+    property: (search.get('property') ?? '').trim() || null,
   }
 }
 
