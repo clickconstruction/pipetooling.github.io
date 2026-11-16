@@ -1,4 +1,4 @@
-/** Documents page primary tab (`?tab=`). Legacy `?tab=ledger` + `?ledger=` supported. `where-files-go` is the office's Drive tab (punch list #211); `photos` every photo uploaded (punch list #232). The `upload` placeholder tab is gone; an old `?tab=upload` lands on estimates like any unknown value. */
+/** Documents page primary tab (`?tab=`). Legacy `?tab=ledger` + `?ledger=` supported. `where-files-go` is the office's Drive tab (punch list #211); `photos` every photo uploaded (punch list #232); `painted-maps` every painted map (punch list #345). The `upload` placeholder tab is gone; an old `?tab=upload` lands on estimates like any unknown value. */
 
 export type DocumentsPageTab =
   | 'company'
@@ -10,6 +10,7 @@ export type DocumentsPageTab =
   | 'sent'
   | 'where-files-go'
   | 'photos'
+  | 'painted-maps'
 
 export function parseDocumentsPageTabFromSearch(search: string): DocumentsPageTab {
   const p = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
@@ -22,6 +23,7 @@ export function parseDocumentsPageTabFromSearch(search: string): DocumentsPageTa
   if (t === 'sent') return 'sent'
   if (t === 'where-files-go') return 'where-files-go'
   if (t === 'photos') return 'photos'
+  if (t === 'painted-maps') return 'painted-maps'
   if (t === 'jobs') return 'jobs'
   if (t === 'bid-proposals') return 'bid-proposals'
   if (t === 'estimates') return 'estimates'
