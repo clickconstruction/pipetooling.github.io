@@ -4,6 +4,8 @@ import type { JobActivityLine } from '../../lib/jobs/jobActivityLine'
 import { groupJobActivityLinesByDay, isConversationalLine } from '../../lib/jobs/jobActivityLine'
 import { isCustomerSide, type JobActivityMessageTone } from '../../lib/jobs/jobActivityMessages'
 import { EmptyState } from '../EmptyState'
+import type { NoteTagRow } from '../../lib/jobs/noteTags'
+import { TaggedNoteBody } from './TaggedNoteBody'
 
 /**
  * The shared Job activity feed (v2.1673) — ONE rendering used by every Pipeline
@@ -98,6 +100,10 @@ const pendingChipStyle: CSSProperties = {
 type Props = {
   /** null while the lazy load is in flight. */
   lines: JobActivityLine[] | null
+  /** The job's tags by note (punch list #363): a tagged note draws its name chips and its waiting words. */
+  noteTags?: ReadonlyMap<string, NoteTagRow[]>
+  /** The reader, whose own tags draw amber. */
+  viewerId?: string | null
   /** True when a filter is hiding everything (changes the empty copy). */
   filtered: boolean
   /** Narrow shells (≤700px) switch to the flowing-line layout. */
@@ -145,7 +151,7 @@ const linePressStyle: CSSProperties = {
 const replyPressStyle: CSSProperties = { ...linePressStyle, border: '1px solid var(--text-orange-700)', color: 'var(--text-orange-700)' }
 const tiePressStyle: CSSProperties = { ...linePressStyle, border: '1px solid var(--text-link)', color: 'var(--text-link)' }
 
-export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false, threadLinks = true, onShowAll, onAddNote, onReply, onTie }: Props) {
+export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false, threadLinks = true, onShowAll, onAddNote, onReply, onTie, noteTags, viewerId = null }: Props) {
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set())
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Whether the reader is parked at the newest item. New arrivals re-pin only
@@ -322,7 +328,11 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                       {line.body ? ' · ' : ''}
                     </>
                   ) : null}
-                  {line.body}
+                  {line.kind === 'note' && line.item.kind === 'note' && noteTags ? (
+                    <TaggedNoteBody body={line.body} tags={noteTags.get(line.item.note.id)} postedIso={line.atIso} viewerId={viewerId} />
+                  ) : (
+                    line.body
+                  )}
                   {line.pending ? <span style={pendingChipStyle}>Pending</span> : null}
                   {message?.notTiedYet ? tie ?? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>not tied yet</span> : null}
                   {message?.readersWord ? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>{message.readersWord}</span> : null}

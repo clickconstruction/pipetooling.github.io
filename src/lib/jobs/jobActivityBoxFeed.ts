@@ -38,6 +38,8 @@ export type JobActivityBoxEntry = {
   atIso: string
   authorName: string | null
   body: string
+  /** On a `note`: its row, so the box can draw the note's tags (punch list #363). */
+  noteId?: string
   /** On a `line` (v2.6689): what the tag says, where it came from and how it reads. */
   line?: JobActivityBoxLine
   /** On a `sent` (v2.6690): the tag's word, since a contract the customer opened or signed was not sent by us. */
@@ -165,6 +167,7 @@ function entryFromItem(item: JobThreadActivityItem): Omit<JobActivityBoxEntry, '
   if (item.kind === 'note') {
     return {
       kind: 'note',
+      noteId: item.note.id,
       atIso: item.note.created_at,
       authorName: item.note.author?.name?.trim() || null,
       body: stripRedundantStampBody((item.note.body ?? '').trim()),

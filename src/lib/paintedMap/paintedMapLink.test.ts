@@ -112,3 +112,52 @@ describe('the sheet\'s words', () => {
     expect(linkOpenedWords(3)).toBe('Opened 3 times')
   })
 })
+
+describe('who is looking at a shared map', () => {
+  it('keeps a name as typed, tidied, and refuses what nobody could be called', async () => {
+    const { paintedMapVisitorName } = await import('./paintedMapLink')
+    expect(paintedMapVisitorName('  Dana   Reyes\n')).toBe('Dana Reyes')
+    expect(paintedMapVisitorName('x'.repeat(200))).toHaveLength(80)
+    expect(paintedMapVisitorName('José 2')).toBe('José 2')
+    expect(paintedMapVisitorName('   ')).toBeNull()
+    expect(paintedMapVisitorName('...')).toBeNull()
+    expect(paintedMapVisitorName(42)).toBeNull()
+  })
+
+  it('takes a device id of one shape only', async () => {
+    const { paintedMapDeviceId } = await import('./paintedMapLink')
+    expect(paintedMapDeviceId(' 0B9F2C1E-6A4D-4E7B-9C3A-1F2E3D4C5B6A ')).toBe('0b9f2c1e-6a4d-4e7b-9c3a-1f2e3d4c5b6a')
+    expect(paintedMapDeviceId('my phone')).toBeNull()
+    expect(paintedMapDeviceId(null)).toBeNull()
+  })
+
+  it('says a device in two words', async () => {
+    const { paintedMapDeviceWords } = await import('./paintedMapLink')
+    expect(paintedMapDeviceWords('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1')).toBe('iPhone · Safari')
+    expect(paintedMapDeviceWords('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36')).toBe('Android phone · Chrome')
+    expect(paintedMapDeviceWords('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0')).toBe('Windows · Edge')
+    expect(paintedMapDeviceWords('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0')).toBe('Mac · Firefox')
+    expect(paintedMapDeviceWords('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0.0.0 Mobile/15E148 Safari/604.1')).toBe('iPhone · Chrome')
+    expect(paintedMapDeviceWords('')).toBe('A phone or computer')
+    expect(paintedMapDeviceWords(null)).toBe('A phone or computer')
+  })
+
+  it('takes a point on the globe and nothing else', async () => {
+    const { paintedMapVisitPoint } = await import('./paintedMapLink')
+    expect(paintedMapVisitPoint(30.35, -97.75, 12.4)).toEqual({ lat: 30.35, lng: -97.75, accuracyM: 12.4 })
+    expect(paintedMapVisitPoint(30.35, -97.75, undefined)).toEqual({ lat: 30.35, lng: -97.75, accuracyM: null })
+    expect(paintedMapVisitPoint(130, -97.75, 5)).toBeNull()
+    expect(paintedMapVisitPoint(0, 0, 5)).toBeNull()
+    expect(paintedMapVisitPoint('30.35', -97.75, 5)).toBeNull()
+    expect(paintedMapVisitPoint(Number.NaN, -97.75, 5)).toBeNull()
+  })
+
+  it('keeps the first point once and then the latest, never more often than the gap', async () => {
+    const { paintedMapVisitPointColumns } = await import('./paintedMapLink')
+    const point = { lat: 30.35, lng: -97.75, accuracyM: 9 }
+    expect(paintedMapVisitPointColumns({ first_located_at: null, last_located_at: null }, point, '2026-11-15T18:00:00.000Z')).toEqual({ first_lat: 30.35, first_lng: -97.75, first_accuracy_m: 9, first_located_at: '2026-11-15T18:00:00.000Z' })
+    expect(paintedMapVisitPointColumns({ first_located_at: '2026-11-15T18:00:00.000Z', last_located_at: null }, point, '2026-11-15T18:00:05.000Z')).toBeNull()
+    expect(paintedMapVisitPointColumns({ first_located_at: '2026-11-15T18:00:00.000Z', last_located_at: null }, point, '2026-11-15T18:01:00.000Z')).toEqual({ last_lat: 30.35, last_lng: -97.75, last_accuracy_m: 9, last_located_at: '2026-11-15T18:01:00.000Z' })
+    expect(paintedMapVisitPointColumns({ first_located_at: '2026-11-15T18:00:00.000Z', last_located_at: '2026-11-15T18:01:00.000Z' }, point, '2026-11-15T18:01:10.000Z')).toBeNull()
+  })
+})

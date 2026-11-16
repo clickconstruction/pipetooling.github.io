@@ -26,6 +26,10 @@ describe('mySubSheetsFromRpc', () => {
     expect(read({ portal_token: 'tok en' }).portalUrl).toBe('https://app.example/sub?t=tok%20en')
     expect(read().portalUrl).toBeNull()
   })
+
+  it('offers no door to a portal that is off: a short address with no live link', () => {
+    expect(read({ portal_slug: 'dana', portal_token: null }).portalUrl).toBeNull()
+  })
 })
 
 describe('subPayWords', () => {
