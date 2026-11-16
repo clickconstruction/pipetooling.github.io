@@ -8,7 +8,8 @@ import { LienJobNumber } from './LienJobNumber'
 
 /**
  * The property card (v2.7488): one property whole. Every job at one property record, each on one row with where its
- * notice and its affidavit stand and what it still owes, under one line that counts them. Opened from wherever a
+ * notice and its affidavit stand and what it still owes, under two lines that count them: the notices, then the lien
+ * affidavits, each kind apart. Opened from wherever a
  * property is named: a By job row, the run's envelope line, the address `?property=<record id>`.
  *
  * The card has no verbs and reads nothing: the desk hands it the property out of By job's book
@@ -151,10 +152,14 @@ export default function LienPropertyCard({ property, loading, error, onClose, on
             </p>
           ) : (
             <>
-              <p style={{ margin: 0, padding: '0.65rem 1rem', fontSize: '0.8125rem' }} data-testid="lien-property-tally">
-                <strong>{lienPropertyJobsWords(property.jobs.length)}</strong> · {formatUsdNoCents(property.openBalance)} open
-                {property.tally ? <span style={{ color: 'var(--text-muted)' }}> · {property.tally}</span> : null}
-              </p>
+              <div style={{ padding: '0.65rem 1rem', fontSize: '0.8125rem', display: 'grid', gap: '0.2rem' }} data-testid="lien-property-tally">
+                <span>
+                  <strong>{lienPropertyJobsWords(property.jobs.length)}</strong> · {formatUsdNoCents(property.openBalance)} open
+                </span>
+                {/* Each kind of paper on its own line: a count of liens is never read as a count of notices. */}
+                {property.tallies.notices ? <span data-testid="lien-property-tally-notices">{property.tallies.notices}</span> : null}
+                {property.tallies.affidavits ? <span data-testid="lien-property-tally-affidavits">{property.tallies.affidavits}</span> : null}
+              </div>
               {publicLine ? (
                 <p style={{ margin: 0, padding: '0 1rem 0.65rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }} data-testid="lien-property-public">
                   {publicLine}

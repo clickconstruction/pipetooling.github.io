@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import LienPropertyCard from './LienPropertyCard'
-import { lienPropertyAffidavitLine, lienPropertyNoticeLine, lienPropertyTally, type LienProperty, type LienPropertyJobLine } from '../../lib/jobs/lienPropertyPapers'
+import { lienPropertyAffidavitLine, lienPropertyNoticeLine, lienPropertyTallies, lienPropertyTally, type LienProperty, type LienPropertyJobLine } from '../../lib/jobs/lienPropertyPapers'
 import type { LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 
 afterEach(cleanup)
@@ -28,6 +28,7 @@ const property: LienProperty = {
   jobs,
   openBalance: 10_581,
   tally: lienPropertyTally(jobs),
+  tallies: lienPropertyTallies(jobs),
   sameOwner: [{ addressId: 'p2', address: '88 Fenwick Ln, Hollow Creek', jobs: 1 }],
 }
 
@@ -38,7 +39,9 @@ describe('LienPropertyCard', () => {
     render(<LienPropertyCard property={property} loading={false} error="" onClose={noop} onOpenPaper={noop} onOpenProperty={noop} fromJobId="j1207" />)
     expect(screen.getByTestId('lien-property-title').textContent).toBe('412 Ridgeline Dr, Hollow Creek')
     expect(screen.getByRole('dialog').textContent).toContain('Owner of record: Avery and Jordan Pell · residential · GC: Marlow Builders')
-    expect(screen.getByTestId('lien-property-tally').textContent).toBe('3 jobs · $10,581 open · 2 notices sent · 1 to print and mail · 2 at the affidavit')
+    expect(screen.getByTestId('lien-property-tally').textContent).toContain('3 jobs · $10,581 open')
+    expect(screen.getByTestId('lien-property-tally-notices').textContent).toBe('1 notice sent Oct 14 · 1 on Sep 22 · 1 to print and mail')
+    expect(screen.getByTestId('lien-property-tally-affidavits').textContent).toBe('1 lien affidavit awaiting approval · 1 to send for approval')
     expect(screen.getByTestId('lien-property-notice-j1207').textContent).toBe('Approved · to mailprinted Nov 16')
     expect(screen.getByTestId('lien-property-notice-j1203').textContent).toBe('Notice sent Oct 14')
     expect(screen.getByTestId('lien-property-notice-j1198').textContent).toBe('Notice sent Sep 22')

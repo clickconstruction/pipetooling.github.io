@@ -2,7 +2,7 @@
 title: see every job at one property on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: property, property card, one property, address, every job at an address, jobs here, same owner, owner of record, envelope shows one job, why only one job, notice sent, already sent, notices sent, at the affidavit, by job, lien desk, homeowner, six invoices, other jobs, second record, no property record, set the property
+keywords: property, property card, six liens, liens on a property, how many liens, ready to file, one property, address, every job at an address, jobs here, same owner, owner of record, envelope shows one job, why only one job, notice sent, already sent, notices sent, at the affidavit, by job, lien desk, homeowner, six invoices, other jobs, second record, no property record, set the property
 where: /lien-desk?tab=timeline
 ---
 One property can hold many jobs. The Lien desk lists papers and jobs one by one, so a property with seven jobs is seven rows. The property card shows them together. Open it when an envelope or a list shows fewer jobs than you expected at an address.
@@ -20,18 +20,28 @@ A job on a property with one job has no blue line. Its row already says all ther
 
 Owner of record: Avery and Jordan Pell · residential · GC: Marlow Builders
 
-**7 jobs** · $15,870 open · 6 notices sent · 1 to print and mail · 6 at the affidavit
+**7 jobs** · $15,870 open
+
+4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail
+
+6 lien affidavits ready to file
 :::
 
-## Read the line that counts
+## Read the lines that count
 
-The line under the owner counts the whole property. Read it first.
+Two lines under the owner count the whole property. Read them first. The notices have one line. The liens have the other. The two are never added together.
 
-- *6 notices sent* means six jobs already had their notice mailed.
+The notices line:
+
+- *4 notices sent Oct 14* means four jobs had their notice mailed that day.
+- *2 on Sep 22* means two more went on that day.
 - *1 to print and mail* means one notice is approved and goes in the next run.
-- *6 at the affidavit* means six jobs are past their notice and need the lien affidavit next.
 
-So an envelope for this owner holds one job today. The other six went in earlier envelopes.
+The liens line:
+
+- *6 lien affidavits ready to file* means six jobs have an approved lien, ready for the county.
+
+So an envelope of notices for this owner holds one job today. The other six went in earlier envelopes. The six liens are not notices, and the notices' run does not hold them.
 
 ## Read one job's row
 

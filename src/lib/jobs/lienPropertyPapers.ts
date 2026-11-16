@@ -16,7 +16,8 @@
  * - a filed affidavit and its served copy are the timeline's own steps.
  *
  * Fed by narrow facts, so By job's book rows (`lienPropertyJobLine`) and the run window's desk entries can both feed
- * it. A reason the desk does not hold is never guessed: a job with nothing on record says *No notice on record*.
+ * it. The tally (`lienPropertyTallies`) counts each kind of paper apart and takes any list of jobs, so the run's
+ * envelope line hands it the jobs of a property that are not in the envelope and words them as the card does. A reason the desk does not hold is never guessed: a job with nothing on record says *No notice on record*.
  *
  * Pure.
  */
@@ -24,8 +25,8 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { workMonthShort } from './forecastWorkMonths'
 import { lienBoardPileWords, LIEN_RUN_TILE_LABEL } from './lienBoard'
-import type { LienDeskPile } from './lienDesk'
-import { affidavitGateMissingWord, lienAffidavitGateHeld, type LienAffidavitPile } from './lienDeskAffidavits'
+import type { LienDeskEntry, LienDeskPile } from './lienDesk'
+import { affidavitGateMissingWord, lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienPublicStanding } from './lienPublicProperty'
 import { lienAffidavitNoticeTag } from './lienRowWords'
 import type { LienTimelineStep } from './lienTimeline'
@@ -120,7 +121,8 @@ export type LienPropertyAffidavitFacts = {
   serveStep?: StepWords | null
 }
 
-export type LienPropertyAffidavitLine = { state: LienPropertyAffidavitState; words: string; aside: string; pile: LienAffidavitPile | null }
+/** `serve`: where a filed affidavit's copy to the owner stands, when the timeline says; absent on a paper not filed. */
+export type LienPropertyAffidavitLine = { state: LienPropertyAffidavitState; words: string; aside: string; pile: LienAffidavitPile | null; serve?: 'served' | 'due' | 'overdue' }
 
 const capital = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
@@ -129,7 +131,8 @@ export function lienPropertyAffidavitLine(f: LienPropertyAffidavitFacts): LienPr
   if (step?.state === 'done') {
     const serve = f.serveStep ?? null
     const aside = serve?.state === 'done' ? serve.dateWords : serve?.state === 'missed' ? 'serving its copy is overdue' : serve?.state === 'due' ? `serve its copy by ${serve.dateWords}` : ''
-    return { state: 'filed', words: capital(step.dateWords), aside, pile: f.pile }
+    const serveState = serve?.state === 'done' ? 'served' : serve?.state === 'missed' ? 'overdue' : serve?.state === 'due' ? 'due' : null
+    return { state: 'filed', words: capital(step.dateWords), aside, pile: f.pile, ...(serveState ? { serve: serveState } : {}) }
   }
   if (step?.state === 'blocked') return { state: 'blocked', words: capital(step.words), aside: '', pile: f.pile }
   if (!f.pile) return step?.state === 'missed' ? { state: 'missed', words: lienBoardPileWords('affidavit', 'missed'), aside: step.words, pile: null } : { state: 'none', words: '', aside: '', pile: null }
@@ -166,9 +169,17 @@ export type LienPropertyJobLine = {
   openBalance: number
 }
 
+/**
+ * The desk's own queues, when the reader holds them (v2.7488). The Board is drawn from these, and a job's entry there
+ * wins over the book's: the desk builds its affidavit queue with the drafted and approved papers and with the facts
+ * it joins on (the homestead answer, the GC's address, a public owner), which the book's wider read does not carry.
+ * So a card never says *To send for Master approval* of a paper the Board holds in *Ready to file*.
+ */
+export type LienPropertyDesk = { notices?: ReadonlyArray<LienDeskEntry> | null; affidavits?: ReadonlyArray<LienAffidavitEntry> | null }
+
 /** A book row as the property view's line. */
-export function lienPropertyJobLine(row: LienTimelineBookRow): LienPropertyJobLine {
-  const entry = row.notice ?? null
+export function lienPropertyJobLine(row: LienTimelineBookRow, desk?: LienPropertyDesk | null): LienPropertyJobLine {
+  const entry = desk?.notices?.find((e) => e.jobId === row.jobId) ?? row.notice ?? null
   const fromFilings = row.noticeSentOn ?? []
   // The recorded filings say the day; the months' own send days stand in for a reader that hands none (the firm's portal).
   const sentOn = fromFilings.length ? fromFilings : row.months.filter((m) => m.outcome === 'sent' && m.at).map((m) => m.at)
@@ -181,7 +192,7 @@ export function lienPropertyJobLine(row: LienTimelineBookRow): LienPropertyJobLi
     printedOn: entry?.item?.printed_at ? calendarYmdInAppTzFromIso(entry.item.printed_at) : null,
     holdUntil: entry?.item?.hold_until ?? null,
   })
-  const a = row.affidavit ?? null
+  const a = desk?.affidavits?.find((e) => e.jobId === row.jobId) ?? row.affidavit ?? null
   const affidavit = lienPropertyAffidavitLine({
     pile: a?.pile ?? null,
     gateHeld: lienAffidavitGateHeld(a),
@@ -197,84 +208,106 @@ export function lienPropertyJobLine(row: LienTimelineBookRow): LienPropertyJobLi
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-/** The stage a job's notice is counted under: the state, and the pile for a paper that waits. */
-function tallyKey(n: LienPropertyNoticeLine): string {
-  return n.state === 'waits' ? `waits:${n.pile ?? ''}` : n.state
+type TallyPart = { n: number; kind: 'sent' | 'other' | 'whole'; words: string }
+
+/** `first` carries the kind's noun (*4 notices sent Oct 14*); the next ones do not (*2 on Sep 22*, *1 held*). */
+function joinTally(parts: ReadonlyArray<TallyPart>, one: string, many: string): string {
+  const out: string[] = []
+  let named = false
+  let prev: TallyPart | null = null
+  for (const p of parts) {
+    if (p.kind === 'whole') out.push(p.words)
+    else if (!named) out.push(`${count(p.n, one, many)} ${p.kind === 'sent' ? 'sent ' : ''}${p.words}`)
+    else out.push(`${p.n} ${p.kind === 'sent' ? (prev?.kind === 'sent' ? 'on ' : 'sent ') : ''}${p.words}`)
+    if (p.kind !== 'whole') named = true
+    prev = p
+  }
+  return out.join(' · ')
 }
 
-const TALLY: ReadonlyArray<{ key: string; words: (n: number) => string }> = [
-  { key: 'sent', words: (n) => count(n, 'notice sent', 'notices sent') },
-  { key: 'going', words: (n) => `${n} ${LIEN_RUN_TILE_LABEL}` },
-  { key: 'waits:awaiting', words: (n) => `${n} awaiting approval` },
-  { key: 'waits:to_draft', words: (n) => `${n} to send for approval` },
-  { key: 'waits:needs_owner', words: (n) => count(n, 'needs the owner', 'need the owner') },
-  { key: 'waits:held', words: (n) => `${n} held` },
-  { key: 'missed', words: (n) => `${n} missed` },
-  { key: 'none_needed', words: (n) => count(n, 'needs no notice', 'need no notice') },
-  { key: 'none', words: (n) => `${n} with no notice on record` },
+const NOTICE_WAITS: ReadonlyArray<{ pile: LienDeskPile; words: string }> = [
+  { pile: 'awaiting', words: 'awaiting approval' },
+  { pile: 'to_draft', words: 'to send for approval' },
+  { pile: 'needs_owner', words: 'needing the owner' },
+  { pile: 'held', words: 'held' },
 ]
 
-/** A job is at the affidavit when its notice is behind it (sent, or none needed) and its affidavit is not filed. */
-export function lienPropertyAtAffidavit(l: Pick<LienPropertyJobLine, 'notice' | 'affidavit'>): boolean {
-  return (l.notice.state === 'sent' || l.notice.state === 'none_needed') && (l.affidavit.state === 'waits' || l.affidavit.state === 'ready' || l.affidavit.state === 'held')
+const AFFIDAVIT_ORDER: ReadonlyArray<{ key: string; words: string }> = [
+  { key: 'ready', words: 'ready to file' },
+  { key: 'waits:awaiting', words: 'awaiting approval' },
+  { key: 'waits:to_draft', words: 'to send for approval' },
+  { key: 'waits:needs_property', words: 'needing the property facts' },
+  { key: 'held', words: 'held' },
+  { key: 'filed:served', words: 'filed and served' },
+  { key: 'filed:due', words: 'filed, copy to serve' },
+  { key: 'filed:overdue', words: 'filed, copy overdue' },
+  { key: 'filed', words: 'filed' },
+  { key: 'missed', words: 'missed' },
+  { key: 'blocked', words: 'blocked' },
+]
+
+function affidavitKey(a: LienPropertyAffidavitLine): string {
+  if (a.state === 'filed') return a.serve ? `filed:${a.serve}` : 'filed'
+  if (a.state === 'waits') return `waits:${a.pile ?? ''}`
+  return a.state
 }
 
-/** A property's one line: *4 notices sent · 1 to print and mail · 2 at the affidavit*. '' with no jobs. */
-export function lienPropertyTally(lines: ReadonlyArray<Pick<LienPropertyJobLine, 'notice' | 'affidavit'>>): string {
-  const by = new Map<string, number>()
-  for (const l of lines) by.set(tallyKey(l.notice), (by.get(tallyKey(l.notice)) ?? 0) + 1)
-  const parts = TALLY.filter((t) => (by.get(t.key) ?? 0) > 0).map((t) => t.words(by.get(t.key)!))
-  const at = lines.filter(lienPropertyAtAffidavit).length
-  if (at > 0) parts.push(`${at} at the affidavit`)
-  const filed = lines.filter((l) => l.affidavit.state === 'filed').length
-  if (filed > 0) parts.push(`${filed} filed`)
-  return parts.join(' · ')
-}
-
-// ---------- why a job is not in a run ----------
-
-export type LienNotInRunGroup = { count: number; words: string }
-
-function notInRunWords(n: LienPropertyNoticeLine, k: number): string {
-  const one = k === 1
-  const day = n.sentOn.length ? ` ${formatYmdMonthDay(n.sentOn[n.sentOn.length - 1]!)}` : ''
-  switch (n.state) {
-    case 'sent':
-      return day ? `${k} had ${one ? 'its' : 'their'} notice sent${day}.` : `${k} ${one ? 'has its' : 'have their'} notice on record.`
-    case 'none_needed':
-      return `${k} ${one ? 'needs' : 'need'} no notice.`
-    case 'missed':
-      return `${k} missed ${one ? 'its' : 'their'} notice window.`
-    case 'none':
-      return `${k} ${one ? 'has' : 'have'} no notice on record.`
-    case 'going':
-      return n.pile === 'printed' ? `${k} ${one ? 'is' : 'are'} printed and ${one ? 'waits' : 'wait'} for the mail.` : `${k} ${one ? 'is' : 'are'} approved and not printed yet.`
-    case 'waits':
-      if (n.pile === 'awaiting') return `${k} ${one ? 'waits' : 'wait'} on Master approval.`
-      if (n.pile === 'needs_owner') return `${k} ${one ? 'needs' : 'need'} the owner.`
-      if (n.pile === 'held') return `${k} ${one ? 'is' : 'are'} held.`
-      return `${k} ${one ? 'is' : 'are'} not sent for approval yet.`
-  }
+export type LienPropertyTallies = {
+  /** *4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*; '' with no notice to count. */
+  notices: string
+  /** *6 lien affidavits ready to file · 1 held*; '' with no affidavit to count. */
+  affidavits: string
 }
 
 /**
- * Why the other jobs at a property are not in a run, one sentence per reason, the largest group first. A reason is
- * the notice's own state on the desk, so the run's envelope and the property card never word it two ways.
+ * One count per kind of paper, over whatever jobs the caller hands in (a whole property, or the jobs of a property
+ * that are not in a run). The office counts a property's liens apart from its notices, so the two never share a
+ * number: a job with a sent notice and an affidavit ready to file is counted once in each.
+ *
+ * Notices that went are counted by the day they went, the newest first. An affidavit is counted by its own stage, in
+ * the Board's words. A job with nothing on record says only that.
  */
-export function lienNotInRunGroups(notices: ReadonlyArray<LienPropertyNoticeLine>): LienNotInRunGroup[] {
-  const groups = new Map<string, LienPropertyNoticeLine[]>()
-  for (const n of notices) {
-    const key = `${tallyKey(n)}|${n.state === 'going' ? n.pile : ''}|${n.state === 'sent' ? n.sentOn[n.sentOn.length - 1] ?? '' : ''}`
-    groups.set(key, [...(groups.get(key) ?? []), n])
+export function lienPropertyTallies(lines: ReadonlyArray<Pick<LienPropertyJobLine, 'notice' | 'affidavit'>>): LienPropertyTallies {
+  const notices = lines.map((l) => l.notice)
+  const parts: TallyPart[] = []
+  const sent = notices.filter((n) => n.state === 'sent')
+  const days = [...new Set(sent.map((n) => n.sentOn[n.sentOn.length - 1] ?? ''))].sort().reverse()
+  for (const d of days.filter(Boolean)) parts.push({ n: sent.filter((n) => (n.sentOn[n.sentOn.length - 1] ?? '') === d).length, kind: 'sent', words: formatYmdMonthDay(d) })
+  const undated = sent.filter((n) => n.sentOn.length === 0).length
+  if (undated) parts.push({ n: undated, kind: 'other', words: 'on record' })
+  const going = notices.filter((n) => n.state === 'going').length
+  if (going) parts.push({ n: going, kind: 'other', words: LIEN_RUN_TILE_LABEL })
+  for (const w of NOTICE_WAITS) {
+    const n = notices.filter((x) => x.state === 'waits' && x.pile === w.pile).length
+    if (n) parts.push({ n, kind: 'other', words: w.words })
   }
-  return [...groups.values()].sort((a, b) => b.length - a.length).map((g) => ({ count: g.length, words: notInRunWords(g[0]!, g.length) }))
+  const missed = notices.filter((n) => n.state === 'missed').length
+  if (missed) parts.push({ n: missed, kind: 'other', words: 'missed' })
+  const noneNeeded = notices.filter((n) => n.state === 'none_needed').length
+  if (noneNeeded) parts.push({ n: noneNeeded, kind: 'whole', words: `${count(noneNeeded, 'job needs', 'jobs need')} no notice` })
+  const none = notices.filter((n) => n.state === 'none').length
+  if (none) parts.push({ n: none, kind: 'whole', words: `${count(none, 'job', 'jobs')} with no notice on record` })
+
+  const affidavits = lines.map((l) => l.affidavit).filter((a) => a.state !== 'none')
+  const aParts: TallyPart[] = []
+  const seen = new Set<string>()
+  for (const o of AFFIDAVIT_ORDER) {
+    const n = affidavits.filter((a) => affidavitKey(a) === o.key).length
+    if (n) aParts.push({ n, kind: 'other', words: o.words })
+    seen.add(o.key)
+  }
+  // A pile this list does not name yet keeps the Board's own words for it, so a new bin is counted the day it lands.
+  for (const key of [...new Set(affidavits.map(affidavitKey))].filter((k) => !seen.has(k))) {
+    const of = affidavits.filter((a) => affidavitKey(a) === key)
+    aParts.push({ n: of.length, kind: 'other', words: of[0]!.pile ? lienBoardPileWords('affidavit', of[0]!.pile).toLowerCase() : of[0]!.state })
+  }
+  return { notices: joinTally(parts, 'notice', 'notices'), affidavits: joinTally(aParts, 'lien affidavit', 'lien affidavits') }
 }
 
-/** *6 other jobs at this property are not in this envelope. 4 had their notice sent Oct 14. 2 had their notice sent Sep 22.* '' with none. */
-export function lienNotInRunWords(notices: ReadonlyArray<LienPropertyNoticeLine>, where = 'this envelope'): string {
-  if (notices.length === 0) return ''
-  const n = notices.length
-  return [`${count(n, 'other job', 'other jobs')} at this property ${n === 1 ? 'is' : 'are'} not in ${where}.`, ...lienNotInRunGroups(notices).map((g) => g.words)].join(' ')
+/** Both kinds on one line, the notices first: *4 notices sent Oct 14 · 2 on Sep 22 · 6 lien affidavits ready to file*. '' with nothing to count. */
+export function lienPropertyTally(lines: ReadonlyArray<Pick<LienPropertyJobLine, 'notice' | 'affidavit'>>): string {
+  const t = lienPropertyTallies(lines)
+  return [t.notices, t.affidavits].filter(Boolean).join(' · ')
 }
 
 // ---------- the properties ----------
@@ -295,7 +328,10 @@ export type LienProperty = {
   rows: LienTimelineBookRow[]
   jobs: LienPropertyJobLine[]
   openBalance: number
+  /** The two kinds on one line, the notices first. */
   tally: string
+  /** Each kind of paper counted apart (`lienPropertyTallies`): a count of liens is never mixed into a count of notices. */
+  tallies: LienPropertyTallies
   /** The owner's other properties in the book: the same name at the same mailing address, and nothing looser. */
   sameOwner: LienPropertySameOwner[]
 }
@@ -312,7 +348,7 @@ function ownerKey(rows: ReadonlyArray<LienTimelineBookRow>): string {
  * The book's rows gathered by property record, in the book's own order (the property whose next date is soonest
  * leads, and its jobs keep their order). The jobs with no record gather under one group with the key ''.
  */
-export function buildLienProperties(rows: ReadonlyArray<LienTimelineBookRow>): LienProperty[] {
+export function buildLienProperties(rows: ReadonlyArray<LienTimelineBookRow>, desk?: LienPropertyDesk | null): LienProperty[] {
   const groups = new Map<string, LienTimelineBookRow[]>()
   for (const r of rows) {
     const key = r.job.addressId ?? ''
@@ -321,7 +357,8 @@ export function buildLienProperties(rows: ReadonlyArray<LienTimelineBookRow>): L
     else groups.set(key, [r])
   }
   const properties: Array<LienProperty & { owner: string }> = [...groups.entries()].map(([key, group]) => {
-    const jobs = group.map(lienPropertyJobLine)
+    const jobs = group.map((r) => lienPropertyJobLine(r, desk))
+    const tallies = lienPropertyTallies(jobs)
     const names = new Set(group.map((r) => r.job.ownerName.trim()).filter(Boolean))
     const first = group[0]!
     return {
@@ -333,7 +370,8 @@ export function buildLienProperties(rows: ReadonlyArray<LienTimelineBookRow>): L
       rows: group,
       jobs,
       openBalance: group.reduce((s, r) => s + r.job.openBalance, 0),
-      tally: lienPropertyTally(jobs),
+      tally: [tallies.notices, tallies.affidavits].filter(Boolean).join(' · '),
+      tallies,
       sameOwner: [],
       owner: key ? ownerKey(group) : '',
     }
@@ -345,14 +383,14 @@ export function buildLienProperties(rows: ReadonlyArray<LienTimelineBookRow>): L
 }
 
 /** One property out of the book, by its record's id; null when no job in the book stands on it. */
-export function lienPropertyOf(rows: ReadonlyArray<LienTimelineBookRow>, addressId: string | null | undefined): LienProperty | null {
+export function lienPropertyOf(rows: ReadonlyArray<LienTimelineBookRow>, addressId: string | null | undefined, desk?: LienPropertyDesk | null): LienProperty | null {
   if (!addressId) return null
-  return buildLienProperties(rows).find((p) => p.key === addressId) ?? null
+  return buildLienProperties(rows, desk).find((p) => p.key === addressId) ?? null
 }
 
 /** The property a job stands on, with every other job there; null for a job with no record or not in the book. */
-export function lienPropertyOfJob(rows: ReadonlyArray<LienTimelineBookRow>, jobId: string): LienProperty | null {
-  return lienPropertyOf(rows, rows.find((r) => r.jobId === jobId)?.job.addressId ?? null)
+export function lienPropertyOfJob(rows: ReadonlyArray<LienTimelineBookRow>, jobId: string, desk?: LienPropertyDesk | null): LienProperty | null {
+  return lienPropertyOf(rows, rows.find((r) => r.jobId === jobId)?.job.addressId ?? null, desk)
 }
 
 /** The head's count: *7 jobs · $15,870 open* is the caller's to format; this is *1 job* / *7 jobs*. */

@@ -19,6 +19,7 @@ function property(over: Partial<LienProperty> = {}): LienProperty {
     ],
     openBalance: 200,
     tally: '',
+    tallies: { notices: '', affidavits: '' },
     sameOwner: [],
     ...over,
   }

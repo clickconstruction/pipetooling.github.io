@@ -648,10 +648,15 @@ export default function LienDesk({
   /** ZZ test jobs off the book for every role but a dev who shows them (punch list #61, PR 3). */
   const hideZzTestJobs = useZzTestJobsHidden(authRole)
   // v2.7463: the book's read starts with the tab, beside the desk's own, and folds once the desk's items are in hand.
-  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(bookOpened, todayYmd, data?.items ?? null, hideZzTestJobs)
+  // The book is handed the affidavits' desk items beside the notices' (v2.7488). `data.items` is the notices alone, so
+  // the book built its affidavit queue with no drafted or approved paper in it and By job read *Draft the affidavit*
+  // of one already approved.
+  const bookItems = useMemo(() => (data ? [...data.items, ...data.affidavits.entries.flatMap((e) => (e.item ? [e.item] : []))] : null), [data])
+  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(bookOpened, todayYmd, bookItems, hideZzTestJobs)
   // One property whole (v2.7488): every job at one property record, out of By job's book. The desk's own read holds
   // only what is started or inside its lead, so the card reads the book (once, kept) the first time it opens.
-  const bookProperties = useMemo(() => (book ? buildLienProperties(book.rows) : []), [book])
+  // A job's entry in the desk's own queues wins over the book's (`LienPropertyDesk`): the card says what the Board says.
+  const bookProperties = useMemo(() => (book ? buildLienProperties(book.rows, { notices: data?.queue.entries, affidavits: data?.affidavits.entries }) : []), [book, data])
   const [propertyCard, setPropertyCard] = useState<{ addressId: string; fromJobId: string | null } | null>(null)
   const openProperty = useCallback((addressId: string, fromJobId: string | null = null) => {
     setBookOpened(true)
