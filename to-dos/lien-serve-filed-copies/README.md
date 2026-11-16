@@ -107,9 +107,27 @@ When counsel answers, turn `LIEN_SERVE_LETTER_READ_BY_COUNSEL` and `LIEN_SERVED_
    `lienServedCopy.ts` and `lienServeFacts.ts`; the press `LienServeCopiesPress.tsx` beside *Record service…*
    in the Lien window; the print filed on the job as `lien_affidavit_copy`; a recording number typed on the
    held press.
-2. **The clock and the two bins** (S to M). The To do row reads *Filed · copies to mail · by <day>*, counts the
-   days, and says so when late; its press prints. `LIEN_BOARD_WORDS.filed` becomes two bins, *Filed · copies to
-   mail* and *Served*. Waits on #8361 and #8363, which change `lienBoard.ts` and the list.
+2. **The clock and the two bins** (S to M). **Not started**; it waits for #8356, #8361, #8363 and #8368, which
+   all change the stage lists in `lienBoard.ts`. The To do row reads *Filed · copies to mail · by <day>*, counts
+   the days, and says so when late (`lienServeClock` already has the words); `LIEN_BOARD_WORDS.filed` becomes
+   two bins, *Filed · copies to mail* and *Served*. What the #362 session said to build on (2026-11-16):
+   - **The press goes on the new bin, not at the column's foot.** #8368 puts one primary press at the foot of
+     each Board column (*Print N for notarization* under the affidavits'), and the owner approved one press a
+     column. A second blue press there needs his yes first.
+   - **The row's bin is one function.** `lienBoardRowBin` in `lienBoard.ts` (added by #8363): give keys that
+     start with `serve:` the new bin, as `run:` keys get the notices' mail bin. `lienBoardRowStage` reads the
+     same function, and the by-bin list takes the bin's label from the Board.
+   - **Folding the serve rows into one row** under the batch press is one rule in `lienBinFolds`
+     (`lienNextUpByBin.ts`): bin, action `record_service`, title, sub, button, target. A new press target is one
+     more member of `LienNextUpTarget`, one branch in `actOnNextUp`, and a case in `doorFor` in `lienArChip.ts`,
+     which switches on it exhaustively.
+   - **A new affidavit stage** needs its entry in `AFFIDAVIT_STAGES_LEFT`, in `AFFIDAVIT_GATE_HELD_LEFT` (#8356)
+     and in `affidavitStage`.
+   - **The run window.** The owner sees serving the copies as the liens' fourth step in the run (his words,
+     2026-11-16: "the liens have one extra step where after they are filed we have to send them off"). The #362
+     card draws it (`to-dos/lien-to-do-one-run/run-window.html`, *The liens · four steps*, not approved yet):
+     that step calls `lienServePlan`, `lienServeHolds`, `lienServePapers` and the numbers kernel. Nothing of
+     this train goes in `LienDeskRunModal.tsx`.
 3. **The batch print** (M). **Built, v2.7476, with step 4 as one window.** `src/lib/jobs/lienServePackets.ts`: every
    filed lien that owes its copies (`lienServeJobsFromDesk`), what is held and why (`lienServePlan`), the press
    worded through `batchWords`, the five-day clock in words (`lienServeClock`), and one stack in envelope order
