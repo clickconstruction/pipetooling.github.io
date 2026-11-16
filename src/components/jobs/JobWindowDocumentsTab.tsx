@@ -27,6 +27,7 @@ import { JobDocumentsPhotos } from './JobDocumentsPhotos'
 import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
 import { JobDocumentsIndexFolder } from './JobDocumentsIndexFolder'
 import { JobPlansSection } from './JobPlansSection'
+import { JobDocumentsPaintedMaps } from './JobDocumentsPaintedMaps'
 import { JobDocumentsAddFile } from './JobDocumentsAddFile'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
@@ -50,7 +51,9 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
  * and adds a check for this job inline (`JobDocumentsChecklists`).
  * Since v2.6299
  * an **In the folders** section between them lists what is in the job's five folders, read live from Drive each time
- * the tab opens, each file with where it came from (the app's own record, or a hand in Drive).
+ * the tab opens, each file with where it came from (the app's own record, or a hand in Drive). Since v2.7393 (punch
+ * list #345) a **Painted maps** section after the plans lists the job's painted maps and its development's, each a
+ * door to the map as it is now (`JobDocumentsPaintedMaps`).
  */
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
@@ -179,6 +182,9 @@ export function JobWindowDocumentsTab({
     <div data-documents-phone="" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingTop: '0.5rem' }}>
       {/* Plans first (v2.6791, the owner's ask on job 879): what a person opens most from this tab sat below the papers, off the screen on most jobs. */}
       <JobPlansSection job={job} onPlansLinkChanged={(link) => onFoldersMade?.({ job_plans_link: link })} onLeave={onLeave} />
+
+      {/* The job's painted maps (punch list #345): each a door to the map as it is now. Nothing is stored here. */}
+      <JobDocumentsPaintedMaps job={job} sentCopiesShown={canReadSentCopies(role)} />
 
       <section aria-labelledby="job-documents-pay-apps" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

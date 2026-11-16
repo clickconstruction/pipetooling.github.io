@@ -188,6 +188,14 @@ The line shows on every tab of the job's window. It shows on your job card in Jo
 
 You can open a map from anywhere. Press the search button at the top and type the map's name or the job's name.
 
+### In the job's Documents
+
+The job's **Documents** tab has a section named **Painted maps**. It lists the job's maps and its development's maps.
+
+Each row says the map's length, its places, who painted it and when. Press a map's name to open it. Press {{button:outline|Paint a map}} to start a new one for the job.
+
+A map there is the map as it is now. It is not a stored copy. A page you printed is kept apart, under **Sent from this job** on the same tab.
+
 ### On other maps
 
 The **Map** page has a chip named {{chip:gray|Painted maps}}. Press it to draw every painted map where it is.
