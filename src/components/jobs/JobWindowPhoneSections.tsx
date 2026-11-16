@@ -85,6 +85,7 @@ export function JobWindowWho({
   onEmail,
   links,
   emailRow = true,
+  nameNote,
 }: {
   name: string
   phone: string
@@ -101,6 +102,8 @@ export function JobWindowWho({
   links: Array<{ key: 'files' | 'photos'; label: string; url: string; onAdd?: () => void }>
   /** False leaves the email row out: the crew's window for a helper or a sub (punch list #355, the crew half). */
   emailRow?: boolean
+  /** Quiet words after the name: *runs this job*, when the name is our lead's and not the customer's (a sub's window, v2.7380). */
+  nameNote?: string
 }) {
   const { showToast } = useToastContext()
   const promptDialog = usePromptDialog()
@@ -120,7 +123,10 @@ export function JobWindowWho({
   const value: CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-link)' }
   return (
     <div data-testid="job-window-who" style={{ display: 'grid', gap: 6 }}>
-      <div style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--text-strong)', wordBreak: 'break-word' }}>{name || '[missing customer name]'}</div>
+      <div style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--text-strong)', wordBreak: 'break-word' }}>
+        {name || '[missing customer name]'}
+        {nameNote ? <span data-testid="job-window-who-note" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>{nameNote}</span> : null}
+      </div>
       {gcName ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>GC: {gcName}</div> : null}
       {developmentName ? (
         onOpenDevelopment ? (

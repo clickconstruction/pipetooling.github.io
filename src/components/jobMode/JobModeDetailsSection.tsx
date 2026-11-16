@@ -8,6 +8,9 @@ import {
 } from '../../lib/fetchStreetViewPreview'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
+import { useJobLeadContact } from '../../hooks/useJobLeadContact'
+import { useFirstAssistantDispatchPhone } from '../../hooks/useFirstAssistantDispatchPhone'
+import { ourLeadWords, showsOurLead } from '../../lib/jobs/jobWindowCrewPhone'
 import { useToastContext } from '../../contexts/ToastContext'
 import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -249,10 +252,16 @@ export default function JobModeDetailsSection({
     [readsLines, contact, messages],
   )
 
+  // A subcontractor reads who runs the job for us and their number, never the customer's number or email (punch
+  // list #355, v2.7380, Taunya's "Our lead's"): the same rule as their job window.
+  const forSub = showsOurLead(role)
+  const jobLead = useJobLeadContact(jobId, forSub)
+  const officePhone = useFirstAssistantDispatchPhone(forSub)
+  const ourLead = forSub && jobLead.loaded ? ourLeadWords(jobLead.lead, officePhone?.display ?? null) : null
   const name = contact?.customer_name?.trim() ?? ''
-  const phone = contact?.customer_phone?.trim() ?? ''
-  const email = contact?.customer_email?.trim() ?? ''
-  const hasContact = Boolean(name || phone || email)
+  const phone = forSub ? '' : (contact?.customer_phone?.trim() ?? '')
+  const email = forSub ? '' : (contact?.customer_email?.trim() ?? '')
+  const hasContact = Boolean(name || phone || email || ourLead)
 
   /** The address, copied (#125 PR 7): the clipboard, or a window to copy from when the app cannot reach it. */
   const copyEmail = async () => {
@@ -311,6 +320,16 @@ export default function JobModeDetailsSection({
                 <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-gray-800)' }}>
                   {name}
                 </span>
+              ) : null}
+              {ourLead ? (
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="job-mode-our-lead">
+                  <span style={{ fontWeight: 600, color: 'var(--text-gray-800)' }}>{ourLead.name}</span> {ourLead.note}
+                </span>
+              ) : null}
+              {ourLead?.phone ? (
+                <button type="button" style={contactLinkBtn} aria-label={`Call ${ourLead.name} at ${ourLead.phone}`} onClick={() => openInExternalBrowser(`tel:${ourLead.phone}`)}>
+                  {ourLead.phone}
+                </button>
               ) : null}
               {phone ? (
                 <button

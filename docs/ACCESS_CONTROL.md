@@ -873,6 +873,8 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **The job's own row** (v2.7375, `20261116020000_jobs_ledger_crew_reads.sql`): the same `helper_on_job(job)` opens the job's `jobs_ledger` row to a person on its crew, so a helper, a superintendent or an estimator reads the customer, the status and the plans before their first clock-in there. Until then the row opened to a field role only through a clock session of their own on the job, or through the subcontractor's team-or-schedule rule. Read only.
 
+**Our lead, for a subcontractor** (v2.7380, `20261116040000_job_lead_contact.sql`): a subcontractor's job window shows who runs the job for us and their number, never the customer's number or email (Taunya, 2026-11-15). `job_lead_contact(job)`, a SECURITY DEFINER read, answers the first master technician on the job's team, else the first superintendent, to a caller on the job's crew or in the office. The rule is the window's: the job's row, which a subcontractor on the crew reads, still holds the customer's number.
+
 ---
 
 ### estimator (Estimator)

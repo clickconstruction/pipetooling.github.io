@@ -94,7 +94,9 @@ import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
 import { JobWindowThread, JobWindowWho, PhoneFold, PhoneRow, PhoneSectionTitle } from './JobWindowPhoneSections'
 import { JobWindowMoreSheet } from './JobWindowMoreSheet'
 import { watchSmallPresses } from './jobWindowPressPad'
-import { CREW_FOLD_TITLES, crewBlockLabel, crewFolds, crewQuietLine, crewSheetRows, keepCrewFolds, lastNoteWords, readCrewFolds, type CrewFoldKey, type CrewNoteSource } from '../../lib/jobs/jobWindowCrewPhone'
+import { CREW_FOLD_TITLES, crewBlockLabel, crewFolds, crewQuietLine, crewSheetRows, keepCrewFolds, lastNoteWords, ourLeadWords, readCrewFolds, showsOurLead, type CrewFoldKey, type CrewNoteSource, type OurLeadWords } from '../../lib/jobs/jobWindowCrewPhone'
+import { useJobLeadContact } from '../../hooks/useJobLeadContact'
+import { useFirstAssistantDispatchPhone } from '../../hooks/useFirstAssistantDispatchPhone'
 import { CrewTodaysWork } from './CrewTodaysWork'
 import { foldCountWords, keepPhoneFolds, nextOnSite, NOTHING_SCHEDULED, OPEN_THE_CALENDAR, PHONE_FOLDS, readPhoneFolds, waitingOnWords, type PhoneFoldKey } from '../../lib/jobs/jobWindowPhoneSections'
 import type { JobThreadStampKind } from '../../lib/jobThreadNoteStampBody'
@@ -376,7 +378,13 @@ export function DetailJobModalCustomerPanel({
   customerId,
   onLeave,
   onOpenCustomerDoor,
+  ourLead,
 }: {
+  /**
+   * A subcontractor's window (punch list #355, v2.7380): who runs the job for us and their number stand where the
+   * customer's number and email were. Null while the read is out; absent for everyone else.
+   */
+  ourLead?: OurLeadWords | null
   customerName: string | null | undefined
   customerPhone: string | null | undefined
   customerEmail: string | null | undefined
@@ -398,8 +406,9 @@ export function DetailJobModalCustomerPanel({
   const { showToast } = useToastContext()
   const promptDialog = usePromptDialog()
   const name = customerName?.trim() ?? ''
-  const phone = customerPhone?.trim() ?? ''
-  const email = customerEmail?.trim() ?? ''
+  const forSub = ourLead !== undefined
+  const phone = forSub ? (ourLead?.phone ?? '') : (customerPhone?.trim() ?? '')
+  const email = forSub ? '' : (customerEmail?.trim() ?? '')
   const gcNameRaw = gcCustomerName?.trim() ?? ''
   // v2.1529 (Option B): the GC line only earns its row when it names a DIFFERENT
   // company — "Hadlow Construction Group" twice was pure noise.
@@ -514,7 +523,12 @@ export function DetailJobModalCustomerPanel({
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{devName}</span>
         </div>
       ) : null}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+      {forSub && ourLead ? (
+        <div data-testid="customer-panel-our-lead" style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-strong)' }}>
+          <span style={{ fontWeight: 600 }}>{ourLead.name}</span> <span style={{ color: 'var(--text-muted)' }}>{ourLead.note}</span>
+        </div>
+      ) : null}
+      <div style={forSub && !ourLead ? { display: 'none' } : { display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: forSub ? '0.3rem' : '0.5rem' }}>
         {phone ? (
           <span
             role="link"
@@ -531,7 +545,7 @@ export function DetailJobModalCustomerPanel({
               }
             }}
             title="Call phone number"
-            aria-label="Customer phone — call number"
+            aria-label={forSub ? `Call ${ourLead?.name ?? 'the office'}` : 'Customer phone — call number'}
             style={contactChipStyle}
           >
             📞 <span style={chipTextStyle}>{phone}</span>
@@ -576,7 +590,7 @@ export function DetailJobModalCustomerPanel({
               ⧉
             </button>
           </span>
-        ) : (
+        ) : forSub ? null : (
           <span style={missingChipStyle} title="No email on file">✉️ <span style={chipTextStyle}>no email</span></span>
         )}
       </div>
@@ -1210,6 +1224,13 @@ export default function DetailJobModal({
   // Today's work (v2.7376): the Plans fold's words, from the section's own read, and a count a landed report bumps.
   const [crewPlansWords, setCrewPlansWords] = useState('')
   const [crewStageRev, setCrewStageRev] = useState(0)
+  // A subcontractor's window (v2.7380, Taunya's "Our lead's"): who runs the job for us, with their number, stands
+  // where the customer's number and email were, on a phone and on a desk. The office's number stands in for a lead
+  // with none on file. Never in pane mode: a sub does not open the tabbed window.
+  const forSub = !paneMode && showsOurLead(authRole)
+  const jobLead = useJobLeadContact(jobId, forSub && open)
+  const officePhone = useFirstAssistantDispatchPhone(forSub && open)
+  const ourLead: OurLeadWords | null | undefined = !forSub ? undefined : jobLead.loaded ? ourLeadWords(jobLead.lead, officePhone?.display ?? null) : null
   const [noteSheetOpen, setNoteSheetOpen] = useState(false)
   const jobDetailDateBandStyle = useMemo(
     (): CSSProperties =>
@@ -2571,14 +2592,18 @@ export default function DetailJobModal({
             {phoneShape && detailJob ? (
               <>
                 <PhoneSectionTitle>Who</PhoneSectionTitle>
+                {forSub && !ourLead ? <p data-testid="crew-window-who-reading" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Reading who runs this job…</p> : (
                 <JobWindowWho
-                  name={detailJob.customer_name?.trim() ?? ''}
-                  phone={detailJob.customer_phone?.trim() ?? ''}
-                  email={detailJob.customer_email?.trim() ?? ''}
+                  // A sub's window names our lead and their number; the customer is on the title's quiet line.
+                  name={forSub ? (ourLead?.name ?? '') : (detailJob.customer_name?.trim() ?? '')}
+                  nameNote={forSub ? ourLead?.note : undefined}
+                  phone={forSub ? (ourLead?.phone ?? '') : (detailJob.customer_phone?.trim() ?? '')}
+                  email={forSub ? '' : (detailJob.customer_email?.trim() ?? '')}
                   // The crew's window: no email row for a helper or a sub, and the portal press is the office's.
                   emailRow={!(phoneCrew && isSubcontractorLikeRole(authRole as UserRole))}
                   customerId={phoneCrew ? null : 'customer_id' in detailJob ? (detailJob.customer_id ?? null) : null}
                   gcName={(() => {
+                    if (forSub) return ''
                     const gc = ('gc_customer_name' in detailJob ? detailJob.gc_customer_name : (detailJob.gcCustomer?.name ?? null))?.trim() ?? ''
                     return gc.toLowerCase() === (detailJob.customer_name?.trim() ?? '').toLowerCase() ? '' : gc
                   })()}
@@ -2612,6 +2637,7 @@ export default function DetailJobModal({
                     { key: 'photos', label: 'Photos', url: (fullJob ?? limitedJob)?.job_pictures_link?.trim() ?? '', onAdd: canEditJobLinks ? () => { setAddLinkTarget({ field: 'job_pictures_link', label: 'Customer Photos' }); setAddLinkUrl('') } : undefined },
                   ]}
                 />
+                )}
               </>
             ) : null}
             <div style={phoneShape ? { display: 'none' } : { display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -2622,6 +2648,7 @@ export default function DetailJobModal({
                     customerId={'customer_id' in detailJob ? (detailJob.customer_id ?? null) : null}
                     customerPhone={detailJob.customer_phone}
                     customerEmail={detailJob.customer_email}
+                    ourLead={ourLead}
                     gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
                     developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
                     developmentId={detailJob.development_id ?? null}

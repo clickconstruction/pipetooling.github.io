@@ -98,4 +98,22 @@ describe('Job Mode Job updates: the customer’s lines', { timeout: 15_000 }, ()
     expect(screen.queryAllByTestId('job-updates-customer-line')).toHaveLength(0)
     expect(asked.every((j) => j === null)).toBe(true)
   })
+
+  it('a subcontractor reads who of ours to call, never the customer’s number (punch list #355)', async () => {
+    scenario.role = 'subcontractor'
+    await mount()
+    // No lead is on the job here, so the card names the office; the customer's name stays and their number does not.
+    const lead = await screen.findByTestId('job-mode-our-lead')
+    expect(lead.textContent).toBe('The office no one of ours is on this job yet')
+    expect(screen.getByText('Dana Whitfield')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('(512) 555-0182')
+    expect(screen.queryByRole('button', { name: /Call customer/ })).toBeNull()
+  })
+
+  it('a helper still reads the customer’s number', async () => {
+    scenario.role = 'helpers'
+    await mount()
+    expect(await screen.findByRole('button', { name: 'Call customer at (512) 555-0182' })).toBeTruthy()
+    expect(screen.queryByTestId('job-mode-our-lead')).toBeNull()
+  })
 })
