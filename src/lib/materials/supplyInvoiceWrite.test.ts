@@ -88,6 +88,43 @@ describe('supplyInvoicePayload', () => {
   })
 })
 
+describe('interest and late fees (v2.7467)', () => {
+  it('sends the interest columns only when they change, so an untouched save works before they exist', () => {
+    const untouched = supplyInvoicePayload(draft(), null)
+    expect(untouched.ok && 'is_interest' in untouched.payload).toBe(false)
+    const same = supplyInvoicePayload(draft({ interest: { on: true, lateInvoiceId: 'inv-late' } }), { id: 'x', is_interest: true, late_invoice_id: 'inv-late' })
+    expect(same.ok && ('is_interest' in same.payload || 'late_invoice_id' in same.payload)).toBe(false)
+    const off = supplyInvoicePayload(draft({ interest: { on: false, lateInvoiceId: '' } }), null)
+    expect(off.ok && 'is_interest' in off.payload).toBe(false)
+  })
+
+  it('marks a bill interest, ties it to the late bill, and keeps it off the job account', () => {
+    const built = supplyInvoicePayload(draft({ interest: { on: true, lateInvoiceId: ' inv-late ' } }), null)
+    expect(built.ok && built.payload).toMatchObject({ is_interest: true, late_invoice_id: 'inv-late' })
+    expect(built.ok && 'on_job_account' in built.payload).toBe(false)
+  })
+
+  it('unmarks it and unties the late bill together', () => {
+    const built = supplyInvoicePayload(draft({ interest: { on: false, lateInvoiceId: 'inv-late' } }), { id: 'x', is_interest: true, late_invoice_id: 'inv-late' })
+    expect(built.ok && built.payload).toMatchObject({ is_interest: false, late_invoice_id: null })
+  })
+
+  it('never marks a credit memo as interest', () => {
+    const built = supplyInvoicePayload(draft({ kind: 'credit', interest: { on: true, lateInvoiceId: 'inv-late' } }), null)
+    expect(built.ok && 'is_interest' in built.payload).toBe(false)
+  })
+
+  it('takes the jobs off before it marks the row, and writes none back', async () => {
+    const db = fakeDb()
+    const saved = await saveSupplyInvoice(db, draft({ interest: { on: true, lateInvoiceId: '' } }), { id: 'inv-1' })
+    expect(saved.ok).toBe(true)
+    expect(db.calls).toEqual(['deleteAllocations', 'update', 'deleteAllocations'])
+    const fresh = fakeDb()
+    await saveSupplyInvoice(fresh, draft({ interest: { on: true, lateInvoiceId: '' } }), null)
+    expect(fresh.calls).toEqual(['insert'])
+  })
+})
+
 describe('saveSupplyInvoice', () => {
   it('a new row: insert, then the allocations deleted and inserted', async () => {
     const db = fakeDb()

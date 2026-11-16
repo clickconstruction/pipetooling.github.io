@@ -36,6 +36,8 @@ export type SupplyBillCardRow = {
   paidBy?: string
   /** On an unpaid bill a payment has taken part of: `$300.00 paid · $512.40 left of $812.40`. `amount` is then what is left. */
   partPaid?: string
+  /** Interest or a late fee: the row's title, `Interest on S4398120` or `Interest or a late fee`. It is not a job cost. */
+  interest?: string | null
   /** A typed payment stands behind this paid bill: the press opens that payment, since Mark unpaid would not unmake it. */
   seePayment?: boolean
   link: string | null
@@ -120,13 +122,15 @@ export function SupplyHouseBillsCard({
     const po = b.purchase_order_number?.trim() ?? ''
     const bare = jobAccountsInUse && isBareOfJobAccount({ id: b.id, due_date: b.due_date, amount: b.amount, is_paid: b.is_paid, on_job_account: b.on_job_account, hasJob: b.jobs.length > 0 })
     const lateDays = !b.is_paid && b.due_date && b.due_date < todayYmd ? daysBetween(b.due_date, todayYmd) : 0
-    const title = b.jobs.length > 0 ? b.jobs.map((j) => (b.jobs.length > 1 ? `${j.label} (${j.pct}%)` : j.label)).join(', ') : po || 'No job on this bill'
+    // Interest or a late fee leads with what it is: it is on no job, by rule, so "No job on this bill" would misread.
+    const title = b.interest ? b.interest : b.jobs.length > 0 ? b.jobs.map((j) => (b.jobs.length > 1 ? `${j.label} (${j.pct}%)` : j.label)).join(', ') : po || 'No job on this bill'
     const facts: ReactNode[] = []
     if (paidNow) facts.push(<b key="paidnow">Paid today</b>)
     else if (b.is_paid && b.paidYmd) facts.push(<span key="paid">paid {billDateWords(b.paidYmd, todayYmd)}</span>)
     if (b.is_paid && b.paidBy) facts.push(<span key="paidby" data-testid="supply-bill-paid-by">{b.paidBy}</span>)
     if (!b.is_paid && b.partPaid) facts.push(<b key="part" data-testid="supply-bill-part-paid">{b.partPaid}</b>)
     facts.push(<span key="inv">{b.invoice_number}</span>)
+    if (b.interest) facts.push(<span key="nojob">not a job cost</span>)
     // The PO's words lead the row when there is no job; they are not said twice.
     if (po && b.jobs.length > 0) {
       facts.push(
@@ -148,6 +152,11 @@ export function SupplyHouseBillsCard({
         <div style={{ flex: '1 1 240px', minWidth: 0 }}>
           <div style={{ fontSize: '0.9rem', fontWeight: 600, color: b.jobs.length > 0 || po ? 'var(--text-strong)' : 'var(--text-muted)', overflowWrap: 'anywhere' }} data-testid="supply-bill-title">
             {title}{' '}
+            {b.interest ? (
+              <span style={tag('amber')} title="Interest or a late fee the house charged. It is paid like a bill and kept off every job's cost." data-testid="supply-bill-interest">
+                Interest
+              </span>
+            ) : null}{' '}
             {b.on_job_account === true && (
               <span style={tag('green')} title="On the house's job account. If this goes unpaid, the house bills the property owner, not you.">
                 Job acct

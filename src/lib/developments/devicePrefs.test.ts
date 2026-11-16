@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { isFolded, readFolds, readMoneySort, readScoreboardCut, readScoreboardWindow, toggleFold, writeFolds, writeMoneySort, writeScoreboardCut, writeScoreboardWindow } from './devicePrefs'
+import { isFolded, readFolds, readMoneySort, readPlansView, readScoreboardCut, readScoreboardWindow, toggleFold, writeFolds, writeMoneySort, writePlansView, writeScoreboardCut, writeScoreboardWindow } from './devicePrefs'
 
 // The node test environment has no window; a Map-backed stand-in is installed per test.
 const g = globalThis as unknown as { window?: unknown }
@@ -128,5 +128,23 @@ describe('the Scoreboard’s cut and window (v2.6558)', () => {
     writeScoreboardCut(D, 'part')
     expect(readScoreboardCut(D)).toBe('job')
     expect(readScoreboardWindow(D)).toBe('all')
+  })
+})
+
+describe('readPlansView / writePlansView', () => {
+  it('reads the parts table until By date is written, and the table leaves no key', () => {
+    expect(readPlansView(D)).toBe('part')
+    writePlansView(D, 'date')
+    expect(store.get('pt.development.harlow.plans.view')).toBe('date')
+    expect(readPlansView(D)).toBe('date')
+    writePlansView(D, 'part')
+    expect(store.has('pt.development.harlow.plans.view')).toBe(false)
+  })
+  it('reads the parts table when the store is blocked or holds anything else', () => {
+    store.set('pt.development.harlow.plans.view', 'timeline')
+    expect(readPlansView(D)).toBe('part')
+    throwing = true
+    expect(readPlansView(D)).toBe('part')
+    expect(() => writePlansView(D, 'date')).not.toThrow()
   })
 })

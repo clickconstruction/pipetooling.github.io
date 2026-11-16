@@ -128,6 +128,6 @@ BEGIN
      WHERE (i.amount > 0 AND (pg_temp.on_bill(i.id) > i.amount + 0.005 OR i.is_paid IS DISTINCT FROM (pg_temp.on_bill(i.id) >= i.amount - 0.005)))
   ) = 0, 'every bill reads paid exactly when its lines cover it, and none carries more than it is for');
   PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_payments p WHERE pg_temp.on_account(p.id) < -0.005) = 0, 'no payment places more than it sent');
-  RAISE NOTICE 'supply house payments: ALL PASSED';
+  RAISE NOTICE 'L the moves agree PASSED';
 END;
 $$;

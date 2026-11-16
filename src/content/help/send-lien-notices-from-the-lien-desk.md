@@ -175,6 +175,7 @@ The last work was in August. July's notice window closed on Sep 15, and nobody n
 The **By job** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first.
 
 - **GC** turns the list into one GC's book.
+- A blue line like *412 Ridgeline Dr · 7 jobs here ›* opens [every job at that property](/help/see-every-job-at-one-property-on-the-lien-desk).
 - **Show** switches between *Something due* and *All*. Something due holds the next 30 days, plus any closed window nobody noted. All adds the filed liens whose year is running and the dimmed jobs whose lien is gone. When nothing is due, the list offers **Show All ›**.
 - A row opens the job on the pane its next step belongs to. A job the desk does not list yet opens its Lien window.
 - {{button:outline|⎙ Print the grid}} prints counsel's table for the rows shown, one job per row. A blank with a footnote marks a fact the app does not hold yet.
@@ -434,6 +435,8 @@ Each card has its own row of steps. The step the envelope is on is blue. A card 
 3. **Record the mailing.** The button names what it will do, like {{button:blue|Record 2 mailings · 1 waits ▸}}. Each row with every envelope numbered is recorded now. Each notice is written to its job with every month it covered. The courtesy emails go out, and the row moves to **Sent**. A notice with a number missing waits in the run until it is typed. A notice marked in red stays too, with its reason and its doors. The ready ones record now.
 
 Nothing moves to Sent without its tracking number. The **Saved copy** boxes under More take a Drive link to the packet as printed.
+
+**Keep what you mailed.** Before you seal an envelope, scan or photograph the papers in it. On that notice's row, press {{button:outline|Add what was mailed}} and pick the file. A PDF or a picture up to 10 MB is taken. The file goes into the job's Drive folder, under **Sent by us**. The row then lists the file. Press its name to open it in Drive. Press {{button:outline|Add another}} for a second file. The press shows once the notice has printed. When you record the mailing, the notice's record keeps the link as its saved copy. So anyone can see later what went out.
 
 A printed notice waits on the desk in {{chip:yellow|Approved · to mail}}. Open it and press {{button:blue|Enter mail numbers · N ▸}} to go back to the run. The journey then shows **Sent** as done and **In the mail** as the step it is on. Under More the print button reads **Print it again**, for a lost copy only. If the notice was never mailed, press {{button:outline|Back to Approved · to print}}. The approval stands. A signature on the notice comes off, so a signed notice asks first. Press {{button:blue|Take back the notice}} and the leader signs it again.
 

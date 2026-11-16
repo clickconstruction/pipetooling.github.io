@@ -101,6 +101,14 @@ describe('lienRunChecklistRows', () => {
   })
 })
 
+describe('what was mailed rides on the row', () => {
+  it('a row carries its notice’s mailed files, and none reads as an empty list', () => {
+    const kept = { url: 'https://drive.google.com/file/d/f1/view', driveFileId: 'f1', name: 'Lien notice as mailed · 650 · 2026-11-16.pdf', at: '2026-11-16T18:00:00.000Z', by: 'u1' }
+    const rows = lienRunChecklistRows({ notices: [notice({ itemId: 'a', mailedCopies: [kept] }), notice({ itemId: 'b' })] })
+    expect(rows.map((r) => r.mailedCopies)).toEqual([[kept], []])
+  })
+})
+
 describe('lienRunBatchPlans', () => {
   const rows = () =>
     lienRunChecklistRows({
