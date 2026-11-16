@@ -263,6 +263,16 @@ The text lands in the customer's thread on the job. Their answer comes back to M
 
 **Text it…** shows only on a map that is on a job. A map on no job has no customer to text.
 
+### They give their name first
+
+The page asks **Your name** before it shows the map. It says what we keep before they type.
+
+We keep the name, the phone or computer they opened it on, and the time. A name is whatever they type. We cannot check it.
+
+The page remembers the name on that phone. The same person is not asked again.
+
+A teammate who is signed in types nothing. The page uses the name on their account.
+
 ### What they see
 
 They see the map's name, its lines, and its places with their words and photos. They can press **Directions to the start**.
@@ -275,7 +285,9 @@ Never put a gate code on a painted map. A link shows everything on the map to wh
 
 The page has a press named **Show where I am**. It puts a blue dot on the map for the reader.
 
-That dot stays on their phone. We never see where a reader is.
+The line under the press says we will see where they are while it is on. We keep the first place and the latest one. We never keep a trail.
+
+A reader who does not press it shares no place. The map still works for them.
 
 ### End a link
 
