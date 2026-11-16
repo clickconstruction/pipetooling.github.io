@@ -1,0 +1,196 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../types/database'
+import { fetchAllRows } from './supabasePaging'
+import type { InKindCostLine } from './inKind/inKindCost'
+import { readInKindCostLinesForJob } from './inKind/inKindCostReads'
+import { withSupabaseRetry } from '../utils/errorHandling'
+import { EMPTY_CARD_CHARGE_EXCLUSIONS, type CardChargeExclusions } from './jobs/cardChargeAllocationFilter'
+import { readCardChargeExclusions } from './jobs/cardChargeExclusionsReads'
+import { readCategoryTags, readLabelIdByTxId } from './banking/categoryTagsReads'
+import { buildCategoryTagLookups, categoryTagForCharge, pickFuelTag, type CategoryTagRow } from './banking/categoryTags'
+import { costLineTags } from './mercuryTagSplit'
+import { jobCardCostLines, type JobCardCostLine } from './jobs/jobCardCostLines'
+import {
+  jobCardChargesCountedFromLines,
+  mercuryLinesFromRows,
+  supplyInvoiceTotalFromRows,
+  supplyLinesFromRows,
+  tallyLinesFromRows,
+  type JobMaterialsCostSnapshot as SharedJobMaterialsCostSnapshot,
+  type JobMercuryAllocLine,
+  type JobSupplyInvoiceLine,
+  type JobTallyPartLine,
+} from '../../supabase/functions/_shared/jobMaterialsCostLines'
+
+// The job materials-cost snapshot's reads, with the client passed in (punch list #360, PR 4), so a job's costs can be
+// read as the service role on the edge; `fetchJobMaterialsCostSnapshot.ts` binds the app's client and re-exports the
+// shared kernel's line shapes.
+
+/**
+ * The shared snapshot plus the browser's cost-line split of the card charges (punch list
+ * #52): ⛽ Fuel & gas and any other tag flagged "show as cost line", clamped to the card
+ * charges that count, and each transaction's tag for a marker on its line. Absent or empty
+ * when the tags or labels cannot be read (RLS keeps them to office staff).
+ */
+export type JobMaterialsCostSnapshot = SharedJobMaterialsCostSnapshot & {
+  cardCostLines?: JobCardCostLine[]
+  cardTagByTxId?: ReadonlyMap<string, CategoryTagRow>
+  /** The job's card transactions in the fuel family's tag — the cost timeline's ⛽ stream. */
+  cardFuelTxIds?: ReadonlySet<string>
+  /**
+   * What a partner gave instead of money and the office put on this job (punch list #301, v2.6836): a material cost
+   * no card and no supply house bill carries. Empty when there is none, or when the reader is not the office.
+   */
+  inKindLines?: InKindCostLine[]
+}
+
+/**
+ * Supply/Mercury/tally snapshot for a job (matches Edit Job modal materials loaders).
+ */
+export async function readJobMaterialsCostSnapshot(db: SupabaseClient<Database>, jobId: string): Promise<JobMaterialsCostSnapshot> {
+  let supplyTotal = 0
+  let supplyRpcFailed = false
+  try {
+    const invRows = await withSupabaseRetry(
+      () => db.rpc('get_invoice_amounts_for_jobs', { p_job_ids: [jobId] }),
+      'job materials cost snapshot invoice amounts',
+    )
+    supplyTotal = supplyInvoiceTotalFromRows(invRows as { job_id: string; invoice_amount: string | number }[] | null, jobId)
+  } catch {
+    supplyRpcFailed = true
+  }
+
+  let supplyLines: JobSupplyInvoiceLine[] = []
+  try {
+    const raw = await withSupabaseRetry(
+      async () =>
+        db
+          .from('supply_house_invoice_job_allocations')
+          .select('pct, supply_house_invoices(invoice_number, invoice_date, amount, is_paid, on_job_account, supply_houses(name))')
+          .eq('job_id', jobId),
+      'job materials cost snapshot supply allocations',
+    )
+    supplyLines = supplyLinesFromRows(raw)
+  } catch {
+    supplyLines = []
+  }
+
+  let mercuryLines: JobMercuryAllocLine[] = []
+  let mercuryFailed = false
+  // The bank's category per transaction — the cost-line classifier's fallback when nobody has labelled it.
+  const categoryByTxId = new Map<string, unknown>()
+  try {
+    // Paged (v2.6465): PostgREST cuts an unpaged answer at 1,000 rows with no error, and a busy job's
+    // card lines near that. The id after created_at keeps the pages from shuffling.
+    const label = 'job materials cost snapshot mercury allocations'
+    const raw = await fetchAllRows(
+      async (from, to) => ({
+        data: await withSupabaseRetry(
+          async () =>
+            db
+              .from('mercury_transaction_job_allocations')
+              .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, raw, mercury_category)')
+              .eq('job_id', jobId)
+              .order('created_at', { ascending: true })
+              .order('id')
+              .range(from, to),
+          label,
+        ),
+        error: null,
+      }),
+      label,
+    )
+    mercuryLines = mercuryLinesFromRows(raw)
+    for (const row of raw as Array<{ mercury_transaction_id?: string | null; mercury_transactions?: unknown }>) {
+      const tx = Array.isArray(row.mercury_transactions) ? row.mercury_transactions[0] : row.mercury_transactions
+      const category = (tx as { mercury_category?: unknown } | null | undefined)?.mercury_category
+      if (row.mercury_transaction_id && category != null) categoryByTxId.set(row.mercury_transaction_id, category)
+    }
+  } catch {
+    mercuryFailed = true
+    mercuryLines = []
+  }
+
+  // The one card rule's lookups (Jobs → Job Summary's, v2.2692). Each degrades to "everything
+  // counts" on its own when RLS hides it; a throw here leaves the lines counted as before.
+  const txIds = [...new Set(mercuryLines.map((l) => l.mercuryTransactionId).filter((id): id is string => !!id))]
+  let cardExclusions: CardChargeExclusions = EMPTY_CARD_CHARGE_EXCLUSIONS
+  try {
+    cardExclusions = await readCardChargeExclusions(db, txIds)
+  } catch {
+    cardExclusions = EMPTY_CARD_CHARGE_EXCLUSIONS
+  }
+
+  // The cost lines (punch list #52): the tags, the accounting labels on the job's
+  // transactions, and Job Summary's classifier. Tags and labels are office-staff reads;
+  // any failure leaves the card charges as one line, as before.
+  let cardCostLines: JobCardCostLine[] = []
+  let cardTagByTxId: ReadonlyMap<string, CategoryTagRow> = new Map()
+  const cardFuelTxIds = new Set<string>()
+  if (txIds.length > 0) {
+    try {
+      const [tagRows, labelIdByTxId] = await Promise.all([readCategoryTags(db), readLabelIdByTxId(db, txIds)])
+      const lookups = buildCategoryTagLookups(tagRows.tags, tagRows.members)
+      const split = jobCardCostLines({
+        lines: mercuryLines,
+        exclusions: cardExclusions,
+        labelIdByTxId,
+        categoryByTxId,
+        lookups,
+        tags: costLineTags(lookups),
+        countedCardUsd: jobCardChargesCountedFromLines(mercuryLines, cardExclusions),
+      })
+      cardCostLines = split.costLines
+      cardTagByTxId = split.tagByTxId
+      const fuelTag = pickFuelTag(tagRows.tags)
+      if (fuelTag) {
+        for (const id of txIds) {
+          const cat = categoryByTxId.get(id)
+          const bank = typeof cat === 'string' ? cat : cat && typeof cat === 'object' && typeof (cat as { name?: unknown }).name === 'string' ? (cat as { name: string }).name : null
+          if (categoryTagForCharge(lookups, labelIdByTxId.get(id) ?? null, bank)?.id === fuelTag.id) cardFuelTxIds.add(id)
+        }
+      }
+    } catch {
+      cardCostLines = []
+      cardTagByTxId = new Map()
+      cardFuelTxIds.clear()
+    }
+  }
+
+  let tallyLines: JobTallyPartLine[] = []
+  let tallyFailed = false
+  try {
+    const raw = await withSupabaseRetry(
+      () => db.rpc('list_tally_parts_with_po'),
+      'job materials cost snapshot tally parts',
+    )
+    tallyLines = tallyLinesFromRows(raw, jobId)
+  } catch {
+    tallyFailed = true
+    tallyLines = []
+  }
+
+  // In kind (punch list #301): the lines put on this job. The office's read; anyone else gets none, and a failed read
+  // leaves the cost as it was before.
+  let inKindLines: InKindCostLine[] = []
+  try {
+    inKindLines = await readInKindCostLinesForJob(db, jobId)
+  } catch {
+    inKindLines = []
+  }
+
+  return {
+    supplyInvoiceTotal: supplyTotal,
+    supplyInvoiceRpcFailed: supplyRpcFailed,
+    supplyInvoiceLines: supplyLines,
+    mercuryAllocLines: mercuryLines,
+    mercuryFetchFailed: mercuryFailed,
+    cardExclusions,
+    cardCostLines,
+    cardTagByTxId,
+    cardFuelTxIds,
+    tallyPartLines: tallyLines,
+    tallyFetchFailed: tallyFailed,
+    inKindLines,
+  }
+}

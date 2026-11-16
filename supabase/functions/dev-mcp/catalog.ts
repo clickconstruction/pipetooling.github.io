@@ -2113,6 +2113,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "sync-mercury-transactions",
   "sync-resend-emails",
   "sync-salary-sessions",
+  "team-scores",
   "test-email",
   "travel-time-batch",
   "tt-bridge",

@@ -88,7 +88,8 @@ describe('the copy of the kernels', () => {
     // The Bids row aliases are types alone (v2.6804): the submittal kernels the dev seat reads take them from src's own file.
     // The database's types are held slim (v2.7256), for their types alone.
     // The core of the database types (punch list #359) is held for the inlined aliases' enums and Json, for their types alone.
-    expect(typeFiles).toEqual(['lib/bids/bidPricingEngineTypes.ts', 'lib/gc/types.ts', 'lib/messages/lineFileTypes.ts', 'types/bids.ts', 'types/database.ts', 'types/databaseCore.ts'])
+    // Job Summary's row types (punch list #360, PR 4): the team scores' cost reads take a card row's shape from them.
+    expect(typeFiles).toEqual(['lib/bids/bidPricingEngineTypes.ts', 'lib/gc/types.ts', 'lib/messages/lineFileTypes.ts', 'types/bids.ts', 'types/database.ts', 'types/databaseCore.ts', 'types/jobSummary.ts'])
   })
 })
 
@@ -140,9 +141,9 @@ describe('the slim database types (v2.7256: a deploy uploads a type import too, 
     expect(kept.has('Tables vehicles')).toBe(false)
   })
 
-  it('reads the Bridge email for names: it takes its client type from the slim file, so the deploy uploads no whole file', () => {
-    expect(typeReaders).toEqual(['supabase/functions/bridge-weekly-sheet/index.ts'])
-    expect(readFileSync(join(ROOT, typeReaders[0]!), 'utf8')).toContain("import type { Database } from '../_shared/gcKernels/types/database.ts'")
+  it('reads the Bridge email and the team scores for names: each takes its client type from the slim file, so the deploy uploads no whole file', () => {
+    expect(typeReaders).toEqual(['supabase/functions/bridge-weekly-sheet/index.ts', 'supabase/functions/team-scores/index.ts'])
+    for (const reader of typeReaders) expect(readFileSync(join(ROOT, reader), 'utf8')).toContain("import type { Database } from '../_shared/gcKernels/types/database.ts'")
   })
 })
 

@@ -119,6 +119,7 @@ when_to_read:
    - [gc-money-monday-email](#gc-money-monday-email)
    - [people-week-email](#people-week-email)
    - [bridge-weekly-sheet](#bridge-weekly-sheet)
+   - [team-scores](#team-scores)
    - [your-week-email](#your-week-email)
    - [gc-office-notices](#gc-office-notices)
    - [gmail-sync](#gmail-sync)
@@ -1923,6 +1924,24 @@ The email (`_shared/peopleWeekEmail.ts`, which What the team sees renders on sam
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (a dev's dry run), `RESEND_API_KEY`, `CRON_SECRET`, `MERCURY_API_KEY` (without it the typed figure stands in and the mail says the bank was not read), `APP_ORIGIN` (the mail's link to the Bridge; clicktooling.com when unset). **Deploy**: `supabase functions deploy bridge-weekly-sheet --no-verify-jwt` after the merge, with `get-mercury-account-balances` (the shared read) and whatever else `check:edge-drift` names (the function imports each Bridge kernel by its path and the copy's index exports none of them, so a portal that reads the index uploads no Bridge file), then `supabase db push` for the two migrations, so the cron never finds the function missing; then the dry run as a dev.
 
 ---
+
+### team-scores
+
+**Purpose**: the People → Review → Scores read, made on the server (v2.7365, punch list #360 PR 4, Taunya's pick of 2026-11-15 between an edge function, a SQL function and leaving the read in the browser). The two scores are built from wages: every paid field hour is priced at the person's wage, and the hurdle's break-even is the overhead pool, which is office time at the office wage. This function makes the scorecard's reads as the service role and answers with the scores alone, hours and dollars by job, so no wage travels to the browser. It runs the app's own code, not a copy of its arithmetic: `readScorecard` (`src/lib/scorecard/scorecardReads.ts`) and the scorecard kernels from the kernel copy, as `bridge-weekly-sheet` runs the Bridge's. The overhead scan's own header says why: no SQL re-implementation, no second kernel to drift.
+
+**Endpoint**: `POST /functions/v1/team-scores` · **Auth**: `verify_jwt` on (the default), and the gate is read in the function, never taken from the caller: a real account (`REAL_ACCOUNT`), not archived, that is a dev, the owner, or has payroll access by the database's own answer (`has_payroll_access()`, asked as the caller): the scoreboard's gate, `mayReadTeamScores` in `scorecardWire.ts`.
+
+**Body**: `{ windowDays: 28 | 56 | 90 }`, the windows the tab offers and no other (`teamScoresWindowDays`).
+
+**Answers**: `{ ok: true, scores }`, where `scores` is `ScorecardWire`: the browser loader's `ScorecardRead` with its one map as pairs (`scorecardToWire` / `scorecardFromWire`). Or `{ ok: false, error }` with 401 (not signed in), 403 (not the gate, or archived), 400 (a window it does not take), 500 (a read failed; the message is the read's). Test jobs are left out (`readZzTestJobRows`), as on the Bridge. Nothing is written.
+
+**The client** (`src/lib/scorecard/teamScoresIo.ts`, `useScorecard`): asks the function first. A 404 from the gateway means the function is not deployed, and the tab then makes the same reads in the browser as it did before (`loadScorecard.ts` binds the app's client to the same `readScorecard`). Every other refusal is shown in the function's words. The tab says which read it drew (*Read on the server…* / *Read in this browser…*).
+
+**As the service role**: two database functions the reads call decide what to return from `auth.uid()` and would have answered with nothing: `list_people_pay_flags()` (a closed job's team labor would have read every salaried person as hourly) and `get_invoice_amounts_for_jobs()`. `20261116070000_scores_reads_as_service_role.sql` gives each the branch `list_tally_parts_with_po()` has. **Push that migration before the first deploy.**
+
+**The reads take a client** (the same PR): `jobDayLedgerReads.ts`, `jobMaterialsCostSnapshotReads.ts`, `inKind/inKindCostReads.ts`, `jobs/cardChargeExclusionsReads.ts`, `banking/categoryTagsReads.ts`, `jobs/jobChargesTimelineReads.ts` and `scorecard/scorecardReads.ts`, each with its app-side file left as a thin binder of the app's client (`loadJobDayLedger.ts`, `fetchJobMaterialsCostSnapshot.ts`, …), the shape `overheadPoolSnapshotReads.ts` has had since v2.5880.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`. **Deploy**: `supabase functions deploy team-scores`
 
 ### your-week-email
 

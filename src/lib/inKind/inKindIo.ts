@@ -11,7 +11,8 @@ import { isInKindPaymentType } from '../jobs/inKindPayment'
 import { addMonths, parseInKindAddResult, type InKindAddResult, type InKindArrangement, type InKindJob, type InKindLine, type InKindPayment } from './inKindLedger'
 import { bankPaidLines, type BankLine, type BankPaidLine } from './inKindBank'
 import type { InKindDealForDue } from './inKindCreditsDue'
-import { IN_KIND_COST_SELECT, inKindCostLines, type InKindCostLine } from './inKindCost'
+import type { InKindCostLine } from './inKindCost'
+import { readInKindCostLinesForJob } from './inKindCostReads'
 
 export interface InKindBill {
   id: string
@@ -351,12 +352,8 @@ export async function loadInKindDealsForDue(): Promise<InKindDealForDue[]> {
 }
 
 /** The in-kind lines put on one job, as its cost readers need them. The office's read; anyone else gets none. */
-export async function loadInKindCostLinesForJob(jobId: string): Promise<InKindCostLine[]> {
-  const rows = await withSupabaseRetry(
-    () => supabase.from('in_kind_lines').select(IN_KIND_COST_SELECT).eq('cost_job_id', jobId).is('removed_at', null).gt('amount', 0).order('given_on', { ascending: true }).limit(1000),
-    'read what was given in kind on this job',
-  )
-  return inKindCostLines(rows as unknown as Parameters<typeof inKindCostLines>[0])
+export function loadInKindCostLinesForJob(jobId: string): Promise<InKindCostLine[]> {
+  return readInKindCostLinesForJob(supabase, jobId)
 }
 
 // ---------- every arrangement, for the list (PR 4) ----------

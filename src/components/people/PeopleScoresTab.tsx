@@ -6,6 +6,7 @@ import { HURDLE_TARGET_HREF, HURDLE_TARGET_WORDS, hurdleWords, usdPerHour } from
 import { fieldByOwner, fieldRowNote, type FieldOwnerLine, type FieldScoreJobRow } from '../../lib/scorecard/fieldScore'
 import { STALE_PROPOSAL_DAYS, type EstimatorRow } from '../../lib/scorecard/estimatorScore'
 import { SCORECARD_WINDOWS } from '../../lib/scorecard/loadScorecard'
+import { SCORES_SOURCE_WORDS } from '../../lib/scorecard/scorecardWire'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 
@@ -34,7 +35,7 @@ export function PeopleScoresTab() {
   const jobDetail = useJobDetailModal()
   const todayYmd = todayYmdInAppTz()
   const [windowDays, setWindowDays] = useState(56)
-  const { read, loading, error } = useScorecard({ windowDays, todayYmd })
+  const { read, source, loading, error } = useScorecard({ windowDays, todayYmd })
   const [open, setOpen] = useState<'field' | 'bids' | null>(null)
 
   const estimatorAwarded = useMemo(() => read?.estimator.awarded ?? [], [read])
@@ -171,6 +172,12 @@ export function PeopleScoresTab() {
                 {HURDLE_TARGET_WORDS.boardDoor}
               </Link>
             </div>
+            {/* #360 PR 4: where the read was made. The server's read sends the scores and no wage. */}
+            {source ? (
+              <div style={muted} data-testid="scores-source">
+                {source === 'server' ? SCORES_SOURCE_WORDS.server : SCORES_SOURCE_WORDS.browser}
+              </div>
+            ) : null}
             <b style={{ fontSize: '0.86rem', marginTop: 4 }}>How it is scored</b>
             {RULE_LINES.map((line) => (
               <div key={line} style={{ fontSize: '0.8rem', color: 'var(--text-700)' }}>

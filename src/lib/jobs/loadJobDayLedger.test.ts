@@ -47,9 +47,10 @@ const partsLoader = vi.fn(async (_a: { officeJobLedgerId: string; startYmd: stri
   partsDetailByDay: new Map(),
   bucketByTxId: new Map(),
 }))
-vi.mock('../overheadPartsBucketLoader', () => ({ loadOfficePartsUsdByDayExcludingInternalTransfer: (a: never) => partsLoader(a) }))
+// The reads take the client since #360 PR 4; the app's loader binds it.
+vi.mock('../overheadPartsBucketReads', async (orig) => ({ ...(await orig<typeof import('../overheadPartsBucketReads')>()), readOfficePartsUsdByDayExcludingInternalTransfer: (_db: never, a: never) => partsLoader(a) }))
 const loadInputs = vi.fn()
-vi.mock('../overheadPoolSnapshot', async (orig) => ({ ...(await orig<typeof import('../overheadPoolSnapshot')>()), loadOverheadPoolSnapshotInputs: () => loadInputs() }))
+vi.mock('../overheadPoolSnapshotReads', async (orig) => ({ ...(await orig<typeof import('../overheadPoolSnapshotReads')>()), readOverheadPoolSnapshotInputs: () => loadInputs() }))
 
 import { buildOverheadWageLookups } from '../overheadPoolSnapshot'
 import { loadJobDayLedger } from './loadJobDayLedger'

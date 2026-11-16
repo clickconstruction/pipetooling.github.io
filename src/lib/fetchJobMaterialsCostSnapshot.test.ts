@@ -48,13 +48,13 @@ vi.mock('../utils/errorHandling', () => ({
 vi.mock('../../supabase/functions/_shared/mercuryRawDebitCard', () => ({ mercuryDebitCardIdFromRaw: (raw: { cardId?: string } | null) => raw?.cardId ?? null }))
 // The one card rule's lookups (Internal Transfers, invoice links) have their own suite; here they are handed in.
 const cardExclusions = vi.fn()
-vi.mock('./jobs/loadCardChargeExclusions', () => ({ loadCardChargeExclusions: (ids: unknown) => cardExclusions(ids) }))
+vi.mock('./jobs/cardChargeExclusionsReads', () => ({ readCardChargeExclusions: (_db: unknown, ids: unknown) => cardExclusions(ids) }))
 // The cost-line split's reads (tags, accounting labels); the classifier has its own suite.
 const categoryTags = vi.fn()
 const labelIds = vi.fn()
-vi.mock('./banking/categoryTagsData', () => ({
-  loadCategoryTags: () => categoryTags(),
-  fetchLabelIdByTxId: (ids: unknown) => labelIds(ids),
+vi.mock('./banking/categoryTagsReads', () => ({
+  readCategoryTags: () => categoryTags(),
+  readLabelIdByTxId: (_db: unknown, ids: unknown) => labelIds(ids),
 }))
 
 import {

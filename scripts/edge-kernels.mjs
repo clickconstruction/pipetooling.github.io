@@ -77,6 +77,7 @@ export const IMPORTERS = [
   'send-scheduled-reminders',
   'send-workflow-notification',
   'stripe-webhook',
+  'team-scores',
   'walk',
   'your-week-email',
 ]
@@ -257,6 +258,10 @@ export const ENTRIES = {
   'lib/techWeek/weekEmail.ts': { values: [], types: [] },
   'lib/payWeekAnchor.ts': { values: [], types: [] },
   'lib/bridge/weeklySend.ts': { values: [], types: [] },
+  // The team scores (punch list #360, PR 4): the Scores tab's own reads and kernels, run by `team-scores` as the service
+  // role, so the wages that price the hours stay on the database's side. The wire shape is what the function answers.
+  'lib/scorecard/scorecardReads.ts': { values: [], types: [] },
+  'lib/scorecard/scorecardWire.ts': { values: [], types: [] },
   // The review ask's one rule (v2.6007): the {rate} blank, its link, and a job answered never asked again, which the
   // morning run's mint (`_shared/ratingMint.ts`) keeps as the press on Today's sends does.
   'lib/ratings/ratingAsk.ts': { values: [], types: [] },
