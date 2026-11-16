@@ -142,6 +142,7 @@ import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { lienAffidavitOwnerSends, lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
 import { lienAffidavitNoticeTag, type LienRowTag } from '../../lib/jobs/lienRowWords'
+import { lienAffidavitNoticeStanding } from '../../lib/jobs/lienAffidavitNoticeStanding'
 import { lienNoticeNamedMonths, lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
 import { lienAffidavitMonthsByHandCheck } from '../../lib/jobs/lienAffidavitMonthsByHand'
 import { lienMonthCheckedFor, lienMonthCheckedSheetRow, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
@@ -656,7 +657,8 @@ export default function LienDesk({
   const confirmDialog = useConfirmDialog()
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
-  const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(null)
+  // The address can name the retainage notice to open on (v2.7478), as it names an affidavit: `/lien-desk?tab=retainage&job=…`.
+  const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(initialKind === 'retainage' ? (initialJobId ?? null) : null)
   const [retFooterEl, setRetFooterEl] = useState<HTMLDivElement | null>(null)
   // Letter two (v2.3760): the sent footer's two doors — the GC's written okay, and the second letter.
   const [letterTwoMenu, setLetterTwoMenu] = useState(false)
@@ -1001,7 +1003,9 @@ export default function LienDesk({
       if (!data || row.kind !== 'affidavit' || !row.jobId) return null
       const entry = data.affidavits.entries.find((e) => e.jobId === row.jobId)
       if (!entry) return null
-      return lienAffidavitNoticeTag({ isSub: entry.isSub, noticed: Boolean(entry.gates.find((g) => g.key === 'notice')?.ok), sentOn: lienAffidavitOwnerSends(data.filingsByJob[row.jobId]).map((send) => send.sentOn) })
+      // Where that notice stands (`lienAffidavitNoticeStanding.ts`): approved and waiting to be mailed is not *No notice on record*.
+      const standing = lienAffidavitNoticeStanding(entry, data.queue.entries.find((e) => e.jobId === row.jobId))
+      return lienAffidavitNoticeTag({ isSub: entry.isSub, noticed: Boolean(entry.gates.find((g) => g.key === 'notice')?.ok), sentOn: lienAffidavitOwnerSends(data.filingsByJob[row.jobId]).map((send) => send.sentOn), standing })
     },
     [data],
   )
@@ -1109,7 +1113,9 @@ export default function LienDesk({
       waitingRows.map((r) => {
         const notice = r.kind === 'notice' ? data.queue.entries.find((e) => e.jobId === r.jobId) : undefined
         const affidavit = r.kind === 'affidavit' ? data.affidavits.entries.find((e) => e.jobId === r.jobId) : undefined
-        return { kind: r.kind, label: r.title, itemId: notice?.item?.id ?? affidavit?.item?.id ?? null, dueYmd: notice?.earliestDeadline ?? affidavit?.deadline ?? null }
+        // A retainage notice has its message since v2.7478: one each, as a notice's.
+        const retainage = r.kind === 'retainage' ? data.retainage.entries.find((e) => e.jobId === r.jobId) : undefined
+        return { kind: r.kind, label: r.title, itemId: notice?.item?.id ?? affidavit?.item?.id ?? retainage?.item?.id ?? null, dueYmd: notice?.earliestDeadline ?? affidavit?.deadline ?? retainage?.deadline ?? null }
       }),
     )
   }, [data, waitingRows])

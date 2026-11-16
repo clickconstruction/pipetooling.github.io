@@ -12,6 +12,7 @@
  * instead. The words stay the kernel's (`buildLienTimeline`); only the act is decided here. Pure.
  */
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
+import { lienAffidavitNoticeWaits, lienAffidavitNoticeWords, type LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import type { LienTimelineAffidavitState, LienTimelineMove, LienTimelineNextKind, LienTimelineNoticeState } from './lienTimeline'
 import { LIEN_RUN_ACT } from './lienRunWords'
 
@@ -39,6 +40,8 @@ export type LienNextActFacts = {
   noticeState: LienTimelineNoticeState
   /** The affidavit's closed gates, by key, when a fact holds it. */
   missingKeys: ReadonlyArray<LienAffidavitGateKey>
+  /** Where the job's notice stands while the affidavit's notice gate is closed (`lienAffidavitNoticeStanding.ts`); absent reads *Send the notice first ›*. */
+  noticeStanding?: LienAffidavitNoticeStanding | null
   paid: boolean
 }
 
@@ -61,13 +64,14 @@ function footerLabel(state: LienTimelineNoticeState | LienTimelineAffidavitState
 const door = (kind: LienNextActDoor, label: string): LienNextAct => ({ kind, label })
 
 /** The one closed gate the band opens on, in the order the affidavit's gate rows read (`affidavitGates`). */
-function affidavitGateAct(keys: ReadonlyArray<LienAffidavitGateKey>): LienNextAct {
+function affidavitGateAct(keys: ReadonlyArray<LienAffidavitGateKey>, noticeStanding?: LienAffidavitNoticeStanding | null): LienNextAct {
   // No lien attaches to public property, and a homestead is the attorney's call: counsel's move.
   if (keys.includes('public_owner') || keys.includes('homestead')) return { kind: 'none', waiting: 'counsel' }
   if (keys.includes('owner')) return door('gate:owner', 'Find the owner ›')
   if (keys.includes('legal')) return door('gate:legal', 'Fill in the legal description ›')
   if (keys.includes('contractor')) return door('gate:contractor', 'Add the GC’s address ›')
-  if (keys.includes('notice')) return door('gate:notice', 'Send the notice first ›')
+  // The notice's door says what the notice still needs: a notice already approved is mailed, not sent again.
+  if (keys.includes('notice')) return door('gate:notice', lienAffidavitNoticeWaits(noticeStanding) ? lienAffidavitNoticeWords(noticeStanding).band : 'Send the notice first ›')
   if (keys.includes('homestead_answer')) return door('gate:homestead', 'Answer the homestead question ›')
   return door('footer', 'Send for approval ›')
 }
@@ -83,7 +87,7 @@ export function lienNextActFor(f: LienNextActFacts): LienNextAct {
       return door('retainage', 'Send the retainage notice ›')
     case 'affidavit': {
       const state = f.next.affidavitState ?? ''
-      if (state === 'needs_property') return affidavitGateAct(f.missingKeys)
+      if (state === 'needs_property') return affidavitGateAct(f.missingKeys, f.noticeStanding)
       return door('footer', footerLabel(state, 'affidavit'))
     }
     case 'serve':

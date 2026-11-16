@@ -3,6 +3,7 @@
  * `supabase/functions/_shared/paintedMapLink.ts`, one source for the function and the app. Pure.
  */
 import type { PaintedLine, PaintedPlace } from './paintedMap'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { SharedLine, SharedPaintedMap } from '../../../supabase/functions/_shared/paintedMapLink'
 
 export {
@@ -114,6 +115,14 @@ export function linkDayWords(ymd: string | null | undefined): string | null {
   const month = MONTHS[Number(m[2]) - 1]
   const day = Number(m[3])
   return month && day >= 1 && day <= 31 ? `${month} ${day}` : null
+}
+
+/**
+ * `Nov 15` for the day a link was made, on the company's calendar (Central). The row's `made_at` is a moment in UTC,
+ * so a link made in the evening would read as the next day if the date were cut from it.
+ */
+export function linkMadeDayWords(madeAt: string | null | undefined): string | null {
+  return madeAt ? linkDayWords(calendarYmdInAppTzFromIso(madeAt)) : null
 }
 
 /** `The link ends by itself on Feb 11.` */

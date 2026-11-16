@@ -1,3 +1,4 @@
+import { openAmount } from '../../lib/materials/payments/supplyPayment'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
@@ -262,7 +263,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 () =>
                   supabase
                     .from('supply_house_invoices')
-                    .select('id, supply_house_id, amount, is_paid, due_date, invoice_date, invoice_number, on_job_account')
+                    .select('id, supply_house_id, amount, amount_paid, is_paid, due_date, invoice_date, invoice_number, on_job_account')
                     .order('id')
                     .range(from, to),
                 'load supply house invoices',
@@ -378,7 +379,8 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
       setTodayYmd(today)
       // The houses' own notices (v2.4440). Not awaited, like the lien clock below: the statement draws first.
       const raw: HouseFactsRaw = {
-        invoices: invoices.map((i) => ({ id: i.id, supply_house_id: i.supply_house_id, amount: i.amount, is_paid: i.is_paid, invoice_date: i.invoice_date ?? null, paidYmd: null, on_job_account: Boolean(i.on_job_account) })),
+        // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole.
+        invoices: invoices.map((i) => ({ id: i.id, supply_house_id: i.supply_house_id, amount: i.is_paid ? i.amount : openAmount(i), is_paid: i.is_paid, invoice_date: i.invoice_date ?? null, paidYmd: null, on_job_account: Boolean(i.on_job_account) })),
         allocations,
         houses: houses ?? [],
       }

@@ -16,7 +16,8 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienRetainagePaneSections, lienRetainageWindowWords } from '../../lib/jobs/lienAffidavitPaneSections'
 import { retainageReleaseWords, retainageSourceWords } from '../../lib/ar/retainageHeld'
-import { holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import { holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem, tellLeaderOfLienApproval } from '../../lib/jobs/lienDeskIo'
+import { lienNoticeToldWords } from '../../lib/jobs/lienLeaderTold'
 import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
@@ -148,12 +149,13 @@ export default function LienDeskRetainagePane({
   )
   const docHtml = useMemo(() => filingDocHtml(buildLienRetainageNoticeBlocks(fields, extras)), [fields, extras])
 
-  const run = async (labelText: string, fn: () => Promise<void>, done: string) => {
+  const run = async (labelText: string, fn: () => Promise<void>, done?: string) => {
     if (busy) return
     setBusy(true)
     try {
       await fn()
-      showToast(done, 'success')
+      // No words here when the act said its own: the send for approval reads what the leader's message did.
+      if (done) showToast(done, 'success')
       onChanged()
     } catch (e) {
       showToast(e instanceof Error && e.message ? `${labelText}: ${e.message}` : `${labelText} failed.`, 'error')
@@ -163,15 +165,24 @@ export default function LienDeskRetainagePane({
   }
   const ensureDraft = () => saveLienDeskDraft({ itemId: item?.id ?? null, jobId: entry.jobId, months: [], fields: { notice: fields, gcEmail: gc?.email ?? '' }, coverNote: true, userId: authUserId, kind: 'retainage_53_057' })
   const policy = gc?.policy ?? 'ask'
-  const submit = () =>
-    run(
+  const submit = () => {
+    const outcome = submitOutcome({ policy, earliestDeadline: entry.deadline }, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(entry.gcCustomerId && data.gcsWithPriorNotice.has(entry.gcCustomerId)), gcHeldBefore: Boolean(entry.gcCustomerId && data.gcsHeldBefore.has(entry.gcCustomerId)) }, todayYmd)
+    return run(
       'Send for approval',
       async () => {
         const id = await ensureDraft()
-        await submitLienDeskItem(id, submitOutcome({ policy, earliestDeadline: entry.deadline }, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(entry.gcCustomerId && data.gcsWithPriorNotice.has(entry.gcCustomerId)), gcHeldBefore: Boolean(entry.gcCustomerId && data.gcsHeldBefore.has(entry.gcCustomerId)) }, todayYmd))
+        await submitLienDeskItem(id, outcome)
+        // The leader is told (v2.7478), as a monthly notice tells them: after the write, best effort, with the day the window closes.
+        // Until then a retainage notice sent for approval told nobody. A tell that fails is said with its reason, and the paper stays sent.
+        if (outcome.status === 'awaiting_approval') {
+          const told = lienNoticeToldWords(await tellLeaderOfLienApproval(id, entry.deadline), leaderName)
+          showToast(told.said, told.tone)
+        }
       },
-      policy === 'send' && !promise ? `Approved by the standing rule. ${LIEN_RUN_NOW_TO_MAIL}` : 'Sent for approval.',
+      // A paper the standing rule approved or held is not the leader's to decide, so nobody is told and the words say which it was.
+      outcome.status === 'awaiting_approval' ? undefined : outcome.status === 'approved' ? `Approved by the standing rule. ${LIEN_RUN_NOW_TO_MAIL}` : 'Held by the standing rule. The desk asks again before the window closes.',
     )
+  }
   const sendOnWord = () => run('Send on the leader’s word', async () => void (await sendLienDeskItemOnWord(await ensureDraft(), { note: wordNote, channel: wordChannel })), `Recorded on the leader’s word. ${LIEN_RUN_NOW_TO_MAIL}`)
   // Sign and approve (v2.5082): the draft is saved first so the mark binds to it, then one press under the leader's own sign-in signs and approves.
   const approve = () =>

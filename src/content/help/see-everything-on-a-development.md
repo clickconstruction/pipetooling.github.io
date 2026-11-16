@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, sheet count, sheets in hand, how many sheets, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
+keywords: development, site, subdivision, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, sheet count, sheets in hand, how many sheets, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -72,6 +72,10 @@ History is one dated list, newest first. It holds what the records did and what 
 
 The crews' photos draw lines too, at the time they were taken. Photos on one job by one person within an hour read as one line with up to four small pictures. A **+ N** tile stands for the rest. Press a picture to open it at full size. Press {{chip:blue|Photos}} under the search box to see the photo lines alone. The search finds a photo by its caption.
 
+Mail tied to a job or a bid draws lines too. Each email reads at its own time, as *Email in* or *Email out*. The line shows the subject, the first words and who it was from and to. Press **Open in Messages** on the line to read the mail in its thread. Press {{chip:blue|What happened}} to see the mail with the calls and visits you kept.
+
+You see these lines when you can open Messages. The lines hold the same mail Messages shows you. The guide [save an email to a job from your own mail](/help/save-an-email-to-a-job-from-your-own-mail) shows how to tie a mail.
+
 1. Press a chip under the search box to narrow the list. Press {{chip:blue|Plans}} to see every plan set filed, newest first. On a phone the chips sit in one row. Slide the row sideways to reach the rest.
 2. Type a name, a number or a word into the search box, marked with a spyglass, to find a line.
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
@@ -93,6 +97,8 @@ An email came in, a call was made, someone walked the site. History keeps those 
 5. Press {{button:blue|Keep it}}.
 
 The line reads at the top at once. A kept line never changes. To correct one, keep a second line that says so.
+
+A mail tied to a job or a bid needs no line kept by hand. The mail draws its own line at its own time. A line you kept by hand before stays as you wrote it.
 
 
 Notes a record carries with no date sit under the chips in a block called On record. A bid's notes, a job's collections note and the customer's terms live there.
