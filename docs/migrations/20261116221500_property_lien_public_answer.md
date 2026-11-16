@@ -1,4 +1,4 @@
-# 20261116201500_property_lien_public_answer.sql (2026-11-16, v2.7436)
+# 20261116221500_property_lien_public_answer.sql (2026-11-16, v2.7436)
 
 Is this public property? The answer gets a home on the property record, and one function makes the press that takes a public property's jobs off the lien path. Taunya's ask of 2026-11-16, on job 883 sitting in Ready to file: *"this job is a government job and we can't lien a government job, how should we amend the flow to handle this going forward?"* This is the database half. No screen reads it yet.
 

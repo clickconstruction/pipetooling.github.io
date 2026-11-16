@@ -1,4 +1,4 @@
--- Stand-ins for what set_property_lien_public_answer touches (20261116201500_property_lien_public_answer.sql, v2.7436):
+-- Stand-ins for what set_property_lien_public_answer touches (20261116221500_property_lien_public_answer.sql, v2.7436):
 -- only the columns it and the Collections flag read and write, typed as the baseline types them, and the helpers they
 -- call. The Collections flag itself is the real one: the bed's script lifts set_job_collections_flag out of
 -- 20261007170000_job_uncollectible.sql. See scripts/pgtest-property-lien-public-answer.sh. Never against prod.

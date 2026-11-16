@@ -18,7 +18,7 @@ PORT="${PGTEST_PORT:-55799}"  # the local Postgres only; the container needs no 
 NAME="pgtest-property-lien-public-answer"
 BED="supabase/tests/property_lien_public_answer"
 FLAG_SOURCE="supabase/migrations/20261007170000_job_uncollectible.sql"
-MIGRATION="supabase/migrations/20261116201500_property_lien_public_answer.sql"
+MIGRATION="supabase/migrations/20261116221500_property_lien_public_answer.sql"
 TMP="$(mktemp -d)"
 
 # The Collections flag as prod runs it: the function's own statement, from its CREATE to its closing $function$;.
