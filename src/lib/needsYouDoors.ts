@@ -81,7 +81,7 @@ const STAGES = '/jobs?tab=stages'
 // The Lien desk is a page since punch list #182: its doors are its own address, on the pile or the list each line names.
 const LIEN_DESK = LIEN_DESK_PATH
 
-export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorData, host: NeedsYouHost): NeedsYouDoor {
+export function needsYouDoor(item: Pick<NeedsYouItem, 'key'> & Partial<Pick<NeedsYouItem, 'openHref'>>, d: NeedsYouDoorData, host: NeedsYouHost): NeedsYouDoor {
   const href = (h: string): NeedsYouDoor => ({ kind: 'href', href: h })
   switch (item.key) {
     case 'ar-deposits':
@@ -225,7 +225,8 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
     case 'lien-window-missed':
       return href(lienDeskHref({ kind: 'notice', pile: 'missed' }))
     case 'lien-notice-approve':
-      return href(lienDeskHref({ kind: 'notice', pile: 'awaiting' }))
+      // The leader's card (v2.7435) hands the press its own notice; the line alone opens the pile.
+      return href(item.openHref ?? lienDeskHref({ kind: 'notice', pile: 'awaiting' }))
     case 'lien-notice-draft':
       return href(LIEN_DESK)
     case 'lien-file-window':

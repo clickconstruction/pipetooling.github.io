@@ -40,6 +40,7 @@ import { arReturnCaseView, type ArReturnCaseRow } from './jobs/arReturnCase'
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
 import type { LienDeskNeedsYou } from './jobs/lienDesk'
+import type { LienLeaderSignCard } from './jobs/lienLeaderSignCard'
 import { docsmitCreditLine } from './mail/docsmitSettings'
 import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
@@ -191,6 +192,15 @@ export type NeedsYouItem = {
   actionLabel: string
   /** Small link-style follow-ups (v2.2491) — e.g. snooze/dismiss on alert items. Parent dispatches by key. */
   secondary?: Array<{ key: string; label: string }>
+  /**
+   * The leader's lien notices as a card of its own (v2.7435): the Cards view draws `LienLeaderSignCard` from it in
+   * place of the row. The title, the detail and the action above still say it for Walk the list and a fold's summary.
+   */
+  lienSign?: LienLeaderSignCard
+  /** The address this press opens in place of the line's own door (v2.7435): one notice of the leader's card. */
+  openHref?: string
+  /** Drawn before every other line (v2.7435): the leader's lien card while a window is inside the week or closed. */
+  first?: boolean
   /**
    * The number the destination will show when this card opens it (v2.2896,
    * journey-map Tier-2 #16), when the destination counts a wider pile than the
@@ -365,9 +375,33 @@ export function supplyMoveWindowCloseWords(ymd: string, daysLeft: number): strin
   return `${day}, in ${daysLeft} days`
 }
 
+/**
+ * The Needs you line that carries the leader's lien card (v2.7435). The Cards view draws the card from `lienSign`; the
+ * title, the detail and the action say the same thing for Walk the list and a fold's summary, and the line's own press
+ * opens the first notice.
+ */
+export function lienLeaderSignItem(sign: LienLeaderSignCard): NeedsYouItem {
+  const firstRow = sign.rows[0]
+  return {
+    key: 'lien-notice-approve',
+    severity: sign.tone,
+    kicker: sign.kicker,
+    title: sign.title,
+    detail: `${sign.detail}.`,
+    figure: String(sign.count),
+    actionLabel: firstRow ? firstRow.pressLabel.replace(/\s*[▸›]$/, '') : 'Open the Lien desk',
+    lienSign: sign,
+    ...(firstRow ? { openHref: firstRow.href } : {}),
+    ...(sign.tone === 'red' ? { first: true } : {}),
+  }
+}
+
 export function rankNeedsYouItems(items: NeedsYouItem[]): NeedsYouItem[] {
   // Array.prototype.sort is stable, so equal (kind, rank, figure) triples keep build order.
   return [...items].sort((a, b) => {
+    // A line marked first leads the list whatever its tier (v2.7435).
+    const first = Number(b.first === true) - Number(a.first === true)
+    if (first !== 0) return first
     const kind = KIND_ORDER[needsYouKind(a)] - KIND_ORDER[needsYouKind(b)]
     if (kind !== 0) return kind
     const rank = NEEDS_YOU_RANK[a.key] - NEEDS_YOU_RANK[b.key]
@@ -587,6 +621,8 @@ export type NeedsYouInputs = {
   lienDesk?: LienDeskNeedsYou | null
   /** The viewer approves (master / dev) — shows the approvals card. */
   lienDeskLeader?: boolean
+  /** The leader's card over the awaiting pile (v2.7435, `buildLienLeaderSignCard`); null with nothing waiting on him outside a prepared run. */
+  lienLeaderSign?: LienLeaderSignCard | null
   /**
    * Owners who signed for our records on their portal and wait for the packet (punch list #86,
    * `ownerRecordsSignedWaiting`). The office set; null while loading or when none wait.
@@ -999,21 +1035,10 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  if (inputs.lienDeskEnabled && inputs.lienDeskLeader && inputs.lienDesk && inputs.lienDesk.leader.jobs - batchJobs > 0) {
-    const l = inputs.lienDesk.leader
-    const jobs = l.jobs - batchJobs
-    const money = l.dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-    const soon = l.earliestDeadline ? daysUntilYmd(l.earliestDeadline) : null
-    items.push({
-      key: 'lien-notice-approve',
-      severity: soon != null && soon <= 7 ? 'red' : 'blue',
-      kicker: 'Lien deadlines · your call',
-      title: jobs === 1 ? 'Approve a lien notice the office drafted' : `Approve ${jobs} lien notices the office drafted`,
-      detail: `${money} open. ${l.earliestDeadline ? `The earliest window closes ${l.earliestDeadline}.` : ''} Approve, hold, or set a standing rule so the office stops asking for that GC.`,
-      figure: String(jobs),
-      actionLabel: 'Decide',
-    })
-  }
+  // The notices that wait on the leader's signature (v2.7435): a card of its own, built over the desk's awaiting pile
+  // by `buildLienLeaderSignCard`. It is first in the list while a window is inside the week or already closed.
+  const sign = inputs.lienDeskEnabled && inputs.lienDeskLeader ? inputs.lienLeaderSign ?? null : null
+  if (sign && sign.count > 0) items.push(lienLeaderSignItem(sign))
 
   if (inputs.lienDeskEnabled && inputs.lienDeskLeader && inputs.lienDesk && (inputs.lienDesk.leader.toSign ?? 0) > 0) {
     const n = inputs.lienDesk.leader.toSign ?? 0

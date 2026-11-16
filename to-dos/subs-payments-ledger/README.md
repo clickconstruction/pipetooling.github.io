@@ -15,7 +15,7 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: the owner's look, now that the four migrations are in prod's ledger (`20261116194500` read 2026-11-16) and every line under *Not built* but one is built; the types PR that v2.7420's function still owes; old payments typed one per sheet are not gathered into sendings
+next: the owner's look, now that the four migrations are in prod's ledger (`20261116194500` read 2026-11-16) and every line under *Not built* but one is built; old payments typed one per sheet are not gathered into sendings
 size: M as a train of six (XS · S · S · S · S · M)
 blocker: none
 opinion: use it for a month's statement before building more; the first real sitting will say whether hand placement or the Banking side is worth it
@@ -152,7 +152,7 @@ Built with this card's edit, between PR 2 and PR 3:
 Taunya, 2026-11-15, of the lines here once hand placement had gone to the sub labor spike: "Build all four". Four are built, two of them by the sub labor train that came out of the spike. One is left.
 
 - **Built: the Banking side** (v2.7352). See *The match to Mercury* above.
-- **Built: the dev seat's sub payment** (v2.7357, server 0.90.0). `plan_sub_labor_payment` records a sending with its number, the method and its reference through `record_sub_sending`, as the Record payment window does, and the plan reads back what will be written.
+- **Built: the dev seat's sub payment** (v2.7357, server 0.90.0). `plan_sub_labor_payment` records a sending with its number, the method and its reference through `record_sub_sending`, as the Record payment window does, and the plan reads back what will be written. Since v2.7428 (server 0.91.0) a teammate alone on a sheet is who its sending names, by the rule of card #346.
 - ~~Placing a sending's lines by hand.~~ Built in v2.7404: *By hand* beside *Oldest first* in the Record payment window.
 - ~~A sheet already paid past its total becoming a credit.~~ Built in v2.7420: *Keep the $… over as credit…* on the sheet's ⋯ menu. The function is `convert_sub_overpayment_to_credit`, and a bank tick and a bank match stand.
 - **Old payments typed one per sheet** are not gathered into sendings. They are ticked and matched row by row. With the same spike.

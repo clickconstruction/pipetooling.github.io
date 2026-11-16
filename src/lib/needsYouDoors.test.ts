@@ -65,6 +65,9 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouDoor({ key: 'team-reviews' }, { ...base, teamReviewFirstId: 'u-1' }, 'dashboard')).toEqual({ kind: 'href', href: '/prospects?tab=team&stage=review&rate=u-1' })
     expect(needsYouDoor({ key: 'lien-notice-batch' }, { ...base, lienBatchGcId: 'gc-1' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&gcnotice=gc-1' })
     expect(needsYouDoor({ key: 'lien-notice-batch' }, base, 'quickfill')).toEqual({ kind: 'href', href: '/lien-desk' })
+    // The leader's lien card (v2.7435): a press opens its own notice; the line alone opens the pile.
+    expect(needsYouDoor({ key: 'lien-notice-approve' }, base, 'dashboard')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&pile=awaiting' })
+    expect(needsYouDoor({ key: 'lien-notice-approve', openHref: '/lien-desk?tab=notices&job=j1&pile=awaiting' }, base, 'quickfill')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&job=j1&pile=awaiting' })
     expect(needsYouDoor({ key: 'bulk-hours' }, { ...base, bulkHoursTypist: { actorId: 'u-2', actorName: 'Rosa M' } }, 'dashboard')).toEqual({ kind: 'href', href: '/people?tab=hours&approvals=1&typed=1&typist=u-2&typistName=Rosa%20M' })
   })
 

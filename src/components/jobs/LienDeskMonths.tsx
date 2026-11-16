@@ -19,6 +19,11 @@ import { useLienTimelineView, type LienTimelineView } from '../../hooks/useLienT
  * "as information" when it went out after the window closed. The claim sits under it.
  * The timeline's Windows view (v2.3815) reaches the Window column: each month's first day
  * and a bar of the days already gone; Steps leaves the column as it was.
+ * A closed month is one line (Taunya's ask of 2026-11-15): nothing is left to do on it, so it
+ * gives its height to the months that can still go out. What a missed window costs is the same
+ * for every missed month of a job, so it is said once, in a line under the grid that names them.
+ * This notice's total sits at the foot of its column, under the ticks that make it; the column
+ * keeps its name on top.
  */
 
 /** A month the notice could name — kept for the pane's one-line summary above the grid. */
@@ -49,17 +54,19 @@ const chip = (bg: string, fg: string): React.CSSProperties => ({ display: 'inlin
 const th: React.CSSProperties = { textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.62rem', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '0.3rem 0.5rem', borderBottom: '1px solid var(--border)', verticalAlign: 'bottom' }
 const td: React.CSSProperties = { padding: '0.45rem 0.5rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.8125rem' }
 const faint: React.CSSProperties = { color: 'var(--text-muted)', fontSize: '0.72rem' }
+/** A closed month's cell: tighter, and centred on its one line (the line itself is `.lienMonthOne` / `.lienMonthClosed` in index.css). */
+const tdOne: React.CSSProperties = { ...td, padding: '0.24rem 0.5rem', verticalAlign: 'middle' }
 
 /** The Windows view's bar: how much of a month's window is gone (v2.3815). */
-function spentBar(usedPct: number, gone: boolean): ReactNode {
+function spentBar(usedPct: number): ReactNode {
   return (
-    <div aria-hidden data-lien-month-spent style={{ position: 'relative', height: 6, maxWidth: 180, margin: '4px 0 2px', borderRadius: 3, border: `1px solid ${gone ? 'var(--text-red-600)' : 'var(--text-amber-800)'}`, background: gone ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', overflow: 'hidden' }}>
-      <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.max(0, Math.min(100, usedPct))}%`, background: gone ? 'var(--text-red-600)' : 'var(--text-amber-800)', opacity: 0.55 }} />
+    <div aria-hidden data-lien-month-spent style={{ position: 'relative', height: 6, maxWidth: 180, margin: '4px 0 2px', borderRadius: 3, border: '1px solid var(--text-amber-800)', background: 'var(--bg-amber-tint)', overflow: 'hidden' }}>
+      <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.max(0, Math.min(100, usedPct))}%`, background: 'var(--text-amber-800)', opacity: 0.55 }} />
     </div>
   )
 }
 
-function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | undefined, view: LienTimelineView, lateUntil: string | null): ReactNode {
+function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | undefined, view: LienTimelineView): ReactNode {
   const w = r.window
   const opensOn = view === 'windows' ? lienNoticeOpensOn(r.month) : ''
   const totalDays = opensOn && w.deadline ? daysBetweenYmd(opensOn, w.deadline) : null
@@ -71,33 +78,37 @@ function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | un
         <>
           <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{w.daysLeft <= totalDays ? 'open since' : 'opens'} {formatYmdMonthDay(opensOn).replace(' ', '\u00a0')}</span>{' '}
           <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>mail by {formatYmdMonthDay(w.deadline).replace(' ', '\u00a0')}</span>
-          {spentBar(((totalDays - left) / totalDays) * 100, false)}
+          {spentBar(((totalDays - left) / totalDays) * 100)}
           <div style={faint}>{left} of {totalDays} days left</div>
         </>
       )
     }
     return <><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>mail by {formatYmdMonthDay(w.deadline).replace(' ', '\u00a0')}</span>{w.daysLeft != null ? <div style={faint}>{daysLeftWords(w.daysLeft)}</div> : null}</>
   }
-  // closed
-  if (w.skipped) return <><span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>skipped</span><div style={faint}>{w.skippedBy ? `${w.skippedBy}: ` : ''}“{w.skipReason}”</div></>
-  if (w.noticed) return <><span style={chip('var(--bg-muted)', 'var(--text-muted)')}>closed {formatYmdMonthDay(w.deadline)}</span><div style={faint}>named after the window — information</div></>
-  return (
-    <>
-      <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>closed {w.deadline ? formatYmdMonthDay(w.deadline) : ''}</span>{' '}
-      {w.noted ? <span style={faint}>noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(w.notedAt))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
-      {opensOn && w.deadline ? spentBar(100, true) : null}
-      <div style={faint}>
-        {opensOn && w.deadline ? `it was open ${formatYmdMonthDay(opensOn)} → ${formatYmdMonthDay(w.deadline)} · ` : ''}{lateUntil ? `a late notice can still go · the affidavit by ${formatYmdMonthDay(lateUntil)}` : 'lien right gone · the money still rides'}
-        {!w.noted && onNoteMissed ? (
-          <>
-            {' · '}
-            <button type="button" onClick={() => onNoteMissed(r.month)} data-lien-desk-note-missed style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, fontSize: '0.7rem', cursor: 'pointer' }} title="Write the closed window down with your name — not a skip, just that it was seen">
-              Note it as missed
-            </button>
-          </>
-        ) : null}
+  // closed: one line where the card has room. The chips and the press always show; the trailing words
+  // give way first, cut with … and whole in the tip. A skip's reason is its own, so it wraps. What a missed
+  // window costs is not here: the line under the grid says it once for every missed month.
+  if (w.skipped) return <><span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>skipped</span>{' '}<span style={faint}>{w.skippedBy ? `${w.skippedBy}: ` : ''}“{w.skipReason}”</span></>
+  if (w.noticed) {
+    return (
+      <div className="lienMonthClosed">
+        <span style={chip('var(--bg-muted)', 'var(--text-muted)')}>closed {formatYmdMonthDay(w.deadline)}</span>
+        <span className="lienMonthClosedTail" style={faint} title="named after the window — information">named after the window — information</span>
       </div>
-    </>
+    )
+  }
+  const openWords = opensOn && w.deadline ? `it was open ${formatYmdMonthDay(opensOn)} → ${formatYmdMonthDay(w.deadline)}` : ''
+  return (
+    <div className="lienMonthClosed">
+      <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>closed {w.deadline ? formatYmdMonthDay(w.deadline) : ''}</span>
+      {w.noted ? <span style={{ ...faint, whiteSpace: 'nowrap' }}>noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(w.notedAt))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
+      {openWords ? <span className="lienMonthClosedTail" style={faint} title={openWords}>{w.noted ? '· ' : ''}{openWords}</span> : null}
+      {!w.noted && onNoteMissed ? (
+        <button type="button" onClick={() => onNoteMissed(r.month)} data-lien-desk-note-missed style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, fontSize: '0.7rem', cursor: 'pointer', whiteSpace: 'nowrap' }} title="Write the closed window down with your name — not a skip, just that it was seen">
+          Note it as missed
+        </button>
+      ) : null}
+    </div>
   )
 }
 
@@ -140,7 +151,12 @@ export default function LienDeskMonths({
   const view = useLienTimelineView()
   const filings = grid.papers.filter((p) => p.kind === 'filing')
   const thisPaper = grid.papers.find((p) => p.kind === 'this') ?? null
-  const onCount = grid.rows.filter((r) => r.thisNotice.on).length
+  const onRows = grid.rows.filter((r) => r.thisNotice.on)
+  const onCount = onRows.length
+  const onNames = onRows.map((r) => workMonthShort(r.month)).join(', ')
+  const canTick = grid.rows.some((r) => !r.thisNotice.locked)
+  // The months whose window closed with nothing sent and nothing skipped: the red rows.
+  const missed = grid.rows.filter((r) => r.window.state === 'closed' && !r.window.noticed && !r.window.skipped)
   return (
     <div className="lienMonths" data-lien-desk-months data-lien-desk-month-grid>
       <div className="lienMonthsHead">
@@ -168,44 +184,70 @@ export default function LienDeskMonths({
                 <th style={{ ...th, textTransform: 'none', letterSpacing: 0, color: 'var(--text-700)', fontSize: '0.75rem', minWidth: 130, background: 'var(--bg-blue-tint)', borderTop: '2px solid var(--text-blue-700)', borderRadius: '6px 6px 0 0' }} data-lien-grid-paper="this">
                   <span style={{ display: 'inline-block', width: 18, height: 18, borderRadius: 4, textAlign: 'center', lineHeight: '18px', fontWeight: 800, fontSize: '0.68rem', marginRight: 5, background: 'var(--surface)', color: 'var(--text-blue-700)' }}>{thisPaper.letter}</span>
                   This notice
-                  <span style={{ display: 'block', fontWeight: 500, ...faint }}>
-                    {claim}{onCount ? ` · ${onCount} ${onCount === 1 ? 'month' : 'months'}` : ''}
-                    {onPreviewThis ? <> · <button type="button" onClick={onPreviewThis} style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', font: 'inherit', padding: 0 }}>Preview ›</button></> : null}
-                  </span>
                 </th>
               ) : null}
             </tr>
           </thead>
           <tbody>
-            {grid.rows.map((r) => (
+            {grid.rows.map((r) => {
+              const oneLine = r.window.state === 'closed'
+              const cell = oneLine ? tdOne : td
+              const standIn = r.fromCreation || r.pendingOnly
+              const worked = r.fromCreation ? lienStandInWords(r.fromBill === true) : r.pendingOnly ? 'sessions await approval' : <>{r.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h{r.crew ? ` · ${r.crew}` : ''}</>
+              return (
               <tr key={r.month} data-lien-grid-row={r.month} data-window={r.window.state} data-on={r.thisNotice.on ? 'yes' : 'no'} style={r.window.state === 'closed' && !r.window.noticed && !r.window.skipped ? { background: 'var(--bg-red-tint)' } : r.window.state === 'none' ? { color: 'var(--text-muted)' } : undefined}>
-                <td style={td}>
-                  <div style={{ fontWeight: 700 }}>{workMonthLabel(r.month)}</div>
-                  <div style={faint}>{r.fromCreation ? lienStandInWords(r.fromBill === true) : r.pendingOnly ? 'sessions await approval' : <>{r.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h{r.crew ? ` · ${r.crew}` : ''}</>}</div>
+                <td style={cell} className={oneLine ? 'lienMonthOne' : undefined}>
+                  <div className="lienMonthName" style={{ fontWeight: 700 }}>{workMonthLabel(r.month)}</div>
+                  <div className={standIn ? undefined : 'lienMonthWorked'} style={faint}>{worked}</div>
                 </td>
-                <td style={td}>{windowCell(r, onNoteMissed, view, grid.lateUntil)}</td>
+                <td style={cell}>{windowCell(r, onNoteMissed, view)}</td>
                 {filings.map((p) => {
                   const c = r.cells[p.key] ?? 'blank'
                   return (
-                    <td key={p.key} style={td} data-cell={c}>
+                    <td key={p.key} style={cell} data-cell={c}>
                       {c === 'named' ? <span style={{ color: 'var(--text-green-800)', fontWeight: 800 }}>✓</span> : c === 'info' ? <span style={{ ...faint, fontWeight: 600 }}>✓ as information</span> : null}
                     </td>
                   )
                 })}
                 {thisPaper ? (
-                  <td style={{ ...td, background: 'var(--bg-blue-tint)' }} data-cell={r.cells.this ?? 'blank'}>
-                    <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: r.thisNotice.locked ? 'default' : 'pointer' }}>
+                  <td style={{ ...cell, background: 'var(--bg-blue-tint)' }} data-cell={r.cells.this ?? 'blank'}>
+                    <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', verticalAlign: 'middle', cursor: r.thisNotice.locked ? 'default' : 'pointer' }}>
                       <input type="checkbox" checked={r.thisNotice.on} disabled={r.thisNotice.locked} onChange={(ev) => onToggle(r.month, ev.target.checked)} aria-label={workMonthLabel(r.month)} title={r.thisNotice.locked ? (r.window.noticed && !r.thisNotice.on ? 'Already noticed' : r.window.state === 'closed' ? 'The window closed' : r.pendingOnly ? 'Nothing approved yet' : 'The draft is past editing') : undefined} />
                       {r.thisNotice.info ? <span style={faint}>as information</span> : r.thisNotice.late ? <span style={{ ...faint, color: 'var(--text-amber-800)', fontWeight: 600 }}>late</span> : null}
                     </label>
                   </td>
                 ) : null}
               </tr>
-            ))}
+              )
+            })}
             {grid.rows.length === 0 ? <tr><td colSpan={3 + grid.papers.length} style={{ ...td, ...faint }}>No months on this job yet.</td></tr> : null}
           </tbody>
+          {thisPaper ? (
+            <tfoot>
+              <tr data-lien-grid-foot>
+                <td colSpan={2 + filings.length} style={{ ...td, borderBottom: 'none', verticalAlign: 'middle', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                  {onCount ? <>This notice names <strong style={{ color: 'var(--text-700)' }}>{onNames}</strong></> : canTick ? 'Tick a month to put it on this notice.' : null}
+                </td>
+                <td style={{ ...td, verticalAlign: 'middle', background: 'var(--bg-blue-tint)', borderBottom: '2px solid var(--text-blue-700)', borderRadius: '0 0 6px 6px' }} data-lien-grid-total>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, lineHeight: 1.2, color: 'var(--text-strong)' }}>{claim}</div>
+                  <div style={faint}>
+                    {onCount ? `${onCount} ${onCount === 1 ? 'month' : 'months'}` : null}
+                    {onCount && onPreviewThis ? ' · ' : null}
+                    {onPreviewThis ? <button type="button" onClick={onPreviewThis} style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', font: 'inherit', padding: 0 }}>Preview ›</button> : null}
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
+          ) : null}
         </table>
       </div>
+      {missed.length > 0 ? (
+        <div data-lien-months-missed style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>closed</span>{' '}
+          <strong style={{ color: 'var(--text-700)' }}>{missed.map((r) => workMonthShort(r.month)).join(', ')}</strong>{' · '}
+          {grid.lateUntil ? `a late notice can still go · the affidavit by ${formatYmdMonthDay(grid.lateUntil)}` : 'lien right gone · the money still rides'}
+        </div>
+      ) : null}
       <div className="lienMonthsBody" style={{ gridTemplateColumns: 'auto minmax(0, 1fr)' }}>
         <div className="lienMonthsClaimCol">
           {claimNode ?? (
