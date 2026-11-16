@@ -2,7 +2,7 @@
 name: "Sub papers: a work statement per sheet, a payment record per sending and a statement of account, as PDFs that add up"
 number: 350
 group: ready
-status: asked 2026-11-13 · the card and the mock-up the same day · read on the code and on prod through the dev seat, nothing written · nothing built
+status: asked 2026-11-13 · the card and the mock-up the same day · read on the code and on prod through the dev seat, nothing written · the kernels built 2026-11-15 (v2.7401), nothing drawn yet
 summary: >
   The owner wants to make part payments to a sub and hand them a paper that shows what is
   outstanding, our last payments and what we still owe, as PDFs: each piece of sub work as a
@@ -13,7 +13,7 @@ summary: >
   sending that says how much went to each sheet and what stays open, and a statement of account
   for a period. It names them for what they are, marks six sentences for counsel, and stands on
   the hours statement's way of making a PDF. It builds on card #347's ledger and payment window.
-next: the owner's look at the mock-up and his answers to calls 1 and 2; PR 1 (the statement of account as a PDF, download only) needs neither
+next: the owner's look at the mock-up and his answer to call 1, call 2 being built as picked; PR 1 (the statement of account as a PDF, download only) needs no answer
 size: L as a train of seven (S · S · M · S · M · M · M)
 blocker: none for PR 1 and PR 2; PR 3 is a migration; PR 4 waits on card #347's sending and on PR #7992's push; PR 5 and PR 6 are edge deploys; PR 7 waits on counsel's words
 opinion: build PR 1 now, it is the paper he asked for and reads rows the Pay view already holds; settle the names before PR 3 prints a number under one; do not let a paper say invoice, receipt or owed until counsel has read the six marked sentences
@@ -170,7 +170,7 @@ Never applied silently. A sub reads the payment record and must find their own a
 ## What this card asks of card #347
 
 1. **The method and its reference on a payment.** PR #7992 adds both. The papers print them.
-2. **One sending recorded once**, with a row per sheet tied to it, placed by hand with Oldest first as the fill. Its window is #347's to grow. **Built in #347, v2.7235**, with the fill and no hand placement yet: `sub_payment_sendings`, and `people_labor_job_payments.sending_id` on each row.
+2. **One sending recorded once**, with a row per sheet tied to it, placed by hand with Oldest first as the fill. Its window is #347's to grow. **Built in #347, v2.7235**, with the fill, and the hand placement since v2.7404: `sub_payment_sendings`, and `people_labor_job_payments.sending_id` on each row.
 3. **A number per sending**, never reused. If #347 mints it, this card prints it. If not, PR 3 here mints it on the register. **#347 mints it, v2.7235**: `sub_payment_sendings.number`, from a sequence. A payment recorded before then has none.
 4. **A Date sent on every new payment and a day on a back-charge** (#347's PR 4).
 5. **The office note kept apart from the memo the sub reads** (#7992's call 3). A paper prints the memo only.
@@ -189,7 +189,7 @@ Never applied silently. A sub reads the payment record and must find their own a
 ## The owner's calls
 
 1. **The names.** My pick: Work statement, Payment record, Statement of account, and *Still open* for what we owe. Your words go on once counsel has read sentences 1 to 6.
-2. **How is one payment placed on several papers?** My pick: by hand, with Oldest first as the fill, shown before it is saved.
+2. **How is one payment placed on several papers?** My pick: by hand, with Oldest first as the fill, shown before it is saved. **Built as picked** in v2.7404, card #347's *By hand*.
 3. **Do subs confirm their work statement?** My pick: yes, as a press, and never a condition of being paid. What a confirm means is counsel's.
 4. **Do payment records send by themselves?** My pick: no. The window after Record payment offers it. The portal shows the payment at once either way.
 5. **What period does a statement cover by default?** My pick: since the last statement sent to that sub, and to date the first time.

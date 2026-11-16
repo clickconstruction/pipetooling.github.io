@@ -1,8 +1,8 @@
 ---
 name: "People → Subs shows what makes up what we owe each sub, by job and sheet, and a sheet with several names is counted once"
 number: 346
-group: ready
-status: looked at 2026-11-13 on the live app and read on prod through the dev seat, nothing written; the counting rule is fixed in its own PR (#7974, client only); the rest is drawn, the page as it is beside the recommended design and one alternative, at desktop and phone width
+group: close
+status: looked at 2026-11-13 on the live app and read on prod through the dev seat, nothing written; the counting rule is fixed in its own PR (#7974, client only); the rest is drawn, the page as it is beside the recommended design and one alternative, at desktop and phone width · built 2026-11-15 and 2026-11-16 as the sub labor train, on Taunya's walk of the design spike and her rule that a sheet naming one teammate and no sub is owed to that teammate · left: her press of the clean-up on prod
 summary: >
   The owner asked to dig into what makes up what we owe each sub on People → Subs, as he can on
   Jobs → Subs → Pay, and passed on the office's report that the app encourages double counting
@@ -12,10 +12,11 @@ summary: >
   two pages disagreed on one sub by $2,150, fixed in PR #7974. The card adds the row that opens
   into jobs, sheets and lines with a total that adds up, the same from a job, a band that says
   where a shared sheet's money is counted, and the Pay view's acts opened in place.
-next: the owner's look at the mock-up and his answer to question 1 (two subs on one sheet); PR 1 (the row opens, read only) needs no answer
+next: Taunya's press of *Take the teammates off…* on People → Subs for the old sheets that name a sub and teammates (8 on 2026-11-15), once the owner has heard that it moves the teammates' even shares in People → Review and the Team Summary onto the subs; then close the card
 size: M as a train of seven (S · S · S · S · S · M · M)
-blocker: none for PR 1 to PR 5; PR 6 is an edge deploy and waits on the owner's yes; PR 7 waits on question 1
-opinion: build PR 1 now, it reads what the page already loads and answers the ask by itself; take PR 2 next, since the band and the form are where a second sheet for the same work would start; PR 6 matters more than its place in the list says, because a sub's portal can state money a teammate's portal states too
+blocker: none for the code; the clean-up press waits on the owner hearing what it moves
+ver: v2.7383 · v2.7388 · v2.7389 · v2.7394 · v2.7402 · v2.7403 · v2.7428
+opinion: your call — the code is done; the one press left changes what People → Review books to teammates, so the owner hears it first
 mockup: to-dos/people-subs-what-we-owe/mockup.html
 ---
 
@@ -146,7 +147,7 @@ Mock-up: `to-dos/people-subs-what-we-owe/mockup.html` (on the dev server at `/to
 
 - The band lists only a sheet with no sub or with two. Its words say the money is counted once, there, and in no Balance due.
 - **Assign…** becomes **Whose is it…**. The window shows what each choice adds to each sub's balance before anything is saved, and that the parts sum to the sheet. No press links one sheet to two subs.
-- The sheet form's Crew step speaks when a second sub is picked, and offers to start that sub's own sheet. Teammates stay free to add.
+- The sheet form's step is *Paid to*, and it takes one name (v2.7394, on Taunya's "Only one name"). A second name on an old sheet is a warning with a press to take it off.
 - A teammate with a row on the Subs roster carries a chip and reads *payroll*.
 
 **One place for each act.** Payments, backcharges, stages, the pay run, work orders and lien waivers stay the Pay view's. People → Subs opens the Pay view's own windows on a sheet. Who a sheet is for stays the sheet form's. The roster, compliance and the bench stay People → Subs's. The table is in the mock-up, section 6.
@@ -159,22 +160,31 @@ Mock-up: `to-dos/people-subs-what-we-owe/mockup.html` (on the dev server at `/to
 
 Shipped with the card: **PR #7974**, the counting rule. Client only.
 
-1. **The row opens** (S). A pure kernel `subOwedBreakdown` over what the tab already loads: sub → job → sheet → lines, with the sums and an `addsUp` flag. Balance due becomes a press. Open and paid chips. Doors to the sheet and the job. The phone's card and sheet. Guide `review-your-subs`. No migration.
-2. **The band and the form** (S). The band's words, *Whose is it…* for a name the roster does not know and for one sub, the Crew step's line when a second sub is picked, the same-line check on save, the teammate chip. No migration.
-3. **Acts in place** (S). Pay… and Back-charge… on a sheet in the open row mount the Pay view's own modals. *Open in the pay run ›*. The pay run's sub name gains *What we owe ›*. No migration.
-4. **From a job** (S). *Subs on this job* in the job's window, from the same kernel grouped by job. No migration.
-5. **Reach** (S). The tiles, the Owed chip, the search, the sort, the export, and one sub's statement to print, filed as a sent copy. No migration. The statement as a paper to hand a sub is card #350 (`to-dos/sub-papers-statement-of-account/`), with a work statement per sheet and a payment record per sending: this PR links its **Statement of account…** press and builds no second one.
-6. **The sub's own screens** (M, the owner's yes). The sub portal, *Your money* and the hours statement show a sheet's dollars to its sub alone. A teammate sees the sheet with no figure. Edge deploy of `sub-portal`. No migration.
-7. **Split a shared sheet** (M, after question 1). *Each sub did part of it* turns one sheet into one per sub, lines and payments placed by hand, sums checked. One definer RPC, migration `…_split_sub_sheet.sql`. Built only if the owner picks the split.
+1. **The row opens** (S). A pure kernel `subOwedBreakdown` over what the tab already loads: sub → job → sheet → lines, with the sums and an `addsUp` flag. Balance due becomes a press. Open and paid chips. Doors to the sheet and the job. The phone's card and sheet. Guide `review-your-subs`. No migration. **Built in v2.7388**, on the kernels of v2.7383.
+2. **The band and the form** (S). The band's words, *Whose is it…* for a name the roster does not know and for one sub, the Crew step's line when a second sub is picked, the same-line check on save, the teammate chip. No migration. **Built:** the band, *Whose is it…* and the chip in v2.7388, the form in v2.7394 as one pick (call 2).
+3. **Acts in place** (S). Pay… and Back-charge… on a sheet in the open row mount the Pay view's own modals. *Open in the pay run ›*. The pay run's sub name gains *What we owe ›*. No migration. **Built in v2.7388**, and *What we owe ›* in v2.7389.
+4. **From a job** (S). *Subs on this job* in the job's window, from the same kernel grouped by job. No migration. **Built in v2.7402.**
+5. **Reach** (S). The tiles, the Owed chip, the search, the sort, the export, and one sub's statement to print, filed as a sent copy. No migration. The statement as a paper to hand a sub is card #350 (`to-dos/sub-papers-statement-of-account/`), with a work statement per sheet and a payment record per sending: this PR links its **Statement of account…** press and builds no second one. **Built in v2.7388**, all but the statement, which comes with card #350's papers.
+6. **The sub's own screens** (M, the owner's yes). The sub portal, *Your money* and the hours statement show a sheet's dollars to its sub alone. A teammate sees the sheet with no figure. Edge deploy of `sub-portal`. No migration. **Not built**, on Taunya's answer to call 3.
+7. **Split a shared sheet** (M, after question 1). *Each sub did part of it* turns one sheet into one per sub, lines and payments placed by hand, sums checked. One definer RPC, migration `…_split_sub_sheet.sql`. Built only if the owner picks the split. **Not built**, on Taunya's answer to call 1.
+
+## Where it stands
+
+Built 2026-11-15 and 2026-11-16 as the sub labor train, on Taunya's walk of the design spike. Each `docs/recent-features/v2.NNNN.md` says what landed.
+
+- **Her rule of 2026-11-15.** A sheet that names one teammate and no sub is owed to that teammate, as sub labor paid to someone on payroll. Several teammates and no sub is shared, on nobody's row. The kernels in v2.7383, People → Subs in v2.7388, Jobs → Subs in v2.7389, the dev seat and Banking's picker in v2.7428.
+- **A sheet names one person**, in v2.7394. A job's team is offered on the form and never ticked.
+- **The clean-up**, in v2.7403. *Take the teammates off…* on People → Subs lists the old sheets that name a sub and teammates, 8 on 2026-11-15. Merging it changed no sheet. The press on prod is Taunya's, after the owner hears that the teammates' even shares in People → Review and the Team Summary move onto the subs.
+- **Not built:** PR 6 and PR 7, on Taunya's answers to calls 3 and 1. Call 6 is still open.
 
 ## The owner's calls
 
-1. **Two subs on one sheet. How is it owed?** My pick: a sheet each, by line, and until then it is on nobody's row. The other choices are equal shares, or one sheet paid to the pair.
-2. **Should the form stop a second sub on a sheet?** My pick: warn and offer the second sheet. Do not block.
-3. **Should a teammate on a sub's sheet see that sheet's dollars on their portal?** My pick: no. They see the job and *paid through payroll*. PR 6 needs your yes to deploy.
+1. **Two subs on one sheet. How is it owed?** My pick: a sheet each, by line, and until then it is on nobody's row. The other choices are equal shares, or one sheet paid to the pair. **Taunya, 2026-11-15:** a sheet names one person ("No, one person"), so PR 7 is not built.
+2. **Should the form stop a second sub on a sheet?** My pick: warn and offer the second sheet. Do not block. **Built as one pick** in v2.7394, on her "Only one name": ticking a name takes the place of the one before.
+3. **Should a teammate on a sub's sheet see that sheet's dollars on their portal?** My pick: no. They see the job and *paid through payroll*. PR 6 needs your yes to deploy. **Taunya, 2026-11-15:** a sheet names one person, and a field person already reads only the sheets that name them, so PR 6 is not built.
 4. **Should the two teammates stay on the Subs roster?** My pick: yes, with a chip, left out of the Active count.
 5. **The scoreboard splits a sheet by its names. Keep it?** My pick: keep it, and count one person once when a sheet writes them twice.
-6. **Is a crew sheet extra pay, or the same pay as the hours?** If it is the same pay, the job's cost counts it twice. I do not know which. Two sheets, $6,000.
+6. **Is a crew sheet extra pay, or the same pay as the hours?** If it is the same pay, the job's cost counts it twice. I do not know which. Two sheets, $6,000. **Still open.** The train took a teammate's own sheet as extra pay beside the wages. Not confirmed.
 7. **Clean-up, proposed and not run:** on the 5 sheets that write one person twice, take the short name off. It changes no balance. The list is in the session's notes, not in the repo.
 
 ## How to verify
