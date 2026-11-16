@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { supabase } from '../../lib/supabase'
+import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import {
   TAG_GROUP_WORDS,
@@ -263,7 +264,7 @@ export function useNoteTagBox(opts: {
       ) : people == null ? (
         <div style={groupStyle}>Reading the names…</div>
       ) : rows.length === 0 ? (
-        <div style={groupStyle}>Nobody by that name can be tagged on this job</div>
+        <EmptyState compact main="Nobody by that name can be tagged on this job" />
       ) : (
         rows.map((row, i) => {
           const head = row.group !== lastGroup ? TAG_GROUP_WORDS[row.group] : null
