@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysUntil, lienApprovalPush, lienApprovalUrl, shortDay } from './lienApprovalPush'
+import { daysUntil, lienApprovalPush, lienApprovalUrl, lienRetainageApprovalPush, lienRetainageApprovalUrl, shortDay } from './lienApprovalPush'
 import { lienNoticeToldWords } from './lienLeaderTold'
 import { plainWordsFailures } from '../plainWords'
 
@@ -49,5 +49,40 @@ describe('the leader’s push (v2.4872)', () => {
     const p = lienApprovalPush({ jobLabel: '891 · Tune 5 Liberty Hill', jobId: 'j891', claim: 27_199, gcName: 'Brund & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Taunya' })
     for (const line of p.emailText.split('\n').filter((l) => /[a-z]{3}/i.test(l) && !/^\d/.test(l))) expect(plainWordsFailures(line), line).toEqual([])
     for (const w of [lienNoticeToldWords({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi' } }).said, lienNoticeToldWords({ ok: true, told: { pushSent: 0, emailSent: true, leaderName: 'Malachi' } }).said, lienNoticeToldWords({ ok: true, told: { pushSent: 0, emailSent: false, leaderName: null } }).said]) expect(plainWordsFailures(w), w).toEqual([])
+  })
+})
+
+describe('the leader’s push for a retainage notice (v2.7478)', () => {
+  it('is one line: the job, the retainage and who holds it, the mail-by day; the tap lands on the Retainage list on that job', () => {
+    const p = lienRetainageApprovalPush({ jobLabel: '891 · Tune 5 Liberty Hill', jobId: 'j891', retainage: 12_400.4, gcName: 'Brund & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Taunya Smith' })
+    expect(p.title).toBe('Approve a retainage notice')
+    expect(p.body).toBe('891 · Tune 5 Liberty Hill · $12,400 retainage held by Brund & Assoc. · mail by Oct 15 · 8 days')
+    expect(p.url).toBe('/lien-desk?tab=retainage&job=j891')
+    expect(p.tag).toBe('lien-retainage-approval-j891')
+    expect(p.subject).toBe('Approve a retainage notice · 891 · Tune 5 Liberty Hill')
+    expect(p.emailText).toBe('Taunya sent a retainage notice for your approval.\n\n891 · Tune 5 Liberty Hill\n$12,400 retainage held by Brund & Assoc.\nMail by Oct 15, 8 days from now.\n\nOpen the Lien desk to approve it or hold it.')
+    expect(lienRetainageApprovalUrl('a b')).toBe('/lien-desk?tab=retainage&job=a%20b')
+    expect(lienRetainageApprovalUrl('')).toBe('/lien-desk?tab=retainage')
+    // Its own tag: a monthly notice's push on the same job never replaces it.
+    expect(p.tag).not.toBe(lienApprovalPush({ jobLabel: '891', jobId: 'j891', claim: 1, gcName: null, dueYmd: null, todayYmd: '2026-10-07', senderName: null }).tag)
+  })
+
+  it('a reminder says so; what it does not know is left out, and a day that passed has no count', () => {
+    const r = lienRetainageApprovalPush({ jobLabel: '650', jobId: 'j650', retainage: 900, gcName: null, dueYmd: '2026-10-08', todayYmd: '2026-10-07', senderName: 'wendi park', reminder: true })
+    expect(r.emailText.split('\n')[0]).toBe('wendi is reminding you of a retainage notice that waits for your approval.')
+    expect(r.body).toBe('650 · $900 retainage · mail by Oct 8 · 1 day')
+    const bare = lienRetainageApprovalPush({ jobLabel: '650', jobId: 'j650', retainage: null, gcName: 'GC', dueYmd: null, todayYmd: '2026-10-07', senderName: null })
+    expect(bare.body).toBe('650')
+    expect(bare.emailText).toBe('The office sent a retainage notice for your approval.\n\n650\n\nOpen the Lien desk to approve it or hold it.')
+    const late = lienRetainageApprovalPush({ jobLabel: '650', jobId: 'j650', retainage: 0, gcName: 'GC', dueYmd: '2026-10-01', todayYmd: '2026-10-07', senderName: 'R' })
+    expect(late.body).toBe('650 · mail by Oct 1')
+    expect(late.emailText).toContain('\nMail by Oct 1.\n')
+  })
+
+  it('the email’s own sentences keep to plain words', () => {
+    const p = lienRetainageApprovalPush({ jobLabel: '650', jobId: 'j650', retainage: 900, gcName: 'GC', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Wendi', reminder: true })
+    const lines = p.emailText.split('\n')
+    expect(plainWordsFailures(lines[0]!)).toEqual([])
+    expect(plainWordsFailures(lines[lines.length - 1]!)).toEqual([])
   })
 })

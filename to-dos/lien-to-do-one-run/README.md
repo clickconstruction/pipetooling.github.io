@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -16,7 +16,7 @@ summary: >
 next: Step 5, the Get it right checklist with Leave out (M), the first step of the run. Ask where a left-out paper is remembered and whether the next run takes it by itself, before it is built.
 size: L for D as five steps (M · M · M · S · M); B, the first three, and step 4, the list by bin, are built; left: steps 5 to 8 (M · M · S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483
 ---
 
 # Lien desk To do: one run (#362)
@@ -175,7 +175,7 @@ by itself.
    every read after.
 8. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
 
-## The print at the foot of each column (built, v2.7470)
+## The two prints on the Board (built, v2.7470; moved under the tiles, v2.7483)
 
 The owner, 2026-11-16, asked whether To do offers good enough tools to print batches. A band between
 the Board and the list was drawn and not liked; one line beside the find box was drawn next; the third
@@ -184,6 +184,10 @@ in its own print: under the notices *Print and mail N notices* opens the whole r
 affidavits *Print N for notarization* prints from To do, each with one line for what it leaves out and
 its door. The same pair stands beside the find box once the list is scrolled. Not in it: chips by GC,
 ticks on To do's rows, one print job for both kinds (that is step 6).
+
+The same day he asked whether the batches were now easy to reach. At 1,024 by 768 both presses sat below
+the first screen, so to *move them up beside the tiles?* he said *"Yes, move them up"*. Since v2.7483
+they stand between the tiles and the columns, each over its own column, and the third tile only reads.
 
 Two things he agreed to in direction the same day. The first is not yet drawn or built:
 
