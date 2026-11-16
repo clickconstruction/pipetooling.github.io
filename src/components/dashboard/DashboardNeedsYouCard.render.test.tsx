@@ -7,7 +7,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
-import type { NeedsYouItem } from '../../lib/dashboardNeedsYou'
+import { lienLeaderSignItem, rankNeedsYouItems, type NeedsYouItem } from '../../lib/dashboardNeedsYou'
+import { buildLienLeaderSignCard } from '../../lib/jobs/lienLeaderSignCard'
+import { leaderInput, leaderNine, leaderTonight } from '../../test/lienLeaderFixtures'
 
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 const phone = { on: false }
@@ -222,5 +224,100 @@ describe('DashboardNeedsYouCard: While you were off (v2.6060, punch list #141 PR
     cleanup()
     render(<DashboardNeedsYouCard userId="u1" role="assistant" items={ITEMS} onAction={() => {}} lienBoardStrip={null} />)
     expect(document.querySelector('[data-needs-you-lien-board]')).toBeNull()
+  })
+})
+
+describe('DashboardNeedsYouCard: the leader’s lien notices as a card of their own (v2.7435)', () => {
+  /** The Needs you line a leader gets with these notices waiting, through the real builders. */
+  const leaderItems = (awaiting = leaderTonight()): NeedsYouItem[] => [lienLeaderSignItem(buildLienLeaderSignCard(leaderInput(awaiting))!)]
+  const text = (sel: string) => [...document.querySelectorAll(sel)].map((n) => n.textContent ?? '')
+  beforeEach(() => cleanup())
+
+  it('on a computer: the deadline as the title, the money and the wait in one line, a row and a press per notice', () => {
+    const items = [ITEMS[1]!, ...leaderItems()]
+    const { onAction } = renderCard(items, 'master_technician')
+    const card = document.querySelector('[data-lien-leader-card]') as HTMLElement
+    expect(card.getAttribute('data-tone')).toBe('red')
+    expect(card.getAttribute('data-phone')).toBe('no')
+    expect(card.textContent).toContain('Lien notices · your signature')
+    expect(text('[data-lien-leader-title]')).toEqual(['Sign 1 lien notice today'])
+    expect(text('[data-lien-leader-line]')).toEqual(['2 more with no open window · $6,529 on 3 jobs · they have waited on you since Oct 7, 40 days'])
+    expect([...card.querySelectorAll('[data-lien-leader-line] strong')].map((n) => n.textContent)).toEqual(['$6,529', 'Oct 7'])
+    // One row a notice, the GC on it, the chips on the job they belong to.
+    const rows = [...card.querySelectorAll('[data-lien-leader-row]')] as HTMLElement[]
+    expect(rows.map((r) => r.getAttribute('data-lien-leader-row'))).toEqual(['j891', 'j804', 'j922'])
+    expect(rows[0]!.textContent).toContain('891 · ZZ Test Car Wash')
+    expect(rows[0]!.textContent).toContain('$2,976')
+    expect(rows[0]!.textContent).toContain('ZZ Test GC 891')
+    expect([...rows[0]!.querySelectorAll('[data-lien-leader-chip]')].map((c) => [c.getAttribute('data-tone'), c.textContent])).toEqual([['red', 'August closes today'], ['red', 'July closed Oct 15, not sent']])
+    expect(rows[1]!.textContent).toContain('Jul + Aug + Sep')
+    expect([...rows[2]!.querySelectorAll('[data-lien-leader-chip]')].map((c) => [c.getAttribute('data-tone'), c.textContent])).toEqual([['amber', 'nothing claimed, ask the office']])
+    // Every row has its press: the first signs, in the green; the others open.
+    const presses = [...card.querySelectorAll('[data-lien-leader-press]')] as HTMLElement[]
+    expect(presses.map((b) => [b.textContent, b.getAttribute('data-primary')])).toEqual([['Open 891 to sign ▸', 'yes'], ['Open 804 ›', 'no'], ['Open 922 ›', 'no']])
+    expect(rows.every((r) => r.tagName === 'DIV')).toBe(true)
+    fireEvent.click(presses[1]!)
+    expect(onAction).toHaveBeenCalledTimes(1)
+    expect(onAction.mock.calls[0]![0]).toMatchObject({ key: 'lien-notice-approve', openHref: '/lien-desk?tab=notices&job=j804&pile=awaiting' })
+    fireEvent.click(presses[0]!)
+    expect(onAction.mock.calls[1]![0]).toMatchObject({ openHref: '/lien-desk?tab=notices&job=j891&pile=awaiting' })
+    // The old row's words are gone, and with three waiting there is no line for the rest.
+    expect(card.textContent).not.toContain('the office drafted')
+    expect(card.querySelector('[data-lien-leader-more]')).toBeNull()
+  })
+
+  it('red, it is the first line of Needs you; blue, it sits where the row sat', () => {
+    // Ranked, the card leads although the purchases line was handed in first and sits in a worse tier.
+    const ranked = rankNeedsYouItems([{ ...ITEMS[1]!, key: 'bulk-delete' }, ...leaderItems()])
+    expect(ranked.map((i) => i.key)).toEqual(['lien-notice-approve', 'bulk-delete'])
+    expect(ranked[0]).toMatchObject({ first: true, severity: 'red' })
+    renderCard(ranked, 'master_technician')
+    const all = document.querySelector('section')!.textContent ?? ''
+    expect(all.indexOf('Sign 1 lien notice today')).toBeLessThan(all.indexOf('89 purchases need a job'))
+    cleanup()
+    const blue = leaderItems(leaderNine().slice(2, 4))
+    expect(blue[0]).toMatchObject({ severity: 'blue', title: '2 lien notices wait on your signature' })
+    expect(blue[0]!.first).toBeUndefined()
+    renderCard(blue, 'master_technician')
+    expect((document.querySelector('[data-lien-leader-card]') as HTMLElement).getAttribute('data-tone')).toBe('blue')
+  })
+
+  it('on a phone: the wait on its own line, one button on the first notice, and every other row is the press', () => {
+    phone.on = true
+    // A phone with no saved choice opens on the deck, so this visit has Cards saved.
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'cards')
+    const { onAction } = renderCard(leaderItems(), 'master_technician')
+    const drawn = document.querySelector('[data-lien-leader-card]') as HTMLElement
+    expect(drawn.getAttribute('data-phone')).toBe('yes')
+    expect(text('[data-lien-leader-line]')).toEqual(['2 more with no open window · $6,529 on 3 jobs', 'Waiting on you since Oct 7, 40 days'])
+    const presses = [...drawn.querySelectorAll('[data-lien-leader-press]')] as HTMLElement[]
+    expect(presses.map((b) => b.textContent)).toEqual(['Open 891 to sign ▸'])
+    const rows = [...drawn.querySelectorAll('[data-lien-leader-row]')] as HTMLElement[]
+    expect(rows.map((r) => r.tagName)).toEqual(['DIV', 'BUTTON', 'BUTTON'])
+    expect(rows[1]!.getAttribute('aria-label')).toBe('Open the notice for 804 ZZ Test Auto Parts on the Lien desk')
+    // A phone's rows leave the GC out.
+    expect(drawn.textContent).not.toContain('ZZ Test GC')
+    fireEvent.click(rows[2]!)
+    expect(onAction.mock.calls[0]![0]).toMatchObject({ key: 'lien-notice-approve', openHref: '/lien-desk?tab=notices&job=j922&pile=awaiting' })
+  })
+
+  it('with nine waiting: three rows, and one line that opens the Awaiting approval pile', () => {
+    const { onAction } = renderCard(leaderItems(leaderNine()), 'master_technician')
+    const card = document.querySelector('[data-lien-leader-card]') as HTMLElement
+    expect(text('[data-lien-leader-title]')).toEqual(['Sign 2 lien notices today'])
+    expect(card.querySelectorAll('[data-lien-leader-row]')).toHaveLength(3)
+    const more = card.querySelector('[data-lien-leader-more]') as HTMLElement
+    expect(more.textContent).toBe('6 more wait on you ›')
+    fireEvent.click(more)
+    expect(onAction.mock.calls[0]![0]).toMatchObject({ openHref: '/lien-desk?tab=notices&pile=awaiting' })
+  })
+
+  it('Walk the list still says it in one card: the title, the line, and a press that opens the first notice', () => {
+    const { onAction } = renderCard(leaderItems(), 'master_technician')
+    fireEvent.click(screen.getByRole('button', { name: 'Walk the list view' }))
+    expect(document.querySelector('[data-lien-leader-card]')).toBeNull()
+    expect(screen.getByText('Sign 1 lien notice today')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Open 891 to sign' }))
+    expect(onAction.mock.calls[0]![0]).toMatchObject({ key: 'lien-notice-approve', openHref: '/lien-desk?tab=notices&job=j891&pile=awaiting' })
   })
 })

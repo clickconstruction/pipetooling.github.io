@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import LienDeskNextUp, { lienNextUpDueWords } from './LienDeskNextUp'
+import LienDeskNextUp, { lienKindTagStyle, lienNextUpDueWords, lienPaperDoorStyle } from './LienDeskNextUp'
 import type { LienNextUpRow } from '../../lib/jobs/lienNextUp'
 
 afterEach(cleanup)
@@ -19,7 +19,7 @@ describe('LienDeskNextUp', () => {
     const onAct = vi.fn()
     const rows = [
       row({}),
-      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
+      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Print and mail 2', target: { open: 'run', gcId: 'gc1' } }),
       row({ key: 'affidavit:j2', kind: 'affidavit', jobId: 'j2', title: '977 · Stonewick', sub: 'Affidavit approved · ready to file', dueOn: '2026-11-16', daysLeft: 42, severity: 'quiet', group: 'coming', action: 'file_affidavit', button: 'File the affidavit', target: { open: 'affidavits', jobId: 'j2' } }),
     ]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} />)
@@ -35,8 +35,24 @@ describe('LienDeskNextUp', () => {
     fireEvent.click(within(first).getByRole('button', { name: 'Open the notice' }))
     expect(onAct).toHaveBeenCalledTimes(1)
     expect(onAct.mock.calls[0]![0].key).toBe('notice:j1')
-    fireEvent.click(within(now).getByRole('button', { name: 'Send the run' }))
+    fireEvent.click(within(now).getByRole('button', { name: 'Print and mail 2' }))
     expect(onAct.mock.calls[1]![0].target).toEqual({ open: 'run', gcId: 'gc1' })
+  })
+
+  it('a chip that opens its paper is the same size and weight as a plain one (v2.7442)', () => {
+    // A whole `font` set after the chip's size wiped it in the browser, so the door drew at the row's size; the test
+    // browser ignores `font: inherit`, so the style itself is what is held here.
+    for (const kind of ['notice', 'affidavit'] as const) {
+      const door = lienPaperDoorStyle(kind, false)
+      const plain = lienKindTagStyle(kind)
+      expect(Object.keys(door)).not.toContain('font')
+      expect([door.fontSize, door.fontWeight, door.lineHeight]).toEqual([plain.fontSize, plain.fontWeight, plain.lineHeight])
+      expect(door.fontFamily).toBe('inherit')
+    }
+    // The drawn door wears it.
+    render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile={false} onAct={vi.fn()} onOpenPaper={vi.fn()} gapsFor={() => 0} />)
+    const drawn = screen.getByTestId('lien-next-up-paper-j1-notice')
+    expect([drawn.style.fontSize, drawn.style.fontWeight]).toEqual(['0.68rem', '700'])
   })
 
   it('a row with no move for this viewer still opens: the button reads Open, and a press on the row opens it too', () => {
@@ -484,7 +500,7 @@ describe('LienDeskNextUp · the doors beside a row whose notice on record still 
     sub: 'September 2026 has no notice. The one on record names April, June, July and August 2026.',
     doors: [
       { words: 'The paper named September 2026 too', target: { open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] } },
-      { words: 'The last day of work is wrong', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
+      { words: 'Change the last day of work…', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
     ],
   })
   it('draws each door as its own press, each acting on the row with that door’s target, beside the draft press', () => {
@@ -494,7 +510,7 @@ describe('LienDeskNextUp · the doors beside a row whose notice on record still 
     expect(el.textContent).toContain('September 2026 has no notice.')
     fireEvent.click(within(el).getByRole('button', { name: 'The paper named September 2026 too' }))
     expect(onAct.mock.calls[0]![0].target).toEqual({ open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] })
-    fireEvent.click(within(el).getByRole('button', { name: 'The last day of work is wrong' }))
+    fireEvent.click(within(el).getByRole('button', { name: 'Change the last day of work…' }))
     expect(onAct.mock.calls[1]![0].target).toEqual({ open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true })
     fireEvent.click(within(el).getByRole('button', { name: 'Open the notice' }))
     expect(onAct.mock.calls[2]![0].target).toEqual({ open: 'notices', jobId: 'j1', pile: 'to_draft' })
@@ -508,7 +524,7 @@ describe('LienDeskNextUp · a computer’s row in two lines (v2.7372, punch list
   const send = row({ key: 'notice:j1', jobId: 'j1', title: '1110 · ZZ Oak Hollow', sub: 'Notice to send', detail: 'September 2026' })
   const late = row({ key: 'notice:j4', jobId: 'j4', title: '891 · ZZ Builders', sub: 'Notice to send', detail: 'August 2026', dueOn: '2026-10-01', daysLeft: -4 })
   const retainage = row({ key: 'retainage:j5', kind: 'retainage', jobId: 'j5', title: '700 · ZZ Pine St', sub: 'Retainage notice to send' })
-  const stageFor = (r: LienNextUpRow) => ({ 'affidavit:j3': 'Ready to file', 'affidavit:j9': 'Needs the property facts', 'notice:j1': 'To send', 'notice:j4': 'To send' })[r.key] ?? null
+  const stageFor = (r: LienNextUpRow) => ({ 'affidavit:j3': 'Ready to file', 'affidavit:j9': 'Needs the property facts', 'notice:j1': 'To send for Master approval', 'notice:j4': 'To send for Master approval' })[r.key] ?? null
   const noticeFor = (r: LienNextUpRow) => (r.key === 'affidavit:j3' ? { tone: 'ok' as const, words: 'Notice sent Oct 14' } : r.key === 'affidavit:j9' ? { tone: 'none' as const, words: 'No notice needed · contracted with the owner' } : null)
   const amountFor = (r: LienNextUpRow) => ({ j3: 610, j9: 240, j1: 2900 })[r.jobId ?? ''] ?? null
   const lineOf = (key: string) => document.querySelector(`[data-lien-next-up-row="${key}"] [data-lien-next-up-line]`) as HTMLElement
@@ -524,7 +540,7 @@ describe('LienDeskNextUp · a computer’s row in two lines (v2.7372, punch list
     // The held paper asks its one question, on the row and on its button.
     expect(lineOf('affidavit:j9').textContent).toBe('Needs the property facts · Nobody has answered whether this home is a homestead.No notice needed · contracted with the owner')
     expect(within(document.querySelector('[data-lien-next-up-row="affidavit:j9"]') as HTMLElement).getByRole('button', { name: 'Answer the homestead question' })).toBeTruthy()
-    expect(lineOf('notice:j1').textContent).toBe('To send · September 2026')
+    expect(lineOf('notice:j1').textContent).toBe('To send for Master approval · September 2026')
     expect(Array.from(document.querySelectorAll('[data-lien-next-up-amount]')).map((el) => el.textContent)).toEqual(['$610', '$240', '$2,900'])
   })
 

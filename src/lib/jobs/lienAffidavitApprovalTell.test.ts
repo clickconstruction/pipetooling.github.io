@@ -6,7 +6,7 @@ import { plainWordsFailures } from '../plainWords'
 const told = (pushSent: number, emailSent: boolean, leaderName: string | null): LienLeaderTellResult => ({ ok: true, told: { pushSent, emailSent, leaderName } })
 
 describe('which papers of a press the leader is told of (punch list #305, v2.7180)', () => {
-  it('only the ones the send landed in Awaiting approval', () => {
+  it('only the ones the send landed in Awaiting Master approval', () => {
     const sent = [
       { jobId: 'a', itemId: 'ia', outcome: { status: 'awaiting_approval', reason: 'no_rule' } as const },
       { jobId: 'b', itemId: 'ib', outcome: { status: 'approved', approval_mode: 'rule' } as const },

@@ -23,6 +23,8 @@ describe('lienNoticeOwedWords · the To do row on a job with a recorded notice t
   it('the doors read in plain words', () => {
     for (const s of [lienNoticeOwedWords(['2026-09'], EARLIER)!, LIEN_NOTICE_OWED_DOORS.named(['2026-09']), LIEN_NOTICE_OWED_DOORS.lastDay]) expect(plainWordsFailures(s), s).toEqual([])
     expect(LIEN_NOTICE_OWED_DOORS.named(['2026-09'])).toBe('The paper named September 2026 too')
+    // The second press names its act and ends in one ellipsis character, since it opens a window (v2.7433).
+    expect(LIEN_NOTICE_OWED_DOORS.lastDay).toBe('Change the last day of work…')
   })
 })
 

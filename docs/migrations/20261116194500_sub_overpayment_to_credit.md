@@ -15,4 +15,4 @@ No new table, so no fence calls. One function, `CREATE OR REPLACE`: idempotent.
 
 **Order.** Push right after the merge. Until then the press says the repair is not switched on yet and changes nothing.
 
-**After the push:** the function's types and the dev seat's catalog, in a types PR.
+**Pushed** 2026-11-16, 06:19 UTC, alone, by `scripts/db-push.sh` from a checkout equal to `origin/main`. Read back on prod: the function is `SECURITY DEFINER`, a signed-out call is refused with 42501, and the ledger holds the version once. The types and the dev seat's catalog followed in a types PR, which also drops the window's `as never` casts.

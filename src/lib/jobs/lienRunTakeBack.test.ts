@@ -57,13 +57,13 @@ describe('lienRunTakeBack', () => {
     expect(all.title).toBe('Take back the run?')
     expect(all.button).toBe('Take back 19 notices')
     expect(all.lines).toEqual([
-      'The 19 notices go back to Ready to send. The approvals stand.',
+      'The 19 notices go back to Approved · to print. The approvals stand.',
       'Then print the packet again. It prints the way the app draws it today.',
       'The copies printed Oct 7 stay in each job’s Documents, filed as printed.',
     ])
     const one = runTakeBackConfirm({ count: 1, printedAt: null, typed: 1, all: false })
     expect(one.title).toBe('Take back the 1 notice that printed?')
-    expect(one.lines).toContain('The notice goes back to Ready to send. The approvals stand.')
+    expect(one.lines).toContain('The notice goes back to Approved · to print. The approvals stand.')
     expect(one.lines).toContain('The copy printed stays in the job’s Documents, filed as printed.')
     expect(one.lines).toContain('The tracking number typed here is not saved.')
     expect(one.lines).toContain('The notices in this run that have not printed stay as they are.')
@@ -71,8 +71,8 @@ describe('lienRunTakeBack', () => {
   })
 
   it('the strip after, and the ready chip’s line', () => {
-    expect(runTakenBackWords(19, '2026-10-07T16:00:00Z')).toBe('Taken back. The 19 notices printed October 7, 2026 are in Ready to send again. Print the packet when it is ready.')
-    expect(runTakenBackWords(1, null)).toBe('Taken back. The notice is in Ready to send again. Print the packet when it is ready.')
+    expect(runTakenBackWords(19, '2026-10-07T16:00:00Z')).toBe('Taken back. The 19 notices printed October 7, 2026 are in Approved · to print again. Print the packet when it is ready.')
+    expect(runTakenBackWords(1, null)).toBe('Taken back. The notice is in Approved · to print again. Print the packet when it is ready.')
     expect(takenBackChipWords(null)).toBeNull()
     expect(takenBackChipWords({ at: '2026-10-08T15:00:00Z', by: 'u1', byName: 'Dana', printedAt: '2026-10-07T16:00:00Z' })).toEqual({ tail: 'taken back Oct 8', sentence: 'Printed Oct 7, taken back Oct 8 by Dana. Nothing was mailed.' })
     expect(takenBackChipWords({ at: '2026-10-08T15:00:00Z', by: null, byName: null, printedAt: null })!.sentence).toBe('Taken back Oct 8. Nothing was mailed.')

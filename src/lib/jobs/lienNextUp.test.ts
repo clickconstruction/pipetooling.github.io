@@ -4,7 +4,7 @@ import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits
 import type { LienRetainageEntry, LienRetainagePile } from './lienDeskRetainage'
 import type { LetterTwoStatus } from './lienLetterTwo'
 import type { CourtesyStatus } from './lienCourtesyNotice'
-import { buildLienNextUp, lienViewerLeadsJob, groupLienNextUp, lienGateHoldWords, lienNextUpCount, lienNextUpNowHead, lienPrintedDaysWords, lienWaitedWords, type LienNextUpInput, type LienNextUpRow } from './lienNextUp'
+import { buildLienNextUp, lienRunEntriesFor, lienViewerLeadsJob, groupLienNextUp, lienGateHoldWords, lienNextUpCount, lienNextUpNowHead, lienPrintedDaysWords, lienWaitedWords, type LienNextUpInput, type LienNextUpRow } from './lienNextUp'
 
 const TODAY = '2026-10-05'
 
@@ -58,15 +58,24 @@ describe('buildLienNextUp — notices', () => {
     expect(office.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'awaiting' })
   })
 
-  it('ready: a single job sends from its pane; a GC with several is one Send the run row', () => {
+  it('ready: a single job is Print and mail on the run of its GC; a GC with several is one Print and mail N row (v2.7442)', () => {
     const single = one({ notices: [notice('j1', 'ready')] })
-    expect([single.action, single.button]).toEqual(['send', 'Send'])
-    expect(single.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'ready' })
+    expect([single.action, single.button]).toEqual(['send', 'Print and mail'])
+    expect(single.target).toEqual({ open: 'run', gcId: 'gc1' })
+    // A notice with no GC on record keeps its pane.
+    expect(one({ notices: [notice('j1', 'ready', { gcCustomerId: null })] }).target).toEqual({ open: 'notices', jobId: 'j1', pile: 'ready' })
 
     const run = one({ notices: [notice('j1', 'ready', { earliestDeadline: '2026-10-20', daysLeft: 15 }), notice('j2', 'ready', { earliestDeadline: '2026-10-09', daysLeft: 4, severity: 'red' })] })
-    expect([run.key, run.action, run.button, run.title, run.sub]).toEqual(['run:gc1', 'send_run', 'Send the run', 'GC gc1', '2 notices approved · ready to send'])
+    expect([run.key, run.action, run.button, run.title, run.sub]).toEqual(['run:gc1', 'send_run', 'Print and mail 2', 'GC gc1', '2 notices approved · ready to send'])
     expect([run.jobId, run.gcId, run.dueOn, run.daysLeft, run.severity, run.group]).toEqual([null, 'gc1', '2026-10-09', 4, 'red', 'now'])
     expect(run.target).toEqual({ open: 'run', gcId: 'gc1' })
+
+    // The run a GC's row opens holds that GC's approved notices alone; the desk's own door holds every approved and printed one.
+    const ready = [notice('a', 'ready'), notice('b', 'ready', { gcCustomerId: 'gc2' }), notice('c', 'ready')]
+    const printed = [notice('p', 'printed')]
+    expect(lienRunEntriesFor(ready, printed, 'gc1').map((e) => e.jobId)).toEqual(['a', 'c'])
+    expect(lienRunEntriesFor(ready, printed, 'gc2').map((e) => e.jobId)).toEqual(['b'])
+    expect(lienRunEntriesFor(ready, printed, null).map((e) => e.jobId)).toEqual(['a', 'b', 'c', 'p'])
 
     // Two GCs with one each are two single rows, not a run.
     expect(build({ notices: [notice('j1', 'ready'), notice('j2', 'ready', { gcCustomerId: 'gc2' })] }).map((r) => r.action)).toEqual(['send', 'send'])
@@ -213,7 +222,7 @@ describe('buildLienNextUp — the printed run is one row (punch list #101)', () 
     const run = rows.find((r) => r.key === 'run:printed')!
     expect([run.kind, run.jobId, run.gcId, run.title, run.dueOn, run.daysLeft, run.severity, run.group]).toEqual(['notice', null, null, '3 notices printed Oct 7', '2026-10-15', 5, 'red', 'now'])
     expect(run.sub).toBe('The run as a checklist: tick Printed, Signed and Mailed on each. Mailed? Type each envelope’s number. Not mailing them? Take the run back.')
-    expect([run.action, run.button]).toEqual(['record_mailing', 'Record the mailing'])
+    expect([run.action, run.button]).toEqual(['record_mailing', 'Enter mail numbers'])
     expect(run.target).toEqual({ open: 'run', gcId: null })
     expect(run.secondary).toEqual({ words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } })
     expect(run.jobs).toEqual([
@@ -353,7 +362,7 @@ describe('another master’s jobs read as the office reads them (v2.6734, punch 
     const code = { id: 'i-code', status: 'approved', approval_mode: 'leader', fields: {}, signed_at: '2026-10-23T19:14:00Z', signer_printed_name: 'Malachi', signer_signature_mode: 'code', signed_on_device_of: 'u-robert', signed_leader_confirmed_at: null } as unknown as LienDeskEntry['item']
     const rows = build({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master, ...names, notices: [notice('j1', 'ready', { item: unsigned }), notice('j2', 'ready', { item: unsigned, gcCustomerId: 'gc2' })] })
     const his = rows.find((r) => r.jobId === 'j1')!
-    expect([his.action, his.button, his.sub]).toEqual(['send', 'Send', 'Approved · ready to send · unsigned, waits on Malachi'])
+    expect([his.action, his.button, his.sub]).toEqual(['send', 'Print and mail', 'Approved · ready to send · unsigned, waits on Malachi'])
     const mine = rows.find((r) => r.jobId === 'j2')!
     expect([mine.action, mine.button, mine.sub]).toEqual(['sign', 'Sign', 'Approved on your word · unsigned'])
     const codeRow = one({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master, ...names, notices: [notice('j1', 'ready', { item: code })] })
@@ -420,7 +429,7 @@ describe('buildLienNextUp — a notice on record that still owes a month (punch 
     expect([r.action, r.button]).toEqual(['draft', 'Open the notice'])
     expect(r.doors).toEqual([
       { words: 'The paper named September 2026 too', target: { open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] } },
-      { words: 'The last day of work is wrong', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
+      { words: 'Change the last day of work…', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
     ])
   })
   it('with no notice on record, or no months handed in, the row keeps its plain words and no doors', () => {

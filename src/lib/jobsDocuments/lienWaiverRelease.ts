@@ -445,26 +445,33 @@ function esc(s: string): string {
 export type LienWaiverSignature = {
   /**
    * 'code' (v2.5924): he typed his signing code on another's screen — renders as the cursive name, like 'type'.
-   * 'notary_paper' (v2.5925): signed in ink before a notary — renders NO ink; the audit line and the
+   * 'notary_paper' (v2.5925): signed in ink before a notary — renders NO ink; `LIEN_WAIVER_NOTARY_LINE` and the
    * filed copy carry the signature.
    */
   mode: 'type' | 'draw' | 'code' | 'notary_paper'
   printedName: string
   /** PNG data URL for draw-mode signatures; ignored for typed. */
   pngDataUrl?: string | null
-  /** The audit sentence (see lienReleaseSignatureAuditLine) under the block: who, how, when, whose screen. */
-  auditLine: string
   /** v2.4285: the day signed (app calendar), for the foot's "Signed …" line; the fields' signature date when absent. */
   signedYmd?: string | null
 }
 
-/** The second grey line under every signed rendering (v2.4285) — the two statutes, once, a shade lighter. */
+/**
+ * The grey line under every signed rendering (v2.4285): the two statutes, once. Since v2.7437 (Taunya's ask) it stands
+ * alone: the sentence that said who signed, how, at what time and on whose screen (`lienReleaseSignatureAuditLine`)
+ * is read in the release window and is not on the paper, and this shape no longer carries it.
+ */
 export const LIEN_WAIVER_ESIGN_LINE = 'Binding as a signature in ink under the ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322).'
+/**
+ * Under a notarized paper's foot, which draws no ink (v2.5925): where the signature is. No clock and no name of who
+ * filed it (v2.7437); it claims no ink, since a stored copy may carry an online notary's electronic seal (v2.5985).
+ */
+export const LIEN_WAIVER_NOTARY_LINE = 'Signed before a Notary Public of the State of Texas. The signed copy is on file.'
 
 /**
  * The foot of the page as HTML (v2.4285): the signature — drawn PNG, or the typed name in the
  * cursive face — above the rule; under it the name and company, the title, the day signed; then
- * the audit sentence and the statute line in grey. Unsigned: the rule waits, the date is a blank.
+ * the statute line in grey (a notarized paper says so first). Unsigned: the rule waits, the date is a blank.
  */
 export function buildLienWaiverFootHtml(f: LienWaiverFields, signature?: LienWaiverSignature | null): string {
   const foot = buildLienWaiverFoot(f, signature)
@@ -479,7 +486,7 @@ export function buildLienWaiverFootHtml(f: LienWaiverFields, signature?: LienWai
     (foot.title ? `<div style="font-size:0.9em; line-height:1.5; color:#3d3d3d">${esc(foot.title)}</div>` : '') +
     `<div style="font-size:0.9em; line-height:1.5; color:#3d3d3d">${foot.signed ? esc(foot.signed) : 'Signed ______________________'}</div>`
   const audit = signature
-    ? `<p style="margin:1.4em 0 0; font-family:system-ui,sans-serif; font-size:0.7em; line-height:1.6; color:#5b6168; max-width:640px">${esc(signature.auditLine)}<br><span style="color:#7a7f86">${esc(LIEN_WAIVER_ESIGN_LINE)}</span></p>`
+    ? `<p style="margin:1.4em 0 0; font-family:system-ui,sans-serif; font-size:0.7em; line-height:1.6; color:#5b6168; max-width:640px">${signature.mode === 'notary_paper' ? `${esc(LIEN_WAIVER_NOTARY_LINE)}<br>` : ''}<span style="color:#7a7f86">${esc(LIEN_WAIVER_ESIGN_LINE)}</span></p>`
     : ''
   return `<div style="margin-top:2.2em">${ink}${lines}${audit}</div>`
 }
@@ -717,12 +724,12 @@ export async function buildLienWaiverPdfBlob(
         doc.text(block.foot.signed ?? 'Signed ______________________', PAGE_MARGIN, y)
         y += 5
         if (signature) {
-          // (the audit sentence below covers every mode, notary_paper included)
+          // A notarized paper draws no ink here, so one line says where the signature is; then the statutes (v2.7437: no audit sentence).
           y += 4
           doc.setFont('helvetica', 'normal')
           doc.setFontSize(7.5)
           doc.setTextColor(91, 97, 104)
-          writeWrapped(signature.auditLine, 3.8)
+          if (signature.mode === 'notary_paper') writeWrapped(LIEN_WAIVER_NOTARY_LINE, 3.8)
           doc.setTextColor(122, 127, 134)
           writeWrapped(LIEN_WAIVER_ESIGN_LINE, 3.8)
         }

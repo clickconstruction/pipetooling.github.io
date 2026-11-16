@@ -14,6 +14,17 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
+vi.mock('../paintedMap/PaintedMapShareSheet', () => ({
+  PaintedMapShareSheet: (props: { mapId: string; mapName: string; onClose: () => void }) => (
+    <div data-testid="share-sheet">
+      {props.mapId}|{props.mapName}
+      <button type="button" onClick={props.onClose}>
+        Close the sheet
+      </button>
+    </div>
+  ),
+}))
+
 import { onPaintedMapAsk, paintedMapsChanged, type PaintedMapAsk } from '../../lib/paintedMap/paintedMapDoor'
 import { DocumentsPaintedMapsTab } from './DocumentsPaintedMapsTab'
 
@@ -52,9 +63,9 @@ describe('DocumentsPaintedMapsTab', () => {
     expect(screen.getByRole('heading', { name: 'Painted maps' })).toBeTruthy()
     await waitFor(() => expect(rowTexts()).toHaveLength(3))
     expect(rowTexts()).toEqual([
-      'The way in for deliveriesStart at the truck gate. | J14 · Juniper Ridge, Lot 14 | about 830 ft · 2 places | Painted by Dana on Nov 13.',
-      'The site road | Juniper Ridge, every lot | about 2,950 ft | Painted by Dana on Nov 10.',
-      'Where to park | On no job yet | nothing on it yet | Painted by Dana on Nov 9.',
+      'The way in for deliveriesStart at the truck gate. | J14 · Juniper Ridge, Lot 14 | about 830 ft · 2 places | Painted by Dana on Nov 13. | Share',
+      'The site road | Juniper Ridge, every lot | about 2,950 ft | Painted by Dana on Nov 10. | Share',
+      'Where to park | On no job yet | nothing on it yet | Painted by Dana on Nov 9. | Share',
     ])
     expect(document.querySelector('[data-documents-painted-maps-count]')?.textContent).toBe('3 painted maps')
     // A short list needs no find box.
@@ -115,6 +126,15 @@ describe('DocumentsPaintedMapsTab', () => {
 
   it('the homes and the names failing cost their words and never the list', async () => {
     render(<DocumentsPaintedMapsTab loadMaps={landed([WAY, LOOSE])} loadHomes={() => Promise.reject(new Error('nope'))} loadNames={() => Promise.reject(new Error('nope'))} />)
-    await waitFor(() => expect(rowTexts()).toEqual(['The way in for deliveriesStart at the truck gate. | On a job | about 830 ft · 2 places | Painted on Nov 13.', 'Where to park | On no job yet | nothing on it yet | Painted on Nov 9.']))
+    await waitFor(() => expect(rowTexts()).toEqual(['The way in for deliveriesStart at the truck gate. | On a job | about 830 ft · 2 places | Painted on Nov 13. | Share', 'Where to park | On no job yet | nothing on it yet | Painted on Nov 9. | Share']))
+  })
+
+  it('Share on a row opens that map\'s Share sheet, without opening the map', async () => {
+    render(<DocumentsPaintedMapsTab loadMaps={landed([WAY, SITE])} loadHomes={homes} loadNames={names} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Share The site road' }))
+    expect(screen.getByTestId('share-sheet').textContent).toContain('site|The site road')
+    expect(asks).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Close the sheet' }))
+    expect(screen.queryByTestId('share-sheet')).toBeNull()
   })
 })

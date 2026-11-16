@@ -265,12 +265,14 @@ describe('BoxPublicPage · the answers that are not a box say what they said', (
   })
 
   // v2.7072 (punch list #329): a code may be a sticker's.
-  it('a blank sticker says its number, offers the sign-in and nothing else', async () => {
+  it('a blank sticker says only that, offers the sign-in and nothing else, and never its number', async () => {
+    // box-read still answers the number; the page does not say it (Taunya's call of 2026-11-16)
     answer(404, { error: 'sticker_blank', number: 147 })
     mount('9B1C0D2E')
     const page = await screen.findByTestId('box-page-sticker-blank')
-    expect(page.textContent).toBe('Sticker 0147 is not on a box yet' + 'Sign in to say what it is.' + 'Sign in')
-    expect(document.title).toBe('Sticker 0147 · Click Plumbing & Electrical')
+    expect(page.textContent).toBe('This sticker is not on a box yet' + 'Sign in to say what it is.' + 'Sign in')
+    expect(document.title).toBe('Blank sticker · Click Plumbing & Electrical')
+    expect(document.body.textContent).not.toContain('0147')
     // no site, no office number, and not the words of a wrong code
     expect(screen.queryByTestId('box-page-not-found')).toBeNull()
     expect(screen.queryByTestId('box-page-text-office')).toBeNull()
@@ -284,19 +286,20 @@ describe('BoxPublicPage · the answers that are not a box say what they said', (
     answer(410, { error: 'sticker_lost', number: 147, lostOn: '2026-11-07' })
     mount('9B1C0D2E')
     const page = await screen.findByTestId('box-page-sticker-lost')
-    expect(page.textContent).toContain('Sticker 0147 was marked lost')
+    expect(page.textContent).toContain('This sticker was marked lost')
+    expect(document.title).toBe('Lost sticker · Click Plumbing & Electrical')
     expect(page.textContent).toContain('Someone marked it lost on Saturday, Nov 7. It no longer opens a box.')
     expect(screen.queryByTestId('box-page-retired')).toBeNull()
     fireEvent.click(screen.getByTestId('box-page-scan-another'))
     expect(await screen.findByTestId('scan-page')).toBeTruthy()
   })
 
-  it('a sticker on a box draws that box as a label does, with the sticker\'s number by the code', async () => {
+  it('a sticker on a box draws that box as a label does, with the code scanned and no number', async () => {
     answer(200, { ...box, box: { ...box.box, code: '9B1C0D2E', stickerNumber: 147 } })
     mount('9B1C0D2E')
     expect((await screen.findByTestId('box-page-title')).textContent).toBe('Box G81')
-    expect(screen.getByTestId('box-page-sticker').textContent).toBe('Sticker 0147, ')
-    expect(screen.getByTestId('box-page-code').textContent).toBe('Sticker 0147, 9B1C-0D2E')
+    expect(screen.queryByTestId('box-page-sticker')).toBeNull()
+    expect(screen.getByTestId('box-page-code').textContent).toBe('9B1C-0D2E')
   })
 
   it('a label\'s own code draws no sticker number', async () => {

@@ -1,6 +1,5 @@
 import type { EstimateAcceptSubmitPayload } from '../../components/estimates/EstimateAcceptBody'
 import { buildLienWaiverPdfBlob, type LienWaiverFields, type LienWaiverFormType, type LienWaiverSignature } from '../jobsDocuments/lienWaiverRelease'
-import { lienReleaseSignatureAuditLine } from './lienReleaseLifecycle'
 import { LIEN_RELEASE_DOCUMENTS_BUCKET } from './lienReleaseDocuments'
 import { validateReportSignatureDataUrlForSubmit } from '../reportSignatureField'
 import { supabase } from '../supabase'
@@ -55,15 +54,10 @@ export async function signLienRelease(args: SignLienReleaseArgs): Promise<SignLi
       /* the row stamp below is the signature of record */
     }
   }
-  const audit = lienReleaseSignatureAuditLine(
-    { signed_at: signedAtIso, signer_consented_at: signedAtIso, signer_printed_name: payload.printedName, signer_signature_mode: payload.mode },
-    present ? onDevice.name : null,
-  )
   const signature: LienWaiverSignature = {
     mode: payload.mode,
     printedName: payload.printedName,
     pngDataUrl: payload.mode === 'draw' ? ink : null,
-    auditLine: audit ?? '',
     signedYmd: calendarYmdInAppTzFromIso(signedAtIso),
   }
   try {
@@ -145,11 +139,7 @@ export async function signLienReleaseWithCode(args: SignLienReleaseWithCodeArgs)
   }
   // The signed PDF, best-effort — regenerable from the row's snapshot when the bytes are missing.
   try {
-    const audit = lienReleaseSignatureAuditLine(
-      { signed_at: signedAtIso, signer_consented_at: signedAtIso, signer_printed_name: printedName, signer_signature_mode: 'code' },
-      args.deviceUserName,
-    )
-    const signature: LienWaiverSignature = { mode: 'code', printedName, pngDataUrl: null, auditLine: audit ?? '', signedYmd: calendarYmdInAppTzFromIso(signedAtIso) }
+    const signature: LienWaiverSignature = { mode: 'code', printedName, pngDataUrl: null, signedYmd: calendarYmdInAppTzFromIso(signedAtIso) }
     const pdf = await buildLienWaiverPdfBlob(args.formType, args.fields, signature)
     const { error: upErr } = await supabase.storage.from(LIEN_RELEASE_DOCUMENTS_BUCKET).upload(`${args.releaseId}/signed.pdf`, pdf, { contentType: 'application/pdf', upsert: true })
     if (!upErr) await supabase.from('job_lien_releases').update({ signed_pdf_path: `${args.releaseId}/signed.pdf` }).eq('id', args.releaseId)
