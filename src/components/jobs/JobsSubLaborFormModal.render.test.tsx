@@ -124,15 +124,15 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(screen.queryByText('Sub Benched')).toBeNull()
   })
 
-  it('a crew search with no match quotes it, and Clear the search brings the crew back (#184)', async () => {
+  it('a search of the people with no match quotes it, and Clear the search brings them back (#184)', async () => {
     const { handleRef } = mountHarness()
-    // Edit shows every step at once; a new sheet reaches the crew on step 2.
+    // Edit shows every step at once; a new sheet reaches the people on step 2.
     await act(async () => handleRef.current!.openEdit(makeLaborJob({ job_number: 'HCP-12' })))
-    fireEvent.change(screen.getByLabelText('Search for crew'), { target: { value: 'zz' } })
+    fireEvent.change(screen.getByLabelText('Search for a person'), { target: { value: 'zz' } })
     const press = screen.getByRole('button', { name: 'Clear the search' })
-    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No crew match ‘zz’. Clear the search')
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No people match ‘zz’. Clear the search')
     fireEvent.click(press)
-    expect((screen.getByLabelText('Search for crew') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('Search for a person') as HTMLInputElement).value).toBe('')
     expect(screen.getAllByLabelText('Sub Sam').length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Clear the search' })).toBeNull()
   })
@@ -216,7 +216,19 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(screen.queryByText('123 Main St, Austin, TX 78701')).toBeNull()
   })
 
-  it('openWithBillingPrefill seeds HCP, address, and roster-known contractors only', async () => {
+  it('the people step is one pick: ticking a second name takes the place of the first', async () => {
+    const { handleRef } = mountHarness()
+    await act(async () => handleRef.current!.openEdit(makeLaborJob({ assigned_to_name: 'Sub Sam', job_number: 'HCP-12' })))
+    expect(screen.getAllByRole('button', { name: 'Sub Sam', pressed: true }).length).toBeGreaterThanOrEqual(1)
+    // The search reaches every group, so the teammate's chip is on screen whichever group is folded.
+    fireEvent.change(screen.getByLabelText('Search for a person'), { target: { value: 'Tech' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tech One', pressed: false })[0]!)
+    expect(screen.getAllByRole('button', { name: 'Tech One', pressed: true }).length).toBeGreaterThanOrEqual(1)
+    fireEvent.change(screen.getByLabelText('Search for a person'), { target: { value: '' } })
+    expect(screen.queryAllByRole('button', { name: 'Sub Sam', pressed: true })).toHaveLength(0)
+  })
+
+  it('openWithBillingPrefill seeds HCP and address, and offers the roster-known team without ticking anyone', async () => {
     const { handleRef } = mountHarness()
     await act(async () =>
       handleRef.current!.openWithBillingPrefill({
@@ -229,11 +241,17 @@ describe('JobsSubLaborFormModal render smoke', () => {
     // The seed number resolves to the real job — its authoritative address wins (v2.1616).
     expect(screen.getByText(/JHCP-12 · /)).toBeTruthy()
     expect(screen.getByText('123 Main St, Austin, TX 78701')).toBeTruthy()
-    // Walk the v2.1617 wizard to the Crew step, where the chips live.
-    fireEvent.click(screen.getByRole('button', { name: 'Next · Crew' }))
-    const samChips = screen.getAllByRole('button', { name: 'Sub Sam', pressed: true })
-    expect(samChips.length).toBeGreaterThanOrEqual(1)
+    // Walk the wizard to the people step. It is one pick, called Paid to (Taunya, 2026-11-15: "Only one name").
+    fireEvent.click(screen.getByRole('button', { name: 'Next · Paid to' }))
+    // The job's team is offered, and nobody is ticked: a ticked team is how teammates landed on subs' sheets.
+    expect(screen.queryAllByRole('button', { name: 'Sub Sam', pressed: true })).toHaveLength(0)
+    const offer = screen.getByTestId('sheet-job-team-offer')
+    expect(offer.textContent).toContain("On this job's team. Tick the one person this sheet pays.")
     expect(screen.queryByText('Ghost Not On Roster')).toBeNull()
+    // Taking the offer ticks that one person and the offer goes quiet.
+    fireEvent.click(screen.getByRole('button', { name: 'Put Sub Sam on this sheet' }))
+    expect(screen.getAllByRole('button', { name: 'Sub Sam', pressed: true }).length).toBeGreaterThanOrEqual(1)
+    expect(screen.queryByTestId('sheet-job-team-offer')).toBeNull()
   })
 
   it('a payment row is two lines so it fits the 400px form: date · type · amount, then the memo beside its actions', async () => {
