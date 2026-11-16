@@ -2742,6 +2742,8 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(foot.closest('tfoot')).toBeTruthy()
     expect(foot.textContent).toBe('This notice names Jun, Jul, Aug$33,5003 months')
     expect((foot.querySelector('[data-lien-grid-total]') as HTMLElement).textContent).toBe('$33,5003 months')
+    // A skip is not a miss: no line under the grid says a lien right is gone.
+    expect(box.querySelector('[data-lien-months-missed]')).toBeNull()
     // A closed month's cells are the one-line kind; an open month keeps its two lines.
     expect(may.querySelector('td.lienMonthOne')).toBeTruthy()
     expect(jul.querySelector('td.lienMonthOne')).toBeNull()
@@ -2791,12 +2793,14 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(may.getAttribute('data-window')).toBe('closed')
     expect(may.textContent).toContain('closed Sep 10')
     expect(may.textContent).toContain('not noted')
-    expect(may.textContent).toContain('lien right gone · the money still rides')
+    // What the missed window costs is said once, in a line under the grid that names the month, not on the row.
+    expect(may.textContent).not.toContain('lien right gone')
+    expect((document.querySelector('[data-lien-desk-month-grid] [data-lien-months-missed]') as HTMLElement).textContent).toBe('closed May · lien right gone · the money still rides')
     expect(within(may).getByRole('button', { name: 'Note it as missed' })).toBeTruthy()
-    // One line: the chips, the loss words and the press share a row, and the words that give way keep their whole sentence in the tip.
+    // One line: the chips and the press share a row, with no trailing words in the Steps view.
     const line = may.querySelector('.lienMonthClosed') as HTMLElement
     expect(line.contains(within(may).getByRole('button', { name: 'Note it as missed' }))).toBe(true)
-    expect((line.querySelector('.lienMonthClosedTail') as HTMLElement).getAttribute('title')).toBe('lien right gone · the money still rides')
+    expect(line.querySelector('.lienMonthClosedTail')).toBeNull()
     expect(may.querySelector('td.lienMonthOne')).toBeTruthy()
     // The strip above the card is gone — the row carries it.
     expect(document.querySelector('[data-lien-desk-missed-strip]')).toBeNull()

@@ -4256,8 +4256,9 @@ body.my-time-boundary-dragging {
 .lienMonthsHead span, .lienMonthsNote, .lienMonthsEmpty { font-size: 0.75rem; color: var(--text-muted); }
 .lienMonthsBody { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem 1.1rem; align-items: stretch; }
 /* A closed month is one line where the card has room (Taunya's ask of 2026-11-15): the hours sit beside the month, and the
-   window's chips, its noted line, its loss words and its press share a row. The loss words are the same on every missed
-   month, so they give way first, cut with an ellipsis; a press that does not fit drops under instead of leaving the card. */
+   window's chips, its noted line and its press share a row. What a missed window costs is said once under the grid. The
+   Windows view's "it was open" words trail the row and give way first, cut with an ellipsis; a press that does not fit
+   drops under instead of leaving the card. */
 .lienMonthOne > div { display: inline; }
 .lienMonthOne .lienMonthName { margin-right: 8px; white-space: nowrap; }
 .lienMonthOne .lienMonthWorked { white-space: nowrap; }
