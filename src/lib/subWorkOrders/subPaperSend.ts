@@ -80,7 +80,7 @@ export function subPaperSendPlan(i: { company: string; subName: string; lead: Su
   const text = `${i.company}: ${subject.replace(` from ${i.company}`, '')}. ${lines.filter(Boolean)[1] ?? ''} ${i.portalUrl ?? ''}`.trim()
   const count = plural(papers.length, 'paper', 'papers')
   if (i.by === 'email') {
-    const blocked = i.email ? null : `${i.subName} has no email on the roster. Add one on People → Subs, or text a link.`
+    const blocked = i.email ? null : `${i.subName} has no email on the roster. Add one on People → Subs, then send.`
     return { subject, body, text, files, steps: [`The ${papers.length === 1 ? 'PDF is' : 'PDFs are'} made${papers.some((p) => !p.number) ? ' and numbered' : ''}.`, `The email goes to ${i.email ?? 'their address'} with ${plural(files.length, 'file', 'files')}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Send ${count} by email`, blocked }
   }
   if (i.by === 'text') {

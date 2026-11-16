@@ -5,19 +5,23 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 const io = vi.hoisted(() => ({ fileSentCopy: vi.fn(), printPdfAndFile: vi.fn(), saveBlobAs: vi.fn() }))
 vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: io.fileSentCopy, printPdfAndFile: io.printPdfAndFile }))
 vi.mock('../../lib/storageSave', () => ({ saveBlobAs: io.saveBlobAs }))
-// The register. `rows: null` is a database the migration has not reached: the read is refused and the mint is not found.
-const db = vi.hoisted(() => ({ rows: null as unknown[] | null, reads: 0, mint: vi.fn() }))
+// The register and the roster. `rows: null` is a database the migration has not reached: the read is refused and the mint is not found.
+const db = vi.hoisted(() => ({ rows: null as unknown[] | null, reads: 0, mint: vi.fn(), invoke: vi.fn(), person: { email: 'harlan@harlanmechanical.example', phone: null } as { email: string | null; phone: string | null } }))
 vi.mock('../../lib/supabase', () => ({
   supabase: {
-    from: () => ({
+    from: (table: string) => ({
       select: () => ({
-        eq: async () => {
-          db.reads += 1
-          return db.rows === null ? { data: null, error: { code: '42P01', message: 'relation "sub_papers" does not exist' } } : { data: db.rows, error: null }
-        },
+        eq: () =>
+          table === 'people'
+            ? { maybeSingle: async () => ({ data: db.person, error: null }) }
+            : (async () => {
+                db.reads += 1
+                return db.rows === null ? { data: null, error: { code: '42P01', message: 'relation "sub_papers" does not exist' } } : { data: db.rows, error: null }
+              })(),
       }),
     }),
     rpc: (...args: unknown[]) => db.mint(...args),
+    functions: { invoke: (...args: unknown[]) => db.invoke(...args) },
   },
 }))
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
@@ -30,7 +34,8 @@ vi.mock('../../../supabase/functions/_shared/subPapers', async (actual) => {
   const real = await actual<typeof import('../../../supabase/functions/_shared/subPapers')>()
   return { ...real, subPapersAddUp: (set: Parameters<typeof real.subPapersAddUp>[0]) => (check.refuse ? { ok: false, problems: ['Work statement 2057: the payments do not sum to Paid so far.'] } : real.subPapersAddUp(set)) }
 })
-vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: 'assistant', readOnly: false }) }))
+const auth = vi.hoisted(() => ({ role: 'assistant', readOnly: false }))
+vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: auth.role, readOnly: auth.readOnly }) }))
 
 import type { PaperContext } from '../../../supabase/functions/_shared/subPapers'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
@@ -86,6 +91,10 @@ beforeEach(() => {
   db.rows = null
   db.reads = 0
   db.mint.mockReset()
+  db.invoke.mockReset()
+  db.person = { email: 'harlan@harlanmechanical.example', phone: null }
+  auth.role = 'assistant'
+  auth.readOnly = false
   db.mint.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.mint_sub_paper' } })
   io.fileSentCopy.mockReset()
   io.printPdfAndFile.mockReset()
@@ -192,12 +201,11 @@ describe('SubPapersWindow, on real rows', () => {
     return { onClose }
   }
 
-  it('draws the letterhead from Settings and the person’s own sheets, with no Send', async () => {
+  it('draws the letterhead from Settings and the person’s own sheets', async () => {
     mount()
     const paper = await screen.findByTestId('sub-paper-preview')
     expect(paper.textContent).toContain('Made-up Plumbing Co.')
     expect(paper.textContent).toContain('$5,100.00')
-    expect(screen.queryByRole('button', { name: /^Send to/ })).toBeNull()
   })
 
   it('Download makes the PDF, saves it under its name and files a copy on the person and the jobs', async () => {
@@ -337,5 +345,86 @@ describe('SubPapersWindow, with the register on the database', () => {
     open('statement')
     fireEvent.click(await screen.findByRole('button', { name: 'Print' }))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('The PDF could not be made: Only the office roles who see sub pay can make a sub paper.'))
+  })
+})
+
+describe('SubPapersWindow: Send', () => {
+  const open = () => render(<SubPapersWindow open={{ kind: 'statement' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
+
+  it('shows where the papers will go and what goes, by email alone, then sends each paper under its number', async () => {
+    db.rows = []
+    let n = 0
+    db.mint.mockImplementation(async (_fn: string, args: { p_kind: string }) => ({ data: [{ id: `paper-${++n}`, number: args.p_kind === 'statement_of_account' ? 'SA-0007' : `WS-20${n}-1`, revision: 1, reused: false }], error: null }))
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 3 }, error: null })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.textContent).toContain('Harlan Mechanical · harlan@harlanmechanical.example · no phone on the roster')
+    // A texted link is not built, so there is one way and no row to pick it from.
+    expect(screen.queryByRole('button', { name: 'Text a link' })).toBeNull()
+    expect(screen.queryByText('By')).toBeNull()
+    expect(screen.getByTestId('sub-papers-message').textContent).toContain('Your statement of account from Made-up Plumbing Co.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Sent 3 papers to Harlan Mechanical at harlan@harlanmechanical.example. The copies are under Documents → Sent copies.'))
+    // The statement first, then each open work statement, each registered before it goes.
+    expect(db.mint.mock.calls.map((c) => (c[1] as { p_kind: string }).p_kind)).toEqual(['statement_of_account', 'work_statement', 'work_statement'])
+    expect(db.invoke).toHaveBeenCalledTimes(1)
+    const [fn, opts] = db.invoke.mock.calls[0] as [string, { body: { person_id: string; by: string; subject: string; message: string; papers: Array<{ kind: string; number: string; file_name: string; job_ids: string[]; pdf_base64: string }> } }]
+    expect(fn).toBe('send-sub-paper-email')
+    expect(opts.body).toMatchObject({ person_id: 'harlan', by: 'email', subject: 'Your statement of account from Made-up Plumbing Co.' })
+    // No address rides in the body: the function reads the roster's own.
+    expect(JSON.stringify(Object.keys(opts.body))).not.toMatch(/email|to_/)
+    expect(opts.body.papers.map((p) => [p.kind, p.number, p.file_name])).toEqual([
+      ['sub_statement_of_account', 'SA-0007', 'SA-0007 Statement of account.pdf'],
+      ['sub_work_statement', 'WS-202-1', 'WS-202-1.pdf'],
+      ['sub_work_statement', 'WS-203-1', 'WS-203-1.pdf'],
+    ])
+    expect(opts.body.papers.every((p) => p.pdf_base64.length > 100)).toBe(true)
+  })
+
+  it('a sub with no email on the roster has a dead press that says why', async () => {
+    db.rows = []
+    db.person = { email: null, phone: null }
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByRole('alert').textContent).toBe('Harlan Mechanical has no email on the roster. Add one on People → Subs, then send.')
+    const press = screen.getByRole('button', { name: 'Cannot send yet' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    fireEvent.click(press)
+    expect(db.invoke).not.toHaveBeenCalled()
+  })
+
+  it('an email that does not go says the function’s reason, and nothing reads as sent', async () => {
+    db.rows = []
+    db.mint.mockResolvedValue({ data: [{ id: 'paper-1', number: 'SA-0007', revision: 1, reused: false }], error: null })
+    db.invoke.mockResolvedValue({ data: { error: 'The email did not go: The domain is not verified' }, error: null })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Nothing was sent: The email did not go: The domain is not verified'))
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('a paper the register refuses is not sent', async () => {
+    db.rows = []
+    db.mint.mockResolvedValue({ data: null, error: { code: '42501', message: 'An archived account cannot make a sub paper.' } })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Nothing was sent: An archived account cannot make a sub paper.'))
+    expect(db.invoke).not.toHaveBeenCalled()
+  })
+
+  it('an account in training, and a role outside the office, are offered no Send', async () => {
+    auth.readOnly = true
+    open()
+    await screen.findByTestId('sub-paper-preview')
+    expect(screen.queryByRole('button', { name: /^Send to/ })).toBeNull()
+    cleanup()
+    auth.readOnly = false
+    auth.role = 'estimator'
+    open()
+    await screen.findByTestId('sub-paper-preview')
+    expect(screen.queryByRole('button', { name: /^Send to/ })).toBeNull()
   })
 })

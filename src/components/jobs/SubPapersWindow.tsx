@@ -42,6 +42,8 @@ export type SubPaperContact = { email: string | null; phone: string | null; port
 
 type PeriodKey = 'since' | 'month' | 'year' | 'all' | 'custom'
 
+const ALL_SEND_BY: readonly SubPaperSendBy[] = ['email', 'text', 'link']
+
 export type SubPapersWindowViewProps = {
   open: SubPapersOpen
   sheets: readonly PaperSheet[]
@@ -52,6 +54,8 @@ export type SubPapersWindowViewProps = {
   /** Offer a payment record beside the other two papers. */
   paymentRecords?: boolean
   canSend: boolean
+  /** The ways a paper may go. Only what is built is handed in: a texted link is not, and the By row is left out when there is one way. */
+  sendBy?: readonly SubPaperSendBy[]
   /** Start on the send step (the window after Record payment does). */
   startOnSend?: boolean
   busy?: string | null
@@ -70,7 +74,7 @@ const seg = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78r
 const k: CSSProperties = { fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', marginBottom: 3 }
 const field: CSSProperties = { marginTop: 10 }
 
-export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement, paymentRecords = false, canSend: maySend, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
+export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement, paymentRecords = false, canSend: maySend, sendBy = ALL_SEND_BY, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
   const canSend = maySend && !!onSend
   const [view, setView] = useState<SubPapersOpen>(open)
   const [step, setStep] = useState<'paper' | 'send'>(startOnSend && canSend ? 'send' : 'paper')
@@ -78,7 +82,8 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
   const [custom, setCustom] = useState<{ from: string; to: string }>({ from: '', to: ctx.today })
   const [attachOpen, setAttachOpen] = useState(true)
   const [attachPayments, setAttachPayments] = useState(false)
-  const [by, setBy] = useState<SubPaperSendBy>('email')
+  const ways = SUB_PAPER_SEND_BY.filter((o) => sendBy.includes(o.key))
+  const [by, setBy] = useState<SubPaperSendBy>(ways[0]?.key ?? 'email')
 
   const range: StatementRange = useMemo(() => {
     if (period === 'since') return lastStatement ? { from: nextDay(lastStatement.endedOn), to: ctx.today } : { from: null, to: null }
@@ -245,17 +250,19 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
               <div style={k}>To</div>
               <div style={{ fontSize: '0.8125rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6 }}>{[ctx.sub.name, contact.email ?? 'no email on the roster', contact.phone ?? 'no phone on the roster'].join(' · ')}</div>
             </div>
-            <div style={field}>
-              <div style={k}>By</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {SUB_PAPER_SEND_BY.map((o) => (
-                  <button key={o.key} type="button" aria-pressed={by === o.key} style={seg(by === o.key)} onClick={() => setBy(o.key)}>
-                    {o.label}
-                  </button>
-                ))}
+            {ways.length > 1 ? (
+              <div style={field}>
+                <div style={k}>By</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {ways.map((o) => (
+                    <button key={o.key} type="button" aria-pressed={by === o.key} style={seg(by === o.key)} onClick={() => setBy(o.key)}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>{ways.find((o) => o.key === by)?.hint}</div>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>{SUB_PAPER_SEND_BY.find((o) => o.key === by)?.hint}</div>
-            </div>
+            ) : null}
             <div style={field}>
               <div style={k}>They will get</div>
               <div data-testid="sub-papers-message" style={{ fontSize: '0.8125rem', padding: '0.5rem 0.7rem', background: 'var(--bg-page)', borderRadius: 6 }}>

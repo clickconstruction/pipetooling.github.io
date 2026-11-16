@@ -16,8 +16,8 @@ const roster = { rows: [{ id: 'p-sam', name: 'Sub Sam', kind: 'sub', accountRole
 vi.mock('../../hooks/useRosterSubKinds', () => ({ useRosterSubKinds: () => ({ roster: roster.rows, loaded: true }) }))
 // The papers window is drawn by its own smoke. Here it only says what it was opened on.
 vi.mock('./SubPapersWindowConnected', () => ({
-  SubPapersWindow: (p: { open: { kind: string; sendingKey?: string }; subKey: string; name: string; onClose: () => void }) => (
-    <div role="dialog" aria-label={`Papers for ${p.name}`} data-open={p.open.kind} data-sending={p.open.sendingKey ?? ''} data-key={p.subKey}>
+  SubPapersWindow: (p: { open: { kind: string; sendingKey?: string }; subKey: string; name: string; startOnSend?: boolean; onClose: () => void }) => (
+    <div role="dialog" aria-label={`Papers for ${p.name}`} data-open={p.open.kind} data-send={String(!!p.startOnSend)} data-sending={p.open.sendingKey ?? ''} data-key={p.subKey}>
       <button type="button" onClick={p.onClose}>
         Close the papers
       </button>
@@ -189,11 +189,13 @@ describe('after Record payment, the payment record is one press away (punch list
     await waitFor(() => expect(props.recordSubSending).toHaveBeenCalledTimes(1))
     const after = await screen.findByRole('dialog', { name: 'Payment recorded' })
     expect(after.textContent).toContain('by Check to Sub Sam, on 1 sheet.')
-    expect(after.textContent).toContain('Sub Sam has not been given a payment record. A sub with a portal sees the payment there now.')
-    fireEvent.click(screen.getByRole('button', { name: 'Payment record…' }))
+    expect(after.textContent).toContain('Sub Sam has not been sent a payment record. A sub with a portal sees the payment there now.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send the payment record…' }))
     const papers = screen.getByRole('dialog', { name: 'Papers for Sub Sam' })
     expect(papers.getAttribute('data-open')).toBe('payment')
     expect(papers.getAttribute('data-sending')).toBe('snd-9')
+    // The window opens on the send step: the press said Send.
+    expect(papers.getAttribute('data-send')).toBe('true')
     expect(papers.getAttribute('data-key')).toBe('id:p-sam')
     expect(screen.queryByRole('dialog', { name: 'Payment recorded' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Close the papers' }))
@@ -204,12 +206,12 @@ describe('after Record payment, the payment record is one press away (punch list
     const lone = makeLaborJob({ id: 'here', job_number: 'S-300', job_date: '2026-11-01', payments: [{ id: 'lone', amount: 60, memo: null, created_at: '2026-11-16T10:00:00Z' }] })
     mount({ laborJobs: [lone, newer, older] })
     press()
-    fireEvent.click(await screen.findByRole('button', { name: 'Payment record…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send the payment record…' }))
     expect(screen.getByRole('dialog', { name: 'Papers for Sub Sam' }).getAttribute('data-sending')).toBe('row:lone')
     cleanup()
     mount()
     press()
-    fireEvent.click(await screen.findByRole('button', { name: 'Payment record…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send the payment record…' }))
     expect(screen.getByRole('dialog', { name: 'Papers for Sub Sam' }).getAttribute('data-open')).toBe('statement')
   })
 

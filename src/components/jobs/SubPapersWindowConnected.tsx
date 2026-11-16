@@ -10,7 +10,10 @@
  * `PR-<n>`. A paper the register refuses is not made, and the window says why. Where the register is not on the
  * database yet, a paper is made with no number and its foot carries the day and time it was prepared.
  *
- * Send is the card's next step, so the view is handed no `onSend`.
+ * Send posts the PDFs to `send-sub-paper-email`, which mails them to the roster's own address for the person and
+ * keeps each as a sent copy. Each paper is registered first, as for a print. Email is the one way built: a texted
+ * link is not, so the view is handed `sendBy` with email alone. The office roles who see sub pay may send, and an
+ * account in training may not.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
@@ -24,7 +27,8 @@ import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
 import { mintRefusal, mintSubPaperArgs, mintedFrom, numberedSubPaper, subPaperRegister, SUB_PAPER_ROW_COLUMNS, type SubPaperRow } from '../../lib/subWorkOrders/subPaperRegister'
 import { paperPreparedAt, paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
-import { subPaperAttachmentName, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper } from '../../lib/subWorkOrders/subPaperSend'
+import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
+import { subPaperAttachmentName, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper, type SubPaperSendBy } from '../../lib/subWorkOrders/subPaperSend'
 import type { TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
 import type { LaborJob } from '../../types/laborJob'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -42,11 +46,26 @@ export type SubPapersWindowProps = {
   namesByJobId: Record<string, string>
   roster: readonly NeedsWorkOrderRosterPerson[]
   rule: TeamSheetRule
+  /** Open on the send step (the window after Record payment does). */
+  startOnSend?: boolean
   onClose: () => void
 }
 
-/** Nobody is sent a paper from this window yet, so it reads no address. */
 const NO_CONTACT: SubPaperContact = { email: null, phone: null, portalUrl: null }
+/** The roles who see sub pay today: they make, download and send. */
+const CAN_SEND = new Set(['dev', 'master_technician', 'assistant', 'controller'])
+/** A texted link is not built, so email is the one way a paper goes. */
+const SEND_BY: readonly SubPaperSendBy[] = ['email']
+
+/** A file as the base64 an email attachment is: read as a data URL, with its prefix taken off. */
+function blobBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(reader.error ?? new Error('The PDF could not be read.'))
+    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ''))
+    reader.readAsDataURL(blob)
+  })
+}
 
 async function drawPdf(paper: SubPaper, range: StatementRange): Promise<Blob> {
   const lib = (await import('pdf-lib')) as unknown as PdfLibLike
@@ -54,10 +73,11 @@ async function drawPdf(paper: SubPaper, range: StatementRange): Promise<Blob> {
   return new Blob([bytes as BlobPart], { type: 'application/pdf' })
 }
 
-export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobId, namesByJobId, roster, rule, onClose }: SubPapersWindowProps) {
-  const { role } = useAuth()
+export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobId, namesByJobId, roster, rule, startOnSend, onClose }: SubPapersWindowProps) {
+  const { role, readOnly } = useAuth()
   const personId = subKey.startsWith('id:') ? subKey.slice(3) : null
   const [company, setCompany] = useState<PaperCompany | null>(null)
+  const [contact, setContact] = useState<SubPaperContact>(NO_CONTACT)
   /** This person's rows in the register. Null while it is not read, or where the database does not have it yet. */
   const [rows, setRows] = useState<SubPaperRow[] | null>(null)
   /** The window waits for the first read: the period it opens on is *Since the last statement* when there is one. */
@@ -70,14 +90,18 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
     void (async () => {
       // The letterhead is the bill's own block from Settings. A read that fails leaves the draft's defaults.
       await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole: role }).catch(() => null)
+      // The roster's own address: the send window shows where a paper will go, and the function reads it again itself.
+      const person = personId ? await supabase.from('people').select('email, phone').eq('id', personId).maybeSingle() : { data: null }
       if (cancelled) return
+      const p = (person.data ?? null) as { email: string | null; phone: string | null } | null
+      setContact({ email: p?.email?.trim() || null, phone: p?.phone?.trim() || null, portalUrl: null })
       const issuer = getPhysicalInvoiceIssuerForDocument()
       setCompany({ name: issuer.companyName || 'Our company', lines: [issuer.addressText.replace(/\n+/g, ', '), issuer.phone, issuer.email].map((l) => (l ?? '').trim()).filter(Boolean) })
     })()
     return () => {
       cancelled = true
     }
-  }, [role])
+  }, [role, personId])
 
   const loadRegister = useCallback(async () => {
     if (personId) {
@@ -120,10 +144,34 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       open={open}
       sheets={sheets}
       ctx={ctx}
-      contact={NO_CONTACT}
+      contact={contact}
       lastStatement={rows === null ? undefined : register.lastStatement}
       paymentRecords
-      canSend={false}
+      canSend={!readOnly && role != null && CAN_SEND.has(role) && !!personId}
+      sendBy={SEND_BY}
+      startOnSend={startOnSend}
+      onSend={(plan, papers, by, sendRange) => {
+        if (by !== 'email' || !personId) return
+        setBusy('Sending…')
+        setSaid(null)
+        void (async () => {
+          try {
+            // Each paper is registered before it goes, one after another, so a statement and its attachments take their numbers in order.
+            const made: SubPaper[] = []
+            for (const p of papers) made.push(await make(p, sendRange))
+            const files = await Promise.all(made.map(async (p) => ({ kind: SUB_PAPER_SENT_KIND[p.kind], number: p.number, title: subPaperTitle(p), file_name: subPaperAttachmentName(p), job_ids: jobIdsOf(p), pdf_base64: await blobBase64(await drawPdf(p, sendRange)) })))
+            const { data, error } = await supabase.functions.invoke('send-sub-paper-email', { body: { person_id: personId, by, subject: plan.subject, message: plan.body, papers: files } })
+            if (error) throw new Error((await readEdgeFunctionErrorBody(error)) ?? formatErrorMessage(error, 'the send function gave no reason'))
+            const answer = (data ?? {}) as { error?: string; to?: string }
+            if (answer.error) throw new Error(answer.error)
+            setSaid({ tone: 'ok', words: `Sent ${made.length} ${made.length === 1 ? 'paper' : 'papers'} to ${name}${answer.to ? ` at ${answer.to}` : ''}. ${made.length === 1 ? 'A copy is' : 'The copies are'} under Documents → Sent copies.` })
+          } catch (e) {
+            setSaid({ tone: 'bad', words: `Nothing was sent: ${formatErrorMessage(e, 'the send function gave no reason')}` })
+          } finally {
+            setBusy(null)
+          }
+        })()
+      }}
       busy={busy}
       said={said}
       onClose={onClose}
