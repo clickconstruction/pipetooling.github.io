@@ -232,7 +232,7 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1.1fr) minmax(0, 1.2fr) 130px 150px', gap: '0 12px', padding: '0.45rem 1rem', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)' }}>
               <span>JOB</span>
               <span>OUR BOOKS</span>
-              <span>ITS OWN NOTICE</span>
+              <span title="The day the supply house’s own lien notice is due. Our estimate until the house tells us.">SupHse Notice</span>
               <span>THEIR BALANCE</span>
               <span>THEIR NOTICE GOES OUT</span>
             </div>

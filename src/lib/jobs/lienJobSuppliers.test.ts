@@ -9,6 +9,7 @@ import {
   lienSupplierHouseNotice,
   lienSupplierMark,
   lienSupplierNotice,
+  lienSupplierNoticeSmallLine,
   lienSupplierSaidWords,
   parseSupplierWordBalance,
   type LienSupplierAccountInput,
@@ -237,6 +238,13 @@ describe('what the house told us (v2.4411)', () => {
     expect(lienSupplierHouseNotice({ unpaidMonths: ['2026-07'], word: { ...WORD, noticeYmd: '2026-09-30' } }, 'non_residential', TODAY)).toEqual({ kind: 'said', ymd: '2026-09-30', daysLeft: -2, soon: false })
     // A word with a balance and no day leaves the estimate standing.
     expect(lienSupplierHouseNotice({ unpaidMonths: ['2026-07'], word: { ...WORD, noticeYmd: null } }, 'non_residential', TODAY)).toMatchObject({ kind: 'open', ymd: '2026-10-15' })
+  })
+
+  it('the table’s small line says our estimate under a date we counted, never under the house’s own day (v2.7424)', () => {
+    expect(lienSupplierNoticeSmallLine({ kind: 'open', ymd: '2026-10-15', daysLeft: 13, soon: true }, '13 days')).toBe('our estimate · 13 days')
+    expect(lienSupplierNoticeSmallLine({ kind: 'closed', ymd: '2026-09-15' }, '')).toBe('our estimate')
+    expect(lienSupplierNoticeSmallLine({ kind: 'said', ymd: '2026-10-14', daysLeft: 12, soon: true }, 'Dana said so · noted Oct 2 by Grace')).toBe('Dana said so · noted Oct 2 by Grace')
+    expect(lienSupplierNoticeSmallLine({ kind: 'none' }, '')).toBe('')
   })
 
   it('the card says whose word it is and keeps our figure in the Owed column', () => {

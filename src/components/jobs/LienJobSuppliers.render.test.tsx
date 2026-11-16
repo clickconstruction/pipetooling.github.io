@@ -32,6 +32,20 @@ const byJob = buildLienSupplierJobs({
 const job = byJob.get('j')!
 const base = { job, propertyKind: 'non_residential', todayYmd: TODAY, openBalance: 12_000, payerName: 'Brund & Assoc.', jobLabel: '891', isMobile: false }
 
+describe('LienJobSuppliersCard · the notice column (v2.7424)', () => {
+  it('titles the column SupHse Notice on one line, and says our estimate on the row instead', () => {
+    renderWithProviders(<LienJobSuppliersCard {...base} />)
+    const heads = [...document.querySelectorAll('[role="columnheader"]')] as HTMLElement[]
+    expect(heads.map((h) => h.textContent?.trim())).toEqual(['HOUSE', 'UNPAID SINCE', 'SupHse Notice', 'PAID', 'OWED'])
+    expect(heads[2]!.style.whiteSpace).toBe('nowrap')
+    expect(heads[2]!.getAttribute('aria-label')).toBe('Supply house notice')
+    expect(heads[2]!.title).toContain('Our estimate')
+    // Reece's July is unpaid and no one has asked the house: the date is ours, and its small line says so.
+    const reece = document.querySelector('[data-lien-supplier-house="Reece"]')!
+    expect(reece.querySelector('[data-lien-supplier-notice-sub]')?.textContent).toMatch(/^our estimate/)
+  })
+})
+
 describe('LienJobSuppliersCard · Mark paid… (v2.5838)', () => {
   it('shows the door only with markPaid, and only on the owed house', () => {
     renderWithProviders(<LienJobSuppliersCard {...base} />)
