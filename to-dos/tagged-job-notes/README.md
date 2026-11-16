@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: ready
-status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · nothing built · ready for PR 1
+status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · building since 2026-11-15 · PR 1 (v2.7384) the kernel · nothing on screen yet
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,7 +11,7 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: PR 1, the kernel (`src/lib/jobs/noteTags.ts` with its tests). Then the train in order, PR 3 and PR 4 landing close together.
+next: PR 2, the ground (one migration, the table `jobs_ledger_note_tags` and its six functions, pushed right after the merge). Then the train in order, PR 3 and PR 4 landing close together.
 size: L as a train of six (S · M · M · M · S · S)
 blocker: none; Taunya settled the eight calls on 2026-11-15.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
@@ -315,7 +315,7 @@ edits either note box.
 Six PRs, smallest first. Each cut from fresh `main`, each with its release note and fragment.
 
 1. **The kernel** (S). `src/lib/jobs/noteTags.ts` with its tests. No screen, no migration. Needs
-   call 4 only.
+   call 4 only. **Built: v2.7384.**
 2. **The ground** (M). One migration: the table with the four fence calls, the six functions,
    `SET lock_timeout`. `docs/migrations/`, the types PR after the push. No screen. Needs calls 2
    and 5.
@@ -338,6 +338,9 @@ Six PRs, smallest first. Each cut from fresh `main`, each with its release note 
   plain words and not as a link.
 - **Who else sees a tag.** Anyone who can read the note should see the chip, so the row says who
   it waits on. The tag row's read rule follows the note's.
+- **A person renamed after the note.** The kernel finds a chip by `@` plus the full name, so a
+  renamed person's old notes draw no chip and still read whole. PR 2 decides whether the tag row
+  keeps the name as it was written.
 - **Live re-read.** The count needs a realtime channel on the tags table, or a read on focus only.
   Focus alone is cheaper and may be enough for a handful of tags a week.
 - **An answer from the row.** A typed note on the job clears the writer's own waiting tags there,
