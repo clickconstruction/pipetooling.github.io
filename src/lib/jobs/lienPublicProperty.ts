@@ -248,12 +248,16 @@ export function lienPublicBoardLine(input: { askingJobIds: ReadonlySet<string>; 
 
 // ---------- the property record's question ----------
 
+/**
+ * Two answers, Taunya's call of 2026-11-16: nothing in the app can ask counsel about a property, so there is no third
+ * press. Until someone answers, the papers hold, and the box says so.
+ */
 export const LIEN_PUBLIC_QUESTION = {
   lead: 'This owner reads as a public body.',
   ask: 'A mechanic’s lien does not attach to public property. Is this public property?',
+  holds: 'The lien papers here hold until someone answers.',
   yes: 'Yes, public property…',
   no: 'No, it is private',
-  notSure: 'Not sure, ask the attorney',
 } as const
 
 /** The line a property record shows once the question is answered. */

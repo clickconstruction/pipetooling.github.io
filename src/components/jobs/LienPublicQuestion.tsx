@@ -50,6 +50,9 @@ export default function LienPublicQuestion({ addressId, canAnswer, onAnswered, z
       <div>
         <strong style={{ color: 'var(--text-amber-800)' }}>{LIEN_PUBLIC_QUESTION.lead}</strong> {LIEN_PUBLIC_QUESTION.ask}
       </div>
+      <div data-lien-public-holds style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
+        {canAnswer ? LIEN_PUBLIC_QUESTION.holds : `The office answers this. ${LIEN_PUBLIC_QUESTION.holds}`}
+      </div>
       {canAnswer ? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" data-lien-public-yes style={blue} disabled={busy} onClick={() => setWindowOpen(true)}>
@@ -59,9 +62,7 @@ export default function LienPublicQuestion({ addressId, canAnswer, onAnswered, z
             {busy ? 'Saving…' : LIEN_PUBLIC_QUESTION.no}
           </button>
         </div>
-      ) : (
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>The office answers this. Until then the lien papers here hold.</div>
-      )}
+      ) : null}
       {windowOpen ? (
         <LienPublicPropertyWindow
           addressId={addressId}

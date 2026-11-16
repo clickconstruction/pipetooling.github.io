@@ -105,7 +105,7 @@ Off on day one. When it is on, every night the app looks up every open GC job wi
 
 A mechanic's lien does not attach to public property. A city, a county, a school district or the State owns public property.
 
-When the owner of record reads as a public body, the property record asks once. *Is this public property?* shows on the **Property record** row in Edit Job. It shows on the Lien desk's owner line too. The papers on the property hold until someone answers.
+When the owner of record reads as a public body, the property record asks once. *Is this public property?* shows on the **Property record** row in Edit Job. The question shows on the Lien desk's owner line too. The papers on the property hold until someone answers.
 
 - {{button:blue|Yes, public property…}} opens a window that takes the property off the lien path.
 - {{button:outline|No, it is private}} keeps that answer. The holds open, and the papers can go out.

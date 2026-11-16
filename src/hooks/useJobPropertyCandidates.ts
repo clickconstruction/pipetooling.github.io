@@ -9,7 +9,7 @@ export type PropertyCandidateRow = Pick<
 > & {
   owner_email?: string | null
   owner_phone?: string | null
-  /** Is this public property? (v2.7443): absent on a row read before migration 20261116201500 is pushed. */
+  /** Is this public property? (v2.7443): absent on a row read before migration 20261116221500 is pushed. */
   lien_public_answer?: string | null
   lien_public_answered_at?: string | null
 }

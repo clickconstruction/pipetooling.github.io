@@ -118,6 +118,18 @@ A **Held** bin and a **Missed** bin stand beside a column only while a job is in
 
 Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. The retainage list on **By paper** has the rows.
 
+## Public property
+
+A mechanic's lien does not attach to public property. Some owners read as a city, a county, a school district or the State. Nobody can make the papers for their jobs.
+
+- Its chip carries a ⊘ mark. The chip loses its red day, because no paper can be made there.
+- One amber line sits over the bins, like *2 jobs sit on public property and are still on the lien path*. It gives the money they owe.
+- {{button:outline|Review them ›}} opens one window for each property in turn. The window asks whether to take the property off the lien path.
+
+A property answered public leaves the bins. Its jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}. Each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
+
+**Put a job back on the lien path…** at the foot of the bin puts a property back. Say why, and its jobs return to the bins. [A public property](/help/file-a-lien-and-never-miss-its-deadlines#a-public-property) has the window's steps.
+
 ## The leader's Board
 
 A master opens the desk on his own Board. Only the two **Awaiting approval** bins stand under the tiles. They hold the jobs he leads. One press under them acts on the lot. The press reads like *Approve 2 affidavits*. It approves every affidavit that waits inside its window, one by one. Each moves to **Ready to file**. The desk asks once before it starts, with the count.

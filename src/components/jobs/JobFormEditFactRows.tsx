@@ -172,7 +172,7 @@ type JobFormEditFactRowsProps = {
     /** The owner's email and phone (v2.6497); absent until migration 20261104163131 lands = the rows are not drawn. */
     owner_email?: string | null
     owner_phone?: string | null
-    /** Is this public property? (v2.7443); absent until migration 20261116201500 lands = the question is not drawn. */
+    /** Is this public property? (v2.7443); absent until migration 20261116221500 lands = the question is not drawn. */
     lien_public_answer?: string | null
     lien_public_answered_at?: string | null
   }>

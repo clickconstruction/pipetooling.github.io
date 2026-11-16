@@ -142,6 +142,9 @@ describe('LienPublicQuestion · the record asks once', () => {
     setLienPublicAnswer.mockResolvedValue({ answer: 'private', jobs: [] })
     renderWithProviders(<LienPublicQuestion addressId="addr-1" canAnswer onAnswered={onAnswered} />)
     expect(document.querySelector('[data-lien-public-question]')!.textContent).toContain('This owner reads as a public body. A mechanic’s lien does not attach to public property. Is this public property?')
+    // Two presses and no third (Taunya's call of 2026-11-16), and the papers hold until someone answers.
+    expect(document.querySelector('[data-lien-public-holds]')!.textContent).toBe('The lien papers here hold until someone answers.')
+    expect(screen.queryByRole('button', { name: /attorney/ })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'No, it is private' }))
     await waitFor(() => expect(onAnswered).toHaveBeenCalledWith('private'))
     expect(setLienPublicAnswer).toHaveBeenCalledWith({ addressId: 'addr-1', answer: 'private' })
@@ -153,7 +156,7 @@ describe('LienPublicQuestion · the record asks once', () => {
   it('anyone outside the lien office reads the question without presses', () => {
     renderWithProviders(<LienPublicQuestion addressId="addr-1" canAnswer={false} onAnswered={() => {}} />)
     expect(screen.queryByRole('button', { name: 'Yes, public property…' })).toBeNull()
-    expect(screen.getByText('The office answers this. Until then the lien papers here hold.')).toBeTruthy()
+    expect(screen.getByText('The office answers this. The lien papers here hold until someone answers.')).toBeTruthy()
   })
 
   it('an answered record says so: Ask again clears a private answer, and a public one opens the put-back window', async () => {

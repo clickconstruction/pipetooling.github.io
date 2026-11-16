@@ -9,7 +9,7 @@ import { lienPublicAnswerOf, type LienPaymentBondAnswer, type LienPublicAnswer, 
 
 /**
  * The reads and the one write behind *Is this public property?* (v2.7443). The rules and the words are
- * `lienPublicProperty.ts`; the write is `set_property_lien_public_answer` (migration 20261116201500), which stores the
+ * `lienPublicProperty.ts`; the write is `set_property_lien_public_answer` (migration 20261116221500), which stores the
  * answer and, for a public property, writes the bond and puts the ticked jobs on the attorney's list in one
  * transaction.
  */

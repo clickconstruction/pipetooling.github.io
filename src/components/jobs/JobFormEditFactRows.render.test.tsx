@@ -401,7 +401,7 @@ describe('JobFormEditFactRows', () => {
     const city = { ...OFFICE_PROPERTY, id: 'addr-city', owner_name: 'ZZ TEST CITY OF', lien_public_answer: null }
     const view = renderWithProviders(<Harness propertyCandidates={[city]} customerAddressId="addr-city" propertyRecordFocus />)
     await settle()
-    expect(screen.getByTestId('property-record-public').textContent).toContain('The office answers this.')
+    expect(screen.getByTestId('property-record-public').textContent).toContain('The office answers this. The lien papers here hold until someone answers.')
     expect(screen.queryByRole('button', { name: 'Yes, public property…' })).toBeNull()
     view.unmount()
     // A row read before the migration is pushed carries no answer's column: nothing is drawn.
