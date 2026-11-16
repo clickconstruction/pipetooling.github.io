@@ -279,7 +279,8 @@ export function lienNotInRunWords(notices: ReadonlyArray<LienPropertyNoticeLine>
 
 // ---------- the properties ----------
 
-export type LienPropertySameOwner = { addressId: string; address: string; jobs: number }
+/** `sameAddress`: the other record reads the same address as this one, so it is a second record for one place, not a second property. */
+export type LienPropertySameOwner = { addressId: string; address: string; jobs: number; sameAddress?: boolean }
 
 export type LienProperty = {
   /** The property record's id, '' for the jobs with no record. */
@@ -339,7 +340,7 @@ export function buildLienProperties(rows: ReadonlyArray<LienTimelineBookRow>): L
   })
   return properties.map(({ owner, ...p }) => ({
     ...p,
-    sameOwner: owner ? properties.filter((o) => o.key !== p.key && o.owner === owner).map((o) => ({ addressId: o.key, address: o.address, jobs: o.jobs.length })) : [],
+    sameOwner: owner ? properties.filter((o) => o.key !== p.key && o.owner === owner).map((o) => ({ addressId: o.key, address: o.address, jobs: o.jobs.length, ...(norm(o.address) && norm(o.address) === norm(p.address) ? { sameAddress: true } : {}) })) : [],
   }))
 }
 

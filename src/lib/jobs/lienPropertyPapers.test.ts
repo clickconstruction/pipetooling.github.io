@@ -178,6 +178,13 @@ describe('buildLienProperties: the book gathered by property record', () => {
     expect(properties.find((p) => p.key === '')!.sameOwner).toEqual([])
   })
 
+  it('marks a second record that reads the same address, so the card can say it is one place', () => {
+    const twin = input()
+    twin.jobs = { ...twin.jobs, j1301: { ...twin.jobs.j1301!, propertyAddress: '412 ridgeline dr,  Hollow Creek' } }
+    const again = buildLienProperties(buildLienTimelineBook(twin).rows)
+    expect(again.find((p) => p.key === 'p-ridgeline')!.sameOwner).toEqual([{ addressId: 'p-fenwick', address: '412 ridgeline dr,  Hollow Creek', jobs: 1, sameAddress: true }])
+  })
+
   it('finds one property by its record or by a job on it', () => {
     expect(lienPropertyOf(book.rows, 'p-ridgeline')?.jobs).toHaveLength(7)
     expect(lienPropertyOf(book.rows, 'p-nowhere')).toBeNull()
