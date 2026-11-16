@@ -14,6 +14,7 @@ import {
   STICKER_PREVIEW_NO_COUNT_WORDS,
   STICKER_PREVIEW_TEST_WORDS,
   STICKER_SAMPLE_CODE,
+  STICKER_SAMPLE_WORDS,
   stickerPreview,
 } from './stickerPreview'
 
@@ -23,14 +24,17 @@ describe('previewStrip', () => {
   it('is the strip a minted sticker prints, with the sample code where the sticker’s own will go', () => {
     const minted = stickerStrip({ id: 'x', number: 1, code: STICKER_SAMPLE_CODE, boxName: 'G78' })
     expect(previewStrip(0, 'G78')).toEqual({ ...minted, id: 'preview-0' })
-    expect(previewStrip(0, 'G78').address).toBe('PRTS.CO/B/0000-0000')
-    expect(previewStrip(0, 'G78').value).toBe('HTTPS://PRTS.CO/B/00000000')
+    expect(previewStrip(0, 'G78').address).toBe('PRTS.CO/B/XXXX-XXXX')
+    expect(previewStrip(0, 'G78').value).toBe('HTTPS://PRTS.CO/B/XXXXXXXX')
     expect(previewStrip(0, 'G78').stencil).toBe('G78')
     // with no name the strip has no stencil: its code is drawn larger in the name's place
     expect(previewStrip(4).stencil).toBe('')
     expect(previewStrip(4).id).toBe('preview-4')
     // the sample is a code's own length, so the QR and the address are the size they will print
     expect(STICKER_SAMPLE_CODE).toHaveLength(8)
+    // and it is no code a sticker or a box could carry, since a code is cut from hex: a scan of a preview opens nothing
+    expect(STICKER_SAMPLE_CODE).not.toMatch(/[0-9A-F]/)
+    expect(STICKER_SAMPLE_WORDS).toBe('XXXX-XXXX')
     expect(STICKER_TEST_STRIP.value.length).toBeLessThan(previewStrip(0).value.length)
   })
 })
@@ -46,7 +50,7 @@ describe('stickerPreview · a run that names its boxes', () => {
     expect(p.showAllLabel).toBe('Show all 223')
     expect(p.rest).toEqual([])
     expect(p.cappedWords).toBeNull()
-    expect(p.head[0]!.strip.address).toBe('PRTS.CO/B/0000-0000')
+    expect(p.head[0]!.strip.address).toBe('PRTS.CO/B/XXXX-XXXX')
   })
 
   it('two copies of each draw 1 1 2 2 3 3 in the first six, and the rest counts stickers', () => {
@@ -105,9 +109,9 @@ describe('stickerPreview · a run with no names', () => {
     const p = stickerPreview({ count: 200, copies: 1, all: false, names: null })
     expect(p.head).toHaveLength(1)
     expect(p.head[0]!.strip.stencil).toBe('')
-    expect(previewHeadWords(p.head, 200)).toBe('1 sticker of 200, with a sample code.')
+    expect(previewHeadWords(p.head, 200)).toBe('1 sticker of 200.')
     expect(p.more).toBe(199)
-    expect(p.moreWords).toBe('and 199 more, each with its own code')
+    expect(p.moreWords).toBe('and 199 more, each with its own link')
     // nothing more to show: no Show all, and pressing it would draw nothing
     expect(p.showAllLabel).toBeNull()
     expect(stickerPreview({ count: 200, copies: 1, all: true }).rest).toEqual([])
@@ -120,7 +124,7 @@ describe('stickerPreview · a run with no names', () => {
     const one = stickerPreview({ count: 1, copies: 1, all: false })
     expect(one.more).toBe(0)
     expect(one.moreWords).toBeNull()
-    expect(previewHeadWords(one.head, 1)).toBe('1 sticker, with a sample code.')
+    expect(previewHeadWords(one.head, 1)).toBe('1 sticker.')
   })
 
   it('a count of zero draws nothing', () => {
@@ -134,10 +138,12 @@ describe('the words', () => {
   it('read plainly', () => {
     expect(previewMoreWords(217, 'G300')).toBe('and 217 more, to G300')
     expect(previewMoreWords(1, 'G300')).toBe('and 1 more, G300')
-    expect(previewMoreWords(199, '')).toBe('and 199 more, each with its own code')
+    expect(previewMoreWords(199, '')).toBe('and 199 more, each with its own link')
     expect(showAllLabel(60)).toBe('Show all 60')
     expect(previewCappedWords(200, 300)).toBe('The first 200 of 300 are drawn. The rest print the same way.')
-    expect(STICKER_PREVIEW_NAMED_CODE_WORDS).toContain('The names are the run’s.')
+    // the line over the strips says each sticker gets a link of its own, and names the stand-in drawn (v2.7486)
+    expect(STICKER_PREVIEW_CODE_WORDS).toBe('Each sticker gets its own link when it prints. XXXX-XXXX stands in for it here.')
+    expect(STICKER_PREVIEW_NAMED_CODE_WORDS).toBe('The names are the run’s own. Each sticker gets its own link when it prints. XXXX-XXXX stands in for it here.')
     for (const w of [STICKER_PREVIEW_CODE_WORDS, STICKER_PREVIEW_NAMED_CODE_WORDS, STICKER_PREVIEW_TEST_WORDS, STICKER_PREVIEW_NO_COUNT_WORDS, previewCappedWords(200, 300)]) expect(plainWordsFailures(w), w).toEqual([])
     // no line of the preview says a running number
     for (const w of [STICKER_PREVIEW_CODE_WORDS, STICKER_PREVIEW_NAMED_CODE_WORDS]) expect(w).not.toMatch(/number/i)

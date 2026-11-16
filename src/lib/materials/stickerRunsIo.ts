@@ -1,5 +1,5 @@
 /**
- * The reads and the one write behind Print blank stickers (punch list #329, PR 2, v2.7272). `mintStickerRun` calls
+ * The reads and the one write behind Print future stickers (punch list #329, PR 2, v2.7272). `mintStickerRun` calls
  * `mint_sticker_run` as the caller: the database numbers the run under a lock and makes the stickers, and a refusal
  * comes back in its own words (`SECURITY INVOKER`, so the gate judges the caller). The reads list a job's runs
  * with their stickers, and the site's boxes and blank named stickers for the Names field. Nothing here writes a sticker:
