@@ -83,8 +83,11 @@ describe('the conditional release enclosed with a notice (v2.4729)', () => {
     expect(html).toContain('Bulverde, TX')
     expect(html).not.toContain('<html')
     // Signed in the app: the name under the rule, no blank.
-    const signed = noticeReleasePageHtml({ ...r, signature: { mode: 'type', printedName: 'Robert Douglas', auditLine: 'Signed by Robert Douglas', signedYmd: '2026-10-06' } })
-    expect(signed).toContain('Signed by Robert Douglas')
+    const signed = noticeReleasePageHtml({ ...r, signature: { mode: 'type', printedName: 'Robert Douglas', signedYmd: '2026-10-06' } })
+    expect(signed).toContain('<strong>Robert Douglas</strong>')
+    expect(signed).toContain('Signed October 6, 2026')
+    // v2.7437: the enclosed release prints the day alone and the statutes, with no clock and no sentence of how it was signed.
+    for (const banned of [/ CT\b/, /\b[AP]M\b/, /Typed by/, /in ClickTooling/, /screen/]) expect(signed).not.toMatch(banned)
     expect(signed).not.toContain('Signed ______________________')
   })
 })

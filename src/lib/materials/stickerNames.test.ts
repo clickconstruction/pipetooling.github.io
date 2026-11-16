@@ -108,9 +108,9 @@ describe('readStickerRange · the mock-up’s rule table', () => {
   it('three parts are refused with the shape', () => {
     expect(refused(readStickerRange('G1-2-3', 200))).toBe('A range is two names with one dash between, like G78-300.')
   })
-  it('nothing typed is a numbered-only run', () => {
-    expect(readStickerRange('', 200)).toEqual({ kind: 'numbered' })
-    expect(readStickerRange('   ', 200)).toEqual({ kind: 'numbered' })
+  it('nothing typed is a run with no names', () => {
+    expect(readStickerRange('', 200)).toEqual({ kind: 'unnamed' })
+    expect(readStickerRange('   ', 200)).toEqual({ kind: 'unnamed' })
   })
   it('a start alone past 999 stops at 999 with its words', () => {
     const r = readStickerRange('G900', 200)
@@ -130,11 +130,11 @@ describe('readStickerRange · the mock-up’s rule table', () => {
 })
 
 describe('the words', () => {
-  it('read the range, the refusal or the numbered line', () => {
+  it('read the range, the refusal or the line for a run with no names', () => {
     expect(stickerRangeWords(readStickerRange('G78-300', 200))).toBe('G78 to G300 · 223 stickers. The number steps.')
     expect(stickerRangeWords(readStickerRange('R7-7', 200))).toBe('R7 to R7 · 1 sticker. The number steps.')
     expect(stickerRangeWords(readStickerRange('G0', 200))).toBe('A name is one to three letters and a number from 1 to 999, like R76.')
-    expect(stickerRangeWords(readStickerRange('', 200))).toBe('Nothing typed: the stickers carry their number only. A leftover works on any site.')
+    expect(stickerRangeWords(readStickerRange('', 200))).toBe('Nothing typed: the stickers carry no name, only their code. A leftover works on any site.')
   })
   it('a dash sets the count, a start alone does not', () => {
     expect(stickerRangeSetsCount('G78-300')).toBe(true)
@@ -197,11 +197,11 @@ describe('the window’s Names field (PR 8, v2.7391)', () => {
     expect(stickerNamesAsk('78', 200).tone).toBe('refused')
   })
 
-  it('cleared, the run is numbered only and How many is the count', () => {
+  it('cleared, the run has no names and How many is the count', () => {
     const ask = stickerNamesAsk('  ', 60, 'G78')
-    expect(ask.range.kind).toBe('numbered')
+    expect(ask.range.kind).toBe('unnamed')
     expect(ask.count).toBe(60)
-    expect(ask.words).toBe('Nothing typed: the stickers carry their number only. A leftover works on any site.')
+    expect(ask.words).toBe('Nothing typed: the stickers carry no name, only their code. A leftover works on any site.')
   })
 
   it('names that stop at 999 say so even when the start is the offer', () => {

@@ -4,8 +4,13 @@
  * `20261113020000_box_stickers.sql`). The code is cut from the sticker's own id by the rule a box's code
  * follows, so `labels.ts` reads and prints it; the number is what a person reads, `0147`. Pure: the reads
  * are in `onSiteStore.ts`, and no screen prints a run or places a sticker yet (PRs 2 and 3).
+ *
+ * Since v2.7438 (Taunya's call of 2026-11-16) the number is off the tape and off every screen: a sticker reads its
+ * printed name when it has one and its code when it does not, and a sentence about one sticker says *this sticker*.
+ * The number stays in the database, where it keeps a run in order and tells two stickers of one name apart.
  */
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { dashedCode } from './labels'
 import type { Container } from './onSite'
 
 /** Blank points at no box. A lost one keeps the box it was on and no longer opens it. */
@@ -34,30 +39,14 @@ export type StickerFacts = {
   boxName?: string | null
 }
 
-/** What a person reads off a sticker first: its printed name when it carries one, its number when it does not. */
-export function stickerSayName(sticker: Pick<StickerFacts, 'number' | 'boxName'>): string {
-  return sticker.boxName || stickerNumberWords(sticker.number)
+/** What a person reads off a sticker: its printed name when it carries one, its code with the dash when it does not. */
+export function stickerSayName(sticker: Pick<StickerFacts, 'code' | 'boxName'>): string {
+  return sticker.boxName || dashedCode(sticker.code)
 }
 
 /** Whether a sticker's printed name is the name of the box it is on: capitals and spaces do not matter. */
 export function stickerNameIs(boxName: string | null | undefined, label: string | null | undefined): boolean {
   return !!boxName && !!label && boxName.trim().toUpperCase() === label.trim().toUpperCase()
-}
-
-/** The number as printed: `0147`. Four digits, and five past 9999. The database's twin is `box_sticker_number_words`. */
-export function stickerNumberWords(number: number): string {
-  const n = Math.max(0, Math.round(Number.isFinite(number) ? number : 0))
-  return String(n).padStart(4, '0')
-}
-
-/** A run's numbers: `0101 to 0300`. One sticker reads as its number alone. */
-export function stickerRangeWords(first: number, last: number): string {
-  return first === last ? stickerNumberWords(first) : `${stickerNumberWords(first)} to ${stickerNumberWords(last)}`
-}
-
-/** A new box's name until someone types one: its sticker's number (call 7). `place_sticker` writes the same. */
-export function stickerBoxName(number: number): string {
-  return stickerNumberWords(number)
 }
 
 function text(v: unknown): string | null {
@@ -131,19 +120,10 @@ export function stickerRunCounts(stickers: ReadonlyArray<StickerCountRow>): Stic
   return { total: stickers.length, onBoxes, notUsed: blank.length, lost, unused }
 }
 
-/** The ranges a line can name before it reads as a list. */
-const UNUSED_RANGES_NAMED = 3
-
-/** *96 stickers not used yet, 0205 to 0300*. Empty when every sticker is used. */
-export function unusedStickersWords(counts: Pick<StickerRunCounts, 'notUsed' | 'unused'>): string {
-  if (counts.notUsed <= 0 || counts.unused.length === 0) return ''
-  const head = counts.notUsed === 1 ? '1 sticker not used yet' : `${counts.notUsed} stickers not used yet`
-  const ranges = counts.unused.map((r) => stickerRangeWords(r.first, r.last))
-  if (ranges.length === 1) return `${head}, ${ranges[0]}`
-  if (ranges.length <= UNUSED_RANGES_NAMED) return `${head}, ${ranges.slice(0, -1).join(', ')} and ${ranges[ranges.length - 1]}`
-  const first = counts.unused[0]!.first
-  const last = counts.unused[counts.unused.length - 1]!.last
-  return `${head}, between ${stickerNumberWords(first)} and ${stickerNumberWords(last)}`
+/** *96 stickers not used yet*. Empty when every sticker is used. A named run's row adds which, by name (`StickerRunsFold`). */
+export function unusedStickersWords(counts: Pick<StickerRunCounts, 'notUsed'>): string {
+  if (counts.notUsed <= 0) return ''
+  return counts.notUsed === 1 ? '1 sticker not used yet' : `${counts.notUsed} stickers not used yet`
 }
 
 /** *104 of 200 stickers are on boxes*. */
@@ -196,10 +176,9 @@ export function placingVerdict(input: {
   now: string
 }): PlacingVerdict {
   const s = input.sticker
-  // A named sticker is *this sticker* in a sentence that already names its box (section 10): the number recedes, and
-  // *Marcus put G78 on G78* says one thing twice.
-  const n = s.boxName ? 'this sticker' : stickerNumberWords(s.number)
-  const N = s.boxName ? 'This sticker' : n
+  // The sentence already names the box, so the sticker is *this sticker*: no number, and never *Marcus put G78 on G78*.
+  const n = 'this sticker'
+  const N = 'This sticker'
   if (s.state === 'lost') {
     return { kind: 'lost', words: s.containerLabel ? `${N} was on ${s.containerLabel} and was marked lost.` : `${N} was marked lost.` }
   }
@@ -260,14 +239,10 @@ export function codeLookup(input: { sticker: StickerFacts | null; stickerBox: Co
 // ---------------------------------------------------------------------------
 
 /** A blank sticker's heading, signed in and signed out. */
-export function blankStickerTitle(number: number): string {
-  return `Sticker ${stickerNumberWords(number)} is not on a box yet`
-}
+export const BLANK_STICKER_TITLE = 'This sticker is not on a box yet'
 
 /** All a blank sticker says with no sign-in. */
-export function blankStickerPublicWords(number: number): string {
-  return `${blankStickerTitle(number)}. Sign in to say what it is.`
-}
+export const BLANK_STICKER_PUBLIC_WORDS = `${BLANK_STICKER_TITLE}. Sign in to say what it is.`
 
 /** Where a blank sticker goes, signed in (v2.7298, PR 3): the On site tab's Sticker is new sheet, on the job its run was printed for when there is one. */
 export function blankStickerPath(sticker: Pick<StickerFacts, 'code' | 'runJobId'>): string {
@@ -275,9 +250,7 @@ export function blankStickerPath(sticker: Pick<StickerFacts, 'code' | 'runJobId'
 }
 
 /** A lost sticker's heading. */
-export function lostStickerTitle(number: number): string {
-  return `Sticker ${stickerNumberWords(number)} was marked lost`
-}
+export const LOST_STICKER_TITLE = 'This sticker was marked lost'
 
 /** Under a lost sticker's heading, signed in: the box it was on, when the reader may know it. */
 export function lostStickerDetail(sticker: Pick<StickerFacts, 'containerLabel'>): string {
@@ -296,12 +269,9 @@ export function noBoxTitle(codeWords: string): string {
 export const NO_BOX_DETAIL = 'The box may be on a job you are not on, or it may be retired. Ask the office, or open On site and find the box by its stencil.'
 
 /** A sticker on a box of a job the reader is not on. */
-export function outOfReachStickerTitle(number: number): string {
-  return `Sticker ${stickerNumberWords(number)} is on a box of a job you are not on`
-}
+export const OUT_OF_REACH_STICKER_TITLE = 'This sticker is on a box of a job you are not on'
 
 /** A sticker on a box that was retired. */
-export function retiredBoxStickerTitle(sticker: Pick<StickerFacts, 'number' | 'containerLabel'>): string {
-  const n = stickerNumberWords(sticker.number)
-  return sticker.containerLabel ? `Sticker ${n} is on ${sticker.containerLabel}, which was retired` : `Sticker ${n} is on a box that was retired`
+export function retiredBoxStickerTitle(sticker: Pick<StickerFacts, 'containerLabel'>): string {
+  return sticker.containerLabel ? `This sticker is on ${sticker.containerLabel}, which was retired` : 'This sticker is on a box that was retired'
 }

@@ -1,33 +1,31 @@
 /**
  * What the stickers will look like (punch list #329, v2.7304): the fold at the foot of the Print blank stickers window
- * that draws the strips of a run before the press, as the owner asked on 2026-11-14 while looking at the window on
- * job 224. The numbers of a run are known ahead: the next after the last run's end, as the window's foot line reads
- * it. A sticker's code is not: it is cut from the sticker's own id when the run is minted. So the preview draws the
- * numbers for real and the QR and the dashed code from one sample code, and says so in one line. The strips go through
- * the printer's own drawing (`TapeStripBitmap`, `tapeStripCanvas.ts`), so the preview and the tape agree. Pure: the
- * rows, the words and the sample. The fold is in `PrintStickersModal.tsx`.
+ * that draws the strips of a run before the press. A named run's names are known ahead, each sticker taking its name
+ * in print order. A sticker's code is not: it is cut from the sticker's own id when the run is minted. So the preview
+ * draws the names for real and the QR and the dashed code from one sample code, and says so in one line. The strips
+ * go through the printer's own drawing (`TapeStripBitmap`, `tapeStripCanvas.ts`), so the preview and the tape agree.
+ * Pure: the rows, the words and the sample. The fold is in `PrintStickersModal.tsx`.
+ *
+ * Since v2.7438 (Taunya's call of 2026-11-16) no strip carries a running number, so a run with no names previews as
+ * the one strip every sticker of it will be but for its code, the code drawn larger in the name's place.
  */
-import { stickerNumberWords } from './stickers'
 import { nameSpanWords, stickerStrip, type StickerStrip } from './stickerRun'
 import { clampTapeCopies } from './tapeLabel'
 
 /** The fold's summary. */
 export const STICKER_PREVIEW_TITLE = 'What the stickers will look like'
 
-/** Under the strips: what is real and what is a sample. */
-export const STICKER_PREVIEW_CODE_WORDS = 'The numbers are the run’s. Each sticker’s code is given when the run prints.'
+/** Under the strips of a run with no names: every strip is the sample but for its code. */
+export const STICKER_PREVIEW_CODE_WORDS = 'Each sticker’s code is given when the run prints. The code drawn here is a sample.'
 
 /** The same line for a run that names its boxes (section 10, v2.7391). */
-export const STICKER_PREVIEW_NAMED_CODE_WORDS = 'The names and the numbers are the run’s. Each sticker’s code is given when the run prints.'
+export const STICKER_PREVIEW_NAMED_CODE_WORDS = 'The names are the run’s. Each sticker’s code is given when the run prints.'
 
 /** Over the test strip's drawing. */
 export const STICKER_PREVIEW_TEST_WORDS = 'Print 1 test strip prints this strip. It is not a sticker.'
 
 /** When the ask has no count the database would take. */
 export const STICKER_PREVIEW_NO_COUNT_WORDS = 'Pick how many, and the strips are drawn here.'
-
-/** While the last run is still being read. */
-export const STICKER_PREVIEW_READING_WORDS = 'Reading where the last run ended…'
 
 /** The strips drawn at the tape's size before Show all. */
 export const STICKER_PREVIEW_FIRST_STRIPS = 6
@@ -36,39 +34,27 @@ export const STICKER_PREVIEW_FIRST_STRIPS = 6
 export const STICKER_PREVIEW_MAX_STICKERS = 200
 
 /**
- * The code every preview strip carries: eight zeros, dashed `0000-0000` under the number. Eight characters, as a
- * sticker's code is, so the QR has the same squares and the address the same width as the one that prints.
+ * The code every preview strip carries: eight zeros, dashed `0000-0000`. Eight characters, as a sticker's code is, so
+ * the QR has the same squares and the address the same width as the one that prints.
  */
 export const STICKER_SAMPLE_CODE = '00000000'
 
-/**
- * One strip of the preview, through the run's own `stickerStrip`: the number as it will print, or the name large with
- * the number small under it, and the QR and the address from the sample code.
- */
-export function previewStrip(number: number, name?: string | null): StickerStrip {
-  return stickerStrip({ id: `preview-${stickerNumberWords(number)}`, number, code: STICKER_SAMPLE_CODE, boxName: name ?? null })
+/** One strip of the preview, through the run's own `stickerStrip`: the name large when the run has names, and the QR and the address from the sample code. `at` is the sticker's place in the run, from 0. */
+export function previewStrip(at: number, name?: string | null): StickerStrip {
+  return stickerStrip({ id: `preview-${at}`, number: at + 1, code: STICKER_SAMPLE_CODE, boxName: name ?? null })
 }
 
-/** The run's numbers from where the last run ended and how many: 0003 to 0202 after a last of 2; 0001 on for the first run. */
-export function previewNumbers(lastNumber: number | null, count: number): number[] {
-  const n = Math.max(0, Math.floor(count))
-  const first = (lastNumber ?? 0) + 1
-  return Array.from({ length: n }, (_, i) => first + i)
-}
-
-/** One strip to draw: its number, which copy it is (0 first) and the strip itself. */
-export type PreviewRow = { number: number; copy: number; strip: StickerStrip }
+/** One strip to draw: the sticker's place in the run (0 first), which copy it is (0 first) and the strip itself. */
+export type PreviewRow = { at: number; copy: number; strip: StickerStrip }
 
 export type StickerPreview = {
-  first: number
-  last: number
   /** The strips at the tape's size, in the order they print: 1 1 2 2 with two copies. */
   head: PreviewRow[]
   /** The stickers after the head, once each, drawn smaller when Show all is pressed. */
   rest: PreviewRow[]
   /** The stickers not drawn. */
   more: number
-  /** *and 194 more, to 0202*, or null when every sticker is drawn. */
+  /** *and 217 more, to G300*, *and 194 more*, or null when every sticker is drawn. */
   moreWords: string | null
   /** The press that draws the rest: *Show all 200*; null when the head holds the whole run or the rest is drawn. */
   showAllLabel: string | null
@@ -76,8 +62,9 @@ export type StickerPreview = {
   cappedWords: string | null
 }
 
-/** *and 194 more, to 0202*; *and 1 more, 0202*; a named run by its last name, *and 217 more, to G300*. `last` as the strip reads it. */
+/** *and 217 more, to G300*; *and 1 more, G300*; with no names, *and 199 more, each with its own code*. `last` is the last sticker's name, or empty. */
 export function previewMoreWords(more: number, last: string): string {
+  if (!last) return `and ${more} more, each with its own code`
   return more === 1 ? `and 1 more, ${last}` : `and ${more} more, to ${last}`
 }
 
@@ -91,48 +78,49 @@ export function previewCappedWords(drawn: number, count: number): string {
   return `The first ${drawn} of ${count} are drawn. The rest print the same way.`
 }
 
-/** *6 strips of 200 stickers, 0003 to 0008.*: the head's line; a named run's by its names, *G78 to G83*. */
+/** *6 strips of 223 stickers, G78 to G83.*: the head's line; a run with no names, *1 sticker of 200, with a sample code.* */
 export function previewHeadWords(head: ReadonlyArray<PreviewRow>, count: number): string {
   if (head.length === 0) return ''
   const first = head[0]!.strip.stencil
   const last = head[head.length - 1]!.strip.stencil
+  if (!first || !last) return count === 1 ? '1 sticker, with a sample code.' : `1 sticker of ${count}, with a sample code.`
   const strips = head.length === 1 ? '1 strip' : `${head.length} strips`
   const of = count === 1 ? '1 sticker' : `${count} stickers`
   return `${strips} of ${of}, ${nameSpanWords(first, last)}.`
 }
 
 /**
- * The preview's rows for a run: the first six strips in the order they print, each sticker's copies together, and
- * with `all` the stickers after them once each up to the cap. A count of zero draws nothing.
+ * The preview's rows for a run. A named run: the first six strips in the order they print, each sticker's copies
+ * together, and with `all` the stickers after them once each up to the cap; it is as many stickers as it has names.
+ * A run with no names: one sticker, its copies together, since every other strip differs only by its code. A count of
+ * zero draws nothing.
  */
-export function stickerPreview(input: { lastNumber: number | null; count: number; copies: number; all: boolean; names?: ReadonlyArray<string> | null }): StickerPreview {
-  // A named run is as many stickers as it has names, each sticker taking its name in number order as the mint gives them.
+export function stickerPreview(input: { count: number; copies: number; all: boolean; names?: ReadonlyArray<string> | null }): StickerPreview {
   const names = input.names && input.names.length > 0 ? input.names : null
-  const numbers = previewNumbers(input.lastNumber, names ? names.length : input.count)
-  const nameOf = (number: number) => (names ? names[number - (numbers[0] ?? 0)] ?? null : null)
+  const total = names ? names.length : Math.max(0, Math.floor(input.count))
   const copies = clampTapeCopies(input.copies)
-  const first = numbers[0] ?? 0
-  const last = numbers[numbers.length - 1] ?? 0
+  const nameOf = (at: number) => (names ? names[at] ?? null : null)
   const head: PreviewRow[] = []
-  for (const number of numbers) {
-    if (head.length >= STICKER_PREVIEW_FIRST_STRIPS) break
-    const strip = previewStrip(number, nameOf(number))
-    for (let copy = 0; copy < copies && head.length < STICKER_PREVIEW_FIRST_STRIPS; copy++) head.push({ number, copy, strip })
+  let headStickers = 0
+  // With no names every strip is the sample: one sticker stands for the run, and there is nothing more to show.
+  const headMost = names ? total : Math.min(total, 1)
+  for (let at = 0; at < headMost && head.length < STICKER_PREVIEW_FIRST_STRIPS; at++) {
+    const strip = previewStrip(at, nameOf(at))
+    for (let copy = 0; copy < copies && head.length < STICKER_PREVIEW_FIRST_STRIPS; copy++) head.push({ at, copy, strip })
+    headStickers = at + 1
   }
-  const headStickers = head.length === 0 ? 0 : head[head.length - 1]!.number - first + 1
-  const restNumbers = input.all ? numbers.slice(headStickers, Math.max(headStickers, STICKER_PREVIEW_MAX_STICKERS)) : []
-  const rest = restNumbers.map((number) => ({ number, copy: 0, strip: previewStrip(number, nameOf(number)) }))
+  const restEnd = input.all && names ? Math.min(total, Math.max(headStickers, STICKER_PREVIEW_MAX_STICKERS)) : headStickers
+  const rest: PreviewRow[] = []
+  for (let at = headStickers; at < restEnd; at++) rest.push({ at, copy: 0, strip: previewStrip(at, nameOf(at)) })
   const drawn = headStickers + rest.length
-  const more = numbers.length - drawn
-  const capped = input.all && more > 0
+  const more = total - drawn
+  const capped = input.all && more > 0 && names != null
   return {
-    first,
-    last,
     head,
     rest,
     more,
-    moreWords: more > 0 && !capped ? previewMoreWords(more, previewStrip(last, nameOf(last)).stencil) : null,
-    showAllLabel: more > 0 && !input.all ? showAllLabel(numbers.length) : null,
-    cappedWords: capped ? previewCappedWords(drawn, numbers.length) : null,
+    moreWords: more > 0 && !capped ? previewMoreWords(more, nameOf(total - 1) ?? '') : null,
+    showAllLabel: more > 0 && !input.all && names ? showAllLabel(total) : null,
+    cappedWords: capped ? previewCappedWords(drawn, total) : null,
   }
 }

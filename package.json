@@ -147,6 +147,7 @@
     "test:pg:job-account-not-needed-stamp": "bash scripts/pgtest-job-account-not-needed-stamp.sh",
     "test:pg:job-note-tags": "bash scripts/pgtest-job-note-tags.sh",
     "test:pg:sub-over-to-credit": "bash scripts/pgtest-sub-over-to-credit.sh",
+    "test:pg:sub-gather-sendings": "bash scripts/pgtest-sub-gather-sendings.sh",
     "test:pg:walk-kit": "bash scripts/pgtest-walk-kit.sh",
     "test:pg:bed-apply": "bash scripts/pgtest-bed-apply.sh",
     "test:pg:lien-release-sign": "bash scripts/pgtest-lien-release-sign.sh",

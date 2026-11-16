@@ -412,6 +412,35 @@ export function buildLienSupplierCard(
   }
 }
 
+// ---------- a house that is owed nothing ----------
+
+export interface LienSupplierQuietPart {
+  text: string
+  /** `said` is the house's own balance where it is not ours; `open` an open job account; the rest is muted. */
+  tone: 'said' | 'open' | 'muted'
+}
+
+/**
+ * A house that is owed nothing, as the one line it takes in the table (v2.7431, Taunya's ask of
+ * 2026-11-15): three paid houses took the room of the one that was owed, each with two dashes. Null
+ * for a house that is owed, which keeps its whole row. Nothing a paid row drew is dropped: the
+ * house's own balance where it differs from ours leads, so an ellipsis cannot cut it, then the
+ * invoices, the job account, the rep and the note of what the house told us. `title` is the whole
+ * line, for the hover of a cell that cuts it short.
+ */
+export function lienSupplierQuietLine(
+  r: Pick<LienSupplierCardRow, 'owed' | 'notice' | 'theirBalanceWords' | 'invoiceWords' | 'accountWords' | 'accountOpen' | 'repWords' | 'word'>,
+): { parts: LienSupplierQuietPart[]; title: string } | null {
+  if (r.owed > EPSILON || r.notice.kind !== 'none') return null
+  const parts: LienSupplierQuietPart[] = []
+  if (r.theirBalanceWords) parts.push({ text: r.theirBalanceWords, tone: 'said' })
+  parts.push({ text: r.invoiceWords, tone: 'muted' })
+  parts.push({ text: r.accountWords, tone: r.accountOpen ? 'open' : 'muted' })
+  if (r.repWords) parts.push({ text: r.repWords, tone: 'muted' })
+  if (r.word?.note) parts.push({ text: `“${r.word.note}”`, tone: 'muted' })
+  return { parts, title: parts.map((x) => x.text).join(' · ') }
+}
+
 // ---------- the paragraph for an email ----------
 
 const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']

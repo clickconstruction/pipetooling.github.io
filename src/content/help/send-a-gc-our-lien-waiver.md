@@ -205,7 +205,7 @@ The foot of the waiver is one block.
 - Under the rule comes his name and the company on one line. For example, **Malachi Whites**, Click Plumbing and Electrical.
 - His title comes next. It is left out when none is set.
 - Then the day he signed.
-- A grey sentence says how it was signed, by whom, when, and on whose screen. The two statutes sit under it.
+- A grey line gives the two statutes. The paper does not say how he signed, at what time or on whose screen. The window keeps that record.
 
 The same block prints on every copy. That means the page in the window, the PDF, **Print**, **View**, the email and the GC's room. Each copy shows the signature he drew, never his name in type.
 

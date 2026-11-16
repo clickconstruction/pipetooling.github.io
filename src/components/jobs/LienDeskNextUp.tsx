@@ -40,7 +40,15 @@ const KIND_TONE: Record<LienNextUpKind, { bg: string; fg: string }> = {
   retainage: { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' },
 }
 
-const tag = (kind: LienNextUpKind): CSSProperties => ({ display: 'inline-block', padding: '0 7px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 700, lineHeight: '18px', whiteSpace: 'nowrap', background: KIND_TONE[kind].bg, color: KIND_TONE[kind].fg })
+/** A row's kind chip: small and bold, the same on every row. */
+export const lienKindTagStyle = (kind: LienNextUpKind): CSSProperties => ({ display: 'inline-block', padding: '0 7px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 700, lineHeight: '18px', whiteSpace: 'nowrap', background: KIND_TONE[kind].bg, color: KIND_TONE[kind].fg })
+const tag = lienKindTagStyle
+/**
+ * The chip that opens its paper (v2.4632), drawn as the plain chip is. Only the font's family is inherited (v2.7442): a whole
+ * `font: inherit`, set after the chip's size, weight and line height, wiped all three, so it drew at the row's size and weight.
+ * A phone keeps its thumb-tall press.
+ */
+export const lienPaperDoorStyle = (kind: LienNextUpKind, isMobile: boolean): CSSProperties => ({ ...tag(kind), display: 'inline-flex', alignItems: 'center', gap: 5, border: 'none', fontFamily: 'inherit', cursor: 'pointer', ...(isMobile ? { minHeight: 40, padding: '0 8px', fontSize: '0.75rem', flex: 'none' } : null) })
 const TAG_TONE: Record<LienRowTag['tone'], CSSProperties> = {
   ok: { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' },
   none: { background: 'var(--bg-subtle)', color: 'var(--text-muted)' },
@@ -207,7 +215,7 @@ export default function LienDeskNextUp({
           ev.stopPropagation()
           onOpenPaper(r)
         }}
-        style={{ ...tag(r.kind), display: 'inline-flex', alignItems: 'center', gap: 5, border: 'none', font: 'inherit', fontSize: '0.68rem', cursor: 'pointer', ...(isMobile ? { minHeight: 40, padding: '0 8px', fontSize: '0.75rem', flex: 'none' } : null) }}
+        style={lienPaperDoorStyle(r.kind, isMobile)}
       >
         {KIND_WORDS[r.kind]}
         {gaps == null ? null : gaps > 0 ? (

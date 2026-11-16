@@ -8,9 +8,11 @@ export type FilingSignature = {
   mode: 'type' | 'draw' | 'pen' | 'code'
   printedName: string
   pngDataUrl?: string | null
-  /** "Signed October 9, 2026 at 2:14 PM CT". */
+  /** "Signed October 9, 2026": the day alone. No clock and no zone reach a paper (v2.7437). */
   signedWords: string
-  /** "L878-4C2E91". */
+  /**
+   * "L878-4C2E91". It ties the paper to the row, where the whole record lives: the instant, the way and whose screen.
+   * The sentence that said those on the paper (`auditLine`, until v2.7437) is not in this shape, so no renderer can print it.
+   */
   recordId: string
-  auditLine: string
 }

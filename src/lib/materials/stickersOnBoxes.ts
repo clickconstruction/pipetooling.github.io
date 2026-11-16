@@ -89,7 +89,7 @@ export type OnBoxesAsk = {
 
 export function onBoxesAsk(typed: string): OnBoxesAsk {
   const range = readStickerRange(typed, 1)
-  if (range.kind === 'numbered') return { range, names: null, words: ON_BOXES_EMPTY_WORDS, tone: 'empty' }
+  if (range.kind === 'unnamed') return { range, names: null, words: ON_BOXES_EMPTY_WORDS, tone: 'empty' }
   if (range.kind === 'refused') return { range, names: null, words: range.words, tone: 'refused' }
   const n = range.names.length
   return { range, names: range.names, words: n === 1 ? `${range.first} · 1 name.` : `${range.first} to ${range.last} · ${n} names.`, tone: 'ok' }

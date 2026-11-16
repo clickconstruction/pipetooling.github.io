@@ -1949,6 +1949,41 @@ body.my-time-boundary-dragging {
   animation: dashboard-skeleton-pulse 1.2s ease-in-out infinite;
 }
 
+/* Dashboard · Needs you: the leader's lien notices as a card of its own (v2.7435, Taunya's ask of 2026-11-16, the second
+   drawing she approved). The title says the deadline, then up to three notices, each a row with its own press. Red while
+   a window is inside the week or closed, blue otherwise: the tints are the Lien desk chips' own tokens. The first row's
+   press is the notice's Sign and approve green (`.lienSignFramePress`), a literal under white words in both themes. */
+.lienLeaderCard { background: var(--bg-subtle); border: 1px solid var(--border-blue); border-left-width: 4px; border-radius: 8px; overflow: hidden; }
+.lienLeaderCard[data-tone='red'] { border-color: var(--border-red); }
+.lienLeaderTop { padding: 0.65rem 0.875rem 0.6rem; background: var(--bg-blue-tint); }
+.lienLeaderCard[data-tone='red'] .lienLeaderTop { background: var(--bg-red-tint); }
+.lienLeaderKicker { font-size: 0.65rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-blue-700); }
+.lienLeaderCard[data-tone='red'] .lienLeaderKicker { color: var(--text-red-700); }
+.lienLeaderTitle { margin-top: 1px; font-size: 1rem; font-weight: 700; color: var(--text-strong); }
+.lienLeaderLine { margin-top: 2px; font-size: 0.8125rem; color: var(--text-muted); }
+.lienLeaderLine strong { font-weight: 600; color: var(--text-strong); }
+.lienLeaderRow { display: grid; grid-template-columns: minmax(0, 1.5fr) 5.5rem minmax(0, 0.9fr) minmax(0, 2fr) 10rem; gap: 0.75rem; align-items: center; width: 100%; padding: 0.5rem 0.875rem; border: none; border-top: 1px solid var(--border); border-radius: 0; background: transparent; font: inherit; font-size: 0.8125rem; color: inherit; text-align: left; }
+.lienLeaderName { font-weight: 700; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lienLeaderClaim { font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; text-align: right; }
+.lienLeaderGc { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lienLeaderState { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; color: var(--text-muted); }
+.lienLeaderChip { display: inline-block; padding: 0 7px; border-radius: 5px; font-size: 0.6875rem; font-weight: 700; line-height: 1.6; white-space: nowrap; background: var(--bg-muted); color: var(--text-600); }
+.lienLeaderChip[data-tone='red'] { background: var(--bg-red-tint); color: var(--text-red-700); }
+.lienLeaderChip[data-tone='amber'] { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+.lienLeaderCard[data-tone='red'] .lienLeaderChip[data-tone='red'] { box-shadow: inset 0 0 0 1px var(--border-red); }
+.lienLeaderPress { justify-self: end; display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text-strong); white-space: nowrap; cursor: pointer; }
+.lienLeaderPress[data-primary='yes'] { border-color: transparent; background: #166534; color: #ffffff; font-weight: 700; }
+.lienLeaderPress:focus-visible, .lienLeaderMore:focus-visible, button.lienLeaderRow:focus-visible { outline: 2px solid var(--border-blue); outline-offset: -2px; }
+.lienLeaderMore { display: block; width: 100%; padding: 0.5rem 0.875rem 0.55rem; border: none; border-top: 1px solid var(--border); border-radius: 0; background: transparent; font: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--text-link); text-align: left; cursor: pointer; }
+/* A phone: the name and the claim on one line, the chips under them. Only the first notice has a button, 44px tall, and
+   every other row is the press itself. */
+.lienLeaderCard[data-phone='yes'] .lienLeaderTitle { font-size: 1.0625rem; }
+.lienLeaderCard[data-phone='yes'] .lienLeaderRow { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 0.6rem 0.875rem 0.65rem; }
+.lienLeaderCard[data-phone='yes'] button.lienLeaderRow { cursor: pointer; }
+.lienLeaderCard[data-phone='yes'] .lienLeaderState { grid-column: 1 / -1; font-size: 0.75rem; }
+.lienLeaderCard[data-phone='yes'] .lienLeaderPress { grid-column: 1 / -1; justify-self: stretch; min-height: 44px; margin-top: 4px; font-size: 0.9375rem; }
+.lienLeaderCard[data-phone='yes'] .lienLeaderMore { text-align: center; min-height: 44px; }
+
 /* Bids · Pricing: per-bid resolve skeleton + spinner (v2.2367) */
 .bid-resolve-shimmer {
   background: var(--bg-muted);
@@ -4262,6 +4297,24 @@ body.my-time-boundary-dragging {
 .lienMonthsHead strong { font-size: 0.875rem; }
 .lienMonthsHead span, .lienMonthsNote, .lienMonthsEmpty { font-size: 0.75rem; color: var(--text-muted); }
 .lienMonthsBody { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem 1.1rem; align-items: stretch; }
+/* A closed month is one line where the card has room (Taunya's ask of 2026-11-15): the hours sit beside the month, and the
+   window's chips, its noted line and its press share a row. What a missed window costs is said once under the grid. The
+   Windows view's "it was open" words trail the row and give way first, cut with an ellipsis; a press that does not fit
+   drops under instead of leaving the card. */
+.lienMonthOne > div { display: inline; }
+.lienMonthOne .lienMonthName { margin-right: 8px; white-space: nowrap; }
+.lienMonthOne .lienMonthWorked { white-space: nowrap; }
+.lienMonthClosed { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
+.lienMonthClosed > * { flex: none; }
+/* One clamped line, not nowrap: a nowrap sentence would hold the column to its whole width and push the table out of the card. */
+.lienMonthClosed > .lienMonthClosedTail { flex: 1 1 0; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; overflow-wrap: anywhere; }
+@container lien-months (max-width: 560px) {
+  /* A phone: no room for one line, so the month stacks as an open month does and the words wrap whole. */
+  .lienMonthOne > div { display: block; }
+  .lienMonthOne .lienMonthName { margin-right: 0; }
+  .lienMonthOne .lienMonthWorked { white-space: normal; }
+  .lienMonthClosed > .lienMonthClosedTail { flex-basis: 100%; display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow-wrap: normal; }
+}
 .lienMonthsCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.4rem; min-width: 0; }
 .lienMonthCard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 0.55rem; align-items: start; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); cursor: pointer; }
 .lienMonthCard input { grid-row: 1 / span 3; margin-top: 0.2rem; }
@@ -4355,6 +4408,16 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPileHeadBtn { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 0.5rem; background: none; border: none; padding: 0; font: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; text-align: left; }
 .lienPileHeadBtn:hover, .lienPileHeadBtn:focus-visible { color: var(--text-strong); outline: none; }
 .lienPileHeadBtn .n { margin-left: auto; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+/* A notice's page bar: the two export presses at its right end (v2.7432, Taunya's ask of 2026-11-15). They read as the
+   bar's own links in the desk's door blue, beside the bar's button and never inside it. On a phone the arrows alone,
+   32px tall in the 40px bar. A press that is busy or waits on the other one greys with the muted words. */
+.lienPageExport { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.lienPageExportBtn { display: inline-flex; align-items: center; justify-content: center; height: 18px; padding: 0 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; font: inherit; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; text-transform: none; white-space: nowrap; color: var(--text-link); cursor: pointer; }
+.lienPageExportBtn:hover:not(:disabled), .lienPageExportBtn:focus-visible { background: var(--bg-blue-tint); outline: none; }
+.lienPageExportBtn:focus-visible { border-color: var(--text-link); }
+.lienPageExportBtn:disabled { color: var(--text-muted); cursor: default; }
+.lienPageExportSep { width: 1px; height: 12px; background: var(--border-strong); }
+.lienPageExport[data-phone='yes'] .lienPageExportBtn { height: 32px; min-width: 40px; padding: 0 10px; font-size: 0.875rem; }
 /* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
 .lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
 /* The list's find box as a quiet line (v2.7315): no pill — the ⌕ and the words on the list's own background with one hairline under them,
@@ -4489,13 +4552,40 @@ button.lienCalNoHours:hover { text-decoration: underline; }
   .lienMonthsClaim { padding: 0.5rem 0 0; border-left: none; border-top: 1px solid var(--border); }
 }
 
-/* Lien desk → the envelope line above the paper (v2.3776, moved from the footer): who it goes to, and the cover-note switch. */
-.lienEnvelope { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.1rem; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); font-size: 0.8125rem; color: var(--text-muted); }
-.lienEnvelope strong { color: var(--text-strong); }
-.lienEnvelope label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; color: var(--text-700); white-space: nowrap; }
-/* A second tick (the supply houses, v2.4725) sits beside the first, not across the line from it. */
-.lienEnvelope label + label { margin-left: 0; }
-.lienFootMuted { color: var(--text-muted); }
+/* Lien desk → In the envelope as one card (v2.7427; a line above the paper since v2.3776): who it goes to at the left, what rides
+   with the notice at the right, the key to the paper along the foot. The halves sit side by side from a card 620 px wide and
+   stack under it, by the card's own width: the pane is as narrow as 756 px beside the list and a phone is narrower still. */
+.lienEnvelope { container: lien-envelope / inline-size; min-width: 0; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); font-size: 0.8125rem; color: var(--text-700); }
+.lienEnvelopeGrid { display: grid; grid-template-columns: minmax(0, 1fr); }
+.lienEnvelopeZone { min-width: 0; padding: 0.6rem 0.875rem 0.7rem; }
+.lienEnvelopeZone + .lienEnvelopeZone { border-top: 1px solid var(--border); }
+.lienEnvelopeTitle { margin-bottom: 0.4rem; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.lienEnvelopeWho { display: grid; grid-template-columns: 5.2rem minmax(0, 1fr); gap: 3px 10px; align-items: baseline; margin: 0; }
+.lienEnvelopeWho dt { font-size: 0.75rem; color: var(--text-muted); }
+.lienEnvelopeWho dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.lienEnvelopeWho dd strong { color: var(--text-strong); }
+.lienEnvelopeWho dd span { display: block; font-size: 0.75rem; color: var(--text-muted); }
+/* The list stops at 400 px so an amount stays near its words in a wide pane. */
+.lienEnvelopeTicks { display: grid; gap: 5px; max-width: 400px; }
+.lienEnvelopeTick { display: grid; min-width: 0; }
+.lienEnvelopeTick label { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 0 9px; align-items: center; min-height: 22px; cursor: pointer; }
+.lienEnvelopeTick input[type='checkbox'] { width: 14px; height: 14px; margin: 0; }
+.lienEnvelopeTick input[type='checkbox']:disabled { cursor: default; }
+.lienEnvelopeTickWords { min-width: 0; color: var(--text-strong); }
+.lienEnvelopeTick[data-on='no'] .lienEnvelopeTickWords { color: var(--text-muted); }
+.lienEnvelopeTickAmount { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-strong); }
+.lienEnvelopeTickPage { font-size: 0.75rem; color: var(--text-muted); }
+/* Counsel's caution sits under the words of the tick it is about, outside the label so a press on it ticks nothing. */
+.lienEnvelopeTickNote { padding-left: 23px; font-size: 0.72rem; color: var(--text-amber-800); }
+.lienEnvelopeTickNote::before { content: '⚠ '; }
+.lienEnvelopeFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 0.4rem 0.875rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted); }
+.lienEnvelopeSwatch { display: inline-block; width: 22px; height: 12px; margin-right: 6px; vertical-align: middle; border-radius: 4px; background: var(--bg-amber-tint); border: 1px solid var(--border-amber-soft); }
+.lienEnvelopePreview { margin-left: auto; padding: 0; border: none; background: none; font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text-link); white-space: nowrap; cursor: pointer; }
+.lienEnvelopePreview:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; border-radius: 3px; }
+@container lien-envelope (min-width: 620px) {
+  .lienEnvelopeGrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
+  .lienEnvelopeZone + .lienEnvelopeZone { border-top: none; border-left: 1px solid var(--border); }
+}
 
 /* Send the run — the envelope table (v2.3720 / v2.3734): a header row per envelope with its method and tracking box, a row per notice inside it. At phone width each envelope stacks as a card, its Method and Tracking # labelled, so the tracking box never sits off-screen. */
 /* Lien desk → the run's journey (Run-2, the run shown not told): six nodes across the top, a count under each, the blocker on the node it blocks, the fill as far as every envelope has come. Two rows of three on a phone. */

@@ -47,6 +47,34 @@ describe('bankSideSheets', () => {
       ['p2', 'Somebody Typed', 150],
     ])
   })
+
+  it('a teammate’s own sheet is theirs and not crew, and a sheet several teammates share is not crew either', () => {
+    const mates = [...roster, { id: 'mate-2', name: 'Priya Oduya', kind: 'sub', accountRole: 'assistant' }]
+    const sheets = bankSideSheets(
+      {
+        payments: [{ ...pay('p3', 500, '2026-11-08'), job_id: 'c' }],
+        sheets: [
+          { id: 'c', assigned_to_name: 'Jordan Vance', address: '4 Oak', job_number: '2110', job_ledger_id: null },
+          { id: 'd', assigned_to_name: 'Jordan Vance | Priya Oduya', address: '5 Oak', job_number: '2111', job_ledger_id: null },
+          { id: 'e', assigned_to_name: '', address: '6 Oak', job_number: '2112', job_ledger_id: null },
+        ],
+        jobNamesById: {},
+        assigneesBySheetId: new Map([
+          ['c', [{ personId: 'mate-1', personName: 'Jordan Vance' }]],
+          ['d', [{ personId: 'mate-1', personName: 'Jordan Vance' }, { personId: 'mate-2', personName: 'Priya Oduya' }]],
+        ]),
+      },
+      mates,
+    )
+    // Taunya, 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
+    expect(sheets.map((s) => [s.id, s.paidTo, s.paidToKey, s.crew])).toEqual([
+      ['c', 'Jordan Vance', 'id:mate-1', false],
+      ['d', 'Jordan Vance | Priya Oduya', 'jordan vance | priya oduya', false],
+      // No name on it: owed to nobody, as before.
+      ['e', 'nobody named', 'sheet:e', true],
+    ])
+    expect(bankSideUnits(buildLedgerLines(sheets)).map((u) => [u.paymentId, u.paidTo, u.amount])).toEqual([['p3', 'Jordan Vance', 500]])
+  })
 })
 
 describe('bankSideUnits', () => {

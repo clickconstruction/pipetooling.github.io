@@ -20,7 +20,10 @@ import {
   HOMESTEAD_NOTICE_STATEMENT,
   type LienNoticeFields,
   buildLienRetainageNoticeBlocks,
+  FILING_ESIGN_LINE,
+  FILING_PEN_LINE,
 } from './lienFilingDocuments'
+import { lienFieldsHash, lienNoticeSignatureFromRow, toFilingSignature, type LienDeskSignatureColumns } from '../jobs/lienNoticeSignature'
 
 const NOTICE_FIELDS: LienNoticeFields = {
   noticeDate: '2026-09-03',
@@ -426,9 +429,9 @@ describe('the pay page blocks (v2.3758)', () => {
 })
 
 describe('the signed frame (v2.5077, lien desk signing)', () => {
-  const signed = { mode: 'type' as const, printedName: 'Robert Douglas', pngDataUrl: null, signedWords: 'Signed October 9, 2026 at 2:14 PM CT', recordId: 'L878-4C2E91', auditLine: 'Placed by Robert Douglas with one press under his own sign-in to ClickTooling on October 9, 2026 at 2:14 PM CT.' }
+  const signed = { mode: 'type' as const, printedName: 'Robert Douglas', pngDataUrl: null, signedWords: 'Signed October 9, 2026', recordId: 'L878-4C2E91' }
 
-  it('unsigned, the block is the rule and the names as before; signed, the page carries the tag, the cursive name, the names under the rule, the day, the record ID and the audit lines', () => {
+  it('unsigned, the block is the rule and the names as before; signed, the page carries the tag, the cursive name, the names under the rule, the day, the record ID and the statute line', () => {
     const plain = filingDocHtml(buildLienNoticeBlocks(NOTICE_FIELDS))
     expect(plain).toContain('border-bottom:1px solid currentColor;height:1.6em')
     expect(plain).not.toContain('Signed electronically')
@@ -438,11 +441,43 @@ describe('the signed frame (v2.5077, lien desk signing)', () => {
     expect(html).toContain('Signed electronically')
     expect(html).toContain("font-family:'Great Vibes'")
     expect(html).toContain('>Robert Douglas</div>')
-    expect(html).toContain('Malachi Whites<br/>Click Plumbing and Electrical<br/>Signed October 9, 2026 at 2:14 PM CT')
+    expect(html).toContain('Malachi Whites<br/>Click Plumbing and Electrical<br/>Signed October 9, 2026</div>')
     expect(html).toContain('>L878-4C2E91</span>')
-    expect(html).toContain('Placed by Robert Douglas with one press')
-    expect(html).toContain('ESIGN Act (15 U.S.C. § 7001)')
+    // Under the frame the statute line stands alone (v2.7437): no sentence of how it was signed before it.
+    expect(html).toContain(`line-height:1.5">${FILING_ESIGN_LINE.replace('&', '&amp;')}</div>`)
+    expect(html).not.toContain('Placed by')
     expect(html).not.toContain('height:1.6em')
+  })
+
+  it('no paper carries the clock or the sentence of how it was signed, whichever way he signed: the notice, the retainage notice and the plain text (v2.7437)', () => {
+    const SIGNED_AT = '2026-10-09T19:14:00Z'
+    const FIELDS = { a: 1 }
+    const row = (over: Partial<LienDeskSignatureColumns> = {}): LienDeskSignatureColumns => ({ signed_at: SIGNED_AT, signed_by: 'u-leader', signed_on_device_of: null, signer_printed_name: 'Robert Douglas', signer_signature_mode: 'type', signer_signature_storage_path: null, signed_fields_hash: lienFieldsHash(FIELDS), signed_recorded_by: null, signed_witness_how: null, signed_leader_confirmed_at: null, ...over })
+    const opts = { jobNumber: '878', itemId: '4c2e91aa-0000-4000-8000-000000000000', fieldsHash: lienFieldsHash(FIELDS), onDeviceName: 'Taunya', recordedByName: 'Taunya' }
+    const rows = [
+      row(),
+      row({ signer_signature_mode: 'draw', signed_on_device_of: 'u-taunya' }),
+      row({ signer_signature_mode: 'code', signed_on_device_of: 'u-taunya', signed_leader_confirmed_at: '2026-10-12T22:00:00Z' }),
+      row({ signer_signature_mode: 'pen', signed_recorded_by: 'u-taunya', signed_witness_how: 'watched', signed_leader_confirmed_at: '2026-10-12T22:00:00Z' }),
+    ]
+    const BANNED = [/\bat \d{1,2}:\d{2}/, /\b[AP]M\b/, / CT\b/, /screen/, /Typed by/, /Drawn by/, /Placed by/, /Recorded by/, /Confirmed by/, /signing code/, /sign-in/, /ClickTooling/]
+    for (const r of rows) {
+      const record = lienNoticeSignatureFromRow(r, opts)!
+      // The record still says all of it, for the desk.
+      expect(record.auditLine).toMatch(record.mode === 'pen' ? /Recorded by Taunya/ : /at 2:14 PM CT/)
+      const signature = toFilingSignature(record)
+      const papers = [
+        filingDocHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature })),
+        filingDocHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature, instrument: 'retainage_53_057' })),
+        filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature }), 'Notice'),
+        filingDocText(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature })),
+      ]
+      for (const paper of papers) for (const banned of BANNED) expect(paper, `${record.mode}: ${banned}`).not.toMatch(banned)
+      // What the paper keeps: the day alone, the record ID, and the statute line for the way he signed.
+      expect(papers[0]).toContain(record.mode === 'pen' ? 'Signed by pen October 9, 2026</div>' : 'Signed October 9, 2026</div>')
+      expect(papers[0]).toContain('>L878-4C2E91</span>')
+      expect(papers[0]).toContain(`line-height:1.5">${(record.mode === 'pen' ? FILING_PEN_LINE : FILING_ESIGN_LINE).replace('&', '&amp;')}</div>`)
+    }
   })
 
   it('drawn, the frame holds the ink instead of the cursive name', () => {
@@ -454,7 +489,8 @@ describe('the signed frame (v2.5077, lien desk signing)', () => {
 
   it('in plain text the mark is /s/ the name with the record line; the print shell loads the cursive face only for a pressed signature', () => {
     const text = filingDocText(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature: signed }))
-    expect(text).toContain('/s/ Robert Douglas\nSigned electronically · L878-4C2E91 · Signed October 9, 2026 at 2:14 PM CT\nMalachi Whites\nClick Plumbing and Electrical\nPlaced by Robert Douglas')
+    expect(text).toContain('/s/ Robert Douglas\nSigned electronically · L878-4C2E91 · Signed October 9, 2026\nMalachi Whites\nClick Plumbing and Electrical')
+    expect(text).not.toContain('Placed by')
     expect(filingDocText(buildLienNoticeBlocks(NOTICE_FIELDS))).toContain('______________________________\nMalachi Whites')
     const shellSigned = filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature: signed }), 'Notice')
     expect(shellSigned).toContain('fonts.googleapis.com/css2?family=Great+Vibes')
