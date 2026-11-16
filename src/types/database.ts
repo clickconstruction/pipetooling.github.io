@@ -47535,6 +47535,7 @@ export type Database = {
       }
       my_partner_partnership_id: { Args: never; Returns: string }
       my_sub_portal_address: { Args: never; Returns: Json }
+      my_sub_sheets_on_job: { Args: { p_job_id: string }; Returns: Json }
       my_week: { Args: never; Returns: Json }
       name_contact: {
         Args: {

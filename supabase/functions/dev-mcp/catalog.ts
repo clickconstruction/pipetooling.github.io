@@ -1563,6 +1563,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "my_mail_set": [{"args":{"p_hidden_labels?":"string[]","p_on":"boolean"},"returns":"{ hidden_labels: string[] is_on: boolean }[]"}],
   "my_partner_partnership_id": [{"args":{},"returns":"string"}],
   "my_sub_portal_address": [{"args":{},"returns":"Json"}],
+  "my_sub_sheets_on_job": [{"args":{"p_job_id":"string"},"returns":"Json"}],
   "my_week": [{"args":{},"returns":"Json"}],
   "name_contact": [{"args":{"p_contact_id":"string","p_job_id?":"string","p_job_kind?":"string","p_kind":"string","p_name?":"string","p_record_id":"string","p_record_table":"string"},"returns":"string"}],
   "next_job_number_suggestion": [{"args":{},"returns":"string"}],
