@@ -5,9 +5,9 @@ roles: dev, master_technician, assistant, controller
 keywords: statement of account, work statement, sub statement, pay due report, still open, what we owe a sub, sub papers, pdf, download, print, part payment, partial payment, back-charge, last payments, period, sub labor, reverse invoice, payment receipt, how it adds up, sent copies, paper for a sub
 order: 34
 ---
-A statement of account is one paper for one sub. It lists their work, what was paid and what is still open. You make it as a PDF and hand it to them.
+A statement of account is one paper for one sub. The paper lists their work, what was paid and what is still open. You make it as a PDF and hand it to them.
 
-A work statement is the same kind of paper for one sheet. Both read the sheets and payments the Pay view already shows.
+A work statement is the same kind of paper for one sheet. Both papers read the sheets and payments the Pay view already shows.
 
 ## Open the papers window
 
@@ -33,7 +33,7 @@ A statement of account covers a period. Four chips set it.
 
 **What it will show** counts the work statements, the payments and the back-charges in the period. The last figure is what is still open.
 
-A work statement has no period. It always shows the whole sheet.
+A work statement has no period. A work statement always shows the whole sheet.
 
 ## Read the paper
 
@@ -41,12 +41,12 @@ The preview under the chips is the paper itself. The PDF shows the same words an
 
 A statement of account has four parts.
 
-- **Still open** is boxed at the top. It is what the sub has not been paid yet on the closing day.
+- **Still open** is boxed at the top. The figure is what the sub has not been paid yet on the closing day.
 - **Brought forward** lists work from before the period that was still open. **Work in this period** lists the new work.
 - **Last payments** lists each payment in the period with its day and how it was sent.
-- **How it adds up** is one line. It starts with what was open and ends on what is still open.
+- **How it adds up** is one line. The line starts with what was open and ends on what is still open.
 
-A work statement shows one sheet. It lists each line and what was agreed, then each back-charge in red. It lists each payment, then **Paid so far** and **Still open on this statement**.
+A work statement shows one sheet. The paper lists each line and what was agreed, then each back-charge in red. Under those come each payment, then **Paid so far** and **Still open on this statement**.
 
 A part payment reads the same on both papers. The sheet's row shows what was paid and what is left.
 
@@ -63,7 +63,7 @@ This window does not send the paper. Give the sub the printed page, or attach th
 ## What the papers do not have yet
 
 - **No number.** Each paper says the day and time it was prepared. Numbers come in a later change.
-- **Draft sentences.** A few sentences are boxed and marked §. They are draft wording until our lawyer has read them.
+- **Draft sentences.** A few sentences are boxed and marked §. The boxed sentences are draft wording until our lawyer has read them.
 - **No payment record.** A paper for one payment comes in a later change.
 
 ## When the papers do not add up

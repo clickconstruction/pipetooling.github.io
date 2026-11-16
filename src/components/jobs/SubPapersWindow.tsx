@@ -196,7 +196,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
               ) : null}
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
                 {statement.period}.
-                {lastStatement ? ` The last statement, ${lastStatement.number}, ended ${paperDay(lastStatement.endedOn)}.` : lastStatement === null ? ' No statement has been sent to them yet, so the first one is to date.' : ''}
+                {lastStatement ? ` The last statement, ${lastStatement.number}, ended ${paperDay(lastStatement.endedOn)}.` : lastStatement === null ? ' This is their first statement, so it runs to date.' : ''}
               </div>
             </div>
             <div style={field}>

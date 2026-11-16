@@ -91,7 +91,7 @@ describe('SubPapersWindowView, as the first step ships it', () => {
     expect(screen.queryByText('Attach')).toBeNull()
     const period = screen.getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed')).map((b) => b.textContent)
     expect(period).toEqual(['Statement of account', 'This month', 'This year', 'To date', 'Pick dates'])
-    expect(screen.getByRole('dialog').textContent).not.toContain('No statement has been sent')
+    expect(screen.getByRole('dialog').textContent).not.toContain('This is their first statement')
   })
 
   it('no paper says invoice, receipt or owed, and the draft sentences are marked', () => {
@@ -154,7 +154,7 @@ describe('SubPapersWindowView, as the first step ships it', () => {
     mountView({ paymentRecords: true, canSend: true, onSend, lastStatement: null, contact: { email: 'harlan@example.com', phone: null, portalUrl: null } })
     expect(screen.getByRole('combobox', { name: 'A payment record' })).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Since the last statement' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByRole('dialog').textContent).toContain('No statement has been sent to them yet, so the first one is to date.')
+    expect(screen.getByRole('dialog').textContent).toContain('This is their first statement, so it runs to date.')
     fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
     fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
     expect(onSend).toHaveBeenCalledTimes(1)
