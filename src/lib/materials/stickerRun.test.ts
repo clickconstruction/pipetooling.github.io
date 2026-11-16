@@ -4,7 +4,6 @@ import { mintStickerRunArgs, nameSpanWords, runSpanWords, stickerReadName, stick
 import {
   blankStickersOf,
   canMintStickers,
-  lastRunWords,
   mintedRunOf,
   mintedStickerOf,
   printRestLabel,
@@ -65,10 +64,6 @@ describe('how many', () => {
     expect(stickerRunCountWords(1, 1)).toBe('1 sticker, one strip each.')
   })
 
-  it('says where the numbers start', () => {
-    expect(lastRunWords(100)).toBe('The last run ended at 0100.')
-    expect(lastRunWords(null)).toBe('This is the first run. The numbers start at 0001.')
-  })
 })
 
 describe('who', () => {
@@ -129,20 +124,24 @@ describe('the run read back', () => {
 })
 
 describe('what one sticker prints', () => {
-  it('is the tape label’s shape with the number where the stencil goes', () => {
+  it('is the tape label’s shape, and with no name it has no stencil: the code is drawn larger in its place', () => {
     expect(stickerStrip({ id: 's-147', number: 147, code: '4F2A9C18' })).toEqual({
       id: 's-147',
-      stencil: '0147',
+      stencil: '',
       address: 'PRTS.CO/B/4F2A-9C18',
       value: 'HTTPS://PRTS.CO/B/4F2A9C18',
     })
+    // the sticker's running number is nowhere on the strip (Taunya's call of 2026-11-16)
+    for (const strip of [stickerStrip({ id: 'x', number: 147, code: '4F2A9C18', boxName: 'G78' }), stickerStrip({ id: 'x', number: 147, code: '4F2A9C18' })]) {
+      expect([strip.stencil, strip.address, strip.value].join(' ')).not.toMatch(/147/)
+    }
     // no line of words on a sticker (Taunya's ask of 2026-11-15); the test strip keeps its own
     expect(stickerStrip({ id: 's-147', number: 147, code: '4F2A9C18' }).words).toBeUndefined()
   })
 
   it('the test strip mints nothing and its code lands on Scan a label', () => {
     expect(STICKER_TEST_STRIP.value).toBe('HTTPS://PRTS.CO/B')
-    expect(STICKER_TEST_STRIP.stencil).toBe('0000')
+    expect(STICKER_TEST_STRIP.stencil).toBe('TEST')
     expect(STICKER_TEST_STRIP.words).toBe('Test strip')
   })
 })
@@ -150,9 +149,9 @@ describe('what one sticker prints', () => {
 describe('a run’s words', () => {
   const run = stickerRunOf(runRow)!
 
-  it('titles a run with its count, its sets and its range', () => {
-    expect(stickerRunTitle(run)).toBe('Run of 200 sets · 0101 to 0300')
-    expect(stickerRunTitle({ ...run, copies: 1 })).toBe('Run of 200 · 0101 to 0300')
+  it('titles a run with no names by its count and its sets', () => {
+    expect(stickerRunTitle(run)).toBe('Run of 200 sets')
+    expect(stickerRunTitle({ ...run, copies: 1 })).toBe('Run of 200')
   })
 
   it('says who printed and when', () => {
@@ -169,23 +168,24 @@ describe('a run’s words', () => {
     expect(reprintLabel(200)).toBe('Reprint 200 stickers')
     expect(reprintLabel(1)).toBe('Reprint 1 sticker')
     expect(printRestLabel([])).toBe('Print the rest')
-    expect(printRestLabel([{ number: 300 }, { number: 163 }, { number: 164 }].filter((s) => s.number !== 300))).toBe('Print the rest, 0163 to 0164')
-    expect(printRestLabel(Array.from({ length: 138 }, (_, i) => ({ number: 163 + i })))).toBe('Print the rest, 0163 to 0300')
+    // stickers with no names are said by how many, whether or not they are one unbroken block
+    expect(printRestLabel([{ number: 163 }, { number: 164 }])).toBe('Print the rest, 2 stickers')
+    expect(printRestLabel(Array.from({ length: 138 }, (_, i) => ({ number: 163 + i })))).toBe('Print the rest, 138 stickers')
     expect(printRestLabel([{ number: 163 }, { number: 205 }, { number: 206 }])).toBe('Print the rest, 3 stickers')
-    expect(printRestLabel([{ number: 163 }])).toBe('Print the rest, 0163')
+    expect(printRestLabel([{ number: 163 }])).toBe('Print the rest, 1 sticker')
   })
 
-  it('the press on a minted run names its range', () => {
+  it('the press on a minted run with no names says how many', () => {
     const stickers: MintedSticker[] = stickerRows.map((s) => ({ ...s, code: s.code.toUpperCase() }))
-    expect(printRunLabel(stickers, 2)).toBe('Print 200 sets, 0101 to 0300')
-    expect(printRunLabel(stickers.slice(62), 1)).toBe('Print 138 stickers, 0163 to 0300')
+    expect(printRunLabel(stickers, 2)).toBe('Print 200 sets')
+    expect(printRunLabel(stickers.slice(62), 1)).toBe('Print 138 stickers')
     expect(printRunLabel([stickers[0]!, stickers[5]!], 1)).toBe('Print 2 stickers')
     expect(printRunLabel([], 1)).toBe('Print stickers')
   })
 
   it('says the strips of a minted run', () => {
-    expect(runStripsWords(run, 200)).toBe('0101 to 0300, 2 strips each. 400 strips.')
-    expect(runStripsWords({ ...run, copies: 1 }, 138)).toBe('138 of 0101 to 0300, one strip each.')
+    expect(runStripsWords(run, 200)).toBe('200 stickers, 2 strips each. 400 strips.')
+    expect(runStripsWords({ ...run, copies: 1 }, 138)).toBe('138 of 200 stickers, one strip each.')
   })
 })
 
@@ -222,19 +222,22 @@ describe('the print', () => {
 })
 
 describe('the CSV', () => {
-  it('writes one row a sticker in number order', () => {
+  it('writes one row a sticker in the order they print, with no Number column', () => {
     const text = stickersCsvText([{ id: 'b', number: 102, code: '9C184F2A' }, { id: 'a', number: 101, code: '4F2A9C18' }])
-    // the Name column leads; a run of numbers only leaves it empty
-    expect(text.split('\r\n')).toEqual(['Name,Number,Code,Address,QR', ',0101,4F2A-9C18,prts.co/b/4F2A-9C18,HTTPS://PRTS.CO/B/4F2A9C18', ',0102,9C18-4F2A,prts.co/b/9C18-4F2A,HTTPS://PRTS.CO/B/9C184F2A', ''])
+    // the Name column leads; a run with no names leaves it empty
+    expect(text.split('\r\n')).toEqual(['Name,Code,Address,QR', ',4F2A-9C18,prts.co/b/4F2A-9C18,HTTPS://PRTS.CO/B/4F2A9C18', ',9C18-4F2A,prts.co/b/9C18-4F2A,HTTPS://PRTS.CO/B/9C184F2A', ''])
     const named = stickersCsvText([{ id: 'a', number: 225, code: '4F2A9C18', boxName: 'G78' }])
-    expect(named.split('\r\n')[1]).toBe('G78,0225,4F2A-9C18,prts.co/b/4F2A-9C18,HTTPS://PRTS.CO/B/4F2A9C18')
-    expect(stickersCsvFileName({ firstNumber: 101, lastNumber: 300 }, '2026-11-14')).toBe('stickers-0101-0300-2026-11-14.csv')
+    expect(named.split('\r\n')[1]).toBe('G78,4F2A-9C18,prts.co/b/4F2A-9C18,HTTPS://PRTS.CO/B/4F2A9C18')
+    // the file is named by the run's names, or by its count when it has none
+    expect(stickersCsvFileName({ count: 223, names: ['G78', 'G79', 'G300'] }, '2026-11-14')).toBe('stickers-G78-G300-2026-11-14.csv')
+    expect(stickersCsvFileName({ count: 1, names: ['G78'] }, '2026-11-14')).toBe('stickers-G78-2026-11-14.csv')
+    expect(stickersCsvFileName({ count: 200, names: null }, '2026-11-14')).toBe('stickers-200-2026-11-14.csv')
   })
 })
 
 describe('plain words', () => {
   it('every sentence a person reads passes the rules', () => {
-    const texts = [STICKER_MINT_WHO, lastRunWords(100), lastRunWords(null), stickerRunCountWords(200, 2), stickersSentWords(123, 200, 2, 'There is no tape in the printer.'), 'A run is 1 to 500 stickers.']
+    const texts = [STICKER_MINT_WHO, stickerRunCountWords(200, 2), stickersSentWords(123, 200, 2, 'There is no tape in the printer.'), 'A run is 1 to 500 stickers.']
     for (const t of texts) expect(plainWordsFailures(t)).toEqual([])
   })
 })
@@ -271,10 +274,9 @@ describe('a run that names its boxes (design section 10, PR 8, v2.7391)', () => 
     expect(nameSpanWords('G78', 'G78')).toBe('G78')
   })
 
-  it('a named sticker prints its name large and its number small, a numbered one as before', () => {
-    expect(stripOf(g(78, 225))).toEqual({ id: 's-225', stencil: 'G78', number: '0225', address: 'PRTS.CO/B/4F2A-9C18', value: 'HTTPS://PRTS.CO/B/4F2A9C18' })
-    expect(stripOf({ id: 'a', number: 147, code: '4F2A9C18' })).toEqual({ id: 'a', stencil: '0147', address: 'PRTS.CO/B/4F2A-9C18', value: 'HTTPS://PRTS.CO/B/4F2A9C18' })
-    expect(stripOf({ id: 'a', number: 147, code: '4F2A9C18', boxName: null }).number).toBeUndefined()
+  it('a named sticker prints its name large over the link, and nothing else', () => {
+    expect(stripOf(g(78, 225))).toEqual({ id: 's-225', stencil: 'G78', address: 'PRTS.CO/B/4F2A-9C18', value: 'HTTPS://PRTS.CO/B/4F2A9C18' })
+    expect(stripOf({ id: 'a', number: 147, code: '4F2A9C18', boxName: null })).toEqual({ id: 'a', stencil: '', address: 'PRTS.CO/B/4F2A-9C18', value: 'HTTPS://PRTS.CO/B/4F2A9C18' })
   })
 
   it('up to four characters print at the full size, five to seven smaller', () => {
@@ -288,15 +290,18 @@ describe('a run that names its boxes (design section 10, PR 8, v2.7391)', () => 
     expect(stripNameChars(strip('AB300'))).toBe(4)
     expect(stripNameChars(strip('G120'))).toBe(4)
     expect(stripNameChars(strip('G7'))).toBe(2)
+    // a sticker with no name: the room its larger code needs
+    expect(stripNameChars(stripOf({ id: 'a', number: 1, code: '4F2A9C18' }))).toBe(4)
   })
 
-  it('a block of stickers reads by its names when every one has one, by its numbers when not', () => {
+  it('a block of stickers reads by its names when every one has one, and has no words when not', () => {
     expect(stickerSpanWords([g(78, 225), g(79, 226), g(80, 227)])).toBe('G78 to G80')
     expect(stickerSpanWords([g(78, 225)])).toBe('G78')
-    expect(stickerSpanWords([g(78, 225), { number: 226 }])).toBe('0225 to 0226')
+    expect(stickerSpanWords([g(78, 225), { boxName: null }])).toBe('')
     expect(stickerSpanWords([])).toBe('')
     expect(stickerReadName(g(78, 225))).toBe('G78')
-    expect(stickerReadName({ number: 147 })).toBe('0147')
+    // one with no name is read by its code, as the tape prints it
+    expect(stickerReadName({ code: '4F2A9C18' })).toBe('4F2A-9C18')
   })
 
   it('the presses on a minted run name the names', () => {
@@ -308,19 +313,19 @@ describe('a run that names its boxes (design section 10, PR 8, v2.7391)', () => 
     expect(printRunLabel([run[0]!, run[2]!], 1)).toBe('Print 2 stickers')
   })
 
-  it('the Runs fold titles a named run by its names and keeps its numbers on the line under', () => {
+  it('the Runs fold titles a named run by its names, and its line under says who and when, never a number', () => {
     const names = Array.from({ length: 223 }, (_, i) => `G${78 + i}`)
-    const run = { count: 223, firstNumber: 225, lastNumber: 447, copies: 1, names, printedByName: 'Dana' }
+    const run = { count: 223, copies: 1, names, printedByName: 'Dana' }
     expect(stickerRunTitle(run)).toBe('Run of 223 · G78 to G300')
     expect(stickerRunTitle({ ...run, copies: 2 })).toBe('Run of 223 sets · G78 to G300')
-    expect(stickerRunByLine(run, 'Nov 15')).toBe('Printed Nov 15 by Dana · numbers 0225 to 0447')
-    expect(stickerRunByLine({ ...run, copies: 2 }, 'Nov 15')).toBe('Printed Nov 15 by Dana · 2 of each · numbers 0225 to 0447')
+    expect(stickerRunByLine(run, 'Nov 15')).toBe('Printed Nov 15 by Dana')
+    expect(stickerRunByLine({ ...run, copies: 2 }, 'Nov 15')).toBe('Printed Nov 15 by Dana · 2 of each')
     expect(runSpanWords(run)).toBe('G78 to G300')
     expect(runStripsWords(run, 223)).toBe('G78 to G300, one strip each.')
     expect(runStripsWords(run, 8)).toBe('8 of G78 to G300, one strip each.')
-    // a run of numbers only reads as it did
-    expect(stickerRunTitle({ count: 200, firstNumber: 101, lastNumber: 300, copies: 1, names: null })).toBe('Run of 200 · 0101 to 0300')
-    expect(stickerRunByLine({ printedByName: 'Dana', copies: 1, names: null, firstNumber: 101, lastNumber: 300 }, 'Nov 12')).toBe('Printed Nov 12 by Dana')
-    expect(runSpanWords({ firstNumber: 101, lastNumber: 300 })).toBe('0101 to 0300')
+    // a run with no names is said by its count
+    expect(stickerRunTitle({ count: 200, copies: 1, names: null })).toBe('Run of 200')
+    expect(runSpanWords({ names: null })).toBe('')
+    expect(runStripsWords({ count: 1, copies: 1, names: null }, 1)).toBe('1 sticker, one strip each.')
   })
 })

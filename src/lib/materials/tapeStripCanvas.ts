@@ -12,13 +12,12 @@ export type TapeStripInput = {
   dots: number
   /** The QR as a grid, true where dark. */
   squares: boolean[][]
+  /** The name printed large; empty for a sticker with no name, whose code is drawn larger in its place. */
   stencil: string
   /** The address under the stencil: `PRTS.CO/B/4F2A-9C18`, printed on two lines, the code on the second. */
   address: string
   /** A line of words under the address; the test strip alone has one. */
   words?: string
-  /** A named sticker's number, `0159`, small on its own line before the address (punch list #329, section 10). */
-  number?: string
   /** The stencil at the smaller size: a named sticker's name of five to seven characters. */
   stencilSmall?: boolean
 }
@@ -33,17 +32,18 @@ export function drawTapeStrip(canvas: HTMLCanvasElement, input: TapeStripInput):
   canvas.width = 1200
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) return null
-  const stencilPx = tapeStencilPx(l, input.stencilSmall)
+  const bare = !input.stencil.trim()
+  const stencilPx = bare ? 0 : tapeStencilPx(l, input.stencilSmall)
   const stencilFont = `900 ${stencilPx}px Helvetica, Arial, sans-serif`
   const fontOf = (kind: 'code' | 'words', px: number) => (kind === 'code' ? `700 ${px}px Menlo, Consolas, "Courier New", monospace` : `${px}px Helvetica, Arial, sans-serif`)
   // The stencil and the lines under it, as one block centred on the strip's height (`tapeStripBlock`).
-  const block = tapeStripBlock(l, tapeStripLines(input.address, input.words, input.number), stencilPx)
+  const block = tapeStripBlock(l, tapeStripLines(input.address, input.words, bare), stencilPx)
   // The address is drawn in the label's own dot font, every edge on a dot; a line with a character the font lacks keeps the old face.
   const inDots = (line: { kind: 'code' | 'words'; text: string }) => line.kind === 'code' && dotFontCovers(line.text)
   ctx.font = stencilFont
-  let widest = ctx.measureText(input.stencil).width
+  let widest = bare ? 0 : ctx.measureText(input.stencil).width
   for (const line of block.lines) {
-    if (inDots(line)) { widest = Math.max(widest, dotTextWidth(line.text, l.codeSquare)); continue }
+    if (inDots(line)) { widest = Math.max(widest, dotTextWidth(line.text, line.square)); continue }
     ctx.font = fontOf(line.kind, line.px)
     widest = Math.max(widest, ctx.measureText(line.text).width)
   }
@@ -57,12 +57,12 @@ export function drawTapeStrip(canvas: HTMLCanvasElement, input: TapeStripInput):
   }))
   ctx.textBaseline = 'alphabetic'
   ctx.font = stencilFont
-  ctx.fillText(input.stencil, l.textLeft, block.stencilBaseline)
+  if (!bare) ctx.fillText(input.stencil, l.textLeft, block.stencilBaseline)
   for (const line of block.lines) {
     if (inDots(line)) {
       // The capitals stand on the line's baseline: seven squares up from it.
-      const top = line.baseline - dotTextHeight(l.codeSquare)
-      for (const cell of dotTextCells(line.text)) ctx.fillRect(l.textLeft + cell.x * l.codeSquare, top + cell.y * l.codeSquare, l.codeSquare, l.codeSquare)
+      const top = line.baseline - dotTextHeight(line.square)
+      for (const cell of dotTextCells(line.text)) ctx.fillRect(l.textLeft + cell.x * line.square, top + cell.y * line.square, line.square, line.square)
       continue
     }
     ctx.font = fontOf(line.kind, line.px)

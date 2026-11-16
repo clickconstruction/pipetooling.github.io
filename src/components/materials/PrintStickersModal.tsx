@@ -7,10 +7,10 @@
  * refused before its numbers takes none.
  *
  * The strip is the tape label's own (`TapeStripBitmap`, `tapeStrip.ts`): the QR of `HTTPS://PRTS.CO/B/<CODE>` with its
- * quiet zone, the number large where a box's stencil goes and the dashed address on two lines, sent
+ * quiet zone, the name large where a box's stencil goes and the dashed address on two lines, sent
  * over USB one at a time with the run chained behind one lead-in (`ptouchUsb.ts`), or through the browser's print
  * window behind **Use the print window instead**, as the labels window keeps it. A run that stops part way says how
- * many went and the press becomes *Print the rest, 0163 to 0300*. Opened on a run already minted (the fold's
+ * many went and the press becomes *Print the rest, G163 to G300*. Opened on a run already minted (the fold's
  * **Reprint** and **Print the rest**) it mints nothing and prints what it was handed. **Export the stickers as a CSV**
  * writes the run for Brother's own editor. The words are `lib/materials/stickerRun.ts`. **What the stickers will look
  * like** (v2.7304, `StickerPreviewFold.tsx`) at the foot of the ask draws the run's strips before the press.
@@ -19,8 +19,9 @@
  * the site's next free name: `G78` with How many 200 is G78 to G277, and a typed range such as `G78-300` sets the
  * count itself (`stickerNames.ts` is the rule, and its refusals are said under the field). Names that are live boxes
  * on the site are a notice; names an earlier run printed and that are on no box yet hold the press until **Print them
- * anyway**. The mint sends the names, and each strip prints its name large with its number small over the address.
- * Cleared, the field prints a run of numbers only, as before.
+ * anyway**. The mint sends the names, and each strip prints its name large over the address. Cleared, the field
+ * prints a run with no names. Since v2.7438 (Taunya's call of 2026-11-16) no strip and no line of this window
+ * carries a sticker's running number: a sticker with no name prints its code larger in the name's place.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -34,7 +35,6 @@ import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink
 import { nextFreeName } from '../../lib/materials/boxName'
 import { blankNamesNotice, liveNamesNotice, STICKER_NAMES_LABEL, STICKER_NAMES_PLACEHOLDER, STICKER_NAMES_READING_WORDS, STICKER_NAMES_UNREAD_WORDS, stickerNamesAsk } from '../../lib/materials/stickerNames'
 import {
-  lastRunWords,
   printRestLabel,
   printRunLabel,
   restAfterStop,
@@ -64,11 +64,11 @@ import {
   type StickerRunRequest,
   type StickerStrip,
 } from '../../lib/materials/stickerRun'
-import { fetchLastStickerNumber, fetchSiteStickerNames, fetchStickerRuns, mintStickerRun, type SiteStickerNames } from '../../lib/materials/stickerRunsIo'
+import { fetchSiteStickerNames, fetchStickerRuns, mintStickerRun, type SiteStickerNames } from '../../lib/materials/stickerRunsIo'
 import { blankCountOf, jobBlankWords } from '../../lib/materials/stickerPlace'
 import { LABEL_RANGE_FROM, LABEL_RANGE_TO, leftAfterRangePick, rangeCountWords, tickedRange } from '../../lib/materials/labelPick'
 import { TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_NAME_SMALL_RATIO, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, longestNameChars, repeatEach, tapeLayout, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSetupSteps, type TapeWidthMm } from '../../lib/materials/tapeLabel'
-import { tapeAddressLines } from '../../lib/materials/tapeStrip'
+import { tapeAddressLines, tapeStripLines } from '../../lib/materials/tapeStrip'
 import { printRootCss } from '../../lib/printRoot'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -94,9 +94,8 @@ type Props = {
   onClose: () => void
   /** Told once a run is minted, so the page's Runs fold reads again. */
   onMinted?: (minted: MintedRun) => void
-  /** The mint, the last number read and the print itself; a test hands spies. */
+  /** The mint and the print itself; a test hands spies. */
   mint?: (request: StickerRunRequest) => Promise<MintedRun>
-  lastNumber?: () => Promise<number | null>
   /** How many of the job's stickers are not yet on a box (v2.7298); a test hands a spy. */
   blankCount?: (jobId: string) => Promise<number>
   /** The site's boxes and its blank named stickers, for the Names field (v2.7391); a test hands a spy. */
@@ -104,7 +103,7 @@ type Props = {
   print?: () => void
 }
 
-export default function PrintStickersModal({ jobId, jobLabel, role, run: given = null, onClose, onMinted, mint = mintStickerRun, lastNumber = fetchLastStickerNumber, blankCount = (id) => fetchStickerRuns(id).then(blankCountOf), siteNames = fetchSiteStickerNames, print = () => window.print() }: Props) {
+export default function PrintStickersModal({ jobId, jobLabel, role, run: given = null, onClose, onMinted, mint = mintStickerRun, blankCount = (id) => fetchStickerRuns(id).then(blankCountOf), siteNames = fetchSiteStickerNames, print = () => window.print() }: Props) {
   const [countText, setCountText] = useState<string>(String(STICKER_COUNT_PRESETS[3]))
   const [copiesState, setCopiesState] = useState<number>(() => (given ? given.run.copies : readTapeCopies()))
   const copies = clampTapeCopies(copiesState)
@@ -121,14 +120,6 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const [printing, setPrinting] = useState<MintedSticker[]>(given ? given.stickers : [])
   const stage: 'ask' | 'run' = minted ? 'run' : 'ask'
   const [minting, setMinting] = useState(false)
-  /** The newest number any run the caller can see reached; undefined while it is read. */
-  const [last, setLast] = useState<number | null | undefined>(undefined)
-  useEffect(() => {
-    if (given) return
-    let live = true
-    lastNumber().then((n) => { if (live) setLast(n) }).catch(() => { if (live) setLast(null) })
-    return () => { live = false }
-  }, [given, lastNumber])
   /** The job's stickers still on no box (v2.7298): said before a new run is minted, so nobody prints 200 more over 96 unused. */
   const [blank, setBlank] = useState<number>(0)
   useEffect(() => {
@@ -389,13 +380,13 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const showSetup = tapeDay == null || setupOpen
   const routeSwitch = usbHere ? <button type="button" style={quietLink} onClick={() => { setViaWindow((v) => !v); setSlip(null); setSentWords(null) }}>{viaWindow ? TAPE_VIA_USB_LABEL : TAPE_VIA_WINDOW_LABEL}</button> : null
   const stepBtn = (off: boolean): CSSProperties => ({ ...btn, minHeight: 32, width: 32, padding: 0, justifyContent: 'center', borderRadius: 999, fontSize: '1rem', ...(off ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}) })
-  const title = given ? `${given.title} · ${jobLabel}` : minted ? `Stickers ${stickerSpanWords(minted.stickers)} · ${jobLabel}` : `Print blank stickers · ${jobLabel}`
+  const title = given ? `${given.title} · ${jobLabel}` : minted ? `${stickerSpanWords(minted.stickers) ? `Stickers ${stickerSpanWords(minted.stickers)}` : `${minted.stickers.length} ${minted.stickers.length === 1 ? 'sticker' : 'stickers'}`} · ${jobLabel}` : `Print blank stickers · ${jobLabel}`
   /** The run as its words read it: the names off the stickers when the run's own row came back without them. */
   const runForWords = minted ? { ...minted.run, names: minted.run.names ?? (minted.stickers.length > 0 && minted.stickers.every((s) => s.boxName) ? minted.stickers.map((s) => s.boxName!) : null) } : null
   const countWords = runForWords ? runStripsWords(runForWords, printing.length) : stickerRunCountWords(count, copies)
   /** The strips on the page: the run's, or the test strip alone while it prints. */
   const shownStrips: StickerStrip[] = testOnly ? [STICKER_TEST_STRIP] : strips
-  /** A range of the run on the page by its two ends (Taunya, 2026-11-15): the same rule as Print labels, over the run's numbers. */
+  /** A range of the run on the page by its two ends (Taunya, 2026-11-15): the same rule as Print labels, over the run's stickers. */
   const runIds = useMemo(() => (minted ? minted.stickers.map((s) => s.id) : []), [minted])
   const runLeft = useMemo(() => { const on = new Set(printing.map((s) => s.id)); return new Set(runIds.filter((id) => !on.has(id))) }, [runIds, printing])
   const runRange = tickedRange(runIds, runLeft)
@@ -407,9 +398,9 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     setSentWords(null)
     setSlip(null)
   }
-  /** The strip going out now, for the progress line: its number and which of its copies. */
+  /** The strip going out now, for the progress line: its name, or its code, and which of its copies. */
   const progressSticker = progress && !progress.test ? strips[Math.min(Math.floor(progress.done / copies), strips.length - 1)] : undefined
-  const progressAt = progress && progressSticker ? { name: progressSticker.stencil, copy: (Math.min(progress.done, progress.total - 1) % copies) + 1, copies } : null
+  const progressAt = progress && progressSticker ? { name: progressSticker.stencil || tapeAddressLines(progressSticker.address).slice(-1)[0]!, copy: (Math.min(progress.done, progress.total - 1) % copies) + 1, copies } : null
   /** The print window cuts every strip of a run to one length: what the run's longest name or number needs. */
   const nameChars = longestNameChars(shownStrips.map((s) => 'X'.repeat(stripNameChars(s))))
   const layout = tapeLayout(width, nameChars)
@@ -417,11 +408,10 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     <div key={`${s.id}:${copy}`} className={copy === 0 ? 'on-site-tape' : 'on-site-tape on-site-tape-copy'} data-testid={copy === 0 ? 'stickers-tape' : 'stickers-tape-copy'} style={{ ...(copy === 0 ? { display: 'grid' } : { display: 'none' }), width: `${layout.lengthMm}mm`, height: `${layout.widthMm}mm`, boxSizing: 'border-box', padding: `${layout.padMm}mm`, gridTemplateColumns: `${layout.qrMm}mm 1fr`, alignItems: 'center', gap: `${layout.padMm}mm`, background: 'var(--surface)', color: '#000', border: '1px solid var(--border)', overflow: 'hidden' }}>
       <QRCodeSVG value={s.value} size={96} level="M" bgColor="#ffffff" fgColor="#000000" marginSize={4} style={{ width: `${layout.qrMm}mm`, height: `${layout.qrMm}mm`, display: 'block' }} />
       <div style={{ minWidth: 0, display: 'grid', alignContent: 'center' }}>
-        <div data-testid="stickers-tape-name" style={{ fontSize: `${s.small ? layout.stencilMm * TAPE_NAME_SMALL_RATIO : layout.stencilMm}mm`, lineHeight: 1, fontWeight: 900, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.stencil}</div>
-        {/* A named sticker's number, small before the address (section 10). */}
-        {s.number ? <div data-testid="stickers-tape-number" style={{ fontSize: `${layout.codeMm}mm`, lineHeight: 1.1, fontFamily: 'ui-monospace, Menlo, monospace', whiteSpace: 'nowrap', marginTop: `${layout.padMm}mm` }}>{s.number}</div> : null}
-        {tapeAddressLines(s.address).map((line, i) => (
-          <div key={line} data-testid="stickers-tape-address-line" style={{ fontSize: `${layout.codeMm}mm`, lineHeight: 1.1, fontFamily: 'ui-monospace, Menlo, monospace', whiteSpace: 'nowrap', ...(i === 0 && !s.number ? { marginTop: `${layout.padMm}mm` } : {}) }}>{line}</div>
+        {/* The name large. A sticker with no name has none, and its code is drawn half again as large in its place. */}
+        {s.stencil ? <div data-testid="stickers-tape-name" style={{ fontSize: `${s.small ? layout.stencilMm * TAPE_NAME_SMALL_RATIO : layout.stencilMm}mm`, lineHeight: 1, fontWeight: 900, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.stencil}</div> : null}
+        {tapeStripLines(s.address, undefined, !s.stencil).map((line, i) => (
+          <div key={line.text} data-testid="stickers-tape-address-line" style={{ fontSize: `${line.big ? layout.codeMm * 1.5 : layout.codeMm}mm`, lineHeight: 1.1, fontWeight: line.big ? 700 : 400, fontFamily: 'ui-monospace, Menlo, monospace', whiteSpace: 'nowrap', ...(i === 0 && s.stencil ? { marginTop: `${layout.padMm}mm` } : {}) }}>{line.text}</div>
         ))}
         {s.words ? <div style={{ fontSize: `${layout.wordsMm}mm`, lineHeight: 1.1 }}>{s.words}</div> : null}
       </div>
@@ -482,7 +472,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
             </div>
           ) : null}
           {minted && minted.stickers.length > 2 ? (
-            /* A range of the run by its two ends: Reprint 0103 to 0130 without printing the whole run. */
+            /* A range of the run by its two ends: reprint G103 to G130 without printing the whole run. */
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }} role="group" aria-label="A range of stickers" data-testid="stickers-range">
               {(['from', 'to'] as const).map((end) => (
                 <label key={end} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
@@ -525,8 +515,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
                 <button type="button" aria-label="One more copy" disabled={copies >= TAPE_COPIES_MAX} aria-disabled={copies >= TAPE_COPIES_MAX} style={stepBtn(copies >= TAPE_COPIES_MAX)} onClick={() => setCopies(copies + 1)} data-testid="stickers-copies-more">+</button>
                 <span style={muted}>{copies > 1 ? 'A set is one sticker printed more than once, for a box with more than one side. Every copy opens the same box.' : 'For a box with more than one side, print each sticker more than once.'}</span>
               </div>
-              <p style={{ ...muted, margin: 0 }} data-testid="stickers-last-run">
-                {last === undefined ? 'Reading the last run…' : lastRunWords(last)} New boxes made from these stickers go on {jobLabel}.{blank > 0 ? <> <span data-testid="stickers-blank-count">{jobBlankWords(blank)}</span></> : null}
+              <p style={{ ...muted, margin: 0 }} data-testid="stickers-goes-on">
+                New boxes made from these stickers go on {jobLabel}.{blank > 0 ? <> <span data-testid="stickers-blank-count">{jobBlankWords(blank)}</span></> : null}
               </p>
               {!verdict.ok && !rangeRefused ? <p role="note" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-red-700)', fontWeight: 600 }} data-testid="stickers-refusal">{verdict.words}</p> : null}
             </div>
@@ -537,14 +527,14 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
             <>
               {/* The test strip is drawn and kept ready while the window asks, so Print 1 test strip costs no wait; it is hidden on the screen. */}
               {stage === 'ask' ? <div style={{ display: 'none' }} aria-hidden><TapeStripBitmap id={STICKER_TEST_STRIP.id} stencil={STICKER_TEST_STRIP.stencil} address={STICKER_TEST_STRIP.address} value={STICKER_TEST_STRIP.value} words={STICKER_TEST_STRIP.words} dots={dots} onDrawn={onStripDrawn} /></div> : null}
-              {strips.map((s) => <TapeStripBitmap key={s.id} id={s.id} stencil={s.stencil} address={s.address} value={s.value} words={s.words} number={s.number} stencilSmall={s.small} dots={dots} onDrawn={onStripDrawn} />)}
+              {strips.map((s) => <TapeStripBitmap key={s.id} id={s.id} stencil={s.stencil} address={s.address} value={s.value} words={s.words} stencilSmall={s.small} dots={dots} onDrawn={onStripDrawn} />)}
             </>
           ) : (
             shownStrips.flatMap((s) => Array.from({ length: testOnly ? 1 : copies }, (_, copy) => domStrip(s, copy)))
           )}
         </div>
         {/* What the stickers will look like (v2.7304): the run's real numbers through the printer's own drawing, above the presses, closed until this device opens it. */}
-        {stage === 'ask' ? <div className="on-site-stickers-chrome" style={{ marginTop: '0.75rem' }}><StickerPreviewFold lastNumber={last} count={count} copies={copies} width={width} names={rangeRefused ? null : askNames} /></div> : null}
+        {stage === 'ask' ? <div className="on-site-stickers-chrome" style={{ marginTop: '0.75rem' }}><StickerPreviewFold count={count} copies={copies} width={width} names={rangeRefused ? null : askNames} /></div> : null}
         <div className="on-site-stickers-chrome" style={{ position: 'sticky', bottom: '-1rem', margin: '0.75rem -1.25rem -1rem', padding: '0.6rem 1.25rem 0.8rem', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'grid', gap: '0.4rem' }} data-testid="stickers-foot">
           {slip ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="stickers-slip">{slip}</div> : null}
           {needsRecheck && link ? (
@@ -573,7 +563,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
             {/* The one hold (section 10, call 5): names an earlier run printed and that are on no box yet. This press prints the run as asked, those names with it. */}
             {stage === 'ask' && held && blankNotice && !askBlocked && !(direct && !link) ? <button type="button" style={btn} onClick={() => void runMint(true)} data-testid="stickers-print-anyway">{blankNotice.anywayLabel}</button> : null}
             {stage === 'ask' && !(direct && !link) ? <button type="button" disabled={printerHolds} aria-disabled={printerHolds} style={{ ...btn, ...(printerHolds ? deadStyle : {}) }} onClick={runTest} data-testid="stickers-test-strip">{TAPE_TEST_STRIP_LABEL}</button> : null}
-            {minted ? <button type="button" style={{ ...quietLink, marginLeft: 'auto' }} title="One row a sticker: its name, the number, the code with its dash, the address and the QR's text, for a label editor that merges a CSV" onClick={exportCsv} data-testid="stickers-csv">Export the stickers as a CSV</button> : null}
+            {minted ? <button type="button" style={{ ...quietLink, marginLeft: 'auto' }} title="One row a sticker: its name, the code with its dash, the address and the QR's text, for a label editor that merges a CSV" onClick={exportCsv} data-testid="stickers-csv">Export the stickers as a CSV</button> : null}
           </div>
         </div>
       </div>

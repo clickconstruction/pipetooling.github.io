@@ -2,25 +2,22 @@
  * Scan a label (punch list #304): the press that says how a label opens, for a person already signed
  * in. The phone's own camera reads the QR and the box opens, so the window is the words and, for a
  * label the camera cannot read, the eight characters printed under the code. `/b/<code>` does the
- * rest: it finds the box and opens it on the On site tab, on whatever job it stands. Since v2.7298 (punch list
- * #329, PR 3) a sticker's printed number works too: digits alone are looked up as far as the person may read
- * (`fetchStickerByNumber`), and the sticker's code goes the same way, to its box or to the Sticker is new sheet.
+ * rest: it finds the box and opens it on the On site tab, on whatever job it stands. A sticker's code goes the same
+ * way (punch list #329), to its box or to the Sticker is new sheet. Since v2.7438 the code is the one thing typed: a
+ * sticker's running number is on no tape, so the field no longer takes one.
  */
 import { useState, type CSSProperties, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { noStickerByNumberWords, readScanTyped, SCAN_TYPED_SLIP, scanTypedWords } from '../../lib/materials/stickerPlace'
-import { fetchStickerByNumber } from '../../lib/materials/stickerPlaceIo'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { readScanTyped, SCAN_TYPED_SLIP, scanTypedWords } from '../../lib/materials/stickerPlace'
 
 const BLUE = '#2563eb'
 const press: CSSProperties = { minHeight: 48, width: '100%', boxSizing: 'border-box', borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: BLUE, background: BLUE, color: '#fff', font: 'inherit', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }
 
 export const SCAN_LABEL_SLIP = SCAN_TYPED_SLIP
 
-export default function ScanLabelWindow({ onClose, onOpen, findByNumber = fetchStickerByNumber }: { onClose: () => void; /** The code: eight capitals and digits, no dash. */ onOpen: (code: string) => void; /** A sticker by its number; a test hands a spy. */ findByNumber?: (number: number) => Promise<{ id: string; code: string } | null> }) {
+export default function ScanLabelWindow({ onClose, onOpen }: { onClose: () => void; /** The code: eight capitals and digits, no dash. */ onOpen: (code: string) => void }) {
   const [typed, setTyped] = useState('')
   const [slip, setSlip] = useState<string | null>(null)
-  const [looking, setLooking] = useState(false)
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const read = readScanTyped(typed)
@@ -28,18 +25,7 @@ export default function ScanLabelWindow({ onClose, onOpen, findByNumber = fetchS
       onOpen(read.code)
       return
     }
-    if (read.kind !== 'number') {
-      setSlip(SCAN_LABEL_SLIP)
-      return
-    }
-    setLooking(true)
-    findByNumber(read.number)
-      .then((found) => {
-        if (found) onOpen(found.code)
-        else setSlip(noStickerByNumberWords(read.number))
-      })
-      .catch((err: unknown) => setSlip(formatErrorMessage(err, 'The sticker did not read.')))
-      .finally(() => setLooking(false))
+    setSlip(SCAN_LABEL_SLIP)
   }
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
@@ -50,7 +36,7 @@ export default function ScanLabelWindow({ onClose, onOpen, findByNumber = fetchS
         </div>
         <p style={{ margin: 0, lineHeight: 1.5 }}>Open your phone’s camera and point it at the label on a cage or box. The box opens on the On site tab. A blank sticker opens the sheet that puts it on a box.</p>
         <form onSubmit={submit} style={{ display: 'grid', gap: '0.5rem' }}>
-          <label htmlFor="scan-label-code" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Or type the code under the QR code, or a sticker’s number</label>
+          <label htmlFor="scan-label-code" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Or type the eight characters under the QR code</label>
           <input
             id="scan-label-code"
             value={typed}
@@ -58,7 +44,7 @@ export default function ScanLabelWindow({ onClose, onOpen, findByNumber = fetchS
               setTyped(scanTypedWords(e.target.value))
               setSlip(null)
             }}
-            placeholder="4F2A-9C18 or 0147"
+            placeholder="4F2A-9C18"
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
@@ -67,7 +53,7 @@ export default function ScanLabelWindow({ onClose, onOpen, findByNumber = fetchS
             data-testid="scan-label-input"
           />
           {slip ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }} data-testid="scan-label-slip">{slip}</div> : null}
-          <button type="submit" style={{ ...press, ...(looking ? { opacity: 0.6 } : {}) }} disabled={looking} data-testid="scan-label-open">{looking ? 'Finding the sticker…' : 'Open the box'}</button>
+          <button type="submit" style={press} data-testid="scan-label-open">Open the box</button>
         </form>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem' }}>A box on another job opens on that job.</p>
       </div>

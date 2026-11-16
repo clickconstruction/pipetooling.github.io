@@ -13,6 +13,7 @@ import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { blankStickersOf, printRestLabel, reprintLabel, runCountsOf, runsFoldWords, stickerRunByLine, stickerRunTitle, type MintedSticker, type StickerRun } from '../../lib/materials/stickerRun'
 import { fetchStickerRuns, type StickerRunWithStickers } from '../../lib/materials/stickerRunsIo'
 import { ON_BOXES_LABEL } from '../../lib/materials/stickersOnBoxes'
+import { namesSpanWords } from '../../lib/materials/stickerNames'
 import { onBoxesWords, unusedStickersWords } from '../../lib/materials/stickers'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import OfflineRetryPanel from '../OfflineRetryPanel'
@@ -66,12 +67,14 @@ export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, on
           const counts = runCountsOf(stickers)
           const blank = blankStickersOf(stickers)
           const day = run.printedAt ? formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(run.printedAt)) : ''
-          const unused = unusedStickersWords(counts)
           const title = stickerRunTitle(run)
           /** The rest is its own press only while some are on boxes; with none placed, Reprint prints the same stickers. */
           const restIsOwn = blank.length > 0 && blank.length < stickers.length
           /** The blank stickers' names, when every one has one: what These are on boxes can place without a scan. */
           const blankNames = blank.length > 0 && blank.every((s) => s.boxName) ? blank.map((s) => s.boxName as string) : []
+          /** *3 stickers not used yet, G79 to G81*: which, by name, when the run has names. A run with none says how many. */
+          const unusedHead = unusedStickersWords(counts)
+          const unused = unusedHead && blankNames.length > 0 && run.names ? `${unusedHead}, ${namesSpanWords(blankNames, run.names)}` : unusedHead
           return (
             <div key={run.id} style={row} data-testid="sticker-run-row">
               <div style={{ display: 'grid', gap: '0.15rem', minWidth: 0, flex: '1 1 260px' }}>

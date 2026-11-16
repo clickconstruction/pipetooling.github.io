@@ -36,28 +36,30 @@ describe('StickerRunsFold', () => {
     expect(fold.textContent).toContain('2 runs of stickers')
     const rows = screen.getAllByTestId('sticker-run-row')
     expect(rows).toHaveLength(2)
-    expect(rows[0]!.textContent).toContain('Run of 200 sets · 0101 to 0300')
+    // runs with no names are said by their counts: no running number anywhere (Taunya's call of 2026-11-16)
+    expect(rows[0]!.textContent).toContain('Run of 200 sets')
     expect(rows[0]!.textContent).toContain('Printed Nov 12 by Dana · 2 of each')
-    expect(screen.getAllByTestId('sticker-run-counts')[0]!.textContent).toBe('103 of 200 stickers are on boxes · 96 stickers not used yet, 0205 to 0300 · 1 marked lost')
-    expect(rows[1]!.textContent).toContain('Run of 100 · 0001 to 0100')
+    expect(screen.getAllByTestId('sticker-run-counts')[0]!.textContent).toBe('103 of 200 stickers are on boxes · 96 stickers not used yet · 1 marked lost')
+    expect(rows[1]!.textContent).toContain('Run of 100')
     expect(rows[1]!.textContent).toContain('Printed Oct 30')
-    expect(screen.getAllByTestId('sticker-run-counts')[1]!.textContent).toBe('0 of 100 stickers are on boxes · 100 stickers not used yet, 0001 to 0100')
+    expect(screen.getAllByTestId('sticker-run-counts')[1]!.textContent).toBe('0 of 100 stickers are on boxes · 100 stickers not used yet')
+    expect(screen.getByTestId('sticker-runs-fold').textContent).not.toMatch(/\b0\d{3}\b/)
     // the rest is its own press only where some are on boxes
     const rests = screen.getAllByTestId('sticker-run-rest')
     expect(rests).toHaveLength(1)
-    expect(rests[0]!.textContent).toBe('Print the rest, 0205 to 0300')
+    expect(rests[0]!.textContent).toBe('Print the rest, 96 stickers')
     fireEvent.click(rests[0]!)
     expect(onPrint).toHaveBeenCalledTimes(1)
     expect(onPrint.mock.calls[0]![0].id).toBe('run-2')
     expect(onPrint.mock.calls[0]![1]).toHaveLength(96)
     expect(onPrint.mock.calls[0]![1][0].number).toBe(205)
-    expect(onPrint.mock.calls[0]![2]).toBe('The rest, 0205 to 0300')
+    expect(onPrint.mock.calls[0]![2]).toBe('The rest, 96 stickers')
     const reprints = screen.getAllByTestId('sticker-run-reprint')
     expect(reprints.map((b) => b.textContent)).toEqual(['Reprint 200 stickers', 'Reprint 100 stickers'])
     fireEvent.click(reprints[1]!)
     expect(onPrint.mock.calls[1]![0].id).toBe('run-1')
     expect(onPrint.mock.calls[1]![1]).toHaveLength(100)
-    expect(onPrint.mock.calls[1]![2]).toBe('Run of 100 · 0001 to 0100')
+    expect(onPrint.mock.calls[1]![2]).toBe('Run of 100')
   })
 
   it('draws nothing for a job with no run', async () => {
@@ -86,7 +88,7 @@ describe('StickerRunsFold', () => {
     await waitFor(() => expect((screen.getByTestId('sticker-runs-fold') as HTMLDetailsElement).open).toBe(true))
   })
 
-  it('titles a named run by its names, keeps its numbers on the line under, and hands the names back to print (section 10, v2.7391)', async () => {
+  it('titles a named run by its names, says which are not used by name, and hands the names back to print (section 10, v2.7391)', async () => {
     const names = ['G78', 'G79', 'G80', 'G81']
     const named: StickerRunWithStickers = {
       run: { id: 'run-3', jobId: 'job-juniper', count: 4, firstNumber: 301, lastNumber: 304, copies: 1, printedByName: 'Dana', printedAt: '2026-11-15T16:00:00Z', names },
@@ -97,9 +99,10 @@ describe('StickerRunsFold', () => {
     await screen.findByTestId('sticker-runs-fold')
     const row = screen.getByTestId('sticker-run-row')
     expect(row.textContent).toContain('Run of 4 · G78 to G81')
-    expect(row.textContent).toContain('Printed Nov 15 by Dana · numbers 0301 to 0304')
-    // the blank ones are still said by number: that is where the number carries news
-    expect(screen.getByTestId('sticker-run-counts').textContent).toBe('1 of 4 stickers are on boxes · 3 stickers not used yet, 0302 to 0304')
+    expect(row.textContent).toContain('Printed Nov 15 by Dana')
+    expect(row.textContent).not.toMatch(/\b0\d{3}\b/)
+    // the blank ones are said by name (v2.7438)
+    expect(screen.getByTestId('sticker-run-counts').textContent).toBe('1 of 4 stickers are on boxes · 3 stickers not used yet, G79 to G81')
     expect(screen.getByTestId('sticker-run-rest').textContent).toBe('Print the rest, G79 to G81')
     fireEvent.click(screen.getByTestId('sticker-run-rest'))
     expect(onPrint.mock.calls[0]![1].map((s: { boxName?: string | null }) => s.boxName)).toEqual(['G79', 'G80', 'G81'])

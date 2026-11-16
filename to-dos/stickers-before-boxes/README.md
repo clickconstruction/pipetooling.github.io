@@ -2,14 +2,14 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PR 7, the run carries names, LIVE 2026-11-15 (v2.7312, #8169; migration 20261115050000 pushed, types #8193, dev-mcp redeployed) · Taunya's go for PRs 8 to 10 on 2026-11-15 · PR 8, the window and the strip, LIVE 2026-11-15 (v2.7391, #8283) · PR 9, the first scan and the screens, LIVE 2026-11-15 (v2.7396, #8295) · PR 10, These are on boxes, LIVE 2026-11-16 (v2.7406, #8305; migration 20261116153000 pushed and proved)
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PR 7, the run carries names, LIVE 2026-11-15 (v2.7312, #8169; migration 20261115050000 pushed, types #8193, dev-mcp redeployed) · Taunya's go for PRs 8 to 10 on 2026-11-15 · PR 8, the window and the strip, LIVE 2026-11-15 (v2.7391, #8283) · PR 9, the first scan and the screens, LIVE 2026-11-15 (v2.7396, #8295) · PR 10, These are on boxes, LIVE 2026-11-16 (v2.7406, #8305; migration 20261116153000 pushed and proved) · 2026-11-16 Taunya dropped the sticker's running number from every tape and screen, BUILT (v2.7438)
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
   code is cut from the box's own row. On a site that is backwards. Someone walks in with a roll of
   stickers, sticks one on each box that is already there, and only then says what is in it, and
   nobody knows ahead how many boxes there will be. The card proposes a sticker as its own thing: a
-  printed code and a short number that point at a box, or at nothing yet. The office prints a run
+  printed code, and a box's name when its run names its boxes, that point at a box, or at nothing yet. The office prints a run
   of 200. On site, a scan of a blank sticker asks one question, an old box or a new one, and the
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
@@ -17,7 +17,7 @@ summary: >
 next: Taunya's first named run off the P-touch, which is the walk of section 10; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
 size: L as a train of ten (M · M · M · S · M · S · M · M · S · M); left: M, PRs 4 to 6 (S · M · S)
 blocker: PRs 4 to 6 wait for the walk of the site, by the owner's order of 2026-11-14.
-ver: v2.7406
+ver: v2.7438
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -155,7 +155,9 @@ instead of stickers anyone can use.
   which matters because the box page opens with no sign-in.
 - **The number** is what a person reads: `0147`. One company-wide count, four digits, five past
   9999. A second run starts where the last ended, so two runs never collide and a leftover sticker
-  works on any site. A site prefix (`JR-0147`) is call 2's other way.
+  works on any site. A site prefix (`JR-0147`) is call 2's other way. **Since 2026-11-16 (v2.7438)
+  no tape and no screen shows it**, by Taunya's call: a sticker reads its name, or its code when it
+  has none. The number stays in the database, where it orders a run.
 - **Printed on it**: the QR, the number large and the dashed address small on two lines (`prts.co/b/`,
   then `4F2A-9C18`), on the strip the app already draws. The line *Scan for what is inside* came off
   every strip in v2.7373, at Taunya's ask of 2026-11-15, so a strip is shorter. When the code will not scan, a
@@ -277,7 +279,9 @@ The design, with the second pass of the same day folded in on his word:
 
 - **The sticker names its box.** A run carries a name range and each sticker a `box_name`, printed
   large where the number prints today. The number stays, printed small before the address: it is the
-  identity the Runs fold, the CSV and a typed scan use, and it still opens the box after a rename. The
+  identity the Runs fold, the CSV and a typed scan use, and it still opens the box after a rename.
+  (Built so in v2.7391, then taken off every tape and screen in v2.7438 on Taunya's call of
+  2026-11-16; the eight-character code is what a person types.) The
   code is still cut from the sticker's own id at the mint. The box's row is still made on the first
   scan, so an unused sticker leaves nothing behind. The idea under section *The idea* holds: the name
   on the tape is a promise, the box is what the sticker points at.
@@ -310,7 +314,7 @@ The design, with the second pass of the same day folded in on his word:
   leftovers.
 - **The number recedes on the screens.** v2.7298's *G12 · 0147* beside every name says the same thing
   twice on a named run. The number shows only where it carries news: a sticker whose name differs
-  from the box's, a lost one, a blank one in the Runs fold.
+  from the box's, a lost one, a blank one in the Runs fold. (Since v2.7438 it shows nowhere.)
 - **The trade, said out loud.** Call 2 chose a plain number so a leftover works on any site. A named
   G sticker does not travel to a site painted R. That is the right trade for a site with its names on
   the paint, and a numbered-only run keeps the old way.
@@ -437,7 +441,7 @@ column is the design.
 
 | Call | Recommended, and taken | Also possible, not taken |
 |---|---|---|
-| 1 · the number on a named strip | Kept, printed small before the address | Left off a named strip |
+| 1 · the number on a named strip | Kept, printed small before the address (reversed 2026-11-16: Taunya took it off every strip and screen, v2.7438) | Left off a named strip |
 | 2 · names the site already has | A notice: their stickers go on those boxes | A refusal |
 | 3 · a grid range | In: `A1-D50` is four rows of fifty | The number alone steps |
 | 4 · numbered-only runs | Stay as the exception, the field cleared | Every run is named |
@@ -634,3 +638,13 @@ function answers two names with no sticker as `no_sticker`, and refuses a kind t
 name off the box rule in its own words. It runs as the caller, and `anon` may not call it. The types and the dev
 seat's catalog file followed as their own small PR. Nothing was minted, printed or placed on prod by the build: prod
 still has the one ZZ run of 2026-11-15, so Taunya's first run starts at 0003.
+
+2026-11-16: **the running number is gone**, built as v2.7438. Taunya, shown the named strip with the number small
+on its own line, asked what it was for, said she had taken it for the link, and asked *Shouldn't we get rid of that
+number and only use that eight-digit link code?* Offered to keep it on stickers with no name, she picked **Drop it
+everywhere**. A named sticker now prints its name over the link's two lines, the same shape as a box label. A sticker
+with no name prints its code a size up in the name's place. No screen says the number: the print window says no last
+run, a run with no names is said by its count, the scan sheet says *This sticker is new* and *Put this sticker on R76*,
+the pages a scan opens say *This sticker*, and Scan a label takes the eight characters alone. The number stays in the
+database. `box-read` still answers it and the page does not show it; leaving it out of the answer is a deploy that
+waits for Taunya's go by name. No migration. `docs/recent-features/v2.7438.md` has the lengths and the picks.
