@@ -96,4 +96,25 @@ describe('SupplyHouseBillsCard', () => {
     renderWithProviders(card({ bills: [] }))
     expect(screen.getByText('Nothing here.')).toBeTruthy()
   })
+
+  it('a paid row names its payment, and opens it when a typed payment stands behind it', () => {
+    const onTogglePaid = vi.fn()
+    renderWithProviders(
+      card({
+        bills: [
+          bill('7', { is_paid: true, paidYmd: '2026-03-02', paidBy: 'ACH 88213 · one of 4 bills on $5,000.00', seePayment: true }),
+          bill('8', { is_paid: true, paidYmd: '2026-03-03' }),
+        ],
+        onTogglePaid,
+      }),
+    )
+    const rows = screen.getAllByTestId('supply-bill-row')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-paid-by').textContent).toBe('ACH 88213 · one of 4 bills on $5,000.00')
+    expect(rows[0]?.textContent).toContain('paid 3/2')
+    fireEvent.click(within(rows[0] as HTMLElement).getByRole('button', { name: 'See the payment: S-7' }))
+    expect(onTogglePaid).toHaveBeenCalledWith('7')
+    // A bill paid before payments were rows reads as it always did, with Mark unpaid.
+    expect(within(rows[1] as HTMLElement).queryByTestId('supply-bill-paid-by')).toBeNull()
+    expect(within(rows[1] as HTMLElement).getByRole('button', { name: 'Mark unpaid: S-8' })).toBeTruthy()
+  })
 })

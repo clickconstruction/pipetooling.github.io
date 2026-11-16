@@ -5563,6 +5563,7 @@ export type Database = {
           id: string
           job_id: string
           kind: string
+          mailed_copies: Json
           months: string[]
           offer_by: string | null
           offer_pct: number
@@ -5607,6 +5608,7 @@ export type Database = {
           id?: string
           job_id: string
           kind?: string
+          mailed_copies?: Json
           months?: string[]
           offer_by?: string | null
           offer_pct?: number
@@ -5651,6 +5653,7 @@ export type Database = {
           id?: string
           job_id?: string
           kind?: string
+          mailed_copies?: Json
           months?: string[]
           offer_by?: string | null
           offer_pct?: number
@@ -9420,6 +9423,7 @@ export type Database = {
       supply_house_invoices: {
         Row: {
           amount: number
+          amount_paid: number
           bill_attachment_id: string | null
           bill_read: Json | null
           created_at: string | null
@@ -9440,6 +9444,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_paid?: number
           bill_attachment_id?: string | null
           bill_read?: Json | null
           created_at?: string | null
@@ -9460,6 +9465,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_paid?: number
           bill_attachment_id?: string | null
           bill_read?: Json | null
           created_at?: string | null

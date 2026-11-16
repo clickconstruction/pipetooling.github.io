@@ -2,7 +2,7 @@
 name: "GC difficulty rating: the GC is rated once, and the points become cost lines on every new bid to them"
 number: 357
 group: close
-status: designed 2026-11-14 with the owner on a canvas, the calls settled the same day · building as a train of six, one PR merged, pushed and walked live before the next is cut · PR 1 (the criteria, versioned, and the dev's editor) merged as v2.7275 (#8129), pushed and walked live the same day · PR 2 (the rating on the GC's record, the chips) merged as v2.7279 (#8134), pushed and walked live the same day · PR 3 (Paying read from the bills) merged as v2.7296 (#8150), pushed and walked live 2026-11-15 · PR 4 (the price list and the lines) merged as v2.7301 (#8159), pushed and walked live 2026-11-15 · PR 5 (the master's sheet from a bid, the ask at the end of a job) merged as v2.7358 (#8228), pushed and walked live 2026-11-15 · PR 6 (criteria version 2 with the site scale picked on the bid, and *What the rating did*) merged as v2.7360 (#8244), pushed and walked live 2026-11-15 · all six are live · Taunya asked for a walk at every width before the close: done, its fixes in v2.7397 · the ZZ fixture deleted 2026-11-15 on Taunya's word
+status: designed 2026-11-14 with the owner on a canvas, the calls settled the same day · building as a train of six, one PR merged, pushed and walked live before the next is cut · PR 1 (the criteria, versioned, and the dev's editor) merged as v2.7275 (#8129), pushed and walked live the same day · PR 2 (the rating on the GC's record, the chips) merged as v2.7279 (#8134), pushed and walked live the same day · PR 3 (Paying read from the bills) merged as v2.7296 (#8150), pushed and walked live 2026-11-15 · PR 4 (the price list and the lines) merged as v2.7301 (#8159), pushed and walked live 2026-11-15 · PR 5 (the master's sheet from a bid, the ask at the end of a job) merged as v2.7358 (#8228), pushed and walked live 2026-11-15 · PR 6 (criteria version 2 with the site scale picked on the bid, and *What the rating did*) merged as v2.7360 (#8244), pushed and walked live 2026-11-15 · all six are live · Taunya asked for a walk at every width before the close: done, its fixes in v2.7397 · the ZZ fixture deleted 2026-11-15 on Taunya's word · 2026-11-16 a gap found by the docs catch-up and fixed on the owner's word (*Estimator should be able to rate*): the rating's insert rule obeys the price list and version 2 names the estimators, v2.7468, its migration pushed after the merge
 mockup: the canvas, five screens — https://claude.ai/artifact/JRUZqLEPwTHHdJNCWFEgVd
 summary: >
   The company loses bids because a master in the field asks the estimator to add twenty or fifty
@@ -15,7 +15,7 @@ summary: >
 next: Micah answers the open calls, each listed with a pick in its fragment's *Is this the best we can do?*; none blocks. Nothing is left to build on this card, and it is closed when Taunya says so.
 size: L as a train of six (M · M · S · L · M · M)
 blocker: none; the owner settled the calls on 2026-11-14 and said build it.
-ver: v2.7275 (PR 1) · v2.7279 (PR 2) · v2.7296 (PR 3) · v2.7301 (PR 4) · v2.7358 (PR 5) · v2.7360 (PR 6) · v2.7397 (the viewport walk's fixes)
+ver: v2.7275 (PR 1) · v2.7279 (PR 2) · v2.7296 (PR 3) · v2.7301 (PR 4) · v2.7358 (PR 5) · v2.7360 (PR 6) · v2.7397 (the viewport walk's fixes) · v2.7468 (the estimator rates)
 opinion: build — the owner's calls are settled and every PR stands on its own
 ---
 
@@ -64,6 +64,8 @@ Each PR is merged before the next is cut. After each merge: `supabase db push`, 
 Signed in as the dev on clicktooling.com. Make a `ZZ Test` GC customer and a `ZZ Test` bid to it when none fits, and delete both before the session ends. PR 1: Settings → Difficulty criteria shows version 1 with the three scales, a draft can be edited and published as version 2, the preview draws the GC card from the draft, and version 1 reads unchanged afterwards. The later rows add their own recipe as they land.
 
 ## Where it stands
+
+**2026-11-16, the estimator rates (v2.7468).** The docs catch-up found that the price list could name the estimators as raters while the rating table's insert rule still asked `is_office_staff()`, so a named estimator was offered **Save** and refused. The owner's word the same day: *Estimator should be able to rate.* Built as the card's own plan for PR 4: the database obeys the price list (`gc_difficulty_can_rate()`, the twin of `difficultyCanRate`), and the list names the estimators (price list version 2, version 1's numbers, published by the migration `20261117003000_gc_difficulty_raters_from_price_list.sql`). The ask at the end of a job now draws only for a master the list lets rate, and a rating saved by someone who cannot read the bills keeps the Paying point the rating holds. Fragment `docs/recent-features/v2.7468.md`, with one call left for the owner (Paying by hand stays open to whoever may rate; pick: keep). Not a test row and left on purpose: price list version 2.
 
 **2026-11-15, the end of the train.** All six PRs are merged, pushed and walked live; each fragment has its *Checked live*. Taunya then asked for everything to be walked at every width: five widths, light and dark, measured and pictured, written up in `docs/recent-features/v2.7397.md` with what was fixed and what was seen and left.
 
