@@ -146,6 +146,24 @@ describe('buildLienDeskQueue', () => {
     expect(q3.entries[0]!.pile).toBe('sent')
   })
 
+  it('a notice naming a closed month and open ones is judged by its earliest open month (v2.7441, job 804)', () => {
+    const today = '2026-11-16'
+    const rows = [
+      row({ job_id: 'j804', work_month: '2026-07', deadline: '2026-10-15', open_balance: 3_553 }),
+      row({ job_id: 'j804', work_month: '2026-08', deadline: '2026-11-16', open_balance: 3_553 }),
+      row({ job_id: 'j804', work_month: '2026-09', deadline: '2026-12-15', open_balance: 3_553 }),
+    ]
+    const awaiting = item({ job_id: 'j804', status: 'awaiting_approval', months: ['2026-07', '2026-08', '2026-09'] })
+    const e = buildLienDeskQueue(rows, [awaiting], {}, today).entries[0]!
+    expect(e.earliestDeadline).toBe('2026-11-16')
+    expect(e.daysLeft).toBe(0)
+    expect(e.missedMonths).toEqual(['2026-07'])
+    // Every named month closed: the row still reads by the earliest, so it says the window closed.
+    const late = buildLienDeskQueue(rows, [item({ job_id: 'j804', status: 'awaiting_approval', months: ['2026-07'] })], {}, today).entries[0]!
+    expect(late.earliestDeadline).toBe('2026-10-15')
+    expect(late.daysLeft).toBeLessThan(0)
+  })
+
   it('reads the GC’s standing rule and sorts by earliest deadline then dollars', () => {
     const rows = [
       row({ job_id: 'a', work_month: '2026-07', deadline: '2026-10-15', gc_customer_id: 'kestrin', open_balance: 500 }),
