@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plans by date</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: a review page. One working mock-up of the Development page's Plans look with its new
+     view, switchable between desktop and phone, light and dark, and with a schedule, none or no end
+     clock. Under it: what each lane reads, the calls that are the owner's, who sees it, the paper.
+     The mock-up wears the app's own tokens (src/index.css); the page around it follows the viewer. */
+  :root {
+    --bg-page:#f0f2f5; --surface:#ffffff; --bg-subtle:#f9fafb; --bg-muted:#f3f4f6;
+    --text-strong:#111827; --text-700:#374151; --text-muted:#6b7280;
+    --border:#cfd4db; --border-strong:#aab2bd; --text-link:#2563eb;
+    --bg-amber-tint:#fffbeb; --text-amber-800:#92400e; --bg-blue-tint:#eff6ff; --text-blue-800:#1e40af;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg-page:#111827; --surface:#1f2937; --bg-subtle:#18212f; --bg-muted:#374151;
+    --text-strong:#f9fafb; --text-700:#d1d5db; --text-muted:#9ca3af;
+    --border:#374151; --border-strong:#4b5563; --text-link:#60a5fa;
+    --bg-amber-tint:#3a2f11; --text-amber-800:#fcd34d; --bg-blue-tint:#1e3358; --text-blue-800:#bfdbfe;
+    color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --bg-page:#111827; --surface:#1f2937; --bg-subtle:#18212f; --bg-muted:#374151;
+    --text-strong:#f9fafb; --text-700:#d1d5db; --text-muted:#9ca3af;
+    --border:#374151; --border-strong:#4b5563; --text-link:#60a5fa;
+    --bg-amber-tint:#3a2f11; --text-amber-800:#fcd34d; --bg-blue-tint:#1e3358; --text-blue-800:#bfdbfe;
+    color-scheme: dark }
+
+  /* The app inside the mock-up: its own light and dark, switched by the control, whatever the page wears. */
+  .app {
+    --a-page:#f0f2f5; --a-surface:#ffffff; --a-subtle:#f9fafb; --a-muted-bg:#f3f4f6;
+    --a-strong:#111827; --a-700:#374151; --a-muted:#6b7280; --a-border:#cfd4db; --a-border-strong:#aab2bd; --a-link:#2563eb;
+    --a-set:#eb6834; --a-bid:#7c3aed; --a-bid-wash:rgba(124,58,237,0.16); --a-crew:#0f9a8a; --a-amber-bg:#fffbeb; --a-amber:#92400e;
+  }
+  .app[data-mt="dark"] {
+    --a-page:#111827; --a-surface:#1f2937; --a-subtle:#18212f; --a-muted-bg:#374151;
+    --a-strong:#f9fafb; --a-700:#d1d5db; --a-muted:#9ca3af; --a-border:#374151; --a-border-strong:#4b5563; --a-link:#60a5fa;
+    --a-set:#d95926; --a-bid:#a78bfa; --a-bid-wash:rgba(167,139,250,0.28); --a-crew:#199e70; --a-amber-bg:#3a2f11; --a-amber:#fcd34d;
+  }
+
+  * { box-sizing: border-box }
+  body { margin:0; background:var(--bg-page); color:var(--text-700); font-family:var(--font); font-size:15px; line-height:1.5 }
+  .wrap { max-width:1120px; margin:0 auto; padding-block:28px 64px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); display:flex; flex-direction:column; gap:28px }
+  h1 { font-size:1.9rem; line-height:1.15; margin:0; color:var(--text-strong); text-wrap:balance; letter-spacing:-0.01em }
+  h2 { font-size:1.2rem; margin:0 0 8px; color:var(--text-strong); text-wrap:balance }
+  h3 { font-size:0.95rem; margin:0 0 2px; color:var(--text-strong) }
+  p { margin:0 0 8px; max-width:68ch }
+  .eyebrow { font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px }
+  .lede { font-size:1.05rem; color:var(--text-700) }
+  .madeup { display:inline-block; background:var(--bg-amber-tint); color:var(--text-amber-800); border-radius:6px; padding:2px 8px; font-size:0.8rem }
+  section { min-width:0 }
+
+  .controls { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin-bottom:10px }
+  .ctl { display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--text-muted) }
+  .seg { display:inline-flex; gap:2px; padding:2px; border:1px solid var(--border); border-radius:9999px; background:var(--bg-subtle) }
+  .seg button { border:1px solid transparent; border-radius:9999px; padding:3px 12px; font:inherit; font-size:0.8rem; cursor:pointer; background:transparent; color:var(--text-700) }
+  .seg button[aria-pressed="true"] { background:var(--surface); border-color:var(--border-strong); color:var(--text-strong); font-weight:700 }
+  button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--text-link); outline-offset:2px }
+
+  .stage { display:flex; justify-content:center; min-width:0 }
+  .app { background:var(--a-page); color:var(--a-700); border:1px solid var(--border-strong); border-radius:12px; padding:14px; width:100%; min-width:0; font-size:14px; position:relative }
+  .app.phone { width:390px; max-width:100%; border-radius:26px; border-width:6px; border-color:#1f2937; padding:10px 8px }
+  .acard { background:var(--a-surface); border:1px solid var(--a-border); border-radius:10px; padding:12px 14px; min-width:0 }
+  .app.phone .acard { padding:10px }
+  .ahead { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; margin-bottom:8px }
+  .ahead b { color:var(--a-strong); font-size:1rem }
+  .ahead .meta { color:var(--a-muted); font-size:0.8rem; flex:1; min-width:0 }
+  .aseg { display:inline-flex; gap:2px; padding:2px; border:1px solid var(--a-border); border-radius:9999px; background:var(--a-subtle) }
+  .app.phone .aseg { display:flex; width:100% }
+  .aseg button { border:1px solid transparent; border-radius:9999px; padding:1px 10px; font:inherit; font-size:0.76rem; line-height:1.4; cursor:pointer; background:transparent; color:var(--a-700); font-weight:500 }
+  .app.phone .aseg button { flex:1; padding:3px 6px }
+  .aseg button[aria-pressed="true"] { background:var(--a-surface); border-color:var(--a-border-strong); color:var(--a-strong); font-weight:700 }
+
+  .figs { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; margin-bottom:10px }
+  .app.phone .figs { grid-template-columns:repeat(2, minmax(0, 1fr)) }
+  .fig { border:1px solid var(--a-border); border-radius:8px; padding:6px 10px; background:var(--a-subtle); min-width:0 }
+  .fig .k { font-size:0.7rem; color:var(--a-muted); text-transform:uppercase; letter-spacing:0.05em }
+  .fig .v { font-size:1.15rem; font-weight:700; color:var(--a-strong); font-variant-numeric:tabular-nums; line-height:1.25 }
+  .fig .s { font-size:0.74rem; color:var(--a-muted); overflow-wrap:anywhere }
+  .fig.opt { border-style:dashed; background:var(--a-amber-bg) }
+  .fig.opt .k { color:var(--a-amber) }
+
+  .legend { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:0.74rem; color:var(--a-muted); margin:0 0 4px }
+  .legend span { display:inline-flex; align-items:center; gap:5px; white-space:nowrap }
+  .legend svg { flex:none }
+  svg.tl { display:block; width:100%; height:auto; overflow:visible }
+  svg text { font-family:var(--font) }
+  .t-tick { font-size:10.5px; fill:var(--a-muted) }
+  .t-year { font-size:10.5px; fill:var(--a-700); font-weight:700 }
+  .t-lane { font-size:12px; fill:var(--a-strong); font-weight:600 }
+  .t-sub { font-size:10.5px; fill:var(--a-muted) }
+  .t-lab { font-size:10.5px; fill:var(--a-700) }
+  .t-lab.cur { fill:var(--a-strong); font-weight:700 }
+  .t-today { font-size:10.5px; fill:var(--a-surface); font-weight:700 }
+  .grid { stroke:var(--a-border); stroke-width:1; opacity:0.55 }
+  .grid.yr { stroke:var(--a-border-strong); opacity:0.9 }
+  .base { stroke:var(--a-border); stroke-width:1 }
+  .life { stroke:var(--a-border-strong); stroke-width:2; stroke-linecap:round }
+  .set { fill:var(--a-set); stroke:var(--a-surface); stroke-width:2 }
+  .set.hollow { fill:var(--a-surface); stroke:var(--a-set); stroke-width:2 }
+  .ring { fill:none; stroke:var(--a-set); stroke-width:1.5 }
+  .link { fill:none; stroke:var(--a-set); stroke-width:1.5; stroke-dasharray:3 3 }
+  .bid { fill:var(--a-bid); stroke:var(--a-surface); stroke-width:2 }
+  .bid.hollow { fill:var(--a-surface); stroke:var(--a-bid); stroke-width:1.5 }
+  .bidline { stroke:var(--a-bid); stroke-width:1.5; stroke-dasharray:2 3 }
+  .sched { fill:var(--a-bid-wash); stroke:var(--a-bid); stroke-width:1 }
+  .crew { fill:var(--a-crew) }
+  .crew.hollow { fill:none; stroke:var(--a-crew); stroke-width:1.5; stroke-dasharray:4 3 }
+  .hist { stroke:var(--a-muted); stroke-width:1.5 }
+  .letter { fill:var(--a-strong); stroke:var(--a-surface); stroke-width:1.5 }
+  .letterpole { stroke:var(--a-strong); stroke-width:1.5 }
+  .today { stroke:var(--a-strong); stroke-width:1; stroke-dasharray:4 3 }
+  .todaypill { fill:var(--a-strong) }
+  .hit { fill:transparent; cursor:default }
+  .mark:hover .set, .mark:focus .set, .mark:hover .bid, .mark:focus .bid { stroke:var(--a-strong) }
+  .mark:focus { outline:none }
+  .mark:focus-visible .hit { stroke:var(--a-link); stroke-width:2 }
+
+  .tip { position:absolute; z-index:5; max-width:280px; background:var(--a-strong); color:var(--a-surface); border-radius:6px; padding:5px 8px; font-size:0.76rem; line-height:1.35; pointer-events:none; box-shadow:0 2px 8px rgba(0,0,0,0.25) }
+  .note { font-size:0.76rem; color:var(--a-muted); margin:6px 0 0; max-width:none }
+  .listhead { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 10px; align-items:baseline; margin:12px 0 4px; font-size:0.8rem; color:var(--a-muted) }
+  .listhead b { color:var(--a-strong) }
+  .alink { color:var(--a-link); background:none; border:0; padding:0; font:inherit; font-size:0.78rem; cursor:pointer; text-decoration:underline }
+  .list { border-top:1px solid var(--a-border); font-size:0.8rem }
+  .row { display:grid; grid-template-columns:96px 150px minmax(0, 1fr); column-gap:10px; padding:4px 0; border-bottom:1px solid var(--a-border); align-items:baseline }
+  .app.phone .row { grid-template-columns:86px minmax(0, 1fr) }
+  .app.phone .row .words { grid-column:1 / -1 }
+  .row .day { font-variant-numeric:tabular-nums; color:var(--a-strong); white-space:nowrap }
+  .row .lane { display:inline-flex; align-items:center; gap:6px; color:var(--a-700); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .row .words { color:var(--a-700); overflow-wrap:anywhere; min-width:0 }
+  .row .words em { font-style:normal; color:var(--a-muted) }
+  .row.bidrow { background:var(--a-bid-wash); margin:0 -6px; padding-left:6px; padding-right:6px; border-radius:4px }
+  .row.todayrow .day, .row.todayrow .words { font-weight:700; color:var(--a-strong) }
+  .ptable { width:100%; border-collapse:collapse; font-size:0.8rem }
+  .ptable th { text-align:left; font-weight:600; color:var(--a-muted); font-size:0.72rem; padding:4px 8px 4px 0; border-bottom:1px solid var(--a-border-strong) }
+  .ptable td { padding:6px 8px 6px 0; border-bottom:1px solid var(--a-border); vertical-align:top }
+  .ptable td:first-child { color:var(--a-strong); font-weight:600; white-space:nowrap }
+  .tscroll { overflow-x:auto }
+
+  .frow { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-bottom:8px; font-size:0.82rem }
+  .frow label { width:104px; flex:none; color:var(--a-strong); font-weight:500 }
+  .frow.stack label { width:100% }
+  .fbox { border:1px solid var(--a-border-strong); border-radius:6px; padding:4px 10px; background:var(--a-surface); color:var(--a-strong); font-variant-numeric:tabular-nums; white-space:nowrap }
+  .fpair { display:inline-flex; align-items:center; gap:6px }
+  .fcap { color:var(--a-muted); font-size:0.76rem }
+  .fcheck { display:inline-flex; align-items:center; gap:6px; color:var(--a-700) }
+  .fbx { width:14px; height:14px; border:1px solid var(--a-border-strong); border-radius:3px; background:var(--a-surface); display:inline-block }
+  .fquiet { color:var(--a-muted); font-size:0.76rem }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px }
+  .box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; min-width:0 }
+  .box p { font-size:0.9rem; margin:0 0 6px }
+  .box p:last-child { margin-bottom:0 }
+  .pick { display:inline-block; background:var(--bg-blue-tint); color:var(--text-blue-800); border-radius:6px; padding:1px 7px; font-size:0.75rem; font-weight:600; margin-right:4px }
+  .needs { display:inline-block; background:var(--bg-amber-tint); color:var(--text-amber-800); border-radius:6px; padding:1px 7px; font-size:0.75rem; font-weight:600; margin-right:4px }
+  ol.calls { margin:0; padding:0; list-style:none; display:grid; gap:10px; counter-reset:c }
+  ol.calls > li { counter-increment:c; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px 12px 46px; position:relative }
+  ol.calls > li::before { content:counter(c); position:absolute; left:14px; top:11px; width:22px; height:22px; border-radius:50%; background:var(--bg-muted); color:var(--text-strong); font-weight:700; font-size:0.8rem; display:grid; place-items:center }
+  ol.calls p { font-size:0.9rem; margin:0 0 4px }
+  ul.plain { margin:0; padding-left:18px; font-size:0.9rem; max-width:70ch }
+  ul.plain li { margin-bottom:4px }
+
+  /* The paper: a landscape letter sheet drawn to scale, always light, sized in container units so it shrinks whole. */
+  .sheetwrap { container-type:inline-size; max-width:880px }
+  .sheet { aspect-ratio:11 / 8.5; background:#ffffff; border:1px solid var(--border-strong); box-shadow:0 2px 10px rgba(0,0,0,0.12); padding:2.8cqw 3.6cqw; font-size:1.18cqw; color:#374151; overflow:hidden; display:flex; flex-direction:column; gap:1cqw }
+  .sheet.app { border-radius:0; width:auto }
+  .sheet .phead { display:flex; justify-content:space-between; align-items:baseline; border-bottom:0.15cqw solid #111827; padding-bottom:0.5cqw }
+  .sheet .phead b { font-size:1.9cqw; color:#111827 }
+  .sheet .figs { gap:1cqw; margin:0 }
+  .sheet .fig { padding:0.3cqw 1cqw; border-radius:0.6cqw }
+  .sheet .fig .k { font-size:0.9cqw } .sheet .fig .v { font-size:1.6cqw } .sheet .fig .s { font-size:0.95cqw }
+  .sheet .plist { columns:3; column-gap:2cqw; font-size:0.9cqw; line-height:1.38 }
+  .sheet .plist div { break-inside:avoid; display:flex; gap:0.8cqw }
+  .sheet .plist span:first-child { flex:none; width:7cqw; white-space:nowrap; font-variant-numeric:tabular-nums; color:#111827 }
+  .sheet .pfoot { margin-top:auto; font-size:0.9cqw; color:#6b7280; display:flex; justify-content:space-between }
+</style>
+</head><body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Design spike · Development page · 2026-11-16</p>
+    <h1>Plans by date</h1>
+    <p class="lede" style="margin-top:10px">The Plans look gets a second view. It sets every set of drawings against time, with the bids, the crews' days and the letters on the same axis. Nothing below is built yet.</p>
+    <p><span class="madeup">Every name, number and date here is made up.</span></p>
+  </header>
+
+  <section aria-label="The mock-up">
+    <div class="controls">
+      <span class="ctl">Screen <span class="seg" id="c-screen"><button data-v="desktop" aria-pressed="true">Desktop</button><button data-v="phone" aria-pressed="false">Phone</button></span></span>
+      <span class="ctl">Theme <span class="seg" id="c-theme"><button data-v="light" aria-pressed="true">Light</button><button data-v="dark" aria-pressed="false">Dark</button></span></span>
+      <span class="ctl">Schedule <span class="seg" id="c-sched"><button data-v="off" aria-pressed="true">None</button><button data-v="on" aria-pressed="false">Start and end</button><button data-v="open" aria-pressed="false">No end</button></span></span>
+    </div>
+    <div class="stage">
+      <div class="app" id="app" data-mt="light">
+        <div class="acard">
+          <div class="ahead">
+            <b>Plans</b>
+            <span class="meta" id="plans-meta">every set of drawings on the site, by the date on its sheets</span>
+            <span class="aseg" role="group" aria-label="Plans views" id="views"><button data-v="part" aria-pressed="false">By part</button><button data-v="date" aria-pressed="true">By date</button></span>
+          </div>
+          <div id="view"></div>
+        </div>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where the schedule is typed</h2>
+    <p>A schedule is two dates on the bid, a start and an end, and a person types both. Nothing is counted from the day the bid was sent. A bid with no start has no schedule, and the chart draws no Schedule lane for it.</p>
+    <div class="cols" style="margin-top:10px; align-items:start">
+      <div class="app" id="app2" data-mt="light" style="padding:10px">
+        <div class="acard">
+          <div class="ahead"><b>Edit Bid</b><span class="meta">B9001 · the row sits under Bid Date Sent</span></div>
+          <div class="frow"><label>Bid Date Sent</label><span class="fbox">Jun 12, 2025</span></div>
+          <div class="frow stack"><label>Schedule</label>
+            <span class="fpair"><span class="fcap">Start</span><span class="fbox">Jul 1, 2025</span></span>
+            <span class="fpair"><span class="fcap">End</span><span class="fbox">Dec 31, 2026</span></span>
+          </div>
+          <div class="frow"><span class="fcheck"><span class="fbx"></span>No end date</span><span class="fquiet">18 months · 45 days left</span></div>
+          <p class="note">Leave Start empty when the bid promises no schedule.</p>
+        </div>
+      </div>
+      <div class="box">
+        <h3>What each choice draws</h3>
+        <p><b>Start empty.</b> No schedule. The chart has no Schedule lane for this bid.</p>
+        <p><b>Start and End.</b> A bar from one to the other, with the days left as the first figure. The quiet words beside the dates say how long that is.</p>
+        <p><b>Start, with No end date ticked.</b> The bar runs off the right edge as an arrow, and the figure reads <i>No end date</i>.</p>
+        <p><b>Past the End.</b> The bar keeps its end. The figure turns red and counts the days over.</p>
+        <p><b>An End before the Start</b> is refused with its reason, and nothing saves.</p>
+      </div>
+      <div class="box">
+        <h3>A second door, on the chart</h3>
+        <p>A bid with no schedule shows a quiet <b>Set the schedule</b> press on its hover line and on its row of the dated list. It opens a small sheet with the same two dates and the same tick.</p>
+        <p>A bid that has one shows <b>Change</b> in the same two places.</p>
+        <p>The office and the estimators can set it, since both can edit a bid today.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What each lane reads</h2>
+    <p>Everything on the chart comes from what the app already records. The first build needs no change to the database.</p>
+    <div class="cols" style="margin-top:10px">
+      <div class="box"><h3>Bids</h3><p>A diamond on the day each bid was sent. A small open diamond marks the date of the plans it was priced from. The hover line names the day it was won.</p></div>
+      <div class="box"><h3>One lane for each part</h3><p>A dot for every set, on the date printed on its sheets. The set the part builds from wears a ring and its name in bold. A set with no date is an open dot on the day it came. An as-built of ours is a square. Papers are left out.</p><p>A dotted line joins two lanes on the day one design became two parts.</p></div>
+      <div class="box"><h3>Crews on site</h3><p>The clock's days on the site's jobs, joined into bars. A week with nobody on site ends a bar. A job with no clock days draws an open bar from its first work day to its last.</p></div>
+      <div class="box"><h3>History</h3><p>A tick for every line kept on History by hand. A letter gets a flag and its word, since paper is what people look for later.</p></div>
+      <div class="box"><h3>The list under the chart</h3><p>Every mark again as a dated line, oldest first, with each bid as a tinted row. It is the chart for a screen reader, a phone and a search.</p></div>
+      <div class="box"><h3>Print</h3><p>One press opens a landscape page, as the Scoreboard's print does. The page is drawn further down.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Your calls</h2>
+    <p>Each call has my pick. Say only what you would change. Calls 5 and 6 need a database change, so each is its own later build.</p>
+    <ol class="calls" style="margin-top:10px">
+      <li><p><b>The name.</b> <span class="pick">My pick</span> The Plans look gets two views, <b>By part</b> and <b>By date</b>. Money keeps its Timeline, so the two cannot be mixed up. Other names that work: <i>Drawings by date</i>, <i>Issue dates</i>.</p></li>
+      <li><p><b>Where it lives.</b> <span class="pick">My pick</span> Inside Plans, beside the parts table, the way Money holds Scoreboard and Timeline. The device remembers which view you left open.</p></li>
+      <li><p><b>Which bid is "the bid".</b> <span class="pick">My pick</span> The first bid that was won. With none won, the first bid sent. The figure names it, as in <i>13 sets since B9001 was sent</i>.</p></li>
+      <li><p><b>History marks.</b> <span class="pick">My pick</span> Every kept line is a tick, and letters get a flag. The other choice is letters only, which is quieter on a site with many emails kept.</p></li>
+      <li><p><b>A schedule on a bid.</b> <span class="needs">Needs a database change</span> <span class="pick">Your call, 2026-11-16</span> When a bid has a schedule, a person types its start and its end. Press <b>Start and end</b> above to see the lane and the days-left figure, and <b>No end</b> to see a schedule that runs on. The next section draws where the two dates are typed.</p></li>
+      <li><p><b>Sheets in hand.</b> <span class="needs">Needs a database change</span> Your hand chart counted sheets at the bid and sheets now. The app does not know how many sheets a set has. It would be one number typed on the set, and two figures on this view. I left it off the mock-up.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Who sees it</h2>
+    <ul class="plain">
+      <li><b>The office</b> (dev, leaders, assistants, controller) sees every lane.</li>
+      <li><b>An estimator</b> sees the same chart. It carries dates and drawings and no money. The clock's days are closed to an estimator, so the crew lane shows each job's last work day as a single mark and says so.</li>
+      <li><b>The crew</b> does not open the Development page, and that stays. A crew member still sees the set their part builds from on the job itself.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>On paper</h2>
+    <p>The print is one landscape letter page: the site, the four figures, the chart and the dated list in three columns. A long list runs onto a second page. Paper is always light.</p>
+    <div class="sheetwrap" style="margin-top:10px"><div class="sheet app" data-mt="light" id="sheet"></div></div>
+  </section>
+
+  <section>
+    <h2>What the chart cannot draw</h2>
+    <ul class="plain">
+      <li>A crew trip that was entered as a job line with the date only in its name. Setting the job's first and last work day puts it on the chart as an open bar.</li>
+      <li>A set with no date on its sheets and no day it came. Every set has the day it came, so this should not happen.</li>
+      <li>A bid that was never marked sent. It has no day to stand on, so the list names it at the end.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+/* ── Made-up data, shaped like the rows the page already reads ───────────── */
+const TODAY = '2026-11-16'
+const DATA = {
+  site: 'ZZ Test Ridge', customer: 'ZZ Test Builders',
+  parts: [
+    { id: 'pA', name: 'Building A', current: 'a5' },
+    { id: 'pB', name: 'Building B', current: 'b4' },
+    { id: 'pC', name: 'Clubhouse', current: 'c2' },
+    { id: 'pS', name: 'Site work', current: 's2' },
+    { id: 'pP', name: 'Pool house', current: null },
+  ],
+  sets: [
+    { id: 'a1', part: 'pA', name: 'Issued set', kind: 'Issued set', source: 'the GC', dated: '2025-05-20', came: '2025-05-22' },
+    { id: 'a2', part: 'pA', name: 'Addendum 1', kind: 'Addendum', source: 'the architect', dated: '2025-06-30', came: '2025-07-01' },
+    { id: 'a3', part: 'pA', name: 'Revised set', kind: 'Revised set', source: 'the architect', dated: '2025-11-04', came: '2025-11-06' },
+    { id: 'a4', part: 'pA', name: 'Bulletin 3', kind: 'Bulletin', source: 'the architect', dated: '2026-02-17', came: '2026-02-19' },
+    { id: 'a5', part: 'pA', name: 'Permit set', kind: 'Permit set', source: 'the GC', dated: '2026-05-08', came: '2026-05-12' },
+    { id: 'a6', part: 'pA', name: 'As-built', kind: 'As-built', source: 'ours', dated: '2026-09-22', came: '2026-09-22', ours: true },
+    { id: 'b1', part: 'pB', name: 'Revised set', kind: 'Revised set', source: 'the architect', dated: '2025-11-04', came: '2025-11-06', replaces: 'a2' },
+    { id: 'b2', part: 'pB', name: 'Bulletin 2', kind: 'Bulletin', source: 'the architect', dated: '2026-01-13', came: '2026-01-14' },
+    { id: 'b3', part: 'pB', name: 'Revised set', kind: 'Revised set', source: 'the architect', dated: '2026-04-21', came: '2026-04-23' },
+    { id: 'b4', part: 'pB', name: 'Construction set', kind: 'Construction set', source: 'the GC', dated: '2026-08-11', came: '2026-08-13' },
+    { id: 'b5', part: 'pB', name: 'Bulletin 5', kind: 'Bulletin', source: 'the GC', dated: null, came: '2026-10-30' },
+    { id: 'c1', part: 'pC', name: 'Issued set', kind: 'Issued set', source: 'the GC', dated: '2026-02-24', came: '2026-02-25' },
+    { id: 'c2', part: 'pC', name: 'Addendum 1', kind: 'Addendum', source: 'the architect', dated: '2026-03-10', came: '2026-03-11' },
+    { id: 's1', part: 'pS', name: 'Issued set', kind: 'Issued set', source: 'the GC', dated: '2025-05-20', came: '2025-05-22' },
+    { id: 's2', part: 'pS', name: 'Revised set', kind: 'Revised set', source: 'the architect', dated: '2026-06-02', came: '2026-06-04' },
+  ],
+  bids: [
+    { id: 'B9001', sent: '2025-06-12', plansDated: '2025-05-20', won: '2025-07-30', scheduleStart: '2025-07-01', scheduleEnd: '2026-12-31' },
+    { id: 'B9044', sent: '2026-03-17', plansDated: '2026-03-10', won: null, scheduleStart: null, scheduleEnd: null },
+  ],
+  crew: [
+    { from: '2025-08-04', to: '2025-08-22', days: null, jobs: ['J9102'] },
+    { from: '2025-09-08', to: '2025-10-17', days: 28, jobs: ['J9101'] },
+    { from: '2025-11-17', to: '2025-12-19', days: 22, jobs: ['J9101', 'J9103'] },
+    { from: '2026-01-12', to: '2026-03-27', days: 49, jobs: ['J9101', 'J9103'] },
+    { from: '2026-05-18', to: '2026-07-02', days: 31, jobs: ['J9103', 'J9106'] },
+    { from: '2026-08-24', to: '2026-09-11', days: 14, jobs: ['J9106'] },
+    { from: '2026-10-26', to: '2026-11-13', days: 15, jobs: ['J9108'] },
+  ],
+  history: [
+    { day: '2025-08-01', source: 'Email', body: 'The GC sent the signed contract.' },
+    { day: '2025-11-06', source: 'Call', body: 'The architect called about the split into two buildings.' },
+    { day: '2026-02-19', source: 'Email', body: 'Bulletin 3 came by email.' },
+    { day: '2026-04-23', source: 'On site', body: 'Walked Building B with the super.' },
+    { day: '2026-07-14', source: 'Letter', body: 'Notice of delay sent to the GC.' },
+    { day: '2026-08-13', source: 'Email', body: 'The construction set came.' },
+    { day: '2026-10-30', source: 'Text', body: 'The super texted a photo of Bulletin 5.' },
+  ],
+}
+
+/* ── The kernel, as it would be written in src/lib/plans: days, lanes, marks, the list ── */
+const DAY = 86400000
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const dn = (ymd) => Math.round(Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1, +ymd.slice(8, 10)) / DAY)
+const ymdOf = (n) => new Date(n * DAY).toISOString().slice(0, 10)
+const words = (ymd, year = true) => `${MON[+ymd.slice(5, 7) - 1]} ${+ymd.slice(8, 10)}${year ? `, ${ymd.slice(0, 4)}` : ''}`
+const addMonths = (ymd, m) => { const d = new Date(Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1 + m, +ymd.slice(8, 10))); return d.toISOString().slice(0, 10) }
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
+
+function buildModel(data, opts) {
+  const today = dn(TODAY)
+  const lanes = []
+  const list = []
+  const links = []
+  const anchor = [...data.bids].filter((b) => b.sent).sort((a, b) => (!!b.won - !!a.won) || a.sent.localeCompare(b.sent))[0] || null
+
+  // Bids
+  const bidLane = { key: 'bids', kind: 'bids', label: 'Bids', sub: plural(data.bids.filter((b) => b.sent).length, 'sent', 'sent'), marks: [], spans: [], lines: [] }
+  const schedLanes = []
+  for (const b of data.bids) {
+    if (!b.sent) continue
+    const tipBits = [`${b.id} sent ${words(b.sent)}`]
+    if (b.plansDated) tipBits.push(`priced from plans dated ${words(b.plansDated)}`)
+    if (b.won) tipBits.push(`won ${words(b.won)}`)
+    if (b.plansDated) { bidLane.lines.push({ from: dn(b.plansDated), to: dn(b.sent) }); bidLane.marks.push({ shape: 'bidPlans', day: dn(b.plansDated), tip: `${b.id} was priced from plans dated ${words(b.plansDated)}` }) }
+    // A schedule is a start and an end, both typed on the bid. No start means no schedule; no end means it runs on.
+    if (opts.schedule !== 'off' && b.scheduleStart) {
+      const end = opts.schedule === 'open' ? null : b.scheduleEnd
+      const left = end ? dn(end) - today : null
+      const leftWords = left == null ? 'no end date' : left >= 0 ? plural(left, 'day', 'days') + ' left' : plural(-left, 'day', 'days') + ' over'
+      schedLanes.push({ key: `sched-${b.id}`, kind: 'schedule', label: 'Schedule', sub: `${b.id} · ${leftWords}`, marks: [], lines: [], spans: [{ shape: 'schedule', from: dn(b.scheduleStart), to: end ? dn(end) : null, startLabel: `starts ${words(b.scheduleStart)}`, label: end ? `ends ${words(end)}` : 'no end date', tip: `${b.id}'s schedule · ${words(b.scheduleStart)} to ${end ? words(end) : 'no end date'}${left == null ? '' : ' · ' + leftWords}` }] })
+      list.push({ day: dn(b.scheduleStart), lane: 'Schedule', glyph: 'sched', text: `${b.id}'s schedule starts`, soft: end ? `ends ${words(end)}` : 'no end date' })
+      if (end) list.push({ day: dn(end), lane: 'Schedule', glyph: 'sched', text: `${b.id}'s schedule ends`, soft: `started ${words(b.scheduleStart)}` })
+    }
+    bidLane.marks.push({ shape: 'bid', day: dn(b.sent), label: b.id, pri: 5, tip: tipBits.join(' · ') })
+    list.push({ day: dn(b.sent), lane: 'Bids', glyph: 'bid', text: `${b.id} sent`, soft: b.plansDated ? `priced from plans dated ${words(b.plansDated)}` : '', bid: true })
+    if (b.won) list.push({ day: dn(b.won), lane: 'Bids', glyph: 'bid', text: `${b.id} won`, soft: '' })
+  }
+  lanes.push(bidLane, ...schedLanes)
+
+  // One lane a part
+  const setById = new Map(data.sets.map((s) => [s.id, s]))
+  for (const p of data.parts) {
+    const mine = data.sets.filter((s) => s.part === p.id).map((s) => ({ ...s, day: dn(s.dated || s.came) })).sort((a, b) => a.day - b.day)
+    const lane = { key: p.id, kind: 'part', label: p.name, sub: mine.length ? plural(mine.length, 'set', 'sets') : 'no set yet', marks: [], spans: [], lines: [], from: mine.length ? mine[0].day : null }
+    for (const s of mine) {
+      const current = p.current === s.id
+      const when = s.dated ? `dated ${words(s.dated)} · came ${words(s.came, s.came.slice(0, 4) !== s.dated.slice(0, 4))}` : `no date on the sheets · came ${words(s.came)}`
+      const parent = s.replaces ? setById.get(s.replaces) : null
+      const split = parent && parent.part !== p.id ? data.parts.find((x) => x.id === parent.part) : null
+      if (split) links.push({ from: split.id, to: p.id, day: s.day })
+      const tip = [s.name === s.kind ? s.name : `${s.name} (${s.kind})`, s.source, when, current ? `${p.name} builds from it` : '', split ? `the day ${p.name} split from ${split.name}` : ''].filter(Boolean).join(' · ')
+      lane.marks.push({ shape: s.ours ? 'ours' : s.dated ? 'set' : 'undated', current, day: s.day, label: s.name, pri: current ? 9 : 1 + (s.day - 20000) / 100000, tip })
+      list.push({ day: s.day, lane: p.name, glyph: s.ours ? 'ours' : s.dated ? (current ? 'current' : 'set') : 'undated', text: `${s.name}${current ? ', the set it builds from' : ''}`, soft: [s.source, s.dated ? '' : 'no date on the sheets, placed on the day it came', split ? `split from ${split.name}` : ''].filter(Boolean).join(' · '), })
+    }
+    lanes.push(lane)
+  }
+
+  // Crews on site
+  const clockDays = data.crew.reduce((n, r) => n + (r.days || 0), 0)
+  const crewLane = { key: 'crew', kind: 'crew', label: 'Crews on site', sub: `${plural(clockDays, 'day', 'days')} by the clock`, marks: [], spans: [], lines: [] }
+  for (const r of data.crew) {
+    const range = `${words(r.from, r.from.slice(0, 4) !== r.to.slice(0, 4))} to ${words(r.to)}`
+    crewLane.spans.push({ shape: r.days ? 'crew' : 'crewOpen', from: dn(r.from), to: dn(r.to), tip: r.days ? `Crews on site ${range} · ${plural(r.days, 'day', 'days')} · ${r.jobs.join(', ')}` : `${r.jobs.join(', ')} · first work day to last, ${range} · the days between are not on the clock` })
+    list.push({ day: dn(r.from), lane: 'Crews on site', glyph: r.days ? 'crew' : 'crewOpen', text: r.days ? `On site until ${words(r.to, false)}, ${plural(r.days, 'day', 'days')}` : `First work day, last on ${words(r.to, false)}`, soft: r.jobs.join(', ') })
+  }
+  lanes.push(crewLane)
+
+  // History
+  const histLane = { key: 'history', kind: 'history', label: 'History', sub: `${plural(data.history.length, 'line', 'lines')} kept`, marks: [], spans: [], lines: [] }
+  for (const h of data.history) {
+    const letter = h.source === 'Letter'
+    histLane.marks.push({ shape: letter ? 'letter' : 'tick', day: dn(h.day), label: letter ? 'Letter' : null, pri: 5, tip: `${h.source} · ${words(h.day)} · ${h.body}` })
+    list.push({ day: dn(h.day), lane: 'History', glyph: letter ? 'letter' : 'tick', text: h.body, soft: h.source })
+  }
+  lanes.push(histLane)
+
+  list.push({ day: today, lane: '', glyph: 'today', text: 'Today', soft: '', today: true })
+  list.sort((a, b) => a.day - b.day)
+
+  // The axis: whole months around everything drawn
+  const all = [today]
+  for (const l of lanes) { for (const m of l.marks) all.push(m.day); for (const s of l.spans) { all.push(s.from); if (s.to != null) all.push(s.to) } }
+  const lo = ymdOf(Math.min(...all) - 6), hi = ymdOf(Math.max(...all) + 12)
+  const start = dn(`${lo.slice(0, 7)}-01`)
+  const end = dn(addMonths(`${hi.slice(0, 7)}-01`, 1))
+
+  // The four figures
+  // Ours (an as-built) is not something we were issued, so the counts leave it out.
+  const sets = data.sets.filter((s) => !s.ours).map((s) => ({ ...s, day: dn(s.dated || s.came) })).sort((a, b) => a.day - b.day)
+  const since = anchor ? sets.filter((s) => s.day > dn(anchor.sent)).length : sets.length
+  const dated = sets.filter((s) => s.dated)
+  const newest = dated[dated.length - 1]
+  const firstClock = data.crew.find((r) => r.days)
+  const figures = []
+  const sched = opts.schedule !== 'off' ? data.bids.find((b) => b.sent && b.scheduleStart) : null
+  if (sched) {
+    const endYmd = opts.schedule === 'open' ? null : sched.scheduleEnd
+    const left = endYmd ? dn(endYmd) - today : null
+    if (endYmd) figures.push({ k: 'Schedule ends', v: words(endYmd), s: `${left >= 0 ? plural(left, 'day', 'days') + ' left' : plural(-left, 'day', 'days') + ' over'} · started ${words(sched.scheduleStart)} · ${sched.id}`, opt: true })
+    else figures.push({ k: 'Schedule', v: 'No end date', s: `started ${words(sched.scheduleStart)} · ${sched.id}`, opt: true })
+  } else {
+    figures.push({ k: 'First drawings', v: words(sets[0].dated || sets[0].came), s: 'the oldest date on any sheet' })
+  }
+  figures.push({ k: anchor ? 'Sets since the bid' : 'Sets', v: String(since), s: anchor ? `of ${sets.length}, since ${anchor.id} was sent ${words(anchor.sent)}` : `on ${plural(data.parts.length, 'part', 'parts')}` })
+  figures.push({ k: 'Newest set', v: words(newest.dated), s: `${data.parts.find((p) => p.id === newest.part).name} · ${plural(today - newest.day, 'day', 'days')} ago` })
+  figures.push({ k: 'Days on site', v: String(clockDays), s: firstClock ? `by the clock, first on ${words(firstClock.from)}` : 'no clock days yet' })
+
+  return { lanes, links, list, start, end, today, figures, anchor }
+}
+
+/** Ticks: a label every 1, 2, 3, 6 or 12 months, whichever keeps the labels apart. */
+function axisTicks(start, end, plotW) {
+  const months = []
+  let cur = ymdOf(start)
+  while (dn(cur) <= end) { months.push(cur); cur = addMonths(cur, 1) }
+  const pxPerMonth = plotW / Math.max(1, months.length - 1)
+  const step = [1, 2, 3, 6, 12].find((s) => s * pxPerMonth >= 34) || 12
+  return months.map((ymd, i) => ({ day: dn(ymd), month: +ymd.slice(5, 7), year: ymd.slice(0, 4), labelled: (+ymd.slice(5, 7) - 1) % step === 0, first: i === 0 }))
+}
+
+/** Labels that fit: the highest priority first, above the mark, else below, else left to the hover. */
+function placeLabels(items, x0, x1) {
+  const taken = []
+  const out = new Map()
+  for (const it of [...items].sort((a, b) => b.pri - a.pri)) {
+    const w = it.label.length * (it.current ? 6.2 : 5.6) + 6
+    const cx = Math.min(Math.max(it.x, x0 + w / 2), x1 - w / 2)
+    for (const slot of ['above', 'below']) {
+      const box = { l: cx - w / 2, r: cx + w / 2, slot }
+      if (!taken.some((t) => t.slot === slot && t.l < box.r + 4 && box.l < t.r + 4)) { taken.push(box); out.set(it, { cx, slot }); break }
+    }
+  }
+  return out
+}
+
+/* ── Drawing ─────────────────────────────────────────────────────────────── */
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+function drawChart(model, phone, paper) {
+  const W = phone ? 358 : 980
+  const G = phone ? 6 : 150
+  const R = phone ? 8 : 18
+  const laneH = phone ? 62 : paper ? 43 : 50
+  const axisH = 46
+  const x = (day) => G + ((day - model.start) / (model.end - model.start)) * (W - G - R)
+  const H = axisH + model.lanes.length * laneH + 6
+  const baseY = (i) => axisH + i * laneH + (phone ? 37 : paper ? 24 : 27)
+  const o = []
+  o.push(`<svg class="tl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Plans by date: ${model.lanes.length} lanes from ${words(ymdOf(model.start))} to ${words(ymdOf(model.end))}. The list under the chart says the same in words.">`)
+  // grid and axis
+  for (const t of axisTicks(model.start, model.end, W - G - R)) {
+    const tx = x(t.day)
+    if (t.labelled || t.month === 1) o.push(`<line class="grid${t.month === 1 ? ' yr' : ''}" x1="${tx}" x2="${tx}" y1="${axisH - 4}" y2="${H - 6}"/>`)
+    if (t.labelled && tx < W - 14) o.push(`<text class="t-tick" x="${tx + 3}" y="${axisH - 22}">${MON[t.month - 1]}</text>`)
+    if ((t.month === 1 || t.first) && tx < W - 30) o.push(`<text class="t-year" x="${tx + 3}" y="${axisH - 9}">${t.year}</text>`)
+  }
+  // lanes
+  model.lanes.forEach((lane, i) => {
+    const y = baseY(i)
+    const top = axisH + i * laneH
+    if (i > 0) o.push(`<line class="base" x1="0" x2="${W}" y1="${top}" y2="${top}" opacity="0.6"/>`)
+    if (phone) o.push(`<text class="t-lane" x="${G}" y="${top + 13}">${esc(lane.label)}<tspan class="t-sub" dx="6">${esc(lane.sub)}</tspan></text>`)
+    else { o.push(`<text class="t-lane" x="4" y="${y - 1}">${esc(lane.label)}</text>`); o.push(`<text class="t-sub" x="4" y="${y + 13}">${esc(lane.sub)}</text>`) }
+    o.push(`<line class="base" x1="${G}" x2="${W - R}" y1="${y}" y2="${y}"/>`)
+    if (lane.kind === 'part' && lane.from != null) o.push(`<line class="life" x1="${x(lane.from)}" x2="${x(model.today)}" y1="${y}" y2="${y}"/>`)
+    for (const l of lane.lines) o.push(`<line class="bidline" x1="${x(l.from)}" x2="${x(l.to)}" y1="${y}" y2="${y}"/>`)
+    for (const s of lane.spans) {
+      const open = s.to == null
+      const x1 = x(s.from), w = Math.max(3, (open ? W - R : x(s.to)) - x(s.from))
+      const cls = s.shape === 'schedule' ? 'sched' : s.shape === 'crew' ? 'crew' : 'crew hollow'
+      const h = s.shape === 'schedule' ? 16 : 10
+      // No end date: the bar runs off the chart as an arrow.
+      const body = open ? `<path class="${cls}" d="M${x1} ${y - h / 2} H${x1 + w - 9} L${x1 + w} ${y} L${x1 + w - 9} ${y + h / 2} H${x1} Z"/>` : `<rect class="${cls}" x="${x1}" y="${y - h / 2}" width="${w}" height="${h}" rx="${s.shape === 'schedule' ? 3 : 4}"/>`
+      o.push(`<g class="mark" tabindex="0" role="img" aria-label="${esc(s.tip)}" data-tip="${esc(s.tip)}">${body}<rect class="hit" x="${x1}" y="${y - 13}" width="${w}" height="26"/></g>`)
+      if (s.label && !phone) o.push(`<text class="t-lab cur" x="${x1 + w - (open ? 14 : 6)}" y="${y + 3.5}" text-anchor="end">${esc(s.label)}</text>`)
+      if (s.startLabel && !phone) o.push(`<text class="t-lab cur" x="${x1 + 6}" y="${y + 3.5}">${esc(s.startLabel)}</text>`)
+    }
+  })
+  // the day one design became two parts
+  for (const k of model.links) {
+    const a = model.lanes.findIndex((l) => l.key === k.from), b = model.lanes.findIndex((l) => l.key === k.to)
+    if (a < 0 || b < 0) continue
+    o.push(`<line class="link" x1="${x(k.day)}" x2="${x(k.day)}" y1="${baseY(a)}" y2="${baseY(b)}"/>`)
+  }
+  // today, under the marks
+  const tx = x(model.today)
+  o.push(`<line class="today" x1="${tx}" x2="${tx}" y1="${axisH - 30}" y2="${H - 6}"/>`)
+  const pillW = 86
+  const px = Math.min(Math.max(tx - pillW / 2, G), W - pillW - 1)
+  o.push(`<rect class="todaypill" x="${px}" y="0" width="${pillW}" height="15" rx="7.5"/><text class="t-today" x="${px + pillW / 2}" y="11" text-anchor="middle">Today · ${words(TODAY, false)}</text>`)
+  // marks and their labels
+  model.lanes.forEach((lane, i) => {
+    const y = baseY(i)
+    const labelled = lane.marks.filter((m) => m.label && (!phone || m.current || m.shape === 'bid' || m.shape === 'letter')).map((m) => ({ ...m, x: x(m.day), src: m }))
+    const spots = placeLabels(labelled, G, W - R)
+    for (const m of lane.marks) {
+      const mx = x(m.day)
+      let shape = ''
+      if (m.shape === 'set') shape = `${m.current ? `<circle class="ring" cx="${mx}" cy="${y}" r="9.5"/>` : ''}<circle class="set" cx="${mx}" cy="${y}" r="${m.current ? 6 : 5}"/>`
+      else if (m.shape === 'undated') shape = `<circle class="set hollow" cx="${mx}" cy="${y}" r="4.5"/>`
+      else if (m.shape === 'ours') shape = `<rect class="set" x="${mx - 5}" y="${y - 5}" width="10" height="10" rx="1.5"/>`
+      else if (m.shape === 'bid') shape = `<rect class="bid" x="${mx - 5.5}" y="${y - 5.5}" width="11" height="11" rx="1.5" transform="rotate(45 ${mx} ${y})"/>`
+      else if (m.shape === 'bidPlans') shape = `<rect class="bid hollow" x="${mx - 3.5}" y="${y - 3.5}" width="7" height="7" rx="1" transform="rotate(45 ${mx} ${y})"/>`
+      else if (m.shape === 'tick') shape = `<line class="hist" x1="${mx}" x2="${mx}" y1="${y - 6}" y2="${y + 6}"/>`
+      else if (m.shape === 'letter') shape = `<line class="letterpole" x1="${mx}" x2="${mx}" y1="${y - 11}" y2="${y + 6}"/><path class="letter" d="M${mx} ${y - 12} l10 4 l-10 4 z"/>`
+      o.push(`<g class="mark" tabindex="0" role="img" aria-label="${esc(m.tip)}" data-tip="${esc(m.tip)}">${shape}<circle class="hit" cx="${mx}" cy="${y}" r="12"/></g>`)
+    }
+    for (const [it, spot] of spots) o.push(`<text class="t-lab${it.current ? ' cur' : ''}" x="${spot.cx}" y="${spot.slot === 'above' ? y - (it.shape === 'letter' ? 16 : 13) : y + 21}" text-anchor="middle">${esc(it.label)}</text>`)
+  })
+  o.push('</svg>')
+  return o.join('')
+}
+
+const GLYPH = {
+  set: '<svg width="12" height="12" viewBox="-6 -6 12 12"><circle class="set" r="4.5" style="stroke-width:0"/></svg>',
+  current: '<svg width="16" height="16" viewBox="-8 -8 16 16"><circle class="ring" r="7"/><circle class="set" r="4.5" style="stroke-width:0"/></svg>',
+  undated: '<svg width="12" height="12" viewBox="-6 -6 12 12"><circle class="set hollow" r="4"/></svg>',
+  ours: '<svg width="12" height="12" viewBox="-6 -6 12 12"><rect class="set" x="-4.5" y="-4.5" width="9" height="9" rx="1.5" style="stroke-width:0"/></svg>',
+  bid: '<svg width="14" height="14" viewBox="-7 -7 14 14"><rect class="bid" x="-4.5" y="-4.5" width="9" height="9" rx="1.5" transform="rotate(45)" style="stroke-width:0"/></svg>',
+  sched: '<svg width="22" height="12" viewBox="0 -6 22 12"><rect class="sched" x="0.5" y="-5" width="21" height="10" rx="3"/></svg>',
+  crew: '<svg width="22" height="12" viewBox="0 -6 22 12"><rect class="crew" x="0" y="-4" width="22" height="8" rx="4"/></svg>',
+  crewOpen: '<svg width="22" height="12" viewBox="0 -6 22 12"><rect class="crew hollow" x="1" y="-4" width="20" height="8" rx="4"/></svg>',
+  tick: '<svg width="8" height="12" viewBox="-4 -6 8 12"><line class="hist" y1="-5" y2="5"/></svg>',
+  letter: '<svg width="14" height="14" viewBox="-2 -8 14 14"><line class="letterpole" y1="-7" y2="5"/><path class="letter" d="M0 -7 l9 3.5 l-9 3.5 z" style="stroke-width:0"/></svg>',
+  today: '<svg width="8" height="12" viewBox="-4 -6 8 12"><line class="today" y1="-6" y2="6"/></svg>',
+}
+
+function legendHtml(schedule) {
+  const item = (g, t) => `<span>${GLYPH[g]}${t}</span>`
+  return `<p class="legend" aria-label="What the marks mean">${item('set', 'a set, on the date on its sheets')}${item('current', 'the set a part builds from')}${item('undated', 'no date on the sheets, placed on the day it came')}${item('ours', 'ours, an as-built')}${item('bid', 'a bid sent')}${schedule !== 'off' ? item('sched', "a bid's schedule, start to end") : ''}${item('crew', 'crews on site')}${item('crewOpen', 'first to last work day')}${item('tick', 'a History line')}${item('letter', 'a letter')}</p>`
+}
+
+function figuresHtml(model) {
+  return `<div class="figs">${model.figures.map((f) => `<div class="fig${f.opt ? ' opt' : ''}"><div class="k">${esc(f.k)}</div><div class="v">${esc(f.v)}</div><div class="s">${esc(f.s)}</div></div>`).join('')}</div>`
+}
+
+function listHtml(model) {
+  const rows = model.list.map((r) => `<div class="row${r.bid ? ' bidrow' : ''}${r.today ? ' todayrow' : ''}"><span class="day">${words(ymdOf(r.day))}</span><span class="lane">${GLYPH[r.glyph] || ''}${esc(r.lane)}</span><span class="words">${esc(r.text)}${r.soft ? ` <em>· ${esc(r.soft)}</em>` : ''}</span></div>`).join('')
+  return `<div class="listhead"><span><b>Every dated line on the chart</b> · ${model.list.length - 1} lines · oldest first</span><button class="alink" id="print-press" title="Opens the chart in a print window; the print window saves it as a PDF too">Print or save as PDF</button></div><div class="list">${rows}</div>`
+}
+
+function byPartHtml() {
+  const rows = DATA.parts.map((p) => {
+    const cur = DATA.sets.find((s) => s.id === p.current)
+    const n = DATA.sets.filter((s) => s.part === p.id).length
+    return `<tr><td>${esc(p.name)}</td><td>${cur ? `${esc(cur.name)} · ${esc(cur.source)}` : '<span style="color:var(--a-amber)">no set yet</span>'}</td><td>${cur ? `dated ${words(cur.dated)}` : ''}</td><td>${n > 1 ? `${n - 1} older` : ''}</td></tr>`
+  }).join('')
+  return `<div class="tscroll"><table class="ptable"><thead><tr><th>Part</th><th>Builds from</th><th>On the sheets</th><th>Older sets</th></tr></thead><tbody>${rows}</tbody></table></div><p class="note">The parts table as it is today. Nothing about it changes.</p>`
+}
+
+/* ── The page's state ────────────────────────────────────────────────────── */
+const state = { screen: 'desktop', theme: 'light', sched: 'off', view: 'date' }
+const app = document.getElementById('app')
+const tip = document.getElementById('tip')
+
+function render() {
+  const phone = state.screen === 'phone'
+  const schedule = state.sched
+  app.classList.toggle('phone', phone)
+  app.dataset.mt = state.theme
+  const model = buildModel(DATA, { schedule })
+  document.getElementById('plans-meta').textContent = state.view === 'date' ? 'every set of drawings on the site, by the date on its sheets' : 'what each part of the site builds from'
+  document.getElementById('view').innerHTML = state.view === 'part' ? byPartHtml() : figuresHtml(model) + legendHtml(schedule) + drawChart(model, phone) + `<p class="note">${phone ? 'Press a mark for its line. On a phone the chart names the set each part builds from, and the list has the rest.' : 'Rest the pointer on a mark for its line. A name that would not fit stays in the hover and in the list.'}${schedule !== 'off' ? ' The Schedule lane is the part that needs two new dates on the bid.' : ''}</p>` + listHtml(model)
+  for (const b of document.querySelectorAll('#views button')) b.setAttribute('aria-pressed', String(b.dataset.v === state.view))
+  const press = document.getElementById('print-press')
+  if (press) press.onclick = () => document.getElementById('sheet').scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // the paper: always light, always the desktop chart
+  const paper = buildModel(DATA, { schedule })
+  document.getElementById('sheet').innerHTML = `<div class="phead"><b>${esc(DATA.site)} · Plans by date</b><span>${esc(DATA.customer)}</span></div>${figuresHtml(paper)}${drawChart(paper, false, true)}<div class="plist">${paper.list.filter((r) => !r.today).map((r) => `<div><span>${words(ymdOf(r.day))}</span><span>${r.lane ? esc(r.lane) + ': ' : ''}${esc(r.text)}</span></div>`).join('')}</div><div class="pfoot"><span>Printed ${words(TODAY)} · 9:14 AM · ZZ Test Person</span><span>Page 1 of 1</span></div>`
+  document.getElementById('app2').dataset.mt = state.theme
+  tip.hidden = true
+}
+
+function bindSeg(id, key) {
+  const el = document.getElementById(id)
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('button')
+    if (!b) return
+    state[key] = b.dataset.v
+    for (const x of el.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b))
+    render()
+  })
+}
+bindSeg('c-screen', 'screen'); bindSeg('c-theme', 'theme'); bindSeg('c-sched', 'sched'); bindSeg('views', 'view')
+
+function showTip(g) {
+  const r = g.getBoundingClientRect(), a = app.getBoundingClientRect()
+  tip.textContent = g.dataset.tip
+  tip.hidden = false
+  const w = tip.offsetWidth
+  tip.style.left = `${Math.min(Math.max(4, r.left - a.left + r.width / 2 - w / 2), a.width - w - 16)}px`
+  tip.style.top = `${r.top - a.top - tip.offsetHeight - 8}px`
+}
+app.addEventListener('pointerover', (e) => { const g = e.target.closest('.mark'); if (g && app.contains(g)) showTip(g) })
+app.addEventListener('pointerout', (e) => { if (e.target.closest('.mark')) tip.hidden = true })
+app.addEventListener('focusin', (e) => { const g = e.target.closest('.mark'); if (g) showTip(g) })
+app.addEventListener('focusout', () => { tip.hidden = true })
+app.addEventListener('click', (e) => { const g = e.target.closest('.mark'); if (g) showTip(g); else tip.hidden = true })
+
+// Open in the viewer's own theme and at the viewer's own width.
+const dark = document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+if (dark) { state.theme = 'dark'; for (const x of document.querySelectorAll('#c-theme button')) x.setAttribute('aria-pressed', String(x.dataset.v === 'dark')) }
+if (window.innerWidth < 720) { state.screen = 'phone'; for (const x of document.querySelectorAll('#c-screen button')) x.setAttribute('aria-pressed', String(x.dataset.v === 'phone')) }
+render()
+</script>
+</body></html>
