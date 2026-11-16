@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { EmptyState } from '../EmptyState'
 import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardLeaderView, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
-import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
+import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 
 /**
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
@@ -224,6 +224,13 @@ function ChipCard({ card, place, chipKey }: { card: LienBoardChipCard; place: Li
         {card.detail ? <div data-lien-board-card-detail>{card.detail}</div> : null}
         {card.day ? <div data-lien-board-card-day style={{ fontWeight: 600, color: CARD_DAY_TONE[card.urgency] }}>{card.day}</div> : null}
         {card.risk ? <div data-lien-board-card-risk style={{ color: 'var(--text-red-700)' }}>{card.risk}</div> : null}
+        {card.left.length > 0 ? (
+          <ol data-lien-board-card-left style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 1, color: 'var(--text-strong)' }}>
+            {card.left.map((stage) => (
+              <li key={stage}>{stage}</li>
+            ))}
+          </ol>
+        ) : null}
         {card.owes ? <div data-lien-board-card-owes style={{ fontVariantNumeric: 'tabular-nums' }}>{card.owes}</div> : null}
         {card.other ? <div data-lien-board-card-other style={{ color: 'var(--text-muted)' }}>{card.other}</div> : null}
       </div>
@@ -301,7 +308,7 @@ export default function LienBoard({
       }
       const box = el.getBoundingClientRect()
       const origin = host.getBoundingClientRect()
-      const place = lienBoardCardPlace({ chip: { left: box.left - origin.left, top: box.top - origin.top, width: box.width, height: box.height }, hostWidth: origin.width, roomBelow: (typeof window === 'undefined' ? 0 : window.innerHeight) - box.bottom })
+      const place = lienBoardCardPlace({ chip: { left: box.left - origin.left, top: box.top - origin.top, width: box.width, height: box.height }, hostWidth: origin.width, roomBelow: (typeof window === 'undefined' ? 0 : window.innerHeight) - box.bottom, cardHeight: lienBoardCardHeight(card) })
       setCardShown({ key: `${chip.kind}:${chip.jobId}`, card, place })
     },
     [cardFor],
