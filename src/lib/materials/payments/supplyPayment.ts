@@ -1,0 +1,249 @@
+/**
+ * A payment to a supply house, as the screens read it (the owner's ask of 2026-11-16).
+ *
+ * A payment is one money movement: the day, what was sent, how it was sent and that method's number. Its lines say
+ * which bills it paid. A bill reads paid when the lines of its payments cover it (the database keeps `is_paid` true
+ * to that, migration 20261116230000). What a payment sent past its lines is on account with the house.
+ *
+ * This file is the read side: the methods and their words, what is open on a bill, what a payment still holds on
+ * account, and how a paid bill names its payment. `supplyPaymentWindow.ts` plans a new payment.
+ *
+ * Pure: no React, no Supabase.
+ */
+
+/** How a house was paid, in the order the chips draw (the owner's call 6). Stored on `supply_house_payments.method`. */
+export const SUPPLY_PAY_METHODS = ['card', 'ach', 'check', 'cash', 'other'] as const
+export type SupplyPayMethod = (typeof SUPPLY_PAY_METHODS)[number]
+
+export function isSupplyPayMethod(value: unknown): value is SupplyPayMethod {
+  return typeof value === 'string' && (SUPPLY_PAY_METHODS as readonly string[]).includes(value)
+}
+
+const METHOD_LABEL: Record<SupplyPayMethod, string> = { card: 'Card', ach: 'ACH', check: 'Check', cash: 'Cash', other: 'Other' }
+
+export function supplyPayMethodLabel(method: string | null | undefined): string {
+  return isSupplyPayMethod(method) ? METHOD_LABEL[method] : ''
+}
+
+/** The chip that records the payment now and leaves how it was sent for later. Never stored: it writes no method. */
+export const SUPPLY_PAY_LATER = 'later'
+export type SupplyPayChip = SupplyPayMethod | typeof SUPPLY_PAY_LATER
+
+export const SUPPLY_PAY_CHIPS: ReadonlyArray<{ key: SupplyPayChip; label: string }> = [...SUPPLY_PAY_METHODS.map((key) => ({ key, label: METHOD_LABEL[key] })), { key: SUPPLY_PAY_LATER, label: 'Say later' }]
+
+/** The box a method opens for its own number, or null when it has none a person can read off. */
+export function supplyPayMethodRefField(method: SupplyPayChip | null): { label: string; placeholder: string } | null {
+  if (method === 'card') return { label: 'Last four of the card, or the confirmation number (optional)', placeholder: '4410' }
+  if (method === 'ach') return { label: 'Confirmation number (optional)', placeholder: '' }
+  if (method === 'check') return { label: 'Check number (optional)', placeholder: '1187' }
+  if (method === 'other') return { label: 'A number or a note (optional)', placeholder: '' }
+  return null
+}
+
+/** What is stored for a pick: the method and its number, trimmed. Say later, or no pick, stores neither. */
+export function supplyPayMethodWrite(chip: SupplyPayChip | null, ref: string | null | undefined): { method: SupplyPayMethod | null; method_ref: string | null } {
+  if (!chip || chip === SUPPLY_PAY_LATER) return { method: null, method_ref: null }
+  const r = supplyPayMethodRefField(chip) ? (ref ?? '').trim() : ''
+  return { method: chip, method_ref: r || null }
+}
+
+/** `ACH 88213` · `Card` · '' — how a payment says its method on a row. */
+export function supplyPayMethodWords(p: { method?: string | null; method_ref?: string | null }): string {
+  const label = supplyPayMethodLabel(p.method)
+  if (!label) return ''
+  const ref = (p.method_ref ?? '').trim()
+  return ref ? `${label} ${ref}` : label
+}
+
+/** A payment row, as the screens need it. */
+export type SupplyPayment = {
+  id: string
+  supply_house_id: string
+  /** The day it was sent, `YYYY-MM-DD`. */
+  paid_on: string
+  amount: number
+  method: string | null
+  method_ref: string | null
+  receipt_link: string | null
+  memo?: string | null
+  /** `recorded` typed in the window · `mark_paid` made by Mark paid · `before` made for a bill already paid. */
+  source: string
+  removed_at: string | null
+  created_by_name?: string | null
+}
+
+export type SupplyPaymentLine = { id: string; payment_id: string; invoice_id: string; amount: number }
+
+/** Under this many dollars a bill is settled: a float's dust is not a balance. */
+export const SUPPLY_PAYMENT_TOLERANCE = 0.005
+
+export const toCents = (n: number): number => Math.round(n * 100)
+export const fromCents = (c: number): number => c / 100
+const cents = (n: number): number => Math.round(n * 100) / 100
+export const usd = (n: number): string => `${n < 0 ? '−' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+/** The payments that count: a removed one counts for nothing. */
+export function livePaymentIds(payments: ReadonlyArray<SupplyPayment>): Set<string> {
+  return new Set(payments.filter((p) => !p.removed_at).map((p) => p.id))
+}
+
+/** What the live payments have put on each bill, by bill id. A credit memo's is below zero. */
+export function paidByBill(payments: ReadonlyArray<SupplyPayment>, lines: ReadonlyArray<SupplyPaymentLine>): Map<string, number> {
+  const live = livePaymentIds(payments)
+  const out = new Map<string, number>()
+  for (const l of lines) {
+    if (!live.has(l.payment_id)) continue
+    out.set(l.invoice_id, cents((out.get(l.invoice_id) ?? 0) + Number(l.amount)))
+  }
+  return out
+}
+
+/**
+ * What a bill still has open: its amount less what its payments have put on it, never past zero. A credit memo is
+ * stored below zero and so is what is open on it. A bill the database reads paid has nothing open, whatever the
+ * lines say: a credit memo and a $0.00 bill can be marked by hand with no payment.
+ */
+export function supplyBillOpen(bill: { amount: number; is_paid: boolean }, paidOnIt: number): number {
+  if (bill.is_paid) return 0
+  const amount = Number(bill.amount) || 0
+  const open = cents(amount - paidOnIt)
+  if (amount > 0) return open > SUPPLY_PAYMENT_TOLERANCE ? open : 0
+  if (amount < 0) return open < -SUPPLY_PAYMENT_TOLERANCE ? open : 0
+  return 0
+}
+
+/** What a payment sent past its lines: on account with the house. A removed payment holds nothing. */
+export function paymentOnAccount(payment: SupplyPayment, lines: ReadonlyArray<SupplyPaymentLine>): number {
+  if (payment.removed_at) return 0
+  const placed = lines.reduce((s, l) => (l.payment_id === payment.id ? s + Number(l.amount) : s), 0)
+  const left = cents(Number(payment.amount) - placed)
+  return left > SUPPLY_PAYMENT_TOLERANCE ? left : 0
+}
+
+/** Every payment of a house that still holds money on account, oldest first, so the oldest money is used first. */
+export function houseOnAccount(payments: ReadonlyArray<SupplyPayment>, lines: ReadonlyArray<SupplyPaymentLine>): { payment: SupplyPayment; amount: number }[] {
+  return payments
+    .map((payment) => ({ payment, amount: paymentOnAccount(payment, lines) }))
+    .filter((x) => x.amount > 0)
+    .sort((a, b) => a.payment.paid_on.localeCompare(b.payment.paid_on) || a.payment.id.localeCompare(b.payment.id))
+}
+
+/** How the house was paid last: the method of its newest live payment that names one. */
+export function lastMethodUsed(payments: ReadonlyArray<SupplyPayment>): SupplyPayMethod | null {
+  let best: SupplyPayment | null = null
+  for (const p of payments) {
+    if (p.removed_at || !isSupplyPayMethod(p.method)) continue
+    if (!best || p.paid_on > best.paid_on) best = p
+  }
+  return best && isSupplyPayMethod(best.method) ? best.method : null
+}
+
+/** A payment waits on the finish-later list when nobody has said how it was sent. One from before never does, nor one that sent nothing. */
+export function needsHowPaid(p: SupplyPayment): boolean {
+  return !p.removed_at && !isSupplyPayMethod(p.method) && p.source !== 'before' && Number(p.amount) > SUPPLY_PAYMENT_TOLERANCE
+}
+
+/**
+ * How a paid bill names its payment, after the row's own "paid 11/12": `ACH 88213 · one of 4 bills on $5,000.00`.
+ * A payment from before says nothing more, as the row always read. A payment with no method yet says so when the
+ * caller has a press to finish it (`sayMissing`).
+ */
+export function paidByWords(payment: SupplyPayment, billsOnPayment: number, opts: { onThisBill?: number; sayMissing?: boolean } = {}): string {
+  if (payment.source === 'before' && !isSupplyPayMethod(payment.method)) return ''
+  const parts: string[] = []
+  const how = supplyPayMethodWords(payment)
+  if (how) parts.push(how)
+  else if (opts.sayMissing && needsHowPaid(payment)) parts.push('how it was paid is missing')
+  if (billsOnPayment > 1) parts.push(`one of ${billsOnPayment} bills on ${usd(Number(payment.amount))}`)
+  else if (opts.onThisBill != null && Math.abs(Number(payment.amount) - opts.onThisBill) > SUPPLY_PAYMENT_TOLERANCE) parts.push(`${usd(opts.onThisBill)} of ${usd(Number(payment.amount))}`)
+  return parts.join(' · ')
+}
+
+/** A by-hand Mark paid's payment that nobody has finished: it stands for "this bill is paid whole" and goes with a Mark unpaid. */
+export function isPressPayment(payment: SupplyPayment, lines: ReadonlyArray<SupplyPaymentLine>): boolean {
+  return (payment.source === 'mark_paid' || payment.source === 'before') && !isSupplyPayMethod(payment.method) && lines.filter((l) => l.payment_id === payment.id).length === 1
+}
+
+export type BillPaidBy = {
+  /** After the row's "paid 11/12": `ACH 88213 · one of 4 bills on $5,000.00`. Empty when there is nothing more to say. */
+  words: string
+  /** The newest receipt link among the bill's payments. */
+  receiptLink: string | null
+  /** The typed payments on this bill, newest first: what a Mark unpaid would take the bill off. */
+  typed: { payment: SupplyPayment; onThisBill: number; bills: number }[]
+}
+
+/** What paid a bill, from the house's payments and lines. A bill with no line read here says nothing. */
+export function billPaidBy(billId: string, payments: ReadonlyArray<SupplyPayment>, lines: ReadonlyArray<SupplyPaymentLine>, opts: { sayMissing?: boolean } = {}): BillPaidBy {
+  const byId = new Map(payments.filter((p) => !p.removed_at).map((p) => [p.id, p]))
+  const onBill = new Map<string, number>()
+  for (const l of lines) if (l.invoice_id === billId && byId.has(l.payment_id)) onBill.set(l.payment_id, cents((onBill.get(l.payment_id) ?? 0) + Number(l.amount)))
+  const entries = [...onBill.entries()]
+    .map(([id, onThisBill]) => {
+      const payment = byId.get(id) as SupplyPayment
+      return { payment, onThisBill, bills: new Set(lines.filter((l) => l.payment_id === id).map((l) => l.invoice_id)).size }
+    })
+    .sort((a, b) => b.payment.paid_on.localeCompare(a.payment.paid_on) || b.payment.id.localeCompare(a.payment.id))
+  const first = entries[0]
+  if (!first) return { words: '', receiptLink: null, typed: [] }
+  let words = paidByWords(first.payment, first.bills, { onThisBill: first.onThisBill, sayMissing: opts.sayMissing })
+  if (entries.length > 1) {
+    const how = supplyPayMethodWords(first.payment)
+    words = `${entries.length} payments${how ? ` · the last by ${how}` : ''}`
+  }
+  return {
+    words,
+    receiptLink: entries.find((e) => (e.payment.receipt_link ?? '').trim())?.payment.receipt_link?.trim() ?? null,
+    typed: entries.filter((e) => !isPressPayment(e.payment, lines)),
+  }
+}
+
+/** A bill, as a payment's window names it. */
+export type PaymentViewBill = { id: string; invoice_number: string; title: string; amount: number; is_paid: boolean }
+
+export type PaymentView = {
+  /** `$5,000.00 to Pecan Supply` */
+  title: string
+  /** `11/12 · ACH 88213 · recorded by Dana Whitfield` */
+  sub: string
+  rows: { billId: string; label: string; state: string; amount: number }[]
+  /** What it sent past its lines, still with the house. */
+  onAccount: number
+  /** `Every line adds up to $5,000.00.` */
+  foot: string
+  removeConfirm: { title: string; message: string; confirmLabel: string; danger: true }
+}
+
+/** One payment with every bill it touched, for the window a paid row opens. */
+export function paymentView(payment: SupplyPayment, lines: ReadonlyArray<SupplyPaymentLine>, bills: ReadonlyArray<PaymentViewBill>, opts: { house: string; dayWords: (ymd: string) => string; paidOnBill: (billId: string) => number }): PaymentView {
+  const own = lines.filter((l) => l.payment_id === payment.id)
+  const byBill = new Map<string, number>()
+  for (const l of own) byBill.set(l.invoice_id, cents((byBill.get(l.invoice_id) ?? 0) + Number(l.amount)))
+  const billById = new Map(bills.map((b) => [b.id, b]))
+  const rows = [...byBill.entries()].map(([billId, amount]) => {
+    const bill = billById.get(billId)
+    const left = bill ? supplyBillOpen(bill, opts.paidOnBill(billId)) : 0
+    const state = amount < 0 ? 'credit memo, used by this payment' : !bill ? '' : left > 0 ? `part payment · ${usd(left)} left on the bill` : 'paid in full'
+    return { billId, label: bill ? [bill.invoice_number, bill.title].filter(Boolean).join(' · ') : 'A bill that is no longer listed', state, amount }
+  })
+  rows.sort((a, b) => b.amount - a.amount)
+  const how = supplyPayMethodWords(payment)
+  const by = (payment.created_by_name ?? '').trim()
+  const sent = Number(payment.amount)
+  const onAccount = paymentOnAccount(payment, lines)
+  const billCount = rows.filter((r) => r.amount > 0).length
+  const name = `${usd(sent)} ${how ? `${how} ` : ''}payment of ${opts.dayWords(payment.paid_on)}`
+  return {
+    title: `${usd(sent)} to ${opts.house}`,
+    sub: [opts.dayWords(payment.paid_on), how || (payment.source === 'before' ? 'from before payments were recorded' : 'how it was sent is not said yet'), by ? `recorded by ${by}` : ''].filter(Boolean).join(' · '),
+    rows,
+    onAccount,
+    foot: onAccount > 0 ? `${usd(cents(sent - onAccount))} is on bills and ${usd(onAccount)} is on account.` : `Every line adds up to ${usd(sent)}.`,
+    removeConfirm: {
+      title: 'Remove this payment?',
+      message: `The ${name} comes off the books. ${billCount === 1 ? 'Its bill reads' : `Its ${billCount} bills read`} unpaid again${onAccount > 0 ? `, and the ${usd(onAccount)} on account goes with it` : ''}. Record it again if it was sent after all.`,
+      confirmLabel: 'Remove payment',
+      danger: true,
+    },
+  }
+}

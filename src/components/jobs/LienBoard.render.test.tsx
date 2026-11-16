@@ -9,6 +9,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import LienBoard, { lienBoardArrowPaths } from './LienBoard'
 import { buildLienBoard, lienBoardForLeader, lienBoardPick, type LienBoardInput } from '../../lib/jobs/lienBoard'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
+import { lienBoardAffidavitPrint, lienBoardNoticePrint } from '../../lib/jobs/lienBoardPrints'
 import type { LienDeskEntry, LienDeskPile } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry, LienAffidavitGate, LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
@@ -339,5 +340,61 @@ describe('LienBoard · public property (v2.7443)', () => {
     expect(over.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect((document.querySelector('[data-lien-board-column="affidavit"]') as HTMLElement).querySelector('[data-test-under]')).toBeTruthy()
     expect(document.querySelector('[data-lien-board-chip="2"]')!.getAttribute('data-public')).toBeNull()
+  })
+})
+
+describe('LienBoard · a print at the foot of each column (v2.7470, punch list #362)', () => {
+  const sides = () => ({ notice: lienBoardNoticePrint({ toPrint: 15, waits: 7, printed: 0, leaderName: 'Malachi' }), affidavit: lienBoardAffidavitPrint({ ready: 10, held: 2, earlierForm: 0, with: ['the help sheet'] }) })
+  const handlers = () => ({ onPress: vi.fn(), onLeft: vi.fn(), onNote: vi.fn() })
+
+  it('each column ends in its own print: the press with its count, what it leaves out with its door, and what the affidavits print with', () => {
+    const h = handlers()
+    render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ ...sides(), ...h }} />)
+    const left = document.querySelector('[data-lien-board-column="notice"] [data-lien-board-print="notice"]') as HTMLElement
+    const right = document.querySelector('[data-lien-board-column="affidavit"] [data-lien-board-print="affidavit"]') as HTMLElement
+    // Inside the flow, after its last bin.
+    expect((document.querySelector('[data-lien-board-flow="notice"]') as HTMLElement).lastElementChild).toBe(left)
+    expect(within(left).getByRole('button', { name: 'Print and mail 8 notices' })).toBeTruthy()
+    expect(left.querySelector('[data-lien-board-print-left]')!.textContent).toBe('7 wait on Malachi’s signature · See them ›')
+    expect(left.querySelector('[data-lien-board-print-note]')).toBeNull()
+    expect(right.querySelector('[data-lien-board-print-left]')!.textContent).toBe('2 held on a property fact · See them ›')
+    expect(right.querySelector('[data-lien-board-print-note]')!.textContent).toBe('Prints with the help sheet · Change ›')
+    fireEvent.click(within(left).getByRole('button', { name: 'Print and mail 8 notices' }))
+    expect(h.onPress.mock.calls[0]![0]).toMatchObject({ kind: 'notice', act: 'print_run' })
+    fireEvent.click(within(right).getByRole('button', { name: 'Print 10 for notarization' }))
+    expect(h.onPress.mock.calls[1]![0]).toMatchObject({ kind: 'affidavit', act: 'print_affidavits' })
+    fireEvent.click(within(left).getByRole('button', { name: 'See them ›' }))
+    expect(h.onLeft.mock.calls[0]![0].kind).toBe('notice')
+    fireEvent.click(within(right).getByRole('button', { name: 'Change ›' }))
+    expect(h.onNote).toHaveBeenCalledTimes(1)
+  })
+
+  it('a press with nothing ready is dead and still says why; a column with no approved paper ends with no press', () => {
+    const h = handlers()
+    render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ notice: lienBoardNoticePrint({ toPrint: 2, waits: 2, printed: 0 }), affidavit: null, ...h }} />)
+    const press = document.querySelector('[data-lien-board-print="notice"] [data-lien-board-print-press]') as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(document.querySelector('[data-lien-board-print="notice"] [data-lien-board-print-left]')!.textContent).toContain('2 wait on the leader’s signature')
+    fireEvent.click(press)
+    expect(h.onPress).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-lien-board-print="affidavit"]')).toBeNull()
+  })
+
+  it('on a phone the two stand stacked over the folded bins, the notices’ first', () => {
+    render(<LienBoard board={board()} isMobile prints={{ ...sides(), ...handlers() }} />)
+    const stack = document.querySelector('[data-lien-board-prints-phone]') as HTMLElement
+    expect(Array.from(stack.children).map((el) => el.getAttribute('data-lien-board-print'))).toEqual(['notice', 'affidavit'])
+    // Not drawn a second time inside the columns.
+    expect(document.querySelectorAll('[data-lien-board-print]')).toHaveLength(2)
+    expect((document.querySelector('[data-lien-board-grid]') as HTMLElement).style.display).toBe('none')
+  })
+
+  it('the leader’s own bins and a Board handed no prints end as before', () => {
+    const b = board()
+    const view = render(<LienBoard board={b} isMobile={false} columnsOnly leader={{ view: lienBoardForLeader(b), mine: true, onToggleMine: vi.fn(), onApprove: vi.fn() }} prints={{ ...sides(), ...handlers() }} />)
+    expect(document.querySelector('[data-lien-board-print]')).toBeNull()
+    view.unmount()
+    render(<LienBoard board={b} isMobile={false} columnsOnly />)
+    expect(document.querySelector('[data-lien-board-print]')).toBeNull()
   })
 })

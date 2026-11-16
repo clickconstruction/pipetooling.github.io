@@ -4,7 +4,6 @@ import {
   creditPairingLine,
   creditableInvoices,
   creditsInvoicePatch,
-  applyPaymentUpdate,
   allocationTotal,
   dueDateHint,
   invoiceSaveLabel,
@@ -380,19 +379,6 @@ describe('poLedgerEntryJobMismatch (v2.3724)', () => {
     expect(poLedgerEntryJobMismatch({ kind: 'on_ledger', code: 1 }, entries, ['job-804'])).toBeNull()
     expect(poLedgerEntryJobMismatch({ kind: 'not_on_ledger', code: 46632 }, entries, ['job-804'])).toBeNull()
     expect(poLedgerEntryJobMismatch(on, null, ['job-804'])).toBeNull()
-  })
-})
-
-describe('supplyHouseInvoiceForm · applyPaymentUpdate', () => {
-  it('a blank link marks the bills paid and touches no link at all', () => {
-    expect(applyPaymentUpdate('')).toEqual({ is_paid: true })
-    expect(applyPaymentUpdate('   ')).toEqual({ is_paid: true })
-  })
-
-  it('a typed link is the payment’s receipt link, trimmed — never the invoice scan (v2.3843)', () => {
-    const update = applyPaymentUpdate('  https://example.com/receipt.pdf ')
-    expect(update).toEqual({ is_paid: true, payment_link: 'https://example.com/receipt.pdf' })
-    expect('link' in update).toBe(false)
   })
 })
 

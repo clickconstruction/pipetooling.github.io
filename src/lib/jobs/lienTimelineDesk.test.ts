@@ -165,6 +165,17 @@ describe('the Lien window’s header names the desk’s step on an affidavit in 
     expect(affidavitStep(t).words).toBe(stepWords)
   })
 
+  it('an approved paper a gate moved to Held is handed over as held by that fact, not as the leader’s hold (punch list #335)', () => {
+    const e = { ...(entry('held', ['homestead_answer']) as object), item: { status: 'approved', hold_until: null } } as unknown as LienAffidavitEntry
+    expect(lienWindowDeskAffidavit(e)).toEqual({ state: 'needs_property', missing: ['homestead_answer'], holdUntil: null })
+    const t = buildLienTimelineFromWindow({ ...src, deskAffidavit: lienWindowDeskAffidavit(e) })
+    expect(t.next.words).toBe('Answer the homestead question, then file the affidavit — 54 days.')
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'a yes or a no on the homestead question' })
+    // The leader's own hold reads as before.
+    const led = { ...(entry('held', [], '2026-11-10') as object), item: { status: 'held', hold_until: '2026-11-10' } } as unknown as LienAffidavitEntry
+    expect(lienWindowDeskAffidavit(led)).toMatchObject({ state: 'held', missing: [] })
+  })
+
   it.each([
     [['homestead_answer'], 'Answer the homestead question, then file the affidavit — 54 days.', 'a yes or a no on the homestead question', '54 days · the homestead answer missing'],
     [['owner'], 'Find the owner, then file the affidavit — 54 days.', 'the owner of record and a mailing address', '54 days · owner of record missing'],
