@@ -19,6 +19,8 @@ export interface JobAccountsInvoiceInput {
   amount: number | null
   /** What its payments have put on it so far (v2.7450). An unpaid bill owes only the rest; absent reads as nothing paid. */
   amount_paid?: number | null
+  /** Interest or a late fee (v2.7467): it is on no job by rule, so it is never an "unallocated" gap. */
+  is_interest?: boolean | null
   is_paid: boolean
   due_date: string | null
   /** Invoice rides on the house's job account — unpaid balance is the property owner's exposure, not ours. */
@@ -318,6 +320,8 @@ export function buildJobAccountsView(
   for (const inv of invoices) {
     if (inv.is_paid) continue
     if (jobAllocatedInvoiceIds.has(inv.id) || bidAllocated.has(inv.id)) continue
+    // Interest is kept off every job's cost, so a bill of it with no job is not a gap to fill.
+    if (inv.is_interest) continue
     const amount = openAmount(inv)
     // v2.3500: an unallocated credit is just as much a gap as an unallocated invoice, but it must
     // not net against the alarm — a big enough credit would otherwise report the pile as smaller.
