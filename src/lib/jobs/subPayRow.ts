@@ -28,7 +28,7 @@ export type MySubSheets = {
   sheets: SubPortalSheet[]
   /** The day of their newest payment on these sheets, for a job that is paid in full. */
   lastPaymentYmd: string | null
-  /** Their own portal, when they have an address or a live link; null draws no door. */
+  /** Their own portal, when it is on (a live link): its short address when they have one, else the link; null draws no door. */
   portalUrl: string | null
 }
 
@@ -48,7 +48,9 @@ export function mySubSheetsFromRpc(raw: unknown, origin: string): MySubSheets | 
     .pop() ?? null
   const slug = typeof r.portal_slug === 'string' ? r.portal_slug.trim() : ''
   const token = typeof r.portal_token === 'string' ? r.portal_token.trim() : ''
-  const portalUrl = slug ? portalShortUrl(slug) : token ? `${origin}/sub?t=${encodeURIComponent(token)}` : null
+  // A live link is what makes a portal on (`my_sub_portal_address`, v2.3067): with none, a short address alone leads
+  // to a portal that is off, so the row offers no door.
+  const portalUrl = !token ? null : slug ? portalShortUrl(slug) : `${origin}/sub?t=${encodeURIComponent(token)}`
   return { onRoster: r.on_roster, sheets, lastPaymentYmd, portalUrl }
 }
 
