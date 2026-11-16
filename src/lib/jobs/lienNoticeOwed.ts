@@ -33,8 +33,12 @@ export function lienNoticeNamedMonths(filings: ReadonlyArray<LienAffidavitNotice
 export const LIEN_NOTICE_OWED_DOORS = {
   /** The paper as mailed named the owed month too: the record is corrected, and the row clears. */
   named: (months: ReadonlyArray<string>) => `The paper named ${describeNoticeMonths(months)} too`,
-  /** The last day of work is wrong: the Lien window opens with the day ready to change. */
-  lastDay: 'The last day of work is wrong',
+  /**
+   * The Lien window opens with the last day ready to change. The press names its act and ends in
+   * an ellipsis, as a press that opens a window does (v2.7433): it read *The last day of work is
+   * wrong*, which Taunya took for the app's finding on the row and not for a door.
+   */
+  lastDay: 'Change the last day of work…',
 } as const
 
 /** The owed months a row's door would add to the recorded notice: the ones due now, as the row named them. */
