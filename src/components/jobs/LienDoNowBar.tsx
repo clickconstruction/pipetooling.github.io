@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { lienDoNowBarStuck } from '../../lib/jobs/lienDoNowFrame'
 import { LIEN_DO_NOW_UP_WORDS, type LienDoNowBarPart } from '../../lib/jobs/lienDoNowBar'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { LienBoardTile, LienBoardTileDestination } from '../../lib/jobs/lienBoard'
 
 /**
@@ -31,6 +32,7 @@ export default function LienDoNowBar({
   onPart,
   pick,
   onClearPick,
+  prints,
   children,
 }: {
   /** To do is one page on a computer, so the bar pins; off, it is the find box alone. */
@@ -44,6 +46,8 @@ export default function LienDoNowBar({
   /** What the list is narrowed to, and the words that put it back; null while every row shows. */
   pick: { head: string; clear: string } | null
   onClearPick: () => void
+  /** The Board's two prints in short form (v2.7470, `lienBoardPrints.ts`), the notices' first as its column is on the left. Shown while the bar is pinned, since the Board's own are out of view then. */
+  prints?: ReadonlyArray<{ key: string; label: string; left: string | null; dead: boolean; onPress: () => void }>
   /** The find box. */
   children: ReactNode
 }) {
@@ -113,6 +117,12 @@ export default function LienDoNowBar({
               })}
             </span>
           )}
+          {(prints ?? []).map((p) => (
+            <button key={p.key} type="button" data-lien-do-now-bar-print={p.key} disabled={p.dead} onClick={p.onPress} style={{ ...quiet, flex: 'none', ...(p.dead ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'transparent', cursor: 'default' } : { borderColor: '#2563eb', color: 'var(--text-link)' }) }}>
+              {p.label}
+              {p.left ? <span style={{ fontWeight: 500, color: p.dead ? undefined : 'var(--text-amber-800)' }}> · {p.left}</span> : null}
+            </button>
+          ))}
           <button type="button" data-lien-do-now-bar-up onClick={up} style={quiet}>
             {LIEN_DO_NOW_UP_WORDS}
           </button>

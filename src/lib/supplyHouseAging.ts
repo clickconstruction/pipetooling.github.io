@@ -319,7 +319,7 @@ export function agingCellRowDoors(inv: { amount: number | null; due_date: string
 
 /**
  * The modal's own footer doors. A house-scoped modal opens the house and makes a payment
- * through the house's existing Apply Payment door; the footer row's modal and the worked
+ * through the house's Record a payment window; the footer row's modal and the worked
  * list span every house, so there is no one house to open or pay. The credits cell holds
  * credit memos, which are applied against invoices, not paid, so it offers no payment.
  */
