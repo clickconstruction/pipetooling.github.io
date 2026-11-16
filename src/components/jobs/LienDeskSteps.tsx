@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { LIEN_STEP_CARD_GAP_PX, lienStepCardOver } from '../../lib/jobs/lienStepCardPlace'
 import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepName, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
 import { lienReminderRungWords, type LienReminderBrief } from '../../lib/jobs/lienReminders'
 import { LIEN_REMINDER_SCHEDULE, LIEN_SCHEDULE_AXIS_DAYS, LIEN_SCHEDULE_TAIL, lienScheduleMarks, lienSchedulePct, lienScheduleWords } from '../../lib/jobs/lienReminderSchedule'
@@ -339,8 +340,12 @@ export function LienStepCardItems({ card, roomy = false }: { card: LienStepCard;
   )
 }
 
-/** Where the card sits: beside the dots on a computer, a sheet from the bottom on a phone. */
-export type LienStepCardPlace = { top: number; left: number } | 'sheet'
+/**
+ * Where the card sits: beside the dots on a computer, a sheet from the bottom on a phone. `top` is the card's top
+ * when it stands under its mark. `mark` is what lets it stand over the mark instead (v2.7425): the mark's own top in
+ * the list's box, and the room the screen leaves under and over it.
+ */
+export type LienStepCardPlace = { top: number; left: number; mark?: { top: number; under: number; over: number } } | 'sheet'
 
 export function LienStepCardView({ card, place, onClose, onMouseEnter, onMouseLeave, children }: { card: LienStepCard; place: LienStepCardPlace; onClose: () => void; onMouseEnter?: () => void; onMouseLeave?: () => void; children?: ReactNode }) {
   const tone = LADDER_TONE[card.ladder]
@@ -348,6 +353,13 @@ export function LienStepCardView({ card, place, onClose, onMouseEnter, onMouseLe
   useEffect(() => {
     if (place === 'sheet') closeRef.current?.focus()
   }, [place])
+  // Beside a row low on the screen the card stands over the row (v2.7425): it always opened under, so there it
+  // opened below the fold. Drawn hidden where it was, measured before the paint, then shown on the side that holds it.
+  const besideRef = useRef<HTMLDivElement | null>(null)
+  const [height, setHeight] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    if (place !== 'sheet') setHeight(besideRef.current?.offsetHeight ?? 0)
+  }, [card, place])
   const body = (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -381,11 +393,25 @@ export function LienStepCardView({ card, place, onClose, onMouseEnter, onMouseLe
       </div>
     )
   }
+  const over = Boolean(place.mark) && lienStepCardOver({ height: height ?? 0, under: place.mark!.under, over: place.mark!.over })
+  const top = over ? place.mark!.top - LIEN_STEP_CARD_GAP_PX - (height ?? 0) : place.top
   return (
-    <div role="tooltip" data-testid="lien-step-card" data-place="beside" onClick={(e) => e.stopPropagation()} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} style={{ position: 'absolute', top: place.top, left: place.left, zIndex: 5, width: 'min(340px, calc(100vw - 32px))', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 14px 40px rgba(0,0,0,0.35)', padding: '12px 14px' }}>
+    <div ref={besideRef} role="tooltip" data-testid="lien-step-card" data-place="beside" data-side={over ? 'over' : 'under'} onClick={(e) => e.stopPropagation()} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} style={{ position: 'absolute', top, left: place.left, visibility: height == null ? 'hidden' : 'visible', zIndex: 5, width: 'min(340px, calc(100vw - 32px))', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 14px 40px rgba(0,0,0,0.35)', padding: '12px 14px' }}>
       {body}
     </div>
   )
+}
+
+/** What shows `el`: the screen, cut to the nearest box around it that scrolls up and down. */
+function scrollerBox(el: HTMLElement): { top: number; bottom: number } {
+  const screen = { top: 0, bottom: typeof window === 'undefined' ? 0 : window.innerHeight }
+  for (let up = el.parentElement; up && up !== document.body && up !== document.documentElement; up = up.parentElement) {
+    const flow = getComputedStyle(up).overflowY
+    if (flow !== 'auto' && flow !== 'scroll') continue
+    const box = up.getBoundingClientRect()
+    return { top: Math.max(screen.top, box.top), bottom: Math.min(screen.bottom, box.bottom) }
+  }
+  return screen
 }
 
 /** The card's state for a list: which card is open and where, with the hover's grace so the pointer can cross onto it. */
@@ -406,9 +432,12 @@ export function useLienStepCard(isMobile: boolean) {
     const host = hostRef.current?.getBoundingClientRect()
     const r = el.getBoundingClientRect()
     const scrollTop = hostRef.current?.scrollTop ?? 0
-    const top = host ? r.bottom - host.top + scrollTop + 6 : r.bottom + 6
+    const top = host ? r.bottom - host.top + scrollTop + LIEN_STEP_CARD_GAP_PX : r.bottom + LIEN_STEP_CARD_GAP_PX
     const left = host ? Math.max(8, Math.min(r.left - host.left - 20, host.width - 356)) : r.left
-    setOpen({ card, place: { top, left } })
+    // The room the screen leaves on each side of the mark, inside the box that scrolls the list.
+    const view = scrollerBox(el)
+    const mark = { top: host ? r.top - host.top + scrollTop : r.top, under: view.bottom - r.bottom, over: r.top - view.top }
+    setOpen({ card, place: { top, left, mark } })
   }
   const hide = () => {
     cancelHide()
