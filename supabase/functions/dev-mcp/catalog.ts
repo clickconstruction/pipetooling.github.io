@@ -894,6 +894,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "contract_paper_clauses": [{"args":{"p_lang?":"string","p_paper_id":"string","p_trades":"string[]"},"returns":"Json"}],
   "contract_text_setting_keys": [{"args":{},"returns":"string[]"}],
   "contract_trade_key": [{"args":{"p_trade":"string"},"returns":"string"}],
+  "convert_sub_overpayment_to_credit": [{"args":{"p_amount":"number","p_payment_id":"string","p_person_id":"string"},"returns":"Json"}],
   "copy_workflow_step": [{"args":{"p_insert_after_sequence":"number","p_step_id":"string"},"returns":"Json"}],
   "cost_batch_apply": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "cost_batch_revert": [{"args":{"p_batch_id":"string","p_reason?":"string"},"returns":"Json"}],
