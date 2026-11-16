@@ -184,3 +184,115 @@ describe('useLienDeskData · ZZ test jobs', () => {
     }
   })
 })
+
+describe('useLienDeskData · a public property’s jobs leave the lien path at the source (v2.7439)', () => {
+  /** Job A and job Y on one property, with whatever the property record says; the ZZ job Z stays as it was. */
+  const withProperty = async (record: Record<string, unknown>, light = true) => {
+    const jobsLedger = TABLES.jobs_ledger!
+    TABLES.jobs_ledger = jobsLedger.map((j) => (['A', 'Y'].includes((j as { id: string }).id) ? { ...(j as object), customer_address_id: 'addr-1', lien_payment_bond: 'unknown', collections_at: (j as { id: string }).id === 'A' ? '2026-10-08T15:00:00Z' : null } : j))
+    TABLES.customer_addresses = [{ id: 'addr-1', owner_name: 'ZZ TEST CITY OF', owner_company: 'ATTN REAL ESTATE MANAGER', ...record }]
+    try {
+      const { result } = renderHook(() => useLienDeskData(true, '2026-10-09', { light, hideZzTestJobs: false }))
+      await waitFor(() => expect(result.current.data).not.toBeNull())
+      return result.current.data!
+    } finally {
+      TABLES.jobs_ledger = jobsLedger
+      delete TABLES.customer_addresses
+    }
+  }
+
+  it('answered public: both jobs leave every list the desk builds and land in the bin’s list, by the property and no flag of their own', async () => {
+    const data = await withProperty({ lien_public_answer: 'public', lien_public_answered_at: '2026-10-08T15:00:00Z', lien_public_reason: 'Public property.' })
+    // Every list a reader draws from: the due months, the items, the affidavit and retainage windows, the jobs, and the queues over them.
+    expect(data.rows.map((r) => r.job_id)).toEqual(['Z'])
+    expect(data.items.map((i) => i.job_id)).toEqual(['Z'])
+    expect(data.affidavitRows).toEqual([])
+    expect(data.affidavits.entries).toEqual([])
+    expect(data.retainageRows.map((r) => r.job_id)).toEqual(['Z'])
+    expect(Object.keys(data.jobsById).sort()).toEqual(['Z'])
+    expect(data.queue.entries.map((e) => e.jobId)).toEqual(['Z'])
+    expect(data.queue.counts.held).toBe(1)
+    // The Dashboard's counts read the same queue, so they drop the jobs too.
+    expect(data.summary.held).toBe(1)
+    // Handed on, with the money, the bond, the day it went to the attorney and the papers on it.
+    expect(data.publicJobs!.map((j) => j.jobId).sort()).toEqual(['A', 'Y'])
+    const a = data.publicJobs!.find((j) => j.jobId === 'A')!
+    expect(a).toMatchObject({ addressId: 'addr-1', number: 'A', name: '101 Hill Street', gcName: 'Kestrin Builders', unpaid: 500, bond: 'unknown', attorneySince: '2026-10-08T15:00:00Z' })
+    expect(a.papers).toEqual([{ kind: 'notice_53_056', status: 'held', months: ['2026-08'], sent_at: undefined, approved_at: undefined, voided_at: null }])
+    expect(data.publicJobs!.find((j) => j.jobId === 'Y')).toMatchObject({ unpaid: 300, attorneySince: null, papers: [] })
+    expect([...data.publicAskJobIds!]).toEqual([])
+    expect(data.propertiesById!['addr-1']).toMatchObject({ lien_public_answer: 'public' })
+  })
+
+  it('unanswered: the jobs stay on the lien path, the affidavit holds on the name as before, and the property asks', async () => {
+    const data = await withProperty({})
+    expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
+    expect(data.publicJobs).toEqual([])
+    expect([...data.publicAskJobIds!].sort()).toEqual(['A', 'Y'])
+    expect(data.affidavitRows.find((r) => r.job_id === 'Y')).toMatchObject({ owner_public: true })
+  })
+
+  it('answered private: the name guess is overruled, so the affidavit’s public-owner hold opens and nothing asks', async () => {
+    const data = await withProperty({ lien_public_answer: 'private' })
+    expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
+    expect(data.publicJobs).toEqual([])
+    expect([...data.publicAskJobIds!]).toEqual([])
+    expect(data.affidavitRows.find((r) => r.job_id === 'Y')).toMatchObject({ owner_public: false })
+  })
+
+  it('every reader drops them with no rule of its own: the Board, the lists, the run, the notary print and the Dashboard’s counts', async () => {
+    const { buildLienBoard } = await import('../lib/jobs/lienBoard')
+    const { buildLienDeskRun } = await import('../lib/jobs/lienDeskRun')
+    const { lienAffidavitPrintPlan } = await import('../lib/jobs/lienAffidavitBatch')
+    const items = TABLES.job_lien_desk_items!
+    // Job A has a notice approved and waiting for the run; job Y has an affidavit approved and ready to file.
+    TABLES.job_lien_desk_items = [
+      { id: 'iA', job_id: 'A', kind: 'notice_53_056', status: 'approved', approved_at: '2026-10-08T15:00:00Z', months: ['2026-08'], created_at: '2026-10-01', voided_at: null, fields: { notice: { claimAmount: '500.00' } } },
+      { id: 'iY', job_id: 'Y', kind: 'affidavit', status: 'approved', approved_at: '2026-10-08T15:00:00Z', months: ['2026-07'], created_at: '2026-10-01', voided_at: null, fields: {} },
+      items[1]!,
+    ]
+    /** What each reader draws from one read of the desk. */
+    const readers = (data: Awaited<ReturnType<typeof withProperty>>) => {
+      const board = buildLienBoard({ todayYmd: '2026-10-09', notices: data.queue.entries, affidavits: data.affidavits.entries, retainage: data.retainage.entries, jobNumber: (id) => id, jobName: () => '', gcName: () => '' })
+      return {
+        board: [...board.notices, ...board.affidavits].flatMap((b) => b.chips.map((c) => c.jobId)).sort(),
+        noticeList: data.queue.entries.map((e) => e.jobId).sort(),
+        affidavitList: data.affidavits.entries.map((e) => e.jobId).sort(),
+        run: buildLienDeskRun(data.queue.piles.ready, data, null, () => 'ZZ Test Signer', '2026-10-09').map((n) => n.jobId),
+        notaryPrint: lienAffidavitPrintPlan(data.affidavits.piles.ready).ready.map((e) => e.jobId),
+        dashboardReady: data.summary.office.ready,
+      }
+    }
+    try {
+      // While nobody has answered, both jobs are in every reader (the affidavit held on the name, so it is not in the print).
+      const before = readers(await withProperty({}))
+      expect(before.board).toEqual(['A', 'Y', 'Z'])
+      expect(before.noticeList).toEqual(['A', 'Z'])
+      expect(before.affidavitList).toEqual(['Y'])
+      expect(before.run).toEqual(['A'])
+      expect(before.dashboardReady).toBe(1)
+      // Answered public: neither job is in any of them.
+      const after = readers(await withProperty({ lien_public_answer: 'public' }))
+      expect(after).toEqual({ board: ['Z'], noticeList: ['Z'], affidavitList: [], run: [], notaryPrint: [], dashboardReady: 0 })
+      // Answered private: both jobs stay in every reader, as while unanswered.
+      const priv = readers(await withProperty({ lien_public_answer: 'private' }))
+      expect({ ...priv, notaryPrint: [] }).toEqual({ ...before, notaryPrint: [] })
+    } finally {
+      TABLES.job_lien_desk_items = items
+    }
+  })
+
+  it('a ZZ job hidden from the desk is not listed in the bin either', async () => {
+    const jobsLedger = TABLES.jobs_ledger!
+    TABLES.jobs_ledger = jobsLedger.map((j) => ({ ...(j as object), customer_address_id: 'addr-1' }))
+    TABLES.customer_addresses = [{ id: 'addr-1', owner_name: 'ZZ TEST CITY OF', owner_company: '', lien_public_answer: 'public' }]
+    try {
+      const data = await read(true)
+      expect(data.publicJobs!.map((j) => j.jobId)).toEqual(['A'])
+      expect(data.queue.entries).toEqual([])
+    } finally {
+      TABLES.jobs_ledger = jobsLedger
+      delete TABLES.customer_addresses
+    }
+  })
+})
