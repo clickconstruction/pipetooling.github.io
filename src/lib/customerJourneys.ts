@@ -878,6 +878,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: SUB_PORTAL_SAMPLE_PATH },
         },
         {
+          id: 'sub-papers-email',
+          label: 'Sub papers, emailed',
+          sublabel: 'Jobs → Subs → Pay or People → Subs → the papers window → Send',
+          when: 'When the office sends a statement of account, a work statement or a payment record',
+          customerCan: 'Read what was agreed, what was paid and what is still open, and keep the PDFs.',
+          guide: 'make-a-statement-of-account-for-a-sub',
+          reflects: ['Company name and address on the letterhead (the bill’s issuer block in Settings)', 'The six sentences that wait on counsel'],
+          render: { kind: 'soon', note: 'The papers print and download today. The Send press arrives with the next step of the sub papers train, and the function is deployed only on the office’s go.' },
+        },
+        {
           id: 'gc-trade-portal',
           label: 'GC mode: a trade partner\'s portal',
           sublabel: 'GC projects → a company’s name → Their portal → Copy link (devs only for now)',
