@@ -62,7 +62,6 @@ import { subLaborPayRunEmptyWords } from '../../lib/subWorkOrders/subLaborPayRun
 import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
 import { subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
-import { SUB_PAY_FROM_CREDIT } from '../../lib/subWorkOrders/subPaymentWindow'
 
 export type JobsSubLaborTabProps = {
   error: string | null
