@@ -164,6 +164,14 @@ Is the press grey? A line under it says what is missing. A filing with no record
 
 The print is kept on the job. Find it on the job's Documents tab under *Sent from this job*. Mail each envelope by certified mail. Then press {{button:red|Record service…}} and type each number.
 
+### Several liens filed together
+
+Open the Lien desk's To do. Find a row that reads *Lien filed · not yet served*. Press {{button:outline|Record service}} on it. With two or more filed liens, one window opens for all of them. It is named **Filed liens: copies to mail**. One filed lien alone opens its own Lien window.
+
+The top half prints. Its press counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with a blank for its certified mail number. Keep the mail sheet in the office. A lien that cannot print is listed under the press with its reason. Press **Open the Lien window** beside it to fix it.
+
+The bottom half records. Set **Mailed on** to the day the copies went out. Type or scan each certified mail number. Enter moves to the next envelope. Typing a number ticks **Mailed** on its lien. Did a lien go out with no number yet? Tick **Mailed** yourself. Then press the record press, like **Record 11 liens served**. Only ticked liens are recorded. A lien that did not record stays in the list with its reason.
+
 ## The year after filing
 
 A recorded lien is good for one year from the last day the affidavit could have been filed. That is § 53.158. Ninety days before that day a Needs You card appears. It reads *A filed lien's year to sue ends <date>*, with the dollars still open behind it. It turns red inside 30 days. Once the day has passed, it reads *has run out*. Paid? File the release of record and the card goes. Unpaid? Get counsel on the suit. The card names the day to have counsel by. {{button:outline|Open By job}} lands on the Lien desk's By job tab, where each job shows its date.
