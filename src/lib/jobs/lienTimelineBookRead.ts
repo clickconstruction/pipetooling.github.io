@@ -49,8 +49,8 @@ export type LienBookReads = {
   addresses: (addressIds: string[]) => Promise<CustomerAddressRow[]>
 }
 
-/** Everything the book is folded from but the desk's items, which the desk hands the hook. */
-export type LienBookRows = Omit<LienBookRaw, 'items'>
+/** Everything the book is folded from but the desk's items, which the desk hands the hook. The demand letters are always read here, so they are never absent as they may be from the portal's payload. */
+export type LienBookRows = Omit<LienBookRaw, 'items' | 'demandLetters'> & { demandLetters: JobDemandLetterRow[] }
 
 async function readChunks<T>(ids: string[], read: (chunk: string[]) => Promise<T[]>): Promise<T[]> {
   const parts = await Promise.all(chunkIds(ids).filter((c) => c.length > 0).map((c) => read(c)))
