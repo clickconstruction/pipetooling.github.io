@@ -48,7 +48,7 @@ describe('materialsGroupsFor', () => {
 })
 
 describe('materialsPressesFor', () => {
-  it('offers Scan a label and Print labels to every role that opens On site, and Print blank stickers to the roles that may mint a run', () => {
+  it('offers Scan a label and Print labels to every role that opens On site, and Reserve stickers to the roles that may mint a run', () => {
     for (const role of ['dev', 'controller', 'primary', 'superintendent']) {
       expect(materialsPressesFor(role)).toEqual(['scan-label', 'print-labels', 'print-stickers'])
     }

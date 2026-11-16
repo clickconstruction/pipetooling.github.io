@@ -259,7 +259,7 @@ export function notYetOnBoxWords(n: number): string {
   return n === 1 ? '1 sticker not yet on a box' : `${n} stickers not yet on a box`
 }
 
-/** The Print blank stickers window's line, before a new run: *This job has 12 stickers not yet on a box.* Empty at none. */
+/** The Reserve stickers window's line, before a new run: *This job has 12 stickers not yet on a box.* Empty at none. */
 export function jobBlankWords(n: number): string {
   const head = notYetOnBoxWords(n)
   return head ? `This job has ${head}.` : ''

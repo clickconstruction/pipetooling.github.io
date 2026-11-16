@@ -1,7 +1,9 @@
 /**
- * Print blank stickers (punch list #329, PR 2, v2.7272): the window's words, the run request's checks and what one
- * sticker prints, for a run of stickers minted before their boxes. A sticker is a code to scan and, when its run
- * names its boxes, a name to read (`stickers.ts`); `mint_sticker_run` inserts the run as the caller and its triggers
+ * Reserve stickers (punch list #329, PR 2, v2.7272; the press read *Print blank stickers* until v2.7484, when the
+ * owner said a sticker is never blank: printing one reserves a name and a link for a box filled in later): the
+ * window's words, the run request's checks and what one sticker prints, for a run of stickers minted before their
+ * boxes. In the code and the database a reserved sticker's state is still `blank`. A sticker is a code to scan and,
+ * when its run names its boxes, a name to read (`stickers.ts`); `mint_sticker_run` inserts the run as the caller and its triggers
  * number the block and make the stickers (`20261113020000_box_stickers.sql`). The strip is the tape label's own: the
  * QR of `HTTPS://PRTS.CO/B/<CODE>`, the name where a box's stencil goes and the dashed address on two lines. Pure:
  * the reads and the mint are `stickerRunsIo.ts`, the window `PrintStickersModal.tsx`, the fold `StickerRunsFold.tsx`.
@@ -17,8 +19,24 @@ import { BOX_LINK_HOST, BOX_LINK_SCHEME, dashedCode } from './labels'
 import { stickerRunCounts, type StickerCountRow, type StickerRunCounts } from './stickers'
 import { clampTapeCopies, TAPE_COPIES_MAX, TAPE_NAME_FULL_CHARS, TAPE_NAME_SMALL_RATIO } from './tapeLabel'
 
-/** The press on the job's On site strip and the Materials strip, and the window's title. */
-export const PRINT_STICKERS_LABEL = 'Print blank stickers'
+/** The press on the job's On site strip and the Materials strip, and the window's title. One home: `materialsGroups.ts` reads it. */
+export const PRINT_STICKERS_LABEL = 'Reserve stickers'
+
+/** The verb of the press that makes a new run: the database reserves the stickers and the strips print, in one press. A run already made prints with *Print*. */
+export const STICKER_RESERVE_VERB = 'Reserve and print'
+
+/**
+ * Said in the ask, under the names, so nobody reads the window as printing a sticker with no link (the owner,
+ * 2026-11-16): what the press holds, and that the box is said later. A run with no names holds a link alone.
+ */
+export function stickerReserveWords(named: boolean): string {
+  return named
+    ? 'Printing reserves each name and gives each sticker its own link. You say which box it is on later.'
+    : 'Printing gives each sticker its own link and holds it for a box. You say which box it is on later.'
+}
+
+/** Said over a run that is made, new or opened again from the Runs fold. */
+export const STICKERS_RESERVED_WORDS = 'These stickers are reserved. Each one holds its own link until you say which box it is on.'
 
 /** The quick presses for how many, as the card draws them; a typed number takes any count in range. */
 export const STICKER_COUNT_PRESETS = [30, 60, 100, 200] as const
@@ -88,11 +106,17 @@ export function mintStickerRunArgs(request: StickerRunRequest): Record<string, u
 /**
  * The press: *Print 200 stickers*, or *Print 200 sets* when each prints more than once. Dead at zero (*Print
  * stickers*). A named run says its names, known before the mint as the numbers are not: *Print 223 stickers, G78 to G300*.
+ * `verb` is *Print* for a run already made; the ask's press, which makes the run, is `reserveRunPressLabel`.
  */
-export function stickerRunPressLabel(count: number, copies: number, names?: ReadonlyArray<string> | null): string {
+export function stickerRunPressLabel(count: number, copies: number, names?: ReadonlyArray<string> | null, verb = 'Print'): string {
   const n = Math.max(0, count)
-  const head = clampTapeCopies(copies) > 1 ? countedLabel('Print', n, ['set', 'sets']) : countedLabel('Print', n, ['sticker', 'stickers'])
+  const head = clampTapeCopies(copies) > 1 ? countedLabel(verb, n, ['set', 'sets']) : countedLabel(verb, n, ['sticker', 'stickers'])
   return n > 0 && names && names.length > 0 ? `${head}, ${nameSpanWords(names[0]!, names[names.length - 1]!)}` : head
+}
+
+/** The ask's press, which makes the run and prints it: *Reserve and print 109 stickers, G92 to G200*. Dead at zero, *Reserve and print stickers*. */
+export function reserveRunPressLabel(count: number, copies: number, names?: ReadonlyArray<string> | null): string {
+  return stickerRunPressLabel(count, copies, names, STICKER_RESERVE_VERB)
 }
 
 /** A run's names: `G78 to G300`. One sticker reads as its name alone. */
@@ -367,10 +391,10 @@ export function printRunLabel(stickers: ReadonlyArray<Pick<MintedSticker, 'numbe
 }
 
 /** The fallback when the database's refusal has no words of its own: nothing was minted and nothing printed. */
-export const STICKER_MINT_FAILED = 'The run was not made. No sticker was printed.'
+export const STICKER_MINT_FAILED = 'The run was not made. No sticker was reserved or printed.'
 
 /** Said while the window waits for the database to make the run. */
-export const STICKER_MINTING = 'Making the run…'
+export const STICKER_MINTING = 'Reserving the stickers…'
 
 // ---------------------------------------------------------------------------
 // The CSV
@@ -398,6 +422,7 @@ export function stickersCsvFileName(run: Pick<StickerRun, 'count' | 'names'>, ym
   return `stickers-${what}-${ymd}.csv`
 }
 
-/** The guide the window links to, and the heading. */
+/** The guide the window links to, its heading (the guide's own `##` line, so the door and the section cannot drift) and the link's words. */
 export const STICKERS_GUIDE = 'see-what-is-on-every-job-site-and-what-walked-away'
-export const STICKERS_GUIDE_HEADING = 'Print blank stickers'
+export const STICKERS_GUIDE_HEADING = 'Reserve stickers'
+export const STICKERS_GUIDE_QUESTION = 'How do I reserve stickers?'

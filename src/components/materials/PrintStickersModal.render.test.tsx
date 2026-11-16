@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Print blank stickers (punch list #329, PR 2, v2.7272) through the browser's print window, where the
+ * Render smoke for Reserve stickers (punch list #329, PR 2, v2.7272) through the browser's print window, where the
  * test's browser has no USB: the ask with its quick counts and Copies of each; a count out of range and a role that may
  * not mint each hold the press with the database's words; the press mints the run and the strips print once they are
  * on the page; a refusal is said and nothing prints; a run handed in prints and mints nothing. Since v2.7438
@@ -56,16 +56,20 @@ afterEach(() => {
 describe('PrintStickersModal · the ask', () => {
   it('opens on 200 with the quick counts, Copies of each, where new boxes go and the browser note, and no number', async () => {
     setup()
-    expect(screen.getByRole('dialog', { name: 'Print blank stickers' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Reserve stickers' })).toBeTruthy()
     expect(screen.getAllByTestId('stickers-count-preset').map((b) => b.textContent)).toEqual(['30', '60', '100', '200'])
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('200 stickers, one strip each.')
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 200 stickers')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 200 stickers')
     expect(screen.getByTestId('stickers-copies').textContent).toBe('1')
     await ready()
     expect(screen.getByTestId('stickers-goes-on').textContent).toBe('New boxes made from these stickers go on JP1204 · Juniper Ridge.')
+    // what the press holds is said before it (v2.7484): a link of its own for each sticker, and nowhere the word blank
+    expect(screen.getByTestId('stickers-reserve-words').textContent).toBe('Printing gives each sticker its own link and holds it for a box. You say which box it is on later.')
+    expect(screen.queryByTestId('stickers-reserved-words')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Reserve stickers' }).textContent).not.toMatch(/blank/i)
     // the window says no running number: not where the last run ended, not where this one starts
     expect(screen.queryByTestId('stickers-last-run')).toBeNull()
-    expect(screen.getByRole('dialog', { name: 'Print blank stickers' }).textContent).not.toMatch(/last run|numbers start|\b0\d{3}\b/)
+    expect(screen.getByRole('dialog', { name: 'Reserve stickers' }).textContent).not.toMatch(/last run|numbers start|\b0\d{3}\b/)
     expect(screen.queryByTestId('stickers-blank-count')).toBeNull()
     // no USB in this browser: the way out is said, and the test strip and the setup steps are still offered
     expect(screen.getByTestId('stickers-no-usb')).toBeTruthy()
@@ -83,7 +87,7 @@ describe('PrintStickersModal · the ask', () => {
     setup()
     fireEvent.click(screen.getByRole('button', { name: '60' }))
     fireEvent.click(screen.getByTestId('stickers-copies-more'))
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 60 sets')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 60 sets')
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('60 stickers, 2 strips each. 120 strips.')
     await ready()
     expect(localStorage.getItem('pt.labels.tapeCopies')).toBe('2')
@@ -93,13 +97,13 @@ describe('PrintStickersModal · the ask', () => {
     const { mint } = setup()
     fireEvent.change(screen.getByTestId('stickers-count-input'), { target: { value: '501' } })
     expect(screen.getByTestId('stickers-refusal').textContent).toBe('A run is 1 to 500 stickers.')
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print stickers')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print stickers')
     expect(screen.getByTestId('stickers-print').getAttribute('aria-disabled')).toBe('true')
     fireEvent.click(screen.getByTestId('stickers-print'))
     expect(mint).not.toHaveBeenCalled()
     fireEvent.change(screen.getByTestId('stickers-count-input'), { target: { value: '45' } })
     expect(screen.queryByTestId('stickers-refusal')).toBeNull()
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 45 stickers')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 45 stickers')
   })
 
   it('a role that may not mint reads why, and the press is dead', () => {
@@ -138,6 +142,8 @@ describe('PrintStickersModal · the run', () => {
     // a run with no names is said by its count (v2.7438: no running number anywhere)
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('60 stickers · JP1204 · Juniper Ridge')
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('60 stickers, 2 strips each. 120 strips.')
+    // a run that is made is reserved, and says so over its strips (v2.7484)
+    expect(screen.getByTestId('stickers-reserved-words').textContent).toBe('These stickers are reserved. Each one holds its own link until you say which box it is on.')
     // every sticker prints twice: its copy is on the page for the paper and hidden on the screen
     expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(60)
     const first = screen.getAllByTestId('stickers-tape')[0]!
@@ -165,7 +171,7 @@ describe('PrintStickersModal · the run', () => {
     const { print } = setup({ mint: async () => { throw { message: 'A run is 1 to 500 stickers.', code: 'P0001' } } })
     await ready()
     fireEvent.click(screen.getByTestId('stickers-print'))
-    await waitFor(() => expect(screen.getByTestId('stickers-slip').textContent).toBe('The run was not made. No sticker was printed: A run is 1 to 500 stickers.'))
+    await waitFor(() => expect(screen.getByTestId('stickers-slip').textContent).toBe('The run was not made. No sticker was reserved or printed: A run is 1 to 500 stickers.'))
     expect(screen.getByTestId('stickers-ask')).toBeTruthy()
     expect(print).not.toHaveBeenCalled()
     expect(screen.queryAllByTestId('stickers-tape')).toHaveLength(0)
@@ -175,7 +181,7 @@ describe('PrintStickersModal · the run', () => {
     const { print } = setup({ mint: async () => { throw { message: 'That job is not one you can reach.', code: '42501' } } })
     await ready()
     fireEvent.click(screen.getByTestId('stickers-print'))
-    await waitFor(() => expect(screen.getByTestId('stickers-slip').textContent).toContain('The run was not made. No sticker was printed.'))
+    await waitFor(() => expect(screen.getByTestId('stickers-slip').textContent).toContain('The run was not made. No sticker was reserved or printed.'))
     expect(screen.getByTestId('stickers-slip').textContent).toContain('access')
     expect(print).not.toHaveBeenCalled()
   })
@@ -210,12 +216,12 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     // one past the highest number any box carries, the retired G90 with them
     expect((screen.getByTestId('stickers-names-input') as HTMLInputElement).value).toBe('G91')
     expect(screen.getByTestId('stickers-names-read').textContent).toBe('G91 to G290 · 200 stickers. G91 is the site’s next free name. Type a range to set the end, like G91-190.')
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 200 stickers, G91 to G290')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 200 stickers, G91 to G290')
     expect(screen.getByTestId('stickers-print').getAttribute('aria-disabled')).toBe('false')
     expect(screen.queryByTestId('stickers-names-live')).toBeNull()
     // How many still says how far while one name is typed
     fireEvent.click(screen.getByRole('button', { name: '30' }))
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 30 stickers, G91 to G120')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 30 stickers, G91 to G120')
   })
 
   it('a typed range sets the count: How many shows it, its presses rest, and the press names the range', async () => {
@@ -228,7 +234,8 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     expect(count.readOnly).toBe(true)
     expect(screen.getAllByTestId('stickers-count-preset').every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true)
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('223 stickers, one strip each.')
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 223 stickers, G78 to G300')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 223 stickers, G78 to G300')
+    expect(screen.getByTestId('stickers-reserve-words').textContent).toBe('Printing reserves each name and gives each sticker its own link. You say which box it is on later.')
     // the range gone, How many is the typed 200 again
     type('G78')
     expect(count.value).toBe('200')
@@ -243,7 +250,7 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     const read = screen.getByTestId('stickers-names-read')
     expect(read.textContent).toBe('The range runs upward: G78 to G300.')
     expect(read.getAttribute('role')).toBe('note')
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print stickers')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print stickers')
     expect(screen.getByTestId('stickers-print').getAttribute('aria-disabled')).toBe('true')
     expect(screen.queryByTestId('stickers-refusal')).toBeNull()
     fireEvent.click(screen.getByTestId('stickers-print'))
@@ -269,9 +276,9 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     const { mint, print } = setup({ site: site(blank) })
     await ready()
     type('G150-200')
-    expect(screen.getByTestId('stickers-names-blank').textContent).toBe('23 of these were printed on an earlier run and are not on a box yet, G178 to G200. Printing them again makes two stickers for each name.')
+    expect(screen.getByTestId('stickers-names-blank').textContent).toBe('23 of these are reserved by an earlier run and are not on a box yet, G178 to G200. Printing them again makes two stickers for each name.')
     const press = screen.getByTestId('stickers-print')
-    expect(press.textContent).toBe('Print 51 stickers, G150 to G200')
+    expect(press.textContent).toBe('Reserve and print 51 stickers, G150 to G200')
     expect(press.getAttribute('aria-disabled')).toBe('true')
     fireEvent.click(press)
     expect(mint).not.toHaveBeenCalled()
@@ -336,7 +343,7 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     await ready()
     type('')
     expect(screen.getByTestId('stickers-names-read').textContent).toBe('Nothing typed: the stickers carry no name, only their code. A leftover works on any site.')
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 200 stickers')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 200 stickers')
     fireEvent.click(screen.getByRole('button', { name: '30' }))
     fireEvent.click(screen.getByTestId('stickers-print'))
     await waitFor(() => expect(screen.getAllByTestId('stickers-tape')).toHaveLength(30))
@@ -357,7 +364,7 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     setup({ site: async () => ({ boxes: [], blankNames: [] }) })
     await ready()
     expect((screen.getByTestId('stickers-names-input') as HTMLInputElement).value).toBe('')
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 200 stickers')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 200 stickers')
   })
 
   it('a site that did not load says so, offers no name, and the run can still be typed or numbered', async () => {

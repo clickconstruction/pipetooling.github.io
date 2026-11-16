@@ -105,7 +105,7 @@ export function writeStoppedRun(run: StoppedRun | null): void {
 
 const STICKER_PREVIEW_KEY = 'pt.stickers.previewOpen'
 
-/** Whether the Print blank stickers window's *What the stickers will look like* fold was left open on this device (v2.7304); closed until it is. */
+/** Whether the Reserve stickers window's *What the stickers will look like* fold was left open on this device (v2.7304); closed until it is. */
 export function readStickerPreviewOpen(): boolean {
   try {
     return window.localStorage.getItem(STICKER_PREVIEW_KEY) === '1'

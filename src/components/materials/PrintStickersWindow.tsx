@@ -1,5 +1,5 @@
 /**
- * Print blank stickers from the Materials strip (punch list #329, PR 2, v2.7272): a run belongs to the job its new
+ * Reserve stickers from the Materials strip (punch list #329, PR 2, v2.7272): a run belongs to the job its new
  * boxes go on, so the press asks *Which job?* as Print labels does, over the jobs the on-site desk holds, then opens
  * that job's stickers window (`PrintStickersModal`). One job skips the question. A job with no box yet is listed too:
  * stickers come before boxes, and the first run is often for a site the app has not seen.
@@ -50,7 +50,7 @@ export default function PrintStickersWindow({ jobs, role, loading, failure, onAd
         <OfflineRetryPanel failure={failure.error ? recoveryFailureFromError(failure.raw, 'The jobs did not load.') : null} onRetry={failure.retry} surface="materials-print-stickers" idempotent />
         {loading && sorted.length === 0 ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading the jobs…</p> : null}
         {!loading && !failure.error && sorted.length === 0 ? (
-          <EmptyState compact main="No job has anything on site yet." next={onAddFirst ? { label: 'On site', onPress: onAddFirst } : undefined} tail={onAddFirst ? 'opens a job’s page, where Print blank stickers prints its first run.' : 'A job’s own Materials page prints its first run.'} />
+          <EmptyState compact main="No job has anything on site yet." next={onAddFirst ? { label: 'On site', onPress: onAddFirst } : undefined} tail={onAddFirst ? `opens a job’s page, where ${PRINT_STICKERS_LABEL} prints its first run.` : 'A job’s own Materials page prints its first run.'} />
         ) : null}
         {sorted.length > 0 ? (
           <>

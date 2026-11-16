@@ -209,8 +209,8 @@ describe('one resolver: what a code names', () => {
 
 describe('the pages a scan opens', () => {
   it('a blank sticker says only that, signed out', () => {
-    expect(BLANK_STICKER_TITLE).toBe('This sticker is not on a box yet')
-    expect(BLANK_STICKER_PUBLIC_WORDS).toBe('This sticker is not on a box yet. Sign in to say what it is.')
+    expect(BLANK_STICKER_TITLE).toBe('This sticker is reserved for a box')
+    expect(BLANK_STICKER_PUBLIC_WORDS).toBe('This sticker is reserved for a box. It is not on a box yet. Sign in to say which box it is on.')
   })
 
   it('a lost one and one out of reach say so', () => {

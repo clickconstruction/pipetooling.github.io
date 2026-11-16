@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the Print blank stickers window's *What the stickers will look like* fold (punch list #329,
+ * Render smoke for the Reserve stickers window's *What the stickers will look like* fold (punch list #329,
  * v2.7304): closed until opened, and the device remembers; opened, a named run's first six strips by name with the
  * sample code, the copies together, *and N more* with Show all; a run past the cap says so; a run with no names draws
  * one sticker, since every other differs only by its code (v2.7438: no strip carries a running number); the test

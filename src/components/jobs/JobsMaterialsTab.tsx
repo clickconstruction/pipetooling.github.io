@@ -85,7 +85,7 @@ type Props = {
   driveBackfill?: boolean
   /** A row's doors on the desk (the Materials page's mount): Labels for the job's boxes, and the job on the phone screen. */
   rowDoors?: { onLabels: (jobId: string) => void }
-  /** The signed-in role (punch list #329, v2.7272): Print blank stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
+  /** The signed-in role (punch list #329, v2.7272): Reserve stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
   role?: string | null
 }
 
@@ -646,7 +646,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
   /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
   const [manifestOpen, setManifestOpen] = useState<{ only: string | null } | null>(null)
-  /** Print blank stickers (punch list #329, v2.7272): a new run, or a run the fold hands back to print again. */
+  /** Reserve stickers (punch list #329, v2.7272): a new run, or a run the fold hands back to print again. */
   const [stickersOpen, setStickersOpen] = useState<{ run: StickerRunToPrint | null } | null>(null)
   /** These are on boxes (section 10, PR 10): the form, opened from a named run's row on that run's blank names. */
   const [onBoxesOpen, setOnBoxesOpen] = useState<{ initial: string } | null>(null)
@@ -745,8 +745,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto' }} role="group" aria-label="This site's boxes">
               <button type="button" aria-expanded={adding} style={materialsPressStyle(32)} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container"><MaterialsPressGlyph kind="add" />Add a container</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })} data-testid="materials-print-labels"><MaterialsPressGlyph kind="print-labels" dead={boxCount === 0} />Print labels</button>
-              {/* Stickers before boxes (punch list #329, v2.7272): a run of blank stickers for this job, live for the roles the database lets mint and dead with the reason for the rest. */}
-              <button type="button" style={{ ...materialsPressStyle(32), ...(canMint ? {} : materialsPressDead) }} disabled={!canMint} aria-disabled={!canMint} title={canMint ? 'A run of stickers to stick on boxes before they are in the app: a code to scan and a number to read' : STICKER_MINT_WHO} aria-label={canMint ? undefined : `${PRINT_STICKERS_LABEL}. ${STICKER_MINT_WHO}`} onClick={() => setStickersOpen({ run: null })} data-testid="materials-print-stickers"><MaterialsPressGlyph kind="print-stickers" dead={!canMint} />{PRINT_STICKERS_LABEL}</button>
+              {/* Stickers before boxes (punch list #329, v2.7272): a run of stickers reserved for this job's boxes to come, live for the roles the database lets mint and dead with the reason for the rest. */}
+              <button type="button" style={{ ...materialsPressStyle(32), ...(canMint ? {} : materialsPressDead) }} disabled={!canMint} aria-disabled={!canMint} title={canMint ? 'Print stickers before their boxes are in the app. Each one reserves a name and its own link.' : STICKER_MINT_WHO} aria-label={canMint ? undefined : `${PRINT_STICKERS_LABEL}. ${STICKER_MINT_WHO}`} onClick={() => setStickersOpen({ run: null })} data-testid="materials-print-stickers"><MaterialsPressGlyph kind="print-stickers" dead={!canMint} />{PRINT_STICKERS_LABEL}</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })} data-testid="materials-print-manifest"><MaterialsPressGlyph kind="manifest" dead={boxCount === 0} />Print the manifest</button>
             </span>
           </div>

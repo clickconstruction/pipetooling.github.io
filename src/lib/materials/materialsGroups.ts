@@ -1,6 +1,6 @@
 import { isMaterialsOfficeRole, materialsTabsFor, type MaterialsTab } from './materialsTabs'
 import { shortLinesBadgeWords } from './missingWeekWords'
-import { canMintStickers } from './stickerRun'
+import { canMintStickers, PRINT_STICKERS_LABEL } from './stickerRun'
 
 /**
  * The Materials page's strip in three named groups (punch list #304, the owner's idea of
@@ -63,11 +63,11 @@ export type MaterialsPress = 'print-labels' | 'scan-label' | 'print-stickers'
 export const MATERIALS_PRESS_LABELS: Record<MaterialsPress, string> = {
   'print-labels': 'Print labels',
   'scan-label': 'Scan a label',
-  'print-stickers': 'Print blank stickers',
+  'print-stickers': PRINT_STICKERS_LABEL,
 }
 
 /**
- * The presses at the right end of On site's row, in order: Scan a label, then Print labels (the owner, 2026-11-10), then Print blank stickers (punch list #329, v2.7272). Whoever may open a job's boxes may print its labels (the card's call
+ * The presses at the right end of On site's row, in order: Scan a label, then Print labels (the owner, 2026-11-10), then Reserve stickers (punch list #329, v2.7272). Whoever may open a job's boxes may print its labels (the card's call
  * 3): a label shows a stencil and a code, no money. A run of stickers is the office's, a primary's or a superintendent's (`sticker_can_mint`, the card's call 6), so the press is theirs alone.
  */
 export function materialsPressesFor(role: string | null | undefined): MaterialsPress[] {

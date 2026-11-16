@@ -1,5 +1,5 @@
 /**
- * What the stickers will look like (punch list #329, v2.7304): the fold at the foot of the Print blank stickers window
+ * What the stickers will look like (punch list #329, v2.7304): the fold at the foot of the Reserve stickers window
  * that draws the strips of a run before the press. A named run's names are known ahead, each sticker taking its name
  * in print order. A sticker's code is not: it is cut from the sticker's own id when the run is minted. So the preview
  * draws the names for real and the QR and the dashed code from one sample code, and says so in one line. The strips

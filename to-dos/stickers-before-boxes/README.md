@@ -1,5 +1,5 @@
 ---
-name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
+name: "Stickers before boxes: reserve a run of stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
 status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PR 7, the run carries names, LIVE 2026-11-15 (v2.7312, #8169; migration 20261115050000 pushed, types #8193, dev-mcp redeployed) · Taunya's go for PRs 8 to 10 on 2026-11-15 · PR 8, the window and the strip, LIVE 2026-11-15 (v2.7391, #8283) · PR 9, the first scan and the screens, LIVE 2026-11-15 (v2.7396, #8295) · PR 10, These are on boxes, LIVE 2026-11-16 (v2.7406, #8305; migration 20261116153000 pushed and proved) · 2026-11-16 Taunya dropped the sticker's running number from every tape and screen, BUILT (v2.7438)
@@ -10,14 +10,14 @@ summary: >
   stickers, sticks one on each box that is already there, and only then says what is in it, and
   nobody knows ahead how many boxes there will be. The card proposes a sticker as its own thing: a
   printed code, and a box's name when its run names its boxes, that point at a box, or at nothing yet. The office prints a run
-  of 200. On site, a scan of a blank sticker asks one question, an old box or a new one, and the
+  of 200, each one reserved for a box. On site, a scan of a reserved sticker asks one question, an old box or a new one, and the
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
 next: Taunya's first named run off the P-touch, which is the walk of section 10; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
 size: L as a train of ten (M · M · M · S · M · S · M · M · S · M); left: M, PRs 4 to 6 (S · M · S)
 blocker: PRs 4 to 6 wait for the walk of the site, by the owner's order of 2026-11-14.
-ver: v2.7438
+ver: v2.7484
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -648,3 +648,18 @@ run, a run with no names is said by its count, the scan sheet says *This sticker
 the pages a scan opens say *This sticker*, and Scan a label takes the eight characters alone. The number stays in the
 database. `box-read` still answers it and the page does not show it; leaving it out of the answer is a deploy that
 waits for Taunya's go by name. No migration. `docs/recent-features/v2.7438.md` has the lengths and the picks.
+
+2026-11-16: **the word blank is gone, and the press reserves**, built as v2.7484. The owner opened the window with
+Names `G92-200`, read the fold's strips, each over the stand-in address `0000-0000`, and wrote: *when I click on
+print blank stickers I am taken to this page where there is no URL for a part. I don't ever want to print a blank
+sticker, I want to print a future sticker where me printing it reserves a slot so to speak to be back filled later.*
+That is what the database has done since PR 1: the press mints a `box_stickers` row for each sticker, with a code of
+its own and its name, and the row waits with no box until a scan or **These are on boxes** says which box it is. The
+screens said it badly. So the press and the window are **Reserve stickers**, the ask says what the press holds
+(*Printing reserves each name and gives each sticker its own link. You say which box it is on later.*), the press
+reads *Reserve and print 109 stickers, G92 to G200*, a run that is made says *These stickers are reserved*, the Runs
+fold reads *Stickers reserved for this job*, and a reserved sticker scanned with no sign-in reads *This sticker is
+reserved for a box*. One name for the idea on every screen and in the guides: **reserved**. In the code and the
+database the state is still `blank`, and both mock-ups keep the old name as drawn. No migration. The fold's stand-in
+code and the job's line for its reserved stickers follow as their own PRs. The name of the press is the owner's to
+change: *Print future stickers* was the other one offered.

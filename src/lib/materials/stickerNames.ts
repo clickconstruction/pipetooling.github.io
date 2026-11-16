@@ -249,7 +249,7 @@ export function blankNamesNotice(names: ReadonlyArray<string>, blankNames: Reado
   if (again.length === 0) return null
   const span = namesSpanWords(again, names)
   const words = again.length === 1
-    ? `1 of these was printed on an earlier run and is not on a box yet, ${span}. Printing it again makes two stickers for one name.`
-    : `${again.length} of these were printed on an earlier run and are not on a box yet, ${span}. Printing them again makes two stickers for each name.`
+    ? `1 of these is reserved by an earlier run and is not on a box yet, ${span}. Printing it again makes two stickers for one name.`
+    : `${again.length} of these are reserved by an earlier run and are not on a box yet, ${span}. Printing them again makes two stickers for each name.`
   return { names: again, words, anywayLabel: again.length === 1 ? 'Print it anyway' : 'Print them anyway' }
 }

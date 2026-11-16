@@ -29,7 +29,7 @@ const QR_DRAWERS: Readonly<Record<string, { opens: string; door: Door }>> = {
   'src/components/machines/MachineLabelModal.tsx': { opens: "a machine's check, /m/<code>", door: 'sign-in, kept by the gate' },
   'src/components/materials/LabelsPrintModal.tsx': { opens: "a box's page, prts.co/b/<code>", door: 'public, with a Sign in press that keeps the address' },
   'src/components/materials/ManifestPrintModal.tsx': { opens: "a box's page, prts.co/b/<code>", door: 'public, with a Sign in press that keeps the address' },
-  'src/components/materials/PrintStickersModal.tsx': { opens: "a blank sticker's page, prts.co/b/<code>, a box's page once it is placed (#329)", door: 'public, with a Sign in press that keeps the address' },
+  'src/components/materials/PrintStickersModal.tsx': { opens: "a reserved sticker's page, prts.co/b/<code>, a box's page once it is placed (#329)", door: 'public, with a Sign in press that keeps the address' },
   'src/components/materials/TapeStripBitmap.tsx': { opens: 'the box address LabelsPrintModal hands it', door: 'helper' },
   'src/components/paintedMap/PaintedMapCopies.tsx': { opens: "a painted map's shared page, /way/<code>, on a printed page", door: 'public' },
   'src/components/paintedMap/PaintedMapShareSheet.tsx': { opens: "a painted map's shared page, /way/<code>", door: 'public' },

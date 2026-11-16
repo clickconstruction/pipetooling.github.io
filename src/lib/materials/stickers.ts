@@ -238,11 +238,17 @@ export function codeLookup(input: { sticker: StickerFacts | null; stickerBox: Co
 // The pages a scan opens
 // ---------------------------------------------------------------------------
 
-/** A blank sticker's heading, signed in and signed out. */
-export const BLANK_STICKER_TITLE = 'This sticker is not on a box yet'
+/**
+ * A reserved sticker's heading with no sign-in: printed, with its own link, and on no box yet (`blank` in the code).
+ * *Not on a box yet* until v2.7484, when the owner said printing a sticker reserves its place for a box filled in later.
+ */
+export const BLANK_STICKER_TITLE = 'This sticker is reserved for a box'
 
-/** All a blank sticker says with no sign-in. */
-export const BLANK_STICKER_PUBLIC_WORDS = `${BLANK_STICKER_TITLE}. Sign in to say what it is.`
+/** Under the heading: where it stands and the one thing to do. */
+export const BLANK_STICKER_PUBLIC_DETAIL = 'It is not on a box yet. Sign in to say which box it is on.'
+
+/** All a reserved sticker says with no sign-in. */
+export const BLANK_STICKER_PUBLIC_WORDS = `${BLANK_STICKER_TITLE}. ${BLANK_STICKER_PUBLIC_DETAIL}`
 
 /** Where a blank sticker goes, signed in (v2.7298, PR 3): the On site tab's Sticker is new sheet, on the job its run was printed for when there is one. */
 export function blankStickerPath(sticker: Pick<StickerFacts, 'code' | 'runJobId'>): string {

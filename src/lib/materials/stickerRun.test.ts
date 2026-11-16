@@ -6,9 +6,11 @@ import {
   canMintStickers,
   mintedRunOf,
   mintedStickerOf,
+  PRINT_STICKERS_LABEL,
   printRestLabel,
   printRunLabel,
   reprintLabel,
+  reserveRunPressLabel,
   restAfterStop,
   runCountsOf,
   runsFoldWords,
@@ -16,7 +18,11 @@ import {
   STICKER_COUNT_PRESETS,
   STICKER_MINT_WHO,
   STICKER_TEST_STRIP,
+  STICKERS_GUIDE_HEADING,
+  STICKERS_GUIDE_QUESTION,
+  STICKERS_RESERVED_WORDS,
   stickerCountOf,
+  stickerReserveWords,
   stickerRunByLine,
   stickerRunCountWords,
   stickerRunOf,
@@ -56,6 +62,26 @@ describe('how many', () => {
     expect(stickerRunPressLabel(1, 1)).toBe('Print 1 sticker')
     expect(stickerRunPressLabel(1, 3)).toBe('Print 1 set')
     expect(stickerRunPressLabel(0, 1)).toBe('Print stickers')
+  })
+
+  it('the ask’s press reserves and prints in one, and a run already made only prints (v2.7484)', () => {
+    expect(reserveRunPressLabel(109, 1, ['G92', 'G200'])).toBe('Reserve and print 109 stickers, G92 to G200')
+    expect(reserveRunPressLabel(200, 2)).toBe('Reserve and print 200 sets')
+    expect(reserveRunPressLabel(1, 1, ['G92'])).toBe('Reserve and print 1 sticker, G92')
+    expect(reserveRunPressLabel(0, 1)).toBe('Reserve and print stickers')
+    expect(printRunLabel([{ number: 1, boxName: 'G92' }], 1)).toBe('Print 1 sticker, G92')
+  })
+
+  it('no word a person reads says a sticker is blank: the press reserves, and the window says what is held (v2.7484)', () => {
+    expect(PRINT_STICKERS_LABEL).toBe('Reserve stickers')
+    expect(STICKERS_GUIDE_HEADING).toBe(PRINT_STICKERS_LABEL)
+    expect(STICKERS_GUIDE_QUESTION).toBe('How do I reserve stickers?')
+    expect(stickerReserveWords(true)).toBe('Printing reserves each name and gives each sticker its own link. You say which box it is on later.')
+    expect(stickerReserveWords(false)).toBe('Printing gives each sticker its own link and holds it for a box. You say which box it is on later.')
+    for (const words of [stickerReserveWords(true), stickerReserveWords(false), STICKERS_RESERVED_WORDS, PRINT_STICKERS_LABEL, STICKERS_GUIDE_QUESTION]) {
+      expect(plainWordsFailures(words)).toEqual([])
+      expect(words).not.toMatch(/blank/i)
+    }
   })
 
   it('says the strips under the title', () => {
