@@ -32,6 +32,7 @@ const QR_DRAWERS: Readonly<Record<string, { opens: string; door: Door }>> = {
   'src/components/materials/ManifestPrintModal.tsx': { opens: "a box's page, prts.co/b/<code>", door: 'public, with a Sign in press that keeps the address' },
   'src/components/materials/PrintStickersModal.tsx': { opens: "a reserved sticker's page, prts.co/b/<code>, a box's page once it is placed (#329)", door: 'public, with a Sign in press that keeps the address' },
   'src/components/materials/TapeStripBitmap.tsx': { opens: 'the box address LabelsPrintModal hands it', door: 'helper' },
+  'src/components/materials/WhichJobParts.tsx': { opens: 'the box or sticker address the Which job? window hands it, on its one sample strip', door: 'helper' },
   'src/components/paintedMap/PaintedMapCopies.tsx': { opens: "a painted map's shared page, /way/<code>, on a printed page", door: 'public' },
   'src/components/paintedMap/PaintedMapShareSheet.tsx': { opens: "a painted map's shared page, /way/<code>", door: 'public' },
   'src/lib/billing/payQr.ts': { opens: 'the address its caller hands it', door: 'helper' },

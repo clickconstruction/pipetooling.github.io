@@ -131,6 +131,17 @@ describe('SupplyHouseBillsCard', () => {
     expect(onPutBack).toHaveBeenCalledWith('p9')
   })
 
+  it('an interest bill leads with what it is, wears its chip, and says it is not a job cost', () => {
+    renderWithProviders(card({ bills: [bill('13', { amount: 18.6, jobs: [], on_job_account: null, interest: 'Interest on S4398120' }), bill('14', {})] }))
+    const rows = screen.getAllByTestId('supply-bill-row')
+    const interestRow = rows.find((r) => r.textContent?.includes('Interest on S4398120')) as HTMLElement
+    expect(within(interestRow).getByTestId('supply-bill-title').textContent).toContain('Interest on S4398120')
+    expect(within(interestRow).getByTestId('supply-bill-interest').textContent).toBe('Interest')
+    expect(interestRow.textContent).toContain('not a job cost')
+    expect(interestRow.textContent).not.toContain('No job on this bill')
+    expect(screen.getAllByTestId('supply-bill-interest')).toHaveLength(1)
+  })
+
   it('shows no On account number when nothing waits there', () => {
     renderWithProviders(card())
     expect(screen.queryByTestId('supply-bills-stat-account')).toBeNull()

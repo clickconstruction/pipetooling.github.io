@@ -19,7 +19,7 @@ summary: >
 next: The owner's pass with live users. The third word reads Track and Plan comes first, both the card's picks and each one line to change. Then the leftovers under Where it stands, one small PR each.
 size: L, shipped as two PRs (M · M); each leftover is S or M
 blocker: none. The owner's pass with live users.
-ver: v2.6851 · 6852 · 7482
+ver: v2.6851 · 6852 · 7482 · 7492
 opinion: your call — the build is live on the card's picks; say the word on Track against Sort and on the order
 ---
 
@@ -100,9 +100,12 @@ all five as picked (*Yes, build it*). Built the same day: a band that shows what
 with one label at its printed size, and a card a job with its boxes, places, what changed, a run stopped
 today, the tape it takes and doors into the labels window. The record is `docs/recent-features/v2.7482.md`.
 
+Call 5, the same cards for **Print future stickers**' *Which job?* window, was built on his word (*Yes, after
+rename*) as v2.7492, on top of the rename of that press: a card says the job's runs so far, the stickers
+reserved and not on a box yet and the name a new run opens on (`docs/recent-features/v2.7492.md`).
+
 Left from the five calls: a true *not printed yet* mark on a box, which needs a column and waits on his
-word (call 3), and the same cards for **Print blank stickers**' *Which job?* window (call 5, the next
-small change).
+word (call 3).
 
 ## What is there today (read on main at v2.6842, 2026-11-10)
 
