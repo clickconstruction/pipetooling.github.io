@@ -77,6 +77,16 @@ describe('the leader’s push for an affidavit (punch list #305, v2.7180)', () =
     expect(lienAffidavitApprovalPush({ papers: [paper(1, null), paper(2, '2026-12-15')], todayYmd: '2026-11-13', senderName: null }).body).toBe('2 jobs · first to file by Dec 15 · 32 days')
   })
 
+  it('a reminder says so in the email’s first line, and changes nothing else (v2.7445)', () => {
+    for (const papers of [[paper(1)], [paper(1), paper(2), paper(3)]]) {
+      const first = lienAffidavitApprovalPush({ papers, todayYmd: '2026-11-13', senderName: 'Wendi Park' })
+      const again = lienAffidavitApprovalPush({ papers, todayYmd: '2026-11-13', senderName: 'Wendi Park', reminder: true })
+      expect(again.emailText.split('\n')[0]).toBe(papers.length === 1 ? 'Wendi is reminding you of a lien affidavit that waits for your approval.' : 'Wendi is reminding you of 3 lien affidavits that wait for your approval.')
+      expect(plainWordsFailures(again.emailText.split('\n')[0]!)).toEqual([])
+      expect({ ...again, emailText: again.emailText.split('\n').slice(1) }).toEqual({ ...first, emailText: first.emailText.split('\n').slice(1) })
+    }
+  })
+
   it('a later press is its own message: two batches never share a tag', () => {
     const a = lienAffidavitApprovalPush({ papers: [paper(1), paper(2)], todayYmd: '2026-11-13', senderName: null })
     const b = lienAffidavitApprovalPush({ papers: [paper(3), paper(4)], todayYmd: '2026-11-13', senderName: null })
@@ -141,5 +151,17 @@ describe('what a caller may say, and which rows the leader is told of', () => {
     expect(lienAffidavitAskable({ ...row, submitted_at: new Date(now - LIEN_AFFIDAVIT_ASK_FRESH_MS - 1000).toISOString() }, now)).toBe(false)
     expect(lienAffidavitAskable({ ...row, submitted_at: new Date(now - LIEN_AFFIDAVIT_ASK_FRESH_MS + 1000).toISOString() }, now)).toBe(true)
     expect(lienAffidavitAskable(null, now)).toBe(false)
+  })
+
+  it('a reminder is a later call: the fifteen minutes are not asked of it, and every other rule is (v2.7445)', () => {
+    const now = Date.parse('2026-11-13T18:00:00Z')
+    const old = { kind: 'affidavit', status: 'awaiting_approval', voided_at: null, submitted_at: '2026-10-04T15:00:00Z' }
+    expect(lienAffidavitAskable(old, now)).toBe(false)
+    expect(lienAffidavitAskable(old, now, { reminder: false })).toBe(false)
+    expect(lienAffidavitAskable(old, now, { reminder: true })).toBe(true)
+    expect(lienAffidavitAskable({ ...old, submitted_at: null }, now, { reminder: true })).toBe(true)
+    expect(lienAffidavitAskable({ ...old, kind: 'notice_53_056' }, now, { reminder: true })).toBe(false)
+    expect(lienAffidavitAskable({ ...old, status: 'approved' }, now, { reminder: true })).toBe(false)
+    expect(lienAffidavitAskable({ ...old, voided_at: '2026-11-01T00:00:00Z' }, now, { reminder: true })).toBe(false)
   })
 })

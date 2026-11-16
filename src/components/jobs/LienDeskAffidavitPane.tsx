@@ -602,8 +602,8 @@ export default function LienDeskAffidavitPane({
       data-lien-affidavit-pane
       data-lien-pane-phone={isMobile ? 'yes' : undefined}
       onScroll={heads.onScroll}
-      // The pane is the scrolling box its heads stick in (v2.7320), the notice pane's shape: its gutter is the pane's padding, which the heads cancel to run across; a phone holds the one column to the pane's width.
-      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0, ...(isMobile ? { gridTemplateColumns: 'minmax(0, 1fr)' } : null) }}
+      // The pane is the scrolling box its heads stick in (v2.7320), the notice pane's shape: its gutter is the pane's padding, which the heads cancel to run across; the one column is held to the pane's width on every screen (v2.7446).
+      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? '0.6rem' : '0.9rem' }}>
         <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
@@ -834,7 +834,7 @@ export default function LienDeskAffidavitPane({
           )}
         </div>
       ) : null}
-      <div data-theme="light" data-lien-affidavit-paper={form} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
+      <div data-theme="light" data-lien-affidavit-paper={form} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem', overflowX: 'auto' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
       </div>
       </div>
