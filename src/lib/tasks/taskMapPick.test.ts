@@ -12,7 +12,9 @@ import {
   taskMapChanged,
   taskMapColumn,
   taskMapDraftFromSaved,
+  taskMapFromPainted,
   taskMapNearWords,
+  taskMapNewName,
   taskMapOfferWords,
   taskPlaceForRow,
 } from './taskMapPick'
@@ -134,6 +136,27 @@ describe('mapsForTask', () => {
     expect(taskMapNearWords(5)).toBe('Reaches this place')
     expect(taskMapNearWords(40)).toMatch(/^Comes within /)
     expect(taskMapNearWords(5000)).toMatch(/ from the place$/)
+  })
+})
+
+describe('a map painted from the task', () => {
+  it('starts with the task\'s words as its name, without the link marks, cut to a map\'s name', () => {
+    expect(taskMapNewName('Dig the trench from the meter to the house')).toBe('Dig the trench from the meter to the house')
+    expect(taskMapNewName('Read [1] then run the camera {{2:down the main}}')).toBe('Read then run the camera down the main')
+    expect(taskMapNewName('x'.repeat(90))).toHaveLength(60)
+  })
+
+  it('a task with no words yet still gives the map a name', () => {
+    expect(taskMapNewName('')).toBe('A map for a task')
+    expect(taskMapNewName('  [1] ')).toBe('A map for a task')
+    expect(taskMapNewName(null)).toBe('A map for a task')
+  })
+
+  it('what was saved goes on the task, and nothing saved or an empty map does not', () => {
+    expect(taskMapFromPainted({ map: { id: 'm1', name: 'The trench' }, lines: [{}], places: [] })).toEqual({ id: 'm1', name: 'The trench' })
+    expect(taskMapFromPainted({ map: { id: 'm1', name: ' ' }, lines: [], places: [{}] })).toEqual({ id: 'm1', name: 'A painted map' })
+    expect(taskMapFromPainted({ map: { id: 'm1', name: 'The trench' }, lines: [], places: [] })).toBeNull()
+    expect(taskMapFromPainted(null)).toBeNull()
   })
 })
 

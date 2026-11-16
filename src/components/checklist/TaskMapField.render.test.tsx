@@ -24,7 +24,7 @@ vi.mock('../materials/OnSiteMap', () => ({
   },
 }))
 
-import { onPaintedMapAsk, type PaintedMapAsk } from '../../lib/paintedMap/paintedMapDoor'
+import { onPaintedMapAsk, type PaintedMapAsk, type PaintedMapToPaint } from '../../lib/paintedMap/paintedMapDoor'
 import { TaskMapPress, TaskMapSet } from './TaskMapField'
 
 const line = (mapId: string, points: Array<[number, number]>, lengthM: number): PaintedLine => ({ id: `l-${mapId}`, mapId, label: '', how: 'drawn', points: points.map(([lat, lng]) => ({ lat, lng })), poorParts: [], fixedByHand: false, lengthM, marginM: null, measuredFt: null, measuredHow: null, madeBy: 'dana', madeAt: '2026-11-13T15:00:00Z' })
@@ -135,11 +135,11 @@ describe('TaskMapPress', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('with no painted map it names the two doors that paint one', async () => {
+  it('with no painted map it points at Paint a new one', async () => {
     renderPress({ loadMaps: landed([]) })
     fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
     await waitFor(() => expect(document.querySelector('[data-task-map-sheet-none]')).toBeTruthy())
-    expect(document.querySelector('[data-task-map-sheet-none]')?.textContent).toBe('No painted map yet. Paint one from a job’s address, or search Paint a map, then pick it here.')
+    expect(document.querySelector('[data-task-map-sheet-none]')?.textContent).toBe('No painted map yet. Paint a new one above.')
     expect(screen.queryByRole('searchbox')).toBeNull()
   })
 
@@ -178,6 +178,106 @@ describe('TaskMapPress', () => {
     fireEvent.click(document.querySelector('[data-task-map-sheet]')!)
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(changes).toEqual([])
+  })
+})
+
+describe('Paint a new one, from the task', () => {
+  const loadOne = (w: PaintedMapWhole | null) => async (): Promise<Landed<PaintedMapWhole | null>> => ({ ok: true, value: w })
+
+  /** The painting window, stood in for: it records what it was opened on and hands back its close. */
+  function painter(opens = true) {
+    const asked: PaintedMapToPaint[] = []
+    let close = () => {}
+    const paint = (start: PaintedMapToPaint, onClosed: () => void) => {
+      asked.push(start)
+      close = onClosed
+      return opens
+    }
+    return { asked, paint, close: () => close() }
+  }
+
+  it('Draw it by hand opens the painting window on a new map named from the task, on no job, and closes the sheet', async () => {
+    const p = painter()
+    renderPress({ taskWords: 'Dig the trench from the meter to the house', paint: p.paint, loadMap: loadOne(null) })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
+    expect(screen.getByText('It opens the painting window. Save a line there and the map comes back onto this task. A map painted here is on no job. The office can put it on a job later.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
+    expect(p.asked).toHaveLength(1)
+    expect(p.asked[0]).toMatchObject({ name: 'Dig the trench from the meter to the house', words: '', first: 'line', home: { jobId: null, developmentId: null, center: null } })
+    expect(p.asked[0]!.id.length).toBeGreaterThan(8)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('with a place on the task, the painting window opens there', () => {
+    const p = painter()
+    renderPress({ place: { lat: 29.551, lng: -98.287 }, paint: p.paint, loadMap: loadOne(null) })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
+    expect(p.asked[0]!.home.center).toEqual({ lat: 29.551, lng: -98.287 })
+  })
+
+  it('a map saved in the painting window comes back onto the task when that window closes', async () => {
+    const p = painter()
+    const reads: string[] = []
+    const { changes } = renderPress({
+      paint: p.paint,
+      loadMap: async (id) => {
+        reads.push(id)
+        return { ok: true, value: { ...TRENCH, map: { ...TRENCH.map, id } } }
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
+    // Nothing is read, and nothing goes on the task, while the painting window is open.
+    expect(reads).toEqual([])
+    expect(changes).toEqual([])
+    p.close()
+    await waitFor(() => expect(changes).toHaveLength(1))
+    expect(reads).toEqual([p.asked[0]!.id])
+    expect(changes[0]).toEqual({ id: p.asked[0]!.id, name: 'Meter to the house, Lot 9' })
+  })
+
+  it('a painting window closed with nothing saved changes nothing', async () => {
+    const p = painter()
+    let read = false
+    const { changes } = renderPress({
+      paint: p.paint,
+      loadMap: async () => {
+        read = true
+        return { ok: true, value: null }
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
+    p.close()
+    await waitFor(() => expect(read).toBe(true))
+    expect(changes).toEqual([])
+  })
+
+  it('where the painting window cannot open, the sheet says so and stays', () => {
+    const p = painter(false)
+    renderPress({ paint: p.paint, loadMap: loadOne(null) })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
+    expect(screen.getByRole('alert').textContent).toBe('The painting window could not open here.')
+    expect(screen.getByRole('dialog', { name: 'A map for this task' })).toBeTruthy()
+  })
+
+  it('Walk or drive it shows only on a device that can say where it is, and asks for a walk', () => {
+    const p = painter()
+    renderPress({ paint: p.paint, loadMap: loadOne(null) })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
+    expect(screen.queryByRole('button', { name: 'Walk or drive it' })).toBeNull()
+    cleanup()
+    Object.defineProperty(navigator, 'geolocation', { value: {}, configurable: true })
+    try {
+      renderPress({ paint: p.paint, loadMap: loadOne(null) })
+      fireEvent.click(screen.getByRole('button', { name: 'Add a map to this task' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Walk or drive it' }))
+      expect(p.asked[0]).toMatchObject({ first: 'walk' })
+    } finally {
+      delete (navigator as unknown as { geolocation?: unknown }).geolocation
+    }
   })
 })
 

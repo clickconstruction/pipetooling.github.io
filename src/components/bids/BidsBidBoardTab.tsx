@@ -374,6 +374,15 @@ export function BidsBidBoardTab({
   const boardRole = useOptionalAuth()?.role
   const canRateGc = difficultyCanRate(difficultyPrice?.body ?? null, boardRole)
   const [pricingRulesOpen, setPricingRulesOpen] = useState(false)
+  // #360 PR 3: /bids?tab=bid-board&rules=1 opens Pricing rules (the Scores tab's door to the target), then drops the flag.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('rules') !== '1') return
+    setPricingRulesOpen(true)
+    params.delete('rules')
+    const rest = params.toString()
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
+  }, [])
   // #357 PR 5: the master's sheet, opened from a row's GC chip (or Rate them on an opened row) for that bid.
   const [rateSheetBid, setRateSheetBid] = useState<BidWithBuilder | null>(null)
   // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.

@@ -1,7 +1,8 @@
 /**
  * The tape strip as the printer's own dots (punch list #304): the QR at a whole number of dots a square, as tall as the
  * tape prints, then the stencil and under it the address on two lines, `PRTS.CO/B/` and then the code (Taunya's ask
- * of 2026-11-15: no line of words, and a link no wider than its code, so the strip ends sooner). Pure: the sizes for
+ * of 2026-11-15: no line of words, and a link no wider than its code, so the strip ends sooner), in a font of whole
+ * dots so the code reads at two millimetres (`tapeDotFont.ts`). Pure: the sizes for
  * a tape, the lines and where each sits, and the QR as a grid of squares read out of the QR library's drawing. The
  * canvas that draws it is `tapeStripCanvas.ts`.
  *
@@ -12,6 +13,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { QRCodeSVG } from 'qrcode.react'
+import { dotFontSquare, dotTextHeight } from './tapeDotFont'
 
 export type TapeStripLayout = {
   /** The dots the tape prints across: the strip's height. */
@@ -25,6 +27,9 @@ export type TapeStripLayout = {
   /** Where the words start, after a clear gap of four squares. */
   textLeft: number
   stencilPx: number
+  /** The dots to a square of the address's dot font (`tapeDotFont.ts`): its capitals are seven squares tall. */
+  codeSquare: number
+  /** The address's line size: its capitals and the room under them. The old face is drawn at it when a line has a character the dot font lacks. */
   codePx: number
   wordsPx: number
 }
@@ -43,7 +48,8 @@ export function tapeStripLayout(dots: number, squares: number): TapeStripLayout 
     qrTop: Math.floor((dots - qrSize) / 2),
     textLeft: qrLeft + qrSize + dotsPerSquare * 4,
     stencilPx: Math.round(dots * 0.58),
-    codePx: Math.round(dots * 0.133),
+    codeSquare: dotFontSquare(dots),
+    codePx: Math.round(dotTextHeight(dotFontSquare(dots)) * 1.2),
     wordsPx: Math.round(dots * 0.1),
   }
 }

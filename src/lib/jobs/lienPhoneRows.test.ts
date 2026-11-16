@@ -10,6 +10,21 @@ const g = (group: LienNextUpGroup, label: string, rows: LienNextUpRow[]) => ({ g
 const amounts = (m: Record<string, number>) => (r: LienNextUpRow) => (r.jobId && m[r.jobId] != null ? m[r.jobId]! : null)
 
 describe('lienPhoneGroups', () => {
+  it('the rows at risk and the rows on track are one run of days, at risk first inside a day; the approvals the office waits on follow, then the days coming up (v2.7371)', () => {
+    const out = lienPhoneGroups(
+      [
+        g('risk', 'Will not make tomorrow as they stand', [row('r1', { group: 'now' }), row('r0', { group: 'now', dueOn: '2026-11-10', daysLeft: -3 })]),
+        g('waiting', 'Waiting on Sam', [row('w', { group: 'waiting' })]),
+        g('now', 'On track', [row('a'), row('b')]),
+        g('coming', 'Coming up', [row('c', { dueOn: '2026-12-15', daysLeft: 32, group: 'coming' })]),
+      ],
+      () => null,
+    )
+    expect(out.map((x) => x.key)).toEqual(['day:2026-11-10', 'day:2026-11-16', 'waiting', 'day:2026-12-15'])
+    expect(out[1]!.rows.map((r) => r.key)).toEqual(['r1', 'a', 'b'])
+    expect(out[2]!.label).toBe('Waiting on Sam')
+  })
+
   it('pools Needs you now and Coming up and splits them by the day, soonest first, with the money each day holds', () => {
     const out = lienPhoneGroups(
       [
@@ -39,9 +54,9 @@ describe('lienPhoneGroups', () => {
       ],
       () => null,
     )
-    // The days stand where Needs you now stood; Coming up's rows are among them, not after the reminders.
-    expect(out.map((x) => x.key)).toEqual(['sign', 'mine', 'day:2026-11-16', 'day:2026-11-20', 'reminders', 'waiting'])
-    expect(out.map((x) => x.label)).toEqual(['Only you can sign', 'Only you can approve', 'Due Mon Nov 16', 'Due Fri Nov 20', 'Reminders', 'Waiting on Sam'])
+    // The days that need a person now stand where Needs you now stood; the days coming up stand where Coming up did (v2.7371).
+    expect(out.map((x) => x.key)).toEqual(['sign', 'mine', 'day:2026-11-16', 'reminders', 'day:2026-11-20', 'waiting'])
+    expect(out.map((x) => x.label)).toEqual(['Only you can sign', 'Only you can approve', 'Due Mon Nov 16', 'Reminders', 'Due Fri Nov 20', 'Waiting on Sam'])
     expect(out.find((x) => x.key === 'waiting')!.left).toBeNull()
     expect(out.find((x) => x.key === 'day:2026-11-20')!.tone).toBe('amber')
   })

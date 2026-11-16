@@ -11,7 +11,7 @@
  * Either way it is one column on the task, `painted_map_id`, and whoever reads the task reads the
  * map (`20261115063000_task_painted_maps.sql`).
  */
-import { PAINTED_MAP_UNNAMED, mapSummaryWords, type PaintedLine, type PaintedPlace } from '../paintedMap/paintedMap'
+import { PAINTED_MAP_NAME_MAX, PAINTED_MAP_UNNAMED, cleanPaintedText, mapSummaryWords, type PaintedLine, type PaintedPlace } from '../paintedMap/paintedMap'
 import { TASK_PLACE_WAY_NEAR_METERS, mapNearMeters, wayNearWords } from './taskPlaceWay'
 import { taskPlaceDistanceWords, type TaskPlace, type TaskPlaceDraft, type TaskPlacePoint } from './taskPlace'
 
@@ -123,6 +123,28 @@ export function taskMapOfferWords(offer: Pick<TaskMapOffer, 'summary' | 'where' 
   return [offer.summary, offer.where, offer.near].filter(Boolean).join(' · ')
 }
 
+/** What a map painted from a task is called when the task has no words yet. */
+export const TASK_MAP_NEW_NAME = 'A map for a task'
+
+/**
+ * The name a map painted from a task starts with: the task's words, without its link marks, cut to
+ * a map's name. The painter can rename it in the painting window.
+ */
+export function taskMapNewName(taskWords: string | null | undefined): string {
+  // `[2]` is a link's number in the task's words, and `{{2:the manual}}` a link with its own words.
+  const plain = (taskWords ?? '').replace(/\[\d+\]/g, ' ').replace(/\{\{\d+:([^}]*)\}\}/g, '$1')
+  return cleanPaintedText(plain, PAINTED_MAP_NAME_MAX) || TASK_MAP_NEW_NAME
+}
+
+/**
+ * The map that came back from the painting window, for the task. Null when nothing was saved, or
+ * when what was saved has nothing on it: a map with no line and no place shows the person nothing.
+ */
+export function taskMapFromPainted(whole: { map: { id: string; name: string }; lines: ReadonlyArray<unknown>; places: ReadonlyArray<unknown> } | null | undefined): TaskMapDraft | null {
+  if (!whole || (whole.lines.length === 0 && whole.places.length === 0)) return null
+  return { id: whole.map.id, name: whole.map.name.trim() || PAINTED_MAP_UNNAMED }
+}
+
 /** The bar's sentence with a map on the task: its first sentence ends `, with a map.` */
 export function sentenceWithMap(sentence: string, hasMap: boolean): string {
   if (!hasMap) return sentence
@@ -136,11 +158,21 @@ export const TASK_MAP_PICK_WORDS = {
   pressAria: 'Add a map to this task',
   pressTitle: 'A painted map for this task: a trench, a route, the way in. The person sees it on the task.',
   head: 'A map for this task',
-  pickHead: 'Pick one that is painted',
+  paintHead: 'Paint a new one',
+  draw: 'Draw it by hand',
+  walk: 'Walk or drive it',
+  /** Under the two presses: what happens next. */
+  paintHint: 'It opens the painting window. Save a line there and the map comes back onto this task.',
+  /** A map painted from a task hangs on no job. */
+  paintHome: 'A map painted here is on no job. The office can put it on a job later.',
+  pickHead: 'Or pick one that is painted',
+  /** Nothing was saved in the painting window. */
+  paintedNothing: 'Nothing was painted, so the task has no map yet.',
+  paintNoHost: 'The painting window could not open here.',
   find: 'Find a map by name',
   reading: 'Reading the painted maps…',
   /** No map at all. It names the two doors that paint one. */
-  none: 'No painted map yet. Paint one from a job’s address, or search Paint a map, then pick it here.',
+  none: 'No painted map yet. Paint a new one above.',
   noneFound: 'No painted map has that name.',
   failed: 'The painted maps could not be read.',
   /** Under the picked map: who it opens to. */

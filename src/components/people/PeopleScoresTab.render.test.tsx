@@ -2,7 +2,7 @@
 /**
  * People → Review → Scores (team scorecard, design spike 2026-11-15): the two numbers with their verdicts
  * and the hurdle, the jobs drill-down with a no-bill row flagged, the bids drill-down with the to-finish
- * list, the closeouts and the waiting proposals; a dev sees the target form. The kernels' suites hold the
+ * list, the closeouts and the waiting proposals; the target's door to the Bid Board's Pricing rules. The kernels' suites hold the
  * arithmetic.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -98,7 +98,10 @@ describe('PeopleScoresTab', () => {
     expect(screen.getAllByTestId('closeout-row')).toHaveLength(1)
     expect(screen.getAllByTestId('waiting-row')).toHaveLength(1)
     expect(screen.getByTestId('scores-rule').textContent).toContain('Break-even is $22/h')
-    expect(screen.getByRole('button', { name: 'Save the target' })).toBeTruthy()
+    // #360 PR 3: the target is set on the Bid Board's Pricing rules; the tab carries the door, not a form.
+    expect(screen.queryByRole('button', { name: 'Save the target' })).toBeNull()
+    expect(screen.getByTestId('scores-target-door').textContent).toBe('The owner sets the target on the Bid Board, under Pricing rules. Open Pricing rules')
+    expect(screen.getByRole('link', { name: 'Open Pricing rules' }).getAttribute('href')).toBe('/bids?tab=bid-board&rules=1')
   })
 
   it('until the first judged bid, the estimating card is a coverage ramp', () => {

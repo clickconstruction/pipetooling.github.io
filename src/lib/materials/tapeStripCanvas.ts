@@ -4,6 +4,7 @@
  * strip is trimmed to its last dot of ink. The sizes are `tapeStrip.ts`; the lines are `ptouchRaster.ts`.
  */
 import { inkWidth, rasterLinesFromRgba } from './ptouchRaster'
+import { dotFontCovers, dotTextCells, dotTextHeight, dotTextWidth } from './tapeDotFont'
 import { tapeStripBlock, tapeStripLayout, tapeStripLines } from './tapeStrip'
 
 export type TapeStripInput = {
@@ -32,9 +33,12 @@ export function drawTapeStrip(canvas: HTMLCanvasElement, input: TapeStripInput):
   const fontOf = (kind: 'code' | 'words', px: number) => (kind === 'code' ? `700 ${px}px Menlo, Consolas, "Courier New", monospace` : `${px}px Helvetica, Arial, sans-serif`)
   // The stencil and the lines under it, as one block centred on the strip's height (`tapeStripBlock`).
   const block = tapeStripBlock(l, tapeStripLines(input.address, input.words))
+  // The address is drawn in the label's own dot font, every edge on a dot; a line with a character the font lacks keeps the old face.
+  const inDots = (line: { kind: 'code' | 'words'; text: string }) => line.kind === 'code' && dotFontCovers(line.text)
   ctx.font = stencilFont
   let widest = ctx.measureText(input.stencil).width
   for (const line of block.lines) {
+    if (inDots(line)) { widest = Math.max(widest, dotTextWidth(line.text, l.codeSquare)); continue }
     ctx.font = fontOf(line.kind, line.px)
     widest = Math.max(widest, ctx.measureText(line.text).width)
   }
@@ -50,6 +54,12 @@ export function drawTapeStrip(canvas: HTMLCanvasElement, input: TapeStripInput):
   ctx.font = stencilFont
   ctx.fillText(input.stencil, l.textLeft, block.stencilBaseline)
   for (const line of block.lines) {
+    if (inDots(line)) {
+      // The capitals stand on the line's baseline: seven squares up from it.
+      const top = line.baseline - dotTextHeight(l.codeSquare)
+      for (const cell of dotTextCells(line.text)) ctx.fillRect(l.textLeft + cell.x * l.codeSquare, top + cell.y * l.codeSquare, l.codeSquare, l.codeSquare)
+      continue
+    }
     ctx.font = fontOf(line.kind, line.px)
     ctx.fillText(line.text, l.textLeft, line.baseline)
   }

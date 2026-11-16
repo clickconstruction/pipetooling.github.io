@@ -27,6 +27,7 @@ import {
   stickersCsvText,
   stickersPrintedWhole,
   stickersSentWords,
+  stickersStoppedWords,
   stickerStrip,
   type MintedSticker,
   type StickerRowOfRun,
@@ -211,6 +212,10 @@ describe('the print', () => {
   it('says how it went', () => {
     expect(stickersSentWords(400, 200, 2)).toBe('200 stickers printed.')
     expect(stickersSentWords(1, 1, 1)).toBe('1 sticker printed.')
+    // Stop printing: the stickers whose every strip went, and no printer to blame
+    expect(stickersStoppedWords(4, 30, 2)).toBe('2 of 30 stickers printed, then you stopped the run.')
+    expect(stickersStoppedWords(3, 30, 2)).toBe('1 of 30 stickers printed, then you stopped the run.')
+    expect(stickersStoppedWords(0, 1, 1)).toBe('0 of 1 sticker printed, then you stopped the run.')
     expect(stickersSentWords(123, 200, 2, 'There is no tape in the printer.')).toBe('61 of 200 stickers printed, then the printer stopped: There is no tape in the printer.')
   })
 })

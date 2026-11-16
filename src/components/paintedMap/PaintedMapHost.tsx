@@ -23,7 +23,7 @@ import { PaintedMapWindow, type KeptPaintedWalk, type PaintedMapToStart } from '
 
 type Open =
   | { kind: 'sheet'; home: PaintedMapHome }
-  | { kind: 'new'; start: PaintedMapToStart }
+  | { kind: 'new'; start: PaintedMapToStart; /** A caller that asked for this map by the door hears when its window closes. */ onClosed?: () => void }
   | { kind: 'map'; mapId: string; address: string | null }
   | { kind: 'kept'; kept: KeptWalk<KeptPaintedWalk> }
 
@@ -40,6 +40,7 @@ export function PaintedMapHost() {
     () =>
       onPaintedMapAsk((ask) => {
         if (ask.kind === 'start') setOpen({ kind: 'sheet', home: ask.home })
+        else if (ask.kind === 'paint') setOpen({ kind: 'new', start: ask.start, ...(ask.onClosed ? { onClosed: ask.onClosed } : {}) })
         else setOpen({ kind: 'map', mapId: ask.mapId, address: ask.address ?? null })
       }),
     [],
@@ -74,7 +75,21 @@ export function PaintedMapHost() {
   }, [open, readOffer])
 
   if (open?.kind === 'sheet') return <PaintAMapStartSheet home={open.home} onStart={(start) => setOpen({ kind: 'new', start })} onClose={() => setOpen(null)} />
-  if (open?.kind === 'new') return <PaintedMapWindow key={open.start.id} ask={{ start: open.start }} address={open.start.home.address ?? null} center={open.start.home.center ?? null} onClose={() => setOpen(null)} />
+  if (open?.kind === 'new') {
+    const { onClosed } = open
+    return (
+      <PaintedMapWindow
+        key={open.start.id}
+        ask={{ start: open.start }}
+        address={open.start.home.address ?? null}
+        center={open.start.home.center ?? null}
+        onClose={() => {
+          setOpen(null)
+          onClosed?.()
+        }}
+      />
+    )
+  }
   if (open?.kind === 'map') return <PaintedMapWindow key={open.mapId} ask={{ mapId: open.mapId }} address={open.address} onClose={() => setOpen(null)} />
   if (open?.kind === 'kept') {
     const { map, state } = open.kept

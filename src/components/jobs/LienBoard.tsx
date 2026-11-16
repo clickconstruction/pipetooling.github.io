@@ -143,11 +143,21 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover }: { bin:
 
 function Tile({ tile, isMobile, onTile }: { tile: LienBoardTile; isMobile: boolean; onTile?: (d: LienBoardTileDestination) => void }) {
   const press = tile.destination && onTile ? () => onTile(tile.destination!) : null
+  const linePress = !press && tile.lineDestination && onTile ? () => onTile(tile.lineDestination!) : null
   const inner = (
     <>
       <span data-lien-board-tile-figure style={{ fontSize: isMobile ? '1.25rem' : '1.4rem', fontWeight: 800, lineHeight: 1.1, color: TILE_TONE[tile.tone], fontVariantNumeric: 'tabular-nums' }}>{tile.figure}</span>
       <span data-lien-board-tile-label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-700)', lineHeight: 1.25 }}>{tile.label}</span>
-      {tile.line ? <span data-lien-board-tile-line style={{ fontSize: '0.72rem', color: tile.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)', lineHeight: 1.3 }}>{tile.line}</span> : null}
+      {tile.line ? (
+        linePress ? (
+          // The red line is a press of its own (v2.7371): the list under the Board shows only the papers it counts.
+          <button type="button" className="lienJobDoor" data-lien-board-tile-line data-press="yes" onClick={linePress} title="Show only these rows" style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-red-700)', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, textDecoration: 'underline', textUnderlineOffset: 3, minHeight: isMobile ? 32 : undefined }}>
+            {tile.line}
+          </button>
+        ) : (
+          <span data-lien-board-tile-line style={{ fontSize: '0.72rem', color: tile.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)', lineHeight: 1.3 }}>{tile.line}</span>
+        )
+      ) : null}
     </>
   )
   const marks = { 'data-lien-board-tile': tile.key, 'data-tone': tile.tone }

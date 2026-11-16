@@ -31,7 +31,8 @@ export type LienPhoneGroup = {
 
 type Grouped = { group: LienNextUpGroup; label: string; rows: ReadonlyArray<LienNextUpRow> }
 
-const POOLED: ReadonlySet<LienNextUpGroup> = new Set(['now', 'coming'])
+/** The day-driven groups, in the two pools a phone draws as days: what needs a person now (at risk or on track), and what is coming. */
+const POOLS: ReadonlyArray<ReadonlySet<LienNextUpGroup>> = [new Set<LienNextUpGroup>(['risk', 'now']), new Set<LienNextUpGroup>(['coming'])]
 
 /** *3 days*, *today*, *2 days late*. */
 export function lienPhoneLeftWords(daysLeft: number): string {
@@ -81,17 +82,22 @@ function dayGroups(rows: ReadonlyArray<LienNextUpRow>, amountFor: (row: LienNext
 }
 
 /**
- * The desk's groups as a phone draws them. `now` and `coming` become days, at the place the first of them stood;
- * every other group passes through with its label. A pressed step's two groups pass through too.
+ * The desk's groups as a phone draws them. The day-driven groups become days, each pool at the place the first of
+ * its groups stood; every other group passes through with its label. A pressed step's two groups pass through too.
+ *
+ * Since v2.7371 (punch list #362, step 2) the days come in two pools. The rows that need a person now, at risk
+ * and on track, are one run of days with the rows at risk first inside each day; the approvals the office waits
+ * on follow them; the days coming up stand after, where *Coming up* stood. Before, every day stood together and
+ * the waiting rows closed the list.
  */
 export function lienPhoneGroups(groups: ReadonlyArray<Grouped>, amountFor: (row: LienNextUpRow) => number | null): LienPhoneGroup[] {
-  const pooled = groups.filter((g) => POOLED.has(g.group)).flatMap((g) => g.rows)
   const out: LienPhoneGroup[] = []
-  let daysDrawn = false
+  const drawn = new Set<number>()
   for (const g of groups) {
-    if (POOLED.has(g.group)) {
-      if (!daysDrawn) out.push(...dayGroups(pooled, amountFor))
-      daysDrawn = true
+    const pool = POOLS.findIndex((p) => p.has(g.group))
+    if (pool >= 0) {
+      if (!drawn.has(pool)) out.push(...dayGroups(groups.filter((x) => POOLS[pool]!.has(x.group)).flatMap((x) => x.rows), amountFor))
+      drawn.add(pool)
       continue
     }
     out.push({ key: g.group, group: g.group, label: g.label, left: null, tone: 'quiet', rows: [...g.rows], amount: sumOnce(g.rows, amountFor) })

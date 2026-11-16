@@ -74,6 +74,8 @@ type Props = {
    */
   map?: TaskMapDraft | null
   onMap?: (next: TaskMapDraft | null) => void
+  /** The task's words as typed: a map painted from the task starts with them as its name. */
+  mapWords?: string
   spotPhoto: TaskSpotPhotoDraft | null
   onSpotPhoto: (next: TaskSpotPhotoDraft | null) => void
   /** The window is saving: the photo press waits. */
@@ -375,7 +377,7 @@ export function TaskFormRows(props: Props) {
               variant="shelf"
               {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})}
             />
-            {onMap ? <TaskMapPress value={taskMap} onChange={onMap} place={props.place} busy={props.busy} {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} /> : null}
+            {onMap ? <TaskMapPress value={taskMap} onChange={onMap} place={props.place} busy={props.busy} taskWords={props.mapWords ?? ''} {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} /> : null}
             <TaskSpotPhotoField value={props.spotPhoto} onChange={props.onSpotPhoto} busy={props.busy} variant="press" />
             {onMap ? <TaskMapSet value={taskMap} onChange={onMap} /> : null}
           </div>

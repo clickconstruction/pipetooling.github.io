@@ -594,6 +594,32 @@ describe('LienDesk', () => {
     expect(screen.getByRole('tab', { name: /^To do/ }).textContent).toBe('To do · 0')
   })
 
+  it('the office reminds the leader of what waits on him: one press on the waiting head asks, sends the notice’s own message again, says what was sent and is dead after (v2.7371, punch list #362 step 2)', async () => {
+    tellLeaderMock.mockClear()
+    const awaiting = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z' } as unknown as LienDeskItemRow
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [awaiting], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    const press = () => document.querySelector('[data-lien-next-up-remind]') as HTMLButtonElement
+    expect(press().textContent).toBe('Remind Sam of 1 paper')
+    expect(document.querySelector('[data-lien-next-up-group="waiting"]')!.contains(press())).toBe(true)
+    fireEvent.click(press())
+    // It asks first, with the act on its button and nothing sent yet.
+    expect(await screen.findByText('Remind Sam of 1 paper?')).toBeTruthy()
+    expect(tellLeaderMock).not.toHaveBeenCalled()
+    const confirms = screen.getAllByRole('button', { name: 'Remind Sam' })
+    fireEvent.click(confirms[confirms.length - 1]!)
+    await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledTimes(1))
+    expect((tellLeaderMock.mock.calls[0] as unknown[])[0]).toBe('it1')
+    expect(await screen.findByText('Sam was reminded of 1 paper.')).toBeTruthy()
+    await waitFor(() => expect(press().textContent).toMatch(/^Reminded at \d{1,2}:\d{2}/))
+    expect(press().disabled).toBe(true)
+    view.unmount()
+    // The leader's own desk has no such press: the row is his to approve.
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    expect(document.querySelector('[data-lien-next-up-remind]')).toBeNull()
+  })
+
   it('To do on a computer pins the Board and scrolls the list; stacked, the Board and the list scroll as one page and a pressed bin brings its rows up (punch list #352, PR 0; the Board since v2.7332)', async () => {
     const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()

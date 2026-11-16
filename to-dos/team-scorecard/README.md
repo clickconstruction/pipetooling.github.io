@@ -2,12 +2,14 @@
 name: "Team scorecard: two numbers, one formula each, against the hurdle"
 number: 360
 group: ready
-status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · next PR 3, the target on the Bid Board's Pricing rules
+status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · PR 3 (v2.7361) the owner sets the target on the Bid Board's Pricing rules · next PR 4, `team_scores`
 next: >
-  PR 3: the target on the Bid Board's Pricing rules beside the difficulty price list, with the
-  owner's own UPDATE policy on scorecard_hurdle_v1, and the Scores tab links there. The owner's
-  four calls under Calls the owner makes are unanswered and block none of the train.
-size: M as a train of five (M · S · S · M · S); PRs 1 and 2 shipped
+  PR 4 needs a call before it is built (see The train, item 4): the loader's arithmetic is the
+  Overhead page's pool and the Costs tab's charge events, and the code's own rule is no SQL copy of
+  them. The pick is between an edge function that runs the same TypeScript as the service role, a
+  SQL function for the wage-priced hours alone, or leaving the read in the browser behind today's
+  gate. PR 5 follows that call. The owner's four calls are unanswered and block none of this.
+size: M as a train of five (M · S · S · M · S); PRs 1 to 3 shipped
 blocker: none; the estimators' number stays a ramp until a priced bid with labor hours is awarded
 summary: >
   A prompt from outside the company proposed four team scores for a plumbing shop. The owner
@@ -34,6 +36,10 @@ People → Review → **Scores** (`/people?tab=scores`), the scoreboard's gate (
 
 Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Loader `loadScorecard.ts` reuses the job day ledger, `loadEarnedJobs`, the Bridge's materials and sub reads and the Costs tab's loader. Fragment `docs/recent-features/v2.7325.md`; guide `read-the-team-scores`.
 
+## Checked live
+
+- **PR 2 (v2.7347), 2026-11-15**, on clicktooling.com as the dev, after the merge (#8211) and the push. The migration's notice read 16 awarded bids given an award day; prod then read 47 awarded bids, 25 still with no day (none of them has a job), none dated before its send. The types followed in #8226. The Bid Board drew 26 *Can't be scored* chips: 20 on sent bids as words, 6 on unsent bids as presses (5 for labor, 1 for rows with no cost). The press on the test bid BP605 opened its Labor tab. Its Workbench read *Can't be scored. $21,000 of the price is on rows with no cost, so the margin is partial and this bid cannot be scored. Give every priced row a cost before it goes out.* with **Open Labor** under the priced-margin line. The same line stood at the top of *Share with a teammate* and under **Mark sent today** on the Cover Letter. Nothing was sent or saved.
+
 ## What the live data said (2026-11-15, 56-day window)
 
 - Field: $47/h on 1,817 paid hours, against a $37/h hurdle ($12/h break-even + $25/h target). 81 jobs; 9 have hours and no bill, all real unbilled work (a lift-station site visit at 139 hours, a concrete cut and pour, a line repair, a walkthrough, five small ones).
@@ -44,15 +50,18 @@ Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Lo
 
 1. **Earned, not invoiced.** The field score earns by hours (contract × the window's share of expected hours), as the app does everywhere. The prompt said invoiced.
 2. **Burden on actuals.** Bids price labor at the average wage × 1.20, but the job's burn, the Costs tab and the team-labor reads price clocked hours at raw wages; only the superintendent scoreboard applies the factor. The scorecard applies it. Whether the Costs tab and the burn should too is a separate card.
-3. **Where the target lives.** On the tab for a dev now; the shipped home is the Bid Board's Pricing rules beside the difficulty price list, once the GC difficulty train's PR 4 lands.
+3. **Where the target lives.** On the Bid Board's Pricing rules beside the difficulty price list since v2.7361, set by the owner. Whether that is the home he wants is still his call.
 4. **Hours reasons.** The field score needs none. If the owner wants the drive / shop / waiting / callback drill-down, drive and shop can be inferred (travel stamps, the office job); only waiting and callback would need a press from the tech.
 
 ## The train
 
 1. ~~**The Scores tab**~~ v2.7325.
 2. ~~**The estimating desk's feedback**~~ v2.7347: the Pricing workbench, its share window and the Cover Letter's Mark sent say when the bid cannot be scored, the Bid Board row carries the chip, and 16 old awards got `bids.outcome_at` from their linked job's creation. Left for PR 4: a sent bid's margin is frozen without its labor count, so hours filled after the send make it read as judged.
-3. **The target on the Bid Board's Pricing rules**, with the owner's own UPDATE policy on `scorecard_hurdle_v1` (one migration); the tab links there.
-4. **`team_scores(p_from, p_to)`**, a SECURITY DEFINER function with the loader's arithmetic, as `superintendent_scores` does, so the gate can widen without a wage leaving the database; the tab reads it instead of the browser-side loader.
-5. **The estimator's own row on the phone**, and a closeout's adjustment named on the bid.
+3. ~~**The target on the Bid Board's Pricing rules**~~ v2.7361: **The score's target** under the difficulty price list, the owner's own insert and update policies on `scorecard_hurdle_v1`, and the tab's door (`/bids?tab=bid-board&rules=1`).
+4. **`team_scores(p_from, p_to)`**, planned as a SECURITY DEFINER function with the loader's arithmetic, so the gate can widen without a wage leaving the database. **Not built: it needs a call first** (found 2026-11-15). The loader's arithmetic is not one function's worth. The hurdle is the Overhead page's pool: office and bid sessions at the office wage (`overheadDailyLabor.ts`) plus office parts by day (`overheadOfficePartsReads.ts`: Mercury allocations less internal transfers, supply-house allocations, tally parts through an RPC). The field score adds earned revenue, card charges, supply invoices and sub sheets by job. A closed job's actual is the Costs tab's own charge events (`useJobChargesTimelineInputs.ts`). `overheadPoolSnapshotReads.ts` says why none of it is in SQL: *no SQL re-implementation, no second kernel to drift (the August 2026 correctness train's whole lesson)*. Three ways on:
+   - **An edge function** that runs the same TypeScript as the service role, as the Bridge's weekly sheet does (the overhead reads already take a client). One implementation, a deploy on Taunya's go, and it has to fit the edge upload limit (#359). My pick.
+   - **A SQL function for the wage-priced hours alone** (hours and labor by job, the pool's labor), proved equal to the browser on prod, with the rest left in the browser. Small, but it is a second copy of the session pricing, and an estimator still could not be given the hurdle.
+   - **Leave the read in the browser** behind today's gate, and skip PR 5's phone row until someone outside the gate needs a score.
+5. **The estimator's own row on the phone**, and a closeout's adjustment named on the bid. Both need the hurdle and a closed job's actual without the wages behind them, so both wait on item 4's call. Also for item 4: a sent bid's priced margin is kept without its labor count, so hours filled after a send make the bid read as judged.
 
 Separate card, the owner's call: job actuals at the burden factor on the Costs tab and the burn.

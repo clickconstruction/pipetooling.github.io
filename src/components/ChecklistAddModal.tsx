@@ -730,6 +730,7 @@ export default function ChecklistAddModal({
         onPlace={setPlace}
         map={taskMap}
         onMap={setTaskMap}
+        mapWords={form.title}
         spotPhoto={spotPhoto}
         onSpotPhoto={setSpotPhoto}
         busy={submitting}

@@ -102,9 +102,11 @@ export type LienBoardTile = {
   tone: 'red' | 'amber' | 'violet' | 'quiet'
   /** Where the tile's press goes, or null for a tile that only reads. */
   destination: LienBoardTileDestination | null
+  /** Where the tile's line goes when the line is a press of its own (v2.7371): the day tile's red line narrows the list to the papers it counts. */
+  lineDestination?: LienBoardTileDestination | null
 }
 
-export type LienBoardTileDestination = { kind: 'stage'; stage: 'awaiting' } | { kind: 'run' }
+export type LienBoardTileDestination = { kind: 'stage'; stage: 'awaiting' } | { kind: 'run' } | { kind: 'risk' }
 
 /** A job in both columns for one reason, cleared by one door. */
 export type LienBoardPair = { key: string; jobId: string; reason: 'owner'; destination: LienBoardDestination }
@@ -437,6 +439,11 @@ export function lienBoardLitBin(bins: ReadonlyArray<Pick<LienBoardBin, 'key' | '
 }
 
 /** A chip still to send or file: not sent, not filed, not past its window. */
+/** *will not make tomorrow as they stand*: the day tile's line after its count, the list's head over the same papers, and what a press on the line narrows the list to. */
+export function lienBoardRiskPhrase(dayWords: string | null, n: number): string {
+  return `will not make ${dayWords ?? (n === 1 ? 'its day' : 'their day')} as ${n === 1 ? 'it stands' : 'they stand'}`
+}
+
 function open(c: LienBoardChip): boolean {
   return c.stage !== 'sent' && c.stage !== 'filed' && c.stage !== 'missed'
 }
@@ -452,7 +459,7 @@ function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, aff
   const atRisk = liveChips.filter((c) => c.atRisk).length
   const late = liveChips.filter((c) => c.daysLeft != null && c.daysLeft < 0).length
   const dayLabel = [toFile > 0 ? `${toFile} to file` : '', toSend > 0 ? `${toSend} to send` : ''].filter(Boolean).join(' · ')
-  const dayLine = atRisk > 0 && dayWords ? `${atRisk} will not make ${dayWords} as ${atRisk === 1 ? 'it stands' : 'they stand'}.` : late > 0 ? `${late} ${plural(late, 'is', 'are')} past ${plural(late, 'its', 'their')} day.` : null
+  const dayLine = atRisk > 0 && dayWords ? `${atRisk} ${lienBoardRiskPhrase(dayWords, atRisk)}.` : late > 0 ? `${late} ${plural(late, 'is', 'are')} past ${plural(late, 'its', 'their')} day.` : null
   const waiting = [...notices, ...affidavits].filter((c) => c.stage === 'awaiting')
   const leader = input.leaderName?.trim() || 'the leader'
   const printed = notices.filter((c) => c.pile === 'printed').length
@@ -472,6 +479,7 @@ function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, aff
         line: dayLine,
         tone: atRisk > 0 || late > 0 || soonest ? 'red' : byDay.length > 0 ? 'amber' : 'quiet',
         destination: null,
+        lineDestination: atRisk > 0 && dayWords ? { kind: 'risk' } : null,
       },
       {
         key: 'waiting',
@@ -579,11 +587,40 @@ export function lienBoardForLeader(board: Pick<LienBoard, 'notices' | 'affidavit
   return { bins, press, chips, held }
 }
 
-/** A pressed bin, or a tile's stage across both columns: what the list under the Board is narrowed to. */
+/**
+ * The papers that will not make their day as they stand (v2.7371): the chips the day tile's red line counts, by
+ * `kind:jobId`, each with the stages it still has to pass. The To do list reads the same map, so the tile, the
+ * marked chips and the list's first rows are one rule.
+ */
+export function lienBoardRiskPapers(board: Pick<LienBoard, 'notices' | 'affidavits'>): ReadonlyMap<string, number> {
+  const out = new Map<string, number>()
+  for (const b of [...board.notices, ...board.affidavits]) for (const c of b.chips) if (c.atRisk && open(c)) out.set(`${c.kind}:${c.jobId}`, c.stepsLeft)
+  return out
+}
+
+/**
+ * The stages a To do row's paper still has to pass when it will not make its day, else null. A row is its job's
+ * notice or affidavit (`notice:…`, `affidavit:…`), or a run row standing for several notices, which takes the
+ * longest road among them. A reminder, a served copy, a returned envelope and a retainage row are never at risk here.
+ */
+export function lienBoardRowRisk(papers: ReadonlyMap<string, number>, row: { key: string; kind: string; jobId: string | null; jobs?: ReadonlyArray<{ jobId: string }> }): number | null {
+  if (row.jobs?.length) {
+    const steps = row.jobs.map((j) => papers.get(`notice:${j.jobId}`)).filter((n): n is number => n != null)
+    return steps.length ? Math.max(...steps) : null
+  }
+  if (!row.jobId || (row.kind !== 'notice' && row.kind !== 'affidavit') || row.key !== `${row.kind}:${row.jobId}`) return null
+  return papers.get(row.key) ?? null
+}
+
+/** A pressed bin, a tile's stage across both columns, or the day tile's red line: what the list under the Board is narrowed to. */
 export type LienBoardPick = {
   bins: LienBoardBinKey[]
   /** The bins' name: *To send*, or *Awaiting approval* for the stage on both columns. */
   label: string
+  /** The papers themselves, by `kind:jobId`, when the pick is narrower than a job (the red line, v2.7371); absent, every row of a picked job is in. */
+  papers?: ReadonlySet<string>
+  /** What follows *Showing N rows* when the pick is not a bin: *that will not make tomorrow as they stand*. Absent, *in* and the label. */
+  words?: string
   /** The jobs in those bins. */
   jobIds: ReadonlySet<string>
   /** The GCs whose notices stand in those bins, for a run row that names a GC and no job. */
@@ -606,13 +643,34 @@ export function lienBoardPick(board: Pick<LienBoard, 'notices' | 'affidavits'>, 
   }
 }
 
+/** The day tile's red line as a pick (v2.7371): the papers that will not make their day as they stand, with no bin lit. */
+export function lienBoardRiskPick(board: Pick<LienBoard, 'notices' | 'affidavits' | 'dayWords'>): LienBoardPick {
+  const chips = [...board.notices, ...board.affidavits].flatMap((b) => b.chips).filter((c) => c.atRisk && open(c))
+  const phrase = lienBoardRiskPhrase(board.dayWords, chips.length)
+  return {
+    bins: [],
+    label: phrase,
+    jobIds: new Set(chips.map((c) => c.jobId)),
+    gcIds: new Set(chips.filter((c) => c.kind === 'notice').map((c) => c.gcId).filter((g): g is string => Boolean(g))),
+    count: chips.length,
+    papers: new Set(chips.map((c) => `${c.kind}:${c.jobId}`)),
+    words: `that ${phrase}`,
+  }
+}
+
 /** The bins a stage names on both columns, for a tile's press. */
 export function lienBoardStageBins(board: Pick<LienBoard, 'notices' | 'affidavits'>, stage: LienBoardNoticeStage | LienBoardAffidavitStage): LienBoardBinKey[] {
   return [...board.notices, ...board.affidavits].filter((b) => b.stage === stage).map((b) => b.key)
 }
 
 /** Whether a To do row is in the pick: its job is, or it is a run row for a GC whose notices are, or a run row listing one of the jobs. */
-export function lienBoardRowInPick(pick: LienBoardPick, row: { jobId: string | null; gcId: string | null; jobs?: ReadonlyArray<{ jobId: string }> }): boolean {
+export function lienBoardRowInPick(pick: LienBoardPick, row: { jobId: string | null; gcId: string | null; kind?: string; jobs?: ReadonlyArray<{ jobId: string }> }): boolean {
+  // A pick of papers (the red line): the row's own paper, or a run row holding one of the notices.
+  if (pick.papers) {
+    if (row.jobId) return pick.papers.has(`${row.kind === 'affidavit' ? 'affidavit' : row.kind === 'retainage' ? 'retainage' : 'notice'}:${row.jobId}`)
+    if (row.jobs?.some((j) => pick.papers!.has(`notice:${j.jobId}`))) return true
+    return Boolean(row.gcId && pick.gcIds.has(row.gcId))
+  }
   if (row.jobId) return pick.jobIds.has(row.jobId)
   if (row.jobs?.some((j) => pick.jobIds.has(j.jobId))) return true
   return Boolean(row.gcId && pick.gcIds.has(row.gcId))
@@ -621,7 +679,7 @@ export function lienBoardRowInPick(pick: LienBoardPick, row: { jobId: string | n
 /** The line under the Board while a bin is pressed: what the list shows, and the press that puts it back. */
 export function lienBoardPickWords(pick: LienBoardPick, shown: number): { head: string; clear: string } {
   const noun = shown === 1 ? 'row' : 'rows'
-  return { head: `Showing ${shown} ${noun} in ${pick.label}.`, clear: 'Show every row' }
+  return { head: pick.words ? `Showing ${shown} ${noun} ${pick.words}.` : `Showing ${shown} ${noun} in ${pick.label}.`, clear: 'Show every row' }
 }
 
 /** The chip a job number stands for (v2.7333): the job's chip in that column, or in either, the notice's first. Null when the job is not on the Board. */

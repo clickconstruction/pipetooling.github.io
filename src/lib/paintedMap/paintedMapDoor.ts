@@ -23,9 +23,16 @@ export type PaintedMapHome = {
   center?: PaintedPoint | null
 }
 
+/**
+ * A new map whose name is already known, so it needs no start sheet: the painting window opens on
+ * it. The caller makes the id, and the map is saved under it with its first line or place.
+ */
+export type PaintedMapToPaint = { id: string; name: string; words: string; home: PaintedMapHome; first?: 'line' | 'place' | 'walk' }
+
 export type PaintedMapAsk =
   | { kind: 'open'; mapId: string; address?: string | null }
   | { kind: 'start'; home: PaintedMapHome }
+  | { kind: 'paint'; start: PaintedMapToPaint; /** Called once when the painting window closes, saved or not. */ onClosed?: () => void }
 
 type AskListener = (ask: PaintedMapAsk) => void
 type ChangeListener = () => void
@@ -52,6 +59,17 @@ export function openPaintedMap(mapId: string, address?: string | null): boolean 
 export function startPaintedMap(home: PaintedMapHome): boolean {
   if (askListeners.size === 0) return false
   for (const l of askListeners) l({ kind: 'start', home })
+  return true
+}
+
+/**
+ * Paint a new map now, with no start sheet (a task's window names the map from the task's words).
+ * `onClosed` is called when the painting window closes, so the caller can read whether a map was
+ * saved under the id it made. `false` when no host is listening.
+ */
+export function paintPaintedMap(start: PaintedMapToPaint, onClosed?: () => void): boolean {
+  if (askListeners.size === 0) return false
+  for (const l of askListeners) l({ kind: 'paint', start, ...(onClosed ? { onClosed } : {}) })
   return true
 }
 

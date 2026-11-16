@@ -15,6 +15,37 @@ export type HurdleSetting = {
 
 export const DEFAULT_HURDLE_SETTING: HurdleSetting = { targetProfitPerHourUsd: 25 }
 
+/** Who sets the target: the owner, and a dev (punch list #360, PR 3). The database holds the same gate on the key. */
+export function canSetHurdleTarget(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician'
+}
+
+/** Where the target is set: the Bid Board's Pricing rules, which this address opens. */
+export const HURDLE_TARGET_HREF = '/bids?tab=bid-board&rules=1'
+
+/** The typed target as a setting, or the words that say why it is not one. */
+export function hurdleTargetFromText(raw: string): { setting: HurdleSetting } | { problem: string } {
+  const n = Number(raw)
+  if (raw.trim() === '' || !Number.isFinite(n) || n < 0 || n > 1000) return { problem: 'The target is dollars of profit on each paid field hour, from 0 to 1,000.' }
+  return { setting: { targetProfitPerHourUsd: Math.round(n * 100) / 100 } }
+}
+
+export const HURDLE_TARGET_WORDS = {
+  title: 'The score’s target',
+  lead: 'The Scores tab counts a bid when its priced profit on each labor hour clears break-even plus this target. The field’s score is held to the same number.',
+  label: 'Profit on each paid field hour, on top of break-even',
+  inputLabel: 'Target profit per paid field hour, dollars',
+  save: 'Save the target',
+  saving: 'Saving…',
+  saved: (s: HurdleSetting) => `The score’s target is ${usdPerHour(s.targetProfitPerHourUsd)}.`,
+  readOnly: 'The owner sets the target.',
+  failed: 'The target could not be saved.',
+  unread: 'The target could not be read.',
+  scoresDoor: 'Open the Scores tab',
+  setOnBoard: 'The owner sets the target on the Bid Board, under Pricing rules.',
+  boardDoor: 'Open Pricing rules',
+} as const
+
 export function parseHurdleSetting(raw: string | null | undefined): HurdleSetting {
   if (!raw) return DEFAULT_HURDLE_SETTING
   try {

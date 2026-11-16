@@ -108,6 +108,16 @@ export function chainsToNext(index: number, total: number): boolean {
   return index < total - 1
 }
 
+/**
+ * Whether this label ends the run: the last one, or the first one sent after Stop printing is pressed (Taunya's ask
+ * of 2026-11-15). A label that ends the run is sent as a run's last label always was, fed out and cut, so a stopped
+ * run leaves nothing inside the printer. The label printing when Stop is pressed was already sent to wait for the
+ * next, which is why one more strip prints: to the printer a run stopped at its seventh label is a run of seven.
+ */
+export function endsTheRun(index: number, total: number, stopAsked: boolean): boolean {
+  return stopAsked || !chainsToNext(index, total)
+}
+
 // ── a drawing as raster lines ────────────────────────────────────────────────────────────────
 
 /** Whether the pixel at `at` in an RGBA buffer prints as a dot: opaque and darker than mid grey. */
@@ -220,3 +230,8 @@ export const PTOUCH_LINK_NOT_COPIED = 'Could not copy. Copy the address from the
 /** Said when a run stops part way: a chained strip is printed but still short of the cutter. */
 export const PTOUCH_STRIP_INSIDE = 'A printed strip may still be inside the printer. Feed and cut the tape on the printer to get it out.'
 export const PTOUCH_CONNECT_LABEL = 'Connect the P-touch'
+/** The press beside *Printing 6 of 455…*, and what it reads once pressed. */
+export const PTOUCH_STOP_LABEL = 'Stop printing'
+export const PTOUCH_STOPPING_LABEL = 'Stopping…'
+/** Said while the run winds down: why the printer does not stop dead. */
+export const PTOUCH_STOPPING = 'Stopping. One more strip prints, so the printer can cut the tape.'

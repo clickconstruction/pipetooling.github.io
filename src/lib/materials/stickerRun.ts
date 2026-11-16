@@ -280,6 +280,12 @@ export function stickersSentWords(doneStrips: number, totalStickers: number, cop
   return `${whole} of ${totalStickers} ${noun(totalStickers)} printed, then the printer stopped: ${reason}`
 }
 
+/** After **Stop printing**: how many stickers went whole before the run was stopped. The press then prints the rest. */
+export function stickersStoppedWords(doneStrips: number, totalStickers: number, copies: number): string {
+  const whole = Math.min(totalStickers, stickersPrintedWhole(doneStrips, copies))
+  return `${whole} of ${totalStickers} ${totalStickers === 1 ? 'sticker' : 'stickers'} printed, then you stopped the run.`
+}
+
 /** The window's line on what the press will print, by stage: the ask, or a minted run's range. */
 export function runStripsWords(run: Pick<StickerRun, 'count' | 'copies' | 'firstNumber' | 'lastNumber'>, printing: number): string {
   const head = printing === run.count ? stickerRangeWords(run.firstNumber, run.lastNumber) : `${printing} of ${stickerRangeWords(run.firstNumber, run.lastNumber)}`

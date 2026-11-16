@@ -2,7 +2,7 @@
 title: read the team scores and set the hurdle
 category: Office
 roles: dev, master_technician, controller
-keywords: scores, scorecard, hurdle, gross profit per hour, paid field hours, break-even, estimator, account manager, priced margin, labor tab, people review, can't be scored, labor not estimated, rows with no cost, mark sent
+keywords: scores, scorecard, hurdle, gross profit per hour, paid field hours, break-even, estimator, account manager, priced margin, labor tab, people review, can't be scored, labor not estimated, rows with no cost, mark sent, set the target, target profit, pricing rules
 order: 41
 ---
 The Scores tab holds two numbers for the team. The field's number is gross profit on every paid hour. The estimators' number is gross profit won above the hurdle. Each has one formula, and the same formula everywhere.
@@ -17,7 +17,21 @@ The Scores tab holds two numbers for the team. The field's number is gross profi
 
 The hurdle is what one paid field hour has to make before the company keeps anything. Break-even is the window's overhead divided by its paid field hours. The hurdle adds the target profit per hour.
 
-A dev sets the target under **The hurdle**. Type the dollars and press {{button:blue|Save the target}}. The hurdle follows the same window as the score.
+The owner sets the target on the Bid Board. The hurdle follows the same window as the score.
+
+## Set the target
+
+:::steps
+
+1. Open **Bids** and press **Bid Board**.
+2. Press {{button:outline|Pricing rules}} in the tools row.
+3. Find **The score's target** under the price list.
+4. Type the dollars of profit you want on each paid field hour.
+5. Press {{button:blue|Save the target}}.
+
+:::
+
+The Scores tab has a shortcut. Under **The hurdle**, press **Open Pricing rules**. The owner and a dev change the target. Everyone else with the Bid Board reads it.
 
 ## The field
 

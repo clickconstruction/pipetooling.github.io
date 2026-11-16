@@ -18,6 +18,14 @@ describe('tapeStripLayout', () => {
     expect(small.qrTop).toBe(6)
   })
 
+  it('sets the address in the dot font at two dots a square on both tapes, a line of 17 dots', () => {
+    for (const dots of [112, 128]) {
+      const l = tapeStripLayout(dots, 25)
+      expect(l.codeSquare).toBe(2)
+      expect(l.codePx).toBe(17)
+    }
+  })
+
   it('keeps the stencil and the lines under it inside the strip', () => {
     for (const dots of [112, 128]) {
       const l = tapeStripLayout(dots, 25)

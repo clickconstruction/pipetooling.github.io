@@ -61,6 +61,10 @@ The sheet also says who may rate a GC: the office, the estimators, the masters. 
 
 A saved version is never changed. Bids priced under version 1 keep their lines. Press **Every version** at the foot of the sheet to read each one.
 
+## The score's target
+
+Under the price list the sheet holds one more rule, **The score's target**. It is the profit the owner wants on each paid field hour. The Scores tab builds its hurdle from it. See [read the team scores and set the hurdle](/help/read-the-team-scores#set-the-target).
+
 ## What a bid shows
 
 Open a bid on the **Pricing** tab. The Workbench writes the lines the first time it costs a bid to a rated GC. They land on the Labor tab's direct costs. Under the priced-margin line the Workbench reads {{chip:yellow|Difficulty · 4 points · +$6,420 in cost}}. Beside it, what that is on the price at the target margin. Press the chip to open the fold. It lists each line with its arithmetic and its sentence. It says who rated and who priced. It has the door to the GC's rating.
