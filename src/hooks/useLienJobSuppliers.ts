@@ -1,3 +1,4 @@
+import { openAmount } from '../lib/materials/payments/supplyPayment'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
@@ -6,7 +7,7 @@ import { buildLienSupplierJobs, type LienSupplierAccountInput, type LienSupplier
 import { useJobAccountStrips } from './useJobAccountStrips'
 
 type AllocationRow = { invoice_id: string; job_id: string; pct: number | null }
-type InvoiceRow = { id: string; supply_house_id: string; amount: number | null; is_paid: boolean; invoice_date: string | null; paid_at: string | null; on_job_account: boolean | null; invoice_number: string | null }
+type InvoiceRow = { id: string; supply_house_id: string; amount: number | null; amount_paid: number | null; is_paid: boolean; invoice_date: string | null; paid_at: string | null; on_job_account: boolean | null; invoice_number: string | null }
 type PaymentRow = { job_id: string; paid_on: string | null; amount: number | null }
 type WordRow = { job_id: string; supply_house_id: string; their_balance: number | null; notice_on: string | null; said_by: string | null; note: string | null; noted_by_name: string | null; noted_at: string | null }
 
@@ -56,7 +57,7 @@ export function useLienJobSuppliers(
         const [invoices, housesRes, payments, words] = await Promise.all([
           fetchAllRowsChunkedIn<InvoiceRow, string>(
             invoiceIds,
-            (chunk, from, to) => supabase.from('supply_house_invoices').select('id, supply_house_id, amount, is_paid, invoice_date, paid_at, on_job_account, invoice_number').in('id', chunk).order('id').range(from, to),
+            (chunk, from, to) => supabase.from('supply_house_invoices').select('id, supply_house_id, amount, amount_paid, is_paid, invoice_date, paid_at, on_job_account, invoice_number').in('id', chunk).order('id').range(from, to),
             'load lien job supplier invoices',
           ),
           supabase.from('supply_houses').select('id, name').order('name'),
@@ -125,7 +126,8 @@ export function useLienJobSuppliers(
       invoices: rows.invoices.map((i) => ({
         id: i.id,
         supply_house_id: i.supply_house_id,
-        amount: i.amount,
+        // An unpaid bill is owed for what is left on it (v2.7450 amount_paid).
+        amount: i.is_paid ? i.amount : openAmount(i),
         is_paid: i.is_paid,
         invoice_date: i.invoice_date,
         paidYmd: i.paid_at ? calendarYmdInAppTzFromIso(i.paid_at) : null,

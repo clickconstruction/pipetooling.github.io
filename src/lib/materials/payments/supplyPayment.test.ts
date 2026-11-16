@@ -7,6 +7,8 @@ import {
   lastMethodUsed,
   paymentView,
   needsHowPaid,
+  openAmount,
+  partPaidWords,
   paidByBill,
   paidByWords,
   paymentOnAccount,
@@ -73,6 +75,23 @@ describe('what is open on a bill', () => {
     expect(supplyBillOpen({ amount: -50, is_paid: false }, 0)).toBe(-50)
     expect(supplyBillOpen({ amount: -50, is_paid: true }, 0)).toBe(0)
     expect(supplyBillOpen({ amount: 0, is_paid: false }, 0)).toBe(0)
+  })
+})
+
+describe('what is open, from the row alone', () => {
+  it('takes amount_paid off an unpaid bill, and counts a row read without it whole', () => {
+    expect(openAmount({ amount: 812.4, is_paid: false, amount_paid: 300 })).toBe(512.4)
+    expect(openAmount({ amount: 812.4, is_paid: false })).toBe(812.4)
+    expect(openAmount({ amount: 812.4, is_paid: true, amount_paid: 812.4 })).toBe(0)
+    expect(openAmount({ amount: -212.4, is_paid: false, amount_paid: -100 })).toBe(-112.4)
+    expect(openAmount({ amount: null })).toBe(0)
+  })
+
+  it('words a bill paid in part', () => {
+    expect(partPaidWords({ amount: 812.4, is_paid: false }, 300)).toBe('$300.00 paid · $512.40 left of $812.40')
+    expect(partPaidWords({ amount: 812.4, is_paid: false }, 0)).toBe('')
+    expect(partPaidWords({ amount: 812.4, is_paid: true }, 812.4)).toBe('')
+    expect(partPaidWords({ amount: -212.4, is_paid: false }, -100)).toBe('$100.00 used · $112.40 left of $212.40')
   })
 })
 

@@ -38,6 +38,8 @@ describe('the office’s words after one affidavit is sent for approval', () => 
 
   it('until the function is redeployed its refusal reads as what it is', () => {
     expect(lienTellFailureReason('Missing item_id')).toBe('The part of the app that tells the leader is waiting for its update.')
+    // v2.7478: the function as it was before it learned the retainage notice refuses one in these words.
+    expect(lienTellFailureReason('Not a lien notice')).toBe('The part of the app that tells the leader is waiting for its update.')
     expect(lienTellFailureReason('You are offline.')).toBe('You are offline.')
     expect(lienTellFailureReason(null)).toBe('The message could not be sent.')
   })
