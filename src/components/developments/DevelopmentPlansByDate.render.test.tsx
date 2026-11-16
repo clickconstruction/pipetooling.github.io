@@ -16,11 +16,12 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
-// The print window: captured, never opened.
-const printed = vi.hoisted(() => ({ html: [] as string[], open: true }))
-vi.mock('../../lib/jobsDocuments/printWindow', () => ({
-  openHtmlPrintWindow: (html: string) => {
+// The print: captured with its filing, never opened. A print counts as a send, so the page files its copy.
+const printed = vi.hoisted(() => ({ html: [] as string[], filings: [] as unknown[], open: true }))
+vi.mock('../../lib/sent/sentCopiesIo', () => ({
+  printAndFile: (html: string, filing: unknown) => {
     printed.html.push(html)
+    printed.filings.push(filing)
     return printed.open
   },
 }))
@@ -29,6 +30,7 @@ beforeAll(installDomShims)
 afterEach(() => {
   cleanup()
   printed.html.length = 0
+  printed.filings.length = 0
   printed.open = true
 })
 
@@ -54,7 +56,7 @@ function site(over: Partial<PlansByDateInput> = {}): PlansByDateInput {
   }
 }
 const caps: PbdCaps = { canWritePlans: true, canOpenJobs: true, canKeep: true, canAsk: true }
-const print = { siteName: 'ZZ Test Ridge', customerName: 'ZZ Test Builders', printedBy: 'ZZ Test Person' }
+const print = { siteName: 'ZZ Test Ridge', customerName: 'ZZ Test Builders', printedBy: 'ZZ Test Person', developmentId: 'dev-zz', customerId: 'cust-zz' }
 
 describe('DevelopmentPlansByDate', () => {
   it('draws the four figures, the key for the marks on the chart, and a lane name for each lane', () => {
@@ -192,7 +194,7 @@ describe('DevelopmentPlansByDate', () => {
     expect(screen.getByTestId('pbd-list').children).toHaveLength(model.rows.length)
   })
 
-  it('prints the chart, the figures and the list on one page, and says so when the window is blocked', () => {
+  it('prints the chart, the figures and the list on one page, files the copy under the site, and says so when the window is blocked', () => {
     renderWithProviders(<DevelopmentPlansByDate model={buildPlansByDate(site())} phone print={print} />)
     fireEvent.click(screen.getByRole('button', { name: 'Print or save as PDF' }))
     expect(printed.html).toHaveLength(1)
@@ -200,6 +202,7 @@ describe('DevelopmentPlansByDate', () => {
     // Paper is the desktop chart, whatever the screen.
     expect(printed.html[0]).toContain('viewBox="0 0 980 ')
     expect(printed.html[0]).toContain('by ZZ Test Person')
+    expect(printed.filings).toEqual([{ kind: 'plans_by_date', title: 'Plans by date · ZZ Test Ridge', customerId: 'cust-zz', source: { table: 'developments', id: 'dev-zz' } }])
     expect(screen.queryByTestId('pbd-print-note')).toBeNull()
     printed.open = false
     fireEvent.click(screen.getByRole('button', { name: 'Print or save as PDF' }))
