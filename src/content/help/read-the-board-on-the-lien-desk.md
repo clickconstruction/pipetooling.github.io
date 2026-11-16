@@ -48,6 +48,8 @@ The card says which job it is. It gives the job's name, its address and its cust
 
 Then it says where the paper stands. It names the column and the bin, like *Monthly notice* and **To send for approval**. It gives the one thing to know, the day and how long is left. It says when the paper will not make its day, and what the job still owes. A job with a paper in the other column says where that one stands too.
 
+A paper that will not make its day also lists what is still to do. Each line is one stage, in order, like *Send it for approval*. The stage that waits on the job's leader names him. The line over the list says how many working days are left.
+
 The last line says where a press will take you. Move the pointer away and the card goes. The Tab key reaches a chip and opens its card the same way. A phone has no pointer, so it shows no card.
 
 ## Press a chip

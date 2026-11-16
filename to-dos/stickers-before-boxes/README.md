@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PR 7, the run carries names, LIVE 2026-11-15 (v2.7312, #8169; migration 20261115050000 pushed, types #8193, dev-mcp redeployed) · Taunya's go for PRs 8 to 10 on 2026-11-15 · PR 8, the window and the strip, LIVE 2026-11-15 (v2.7391, #8283) · PR 9, the first scan and the screens, BUILT 2026-11-15 (v2.7396) · PR 10 not built
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PR 7, the run carries names, LIVE 2026-11-15 (v2.7312, #8169; migration 20261115050000 pushed, types #8193, dev-mcp redeployed) · Taunya's go for PRs 8 to 10 on 2026-11-15 · PR 8, the window and the strip, LIVE 2026-11-15 (v2.7391, #8283) · PR 9, the first scan and the screens, LIVE 2026-11-15 (v2.7396, #8295) · PR 10, These are on boxes, BUILT 2026-11-15 (v2.7406; migration 20261116153000 to push right after the merge)
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,10 +14,10 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: PR 10 (These are on boxes, section 10), in the session that built PRs 8 and 9; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
-size: L as a train of ten (M · M · M · S · M · S · M · M · S · M); left: M, PR 10 (M) and PRs 4 to 6 (S · M · S)
+next: Taunya's first named run off the P-touch, which is the walk of section 10; the stop to walk the site with the phone's own camera; PRs 4 to 6 on the owner's go.
+size: L as a train of ten (M · M · M · S · M · S · M · M · S · M); left: M, PRs 4 to 6 (S · M · S)
 blocker: PRs 4 to 6 wait for the walk of the site, by the owner's order of 2026-11-14.
-ver: v2.7396
+ver: v2.7406
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -366,8 +366,8 @@ the merge because the client calls what it makes.
 | | **The preview fold, v2.7304 (2026-11-14):** *What the stickers will look like* at the foot of the window. | S |
 | 7 · the run carries names | **Live 2026-11-15 (v2.7312).** Section 10: the migration, `mint_sticker_run` taking a name range under the box rule, the range parser as a kernel with the mock-up's table as its tests | M |
 | 8 · the window and the strip | **Live 2026-11-15 (v2.7391).** The Names field with its read line and two notices, the strip with the name large and the number small, the preview, the Runs fold's title, the CSV | M |
-| 9 · the first scan and the screens | **Built 2026-11-15 (v2.7396).** The sheet reads the name off the sticker, a box already here first, the next twin letter, the number receding on the box rows | S |
-| 10 · These are on boxes | `place_sticker_range`: a range placed in one press with kind and place, the press in the Runs fold then the phone | M |
+| 9 · the first scan and the screens | **Live 2026-11-15 (v2.7396).** The sheet reads the name off the sticker, a box already here first, the next twin letter, the number receding on the box rows | S |
+| 10 · These are on boxes | **Built 2026-11-15 (v2.7406).** `place_sticker_range`: a range placed in one press with kind and place, the press in the Runs fold then the phone | M |
 
 Each PR ships its release note, fragment and guide, and updates
 `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`, `ACCESS_CONTROL.md` and `GLOSSARY.md` (sticker, run, set,
@@ -606,3 +606,23 @@ section 10 writes it. The name on the tape decides which branch the sheet opens 
 boxes with no sticker. Signed out, a blank named sticker still reads its number, since that page is `box-read`'s
 answer and a change there is a deploy that needs Taunya's go by name; it shows no contents either way. **PR 10 is
 next.**
+
+2026-11-15: **PR 9 is live.** #8295 merged and the Pages deploy carried it.
+
+2026-11-15: **PR 10, These are on boxes, is built** as v2.7406, the last of section 10's four. A named run with
+stickers still blank has **These are on boxes** on its row in the Runs fold, and the phone's On site tab has the same
+press under the boxes while the job has stickers not yet on a box. The form asks the names that were stuck on, as the
+print window asks them (`G78-150`), how the boxes sit, the place and a where line. It counts ahead from the site: how
+many boxes will be made, how many names are boxes already and take their stickers, how many have no blank sticker and
+are left. One press, *Put 73 stickers on their boxes*, calls `place_sticker_range` (migration
+`20261116153000_place_sticker_range`), which goes through `place_sticker` once a sticker, so the gate, the box rule and
+every policy judge it as they judge one scan. The answer is said in sentences: boxes made, boxes that took their
+sticker, names left as they were, names no sticker was printed with, and any name the database refused, kept with its
+reason while the rest went on. The words are `stickersOnBoxes.ts`; the form `StickersOnBoxes.tsx`.
+
+What PR 10 changed from the design, said plainly: a name no sticker was printed with makes nothing, where section 10
+only spoke of names that have one. A box already on the site keeps its kind and its place. The press on the phone
+shows whenever the job has a blank sticker, named or numbered, and the form says which names have none. The SQL was
+proved by CI's `sticker-names` bed on the PR, since no local Postgres could start on the Mac it was written on. Nothing
+was placed on prod in the proof: no named run is minted there yet. **Section 10 is whole. The next step is Taunya's
+first named run off the P-touch**, then the walk of the site and PRs 4 to 6.

@@ -10,6 +10,7 @@ import {
   LIEN_BOARD_NOTICE_STAGES,
   LIEN_BOARD_WORDS,
   lienBoardArrows,
+  lienBoardStagesLeft,
   lienBoardAtRisk,
   lienBoardBinsShown,
   lienBoardChipFor,
@@ -191,6 +192,30 @@ describe('buildLienBoard — the chips', () => {
     expect(bin(board, 'notice:to_send').chips[0]!).toMatchObject({ stepsLeft: 3, atRisk: true })
     expect(bin(board, 'notice:in_mail').chips[0]!).toMatchObject({ stepsLeft: 1, atRisk: false })
     expect(board.atRisk).toBe(1)
+  })
+  it('names the stages a paper still has to pass, one name for every stage it counts (v2.7419)', () => {
+    const stages = (kind: 'notice' | 'affidavit', stage: string, leader?: string | null) => lienBoardStagesLeft({ kind, stage } as Parameters<typeof lienBoardStagesLeft>[0], leader)
+    expect(stages('notice', 'needs_owner', 'Sam')).toEqual(['Name the owner on the property record', 'Send it for approval', 'Sam approves and signs it', 'Mail it and record the mailing'])
+    expect(stages('notice', 'to_send', 'Sam')).toEqual(['Send it for approval', 'Sam approves and signs it', 'Mail it and record the mailing'])
+    expect(stages('notice', 'awaiting', 'Sam')).toEqual(['Sam approves and signs it', 'Mail it and record the mailing'])
+    expect(stages('notice', 'in_mail', 'Sam')).toEqual(['Mail it and record the mailing'])
+    expect(stages('affidavit', 'needs_property', 'Sam')).toEqual(['Clear what holds it', 'Send it for approval', 'Sam approves it', 'Notarize it and file it with the county'])
+    expect(stages('affidavit', 'ready', 'Sam')).toEqual(['Notarize it and file it with the county'])
+    // A held paper waits on the leader again; with no leader known he is *The leader*.
+    expect(stages('notice', 'held')).toEqual(['The leader approves and signs it', 'Mail it and record the mailing'])
+    expect(stages('affidavit', 'held', '  ')).toEqual(['The leader approves it', 'Notarize it and file it with the county'])
+    // Done or lost: nothing left to pass.
+    for (const s of ['sent', 'missed']) expect(stages('notice', s)).toEqual([])
+    for (const s of ['filed', 'missed']) expect(stages('affidavit', s)).toEqual([])
+    // The count the Board races against the working days is the list's own length, in every bin.
+    const board = build({
+      notices: [notice('1', 'needs_owner'), notice('2', 'to_draft'), notice('3', 'awaiting'), notice('4', 'ready'), notice('5', 'held'), notice('6', 'sent')],
+      affidavits: [affidavit('1', 'needs_property'), affidavit('2', 'to_draft'), affidavit('3', 'awaiting'), affidavit('4', 'ready'), affidavit('5', 'held'), affidavit('6', 'filed')],
+    })
+    const chips = [...board.notices, ...board.affidavits].flatMap((b) => b.chips)
+    expect(chips).toHaveLength(12)
+    for (const c of chips) expect([c.kind, c.stage, lienBoardStagesLeft(c).length]).toEqual([c.kind, c.stage, c.stepsLeft])
+    for (const c of chips) for (const s of lienBoardStagesLeft(c, 'Sam')) expect(plainWordsFailures(s)).toEqual([])
   })
   it('carries the job number, the day, what it owes and a hover of the job’s name, its GC and its money', () => {
     const board = build({ notices: [notice('650', 'to_draft', { openBalance: 12345 })] })

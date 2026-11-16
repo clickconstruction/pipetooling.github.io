@@ -8,7 +8,9 @@
 # the names' migration a second time, which must change nothing. The scenario plays mint_sticker_run, sticker_by_code
 # and place_sticker through RLS as a dev inside one transaction that rolls back: a numbered run as before, a named run's
 # stickers in number order with the run's first and last, the refusals in words before a number is taken, G1 to G100C in
-# print order, and a blank sticker typed no name making a box of its own name. It raises on its first failed assertion
+# print order, and a blank sticker typed no name making a box of its own name. Since v2.7406 (PR 10) a second scenario
+# plays place_sticker_range, These are on boxes: a range placed in one call across a site of two jobs, the same range
+# again, a refused name held while the rest go on, and who is refused. Each raises on its first failed assertion
 # and ends with "sticker_names PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs
 # it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -20,6 +22,7 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # The guards, applied a second time below.
 PRESSES=(
   supabase/migrations/*_sticker_run_names.sql
+  supabase/migrations/*_place_sticker_range.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

@@ -57,6 +57,8 @@ import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintStickersModal'
 import StickerRunsFold from '../materials/StickerRunsFold'
+import StickersOnBoxes from '../materials/StickersOnBoxes'
+import { onBoxesPrefill, onBoxesToast } from '../../lib/materials/stickersOnBoxes'
 import OnSiteMoveJobModal from '../materials/OnSiteMoveJobModal'
 import { canMoveOnSite, MOVE_JOB_LABEL, MOVE_JOB_WHO, type MoveJobChoice } from '../../lib/materials/onSiteMoveJob'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
@@ -646,6 +648,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [manifestOpen, setManifestOpen] = useState<{ only: string | null } | null>(null)
   /** Print blank stickers (punch list #329, v2.7272): a new run, or a run the fold hands back to print again. */
   const [stickersOpen, setStickersOpen] = useState<{ run: StickerRunToPrint | null } | null>(null)
+  /** These are on boxes (section 10, PR 10): the form, opened from a named run's row on that run's blank names. */
+  const [onBoxesOpen, setOnBoxesOpen] = useState<{ initial: string } | null>(null)
   /** Ticks when a run is minted here, so the Runs fold reads again. */
   const [runsKey, setRunsKey] = useState(0)
   const canMint = canMintStickers(role)
@@ -834,7 +838,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           {/* The way back from a retire (v2.6406): the fold lists retired boxes with Bring back, or the reason a stencil is taken. */}
           <RetiredBoxesFold containers={listContainers(jobId)} stamp={(iso) => <Stamp iso={iso} inline />} onBringBack={(c) => { const v = unretireVerdict(listContainers(jobId), c.id); if (!v.ok) { showToast(v.words, 'warning'); return } unretireContainer(c.id); showToast(broughtBackWords(c), 'success') }} />
           {/* Runs of blank stickers printed for this job (punch list #329, v2.7272): each with its range, its counts, who and when, and Reprint / Print the rest. */}
-          <StickerRunsFold jobId={jobId} refreshKey={runsKey} openKey={runsOpenKey} onPrint={(run, stickers, title) => setStickersOpen({ run: { run, stickers, title } })} />
+          <StickerRunsFold jobId={jobId} refreshKey={runsKey} openKey={runsOpenKey} onPrint={(run, stickers, title) => setStickersOpen({ run: { run, stickers, title } })} onPlaceRange={(_run, blankNames) => setOnBoxesOpen({ initial: onBoxesPrefill(blankNames) })} />
           {/* A count recorded under the wrong job (v2.7305): everything this job holds on site moved to the right one, every box keeping its code, through the rule the whole-job combine uses. A quiet press, since it re-homes every printed box at once; dead with its reason for the roles that may not combine. */}
           {containers.length > 0 || movements.length > 0 ? (
             <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1131,6 +1135,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
       {moveOpen ? <OnSiteMoveJobModal sourceJobId={jobId} jobs={moveJobs} siteOfJob={siteOfJob} role={role} onClose={() => setMoveOpen(false)} onMoved={(_from, _to, words) => { showToast(words, 'success'); /* The runs fold and the sticker numbers keep their own reads (v2.7329): the run went with the boxes. */ setRunsKey((k) => k + 1) }} /> : null}
+      {onBoxesOpen ? <StickersOnBoxes jobId={jobId} jobLabel={jobLabel(job, jobId)} places={places} initialNames={onBoxesOpen.initial} onClose={() => setOnBoxesOpen(null)} onPlaced={(_answer, outcome) => { showToast(onBoxesToast(outcome), outcome.tone === 'success' ? 'success' : 'warning'); /* The new boxes, the fold's counts and the names beside each box are read again. */ void loadJob(jobId, { force: true }); setRunsKey((k) => k + 1) }} /> : null}
       {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} /> : null}
       {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}

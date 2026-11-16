@@ -108,4 +108,38 @@ describe('StickerRunsFold', () => {
     expect(onPrint.mock.calls[1]![1].map((s: { boxName?: string | null }) => s.boxName)).toEqual(names)
     expect(onPrint.mock.calls[1]![2]).toBe('Run of 4 · G78 to G81')
   })
+
+  it('a named run with stickers still blank offers These are on boxes, and hands its blank names up (section 10, PR 10)', async () => {
+    const names = ['G78', 'G79', 'G80', 'G81']
+    const named: StickerRunWithStickers = {
+      run: { id: 'run-3', jobId: 'job-juniper', count: 4, firstNumber: 301, lastNumber: 304, copies: 1, printedByName: 'Dana', printedAt: '2026-11-15T16:00:00Z', names },
+      stickers: names.map((boxName, i) => ({ id: `n-${301 + i}`, number: 301 + i, code: `0F6A2B${String(i).padStart(2, '0')}`, boxName, containerId: i === 0 ? 'box-g78' : null, lostAt: null })),
+    }
+    const onPlaceRange = vi.fn()
+    renderWithProviders(<StickerRunsFold jobId="job-juniper" onPrint={() => {}} onPlaceRange={onPlaceRange} fetch={async () => [named, old]} />)
+    await screen.findByTestId('sticker-runs-fold')
+    // the numbered run has no names to place by, so only the named run has the press
+    const presses = screen.getAllByTestId('sticker-run-on-boxes')
+    expect(presses).toHaveLength(1)
+    expect(presses[0]!.textContent).toBe('These are on boxes')
+    fireEvent.click(presses[0]!)
+    expect(onPlaceRange).toHaveBeenCalledTimes(1)
+    expect(onPlaceRange.mock.calls[0]![0].id).toBe('run-3')
+    expect(onPlaceRange.mock.calls[0]![1]).toEqual(['G79', 'G80', 'G81'])
+  })
+
+  it('a named run with every sticker on a box, or a page with no form for it, has no such press', async () => {
+    const all: StickerRunWithStickers = {
+      run: { id: 'run-4', jobId: 'job-juniper', count: 1, firstNumber: 305, lastNumber: 305, copies: 1, printedByName: 'Dana', printedAt: '2026-11-15T16:00:00Z', names: ['G82'] },
+      stickers: [{ id: 'n-305', number: 305, code: '0F6A2B05', boxName: 'G82', containerId: 'box-g82', lostAt: null }],
+    }
+    renderWithProviders(<StickerRunsFold jobId="job-juniper" onPrint={() => {}} onPlaceRange={() => {}} fetch={async () => [all]} />)
+    await screen.findByTestId('sticker-runs-fold')
+    expect(screen.queryByTestId('sticker-run-on-boxes')).toBeNull()
+    cleanup()
+    const blank: StickerRunWithStickers = { ...all, stickers: [{ ...all.stickers[0]!, containerId: null }] }
+    renderWithProviders(<StickerRunsFold jobId="job-juniper" onPrint={() => {}} fetch={async () => [blank]} />)
+    await screen.findByTestId('sticker-runs-fold')
+    expect(screen.queryByTestId('sticker-run-on-boxes')).toBeNull()
+  })
 })

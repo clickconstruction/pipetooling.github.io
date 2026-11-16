@@ -240,7 +240,7 @@ describe('LienBoard', () => {
 
   it('a chip pointed at shows a card before any press: the job, its address and its customer, then where its paper stands; it goes when the pointer leaves (v2.7381)', async () => {
     const b = board()
-    const cardFor = vi.fn((chip: Parameters<typeof lienBoardChipCard>[0]) => lienBoardChipCard(chip, b, { todayYmd: TODAY, jobName: 'ZZ Service Visit', address: '12 Sample Rd, Schertz, TX', customer: 'ZZ Homeowner', gc: 'ZZ Builders', detail: 'September 2026' }))
+    const cardFor = vi.fn((chip: Parameters<typeof lienBoardChipCard>[0]) => lienBoardChipCard(chip, b, { todayYmd: TODAY, jobName: 'ZZ Service Visit', address: '12 Sample Rd, Schertz, TX', customer: 'ZZ Homeowner', gc: 'ZZ Builders', detail: 'September 2026', leader: 'Sam' }))
     const onChip = vi.fn()
     render(<LienBoard board={b} isMobile={false} onChip={onChip} cardFor={cardFor} columnsOnly />)
     const chip = document.querySelector('[data-lien-board-chips="notice:to_send"] [data-lien-board-chip]') as HTMLElement
@@ -259,10 +259,22 @@ describe('LienBoard', () => {
     expect(card.querySelector('[data-lien-board-card-status]')!.textContent).toContain('Monthly noticeTo send for approval')
     expect(card.querySelector('[data-lien-board-card-detail]')!.textContent).toBe('September 2026')
     expect(card.querySelector('[data-lien-board-card-door]')!.textContent).toBe('Press to open the notice.')
+    // It will make its day, so the card names no stages (v2.7419).
+    expect(card.querySelector('[data-lien-board-card-risk]')).toBeNull()
+    expect(card.querySelector('[data-lien-board-card-left]')).toBeNull()
     // The card never takes the pointer, so the chip's press still lands; nothing is pressed by pointing.
     expect(card.style.pointerEvents).toBe('none')
     expect(onChip).not.toHaveBeenCalled()
     fireEvent.mouseLeave(chip)
+    await waitFor(() => expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull())
+    // A paper that will not make its day names the stages it still has to pass, in order, with its leader by name
+    // (v2.7419; Taunya's ask of 2026-11-15: *3 stages left* did not say which three).
+    const late = document.querySelector('[data-lien-board-chips="notice:needs_owner"] [data-lien-board-chip]') as HTMLElement
+    fireEvent.mouseEnter(late)
+    const lateCard = document.querySelector('[data-lien-board-chip-card]') as HTMLElement
+    expect(lateCard.querySelector('[data-lien-board-card-risk]')!.textContent).toBe('Will not make its day as it stands. Still to do, with 1 working day left:')
+    expect(Array.from(lateCard.querySelectorAll('ol[data-lien-board-card-left] li')).map((li) => li.textContent)).toEqual(['Name the owner on the property record', 'Send it for approval', 'Sam approves and signs it', 'Mail it and record the mailing'])
+    fireEvent.mouseLeave(late)
     await waitFor(() => expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull())
     // The keyboard reaches it too, and a page that moves takes the card away.
     fireEvent.focus(chip)
