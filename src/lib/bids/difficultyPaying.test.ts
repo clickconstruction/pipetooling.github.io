@@ -6,6 +6,7 @@ import {
   difficultyPayingByHandOf,
   difficultyPayingByHandReason,
   difficultyPayingDriftWords,
+  difficultyPayingKeptWords,
   difficultyPayingPick,
   difficultyPayingReadReason,
   difficultyPayingRuleWords,
@@ -88,6 +89,28 @@ describe('difficultyPaying', () => {
     expect(difficultyPayingPick(readDifficultyPaying(inputs({ readable: false })), null)).toBeNull()
     expect(difficultyPayingByHandOf(difficultyPayingByHandReason('Slow.'))).toBe('Slow.')
     expect(difficultyPayingByHandOf('Read from their bills: x')).toBeNull()
+  })
+
+  it('bills that could not be read here keep the point the rating holds, with its words (v2.7468)', () => {
+    const unreadable = readDifficultyPaying(inputs({ readable: false, own: null, receipts: [] }))
+    const stored = { points: 1, reason: 'Read from their bills: Paid in 52 days, the median of 7 bills.' }
+    // An estimator's save, or one made while the read failed: the stored point goes on, word for word.
+    expect(difficultyPayingPick(unreadable, null, stored)).toEqual({ ...stored, kept: true })
+    expect(difficultyPayingKeptWords(stored)).toBe('Their bills could not be read here. The rating keeps the 1 point it holds. Paid in 52 days, the median of 7 bills.')
+    // A point set by hand is kept the same way.
+    const hand = { points: 0, reason: 'By hand: They pay us first every month.' }
+    expect(difficultyPayingPick(unreadable, null, hand)).toEqual({ ...hand, kept: true })
+    expect(difficultyPayingKeptWords(hand)).toBe('Their bills could not be read here. The rating keeps the 0 points it holds. It was set by hand: They pay us first every month.')
+    // Nothing stored, or a stored point with no words: nothing to keep.
+    expect(difficultyPayingPick(unreadable, null, null)).toBeNull()
+    expect(difficultyPayingPick(unreadable, null, { points: 1, reason: ' ' })).toBeNull()
+    // A read that could be made decides, whatever is stored: a point, no point, or too few bills.
+    const read = readDifficultyPaying(inputs())
+    expect(difficultyPayingPick(read, null, { points: 0, reason: 'Read from their bills: Paid in 20 days, the median of 5 bills.' })).toEqual({ points: 1, reason: difficultyPayingReadReason(read) })
+    expect(difficultyPayingPick(readDifficultyPaying(inputs({ own: { medianDays: 52, samples: 2 } })), null, stored)).toBeNull()
+    // By hand on screen still comes first, and a read not back yet keeps nothing.
+    expect(difficultyPayingPick(unreadable, { points: 1, reason: 'Slow.' }, stored)).toEqual({ points: 1, reason: 'By hand: Slow.' })
+    expect(difficultyPayingPick(null, null, stored)).toBeNull()
   })
 
   it('says when the bills and the rating that stands disagree', () => {

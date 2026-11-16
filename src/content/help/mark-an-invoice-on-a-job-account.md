@@ -31,13 +31,13 @@ How an account gets opened and recorded is in [open a job account before buying 
 
 ## Where the flag shows up
 
-- The house's invoice list and the **Make Payment** picker show a teal **Job acct** chip on flagged invoices.
+- The house's invoice list and the **Record a payment** window show a teal **Job acct** chip on flagged invoices.
 - The **job window** shows it too. The storefront icon in the header turns teal once the job's account packet is on file. **Parts Cost → Supply house invoices** chips each flagged invoice. It also sums how much of the unpaid balance is on the account. On the **Bill** tab, a teal note sits above the Invoices list. It names the house, dates the packet, and adds the flagged dollars. That is right where you are about to bill the customer.
 - **Materials → Held for suppliers** splits every owed number. It has a teal **On job accounts** tile and filter chip. The Holding tile splits *Your account* from *Job accounts*. Teal-striped bar slices stay out of the past-due reds. Collecting that money is the house's problem. See [see which paid jobs still owe my supply houses](?g=see-which-paid-jobs-still-owe-supply-houses).
 - **The aging heat map** on Accounts payable keeps the house's totals. To the house, an aged job-account invoice is past due. But a teal line sits under each cell and the Owed column. It says how much is on a job account: {{chip:green|$2,759.01 job acct}}. A **Mark job-account invoices** box on the bar hides the lines. It only appears while a job-account invoice is unpaid. That box, *Show paid invoices* and *Show last payment* are remembered on your device.
 
 :::example What it changes — and what it doesn't
-An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's balance and still gets paid from **Make Payment**. But on Held for suppliers it reads teal instead of red, and the summary tells you that $3,240.50 of what you're "holding for suppliers" is secured by the owner's account.
+An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's balance and still gets paid from **Record a payment**. But on Held for suppliers it reads teal instead of red, and the summary tells you that $3,240.50 of what you're "holding for suppliers" is secured by the owner's account.
 :::
 
 ## Work a cell by job

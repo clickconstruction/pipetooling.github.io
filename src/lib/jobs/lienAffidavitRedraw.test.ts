@@ -56,3 +56,11 @@ describe('lienAffidavitRedrawOutcome · what took and what did not', () => {
     expect(lienAffidavitRedrawOutcome(0, 2)).toMatchObject({ line: 'Nothing redrew. 2 did not redraw.', tone: 'error' })
   })
 })
+
+describe('lienAffidavitRedrawPlan · an approved paper a gate moved to Held (punch list #335)', () => {
+  it('is redrawn as it was while it sat in Ready to file; the leader’s own hold is still left where it is', () => {
+    const plan = lienAffidavitRedrawPlan([entry('g', 'held', earlier('approved')), entry('h', 'held', earlier('held'))])
+    expect(plan.ready.map((e) => e.jobId)).toEqual(['g'])
+    expect(plan.held.map((e) => e.jobId)).toEqual(['h'])
+  })
+})
