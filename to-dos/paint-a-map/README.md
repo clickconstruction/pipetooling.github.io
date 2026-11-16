@@ -56,7 +56,7 @@ below was taken at the card's pick. The guide is `/help/paint-a-map`.
 | 7 | #8242 | v2.7364 | The **Map** press in the New task window and Manage's Edit, and *A map for this task* to pick one |
 | 8 | #8253 | v2.7366 | **Paint a new one** from the task: the painting window opens on a map on no job, and the saved map comes back onto the task |
 | 10 | #8261 | v2.7368 | The Roadmap's Add task window and a roadmap task's card, picking only |
-| Documents |  | v2.7393 | A **Painted maps** section in the job window's Documents tab: the job's maps and its development's, each a door to the map as it is now |
+| Documents | #8282 | v2.7393 | A **Painted maps** section in the job window's Documents tab: the job's maps and its development's, each a door to the map as it is now |
 
 The first two migrations are pushed and `painted-map-link` is deployed, each on the owner's yes.
 The third, `20261115063000_task_painted_maps.sql`, was pushed on 2026-11-15 after #8204 merged.
