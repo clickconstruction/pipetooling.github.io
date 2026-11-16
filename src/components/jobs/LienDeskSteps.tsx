@@ -405,11 +405,14 @@ export function LienStepCardView({ card, place, onClose, onMouseEnter, onMouseLe
 /** What shows `el`: the screen, cut to the nearest box around it that scrolls up and down. */
 function scrollerBox(el: HTMLElement): { top: number; bottom: number } {
   const screen = { top: 0, bottom: typeof window === 'undefined' ? 0 : window.innerHeight }
-  for (let up = el.parentElement; up && up !== document.body && up !== document.documentElement; up = up.parentElement) {
+  let up: HTMLElement | null = el.parentElement
+  while (up && up !== document.body && up !== document.documentElement) {
     const flow = getComputedStyle(up).overflowY
-    if (flow !== 'auto' && flow !== 'scroll') continue
-    const box = up.getBoundingClientRect()
-    return { top: Math.max(screen.top, box.top), bottom: Math.min(screen.bottom, box.bottom) }
+    if (flow === 'auto' || flow === 'scroll') {
+      const box = up.getBoundingClientRect()
+      return { top: Math.max(screen.top, box.top), bottom: Math.min(screen.bottom, box.bottom) }
+    }
+    up = up.parentElement
   }
   return screen
 }
