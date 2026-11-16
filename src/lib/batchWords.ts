@@ -4,7 +4,7 @@
  * The rule (`CLAUDE.md` → *Do what is ready, never all or nothing*): a button that acts on
  * many rows says how many it will act on and how many it holds, acts on the ready ones, lists
  * the held ones with the reason and a door, and is dead only when nothing is ready. The Lien
- * desk's run set the shape (v2.5533; its own words went with the run window's redraw, v2.7477); this kernel
+ * desk's run set the shape (v2.5533, `runRecordWords` in `jobs/lienDeskRun.ts`); this kernel
  * is the shared one, so a new batch button takes its words from here instead of writing
  * *Approve all* again. `scripts/codemods/batch-label-sweep.mjs --check` refuses a static label
  * that says *all*, *selected*, *shown* or *remaining* with no number in it.
