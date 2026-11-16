@@ -2616,7 +2616,7 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(gatesBox.querySelector('.lienGatesHead')).toBeNull()
     expect([...gatesBox.querySelectorAll('[data-gate]')].map((g) => `${g.getAttribute('data-n')}:${g.getAttribute('data-tone')}`)).toEqual(['1:ok', '2:ok', '3:check', '4:ok'])
     expect((gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).textContent).toContain('3Property kind')
-    // The sections fold (v2.4718): the clear gates' rows wait behind Details ∨; the one to check is open on its own.
+    // The sections fold (v2.4718): the clear gates' rows wait behind More details ∨; the one to check is open on its own.
     expect(gatesBox.querySelector('[data-gate-detail="owner"]')).toBeNull()
     expect(gatesBox.querySelector('[data-gate-detail="gc"]')).toBeNull()
     fireEvent.click(gatesBox.querySelector('[data-lien-gates-fold="open"]') as HTMLElement)
