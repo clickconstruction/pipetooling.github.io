@@ -12,10 +12,11 @@
  * office's page and send everyone outside the office away.
  *
  * Since v2.7298 (punch list #329, PR 3) a blank sticker's scan lands here with `&sticker=<code>` and opens the
- * **Sticker is new** sheet (`StickerNewSheet.tsx`); a box's row and its header read its sticker numbers beside the
- * name (*G12 · 0147*, `useJobStickers`), and a line under the boxes counts the job's stickers not yet on a box.
- * Since v2.7396 (section 10, PR 9) the number recedes: a sticker printed with the box's own name says nothing beside
- * it, one printed with another name reads *sticker reads G78*, and a scan of that one says so (`stickerMarksWords`).
+ * **Sticker is new** sheet (`StickerNewSheet.tsx`); a box's row and its header say of its stickers what carries news
+ * (`useJobStickers`), and a line under the boxes counts the job's stickers not yet on a box.
+ * Since v2.7396 (section 10, PR 9) a sticker printed with the box's own name says nothing beside it, one printed
+ * with another name reads *sticker reads G78*, and a scan of that one says so (`stickerMarksWords`). Since v2.7438 no
+ * sticker's running number is shown anywhere.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -25,7 +26,7 @@ import StickersOnBoxes from '../materials/StickersOnBoxes'
 import { ON_BOXES_LABEL } from '../../lib/materials/stickersOnBoxes'
 import { useJobStickers } from '../../hooks/useJobStickers'
 import { notYetOnBoxLine, stickerMarksWords, stickerReadsOtherWords, type PlaceOutcome } from '../../lib/materials/stickerPlace'
-import { lostStickerTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../../lib/materials/stickers'
+import { LOST_STICKER_TITLE, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, type CodeLookup } from '../../lib/materials/stickers'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
@@ -198,7 +199,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       else { pendingContainerRef.current = stickerFound.container.id; onPickJob(stickerFound.container.jobId) }
       return
     }
-    showToast(stickerFound.kind === 'lost' ? `${lostStickerTitle(stickerFound.sticker.number)}.` : stickerFound.kind === 'retired' ? `${retiredBoxStickerTitle(stickerFound.sticker)}. Bring it back first.` : stickerFound.kind === 'out_of_reach' ? `${outOfReachStickerTitle(stickerFound.sticker.number)}.` : 'That code is not a sticker or a box you can open.', 'warning')
+    showToast(stickerFound.kind === 'lost' ? `${LOST_STICKER_TITLE}.` : stickerFound.kind === 'retired' ? `${retiredBoxStickerTitle(stickerFound.sticker)}. Bring it back first.` : stickerFound.kind === 'out_of_reach' ? `${OUT_OF_REACH_STICKER_TITLE}.` : 'That code is not a sticker or a box you can open.', 'warning')
   }, [stickerFound, jobId, onPickJob, showToast])
   useEffect(() => {
     if (!stickerCode) { setStickerFound(null); return }

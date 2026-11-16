@@ -405,7 +405,7 @@ export default function LienDeskAffidavitPane({
         await redrawLienAffidavitShort(item, authUserId)
         setRedrawOpen(false)
       },
-      'Redrawn on the short form. It is back in To send and needs approval again.',
+      'Redrawn on the short form. It is back in To send for Master approval and needs approval again.',
     )
 
   // The door on the contractor's-address gate (punch list #305): the GC's own customer record.
@@ -820,7 +820,7 @@ export default function LienDeskAffidavitPane({
         <div data-lien-affidavit-form="long" style={{ ...boxStyle, fontSize: '0.8125rem' }}>
           {redrawOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <span>The affidavit goes back to To send on the short form. It needs approval again before it is filed.</span>
+              <span>The affidavit goes back to To send for Master approval on the short form. It needs approval again before it is filed.</span>
               <span style={{ flex: 1 }} />
               <button type="button" onClick={redrawShort} disabled={busy} style={btn('amber', busy)}>Redraw on the short form</button>
               <button type="button" onClick={() => setRedrawOpen(false)} style={btn('plain')}>Cancel</button>

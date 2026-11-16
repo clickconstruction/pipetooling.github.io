@@ -65,10 +65,13 @@ function mount(over: Partial<Parameters<typeof StickerNewSheet>[0]> = {}) {
 }
 
 describe('StickerNewSheet · a box I know', () => {
-  it('shows the number large, opens on the known boxes, lists the site with this job first and no sticker first', async () => {
+  it('shows the sticker’s code with no number, opens on the known boxes, lists the site with this job first and no sticker first', async () => {
     mount()
-    expect(screen.getByRole('dialog', { name: 'Sticker 0147 is new' })).toBeTruthy()
-    expect(screen.getByTestId('sticker-number').textContent).toBe('0147')
+    // a sticker with no name is *this sticker*, shown by its code as the tape prints it (v2.7438: no running number)
+    expect(screen.getByRole('dialog', { name: 'This sticker is new' })).toBeTruthy()
+    expect(screen.getByTestId('sticker-code').textContent).toBe('4F2A-9C18')
+    expect(screen.queryByTestId('sticker-number')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'This sticker is new' }).textContent).not.toContain('0147')
     expect(screen.getByTestId('sticker-branch-known').getAttribute('aria-pressed')).toBe('true')
     await waitFor(() => expect(screen.getAllByTestId('sticker-match-row')).toHaveLength(3))
     const rows = screen.getAllByTestId('sticker-match-row').map((r) => r.textContent ?? '')
@@ -78,7 +81,9 @@ describe('StickerNewSheet · a box I know', () => {
     expect(rows[1]).toContain('R1')
     expect(rows[1]).toContain('1205 · Juniper Ridge, phase 1')
     expect(rows[2]).toContain('R12')
-    expect(rows[2]).toContain('· 0152')
+    // its sticker carries no news: no number beside the name, and it is not marked as having none
+    expect(rows[2]).not.toContain('0152')
+    expect(rows[2]).not.toContain('no sticker')
     expect(screen.getByTestId('sticker-no-sticker-count').textContent).toBe('2 boxes on this site have no sticker yet.')
     // Nothing picked: the press waits.
     expect((screen.getByTestId('sticker-place-known') as HTMLButtonElement).disabled).toBe(true)
@@ -90,12 +95,12 @@ describe('StickerNewSheet · a box I know', () => {
     await waitFor(() => expect(screen.getAllByTestId('sticker-match-row')).toHaveLength(1))
     fireEvent.click(screen.getByTestId('sticker-match-row'))
     const press = screen.getByTestId('sticker-place-known') as HTMLButtonElement
-    expect(press.textContent).toBe('Put 0147 on R76')
+    expect(press.textContent).toBe('Put this sticker on R76')
     expect(press.disabled).toBe(false)
     fireEvent.click(press)
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(place).toHaveBeenCalledWith({ kind: 'known', stickerId: 's-147', containerId: 'r76' })
-    expect(onDone.mock.calls[0]![0]).toMatchObject({ kind: 'placed', words: '0147 is on R76.', containerId: 'r76' })
+    expect(onDone.mock.calls[0]![0]).toMatchObject({ kind: 'placed', words: 'The sticker is on R76.', containerId: 'r76' })
   })
 
   it('someone else took it first: who and when, with the box to open', async () => {
@@ -104,7 +109,7 @@ describe('StickerNewSheet · a box I know', () => {
     fireEvent.click(screen.getAllByTestId('sticker-match-row')[0]!)
     fireEvent.click(screen.getByTestId('sticker-place-known'))
     const said = await screen.findByTestId('sticker-said')
-    expect(said.textContent).toBe('Marcus put 0147 on R76 a minute ago.')
+    expect(said.textContent).toBe('Marcus put this sticker on R76 a minute ago.')
     expect(said.getAttribute('data-kind')).toBe('taken')
     fireEvent.click(screen.getByTestId('sticker-open-box'))
     expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ kind: 'taken', containerId: 'r76' }))
@@ -122,7 +127,7 @@ describe('StickerNewSheet · a box I know', () => {
     await waitFor(() => expect(screen.getAllByTestId('sticker-match-row').length).toBeGreaterThan(0))
     fireEvent.click(screen.getAllByTestId('sticker-match-row')[0]!)
     fireEvent.click(screen.getByTestId('sticker-place-known'))
-    expect((await screen.findByTestId('sticker-said')).textContent).toBe('0147 was on R76 and was marked lost.')
+    expect((await screen.findByTestId('sticker-said')).textContent).toBe('This sticker was on R76 and was marked lost.')
   })
 
   it('a refusal from the database is said in its words, and the sheet stays', async () => {
@@ -158,12 +163,12 @@ describe('StickerNewSheet · a box I know', () => {
 })
 
 describe('StickerNewSheet · a new box', () => {
-  it('opens on a new box when every box has a sticker, named by the site’s next free name with the number beside it, never the number', async () => {
+  it('opens on a new box when every box has a sticker, named by the site’s next free name, never a number', async () => {
     const { place, onDone } = mount({ stickersByBox: new Map([['r12', [152]], ['r76', [150]]]), readSite: async () => ({ places: [], containers: [], movements: [] }), siteJobIds: ['job-a'], siteBoxes: siteBoxes.filter((b) => b.id !== 'b1'), place: vi.fn(async () => ({ ok: true as const, already: false, created: true, containerId: 'new-box-1', sticker: { ...onR76, containerId: 'new-box-1', containerLabel: 'R77' } })) })
     expect(screen.getByTestId('sticker-branch-new').getAttribute('aria-pressed')).toBe('true')
     const name = screen.getByTestId('sticker-new-name') as HTMLInputElement
     expect(name.value).toBe('R77')
-    expect(screen.getByTestId('sticker-beside-name').textContent).toBe('Sticker 0147')
+    expect(screen.queryByTestId('sticker-beside-name')).toBeNull()
     expect(screen.getByTestId('sticker-new-say').textContent).toBe('R77 is the next free name on this site.')
     expect(screen.getByTestId('sticker-goes-on').textContent).toContain('Goes on 1204 · Juniper Ridge, phase 2.')
     const press = screen.getByTestId('sticker-place-new') as HTMLButtonElement
@@ -172,7 +177,7 @@ describe('StickerNewSheet · a new box', () => {
     fireEvent.click(press)
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(place).toHaveBeenCalledWith({ kind: 'new', stickerId: 's-147', containerId: 'new-box-1', jobId: 'job-a', label: 'R77', boxKind: 'box', where: '', placeId: 'barn' })
-    expect(onDone.mock.calls[0]![0]).toMatchObject({ kind: 'created', words: 'R77 is made, with sticker 0147 on it.', containerId: 'new-box-1' })
+    expect(onDone.mock.calls[0]![0]).toMatchObject({ kind: 'created', words: 'R77 is made, with its sticker on it.', containerId: 'new-box-1' })
   })
 
   it('a name the rule refuses, or one the site already carries, is a dead press with the reason', async () => {
@@ -236,9 +241,9 @@ describe('StickerNewSheet · a sticker that names its box (design section 10, PR
     const place = vi.fn(async () => ({ ok: true as const, already: false, created: true, containerId: 'new-box-1', sticker: onBox('R90', 'new-box-1', 'R90') }))
     const { onDone } = mount({ sticker: g('R90'), place })
     expect(screen.getByRole('dialog', { name: 'Sticker R90 is new' })).toBeTruthy()
-    // the name on the tape large, its number small beside it
+    // the name on the tape large, and no number beside it (v2.7438)
     expect(screen.getByTestId('sticker-name').textContent).toBe('R90')
-    expect(screen.getByTestId('sticker-number').textContent).toBe('0159')
+    expect(screen.queryByTestId('sticker-number')).toBeNull()
     // boxes with no sticker stand on the site, and the sheet still opens on the new box: the tape says which it is
     expect(screen.getByTestId('sticker-branch-new').getAttribute('aria-pressed')).toBe('true')
     expect((screen.getByTestId('sticker-new-name') as HTMLInputElement).value).toBe('R90')
@@ -263,7 +268,7 @@ describe('StickerNewSheet · a sticker that names its box (design section 10, PR
     expect(rows).toHaveLength(1)
     expect(rows[0]!.getAttribute('aria-pressed')).toBe('true')
     const press = screen.getByTestId('sticker-place-known') as HTMLButtonElement
-    expect(press.textContent).toBe('Put 0159 on R76')
+    expect(press.textContent).toBe('Put this sticker on R76')
     expect(press.disabled).toBe(false)
     fireEvent.click(press)
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
@@ -304,13 +309,16 @@ describe('StickerNewSheet · a sticker that names its box (design section 10, PR
   })
 
   it('a row says of its stickers only what carries news', async () => {
-    mount({ sticker: blank, stickersByBox: new Map([['r12', [152]], ['r76', [160]]]), marksByBox: new Map([['r12', [{ number: 152 }]], ['r76', [{ number: 160, boxName: 'R76' }]]]) })
+    mount({ sticker: blank, stickersByBox: new Map([['r12', [152]], ['r76', [160]]]), marksByBox: new Map([['r12', [{ number: 152, boxName: 'G9' }]], ['r76', [{ number: 160, boxName: 'R76' }]]]) })
     await waitFor(() => expect(screen.getAllByTestId('sticker-match-row')).toHaveLength(3))
     const rows = screen.getAllByTestId('sticker-match-row').map((r) => r.textContent ?? '')
     const r76 = rows.find((r) => r.startsWith('R76'))!
     // its own sticker says nothing, and it is not marked as having none
     expect(r76).not.toContain('0160')
     expect(r76).not.toContain('no sticker')
-    expect(rows.find((r) => r.startsWith('R12'))).toContain('· 0152')
+    // a sticker printed for another name says so, never its number
+    const r12 = rows.find((r) => r.startsWith('R12'))!
+    expect(r12).toContain('· sticker reads G9')
+    expect(r12).not.toContain('0152')
   })
 })

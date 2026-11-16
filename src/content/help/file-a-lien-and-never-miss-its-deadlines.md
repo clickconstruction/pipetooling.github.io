@@ -95,11 +95,32 @@ The address is laid out the way the envelope will read. First the owner, then st
 The same answer meets you in two more places, so no notice is ever blocked on a missing owner:
 
 - **Bill Customer** is one. Billing a GC job is a last chance to catch a missing owner before the notice is due. When the job has no confirmed owner, the Send-to block shows one green line on every bill. It reads *Owner of record for 5498 Cinder Valley Dr: Sample Station Ltd (Guadalupe Appraisal District 2025) — not yet on the job.* Then {{button:green|Use}} *it so the lien notice can be mailed when it is due.* It never holds up the bill. A roll miss reads *No owner of record on file — paste the county's page…* and opens the paste box right there.
-- **The Lien desk** is the other. An item in *Needs the owner* shows *Found at:* with the district and year, the chips, the CAD link and {{button:blue|Use this owner}}. {{button:outline|Find the owner ›}} stays as the fallback. Once Use this owner is pressed the row moves to *To send* on its own.
+- **The Lien desk** is the other. An item in *Needs the owner* shows *Found at:* with the district and year, the chips, the CAD link and {{button:blue|Use this owner}}. {{button:outline|Find the owner ›}} stays as the fallback. Once Use this owner is pressed the row moves to *To send for Master approval* on its own.
 
 :::example Save owners from the appraisal roll automatically (Settings → Jobs, bills and liens, master and dev)
 Off on day one. When it is on, every night the app looks up every open GC job with **no owner at all**, hours or not, and saves the roll's answer as *from the roll · unconfirmed* — the property record fills in with its provenance, but nobody has looked at it yet. The Lien desk drafts on it and says so — *Owner from the roll (2025) · unconfirmed · confirm on Guadalupe CAD ↗* {{button:blue|Confirm}} — and **Record the run refuses** until a person presses Confirm on every notice in the run. Owners someone typed or pressed Use on are never touched. Turn it on after the first sitting shows the roll is right.
 :::
+
+## A public property
+
+A mechanic's lien does not attach to public property. A city, a county, a school district or the State owns public property.
+
+When the owner of record reads as a public body, the property record asks once. *Is this public property?* shows on the **Property record** row in Edit Job. The question shows on the Lien desk's owner line too. The papers on the property hold until someone answers.
+
+- {{button:blue|Yes, public property…}} opens a window that takes the property off the lien path.
+- {{button:outline|No, it is private}} keeps that answer. The holds open, and the papers can go out.
+
+Only the office answers. Everyone else sees the question without the buttons.
+
+The window lists each job at the address that owes money or has a lien paper. Each line says what already went out on that job. A ticked job also goes on the attorney's list for a bond claim. The attorney's list is the Collections list. A job goes on it only once it is billed. The window says so under any job that is not billed yet.
+
+Write why the property is off the lien path. The reason goes on each ticked job. Pick whether there is a payment bond, if you know. Then press {{button:blue|Take 2 jobs off the lien path ▸}}.
+
+Nothing is filed and nothing is deleted. Every job at the address leaves the lien bins, now and later. A job that could not go on the attorney's list is named, with the reason.
+
+The property record then reads *Public property, answered Nov 16.* To undo it, press **Put it back on the lien path…** there. Say why, and press the button. Every job at the address returns to the Lien desk. The jobs stay on the attorney's list. If the owner still reads as a public body, the property asks once more.
+
+A private answer can be cleared too. Press **Ask again**, and the property asks once more.
 
 ## Step 2 — the affidavit, behind its gate
 
@@ -115,7 +136,7 @@ An amber line can also sit above **Ask Malachi to approve**, the press that name
 
 Nothing prints above the title, with one exception. On a property marked homestead, a bold notice comes first. It reads *NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.* Texas Property Code § 53.254 asks for that notice, as the app reads it. The county under **STATE OF TEXAS** is the county where you sign. It is not the property's county. The property's county is in the second statement. Beside the print press, **Signed in** holds the county the paper prints on both county lines. It opens on the county Settings hold. Signing somewhere else? Type that county for this print. Press **?** after the box to read what the box does. An empty box says *the notary writes it*. Left blank, the paper prints an empty line there. The help sheet says which county to write. The notary then writes the county by hand.
 
-An affidavit drafted before the short form keeps the earlier form. A grey line under the claim says so. The earlier form has ten statements, and it states the dates of the work. Those dates run from the first approved clock day through the last. To move that paper to the short form, open the job on the Lien desk. On the **Lien affidavits** tab, press **Redraw on the short form…** above the paper. The top of that list has one press for every ready affidavit at once. The affidavit goes back to **To send**. The affidavit needs approval again before you file it.
+An affidavit drafted before the short form keeps the earlier form. A grey line under the claim says so. The earlier form has ten statements, and it states the dates of the work. Those dates run from the first approved clock day through the last. To move that paper to the short form, open the job on the Lien desk. On the **Lien affidavits** tab, press **Redraw on the short form…** above the paper. The top of that list has one press for every ready affidavit at once. The affidavit goes back to **To send for Master approval**. The affidavit needs approval again before you file it.
 
 When the gate clears, click {{button:outline-blue|Print for notarization}}. A help sheet prints first. The help sheet says what the app checked on the paper: the owner, the homestead mark and the notices. A line marked **ASK FIRST** goes to the attorney before anyone signs. The help sheet also says what to write on the paper and what to do after the notary. A small picture of the paper shows where each thing is written. The steps have lines for the recording number, the day filed and the day to mail by. The sheet names who to ask: the lien leader on the job, or the dev. A code in the corner opens this guide on a phone. A second code is marked **Scan to record**. It sits beside the steps for after the notary. Scan it with a phone. It opens this job's affidavit tab. There you record the filing and the mail receipts. A phone that is not signed in is asked to sign in first. After the sign-in the app opens that same tab. Do not file the help sheet. Its striped top edge makes it easy to pull from the stack. Untick **Print the help sheet first** to leave it off. New to this paper? Press **Print a guide copy**. The guide copy shows the paper with a numbered mark beside each blank. It says GUIDE COPY across the paper. Never sign or file the guide copy. Sign the paper before a notary. File it with the County Clerk in the property's county. Then click {{button:red|Record filing…}} with the recording number. The **serve-by date stamps itself**. A copy must reach the owner and contractor within 5 days. A red Dashboard card nags until you {{button:red|Record service…}}. That step takes the day the copies were mailed. It also has a box for each copy's certified mail number. Press **Take a photo of the receipt** beside it. The photo goes to the job's Drive folder, under Sent by us. The number and the photo can wait. Record the day first. Later, press **add the mail receipts** on the affidavit's row under *Filings on this job*. **Record filing…** has a press of its own, **Take a photo of the stamped page**. That photo becomes the filing's saved copy.
 

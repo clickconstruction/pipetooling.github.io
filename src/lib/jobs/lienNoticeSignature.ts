@@ -15,7 +15,8 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
  * - `lienFieldsHash`: the hash of the draft's `fields` — stable across key order.
  * - `lienNoticeSignatureFromRow`: the row's signature, or null when unsigned or when the draft
  *   changed after signing (the hash no longer matches): the run then holds the notice.
- * - `lienSignatureAuditLine`: the sentence under the frame — how, who, when, whose screen.
+ * - `lienSignatureAuditLine`: the record's sentence — how, who, when, whose screen. The desk reads it under the
+ *   paper; since v2.7437 no paper prints it, and the frame's last line is the day alone (Taunya's ask).
  */
 
 /**
@@ -128,9 +129,9 @@ export type LienNoticeSignature = {
   signedAtIso: string
   /** `L878-4C2E91`: printed in the frame's corner, ties the paper to the row. */
   recordId: string
-  /** "Signed October 9, 2026 at 2:14 PM CT" — the frame's last line; "Signed by pen October 9, 2026" for a pen signature. */
+  /** "Signed October 9, 2026" — the frame's last line, the day alone (v2.7437); "Signed by pen October 9, 2026" for a pen signature. */
   signedWords: string
-  /** The sentence under the frame. */
+  /** The record's sentence, with the clock and whose screen. For the desk's own screens: `toFilingSignature` leaves it off the paper. */
   auditLine: string
   onDeviceOf: string | null
   /** The pen record; null for an electronic signature. */
@@ -157,7 +158,13 @@ export function lienSignatureWhen(iso: string): { day: string; clock: string } {
   }
 }
 
+/** The frame's last line on a paper: the day he signed, with no clock and no zone (v2.7437, Taunya's ask). */
+export function lienSignedWords(mode: LienSignatureMode, day: string): string {
+  return mode === 'pen' ? `Signed by pen ${day}` : `Signed ${day}`
+}
+
 /**
+ * The record's sentence, read on the desk and never printed (v2.7437):
  * "Placed by Robert Douglas with one press under his own sign-in to ClickTooling on October 9, 2026
  * at 2:14 PM CT." / "Drawn by Robert Douglas in ClickTooling on …, on Taunya’s screen." / "Signed by
  * pen by Robert Douglas on October 9, 2026, on the paper as printed. Recorded by Taunya, who watched
@@ -201,14 +208,14 @@ export function lienNoticeSignatureFromRow(
   const mode = lienSignatureModeOf(row.signer_signature_mode)
   const onDeviceOf = mode !== 'pen' && row.signed_on_device_of ? (opts.onDeviceName ?? '').trim() || null : null
   const pen: LienPenRecord | null = mode === 'pen' ? { recordedByName: (opts.recordedByName ?? '').trim() || null, how: lienPenWitnessHowOf(row.signed_witness_how) ?? 'told', confirmedAtIso: row.signed_leader_confirmed_at } : null
-  const { day, clock } = lienSignatureWhen(row.signed_at)
+  const { day } = lienSignatureWhen(row.signed_at)
   return {
     mode,
     printedName: name,
     pngDataUrl: mode === 'draw' ? (opts.pngDataUrl ?? null) : null,
     signedAtIso: row.signed_at,
     recordId: lienSignedRecordId(opts.jobNumber, opts.itemId),
-    signedWords: mode === 'pen' ? `Signed by pen ${day}` : `Signed ${day} at ${clock} CT`,
+    signedWords: lienSignedWords(mode, day),
     // A code signature's confirmation rides the same column as a pen record's (v2.5788).
     auditLine: lienSignatureAuditLine({ mode, printedName: name, signedAtIso: row.signed_at }, onDeviceOf, pen ?? (mode === 'code' ? { recordedByName: null, how: 'told', confirmedAtIso: row.signed_leader_confirmed_at } : undefined)),
     onDeviceOf,
@@ -216,9 +223,9 @@ export function lienNoticeSignatureFromRow(
   }
 }
 
-/** The renderers' shape of the signature. */
+/** The renderers' shape of the signature: what a paper prints. The record's sentence stays behind on the desk (v2.7437). */
 export function toFilingSignature(sig: LienNoticeSignature): FilingSignature {
-  return { mode: sig.mode, printedName: sig.printedName, pngDataUrl: sig.pngDataUrl, signedWords: sig.signedWords, recordId: sig.recordId, auditLine: sig.auditLine }
+  return { mode: sig.mode, printedName: sig.printedName, pngDataUrl: sig.pngDataUrl, signedWords: sig.signedWords, recordId: sig.recordId }
 }
 
 /** The patch that clears a signature (v2.5082): a draft saved after signing, a pull-back, an undo — the leader signs again. */
@@ -254,7 +261,7 @@ export function lienPenAwaitsConfirm(row: LienDeskSignatureColumns, fieldsHash: 
  * just wrote rather than waiting on the desk's re-read.
  */
 export function lienNoticeSignatureAfterSigning(args: { mode: LienSignatureMode; printedName: string; pngDataUrl: string | null; signedAtIso: string; jobNumber: string; itemId: string; onDeviceName: string | null; pen?: Pick<LienPenRecord, 'recordedByName' | 'how'> | null }): LienNoticeSignature {
-  const { day, clock } = lienSignatureWhen(args.signedAtIso)
+  const { day } = lienSignatureWhen(args.signedAtIso)
   const onDeviceOf = args.mode === 'pen' ? null : (args.onDeviceName ?? '').trim() || null
   const pen: LienPenRecord | null = args.mode === 'pen' ? { recordedByName: (args.pen?.recordedByName ?? '').trim() || null, how: args.pen?.how ?? 'told', confirmedAtIso: null } : null
   return {
@@ -263,7 +270,7 @@ export function lienNoticeSignatureAfterSigning(args: { mode: LienSignatureMode;
     pngDataUrl: args.mode === 'draw' ? args.pngDataUrl : null,
     signedAtIso: args.signedAtIso,
     recordId: lienSignedRecordId(args.jobNumber, args.itemId),
-    signedWords: args.mode === 'pen' ? `Signed by pen ${day}` : `Signed ${day} at ${clock} CT`,
+    signedWords: lienSignedWords(args.mode, day),
     auditLine: lienSignatureAuditLine({ mode: args.mode, printedName: args.printedName, signedAtIso: args.signedAtIso }, onDeviceOf, pen ?? undefined),
     onDeviceOf,
     pen,

@@ -1,7 +1,7 @@
+import { lienPropertyIsPublic, type LienPublicAnswer, type LienPublicRecord } from './lienPublicProperty'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { LIEN_DESK_SENT_DAYS, PUBLIC_OWNER_DESK_SENTENCE, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk'
-import { ownerKind } from './ownerConfirm'
 import { monthFromBill, monthIsStandIn, type LienMonthSource, monthSetByHand } from './lienDesk'
 import { HOMESTEAD_QUESTION_GATE_LABEL, homesteadAnsweredOnRow, homesteadQuestionOpen } from '../customers/homesteadAnswer'
 
@@ -62,8 +62,8 @@ export type LienAffidavitPile = 'needs_property' | 'to_draft' | 'awaiting' | 're
 
 export const LIEN_AFFIDAVIT_PILES: ReadonlyArray<{ key: LienAffidavitPile; label: string }> = [
   { key: 'needs_property', label: 'Needs the property facts' },
-  { key: 'to_draft', label: 'To send' },
-  { key: 'awaiting', label: 'Awaiting approval' },
+  { key: 'to_draft', label: 'To send for Master approval' },
+  { key: 'awaiting', label: 'Awaiting Master approval' },
   { key: 'ready', label: 'Ready to file' },
   { key: 'held', label: 'Held' },
   { key: 'filed', label: 'Filed · 30d' },
@@ -118,8 +118,9 @@ export function withHomesteadAnswer<R extends Pick<LienAffidavitRow, 'job_id'>>(
  * State (punch list #314). Every name is asked, not the one the paper would print: the roll sometimes files the body in
  * one box and an attention line in the other, and the first signed batch carried a paper that named the attention line.
  */
-export function lienOwnerIsPublic(names: ReadonlyArray<string | null | undefined>): boolean {
-  return names.some((n) => (n ?? '').trim() !== '' && ownerKind((n ?? '').trim()) === 'public')
+export function lienOwnerIsPublic(names: ReadonlyArray<string | null | undefined>, answer?: LienPublicAnswer | null): boolean {
+  // The stored answer wins (`lienPublicProperty.ts`): *No, it is private* opens a hold the names alone would raise.
+  return lienPropertyIsPublic({ lien_public_answer: answer ?? null }, names)
 }
 
 /**
@@ -142,11 +143,11 @@ export function affidavitGateMissingWord(key: LienAffidavitGateKey): string {
  * the RPC joins on (`jobs_ledger.customer_address_id`). A job with no linked record, or whose record was not read, is
  * left as it was.
  */
-export function withPublicOwner<R extends Pick<LienAffidavitRow, 'job_id'>>(rows: ReadonlyArray<R>, addressIdByJob: Readonly<Record<string, string | null | undefined>>, addressesById: Readonly<Record<string, { owner_name?: string | null; owner_company?: string | null } | undefined>>): Array<R & { owner_public?: boolean | null }> {
+export function withPublicOwner<R extends Pick<LienAffidavitRow, 'job_id'>>(rows: ReadonlyArray<R>, addressIdByJob: Readonly<Record<string, string | null | undefined>>, addressesById: Readonly<Record<string, LienPublicRecord | undefined>>): Array<R & { owner_public?: boolean | null }> {
   return rows.map((r) => {
     const addressId = addressIdByJob[r.job_id]
     const record = addressId ? addressesById[addressId] : undefined
-    return record ? { ...r, owner_public: lienOwnerIsPublic([record.owner_name, record.owner_company]) } : { ...r }
+    return record ? { ...r, owner_public: lienPropertyIsPublic(record) } : { ...r }
   })
 }
 

@@ -12,7 +12,7 @@
  * walks through it. Every line a person reads keeps to `plainWords.ts`; the `·` in a tile's label
  * is the desk's own mark, as on every pile chip, never glue inside a sentence.
  *
- * Two names follow main's piles (2026-11-15): *To send* for the `to_draft` pile (v2.7327) and *In the run* for the
+ * Two names say the step (v2.7434, Taunya's ask): *To send for Master approval* for the `to_draft` pile and *Approved · to mail* for the
  * approved and printed notices (v2.7328). `LIEN_BOARD_WORDS` holds both.
  */
 import { batchWords, type BatchWords } from '../batchWords'
@@ -73,6 +73,8 @@ export type LienBoardChip = {
   pile: LienDeskPile | LienAffidavitPile
   /** The job's GC, for a run row that stands for a GC's notices; null without one. */
   gcId: string | null
+  /** The job sits on a property that reads as public and has no answer yet (v2.7443): the chip carries ⊘ and no red day. */
+  publicMark?: boolean
 }
 
 export type LienBoardBin = {
@@ -145,15 +147,17 @@ export type LienBoardInput = {
   gcName: (gcId: string) => string
   /** The leader the papers wait on, by name; absent reads *the leader*. */
   leaderName?: string | null
+  /** Jobs on a property that reads as public and has no answer yet (v2.7443, `publicAskJobIds`): their chips carry the mark. */
+  publicJobIds?: ReadonlySet<string>
 }
 
 /** The bins' words. The two that wait on sibling PRs are named at the top of the file. */
 export const LIEN_BOARD_WORDS = {
   needs_owner: 'Needs the owner',
   needs_property: 'Needs the property facts',
-  to_send: 'To send',
-  awaiting: 'Awaiting approval',
-  in_mail: 'In the run',
+  to_send: 'To send for Master approval',
+  awaiting: 'Awaiting Master approval',
+  in_mail: 'Approved · to mail',
   sent: 'Sent',
   ready: 'Ready to file',
   filed: 'Filed · Served',
@@ -371,9 +375,9 @@ export function lienBoardRetainageLine(retainage: ReadonlyArray<LienRetainageEnt
   const count = (pile: LienRetainageEntry['pile']) => live.filter((e) => e.pile === pile).length
   const parts = [
     [count('needs_owner'), 'needs the owner', 'need the owner'],
-    [count('to_draft'), 'to send', 'to send'],
+    [count('to_draft'), 'to send for approval', 'to send for approval'],
     [count('awaiting'), 'awaiting approval', 'awaiting approval'],
-    [count('ready'), 'ready to send', 'ready to send'],
+    [count('ready'), 'approved to mail', 'approved to mail'],
     [count('held'), 'held', 'held'],
     [count('missed'), 'missed', 'missed'],
   ] as const
@@ -394,11 +398,15 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       pairs.push({ key, jobId: e.jobId, reason: 'owner', destination: { kind: 'property', jobId: e.jobId, focus: 'owner' } })
     }
   }
+  // A job on a property that reads as public and has no answer yet (v2.7443): no paper can be made there, so its chip
+  // loses its red day and its *!*, and carries the mark instead.
+  const publicJob = (jobId: string) => Boolean(input.publicJobIds?.has(jobId))
   const notices: LienBoardChip[] = input.notices.map((e) => {
     const stage = noticeStage(e.pile)
     const stepsLeft = NOTICE_STAGES_LEFT[stage].length
     const dueYmd = e.earliestDeadline
     const daysLeft = dueYmd ? e.daysLeft : null
+    const marked = publicJob(e.jobId)
     return {
       jobId: e.jobId,
       label: input.jobNumber(e.jobId),
@@ -408,8 +416,9 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       dueYmd,
       daysLeft,
       stepsLeft,
-      urgency: stage === 'sent' ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
-      atRisk: lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
+      urgency: stage === 'sent' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
+      atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
+      ...(marked ? { publicMark: true } : {}),
       destination: noticeDestination(e, stage),
       tip: tipFor(e.jobId, e.gcCustomerId, e.openBalance),
       pairKey: pairKeyByJob.get(e.jobId) ?? null,
@@ -423,6 +432,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
     const stepsLeft = AFFIDAVIT_STAGES_LEFT[stage].length
     const dueYmd = e.deadline || null
     const daysLeft = dueYmd ? e.daysLeft : null
+    const marked = publicJob(e.jobId)
     return {
       jobId: e.jobId,
       label: input.jobNumber(e.jobId),
@@ -432,8 +442,9 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       dueYmd,
       daysLeft,
       stepsLeft,
-      urgency: stage === 'filed' ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
-      atRisk: lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
+      urgency: stage === 'filed' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
+      atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
+      ...(marked ? { publicMark: true } : {}),
       destination: affidavitDestination(e, stage),
       tip: tipFor(e.jobId, e.gcCustomerId, e.openBalance),
       pairKey: stage === 'needs_property' ? pairKeyByJob.get(e.jobId) ?? null : null,
@@ -480,7 +491,8 @@ function open(c: LienBoardChip): boolean {
 }
 
 function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, affidavits: ReadonlyArray<LienBoardChip>): { tiles: LienBoardTile[]; dayWords: string | null; atRisk: number } {
-  const liveChips = [...notices, ...affidavits].filter(open)
+  // A chip on a property that reads as public and is unanswered (v2.7443) has no day to make: no paper can be made there.
+  const liveChips = [...notices, ...affidavits].filter(open).filter((c) => !c.publicMark)
   const dated = liveChips.filter((c) => c.dueYmd && c.daysLeft != null && c.daysLeft >= 0).map((c) => c.dueYmd as string).sort()
   const day = dated[0] ?? null
   const dayWords = day ? lienBoardDayWords(input.todayYmd, day) : null
@@ -523,7 +535,8 @@ function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, aff
       {
         key: 'in_mail',
         figure: String(printed + ready),
-        label: LIEN_BOARD_WORDS.in_mail.toLowerCase(),
+        // The tile counts what is in the run and opens it, so it keeps the run's name; its bin is *Approved · to mail* (v2.7434).
+        label: 'in the run',
         line: printed > 0 ? `Type the tracking ${plural(printed, 'number', 'numbers')}.` : ready > 0 ? `Print the run.` : 'Nothing is in the run.',
         tone: printed + ready > 0 ? 'amber' : 'quiet',
         destination: printed + ready > 0 ? { kind: 'run' } : null,
@@ -646,7 +659,7 @@ export function lienBoardRowRisk(papers: ReadonlyMap<string, number>, row: { key
 /** A pressed bin, a tile's stage across both columns, or the day tile's red line: what the list under the Board is narrowed to. */
 export type LienBoardPick = {
   bins: LienBoardBinKey[]
-  /** The bins' name: *To send*, or *Awaiting approval* for the stage on both columns. */
+  /** The bins' name: *To send for Master approval*, or *Awaiting Master approval* for the stage on both columns. */
   label: string
   /** The papers themselves, by `kind:jobId`, when the pick is narrower than a job (the red line, v2.7371); absent, every row of a picked job is in. */
   papers?: ReadonlySet<string>

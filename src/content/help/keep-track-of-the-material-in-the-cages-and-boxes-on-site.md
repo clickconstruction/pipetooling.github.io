@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, materials page, track, sticker, blank sticker, stick a sticker on a box, sticker is new, it is on a box i know, it is a new box, sticker number, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, materials page, track, sticker, blank sticker, stick a sticker on a box, sticker is new, it is on a box i know, it is a new box, sticker name, named sticker, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -100,7 +100,7 @@ A printed label carries a code. Point your camera at it and the box opens. A lab
 
 A label printed before November 11, 2026 can open a web search on an iPhone. Print that label again and the new one opens the box. Until then, type its code with **Scan a label**.
 
-A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job. You can type a sticker's number instead, like 0147. The sticker's box opens. A blank sticker opens the sheet that puts it on a box.
+A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job. A sticker's code works the same way. The sticker's box opens, or a blank sticker opens the sheet that puts it on a box.
 
 To print one box's label, open the box and tap **Print the label** under its parts. The label window opens right there. A whole job's labels print from Materials, with **Print labels** at the right end of the tabs. The office, an estimator, a primary and a superintendent have that press.
 
@@ -108,19 +108,19 @@ Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with 
 
 ## Stick a sticker on a box
 
-The office prints a run of blank stickers before the boxes exist. Each sticker carries a code to scan and a number to read, like 0147. Stick one on a cage or box. Then scan it with your phone's camera. The On site tab opens on a sheet that reads **Sticker 0147 is new**. The number is large at the top. Under it the sheet asks what the sticker is on.
+The office prints a run of blank stickers before the boxes exist. Each sticker carries a code to scan. Most also carry a box's name, like G78. Stick one on a cage or box. Then scan it with your phone's camera. The On site tab opens on a sheet that reads **Sticker G78 is new**. A sticker with no name opens **This sticker is new**, with its code at the top. The sheet then asks what the sticker is on.
 
-Tap **It is on a box I know** when the box is already in the app. The sheet lists every box on this site. Your job's boxes come first. Boxes with no sticker come before the rest. A box on another job of the site names that job. Type the digits of the stencil, like 76, and R76 is left in the list. You can type a place or a part too. Tap the box, then tap {{button:blue|Put 0147 on R76}}. The box keeps its name, its parts, its counts and its photos. The sticker is one more way to open it.
+Tap **It is on a box I know** when the box is already in the app. The sheet lists every box on this site. Your job's boxes come first. Boxes with no sticker come before the rest. A box on another job of the site names that job. Type the digits of the stencil, like 76, and R76 is left in the list. You can type a place or a part too. Tap the box, then tap {{button:blue|Put this sticker on R76}}. The box keeps its name, its parts, its counts and its photos. The sticker is one more way to open it.
 
-Tap **It is a new box** when the box is not in the app yet. The sheet fills in the next free name on this site, like R97. The sticker's number is shown beside it. Change the name only when the paint on the steel says something else. Pick how it sits and its place on the site. **What is in it** takes your own words, and you can leave it empty. Tap {{button:blue|Save box R97}}. The box opens with the sticker on it. Tap **Add a part** and **Photo** as you do on any box.
+Tap **It is a new box** when the box is not in the app yet. The sheet fills in the next free name on this site, like R97. Change the name only when the paint on the steel says something else. Pick how it sits and its place on the site. **What is in it** takes your own words, and you can leave it empty. Tap {{button:blue|Save box R97}}. The box opens with the sticker on it. Tap **Add a part** and **Photo** as you do on any box.
 
 A line under the name says which job the new box goes on. Tap **Change** to pick another job. The sticker stays in hand while you pick.
 
-Some stickers are printed with a box's name, like G78. A scan of one opens **Sticker G78 is new**. The name is large at the top, with the sticker's number small beside it. When the site has no G78 yet, the sheet opens on **It is a new box** with G78 filled in. Pick how it sits and its place, then tap {{button:blue|Save box G78}}. When the site already has a G78, the sheet opens on that box with it picked. Tap {{button:blue|Put 0159 on G78}} to put the sticker on it.
+A sticker printed with a box's name reads that name, large at the top of the sheet. When the site has no G78 yet, the sheet opens on **It is a new box** with G78 filled in. Pick how it sits and its place, then tap {{button:blue|Save box G78}}. When the site already has a G78, the sheet opens on that box with it picked. Tap {{button:blue|Put this sticker on G78}} to put the sticker on it.
 
 Sometimes the cage in front of you is a second one at the same spot. Tap **It is a different box**. The sheet offers the next letter, like G78B. Tap {{button:blue|Save box G78B}}. The sticker still reads G78, and a later scan says so.
 
-Two stickers can sit on one box. Both open it. A sticker that carries a number only shows beside the box's name, as *R76 · 0147*. A sticker printed with the box's own name adds nothing beside it. A sticker printed with another name reads *sticker reads G78* beside the box's name. A box's own label from before still opens it too.
+Two stickers can sit on one box. Both open it. A sticker printed with the box's own name adds nothing beside the box's name. A sticker printed with another name reads *sticker reads G78* there. A box's own label from before still opens it too.
 
 If someone else put the sticker on a box a moment ago, the sheet says who and when. Tap **Open R76** to see that box. A sticker printed for another job asks once. Use it here, and it belongs to the box it lands on. A sticker on a box of a job you are not on says so. Ask the office to add you to that job.
 

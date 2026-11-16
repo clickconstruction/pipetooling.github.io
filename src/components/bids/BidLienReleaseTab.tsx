@@ -40,7 +40,7 @@ import {
 } from '../../lib/bids/bidLienWaiver'
 import { loadBidLienReleases, loadBidLienWaiverLeaders, mintBidLienRelease, stampBidLienReleaseSent, type BidLienReleaseHistory } from '../../lib/bids/bidLienReleaseIo'
 import { isLienWaiverFormType, type JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
-import { lienReleaseRowSignature, lienReleaseStatus, lienReleaseTypedName } from '../../lib/jobs/lienReleaseLifecycle'
+import { lienReleaseRowSignature, lienReleaseSignatureAuditLine, lienReleaseStatus, lienReleaseTypedName } from '../../lib/jobs/lienReleaseLifecycle'
 import type { LienWaiverSigner } from '../../lib/jobs/lienWaiverSigners'
 import { getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import LienReleaseSignModal from '../jobs/LienReleaseSignModal'
@@ -218,7 +218,8 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
         const leader = bidLienWaiverLeader(leaders, cur.fields.signerName, companySignerName)
         const codeDoor = held && leader != null && bidLienWaiverCodeDoorShown(cur.formType, role)
         const doorWords = leader ? bidLienWaiverCodeDoorWords(leader.name) : null
-        const footNote = signature ? signature.auditLine : held ? 'Waits for his ink or his code' : null
+        // The record's sentence is the screen's, not the paper's (v2.7437): it is read off the row here.
+        const footNote = signedRow && signature ? lienReleaseSignatureAuditLine(signedRow, signedOn) : held ? 'Waits for his ink or his code' : null
         const shownHistory = bidLienReleaseHistory(rows)
         // Every waiver that goes out is recorded on the bid, once per paper. For the outputs it is best
         // effort: a role the database will not let record one still prints and copies.

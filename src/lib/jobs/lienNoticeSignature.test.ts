@@ -12,6 +12,7 @@ import {
   lienSignatureAuditLine,
   lienSignatureStale,
   lienSignedRecordId,
+  lienSignedWords,
   signatureColumnsOf,
   toFilingSignature,
   type LienDeskSignatureColumns,
@@ -83,17 +84,38 @@ describe('the row’s signature', () => {
     expect(sig!.pngDataUrl).toBeNull()
     expect(sig!.recordId).toBe('L878-4C2E91')
     expect(lienSignedRecordId('878', '4c2e91aa-0000-4000-8000-000000000000')).toBe('L878-4C2E91')
-    expect(sig!.signedWords).toBe('Signed October 9, 2026 at 2:14 PM CT')
+    expect(sig!.signedWords).toBe('Signed October 9, 2026')
     expect(sig!.auditLine).toBe('Placed by Robert Douglas with one press under his own sign-in to ClickTooling on October 9, 2026 at 2:14 PM CT.')
     expect(sig!.onDeviceOf).toBeNull()
     expect(toFilingSignature(sig!)).toEqual({
       mode: 'type',
       printedName: 'Robert Douglas',
       pngDataUrl: null,
-      signedWords: 'Signed October 9, 2026 at 2:14 PM CT',
+      signedWords: 'Signed October 9, 2026',
       recordId: 'L878-4C2E91',
-      auditLine: sig!.auditLine,
     })
+  })
+
+  it('what a paper is handed holds neither the clock nor the sentence of how it was signed, in any way of signing (v2.7437)', () => {
+    const opts = { jobNumber: '878', itemId: '4c2e91aa-0000-4000-8000-000000000000', fieldsHash: lienFieldsHash(FIELDS), onDeviceName: 'Robert', recordedByName: 'Taunya' }
+    const rows = [
+      signed(),
+      signed({ signer_signature_mode: 'draw', signed_on_device_of: 'u-taunya' }),
+      signed({ signer_signature_mode: 'code', signed_on_device_of: 'u-robert', signed_leader_confirmed_at: '2026-10-12T22:00:00Z' }),
+      signed({ signer_signature_mode: 'pen', signed_recorded_by: 'u-taunya', signed_witness_how: 'watched' }),
+    ]
+    for (const row of rows) {
+      const sig = lienNoticeSignatureFromRow(row, opts)!
+      const paper = toFilingSignature(sig)
+      // The record keeps its sentence for the desk; the paper's shape has no such key.
+      expect(sig.auditLine.length).toBeGreaterThan(20)
+      expect(Object.keys(paper).sort()).toEqual(['mode', 'pngDataUrl', 'printedName', 'recordId', 'signedWords'])
+      const words = JSON.stringify(paper)
+      for (const banned of [' CT', ' PM', ' AM', '2:14', 'screen', 'Typed by', 'Drawn by', 'Placed by', 'Recorded by', 'Confirmed by', 'ClickTooling']) expect(words, `${sig.mode}: ${banned}`).not.toContain(banned)
+      expect(paper.signedWords).toBe(sig.mode === 'pen' ? 'Signed by pen October 9, 2026' : 'Signed October 9, 2026')
+    }
+    expect(lienSignedWords('code', 'November 16, 2026')).toBe('Signed November 16, 2026')
+    expect(lienSignedWords('pen', 'November 16, 2026')).toBe('Signed by pen November 16, 2026')
   })
 
   it('a drawn signature carries the ink it was given and names the screen it was drawn on', () => {
@@ -131,7 +153,7 @@ describe('the signature the run dresses a notice with right after signing (v2.50
     const sig = lienNoticeSignatureAfterSigning({ mode: 'draw', printedName: 'Robert Douglas', pngDataUrl: 'data:image/png;base64,AAAA', signedAtIso: SIGNED_AT, jobNumber: '878', itemId: '4c2e91aa-0000-4000-8000-000000000000', onDeviceName: 'Taunya' })
     expect(sig.recordId).toBe('L878-4C2E91')
     expect(sig.pngDataUrl).toBe('data:image/png;base64,AAAA')
-    expect(sig.signedWords).toBe('Signed October 9, 2026 at 2:14 PM CT')
+    expect(sig.signedWords).toBe('Signed October 9, 2026')
     expect(sig.auditLine).toBe('Drawn by Robert Douglas in ClickTooling on October 9, 2026 at 2:14 PM CT, on Taunya’s screen.')
     expect(sig.onDeviceOf).toBe('Taunya')
   })
@@ -215,7 +237,7 @@ describe('a signature by code (v2.5788): his own code on someone else’s screen
     expect(sig?.mode).toBe('code')
     expect(sig?.pngDataUrl).toBeNull()
     expect(sig?.onDeviceOf).toBe('Robert')
-    expect(sig?.signedWords).toBe('Signed October 9, 2026 at 2:14 PM CT')
+    expect(sig?.signedWords).toBe('Signed October 9, 2026')
     expect(sig?.auditLine).toBe('Typed by Robert Douglas with his signing code in ClickTooling on October 9, 2026 at 2:14 PM CT, on Robert’s screen.')
     const confirmed = lienNoticeSignatureFromRow(code({ signed_leader_confirmed_at: '2026-10-12T22:00:00Z' }), { ...opts, onDeviceName: 'Robert' })
     expect(confirmed?.auditLine).toContain('Confirmed by Robert Douglas from his own sign-in on October 12, 2026.')

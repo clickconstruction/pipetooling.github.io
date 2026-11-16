@@ -1,8 +1,8 @@
 /**
  * The reads and the one write behind Print blank stickers (punch list #329, PR 2, v2.7272). `mintStickerRun` calls
  * `mint_sticker_run` as the caller: the database numbers the run under a lock and makes the stickers, and a refusal
- * comes back in its own words (`SECURITY INVOKER`, so the gate judges the caller). The two reads list a job's runs
- * with their stickers, and the newest number any run the caller can see reached. Nothing here writes a sticker:
+ * comes back in its own words (`SECURITY INVOKER`, so the gate judges the caller). The reads list a job's runs
+ * with their stickers, and the site's boxes and blank named stickers for the Names field. Nothing here writes a sticker:
  * no client does (`docs/MATERIALS_ON_SITE_ARCHITECTURE.md`). The words are `stickerRun.ts`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -44,14 +44,6 @@ export async function fetchStickerRuns(jobId: string): Promise<StickerRunWithSti
     byRun.set(raw.run_id, list)
   }
   return runs.map((run) => ({ run, stickers: byRun.get(run.id) ?? [] }))
-}
-
-/** The last number of the newest run the caller can see, or null when none: the window's *The last run ended at 0100.* A run on a job out of their reach is not counted, so the line reads as far as they can see. */
-export async function fetchLastStickerNumber(): Promise<number | null> {
-  const { data, error } = await db.from('sticker_runs').select('last_number').not('last_number', 'is', null).order('last_number', { ascending: false }).limit(1)
-  if (error) throw error
-  const row = ((data ?? []) as Array<{ last_number: number | null }>)[0]
-  return typeof row?.last_number === 'number' ? row.last_number : null
 }
 
 /** What the Names field reads of a job's site before a run (section 10, v2.7391). */

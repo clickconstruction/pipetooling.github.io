@@ -130,7 +130,7 @@ export function LienWordRecordRow({ note, onNote, channel, onChannel, radioName,
         >
           <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>What the record will say</div>
           <div style={where}>
-            <span style={whereKey}>On this notice, in Ready to send</span>
+            <span style={whereKey}>On this notice, in Approved · to print</span>
             <span style={whereValue}>{preview.ready}</span>
             <span style={whereKey}>{preview.record}</span>
           </div>

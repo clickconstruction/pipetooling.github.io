@@ -82,7 +82,7 @@ function dayOf(iso: string | null | undefined): string {
 export function runTakeBackConfirm(input: { count: number; printedAt: string | null; typed: number; all: boolean }): { title: string; lines: string[]; button: string } {
   const day = dayOf(input.printedAt)
   const lines = [
-    `${input.count === 1 ? 'The notice goes' : `The ${notices(input.count)} go`} back to Ready to send. The approvals stand.`,
+    `${input.count === 1 ? 'The notice goes' : `The ${notices(input.count)} go`} back to Approved · to print. The approvals stand.`,
     'Then print the packet again. It prints the way the app draws it today.',
     `The ${input.count === 1 ? 'copy' : 'copies'} printed${day ? ` ${day}` : ''} ${input.count === 1 ? 'stays' : 'stay'} in ${input.count === 1 ? 'the job’s' : 'each job’s'} Documents, filed as printed.`,
   ]
@@ -91,10 +91,10 @@ export function runTakeBackConfirm(input: { count: number; printedAt: string | n
   return { title: input.all ? 'Take back the run?' : `Take back the ${notices(input.count)} that printed?`, lines, button: `Take back ${notices(input.count)}` }
 }
 
-/** The strip after a take-back: "Taken back. 19 notices are in Ready to send again. Print the packet when it is ready." */
+/** The strip after a take-back: "Taken back. 19 notices are in Approved · to print again. Print the packet when it is ready." */
 export function runTakenBackWords(count: number, printedAt: string | null): string {
   const day = printedAt ? demandDate(calendarYmdInAppTzFromIso(printedAt)) : ''
-  return `Taken back. ${count === 1 ? 'The notice' : `The ${notices(count)}`}${day ? ` printed ${day}` : ''} ${count === 1 ? 'is' : 'are'} in Ready to send again. Print the packet when it is ready.`
+  return `Taken back. ${count === 1 ? 'The notice' : `The ${notices(count)}`}${day ? ` printed ${day}` : ''} ${count === 1 ? 'is' : 'are'} in Approved · to print again. Print the packet when it is ready.`
 }
 
 /** The ready chip's tail and hover: "taken back Oct 8", "Printed Oct 7, taken back Oct 8 by Dana." */

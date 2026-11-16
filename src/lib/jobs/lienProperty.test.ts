@@ -48,6 +48,10 @@ function addressRow(overrides: Partial<CustomerAddressRow>): CustomerAddressRow 
     owner_confirmed_at: null,
     owner_confirmed_by: null,
     is_primary: false,
+    lien_public_answer: null,
+    lien_public_answered_at: null,
+    lien_public_answered_by: null,
+    lien_public_reason: null,
     ...overrides,
   }
 }

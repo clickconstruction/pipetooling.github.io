@@ -358,7 +358,7 @@ export default function LienFilingTabs({
 
   const homesteadUnanswered = homesteadQuestionOpen({ propertyKind: property.propertyKind, homestead: property.homestead, answered: property.homesteadAnswered })
   // Punch list #314: a mechanic's lien does not attach to public property. Every name the record gives is asked, not the one the paper prints.
-  const ownerPublic = lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany])
+  const ownerPublic = lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany], property.publicAnswer)
   const affidavitGates: { ok: boolean; label: string }[] = [
     ...(ownerPublic ? [{ ok: false, label: PUBLIC_OWNER_DESK_SENTENCE }] : []),
     { ok: Boolean(ownerName && property.owner.mailingAddress), label: ownerName ? `Owner of record — ${ownerName}${property.owner.mailingAddress ? '' : ' (mailing address missing)'}` : 'Owner of record with mailing address' },

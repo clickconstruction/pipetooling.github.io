@@ -112,10 +112,11 @@ const BUTTON: Record<LienNextUpAction, string> = {
   approve: 'Approve',
   sign: 'Sign',
   confirm_pen: 'Yes, I signed it',
-  send: 'Send',
-  send_run: 'Send the run',
+  // Print and mail (v2.7442, Taunya's words of 2026-11-16): the act at the counter, not the desk's word for it. A GC's row adds its count.
+  send: 'Print and mail',
+  send_run: 'Print and mail',
   add_tracking: 'Add tracking',
-  record_mailing: 'Record the mailing',
+  record_mailing: 'Enter mail numbers',
   review_hold: 'Review the hold',
   letter_two: 'Send the attorney’s letter',
   courtesy: COURTESY_BUTTON,
@@ -127,6 +128,15 @@ const BUTTON: Record<LienNextUpAction, string> = {
   file_affidavit: 'File the affidavit',
   record_service: 'Record service',
   mail_needs_you: 'Open the notice',
+}
+
+/**
+ * The notices a run holds (v2.7442). Opened from a GC's To do row, or from its one notice, the run holds that GC's
+ * approved notices alone, so *Print and mail 3* opens on three. The desk's own doors pass no GC and get every approved
+ * and printed notice, as before.
+ */
+export function lienRunEntriesFor<E extends { gcCustomerId?: string | null }>(ready: ReadonlyArray<E>, printed: ReadonlyArray<E>, gcId: string | null): E[] {
+  return gcId ? ready.filter((e) => e.gcCustomerId === gcId) : [...ready, ...printed]
 }
 
 export type LienNextUpInput = {
@@ -197,7 +207,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     const button = r.button !== undefined ? r.button : canAct ? BUTTON[r.action] : null
     rows.push({ ...r, button, group: groupOf(r.daysLeft, r.severity) })
   }
-  /** Awaiting approval: the leader approves; the office waits on him by name, with no button. */
+  /** Awaiting Master approval: the leader approves; the office waits on him by name, with no button. */
   const awaiting = (jobId: string, item: { submitted_at?: string | null } | null | undefined): { action: LienNextUpAction; button: string | null; sub: string; detail: string } => {
     const since = item?.submitted_at ? calendarYmdInAppTzFromIso(item.submitted_at) : ''
     const dated = /^\d{4}-\d{2}-\d{2}$/.test(since)
@@ -294,17 +304,18 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
           push({ ...base, key: `notice:${e.jobId}`, sub: `Signed by pen${dayWords} · recorded by ${who}`, action: 'confirm_pen', button: BUTTON.confirm_pen, target: pane('ready') })
           break
         }
-        // A GC with several ready is one row below; a single job sends from its own pane.
+        // A GC with several ready is one row below; a single job is its own row. Its Print and mail (v2.7442) opens the run on
+        // its GC, which holds this one notice, as the GC's row does; the row itself still opens the notice.
         if (e.gcCustomerId && (readyByGc.get(e.gcCustomerId)?.length ?? 0) > 1) break
         const offer = lienOfferFromItem(e.item)
-        push({ ...base, key: `notice:${e.jobId}`, sub: `${offer ? `Approved · ${lienOfferChipWords(offer).replace(/^Offer/, 'offer')} · ready to send` : 'Approved · ready to send'}${unsigned ? ` · unsigned, waits on ${input.leaderName?.(e.jobId)?.trim() || 'the leader'}` : ''}`, action: 'send', button: office ? BUTTON.send : null, target: pane('ready') })
+        push({ ...base, key: `notice:${e.jobId}`, sub: `${offer ? `Approved · ${lienOfferChipWords(offer).replace(/^Offer/, 'offer')} · ready to send` : 'Approved · ready to send'}${unsigned ? ` · unsigned, waits on ${input.leaderName?.(e.jobId)?.trim() || 'the leader'}` : ''}`, action: 'send', button: office ? BUTTON.send : null, target: e.gcCustomerId ? { open: 'run', gcId: e.gcCustomerId } : pane('ready') })
         break
       }
       case 'printed':
         // Two or more printed are one run row below (punch list #101); one keeps its own row.
         if (printedCount > 1) break
-        // In the run (v2.7328): the row names the tick the notice waits on, as the pile's row does.
-        push({ ...base, key: `notice:${e.jobId}`, sub: `In the run · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, detail: lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false), action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
+        // Approved · to mail (the pile's name since v2.7434; *In the run* since v2.7328): the row names the tick the notice waits on, as the pile's row does.
+        push({ ...base, key: `notice:${e.jobId}`, sub: `Approved · to mail · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, detail: lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false), action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
         break
       case 'held':
         push({ ...base, key: `notice:${e.jobId}`, sub: 'Held', detail: '', action: 'review_hold', target: pane('held') })
@@ -340,7 +351,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       daysLeft: first?.daysLeft ?? null,
       severity: list.some((e) => e.severity === 'red') ? 'red' : list.some((e) => e.severity === 'amber') ? 'amber' : 'quiet',
       action: 'send_run',
-      button: office ? BUTTON.send_run : null,
+      button: office ? `${BUTTON.send_run} ${list.length}` : null,
       target: { open: 'run', gcId },
     })
   }

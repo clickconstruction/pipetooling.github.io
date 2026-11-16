@@ -2,7 +2,7 @@
 name: "Sub payments as a ledger: every payment made to a sub, by date, on Jobs → Subs and People → Subs"
 number: 347
 group: ready
-status: asked 2026-11-13 · all five PRs and the credit are built the same day (v2.7172 dates, v2.7174 by date, v2.7176 the window, v2.7231 by sub, v2.7235 the credit and sendings, v2.7237 the check mark, v2.7239 the match to Mercury) · the residue built 2026-11-15 (v2.7352 the match from Banking, v2.7357 the dev seat's sending, v2.7362 no own-account transfer offered, v2.7404 a check placed by hand, v2.7420 an overpaid sheet becomes a credit) · the owner 2026-11-13: an overpayment becomes a credit, and "build it all"
+status: asked 2026-11-13 · all five PRs and the credit are built the same day (v2.7172 dates, v2.7174 by date, v2.7176 the window, v2.7231 by sub, v2.7235 the credit and sendings, v2.7237 the check mark, v2.7239 the match to Mercury) · the residue built 2026-11-15 (v2.7352 the match from Banking, v2.7357 the dev seat's sending, v2.7362 no own-account transfer offered, v2.7404 a check placed by hand, v2.7420 an overpaid sheet becomes a credit) and 2026-11-16 (v2.7440 old payments typed one per sheet gathered into one) · the owner 2026-11-13: an overpayment becomes a credit, and "build it all"
 mockup: to-dos/subs-payments-ledger/mockup.html
 summary: >
   The owner wants to reconcile the payments made to subs and cannot see them by date. The Pay
@@ -15,7 +15,7 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: the owner's look, now that the four migrations are in prod's ledger (`20261116194500` read 2026-11-16) and every line under *Not built* but one is built; old payments typed one per sheet are not gathered into sendings
+next: the owner's look, now that the five migrations are in prod's ledger (`20261116213000` read 2026-11-16) and every line under *Not built* is built
 size: M as a train of six (XS · S · S · S · S · M)
 blocker: none
 opinion: use it for a month's statement before building more; the first real sitting will say whether hand placement or the Banking side is worth it
@@ -149,13 +149,13 @@ Built with this card's edit, between PR 2 and PR 3:
 
 ## Not built
 
-Taunya, 2026-11-15, of the lines here once hand placement had gone to the sub labor spike: "Build all four". Four are built, two of them by the sub labor train that came out of the spike. One is left.
+Taunya, 2026-11-15, of the lines here once hand placement had gone to the sub labor spike: "Build all four". All five lines are built, three of them by the sub labor train that came out of the spike.
 
 - **Built: the Banking side** (v2.7352). See *The match to Mercury* above.
 - **Built: the dev seat's sub payment** (v2.7357, server 0.90.0). `plan_sub_labor_payment` records a sending with its number, the method and its reference through `record_sub_sending`, as the Record payment window does, and the plan reads back what will be written. Since v2.7428 (server 0.91.0) a teammate alone on a sheet is who its sending names, by the rule of card #346.
 - ~~Placing a sending's lines by hand.~~ Built in v2.7404: *By hand* beside *Oldest first* in the Record payment window.
 - ~~A sheet already paid past its total becoming a credit.~~ Built in v2.7420: *Keep the $… over as credit…* on the sheet's ⋯ menu. The function is `convert_sub_overpayment_to_credit`, and a bank tick and a bank match stand.
-- **Old payments typed one per sheet** are not gathered into sendings. They are ticked and matched row by row. With the same spike.
+- ~~Old payments typed one per sheet are not gathered into sendings.~~ Built in v2.7440: *Gather old payments…* on the Subs Ledger. The function is `gather_sub_payments_into_sending`. It moves no amount, date, sheet, tick or bank match, and refuses rows matched to different bank lines.
 
 Left by the two that were built:
 

@@ -142,9 +142,9 @@ export type LienDeskPile = 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | '
 export function lienEmptyPileWords(pile: LienDeskPile, onOtherPiles: number): { head: string; rest: string } {
   const head: Record<LienDeskPile, string> = {
     needs_owner: 'Every notice has its owner of record.',
-    to_draft: 'Nothing is left to send.',
+    to_draft: 'Nothing is left to send for approval.',
     awaiting: 'Nothing is waiting for approval.',
-    ready: 'Nothing is ready to send.',
+    ready: 'Nothing approved is waiting to print.',
     printed: 'Nothing in the run is waiting on a tick.',
     held: 'Nothing is held.',
     sent: 'Nothing went out in the last 30 days.',
@@ -156,11 +156,11 @@ export function lienEmptyPileWords(pile: LienDeskPile, onOtherPiles: number): { 
 
 export const LIEN_DESK_PILES: ReadonlyArray<{ key: LienDeskPile; label: string }> = [
   { key: 'needs_owner', label: 'Needs the owner' },
-  // *To send* since v2.7327: the paper is drawn from the record and the office sends it; the key stays `to_draft`.
-  { key: 'to_draft', label: 'To send' },
-  { key: 'awaiting', label: 'Awaiting approval' },
-  { key: 'ready', label: 'Ready to send' },
-  { key: 'printed', label: 'In the run' },
+  // *To send for Master approval* since v2.7434 (*To send* since v2.7327): the office sends the paper to the leader, who approves it; the key stays `to_draft`.
+  { key: 'to_draft', label: 'To send for Master approval' },
+  { key: 'awaiting', label: 'Awaiting Master approval' },
+  { key: 'ready', label: 'Approved · to print' },
+  { key: 'printed', label: 'Approved · to mail' },
   { key: 'held', label: 'Held' },
   { key: 'sent', label: 'Sent · 30d' },
   { key: 'missed', label: 'Missed' },
@@ -380,7 +380,11 @@ export function buildLienDeskQueue(
     // The deadline the entry is judged by: the item's months when it has
     // them (a draft names its months), else what a new notice would name.
     const named = live && live.months.length > 0 ? live.months : dueMonths
-    const deadlines = months.filter((m) => named.includes(m.key)).map((m) => m.deadline)
+    // A closed month the notice still names (a late one for the affidavit) does not judge the row while a named month is
+    // open (v2.7441, job 804 on 2026-11-16: Jul + Aug + Sep read *window closed* by July's Oct 15 on August's last day).
+    const namedMonths = months.filter((m) => named.includes(m.key))
+    const openNamed = namedMonths.filter((m) => m.daysLeft >= 0)
+    const deadlines = (openNamed.length > 0 ? openNamed : namedMonths).map((m) => m.deadline)
     const earliestDeadline = deadlines.length ? deadlines.slice().sort()[0]! : null
     const daysLeft = earliestDeadline ? daysBetweenYmd(todayYmd, earliestDeadline) : null
     // The affidavit's day (v2.7273): the affidavit windows' when they list the job, else the last month's filing deadline.
@@ -705,10 +709,10 @@ export type LienDraftReadiness = { ready: true; reason: null } | { ready: false;
  * property; the remedy is a claim on the GC's payment bond. The order is the
  * order the pane lists its checks: GC, owner, months.
  */
-export function draftReadiness(input: { gcName: string; ownerName: string; ownerMailingAddress: string; monthsCount: number }): LienDraftReadiness {
+export function draftReadiness(input: { gcName: string; ownerName: string; ownerMailingAddress: string; monthsCount: number; /** The property's stored answer and every name read (`lienPropertyIsPublic`); absent, the printed name alone is asked, as before. */ ownerIsPublic?: boolean }): LienDraftReadiness {
   if (!input.gcName.trim()) return { ready: false, reason: 'no_gc' }
   if (!input.ownerName.trim() || !input.ownerMailingAddress.trim()) return { ready: false, reason: 'no_owner' }
-  if (ownerKind(input.ownerName) === 'public') return { ready: false, reason: 'public_owner' }
+  if (input.ownerIsPublic ?? ownerKind(input.ownerName) === 'public') return { ready: false, reason: 'public_owner' }
   if (input.monthsCount <= 0) return { ready: false, reason: 'no_months' }
   return { ready: true, reason: null }
 }

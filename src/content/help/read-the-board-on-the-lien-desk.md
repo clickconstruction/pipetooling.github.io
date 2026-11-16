@@ -19,9 +19,9 @@ The fourth tile is the money still unpaid on the desk. Each job counts once.
 
 ## The two columns
 
-The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send**, **Awaiting approval**, **In the run** and **Sent**. A thin grey arrow joins each bin to the next.
+The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send for Master approval**, **Awaiting Master approval**, *Approved · to mail* and **Sent**. A thin grey arrow joins each bin to the next.
 
-The right column is the lien affidavits. Its bins are **Needs the property facts**, **To send**, **Awaiting approval**, **Ready to file** and *Filed · Served*.
+The right column is the lien affidavits. Its bins are **Needs the property facts**, **To send for Master approval**, **Awaiting Master approval**, **Ready to file** and *Filed · Served*.
 
 One arrow crosses from Sent on the left to Needs the property facts on the right. The notice on record is the affidavit's gate. On a phone the columns stand one over the other and that arrow is not drawn.
 
@@ -46,7 +46,7 @@ A chip is only a number. Point at it and a card opens beside it. Nothing is pres
 
 The card says which job it is. It gives the job's name, its address and its customer. It names the GC when the GC is not the customer.
 
-Then it says where the paper stands. It names the column and the bin, like *Monthly notice* and **To send**. It gives the one thing to know, the day and how long is left. It says when the paper will not make its day, and what the job still owes. A job with a paper in the other column says where that one stands too.
+Then it says where the paper stands. It names the column and the bin, like *Monthly notice* and **To send for Master approval**. It gives the one thing to know, the day and how long is left. It says when the paper will not make its day, and what the job still owes. A job with a paper in the other column says where that one stands too.
 
 A paper that will not make its day also lists what is still to do. Each line is one stage, in order, like *Send it for approval*. The stage that waits on the job's leader names him. The line over the list says how many working days are left.
 
@@ -57,8 +57,8 @@ The last line says where a press will take you. Move the pointer away and the ca
 Every chip is a press to the right place for its stage. Point at a chip to read where it goes.
 
 - A chip in **Needs the owner** or **Needs the property facts** opens the property record at the missing line.
-- A chip in **To send** or **Awaiting approval** opens that job's paper on **By paper**.
-- A chip in **In the run** opens the run on that envelope.
+- A chip in **To send for Master approval** or **Awaiting Master approval** opens that job's paper on **By paper**.
+- A chip in *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
 - A chip in *Filed · Served* opens the job's Lien window.
 
@@ -78,7 +78,7 @@ The Board fills most of the screen. Scroll down and the Board moves away as the 
 
 The find box stays at the top while you read the list. Beside it sit the Board's numbers, like *21 by tomorrow*. The waiting number and the run number are presses. They go where their tiles go. The red count of what will not make its day is a press too.
 
-When a bin is pressed, that line says what the list is showing instead. It reads like *Showing 4 rows in To send*. {{button:outline|Show every row}} sits beside it.
+When a bin is pressed, that line says what the list is showing instead. It reads like *Showing 4 rows in To send for Master approval*. {{button:outline|Show every row}} sits beside it.
 
 Press {{button:outline|↑ The Board}} to go back to the top.
 
@@ -118,9 +118,21 @@ A **Held** bin and a **Missed** bin stand beside a column only while a job is in
 
 Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. The retainage list on **By paper** has the rows.
 
+## Public property
+
+A mechanic's lien does not attach to public property. Some owners read as a city, a county, a school district or the State. Nobody can make the papers for their jobs.
+
+- Such a job's chip carries a ⊘ mark. The chip loses its red day, because no paper can be made there.
+- One amber line sits over the bins, like *2 jobs sit on public property and are still on the lien path*. The line gives the money those jobs owe.
+- {{button:outline|Review them ›}} opens one window for each property in turn. The window asks whether to take the property off the lien path.
+
+A property answered public leaves the bins. The property's jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}. Each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
+
+**Put a job back on the lien path…** at the foot of the bin puts a property back. Say why, and its jobs return to the bins. [A public property](/help/file-a-lien-and-never-miss-its-deadlines#a-public-property) has the window's steps.
+
 ## The leader's Board
 
-A master opens the desk on his own Board. Only the two **Awaiting approval** bins stand under the tiles. They hold the jobs he leads. One press under them acts on the lot. The press reads like *Approve 2 affidavits*. It approves every affidavit that waits inside its window, one by one. Each moves to **Ready to file**. The desk asks once before it starts, with the count.
+A master opens the desk on his own Board. Only the two **Awaiting Master approval** bins stand under the tiles. They hold the jobs he leads. One press under them acts on the lot. The press reads like *Approve 2 affidavits*. It approves every affidavit that waits inside its window, one by one. Each moves to **Ready to file**. The desk asks once before it starts, with the count.
 
 A notice stays out of the press. Its reason reads *needs your signature*. The law wants the leader's signature on each notice, and the notice's own pane signs it. A paper past its day stays out too, as *is past its day*. Each held paper keeps its chip. Press the chip to open it.
 

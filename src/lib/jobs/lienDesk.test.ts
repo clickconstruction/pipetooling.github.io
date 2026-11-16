@@ -146,6 +146,24 @@ describe('buildLienDeskQueue', () => {
     expect(q3.entries[0]!.pile).toBe('sent')
   })
 
+  it('a notice naming a closed month and open ones is judged by its earliest open month (v2.7441, job 804)', () => {
+    const today = '2026-11-16'
+    const rows = [
+      row({ job_id: 'j804', work_month: '2026-07', deadline: '2026-10-15', open_balance: 3_553 }),
+      row({ job_id: 'j804', work_month: '2026-08', deadline: '2026-11-16', open_balance: 3_553 }),
+      row({ job_id: 'j804', work_month: '2026-09', deadline: '2026-12-15', open_balance: 3_553 }),
+    ]
+    const awaiting = item({ job_id: 'j804', status: 'awaiting_approval', months: ['2026-07', '2026-08', '2026-09'] })
+    const e = buildLienDeskQueue(rows, [awaiting], {}, today).entries[0]!
+    expect(e.earliestDeadline).toBe('2026-11-16')
+    expect(e.daysLeft).toBe(0)
+    expect(e.missedMonths).toEqual(['2026-07'])
+    // Every named month closed: the row still reads by the earliest, so it says the window closed.
+    const late = buildLienDeskQueue(rows, [item({ job_id: 'j804', status: 'awaiting_approval', months: ['2026-07'] })], {}, today).entries[0]!
+    expect(late.earliestDeadline).toBe('2026-10-15')
+    expect(late.daysLeft).toBeLessThan(0)
+  })
+
   it('reads the GC’s standing rule and sorts by earliest deadline then dollars', () => {
     const rows = [
       row({ job_id: 'a', work_month: '2026-07', deadline: '2026-10-15', gc_customer_id: 'kestrin', open_balance: 500 }),
@@ -404,7 +422,7 @@ describe('buildLienDeskQueue · a job with no clock hours is dated from its crea
 })
 
 describe('the printed pile (v2.4119)', () => {
-  it('an approved item stamped printed sits in the printed pile, In the run (v2.7328); unstamped it is ready', () => {
+  it('an approved item stamped printed sits in the printed pile, Approved · to mail (v2.7434); unstamped it is ready', () => {
     const ready = buildLienDeskQueue(J650, [item({ job_id: 'j650', status: 'approved', months: ['2026-06'] })], {}, TODAY)
     expect(ready.entries[0]!.pile).toBe('ready')
     const printed = buildLienDeskQueue(J650, [item({ job_id: 'j650', status: 'approved', months: ['2026-06'], ...({ printed_at: '2026-09-29T15:00:00Z' } as object) })], {}, TODAY)
@@ -431,7 +449,7 @@ describe('a notice sent in the evening keeps its day (v2.4468)', () => {
 describe('lienEmptyPileWords (v2.4854)', () => {
   it('names what is no longer there and counts the other piles', () => {
     expect(lienEmptyPileWords('awaiting', 23)).toEqual({ head: 'Nothing is waiting for approval.', rest: '23 notices are on the other piles.' })
-    expect(lienEmptyPileWords('to_draft', 1)).toEqual({ head: 'Nothing is left to send.', rest: '1 notice is on the other piles.' })
+    expect(lienEmptyPileWords('to_draft', 1)).toEqual({ head: 'Nothing is left to send for approval.', rest: '1 notice is on the other piles.' })
     expect(lienEmptyPileWords('missed', 0)).toEqual({ head: 'No window was missed.', rest: 'The other piles are empty too.' })
   })
 })

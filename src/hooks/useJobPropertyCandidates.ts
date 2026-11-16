@@ -6,7 +6,13 @@ import { type CustomerAddressRow } from '../lib/jobs/lienProperty'
 export type PropertyCandidateRow = Pick<
   CustomerAddressRow,
   'id' | 'customer_id' | 'address' | 'county' | 'legal_description' | 'owner_name' | 'owner_company' | 'owner_mailing_address' | 'owner_confirmed_at' | 'property_kind' | 'homestead'
-> & { owner_email?: string | null; owner_phone?: string | null }
+> & {
+  owner_email?: string | null
+  owner_phone?: string | null
+  /** Is this public property? (v2.7443): absent on a row read before migration 20261116221500 is pushed. */
+  lien_public_answer?: string | null
+  lien_public_answered_at?: string | null
+}
 
 export type JobPropertyCandidates = {
   propertyCandidates: PropertyCandidateRow[]

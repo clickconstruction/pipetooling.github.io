@@ -68,18 +68,19 @@ describe('BoxCode, signed in', () => {
   it('a lost sticker says where it was', async () => {
     resolveBoxCode.mockResolvedValue({ kind: 'lost', sticker: { ...onR76, state: 'lost', lostAt: '2026-11-14T16:00:00Z' } })
     mount()
-    expect((await screen.findByTestId('box-code-title')).textContent).toBe('Sticker 0147 was marked lost')
+    // no running number in the words (Taunya's call of 2026-11-16)
+    expect((await screen.findByTestId('box-code-title')).textContent).toBe('This sticker was marked lost')
     expect(screen.getByTestId('box-code-detail').textContent).toBe('It was on R76. It no longer opens that box.')
   })
 
   it('a sticker on a retired box, and one on a job the reader is not on, each say so', async () => {
     resolveBoxCode.mockResolvedValue({ kind: 'retired', sticker: { ...onR76, containerRetiredAt: '2026-11-10T00:00:00Z' } })
     mount()
-    expect((await screen.findByTestId('box-code-title')).textContent).toBe('Sticker 0147 is on R76, which was retired')
+    expect((await screen.findByTestId('box-code-title')).textContent).toBe('This sticker is on R76, which was retired')
     cleanup()
     resolveBoxCode.mockResolvedValue({ kind: 'out_of_reach', sticker: onR76 })
     mount()
-    expect((await screen.findByTestId('box-code-title')).textContent).toBe('Sticker 0147 is on a box of a job you are not on')
+    expect((await screen.findByTestId('box-code-title')).textContent).toBe('This sticker is on a box of a job you are not on')
     expect(screen.getByTestId('box-code-detail').textContent).toBe('Ask the office to add you to that job.')
   })
 

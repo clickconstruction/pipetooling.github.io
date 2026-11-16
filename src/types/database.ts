@@ -8921,6 +8921,10 @@ export type Database = {
           jp_precinct_note: string
           jp_precinct_source: string
           legal_description: string
+          lien_public_answer: string | null
+          lien_public_answered_at: string | null
+          lien_public_answered_by: string | null
+          lien_public_reason: string | null
           note: string | null
           owner_company: string
           owner_confirmed_at: string | null
@@ -8953,6 +8957,10 @@ export type Database = {
           jp_precinct_note?: string
           jp_precinct_source?: string
           legal_description?: string
+          lien_public_answer?: string | null
+          lien_public_answered_at?: string | null
+          lien_public_answered_by?: string | null
+          lien_public_reason?: string | null
           note?: string | null
           owner_company?: string
           owner_confirmed_at?: string | null
@@ -8985,6 +8993,10 @@ export type Database = {
           jp_precinct_note?: string
           jp_precinct_source?: string
           legal_description?: string
+          lien_public_answer?: string | null
+          lien_public_answered_at?: string | null
+          lien_public_answered_by?: string | null
+          lien_public_reason?: string | null
           note?: string | null
           owner_company?: string
           owner_confirmed_at?: string | null
@@ -9008,6 +9020,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_addresses_lien_public_answered_by_fkey"
+            columns: ["lien_public_answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -44138,6 +44157,10 @@ export type Database = {
           n: number
         }[]
       }
+      gather_sub_payments_into_sending: {
+        Args: { p_payment_ids: string[]; p_person_id: string }
+        Returns: Json
+      }
       gc_accept_work: { Args: { p_package_id: string }; Returns: string }
       gc_add_company: { Args: { company: Json }; Returns: string }
       gc_add_punch_item: { Args: { p: Json }; Returns: string }
@@ -49027,6 +49050,16 @@ export type Database = {
           p_project_id: string
         }
         Returns: string
+      }
+      set_property_lien_public_answer: {
+        Args: {
+          p_address_id: string
+          p_answer: string
+          p_jobs?: Json
+          p_payment_bond?: string
+          p_reason?: string
+        }
+        Returns: Json
       }
       set_quick_reply_press: {
         Args: { p_id: string; p_press: string }

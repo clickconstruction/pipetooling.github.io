@@ -96,13 +96,17 @@ import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBa
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
-import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { buildLienNextUp, lienRunEntriesFor, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardPickWords, lienBoardRiskPapers, lienBoardRiskPhrase, lienBoardRiskPick, lienBoardRowInPick, lienBoardRowRisk, lienBoardRowStage, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind, type LienBoardTileDestination } from '../../lib/jobs/lienBoard'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
 import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
 import LienBoard from './LienBoard'
+import LienPublicPropertyWindow from './LienPublicPropertyWindow'
+import LienPublicPutBackWindow from './LienPublicPutBackWindow'
+import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
+import { buildLienPublicBin, lienPublicBoardLine } from '../../lib/jobs/lienPublicProperty'
 import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
@@ -170,6 +174,9 @@ import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type 
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates, { LienGatesSentFold } from './LienDeskGates'
+import LienPageExportPresses from './LienPageExportPresses'
+import { isLienExportPageKey, lienExportDraftLine, lienExportFileName, lienExportFiling, lienExportTitle } from '../../lib/jobs/lienPageExport'
+import { lienPageExportBlob } from '../../lib/jobs/lienPageExportIo'
 import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
 import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
@@ -560,6 +567,8 @@ export default function LienDesk({
   const [runOpen, setRunOpen] = useState(false)
   // The run row's Take back… (punch list #101) opens the run on its confirm.
   const [runTakeBack, setRunTakeBack] = useState(false)
+  // A To do row's Print and mail (v2.7442) opens the run on its GC's approved notices alone; null is every notice.
+  const [runGcId, setRunGcId] = useState<string | null>(null)
   // The sheet's code (v2.7328): the run opens on the notice the phone scanned, its Mailed box under the cursor.
   const [runFocus, setRunFocus] = useState<string | null>(null)
   useEffect(() => {
@@ -899,12 +908,29 @@ export default function LienDesk({
             jobName: (jobId) => (data.jobsById[jobId]?.job_name ?? '').trim(),
             gcName: (gcId) => data.gcsById[gcId]?.name ?? '',
             leaderName: boardLeaderName,
+            publicJobIds: data.publicAskJobIds,
           })
         : null,
     [data, todayYmd, boardLeaderName],
   )
+  // Public property (v2.7443, Taunya's ask of 2026-11-16): the line over the Board for the jobs on a property that reads
+  // as public, unanswered, with a paper still open, and the bin for the jobs already off the lien path.
+  const publicLine = useMemo(() => {
+    if (!data || !board) return null
+    const chips = [...board.notices, ...board.affidavits].flatMap((b) => b.chips).filter((c) => c.stage !== 'sent' && c.stage !== 'filed')
+    return lienPublicBoardLine({
+      askingJobIds: data.publicAskJobIds ?? new Set<string>(),
+      openPaperJobIds: new Set(chips.map((c) => c.jobId)),
+      unpaidOf: (jobId) => chips.find((c) => c.jobId === jobId)?.openBalance ?? 0,
+      addressIdOf: (jobId) => data.jobsById[jobId]?.customer_address_id ?? null,
+    })
+  }, [data, board])
+  const publicBin = useMemo(() => buildLienPublicBin(data?.publicJobs ?? []), [data])
+  // The properties left to review, one window at a time; and the property being put back on the lien path.
+  const [publicReview, setPublicReview] = useState<string[] | null>(null)
+  const [publicPutBack, setPublicPutBack] = useState<string | null>(null)
   const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
-  // The leader's Board (v2.7334): a master opens on his two Awaiting approval bins alone, the jobs he leads, with one
+  // The leader's Board (v2.7334): a master opens on his two Awaiting Master approval bins alone, the jobs he leads, with one
   // counted press for the lot; a dev, who reads every job, opens on every bin. Session-only; the bar's press switches.
   const [boardMine, setBoardMine] = useState<boolean>(() => authRole === 'master_technician')
   const leaderView = useMemo(() => (board && leader ? lienBoardForLeader(board, { leads: (jobId) => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (id) => data?.jobsById[id]?.master_user_id ?? null }, jobId) }) : null), [board, leader, authRole, authUserId, data])
@@ -1237,6 +1263,7 @@ export default function LienDesk({
     }
     if (t.open === 'run') {
       setRunTakeBack(Boolean(t.takeBack))
+      setRunGcId(t.gcId)
       setRunOpen(true)
     } else if (t.open === 'lien_window') {
       // Change the last day of work… (punch list #353): the window opens with the day ready to change, where the page has that door.
@@ -1733,7 +1760,7 @@ export default function LienDesk({
     await run('Note it as missed', async () => noteLienWindowMissed({ jobId: selected.jobId, months, fields: draftFields(), userId: authUserId, userName: authName }), `Noted — ${describeNoticeMonths(months)} is on the record as missed.`)
   }
   // Readiness (v2.3450 kernel): GC, owner with a mailing address, months — and never a public owner.
-  const readiness = draftReadiness({ gcName: gc?.name ?? '', ownerName, ownerMailingAddress: property.owner.mailingAddress, monthsCount: monthsList.length })
+  const readiness = draftReadiness({ gcName: gc?.name ?? '', ownerName, ownerMailingAddress: property.owner.mailingAddress, monthsCount: monthsList.length, ownerIsPublic: lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany], property.publicAnswer) })
   // The fifth gate (v2.4969): nothing owed on the sent bills while money is still on the job — a notice claims what is billed, so the send waits.
   const nothingBilled = Boolean(selected) && openBalance <= 0.005 && unbilled > 0.005
   const ready = readiness.ready && !nothingBilled
@@ -1940,7 +1967,7 @@ export default function LienDesk({
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
-  const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null }))), 'Back in Ready to send.')
+  const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null }))), 'Back in Approved · to print.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
   const saveRule = (policy: LienNoticePolicy) =>
     run('Standing rule', async () => void (selected?.gcCustomerId && (await setCustomerLienNoticePolicy(selected.gcCustomerId, policy, ''))), `Rule saved for ${gc?.name ?? 'this GC'}.`)
@@ -2347,7 +2374,7 @@ export default function LienDesk({
                             : 'approved'
                       }${e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' ? ' · unsigned' : ''}`
                     : e.pile === 'printed'
-                      // In the run (v2.7328): the row names the tick it waits on, as the run's checklist does.
+                      // Approved · to mail (*In the run* until v2.7434): the row names the tick it waits on, as the run's checklist does.
                       ? lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)
                     : e.pile === 'held'
                       ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`
@@ -2472,6 +2499,22 @@ export default function LienDesk({
     else host.scrollTop = top
     setLitPage(key)
   }
+  // One page exported alone (v2.7432, Taunya's ask of 2026-11-15): Open ↗ and PDF ↓ at the bar's right end, beside the bar's own
+  // button. The page is made as the run makes it; until the notice is approved its foot carries the draft line.
+  const pageExport = (key: string) => {
+    if (!selected || !isLienExportPageKey(key)) return null
+    const named = { jobNumber: job ? jobNumberOf(job, selected.jobId) : '', jobName: job?.job_name, key }
+    const title = lienExportTitle(named)
+    return (
+      <LienPageExportPresses
+        pageKey={key}
+        phone={isMobile}
+        fileName={lienExportFileName(named)}
+        filing={lienExportFiling({ pile: selected.pile, jobId: selected.jobId, title })}
+        build={() => lienPageExportBlob(key, { coverBlocks, noticeBlocks: () => buildLienNoticeBlocks(noticeFields, docExtras, { signature: paneSigned }), payBlocks, release: noticeRelease }, { title, draftLine: lienExportDraftLine(selected.pile, todayYmd) })}
+      />
+    )
+  }
   const pageLabel = (key: string, words: string, extra: ReactNode) => {
     const i = pageKeys.indexOf(key)
     const on = (litPage ?? pageKeys[0]) === key
@@ -2486,6 +2529,7 @@ export default function LienDesk({
             </>
           ) : null}
         </button>
+        {pageExport(key)}
       </div>
     )
   }
@@ -2560,7 +2604,7 @@ export default function LienDesk({
   const { gates, verdict: gateVerdict } = buildLienDeskGates({
     ownerName,
     // Every name the record gives is asked (punch list #314): a city filed beside an attention line is still a city.
-    ownerIsPublic: lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany]),
+    ownerIsPublic: lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany], property.publicAnswer),
     ownerMailingAddress: property.owner.mailingAddress,
     gcName: gc?.name ?? '',
     gcAddress: gc?.address ?? '',
@@ -3315,6 +3359,12 @@ export default function LienDesk({
           />
         ) : null}
       </div>
+      {/* The signing record (v2.7437, Taunya's ask): the paper prints the day alone, so the desk keeps the clock, the way and whose screen here, under the paper and outside it. */}
+      {paneSignature ? (
+        <p data-lien-desk-signature-record style={{ margin: '-0.2rem 0 0', fontSize: '0.72rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text-700)' }}>The signing record, kept here and not printed.</strong> {paneSignature.auditLine}
+        </p>
+      ) : null}
 
       {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
       {payHtml ? (
@@ -4174,7 +4224,7 @@ export default function LienDesk({
               disabled={busy}
               style={btn('primary', busy)}
               data-lien-desk-leader-here
-              title="The leader is beside you — write down that he is standing here or typing it in, and it goes to Ready to send on his word. This is the approval step."
+              title="The leader is beside you — write down that he is standing here or typing it in, and it goes to Approved · to print on his word. This is the approval step."
             >
               Leader here, Approve ▸
             </button>
@@ -4264,7 +4314,7 @@ export default function LienDesk({
         <div data-lien-desk-printed-footer className="lienFootRow" data-lien-desk-foot="printed">
           <FootChip chip={printedChip({ printed_at: printedAt })} />
           <span className="lienFootSpacer" />
-          <button type="button" className="lienFootLink" onClick={backToReady} disabled={!office || busy} title="It was not mailed: put it back in Ready to send. The approval stands">
+          <button type="button" className="lienFootLink" onClick={backToReady} disabled={!office || busy} title="It was not mailed: put it back in Approved · to print. The approval stands">
             Back to ready
           </button>
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper already went out by hand — record it instead of sending the run">
@@ -4569,7 +4619,7 @@ export default function LienDesk({
           {!isMobile && (kind === 'retainage' || kind === 'affidavit') && (kind === 'retainage' ? retPileChips : affPileChips).length > 0 ? (
             <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
           ) : null}
-          {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *show every pile*. */}
+          {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *every pile* (*show every pile* until v2.7434). */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door (on every view's second line since v2.7311) and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
           {/* Drawn only when it holds something (v2.7213): empty, it would still take a column gap and push the title line's tools off the edge. */}
           {/* The span ends the second line with the owner-records door on every view (v2.7311, the owner's ask); a pile line too narrow for the piles and the span together breaks here, so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}
@@ -4667,6 +4717,28 @@ export default function LienDesk({
               />
             )
           })() : null}
+          {publicReview?.[0] ? (
+            <LienPublicPropertyWindow
+              key={publicReview[0]}
+              addressId={publicReview[0]}
+              zIndex={805}
+              onClose={(answered) => {
+                const rest = publicReview.slice(1)
+                setPublicReview(rest.length ? rest : null)
+                if (answered) onChanged()
+              }}
+            />
+          ) : null}
+          {publicPutBack ? (
+            <LienPublicPutBackWindow
+              addressId={publicPutBack}
+              zIndex={805}
+              onClose={(changed) => {
+                setPublicPutBack(null)
+                if (changed) onChanged()
+              }}
+            />
+          ) : null}
           {paperFix && data ? (() => {
             const entry = paperEntries[paperFix.index]
             const row = paperRows[paperFix.index]
@@ -4685,7 +4757,7 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} /> : <div />}
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null} /> : <div />}
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
@@ -4896,7 +4968,7 @@ export default function LienDesk({
             onChanged()
             return out
           }}
-          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) })]}
+          notices={[...buildLienDeskRun(lienRunEntriesFor(data.queue.piles.ready, data.queue.piles.printed, runGcId), data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }), ...buildLienRetainageRun(runGcId ? [] : data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) })]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
@@ -4904,6 +4976,7 @@ export default function LienDesk({
           onClose={() => {
             setRunOpen(false)
             setRunTakeBack(false)
+            setRunGcId(null)
             setRunFocus(null)
           }}
           openOnTakeBack={runTakeBack}

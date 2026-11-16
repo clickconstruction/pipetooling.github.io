@@ -22,7 +22,7 @@
  *
  * The other answers say what they said. A code no box carries offers the typed code (v2.6868). A retired label names
  * its box and offers another scan and the text (v2.6874). Since v2.7072 (punch list #329) the code may be a sticker's:
- * one on a box draws that box with the sticker's number beside the code; a blank one draws its number, *is not on a
+ * one on a box draws that box; a blank one reads *This sticker is not on a
  * box yet*, the sign-in and nothing else; a lost one says so and offers another scan.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -33,7 +33,7 @@ import { publicFunctionHeaders } from '../../lib/customerSampleMode'
 import { KIT_ASSET_PATHS } from '../../lib/brandKit/assets'
 import { BOX_PAGE_KNOW_LINE_ES, BOX_PAGE_WEBSITE, BOX_SCAN_PATH, boxPageBidHref, boxPageCallHref, boxPageCodeWords, boxPageDayWords, boxPageEmail, boxPageKnowLine, boxPageNameWords, boxPageNoun, boxPageOursWords, boxPagePath, boxPageSheet, boxPageTextHref, boxPageTextWords, boxPageView, type BoxPageSheet, type BoxPageSheetKind, type BoxPageView } from '../../lib/materials/boxPage'
 import { ORANGE_UNDER_WORDS } from '../../lib/orangeUnderWords'
-import { blankStickerTitle, lostStickerTitle, stickerNumberWords } from '../../lib/materials/stickers'
+import { BLANK_STICKER_TITLE, LOST_STICKER_TITLE } from '../../lib/materials/stickers'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { portalFailure } from '../../lib/portal/portalFailure'
 import { PortalFailureNote } from '../portal/PortalFailureNote'
@@ -81,7 +81,7 @@ export function BoxPublicPage({ code }: { code: string }) {
 
   const payload = view.kind === 'box' ? view.payload : null
   useEffect(() => {
-    const sticker = view.kind === 'sticker_blank' || view.kind === 'sticker_lost' ? `Sticker ${stickerNumberWords(view.number)}` : null
+    const sticker = view.kind === 'sticker_blank' ? 'Blank sticker' : view.kind === 'sticker_lost' ? 'Lost sticker' : null
     document.title = payload ? `${boxPageNoun(payload.box.kind)} ${payload.box.stencil} · Click Plumbing & Electrical` : `${sticker ?? 'Box label'} · Click Plumbing & Electrical`
   }, [payload, view])
 
@@ -141,7 +141,6 @@ export function BoxPublicPage({ code }: { code: string }) {
                     {boxPageNameWords(payload.box.kind, payload.box.stencil)}
                   </h1>
                   <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, letterSpacing: '0.04em', color: plate.soft }} data-testid="box-page-code">
-                    {payload.box.stickerNumber ? <span data-testid="box-page-sticker">Sticker {stickerNumberWords(payload.box.stickerNumber)}, </span> : null}
                     {boxPageCodeWords(payload.box.code)}
                   </div>
                 </div>
@@ -243,10 +242,10 @@ export function BoxPublicPage({ code }: { code: string }) {
           </section>
         ) : null}
 
-        {/* A sticker on no box yet (v2.7072): its number, the sign-in, and nothing else. */}
+        {/* A sticker on no box yet (v2.7072): that it is on none, the sign-in, and nothing else. */}
         {view.kind === 'sticker_blank' ? (
           <section data-testid="box-page-sticker-blank">
-            <h1 style={h1}>{blankStickerTitle(view.number)}</h1>
+            <h1 style={h1}>{BLANK_STICKER_TITLE}</h1>
             <p style={para}>Sign in to say what it is.</p>
             <button type="button" onClick={signIn} style={{ ...press, marginTop: 14 }} data-testid="box-page-sticker-sign-in">
               Sign in
@@ -256,7 +255,7 @@ export function BoxPublicPage({ code }: { code: string }) {
 
         {view.kind === 'sticker_lost' ? (
           <section data-testid="box-page-sticker-lost">
-            <h1 style={h1}>{lostStickerTitle(view.number)}</h1>
+            <h1 style={h1}>{LOST_STICKER_TITLE}</h1>
             <p style={para}>{view.lostOn ? `Someone marked it lost on ${boxPageDayWords(view.lostOn)}. ` : ''}It no longer opens a box.</p>
             <Link to={BOX_SCAN_PATH} style={{ ...press, marginTop: 14, textDecoration: 'none' }} data-testid="box-page-scan-another">
               Scan another label

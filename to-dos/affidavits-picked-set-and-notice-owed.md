@@ -111,6 +111,6 @@ and `src/lib/jobs/lienAffidavitNoticeCheck.ts` (the pane's notice lines), and th
 
 Both parts are built and on main: part 1 as v2.7268 (#8122) and part 2 as v2.7269 (#8124), on
 2026-11-14. Since v2.7302 the pane's line says the paper names the month from the last day on site,
-and since v2.7327 the pile reads To send. The owner
+and since v2.7327 the pile reads To send (To send for Master approval since v2.7434). The owner
 picked all three of part 2's doors on 2026-11-14: draft the month's notice, the paper named that
 month too, and the last day of work is wrong.
