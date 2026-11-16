@@ -4857,3 +4857,32 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     expect(onOpenLienInstruments).toHaveBeenCalledWith('j650')
   })
 })
+
+describe('LienDesk · add the stamped scans (punch list #366)', () => {
+  // Two filed affidavits with no saved copy. Every name here is made up.
+  const filed = (id: string, job_id: string, over: Record<string, unknown> = {}) => ({ id, job_id, kind: 'affidavit', months_covered: [], voided_at: null, filed_at: '2026-09-10', serve_due: '2026-09-15', served_at: null, county: 'Guadalupe', recording_number: `2026-00${id}`, sends: [], document_url: '', fields: { ownerName: 'Elwick Holdings LLC', ownerAddress: '4 Example Way, Schertz, TX', propertyAddress: '1204 Elwick Rd, Schertz, TX', unpaidAmount: '33500.00', isSub: false }, created_at: '2026-09-10T15:00:00Z', ...over })
+  const desk = () => {
+    const d = data([], [], true)
+    d.jobsById = { j650: d.jobsById.j650!, j651: { ...d.jobsById.j650!, id: 'j651', hcp_number: '651' } }
+    d.filingsByJob = { j650: [filed('71', 'j650')], j651: [filed('72', 'j651')] } as unknown as LienDeskData['filingsByJob']
+    return d
+  }
+
+  it('the address door opens the window on every filed lien with no scan', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk()} initialKind="next" openScans={{ key: 1 }} />)
+    await settle()
+    const win = within(screen.getByTestId('lien-scan-batch-window'))
+    expect(win.getByText('2 filed liens have no scan yet.')).toBeTruthy()
+    expect(win.getByText('650 · AXO Schertz · no. 2026-0071')).toBeTruthy()
+  })
+
+  it('the window that mails the copies has a door to it', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk()} initialKind="next" />)
+    await settle()
+    expect(screen.queryByTestId('lien-scan-batch-window')).toBeNull()
+    fireEvent.click(document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLElement)
+    fireEvent.click(within(screen.getByTestId('lien-serve-window')).getByRole('button', { name: 'Add the stamped scans ›' }))
+    expect(screen.queryByTestId('lien-serve-window')).toBeNull()
+    expect(screen.getByTestId('lien-scan-batch-window')).toBeTruthy()
+  })
+})
