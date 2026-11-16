@@ -190,6 +190,9 @@ function doorFor(row: LienNextUpRow, jobId: string): LienArDoor {
     // The folded row that mails every filed lien's copies (punch list #366) never reaches a job's chip either; a job's own row opens its Lien window.
     case 'serve_copies':
       return { to: 'window', jobId, tab: 'affidavit' }
+    // *Not lienable…* (v2.7526) is a quiet door beside a held affidavit's row, never the row's own target; the job's Lien window holds the same press.
+    case 'job_path':
+      return { to: 'window', jobId, tab: 'affidavit' }
   }
 }
 
