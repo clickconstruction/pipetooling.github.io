@@ -16,6 +16,8 @@ import type { LaborJob, SubSendingResult } from '../../types/laborJob'
 import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 import { sheetLabel } from '../../lib/jobs/subPaymentMoveRemove'
 import { buildSheetPartiesLookup, sheetParties } from '../../lib/subWorkOrders/sheetParties'
+import { sheetOwedTo, sheetOwedToNobody } from '../../lib/subWorkOrders/teamSheetRule'
+import { useTeamSheetRule } from '../../hooks/useTeamSheetRule'
 import {
   buildLedgerLines,
   buildLedgerTraces,
@@ -56,6 +58,8 @@ import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useToastContext } from '../../contexts/ToastContext'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { saveBlobAs } from '../../lib/storageSave'
+import { proposeSendingGroups } from '../../lib/subWorkOrders/subSendingRepair'
+import { GatherSendingsWindow } from './SubSendingRepairWindows'
 import { calendarYmdInAppTzFromIso, formatDenverDateTimeShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { EmptyState } from '../EmptyState'
@@ -122,6 +126,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
   const narrow = useIsNarrowScreen()
   const { showToast } = useToastContext()
   const { roster } = useRosterSubKinds()
+  const [teamRule] = useTeamSheetRule()
   const today = todayYmdInAppTz()
   const [period, setPeriod] = useState<LedgerPeriodKey>('month')
   const [from, setFrom] = useState('')
@@ -167,7 +172,8 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
         id: job.id,
         paidTo: parties.label || job.assigned_to_name || 'nobody named',
         paidToKey: parties.key || `sheet:${job.id}`,
-        crew: roster.length > 0 && parties.crew,
+        // Owed to nobody. A teammate's own sheet is owed like any sheet (Taunya, 2026-11-15) and wears *team* instead.
+        crew: roster.length > 0 && sheetOwedToNobody(parties, teamRule),
         job: sheetLabel(job, laborJobNamesByJobId),
         address: (job.address ?? '').trim(),
         agreed: subLaborJobBalance(job).totalCost,
@@ -176,12 +182,29 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
         events: job.payment_events ?? [],
       }
     })
-  }, [laborJobs, laborJobAssigneesByJobId, laborJobNamesByJobId, roster])
+  }, [laborJobs, laborJobAssigneesByJobId, laborJobNamesByJobId, roster, teamRule])
   const jobById = useMemo(() => new Map(laborJobs.map((j) => [j.id, j])), [laborJobs])
 
   const allLines = useMemo(() => buildLedgerLines(sheets), [sheets])
+  // Punch list #347's residue: payments typed one per sheet before sendings, offered as the sendings they were.
+  const gatherGroups = useMemo(
+    () => proposeSendingGroups(allLines.map((l) => ({ id: l.id, sheetId: l.sheetId, paidToKey: l.crew ? '' : l.paidToKey, paidTo: l.paidTo, job: l.job, ymd: l.ymd, recorded: l.recorded, method: l.method, methodRef: l.methodRef, amount: l.amount, hasSending: l.sendingNo != null, fromCredit: l.fromCredit }))),
+    [allLines],
+  )
+  const [gatherOpen, setGatherOpen] = useState(false)
   const allTraces = useMemo(() => buildLedgerTraces(sheets), [sheets])
   /** Everyone a sheet is for, paid yet or not: the Paid to picker and the statement's address read this. */
+  /** The people whose sheets are a teammate's own: sub labor paid to someone on payroll. */
+  const teamKeys = useMemo(() => {
+    const lookup = buildSheetPartiesLookup(roster)
+    const keys = new Set<string>()
+    if (roster.length === 0) return keys
+    for (const job of laborJobs) {
+      const parties = sheetParties(job, laborJobAssigneesByJobId.get(job.id), lookup)
+      if (sheetOwedTo(parties, teamRule).kind === 'team' && parties.key) keys.add(parties.key)
+    }
+    return keys
+  }, [laborJobs, laborJobAssigneesByJobId, roster, teamRule])
   const paidToOptions = useMemo(() => ledgerPaidToOptions(sheets.map((s) => ({ paidToKey: s.paidToKey, paidTo: s.paidTo, crew: s.crew }))), [sheets])
   // The person picked. With an address handed in (`sub`), that is the truth, so a link to one sub's statement opens it.
   const paidToKey = subProp !== undefined ? ledgerSubKeyFromParam(subProp, paidToOptions.map((o) => o.key)) : ownPaidToKey
@@ -269,6 +292,12 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
       <button type="button" onClick={saveCsv} disabled={nothingToSend} style={outPress}>
         Download CSV
       </button>
+      {gatherGroups.length > 0 ? (
+        <button type="button" data-testid="sub-ledger-gather" onClick={() => setGatherOpen(true)} title="Payments typed one per sheet that were one check or one transfer" style={outPress}>
+          Gather old payments…
+        </button>
+      ) : null}
+      {gatherOpen ? <GatherSendingsWindow groups={gatherGroups} onDone={() => void onBankChanged?.()} onClose={() => setGatherOpen(false)} /> : null}
     </span>
   )
 
@@ -306,6 +335,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
             </button>
             <strong style={{ fontSize: '1rem', color: 'var(--text-strong)' }}>{statement.name || 'Statement'}</strong>
             {statement.crew ? <span style={pill('gray')}>crew</span> : null}
+            {paidToKey && teamKeys.has(paidToKey) ? <span style={pill('gray')}>team · sub labor</span> : null}
           </span>
         ) : (
           <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a sub, a job, a memo, an amount…" aria-label="Search the ledger" style={{ ...field, flex: '1 1 220px' }} />
@@ -328,7 +358,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           {paidToOptions.map((o) => (
             <option key={o.key} value={o.key}>
               {o.label}
-              {o.crew ? ' (crew)' : ''}
+              {o.crew ? ' (crew)' : teamKeys.has(o.key) ? ' (team)' : ''}
             </option>
           ))}
         </select>
@@ -427,7 +457,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>{empty}</div>
         ) : (
           <>
-            <SubLedgerPeople rows={subRows} totals={subTotals} periodLabel={periodLabel} narrow={narrow} withYear={withYear} onOpen={setPaidToKey} />
+            <SubLedgerPeople rows={subRows} totals={subTotals} periodLabel={periodLabel} narrow={narrow} withYear={withYear} onOpen={setPaidToKey} teamKeys={teamKeys} />
             {narrow ? <div style={{ marginTop: 10 }}>{outPresses}</div> : null}
           </>
         )
@@ -452,7 +482,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                   <button key={r.id} type="button" data-ledger-line={r.id} onClick={() => openSheet(r.sheetId)} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 10px', padding: '0.55rem 0.7rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer', width: '100%' }}>
                     <span style={{ minWidth: 0, fontWeight: 600 }}>
                       {dayCell(r)} <span style={{ fontWeight: 600 }}>· {r.paidTo}</span>
-                      {r.crew ? <span style={{ ...pill('gray'), marginLeft: 6 }}>crew</span> : null}
+                      {r.crew ? <span style={{ ...pill('gray'), marginLeft: 6 }}>crew</span> : teamKeys.has(r.paidToKey) ? <span style={{ ...pill('gray'), marginLeft: 6 }}>team</span> : null}
                     </span>
                     <span style={{ whiteSpace: 'nowrap' }}>
                       <Amount line={r} />
@@ -531,7 +561,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>{dayCell(r)}</td>
                       <td style={td}>
                         {r.paidTo}
-                        {r.crew ? <span style={{ ...pill('gray'), marginLeft: 6 }}>crew</span> : null}
+                        {r.crew ? <span style={{ ...pill('gray'), marginLeft: 6 }}>crew</span> : teamKeys.has(r.paidToKey) ? <span style={{ ...pill('gray'), marginLeft: 6 }}>team</span> : null}
                       </td>
                       <td style={td}>
                         <button type="button" onClick={() => openSheet(r.sheetId)} title="Open the sheet" style={jobLink}>

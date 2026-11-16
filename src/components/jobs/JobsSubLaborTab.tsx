@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { MoreHorizontal } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
@@ -8,6 +9,8 @@ import { buildJobWorkOrderCoverage, type JobWorkOrderCoverage, type WorkOrderRow
 import { buildSheetRail, sheetNextAction, type SheetNextAction, type SheetRail as SheetRailShape } from '../../lib/subWorkOrders/sheetRail'
 import { isRosterSubSheet, type NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/sheetsNeedingWorkOrder'
 import { sheetParties, type SheetParties } from '../../lib/subWorkOrders/sheetParties'
+import { sheetOwedTo, sheetOwedToChip } from '../../lib/subWorkOrders/teamSheetRule'
+import { teamSheetPayWhen } from '../../lib/subWorkOrders/sheetStanding'
 import { buildSubLaborPayRun, payRunFilterMatches, sheetPayWhen, PAY_RUN_FILTERS, PAY_RUN_FILTER_HINT, PAY_RUN_FILTER_LABEL, PAY_RUN_SEGMENTS, PAY_RUN_SEGMENT_LABEL, type PayRunFilter, type PayRunSegment, type PayRunSub, type SheetPayWhen } from '../../lib/subWorkOrders/subLaborPayRun'
 import { SHEET_RAIL_GAP } from '../../lib/subWorkOrders/sheetRailTone'
 import { sheetPaidInFullWords, sheetPaidLine, sheetPaymentDates } from '../../lib/subWorkOrders/sheetPaymentDates'
@@ -59,6 +62,13 @@ import { subLaborPayRunEmptyWords } from '../../lib/subWorkOrders/subLaborPayRun
 import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
 import { subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
+import { SubPapersWindow } from './SubPapersWindowConnected'
+import { OverToCreditWindow } from './SubSendingRepairWindows'
+import { overToCreditPlan, type OverToCreditPlan } from '../../lib/subWorkOrders/subSendingRepair'
+import { ledgerDayWords, paymentDay } from '../../lib/subWorkOrders/subPaymentsLedger'
+import type { SubPapersOpen } from './SubPapersWindow'
+import { useTeamSheetRule } from '../../hooks/useTeamSheetRule'
+import { SUB_PAY_FROM_CREDIT } from '../../lib/subWorkOrders/subPaymentWindow'
 
 export type JobsSubLaborTabProps = {
   error: string | null
@@ -157,6 +167,11 @@ export default function JobsSubLaborTab({
   const [storySheetId, setStorySheetId] = useState<string | null>(null)
   /** Send a lien waiver from a pay row (v2.2970): the sheet + job facts the picker seeds into the form. */
   const [lienWaiverFor, setLienWaiverFor] = useState<LienWaiverSendTarget | null>(null)
+  /** Punch list #350: the papers window, opened on a sub's statement, a sheet's work statement or a payment's record. */
+  const [papers, setPapers] = useState<{ key: string; name: string; open: SubPapersOpen } | null>(null)
+  const [teamRule] = useTeamSheetRule()
+  /** Punch list #347's residue: a sheet paid past its total, about to become a credit. */
+  const [overFor, setOverFor] = useState<{ title: string; personId: string | null; plan: OverToCreditPlan } | null>(null)
   useEffect(() => {
     if (!stageMenuJobId) return
     const close = () => setStageMenuJobId(null)
@@ -220,7 +235,7 @@ export default function JobsSubLaborTab({
 
   /** The rail, the office's next move, who the sheet is for, and the rule its money is under — one call per row. */
   const spineFor = useCallback(
-    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen; stageView: LaborJob } => {
+    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; team: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen; stageView: LaborJob } => {
       // v2.3065: the sheet's link first; the number only for a sheet that never got one.
       const pipelineJob = (job.job_ledger_id ? spine.jobsById.get(job.job_ledger_id) : undefined) ?? (job.job_ledger_id ? null : spine.jobsByNumber.get((job.job_number ?? '').trim().toLowerCase())) ?? null
       const covering = [...(spine.bySheet.get(job.id) ?? []), ...(pipelineJob ? (spine.byJob.get(pipelineJob.id) ?? []) : [])]
@@ -235,16 +250,22 @@ export default function JobsSubLaborTab({
       const rail = buildSheetRail({ coverage, sheetStage: eff.stage, payableAfter: job.payable_after ?? null, agreed: bal.totalCost, open, unpriced, crewPay: crewRail })
       // Subs-only naming: the sheet is the roster sub's; teammates ride along as "with …". No sub at all = a crew sheet.
       const parties = sheetParties(job, laborJobAssigneesByJobId.get(job.id), spine)
-      const crew = roster.length > 0 && parties.crew
+      // Whose the money is (Taunya, 2026-11-15): one teammate and no sub is that teammate's, owed like any sheet.
+      const to = sheetOwedTo(parties, teamRule)
+      const crew = roster.length > 0 && parties.crew && !to.counts
+      const team = roster.length > 0 && to.kind === 'team'
       const next = sheetNextAction(rail, coverage, { subName: parties.label || job.assigned_to_name, agreed: bal.totalCost, open, unpriced, todayYmd: today })
       const ids = spine.assigneeIds.get(job.id) ?? []
       const personId = ids.length === 1 ? ids[0]! : null
       const inv = pipelineJob?.invoices ?? null
       const bills = pipelineJob ? { out: (inv ?? []).filter((i) => i.status && i.status !== 'draft').length, paid: (inv ?? []).filter((i) => i.status === 'paid').length } : null
-      const payWhen = sheetPayWhen({ stage: eff.stage, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, bills, gap: rail.gap, crew, balance: bal.balance, unpriced, todayYmd: today })
-      return { coverage, rail, next, crew, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView }
+      const payWhen =
+        team && !unpriced && bal.balance > 0
+          ? teamSheetPayWhen(job, open, today)
+          : sheetPayWhen({ stage: eff.stage, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, bills, gap: rail.gap, crew, balance: bal.balance, unpriced, todayYmd: today })
+      return { coverage, rail, next, crew, team, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView }
     },
-    [spine, roster.length, today, laborJobAssigneesByJobId],
+    [spine, roster.length, today, laborJobAssigneesByJobId, teamRule],
   )
 
   /** Every sheet the search leaves, with its balance and its spine. */
@@ -267,7 +288,7 @@ export default function JobsSubLaborTab({
   const payRun = useMemo(
     () =>
       buildSubLaborPayRun(
-        rows.map((r) => ({ id: r.job.id, subKey: r.parties.key || normalizePersonNameKey(r.job.assigned_to_name), subName: r.parties.label || r.job.assigned_to_name, personId: !r.crew && r.parties.contractors.length === 1 ? (r.parties.contractors[0]!.id ?? null) : null, teammates: r.parties.teammates.map((p) => p.name).filter(Boolean), crew: r.crew, balance: r.balance, payWhen: r.payWhen })),
+        rows.map((r) => ({ id: r.job.id, subKey: r.parties.key || normalizePersonNameKey(r.job.assigned_to_name), subName: r.parties.label || r.job.assigned_to_name, personId: !r.crew && r.parties.contractors.length === 1 ? (r.parties.contractors[0]!.id ?? null) : null, teammates: r.parties.teammates.map((p) => p.name).filter(Boolean), crew: r.crew, team: r.team, balance: r.balance, payWhen: r.payWhen })),
         { payRunDay, todayYmd: today },
       ),
     [rows, payRunDay, today],
@@ -438,6 +459,7 @@ export default function JobsSubLaborTab({
                         </button>
                         {s.personId ? <span style={{ marginLeft: 6, verticalAlign: 'middle' }} title="Their portal — the page this money reads from"><SubPortalGlobeButton personId={s.personId} personName={s.name} size={14} /></span> : null}
                         {s.crew ? <span style={{ marginLeft: 6 }}>{tag('Crew pay', 'violet', 'No roster sub on these sheets — pays through payroll')}</span> : null}
+                        {s.team ? <span style={{ marginLeft: 6 }}>{tag(sheetOwedToChip('team'), 'violet', 'A teammate paid as sub labor. These sheets are theirs, owed like any sheet.')}</span> : null}
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {s.sheetCount} sheet{s.sheetCount === 1 ? '' : 's'}
                           {s.teammates.length > 0 ? ` · with ${s.teammates.join(', ')}` : ''}
@@ -528,7 +550,7 @@ export default function JobsSubLaborTab({
                     <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</strong>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {g.rows.length} sheet{g.rows.length === 1 ? '' : 's'}
-                      {sub?.crew ? ' · crew pay' : ''}
+                      {sub?.crew ? ' · crew pay' : sub?.team ? ' · team, sub labor' : ''}
                       {sub && sub.whyNot ? ` · ${sub.whyNot}` : ''}
                     </span>
                   </span>
@@ -594,6 +616,19 @@ export default function JobsSubLaborTab({
                         <span style={{ fontWeight: 600 }}>{sub?.name.trim() || g.rows[0]!.parties.label || g.rows[0]!.job.assigned_to_name || <span style={{ color: 'var(--text-muted)' }}>(No name)</span>}</span>
                         {sub?.personId ? <span title="Their portal" style={{ display: 'inline-flex' }}><SubPortalGlobeButton personId={sub.personId} personName={sub.name} size={14} /></span> : null}
                         {sub?.crew ? tag('Crew pay', 'violet', 'No roster sub on these sheets — pays through payroll') : null}
+                        {sub?.team ? tag(sheetOwedToChip('team'), 'violet', 'A teammate paid as sub labor. These sheets are theirs, owed like any sheet.') : null}
+                        {/* Punch list #346, PR 3: the money by job and sheet, on the sub's row on People → Subs. */}
+                        {sub?.personId && !sub.crew ? (
+                          <Link to={`/people?tab=subs&owed=${encodeURIComponent(sub.personId)}`} data-testid={`sublabor-what-we-owe-${sub.personId}`} style={{ fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                            What we owe ›
+                          </Link>
+                        ) : null}
+                        {/* Punch list #350: the statement of account, as a paper to hand the sub. */}
+                        {sub?.personId && !sub.crew ? (
+                          <button type="button" data-testid={`sublabor-statement-${sub.personId}`} onClick={() => setPapers({ key: `id:${sub.personId}`, name: sub.name, open: { kind: 'statement' } })} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.12rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            Statement of account…
+                          </button>
+                        ) : null}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {g.rows.length} sheet{g.rows.length === 1 ? '' : 's'}
                           {sub && sub.teammates.length > 0 ? ` · with ${sub.teammates.join(', ')}` : ''}
@@ -731,9 +766,38 @@ export default function JobsSubLaborTab({
                             {balance > 0 ? <button type="button" role="menuitem" style={{ ...menuItem, color: 'var(--text-green-700)', fontWeight: 600 }} onClick={() => { setMenuJobId(null); onOpenMakePayment(payTarget(r), String(balance)) }}>Payment…</button> : null}
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onOpenBackcharge({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid }) }}>Back-charge…</button>
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onEditLaborJob(job) }}>Edit sheet</button>
-                            <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onPrintJobSubSheet(job) }}>Print</button>
+                            {/* Punch list #350: Work statement… takes Print's place on a sheet that is one person's. A crew or shared sheet keeps Print. */}
+                            {!r.crew && parties.contractors.length === 1 && parties.contractors[0]!.id ? (
+                              <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setPapers({ key: `id:${parties.contractors[0]!.id}`, name: parties.contractors[0]!.name, open: { kind: 'work', sheetId: job.id } }) }}>Work statement…</button>
+                            ) : (
+                              <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onPrintJobSubSheet(job) }}>Print</button>
+                            )}
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setStorySheetId(job.id) }}>Story…</button>
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setLienWaiverFor(lienWaiverTarget(r)) }}>Lien waiver…</button>
+                            {/* Punch list #347's residue: a sheet paid past its total. The extra becomes the sub's credit. */}
+                            {balance < -0.005 ? (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                style={menuItem}
+                                onClick={() => {
+                                  setMenuJobId(null)
+                                  const one = !r.crew && parties.contractors.length === 1 ? parties.contractors[0]! : null
+                                  const label = [job.job_number, (job.job_ledger_id ? laborJobNamesByJobId[job.job_ledger_id] : '') || job.address].filter(Boolean).join(' ')
+                                  setOverFor({
+                                    title: `${parties.label || job.assigned_to_name} · ${label}`,
+                                    personId: one?.id ?? null,
+                                    plan: overToCreditPlan(
+                                      { label, total: totalCost - backcharges, paid, over: -balance },
+                                      (job.payments ?? []).filter((p) => Number(p.amount) > 0).map((p) => ({ id: p.id, amount: Number(p.amount), dayWords: ledgerDayWords(paymentDay(p)?.ymd ?? ''), fromCredit: p.method === SUB_PAY_FROM_CREDIT, carriesCredit: (p.credit_kept ?? 0) > 0, at: p.created_at ?? '' })),
+                                      { personId: one?.id ?? null, name: one?.name ?? '' },
+                                    ),
+                                  })
+                                }}
+                              >
+                                Keep the {'$'}{formatCurrency(-balance)} over as credit…
+                              </button>
+                            ) : null}
                           </div>
                         ) : null}
                       </td>
@@ -823,7 +887,15 @@ export default function JobsSubLaborTab({
                                           <td style={{ padding: '0.5rem 0.75rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}{p.sending_no ? <span data-sub-payment-sending style={{ color: 'var(--text-muted)' }}> · sending {p.sending_no}</span> : null}{p.credit_kept ? <span data-sub-payment-kept style={{ color: 'var(--text-green-700)' }}> · {creditNoteWords(p.credit_kept)} kept</span> : null}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}><AmountSmallCents value={Number(p.amount)} /></td>
-                                          <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo?.trim() ? p.memo : '—'}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                                            {p.memo?.trim() ? p.memo : '—'}
+                                            {/* Punch list #350: the payment's own paper. One per sending; a row with no sending is its own. */}
+                                            {Number(p.amount) > 0 && p.method !== SUB_PAY_FROM_CREDIT && !r.crew && parties.contractors.length === 1 && parties.contractors[0]!.id ? (
+                                              <button type="button" onClick={() => setPapers({ key: `id:${parties.contractors[0]!.id}`, name: parties.contractors[0]!.name, open: { kind: 'payment', sendingKey: p.sending_id ?? `row:${p.id}` } })} style={{ marginLeft: 8, font: 'inherit', fontSize: '0.75rem', padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                                Payment record…
+                                              </button>
+                                            ) : null}
+                                          </td>
                                         </tr>
                                       ))}
                                       {(job.payments ?? []).length === 0 && (
@@ -909,6 +981,8 @@ export default function JobsSubLaborTab({
       <WorkOrderAssemblerModal open={assembler != null} onClose={() => setAssembler(null)} jobs={jobs} initial={assembler} authUserId={authUserId} onChanged={() => { void loadCommitments(); emitWorkOrderChanged() }} />
       <SubPortalVisitsModal personId={visitsFor?.personId ?? null} personName={visitsFor?.name ?? ''} onClose={() => { setVisitsFor(null); visits.reload() }} />
       {lienWaiverFor ? <LienWaiverSendModal target={lienWaiverFor} onClose={() => setLienWaiverFor(null)} /> : null}
+      {overFor ? <OverToCreditWindow title={overFor.title} plan={overFor.plan} personId={overFor.personId} onDone={() => onReloadLaborJobs?.()} onClose={() => setOverFor(null)} /> : null}
+      {papers ? <SubPapersWindow open={papers.open} subKey={papers.key} name={papers.name} laborJobs={laborJobs} assigneesByJobId={laborJobAssigneesByJobId} namesByJobId={laborJobNamesByJobId} roster={roster} rule={teamRule} onClose={() => setPapers(null)} /> : null}
       <SheetStoryModal sheetId={storySheetId} onClose={() => setStorySheetId(null)} jobs={jobs} authUserId={authUserId} onOpenSheet={(id) => { const j = laborJobs.find((x) => x.id === id); if (j) onEditLaborJob(j) }} onSheetChanged={() => { void loadCommitments(); onReloadLaborJobs?.() }} />
     </div>
   )

@@ -126,6 +126,7 @@ import { useMercuryDepositFacts } from '../../hooks/useMercuryDepositFacts'
 import { JobPaymentMoveModal } from './JobPaymentMoveModal'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
+import { JobSubsOwedBlock } from './JobSubsOwedBlock'
 import { JobFormFixturesSection } from './JobFormFixturesSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
@@ -3490,6 +3491,8 @@ export default function JobFormModal({
               otherCharges: materials,
             }}
           />
+          {/* Punch list #346, PR 4: who is owed what on this job, by sub and sheet. Drawn for the roles who open Jobs → Subs → Pay. */}
+          <JobSubsOwedBlock jobId={editing?.id ?? null} jobNumber={editing?.hcp_number ?? ''} jobName={editing?.job_name ?? ''} />
           <JobFormPartsCostSection
             editing={editing}
             hideTitle={!!editing?.id}
