@@ -85,7 +85,7 @@ export function useJobsStagesMutations({
   /** "Follow cards I move" — page closure over `stagesFollowMoves` + the section/focus/flash states. */
   followMovedJob: (jobId: string, toStatus: string) => void
   /** From the shared `useJobThreadNotes` engine — `commitStagesPctWithNote` posts its note through it (v2.757). */
-  submitJobThreadNoteWithBody: (jobId: string, body: string, source: 'draft' | 'stamp') => Promise<boolean>
+  submitJobThreadNoteWithBody: (jobId: string, body: string, source: 'draft' | 'stamp', opts?: { tagged?: readonly string[]; typed?: boolean }) => Promise<boolean>
 }) {
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
@@ -286,7 +286,7 @@ export function useJobsStagesMutations({
     setError(null)
     try {
       try {
-        await submitJobThreadNoteWithBody(jobId, composePctAutoNoteBody(value, previous), 'draft')
+        await submitJobThreadNoteWithBody(jobId, composePctAutoNoteBody(value, previous), 'draft', { typed: false })
       } catch {
         // pct write proceeds; the thread realtime/merge paths self-heal stats.
       }
@@ -317,7 +317,7 @@ export function useJobsStagesMutations({
     setPctCompleteSavingId(jobId)
     setError(null)
     try {
-      await submitJobThreadNoteWithBody(jobId, composePctCompleteNoteBody(value, note), 'draft')
+      await submitJobThreadNoteWithBody(jobId, composePctCompleteNoteBody(value, note), 'draft', { typed: false })
       const { error: err } = await withOperationTimeout(
         Promise.resolve(supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)),
         STAGES_MUTATION_TIMEOUT_MS,

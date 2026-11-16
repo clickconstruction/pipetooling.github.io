@@ -200,6 +200,6 @@ describe('JobsStagesActivityExpandModal', () => {
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.change(input, { target: { value: 'Deep note' } })
     fireEvent.keyDown(input, { key: 'Enter' })
-    await vi.waitFor(() => expect(submitNoteWithBody).toHaveBeenCalledWith(job.id, 'Deep note', 'draft'))
+    await vi.waitFor(() => expect(submitNoteWithBody).toHaveBeenCalledWith(job.id, 'Deep note', 'draft', { tagged: [] }))
   })
 })

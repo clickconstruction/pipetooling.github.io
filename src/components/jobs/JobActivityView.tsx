@@ -1,6 +1,10 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import type { UserRole } from '../../hooks/useAuth'
+import { useOptionalAuth, type UserRole } from '../../hooks/useAuth'
+import { canTagInJobNotes } from '../../lib/jobs/noteTags'
+import { useJobNoteTags } from '../../hooks/useJobNoteTags'
+import type { JobThreadNotePostOptions } from '../../hooks/useJobThreadNotes'
+import { useNoteTagBox } from './NoteTagBox'
 import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
 import { JobActivityFeed } from './JobActivityFeed'
 import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines, type JobActivityLine } from '../../lib/jobs/jobActivityLine'
@@ -78,7 +82,7 @@ export type JobActivityViewProps = {
    * The thread-note pipeline (optimistic + realtime). Resolves false when the
    * post failed, and the typed text is put back. Absent → read-only, no composer.
    */
-  submitNoteWithBody?: (jobId: string, body: string, source: 'draft' | 'stamp') => Promise<boolean>
+  submitNoteWithBody?: (jobId: string, body: string, source: 'draft' | 'stamp', opts?: JobThreadNotePostOptions) => Promise<boolean>
   /** Pipeline % complete (jobs_ledger.pct_complete); null when never set. */
   pctComplete?: number | null
   canEditPct?: boolean
@@ -148,6 +152,11 @@ export function JobActivityView({
 
   const jobName = (job.job_name ?? '').trim() || 'this job'
 
+  // Tags on the job's notes (punch list #363): the chips and waiting words on a posted note, and the list under the box.
+  const viewerId = useOptionalAuth()?.user?.id ?? null
+  const noteTags = useJobNoteTags(activity ? job.id : null, activity?.length ?? 0)
+  const tagBox = useNoteTagBox({ jobId: job.id, draft, setDraft, inputRef, enabled: Boolean(submitNoteWithBody) && canTagInJobNotes(viewerRole), place: narrow ? 'above' : 'below' })
+
   const reread = () => setRev((n) => n + 1)
   /** Tie a line here or to the picked job; Undo puts it back on the person. */
   const tie = async (line: MessageLine, jobKey: string | null, words: string) => {
@@ -184,9 +193,10 @@ export function JobActivityView({
     setSubmitting(true)
     setDraft('')
     try {
-      const ok = await submitNoteWithBody(job.id, body, 'draft')
-      // A failed post used to eat the note; put it back so it can be retried.
+      const ok = await submitNoteWithBody(job.id, body, 'draft', { tagged: tagBox.taggedIds(body) })
+      // A failed post used to eat the note; put it back so it can be retried. Its picks are still held, so the names in it stay tags.
       if (!ok) setDraft(body)
+      else tagBox.reset()
     } finally {
       setSubmitting(false)
     }
@@ -358,6 +368,8 @@ export function JobActivityView({
         onAddNote={submitNoteWithBody ? () => inputRef.current?.focus() : undefined}
         onReply={canReply ? (line) => setReplyTo(line) : undefined}
         onTie={office ? onTie : undefined}
+        noteTags={noteTags}
+        viewerId={viewerId}
       />
 
       {pickerFor ? (
@@ -486,12 +498,15 @@ export function JobActivityView({
             </div>
           </div>
         ) : (
+          /* The picked names sit above the box and the list of names opens under it, above it on a phone (punch list #363). */
+          <div style={{ position: 'relative', margin: '0 0.9rem 0.9rem' }}>
+          {tagBox.chips}
+          {tagBox.list}
           <div
             style={{
               display: 'flex',
               gap: 8,
               alignItems: 'center',
-              margin: '0 0.9rem 0.9rem',
               padding: '5px 7px 5px 14px',
               border: '1px solid #3b82f6',
               borderRadius: 999,
@@ -501,8 +516,11 @@ export function JobActivityView({
             <input
               ref={inputRef}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => tagBox.onText(e.target.value, e.target.selectionStart)}
+              onClick={(e) => tagBox.onText(e.currentTarget.value, e.currentTarget.selectionStart)}
               onKeyDown={(e) => {
+                // The list takes its own keys first: Enter picks a name and Escape shuts the list.
+                if (tagBox.onKeyDown(e)) return
                 if (e.key === 'Enter') void post()
                 if (e.key === 'Escape') {
                   // First Escape leaves the composer (draft kept); the next one
@@ -525,6 +543,7 @@ export function JobActivityView({
                 textOverflow: 'ellipsis',
               }}
             />
+            {tagBox.atButton}
             {canEditPct && onCommitPct ? (
               <button
                 type="button"
@@ -552,6 +571,7 @@ export function JobActivityView({
             >
               {submitting ? '…' : 'Post'}
             </button>
+          </div>
           </div>
         )
       ) : null}
