@@ -457,6 +457,14 @@ export function useLienDeskData(
             }
           })
           .filter((j) => j.unpaid > 0 || j.papers.length > 0)
+        // Who took each one off, by name, for the bin's line. A failed read leaves the line without a name, never the desk dark.
+        const offPathByIds = [...new Set(offPathJobs.map((j) => j.byUserId).filter((v): v is string => Boolean(v)))]
+        if (offPathByIds.length > 0) {
+          const who = await withSupabaseRetry(() => supabase.from('users').select('id, name').in('id', offPathByIds), 'lien desk: who took a job off the lien path').catch(() => null)
+          if (cancelled) return
+          const nameById = new Map(((who ?? []) as Array<{ id: string; name: string | null }>).map((u) => [u.id, (u.name ?? '').trim()]))
+          for (const j of offPathJobs) j.byName = (j.byUserId ? nameById.get(j.byUserId) : '') || ''
+        }
         const publicAskJobIds = lienJobIdsAskingPublic(jobs, propertiesById)
         const gcNames: Record<string, string> = {}
         for (const g of Object.values(gcsById)) gcNames[g.id] = g.name

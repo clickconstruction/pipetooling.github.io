@@ -574,6 +574,23 @@ describe('a row’s one thing to know, once its kind and stage are said beside i
     expect(one({ role: 'estimator', affidavits: [affidavit('j1', 'needs_property', { gates: [gate('homestead_answer', false)] })] }).button).toBeNull()
   })
 
+  it('a held affidavit’s row offers the office Not lienable…, the door that takes the one job off the lien path (v2.7526)', () => {
+    const door = [{ words: 'Not lienable…', target: { open: 'job_path', jobId: 'j1' } }]
+    // A homestead, the fact that started this: the row keeps its own press and gains the quiet door.
+    const homestead = one({ affidavits: [affidavit('j1', 'needs_property', { gates: [...whole().slice(0, 4), gate('homestead', false)] })] })
+    expect(homestead.button).toBe('Open the property record')
+    expect(homestead.doors).toEqual(door)
+    // Held by its notice alone, and held for the GC's address: the same door.
+    expect(one({ affidavits: [affidavit('j1', 'needs_notice', { gates: [gate('owner', true), gate('legal', true), gate('notice', false)] })] }).doors).toEqual(door)
+    expect(one({ affidavits: [affidavit('j1', 'needs_property', { gates: [gate('owner', true), gate('legal', true), gate('contractor', false)] })] }).doors).toEqual(door)
+    // The leader is the lien office too. A reader with no move has no door.
+    expect(one({ role: 'master_technician', affidavits: [affidavit('j1', 'needs_property', { gates: [gate('homestead', false)] })] }).doors).toEqual(door)
+    expect(one({ role: 'estimator', affidavits: [affidavit('j1', 'needs_property', { gates: [gate('homestead', false)] })] }).doors).toBeUndefined()
+    // Public property is the property's answer, with its own window: no door on that row. A paper nothing holds has none.
+    expect(one({ affidavits: [affidavit('j1', 'needs_property', { gates: [{ key: 'public_owner' as const, ok: false, label: '' }] })] }).doors).toBeUndefined()
+    expect(one({ affidavits: [affidavit('j1', 'ready')] }).doors).toBeUndefined()
+  })
+
   it('several facts missing are each named, and the press opens the record', () => {
     expect(lienGateHoldWords(['owner', 'legal'])).toEqual({ sub: 'the affidavit still needs the owner of record and the legal description', detail: 'The affidavit still needs the owner of record and the legal description.', button: 'Fix the property record' })
     expect(lienGateHoldWords(['owner', 'legal', 'homestead_answer']).detail).toBe('The affidavit still needs the owner of record, the legal description and the homestead answer.')

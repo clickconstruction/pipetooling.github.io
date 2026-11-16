@@ -309,6 +309,7 @@ describe('useLienDeskData · a job a person took off the lien path leaves at the
   /** Job A carries the answer handed in; P is a job no reader and no paper names, off the path by its own answer. */
   const withAnswer = async (answer: Record<string, unknown>, opts: { light?: boolean; hideZzTestJobs?: boolean; more?: unknown[] } = {}) => {
     const jobsLedger = TABLES.jobs_ledger!
+    TABLES.users = [{ id: 'u1', name: ' Dana ' }]
     TABLES.jobs_ledger = [...jobsLedger.map((j) => ((j as { id: string }).id === 'A' ? { ...(j as object), status: 'billed', collections_at: '2026-10-08T16:00:00Z', ...answer } : j)), ...(opts.more ?? [])]
     try {
       const { result } = renderHook(() => useLienDeskData(true, '2026-10-09', { light: opts.light ?? false, hideZzTestJobs: opts.hideZzTestJobs ?? false }))
@@ -316,6 +317,7 @@ describe('useLienDeskData · a job a person took off the lien path leaves at the
       return result.current.data!
     } finally {
       TABLES.jobs_ledger = jobsLedger
+      delete TABLES.users
     }
   }
 
@@ -337,6 +339,7 @@ describe('useLienDeskData · a job a person took off the lien path leaves at the
         reason: 'The bill is for trips to pick up checks.',
         since: '2026-10-08T15:00:00Z',
         byUserId: 'u1',
+        byName: 'Dana',
         attorneySince: '2026-10-08T16:00:00Z',
         status: 'billed',
         papers: [{ kind: 'notice_53_056', status: 'held', months: ['2026-08'], sent_at: undefined, approved_at: undefined, voided_at: null }],

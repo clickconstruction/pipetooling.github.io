@@ -87,7 +87,9 @@ const jobPromiseMock = vi.fn()
 vi.mock('../../lib/jobs/paymentChaseIo', () => ({ addJobPaymentPromise: (...args: unknown[]) => jobPromiseMock(...args) }))
 // Is this public property? (v2.7443): the window's read and the one write.
 const readPublicPropertyMock = vi.fn()
+const readJobPathMock = vi.fn()
 vi.mock('../../lib/jobs/lienPublicPropertyIo', () => ({ readLienPublicProperty: (...args: unknown[]) => readPublicPropertyMock(...args), setLienPublicAnswer: vi.fn(async () => ({ answer: 'public', jobs: [] })) }))
+vi.mock('../../lib/jobs/lienJobPathIo', () => ({ readLienJobPath: (...args: unknown[]) => readJobPathMock(...args), setJobLienPathAnswer: vi.fn(async () => ({ answer: null, changed: true, onAttorneyList: false, alreadyOnList: false, held: null })) }))
 const clearPrintedMock = vi.fn()
 const saveDraftMock = vi.fn(async () => 'it-new')
 const redrawOneMock = vi.fn(async (..._args: unknown[]) => undefined)
@@ -623,6 +625,32 @@ describe('LienDesk', () => {
     fireEvent.click(within(lineEl).getByRole('button', { name: 'Review it ›' }))
     expect(await screen.findByRole('dialog', { name: 'Take this property off the lien path?' })).toBeTruthy()
     expect(readPublicPropertyMock).toHaveBeenCalledWith('addr-650')
+  })
+
+  it('off the lien path (v2.7526): the jobs a person took off sit in a bin of their own with the reason, and Put it back… opens that job’s window', async () => {
+    readJobPathMock.mockReturnValue(new Promise(() => {}))
+    const off = { jobId: 'j977', number: '977', name: 'ZZ Test Trip Charges', gcName: 'Lowbeck Contracting', unpaid: 1050, reason: 'The bill is for trips to pick up checks.', since: '2026-09-10T15:00:00Z', byUserId: 'u1', byName: 'Dana', attorneySince: null, status: 'billed', papers: [] }
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
+    await settle()
+    const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
+    expect(bin.textContent).toContain('Off the lien path')
+    expect(bin.textContent).toContain('977 · ZZ Test Trip Charges')
+    expect(bin.textContent).toContain('Lowbeck Contracting · off since Sep 10, by Dana · not on the attorney’s list')
+    expect(bin.textContent).toContain('The bill is for trips to pick up checks.')
+    expect((document.querySelector('[data-lien-board-column="affidavit"]') as HTMLElement).contains(bin)).toBe(true)
+    // The job is on no list: no chip and no row of its own.
+    expect(document.querySelector('[data-lien-board-chip="j977"]')).toBeNull()
+    fireEvent.click(within(bin).getByRole('button', { name: 'Put it back…' }))
+    expect(await screen.findByTestId('lien-job-path-window')).toBeTruthy()
+    expect(readJobPathMock).toHaveBeenCalledWith('j977')
+  })
+
+  it('off the lien path: a reader who is not the lien office sees the bin and no press', async () => {
+    const off = { jobId: 'j977', number: '977', name: 'ZZ Test Trip Charges', gcName: '', unpaid: 1050, reason: 'Not for work on the property.', since: null, byUserId: null, attorneySince: null, status: 'billed', papers: [] }
+    renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
+    await settle()
+    expect(document.querySelector('[data-lien-off-path-bin]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-off-path-bin-back]')).toBeNull()
   })
 
   it('the office: a notice waiting on the leader closes To do under his name and leaves the tab’s count (punch list #101 PR 3)', async () => {

@@ -112,6 +112,9 @@ import LienServeWindow from './LienServeWindow'
 import { lienServeDoorWords, lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
 import LienPublicPutBackWindow from './LienPublicPutBackWindow'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
+import LienJobPathWindow from './LienJobPathWindow'
+import { LienOffPathBinView } from './LienOffPathBoardParts'
+import { buildLienOffPathBin } from '../../lib/jobs/lienOffPathBin'
 import { buildLienPublicBin, lienPublicBoardLine } from '../../lib/jobs/lienPublicProperty'
 import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
@@ -965,6 +968,10 @@ export default function LienDesk({
     })
   }, [data, board])
   const publicBin = useMemo(() => buildLienPublicBin(data?.publicJobs ?? []), [data])
+  // Off the lien path (v2.7526, the owner's pick of 2026-11-16): the bin for the jobs a person took off for a reason of
+  // their own, and the job whose window is open, to take it off or to put it back.
+  const offPathBin = useMemo(() => buildLienOffPathBin(data?.offPathJobs ?? []), [data])
+  const [jobPath, setJobPath] = useState<string | null>(null)
   // The properties left to review, one window at a time; and the property being put back on the lien path.
   const [publicReview, setPublicReview] = useState<string[] | null>(null)
   // Serve the filed liens (punch list #366): one window prints every filed lien's copies and takes their mail numbers.
@@ -1308,6 +1315,12 @@ export default function LienDesk({
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
     setMobileListShown(false)
+    // Not lienable… (v2.7526): a held row's quiet door opens the window that takes this one job off the lien path. It is
+    // read first, since the row it stands on is a held affidavit's, whose own press goes to the property record.
+    if (t.open === 'job_path') {
+      setJobPath(t.jobId)
+      return
+    }
     // A held affidavit's press answers its one question (v2.7372): the property record opens at the missing line, as
     // the job's chip on the Board does. A paper whose fact is not on the property record opens its pane, as before.
     if (row.action === 'fix_property' && row.button && row.jobId && board && office) {
@@ -4907,6 +4920,17 @@ export default function LienDesk({
               }}
             />
           ) : null}
+          {jobPath ? (
+            <LienJobPathWindow
+              key={jobPath}
+              jobId={jobPath}
+              zIndex={805}
+              onClose={(changed) => {
+                setJobPath(null)
+                if (changed) onChanged()
+              }}
+            />
+          ) : null}
           {paperFix && data ? (() => {
             const entry = paperEntries[paperFix.index]
             const row = paperRows[paperFix.index]
@@ -4925,7 +4949,7 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} binPress={office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: () => setServeOpen(true), title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : undefined} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} prints={boardPrints ? { ...boardPrints, onPress: onBoardPrint, onLeft: onBoardPrintLeft, onNote: onBoardPrintNote } : null} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null} /> : <div />}
+            {board ? <LienBoard board={board} isMobile={isMobile} binPress={office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: () => setServeOpen(true), title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : undefined} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} prints={boardPrints ? { ...boardPrints, onPress: onBoardPrint, onLeft: onBoardPrintLeft, onNote: onBoardPrintNote } : null} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin || offPathBin ? <div style={{ display: 'grid', gap: 10 }}>{publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null}{offPathBin ? <LienOffPathBinView bin={offPathBin} isMobile={isMobile} onOpenJob={onOpenJob} onPutBack={office ? setJobPath : null} /> : null}</div> : null} /> : <div />}
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)} prints={boardPrints && !(leaderView && boardMine) ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.short.label, left: side.short.left, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
