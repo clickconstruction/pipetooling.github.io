@@ -75,8 +75,12 @@ function ownerStateFor(address: CustomerAddressRow | null, override: JobProperty
   const property = resolveLienProperty(address, override)
   const o = property.owner
   const name = o.ownerCompany || o.ownerName
+  // The answer on the property record wins over the guess from the printed name (v2.7439, `lienPublicProperty.ts`):
+  // answered public, the job is off the lien path and leaves the run whatever the owner block holds; answered
+  // private, a name that only sounds public no longer holds it. Unanswered, the run guesses as before.
+  if (property.publicAnswer === 'public') return 'public'
   if (!name || !o.mailingAddress) return 'missing'
-  if (ownerKind(name) === 'public') return 'public'
+  if (property.publicAnswer !== 'private' && ownerKind(name) === 'public') return 'public'
   if (o.source === 'property_record' && ownerFromRollUnconfirmed(address)) return 'unconfirmed'
   return 'on_file'
 }

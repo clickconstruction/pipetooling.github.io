@@ -86,6 +86,29 @@ describe('useGcOnNoticeData · ZZ test jobs', () => {
     expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
   })
 
+  it('the answer on the property record wins over the name guess (v2.7439): public leaves the run, private opens it', async () => {
+    const jobsLedger = TABLES.jobs_ledger!
+    const owner = (name: string, answer: string | null) => [{ id: 'addr-1', owner_name: name, owner_company: '', owner_mailing_address: '1 Example St, Sampletown, TX 78000', owner_confirmed_at: '2026-09-22T15:00:00Z', lien_public_answer: answer }]
+    TABLES.jobs_ledger = jobsLedger.map((j) => ({ ...(j as object), customer_address_id: 'addr-1' }))
+    try {
+      const readinessOfA = async () => (await read(false)).jobs.find((j) => j.jobId === 'A')?.readiness
+      // Unanswered, the printed name decides, as before.
+      TABLES.customer_addresses = owner('ZZ TEST CITY OF', null)
+      expect(await readinessOfA()).toBe('public_owner')
+      // Answered private: the name only sounds public, and the job is back in the run.
+      TABLES.customer_addresses = owner('ZZ TEST CITY OF', 'private')
+      expect(await readinessOfA()).not.toBe('public_owner')
+      // Answered public: off the lien path, whatever the name reads, so the run leaves it out.
+      TABLES.customer_addresses = owner('ZZ Test Holdings LLC', 'public')
+      expect(await readinessOfA()).toBe('public_owner')
+      TABLES.customer_addresses = owner('ZZ Test Holdings LLC', null)
+      expect(await readinessOfA()).not.toBe('public_owner')
+    } finally {
+      TABLES.jobs_ledger = jobsLedger
+      delete TABLES.customer_addresses
+    }
+  })
+
   it('the run’s desk carries the pieces an approved notice already went out as, by its desk item (v2.5532)', async () => {
     TABLES.job_lien_desk_items = [{ id: 'dA', job_id: 'A', kind: 'notice_53_056', status: 'approved', months: ['2026-08'], fields: {}, created_at: '2026-10-01', voided_at: null }]
     TABLES.mail_pieces = [{ id: 'p1', kind: 'lien_notice_53_056', recipient: 'original_contractor', status: 'sent', source_ids: ['dA'] }]
