@@ -24,6 +24,15 @@ GC difficulty rating (punch list #357, [`to-dos/gc-difficulty-rating/README.md`]
 
 Read-only on prod before the PR (2026-11-16, the dev seat and its sample estimator): `difficulty_price_versions` holds version 1 alone, published by *the app*, `raters` `["office", "master"]`, no draft. The sample estimator reads the two published criteria versions, the price list and a `ZZ Test` customer; `get_billed_customer_pay_speeds()` answers it NULL (the pay-speed read is the money roles'), which is why the client now keeps the Paying point an estimator cannot read.
 
-**Apply order**: the client first, then the push. The merge deploys the client; push once the Pages deploy has finished. Until the push nothing changes for anyone: the list still reads version 1 and the old rule still stands. Pushed before the new client, an estimator's save from the old client would have dropped the GC's Paying point. No types to regenerate: no column or table changes, and the client does not call the function.
+**Apply order**: the client first, then the push. The merge deploys the client; push once the Pages deploy has finished. Until the push nothing changes for anyone: the list still reads version 1 and the old rule still stands. Pushed before the new client, an estimator's save from the old client would have dropped the GC's Paying point. No types PR waits on it: no column or table changes and the client does not call the function. The generated types gain `gc_difficulty_can_rate` at the next regeneration, whoever runs it.
 
-**Pushed**: not yet when this page was written. The day, the time and the read-back go here after the push.
+**Pushed**: 2026-11-16 at 12:51 CST (18:51 UTC), from a checkout equal to `origin/main`, after the merge (#8366, 18:30 UTC) and the client's deploy of that commit. It was the only file pending. Main's `20261117030000` was already applied, so the plain push named this one file and asked for `--include-all`, the out-of-order case, and the second run applied it alone. `check:migration-drift` then read 1,333 files, fully applied.
+
+Read back on prod, read-only, the same hour:
+
+- `difficulty_price_versions` holds two published rows and no draft. Version 2: `raters` `["office", "estimator", "master"]`, the nine numbers equal to version 1's, the note as written above, `published_by_name` *the app*, `published_by` NULL, `published_at` 18:51:01 UTC. Version 1 is as it was.
+- `pg_policies` on `gc_difficulty_ratings`: one permissive insert rule, `gc_difficulty_ratings_insert_raters` with `WITH CHECK (gc_difficulty_can_rate())`; `gc_difficulty_ratings_insert_office` is gone; the select rule, the dev's delete rule and the restrictive fences (`read_only_users_cannot_insert`, `digital_twin_write_fence_insert`, `archived_fence`) are there.
+- `gc_difficulty_can_rate()` on prod: its body equals this file's, `SECURITY DEFINER`, `search_path = ''`, executable by `authenticated` and not by `anon`.
+- The function's rule read against each role's sample account: assistant, controller, estimator and master technician may rate; helpers, primary, subcontractor and superintendent may not. Under the old rule the estimator was the one refused.
+- The sample estimator reads version 2 as the newest published list, which is what the client asks.
+- `gc_difficulty_ratings` held no row before or after: no rating was saved to check this.
