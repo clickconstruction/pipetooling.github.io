@@ -518,7 +518,7 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
  */
 export function AfterRecordPaymentWindow({ recorded, onDone, onSend }: { recorded: { name: string; sent: number; sheets: number; how: string }; onDone: () => void; onSend: () => void }) {
   return (
-    <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 761, padding: '1rem' }}>
+    <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 761, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
       <div role="dialog" aria-modal="true" aria-label="Payment recorded" data-testid="sub-after-record-payment" style={{ background: 'var(--surface)', color: 'var(--text-700)', padding: '1.1rem 1.2rem', borderRadius: 8, width: 'min(400px, 100%)', boxSizing: 'border-box' }}>
         <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>Payment recorded</h3>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>

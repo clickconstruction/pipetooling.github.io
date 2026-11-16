@@ -18,7 +18,7 @@ import { gatherPlan, type OverToCreditPlan, type SendingGroup } from '../../lib/
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const shell: CSSProperties = { position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }
+const shell: CSSProperties = { position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }
 const box: CSSProperties = { background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 10, padding: '1.1rem 1.2rem', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }
 const quiet: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.4rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
 const press = (live: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.875rem', fontWeight: 650, padding: '0.4rem 0.9rem', borderRadius: 6, border: 'none', background: live ? '#2563eb' : DEAD_PRESS_FILL, color: live ? 'white' : DEAD_PRESS_TEXT, cursor: live ? 'pointer' : 'default' })

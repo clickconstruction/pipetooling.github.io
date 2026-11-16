@@ -41,8 +41,8 @@ export function WhoseSheetWindow({ group, roster, suggestion, saving, onAssign, 
   const canSave = !!plan?.confirmLabel && !!person && !saving
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div role="dialog" aria-modal="true" aria-label="Whose sheet is this?" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 10, padding: '1.1rem 1.2rem', width: 'min(520px, 100%)', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
+      <div role="dialog" aria-modal="true" aria-label="Whose sheet is this?" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 10, padding: '1.1rem 1.2rem', width: 'min(520px, 100%)', maxHeight: 'min(90vh, 100%)', overflowY: 'auto', boxSizing: 'border-box' }}>
         <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>Whose sheet is this?</h3>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>
           {group.jobNumber ? `#${group.jobNumber} · ` : ''}

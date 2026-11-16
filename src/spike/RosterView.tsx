@@ -80,8 +80,8 @@ export function RosterView({ rule: fixedRule, narrow = false, openId = 'harlan' 
             )
           })}
           {open ? (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', zIndex: 10 }}>
-              <div style={{ width: '100%', background: 'var(--surface)', borderRadius: '18px 18px 0 0', padding: '0.7rem 0.8rem 1rem', maxHeight: '88vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', zIndex: 10, paddingTop: 'var(--app-top-chrome, 0px)' }}>
+              <div style={{ width: '100%', background: 'var(--surface)', borderRadius: '18px 18px 0 0', padding: '0.7rem 0.8rem 1rem', maxHeight: 'min(88vh, 100%)', overflowY: 'auto', boxSizing: 'border-box' }}>
                 {block(open, SPIKE_ROWS.find((r) => r.personId === open)?.name ?? '', owedPersonById(breakdown, open)?.kind === 'team', () => setOpen(null))}
               </div>
             </div>

@@ -208,7 +208,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement 
         {step === 'paper' && ok ? (
           <div style={field}>
             <div style={k}>Preview · this is the paper</div>
-            <div data-theme="light" data-testid="sub-paper-preview" style={{ border: '1px solid var(--border)', borderRadius: 8, background: '#fff', maxHeight: '52vh', overflow: 'auto' }}>
+            <div data-theme="light" data-testid="sub-paper-preview" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', maxHeight: '52vh', overflow: 'auto' }}>
               <style>{SUB_PAPER_CSS}</style>
               <div dangerouslySetInnerHTML={{ __html: html }} />
             </div>
