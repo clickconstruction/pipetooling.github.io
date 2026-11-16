@@ -90,7 +90,7 @@ The panel shows the three biggest balances first. **Show all N sheets** expands 
 
 An older sheet may name a teammate beside the sub. The names came from the job's team when the sheet was made. The teammate is not paid from the sheet.
 
-A line under the roster counts these sheets. Press **Take the teammates off…** to open the list.
+A line over the roster counts these sheets. Press **Take the teammates off…** to open the list.
 
 - Each sheet shows who keeps it and who comes off. Every ready sheet starts ticked.
 - A sheet that needs a look first is held with its reason. A hold never stops the rest.
