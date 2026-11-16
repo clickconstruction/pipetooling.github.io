@@ -1,8 +1,8 @@
 ---
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
-group: gated
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner leaned to D, not yet picked
+group: ready
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -13,9 +13,9 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: The pick between stopping at B, going on to A (the list by bin), or on to D (the run). B needs nothing more.
+next: Step 4, the list by bin (M), which is A and the first half of D. Then the run's four steps, 5 to 8, each shipped when it is ready.
 size: M for A alone (step 4); L for D as the five steps left (M · M · M · S · M); B, the first three, is built
-blocker: The pick. For D's single print, whether notices and affidavits can come out of one print run.
+blocker: none
 ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372
 ---
 
@@ -129,9 +129,23 @@ Each keeps the Board whole and is the start of the next.
 
 The first mock-up's C (ready and held, two columns) is dropped: the Board's bins already split what is
 ready from what waits on a fact. The owner liked A most of the first four, then asked whether it could
-go further toward the batch; D is that. He has not picked between A and D.
+go further toward the batch; D is that.
+
+## The pick
+
+The owner, 2026-11-16, to *how far do we go from here?*: **D, the list by bin first**. A is built
+first, as step 4, and stays the list under the Board while no run is open. The run's four steps follow,
+each shipped when it is ready. To *may notices and affidavits come out of one print?*: **one press,
+one stack**. One *Print the run* button, and the stack comes out as the help sheet, the notices in
+envelope order, a divider page, then the affidavits by county clerk for the notary.
 
 ## A train for D
+
+Steps 1 to 3 are B and are live. The owner's pick of 2026-11-16 is steps 4 to 8, in this order. Steps 4,
+5, 6 and 8 redraw the same list under the Board (`lienNextUp.ts`, `LienDeskNextUp.tsx`), so they go one
+after another. Step 7 is a kernel of its own over the papers' fields and can be built beside step 6. A
+row's words come from the Board's own names (`LIEN_BOARD_WORDS`), so a rename of a bin reaches the list
+by itself.
 
 1. **One page** (S), built, v2.7367: To do scrolls as one page wherever the Board leaves the list under
    320 px, and the find box pins with the Board's numbers, each a press, the line that says what the
@@ -144,30 +158,42 @@ go further toward the batch; D is that. He has not picked between A and D.
    (`lienRowWords.ts`). The bin's name opens the card the four dots opened, and a row with no bin keeps
    its dots. With step 2 this is B.
 4. **The list by bin** (M): the groups under the Board's own names and the batch rows. This is A.
+   A kernel beside `groupLienNextUp` puts the rows due by the tile's day in one group a bin, in the
+   Board's order, and everything later under one line. Rows that share one act fold into one row with
+   a total and one press that exists today: the affidavits ready to file (*Print N for notarization ›*,
+   the door of v2.7398), the affidavits to send (*Send N for approval…* on the Affidavits list), the
+   papers waiting on the leader (the reminder press of v2.7371). A GC's approved notices and the
+   printed notices already fold. A pressed bin goes to its group.
 5. **The checklist** (M): step 1 as a kernel over the desk's queues, every open question with its
-   button and a *Leave out* that the run remembers.
-6. **The gate and the one print** (M): step 2. Needs the answer below on printing notices and
-   affidavits together.
+   button and a *Leave out* that the run remembers. Where a left-out paper is remembered is this
+   step's first decision: on the paper's desk row, so every office seat sees it, needs a migration.
+6. **The gate and the one print** (M): step 2. One press, one stack, the owner's answer of
+   2026-11-16: the help sheet, the notices in envelope order (`buildLienDeskRun`), a divider page,
+   then the affidavits by county clerk (`lienAffidavitClerkOrder`). The notices' print stamps
+   `printed_at` as the run window does today.
 7. **Changed since printed** (S): a fingerprint of each paper's sworn fields at print, compared on
    every read after.
 8. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
 
 ## Open questions
 
-- **One print for both kinds.** Today notices print from the run window and affidavits from the
-  Affidavits list's batch print, each with its own help sheet. Can one run carry both, or does D keep
-  two stacks under one gate?
-- **Which run.** The desk's lien month cards (Reminders 1 to 5, Notices 6 to 9, Liens 10 to 13, the
-  15th) already describe a monthly rhythm. A run is probably "everything due by this cycle's 15th".
-- **Leave out.** A paper left out of this run: does it roll to the next run by itself, or wait on a
-  person?
+- ~~**One print for both kinds.**~~ Answered 2026-11-16: one press, one stack (*The pick* above).
+- **Which run.** Not asked yet. The plan's default is the Board's first tile: every paper due by the
+  day that tile counts to, since the run opens from it. The desk's lien month cards (Reminders 1 to 5,
+  Notices 6 to 9, Liens 10 to 13, the 15th) describe the same rhythm. Ask before step 5 ships if the
+  tile's day reads wrong in use.
+- **Leave out.** Not asked yet, and step 5's to ask: a paper left out of this run stays in its bin
+  with its own day. Does the next run take it by itself, or does it wait on a person to put it back?
 
 ## Related
 
-- #353: print a picked set of affidavits, and say why a job with a recorded notice still owes one. D's
-  *Leave out* and its one print answer the first half from the other side.
-- #354: a started paper stays on the desk whatever its day. D's run needs it, or a paper drafted early
-  vanishes from the run.
+- #353: print a picked set of affidavits, and say why a job with a recorded notice still owes one. Both
+  parts are on main (v2.7268, v2.7269). D's *Leave out* and its one print answer the first half from
+  the other side.
+- #354: a started paper stays on the desk whatever its day. On main since v2.7261, so a paper drafted
+  early stays in the run.
+- #335: an approved affidavit a gate closes on moves to Held with the gate's question (its second fix,
+  built 2026-11-16). Step 5's checklist reads the same gates.
 - #356: the affidavit's months line on a job whose notice names other months. One of D's step 1
   questions.
 
@@ -189,8 +215,8 @@ with the reminder press, twelve on track, the day on the head, the notice line o
 The reminder press was never pressed on a live paper: it messages the leader, and its smokes cover it
 with the sends mocked.
 
-A (step 4) and D (steps 5 to 8) are not started and wait on the pick. The mock-up still draws all
-three; its B is what shipped, but for two things the build changed: the bin's name stands where the
+A (step 4) and D (steps 5 to 8) are picked (2026-11-16) and not built. Step 4 is next. The mock-up
+still draws all three; its B is what shipped, but for two things the build changed: the bin's name stands where the
 mock-up dropped the four dots, and *Print N for notarization ›* (*Print N affidavits ›* until v2.7398, renamed to the button it opens) opens the affidavits list at Ready to file
 and does not print from To do.
 
