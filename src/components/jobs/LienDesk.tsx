@@ -12,7 +12,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
 import { lienRulesJobFrom } from '../../lib/jobs/lienRulesDates'
 import { LIEN_GC_PICKER_URGENT_DAYS, buildLienGcPickerOptions, lienGcPickerCloseWords } from '../../lib/jobs/lienDeskGcPicker'
-import { daysBetweenYmd, formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
@@ -70,8 +70,8 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
-import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords } from '../../lib/jobs/lienDeskRun'
-import { lienRunPill, lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
+import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorWords } from '../../lib/jobs/lienDeskRun'
+import { lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_RUN_NOW_TO_PRINT, lienRunActLabel } from '../../lib/jobs/lienRunWords'
 import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
@@ -2259,11 +2259,10 @@ export default function LienDesk({
   const retReady = data?.retainage.counts.ready ?? 0
   /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
   const runCount = (counts?.ready ?? 0) + (counts?.printed ?? 0) + retReady
-  // The title bar's door (v2.4823): when nothing is left to print, it says what the run will do — record the mailing — as the printed footer already does.
+  // The run's press in a phone's More sheet (v2.4823): when nothing is left to print, it says what the run will do, the mail numbers, as the printed footer already does. The title bar carried the same door on a computer until v2.7490.
   const runDoor = runDoorWords({ ready: counts?.ready ?? 0, printed: counts?.printed ?? 0, retReady })
-  // The door as a pill (Run-5): the run's bar and who waits, read from the desk's own rows.
+  // The approved notices the leader has not signed yet: the Board's notices' print counts them as waiting.
   const readyWaits = (data?.queue.piles.ready ?? []).filter((e) => lienItemUnsigned(e.item)).length
-  const runPill = runDoorPill({ ready: counts?.ready ?? 0, printed: counts?.printed ?? 0, retReady, waits: readyWaits }, leaderName)
   // The print at the foot of each Board column (v2.7470, punch list #362, the owner's *Yes, build this* of 2026-11-16): the
   // whole run under the notices, the batch print itself under the affidavits, counted as the run's door and By paper's
   // print bar count. The lien office's alone, as those two are.
@@ -2305,33 +2304,17 @@ export default function LienDesk({
     setAffPile('ready')
     setKind('affidavit')
   }
-  // *Enter mail numbers · 7*, not *· 7 · 7 to mail* (v2.6569): the pill's words drop the count the door already says.
-  const runTail = runDoorTail(runDoor.count, runPill.words)
-  // The pill reads as the press it is (v2.7448; *The run · 3 of 7 mailed* since v2.7328): *Print and mail 15 · 3 of 18 mailed*, the meter mailed · printed · to print.
-  // Mailed is what this run's notices the desk recorded as sent in the last week: they left the pile with their print stamp on.
-  const mailedRecent = (data?.queue.piles.sent ?? []).filter((e) => {
-    const it = e.item as { printed_at?: string | null; sent_at?: string | null } | null
-    if (!it?.printed_at || !it.sent_at) return false
-    const days = daysBetweenYmd(calendarYmdInAppTzFromIso(it.sent_at), todayYmd)
-    return days != null && days >= 0 && days <= 7
-  }).length
-  const runMeter = lienRunPill({ toPrint: (counts?.ready ?? 0) + retReady, printed: counts?.printed ?? 0, mailed: mailedRecent })
-  // The run door shows on every view but Affidavits, to the office, while a notice waits. On a phone it is the first row of More and the More button wears its count (punch list #352, PR 1).
+  // The title bar's run door is retired (v2.7490, the owner's call of 2026-11-16: *Retire it everywhere*). On a computer the run opens from the Board's notices' print on To do and from By paper's pile and footers. On a phone it is still the first row of More, off Affidavits, and the More button wears its count (punch list #352, PR 1).
   const runDoorShown = kind !== 'affidavit' && office && runCount > 0
   const runDoorHint = runDoor.act === 'record' ? 'The run as a checklist: each printed notice with its Printed, Signed and Mailed ticks; type each envelope’s tracking number to record the mailing' : 'Every approved notice — monthly and retainage — as one packet, then a checklist with Printed, Signed and Mailed ticks per notice'
   const gcNoticeShown = kind === 'notice' && office && !!onPutGcOnNotice && gcPickerOptions.length > 0
   const recordsDoorShown = office && !!onOpenOwnerRecords
-  // Affidavits hides the run's pill without taking the run away: the line keeps the pill's last width there, so no view moves the door.
-  const runHiddenByView = kind === 'affidavit' && office && runCount > 0
-  const lastRunWidth = useRef(0)
   useLayoutEffect(() => {
     const bar = titleBarRef.current
     if (isMobile || !bar) return
     const measure = () => {
       const line = readLienDeskTitleLine(bar)
       if (!line) return setTitleLineFit('none')
-      if (line.parts.run > 0) lastRunWidth.current = line.parts.run
-      else if (runHiddenByView) line.parts.run = lastRunWidth.current
       setTitleLineFit(lienDeskTitleLineFit(line.width, line.parts))
       // The pile line (v2.7311): the span's width is the same at the line's end and under the piles, so the answer holds once the break is drawn.
       const piles = readLienDeskPileLine(bar)
@@ -2339,15 +2322,15 @@ export default function LienDesk({
     }
     measure()
     if (typeof ResizeObserver === 'undefined') return
-    // The bar moves with the window; the run's pill, the views, the paper tabs and the piles move with their words. The door and the presses keep their widths wherever they sit.
+    // The bar moves with the window; the views, the paper tabs and the piles move with their words. The door and the presses keep their widths wherever they sit.
     const ro = new ResizeObserver(measure)
     ro.observe(bar)
-    for (const part of ['[data-lien-desk-kinds]', '[data-lien-desk-run]', '[data-lien-desk-paper-kinds]', '[data-lien-desk-piles]', '[data-lien-desk-right]']) {
+    for (const part of ['[data-lien-desk-kinds]', '[data-lien-desk-paper-kinds]', '[data-lien-desk-piles]', '[data-lien-desk-right]']) {
       const el = bar.querySelector(part)
       if (el) ro.observe(el)
     }
     return () => ro.disconnect()
-  }, [isMobile, runDoorShown, runHiddenByView, recordsDoorShown, paperShown, gcNoticeShown, kind, titleLineFit])
+  }, [isMobile, recordsDoorShown, paperShown, gcNoticeShown, kind, titleLineFit])
   // The first tab's words (v2.7465): on a computer the page's name and the count, on a phone *To do · N* under the title's own row.
   const firstTab = lienDeskFirstTab({ isMobile, count: data ? lienNextUpCount(nextUpRows) : null })
   // The title bar's shape on this screen: where the tools and the door sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311).
@@ -4677,14 +4660,6 @@ export default function LienDesk({
               )
             })}
           </div>
-          {/* The run sits beside the views on every view (v2.4740, the owner's ask; on the second line's left end since v2.4629). */}
-          {!isMobile && runDoorShown ? (
-            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), ...headDoor }} data-lien-desk-run title={runDoorHint}>
-              <span className="lienRunDoorBar" aria-hidden="true" data-lien-desk-run-meter><i className="lienRunDoorSealed" style={{ width: `${runMeter.mailedPct}%` }} /><i className="lienRunDoorPrinted" style={{ width: `${runMeter.printedPct}%` }} /></span>
-              {runMeter.words || lienRunActLabel(runDoor.act, runDoor.count)}
-              {runTail && runPill.waitPct > 0 ? <span className="lienRunDoorWords" data-lien-desk-run-pill aria-hidden="true">{runTail}</span> : null}
-            </button>
-          ) : null}
           {/* In a window wide enough for both (v2.7213, the owner's screenshot at 1,846 px) the tools end the title line, pushed right: nothing is hidden and the bar loses its half-empty second line. */}
           {/* With room for the four presses but not the door too (v2.7277, the owner's screenshot at about 1,290 px) the presses end the line and the door slides under them, the right end of the second line. */}
           {titleBar.tools === 'title_line' ? (

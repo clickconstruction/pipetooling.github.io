@@ -87,7 +87,7 @@ export default function Materials() {
   const [scanLabelOpen, setScanLabelOpen] = useState(false)
   /** The labels window: null closed, else the job it opens on (null = ask which job). */
   const [printLabels, setPrintLabels] = useState<{ jobId: string | null } | null>(null)
-  /** Print blank stickers (punch list #329, v2.7272): the strip's press asks which job, as Print labels does. */
+  /** Print future stickers (punch list #329, v2.7272): the strip's press asks which job, as Print labels does. */
   const [printStickers, setPrintStickers] = useState(false)
   /** Set when Held for suppliers sends the user to a specific house on the Supply Houses tab. */
   const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
