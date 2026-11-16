@@ -5,7 +5,7 @@
  * day ahead is refused, the save writes the ticked ids and the day and re-reads the card.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { buildLienSupplierJobs } from '../../lib/jobs/lienJobSuppliers'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
@@ -78,5 +78,49 @@ describe('LienJobSuppliersCard · Mark paid… (v2.5838)', () => {
     await waitFor(() => expect(markSupplierInvoicesPaid).toHaveBeenCalledWith(['b'], '2026-10-22'))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     expect(document.querySelector('[data-lien-supplier-paid-form]')).toBeNull()
+  })
+})
+
+describe('LienJobSuppliersCard · a paid house takes one line (v2.7431)', () => {
+  it('draws a house that is owed nothing as one line: its name, its words across the middle, its paid figure and a grey $0.00, with no dash', () => {
+    renderWithProviders(<LienJobSuppliersCard {...base} />)
+    const paid = document.querySelector('[data-lien-supplier-house="Ferguson"]') as HTMLElement
+    expect(paid.getAttribute('data-lien-supplier-line')).toBe('one')
+    const cells = [...paid.querySelectorAll('[role="cell"]')] as HTMLElement[]
+    expect(cells.map((c) => c.textContent)).toEqual(['Ferguson', '1 invoice, all paid · no job account', '$300.00', '$0.00'])
+    expect(paid.textContent).not.toContain('—')
+    // The words span the two middle columns on one line, and the hover holds all of them.
+    expect(cells[1]!.style.gridColumn).toBe('2 / 4')
+    expect(cells[1]!.getAttribute('aria-colspan')).toBe('2')
+    expect(cells[1]!.style.whiteSpace).toBe('nowrap')
+    expect(cells[1]!.title).toBe('1 invoice, all paid · no job account')
+    // The zero is grey and not bold; the paid figure is as it was.
+    expect(cells[3]!.style.color).toBe('var(--text-muted)')
+    expect(cells[3]!.style.fontWeight).toBe('')
+  })
+
+  it('leaves a house that is owed its whole row, with its doors', () => {
+    renderWithProviders(<LienJobSuppliersCard {...base} word={{ authName: 'Grace', onChanged: () => {} }} markPaid={{ onChanged: () => {} }} />)
+    const owed = document.querySelector('[data-lien-supplier-house="Reece"]') as HTMLElement
+    expect(owed.getAttribute('data-lien-supplier-line')).toBeNull()
+    expect(owed.querySelectorAll('[role="cell"]')).toHaveLength(5)
+    expect(owed.textContent).toContain('July materials')
+    expect(owed.textContent).toContain('2 unpaid of 2 invoices')
+    expect(within(owed).getByRole('button', { name: 'They told us…' })).toBeTruthy()
+    expect(within(owed).getByRole('button', { name: 'Mark paid…' })).toBeTruthy()
+    // The paid house gets neither door, as before.
+    const paid = document.querySelector('[data-lien-supplier-house="Ferguson"]') as HTMLElement
+    expect(within(paid).queryByRole('button')).toBeNull()
+  })
+
+  it('on a phone a paid house is its name with a grey $0.00 and one small line that wraps, cutting nothing', () => {
+    renderWithProviders(<LienJobSuppliersCard {...base} isMobile />)
+    const paid = document.querySelector('[data-lien-supplier-house="Ferguson"]') as HTMLElement
+    expect(paid.getAttribute('data-lien-supplier-line')).toBe('one')
+    expect(paid.textContent).toBe('Ferguson$0.001 invoice, all paid · no job account · paid $300.00')
+    expect((paid.querySelector('[data-lien-supplier-quiet]') as HTMLElement).style.whiteSpace).toBe('')
+    const owed = document.querySelector('[data-lien-supplier-house="Reece"]') as HTMLElement
+    expect(owed.getAttribute('data-lien-supplier-line')).toBeNull()
+    expect(owed.textContent).toContain('unpaid since July materials')
   })
 })

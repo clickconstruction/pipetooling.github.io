@@ -37,6 +37,8 @@ Press a job on the Monthly notices tab. The card **Supply houses on this job** s
 
 The last row adds up every house. The bold line under it compares the two debts. It says if the money owed to us covers the money owed to the houses.
 
+A house that is owed nothing takes one line. The line shows its invoices and its job account in small words. The house's **Owed** figure is grey.
+
 ## Know what the date means
 
 The date under **SupHse notice** is our estimate. The desk counts it from the house's unpaid invoice dates. The desk uses the same rule as our own notices. The house keeps its own calendar, so call the house to be sure.
