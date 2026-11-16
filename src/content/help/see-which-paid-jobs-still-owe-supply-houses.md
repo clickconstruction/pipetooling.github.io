@@ -75,7 +75,7 @@ Press **Ask a house…** above the list. One sheet lists every job with a balanc
 ## Pay a house from here
 
 1. Press a job row to open its statement.
-2. Press {{button:outline|Open house}} on the house you want to pay. The Supply Houses tab opens on that house. Its invoices and {{button:green|Make Payment}} are there.
+2. Press {{button:outline|Open house}} on the house you want to pay. The Supply Houses tab opens on that house. Its invoices and {{button:green|Record a payment}} are there.
 3. If the customer side is the problem, press the job's name on the row. The job window opens with its **Job**, **Edit** and **Bill** tabs.
 
 ## See the lien clock

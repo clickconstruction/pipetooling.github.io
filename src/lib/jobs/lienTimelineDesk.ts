@@ -2,7 +2,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow } from './lienDesk'
 import { monthFromBill, monthIsStandIn } from './lienDesk'
 import { lienStandInMonth, type LienBill } from './lienBillMonths'
-import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey } from './lienDeskAffidavits'
 import { buildLienMonthHistory } from './lienMonthHistory'
 import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineAffidavitState, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
 import { parseCourtesyRecords } from './lienCourtesyNotice'
@@ -96,7 +96,9 @@ export type LienWindowDeskAffidavit = {
   holdUntil: string | null
 }
 
-function affidavitStateOf(entry: Pick<LienAffidavitEntry, 'pile'> | null | undefined): LienTimelineAffidavitState {
+function affidavitStateOf(entry: Pick<LienAffidavitEntry, 'pile' | 'item'> | null | undefined): LienTimelineAffidavitState {
+  // A paper a gate holds after its approval (punch list #335) reads as the fact that holds it, as a paper not yet sent does: the header names the gate, not the leader's hold.
+  if (lienAffidavitGateHeld(entry)) return 'needs_property'
   switch (entry?.pile) {
     case 'needs_property':
     case 'to_draft':
@@ -114,7 +116,8 @@ function affidavitStateOf(entry: Pick<LienAffidavitEntry, 'pile'> | null | undef
  * for its notice. The window builds its path from the job's filings and cannot see an affidavit that is not drafted,
  * waits on approval or is held by a fact, so its header read *File the affidavit* over a row that read *Draft the
  * affidavit* or *Answer the homestead question*. Null when the job has no entry, or one that is filed or missed,
- * which is no step. The closed gates go over only for a paper its facts hold.
+ * which is no step. The closed gates go over only for a paper its facts hold, approved or not (punch list #335: an
+ * approved paper a gate closed on is handed over as held by that fact).
  */
 export function lienWindowDeskAffidavit(entry: Pick<LienAffidavitEntry, 'pile' | 'gates' | 'item'> | null | undefined): LienWindowDeskAffidavit | null {
   const state = affidavitStateOf(entry)

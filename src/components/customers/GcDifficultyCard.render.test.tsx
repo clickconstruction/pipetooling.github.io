@@ -93,8 +93,9 @@ describe('GcDifficultyCard', () => {
     expect((card().getByRole('button', { name: W.save(2) }) as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('an estimator reads the rating and cannot save', async () => {
-    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="estimator" io={fakeIo([RATED])} />)
+  it('an estimator reads the rating and cannot save while the price list does not name the estimators', async () => {
+    const io = fakeIo([RATED], [V1], { loadPrice: vi.fn(async () => DIFFICULTY_PRICE_V1) })
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="estimator" io={io} />)
     expect(await card().findByText(W.cannotRate)).toBeTruthy()
     expect(card().queryByRole('button', { name: /^Save/ })).toBeNull()
     expect(card().queryByLabelText(W.noteLabel)).toBeNull()
@@ -107,6 +108,64 @@ describe('GcDifficultyCard', () => {
     expect(await card().findByText('Rated by Robert on 2026-11-14 under criteria version 1.')).toBeTruthy()
     await waitFor(() => expect(card().queryByText(W.cannotRate)).toBeNull())
     expect(card().getByRole('button', { name: W.save(4) })).toBeTruthy()
+  })
+
+  it('the list is obeyed both ways (v2.7468): the office reads and cannot save when it names only the estimators', async () => {
+    const io = fakeIo([RATED], [V1], { loadPrice: vi.fn(async () => ({ ...DIFFICULTY_PRICE_V1, raters: ['estimator' as const] })) })
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="assistant" io={io} />)
+    expect(await card().findByText(W.cannotRate)).toBeTruthy()
+    expect(card().queryByRole('button', { name: /^Save/ })).toBeNull()
+  })
+
+  it('a sub is never offered the save, whatever the list names', async () => {
+    const io = fakeIo([RATED], [V1], { loadPrice: vi.fn(async () => ({ ...DIFFICULTY_PRICE_V1, raters: ['office' as const, 'estimator' as const, 'master' as const] })) })
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="subcontractor" io={io} />)
+    expect(await card().findByText(W.cannotRate)).toBeTruthy()
+    expect(card().queryByRole('button', { name: /^Save/ })).toBeNull()
+  })
+
+  it("an estimator's rating keeps the Paying point they cannot read, with its words (v2.7468)", async () => {
+    const reason = 'Read from their bills: Paid in 52 days, the median of 7 bills. The GC pace is 35 days.'
+    const rated: GcDifficultyRating = { ...RATED, picks: { paying: 1, field: 3, office: 1 }, pickReasons: { paying: reason } }
+    // The pay-speed read is the money roles': an estimator's comes back unreadable.
+    const io = fakeIo([rated], [V1], { loadPrice: vi.fn(async () => ({ ...DIFFICULTY_PRICE_V1, raters: ['office' as const, 'estimator' as const, 'master' as const] })) }, { readable: false, own: null, receipts: [], gcPace: null, calendar: null, todayYmd: '2026-11-16' })
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="estimator" io={io} />)
+    expect(await card().findByText('Rated by Robert on 2026-11-14 under criteria version 1.')).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('gc-difficulty-paying-words').textContent).toBe('Their bills could not be read here. The rating keeps the 1 point it holds. Paid in 52 days, the median of 7 bills. The GC pace is 35 days.'))
+    expect(total()).toBe('5 points on every new bid to them.')
+    // Nothing changed yet: the kept point is not a change.
+    const press = card().getByRole('button', { name: W.save(5) }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    fireEvent.click(card().getByRole('radio', { name: 'Field and superintendent: 2 points' }))
+    fireEvent.change(card().getByLabelText(W.noteLabel), { target: { value: 'The last job went easier.' } })
+    fireEvent.click(card().getByRole('button', { name: W.save(4) }))
+    await waitFor(() => expect(io.saveRating).toHaveBeenCalledWith('c1', 'v1', { paying: 1, field: 2, office: 1 }, 'The last job went easier.', { paying: reason }))
+  })
+
+  it('a by-hand Paying point is kept the same way, with no press to read bills the person cannot read; a kept point the version dropped is not kept', async () => {
+    const reason = 'By hand: They pay us first every month.'
+    const rated: GcDifficultyRating = { ...RATED, picks: { paying: 0, field: 3, office: 1 }, pickReasons: { paying: reason } }
+    const everyGroup = { loadPrice: vi.fn(async () => ({ ...DIFFICULTY_PRICE_V1, raters: ['office' as const, 'estimator' as const, 'master' as const] })) }
+    const unreadable = { readable: false, own: null, receipts: [], gcPace: null, calendar: null, todayYmd: '2026-11-16' }
+    const io = fakeIo([rated], [V1], everyGroup, unreadable)
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="estimator" io={io} />)
+    expect((await screen.findByTestId('gc-difficulty-paying-by-hand')).textContent).toBe('Set by hand to 0 points: They pay us first every month.')
+    await waitFor(() => expect(screen.getByTestId('gc-difficulty-paying-words').textContent).toBe('Their bills could not be read, so the point is not known.'))
+    expect(card().queryByRole('button', { name: W.byHandClear })).toBeNull()
+    expect(card().queryByRole('button', { name: W.byHandBack })).toBeNull()
+    fireEvent.click(card().getByRole('radio', { name: 'Field and superintendent: 2 points' }))
+    fireEvent.change(card().getByLabelText(W.noteLabel), { target: { value: 'The last job went easier.' } })
+    fireEvent.click(card().getByRole('button', { name: W.save(3) }))
+    await waitFor(() => expect(io.saveRating).toHaveBeenCalledWith('c1', 'v1', { paying: 0, field: 2, office: 1 }, 'The last job went easier.', { paying: reason }))
+    cleanup()
+
+    // The published version has no Paying scale any more: nothing is kept, and the card does not say it is.
+    const noPaying: DifficultyVersionLite = { id: 'v3', version: 3, body: { scales: [DIFFICULTY_CRITERIA_V1.scales[1]!, DIFFICULTY_CRITERIA_V1.scales[2]!] } }
+    const read: GcDifficultyRating = { ...RATED, picks: { paying: 1, field: 3, office: 1 }, pickReasons: { paying: 'Read from their bills: Paid in 52 days, the median of 7 bills.' } }
+    renderWithProviders(<GcDifficultyCard customerId="c1" customerName="Seguin Ridge Builders" role="estimator" io={fakeIo([read], [noPaying, V1], everyGroup, unreadable)} />)
+    expect(await screen.findByTestId('gc-difficulty-carry')).toBeTruthy()
+    await waitFor(() => expect(total()).toBe('4 points on every new bid to them.'))
+    expect(screen.queryByTestId('gc-difficulty-paying-words')).toBeNull()
   })
 
   it('a version 1 rating with version 2 published carries what it can and says what is unrated; the earlier ratings fold', async () => {

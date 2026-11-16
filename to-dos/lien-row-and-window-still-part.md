@@ -1,8 +1,8 @@
 ---
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
-group: ready
-status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14 · an earlier hand day allowed, v2.7447 (the owner's call of 2026-11-16: any past day, with a second look)
+group: residual
+status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14 · an earlier hand day allowed, v2.7447 (the owner's call of 2026-11-16: any past day, with a second look) · an approved affidavit moves to Held when a gate closes, v2.7449 (his call of 2026-11-16: the approval stands)
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -10,11 +10,11 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: The second Also seen item the owner answered on 2026-11-14, an approved affidavit moving to Held when a gate closes (his call of 2026-11-16: the approval stands once the gate is answered), its own PR.
-size: M as six small pieces (S · S · XS · M · S · XS), five shipped
+next: Nothing that was asked for is left. The Also seen list holds smaller things nobody has asked for yet. Pick one up on an ask, or retire the card.
+size: M as six small pieces (S · S · XS · M · S · XS), five shipped, and the two Also seen fixes (S · S), both shipped; left: the rest of Also seen, unsized
 blocker: none
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273 · 7447
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273 · 7447 · 7449
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -98,15 +98,13 @@ what still differed. Counts only are given here, since the repo is public.
 - A paper that waits on someone else's approval reads *Waiting on Robert* on the row and *Approve
   the affidavit* in the header, whose second line says *the leader's approval*. A notice reads the
   same two ways. The header could name the leader.
-- An affidavit approved before a fact came to hold it stays on the desk's Ready pile, because
-  `pileFor` in `lienDeskAffidavits.ts` reads the paper's status before its gates. Its row, its chip
-  and its header all read *File the affidavit*. The window's Lien affidavit tab lists the closed
-  fact and draws no paper. The walk of 2026-11-13 found three live jobs this way, each three days
-  from its last day: one with the homestead question unanswered, one marked a homestead, one on
-  public property. The Lien desk's Share message already counts them as held (v2.7138). Card #305
-  says a hold changes which pile a paper sits in. **The owner's call, 2026-11-14: a closed gate
-  moves an approved paper to Held, with the gate's reason**, so the pile follows the gates as the
-  print bar already does.
+- ~~An affidavit approved before a fact came to hold it stays on the desk's Ready pile, because
+  `pileFor` in `lienDeskAffidavits.ts` reads the paper's status before its gates.~~ **Shipped
+  v2.7449.** The owner's call of 2026-11-14: a closed gate moves an approved paper to Held, with the
+  gate's reason. His call of 2026-11-16: the approval stands once the gate is answered. Only the pile
+  moves; the stored status stays approved. The row, the chip, the Board and the header ask the gate's
+  question, and the batch print still leaves the paper out. The walk of 2026-11-13 found three live
+  jobs this way.
 - The Lien window opened from a job's Documents tab has no desk queue to read, so its header keeps
   *Draft the notice* at every step. `JobDocumentsLienPaper` would need the job's desk entry.
 - One live job has a notice drafted and waiting on approval on the Lien desk, while its window says
