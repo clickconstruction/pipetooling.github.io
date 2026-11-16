@@ -103,7 +103,7 @@ describe('SupplyHousePhoneScreen', () => {
     expect(p.onClose).toHaveBeenCalled()
   })
 
-  it('every invoice paid: Unpaid is the good state, and Paid offers Make payment only while one is unpaid', () => {
+  it('every invoice paid: Unpaid is the good state, and Paid offers Record a payment only while one is unpaid', () => {
     const paidOnly = props({ invoices: [{ id: '5', invoice_number: '87001', purchase_order_number: null, due_date: '2026-08-01', amount: 900, is_paid: true }] })
     const { unmount } = render(<SupplyHousePhoneScreen {...paidOnly} />)
     expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing unpaid with this house.')
@@ -112,8 +112,8 @@ describe('SupplyHousePhoneScreen', () => {
     render(<SupplyHousePhoneScreen {...p} />)
     fireEvent.click(screen.getByRole('tab', { name: /Paid/ }))
     const empty = document.querySelector('[data-empty-state]') as HTMLElement
-    expect(empty.textContent).toBe('No paid invoices yet. Make payment marks one paid.')
-    fireEvent.click(within(empty).getByRole('button', { name: 'Make payment' }))
+    expect(empty.textContent).toBe('No paid invoices yet. Record a payment pays the bills you tick.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Record a payment' }))
     expect(p.onMakePayment).toHaveBeenCalledTimes(1)
   })
 })
