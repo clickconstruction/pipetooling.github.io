@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PR 7, the run carries names, LIVE 2026-11-15 (v2.7312, #8169; migration 20261115050000 pushed, types #8193, dev-mcp redeployed) · Taunya's go for PRs 8 to 10 on 2026-11-15 · PR 8, the window and the strip, LIVE 2026-11-15 (v2.7391, #8283) · PR 9, the first scan and the screens, LIVE 2026-11-15 (v2.7396, #8295) · PR 10, These are on boxes, BUILT 2026-11-15 (v2.7406; migration 20261116153000 to push right after the merge)
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · the owner's go for PRs 2 and 3 on 2026-11-14 · PR 2, print a run, BUILT 2026-11-14 (v2.7272) · PR 3, the first scan, BUILT 2026-11-14 (v2.7298) · the stop to walk the site · PRs 4 to 6 not built · the preview fold BUILT 2026-11-14 (v2.7304) · 2026-11-15 the owner asked for runs that name their boxes (G78 to G300): design section 10, mock-up `mockup-named-runs.html`, the second pass folded in on his word, the six calls TAKEN as picked the same day · PR 7, the run carries names, LIVE 2026-11-15 (v2.7312, #8169; migration 20261115050000 pushed, types #8193, dev-mcp redeployed) · Taunya's go for PRs 8 to 10 on 2026-11-15 · PR 8, the window and the strip, LIVE 2026-11-15 (v2.7391, #8283) · PR 9, the first scan and the screens, LIVE 2026-11-15 (v2.7396, #8295) · PR 10, These are on boxes, LIVE 2026-11-16 (v2.7406, #8305; migration 20261116153000 pushed and proved)
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -367,7 +367,7 @@ the merge because the client calls what it makes.
 | 7 · the run carries names | **Live 2026-11-15 (v2.7312).** Section 10: the migration, `mint_sticker_run` taking a name range under the box rule, the range parser as a kernel with the mock-up's table as its tests | M |
 | 8 · the window and the strip | **Live 2026-11-15 (v2.7391).** The Names field with its read line and two notices, the strip with the name large and the number small, the preview, the Runs fold's title, the CSV | M |
 | 9 · the first scan and the screens | **Live 2026-11-15 (v2.7396).** The sheet reads the name off the sticker, a box already here first, the next twin letter, the number receding on the box rows | S |
-| 10 · These are on boxes | **Built 2026-11-15 (v2.7406).** `place_sticker_range`: a range placed in one press with kind and place, the press in the Runs fold then the phone | M |
+| 10 · These are on boxes | **Live 2026-11-16 (v2.7406).** `place_sticker_range`: a range placed in one press with kind and place, the press in the Runs fold then the phone | M |
 
 Each PR ships its release note, fragment and guide, and updates
 `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`, `ACCESS_CONTROL.md` and `GLOSSARY.md` (sticker, run, set,
@@ -626,3 +626,11 @@ shows whenever the job has a blank sticker, named or numbered, and the form says
 proved by CI's `sticker-names` bed on the PR, since no local Postgres could start on the Mac it was written on. Nothing
 was placed on prod in the proof: no named run is minted there yet. **Section 10 is whole. The next step is Taunya's
 first named run off the P-touch**, then the walk of the site and PRs 4 to 6.
+
+2026-11-16: **PR 10 is live, and section 10 with it.** #8305 merged at 06:16 UTC. The migration
+`20261116153000_place_sticker_range` was pushed two minutes later with `scripts/db-push.sh`, alone, from a checkout at
+main, and prod's ledger holds it. Proved on prod as the signed-in dev over a read-only call, nothing written: the
+function answers two names with no sticker as `no_sticker`, and refuses a kind that is not one, an empty list and a
+name off the box rule in its own words. It runs as the caller, and `anon` may not call it. The types and the dev
+seat's catalog file followed as their own small PR. Nothing was minted, printed or placed on prod by the build: prod
+still has the one ZZ run of 2026-11-15, so Taunya's first run starts at 0003.
