@@ -495,3 +495,20 @@ describe('a chip on a property that reads as public, unanswered (v2.7443)', () =
     expect(plain.tiles[0]).toMatchObject({ figure: '3', label: 'by today · 1 to file · 2 to send' })
   })
 })
+
+describe('buildLienBoard — an approved affidavit a gate moved to Held (punch list #335)', () => {
+  const gates = [gate('owner', true), gate('legal', true), gate('contractor', true), gate('notice', true), gate('homestead_answer', false)]
+  it('stands in Held with the gate’s door, and what is left is the gate and the filing', () => {
+    const board = build({ affidavits: [affidavit('7', 'held', { item: item('a7', 'approved'), ready: false, gates }), affidavit('8', 'held', { item: item('a8', 'held') })] })
+    const held = bin(board, 'affidavit:held')
+    const byGate = held.chips.find((c) => c.jobId === '7')!
+    const byLeader = held.chips.find((c) => c.jobId === '8')!
+    expect(byGate.gateHeld).toBe(true)
+    expect(byGate.destination).toEqual({ kind: 'property', jobId: '7', focus: 'homestead_answer' })
+    expect(lienBoardStagesLeft(byGate, 'Malachi')).toEqual(['Clear what holds it', 'Notarize it and file it with the county'])
+    expect(byGate.stepsLeft).toBe(2)
+    expect(byLeader.gateHeld).toBeUndefined()
+    expect(byLeader.destination).toEqual({ kind: 'paper', tab: 'affidavits', jobId: '8' })
+    expect(lienBoardStagesLeft(byLeader, 'Malachi')).toEqual(['Malachi approves it', 'Notarize it and file it with the county'])
+  })
+})

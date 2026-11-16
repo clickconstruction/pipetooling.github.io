@@ -19,7 +19,7 @@ import { batchWords, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
-import type { LienAffidavitEntry, LienAffidavitGateKey, LienAffidavitPile } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey, type LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 
 /** The two kinds of paper the Board draws; retainage is a line, not a column. */
@@ -75,6 +75,8 @@ export type LienBoardChip = {
   gcId: string | null
   /** The job sits on a property that reads as public and has no answer yet (v2.7443): the chip carries ⊘ and no red day. */
   publicMark?: boolean
+  /** An affidavit in Held because a gate closed after its approval (punch list #335), not by the leader: what is left is the gate, then the filing. */
+  gateHeld?: true
 }
 
 export type LienBoardBin = {
@@ -206,9 +208,12 @@ const AFFIDAVIT_STAGES_LEFT: Record<LienBoardAffidavitStage, ReadonlyArray<strin
   missed: [],
 }
 
+/** An approved affidavit a gate closed on (punch list #335): the approval stands, so what is left is the gate and the filing. Two stages, as a leader's hold has. */
+const AFFIDAVIT_GATE_HELD_LEFT: ReadonlyArray<string> = ['Clear what holds it', AFFIDAVIT_TAIL[2]]
+
 /** The stages a chip's paper still has to pass, in order and by name; `leader` absent reads *The leader*. Empty once it is sent, filed or missed. */
-export function lienBoardStagesLeft(chip: Pick<LienBoardChip, 'kind' | 'stage'>, leader?: string | null): string[] {
-  const list = chip.kind === 'notice' ? NOTICE_STAGES_LEFT[chip.stage as LienBoardNoticeStage] : AFFIDAVIT_STAGES_LEFT[chip.stage as LienBoardAffidavitStage]
+export function lienBoardStagesLeft(chip: Pick<LienBoardChip, 'kind' | 'stage'> & Partial<Pick<LienBoardChip, 'gateHeld'>>, leader?: string | null): string[] {
+  const list = chip.kind === 'notice' ? NOTICE_STAGES_LEFT[chip.stage as LienBoardNoticeStage] : chip.gateHeld ? AFFIDAVIT_GATE_HELD_LEFT : AFFIDAVIT_STAGES_LEFT[chip.stage as LienBoardAffidavitStage]
   const name = leader?.trim() || 'The leader'
   return (list ?? []).map((s) => s.replace('{leader}', name))
 }
@@ -328,7 +333,8 @@ function noticeDestination(e: LienDeskEntry, stage: LienBoardNoticeStage): LienB
 }
 
 function affidavitDestination(e: LienAffidavitEntry, stage: LienBoardAffidavitStage): LienBoardDestination {
-  switch (stage) {
+  // A paper a gate holds after its approval (punch list #335) opens where the gate is answered, as one not yet sent does.
+  switch (lienAffidavitGateHeld(e) ? 'needs_property' : stage) {
     case 'needs_property': {
       const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
       // The notice as the one gate left: the door is the notice, as the To do row's is (v2.4708).
@@ -429,7 +435,8 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
   })
   const affidavits: LienBoardChip[] = input.affidavits.map((e) => {
     const stage = affidavitStage(e.pile)
-    const stepsLeft = AFFIDAVIT_STAGES_LEFT[stage].length
+    const gateHeld = lienAffidavitGateHeld(e)
+    const stepsLeft = (gateHeld ? AFFIDAVIT_GATE_HELD_LEFT : AFFIDAVIT_STAGES_LEFT[stage]).length
     const dueYmd = e.deadline || null
     const daysLeft = dueYmd ? e.daysLeft : null
     const marked = publicJob(e.jobId)
@@ -445,6 +452,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       urgency: stage === 'filed' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
       atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
       ...(marked ? { publicMark: true } : {}),
+      ...(gateHeld ? { gateHeld: true as const } : {}),
       destination: affidavitDestination(e, stage),
       tip: tipFor(e.jobId, e.gcCustomerId, e.openBalance),
       pairKey: stage === 'needs_property' ? pairKeyByJob.get(e.jobId) ?? null : null,

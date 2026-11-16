@@ -162,6 +162,8 @@ describe('the phone row’s chip names an affidavit’s step as the billed row d
     { action: 'fix_property', state: 'needs_property', sub: 'Affidavit · the general contractor has no address on file', missing: ['contractor'], act: 'Add the GC’s address' },
     { action: 'fix_property', state: 'needs_property', sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', missing: ['public_owner'], act: 'Public property, no lien', dated: false },
     { action: 'review_hold', state: 'held', sub: 'Affidavit held', act: 'Review the hold', headerOpens: 'Held' },
+    // An approved paper a gate closed on (punch list #335): it sits in Held, and the row, the chip and the header all ask the gate's question. They read *File the affidavit*.
+    { action: 'fix_property', state: 'needs_property', sub: 'Affidavit approved, held · is this home the owner’s homestead', missing: ['homestead_answer'], act: 'Answer the homestead question' },
   ]
   for (const step of STEPS) {
     it(`an affidavit at "${step.sub}": ${step.act}`, () => {
