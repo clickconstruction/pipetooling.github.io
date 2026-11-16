@@ -64,7 +64,7 @@ Open Subs → ▶ Documents → + Add document → COI → expires next March �
 An amber panel at the **top** of the tab lists sheets that could not be tied to one sub. Its head counts them and their open money. That money is counted once, there, and is in no sub's Balance due until each sheet names one sub. Each row shows the job and the raw name written on the sheet. It also shows why it did not link, and the open balance:
 
 - {{chip:red|No roster match}} means the name on the sheet does not match anyone. It is usually a misspelling.
-- {{chip:blue|Two subs}} means the sheet names two or more subs. Its balance is on nobody's row, so it is never counted twice.
+- {{chip:blue|Multiple subs}} means the sheet names two or more subs. Its balance is on nobody's row, so it is never counted twice.
 
 A sheet names only the one person it pays. A sheet with a sub on it is the sub's sheet. The whole balance is on the sub's row, once.
 

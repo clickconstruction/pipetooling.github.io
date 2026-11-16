@@ -758,7 +758,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                       g.reason === 'shared' ? 'var(--text-blue-700)' : g.reason === 'archived' ? 'var(--text-amber-900)' : 'var(--text-red-700)',
                   }}
                 >
-                  {g.reason === 'shared' ? 'Two subs' : g.reason === 'archived' ? 'Archived person' : 'No roster match'}
+                  {g.reason === 'shared' ? 'Multiple subs' : g.reason === 'archived' ? 'Archived person' : 'No roster match'}
                 </span>
                 <span
                   style={{

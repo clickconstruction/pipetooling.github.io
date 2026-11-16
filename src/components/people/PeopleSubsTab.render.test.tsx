@@ -121,9 +121,9 @@ describe('PeopleSubsTab: a sheet with several names (v2.7169)', () => {
       const subRow = (await screen.findByText('Ridgeline Coring LLC')).closest('tr')
       expect(subRow?.textContent).toContain('$2,150.00')
       expect(subRow?.textContent).toContain('1 sheet')
-      // Nothing to fix: no band, no Two subs chip, no Whose is it… press.
+      // Nothing to fix: no band, no Multiple subs chip, no Whose is it… press.
       expect(screen.queryByText(/need one sub|needs one sub/)).toBeNull()
-      expect(screen.queryByText('Two subs')).toBeNull()
+      expect(screen.queryByText('Multiple subs')).toBeNull()
       expect(screen.queryByRole('button', { name: 'Whose is it…' })).toBeNull()
       // The teammate keeps a row on the roster and is owed nothing on the sub's sheet.
       expect(screen.getByText('Dana Whitlock').closest('tr')?.textContent).toContain('0 sheets')
