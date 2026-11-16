@@ -130,7 +130,7 @@ import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienReminderOutcome, lienReminderPlan, lienReminderWords } from '../../lib/jobs/lienLeaderReminder'
-import { lienNoticeToldWords, lienReminderAffidavitLabel, lienReminderSignatureLabel, lienReminderTally } from '../../lib/jobs/lienLeaderTold'
+import { lienNoticeToldWords, lienReminderAffidavitLabel, lienReminderSignatureLabel, lienReminderTally, lienReminderTextOf } from '../../lib/jobs/lienLeaderTold'
 import LienDoNowBar from './LienDoNowBar'
 import { useLienDoNowRoom } from './useLienDoNowRoom'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
@@ -1131,25 +1131,28 @@ export default function LienDesk({
     setReminding(true)
     let done = 0
     const failed: Array<{ label: string; reason: string }> = []
+    // Every call's answer, for the reminder's text (v2.7495): whether one went over the press, and when none did, why.
+    const answers: Array<Awaited<ReturnType<typeof tellLeaderOfLienSignatures>>> = []
+    const heard = <R extends (typeof answers)[number]>(r: R): R => (answers.push(r), r)
     try {
       // A reminder counts only when a message went (v2.7445): the function answers 200 when it sends nothing, and the tally reads why.
       for (const p of reminderPlan.notices) {
-        const t = lienReminderTally(await tellLeaderOfLienApproval(p.itemId, p.dueYmd, { remind: true }), 1)
+        const t = lienReminderTally(heard(await tellLeaderOfLienApproval(p.itemId, p.dueYmd, { remind: true })), 1)
         done += t.done
         if (t.reason) failed.push({ label: p.label, reason: t.reason })
       }
       if (reminderPlan.affidavits.length > 0) {
-        const t = lienReminderTally(await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })), { remind: true }), reminderPlan.affidavits.length)
+        const t = lienReminderTally(heard(await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })), { remind: true })), reminderPlan.affidavits.length)
         done += t.done
         if (t.reason) failed.push({ label: lienReminderAffidavitLabel(reminderPlan.affidavits.map((p) => p.label), t.missed), reason: t.reason })
       }
       // The notices to sign (v2.7491): one call and one message for the lot, counted by what the function told him of.
       if (reminderPlan.signatures.length > 0) {
-        const t = lienReminderTally(await tellLeaderOfLienSignatures(reminderPlan.signatures.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd }))), reminderPlan.signatures.length, 'signature')
+        const t = lienReminderTally(heard(await tellLeaderOfLienSignatures(reminderPlan.signatures.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })))), reminderPlan.signatures.length, 'signature')
         done += t.done
         if (t.reason) failed.push({ label: lienReminderSignatureLabel(reminderPlan.signatures.map((p) => p.label), t.missed), reason: t.reason })
       }
-      const said = lienReminderOutcome({ done, failed }, remindWho)
+      const said = lienReminderOutcome({ done, failed }, remindWho, lienReminderTextOf(answers))
       showToast(said.line, said.tone)
       if (done > 0) setReminded({ at: formatDenverTimeOnly(Date.now()), keys: waitingKeys })
     } finally {

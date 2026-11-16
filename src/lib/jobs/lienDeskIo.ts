@@ -81,8 +81,10 @@ async function askLeaderTell(body: Record<string, unknown>): Promise<LienLeaderT
   try {
     const { data, error } = await supabase.functions.invoke('notify-lien-approval', { body })
     if (error) return { ok: false, reason: (await readEdgeFunctionErrorBody(error)) ?? formatErrorMessage(error, 'The message could not be sent.') }
-    const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null; held?: number; message?: string | null; told?: number | null }
-    return { ok: true, told: { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null, held: d.held ?? 0, said: d.message ?? null, told: d.told ?? null } }
+    const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null; held?: number; message?: string | null; told?: number | null; text_sent?: number; text_said?: string | null }
+    // The text's two answers ride only when the function gave them (v2.7495): a reminder, from the function that texts.
+    const text = typeof d.text_sent === 'number' ? { textSent: d.text_sent, textSaid: d.text_said ?? null } : {}
+    return { ok: true, told: { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null, held: d.held ?? 0, said: d.message ?? null, told: d.told ?? null, ...text } }
   } catch (e) {
     return { ok: false, reason: formatErrorMessage(e, 'The message could not be sent.') }
   }
