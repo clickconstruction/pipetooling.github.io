@@ -25,6 +25,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     bidDueTime: '14:00',
     estimatedJobStartDate: '',
     designDrawingPlanDate: '',
+    schedule: { start: '', end: '', noEnd: false },
     submittedTo: '',
     outcome: '',
     lossReason: '',
@@ -129,5 +130,26 @@ describe('buildBidSavePayload', () => {
     expect(won.declined_alternate_tags).toEqual(['Annex'])
     const open = buildBidSavePayload({ values: formValues({ outcome: '', declinedAlternateTags: ['Annex'] }), bidDateSent: '', editing: true, canEditBidNumber: true })
     expect(open.declined_alternate_tags).toEqual([])
+  })
+})
+
+describe('the promised schedule (punch list #367)', () => {
+  const build = (schedule: BidEditFormValues['schedule']) => buildBidSavePayload({ values: formValues({ schedule }), bidDateSent: '', editing: true, canEditBidNumber: true })
+  it('writes the three columns for a schedule that is whole, and clears them for a bid with none', () => {
+    expect(build({ start: '2025-07-01', end: '2026-12-31', noEnd: false })).toMatchObject({ schedule_start: '2025-07-01', schedule_end: '2026-12-31', schedule_open_ended: false })
+    expect(build({ start: '2025-07-01', end: '2026-12-31', noEnd: true })).toMatchObject({ schedule_start: '2025-07-01', schedule_end: null, schedule_open_ended: true })
+    expect(build({ start: '', end: '', noEnd: false })).toMatchObject({ schedule_start: null, schedule_end: null, schedule_open_ended: false })
+  })
+  it('leaves the columns out while the row still has a problem, so a half-said schedule is never written', () => {
+    for (const half of [
+      { start: '2025-07-01', end: '', noEnd: false },
+      { start: '2025-07-01', end: '2025-06-01', noEnd: false },
+      { start: '', end: '2026-12-31', noEnd: false },
+    ]) {
+      const p = build(half)
+      expect('schedule_start' in p).toBe(false)
+      expect('schedule_end' in p).toBe(false)
+      expect('schedule_open_ended' in p).toBe(false)
+    }
   })
 })

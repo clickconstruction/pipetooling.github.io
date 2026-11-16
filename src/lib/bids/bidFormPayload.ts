@@ -1,3 +1,4 @@
+import { scheduleColumns, scheduleDraftProblem } from './bidSchedule'
 import type { BidEditFormValues } from './useBidEditForm'
 import type { BidLossCategoryKey } from '../bidLossCategories'
 import { serializeItbLinks } from '../itbLinks'
@@ -30,6 +31,10 @@ export type BidSavePayload = {
   bid_submission_link: string | null
   itb_links: string[]
   design_drawing_plan_date: string | null
+  /** The promised schedule's three columns (punch list #367); absent while the row's draft still has a problem, so a half-said schedule is never written. */
+  schedule_start?: string | null
+  schedule_end?: string | null
+  schedule_open_ended?: boolean
   customer_id: string | null
   gc_builder_id: null
   /** Present only on a saved bid for a role that may edit it. */
@@ -81,6 +86,7 @@ export function buildBidSavePayload({ values: v, bidDateSent, editing, canEditBi
     bid_submission_link: v.bidSubmissionLink.trim() || null,
     itb_links: serializeItbLinks(v.itbLinks),
     design_drawing_plan_date: v.designDrawingPlanDate.trim() ? v.designDrawingPlanDate : null,
+    ...(scheduleDraftProblem(v.schedule) ? {} : scheduleColumns(v.schedule)),
     customer_id: v.gcCustomerId || null,
     gc_builder_id: null,
     ...(editing && canEditBidNumber ? { bid_number: v.bidNumber.trim() || null } : {}),
