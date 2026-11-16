@@ -48,6 +48,26 @@ describe('the affidavit pane’s stacked heads (v2.7320)', () => {
     expect(heads[3]).toEqual({ key: 'paper', label: 'The paper', fact: 'earlier form', tail: '' })
   })
 
+  it('the gates head says where the notice stands when the desk knows: approved and not mailed is not *no notice on the job*', () => {
+    const tail = (noticeStanding?: 'approved' | 'late') =>
+      lienAffidavitPaneSections({
+        nextWords: null,
+        gates: [{ key: 'owner', ok: true }, { key: 'notice', ok: false }],
+        noticeStanding,
+        window: { lastMonth: '2026-08', fromCreation: false, fromBill: false },
+        ownerCall: null,
+        bond: 'unknown',
+        months: null,
+        claimWords: '$1,000',
+        form: 'short',
+        signer: '',
+        monthLabel,
+      })[1]!.tail
+    expect(tail('approved')).toBe('§ 53.056 notice not mailed yet')
+    expect(tail('late')).toBe('no § 53.056 notice on the job')
+    expect(tail()).toBe('no § 53.056 notice on the job')
+  })
+
   it('the months head reads no months with the claim, and no tail when every worked month was noticed', () => {
     const heads = lienAffidavitPaneSections({ nextWords: null, gates: [], window: { lastMonth: '2026-08', fromCreation: false, fromBill: false }, ownerCall: null, bond: 'no', months: { sworn: [], unsecured: 0 }, claimWords: '$0', form: 'short', signer: '', monthLabel })
     expect(heads.find((h) => h.key === 'months')).toEqual({ key: 'months', label: 'Months the affidavit claims', fact: 'no months · $0', tail: '' })

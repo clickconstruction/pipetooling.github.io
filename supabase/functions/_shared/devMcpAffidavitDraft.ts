@@ -213,6 +213,8 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
   const rows = withHomesteadAnswer(withPublicOwner(withContractorAddress([world.row], gcsById), addressIdByJob, addressesById as never), addressIdByJob, addressesById)
   const entry: LienAffidavitEntry | undefined = buildLienAffidavitQueue(rows as LienAffidavitRow[], world.items as never, todayYmd).entries[0]
   if (!entry) return { ok: false, refused: `${label}: its affidavit was filed and has left the desk. There is nothing to draft.` }
+  // Waiting on its notice alone (v2.7457): nothing on a record is missing, so the refusal names the mailing, not a record to fill.
+  if (entry.pile === 'needs_notice') return { ok: false, refused: `${label}: the desk will not draft this yet. It waits on its § 53.056 notice, which must be mailed and recorded first. Monthly notices on the Lien desk says where that notice stands; plan again once the mailing is on record.` }
   if (entry.pile === 'needs_property') {
     const closed = entry.gates.filter((g) => !g.ok).map((g) => g.label)
     return { ok: false, refused: `${label}: the desk will not draft this yet. Still missing: ${closed.join(' · ')}. Fill them in on the job's property record or the GC's customer record, then plan again.` }

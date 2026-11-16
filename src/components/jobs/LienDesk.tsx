@@ -142,6 +142,7 @@ import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { lienAffidavitOwnerSends, lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
 import { lienAffidavitNoticeTag, type LienRowTag } from '../../lib/jobs/lienRowWords'
+import { lienAffidavitNoticeStanding } from '../../lib/jobs/lienAffidavitNoticeStanding'
 import { lienNoticeNamedMonths, lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
 import { lienAffidavitMonthsByHandCheck } from '../../lib/jobs/lienAffidavitMonthsByHand'
 import { lienMonthCheckedFor, lienMonthCheckedSheetRow, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
@@ -1002,7 +1003,9 @@ export default function LienDesk({
       if (!data || row.kind !== 'affidavit' || !row.jobId) return null
       const entry = data.affidavits.entries.find((e) => e.jobId === row.jobId)
       if (!entry) return null
-      return lienAffidavitNoticeTag({ isSub: entry.isSub, noticed: Boolean(entry.gates.find((g) => g.key === 'notice')?.ok), sentOn: lienAffidavitOwnerSends(data.filingsByJob[row.jobId]).map((send) => send.sentOn) })
+      // Where that notice stands (`lienAffidavitNoticeStanding.ts`): approved and waiting to be mailed is not *No notice on record*.
+      const standing = lienAffidavitNoticeStanding(entry, data.queue.entries.find((e) => e.jobId === row.jobId))
+      return lienAffidavitNoticeTag({ isSub: entry.isSub, noticed: Boolean(entry.gates.find((g) => g.key === 'notice')?.ok), sentOn: lienAffidavitOwnerSends(data.filingsByJob[row.jobId]).map((send) => send.sentOn), standing })
     },
     [data],
   )
