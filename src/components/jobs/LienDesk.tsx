@@ -103,6 +103,10 @@ import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
 import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
 import LienBoard from './LienBoard'
+import LienPublicPropertyWindow from './LienPublicPropertyWindow'
+import LienPublicPutBackWindow from './LienPublicPutBackWindow'
+import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
+import { buildLienPublicBin, lienPublicBoardLine } from '../../lib/jobs/lienPublicProperty'
 import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
@@ -904,10 +908,27 @@ export default function LienDesk({
             jobName: (jobId) => (data.jobsById[jobId]?.job_name ?? '').trim(),
             gcName: (gcId) => data.gcsById[gcId]?.name ?? '',
             leaderName: boardLeaderName,
+            publicJobIds: data.publicAskJobIds,
           })
         : null,
     [data, todayYmd, boardLeaderName],
   )
+  // Public property (v2.7443, Taunya's ask of 2026-11-16): the line over the Board for the jobs on a property that reads
+  // as public, unanswered, with a paper still open, and the bin for the jobs already off the lien path.
+  const publicLine = useMemo(() => {
+    if (!data || !board) return null
+    const chips = [...board.notices, ...board.affidavits].flatMap((b) => b.chips).filter((c) => c.stage !== 'sent' && c.stage !== 'filed')
+    return lienPublicBoardLine({
+      askingJobIds: data.publicAskJobIds ?? new Set<string>(),
+      openPaperJobIds: new Set(chips.map((c) => c.jobId)),
+      unpaidOf: (jobId) => chips.find((c) => c.jobId === jobId)?.openBalance ?? 0,
+      addressIdOf: (jobId) => data.jobsById[jobId]?.customer_address_id ?? null,
+    })
+  }, [data, board])
+  const publicBin = useMemo(() => buildLienPublicBin(data?.publicJobs ?? []), [data])
+  // The properties left to review, one window at a time; and the property being put back on the lien path.
+  const [publicReview, setPublicReview] = useState<string[] | null>(null)
+  const [publicPutBack, setPublicPutBack] = useState<string | null>(null)
   const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
   // The leader's Board (v2.7334): a master opens on his two Awaiting Master approval bins alone, the jobs he leads, with one
   // counted press for the lot; a dev, who reads every job, opens on every bin. Session-only; the bar's press switches.
@@ -4696,6 +4717,28 @@ export default function LienDesk({
               />
             )
           })() : null}
+          {publicReview?.[0] ? (
+            <LienPublicPropertyWindow
+              key={publicReview[0]}
+              addressId={publicReview[0]}
+              zIndex={805}
+              onClose={(answered) => {
+                const rest = publicReview.slice(1)
+                setPublicReview(rest.length ? rest : null)
+                if (answered) onChanged()
+              }}
+            />
+          ) : null}
+          {publicPutBack ? (
+            <LienPublicPutBackWindow
+              addressId={publicPutBack}
+              zIndex={805}
+              onClose={(changed) => {
+                setPublicPutBack(null)
+                if (changed) onChanged()
+              }}
+            />
+          ) : null}
           {paperFix && data ? (() => {
             const entry = paperEntries[paperFix.index]
             const row = paperRows[paperFix.index]
@@ -4714,7 +4757,7 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} /> : <div />}
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null} /> : <div />}
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>

@@ -73,6 +73,8 @@ export type LienBoardChip = {
   pile: LienDeskPile | LienAffidavitPile
   /** The job's GC, for a run row that stands for a GC's notices; null without one. */
   gcId: string | null
+  /** The job sits on a property that reads as public and has no answer yet (v2.7443): the chip carries ⊘ and no red day. */
+  publicMark?: boolean
 }
 
 export type LienBoardBin = {
@@ -145,6 +147,8 @@ export type LienBoardInput = {
   gcName: (gcId: string) => string
   /** The leader the papers wait on, by name; absent reads *the leader*. */
   leaderName?: string | null
+  /** Jobs on a property that reads as public and has no answer yet (v2.7443, `publicAskJobIds`): their chips carry the mark. */
+  publicJobIds?: ReadonlySet<string>
 }
 
 /** The bins' words. The two that wait on sibling PRs are named at the top of the file. */
@@ -394,11 +398,15 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       pairs.push({ key, jobId: e.jobId, reason: 'owner', destination: { kind: 'property', jobId: e.jobId, focus: 'owner' } })
     }
   }
+  // A job on a property that reads as public and has no answer yet (v2.7443): no paper can be made there, so its chip
+  // loses its red day and its *!*, and carries the mark instead.
+  const publicJob = (jobId: string) => Boolean(input.publicJobIds?.has(jobId))
   const notices: LienBoardChip[] = input.notices.map((e) => {
     const stage = noticeStage(e.pile)
     const stepsLeft = NOTICE_STAGES_LEFT[stage].length
     const dueYmd = e.earliestDeadline
     const daysLeft = dueYmd ? e.daysLeft : null
+    const marked = publicJob(e.jobId)
     return {
       jobId: e.jobId,
       label: input.jobNumber(e.jobId),
@@ -408,8 +416,9 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       dueYmd,
       daysLeft,
       stepsLeft,
-      urgency: stage === 'sent' ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
-      atRisk: lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
+      urgency: stage === 'sent' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
+      atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
+      ...(marked ? { publicMark: true } : {}),
       destination: noticeDestination(e, stage),
       tip: tipFor(e.jobId, e.gcCustomerId, e.openBalance),
       pairKey: pairKeyByJob.get(e.jobId) ?? null,
@@ -423,6 +432,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
     const stepsLeft = AFFIDAVIT_STAGES_LEFT[stage].length
     const dueYmd = e.deadline || null
     const daysLeft = dueYmd ? e.daysLeft : null
+    const marked = publicJob(e.jobId)
     return {
       jobId: e.jobId,
       label: input.jobNumber(e.jobId),
@@ -432,8 +442,9 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       dueYmd,
       daysLeft,
       stepsLeft,
-      urgency: stage === 'filed' ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
-      atRisk: lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
+      urgency: stage === 'filed' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
+      atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
+      ...(marked ? { publicMark: true } : {}),
       destination: affidavitDestination(e, stage),
       tip: tipFor(e.jobId, e.gcCustomerId, e.openBalance),
       pairKey: stage === 'needs_property' ? pairKeyByJob.get(e.jobId) ?? null : null,
@@ -480,7 +491,8 @@ function open(c: LienBoardChip): boolean {
 }
 
 function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, affidavits: ReadonlyArray<LienBoardChip>): { tiles: LienBoardTile[]; dayWords: string | null; atRisk: number } {
-  const liveChips = [...notices, ...affidavits].filter(open)
+  // A chip on a property that reads as public and is unanswered (v2.7443) has no day to make: no paper can be made there.
+  const liveChips = [...notices, ...affidavits].filter(open).filter((c) => !c.publicMark)
   const dated = liveChips.filter((c) => c.dueYmd && c.daysLeft != null && c.daysLeft >= 0).map((c) => c.dueYmd as string).sort()
   const day = dated[0] ?? null
   const dayWords = day ? lienBoardDayWords(input.todayYmd, day) : null

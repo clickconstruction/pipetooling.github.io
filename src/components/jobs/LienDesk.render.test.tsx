@@ -85,6 +85,9 @@ const ownerCallMock = vi.fn()
 const promiseMock = vi.fn()
 const jobPromiseMock = vi.fn()
 vi.mock('../../lib/jobs/paymentChaseIo', () => ({ addJobPaymentPromise: (...args: unknown[]) => jobPromiseMock(...args) }))
+// Is this public property? (v2.7443): the window's read and the one write.
+const readPublicPropertyMock = vi.fn()
+vi.mock('../../lib/jobs/lienPublicPropertyIo', () => ({ readLienPublicProperty: (...args: unknown[]) => readPublicPropertyMock(...args), setLienPublicAnswer: vi.fn(async () => ({ answer: 'public', jobs: [] })) }))
 const clearPrintedMock = vi.fn()
 const saveDraftMock = vi.fn(async () => 'it-new')
 const redrawOneMock = vi.fn(async (..._args: unknown[]) => undefined)
@@ -582,6 +585,26 @@ describe('LienDesk', () => {
     fireEvent.click(within(run).getByRole('button', { name: 'Take back…' }))
     await settle()
     expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('Take back the run?')
+  })
+
+  it('public property (v2.7443): a job whose property asks is marked on the Board under one amber line, Review opens its property, and the jobs already off the path sit in their own bin', async () => {
+    readPublicPropertyMock.mockReturnValue(new Promise(() => {}))
+    const base = data(J650, [], true)
+    const offPath = { jobId: 'j900', addressId: 'addr-zz', number: '900', name: 'ZZ Test Drains', gcName: 'Lowbeck Contracting', unpaid: 2918.4, bond: 'unknown' as const, attorneySince: null, status: 'working', papers: [] }
+    const withPublic = { ...base, jobsById: { ...base.jobsById, j650: { ...base.jobsById.j650!, customer_address_id: 'addr-650' } }, publicAskJobIds: new Set(['j650']), publicJobs: [offPath] }
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPublic} initialKind="next" />)
+    await settle()
+    const chip = document.querySelector('[data-lien-board-chip="j650"]') as HTMLElement
+    expect(chip.getAttribute('data-public')).toBe('yes')
+    const lineEl = document.querySelector('[data-lien-public-board-line]') as HTMLElement
+    expect(lineEl.textContent).toContain('1 job sits on public property and is still on the lien path')
+    const bin = document.querySelector('[data-lien-public-bin]') as HTMLElement
+    expect(bin.textContent).toContain('Public jobs · bond claim')
+    expect(bin.textContent).toContain('not on the attorney’s list, the job is still being worked')
+    expect((document.querySelector('[data-lien-board-column="affidavit"]') as HTMLElement).contains(bin)).toBe(true)
+    fireEvent.click(within(lineEl).getByRole('button', { name: 'Review it ›' }))
+    expect(await screen.findByRole('dialog', { name: 'Take this property off the lien path?' })).toBeTruthy()
+    expect(readPublicPropertyMock).toHaveBeenCalledWith('addr-650')
   })
 
   it('the office: a notice waiting on the leader closes To do under his name and leaves the tab’s count (punch list #101 PR 3)', async () => {

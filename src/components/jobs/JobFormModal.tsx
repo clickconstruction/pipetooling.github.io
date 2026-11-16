@@ -4,6 +4,7 @@ import type { NewJobCustomerPrefill } from '../../lib/messages/leadDoors'
 import type { JobDraft } from '../../lib/bids/jobDraft'
 import type { NewJobPayTermsState } from '../../lib/jobs/draftPayTerms'
 import { theirPaperPayer } from '../../lib/jobs/theirPaperPayer'
+import { isLienOffice } from '../../lib/jobs/lienDesk'
 import { dispatchPayCalendarChanged, savePayCalendar } from '../../lib/jobs/payCalendarIo'
 import NewJobPayTermsLine from './NewJobPayTermsLine'
 import {
@@ -2925,6 +2926,8 @@ export default function JobFormModal({
               propertyRecordFocus={propertyRecordFocusInitial}
               focusRow={isJobFormFactRow(focusRowInitial) ? focusRowInitial : null}
               onPropertyKindSaved={(id, patch) => setPropertyCandidates((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
+              canAnswerPublicProperty={isLienOffice(authRole)}
+              onPropertyPublicAnswered={(id, patch) => setPropertyCandidates((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
               setJobAddress={setJobAddress}
               customers={customers}
               customersLoading={customersLoading}
