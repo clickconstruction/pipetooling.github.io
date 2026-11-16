@@ -5,6 +5,10 @@ import {
   cmdAutoCut,
   chainsToNext,
   endsTheRun,
+  PTOUCH_CHECK_AGAIN_LABEL,
+  PTOUCH_RECHECK_MS,
+  ptouchCannotPrintWords,
+  ptouchNeedsRecheck,
   cmdChainToNext,
   cmdFeedAndCutAfter,
   cmdInit,
@@ -145,6 +149,21 @@ describe('the words and the sizes', () => {
     // 363 lines is about 51 mm: about 5.3 seconds with the lead-in and the cut
     expect(labelPrintMs(363)).toBeGreaterThan(4500)
     expect(labelPrintMs(363)).toBeLessThan(6500)
+  })
+
+  it('a connected printer that cannot print is asked again: an error, no tape, or the wrong tape (Taunya, 2026-11-15)', () => {
+    const ready = { tapeMm: 24, statusType: 0, phase: 0, errors: [] as string[] }
+    expect(ptouchNeedsRecheck(ready)).toBe(false)
+    expect(ptouchNeedsRecheck({ ...ready, tapeMm: 18 })).toBe(false)
+    expect(ptouchNeedsRecheck({ ...ready, tapeMm: 0 })).toBe(true)
+    expect(ptouchNeedsRecheck({ ...ready, tapeMm: 12 })).toBe(true)
+    expect(ptouchNeedsRecheck({ ...ready, errors: ['The printer’s cover is open.'] })).toBe(true)
+    // and the foot of the window says why, in one sentence
+    expect(ptouchCannotPrintWords({ ...ready, tapeMm: 0 })).toBe('There is no tape in the printer.')
+    expect(ptouchCannotPrintWords({ ...ready, tapeMm: 12 })).toBe('The printer has 12 mm tape in it. Load 18 or 24 mm tape for box labels.')
+    expect(ptouchCannotPrintWords({ ...ready, errors: ['The printer’s cover is open.'] })).toBe('The printer’s cover is open.')
+    expect(PTOUCH_RECHECK_MS).toBeGreaterThanOrEqual(2000)
+    expect(PTOUCH_CHECK_AGAIN_LABEL).toBe('Check the printer again')
   })
 
   it('a run asked to stop makes its next label the last, fed out and cut (Taunya’s ask of 2026-11-15)', () => {

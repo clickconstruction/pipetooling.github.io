@@ -22,7 +22,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { helpGuideHref } from '../../lib/helpGuideAnchors'
 import { readTapeCopies, readTapePrintedDay, readTapeWidth, writeTapeCopies, writeTapePrintedDay, writeTapeWidth } from '../../lib/materials/labelPrefs'
 import { downloadFile } from '../../lib/materials/photoShare'
-import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
+import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_CHECK_AGAIN_LABEL, PTOUCH_NOT_ANSWERING, PTOUCH_RECHECK_MS, PTOUCH_RECHECK_WORDS, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchCannotPrintWords, ptouchNeedsRecheck, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
 import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
 import {
   lastRunWords,
@@ -166,7 +166,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   }, [])
   const adopt = useCallback((l: PtouchLink) => {
     setLink(l)
-    setSlip(null)
+    // The red line is left as it is: a printer that stopped for want of tape still answers, so the window is back on
+    // it at once, and how many went and why must outlast that. The Connect press and the next run clear it.
     if (isTapeWidth(l.status.tapeMm)) { setWidthState(l.status.tapeMm); writeTapeWidth(l.status.tapeMm) }
   }, [])
   useEffect(() => {
@@ -175,6 +176,33 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     void connectPtouch({ ask: false }).then((l) => { if (!l) return; if (live) adopt(l); else void l.close() }).catch(() => { /* the press says why */ })
     return () => { live = false }
   }, [direct, link, adopt])
+  /**
+   * A connected printer that cannot print (no tape, the cover open, a tape the sticker is not laid out for) is asked
+   * again every few seconds while nothing prints, so a new cassette is seen with no press (Taunya, 2026-11-15). One
+   * that stops answering is let go, and the press becomes Connect the P-touch.
+   */
+  const [, setStatusTick] = useState(0)
+  const checking = useRef(false)
+  const recheck = useCallback(async (l: PtouchLink) => {
+    if (checking.current) return
+    checking.current = true
+    try {
+      const status = await l.refresh()
+      if (isTapeWidth(status.tapeMm)) { setWidthState(status.tapeMm); writeTapeWidth(status.tapeMm) }
+      setStatusTick((t) => t + 1)
+    } catch {
+      void l.close()
+      setLink((now) => (now === l ? null : now))
+    } finally {
+      checking.current = false
+    }
+  }, [])
+  const needsRecheck = direct && link != null && usbBusy == null && ptouchNeedsRecheck(link.status)
+  useEffect(() => {
+    if (!needsRecheck || !link) return
+    const timer = window.setInterval(() => { void recheck(link) }, PTOUCH_RECHECK_MS)
+    return () => window.clearInterval(timer)
+  }, [needsRecheck, link, recheck])
   const linkRef = useRef<PtouchLink | null>(null)
   linkRef.current = link
   useEffect(() => () => { void linkRef.current?.close() }, [])
@@ -450,6 +478,13 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
         {stage === 'ask' ? <div className="on-site-stickers-chrome" style={{ marginTop: '0.75rem' }}><StickerPreviewFold lastNumber={last} count={count} copies={copies} width={width} /></div> : null}
         <div className="on-site-stickers-chrome" style={{ position: 'sticky', bottom: '-1rem', margin: '0.75rem -1.25rem -1rem', padding: '0.6rem 1.25rem 0.8rem', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'grid', gap: '0.4rem' }} data-testid="stickers-foot">
           {slip ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="stickers-slip">{slip}</div> : null}
+          {needsRecheck && link ? (
+            /* Why the press is grey, right above it: what the printer says, what to do, and that the window is looking. */
+            <div role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', color: 'var(--text-amber-800)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-recheck">
+              <span>{ptouchCannotPrintWords(link.status)} {PTOUCH_RECHECK_WORDS}</span>
+              <button type="button" style={quietLink} onClick={() => void recheck(link)} data-testid="stickers-check-printer">{PTOUCH_CHECK_AGAIN_LABEL}</button>
+            </div>
+          ) : null}
           {minting ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-minting">{STICKER_MINTING}</div> : null}
           {progress ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
