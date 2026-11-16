@@ -341,7 +341,7 @@ Sometimes an approved notice carries the wrong signature. The leader drew it and
 
 The signing line comes back at once. On the leader's own screen it is his signing box, with {{button:green|Sign ▸}}. On the office's screen it is his line, with his code field. The leader types his code and presses {{button:green|Sign ▸}}. The leader can press **Draw instead** and sign by hand. A line under the paper says who cleared the last signature and when. A drawing that came off stays on file.
 
-The office and the leader both have the press. A printed notice does not have it. Press {{button:outline|Back to Approved · to print}} on that notice first. A signature by code or by pen may still wait on the leader's word. The leader's own screen then offers **Not me** or **Not what I signed** in its place.
+The office and the leader both have the press. A printed notice does not have it. Press {{button:outline|Back to Approved · to print}} on that notice. Sending a notice back takes its signature off too, so the signing line is there when the notice lands. A signature by code or by pen may still wait on the leader's word. The leader's own screen then offers **Not me** or **Not what I signed** in its place.
 
 :::example 4120, Halden Yard, signed with a drawing
 
@@ -435,9 +435,9 @@ Each card has its own row of steps. The step the envelope is on is blue. A card 
 
 Nothing moves to Sent without its tracking number. The **Saved copy** boxes under More take a Drive link to the packet as printed.
 
-A printed notice waits on the desk in {{chip:yellow|Approved · to mail}}. Open it and press {{button:blue|Enter mail numbers · N ▸}} to go back to the run. The journey then shows **Sent** as done and **In the mail** as the step it is on. Under More the print button reads **Print it again**, for a lost copy only. If the notice was never mailed, press {{button:outline|Back to Approved · to print}}. The approval stands.
+A printed notice waits on the desk in {{chip:yellow|Approved · to mail}}. Open it and press {{button:blue|Enter mail numbers · N ▸}} to go back to the run. The journey then shows **Sent** as done and **In the mail** as the step it is on. Under More the print button reads **Print it again**, for a lost copy only. If the notice was never mailed, press {{button:outline|Back to Approved · to print}}. The approval stands. A signature on the notice comes off, so a signed notice asks first. Press {{button:blue|Take back the notice}} and the leader signs it again.
 
-**Take back a run.** Sometimes nothing in a printed run goes out. The packet's look changed, a notice needs a fix, or the run waits a day. Open the run and press **Take back…** under More. The run asks first and says what happens. Every printed notice goes back to *Approved · to print*, and the approvals stand. Tracking numbers typed and not recorded are dropped. Press {{button:red|Take back N notices}}. The run goes back to printing, so print the packet again when it is ready. The copies already printed stay in each job's Documents. Each notice's footer says when it was taken back. Mailed some envelopes already? Record those first, then take back the rest.
+**Take back a run.** Sometimes nothing in a printed run goes out. The packet's look changed, a notice needs a fix, or the run waits a day. Open the run and press **Take back…** under More. The run asks first and says what happens. Every printed notice goes back to *Approved · to print*, and the approvals stand. The signatures come off, and the leader signs those notices again before they print. Tracking numbers typed and not recorded are dropped. Press {{button:red|Take back N notices}}. The run goes back to printing, so print the packet again when it is ready. The copies already printed stay in each job's Documents. Each notice's footer says when it was taken back. Mailed some envelopes already? Record those first, then take back the rest.
 
 A notice recorded without its number is never stuck. Its row under Sent says the tracking is owed, and its footer has a box to add the number. The job's Lien window shows the same.
 

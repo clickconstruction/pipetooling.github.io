@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canTakeBackItem, fieldsWithTakeBack, runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackOf, runTakenBackWords, runTypedTrackingCount, takenBackChipWords } from './lienRunTakeBack'
+import { canTakeBackItem, fieldsWithTakeBack, runNoticesTakenBack, runPrintedItemIds, runSignedCount, runTakeBackConfirm, runTakenBackOf, runTakenBackWords, runTypedTrackingCount, takeBackNoticeConfirm, takeBackNoticeDoneWords, takenBackChipWords } from './lienRunTakeBack'
 import type { RunNotice } from './lienDeskRun'
 
 const rec = (tracking: string, method: RunNotice['recipients'][number]['method'] = 'certified_mail') => ({ key: 'owner' as const, label: 'Owner of record', name: 'A', address: '1 St', email: '', method, tracking })
@@ -76,5 +76,55 @@ describe('lienRunTakeBack', () => {
     expect(takenBackChipWords(null)).toBeNull()
     expect(takenBackChipWords({ at: '2026-10-08T15:00:00Z', by: 'u1', byName: 'Dana', printedAt: '2026-10-07T16:00:00Z' })).toEqual({ tail: 'taken back Oct 8', sentence: 'Printed Oct 7, taken back Oct 8 by Dana. Nothing was mailed.' })
     expect(takenBackChipWords({ at: '2026-10-08T15:00:00Z', by: null, byName: null, printedAt: null })!.sentence).toBe('Taken back Oct 8. Nothing was mailed.')
+  })
+
+  describe('a signature comes off with the take-back (v2.7503, the owner’s call)', () => {
+    const sig = { printedName: 'Avery Stone' }
+    const withSig = (itemId: string, signature: unknown) => ({ ...n(itemId, 'x'), signature })
+
+    it('counts the signed notices among those taken back', () => {
+      const notices = [withSig('a', sig), withSig('b', null), withSig('c', sig), n('d', 'x')]
+      expect(runSignedCount(notices, ['a', 'b', 'c', 'd'])).toBe(2)
+      expect(runSignedCount(notices, ['b', 'd'])).toBe(0)
+      expect(runSignedCount(notices, ['a'])).toBe(1)
+    })
+
+    it('the window shows a taken-back notice unsigned, and leaves a row with no signature key as it was', () => {
+      const out = runNoticesTakenBack([withSig('a', sig), withSig('b', sig), n('c', 'x')], ['a', 'c'])
+      expect((out[0] as { signature?: unknown }).signature).toBeNull()
+      expect((out[1] as { signature?: unknown }).signature).toEqual(sig)
+      expect('signature' in out[2]!).toBe(false)
+    })
+
+    it('the confirm says so before anything changes: one, all, or some of them', () => {
+      expect(runTakeBackConfirm({ count: 1, printedAt: null, typed: 0, all: true, signed: 1 }).lines.slice(0, 2)).toEqual([
+        'The notice goes back to Approved · to print. The approvals stand.',
+        'Its signature comes off. The leader signs it again before it prints.',
+      ])
+      expect(runTakeBackConfirm({ count: 4, printedAt: null, typed: 0, all: true, signed: 4 }).lines[1]).toBe('Their signatures come off. The leader signs them again before they print.')
+      expect(runTakeBackConfirm({ count: 4, printedAt: null, typed: 0, all: true, signed: 3 }).lines[1]).toBe('3 of them are signed. Those signatures come off, and the leader signs again before the packet prints.')
+      expect(runTakeBackConfirm({ count: 4, printedAt: null, typed: 0, all: true, signed: 1 }).lines[1]).toBe('1 of them is signed. That signature comes off, and the leader signs again before the packet prints.')
+      // Nothing signed: the words are what they were.
+      expect(runTakeBackConfirm({ count: 4, printedAt: null, typed: 0, all: true, signed: 0 }).lines).toEqual(runTakeBackConfirm({ count: 4, printedAt: null, typed: 0, all: true }).lines)
+    })
+
+    it('the strip after says who is next', () => {
+      expect(runTakenBackWords(1, null, 1)).toBe('Taken back. The notice is in Approved · to print again. The leader signs it again. Then print the packet.')
+      expect(runTakenBackWords(4, '2026-10-07T16:00:00Z', 4)).toBe('Taken back. The 4 notices printed October 7, 2026 are in Approved · to print again. The leader signs them again. Then print the packet.')
+      expect(runTakenBackWords(4, null, 3)).toBe('Taken back. The 4 notices are in Approved · to print again. The leader signs 3 of them again. Then print the packet.')
+      expect(runTakenBackWords(4, null, 0)).toBe(runTakenBackWords(4, null))
+    })
+
+    it('the desk’s own link asks first on a signed notice, and names the act', () => {
+      expect(takeBackNoticeConfirm({ jobWords: 'Halden Yard, job 4120', signerName: 'Avery Stone', ownSignature: false })).toEqual({
+        title: 'Take back the notice for Halden Yard, job 4120?',
+        message: 'The notice goes back to Approved · to print. The approval stands. Avery Stone’s signature comes off, so the notice can be signed again. The run holds the notice until then.',
+        confirmLabel: 'Take back the notice',
+      })
+      expect(takeBackNoticeConfirm({ jobWords: 'job 4120', signerName: 'Avery Stone', ownSignature: true }).message).toContain('Your signature comes off, so the notice can be signed again.')
+      expect(takeBackNoticeConfirm({ jobWords: 'job 4120', signerName: null, ownSignature: false }).message).toContain('The leader’s signature comes off')
+      expect(takeBackNoticeDoneWords(true)).toBe('Back in Approved · to print. It waits to be signed again.')
+      expect(takeBackNoticeDoneWords(false)).toBe('Back in Approved · to print.')
+    })
   })
 })

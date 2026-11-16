@@ -23,7 +23,7 @@ import { runCourtesyEmails, runCourtesyPreviewHtml, type RunCourtesyAttachment }
 import { COMPANY_EMAIL_FROM_LABEL } from '../../lib/customerEmailFrom'
 import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
-import { runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
+import { runNoticesTakenBack, runPrintedItemIds, runSignedCount, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
 import { RUN_CLOSE_PAID_CAUTION, runClosePaidConfirm, runClosedPaidWords, runNoticesClosed, runPaidNotices } from '../../lib/jobs/lienRunClosePaid'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPreviewOverlay'
@@ -147,7 +147,7 @@ export default function LienDeskRunModal({
   // handed in is already printed (v2.4823: the run then opens on recording, not on printing again) — and the day the envelopes went out.
   const opening = useMemo(() => runOpening(initial), [initial])
   // Taken back in this sitting (punch list #101): the window goes back to printing, whatever the opening said.
-  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null } | null>(null)
+  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null; signed: number } | null>(null)
   const [takeBackOpen, setTakeBackOpen] = useState(openOnTakeBack)
   // Close paid notices (v2.7353): the items the confirm is asking about, then what the close did.
   const [closePaidIds, setClosePaidIds] = useState<string[] | null>(null)
@@ -664,12 +664,15 @@ export default function LienDeskRunModal({
   // Take back (punch list #101): every notice that printed — before this sitting or in it — and is still here, unrecorded.
   const printedIds = useMemo(() => runPrintedItemIds(notices, printedNow), [notices, printedNow])
   const lastPrintedAt = printedAt ?? notices.reduce<string | null>((m, n) => (n.printedAt && (!m || n.printedAt > m) ? n.printedAt : m), null)
-  const takeBackWords = runTakeBackConfirm({ count: printedIds.length, printedAt: lastPrintedAt, typed: runTypedTrackingCount(notices, printedIds), all: printedIds.length === notices.length })
+  // v2.7503: a take-back clears the signature, so the confirm counts the signed ones and the strip says who is next.
+  const takeBackSigned = runSignedCount(notices, printedIds)
+  const takeBackWords = runTakeBackConfirm({ count: printedIds.length, printedAt: lastPrintedAt, typed: runTypedTrackingCount(notices, printedIds), all: printedIds.length === notices.length, signed: takeBackSigned })
   const takeBack = async () => {
     if (!onTakeBack || busy || printedIds.length === 0) return
     setBusy(true)
     try {
       const ids = printedIds
+      const signed = takeBackSigned
       const count = await onTakeBack(ids)
       setNotices((prev) => runNoticesTakenBack(prev, ids))
       setPrintedCopies(new Set())
@@ -677,7 +680,7 @@ export default function LienDeskRunModal({
       setPrintedAt(null)
       setPrintedNowAt(new Map())
       setTakeBackOpen(false)
-      setTakenBack({ count, printedAt: lastPrintedAt })
+      setTakenBack({ count, printedAt: lastPrintedAt, signed })
     } catch (e) {
       showToast(`Not taken back: ${formatErrorMessage(e, 'try again')}`, 'error')
     } finally {
@@ -903,7 +906,7 @@ export default function LienDeskRunModal({
         ) : null}
         {takenBack ? (
           <div data-testid="run-taken-back" role="status" style={{ margin: '0.6rem 1.25rem 0', padding: '0.5rem 0.8rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.8125rem' }}>
-            {runTakenBackWords(takenBack.count, takenBack.printedAt)}
+            {runTakenBackWords(takenBack.count, takenBack.printedAt, takenBack.signed)}
           </div>
         ) : null}
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
