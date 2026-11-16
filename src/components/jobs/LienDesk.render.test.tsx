@@ -599,7 +599,7 @@ describe('LienDesk', () => {
     const rows = [...J650, row('j651', '2026-07', '2026-10-15')]
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(rows, [item('it1', 'j650'), item('it2', 'j651')], true)} initialKind="next" />)
     await settle()
-    const foot = document.querySelector('[data-lien-board-column="notice"] [data-lien-board-print="notice"]') as HTMLElement
+    const foot = document.querySelector('[data-lien-board-prints] [data-lien-board-print="notice"]') as HTMLElement
     expect(document.querySelector('[data-lien-board-print="affidavit"]')).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
     fireEvent.click(within(foot).getByRole('button', { name: 'Enter mail numbers · 2' }))

@@ -344,17 +344,25 @@ describe('LienBoard · public property (v2.7443)', () => {
   })
 })
 
-describe('LienBoard · a print at the foot of each column (v2.7470, punch list #362)', () => {
+describe('LienBoard · the two prints, between the tiles and the columns (v2.7470; moved up in v2.7483, punch list #362)', () => {
   const sides = () => ({ notice: lienBoardNoticePrint({ toPrint: 15, waits: 7, printed: 0, leaderName: 'Malachi' }), affidavit: lienBoardAffidavitPrint({ ready: 10, held: 2, earlierForm: 0, with: ['the help sheet'] }) })
   const handlers = () => ({ onPress: vi.fn(), onLeft: vi.fn(), onNote: vi.fn() })
 
-  it('each column ends in its own print: the press with its count, what it leaves out with its door, and what the affidavits print with', () => {
+  it('each column has its own print over it: the press with its count, what it leaves out with its door, and what the affidavits print with', () => {
     const h = handlers()
     render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ ...sides(), ...h }} />)
-    const left = document.querySelector('[data-lien-board-column="notice"] [data-lien-board-print="notice"]') as HTMLElement
-    const right = document.querySelector('[data-lien-board-column="affidavit"] [data-lien-board-print="affidavit"]') as HTMLElement
-    // Inside the flow, after its last bin.
-    expect((document.querySelector('[data-lien-board-flow="notice"]') as HTMLElement).lastElementChild).toBe(left)
+    // One band, after the tiles and before the columns, the notices' print on the left as its column is. Nothing is left at a column's foot.
+    const band = document.querySelector('[data-lien-board-prints]') as HTMLElement
+    expect(band.getAttribute('data-layout')).toBe('columns')
+    expect(Array.from(band.children).map((el) => el.getAttribute('data-lien-board-print'))).toEqual(['notice', 'affidavit'])
+    const tiles = document.querySelector('[data-lien-board-tiles]') as HTMLElement
+    const grid = document.querySelector('[data-lien-board-grid]') as HTMLElement
+    expect(tiles.compareDocumentPosition(band) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(band.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(document.querySelector('[data-lien-board-column] [data-lien-board-print]')).toBeNull()
+    expect(document.querySelectorAll('[data-lien-board-print]')).toHaveLength(2)
+    const left = band.querySelector('[data-lien-board-print="notice"]') as HTMLElement
+    const right = band.querySelector('[data-lien-board-print="affidavit"]') as HTMLElement
     expect(within(left).getByRole('button', { name: 'Print and mail 8 notices' })).toBeTruthy()
     expect(left.querySelector('[data-lien-board-print-left]')!.textContent).toBe('7 wait on Malachi’s signature · See them ›')
     expect(left.querySelector('[data-lien-board-print-note]')).toBeNull()
@@ -381,9 +389,29 @@ describe('LienBoard · a print at the foot of each column (v2.7470, punch list #
     expect(document.querySelector('[data-lien-board-print="affidavit"]')).toBeNull()
   })
 
+  it('the third tile only reads while the notices’ print stands under the tiles: one door to the run, not two; with no print it keeps its press', () => {
+    const onTile = vi.fn()
+    const view = render(<LienBoard board={board()} isMobile={false} columnsOnly onTile={onTile} prints={{ ...sides(), ...handlers() }} />)
+    expect(document.querySelector('button[data-lien-board-tile="in_mail"]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-tile="in_mail"]')).toBeTruthy()
+    view.unmount()
+    render(<LienBoard board={board()} isMobile={false} columnsOnly onTile={onTile} />)
+    fireEvent.click(document.querySelector('button[data-lien-board-tile="in_mail"]') as HTMLButtonElement)
+    expect(onTile).toHaveBeenCalledWith({ kind: 'run' })
+  })
+
+  it('a column with nothing approved leaves its side of the band empty, so the other print stays over its own column', () => {
+    render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ notice: null, affidavit: sides().affidavit, ...handlers() }} />)
+    const band = document.querySelector('[data-lien-board-prints]') as HTMLElement
+    expect(band.children).toHaveLength(2)
+    expect(band.children[0]!.getAttribute('data-lien-board-print')).toBeNull()
+    expect(band.children[1]!.getAttribute('data-lien-board-print')).toBe('affidavit')
+  })
+
   it('on a phone the two stand stacked over the folded bins, the notices’ first', () => {
     render(<LienBoard board={board()} isMobile prints={{ ...sides(), ...handlers() }} />)
-    const stack = document.querySelector('[data-lien-board-prints-phone]') as HTMLElement
+    const stack = document.querySelector('[data-lien-board-prints]') as HTMLElement
+    expect(stack.getAttribute('data-layout')).toBe('stacked')
     expect(Array.from(stack.children).map((el) => el.getAttribute('data-lien-board-print'))).toEqual(['notice', 'affidavit'])
     // Not drawn a second time inside the columns.
     expect(document.querySelectorAll('[data-lien-board-print]')).toHaveLength(2)
@@ -399,7 +427,7 @@ describe('LienBoard · a print at the foot of each column (v2.7470, punch list #
     expect(document.querySelector('[data-lien-board-print]')).toBeNull()
   })
 
-  it('a bin’s own press stands under its chips, an outline so the foot keeps the one filled press (punch list #366)', () => {
+  it('a bin’s own press stands under its chips, an outline so the column’s print stays the one filled press (punch list #366)', () => {
     const onPress = vi.fn()
     const b = board({ affidavits: [affidavit('8', 'filed'), affidavit('9', 'filed')], serve: [{ jobId: '8', serveDue: '2026-11-16' }] })
     const binPress = { 'affidavit:filed': { label: 'Mail 1 lien’s copies ›', onPress }, 'affidavit:ready': { label: 'never drawn', onPress } } as const

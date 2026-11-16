@@ -110,8 +110,8 @@ When counsel answers, turn `LIEN_SERVE_LETTER_READ_BY_COUNSEL` and `LIEN_SERVED_
 2. **The clock and the two bins** (S to M). **Built, v2.7497.** The To do row reads *Lien filed · mail its copies
    by <day>*, turns red the day before its day, and says the day a late copy was due (`lienServeClock.ts`). Its
    press is *Mail the copies*. `LIEN_BOARD_WORDS.filed` is *Filed · copies to mail*, and *Served* is a bin of its
-   own after it. The bin carries its own press, *Mail N liens' copies ›*, an outline under its chips, because the
-   column's foot keeps the one filled press the owner approved (#8368). Two or more serve rows fold into one row
+   own after it. The bin carries its own press, *Mail N liens' copies ›*, an outline under its chips, because each
+   column keeps the one filled print press the owner approved (#8368, under the tiles since v2.7483). Two or more serve rows fold into one row
    with the same press (`lienBinFolds`). Both open `LienServeWindow`. A filed lien with no affidavit on the desk
    still gets a chip, so the bin, the list and the window count the same liens.
    Still to come from the #362 train, not this one: the run window's fourth step for the liens (*Send the

@@ -13,7 +13,7 @@ The first tile counts what is due by the next day. It reads like *21 by Monday*,
 
 The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Press the tile and the list shows only those rows.
 
-The third tile counts the approved notices still to print and mail. Its small line says how many are to print and how many are to mail. Press it and the run opens.
+The third tile counts the approved notices still to print and mail. Its small line says how many are to print and how many are to mail. The press that opens the run stands right under the tiles. Read [the two prints under the tiles](#the-two-prints-under-the-tiles).
 
 The fourth tile is the money still unpaid on the desk. Each job counts once.
 
@@ -66,13 +66,13 @@ A paper opened from a chip is a step of its own in the browser. Press Back and t
 
 The same press sits on the job number of every To do row. It also sits on the number of every notice and affidavit row on **By paper**. Every row on **By date** has it too. A number is a zoom everywhere on the desk. On a To do row the job's name still opens the job itself.
 
-## The print at the foot of each column
+## The two prints under the tiles
 
-Each column ends in its own print, under a thin line. Only the lien office sees them.
+Two presses stand between the tiles and the columns. Each stands over its own column, so they show as soon as the desk opens. Only the lien office sees them.
 
-Under the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
+Over the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
 
-Under the affidavits the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under it says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
+Over the affidavits the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under it says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
 
 A press with nothing ready is grey. The line under it still says what waits. A column with no approved paper has no press.
 
