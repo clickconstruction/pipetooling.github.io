@@ -95,6 +95,7 @@ export const PAINTED_MAP_LIBRARY_WORDS = {
   lead: 'Every painted map you can open, newest first. A map here is the map as it is now.',
   paint: 'Paint a map',
   find: 'Find a map by its name, its job or its words',
+  share: 'Share',
   loading: 'Loading…',
   none: 'No painted map yet.',
   noneTail: 'starts the first.',

@@ -206,6 +206,8 @@ Each row says where the map is, what is on it and who painted it. A map on no jo
 
 A long list has a box to find a map. Type part of its name, its job or its words.
 
+Press {{button:outline|Share}} on a row to get that map's link.
+
 ### On other maps
 
 The **Map** page has a chip named {{chip:gray|Painted maps}}. Press it to draw every painted map where it is.
