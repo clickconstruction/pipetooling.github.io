@@ -108,7 +108,7 @@ describe('the Lien window’s header names the desk’s step on a notice in work
     ['to_draft', 'Draft the Jul notice — 22 days.', 'the notice to be drafted and mailed', '22 days · to draft'],
     ['awaiting', 'Approve the Jul notice — 22 days.', 'the leader’s approval of the notice', '22 days · awaiting approval'],
     ['ready', 'Print and mail the Jul notice — 22 days.', 'the notice to be mailed', '22 days · approved to print'],
-    ['printed', 'Enter mail numbers for the Jul notice — 22 days.', 'the envelope’s certified number to be typed in', '22 days · in the mail · tracking owed'],
+    ['printed', 'Enter mail numbers for the Jul notice — 22 days.', 'the envelope’s certified number to be typed in', '22 days · approved to mail'],
   ])('a notice on the %s pile: %s', (pile, next, waiting, stepWords) => {
     const t = buildLienTimelineFromWindow({ ...src, deskNotice: lienWindowDeskNotice(entry(pile)) })
     expect(t.next.kind).toBe('notice')

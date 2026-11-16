@@ -566,8 +566,8 @@ describe('LienDesk', () => {
     const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
     // v2.4855: the state is a chip with the day; the old sentence is its hover.
     const chip = footer.querySelector('.lienFootChip') as HTMLElement
-    expect(chip.textContent).toContain('Printed Sep 14 · in the mail')
-    expect(chip.title).toContain('Printed September 14, 2026 · in the mail.')
+    expect(chip.textContent).toContain('Printed Sep 14 · to mail')
+    expect(chip.title).toContain('Printed September 14, 2026. It now waits to mail.')
     expect(footer.querySelectorAll('.lienFootLink').length).toBe(2)
     expect(within(footer).getByRole('button', { name: 'Enter mail numbers · 1 ▸' })).toBeTruthy()
     fireEvent.click(within(footer).getByRole('button', { name: 'Back to Approved · to print' }))
