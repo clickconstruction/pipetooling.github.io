@@ -17,7 +17,7 @@ import { createPortal } from 'react-dom'
 import ConfirmDialog from '../ConfirmDialog'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { PAINTED_MAP_SHARE_WORDS, linkDayWords, linkEndsWords, linkOpenedWords, paintedMapLinkOpen, paintedMapLinkUrl, visitLine, type PaintedMapLinkRow, type PaintedMapVisitRow } from '../../lib/paintedMap/paintedMapLink'
+import { PAINTED_MAP_SHARE_WORDS, linkEndsWords, linkMadeDayWords, linkOpenedWords, paintedMapLinkOpen, paintedMapLinkUrl, visitLine, type PaintedMapLinkRow, type PaintedMapVisitRow } from '../../lib/paintedMap/paintedMapLink'
 import { formatDenverDateTimeShort } from '../../utils/dateUtils'
 import type { NumberedPlace, PaintedLine } from '../../lib/paintedMap/paintedMap'
 import { endPaintedMapLinks, loadPaintedMapLinks, loadPaintedMapVisits, mintPaintedMapLink, rememberPaintedMapLink, rememberedPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
@@ -291,7 +291,7 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
               <div data-painted-share-state style={{ display: 'grid', gap: '0.35rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                 <span>
                   {open.length === 1 ? 'One link is out' : `${open.length} links are out`}
-                  {linkDayWords(open[open.length - 1]?.made_at.slice(0, 10)) ? `, since ${linkDayWords(open[open.length - 1]?.made_at.slice(0, 10))}` : ''}. {linkOpenedWords(opened)}.
+                  {linkMadeDayWords(open[open.length - 1]?.made_at) ? `, since ${linkMadeDayWords(open[open.length - 1]?.made_at)}` : ''}. {linkOpenedWords(opened)}.
                 </span>
                 {live ? <span>{linkEndsWords(live.endsOn)}</span> : null}
                 <button type="button" style={busy ? deadPress : press} disabled={busy} onClick={() => setEnding(true)}>

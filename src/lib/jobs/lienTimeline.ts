@@ -8,6 +8,7 @@ import { DATED_FROM_BILL_WORDS } from './lienBillMonths'
 import { lienActFor } from './lienActWords'
 import { lienNextActFor, type LienNextAct } from './lienNextAct'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
+import type { LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import { LAST_DAY_BY_HAND_LATER_HOURS_WORDS, LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { workMonthShort } from './forecastWorkMonths'
 
@@ -225,6 +226,8 @@ export interface LienTimelineInput {
     state?: LienTimelineAffidavitState
     /** The gates still closed, by key (`affidavitGates`): the header names the one fact that holds the paper, in the act table's words. */
     missingKeys?: ReadonlyArray<LienAffidavitGateKey>
+    /** Where the job's § 53.056 notice stands while the affidavit's notice gate is closed (`lienAffidavitNoticeStanding.ts`); absent, the band's press keeps *Send the notice first ›*. */
+    noticeStanding?: LienAffidavitNoticeStanding | null
     /** A held affidavit asks again on this day; null or absent when the hold names none. */
     holdUntil?: string | null
   } | null
@@ -354,7 +357,7 @@ function noticeStateWords(state: LienTimelineNoticeState, holdUntil: string | nu
     case 'awaiting':
       return 'awaiting approval'
     case 'ready':
-      return 'ready to send'
+      return 'approved to print'
     case 'printed':
       return 'in the mail · tracking owed'
     case 'held':
@@ -371,9 +374,9 @@ function noticeVerb(state: LienTimelineNoticeState): string {
     case 'awaiting':
       return 'Approve'
     case 'ready':
-      return 'Send'
+      return 'Print and mail'
     case 'printed':
-      return 'Record the mailing of'
+      return 'Enter mail numbers for'
     case 'held':
       return 'Held —'
     default:
@@ -717,7 +720,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
 
   const waitingOn = waitingOnFor(steps, next, input, paidBy, todayYmd)
   // The band's press (v2.7321): decided from the same facts as the words, so the two cannot part.
-  const act = lienNextActFor({ next, waitingOn, noticeState: input.noticeState, missingKeys: input.affidavit?.missingKeys ?? [], paid: input.paid })
+  const act = lienNextActFor({ next, waitingOn, noticeState: input.noticeState, missingKeys: input.affidavit?.missingKeys ?? [], noticeStanding: input.affidavit?.noticeStanding ?? null, paid: input.paid })
 
   return { steps: folded, next: { ...next, act }, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
 }

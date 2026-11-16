@@ -19,6 +19,7 @@
  */
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import type { LienNextUpAction } from './lienNextUp'
+import { LIEN_RUN_ACT } from './lienRunWords'
 
 export type LienActPaper = 'notice' | 'affidavit' | 'retainage'
 
@@ -89,10 +90,10 @@ export function lienActFor(input: LienActInput): LienAct | null {
       return act('Confirm your signature', `${The} was signed for you. It asks you to confirm the signature is yours.`)
     case 'send':
     case 'send_run':
-      return act(`Send the ${name}`, `${The} is approved and ready to send.`)
+      return act(`Print and mail the ${name}`, `${The} is approved. It waits to be printed and mailed.`)
     case 'add_tracking':
     case 'record_mailing':
-      return act('Record the mailing', `${The} is printed. Its certified number is not typed in yet.`)
+      return act(LIEN_RUN_ACT.record, `${The} is printed. Its certified numbers are not typed in yet.`)
     case 'review_hold':
       return act('Review the hold', `${The} is on hold. The last day does not move while it is held.`)
     case 'fix_property':

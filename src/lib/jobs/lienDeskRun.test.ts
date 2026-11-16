@@ -30,7 +30,7 @@ function data(items: LienDeskItemRow[]): LienDeskData {
     summary: { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 1, next: { deadline: null, notices: 0, dollars: 0, gcIds: [], gcNames: [], toDraft: 0, needsOwner: 0, affidavitBy: null } }, leader: { jobs: 0, dollars: 0, earliestDeadline: null, affidavitBy: null }, held: 0, missed: { jobs: 0, months: 0, dollars: 0, lines: [], lateNotice: { jobs: 0, months: 0, dollars: 0, by: null }, gone: { jobs: 0, months: 0, dollars: 0 } } },
     rows,
     items,
-    affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
+    affidavits: { entries: [], piles: { needs_property: [], needs_notice: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, needs_notice: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
     affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
@@ -575,12 +575,12 @@ describe('where the run opens and what the door says (v2.4823)', () => {
     expect(runOpening([{ printedAt: '2026-09-14T16:00:00Z' }, { printedAt: '2026-09-16T09:00:00Z' }, { printedAt: '2026-09-15T16:00:00Z' }])).toEqual({ step: 'record', printedAt: '2026-09-16T09:00:00Z' })
   })
 
-  it('the title bar says Send the run while anything approved is still to print, and Record the mailing when only printed notices wait', () => {
-    expect(runDoorWords({ ready: 2, printed: 0, retReady: 0 })).toEqual({ label: 'Send the run', count: 2 })
-    expect(runDoorWords({ ready: 1, printed: 8, retReady: 0 })).toEqual({ label: 'Send the run', count: 9 })
-    expect(runDoorWords({ ready: 0, printed: 8, retReady: 1 })).toEqual({ label: 'Send the run', count: 9 })
-    expect(runDoorWords({ ready: 0, printed: 8, retReady: 0 })).toEqual({ label: 'Record the mailing', count: 8 })
-    expect(runDoorWords({ ready: 0, printed: 0, retReady: 0 })).toEqual({ label: 'Send the run', count: 0 })
+  it('the title bar says Print and mail while anything approved is still to print, and Enter mail numbers when only printed notices wait (v2.7448)', () => {
+    expect(runDoorWords({ ready: 2, printed: 0, retReady: 0 })).toEqual({ act: 'print', label: 'Print and mail', count: 2 })
+    expect(runDoorWords({ ready: 1, printed: 8, retReady: 0 })).toEqual({ act: 'print', label: 'Print and mail', count: 9 })
+    expect(runDoorWords({ ready: 0, printed: 8, retReady: 1 })).toEqual({ act: 'print', label: 'Print and mail', count: 9 })
+    expect(runDoorWords({ ready: 0, printed: 8, retReady: 0 })).toEqual({ act: 'record', label: 'Enter mail numbers', count: 8 })
+    expect(runDoorWords({ ready: 0, printed: 0, retReady: 0 })).toEqual({ act: 'print', label: 'Print and mail', count: 0 })
   })
 
   it('the notice builder carries the item\u2019s printed stamp into the run', () => {
@@ -707,13 +707,15 @@ describe('the run and an unsigned notice (v2.5086)', () => {
 })
 
 describe('the door on the desk as a pill (Run-5)', () => {
-  it('a bar of sealed, ready and waiting, and the count of who waits', () => {
-    expect(runDoorPill({ ready: 2, printed: 1, retReady: 0, waits: 1 }, 'Robert')).toEqual({ sealedPct: 33, waitPct: 33, words: '1 sealed · 1 ready · 1 waits on Robert' })
-    expect(runDoorPill({ ready: 3, printed: 0, retReady: 1, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '4 ready' })
-    expect(runDoorPill({ ready: 0, printed: 2, retReady: 0, waits: 0 })).toEqual({ sealedPct: 100, waitPct: 0, words: '2 sealed' })
+  it('a bar of what is to mail, to print and for the leader to sign, with the count of each', () => {
+    expect(runDoorPill({ ready: 2, printed: 1, retReady: 0, waits: 1 }, 'Robert')).toEqual({ sealedPct: 33, waitPct: 33, words: '1 to mail · 1 to print · 1 for Robert to sign' })
+    expect(runDoorPill({ ready: 3, printed: 0, retReady: 1, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '4 to print' })
+    expect(runDoorPill({ ready: 0, printed: 2, retReady: 0, waits: 0 })).toEqual({ sealedPct: 100, waitPct: 0, words: '2 to mail' })
     expect(runDoorPill({ ready: 0, printed: 0, retReady: 0, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '' })
     // waits never exceeds what is ready
-    expect(runDoorPill({ ready: 1, printed: 0, retReady: 0, waits: 5 }).words).toBe('1 waits on the leader')
+    expect(runDoorPill({ ready: 1, printed: 0, retReady: 0, waits: 5 }).words).toBe('1 for the leader to sign')
+    // Fifteen approved, seven of them unsigned, and four printed: each part says its own count.
+    expect(runDoorPill({ ready: 15, printed: 4, retReady: 0, waits: 7 }, 'Sam').words).toBe('4 to mail · 8 to print · 7 for Sam to sign')
   })
 })
 
@@ -734,10 +736,13 @@ describe('the window envelope on the cover letter (the Docsmit train, PR 4)', ()
 })
 
 describe('runDoorTail — the pill’s words after the door’s count (v2.6569)', () => {
-  it('drops the count when the words are only it sealed, and keeps words that say more', () => {
-    expect(runDoorTail(7, '7 sealed')).toBe('sealed')
-    expect(runDoorTail(9, '7 sealed · 2 ready')).toBe('7 sealed · 2 ready')
-    expect(runDoorTail(3, '3 ready')).toBe('3 ready')
+  it('drops the words when they are only the door’s own count, and keeps words that say more', () => {
+    expect(runDoorTail(7, '7 to mail')).toBe('')
+    expect(runDoorTail(3, '3 to print')).toBe('')
+    expect(runDoorTail(9, '7 to mail · 2 to print')).toBe('7 to mail · 2 to print')
+    expect(runDoorTail(8, '1 to print · 7 for Sam to sign')).toBe('1 to print · 7 for Sam to sign')
+    // A count that is not the door’s own stays: the door says 9 and the words say 7 of them.
+    expect(runDoorTail(9, '7 to mail')).toBe('7 to mail')
     expect(runDoorTail(0, '')).toBe('')
   })
 })

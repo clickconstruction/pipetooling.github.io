@@ -29,6 +29,12 @@ export const LIEN_NOTICE_RECORD_BOX = 'Print the notice record'
  */
 const COPIES_KEY = 'pt.lienNoticeCopiesBatch.v1'
 
+/**
+ * Whether the cover letter prints in front of each served copy of a filed affidavit (punch list #366). On by default.
+ * The copy is what the statute asks for and always prints; the letter is the office's courtesy and can be left out.
+ */
+const SERVE_LETTER_KEY = 'pt.lienServeLetter.v1'
+
 function read(key: string, fallback: boolean): boolean {
   try {
     const kept = window.localStorage.getItem(key)
@@ -66,4 +72,8 @@ export function useLienNoticeRecordChoice(): [boolean, (on: boolean) => void] {
 
 export function useLienNoticeCopiesBatchChoice(): [boolean, (on: boolean) => void] {
   return useChoice(COPIES_KEY, false)
+}
+
+export function useLienServeLetterChoice(): [boolean, (on: boolean) => void] {
+  return useChoice(SERVE_LETTER_KEY)
 }

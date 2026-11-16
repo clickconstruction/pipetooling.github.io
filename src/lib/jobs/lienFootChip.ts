@@ -6,6 +6,7 @@
 import { wordRecordWords } from './lienWord'
 import { demandDate } from '../jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_PRINT } from './lienRunWords'
 
 export type LienFootChipTone = 'green' | 'blue' | 'amber'
 
@@ -68,7 +69,7 @@ export function readyChip(
 ): LienFootChip {
   const base = approvedChip(item, gcName, offerWords, leaderName)
   const chip = takenBack ? { ...base, words: `${base.words} · ${takenBack.tail}`, title: `${base.title} ${takenBack.sentence}` } : base
-  if (signed === 'unsigned') return { ...chip, tone: 'amber', words: `${chip.words} · unsigned`, title: `${chip.title} Unsigned: the run holds it until the leader signs.` }
+  if (signed === 'unsigned') return { ...chip, tone: 'amber', words: `${chip.words} · unsigned`, title: `${chip.title} Unsigned: it cannot print until the leader signs.` }
   if (signed && typeof signed === 'object') {
     const day = shortDay(signed.at)
     if (signed.mode === 'pen') {
@@ -92,22 +93,22 @@ function approvedChip(item: LienFootChipItem | null | undefined, gcName: string 
   const offer = offerWords ? ` · ${offerWords}` : ''
   if (item?.approval_mode === 'word') {
     const day = shortDay(item.approved_at)
-    return { tone: 'green', words: `Approved · leader’s word${day ? ` · ${day}` : ''}${offer}`, title: `On ${wordRecordWords({ word_note: item.word_note ?? null, word_channel: item.word_channel ?? null }, leaderName).slice(3)}${offer} · in the run.` }
+    return { tone: 'green', words: `Approved · leader’s word${day ? ` · ${day}` : ''}${offer}`, title: `On ${wordRecordWords({ word_note: item.word_note ?? null, word_channel: item.word_channel ?? null }, leaderName).slice(3)}${offer}. ${LIEN_RUN_NOW_TO_PRINT}` }
   }
   if (item?.approval_mode === 'rule') {
     const gc = gcName?.trim() || 'the GC'
-    return { tone: 'green', words: `Approved · ${gc}’s standing rule${offer}`, title: `Approved by ${gc}'s standing rule${offer} · in the run.` }
+    return { tone: 'green', words: `Approved · ${gc}’s standing rule${offer}`, title: `Approved by ${gc}'s standing rule${offer}. ${LIEN_RUN_NOW_TO_PRINT}` }
   }
   const day = shortDay(item?.approved_at)
   const long = longDay(item?.approved_at)
-  return { tone: 'green', words: `Approved${day ? ` · ${day}` : ''}${offer}`, title: `Approved${long ? ` ${long}` : ''}${offer} · in the run.` }
+  return { tone: 'green', words: `Approved${day ? ` · ${day}` : ''}${offer}`, title: `Approved${long ? ` ${long}` : ''}${offer}. ${LIEN_RUN_NOW_TO_PRINT}` }
 }
 
 /** The printed footer: the day the packet printed; the run is where its number is typed. */
 export function printedChip(item: LienFootChipItem | null | undefined): LienFootChip {
   const day = shortDay(item?.printed_at)
   const long = longDay(item?.printed_at)
-  return { tone: 'blue', words: `Printed${day ? ` ${day}` : ''} · in the mail`, title: `Printed${long ? ` ${long}` : ''} · in the mail. Type its tracking numbers in the run to record it.` }
+  return { tone: 'blue', words: `Printed${day ? ` ${day}` : ''} · in the mail`, title: `Printed${long ? ` ${long}` : ''} · in the mail. Press ${LIEN_RUN_ACT.record} to record it.` }
 }
 
 /** The held footer: why, and the day it asks again. */

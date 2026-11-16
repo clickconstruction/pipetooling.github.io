@@ -270,8 +270,8 @@ describe('BoxPublicPage · the answers that are not a box say what they said', (
     answer(404, { error: 'sticker_blank', number: 147 })
     mount('9B1C0D2E')
     const page = await screen.findByTestId('box-page-sticker-blank')
-    expect(page.textContent).toBe('This sticker is not on a box yet' + 'Sign in to say what it is.' + 'Sign in')
-    expect(document.title).toBe('Blank sticker · Click Plumbing & Electrical')
+    expect(page.textContent).toBe('This sticker is reserved for a box' + 'It is not on a box yet. Sign in to say which box it is on.' + 'Sign in')
+    expect(document.title).toBe('Reserved sticker · Click Plumbing & Electrical')
     expect(document.body.textContent).not.toContain('0147')
     // no site, no office number, and not the words of a wrong code
     expect(screen.queryByTestId('box-page-not-found')).toBeNull()

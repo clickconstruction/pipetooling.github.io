@@ -24,7 +24,6 @@ import { ticketStartChipWords } from '../lib/tickets/ticketRowWords'
 import { LEGEND, NO_PDF_LINE, PDF_PANE_NOTE, START_WORDS, STATUS_YOURS, billsToRecordWords, countLine, dueWords, duplicateWords, houseWords, jobAccountGuessWords, jobFromPairWords, jobGuessWords, jobSettledWords, pairGuessWords, pairMissingWords, paperworkWords, statementWords, sumWords } from '../lib/materials/bills/billWords'
 import { PdfPageCanvas } from './contracts/formStudio/PdfPageCanvas'
 import { useAuth } from '../hooks/useAuth'
-import { countedLabel } from '../lib/batchWords'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatCurrency } from '../lib/format'
@@ -75,7 +74,6 @@ import {
   poLedgerJobMatches,
   removeAllocation,
   setAllocationPct,
-  applyPaymentUpdate,
   creditEffectSentence,
   creditPairingLine,
   documentKindFromRow,
@@ -97,8 +95,13 @@ import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMet
 import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
-import { dueGroupKey } from '../lib/materials/supplyBillGroups'
+import { billDateWords, dueGroupKey } from '../lib/materials/supplyBillGroups'
+import { billMoveTrace, removedLately } from '../lib/materials/payments/supplyPaymentMove'
 import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
+import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
+import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
+import { billPaidBy, houseOnAccount, openAmount, paidByBill, partPaidWords, supplyBillOpen } from '../lib/materials/payments/supplyPayment'
+import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
 import { EmptyState } from './EmptyState'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
 
@@ -138,6 +141,8 @@ type AgingInvoiceRow = {
   purchase_order_number: string | null
   invoice_date: string
   amount: number
+  /** The bill's own amount, when a payment has taken part of it and `amount` is what is left. */
+  billed?: number
   due_date: string | null
   on_job_account: boolean | null
   link: string | null
@@ -456,11 +461,15 @@ export function SupplyHousesTab({
   const [invoiceJobDetailsMap, setInvoiceJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string; job_address: string }>>({})
   const [supplyHouseJobDetailsMap, setSupplyHouseJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string }>>({})
   const [savingInvoice, setSavingInvoice] = useState(false)
-  const [applyPaymentFormOpen, setApplyPaymentFormOpen] = useState(false)
-  const [applyPaymentLink, setApplyPaymentLink] = useState('')
-  const [applyPaymentSelectedIds, setApplyPaymentSelectedIds] = useState<Set<string>>(new Set())
-  const [applyPaymentShowAll, setApplyPaymentShowAll] = useState(false)
-  const [savingApplyPayment, setSavingApplyPayment] = useState(false)
+  /** Record a payment (2026-11-16): the window that took Apply Payment's place, and the open house's payments. */
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false)
+  const [housePayments, setHousePayments] = useState<HousePayments>({ payments: [], lines: [] })
+  /** The payment a paid row opened, by id. */
+  const [paymentViewId, setPaymentViewId] = useState<string | null>(null)
+  /** The removed payment whose Put it back is saving. */
+  const [puttingBackPaymentId, setPuttingBackPaymentId] = useState<string | null>(null)
+  /** The bill in the Edit window is paid by a typed payment: its status follows that payment. */
+  const editingTypedPaid = !!editingInvoice?.is_paid && billPaidBy(editingInvoice.id, housePayments.payments, housePayments.lines).typed.length > 0
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
   // The three Accounts-payable toggles survive a refresh (v2.3568 — a May follow-up;
@@ -580,8 +589,12 @@ export function SupplyHousesTab({
     }
     const { data: invoices } = await supabase
       .from('supply_house_invoices')
-      .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id')
-    const invoicesList = (invoices ?? []) as (AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null })[]
+      .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, amount_paid, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id')
+    // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole, here
+    // or in the aging table. `billed` keeps the bill's own amount for the row that says so.
+    const invoicesList = ((invoices ?? []) as (AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null; amount_paid: number | null })[]).map((inv) =>
+      inv.is_paid ? inv : { ...inv, amount: openAmount(inv), billed: Number(inv.amount) },
+    )
     setAgingUnpaidInvoices(invoicesList.filter((inv) => !inv.is_paid))
     setAgingBookLoaded(true)
     // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
@@ -593,6 +606,7 @@ export function SupplyHousesTab({
   async function loadSupplyHouseDetail(sh: SupplyHouse): Promise<SupplyHouseInvoiceWithAllocations[]> {
     setSupplyHouseDetailLoading(true)
     setPaidThisVisit(new Set())
+    setHousePayments({ payments: [], lines: [] })
     setPoGeneratorEntriesForSelectedHouse(null)
     const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
     const shData = shRes.error
@@ -627,6 +641,7 @@ export function SupplyHousesTab({
     }))
     setSupplyHouseInvoices(invoicesWithAllocations)
     void loadPapersFor(invoicesWithAllocations)
+    loadHousePayments(sh.id)
     const jobIds = [...new Set(allocations.map((a) => a.job_id))]
     if (jobIds.length > 0) {
       supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
@@ -1395,37 +1410,36 @@ export function SupplyHousesTab({
     }
   }
 
-  function openApplyPaymentForm() {
-    setApplyPaymentLink('')
-    setApplyPaymentSelectedIds(new Set())
-    setApplyPaymentShowAll(false)
-    setApplyPaymentFormOpen(true)
+  function openRecordPayment() {
+    setRecordPaymentOpen(true)
   }
 
-  function closeApplyPaymentForm() {
-    setApplyPaymentFormOpen(false)
-    setApplyPaymentLink('')
-    setApplyPaymentSelectedIds(new Set())
-    setApplyPaymentShowAll(false)
+  /** The open house's payments, for what each paid row names. A read that fails leaves the rows as they always read. */
+  function loadHousePayments(houseId: string) {
+    supabaseSupplyPaymentsIo
+      .loadHouse(houseId)
+      .then(setHousePayments)
+      .catch(() => setHousePayments({ payments: [], lines: [] }))
   }
 
-  async function applyPayment(e: React.FormEvent) {
-    e.preventDefault()
-    const ids = Array.from(applyPaymentSelectedIds)
-    if (ids.length === 0) return
-    setSavingApplyPayment(true)
-    const { error } = await supabase
-      .from('supply_house_invoices')
-      .update(applyPaymentUpdate(applyPaymentLink))
-      .in('id', ids)
-    // The reason reaches the person (punch list #184): a Supabase error is a plain object, so it goes through formatErrorMessage.
-    if (error) showToast(formatErrorMessage(error, 'Could not apply the payment'), 'error')
-    if (!error && selectedSupplyHouseForDetail) {
-      await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
-      await loadSupplyHouseSummary()
-      closeApplyPaymentForm()
-    }
-    setSavingApplyPayment(false)
+  /**
+   * After a payment is recorded, moved, removed or put back: the house's bills and payments are read again where
+   * they stand. The card keeps its place and an open payment window stays open, since neither is emptied first.
+   */
+  async function refreshHouseMoney(houseId: string) {
+    const [billsRes, pays] = await Promise.all([
+      supabase.from('supply_house_invoices').select('id, is_paid, paid_at').eq('supply_house_id', houseId),
+      supabaseSupplyPaymentsIo.loadHouse(houseId).catch(() => null),
+    ])
+    const now = new Map((billsRes.data ?? []).map((r) => [r.id, r]))
+    setSupplyHouseInvoices((list) =>
+      list.map((row) => {
+        const fresh = now.get(row.id)
+        return fresh ? { ...row, is_paid: fresh.is_paid, paid_at: fresh.paid_at } : row
+      }),
+    )
+    if (pays) setHousePayments(pays)
+    void loadSupplyHouseSummary()
   }
 
   async function saveInvoice(e: React.FormEvent) {
@@ -1498,6 +1512,14 @@ export function SupplyHousesTab({
   async function toggleInvoicePaid(inv: SupplyHouseInvoice) {
     // One bill at a time. The row is changed where it stands: reading the whole card again would fold it to
     // "Loading…" and lose the place, which made paying several bills in a row a scroll back each time.
+    if (inv.is_paid) {
+      // A typed payment is money that was sent, so Mark unpaid does not unmake it: the row opens the payment instead.
+      const typed = billPaidBy(inv.id, housePayments.payments, housePayments.lines).typed[0]
+      if (typed) {
+        setPaymentViewId(typed.payment.id)
+        return
+      }
+    }
     setPayingInvoiceId(inv.id)
     try {
       const { data: saved, error } = await supabase
@@ -1519,6 +1541,7 @@ export function SupplyHousesTab({
         return next
       })
       void loadSupplyHouseSummary()
+      loadHousePayments(inv.supply_house_id)
     } finally {
       setPayingInvoiceId(null)
     }
@@ -1574,7 +1597,7 @@ export function SupplyHousesTab({
     }
   }
 
-  /** Make a payment › on a house-scoped modal: the house's own Apply Payment, over the modal. */
+  /** Record a payment › on a house-scoped modal: the house's own Record a payment window, over the modal. */
   async function openPaymentFromAgingCell(houseId: string) {
     if (agingCellDoorBusy) return
     const sh = supplyHousesList.find((s: SupplyHouse) => s.id === houseId)
@@ -1585,7 +1608,7 @@ export function SupplyHousesTab({
     setAgingCellDoorBusy(`house:${houseId}`)
     try {
       await loadSupplyHouseDetail(sh)
-      openApplyPaymentForm()
+      openRecordPayment()
     } finally {
       setAgingCellDoorBusy(null)
     }
@@ -2061,16 +2084,17 @@ export function SupplyHousesTab({
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={(e) => { e.stopPropagation(); openApplyPaymentForm() }}
+                                          onClick={(e) => { e.stopPropagation(); openRecordPayment() }}
                                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                         >
-                                          Make Payment
+                                          Record a payment
                                         </button>
                                       </div>
                                     </div>
                                     {(() => {
                                       // A bill marked paid on this visit stays listed, so the rows under it do not move.
                                       const billToday = todayYmdInAppTz()
+                                      const paidOnBills = paidByBill(housePayments.payments, housePayments.lines)
                                       const invoicesToShow = showPaidInvoices
                                         ? supplyHouseInvoices
                                         : supplyHouseInvoices.filter((inv) => !inv.is_paid || paidThisVisit.has(inv.id))
@@ -2078,17 +2102,24 @@ export function SupplyHousesTab({
                                         const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
                                         // Supply house bill lines (punch list #298 PR 1b): what was read off the PDF, and Look when there is a paper.
                                         const paper = papersByInvoice.get(inv.id) ?? null
+                                        // What paid it: the payment's method and number, and how many bills it covered.
+                                        const paidBy = billPaidBy(inv.id, housePayments.payments, housePayments.lines)
+                                        // A bill paid in part lists for what is left on it, and says what was paid.
+                                        const paidOnIt = paidOnBills.get(inv.id) ?? 0
                                         return {
                                           id: inv.id,
                                           invoice_number: inv.invoice_number,
                                           purchase_order_number: inv.purchase_order_number,
                                           invoice_date: inv.invoice_date,
                                           due_date: inv.due_date,
-                                          amount: inv.amount,
+                                          amount: inv.is_paid ? inv.amount : supplyBillOpen(inv, paidOnIt),
+                                          partPaid: partPaidWords(inv, paidOnIt),
                                           is_paid: inv.is_paid,
                                           paidYmd: inv.paid_at ? calendarYmdInAppTzFromIso(inv.paid_at) : null,
+                                          paidBy: inv.is_paid ? paidBy.words : '',
+                                          seePayment: inv.is_paid && paidBy.typed.length > 0,
                                           link: inv.link,
-                                          payment_link: inv.payment_link,
+                                          payment_link: inv.payment_link ?? paidBy.receiptLink,
                                           on_job_account: inv.on_job_account,
                                           jobs: (inv.job_allocations ?? []).map((a) => {
                                             const d = supplyHouseJobDetailsMap[a.job_id]
@@ -2097,6 +2128,8 @@ export function SupplyHousesTab({
                                           poMismatch: poGenCode != null && poGeneratorCodesForSelectedHouse != null && !poGeneratorCodesForSelectedHouse.has(poGenCode),
                                           // v2.5035 · a credit and the invoice it credits name each other; read against every row, paid ones too.
                                           pairLine: creditPairingLine(inv, supplyHouseInvoices),
+                                          // Where a payment's money moved to or from this bill, and who moved it.
+                                          trace: billMoveTrace(inv.id, housePayments.events ?? []),
                                           lines: rowLinesWords(paper, { link: inv.link, hasFile: !!inv.bill_read }, paper?.acceptedBy ? paperNames.get(paper.acceptedBy) : null),
                                         }
                                       })
@@ -2108,6 +2141,7 @@ export function SupplyHousesTab({
                                           jobAccountsInUse={!!selectedSupplyHouseForDetail.job_accounts?.trim() || supplyHouseInvoices.some((inv) => inv.on_job_account === true)}
                                           paidThisVisit={paidThisVisit}
                                           payingId={payingInvoiceId}
+                                          onAccount={houseOnAccount(housePayments.payments, housePayments.lines).reduce((sum, x) => sum + x.amount, 0)}
                                           empty={
                                             <EmptyState
                                               compact
@@ -2130,6 +2164,20 @@ export function SupplyHousesTab({
                                           onLook={(id) => {
                                             const inv = byId(id)
                                             if (inv) void openPaperLook(inv)
+                                          }}
+                                          removedPayments={removedLately(housePayments.payments, Date.now(), (ymd) => billDateWords(ymd, billToday), calendarYmdInAppTzFromIso).map((r) => ({ id: r.payment.id, words: r.words }))}
+                                          puttingBackId={puttingBackPaymentId}
+                                          onPutBack={(paymentId) => {
+                                            const houseId = selectedSupplyHouseForDetail.id
+                                            setPuttingBackPaymentId(paymentId)
+                                            supabaseSupplyPaymentsIo
+                                              .restore(paymentId)
+                                              .then(async () => {
+                                                showToast('The payment is back. Its bills read as they did.', 'success')
+                                                await refreshHouseMoney(houseId)
+                                              })
+                                              .catch((e: unknown) => showToast(formatErrorMessage(e, 'The payment was not put back.'), 'error', 6000))
+                                              .finally(() => setPuttingBackPaymentId(null))
                                           }}
                                         />
                                       )
@@ -2244,7 +2292,14 @@ export function SupplyHousesTab({
           house={selectedSupplyHouseForDetail}
           money={supplyHouseCardMoney(supplyHouseSummary, agingMatrix.rows)[selectedSupplyHouseForDetail.id] ?? null}
           loading={supplyHouseDetailLoading}
-          invoices={supplyHouseInvoices}
+          invoices={(() => {
+            // An unpaid bill lists for what is left on it, and says what was paid.
+            const paidOnBills = paidByBill(housePayments.payments, housePayments.lines)
+            return supplyHouseInvoices.map((inv) => {
+              const paidOnIt = paidOnBills.get(inv.id) ?? 0
+              return inv.is_paid || paidOnIt === 0 ? inv : { ...inv, amount: supplyBillOpen(inv, paidOnIt), partPaid: partPaidWords(inv, paidOnIt) }
+            })
+          })()}
           jobLabel={(jobId) => {
             const d = supplyHouseJobDetailsMap[jobId]
             return d ? effectiveJobLedgerNumber(d.hcp_number, d.click_number) : jobId.slice(0, 8)
@@ -2257,7 +2312,8 @@ export function SupplyHousesTab({
           }}
           onEditHouse={() => houseEditor.openEdit(selectedSupplyHouseForDetail)}
           onAddInvoice={openAddInvoice}
-          onMakePayment={openApplyPaymentForm}
+          onMakePayment={openRecordPayment}
+          typedPaidIds={new Set(supplyHouseInvoices.filter((inv) => inv.is_paid && billPaidBy(inv.id, housePayments.payments, housePayments.lines).typed.length > 0).map((inv) => inv.id))}
           onTogglePaid={(id) => {
             const inv = supplyHouseInvoices.find((x) => x.id === id)
             if (inv) void toggleInvoicePaid(inv)
@@ -2340,7 +2396,9 @@ export function SupplyHousesTab({
           const po = inv.purchase_order_number?.trim()
           const poDate = `${po ? `PO ${po} · ` : ''}${formatYmdLocal(inv.invoice_date)}`
           const pair = creditPairingLine(inv, agingUnpaidInvoices)
-          const rowNote = [pair, note].filter(Boolean).join(' · ')
+          // A bill paid in part sits in the cell for what is left on it, and says what it was billed for.
+          const partNote = inv.billed != null && Math.abs(inv.billed - inv.amount) > 0.005 ? `left of $${formatCurrency(Math.abs(inv.billed))}` : null
+          const rowNote = [partNote, pair, note].filter(Boolean).join(' · ')
           return (
             <div key={inv.id} className="aging-win-row">
               <AgingInvoiceDoor invoiceNumber={inv.invoice_number} busy={agingCellDoorBusy === inv.id} onOpen={() => void openInvoiceFromAgingCell(inv, null)} />
@@ -3263,7 +3321,7 @@ export function SupplyHousesTab({
                   <legend style={INVOICE_LABEL_STYLE}>Status{billRead ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {STATUS_YOURS}</span> : null}</legend>
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 1rem', minHeight: 36 }}>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
-                      <input id="invoice-status-unpaid" type="radio" name="invoice-paid-status" checked={!invoiceIsPaid} onChange={() => { setInvoiceIsPaid(false); setInvoicePaidOn('') }} />
+                      <input id="invoice-status-unpaid" type="radio" name="invoice-paid-status" checked={!invoiceIsPaid} disabled={editingTypedPaid} onChange={() => { setInvoiceIsPaid(false); setInvoicePaidOn('') }} />
                       {invoiceWords.openLabel}
                     </label>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
@@ -3272,6 +3330,7 @@ export function SupplyHousesTab({
                         type="radio"
                         name="invoice-paid-status"
                         checked={invoiceIsPaid}
+                        disabled={editingTypedPaid}
                         onChange={() => {
                           setInvoiceIsPaid(true)
                           if (!invoicePaidOn) setInvoicePaidOn(paidOnYmdFromIso(editingInvoice?.paid_at) || todayYmdInAppTz())
@@ -3284,11 +3343,16 @@ export function SupplyHousesTab({
                       type="date"
                       aria-label="Paid on"
                       value={invoicePaidOn}
-                      disabled={!invoiceIsPaid}
+                      disabled={!invoiceIsPaid || editingTypedPaid}
                       onChange={(e) => setInvoicePaidOn(e.target.value)}
                       style={{ ...INVOICE_INPUT_STYLE, width: 'auto', padding: '0.3rem 0.4rem', marginLeft: '-0.5rem', opacity: invoiceIsPaid ? 1 : 0.5 }}
                     />
                   </div>
+                  {editingTypedPaid ? (
+                    <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="invoice-paid-by-payment">
+                      A recorded payment paid this bill, so its status and paid day follow that payment. Press See the payment on the bill’s row to change it.
+                    </div>
+                  ) : null}
                 </fieldset>
               </div>
 
@@ -3368,94 +3432,71 @@ export function SupplyHousesTab({
         )
       })()}
 
-      {applyPaymentFormOpen && selectedSupplyHouseForDetail && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003, paddingTop: 'var(--app-top-chrome, 0px)' }}>
-          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
-            <h3 style={{ margin: '0 0 1rem 0' }}>Apply Payment</h3>
-            <form onSubmit={applyPayment}>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label htmlFor="apply-payment-link" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Payment or receipt link (optional)</label>
-                <input
-                  id="apply-payment-link"
-                  type="text"
-                  value={applyPaymentLink}
-                  onChange={(e) => setApplyPaymentLink(e.target.value)}
-                  placeholder="Payment or receipt link..."
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-                {/* v2.3843: filed as each bill's Receipt, beside its invoice scan (link). */}
-                <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saved as each bill’s Receipt — its invoice scan stays.</div>
-              </div>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
-                  <input type="checkbox" checked={applyPaymentShowAll} onChange={(e) => setApplyPaymentShowAll(e.target.checked)} />
-                  Show all invoices
-                </label>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Select invoices to mark as paid</label>
-                <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 4, padding: '0.5rem' }}>
-                  {(() => {
-                    const invoicesToShow = applyPaymentShowAll
-                      ? supplyHouseInvoices
-                      : supplyHouseInvoices.filter((inv) => !inv.is_paid)
-                    if (invoicesToShow.length === 0) {
-                      return (
-                        <EmptyState
-                          compact
-                          {...(applyPaymentShowAll || supplyHouseInvoices.length === 0
-                            ? { main: 'No invoices from this house yet.' }
-                            : { main: 'Nothing unpaid with this house.', next: { label: 'Show all invoices', onPress: () => setApplyPaymentShowAll(true) }, tail: 'lists the paid ones too.' })}
-                        />
-                      )
-                    }
-                    return invoicesToShow.map((inv) => (
-                      <label key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={applyPaymentSelectedIds.has(inv.id)}
-                          onChange={(e) => {
-                            setApplyPaymentSelectedIds((prev) => {
-                              const next = new Set(prev)
-                              if (e.target.checked) next.add(inv.id)
-                              else next.delete(inv.id)
-                              return next
-                            })
-                          }}
-                        />
-                        <span>{inv.invoice_number}</span>
-                        {inv.on_job_account === true && (
-                          <span
-                            title="On the house's job account — if this goes unpaid, the house bills the property owner, not you."
-                            style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap' }}
-                          >
-                            Job acct
-                          </span>
-                        )}
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{formatYmdLocal(inv.invoice_date)}</span>
-                        <span style={{ marginLeft: 'auto', ...(isSupplyCredit(inv.amount) ? { color: 'var(--text-green-700)', fontWeight: 600 } : {}) }}>
-                          {isSupplyCredit(inv.amount) ? `− $${formatCurrency(Math.abs(inv.amount))} credit` : `$${formatCurrency(inv.amount)}`}
-                        </span>
-                        {inv.is_paid && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-green-600)' }} title={inv.paid_at ?? undefined}>
-                            Paid{inv.paid_at ? ` ${new Date(inv.paid_at).toLocaleDateString()}` : ''}
-                          </span>
-                        )}
-                      </label>
-                    ))
-                  })()}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={closeApplyPaymentForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={savingApplyPayment || applyPaymentSelectedIds.size === 0} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: savingApplyPayment || applyPaymentSelectedIds.size === 0 ? 'not-allowed' : 'pointer' }}>
-                  {savingApplyPayment ? 'Applying…' : countedLabel('Apply to', applyPaymentSelectedIds.size, 'invoice')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {recordPaymentOpen && selectedSupplyHouseForDetail && (
+        <RecordSupplyPaymentModal
+          house={{
+            id: selectedSupplyHouseForDetail.id,
+            name: selectedSupplyHouseForDetail.name,
+            monthlyPaymentDay: selectedSupplyHouseForDetail.monthly_payment_day ?? null,
+          }}
+          bills={supplyHouseInvoices.map((inv) => {
+            const jobs = (inv.job_allocations ?? []).map((a) => {
+              const d = supplyHouseJobDetailsMap[a.job_id]
+              return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
+            })
+            return { id: inv.id, invoice_number: inv.invoice_number, due_date: inv.due_date, amount: inv.amount, is_paid: inv.is_paid, title: jobs.join(', ') || inv.purchase_order_number?.trim() || 'No job on this bill' }
+          })}
+          io={supabaseSupplyPaymentsIo}
+          todayYmd={todayYmdInAppTz()}
+          parts
+          onClose={() => setRecordPaymentOpen(false)}
+          onRecorded={(_result, words) => {
+            setRecordPaymentOpen(false)
+            showToast(words, 'success')
+            void refreshHouseMoney(selectedSupplyHouseForDetail.id)
+          }}
+        />
       )}
+
+      {(() => {
+        const viewed = paymentViewId ? housePayments.payments.find((p) => p.id === paymentViewId) : null
+        if (!viewed || !selectedSupplyHouseForDetail) return null
+        const house = selectedSupplyHouseForDetail
+        return (
+          <SupplyPaymentWindow
+            payment={viewed}
+            payments={housePayments.payments}
+            lines={housePayments.lines}
+            bills={supplyHouseInvoices.map((inv) => {
+              const jobs = (inv.job_allocations ?? []).map((a) => {
+                const d = supplyHouseJobDetailsMap[a.job_id]
+                return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
+              })
+              return { id: inv.id, invoice_number: inv.invoice_number, title: jobs.join(', '), amount: inv.amount, is_paid: inv.is_paid, due_date: inv.due_date }
+            })}
+            events={housePayments.events}
+            houseName={house.name.trim() || 'this house'}
+            todayYmd={todayYmdInAppTz()}
+            onClose={() => setPaymentViewId(null)}
+            onRemove={async (payment, reason) => {
+              await supabaseSupplyPaymentsIo.remove(payment.id, reason)
+              setPaymentViewId(null)
+              showToast('The payment is removed. Its bills read unpaid again. It can be put back for 30 days.', 'success')
+              await refreshHouseMoney(house.id)
+            }}
+            onMove={async (input) => {
+              await supabaseSupplyPaymentsIo.move(input)
+              showToast('The money is moved. Both bills say where it went.', 'success')
+              await refreshHouseMoney(house.id)
+            }}
+            onUndoMove={async (eventId) => {
+              await supabaseSupplyPaymentsIo.undoMove(eventId)
+              showToast('The move is taken back.', 'success')
+              await refreshHouseMoney(house.id)
+            }}
+          />
+        )
+      })()}
 
       {paperLook ? (
         <PaperLookModal

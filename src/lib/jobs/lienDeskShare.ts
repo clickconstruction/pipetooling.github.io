@@ -33,7 +33,7 @@ const WHERE_BY_PILE: Partial<Record<LienDeskPile, LienStatusWhere>> = {
 }
 
 /** Affidavits still to file inside their window. */
-const LIEN_PILES_TO_FILE: ReadonlySet<LienAffidavitPile> = new Set<LienAffidavitPile>(['needs_property', 'to_draft', 'awaiting', 'ready', 'held'])
+const LIEN_PILES_TO_FILE: ReadonlySet<LienAffidavitPile> = new Set<LienAffidavitPile>(['needs_property', 'needs_notice', 'to_draft', 'awaiting', 'ready', 'held'])
 
 /** Retainage notices whose clock runs and that have not gone out. */
 const RETAINAGE_TO_SEND: ReadonlySet<LienRetainagePile> = new Set<LienRetainagePile>(['needs_owner', 'to_draft', 'awaiting', 'ready', 'held'])

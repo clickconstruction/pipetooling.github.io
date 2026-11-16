@@ -14,3 +14,5 @@ Starts with `SET lock_timeout = '3s'`. Idempotent: `ADD COLUMN IF NOT EXISTS`, e
 Proven on a throwaway copy of the whole schema by section 10 of `npm run test:pg:pay-calendar` (`supabase/tests/pay_calendar/20_scenario.sql`), which also applies it a second time; never on prod.
 
 Apply order: after `20261112150000_payer_pay_calendars.sql`. **Push right after the merge**, then `npm run gen-types:linked` as its own `chore(types)` PR.
+
+**Applied** to prod by 2026-11-16: `npm run check:migration-drift` read 1326 local files against 1326 applied, this version among them (run in the docs pass after #8111); `database.ts` on `main` carries `days_after`, `set_payer_pay_calendar`.

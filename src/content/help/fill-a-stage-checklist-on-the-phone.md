@@ -10,7 +10,7 @@ A stage checklist is a short list of questions for a stage of a job. There is on
 
 ## Open the checklist
 
-In Job Mode, scroll to the job's details. Under **Stage checklists**, press the stage you are working. The same list sits under the address on the job window. A stage with no questions is not listed. The checklists start the day the office types the questions.
+In Job Mode, scroll to the job's details. Under **Stage checklists**, press the stage you are working. The same list sits under the address on the job window. On the crew's phone it sits under **Today's work**. A stage with no questions is not listed. The checklists start the day the office types the questions.
 
 ## Answer each question
 

@@ -1,5 +1,5 @@
 import type { LienDeskEntry } from './lienDesk'
-import type { LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
 import type { CourtesyStatus } from './lienCourtesyNotice'
 import type { LienNextUpRow } from './lienNextUp'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -200,9 +200,12 @@ const NOTICE_PILE_WORDS: Partial<Record<LienDeskEntry['pile'], string>> = {
 
 const AFFIDAVIT_PILE_WORDS: Partial<Record<LienAffidavitEntry['pile'], string>> = {
   needs_property: 'need the property facts',
+  needs_notice: 'wait on a notice',
   to_draft: 'to draft',
   awaiting: 'to approve',
   ready: 'to file',
+  // Only a paper a gate holds reaches the count from Held (punch list #335); the leader's own hold is skipped above.
+  held: 'need the property facts',
 }
 
 function breakdownWords(jobs: ReadonlyArray<LienMonthJob>, order: ReadonlyArray<string>): string {
@@ -282,7 +285,8 @@ export function buildLienMonth(input: LienMonthInput): LienMonth {
   const liens: LienMonthJob[] = []
   let queueLiens = 0
   for (const a of input.affidavits) {
-    if (a.pile === 'held') continue
+    // The leader's hold is his standing decision and counts on neither side. A paper a gate holds after its approval (punch list #335) is still the office's to clear, so it counts as left.
+    if (a.pile === 'held' && !lienAffidavitGateHeld(a)) continue
     const due = monthOf(a.deadline)
     if (a.pile === 'filed') {
       const filedMonth = monthOfIso(a.item?.sent_at) || due
@@ -315,7 +319,7 @@ export function buildLienMonth(input: LienMonthInput): LienMonth {
 
   const remindersZone = working('reminders', reminders, ['to send', 'before day 7'])
   const noticesZone = working('notices', notices, ['to find the owner', 'to draft', 'to approve', 'to send', 'to mail', 'missed'])
-  const liensZone = working('liens', liens, ['need the property facts', 'to draft', 'to approve', 'to file', 'missed'])
+  const liensZone = working('liens', liens, ['need the property facts', 'wait on a notice', 'to draft', 'to approve', 'to file', 'missed'])
 
   const catchSpan = lienMonthZoneSpan('catch_up', rule, daysInMonth)
   const slips = sortJobs([...remindersZone.jobs, ...noticesZone.jobs, ...liensZone.jobs].filter((j) => j.state === 'slipped').map((j) => ({ ...j })))

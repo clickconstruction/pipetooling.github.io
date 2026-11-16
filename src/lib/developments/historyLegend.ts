@@ -33,9 +33,11 @@ const KIND_MARK: Record<Exclude<ChangeKind, 'entry'>, HistoryMark> = {
   asked: { glyph: '?', tone: 'amber' },
   answered: { glyph: '↩', tone: 'green' },
   photos: { glyph: '▣', tone: 'blue' },
+  // A mail tied to a bid or a job wears the kept email's own mark (v2.7479): it is an email either way, and the line's verb and its door tell the two apart.
+  mail: { glyph: '✉', tone: 'amber' },
 }
 
-/** The mark a line wears: a kept entry wears its source's glyph, grey for a note and amber for what happened; every other kind its own. */
+/** The mark a line wears: a kept entry wears its source's glyph, grey for a note and amber for what happened; every other kind its own, a tied mail the kept email's. */
 export function historyMark(kind: ChangeKind, source?: HistorySource | null): HistoryMark {
   if (kind === 'entry') {
     const src = source ?? 'note'
@@ -51,7 +53,7 @@ export const HISTORY_LEGEND_INTRO = 'Every line wears one mark for what it recor
 /** The legend, in the order the chips run: what people wrote, what happened, plans, stages, money, questions, photos. */
 export const HISTORY_LEGEND: ReadonlyArray<HistoryLegendRow> = [
   { key: 'note', mark: historyMark('note'), name: 'A note', words: 'Words a person or a robot wrote about a job, a bid, the site or the customer.', chip: 'wrote' },
-  { key: 'email', mark: historyMark('entry', 'email'), name: 'An email', words: 'An email came in or went out, kept at its own time.', chip: 'happened' },
+  { key: 'email', mark: historyMark('entry', 'email'), name: 'An email', words: 'An email came in or went out. Someone kept it by hand, or tied it to a job or a bid in Messages.', chip: 'happened' },
   { key: 'call', mark: historyMark('entry', 'call'), name: 'A call', words: 'A call, either way.', chip: 'happened' },
   { key: 'text', mark: historyMark('entry', 'text'), name: 'A text', words: 'A text message, either way.', chip: 'happened' },
   { key: 'on_site', mark: historyMark('entry', 'on_site'), name: 'On site', words: 'Something seen or said on the site.', chip: 'happened' },

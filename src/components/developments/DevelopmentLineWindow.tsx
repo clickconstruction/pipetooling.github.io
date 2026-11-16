@@ -6,9 +6,11 @@
  * are stored whole and go out whole through MCP; the fold is the page's alone. The list reads a long
  * line's first words only (punch list #280, v2.6735): when `line.detailIsHead`, the window reads the
  * whole by `readWhole` on open, shows the head with *Reading the rest…* until it lands, and names the
- * reason with the head when the read fails.
+ * reason with the head when the read fails. A tied mail (v2.7479) shows its subject over its words and
+ * carries its door, *Open in Messages*, at the foot.
  */
 import { useEffect, useState } from 'react'
+import { MAIL_DOOR_WORDS } from '../../lib/developments/history'
 import type { ChangeLine } from '../../lib/developments/whatChanged'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { LinkButton, shortDay, SmallButton, timeOfDay } from './developmentPageBits'
@@ -16,7 +18,7 @@ import { JobChip } from './JobChip'
 
 type WholeRead = { entryId: string; state: 'reading' } | { entryId: string; state: 'read'; text: string } | { entryId: string; state: 'failed'; reason: string }
 
-export function DevelopmentLineWindow({ line, onClose, openAbout, readWhole }: { line: ChangeLine | null; onClose: () => void; openAbout: (about: ChangeLine['about']) => void; readWhole?: (entryId: string) => Promise<string> }) {
+export function DevelopmentLineWindow({ line, onClose, openAbout, readWhole, onOpenThread }: { line: ChangeLine | null; onClose: () => void; openAbout: (about: ChangeLine['about']) => void; readWhole?: (entryId: string) => Promise<string>; onOpenThread?: (href: string) => void }) {
   const [whole, setWhole] = useState<WholeRead | null>(null)
   useEffect(() => {
     if (!line) return
@@ -80,6 +82,11 @@ export function DevelopmentLineWindow({ line, onClose, openAbout, readWhole }: {
           </button>
         </div>
         <div style={{ padding: '12px 16px', overflow: 'auto', fontSize: '0.9rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }} data-testid="history-line-window-body">
+          {line.subject ? (
+            <strong style={{ display: 'block', marginBottom: 8 }} data-testid="history-line-window-subject">
+              {line.subject}
+            </strong>
+          ) : null}
           {read?.state === 'read' ? read.text : line.detail}
           {read?.state === 'reading' ? (
             <span style={{ display: 'block', marginTop: 8, color: 'var(--text-muted)', fontSize: '0.8rem' }} data-testid="history-line-window-reading">
@@ -92,6 +99,11 @@ export function DevelopmentLineWindow({ line, onClose, openAbout, readWhole }: {
           ) : null}
         </div>
         <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          {line.threadHref && onOpenThread ? (
+            <SmallButton onClick={() => onOpenThread(line.threadHref!)} title="This mail in its thread, in Messages">
+              {MAIL_DOOR_WORDS}
+            </SmallButton>
+          ) : null}
           <SmallButton onClick={onClose}>Close</SmallButton>
         </div>
       </div>

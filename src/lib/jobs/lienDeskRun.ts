@@ -21,6 +21,8 @@ import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompan
 import { lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature, type LienNoticeSignature } from './lienNoticeSignature'
 import { mailPieceForCopy, type LienMailPieceRow } from '../mail/lienMailPieces'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { LIEN_RUN_ACT, lienRunActFor, type LienRunAct } from './lienRunWords'
+import { parseLienMailedCopies, type LienMailedCopy } from './lienMailedCopies'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -114,6 +116,8 @@ export type RunNotice = {
   rowFields?: unknown
   /** The last day this notice can be mailed (`YYYY-MM-DD`), as the desk counts it: the earliest open month's day, or the retainage notice's. *Today's mail* prints it (punch list #314). Absent or null = the desk has none. */
   mailBy?: string | null
+  /** The scans or photos of what went in the envelope (`job_lien_desk_items.mailed_copies`, `lienMailedCopies.ts`); absent or empty = none added. */
+  mailedCopies?: LienMailedCopy[]
 }
 
 /** Where the run opens (v2.4823): on printing when any notice has not printed, else on recording the mailing, with the newest print as the day it printed. */
@@ -123,26 +127,33 @@ export function runOpening(notices: ReadonlyArray<Pick<RunNotice, 'printedAt'>>)
   return { step: 'record', printedAt: stamps[stamps.length - 1]! }
 }
 
-/** The title bar's door to the run (v2.4823): Send the run while something approved is still to print; Record the mailing when only printed notices wait on their tracking numbers. */
-export function runDoorWords(counts: { ready: number; printed: number; retReady: number }): { label: 'Send the run' | 'Record the mailing'; count: number } {
+/**
+ * The door to the run, on the title bar and on a phone's More (v2.4823): *Print and mail* while something approved is
+ * still to print; *Enter mail numbers* when only printed notices wait on theirs. The two names are `lienRunWords.ts`'s
+ * since v2.7448 (*Send the run* and *Record the mailing* until then).
+ */
+export function runDoorWords(counts: { ready: number; printed: number; retReady: number }): { act: LienRunAct; label: string; count: number } {
   const count = counts.ready + counts.printed + counts.retReady
-  return { label: counts.ready + counts.retReady === 0 && counts.printed > 0 ? 'Record the mailing' : 'Send the run', count }
+  const act = lienRunActFor({ toPrint: counts.ready + counts.retReady, printed: counts.printed })
+  return { act, label: LIEN_RUN_ACT[act], count }
 }
 
 
 /**
- * The door on the desk as a pill (Run-5): the run's bar — green for sealed (printed, in the mail),
- * amber for what waits on the leader, grey for what is ready to go — and the count of who waits, so
- * nobody opens the run to find out. `ready` includes the unsigned; `waits` is how many of them are.
+ * The door on the desk as a pill (Run-5): the run's bar — green for what is printed and to mail,
+ * amber for what the leader has yet to sign, grey for what can print now — and the count of each, so
+ * nobody opens the run to find out. `ready` includes the unsigned; `waits` is how many of them are
+ * (`lienItemUnsigned`, the rule the Board's second tile counts *to sign* by, so the two agree).
+ * Since v2.7448 the parts read *4 to mail · 8 to print · 7 for Sam to sign* (*sealed*, *ready* and *wait on* until then).
  */
 export type RunDoorPill = { sealedPct: number; waitPct: number; words: string }
 
 /**
- * The pill's words after the door's own count (v2.6569): *Record the mailing · 7 sealed*, never *· 7  7 sealed*.
- * When the words are only the count sealed, the count goes; words that say more stay whole.
+ * The pill's words after the door's own count (v2.6569): *Enter mail numbers · 7*, never *· 7 · 7 to mail*.
+ * When the words are only the count the door already says, they go; words that say more stay whole.
  */
 export function runDoorTail(count: number, words: string): string {
-  return words === `${count} sealed` ? 'sealed' : words
+  return words === `${count} to mail` || words === `${count} to print` ? '' : words
 }
 
 export function runDoorPill(counts: { ready: number; printed: number; retReady: number; waits: number }, leaderName?: string | null): RunDoorPill {
@@ -151,7 +162,7 @@ export function runDoorPill(counts: { ready: number; printed: number; retReady: 
   const readyNow = counts.ready + counts.retReady - waits
   const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100))
   const leader = (leaderName ?? '').trim() || 'the leader'
-  const parts = [counts.printed ? `${counts.printed} sealed` : null, readyNow ? `${readyNow} ready` : null, waits ? `${waits} wait${waits === 1 ? 's' : ''} on ${leader}` : null].filter(Boolean)
+  const parts = [counts.printed ? `${counts.printed} to mail` : null, readyNow ? `${readyNow} to print` : null, waits ? `${waits} for ${leader} to sign` : null].filter(Boolean)
   return { sealedPct: pct(counts.printed), waitPct: pct(waits), words: parts.join(' · ') }
 }
 
@@ -234,6 +245,7 @@ export function buildLienDeskRun(
       mailBy: e.earliestDeadline,
       printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
       printedBy: runPrintedBy(item, opts),
+      mailedCopies: parseLienMailedCopies((item as { mailed_copies?: unknown }).mailed_copies),
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,

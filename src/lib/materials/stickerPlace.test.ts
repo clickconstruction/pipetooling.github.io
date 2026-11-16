@@ -15,7 +15,10 @@ import {
   NO_SIGNAL_WORDS,
   noStickerCountWords,
   notYetOnBoxLine,
+  NO_RESERVED,
   notYetOnBoxWords,
+  reservedByWords,
+  reservedOfJob,
   openBoxLabel,
   PLACE_UNREAD_WORDS,
   placeAnswerOf,
@@ -146,13 +149,50 @@ describe('stickers not yet on a box', () => {
       { stickers: [{ number: 201, containerId: null, lostAt: null }] },
     ]
     expect(blankCountOf(runs)).toBe(2)
-    expect(notYetOnBoxWords(2)).toBe('2 stickers not yet on a box')
-    expect(notYetOnBoxWords(1)).toBe('1 sticker not yet on a box')
+    expect(notYetOnBoxWords(2)).toBe('2 stickers reserved and not on a box yet')
+    expect(notYetOnBoxWords(1)).toBe('1 sticker reserved and not on a box yet')
     expect(notYetOnBoxWords(0)).toBe('')
-    expect(jobBlankWords(12)).toBe('This job has 12 stickers not yet on a box.')
+    expect(jobBlankWords(12)).toBe('This job has 12 stickers reserved and not on a box yet.')
     expect(jobBlankWords(0)).toBe('')
-    expect(notYetOnBoxLine(12)).toBe('12 stickers not yet on a box. Scan one to say which box it is on.')
+    expect(notYetOnBoxLine(12)).toBe('12 stickers reserved and not on a box yet. Scan one to say which box it is on.')
     expect(notYetOnBoxLine(0)).toBe('')
+  })
+
+  it('one run holding them is said by its names, with who printed it and when (v2.7487)', () => {
+    const names = Array.from({ length: 109 }, (_, i) => `G${92 + i}`)
+    const run = { names, printedByName: ' Dana ', printedAt: '2026-11-16T15:00:00Z' }
+    const stickers = names.map((boxName, i) => ({ number: 300 + i, containerId: null, lostAt: null, boxName }))
+    const whole = reservedOfJob([{ run, stickers }])
+    expect(whole).toEqual({ count: 109, runs: 1, span: 'G92 to G200', names, anyNamed: true, printedByName: 'Dana', printedAt: '2026-11-16T15:00:00Z' })
+    expect(notYetOnBoxWords(whole.count, whole)).toBe('109 stickers reserved and not on a box yet, G92 to G200')
+    expect(notYetOnBoxLine(whole.count, whole)).toBe('109 stickers reserved and not on a box yet, G92 to G200. Scan one to say which box it is on.')
+    expect(reservedByWords(whole, 'Nov 16')).toBe('Printed Nov 16 by Dana.')
+    expect(reservedByWords({ runs: 1, printedByName: '' }, 'Nov 16')).toBe('Printed Nov 16.')
+    expect(reservedByWords(whole, '')).toBe('')
+    // two of them on boxes and one lost: what is left is said as it stands, a broken stretch by its first names
+    const some = stickers.map((s, i) => (i === 0 ? { ...s, containerId: 'g92' } : i === 2 ? { ...s, lostAt: '2026-11-16T16:00:00Z' } : s))
+    const left = reservedOfJob([{ run, stickers: some }])
+    expect(left.count).toBe(107)
+    expect(left.span).toBe('G93, G95 and 105 more')
+    expect(left.names.slice(0, 2)).toEqual(['G93', 'G95'])
+  })
+
+  it('a run with no names says how many, more than one run says how many runs, and none says nothing (v2.7487)', () => {
+    const bare = reservedOfJob([{ run: { names: null, printedByName: 'Dana', printedAt: '2026-11-16T15:00:00Z' }, stickers: [{ number: 1, containerId: null, lostAt: null }, { number: 2, containerId: null, lostAt: null }] }])
+    expect(bare).toEqual({ count: 2, runs: 1, span: '', names: [], anyNamed: false, printedByName: 'Dana', printedAt: '2026-11-16T15:00:00Z' })
+    expect(notYetOnBoxWords(bare.count, bare)).toBe('2 stickers reserved and not on a box yet')
+    const two = reservedOfJob([
+      { run: { names: ['G1', 'G2'], printedByName: 'Dana', printedAt: '2026-11-15T15:00:00Z' }, stickers: [{ number: 1, containerId: null, lostAt: null, boxName: 'G1' }, { number: 2, containerId: 'g2', lostAt: null, boxName: 'G2' }] },
+      { run: { names: null, printedByName: 'Marcus', printedAt: '2026-11-16T15:00:00Z' }, stickers: [{ number: 3, containerId: null, lostAt: null }] },
+      { run: { names: ['G9'], printedByName: 'Priya', printedAt: '2026-11-16T16:00:00Z' }, stickers: [{ number: 4, containerId: 'g9', lostAt: null, boxName: 'G9' }] },
+    ])
+    // the third run has none left, so it is not counted among the runs that hold them
+    expect(two).toEqual({ ...NO_RESERVED, count: 2, runs: 2, anyNamed: true })
+    expect(notYetOnBoxWords(two.count, two)).toBe('2 stickers reserved and not on a box yet, in 2 runs')
+    expect(reservedByWords(two, 'Nov 16')).toBe('')
+    expect(reservedOfJob([])).toBe(NO_RESERVED)
+    expect(reservedOfJob([{ run: { names: ['G9'] }, stickers: [{ number: 4, containerId: 'g9', lostAt: null, boxName: 'G9' }] }])).toBe(NO_RESERVED)
+    for (const w of [notYetOnBoxLine(109, { span: 'G92 to G200', runs: 1 }), notYetOnBoxLine(2, two), reservedByWords({ runs: 1, printedByName: 'Dana' }, 'Nov 16'), jobBlankWords(12)]) expect(plainWordsFailures(w), w).toEqual([])
   })
 })
 
