@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadOffsets, lienPaneHeadsOverPages, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadFactWords, lienPaneHeadOffsets, lienPaneHeadsOverPages, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
 
 const monthShort = (k: string) => ({ '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -127,5 +127,15 @@ describe('the footer’s section at the pane’s end (v2.7422, Taunya’s ask of
     expect(head('held')).toEqual({ label: 'Sign and send', fact: 'On hold' })
     expect(head('printed')).toEqual({ label: 'Record the mailing', fact: 'Printed, in the run' })
     expect(head('sent')).toEqual({ label: 'After the send', fact: 'Sent' })
+  })
+})
+
+describe('a head’s fact as whole words, for the tip of a fact a narrow pane cuts (v2.7446)', () => {
+  it('joins the fact and its tail as the bar draws them', () => {
+    expect(lienPaneHeadFactWords({ fact: '✗ Can’t go out yet', tail: '1 blocker' })).toBe('✗ Can’t go out yet · 1 blocker')
+    expect(lienPaneHeadFactWords({ fact: '1 house owed · $5,400', tail: 'from our books · Nov 16' })).toBe('1 house owed · $5,400 · from our books · Nov 16')
+  })
+  it('is the fact alone with no tail', () => {
+    expect(lienPaneHeadFactWords({ fact: 'Not signed yet', tail: '' })).toBe('Not signed yet')
   })
 })
