@@ -168,7 +168,7 @@ instead of stickers anyone can use.
 
 ### 2 · Printing a run
 
-**Print blank stickers** beside **Print labels**, on the office's Materials page and the phone's On
+**Print future stickers** beside **Print labels**, on the office's Materials page and the phone's On
 site tab. It asks how many (30 · 60 · 100 · 200, or a typed number), which job new boxes go on (the
 development named beside it), **Copies of each** and the paper. The press says what it will do:
 **Print 200 sets, 0101 to 0300**.
@@ -228,7 +228,7 @@ Empty it and start over.*
 ### 5 · More boxes than expected
 
 Nothing to do. The next unused sticker is the next box. The run's row counts down, and at 20 left
-the office's page says so beside **Print blank stickers**.
+the office's page says so beside **Print future stickers**.
 
 ### 6 · Stickers never used
 
@@ -361,7 +361,7 @@ the merge because the client calls what it makes.
 | PR | What | Size |
 |---|---|---|
 | 1 · the sticker | The migration, the kernel `src/lib/materials/stickers.ts` (number words, ranges, counts, placing verdicts) with tests, `/b/:code` and `box-read` resolving a sticker first, the blank sticker's page, the types, the docs | M |
-| 2 · print a run | **Print blank stickers** on tape through the window's own strip, reprint, print the rest, the runs on the office page; a guide | M |
+| 2 · print a run | **Print future stickers** on tape through the window's own strip, reprint, print the rest, the runs on the office page; a guide | M |
 | 3 · the first scan | **Built 2026-11-14 (v2.7298).** The **Sticker is new** sheet with both branches, the match list across the development, the number on a box's row and screen, the unused count, the twice-named and other-job verdicts, **Scan a label** taking a number; the guide | M |
 | | **Stop here and walk the site.** The loop is whole with the phone's own camera. | |
 | 4 · change it afterwards | **Rename**, **This sticker is on the wrong box**, **Take off**, **lost**, **Empty it and start over**, the History rows | S |
@@ -657,7 +657,7 @@ That is what the database has done since PR 1: the press mints a `box_stickers` 
 its own and its name, and the row waits with no box until a scan or **These are on boxes** says which box it is. The
 screens said it badly. So the press and the window are **Print future stickers**, the ask says what the press holds
 (*Printing reserves each name and gives each sticker its own link. You say which box it is on later.*), the press
-reads *Reserve and print 109 stickers, G92 to G200*, a run that is made says *These stickers are reserved*, the Runs
+reads *Print 109 future stickers, G92 to G200*, a run that is made says *These stickers are reserved*, the Runs
 fold reads *Stickers reserved for this job*, and a reserved sticker scanned with no sign-in reads *This sticker is
 reserved for a box*. One name for the idea on every screen and in the guides: **reserved**. In the code and the
 database the state is still `blank`, and both mock-ups keep the old name as drawn. No migration. The fold's stand-in

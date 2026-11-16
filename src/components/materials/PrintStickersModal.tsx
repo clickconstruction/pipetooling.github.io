@@ -4,7 +4,7 @@
  * code of its own, and its name when the run has names, held for a box someone says later. The ask says so in a line
  * under the names, and a run that is made says it is reserved. It asks how many (the card's quick presses or a typed
  * number), **Copies of each** as the labels window has, and the tape width, remembered on the device by
- * `labelPrefs.ts`. One press, *Reserve and print 200 sets*, calls `mint_sticker_run` as the caller
+ * `labelPrefs.ts`. One press, *Print 200 sets of future stickers*, calls `mint_sticker_run` as the caller
  * (`stickerRunsIo.ts`): the database numbers the run and makes the
  * stickers, and the strips print as soon as they are drawn. A refusal is said in the database's own words, and a run
  * refused before its numbers takes none.
@@ -40,7 +40,7 @@ import {
   PRINT_STICKERS_LABEL,
   printRestLabel,
   printRunLabel,
-  reserveRunPressLabel,
+  futureRunPressLabel,
   restAfterStop,
   runStripsWords,
   STICKER_COUNT_PRESETS,
@@ -378,7 +378,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     downloadFile(new File([stickersCsvText(minted.stickers)], stickersCsvFileName(minted.run, todayYmdInAppTz()), { type: 'text/csv' }))
   }
 
-  const pressLabel = stage === 'ask' ? reserveRunPressLabel(count, copies, askNames) : printing.length < (minted?.stickers.length ?? 0) && isRest ? printRestLabel(printing) : printRunLabel(printing, copies)
+  const pressLabel = stage === 'ask' ? futureRunPressLabel(count, copies, askNames) : printing.length < (minted?.stickers.length ?? 0) && isRest ? printRestLabel(printing) : printRunLabel(printing, copies)
   /** Everything that holds the ask's press but the one hold **Print them anyway** lifts. */
   const askBlocked = !verdict.ok || rangeRefused || site === undefined || minting || printerHolds
   const dead = stage === 'ask' ? askBlocked || held : printing.length === 0 || printerHolds

@@ -22,8 +22,12 @@ import { clampTapeCopies, TAPE_COPIES_MAX, TAPE_NAME_FULL_CHARS, TAPE_NAME_SMALL
 /** The press on the job's On site strip and the Materials strip, and the window's title. One home: `materialsGroups.ts` reads it. */
 export const PRINT_STICKERS_LABEL = 'Print future stickers'
 
-/** The verb of the press that makes a new run: the database reserves the stickers and the strips print, in one press. A run already made prints with *Print*. */
-export const STICKER_RESERVE_VERB = 'Reserve and print'
+/**
+ * The nouns of the ask's press, which makes a new run: the press's own name, counted (the owner's pick of 2026-11-16,
+ * *Print future stickers*). A run already made prints plain *stickers*: its places are reserved, no longer to come.
+ */
+const FUTURE_STICKERS = ['future sticker', 'future stickers'] as const
+const FUTURE_SETS = ['set of future stickers', 'sets of future stickers'] as const
 
 /**
  * Said in the ask, under the names, so nobody reads the window as printing a sticker with no link (the owner,
@@ -104,19 +108,23 @@ export function mintStickerRunArgs(request: StickerRunRequest): Record<string, u
 }
 
 /**
- * The press: *Print 200 stickers*, or *Print 200 sets* when each prints more than once. Dead at zero (*Print
- * stickers*). A named run says its names, known before the mint as the numbers are not: *Print 223 stickers, G78 to G300*.
- * `verb` is *Print* for a run already made; the ask's press, which makes the run, is `reserveRunPressLabel`.
+ * The press on a run already made: *Print 200 stickers*, or *Print 200 sets* when each prints more than once. Dead at
+ * zero (*Print stickers*). A named run says its names: *Print 223 stickers, G78 to G300*. With `future` it is the
+ * ask's press, `futureRunPressLabel`.
  */
-export function stickerRunPressLabel(count: number, copies: number, names?: ReadonlyArray<string> | null, verb = 'Print'): string {
+export function stickerRunPressLabel(count: number, copies: number, names?: ReadonlyArray<string> | null, future = false): string {
   const n = Math.max(0, count)
-  const head = clampTapeCopies(copies) > 1 ? countedLabel(verb, n, ['set', 'sets']) : countedLabel(verb, n, ['sticker', 'stickers'])
+  const sets = clampTapeCopies(copies) > 1
+  const head = countedLabel('Print', n, future ? (sets ? FUTURE_SETS : FUTURE_STICKERS) : sets ? ['set', 'sets'] : ['sticker', 'stickers'])
   return n > 0 && names && names.length > 0 ? `${head}, ${nameSpanWords(names[0]!, names[names.length - 1]!)}` : head
 }
 
-/** The ask's press, which makes the run and prints it: *Reserve and print 109 stickers, G92 to G200*. Dead at zero, *Reserve and print stickers*. */
-export function reserveRunPressLabel(count: number, copies: number, names?: ReadonlyArray<string> | null): string {
-  return stickerRunPressLabel(count, copies, names, STICKER_RESERVE_VERB)
+/**
+ * The ask's press, which makes the run and prints it, in the press's own name: *Print 109 future stickers, G92 to
+ * G200*, *Print 200 sets of future stickers* with copies. Dead at zero it reads the name itself, *Print future stickers*.
+ */
+export function futureRunPressLabel(count: number, copies: number, names?: ReadonlyArray<string> | null): string {
+  return stickerRunPressLabel(count, copies, names, true)
 }
 
 /** A run's names: `G78 to G300`. One sticker reads as its name alone. */
@@ -132,7 +140,6 @@ export function stickerRunCountWords(count: number, copies: number): string {
   if (c > 1) return `${stickers}, ${c} strips each. ${n * c} strips.`
   return `${stickers}, one strip each.`
 }
-
 
 // ---------------------------------------------------------------------------
 // The run as the database answers it

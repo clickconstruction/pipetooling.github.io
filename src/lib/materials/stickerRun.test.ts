@@ -10,7 +10,7 @@ import {
   printRestLabel,
   printRunLabel,
   reprintLabel,
-  reserveRunPressLabel,
+  futureRunPressLabel,
   restAfterStop,
   runCountsOf,
   runsFoldWords,
@@ -64,11 +64,14 @@ describe('how many', () => {
     expect(stickerRunPressLabel(0, 1)).toBe('Print stickers')
   })
 
-  it('the ask’s press reserves and prints in one, and a run already made only prints (v2.7484)', () => {
-    expect(reserveRunPressLabel(109, 1, ['G92', 'G200'])).toBe('Reserve and print 109 stickers, G92 to G200')
-    expect(reserveRunPressLabel(200, 2)).toBe('Reserve and print 200 sets')
-    expect(reserveRunPressLabel(1, 1, ['G92'])).toBe('Reserve and print 1 sticker, G92')
-    expect(reserveRunPressLabel(0, 1)).toBe('Reserve and print stickers')
+  it('the ask’s press counts future stickers, the press’s own name, and a run already made prints plain stickers (v2.7484)', () => {
+    expect(futureRunPressLabel(109, 1, ['G92', 'G200'])).toBe('Print 109 future stickers, G92 to G200')
+    expect(futureRunPressLabel(200, 2)).toBe('Print 200 sets of future stickers')
+    expect(futureRunPressLabel(1, 1, ['G92'])).toBe('Print 1 future sticker, G92')
+    expect(futureRunPressLabel(0, 1)).toBe('Print future stickers')
+    expect(futureRunPressLabel(0, 1)).toBe(PRINT_STICKERS_LABEL)
+    expect(futureRunPressLabel(1, 2)).toBe('Print 1 set of future stickers')
+    expect(futureRunPressLabel(0, 3)).toBe('Print sets of future stickers')
     expect(printRunLabel([{ number: 1, boxName: 'G92' }], 1)).toBe('Print 1 sticker, G92')
   })
 

@@ -39,7 +39,7 @@ describe('PrintStickersWindow', () => {
     expect(rows.map((r) => r.textContent)).toEqual(['JP1071 · Larkspur Dentalno box yet', 'JP1204 · Juniper Ridge1 box'])
     fireEvent.click(rows[1]!)
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Print future stickers · JP1204 · Juniper Ridge')
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Reserve and print 200 stickers')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 200 future stickers')
   })
 
   it('one job skips the question', () => {
