@@ -2,7 +2,7 @@
 name: "The Lien desk on a phone: one list of jobs with the money and the days, in place of a header that takes the screen"
 number: 352
 group: close
-status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · left: the owner's look on his own phone
+status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · the three small leftovers in v2.7378 (Taunya picked Build one small PR, 2026-11-15) · left: the owner's look on his own phone
 summary: >
   The owner used the Lien desk on his phone, recorded the screen and called it terrible. The desk
   was laid out for a wide screen: a fixed header, and a list that scrolls in a window under it. On
@@ -13,7 +13,7 @@ summary: >
   three moments: one list of jobs soonest first, the same desk made to fit, and a today card first.
   The owner picked the one list.
 next: The owner opens the desk on his phone, now that all eight PRs are on main, and says what still reads wrong. Then this card is retired.
-size: L as a train of eight, all built; left: a look, and three small residues named under Where it stands
+size: L as a train of eight, all built, and one small PR for three leftovers, built; left: a look
 blocker: None.
 ---
 
@@ -178,11 +178,13 @@ What the build did differently from the table above, each recorded in its fragme
 - **PR 6.** The paper keeps its printed layout and slides inside its own frame. Section heads do not wrap; one pins in place of five.
 - **PR 7.** The Lien window's header folds on a scroll, with a press of its own, in place of a fixed short header.
 
-Three small things are left, none of them in the way of a look:
+Three small things were left after the train. Taunya picked *Build one small PR* for them on 2026-11-15, and v2.7378 built all three, on a phone only:
 
-- **The notary's print box** on the Affidavits list is about 300 px at the top of the list on a phone. It scrolls away with the list. That bar's PR landed as v2.7209 (#8044) and left the box unfolded on a phone, so the fold is still to do.
-- **Inside an open paper** many presses are 14 to 28 px: the gates, the months grid and the page's own edit marks are drawn for a computer.
-- **The By job grid's own controls** (two pickers at 23 px, *Print the grid* at 25) belong to the PR that renames that view.
+- **The notary's print box** on the Affidavits list was 204 px at the top of the list on a phone. One bar now folds the print press, the chips and the county away, and it opens folded. The count and the held papers stay.
+- **Inside an open paper** 19 of an affidavit's 23 presses were under 40 px, the shortest 14: the gates, the months grid and the page's own edit marks are drawn for a computer. Each now has an unseen pad to a thumb's 44 px square, as the job window's presses got in v2.7309. Nothing moves.
+- **The By job grid's own controls** were two pickers at 23 px and *Print the grid* at 25. Each is 44 px now, the pickers at 16 px words, and the bar scrolls away with the list.
+
+What the pad cannot reach is still to do: a tick box and a picker inside an open paper are sized where they are drawn.
 
 Three things the train taught:
 

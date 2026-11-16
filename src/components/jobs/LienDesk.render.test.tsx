@@ -2219,6 +2219,49 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(board().querySelector('[data-lien-board-approve]')).toBeNull()
   })
 
+  it('on a phone the notary’s print box opens folded behind one bar, and a computer has no bar (punch list #352, the leftovers)', async () => {
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    // A computer: the whole box, no bar.
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650'), ready('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    expect(document.querySelector('[data-lien-affidavit-print-all]')).not.toBeNull()
+    expect(document.querySelector('[data-lien-affidavit-print-fold]')).toBeNull()
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650'), ready('aff2', 'j651')])} layout="stacked" initialKind="affidavit" />)
+      await settle()
+      const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+      // The count stays over the bar. The bar says what it opens and starts folded (`index.css` hides what follows it).
+      expect(bar.querySelector('[data-lien-affidavit-print-ready]')?.textContent).toBe('2 ready to print')
+      const fold = bar.querySelector('[data-lien-affidavit-print-fold]') as HTMLButtonElement
+      expect(fold.textContent).toBe('Show the print for the notary▾')
+      expect(fold.getAttribute('aria-expanded')).toBe('false')
+      expect(fold.style.minHeight).toBe('44px')
+      // The count is before the bar and the print press, the chips and the county after it, so the fold takes those and no more.
+      const kids = [...bar.children]
+      expect(kids.indexOf(bar.querySelector('[data-lien-affidavit-print-status]')!)).toBeLessThan(kids.indexOf(fold))
+      expect(kids.indexOf(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))).toBeGreaterThan(kids.indexOf(fold))
+      expect(kids.indexOf(bar.querySelector('[data-lien-affidavit-print-with]')!)).toBeGreaterThan(kids.indexOf(fold))
+      // A tick made while it is open is kept through a fold: the box stays mounted.
+      fireEvent.click(fold)
+      expect(fold.getAttribute('aria-expanded')).toBe('true')
+      expect(fold.textContent).toBe('Hide the print for the notary▴')
+      const helpSheet = bar.querySelector('[data-lien-affidavit-help-sheet] input') as HTMLInputElement
+      const was = helpSheet.checked
+      fireEvent.click(helpSheet)
+      fireEvent.click(fold)
+      expect(fold.getAttribute('aria-expanded')).toBe('false')
+      expect((bar.querySelector('[data-lien-affidavit-help-sheet] input') as HTMLInputElement).checked).toBe(!was)
+      // The choice is kept on this computer, so the next test gets it back as it was.
+      fireEvent.click(bar.querySelector('[data-lien-affidavit-help-sheet] input') as HTMLInputElement)
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('the list prints every ready short-form affidavit in one press: one window, each paper on its own sheet, and each job files its own copy (v2.6918)', async () => {
     openPrintMock.mockClear()
     fileCopyMock.mockClear()

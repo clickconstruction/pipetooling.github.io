@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from './lienPhonePane'
+import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, lienPhonePrintBoxFold } from './lienPhonePane'
 
 const none = { notice: false, affidavit: false, retainage: false }
 
@@ -23,6 +23,13 @@ describe('lienPhoneFootFold', () => {
   it('says what the press will do', () => {
     expect(lienPhoneFootFold(false)).toEqual({ words: 'Hide the next step', mark: '▾', expanded: true })
     expect(lienPhoneFootFold(true)).toEqual({ words: 'Show the next step', mark: '▴', expanded: false })
+  })
+})
+
+describe('lienPhonePrintBoxFold', () => {
+  it('says what the press will do to the notary’s print box', () => {
+    expect(lienPhonePrintBoxFold(true)).toEqual({ words: 'Show the print for the notary', mark: '▾', expanded: false })
+    expect(lienPhonePrintBoxFold(false)).toEqual({ words: 'Hide the print for the notary', mark: '▴', expanded: true })
   })
 })
 
