@@ -67,6 +67,7 @@ import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { lienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
+import { lienWindowClaim } from '../../lib/jobs/lienWindowAffidavit'
 import { readJobPropertyRecord, type JobPropertyRead } from '../../lib/jobs/jobPropertyRecordIo'
 import LienFilingTabs from './LienFilingTabs'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -801,6 +802,9 @@ export default function LienInstrumentsModal({
     const money = effJob && effJob !== job ? { status: effJob.status, revenue: effJob.revenue, payments_made: effJob.payments_made, invoices: effJob.invoices, payments: effJob.payments } : {}
     return { ...job, ...money, serviceType, ...(property ? { customer_address_id: property.link } : {}) }
   }, [job, property, effJob])
+  // What the job's sent bills still owe (v2.7530): the timeline and the supply houses' card read it, as the papers' claim does.
+  // Until then they read the job's whole price less payments, so a job billed in stages showed the stages never billed as owed.
+  const billedOpen = useMemo(() => (linkedJob ? lienWindowClaim(linkedJob, null).openBalance : 0), [linkedJob])
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
   // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
   const isMobile = useIsMobile()
@@ -858,7 +862,7 @@ export default function LienInstrumentsModal({
             job: { id: job.id, created_at: job.created_at ?? null, last_work_date: lastWorkJob?.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null, lien_last_work_on: lastWorkJob?.lien_last_work_on ?? null, invoices: job.invoices ?? null },
             isSub,
             propertyKind,
-            openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
+            openBalance: billedOpen,
             todayYmd: todayYmdLocal(),
             demandLetters: historyRows,
             courtesy: courtesyRows,
@@ -866,7 +870,7 @@ export default function LienInstrumentsModal({
             deskAffidavit: deskAffidavitState ? { state: deskAffidavitState, missing: (deskAffidavitMissing ? deskAffidavitMissing.split('|') : []) as LienAffidavitGateKey[], holdUntil: deskAffidavitHoldUntil } : null,
           })
         : null,
-    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil, deskAffidavitState, deskAffidavitMissing, deskAffidavitHoldUntil],
+    [job, property, billedOpen, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil, deskAffidavitState, deskAffidavitMissing, deskAffidavitHoldUntil],
   )
   // The period the affidavit tab swears (v2.6061): the tab gets the fresh last-day read (a day set by hand reaches the paper the moment it is
   // saved) and the window's months, and fills the paper by the desk's own recipe (v2.6809); a job with no sessions swears its creation month.
@@ -1347,7 +1351,7 @@ export default function LienInstrumentsModal({
                 job={supplierJob}
                 propertyKind={propertyKind}
                 todayYmd={todayYmdLocal()}
-                openBalance={Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))}
+                openBalance={billedOpen}
                 payerName={(job.gcCustomer?.name ?? '').trim() || (job.customer_name ?? '').trim()}
                 jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`}
                 isMobile={isMobile}

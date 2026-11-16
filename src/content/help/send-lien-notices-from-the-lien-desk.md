@@ -172,7 +172,7 @@ The last work was in August. July's notice window closed on Sep 15, and nobody n
 
 ## The By job tab
 
-The **By job** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first.
+The **By job** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first. The amount on a row is what the job's sent bills still owe. Work not billed yet is not in it.
 
 - **GC** turns the list into one GC's book.
 - A blue line like *412 Ridgeline Dr · 7 jobs here ›* opens [every job at that property](/help/see-every-job-at-one-property-on-the-lien-desk).

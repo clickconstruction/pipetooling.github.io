@@ -2672,7 +2672,8 @@ export default function LienDesk({
       // Nothing drafted or mailed yet: the words still read with the job's own facts, and the window says nothing has gone out.
       if (!cJob) return null
       const owner = lienPropertyOwnerDisplayName(resolveLienProperty(cAddress, data.ownerByJob[jobId] ?? null).owner).trim()
-      const open = Number(cJob.revenue ?? 0) - Number(cJob.payments_made ?? 0)
+      // What the job's sent bills still owe (v2.7530), as the desk's row reads it; a job on no row keeps the job's balance.
+      const open = data.queue.entries.find((x) => x.jobId === jobId)?.openBalance ?? Number(cJob.revenue ?? 0) - Number(cJob.payments_made ?? 0)
       return { hasLetter: false, facts: { ...genericCallFacts(callerUs), jobLabel: jobLabel(cJob, jobId), property: (cJob.job_address ?? '').trim() || 'your property', ownerName: owner, gcName: cGc?.name ?? 'your builder', amount: open > 0 ? formatUsdNoCents(open) : '' } }
     }
     return { hasLetter: first.status === 'sent', facts: callLetterFactsFor({ item: first, job: cJob, gc: cGc, address: cAddress, owner: data.ownerByJob[jobId] ?? null, us: callerUs, phone: signerPhoneFor ? signerPhoneFor(cJob?.master_user_id ?? null) : (issuer?.phone ?? '').trim() }) }
@@ -4027,7 +4028,9 @@ export default function LienDesk({
     // The recorded packet (v2.4119): a certified send with no number yet gets its "add the number" door here.
     const sentFiling = (data?.filingsByJob[selected.jobId] ?? []).find((f) => f.id === (first?.sent_filing_id ?? selected.item?.sent_filing_id)) ?? null
     const trackingOwed = sentFiling ? sendsTrackingOwed(sentFiling.sends) : []
-    const jobBalance = Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0))
+    // What the sent bills still owe (v2.7530): *GC paid*, the still-owed words and the two doors below read the bills, as the
+    // claim above them does. Until then they read the job's whole price less payments, and counted work never billed.
+    const jobBalance = Math.max(0, openBalance)
     // Counsel's sign-off (#41 PR 3, v2.3790): the memo's moment — an owner paying Click direct while the GC is silent needs
     // counsel's per-job okay. Read from the firm's matter through `legalSignoff`; no matter with the firm, no door.
     const signoff = legalSignoff?.stateFor(selected.jobId) ?? null

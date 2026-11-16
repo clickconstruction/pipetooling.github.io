@@ -3673,6 +3673,16 @@ describe('LienDesk the attorney’s letter (v2.3760)', () => {
     expect(document.querySelector('[data-lien-since-sent]')).toBeNull()
   })
 
+  it('GC paid reads the sent bills, not the job’s price less payments (v2.7530): bills paid in full on a job with work not yet billed', () => {
+    // The job's price is above its payments, but every sent bill is paid: the desk's row owes $0.
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true, open_balance: 0 })), [sentPacket], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 0, TODAY, formatYmdMonthDay)
+    expect(Number(d.jobsById.j650!.revenue ?? 0) - Number(d.jobsById.j650!.payments_made ?? 0)).toBeGreaterThan(0)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} />)
+    const since = document.querySelector('[data-lien-since-sent]') as HTMLElement
+    expect(since.textContent).toContain('GC paid: yes')
+  })
+
   it('the sent row and footer count the days, and Send the attorney’s letter drafts counsel’s paid-out letter on the job', async () => {
     startTwoMock.mockReset()
     startTwoMock.mockResolvedValue('two1')
