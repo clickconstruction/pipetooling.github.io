@@ -61,6 +61,19 @@ export async function markAnswersSeen(): Promise<number> {
   return typeof data === 'number' ? data : 0
 }
 
+/**
+ * The phone notice for a note just posted, or for a No reply needed press (`notify-note-tag`). The function writes
+ * the words from the rows. A notice that fails changes nothing on screen, so its failure is dropped: the tag is
+ * already on the job and in the count.
+ */
+export function notifyNoteTag(what: { noteId: string } | { tagId: string }): void {
+  const body = 'noteId' in what ? { note_id: what.noteId } : { tag_id: what.tagId }
+  void supabase.functions.invoke('notify-note-tag', { body }).then(
+    () => {},
+    () => {},
+  )
+}
+
 // ---------- one signal, one shared count ----------
 
 const listeners = new Set<() => void>()

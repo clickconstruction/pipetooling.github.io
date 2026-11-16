@@ -124,6 +124,8 @@ Two stickers can sit on one box. Both open it. A sticker that carries a number o
 
 If someone else put the sticker on a box a moment ago, the sheet says who and when. Tap **Open R76** to see that box. A sticker printed for another job asks once. Use it here, and it belongs to the box it lands on. A sticker on a box of a job you are not on says so. Ask the office to add you to that job.
 
+Did you stick on a whole roll of named stickers? Tap **These are on boxes** under the boxes. Type the names you used, like `G78-150`. Pick how the boxes sit and their place. Tap {{button:blue|Put 73 stickers on their boxes}}. Each name gets its box with its sticker on it. Scan one later to add what is inside.
+
 Placing a sticker needs signal. With none, the press is grey and the sheet says so. Nothing is kept for later, because two phones might hold the same sticker. Try again when the phone has a bar.
 
 Under the boxes, a line counts the job's stickers not yet on a box. Scan one to say which box it is on.
@@ -154,13 +156,13 @@ After the first print the window opens on tape on that computer. Press **Change*
 
 Printing at the cage from Brother's phone app? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
 
-Signed out, the scan still opens a page. The page does not say what is in the box. The top is a dark plate with the box's name in large letters and its code under it. Under the plate, the page says the material belongs to Click Plumbing and Electrical. The page never names the job.
+Signed out, the scan still opens a page. The page does not say what is in the box. The top is a dark plate with the company's name. Under the name is the box's name in large letters, with its code beside it. The page never names the job.
 
-Want a price from us? Press **Ask for a bid**. Your phone opens a text to the office that says which box you scanned. The press beside it shows the office's number. Press it to call.
+Want a price from us? Press **Ask for a bid**. Your phone opens an email to the office that says which box you scanned. The press beside it says **Call** and the office's number. Press it to call.
 
-Is the box moved, damaged or in the way? Press **Text the office about box G81**. Your phone opens a text with the box's name already in it. Looking for work? Press **Work with us** to text the office.
+Is the box moved, damaged or in the way? Press **Moved, damaged or in the way?** and a small window opens. Press **Send a text** or **Send an email**. Your phone opens it with the box's name already in it, ready for a photo. Looking for work? Press **Work with us** for the same two choices. Press **Not now** to close the window.
 
-To see what is in the box, press **Sign in to see what is inside**. After you sign in you land on that box, with its parts and counts. You sign in once in a phone's browser. After that a scan opens the box's own screen.
+To see what is in the box, press **Sign in to see what is inside**. The press has an orange outline. After you sign in you land on that box, with its parts and counts. You sign in once in a phone's browser. After that a scan opens the box's own screen.
 
 A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
 

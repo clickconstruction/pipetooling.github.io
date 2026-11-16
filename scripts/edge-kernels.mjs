@@ -63,6 +63,7 @@ export const IMPORTERS = [
   'notify-estimator-request',
   'notify-help-feedback',
   'notify-lien-approval',
+  'notify-note-tag',
   'notify-team-lead-clock',
   'paid-job-email',
   'photo-save',

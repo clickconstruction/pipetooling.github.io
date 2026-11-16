@@ -4,12 +4,15 @@
  * printed it and when. **Reprint** prints the whole run again, the same codes, so nothing can collide; **Print the
  * rest** prints the stickers still blank. Both open the stickers window on a run already minted, which mints nothing.
  * Reads `sticker_runs` and `box_stickers` under the caller's own RLS (`stickerRunsIo.ts`); the words are
- * `stickerRun.ts` and `stickers.ts`. Nothing here when the job has no run.
+ * `stickerRun.ts` and `stickers.ts`. Nothing here when the job has no run. A named run with stickers still blank has
+ * a third press, **These are on boxes** (design section 10, PR 10, v2.7406): it hands the run's blank names up, and
+ * the page opens the form that puts a range of them on their boxes with no scan (`StickersOnBoxes.tsx`).
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { blankStickersOf, printRestLabel, reprintLabel, runCountsOf, runsFoldWords, stickerRunByLine, stickerRunTitle, type MintedSticker, type StickerRun } from '../../lib/materials/stickerRun'
 import { fetchStickerRuns, type StickerRunWithStickers } from '../../lib/materials/stickerRunsIo'
+import { ON_BOXES_LABEL } from '../../lib/materials/stickersOnBoxes'
 import { onBoxesWords, unusedStickersWords } from '../../lib/materials/stickers'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import OfflineRetryPanel from '../OfflineRetryPanel'
@@ -22,6 +25,8 @@ type Props = {
   openKey?: number
   /** Opens the stickers window on a run: the whole run, or the stickers handed. */
   onPrint: (run: StickerRun, stickers: MintedSticker[], title: string) => void
+  /** Opens These are on boxes on a named run: its blank names, in number order. Left out where the page has no form for it. */
+  onPlaceRange?: (run: StickerRun, blankNames: string[]) => void
   /** The read; a test hands a spy. */
   fetch?: (jobId: string) => Promise<StickerRunWithStickers[]>
 }
@@ -32,7 +37,7 @@ const row: CSSProperties = { display: 'flex', alignItems: 'center', justifyConte
 const press: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
 
-export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, onPrint, fetch = fetchStickerRuns }: Props) {
+export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, onPrint, onPlaceRange, fetch = fetchStickerRuns }: Props) {
   const [open, setOpen] = useState(false)
   useEffect(() => { if (openKey > 0) setOpen(true) }, [openKey])
   const [runs, setRuns] = useState<StickerRunWithStickers[] | null>(null)
@@ -65,6 +70,8 @@ export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, on
           const title = stickerRunTitle(run)
           /** The rest is its own press only while some are on boxes; with none placed, Reprint prints the same stickers. */
           const restIsOwn = blank.length > 0 && blank.length < stickers.length
+          /** The blank stickers' names, when every one has one: what These are on boxes can place without a scan. */
+          const blankNames = blank.length > 0 && blank.every((s) => s.boxName) ? blank.map((s) => s.boxName as string) : []
           return (
             <div key={run.id} style={row} data-testid="sticker-run-row">
               <div style={{ display: 'grid', gap: '0.15rem', minWidth: 0, flex: '1 1 260px' }}>
@@ -75,6 +82,7 @@ export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, on
                 </span>
               </div>
               <span style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {onPlaceRange && blankNames.length > 0 ? <button type="button" style={press} title="Put a range of this run's stickers on their boxes in one press, with no scan" onClick={() => onPlaceRange(run, blankNames)} data-testid="sticker-run-on-boxes">{ON_BOXES_LABEL}</button> : null}
                 {restIsOwn ? <button type="button" style={press} onClick={() => onPrint(run, blank, printRestLabel(blank).replace(/^Print the rest, ?/, 'The rest, '))} data-testid="sticker-run-rest">{printRestLabel(blank)}</button> : null}
                 <button type="button" style={press} disabled={stickers.length === 0} onClick={() => onPrint(run, stickers.map(({ id, number, code, boxName }) => ({ id, number, code, boxName })), title)} data-testid="sticker-run-reprint">{reprintLabel(stickers.length)}</button>
               </span>

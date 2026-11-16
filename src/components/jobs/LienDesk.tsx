@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import type { LienDeskKind } from '../../lib/lien/lienDeskRoute'
 import { EmptyState } from '../EmptyState'
@@ -152,12 +153,13 @@ import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
+import { LienEnvelopeCard } from './LienEnvelopeCard'
 import { LienJobSuppliersCard, LienSupplierMarkLine } from './LienJobSuppliers'
 import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienPaneSections } from '../../lib/jobs/lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, lienPhonePrintBoxFold } from '../../lib/jobs/lienPhonePane'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
@@ -242,6 +244,8 @@ export type LienDeskProps = {
   signerNameFor: (masterUserId: string | null) => string
   /** The job's master by his plain name (v2.4856): the word row and the record say *on Malachi's word*; '' when not known. */
   leaderNameFor?: (masterUserId: string | null) => string
+  /** The name a signature carries for a user (v2.7395): his full name, "Malachi Whites", where `leaderNameFor` is the short one; '' when not known. */
+  signatureNameFor?: (userId: string | null) => string
   /** The signer's own phone for the cover letters' `{{phone}}` (v2.3753); the letterhead's when he has none. */
   signerPhoneFor?: (masterUserId: string | null) => string
   /** Land on this job's item when given (the forecast's Send notice…, the row icon). */
@@ -408,6 +412,7 @@ export default function LienDesk({
   issuer,
   signerNameFor,
   leaderNameFor,
+  signatureNameFor,
   signerPhoneFor,
   initialJobId,
   onChanged,
@@ -685,6 +690,10 @@ export default function LienDesk({
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
   // a loop the Lien affidavits tab had spun in since v2.3412 (about one render a millisecond while it was open).
   const [affFooterEl, setAffFooterEl] = useState<HTMLDivElement | null>(null)
+  // The notice's footer goes the other way on a computer (v2.7422, Taunya's ask of 2026-11-15): it is the pane's last section, under a blue
+  // head, so the paper has the whole pane and the reader goes through it to sign. The pane draws the section's empty body before the footer
+  // is built, and the footer lands in it through a portal. A phone keeps the desk's strip under its fold bar.
+  const [noticeFootHome, setNoticeFootHome] = useState<HTMLDivElement | null>(null)
 
   const entries = data?.queue.entries ?? []
   // Supply houses on the desk's jobs (v2.4404): a mark on a row while a house is still owed, and the card in the pane.
@@ -964,9 +973,9 @@ export default function LienDesk({
       const job = data.jobsById[chip.jobId]
       const gcId = chip.gcId ?? job?.gc_customer_id ?? null
       const row = nextUpRows.find((r) => r.key === `${chip.kind}:${chip.jobId}`)
-      return lienBoardChipCard(chip, board, { todayYmd, jobName: job?.job_name, address: job?.job_address, customer: job?.customer_name, gc: gcId ? data.gcsById[gcId]?.name : null, detail: row ? (row.detail ?? row.sub) : null })
+      return lienBoardChipCard(chip, board, { todayYmd, jobName: job?.job_name, address: job?.job_address, customer: job?.customer_name, gc: gcId ? data.gcsById[gcId]?.name : null, detail: row ? (row.detail ?? row.sub) : null, leader: leaderNameFor?.(job?.master_user_id ?? null) })
     },
-    [data, board, nextUpRows, todayYmd],
+    [data, board, nextUpRows, todayYmd, leaderNameFor],
   )
   const riskLabel = useCallback(
     (n: number) => {
@@ -1877,7 +1886,8 @@ export default function LienDesk({
     )
   // Signing (v2.5082): one press under his own sign-in places his name in the cursive face; the line may hold a drawing instead.
   // On someone else's screen (v2.5791) the name is the master's, and the press is his code or his hand, attributed to him.
-  const signerName = otherScreen ? leaderName : authName.trim() || leaderName
+  // v2.7395 (Taunya's ask): the mark carries his full name. The short names stay for the words around it.
+  const signerName = otherScreen ? signatureNameFor?.(masterId)?.trim() || leaderName : signatureNameFor?.(authUserId)?.trim() || authName.trim() || leaderName
   const signPayloadOrThrow = (): LienDeskSignPayload | { mode: 'code'; code: string } => {
     const h = signRef.current
     if (h?.mode === 'code') {
@@ -2446,7 +2456,7 @@ export default function LienDesk({
   // The heads over the page labels: on a computer every section head stacked, on a phone the one pinned head (punch list #352, PR 6);
   // and a label is as tall as those heads (v2.7323), so the bars in the pane are one kind on either screen. Read when a label
   // is drawn or pressed: `paneHeads` is declared after this point.
-  const headsOverPages = () => (isMobile ? LIEN_PANE_HEAD_H_PHONE : paneHeads.length * LIEN_PANE_HEAD_H)
+  const headsOverPages = () => (isMobile ? LIEN_PANE_HEAD_H_PHONE : lienPaneHeadsOverPages(paneHeads) * LIEN_PANE_HEAD_H)
   const pageLabelH = isMobile ? LIEN_PANE_HEAD_H_PHONE : PAGE_LABEL_H
   const relightPages = (host: HTMLElement) => {
     let on: string | null = null
@@ -2689,6 +2699,8 @@ export default function LienDesk({
     return none
   }
 
+  // The footer's section (v2.7422): on a computer the notice's footer is the pane's last section, `sign`, under the one blue head.
+  const footInPane = !oneColumn
   // The pane's stacked heads (v2.4733): the five sections' title rows, pinned like the list's pile heads — passed ones under the strip, coming ones at the bottom, the one the reader is in lit.
   const paneHeads = selected
     ? lienPaneSections({
@@ -2701,6 +2713,7 @@ export default function LienDesk({
         gcEmail: Boolean(gc?.email),
         monthShort: workMonthShort,
         money: formatUsdNoCents,
+        foot: footInPane ? lienNoticeFootHead({ pile: selected.pile, signed: Boolean(paneSigned), signerFirst: (leaderName.trim().split(/\s+/)[0] ?? ''), dueMonths: selected.dueMonths.length }) : null,
       })
     : []
   // The heads' wiring is shared with the affidavit and retainage panes since v2.7320 (`useLienPaneHeads`): which section is lit from the pane's scroll, the press that lands a section under its own head, and the head itself. The strip's height is v2.4726's `stripH`, 0 while it is not pinned.
@@ -3254,54 +3267,24 @@ export default function LienDesk({
 
       {paneHead('envelope')}
       <div data-lien-pane-body="envelope" style={{ display: 'grid', gap: '0.6rem' }}>
-      {/* The envelope (v2.3776): who the paper goes to and the cover-note switch, with the paper they describe — the footer keeps only the verbs. */}
-      <div className="lienEnvelope" data-lien-desk-send-line>
-        <span>
-          ✉ To <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong> by certified mail{gc?.email ? <span className="lienFootMuted"> · courtesy PDF to {gc.email}</span> : null}
-        </span>
-        <label title={`Counsel's cover letter for a ${coverLetterKindFor(property)} property (2026-09-22), filled for this job — the first page of the owner's copy; the GC's copy is the form only`}>
-          <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => { setCoverNote(ev.target.checked); touchDraft() }} />
-          <span>Include counsel's cover letter</span>
-        </label>
-        {/* The supply houses in the owner's letter (v2.4725, Taunya's ask): one more tick, drawn only while the letter is on and a house is owed. */}
-        {coverNote && supplierJob && supplierJob.owed > 0 ? (
-          <label data-lien-desk-houses-tick title="A paragraph at the end of counsel's letter: the house, what it is owed, the day its own notice goes out, that it is a separate claim our release does not cover, and that paying us is what clears it">
-            <input type="checkbox" checked={housesInLetter} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setHousesInLetter(ev.target.checked)} />
-            <span>Name the supply {supplierJob.housesOwed === 1 ? 'house' : 'houses'} owed · {formatUsdNoCents(supplierJob.owed)}</span>
-          </label>
-        ) : null}
-        {/* A conditional release of lien in the envelope (v2.4729, Stephen's addition): off until asked for; the tick makes the draft row, the run issues it. */}
-        {coverNote && selected && claimNumber > 0 ? (
-          <label data-lien-desk-release-tick title="The app's § 53.284 conditional release, prefilled from the notice — the claim as the amount, the GC as the check's maker — behind the owner's letter and the GC's form, named in the letter; a draft on the job now, issued when the run is recorded">
-            <input type="checkbox" checked={releaseId != null} disabled={(item != null && item.status !== 'drafted') || busy} onChange={(ev) => toggleRelease(ev.target.checked)} />
-            <span>Enclose a conditional release · {formatUsdNoCents(claimNumber)}</span>
-          </label>
-        ) : null}
-        {coverNote && ((housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL) || (releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL)) ? (
-          <span data-lien-desk-houses-counsel style={{ flexBasis: '100%', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>
-            {housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL && releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL
-              ? 'Counsel has not read the supply house and release paragraphs yet.'
-              : releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL
-                ? 'Counsel has not read the release paragraph yet.'
-                : 'Counsel has not read the supply house paragraph yet.'}
-          </span>
-        ) : null}
-      </div>
-
-      {/* The paper is the editor (v2.3694): the four values the office may change sit in shaded boxes on the notice itself; this row keeps only the legend and the preview door. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.4rem 0.75rem', border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-desk-paper-legend>
-        {wordingLocked ? (
-          <span>{office ? 'Sent for approval — pull it back to a draft to change the wording.' : 'The values in a box were typed by the office; the rest is the statute’s form or filled from the job.'}</span>
-        ) : (
-          <span>
-            <span aria-hidden="true" style={{ display: 'inline-block', width: 22, height: 12, verticalAlign: 'middle', marginRight: 6, borderRadius: 4, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)' }} />a shaded box is yours to change — click it, on the paper · plain text is the statute’s form or filled from the job; hover says where
-          </span>
-        )}
-        <span style={{ flex: 1 }} />
-        <button type="button" onClick={openPreview} style={linkBtn} title="The notice as the packet prints it, in its own tab, with the values you can change marked">
-          Preview in a new window ↗
-        </button>
-      </div>
+      {/* The envelope as one card (v2.7427): who the paper goes to, what rides with the notice, the key to the shaded boxes and the preview door. */}
+      <LienEnvelopeCard
+        ownerName={ownerName || 'the owner of record'}
+        contractorName={gc?.name || 'the original contractor'}
+        courtesyEmail={gc?.email || null}
+        cover={{
+          checked: coverNote,
+          disabled: item != null && item.status !== 'drafted',
+          onChange: (on) => { setCoverNote(on); touchDraft() },
+          title: `Counsel's cover letter for a ${coverLetterKindFor(property)} property (2026-09-22), filled for this job — the first page of the owner's copy; the GC's copy is the form only`,
+        }}
+        // The supply houses in the owner's letter (v2.4725, Taunya's ask): drawn only while the letter is on and a house is owed.
+        houses={coverNote && supplierJob && supplierJob.owed > 0 ? { checked: housesInLetter, disabled: item != null && item.status !== 'drafted', onChange: setHousesInLetter, count: supplierJob.housesOwed, amount: formatUsdNoCents(supplierJob.owed), unread: housesInLetter && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL } : null}
+        // A conditional release of lien in the envelope (v2.4729, Stephen's addition): off until asked for; the tick makes the draft row, the run issues it.
+        release={coverNote && selected && claimNumber > 0 ? { checked: releaseId != null, disabled: (item != null && item.status !== 'drafted') || busy, onChange: toggleRelease, amount: formatUsdNoCents(claimNumber), unread: releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL } : null}
+        lockedWords={wordingLocked ? (office ? 'Sent for approval — pull it back to a draft to change the wording.' : 'The values in a box were typed by the office; the rest is the statute’s form or filled from the job.') : null}
+        onPreview={openPreview}
+      />
 
       {/* What goes in the envelope (v2.3540): the cover page first while it is ticked, then the notice — the pages as the packet prints them. */}
       {coverHtml ? (
@@ -3400,6 +3383,9 @@ export default function LienDesk({
         </div>
       ) : null}
       </div>
+      {/* The footer's section (v2.7422): the blue head, then the empty body the footer is portalled into once it is built. */}
+      {footInPane ? paneHead('sign') : null}
+      {footInPane ? <div ref={setNoticeFootHome} className="lienDeskFooterInPane" data-lien-pane-body="sign" data-lien-desk-foot-home /> : null}
       {/* The pane's foot room (v2.4747): a row, not the pane's bottom padding, so a section head stuck to the bottom sits on the edge with no gap under it. */}
       <div aria-hidden data-lien-desk-pane-foot style={{ height: '0.3rem' }} />
     </div>
@@ -4506,12 +4492,17 @@ export default function LienDesk({
   const footFold = paneOpenPhone && !(simpleApprove && !detailsOpen) && (paneOpenPhone.kind !== 'notice' || Boolean(footer)) ? lienPhoneFootFold(footFolded) : null
   // The footer strip (the owner's ask of 2026-11-15, `lienDeskFooterHome`): on a computer it is the pane's own bottom bar, so the
   // list runs to the desk's bottom; on a phone it stays the desk's, right after the fold bar whose sibling rule folds it.
-  // The affidavit's and the retainage notice's panes portal their footer into the slot (v2.3753); the notice's is drawn here.
+  // The affidavit's and the retainage notice's panes portal their footer into the slot (v2.3753). The notice's is drawn here on a phone;
+  // on a computer it is the pane's last section since v2.7422, so the pane column's bottom row is empty for a notice.
   const footerHome = lienDeskFooterHome(oneColumn)
+  // The notice's strip: the desk's on a phone, the pane's last section on a computer (v2.7422), where the blue head is its top edge.
+  const noticeFooterStrip = (
+    <div ref={noticeFooterRef} className="lienDeskFooterSlot" data-lien-desk-footer="notice" style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: footInPane ? 'none' : '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div>
+  )
   const paneFooter =
     kind === 'affidavit' ? <div ref={setAffFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="affidavit" />
     : kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" />
-    : kind === 'notice' && footer ? <div ref={noticeFooterRef} className="lienDeskFooterSlot" data-lien-desk-footer="notice" style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div>
+    : kind === 'notice' && footer ? (footInPane ? (noticeFootHome ? createPortal(noticeFooterStrip, noticeFootHome) : null) : noticeFooterStrip)
     : null
   const paneColumn = (node: ReactNode) => (footerHome.column ? <div data-lien-desk-pane-column style={footerHome.column}>{node}{paneFooter}</div> : node)
   return (
@@ -4925,7 +4916,7 @@ export default function LienDesk({
             onChanged()
             return out
           }}
-          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: leaderNameFor?.(id) ?? '' }) }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: leaderNameFor?.(id) ?? '' }) })]}
+          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) })]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}

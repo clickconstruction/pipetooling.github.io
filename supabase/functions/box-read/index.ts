@@ -5,13 +5,13 @@ import { ESTIMATE_LINK_LOCKED_CODE, readEstimateLinkLock, recordEstimateLinkMiss
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings } from '../_shared/gcKernels/lib/messages/boxes.ts'
-import { BOX_PAGE_COMPANY_KEY, BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAsksInside, boxPageCode, boxPageCompanyPhone, boxPageEarlyAnswer, boxPageKind, boxPageOfficePhone, boxPagePlate, boxPageStickerAnswer, buildBoxPagePayload, type BoxPageContainerRow, type BoxPageStickerRow } from '../_shared/boxPage.ts'
+import { BOX_PAGE_COMPANY_KEY, BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAsksInside, boxPageCode, boxPageCompanyEmail, boxPageCompanyPhone, boxPageEarlyAnswer, boxPageKind, boxPageOfficePhone, boxPagePlate, boxPageStickerAnswer, buildBoxPagePayload, type BoxPageContainerRow, type BoxPageStickerRow } from '../_shared/boxPage.ts'
 
 /**
  * box-read (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR reads
  * `PRTS.CO/B/<eight hex>`; prts.co forwards it to the app's `/b/:code`, and signed out the page asks here.
  *
- *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, stickerNumber? }, office }
+ *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, stickerNumber? }, office: { phone, email?, bidsEmail? } }
  *                                             the live container by its code: its name as the label prints it
  *                                             (`boxPagePlate`), its kind, and `office.phone`, the office's number
  *                                             (the company block's Phone from Settings since v2.7390).
@@ -85,17 +85,33 @@ function json(body: unknown, status = 200): Response {
  */
 // deno-lint-ignore no-explicit-any
 async function officePhone(admin: any): Promise<string> {
+  return (await officeContact(admin)).phone
+}
+
+/**
+ * The number, and since v2.7405 the two addresses the page's presses write to: the company's own email (the Email of
+ * Settings' company block) and the bids box's address from Settings → Phone and texts, where a bid ask lands in the
+ * app. The same one read answers all three. An address Settings does not hold is left out and its press is not drawn.
+ */
+// deno-lint-ignore no-explicit-any
+async function officeContact(admin: any): Promise<{ phone: string; email: string; bidsEmail: string }> {
   let company = ''
   let team = ''
+  let email = ''
+  let bidsEmail = ''
   try {
     const { data } = await admin.from('app_settings').select('key, value_text').in('key', [BOX_PAGE_COMPANY_KEY, BOXES_SETTINGS_KEY])
     const rows = (data ?? []) as Array<{ key: string; value_text: string | null }>
-    company = boxPageCompanyPhone(rows.find((r) => r.key === BOX_PAGE_COMPANY_KEY)?.value_text)
-    team = boxSetting('team', parseBoxSettings(rows.find((r) => r.key === BOXES_SETTINGS_KEY)?.value_text)).phone
+    const block = rows.find((r) => r.key === BOX_PAGE_COMPANY_KEY)?.value_text
+    const boxes = parseBoxSettings(rows.find((r) => r.key === BOXES_SETTINGS_KEY)?.value_text)
+    company = boxPageCompanyPhone(block)
+    email = boxPageCompanyEmail(block)
+    team = boxSetting('team', boxes).phone
+    bidsEmail = boxSetting('bids', boxes).address
   } catch (e) {
     console.warn('box-read: the settings did not read', e)
   }
-  return boxPageOfficePhone([company, team, Deno.env.get('QUO_COMPANY_PHONE'), PORTAL_COMPANY.phone])
+  return { phone: boxPageOfficePhone([company, team, Deno.env.get('QUO_COMPANY_PHONE'), PORTAL_COMPANY.phone]), email, bidsEmail }
 }
 
 serve(async (req) => {
@@ -159,10 +175,13 @@ serve(async (req) => {
       return json({ error: 'retired', retiredOn: calendarYmdInAppTzFromIso(row.retired_at), stencil: boxPagePlate(row.label), kind: boxPageKind(row.kind), phone: await officePhone(admin) }, 410)
     }
 
-    // The name the label prints, the kind and the office's number. Nothing the box holds is read (v2.7379).
+    // The name the label prints, the kind, the office's number and its two addresses. Nothing the box holds is read (v2.7379).
+    const office = await officeContact(admin)
     const payload = buildBoxPagePayload({
       container: row,
-      officePhone: await officePhone(admin),
+      officePhone: office.phone,
+      officeEmail: office.email,
+      bidsEmail: office.bidsEmail,
       scannedCode: sticker.kind === 'box' ? code : null,
       stickerNumber: sticker.kind === 'box' ? sticker.number : null,
     })

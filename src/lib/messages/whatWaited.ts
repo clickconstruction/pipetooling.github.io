@@ -69,6 +69,8 @@ const HELD_KINDS: Readonly<Record<string, string>> = {
   dispatch_request_reopened: 'dispatch answer',
   estimator_request: 'estimator request',
   bid_mark: 'marked bid',
+  note_tag: 'tagged job note',
+  note_tag_answer: 'answer to your tag',
   help_feedback: 'help note',
   lien_approval_ask: 'lien notice',
   lien_affidavit_approval_ask: 'lien affidavit',

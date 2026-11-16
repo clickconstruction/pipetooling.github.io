@@ -1492,7 +1492,7 @@ export default function DetailJobModal({
     if (!summary) return
     setSummaryKeeping(true)
     try {
-      const posted = await threadNotes.submitNoteWithBody(summary.noteBody, 'draft')
+      const posted = await threadNotes.submitNoteWithBody(summary.noteBody, 'draft', { typed: false })
       if (posted) setSummaryKeptFor(summary.stamp)
     } finally {
       setSummaryKeeping(false)
@@ -1564,7 +1564,7 @@ export default function DetailJobModal({
       if (!jobId) return
       setPctSaving(true)
       try {
-        const posted = await threadNotes.submitNoteWithBody(composePctCompleteNoteBody(value, note), 'draft')
+        const posted = await threadNotes.submitNoteWithBody(composePctCompleteNoteBody(value, note), 'draft', { typed: false })
         if (!posted) return
         const { error: err } = await supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)
         if (err) throw err
@@ -2923,6 +2923,9 @@ export default function DetailJobModal({
             draft={threadNotes.draft}
             onDraftChange={threadNotes.setDraft}
             onSubmit={() => void threadNotes.submitNote()}
+            tagJobId={fullJob?.id ?? null}
+            tagViewerId={authUser?.id ?? null}
+            onSubmitTagged={(tagged) => void threadNotes.submitNote(tagged)}
             submitting={threadNotes.submitting}
             jobThreadStampActions={stampsOffered && !narrowViewport ? { onArrived: stampArrived, onLeaving: stampLeaving } : undefined}
             pctComplete={fullJob?.pct_complete ?? null}

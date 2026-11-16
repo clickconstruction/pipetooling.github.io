@@ -2,7 +2,7 @@
 title: pay a sub with one check across several sheets
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: sub credit, overpayment, overpaid, one check, several sheets, sending, sending number, from credit, use credit, keep a credit, extra, too much, sub labor, record payment, part payment, by hand, place a payment, which sheets
+keywords: sub credit, overpayment, overpaid, one check, several sheets, sending, sending number, from credit, use credit, keep a credit, extra, too much, sub labor, record payment, part payment, by hand, place a payment, which sheets, paid too much, paid past the total, over, keep the over as credit
 order: 33
 ---
 One check to a sub can pay more than one sheet. You type the whole check once, and the app spreads it for you.
@@ -45,6 +45,19 @@ The press says what it will do, like {{button:blue|Record $2,200.00 on 2 sheets}
 Untick **Put the extra on their other open sheets, oldest first** to leave the other sheets alone. All of the extra is then kept as the sub's credit.
 
 A credit needs the sub on the roster as one person. For anyone else the window refuses the extra and says what fits.
+
+## Turn a sheet paid too much into a credit
+
+An older sheet can read **Over**. It was paid past its total before credits existed.
+
+1. Go to [Jobs → Subs](/jobs?tab=subs) and find the sheet.
+2. Press **⋯** on its row, then **Keep the $… over as credit…**.
+3. The window names the payment that changes. It shows what stays on the sheet and what becomes credit.
+4. Press {{button:blue|Keep $50.00 as their credit}}.
+
+The sheet now reads paid in full. The money that left the bank is the same, so a bank check mark stays. A match to a bank line stays too.
+
+The window refuses when no single payment is larger than the amount over. Edit the sheet's payments by hand then.
 
 ## Use a credit
 

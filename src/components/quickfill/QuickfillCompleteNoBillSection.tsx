@@ -235,6 +235,9 @@ export function QuickfillCompleteNoBillSection({
                       draft={threadNotes.draft}
                       onDraftChange={threadNotes.setDraft}
                       onSubmit={() => void threadNotes.submitNote()}
+                      tagJobId={expandedJobId}
+                      tagViewerId={authUser?.id ?? null}
+                      onSubmitTagged={(tagged) => void threadNotes.submitNote(tagged)}
                       submitting={threadNotes.submitting}
                       showSectionTitle={false}
                       showEmptyPlaceholder={false}

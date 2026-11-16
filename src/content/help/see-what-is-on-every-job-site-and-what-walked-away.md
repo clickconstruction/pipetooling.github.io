@@ -167,6 +167,8 @@ Press **Stop printing** to end a run early. One more strip prints, so the printe
 
 Under the job's boxes, a fold lists every run of stickers. Each run shows its names and its numbers, who printed it and when. The run also shows how many stickers are on boxes and how many are not used yet. Above the boxes, a line counts the stickers not yet on a box. Press **Runs** beside it to open the fold. The window says the same count before a new run, so nobody prints 200 more over 96 unused. A box's name reads a numbered sticker beside it, as *R76 · 0147*. A sticker printed with the box's own name adds nothing beside it. Press **Reprint 200 stickers** to print the whole run again. A reprint prints the same codes, so nothing can collide. Press **Print the rest, 0205 to 0300** to print only the stickers still blank. In the window, **Export the stickers as a CSV** writes the run for a label editor.
 
+A roll of named stickers needs no scan to go on its boxes. In the **Runs** fold, press **These are on boxes** on the run. Type the names that were stuck on, such as `G78-150`. Pick how the boxes sit and their place. The window says how many boxes will be made. A name that is a box on the site already takes its sticker. A name with no blank sticker is left alone. Press {{button:blue|Put 73 stickers on their boxes}}. The window then says what happened. Scan a box later to say what is inside.
+
 ## Print a manifest
 
 A manifest is the paper that hangs on a box and says what is in it. Press **Print the manifest** on a job's page. The window opens on every box. Press a stencil to leave that box out. **Every box** picks them all again and **None** clears them. The press names its count, such as {{button:blue|Print 2 manifests}}.

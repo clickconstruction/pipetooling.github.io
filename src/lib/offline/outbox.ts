@@ -126,6 +126,10 @@ export interface ClockOutPayload {
 export interface JobNotePayload {
   jobId: string
   body: string
+  /** The teammates picked from the list under the box (punch list #363). Absent on a press an older client queued. */
+  tagged?: string[]
+  /** True for a note the person typed: it carries its tags and answers the tags that wait on its writer. A stamp and a % line are not. */
+  typed?: boolean
 }
 
 /** A line moved on a report by line (v2.5663): the fixture and the percent it moved to, stamped on the job once the report lands. */
