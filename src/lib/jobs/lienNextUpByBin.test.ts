@@ -153,6 +153,14 @@ describe('lienBinFolds — the folds the desk has a press for', () => {
     expect(rules[0]!.title(12)).toBe('12 affidavits approved and ready to file')
     expect(rules[1]!.title(4)).toBe('4 affidavits to send for approval')
   })
+  it('folds the filed liens that owe their copies under the press that mails them together (punch list #366)', () => {
+    const rules = lienBinFolds({ office: true, printReady: 0, printButton: '', sendReady: 0, serveOwed: 12, serveButton: 'Mail 12 liens’ copies ›' })
+    expect(rules.map((r) => [r.bin, r.action, r.button, r.target, r.sub])).toEqual([['affidavit:filed', 'record_service', 'Mail 12 liens’ copies ›', { open: 'serve_copies' }, 'One stack for the mail, then each mail number.']])
+    expect(rules[0]!.title(12)).toBe('12 filed liens owe their copies')
+    // One alone keeps its own row and its own Lien window.
+    expect(lienBinFolds({ office: true, printReady: 0, printButton: '', sendReady: 0, serveOwed: 1, serveButton: 'x' })).toEqual([])
+    expect(lienBinFolds({ office: false, printReady: 0, printButton: '', sendReady: 0, serveOwed: 12, serveButton: 'x' })).toEqual([])
+  })
   it('gives none to a viewer who is not the lien office, and none for a press that would take fewer than two', () => {
     expect(lienBinFolds({ office: false, printReady: 10, printButton: 'x', sendReady: 3 })).toEqual([])
     expect(lienBinFolds({ office: true, printReady: 1, printButton: 'x', sendReady: 1 })).toEqual([])

@@ -22,6 +22,7 @@ import { lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilin
 import { mailPieceForCopy, type LienMailPieceRow } from '../mail/lienMailPieces'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_RUN_ACT, lienRunActFor, type LienRunAct } from './lienRunWords'
+import { parseLienMailedCopies, type LienMailedCopy } from './lienMailedCopies'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -115,6 +116,8 @@ export type RunNotice = {
   rowFields?: unknown
   /** The last day this notice can be mailed (`YYYY-MM-DD`), as the desk counts it: the earliest open month's day, or the retainage notice's. *Today's mail* prints it (punch list #314). Absent or null = the desk has none. */
   mailBy?: string | null
+  /** The scans or photos of what went in the envelope (`job_lien_desk_items.mailed_copies`, `lienMailedCopies.ts`); absent or empty = none added. */
+  mailedCopies?: LienMailedCopy[]
 }
 
 /** Where the run opens (v2.4823): on printing when any notice has not printed, else on recording the mailing, with the newest print as the day it printed. */
@@ -242,6 +245,7 @@ export function buildLienDeskRun(
       mailBy: e.earliestDeadline,
       printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
       printedBy: runPrintedBy(item, opts),
+      mailedCopies: parseLienMailedCopies((item as { mailed_copies?: unknown }).mailed_copies),
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,
