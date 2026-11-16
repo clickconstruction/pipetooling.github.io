@@ -9,7 +9,7 @@
  * The stack is in envelope order behind one mail sheet: the sheet stays in the office, lists every envelope in the
  * order it comes off the printer, and has a blank for each certified mail number. Pure; the caller prints and files.
  */
-import { batchWords, type BatchWords } from '../batchWords'
+import { batchWords, countedLabel, type BatchWords } from '../batchWords'
 import { demandDate } from '../jobsDocuments/demandLetter'
 import { filingDocsPrintHtml, prependToFilingPrintHtml, type FilingDocExtras } from '../jobsDocuments/lienFilingDocuments'
 import { lienServeHolds, lienServePapers, lienServeRecipients, lienServedCopySentTitle, type LienServeFacts, type LienServeHold, type LienServePaper, type LienServeRecipient } from '../jobsDocuments/lienServedCopy'
@@ -17,37 +17,16 @@ import { formatYmdMonthDay } from './billedExpectedPay'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { LIEN_HELP_STYLES, STRIPE, foot } from './lienHelpSheet'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type JobPropertyOwnerLike } from './lienProperty'
+import { lienServeClock, type LienServeClock } from './lienServeClock'
 import { lienServeFactsFromFiling } from './lienServeFacts'
+
+export { lienServeClock, type LienServeClock } from './lienServeClock'
 
 /** One filed affidavit that has not been served, and what the desk knows of its job. */
 export type LienServeJob = { jobId: string; jobNumber: string; jobLabel: string; filing: JobLienFilingRow; isSub: boolean; to?: LienServeFacts['to'] }
 
 function esc(s: string): string {
   return (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-function dayDiff(fromYmd: string, toYmd: string): number {
-  const a = new Date(`${fromYmd}T12:00:00`).getTime()
-  const b = new Date(`${toYmd}T12:00:00`).getTime()
-  return Number.isNaN(a) || Number.isNaN(b) ? 0 : Math.round((b - a) / 86_400_000)
-}
-
-/** Where a filing's five days stand today. */
-export type LienServeClock = { serveDue: string; daysLeft: number; late: boolean; chip: string; words: string }
-
-/**
- * The clock in words. The chip is short, for a row's edge: *3 days left*, *due today*, *2 days late*. The words follow
- * the row's own *copies to mail*: *by Nov 18*, *today*, *were due Nov 11. Mail them today.* A late copy is still
- * mailed and still recorded; the desk says the day it was due and nothing about what the law makes of it.
- */
-export function lienServeClock(serveDue: string | null | undefined, todayYmd: string): LienServeClock {
-  const due = (serveDue ?? '').trim()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) return { serveDue: '', daysLeft: 0, late: false, chip: '', words: '' }
-  const daysLeft = dayDiff(todayYmd, due)
-  const day = formatYmdMonthDay(due)
-  if (daysLeft < 0) return { serveDue: due, daysLeft, late: true, chip: daysLeft === -1 ? '1 day late' : `${-daysLeft} days late`, words: `were due ${day}. Mail them today.` }
-  if (daysLeft === 0) return { serveDue: due, daysLeft, late: false, chip: 'due today', words: 'today' }
-  return { serveDue: due, daysLeft, late: false, chip: daysLeft === 1 ? '1 day left' : `${daysLeft} days left`, words: `by ${day}` }
 }
 
 /** The desk's own data, as much of it as this reads. */
@@ -152,6 +131,16 @@ export function lienServePlanWords(plan: Pick<LienServePlan, 'ready' | 'held' | 
     lead: total === 0 ? '' : total === 1 ? `1 filed lien owes its copies.${soonest}` : `${total} filed liens owe their copies.${soonest}`,
     late: plan.late === 0 ? '' : plan.late === 1 ? '1 is past its day. Mail it today.' : `${plan.late} are past their day. Mail them today.`,
   }
+}
+
+/**
+ * The door to the window from the Board's bin and from the list's folded row: *Mail 12 liens’ copies ›*. It counts
+ * every filed lien that owes its copies, held ones too, since the window is where a held one is fixed and where each
+ * is recorded. '' with none.
+ */
+export function lienServeDoorWords(plan: Pick<LienServePlan, 'ready' | 'held'>): string {
+  const n = plan.ready.length + plan.held.length
+  return n === 0 ? '' : `${countedLabel('Mail', n, ['lien’s copies', 'liens’ copies'])} ›`
 }
 
 /** One held filing as a line: "2340 · Ortega Residence: no recording number yet." */

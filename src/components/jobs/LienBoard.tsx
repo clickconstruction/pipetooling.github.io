@@ -138,7 +138,10 @@ function Chip({ chip, lit, onChip, onHover, onCard }: { chip: LienBoardChip; lit
   )
 }
 
-function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
+/** A press that stands inside one bin, under its chips: its words and what it opens. */
+export type LienBoardBinPress = { label: string; onPress: () => void; title?: string }
+
+function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, press }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; press?: LienBoardBinPress | null; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
   const n = bin.chips.length
   const head = (
     <>
@@ -158,6 +161,12 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard }
       <div className="lienBoardChips" data-lien-board-chips={bin.key}>
         {n === 0 ? <span data-lien-board-empty style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>none</span> : bin.chips.map((c) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} onCard={onCard} />)}
       </div>
+      {/* The bin's own press (punch list #366): the act every paper in it shares. An outline, so each column's print stays the one filled press. */}
+      {press && n > 0 ? (
+        <button type="button" data-lien-board-bin-press={bin.key} onClick={press.onPress} title={press.title} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, margin: '6px 0 2px', padding: isMobile ? '0 12px' : '4px 12px', minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', justifySelf: 'start' }}>
+          {press.label}
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -284,6 +293,7 @@ export default function LienBoard({
   foot,
   over,
   underAffidavits,
+  binPress,
   onLayout,
   leader,
   cardFor,
@@ -309,6 +319,8 @@ export default function LienBoard({
   over?: ReactNode
   /** A bin of the desk's own under the affidavit column (v2.7443): *Public jobs · bond claim*. */
   underAffidavits?: ReactNode
+  /** A press inside a bin, by the bin's key (punch list #366): *Mail 12 liens’ copies ›* in *Filed · copies to mail*. The leader's own view draws none. */
+  binPress?: Partial<Record<LienBoardBinKey, LienBoardBinPress>>
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void
   /**
@@ -455,7 +467,7 @@ export default function LienBoard({
         <h3 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: kind === 'notice' ? 'var(--text-blue-700)' : 'var(--text-red-700)' }}>{title}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: beside.length && !layout ? 'minmax(0, 1fr) minmax(0, 0.55fr)' : '1fr', gap: '0 12px', alignItems: 'start' }}>
           <div data-lien-board-flow={kind} style={{ display: 'grid', gap: 22 }}>
-            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} />)}
+            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} press={mine ? null : binPress?.[b.key]} />)}
           </div>
           {beside.length ? (
             <div data-lien-board-beside={kind} style={{ display: 'grid', gap: 10, alignContent: 'start', marginTop: layout ? 10 : 0 }}>

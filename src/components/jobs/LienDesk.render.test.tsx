@@ -118,6 +118,8 @@ vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
   return { ...actual, approveLienDeskItem: (id: string) => approveLotMock(id), redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>, opts?: { remind?: boolean }) => (opts ? tellAffMock(papers, opts) : tellAffMock(papers)), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])) }
 })
+// Sign it again (v2.7502): the clear is a seam; its guard has its own tests.
+const signAgainMock = vi.fn(async (..._args: unknown[]): Promise<{ ok: true } | { ok: false; message: string }> => ({ ok: true }))
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
   ...(await vi.importActual<typeof import('../../lib/jobs/lienDeskSignIo')>('../../lib/jobs/lienDeskSignIo')),
@@ -134,6 +136,7 @@ vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
     codeState.signs.push(args)
     return codeState.answer
   },
+  clearLienSignatureToSignAgain: (...args: unknown[]) => signAgainMock(...args),
 }))
 // The pad (v2.5791): jsdom has no canvas, and the master's line opens on the pad when his code cannot be taken.
 vi.mock('signature_pad', () => ({
@@ -1171,7 +1174,7 @@ describe('LienDesk', () => {
     expect(board.getAttribute('data-lien-board-layout')).toBe('columns')
     expect(board.querySelectorAll('[data-lien-board-tile]')).toHaveLength(4)
     expect(Array.from(board.querySelectorAll('[data-lien-board-column="notice"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_print', 'in_mail', 'sent'])
-    expect(Array.from(board.querySelectorAll('[data-lien-board-column="affidavit"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed'])
+    expect(Array.from(board.querySelectorAll('[data-lien-board-column="affidavit"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served'])
     // J650 is one chip in the notice column, and its bin is lit as the busiest.
     const chip = board.querySelector('[data-lien-board-chip="j650"][data-kind="notice"]') as HTMLElement
     const bin = chip.closest('[data-lien-board-bin]') as HTMLElement
@@ -1337,7 +1340,8 @@ describe('LienDesk', () => {
     desk.unmount()
     desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withAff('sent', { sent_at: '2026-09-12T14:00:00Z' })} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} onZoomAddress={onZoomAddress} />)
     await settle()
-    expect(chip('j650', 'affidavit').closest('[data-lien-board-bin]')!.getAttribute('data-lien-board-bin')).toBe('affidavit:filed')
+    // A filed affidavit with no copies owed stands in Served (punch list #366); its chip still opens the job's Lien window.
+    expect(chip('j650', 'affidavit').closest('[data-lien-board-bin]')!.getAttribute('data-lien-board-bin')).toBe('affidavit:served')
     fireEvent.click(chip('j650', 'affidavit'))
     expect(onOpenLienInstruments).toHaveBeenCalledWith('j650')
     desk.unmount()
@@ -4433,6 +4437,115 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     expect(codeState.signs[0]).toMatchObject({ itemId: 'it1', signerUserId: 'u-malachi', code: '1357', approve: false })
   })
 
+  describe('Sign it again (v2.7502)', () => {
+    const FIELDS = { gcEmail: 'zz@example.test' }
+    // Approved and signed by a drawing on the office's screen: the job's master is Avery, the office is Dana.
+    const signedItem = (over: Record<string, unknown> = {}) =>
+      ({
+        id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'approved', fields: FIELDS, cover_note: true, drafted_by: 'u-dana', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-avery', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T15:00:00Z', voided_at: null, printed_at: null,
+        signed_by: 'u-avery', signed_at: '2026-09-14T15:00:00Z', signer_printed_name: 'Avery Stone', signer_signature_mode: 'draw', signer_signature_storage_path: 'desk/it1/ink.png', signed_on_device_of: 'u-dana', signed_fields_hash: lienFieldsHash(FIELDS), signed_leader_confirmed_at: null,
+        ...over,
+      }) as unknown as LienDeskItemRow
+    const CLEAR = { signed_by: null, signed_at: null, signer_printed_name: null, signer_signature_mode: null, signer_signature_storage_path: null, signed_on_device_of: null, signed_fields_hash: null }
+    const cleared = () => signedItem({ ...CLEAR, fields: { ...FIELDS, signatureCleared: { at: '2026-09-14T17:00:00Z', by: 'u-dana', byName: 'Dana', signedAt: '2026-09-14T15:00:00Z', signedBy: 'u-avery', signerName: 'Avery Stone', mode: 'draw', storagePath: 'desk/it1/ink.png' } } })
+    const deskData = (item: LienDeskItemRow) => {
+      const d = data(J650, [item], true)
+      d.jobsById.j650 = { ...d.jobsById.j650!, master_user_id: 'u-avery' } as NonNullable<typeof d.jobsById.j650>
+      return d
+    }
+    const names = (id: string | null) => (id === 'u-avery' ? 'Avery Stone' : 'Dana')
+    const office = { ...baseProps, authRole: 'assistant' as const, authUserId: 'u-dana', authName: 'Dana', leaderNameFor: names }
+    const master = { ...baseProps, authRole: 'master_technician' as const, authUserId: 'u-avery', authName: 'Avery', leaderNameFor: names }
+    beforeEach(() => {
+      signAgainMock.mockClear()
+      signAgainMock.mockResolvedValue({ ok: true })
+      codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    })
+
+    it('the office: the link in the Ready row, a confirm that says what happens, Cancel writes nothing, the button clears, and the cleared footer carries his line with the code', async () => {
+      const onChanged = vi.fn()
+      const view = renderWithProviders(<LienDesk {...office} onChanged={onChanged} data={deskData(signedItem())} initialPile="ready" />)
+      await settle()
+      const foot = document.querySelector('[data-lien-desk-foot="ready"]') as HTMLElement
+      const link = foot.querySelector('[data-lien-desk-sign-again]') as HTMLButtonElement
+      expect(link.textContent).toBe('Sign it again…')
+      // A signed notice has no signing line: the row stands alone.
+      expect(screen.queryByTestId('lien-sign-line')).toBeNull()
+      fireEvent.click(link)
+      const ask = await screen.findByRole('alertdialog', { name: 'Sign the notice again for AXO Schertz, job 650?' })
+      expect(ask.textContent).toContain('Avery Stone’s signature from Sep 14 comes off this notice. The approval stands. The run holds the notice until it is signed again. Avery signs it on his own screen, or here with his code or his hand. The notice keeps a line saying who cleared it and when.')
+      fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+      await settle()
+      expect(signAgainMock).not.toHaveBeenCalled()
+      fireEvent.click(link)
+      fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Clear the signature' }))
+      await waitFor(() => expect(signAgainMock).toHaveBeenCalledTimes(1))
+      expect(signAgainMock).toHaveBeenCalledWith('it1', { userId: 'u-dana', userName: 'Dana' })
+      await waitFor(() => expect(onChanged).toHaveBeenCalled())
+      expect(await screen.findByText('Cleared. The notice waits for Avery to sign it again.')).toBeTruthy()
+      // The desk reads again: the notice is unsigned, so his line is back on the office's screen, with his code and its own press.
+      view.rerender(<LienDesk {...office} onChanged={onChanged} data={deskData(cleared())} initialPile="ready" />)
+      await settle()
+      await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+      const box = screen.getByTestId('lien-sign-line')
+      expect((box.querySelector('.lienSignFrameCallTitle') as HTMLElement).textContent).toBe('→ Avery’s signature on June 2026')
+      expect(box.querySelector('[data-lien-desk-office-sign-press]')).toBeTruthy()
+      expect(screen.getByLabelText('Avery’s signing code')).toBeTruthy()
+      const row = document.querySelector('[data-lien-desk-foot="ready"]') as HTMLElement
+      expect(row.querySelector('[data-lien-desk-sign-again]')).toBeNull()
+      expect(row.querySelector('[data-lien-desk-ready-words]')!.textContent).toContain('unsigned')
+      expect((document.querySelector('[data-lien-desk-signature-cleared]') as HTMLElement).textContent).toBe('The signing record, kept here and not printed. Signature cleared Sep 14 by Dana. It was a drawn signature by Avery Stone from Sep 14.')
+    })
+
+    it('the leader on his own screen: the confirm speaks to him, and the cleared footer is his signing box with Sign ▸', async () => {
+      const own = signedItem({ signer_signature_mode: 'type', signer_signature_storage_path: null, signed_on_device_of: null })
+      const view = renderWithProviders(<LienDesk {...master} data={deskData(own)} initialPile="ready" />)
+      await settle()
+      fireEvent.click(document.querySelector('[data-lien-desk-sign-again]') as HTMLButtonElement)
+      const ask = await screen.findByRole('alertdialog', { name: 'Sign the notice again for AXO Schertz, job 650?' })
+      expect(ask.textContent).toContain('Your signature from Sep 14 comes off this notice. The approval stands. The run holds the notice until you sign it again. The signing box opens here for you.')
+      fireEvent.click(within(ask).getByRole('button', { name: 'Clear the signature' }))
+      await waitFor(() => expect(signAgainMock).toHaveBeenCalledWith('it1', { userId: 'u-avery', userName: 'Avery' }))
+      expect(await screen.findByText('Cleared. The signing box is open. Sign the notice again.')).toBeTruthy()
+      view.rerender(<LienDesk {...master} data={deskData(cleared())} initialPile="ready" />)
+      await settle()
+      const box = screen.getByTestId('lien-sign-line')
+      expect((box.querySelector('.lienSignFrameCallTitle') as HTMLElement).textContent).toBe('→ Your signature on June 2026')
+      expect((box.querySelector('[data-lien-desk-sign]') as HTMLButtonElement).textContent).toBe('Sign ▸')
+      expect(box.getAttribute('data-lien-sign-mode')).toBe('type')
+    })
+
+    it('a notice that printed in the meantime is left alone: the reason is told and the desk reads again', async () => {
+      signAgainMock.mockResolvedValue({ ok: false, message: 'Nothing was cleared. The notice changed since this screen read it. It may have printed, or its signature is already off.' })
+      const onChanged = vi.fn()
+      renderWithProviders(<LienDesk {...office} onChanged={onChanged} data={deskData(signedItem())} initialPile="ready" />)
+      await settle()
+      fireEvent.click(document.querySelector('[data-lien-desk-sign-again]') as HTMLButtonElement)
+      fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Clear the signature' }))
+      expect(await screen.findByText('Sign it again: Nothing was cleared. The notice changed since this screen read it. It may have printed, or its signature is already off.')).toBeTruthy()
+      expect(onChanged).toHaveBeenCalled()
+      expect(screen.queryByText(/^Cleared\./)).toBeNull()
+    })
+
+    it('no press on a printed notice, on an unsigned one, or beside the leader’s own Not me', async () => {
+      renderWithProviders(<LienDesk {...office} data={deskData(signedItem({ printed_at: '2026-09-14T16:00:00Z' }))} initialPile="printed" />)
+      await settle()
+      expect(document.querySelector('[data-lien-desk-foot="printed"]')).toBeTruthy()
+      expect(document.querySelector('[data-lien-desk-sign-again]')).toBeNull()
+      cleanup()
+      renderWithProviders(<LienDesk {...office} data={deskData(signedItem(CLEAR))} initialPile="ready" />)
+      await settle()
+      expect(document.querySelector('[data-lien-desk-foot="ready"]')).toBeTruthy()
+      expect(document.querySelector('[data-lien-desk-sign-again]')).toBeNull()
+      cleanup()
+      // His code signed it on the office's screen and he has not confirmed: his own footer offers Not me, which clears it too.
+      renderWithProviders(<LienDesk {...master} data={deskData(signedItem({ signer_signature_mode: 'code', signer_signature_storage_path: null }))} initialPile="ready" />)
+      await settle()
+      expect(document.querySelector('[data-lien-desk-pen-no]')).toBeTruthy()
+      expect(document.querySelector('[data-lien-desk-sign-again]')).toBeNull()
+    })
+  })
+
   it('a held notice on the master’s own sign-in (v2.7386): his line is the footer’s box, the release press sits inside it and the held row is its strip', async () => {
     const heldItem = {
       id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'held', hold_reason: 'call_first', hold_until: '2026-12-01', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '',
@@ -4697,13 +4810,22 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     d.filingsByJob = Object.fromEntries(jobs.map((id) => [id, [filed(`f-${id}`, id)]])) as unknown as LienDeskData['filingsByJob']
     return d
   }
-  const serveRows = () => screen.getAllByRole('button', { name: 'Record service' })
+  const serveRows = () => screen.getAllByRole('button', { name: 'Mail the copies' })
 
-  it('two filed liens: the row opens one window that prints both and takes their mail numbers', async () => {
+  it('two filed liens: the list folds them into one row whose press opens one window that prints both and takes their mail numbers', async () => {
     const onOpenLienInstruments = vi.fn()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk(['j650', 'j651'])} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} />)
     await settle()
-    fireEvent.click(serveRows()[0]!)
+    // The Board: both stand in Filed · copies to mail, and the bin carries the same press.
+    const bin = document.querySelector('[data-lien-board-bin="affidavit:filed"]') as HTMLElement
+    expect(bin.querySelector('[data-lien-board-count]')!.textContent).toBe('2')
+    expect(document.querySelector('[data-lien-board-bin="affidavit:served"] [data-lien-board-count]')!.textContent).toBe('0')
+    expect(bin.querySelector('[data-lien-board-bin-press]')!.textContent).toBe('Mail 2 liens’ copies ›')
+    // The list: one row for the two, under the bin's own name.
+    expect(screen.getByText('2 filed liens owe their copies')).toBeTruthy()
+    const presses = screen.getAllByRole('button', { name: 'Mail 2 liens’ copies ›' })
+    expect(presses).toHaveLength(2)
+    fireEvent.click(presses[presses.length - 1]!)
     const win = within(screen.getByTestId('lien-serve-window'))
     expect(win.getByText('2 filed liens owe their copies. The soonest is due Sep 15.')).toBeTruthy()
     expect(win.getByRole('button', { name: 'Print 2 liens’ copies' })).toBeTruthy()
@@ -4711,10 +4833,25 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     expect(onOpenLienInstruments).not.toHaveBeenCalled()
   })
 
+  it('the bin’s own press on the Board opens the same window', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk(['j650', 'j651'])} initialKind="next" />)
+    await settle()
+    fireEvent.click(document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLElement)
+    expect(screen.getByTestId('lien-serve-window')).toBeTruthy()
+  })
+
+  it('a reader outside the lien office gets no press on the bin', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={desk(['j650', 'j651'])} initialKind="next" />)
+    await settle()
+    expect(document.querySelector('[data-lien-board-bin-press]')).toBeNull()
+  })
+
   it('one filed lien keeps its own Lien window', async () => {
     const onOpenLienInstruments = vi.fn()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk(['j650'])} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} />)
     await settle()
+    // The row says what is owed and by when: today is Sep 14 here and its day is Sep 15.
+    expect(screen.getByText(/Lien filed · mail its copies by Sep 15/)).toBeTruthy()
     fireEvent.click(serveRows()[0]!)
     expect(screen.queryByTestId('lien-serve-window')).toBeNull()
     expect(onOpenLienInstruments).toHaveBeenCalledWith('j650')

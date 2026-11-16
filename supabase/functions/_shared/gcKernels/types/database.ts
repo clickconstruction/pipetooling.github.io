@@ -734,6 +734,9 @@ export type Database = {
           robot_opt_out: boolean
           robot_requested_at: string | null
           robot_requested_by: string | null
+          schedule_end: string | null
+          schedule_open_ended: boolean
+          schedule_start: string | null
           selected_bid_version_id: string | null
           selected_labor_book_version_id: string | null
           selected_price_book_version_id: string | null
@@ -842,6 +845,9 @@ export type Database = {
           robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
+          schedule_end?: string | null
+          schedule_open_ended?: boolean
+          schedule_start?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
@@ -950,6 +956,9 @@ export type Database = {
           robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
+          schedule_end?: string | null
+          schedule_open_ended?: boolean
+          schedule_start?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
