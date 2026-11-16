@@ -744,11 +744,23 @@ export function lienBoardChipFor(board: Pick<LienBoard, 'notices' | 'affidavits'
  * stands in the notices' mail bin. A reminder, a served copy, a returned envelope and a retainage row have no bin.
  */
 export function lienBoardRowStage(board: Pick<LienBoard, 'notices' | 'affidavits'>, row: { key: string; kind: string; jobId: string | null; jobs?: ReadonlyArray<{ jobId: string }> }): string | null {
-  if (row.key.startsWith('run:')) return board.notices.find((b) => b.stage === 'in_mail')?.label ?? null
+  return lienBoardRowBin(board, row)?.label ?? null
+}
+
+/**
+ * The bin itself, with its place on the Board (punch list #362, step 4): the list under the Board is grouped by it, in
+ * this order, the notices' column first. The same rule as the name above: a row is its job's notice or affidavit, a
+ * run row stands in the notices' mail bin, and a reminder, a served copy, a returned envelope and a retainage row
+ * have none.
+ */
+export function lienBoardRowBin(board: Pick<LienBoard, 'notices' | 'affidavits'>, row: { key: string; kind: string; jobId: string | null; jobs?: ReadonlyArray<{ jobId: string }> }): { key: LienBoardBinKey; label: string; kind: LienBoardKind; order: number } | null {
+  const all = [...board.notices, ...board.affidavits]
+  const of = (bin: LienBoardBin | undefined) => (bin ? { key: bin.key, label: bin.label, kind: bin.kind, order: all.indexOf(bin) } : null)
+  if (row.key.startsWith('run:')) return of(board.notices.find((b) => b.stage === 'in_mail'))
   if (!row.jobId || (row.kind !== 'notice' && row.kind !== 'affidavit') || row.key !== `${row.kind}:${row.jobId}`) return null
   const chip = lienBoardChipFor(board, row.jobId, row.kind)
   if (!chip) return null
-  return [...board.notices, ...board.affidavits].find((b) => b.key === chip.bin)?.label ?? null
+  return of(all.find((b) => b.key === chip.bin))
 }
 
 /** The hover's words on a chip or a job number: where its press goes. */

@@ -84,17 +84,19 @@ Press {{button:outline|↑ The Board}} to go back to the top.
 
 On a very tall screen the Board and the list fit together. There the Board stays put and the list scrolls under it.
 
-## Needs you now, in three parts
+## The list follows the Board
 
-The list starts with **Needs you now**. It reads in three parts.
+On a computer the list under the Board is the Board written out. It has one group for each bin, under the bin's own name. The groups run in the Board's order. The notices come first, from **Needs the owner** down. The affidavits follow.
 
-The first part is the papers that will not make their day as they stand. Its heading uses the tile's own words. These are the chips with the red mark. The paper with the most stages left comes first. Start here. A paper that needs a fact needs it today to go out with the rest.
+Each heading says how many papers the bin holds and what their jobs still owe. Inside a bin the papers that will not make their day come first. These are the chips with the red mark. Start there. A paper that needs a fact needs it today to go out with the rest.
 
-The second part is **Waiting on** the leader, by name. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. The desk asks first. Then the leader gets the message again, on the phone or by email. A notice is one message each. The affidavits share one message. Nothing on the papers changes. After a send the button says when, like *Reminded at 2:14 PM*.
+Papers that share one act are one row. Twelve affidavits ready to file read as one row, *12 affidavits approved and ready to file*. Its press is {{button:blue|Print 10 for notarization ›}}. It opens the affidavits list at **Ready to file**. The button of the same name there prints the batch. Press **The 12 jobs** on the row to see each job, its notice and what it owes. Affidavits not yet sent for approval fold the same way, under {{button:blue|Send 3 for approval ›}}.
 
-The third part is **On track**. These papers will make their day. Inside a day the largest comes first.
+A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. The desk asks first. Then the leader gets the message again, on the phone or by email. A notice is one message each. The affidavits share one message. Nothing on the papers changes. After a send the button says when, like *Reminded at 2:14 PM*.
 
-**Coming up** follows the three parts. A desk with nothing at risk and nothing waiting keeps the one heading, **Needs you now**.
+The leader's own rows stay on top, under **Only you can sign** and **Only you can approve**. **Reminders** keep their own heading. A paper with no bin, like a retainage notice, sits under **Other lien papers**.
+
+Everything due later than a week waits under **Later**. One line says which bins hold how many. Press **Show the 8** to read the rows. A find or a pressed bin opens them for you.
 
 On a phone the list is drawn by day. The papers at risk lead their day. The waiting rows follow the days that need you.
 
@@ -102,15 +104,13 @@ On a phone the list is drawn by day. The papers at risk lead their day. The wait
 
 On a computer each row is two lines. The first line is the paper, the job and what the job still owes. The row's press sits at the right.
 
-The second line starts with the paper's bin, in the Board's own words, like **Ready to file**. Then it says the one thing to know. A notice says its months. A paper waiting on approval says when it was sent and how long it has waited. A paper that waits on a fact says the fact, and its press answers it. {{button:blue|Answer the homestead question}} opens the property record on that question.
+The second line says the one thing to know. Under **Later** it starts with the paper's bin, in the Board's own words, like **Ready to file**. Under a bin's own heading the row does not say the bin again. A notice says its months. A paper waiting on approval says when it was sent and how long it has waited. A paper that waits on a fact says the fact, and its press answers it. {{button:blue|Answer the homestead question}} opens the property record on that question.
 
 An affidavit row also says where its notice stands. It reads like *Notice sent Oct 14*, *No notice needed* or *No notice on record*.
 
-Point at the bin's name to read where that paper stands. It opens the card the four dots used to open. A row with no bin, like a retainage notice, keeps its dots.
+Point at a bin's name on a row to read where that paper stands. It opens the card the four dots used to open. A row with nothing else to say keeps the name for that. A row with no bin, like a retainage notice, keeps its dots.
 
 A heading carries the day when every row under it shares that day. Then no row repeats it. A row with another day says its own.
-
-{{button:outline|Print 10 for notarization ›}} sits on the **On track** heading. It opens the affidavits list at **Ready to file**. The button of the same name there prints the batch.
 
 ## Held, Missed and retainage
 

@@ -611,10 +611,12 @@ describe('LienDesk', () => {
     const awaiting = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z' } as unknown as LienDeskItemRow
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [awaiting], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
     await settle()
-    const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
-    expect(titles).toEqual(['Waiting on Sam · 1'])
+    // Since v2.7456 (punch list #362, step 4) a computer's list follows the Board: the paper sits under its bin's name, and a bin whose papers all wait on the leader names him. It read *Waiting on Sam · 1*.
+    const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h4')).map((h) => h.textContent)
+    expect(titles).toEqual(['Awaiting Master approval · 1 notice · waiting on Sam'])
+    expect(document.querySelector('[data-lien-next-up-bin="notice:awaiting"]')).toBeTruthy()
     // The head names the leader; since v2.7372 the row under it says when the paper was sent and how long it has waited.
-    expect((document.querySelector('[data-lien-next-up-row="notice:j650"] [data-lien-next-up-line]') as HTMLElement).textContent).toContain('Awaiting Master approval · Sent for approval Sep 12 · waiting 2 days')
+    expect((document.querySelector('[data-lien-next-up-row="notice:j650"] [data-lien-next-up-line]') as HTMLElement).textContent).toBe('Sent for approval Sep 12 · waiting 2 days')
     expect(screen.getByRole('tab', { name: /^To do/ }).textContent).toBe('To do · 0')
   })
 
@@ -2089,7 +2091,17 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     for (const e of d.affidavits.entries) Object.assign(e, { deadline: '2026-09-16', daysLeft: 2, severity: 'red' })
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
     await settle()
-    const door = document.querySelector('[data-lien-next-up-track-press]') as HTMLButtonElement
+    // Since v2.7456 (punch list #362, step 4) the three papers are one row under Ready to file, and the door is that row's press. It stood on the On track head.
+    expect(document.querySelector('[data-lien-next-up-track-press]')).toBeNull()
+    const fold = document.querySelector('[data-lien-next-up-row="fold:affidavit:ready:file_affidavit"]') as HTMLElement
+    expect(document.querySelectorAll('[data-lien-next-up-bin="affidavit:ready"] [data-lien-next-up-row]')).toHaveLength(1)
+    expect(fold.textContent).toContain('3 affidavits approved and ready to file')
+    expect(document.querySelector('[data-lien-next-up-bin="affidavit:ready"] h4')!.textContent).toBe('Ready to file · 3 affidavits')
+    // Its jobs wait behind the fold, each a door to its job.
+    fireEvent.click(fold.querySelector('[data-lien-next-up-fold]') as HTMLElement)
+    expect(fold.querySelectorAll('[data-lien-next-up-fold-body] [data-lien-next-up-fold-amount]')).toHaveLength(3)
+    expect(fold.querySelector('[data-lien-next-up-fold-body]')!.textContent).toContain('650')
+    const door = fold.querySelector('[data-lien-next-up-act="file_affidavit"]') as HTMLButtonElement
     expect(door.textContent).toBe('Print 3 for notarization ›')
     fireEvent.click(door)
     await settle()
@@ -4196,9 +4208,9 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     const d = awaitingOn({ master_user_id: 'u-malachi' })
     renderWithProviders(<LienDesk {...baseProps} authRole="dev" authUserId="u-robert" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={d} initialKind="next" />)
     await settle()
-    const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
-    expect(titles).toEqual(['Waiting on Malachi Whites · 1'])
-    expect((document.querySelector('[data-lien-next-up-row="notice:j650"] [data-lien-next-up-line]') as HTMLElement).textContent).toContain('Awaiting Master approval · Sent for approval Sep 14 · today')
+    const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h4')).map((h) => h.textContent)
+    expect(titles).toEqual(['Awaiting Master approval · 1 notice · waiting on Malachi Whites'])
+    expect((document.querySelector('[data-lien-next-up-row="notice:j650"] [data-lien-next-up-line]') as HTMLElement).textContent).toBe('Sent for approval Sep 14 · today')
     expect(screen.getByRole('tab', { name: /^To do/ }).textContent).toBe('To do · 0')
     cleanup()
     // Ready, signed by Malachi's code on Robert's screen and not yet confirmed: Robert's footer draws no Yes, it was me; Malachi's own does.

@@ -1,6 +1,7 @@
 import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { groupLienNextUp, lienNextUpNowHead, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { groupLienNextUp, lienNextUpNowHead, type LienNextUpGrouped, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { groupLienNextUpByBin, isLienFoldRow, type LienBinFoldRule, type LienBinGroup, type LienRowBin } from '../../lib/jobs/lienNextUpByBin'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { lienHeadDay, lienRowLine, type LienHeadDay, type LienRowTag } from '../../lib/jobs/lienRowWords'
 import { lienStepCard, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
@@ -29,6 +30,11 @@ import { LienStepCardView, LienStepMark, useLienStepCard } from './LienDeskSteps
  * and what it owes, then under the job the Board's bin name, the one thing to know and where an affidavit's notice
  * stands (`lienRowWords.ts`). The bin's name opens the card the four dots opened, and a row with no bin keeps its
  * dots. A head carries the day when every row under it shares it, so no row repeats it.
+ *
+ * Since v2.7456 (step 4, the owner's pick of 2026-11-16) a computer's list follows the Board when the desk hands over
+ * `byBin`: one group a bin under the bin's own name, in the Board's order, each head with its papers and what they
+ * owe. Papers that share one act are one row with their jobs behind a fold, and everything due later waits under one
+ * line (`lienNextUpByBin.ts`). A phone keeps its list by the day.
  *
  * A table on a computer; the same rows as cards on a phone.
  */
@@ -105,6 +111,7 @@ export default function LienDeskNextUp({
   stageFor,
   noticeFor,
   trackPress,
+  byBin,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -147,15 +154,22 @@ export default function LienDeskNextUp({
   noticeFor?: (row: LienNextUpRow) => LienRowTag | null
   /** One press on the head over the rows on track (v2.7372): the door to the affidavits' batch print. */
   trackPress?: { button: string; onPress: () => void } | null
+  /** A computer's list in the Board's order (v2.7456, punch list #362 step 4): the bin of each row, and the folds the desk has a press for. Absent, the list is by the day, as before. */
+  byBin?: { binFor: (row: LienNextUpRow) => LienRowBin | null; folds?: ReadonlyArray<LienBinFoldRule>; /** The list is narrowed (a pressed bin, the tile's red line): Later opens. */ narrowed?: boolean } | null
 }) {
   const card = useLienStepCard(isMobile)
   // The row whose card is open, for the card's own button.
   const [openRow, setOpenRow] = useState<LienNextUpRow | null>(null)
   // A run row's list of jobs (punch list #101), folded until pressed; the find opens them all.
   const [folds, setFolds] = useState<ReadonlySet<string>>(() => new Set())
+  // Later (v2.7456): everything not due inside the week waits under one line. Folded while something needs someone now, open when nothing does; a press says otherwise.
+  const [laterPicked, setLaterPicked] = useState<boolean | null>(null)
   if (loading) return <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
   const byDay = groupLienNextUp(rows, { waitingOn, risk, riskLabel, amount: amountFor })
-  const groups = byDay
+  // A computer's list follows the Board when the desk says which bin a row stands in; a phone keeps its days.
+  const binned = byBin && !isMobile ? groupLienNextUpByBin(rows, { waitingOn, risk, amount: amountFor, binFor: byBin.binFor, folds: byBin.folds }) : null
+  const groups: ReadonlyArray<LienNextUpGrouped & Partial<LienBinGroup>> = binned ? binned.groups : byDay
+  const laterOpen = Boolean(foldsOpen) || Boolean(byBin?.narrowed) || (laterPicked ?? !binned?.now)
   if (byDay.length === 0) {
     return (
       <div data-lien-next-up="empty" style={{ padding: '2rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -201,6 +215,8 @@ export default function LienDeskNextUp({
   }
   // The chip: a door to the paper when the desk offers one (v2.4632), ringed on hover, a red count of blanks or a tick.
   const chip = (r: LienNextUpRow) => {
+    // A folded row stands for several papers of one kind (v2.7456): the kind, in the plural.
+    if (isLienFoldRow(r)) return <span style={tag(r.kind)}>{KIND_WORDS[r.kind]}s</span>
     if (r.jobs) return <span style={{ ...tag('retainage') }}>Run</span>
     const canOpen = onOpenPaper && r.jobId && r.kind !== 'retainage'
     if (!canOpen) return <span style={tag(r.kind)}>{KIND_WORDS[r.kind]}</span>
@@ -288,13 +304,21 @@ export default function LienDeskNextUp({
           {open ? '▾' : '▸'} The {r.jobs.length} jobs
         </button>
         {open ? (
-          <div data-lien-next-up-fold-body={r.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1px 12px', margin: '2px 0 4px', paddingLeft: 10, borderLeft: '2px solid var(--border)', fontSize: '0.8rem' }}>
-            {r.jobs.map((j) => (
-              <div key={j.jobId} style={{ display: 'contents' }}>
-                {title({ ...r, jobId: j.jobId, title: j.title }, { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}
-                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{j.dueOn ? formatYmdMonthDay(j.dueOn) : ''}</span>
-              </div>
-            ))}
+          <div data-lien-next-up-fold-body={r.key} style={{ display: 'grid', gridTemplateColumns: isLienFoldRow(r) ? 'minmax(0, 1fr) auto auto auto' : 'minmax(0, 1fr) auto', gap: '1px 12px', margin: '2px 0 4px', paddingLeft: 10, borderLeft: '2px solid var(--border)', fontSize: '0.8rem' }}>
+            {r.jobs.map((j) => {
+              // A folded row's jobs each say what a row of their own said (v2.7456): where the notice stands, the day, and what is owed.
+              const own: LienNextUpRow | null = isLienFoldRow(r) ? { ...r, key: `${r.kind}:${j.jobId}`, jobId: j.jobId, title: j.title, jobs: undefined } : null
+              const note = own ? noticeFor?.(own) ?? null : null
+              const owed = own ? amountFor?.(own) ?? null : null
+              return (
+                <div key={j.jobId} style={{ display: 'contents' }}>
+                  {title({ ...r, jobId: j.jobId, title: j.title }, { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}
+                  {own ? <span data-lien-next-up-fold-note style={{ color: note?.tone === 'warn' ? 'var(--text-amber-800)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{note?.words ?? ''}</span> : null}
+                  <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{j.dueOn ? formatYmdMonthDay(j.dueOn) : ''}</span>
+                  {own ? <span data-lien-next-up-fold-amount style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }}>{owed != null ? formatUsdNoCents(owed) : ''}</span> : null}
+                </div>
+              )
+            })}
           </div>
         ) : null}
       </div>
@@ -342,8 +366,9 @@ export default function LienDeskNextUp({
   }
   // The day a head carries for its rows (v2.7372): the parts of Needs you now share one head, so they share its day;
   // the waiting rows are under a head of their own kind and each says its day.
-  const partsDay: LienHeadDay | null = lienHeadDay(groups.filter((g) => g.part && g.group !== 'waiting').flatMap((g) => g.rows))
-  const headDayOf = (g: (typeof groups)[number]): LienHeadDay | null => (g.group === 'waiting' ? null : g.part ? partsDay : g.group === 'now' || g.group === 'coming' ? lienHeadDay(g.rows) : null)
+  // By bin (v2.7456) the waiting rows stand in a bin like any other, so they share the head's day too.
+  const partsDay: LienHeadDay | null = lienHeadDay(groups.filter((g) => g.part && (binned || g.group !== 'waiting')).flatMap((g) => g.rows))
+  const headDayOf = (g: (typeof groups)[number]): LienHeadDay | null => (g.group === 'waiting' && !binned ? null : g.part ? partsDay : g.group === 'now' || g.group === 'coming' ? lienHeadDay(g.rows) : null)
   const dayWords = (d: LienHeadDay | null) =>
     d ? (
       <span data-lien-next-up-head-day style={{ marginLeft: 8, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: d.daysLeft != null && d.daysLeft <= 7 ? 'var(--text-red-600)' : 'var(--text-muted)' }}>{d.words}</span>
@@ -362,7 +387,7 @@ export default function LienDeskNextUp({
     </button>
   ) : null
   // The parts of Needs you now (v2.7371): one head over them, each part with a smaller one of its own.
-  const nowHead = lienNextUpNowHead(groups)
+  const nowHead = binned ? (binned.now ? { label: binned.now.label, count: binned.now.papers, waiting: null } : null) : lienNextUpNowHead(groups)
   const firstPart = groups.findIndex((g) => g.part)
   const lastPart = groups.reduce((at, g, i) => (g.part ? i : at), -1)
   const remindOff = Boolean(remind && (remind.dead || remind.busy))
@@ -455,7 +480,7 @@ export default function LienDeskNextUp({
   return (
     <div ref={card.hostRef} data-lien-next-up="list" data-scrolls={scrolls ? 'yes' : 'no'} style={{ position: 'relative', overflowY: scrolls ? 'auto' : 'visible', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
       {isMobile ? phoneGroups.map(phoneGroup) : groups.map((g, gi) => (
-        <Fragment key={g.group}>
+        <Fragment key={g.key ?? g.group}>
         {nowHead && gi === firstPart ? (
           <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', margin: '0 0 0.5rem', fontSize: '0.72rem' }}>
             <h3 data-lien-next-up-now-head style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-red-600)' }}>
@@ -463,32 +488,51 @@ export default function LienDeskNextUp({
               {nowHead.waiting ? <span data-lien-next-up-now-waiting style={{ marginLeft: 8, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-muted)' }}>and {nowHead.waiting}</span> : null}
             </h3>
             {dayWords(partsDay)}
+            {binned?.now?.total != null ? <span data-lien-next-up-now-total style={{ marginLeft: 'auto', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{formatUsdNoCents(binned.now.total)}</span> : null}
           </div>
         ) : null}
-        <section aria-label={g.label} data-lien-next-up-group={g.group} data-part={g.part ? 'yes' : undefined} style={{ marginBottom: g.part && gi !== lastPart ? '0.65rem' : '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: g.part ? '0 0 0.35rem' : '0 0 0.4rem', minHeight: g.group === 'waiting' && remindPress ? 26 : undefined }}>
+        <section aria-label={g.label} data-lien-next-up-group={g.group} data-lien-next-up-bin={g.bin ?? undefined} data-part={g.part ? 'yes' : undefined} style={{ marginBottom: g.part && gi !== lastPart ? '0.65rem' : '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: g.part ? '0 0 0.35rem' : '0 0 0.4rem', minHeight: (binned ? g.remind : g.group === 'waiting') && remindPress ? 26 : undefined }}>
             {g.part ? (
               <h4 data-lien-next-up-part-head style={{ flex: 1, minWidth: 0, margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: g.group === 'risk' ? 'var(--text-red-600)' : g.group === 'waiting' ? 'var(--text-violet-700)' : 'var(--text-700)' }}>
-                {g.label} · {g.rows.length}
+                {g.label} · {g.countWords ?? g.rows.length}
               </h4>
             ) : (
               <>
                 <h3 style={{ minWidth: 0, margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' || g.group === 'waiting' ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
-                  {g.label} · {g.rows.length}
+                  {g.label} · {g.countWords ?? g.rows.length}
                 </h3>
                 <span style={{ flex: 1, minWidth: 0, fontSize: '0.72rem' }}>{dayWords(headDayOf(g))}</span>
               </>
             )}
-            {g.group === 'waiting' ? remindPress : null}
-            {g.group === 'now' ? trackPressButton : null}
+            {/* A bin's head says what its papers still owe (v2.7456). */}
+            {g.total != null ? <span data-lien-next-up-group-total style={{ flex: 'none', fontSize: '0.8125rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{formatUsdNoCents(g.total)}</span> : null}
+            {(binned ? g.remind : g.group === 'waiting') ? remindPress : null}
+            {!binned && g.group === 'now' ? trackPressButton : null}
           </div>
+          {/* Later (v2.7456): one line says which bins hold how many, and a press shows the rows. A find or a pressed bin opens it. */}
+          {g.later ? (
+            <div data-lien-next-up-later style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 10px', margin: '0 0 0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              <span>{g.later.line}</span>
+              {foldsOpen || byBin?.narrowed ? null : (
+                <button type="button" aria-expanded={laterOpen} data-lien-next-up-later-press onClick={() => setLaterPicked(!laterOpen)} style={{ border: 'none', background: 'none', padding: '2px 0', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
+                  {laterOpen ? '▾ Hide them' : `▸ Show the ${g.rows.length}`}
+                </button>
+              )}
+            </div>
+          ) : null}
+          {g.later && !laterOpen ? null : (
           <div style={{ display: 'grid', gap: 0, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
             {g.rows.map((r, i) => {
               // The head's day is not said again; a row with another day, or under a head with none, says its own.
               const headDay = headDayOf(g)
               const due = headDay && r.dueOn === headDay.dueOn ? '' : lienNextUpDueWords(r)
-              const line = lienRowLine(r, { stage: stageFor?.(r) ?? null, notice: noticeFor?.(r) ?? null })
-              const amount = amountFor?.(r) ?? null
+              // A folded row stands in its group's bin, and owes what its jobs owe (v2.7456).
+              const folded = isLienFoldRow(r)
+              const underBin = Boolean(g.bin)
+              const line = lienRowLine(r, { stage: folded ? g.label : stageFor?.(r) ?? null, notice: noticeFor?.(r) ?? null })
+              const foldOwed = folded ? (r.jobs ?? []).reduce((sum, j) => sum + (amountFor?.({ ...r, jobId: j.jobId }) ?? 0), 0) : 0
+              const amount = folded ? (foldOwed > 0 ? foldOwed : null) : amountFor?.(r) ?? null
               return (
                 <div
                   key={r.key}
@@ -504,9 +548,10 @@ export default function LienDeskNextUp({
                   {/* Under the job: its day when the head does not carry it, the Board's bin, the one thing to know, and an affidavit's notice. */}
                   <span data-lien-next-up-line style={{ gridColumn: '2 / 4', gridRow: 2, minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
                     {due ? <span data-lien-next-up-due style={{ fontWeight: 600, color: dueColor(r), whiteSpace: 'nowrap', marginRight: 8 }}>{due}</span> : null}
-                    {line.stage ? stageDoor(r, line.stage) : <span style={{ marginRight: 8 }}>{mark(r)}</span>}
+                    {/* Under a bin's own head (v2.7456) the row does not say the bin again: it says the one thing to know. The name stays where it is all the row has, and under Later, whose rows are of many bins. */}
+                    {line.stage ? (underBin && (r.jobs || line.detail) ? null : stageDoor(r, line.stage)) : <span style={{ marginRight: 8 }}>{mark(r)}</span>}
                     {/* A run row's question reads in its fold, with the press that answers it (punch list #101). */}
-                    {!r.jobs && line.detail ? <span data-lien-next-up-detail>{line.stage ? ' · ' : ''}{line.detail}</span> : null}
+                    {!r.jobs && line.detail ? <span data-lien-next-up-detail>{line.stage && !underBin ? ' · ' : ''}{line.detail}</span> : null}
                     {line.tags.map((t) => (
                       <span key={t.words} data-lien-next-up-tag={t.tone} style={{ ...TAG_TONE[t.tone], display: 'inline-block', marginLeft: 8, padding: '0 6px', borderRadius: 5, fontSize: '0.72rem', fontWeight: 600, lineHeight: '18px', whiteSpace: 'nowrap' }}>{t.words}</span>
                     ))}
@@ -522,6 +567,7 @@ export default function LienDeskNextUp({
               )
             })}
           </div>
+          )}
         </section>
         </Fragment>
       ))}
