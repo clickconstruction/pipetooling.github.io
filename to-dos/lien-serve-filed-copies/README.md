@@ -134,3 +134,19 @@ Later, each its own card when asked:
 - Live, read only on real jobs: open a job with a filed, unserved affidavit, Lien window, affidavit tab. The
   press sits under *Record service…*. Do not press *Record service* or save a number on a real lien. To see the
   print without a real job, use a `ZZ Test` job as `AGENTS.md` allows and delete it after.
+
+## The scanned PDF of the stamped affidavit (v2.7480)
+
+The owner, 2026-11-16, over a screenshot of *Record the filing* with *Take a photo of the stamped page* circled:
+"The option to upload a pdf from the scanned filings would be helpful".
+
+Built for one file and one lien: **Upload the scanned PDF** beside the photo press (`LienFiledScanPress.tsx`, the
+rule and the words in `src/lib/jobs/lienScanFile.ts`). The scan goes up as it is into the job's Drive folder under
+Sent by us and becomes the filing's saved copy; a filing already recorded takes it from *link the saved copy*.
+
+Open, asked of the owner the same day and not built until he answers: *the scanned filings* is plural and the
+office files in batches. Does a batch come back as one PDF per lien, or as one scan of the whole stack that must
+be split or attached to several jobs? And should *Filed liens: copies to mail* take the files too?
+
+The same rule holds a notice's mailed copy on `claude/lien-mailed-copy-press` (`lienMailedCopies.ts`). Once both
+are on main, one of the two points at the other; `lienScanProblem(file, 'notice')` is written for that.
