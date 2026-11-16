@@ -1664,7 +1664,7 @@ export default function DevelopmentPage() {
               model={plansByDate}
               phone={phone}
               notes={[plansByDateCrewNote(plansByDateClock), plansByDate ? plansByDateUnsentWords(plansByDate.unsentBids) : null].filter((n): n is string => !!n)}
-              print={{ siteName: dev.name, customerName: data.customer?.name ?? null, printedBy: profileName ?? null }}
+              print={{ siteName: dev.name, customerName: data.customer?.name ?? null, printedBy: profileName ?? null, developmentId: dev.id, customerId: data.customer?.id ?? null }}
               cards={plansByDateCards}
               onAct={(a) => void actOnPlansByDate(a)}
             />
