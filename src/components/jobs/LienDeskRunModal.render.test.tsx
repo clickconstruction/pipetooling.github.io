@@ -1979,6 +1979,54 @@ describe('LienDeskRunModal · un-print one notice from its own row (v2.7481)', (
     expect(onePress().textContent).toBe('Print 2 notices')
   })
 
+  it('a signed notice: the confirm says its signature comes off, and after the take-back the row waits on the signature again', async () => {
+    const taken: string[][] = []
+    const sam = { userId: 'u-sam', name: 'Sam' }
+    const sig = { mode: 'type', printedName: 'Sam Sample', pngDataUrl: null, signedAtIso: '2026-11-12T19:14:00Z' } as unknown as RunNotice['signature']
+    const signedFour = four().map((n) => ({ ...n, signature: sig, leader: sam }))
+    renderWithProviders(<LienDeskRunModal notices={signedFour} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    await settle()
+    expect(screen.getByTestId('run-check-signed-u372').textContent).toBe('✓ typed · Nov 12')
+    fireEvent.click(screen.getByTestId('run-check-unprint-u372'))
+    const lines = [...screen.getByTestId('run-take-back-one-confirm').querySelectorAll('li')].map((li) => li.textContent)
+    expect(lines).toEqual([
+      'The notice goes back to Approved · to print. The approval stands.',
+      'Its signature comes off. The leader signs it again before it prints.',
+      'A copy that printed here Nov 16 stays in the job’s Documents, filed as printed.',
+      'The other notices in this run stay as they are.',
+    ])
+    fireEvent.click(screen.getByTestId('run-take-back-one-yes'))
+    await settle()
+    expect(taken).toEqual([['u372']])
+    expect(screen.getByTestId('run-taken-back').textContent).toBe('Taken back. 372 is in Approved · to print again. The leader signs it again. Then print the packet.')
+    // The window drops the signature with the desk: the row is not ready, it waits on the signature, and nothing can print.
+    expect(screen.getByTestId('run-parts').textContent).toBe('3 printed=3 owe a number')
+    expect(screen.getByTestId('run-journey-1').textContent).toBe('✓Get them right3 of 4 were ready')
+    fireEvent.click(screen.getByTestId('run-group-head-wait'))
+    expect(screen.getByTestId('run-group-wait').contains(screen.getByTestId('run-check-u372'))).toBe(true)
+    expect(screen.getByTestId('run-check-sign-u372').textContent).toBe('Signed ▸')
+    expect(onePress().getAttribute('data-act')).toBe('record')
+    // The three still printed keep their signatures.
+    expect(screen.getByTestId('run-check-signed-u373').textContent).toBe('✓ typed · Nov 12')
+  })
+
+  it('Printed ▸ by accident on a signed notice: the Undo asks first, because the signature comes off', async () => {
+    const taken: string[][] = []
+    const sig = { mode: 'type', printedName: 'Sam Sample', pngDataUrl: null, signedAtIso: '2026-11-12T19:14:00Z' } as unknown as RunNotice['signature']
+    const two = four().slice(0, 2).map((n) => ({ ...n, printedAt: null, printedBy: null, signature: sig, leader: { userId: 'u-sam', name: 'Sam' } }))
+    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-check-mark-printed-u372'))
+    expect(screen.getByTestId('run-marked-undo-go').textContent).toBe('Undo the Printed mark…')
+    fireEvent.click(screen.getByTestId('run-marked-undo-go'))
+    // One press does not take a signature off: the question comes up, and nothing is written yet.
+    expect(taken).toEqual([])
+    expect(screen.getByTestId('run-take-back-one-confirm').textContent).toContain('Its signature comes off. The leader signs it again before it prints.')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it printed' }))
+    expect(taken).toEqual([])
+    expect(screen.getByTestId('run-check-printed-u372')).toBeTruthy()
+  })
+
   it('the Undo goes once a number is typed on the row, and the row’s own press still asks; a host with no take-back offers neither', async () => {
     const two = () => four().slice(0, 2).map((n) => ({ ...n, printedAt: null, printedBy: null }))
     const view = renderWithProviders(<LienDeskRunModal notices={two()} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => ids.length} />)

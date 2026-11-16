@@ -163,7 +163,7 @@ export default function LienDeskRunModal({
   // handed in is already printed (v2.4823: the run then opens on recording, not on printing again) — and the day the envelopes went out.
   const opening = useMemo(() => runOpening(initial), [initial])
   // Taken back in this sitting (punch list #101): the window goes back to printing, whatever the opening said.
-  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null; job?: string } | null>(null)
+  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null; job?: string; signed?: boolean } | null>(null)
   // Un-print one notice (v2.7481): the row whose Printed tick was pressed, while its confirm is up; and the rows just
   // marked printed by hand, whose undo is one press away. `stamping` is the desk's printed stamps still on their way,
   // so a take-back pressed a moment after a mark waits for the stamp it undoes.
@@ -767,7 +767,9 @@ export default function LienDeskRunModal({
       const one = ids.length === 1 ? notices.find((n) => n.itemId === ids[0]) : undefined
       const stamps = ids.map((id) => printedNowAt.get(id)?.at ?? notices.find((n) => n.itemId === id)?.printedAt ?? null).filter((at): at is string => !!at).sort()
       const left = runSittingWithout({ copies: printedCopies, ids: printedNow, stamps: printedNowAt }, ids)
-      setNotices((prev) => runNoticesTakenBack(prev, ids))
+      // A take-back takes the signature off (the owner's call of 2026-11-16): the window drops it too, so it never shows or prints one the desk no longer holds.
+      const signed = ids.some((id) => notices.find((n) => n.itemId === id)?.signature != null)
+      setNotices((prev) => runNoticesTakenBack(prev, ids).map((n) => (ids.includes(n.itemId) && n.signature != null ? { ...n, signature: null } : n)))
       setPrintedCopies(left.copies)
       setPrintedNow(left.ids)
       setPrintedNowAt(left.stamps)
@@ -775,7 +777,7 @@ export default function LienDeskRunModal({
       setTakeBackOpen(false)
       setTakeBackOne(null)
       setMarkedByHand(null)
-      setTakenBack({ count, printedAt: stamps[stamps.length - 1] ?? null, ...(one ? { job: one.jobNumber } : {}) })
+      setTakenBack({ count, printedAt: stamps[stamps.length - 1] ?? null, ...(one ? { job: one.jobNumber } : {}), signed })
     } catch (e) {
       showToast(`Not taken back: ${formatErrorMessage(e, 'try again')}`, 'error')
     } finally {
@@ -784,11 +786,17 @@ export default function LienDeskRunModal({
   }
   // The row the confirm asks about, while it is still printed and in the run.
   const takeBackOneNotice = takeBackOne && printedIds.includes(takeBackOne) ? notices.find((n) => n.itemId === takeBackOne) ?? null : null
-  const takeBackOneWords = takeBackOneNotice ? runTakeBackOneConfirm({ jobNumber: takeBackOneNotice.jobNumber, printedAt: printedNowAt.get(takeBackOneNotice.itemId)?.at ?? takeBackOneNotice.printedAt ?? null, typed: runTypedTrackingCount(notices, [takeBackOneNotice.itemId]) }) : null
+  const takeBackOneWords = takeBackOneNotice ? runTakeBackOneConfirm({ jobNumber: takeBackOneNotice.jobNumber, printedAt: printedNowAt.get(takeBackOneNotice.itemId)?.at ?? takeBackOneNotice.printedAt ?? null, typed: runTypedTrackingCount(notices, [takeBackOneNotice.itemId]), signed: takeBackOneNotice.signature != null }) : null
   // The undo of a mark by hand: offered while those rows are still printed here and nothing was typed on them.
-  // A number typed says the mark was meant, and the row's own press asks before it drops one.
+  // A number typed says the mark was meant, and the row's own press asks before it drops one. A signed row's undo
+  // takes its signature off, so for one such row the press opens the confirm; several with a signature get no strip.
   const markedStill = (markedByHand ?? []).filter((id) => printedIds.includes(id))
-  const markedUndo = markedStill.length > 0 && runTypedTrackingCount(notices, markedStill) === 0 ? runMarkedPrintedWords(markedStill.length, markedStill.length === 1 ? notices.find((n) => n.itemId === markedStill[0])?.jobNumber : null) : null
+  const markedSigned = markedStill.filter((id) => notices.find((n) => n.itemId === id)?.signature != null).length
+  const markedAsks = markedStill.length === 1 && markedSigned === 1
+  const markedUndo =
+    markedStill.length > 0 && runTypedTrackingCount(notices, markedStill) === 0 && (markedSigned === 0 || markedAsks)
+      ? runMarkedPrintedWords(markedStill.length, markedStill.length === 1 ? notices.find((n) => n.itemId === markedStill[0])?.jobNumber : null, { asks: markedAsks })
+      : null
   // Close paid notices (v2.7353): a notice whose job owes $0 leaves the run and the desk; one that fails stays, named with its reason.
   const paidSplit = useMemo(() => runPaidNotices(notices), [notices])
   const paidHeldWhy = useMemo(() => new Map(paidSplit.held.map((h) => [h.itemId, h.why])), [paidSplit])
@@ -994,7 +1002,7 @@ export default function LienDeskRunModal({
         {markedUndo && !takeBackOneWords ? (
           <div data-testid="run-marked-undo" role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0.6rem 1.25rem 0', padding: '0.45rem 0.8rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
             <span style={{ flex: '1 1 14rem', minWidth: 0 }}>{markedUndo.words}</span>
-            <button type="button" data-testid="run-marked-undo-go" onClick={() => void takeBackThese(markedStill)} disabled={busy} style={{ padding: '4px 11px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: busy ? 'not-allowed' : 'pointer' }}>
+            <button type="button" data-testid="run-marked-undo-go" onClick={() => (markedAsks ? (setTakeBackOpen(false), setClosePaidIds(null), setTakeBackOne(markedStill[0]!)) : void takeBackThese(markedStill))} disabled={busy} style={{ padding: '4px 11px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: busy ? 'not-allowed' : 'pointer' }}>
               {busy ? 'Taking back…' : markedUndo.button}
             </button>
             <button type="button" onClick={() => setMarkedByHand(null)} aria-label="Keep the Printed mark" title="Keep the Printed mark" style={{ border: 'none', background: 'none', padding: '0 4px', color: 'var(--text-muted)', font: 'inherit', fontSize: '1rem', lineHeight: 1, cursor: 'pointer' }}>×</button>
@@ -1037,7 +1045,7 @@ export default function LienDeskRunModal({
         ) : null}
         {takenBack ? (
           <div data-testid="run-taken-back" role="status" style={{ margin: '0.6rem 1.25rem 0', padding: '0.5rem 0.8rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.8125rem' }}>
-            {takenBack.job ? runTakenBackOneWords(takenBack.job) : runTakenBackWords(takenBack.count, takenBack.printedAt)}
+            {takenBack.job ? runTakenBackOneWords(takenBack.job, takenBack.signed) : runTakenBackWords(takenBack.count, takenBack.printedAt)}
           </div>
         ) : null}
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
