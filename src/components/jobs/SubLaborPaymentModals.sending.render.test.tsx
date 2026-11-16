@@ -48,7 +48,7 @@ function mount(over: Partial<SubLaborPaymentModalsProps> = {}) {
   return props
 }
 const type = (text: string) => fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: text } })
-const press = () => fireEvent.click(screen.getByRole('button', { name: 'Record payment' }))
+const press = () => fireEvent.click(screen.getByRole('button', { name: /^Record (payment$|\$)/ }))
 
 describe('Record payment as a sending', () => {
   it('an amount on the sheet is one line with no credit, sent through the sending so it gets its number', async () => {
@@ -69,6 +69,8 @@ describe('Record payment as a sending', () => {
     expect(plan.textContent).toContain('$200.00 is more than this sheet needs. It is recorded as one sending:')
     expect([...plan.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['$60.00 on this sheet, paid in full', '$60.00 on S-100 500 Oak Ln, Austin, TX, paid in full', '$60.00 on S-200 500 Oak Ln, Austin, TX, paid in full', '$20.00 kept as their credit'])
     expect(document.querySelector('[data-sub-payment-refusal]')).toBeNull()
+    // The press says what it will do: the amount, how many sheets, and that some is kept as credit.
+    expect(screen.getByRole('button', { name: 'Record $200.00 on 3 sheets and their credit' })).toBeTruthy()
     press()
     await waitFor(() => expect(props.recordSubSending).toHaveBeenCalledTimes(1))
     expect(props.recordSubSending).toHaveBeenCalledWith(
@@ -76,11 +78,29 @@ describe('Record payment as a sending', () => {
     )
   })
 
+  it('By hand places the payment on the sheets the office picks, and holds the press until every dollar is placed', async () => {
+    const props = mount()
+    type('200')
+    fireEvent.click(screen.getByRole('button', { name: 'By hand' }))
+    // Oldest first fills the boxes as a start: 60 here, 60 and 60 on the two others, 20 kept as credit.
+    const box = (label: string) => screen.getByLabelText(label) as HTMLInputElement
+    expect(box('Keep as their credit').value).toBe('20.00')
+    // Move the credit's 20 nowhere: 180 placed of 200 holds the press, with the reason on the screen.
+    fireEvent.change(box('Keep as their credit'), { target: { value: '0' } })
+    expect((screen.getByRole('button', { name: /^Record (payment$|\$)/ }) as HTMLButtonElement).disabled).toBe(true)
+    // Put it back and the press names the act again.
+    fireEvent.change(box('Keep as their credit'), { target: { value: '20' } })
+    press()
+    await waitFor(() => expect(props.recordSubSending).toHaveBeenCalledTimes(1))
+    expect(props.recordSubSending).toHaveBeenCalledWith(expect.objectContaining({ personId: 'p-sam', credit: 20 }))
+  })
+
   it('with the fill switched off, all of the extra is their credit', async () => {
     const props = mount()
     type('100')
     fireEvent.click(screen.getByRole('checkbox', { name: 'Put the extra on their other open sheets, oldest first' }))
     expect([...document.querySelectorAll('[data-sub-sending-plan] li')].map((li) => li.textContent)).toEqual(['$60.00 on this sheet, paid in full', '$40.00 kept as their credit'])
+    expect(screen.getByRole('button', { name: 'Record $100.00 on 1 sheet and their credit' })).toBeTruthy()
     press()
     await waitFor(() => expect(props.recordSubSending).toHaveBeenCalledWith(expect.objectContaining({ lines: [{ jobId: 'here', amount: 60 }], credit: 40 })))
   })
