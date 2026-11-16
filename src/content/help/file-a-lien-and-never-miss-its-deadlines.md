@@ -101,6 +101,27 @@ The same answer meets you in two more places, so no notice is ever blocked on a 
 Off on day one. When it is on, every night the app looks up every open GC job with **no owner at all**, hours or not, and saves the roll's answer as *from the roll · unconfirmed* — the property record fills in with its provenance, but nobody has looked at it yet. The Lien desk drafts on it and says so — *Owner from the roll (2025) · unconfirmed · confirm on Guadalupe CAD ↗* {{button:blue|Confirm}} — and **Record the run refuses** until a person presses Confirm on every notice in the run. Owners someone typed or pressed Use on are never touched. Turn it on after the first sitting shows the roll is right.
 :::
 
+## A public property
+
+A mechanic's lien does not attach to public property. A city, a county, a school district or the State owns public property.
+
+When the owner of record reads as a public body, the property record asks once. *Is this public property?* shows on the **Property record** row in Edit Job. It shows on the Lien desk's owner line too. The papers on the property hold until someone answers.
+
+- {{button:blue|Yes, public property…}} opens a window that takes the property off the lien path.
+- {{button:outline|No, it is private}} keeps that answer. The holds open, and the papers can go out.
+
+Only the office answers. Everyone else sees the question without the buttons.
+
+The window lists each job at the address that owes money or has a lien paper. Each line says what already went out on that job. A ticked job also goes on the attorney's list for a bond claim. The attorney's list is the Collections list. A job goes on it only once it is billed. The window says so under any job that is not billed yet.
+
+Write why the property is off the lien path. The reason goes on each ticked job. Pick whether there is a payment bond, if you know. Then press {{button:blue|Take 2 jobs off the lien path ▸}}.
+
+Nothing is filed and nothing is deleted. Every job at the address leaves the lien bins, now and later. A job that could not go on the attorney's list is named, with the reason.
+
+The property record then reads *Public property, answered Nov 16.* To undo it, press **Put it back on the lien path…** there. Say why, and press the button. Every job at the address returns to the Lien desk. The jobs stay on the attorney's list.
+
+A private answer can be cleared too. Press **Ask again**, and the property asks once more.
+
 ## Step 2 — the affidavit, behind its gate
 
 The **Lien affidavit** tab refuses to generate until the paper trail is real. It needs the owner of record with mailing address ✓. The owner cannot be a city, a county, a school district or the State. A lien does not attach to public property, and the line says to ask the attorney about the payment bond. It needs the county and legal description ✓, from the property record. It needs the notice recorded ✓ on sub jobs. On a job with a GC, it needs the GC's address ✓. That address is on the GC's customer record. And it needs **not a homestead**. A homestead lien needs a pre-work contract signed by both spouses and recorded with the county. That is attorney territory the app will not paper over. A house also needs an answer to the homestead question. An unanswered question is not a no. Open the property record and pick **Yes** or **No** under *Is this the owner's homestead?*
