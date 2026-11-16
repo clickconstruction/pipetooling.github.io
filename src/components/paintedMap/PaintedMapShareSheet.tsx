@@ -17,9 +17,10 @@ import { createPortal } from 'react-dom'
 import ConfirmDialog from '../ConfirmDialog'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { PAINTED_MAP_SHARE_WORDS, linkDayWords, linkEndsWords, linkOpenedWords, paintedMapLinkOpen, paintedMapLinkUrl, type PaintedMapLinkRow } from '../../lib/paintedMap/paintedMapLink'
+import { PAINTED_MAP_SHARE_WORDS, linkDayWords, linkEndsWords, linkOpenedWords, paintedMapLinkOpen, paintedMapLinkUrl, visitLine, type PaintedMapLinkRow, type PaintedMapVisitRow } from '../../lib/paintedMap/paintedMapLink'
+import { formatDenverDateTimeShort } from '../../utils/dateUtils'
 import type { NumberedPlace, PaintedLine } from '../../lib/paintedMap/paintedMap'
-import { endPaintedMapLinks, loadPaintedMapLinks, mintPaintedMapLink, rememberPaintedMapLink, rememberedPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
+import { endPaintedMapLinks, loadPaintedMapLinks, loadPaintedMapVisits, mintPaintedMapLink, rememberPaintedMapLink, rememberedPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
 import { PAINTED_MAP_TEXT_WORDS, paintedMapTextDoor, paintedMapTextWords, type PaintedMapTextJob } from '../../lib/paintedMap/paintedMapText'
 import { loadPaintedMapTextJob } from '../../lib/paintedMap/paintedMapTextIo'
 import type { ReplyIo } from '../../lib/messages/replyIo'
@@ -52,10 +53,18 @@ const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color:
 const rowPress: CSSProperties = { display: 'grid', gap: '0.1rem', width: '100%', textAlign: 'left', padding: '0.55rem 0.7rem', borderRadius: 9, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer' }
 const note: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.45rem 0.6rem' }
 
+/** A moment in the app's words, or nothing for a time that is not one. */
+const whenOf = (iso: string): string | null => {
+  const ms = Date.parse(iso)
+  return Number.isFinite(ms) ? formatDenverDateTimeShort(ms) : null
+}
+
 export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, origin = typeof window !== 'undefined' ? window.location.origin : '', mayText = false, jobId, loadJob = loadPaintedMapTextJob, textBox }: Props) {
   const isTopmost = useModalStackEntry()
   const [mine, setMine] = useState<{ code: string; endsOn: string | null } | null>(() => rememberedPaintedMapLink(mapId))
   const [links, setLinks] = useState<PaintedMapLinkRow[] | null>(null)
+  /** Who opened the map's links. The office's and the painter's to read: anyone else gets none, and the sheet says nothing. */
+  const [visits, setVisits] = useState<PaintedMapVisitRow[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [said, setSaid] = useState<string | null>(null)
@@ -69,6 +78,9 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
     const res = await loadPaintedMapLinks(mapId)
     if (res.ok) setLinks(res.value)
     else setError(res.error)
+    // The list of who opened it is words beside the link. A read of it that fails costs the list and never the sheet.
+    const who = await loadPaintedMapVisits(mapId).catch(() => null)
+    setVisits(who?.ok ? who.value : [])
   }, [mapId])
 
   useEffect(() => {
@@ -270,6 +282,7 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
             )}
 
             <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 8, padding: '0.5rem 0.65rem', display: 'grid', gap: '0.2rem' }}>
+              <span>{PAINTED_MAP_SHARE_WORDS.asks}</span>
               <span>{PAINTED_MAP_SHARE_WORDS.see}</span>
               <span>{PAINTED_MAP_SHARE_WORDS.notSee}</span>
             </div>
@@ -284,6 +297,32 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
                 <button type="button" style={busy ? deadPress : press} disabled={busy} onClick={() => setEnding(true)}>
                   {open.length === 1 ? 'End this link now' : `End all ${open.length} links now`}
                 </button>
+              </div>
+            ) : null}
+
+            {visits.length > 0 ? (
+              <div data-painted-share-visits style={{ display: 'grid', gap: '0.35rem' }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-700)' }}>{PAINTED_MAP_SHARE_WORDS.whoHead}</div>
+                {visits.map((v) => {
+                  const line = visitLine(v, whenOf)
+                  return (
+                    <div key={line.id} data-painted-share-visit style={{ fontSize: '0.875rem', padding: '0.4rem 0.6rem', borderRadius: 8, border: '1px solid var(--border)', display: 'grid', gap: '0.1rem' }}>
+                      <span>
+                        <b>{line.name}</b>
+                        {line.teammate ? <span style={{ color: 'var(--text-muted)' }}> · {PAINTED_MAP_SHARE_WORDS.signedIn}</span> : null}
+                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{line.detail}</span>
+                      {line.where && line.whereUrl ? (
+                        <span style={{ fontSize: '0.8125rem' }}>
+                          {line.where}{' '}
+                          <a href={line.whereUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-blue-700)', fontWeight: 600 }}>
+                            {PAINTED_MAP_SHARE_WORDS.seeWhere}
+                          </a>
+                        </span>
+                      ) : null}
+                    </div>
+                  )
+                })}
               </div>
             ) : null}
 

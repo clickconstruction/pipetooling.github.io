@@ -21,6 +21,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 vi.mock('../../lib/paintedMap/paintedMapLinkIo', () => ({
+  loadPaintedMapVisits: async () => ({ ok: true, value: [] }),
   loadPaintedMapLinks: async () => ({ ok: true, value: [{ id: 'link-0', made_at: '2026-11-10T16:00:00Z', expires_at: '2999-01-01T00:00:00Z', ended_at: null, open_count: 0 }] }),
   mintPaintedMapLink: async () => ({ code: 'q7m2kd4x9p', endsOn: null }),
   endPaintedMapLinks: async () => 1,

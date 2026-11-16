@@ -6,7 +6,7 @@
 import { publicFunctionHeaders } from '../customerSampleMode'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { PAINTED_MAP_LINK_WORDS, type PaintedMapLinkRow, type SharedPaintedMap } from './paintedMapLink'
+import { PAINTED_MAP_LINK_WORDS, type PaintedMapLinkRow, type PaintedMapVisitRow, type SharedPaintedMap } from './paintedMapLink'
 
 // The deployed build's address ends in a slash, the local one does not: both read the same here.
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
@@ -116,6 +116,28 @@ export async function endPaintedMapLinks(mapId: string, linkId?: string | null):
   const res = await desk({ action: 'desk.end', mapId, ...(linkId ? { linkId } : {}) })
   if (res.status === 200 && res.body.ok === true) return typeof res.body.ended === 'number' ? res.body.ended : 0
   throw new Error(words(res.body, `The link was not ended. The function answered ${res.status}.`))
+}
+
+/** The most visits the sheet lists. Past it the latest are shown. */
+export const PAINTED_MAP_VISITS_MAX = 50
+
+/**
+ * Who opened the map's links, latest first. Row security hands these to the office and the map's painter and to
+ * nobody else, so anyone else reads an empty list: the sheet then says nothing about who.
+ */
+export async function loadPaintedMapVisits(mapId: string): Promise<{ ok: true; value: PaintedMapVisitRow[] } | { ok: false; error: string }> {
+  try {
+    const res = (await supabase
+      .from('painted_map_link_visits' as never)
+      .select('id, visitor_name, user_id, device_words, last_opened_at, open_count, first_lat, first_lng, first_located_at, last_lat, last_lng, last_located_at' as '*')
+      .eq('map_id' as never, mapId)
+      .order('last_opened_at' as never, { ascending: false })
+      .limit(PAINTED_MAP_VISITS_MAX)) as unknown as { data: PaintedMapVisitRow[] | null; error: unknown }
+    if (res.error) return { ok: false, error: formatErrorMessage(res.error, 'Who opened the link did not load.') }
+    return { ok: true, value: res.data ?? [] }
+  } catch (e) {
+    return { ok: false, error: formatErrorMessage(e, 'Who opened the link did not load.') }
+  }
 }
 
 /** The map's links as the table holds them: when each was made, when it ends, how often it was opened. No code is in a row. */

@@ -194,6 +194,8 @@ The job's **Documents** tab has a section named **Painted maps**. It lists the j
 
 Each row says the map's length, its places, who painted it and when. Press a map's name to open it. Press {{button:outline|Paint a map}} to start a new one for the job.
 
+Press {{button:outline|Share}} on a row to get the map's link without opening the map.
+
 A map there is the map as it is now. It is not a stored copy. A page you printed is kept apart, under **Sent from this job** on the same tab.
 
 ### On other maps
@@ -288,6 +290,16 @@ The page has a press named **Show where I am**. It puts a blue dot on the map fo
 The line under the press says we will see where they are while it is on. We keep the first place and the latest one. We never keep a trail.
 
 A reader who does not press it shares no place. The map still works for them.
+
+### See who opened it
+
+Open **Share** on the map again. Under the link, **Who opened it** lists each reader.
+
+A row says the name they gave, their phone or computer, when they opened it and how many times. A teammate's row says **signed in**.
+
+A reader who pressed **Show where I am** has one more line. Press **See that place** to open it in a map app.
+
+Only the office and whoever painted the map see this list.
 
 ### End a link
 

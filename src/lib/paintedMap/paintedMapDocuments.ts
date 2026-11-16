@@ -26,6 +26,8 @@ export type PaintedMapDocumentRow = {
 export const PAINTED_MAP_DOCUMENT_WORDS = {
   heading: 'Painted maps',
   paint: 'Paint a map',
+  /** A row's press: the map's Share sheet, without opening the map. */
+  share: 'Share',
   loading: 'Loading…',
   /** The empty state's first words. The press that follows starts a map. */
   none: 'No painted map is on this job.',

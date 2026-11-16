@@ -161,3 +161,22 @@ describe('who is looking at a shared map', () => {
     expect(paintedMapVisitPointColumns({ first_located_at: '2026-11-15T18:00:00.000Z', last_located_at: '2026-11-15T18:01:00.000Z' }, point, '2026-11-15T18:01:10.000Z')).toBeNull()
   })
 })
+
+describe('a visit as the share sheet says it', () => {
+  const whenOf = (iso: string) => (iso.startsWith('2026-11-15T21:02') ? 'Nov 15, 3:02 PM' : iso.startsWith('2026-11-15T21:05') ? 'Nov 15, 3:05 PM' : null)
+  const row = { id: 'v1', visitor_name: 'Dana Reyes', user_id: null, device_words: 'iPhone · Safari', last_opened_at: '2026-11-15T21:02:00Z', open_count: 2, first_lat: null, first_lng: null, first_located_at: null, last_lat: null, last_lng: null, last_located_at: null }
+
+  it('says who, on what, when and how often', async () => {
+    const { visitLine } = await import('./paintedMapLink')
+    expect(visitLine(row, whenOf)).toEqual({ id: 'v1', name: 'Dana Reyes', teammate: false, detail: 'iPhone · Safari · opened Nov 15, 3:02 PM · 2 times', where: null, whereUrl: null })
+    expect(visitLine({ ...row, open_count: 1, device_words: '', user_id: 'u1' }, whenOf)).toMatchObject({ teammate: true, detail: 'opened Nov 15, 3:02 PM' })
+  })
+
+  it('says a reader showed where they were, at the latest place kept', async () => {
+    const { visitLine } = await import('./paintedMapLink')
+    const first = { ...row, first_lat: 30.35, first_lng: -97.75, first_located_at: '2026-11-15T21:02:30Z' }
+    expect(visitLine(first, whenOf)).toMatchObject({ where: 'Showed where they were, Nov 15, 3:02 PM.', whereUrl: 'https://www.google.com/maps/search/?api=1&query=30.350000,-97.750000' })
+    const moved = { ...first, last_lat: 30.3512, last_lng: -97.7521, last_located_at: '2026-11-15T21:05:00Z' }
+    expect(visitLine(moved, whenOf)).toMatchObject({ where: 'Showed where they were, Nov 15, 3:05 PM.', whereUrl: 'https://www.google.com/maps/search/?api=1&query=30.351200,-97.752100' })
+  })
+})
