@@ -2596,11 +2596,15 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     d.addressesById = { addr1: { ...(d.addressesById.addr1 as Record<string, unknown>), property_kind: '' } as never }
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} onChanged={onChanged} />)
-    // The envelope line (v2.3776) sits above the paper, not in the footer; the cover-note switch rides with it.
+    // The envelope (v2.3776) sits above the paper, not in the footer; one card since v2.7427, who it goes to at the left and the ticks at the right.
     const send = document.querySelector('[data-lien-desk-send-line]') as HTMLElement
-    expect(send.textContent).toContain('by certified mail')
+    expect(send.querySelector('[data-lien-envelope-zone="to"]')?.textContent).toContain('Goes to · certified mail')
     expect(send.textContent).toContain('Lowbeck Contracting')
-    expect(send.textContent).toContain('courtesy PDF to office@lowbeck.test')
+    expect(send.textContent).toContain('and a courtesy PDF to office@lowbeck.test')
+    // The key to the shaded boxes and the preview door are the same card's foot line.
+    const legend = send.querySelector('[data-lien-desk-paper-legend]') as HTMLElement
+    expect(legend.textContent).toContain('A shaded box on the paper is yours to change. Hover says where the rest came from.')
+    expect(within(legend).getByRole('button', { name: 'Preview in a new window ↗' })).toBeTruthy()
     // Ready (v2.3776): ONE row — the state and its why, then Save draft and the one primary (Skip left in v2.4743).
     const next = document.querySelector('[data-lien-desk-next]') as HTMLElement
     expect(next.getAttribute('data-blocked')).toBe('no')
@@ -2610,7 +2614,7 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(screen.queryByRole('button', { name: /Go to gate/ })).toBeNull()
     // v2.4743: no Skip — a month nobody sends closes on its own and is noted as missed.
     expect(screen.queryByRole('button', { name: /^Skip / })).toBeNull()
-    expect(screen.getByLabelText(/Include counsel's cover letter/)).toBeTruthy()
+    expect(screen.getByLabelText(/Counsel's cover letter/)).toBeTruthy()
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(gatesBox.getAttribute('data-ready')).toBe('yes')
     // The verdict row is the pane's stacked head now (v2.4733).
@@ -2850,7 +2854,7 @@ describe('LienDesk · the cover page in the pane (v2.3540)', () => {
     expect(cover.textContent).not.toContain('routine notice')
     expect(screen.getByText('Page 1 of 2 · cover letter')).toBeTruthy()
     expect(document.body.textContent).toContain('Page 2 of 2 · the notice')
-    fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
+    fireEvent.click(screen.getByLabelText(/Counsel's cover letter/))
     expect(document.querySelector('[data-lien-desk-cover]')).toBeNull()
     expect(document.body.textContent).toContain('Page 1 of 1 · the notice')
     expect(document.querySelector('[data-lien-desk-paper]')).toBeTruthy()
@@ -3052,7 +3056,7 @@ describe('LienDesk · the pay page in the pane (punch list #35, PR 3)', () => {
       expect(pay.textContent).toContain('Once these bills are paid, there will be no lien filed.')
       expect(pay.textContent).toContain('only if Lowbeck Contracting has told you in writing')
       expect(pay.querySelector('svg[data-code]')).toBeTruthy()
-      fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
+      fireEvent.click(screen.getByLabelText(/Counsel's cover letter/))
       expect(labels().find((t) => t.includes('· pay codes'))).toContain('Page 2 of 2 · pay codes')
     } finally {
       payPageState.rows = []
@@ -3212,7 +3216,7 @@ describe('LienDesk · the draft saves itself (v2.7327)', () => {
     const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
     fireEvent.click(boxes[0]!)
     vi.advanceTimersByTime(500)
-    fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
+    fireEvent.click(screen.getByLabelText(/Counsel's cover letter/))
     vi.advanceTimersByTime(700)
     expect(saveDraftMock).not.toHaveBeenCalled()
     vi.advanceTimersByTime(200)
@@ -3606,10 +3610,14 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     expect(text).toContain('Reece is owed $9,612.40. Its oldest unpaid materials are from July. We expect its own notice by October 15.')
     expect(within(card).getByRole('link', { name: 'Open in Held for suppliers ›' }).getAttribute('href')).toBe('/materials?tab=job-accounts&job=j650')
     // The owner's letter names the house (v2.4725): the tick starts on, the paragraph is the letter's last, the amber line waits for counsel; unticked, the paragraph leaves.
-    const tick = screen.getByLabelText(/Name the supply house owed · \$9,612/) as HTMLInputElement
+    const tick = screen.getByLabelText(/Name the supply house owed\s*\$9,612/) as HTMLInputElement
     expect(tick.checked).toBe(true)
     expect(document.querySelector('[data-lien-desk-cover]')?.textContent).toContain('You should also know that Reece sold materials for this job and is still owed $9,612.40. We expect Reece’s own notice by October 15. That notice is Reece’s own claim for materials. It is not covered by our release, and it is not included in the $33,500.00. Paying us the $33,500.00 is what lets us clear that account.')
-    expect(document.querySelector('[data-lien-desk-houses-counsel]')?.textContent).toBe('Counsel has not read the supply house paragraph yet.')
+    // The caution sits in its own tick's row (v2.7427), not at the card's foot.
+    const housesNote = document.querySelector('[data-lien-desk-houses-counsel]') as HTMLElement
+    expect(housesNote.textContent).toBe('Counsel has not read this paragraph yet.')
+    expect(housesNote.closest('[data-lien-envelope-tick]')).toBe(tick.closest('[data-lien-envelope-tick="houses"]'))
+    expect(document.querySelector('[data-lien-desk-release-counsel]')).toBeNull()
     fireEvent.click(tick)
     expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('You should also know')
     expect(document.querySelector('[data-lien-desk-houses-counsel]')).toBeNull()
@@ -3624,7 +3632,7 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     ])
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     await settle()
-    const tick = screen.getByLabelText(/Enclose a conditional release · \$33,500/) as HTMLInputElement
+    const tick = screen.getByLabelText(/A conditional release\s*\$33,500/) as HTMLInputElement
     expect(tick.checked).toBe(false)
     expect(document.querySelector('[data-lien-desk-release]')).toBeNull()
     expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('conditional release')
@@ -3646,7 +3654,9 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     expect(screen.getByText('Page 2 of 3 · conditional release', { exact: false })).toBeTruthy()
     expect(screen.getByText('Page 3 of 3 · the notice', { exact: false })).toBeTruthy()
     expect(document.querySelector('[data-lien-desk-release]')?.textContent).toContain('a check from Lowbeck Contracting in the sum of $33,500.00 payable to Click Plumbing')
-    expect(document.querySelector('[data-lien-desk-houses-counsel]')?.textContent).toBe('Counsel has not read the release paragraph yet.')
+    const releaseNote = document.querySelector('[data-lien-desk-release-counsel]') as HTMLElement
+    expect(releaseNote.textContent).toBe('Counsel has not read this paragraph yet.')
+    expect(releaseNote.closest('[data-lien-envelope-tick]')).toBe(tick.closest('[data-lien-envelope-tick="release"]'))
     fireEvent.click(tick)
     await settle()
     expect(voidReleaseMock).toHaveBeenCalledWith('rel-1', expect.anything())
