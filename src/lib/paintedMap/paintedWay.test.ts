@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fromPlane, type PaintedPoint } from './paintedLine'
-import { wayNearMap, wayNoFixWords, wayWords } from './paintedWay'
+import { WAY_LENGTH_GUIDE_WORDS, wayLineUnderWords, wayNearMap, wayNoFixWords, wayWords } from './paintedWay'
 
 const ORIGIN: PaintedPoint = { lat: 29.5, lng: -98.2 }
 const at = (eastM: number, northM: number): PaintedPoint => fromPlane(ORIGIN, { x: eastM, y: northM })
@@ -40,5 +40,19 @@ describe('whether one picture can hold the reader and the map', () => {
   })
   it('holds nobody against a map with nothing on it', () => {
     expect(wayNearMap(at(0, 0), [])).toBe(false)
+  })
+})
+
+describe('the sentence under a line\'s length', () => {
+  it('says how a map\'s only line was made and what its length is worth, in one sentence', () => {
+    expect(wayLineUnderWords({ how: 'drawn', fixedByHand: false }, false, true)).toBe('Drawn by hand, so the length is a guide for how far, not a measurement.')
+    expect(wayLineUnderWords({ how: 'walked', fixedByHand: true }, false, true)).toBe('Walked, a part drawn by hand, so the length is a guide for how far, not a measurement.')
+  })
+  it('never calls a measured length a guide', () => {
+    expect(wayLineUnderWords({ how: 'walked', fixedByHand: false }, true, true)).toBe('Walked.')
+  })
+  it('says only how among several lines, and the guide is one sentence for the foot', () => {
+    expect(wayLineUnderWords({ how: 'driven', fixedByHand: false }, false, false)).toBe('Driven.')
+    expect(WAY_LENGTH_GUIDE_WORDS).toBe('A length here is a guide for how far, not a measurement.')
   })
 })

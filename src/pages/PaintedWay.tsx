@@ -11,10 +11,10 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type
 import { useParams } from 'react-router-dom'
 import { SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
 import { directionsUrlForPoint } from '../lib/directionsUrl'
-import { lineHowWords, lineLengthWords, mapLengthMeters, aboutLengthWords } from '../lib/paintedMap/paintedMap'
+import { lineLengthWords, mapLengthMeters, aboutLengthWords } from '../lib/paintedMap/paintedMap'
 import { PAINTED_MAP_LINK_WORDS, linkEndsWords, paintedMapLinkCode, sharedLineForCanvas, sharedPlacesForCanvas } from '../lib/paintedMap/paintedMapLink'
 import { paintedWayIo, type PaintedWayIo, type PaintedWayView } from '../lib/paintedMap/paintedMapLinkIo'
-import { WAY_PRIVACY_WORDS, wayNearMap, wayNoFixWords, wayWords } from '../lib/paintedMap/paintedWay'
+import { WAY_LENGTH_GUIDE_WORDS, WAY_PRIVACY_WORDS, wayLineUnderWords, wayNearMap, wayNoFixWords, wayWords } from '../lib/paintedMap/paintedWay'
 import { SAMPLE_PAINTED_WAY, SAMPLE_PAINTED_WAY_COMPANY } from '../lib/paintedMap/paintedWaySample'
 import { PAINT_COLOR } from '../components/paintedMap/paintedMapLook'
 import { CARD, HAIR, INK, MUTED, NOTE_BAND, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
@@ -196,14 +196,20 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
                   {shared.lines.map((l, i) => {
                     const w = lineLengthWords(l)
                     return (
-                      <div key={i} style={{ fontSize: 15, marginTop: i === 0 ? 0 : 4 }}>
-                        <span style={{ display: 'inline-block', width: 20, height: 5, borderRadius: 3, background: PAINT_COLOR, verticalAlign: 'middle', marginRight: 8 }} />
-                        <b>{w.lead}</b>
-                        {w.tail ? `, ${w.tail}` : ''} <span style={{ color: MUTED }}>· {lineHowWords(l)}</span>
+                      <div key={i} data-way-line style={{ fontSize: 15, marginTop: i === 0 ? 0 : 10 }}>
+                        <div>
+                          <span style={{ display: 'inline-block', width: 20, height: 5, borderRadius: 3, background: PAINT_COLOR, verticalAlign: 'middle', marginRight: 8 }} />
+                          <b>{w.lead}</b>
+                          {w.tail ? `, ${w.tail}` : ''}
+                        </div>
+                        {/* How it was made and what the length is worth: one sentence, under the length. */}
+                        <div data-way-line-under style={{ ...tiny, marginTop: 4 }}>
+                          {wayLineUnderWords(l, w.measured, shared.lines.length === 1)}
+                        </div>
                       </div>
                     )
                   })}
-                  <div style={{ ...tiny, marginTop: 8 }}>A length here is a guide for how far. It is not a measurement.</div>
+                  {shared.lines.length > 1 && shared.lines.some((l) => !lineLengthWords(l).measured) ? <div style={{ ...tiny, marginTop: 10 }}>{WAY_LENGTH_GUIDE_WORDS}</div> : null}
                 </div>
               ) : null}
 
