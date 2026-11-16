@@ -32,7 +32,7 @@ The picked name shows above the box before you post. Press the × on it to take 
 
 ## Who you can tag
 
-The list offers the office and the crew of that job. It does not offer a sub or an estimator. It does not offer someone who has left.
+The list offers the office and the crew of that job. The list does not offer a sub or an estimator. The list does not offer someone who has left.
 
 If nobody by that name is on the list, that person cannot open this job's notes.
 
@@ -52,7 +52,7 @@ The waiting words turn amber after two working days. Nothing reminds the person 
 
 ## When someone tags you
 
-A red number shows above **Jobs** in the header. It counts the notes that tagged you and still wait.
+A red number shows above **Jobs** in the header. The number counts the notes that tagged you and still wait.
 
 Press **Jobs**. The **Tagged job notes** section is at the top of the Pipeline. The oldest tag is on top.
 
@@ -79,11 +79,11 @@ Some tags only need reading. Press {{button:outline|No reply needed}} on the not
 
 ## Ask a question back
 
-Your answer can tag the person who asked. Press **@** in the answer box. Their name is first in the list. Pick it and post. Now your note waits on them.
+Your answer can tag the person who asked. Press **@** in the answer box. The name of the person who asked is first in the list. Pick it and post. Now your note waits on them.
 
 ## See what you asked
 
-Under the tagged notes is **You asked**. It lists every note where you tagged someone.
+Under the tagged notes is **You asked**. **You asked** lists every note where you tagged someone.
 
 - **no answer yet** means the person has not answered.
 - **answered** shows their answer.
@@ -99,5 +99,5 @@ Press **Fold** on the section's top line to shut it. Press **Open** to bring it 
 
 Two places wait for a later update.
 
-- A note typed in the job's own window does not make a tag. It does not clear one either.
+- A note typed in the job's own window does not make a tag. That note does not clear a tag either.
 - A stamp such as Arrived, and a % complete line, clear nothing.
