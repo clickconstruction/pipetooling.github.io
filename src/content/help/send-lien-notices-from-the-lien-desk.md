@@ -239,7 +239,7 @@ Robert opens J650 under Awaiting approval. Lowbeck Contracting owes $33,500 on i
 
 ## Reading the notice before it goes
 
-The pane is five sections tall. Each one has a thin title row that stays pinned as you scroll. The rows you have passed stack at the top. The rows still to come stack at the bottom. The one you are in has a blue bar. Press any row to jump to its section. On a computer one more row is solid blue. It reads **Sign and send** and stays at the bottom of the pane until you reach it. Its right side says where the signature stands, such as *Not signed yet*. Press it to jump down to the signing box and the buttons for the next step. On a printed notice it reads **Record the mailing**. On a sent notice it reads **After the send**.
+The pane is five sections tall. Each one has a thin title row that stays pinned as you scroll. The rows you have passed stack at the top. The rows still to come stack at the bottom. The one you are in has a blue bar. Press any row to jump to its section. On a computer one more row is solid blue. The blue row reads **Sign and send** and stays at the bottom of the pane until you reach it. The row's right side says where the signature stands, such as *Not signed yet*. Press the blue row to jump down to the signing box and the buttons for the next step. On a printed notice it reads **Record the mailing**. On a sent notice it reads **After the send**.
 
 On a phone an open notice takes the whole desk. The tabs fold away, and the top row holds {{button:outline|← Notices}} to go back to the list. One title row stays pinned, the row of the section you are reading. A page of the notice slides sideways inside its own frame when it is wider than the phone.
 
