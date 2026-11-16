@@ -6,6 +6,7 @@
  * amount × pct / 100, matching fetchJobMaterialsCostSnapshot).
  */
 
+import { openAmount } from './payments/supplyPayment'
 import { agingBucketFor, type AgingBucketKey } from '../supplyHouseAging'
 
 const EPSILON = 0.005
@@ -16,6 +17,8 @@ export interface JobAccountsInvoiceInput {
   id: string
   supply_house_id: string
   amount: number | null
+  /** What its payments have put on it so far (v2.7450). An unpaid bill owes only the rest; absent reads as nothing paid. */
+  amount_paid?: number | null
   is_paid: boolean
   due_date: string | null
   /** Invoice rides on the house's job account — unpaid balance is the property owner's exposure, not ours. */
@@ -204,7 +207,11 @@ export function buildJobAccountsView(
     jobAllocatedInvoiceIds.add(inv.id)
     const job = jobById.get(alloc.job_id)
     if (!job) continue
-    const allocated = (Number(inv.amount ?? 0) * Number(alloc.pct ?? 0)) / 100
+    const share = Number(alloc.pct ?? 0) / 100
+    const whole = Number(inv.amount ?? 0) * share
+    // A bill paid in part: what was paid joins the paid side, and only the rest is owed.
+    const partPaid = inv.is_paid ? 0 : (Number(inv.amount ?? 0) - openAmount(inv)) * share
+    const allocated = inv.is_paid ? whole : whole - partPaid
     let acc = accByJob.get(job.id)
     if (!acc) {
       acc = {
@@ -237,6 +244,10 @@ export function buildJobAccountsView(
       acc.houses.set(inv.supply_house_id, group)
     }
     group.invoiceCount++
+    if (partPaid > 0) {
+      acc.suppliersPaid += partPaid
+      group.paid += partPaid
+    }
     if (inv.is_paid) {
       acc.suppliersPaid += allocated
       group.paid += allocated
@@ -307,7 +318,7 @@ export function buildJobAccountsView(
   for (const inv of invoices) {
     if (inv.is_paid) continue
     if (jobAllocatedInvoiceIds.has(inv.id) || bidAllocated.has(inv.id)) continue
-    const amount = Number(inv.amount ?? 0)
+    const amount = openAmount(inv)
     // v2.3500: an unallocated credit is just as much a gap as an unallocated invoice, but it must
     // not net against the alarm — a big enough credit would otherwise report the pile as smaller.
     if (amount < 0) {
