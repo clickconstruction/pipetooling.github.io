@@ -26,6 +26,8 @@ import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 import { sheetOwedToChip, TEAM_SHEET_RULE, teamSheetsLineWords, type TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
 import { isRosterSub } from '../../lib/subWorkOrders/rosterSub'
 import { SubOwedBlock } from './SubOwedBlock'
+import { SubPapersWindow } from '../jobs/SubPapersWindowConnected'
+import type { SubPapersOpen } from '../jobs/SubPapersWindow'
 import { PeopleSubsReach } from './PeopleSubsReach'
 import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../jobs/SubLaborPaymentModals'
 import { ScheduleSheet } from '../schedule/ScheduleBlockSheet'
@@ -141,6 +143,8 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
   }, [user?.id])
   // Taunya's rule of 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
   const teamRule: TeamSheetRule = TEAM_SHEET_RULE
+  /** Punch list #350: the papers window, from an open row's Statement of account… or a sheet's Work statement…. */
+  const [papers, setPapers] = useState<{ key: string; name: string; open: SubPapersOpen } | null>(null)
   const owed = useSubsOwed(ledger.laborJobs, ledger.laborJobAssigneesByJobId, teamRule)
   const breakdown = useMemo(() => buildSubOwedBreakdown(owed.inputs, { rule: teamRule }), [owed.inputs, teamRule])
   const owedReady = ledger.laborJobsLoadedOnce && owed.ready
@@ -487,6 +491,8 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
       onByDate={() => openLedgerFor(personId)}
       onPay={canAct ? openPay : undefined}
       onBackcharge={canAct ? openBackcharge : undefined}
+      onStatement={() => setPapers({ key: `id:${personId}`, name, open: { kind: 'statement' } })}
+      onWorkStatement={(sheetId) => setPapers({ key: `id:${personId}`, name, open: { kind: 'work', sheetId } })}
       onClose={onClose}
     />
   )
@@ -1269,6 +1275,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
         </ScheduleSheet>
       ) : null}
 
+      {papers ? <SubPapersWindow open={papers.open} subKey={papers.key} name={papers.name} laborJobs={ledger.laborJobs} assigneesByJobId={ledger.laborJobAssigneesByJobId} namesByJobId={ledger.laborJobNamesByJobId} roster={owed.roster} rule={teamRule} onClose={() => setPapers(null)} /> : null}
 
       <SubLaborPaymentModals
         ref={paymentModalsRef}
