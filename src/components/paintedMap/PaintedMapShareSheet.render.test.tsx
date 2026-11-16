@@ -6,19 +6,21 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { PaintedMapLinkRow } from '../../lib/paintedMap/paintedMapLink'
+import type { PaintedMapLinkRow, PaintedMapVisitRow } from '../../lib/paintedMap/paintedMapLink'
 
 vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
 vi.mock('qrcode.react', () => ({ QRCodeSVG: (props: { value: string }) => <svg data-testid="qr" data-value={props.value} /> }))
 
 const io = vi.hoisted(() => ({
   links: [] as PaintedMapLinkRow[],
+  visits: [] as PaintedMapVisitRow[],
   remembered: null as { code: string; endsOn: string | null } | null,
   calls: [] as string[],
   refuse: null as string | null,
 }))
 vi.mock('../../lib/paintedMap/paintedMapLinkIo', () => ({
   loadPaintedMapLinks: async () => ({ ok: true, value: io.links }),
+  loadPaintedMapVisits: async () => ({ ok: true, value: io.visits }),
   mintPaintedMapLink: async (mapId: string) => {
     io.calls.push(`mint:${mapId}`)
     if (io.refuse) throw new Error(io.refuse)
@@ -50,6 +52,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   io.links = []
+  io.visits = []
   io.remembered = null
   io.calls = []
   io.refuse = null
@@ -149,5 +152,28 @@ describe('PaintedMapShareSheet', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Make a link' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Only whoever painted a map, or the office, may share it.')
     expect(document.querySelector('[data-painted-share-link]')).toBeNull()
+  })
+
+  it('says a reader gives their name first, and lists who opened the link for whoever may read that', async () => {
+    io.links = [OPEN]
+    io.visits = [
+      { id: 'v1', visitor_name: 'Dana Reyes', user_id: null, device_words: 'iPhone · Safari', last_opened_at: '2026-11-15T21:02:00Z', open_count: 2, first_lat: 30.35, first_lng: -97.75, first_located_at: '2026-11-15T21:03:00Z', last_lat: null, last_lng: null, last_located_at: null },
+      { id: 'v2', visitor_name: 'Robert Douglas', user_id: 'u1', device_words: 'Mac · Chrome', last_opened_at: '2026-11-15T20:00:00Z', open_count: 1, first_lat: null, first_lng: null, first_located_at: null, last_lat: null, last_lng: null, last_located_at: null },
+    ]
+    sheet()
+    expect(screen.getByText('They give their name first. We keep the name, the phone or computer and the time.')).toBeTruthy()
+    await waitFor(() => expect(document.querySelectorAll('[data-painted-share-visit]')).toHaveLength(2))
+    const rows = [...document.querySelectorAll('[data-painted-share-visit]')].map((r) => r.textContent ?? '')
+    expect(rows[0]).toMatch(/^Dana ReyesiPhone · Safari · opened .+ · 2 timesShowed where they were, .+\. See that place$/)
+    expect(rows[1]).toMatch(/^Robert Douglas · signed inMac · Chrome · opened /)
+    expect((screen.getByRole('link', { name: 'See that place' }) as HTMLAnchorElement).href).toBe('https://www.google.com/maps/search/?api=1&query=30.350000,-97.750000')
+  })
+
+  it('says nothing about who opened it to a reader the list is not for', async () => {
+    io.links = [OPEN]
+    io.visits = []
+    sheet()
+    await screen.findByText(/One link is out/)
+    expect(document.querySelector('[data-painted-share-visits]')).toBeNull()
   })
 })

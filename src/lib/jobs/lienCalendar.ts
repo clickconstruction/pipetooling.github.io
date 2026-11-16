@@ -461,7 +461,7 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
     glyph: 'mailed',
     short: 'In the mail',
     label: 'that month’s notice is printed and in the mail — its tracking number is still owed',
-    long: 'That month’s § 53.056 notice was printed from the desk and is on its way, but the certified number is not on record yet, so it is not on file. Record the mailing on the Lien desk and this mark becomes Notice on file. Until then the desk lists it under In the run.',
+    long: 'That month’s § 53.056 notice was printed from the desk and is on its way, but the certified number is not on record yet, so it is not on file. Record the mailing on the Lien desk and this mark becomes Notice on file. Until then the desk lists it under Approved · to mail.',
     door: 'record',
   },
   {

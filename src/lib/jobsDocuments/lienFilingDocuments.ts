@@ -28,8 +28,10 @@ import type { FilingSignature } from './filingSignatureType'
  * The leader's electronic signature as the papers print it (v2.5077, lien desk signing): the mark
  * — his name in the cursive face for a pressed signature, the ink for a drawn one — in the framed
  * block estimates and contracts already use, tagged "Signed electronically", with the printed name
- * and company under the rule, the day and clock, and the record ID in the corner; the audit
- * sentence and the statute line in grey beneath. `lienNoticeSignature.ts` builds it from the row.
+ * and company under the rule, the day he signed, and the record ID in the corner; the statute line
+ * in grey beneath. Since v2.7437 (Taunya's ask) no clock and no sentence of how it was signed is on
+ * the paper: the record ID ties the paper to the row, which keeps both. `lienNoticeSignature.ts`
+ * builds it from the row.
  */
 export type { FilingSignature } from './filingSignatureType'
 
@@ -169,7 +171,7 @@ function payRowLineHtml(b: Extract<FilingDocBlock, { kind: 'payRow' }>, mark: Fi
   return `<div style="margin-top:0.2em"><span${attrs} style="${style};font-weight:700"><span data-field-text>${text}</span></span>${sub}</div>`
 }
 
-/** The signed frame on the page (v2.5077): the mark, the rule, the names, the day, the record ID; the audit and statute lines under it. */
+/** The signed frame on the page (v2.5077): the mark, the rule, the names, the day, the record ID; the statute line under it. */
 function signedSignatureHtml(sig: FilingSignature, lines: string[]): string {
   // A pen signature prints no mark: the ink is on the paper, so the frame holds the name in plain type and the record.
   const mark =
@@ -186,7 +188,7 @@ function signedSignatureHtml(sig: FilingSignature, lines: string[]): string {
     `<div style="border-top:1px solid currentColor;margin-top:0.35em;padding-top:0.35em;${HTML_LABEL_FONT};font-size:0.72em;color:${HTML_MUTED};line-height:1.5">${[...lines, sig.signedWords].map(esc).join('<br/>')}</div>` +
     `<span style="position:absolute;bottom:-7px;right:10px;background:#fff;padding:0 6px;font-family:ui-monospace,Menlo,monospace;font-size:0.62em;color:${HTML_MUTED};line-height:1.2">${esc(sig.recordId)}</span>` +
     `</div>` +
-    `<div style="${HTML_LABEL_FONT};font-size:0.62em;color:${HTML_MUTED};margin-top:0.8em;line-height:1.5">${esc(sig.auditLine)}<br/>${esc(filingSignedStatuteLine(sig.mode))}</div>` +
+    `<div style="${HTML_LABEL_FONT};font-size:0.62em;color:${HTML_MUTED};margin-top:0.8em;line-height:1.5">${esc(filingSignedStatuteLine(sig.mode))}</div>` +
     `</div></div>`
   )
 }
@@ -366,7 +368,7 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
       case 'signature':
         out.push(
           b.signed
-            ? `/s/ ${b.signed.printedName}\nSigned electronically · ${b.signed.recordId} · ${b.signed.signedWords}\n${b.lines.join('\n')}\n${b.signed.auditLine}`
+            ? `/s/ ${b.signed.printedName}\nSigned electronically · ${b.signed.recordId} · ${b.signed.signedWords}\n${b.lines.join('\n')}`
             : `______________________________\n${b.lines.join('\n')}`,
         )
         break
@@ -846,7 +848,8 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
           const frameH = pad + 1 + markH + 1 + 4 + (b.lines.length + 1) * 3.8 + pad - 1
           doc.setFont('helvetica', 'normal')
           doc.setFontSize(6)
-          const auditLines = doc.splitTextToSize(`${s.auditLine} ${filingSignedStatuteLine(s.mode)}`, frameW) as string[]
+          // Under the frame: the statute line alone. The clock and how it was signed stay in the app (v2.7437).
+          const auditLines = doc.splitTextToSize(filingSignedStatuteLine(s.mode), frameW) as string[]
           y += 8
           ensureRoom(frameH + auditLines.length * 2.8 + 8)
           doc.setDrawColor(194, 65, 12)

@@ -1,169 +1,145 @@
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
 import { STICKER_TEST_STRIP, stickerStrip } from './stickerRun'
 import {
   previewCappedWords,
   previewHeadWords,
   previewMoreWords,
-  previewNumbers,
   previewStrip,
   showAllLabel,
   STICKER_PREVIEW_CODE_WORDS,
-  STICKER_PREVIEW_NAMED_CODE_WORDS,
   STICKER_PREVIEW_FIRST_STRIPS,
   STICKER_PREVIEW_MAX_STICKERS,
+  STICKER_PREVIEW_NAMED_CODE_WORDS,
+  STICKER_PREVIEW_NO_COUNT_WORDS,
+  STICKER_PREVIEW_TEST_WORDS,
   STICKER_SAMPLE_CODE,
   stickerPreview,
 } from './stickerPreview'
 
-describe('previewNumbers', () => {
-  it('starts after the last run, as the foot line reads it', () => {
-    expect(previewNumbers(2, 4)).toEqual([3, 4, 5, 6])
-  })
-  it('the first run starts at 0001', () => {
-    expect(previewNumbers(null, 3)).toEqual([1, 2, 3])
-  })
-  it('a count of zero or less is no numbers', () => {
-    expect(previewNumbers(10, 0)).toEqual([])
-    expect(previewNumbers(10, -2)).toEqual([])
-  })
-})
+const names = (first: number, n: number) => Array.from({ length: n }, (_, i) => `G${first + i}`)
 
 describe('previewStrip', () => {
   it('is the strip a minted sticker prints, with the sample code where the sticker’s own will go', () => {
-    const minted = stickerStrip({ id: 'x', number: 147, code: STICKER_SAMPLE_CODE })
-    expect(previewStrip(147)).toEqual({ ...minted, id: 'preview-0147' })
-    expect(previewStrip(147).address).toBe('PRTS.CO/B/0000-0000')
-    expect(previewStrip(147).value).toBe('HTTPS://PRTS.CO/B/00000000')
-    expect(previewStrip(147).stencil).toBe('0147')
-  })
-  it('the sample code is eight characters, as a sticker’s code is, so the QR and the address take the same room', () => {
+    const minted = stickerStrip({ id: 'x', number: 1, code: STICKER_SAMPLE_CODE, boxName: 'G78' })
+    expect(previewStrip(0, 'G78')).toEqual({ ...minted, id: 'preview-0' })
+    expect(previewStrip(0, 'G78').address).toBe('PRTS.CO/B/0000-0000')
+    expect(previewStrip(0, 'G78').value).toBe('HTTPS://PRTS.CO/B/00000000')
+    expect(previewStrip(0, 'G78').stencil).toBe('G78')
+    // with no name the strip has no stencil: its code is drawn larger in the name's place
+    expect(previewStrip(4).stencil).toBe('')
+    expect(previewStrip(4).id).toBe('preview-4')
+    // the sample is a code's own length, so the QR and the address are the size they will print
     expect(STICKER_SAMPLE_CODE).toHaveLength(8)
-    expect(STICKER_TEST_STRIP.value.length).toBeLessThan(previewStrip(1).value.length)
+    expect(STICKER_TEST_STRIP.value.length).toBeLessThan(previewStrip(0).value.length)
   })
 })
 
-describe('stickerPreview', () => {
-  it('draws the first six strips of a run of 200 after a last of 2, then says the rest', () => {
-    const p = stickerPreview({ lastNumber: 2, count: 200, copies: 1, all: false })
-    expect(p.first).toBe(3)
-    expect(p.last).toBe(202)
-    expect(p.head.map((r) => r.strip.stencil)).toEqual(['0003', '0004', '0005', '0006', '0007', '0008'])
-    expect(p.head.every((r) => r.copy === 0)).toBe(true)
+describe('stickerPreview · a run that names its boxes', () => {
+  it('draws the first six strips by name, in print order, then says the rest', () => {
+    const p = stickerPreview({ count: 223, copies: 1, all: false, names: names(78, 223) })
+    expect(p.head.map((r) => r.strip.stencil)).toEqual(['G78', 'G79', 'G80', 'G81', 'G82', 'G83'])
+    expect(p.head).toHaveLength(STICKER_PREVIEW_FIRST_STRIPS)
+    expect(previewHeadWords(p.head, 223)).toBe('6 strips of 223 stickers, G78 to G83.')
+    expect(p.more).toBe(217)
+    expect(p.moreWords).toBe('and 217 more, to G300')
+    expect(p.showAllLabel).toBe('Show all 223')
     expect(p.rest).toEqual([])
-    expect(p.more).toBe(194)
-    expect(p.moreWords).toBe('and 194 more, to 0202')
-    expect(p.showAllLabel).toBe('Show all 200')
     expect(p.cappedWords).toBeNull()
+    expect(p.head[0]!.strip.address).toBe('PRTS.CO/B/0000-0000')
   })
 
   it('two copies of each draw 1 1 2 2 3 3 in the first six, and the rest counts stickers', () => {
-    const p = stickerPreview({ lastNumber: 2, count: 200, copies: 2, all: false })
-    expect(p.head.map((r) => `${r.strip.stencil}:${r.copy}`)).toEqual(['0003:0', '0003:1', '0004:0', '0004:1', '0005:0', '0005:1'])
-    expect(p.more).toBe(197)
-    expect(p.moreWords).toBe('and 197 more, to 0202')
+    const p = stickerPreview({ count: 60, copies: 2, all: false, names: names(1, 60) })
+    expect(p.head.map((r) => [r.strip.stencil, r.copy])).toEqual([['G1', 0], ['G1', 1], ['G2', 0], ['G2', 1], ['G3', 0], ['G3', 1]])
+    expect(p.more).toBe(57)
+    expect(p.moreWords).toBe('and 57 more, to G60')
   })
 
   it('six copies of each fill the head with one sticker', () => {
-    const p = stickerPreview({ lastNumber: null, count: 30, copies: 6, all: false })
-    expect(p.head).toHaveLength(STICKER_PREVIEW_FIRST_STRIPS)
-    expect(p.head.every((r) => r.number === 1)).toBe(true)
+    const p = stickerPreview({ count: 30, copies: 6, all: false, names: names(1, 30) })
+    expect(p.head.every((r) => r.strip.stencil === 'G1')).toBe(true)
     expect(p.more).toBe(29)
   })
 
-  it('a run the head holds whole has no more and no Show all', () => {
-    const p = stickerPreview({ lastNumber: 100, count: 4, copies: 1, all: false })
-    expect(p.head).toHaveLength(4)
-    expect(p.more).toBe(0)
-    expect(p.moreWords).toBeNull()
-    expect(p.showAllLabel).toBeNull()
-    expect(stickerPreview({ lastNumber: 100, count: 3, copies: 2, all: false }).more).toBe(0)
+  it('a run the head holds whole has no more and no Show all, and one more reads as its name alone', () => {
+    const whole = stickerPreview({ count: 4, copies: 1, all: false, names: names(1, 4) })
+    expect(whole.more).toBe(0)
+    expect(whole.moreWords).toBeNull()
+    expect(whole.showAllLabel).toBeNull()
+    expect(stickerPreview({ count: 7, copies: 1, all: false, names: names(1, 7) }).moreWords).toBe('and 1 more, G7')
   })
 
-  it('one more reads as its number alone', () => {
-    const p = stickerPreview({ lastNumber: 0, count: 7, copies: 1, all: false })
-    expect(p.moreWords).toBe('and 1 more, 0007')
+  it('the names set how many, whatever count is handed', () => {
+    const p = stickerPreview({ count: 999, copies: 2, all: true, names: ['A1', 'A2'] })
+    expect(p.head.map((r) => r.strip.stencil)).toEqual(['A1', 'A1', 'A2', 'A2'])
+    expect(p.more).toBe(0)
   })
 
-  it('Show all draws the rest once each, every number real, and nothing is left', () => {
-    const p = stickerPreview({ lastNumber: 2, count: 200, copies: 2, all: true })
-    expect(p.head).toHaveLength(6)
-    expect(p.rest).toHaveLength(197)
-    expect(p.rest[0]!.strip.stencil).toBe('0006')
-    expect(p.rest[196]!.strip.stencil).toBe('0202')
-    expect(p.rest.every((r) => r.copy === 0)).toBe(true)
+  it('Show all draws the rest once each, every name real, and nothing is left', () => {
+    const p = stickerPreview({ count: 60, copies: 2, all: true, names: names(1, 60) })
+    expect(p.rest).toHaveLength(57)
+    expect(p.rest[0]!.strip.stencil).toBe('G4')
+    expect(p.rest[56]!.strip.stencil).toBe('G60')
     expect(p.more).toBe(0)
-    expect(p.moreWords).toBeNull()
     expect(p.showAllLabel).toBeNull()
-    expect(p.cappedWords).toBeNull()
+    expect(p.moreWords).toBeNull()
   })
 
   it('a run past the cap draws 200 and says so', () => {
-    const p = stickerPreview({ lastNumber: null, count: 500, copies: 1, all: true })
+    const p = stickerPreview({ count: 300, copies: 1, all: true, names: names(1, 300) })
     expect(p.head.length + p.rest.length).toBe(STICKER_PREVIEW_MAX_STICKERS)
-    expect(p.more).toBe(300)
-    expect(p.cappedWords).toBe('The first 200 of 500 are drawn. The rest print the same way.')
+    expect(p.more).toBe(100)
+    expect(p.cappedWords).toBe('The first 200 of 300 are drawn. The rest print the same way.')
     expect(p.moreWords).toBeNull()
   })
 
-  it('a count of zero draws nothing', () => {
-    const p = stickerPreview({ lastNumber: 5, count: 0, copies: 1, all: false })
-    expect(p.head).toEqual([])
-    expect(p.rest).toEqual([])
-    expect(p.more).toBe(0)
+  it('a long name is marked for the smaller size', () => {
+    const p = stickerPreview({ count: 2, copies: 1, all: false, names: ['AB298', 'AB299'] })
+    expect(p.head.every((r) => r.strip.small)).toBe(true)
+  })
+})
+
+describe('stickerPreview · a run with no names', () => {
+  it('draws one sticker, since every other differs only by its code', () => {
+    const p = stickerPreview({ count: 200, copies: 1, all: false, names: null })
+    expect(p.head).toHaveLength(1)
+    expect(p.head[0]!.strip.stencil).toBe('')
+    expect(previewHeadWords(p.head, 200)).toBe('1 sticker of 200, with a sample code.')
+    expect(p.more).toBe(199)
+    expect(p.moreWords).toBe('and 199 more, each with its own code')
+    // nothing more to show: no Show all, and pressing it would draw nothing
     expect(p.showAllLabel).toBeNull()
+    expect(stickerPreview({ count: 200, copies: 1, all: true }).rest).toEqual([])
+    expect(stickerPreview({ count: 200, copies: 1, all: true }).cappedWords).toBeNull()
+  })
+
+  it('its copies come together, and one sticker alone has no more', () => {
+    const p = stickerPreview({ count: 30, copies: 3, all: false, names: [] })
+    expect(p.head.map((r) => r.copy)).toEqual([0, 1, 2])
+    const one = stickerPreview({ count: 1, copies: 1, all: false })
+    expect(one.more).toBe(0)
+    expect(one.moreWords).toBeNull()
+    expect(previewHeadWords(one.head, 1)).toBe('1 sticker, with a sample code.')
+  })
+
+  it('a count of zero draws nothing', () => {
+    const p = stickerPreview({ count: 0, copies: 1, all: false })
+    expect(p.head).toEqual([])
+    expect(previewHeadWords(p.head, 0)).toBe('')
   })
 })
 
 describe('the words', () => {
   it('read plainly', () => {
-    expect(previewMoreWords(194, '0202')).toBe('and 194 more, to 0202')
+    expect(previewMoreWords(217, 'G300')).toBe('and 217 more, to G300')
     expect(previewMoreWords(1, 'G300')).toBe('and 1 more, G300')
+    expect(previewMoreWords(199, '')).toBe('and 199 more, each with its own code')
     expect(showAllLabel(60)).toBe('Show all 60')
     expect(previewCappedWords(200, 300)).toBe('The first 200 of 300 are drawn. The rest print the same way.')
-    expect(STICKER_PREVIEW_CODE_WORDS).toBe('The numbers are the run’s. Each sticker’s code is given when the run prints.')
-  })
-  it('the head’s line counts strips and stickers', () => {
-    const p = stickerPreview({ lastNumber: 2, count: 200, copies: 2, all: false })
-    expect(previewHeadWords(p.head, 200)).toBe('6 strips of 200 stickers, 0003 to 0005.')
-    const one = stickerPreview({ lastNumber: null, count: 1, copies: 1, all: false })
-    expect(previewHeadWords(one.head, 1)).toBe('1 strip of 1 sticker, 0001.')
-    expect(previewHeadWords([], 0)).toBe('')
-  })
-})
-
-describe('a run that names its boxes (design section 10, PR 8, v2.7391)', () => {
-  const names = Array.from({ length: 223 }, (_, i) => `G${78 + i}`)
-
-  it('draws each name large with the run’s own number small, in number order', () => {
-    const p = stickerPreview({ lastNumber: 224, count: 223, copies: 1, all: false, names })
-    expect(p.head.map((r) => [r.strip.stencil, r.strip.number])).toEqual([['G78', '0225'], ['G79', '0226'], ['G80', '0227'], ['G81', '0228'], ['G82', '0229'], ['G83', '0230']])
-    expect(previewHeadWords(p.head, 223)).toBe('6 strips of 223 stickers, G78 to G83.')
-    expect(p.moreWords).toBe('and 217 more, to G300')
-    expect(p.showAllLabel).toBe('Show all 223')
-    // the sample code and its address, as a numbered preview carries them
-    expect(p.head[0]!.strip.address).toBe('PRTS.CO/B/0000-0000')
-    expect(p.head[0]!.strip.id).toBe('preview-0225')
-  })
-
-  it('the names set how many, whatever count is handed', () => {
-    const p = stickerPreview({ lastNumber: null, count: 999, copies: 2, all: true, names: ['A1', 'A2'] })
-    expect(p.head.map((r) => r.strip.stencil)).toEqual(['A1', 'A1', 'A2', 'A2'])
-    expect(p.first).toBe(1)
-    expect(p.last).toBe(2)
-    expect(p.more).toBe(0)
-  })
-
-  it('a long name is marked for the smaller size, and Show all keeps the names', () => {
-    const p = stickerPreview({ lastNumber: 0, count: 8, copies: 1, all: true, names: ['AB298', 'AB299', 'AB300', 'AB301', 'AB302', 'AB303', 'AB304', 'AB305'] })
-    expect(p.head.every((r) => r.strip.small)).toBe(true)
-    expect(p.rest.map((r) => [r.strip.stencil, r.strip.number])).toEqual([['AB304', '0007'], ['AB305', '0008']])
-  })
-
-  it('no names is the numbered preview as it was, and the line under says which it is', () => {
-    const p = stickerPreview({ lastNumber: 2, count: 200, copies: 1, all: false, names: null })
-    expect(p.head[0]!.strip).toEqual(previewStrip(3))
-    expect(p.head[0]!.strip.number).toBeUndefined()
-    expect(STICKER_PREVIEW_NAMED_CODE_WORDS).toContain('The names and the numbers')
-    expect(STICKER_PREVIEW_CODE_WORDS).not.toContain('names')
+    expect(STICKER_PREVIEW_NAMED_CODE_WORDS).toContain('The names are the run’s.')
+    for (const w of [STICKER_PREVIEW_CODE_WORDS, STICKER_PREVIEW_NAMED_CODE_WORDS, STICKER_PREVIEW_TEST_WORDS, STICKER_PREVIEW_NO_COUNT_WORDS, previewCappedWords(200, 300)]) expect(plainWordsFailures(w), w).toEqual([])
+    // no line of the preview says a running number
+    for (const w of [STICKER_PREVIEW_CODE_WORDS, STICKER_PREVIEW_NAMED_CODE_WORDS]) expect(w).not.toMatch(/number/i)
   })
 })

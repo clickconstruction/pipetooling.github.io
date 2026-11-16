@@ -2,21 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import type { Container } from './onSite'
 import {
-  blankStickerPublicWords,
-  blankStickerTitle,
+  BLANK_STICKER_PUBLIC_WORDS,
+  BLANK_STICKER_TITLE,
   codeLookup,
+  LOST_STICKER_TITLE,
   lostStickerDetail,
-  lostStickerTitle,
   onBoxesWords,
-  outOfReachStickerTitle,
+  OUT_OF_REACH_STICKER_TITLE,
   placingVerdict,
   retiredBoxStickerTitle,
   stickerAgoWords,
-  stickerBoxName,
   stickerFactsOf,
-  stickerNumberWords,
-  stickerRangeWords,
+  stickerNameIs,
   stickerRunCounts,
+  stickerSayName,
   unusedStickersWords,
   type StickerCountRow,
   type StickerFacts,
@@ -42,23 +41,17 @@ const blank: StickerFacts = {
 const onR76: StickerFacts = { ...blank, state: 'on_box', containerId: 'box-r76', containerLabel: 'R76', containerKind: 'cage', jobId: 'job-juniper', placedByName: 'Marcus', placedAt: '2026-11-14T15:00:00Z' }
 const NOW = '2026-11-14T15:01:10Z'
 
-describe('the number', () => {
-  it('prints four digits, and five past 9999', () => {
-    expect(stickerNumberWords(1)).toBe('0001')
-    expect(stickerNumberWords(147)).toBe('0147')
-    expect(stickerNumberWords(9999)).toBe('9999')
-    expect(stickerNumberWords(10000)).toBe('10000')
-    expect(stickerNumberWords(12345)).toBe('12345')
+describe('what a sticker is called (v2.7438: no running number in any words)', () => {
+  it('reads its printed name when it has one, its code with the dash when it does not', () => {
+    expect(stickerSayName({ ...blank, boxName: 'G78' })).toBe('G78')
+    expect(stickerSayName(blank)).toBe('4F2A-9C18')
+    expect(stickerSayName({ code: '4f2a9c18', boxName: null })).toBe('4F2A-9C18')
   })
 
-  it('reads a run as its first and last number', () => {
-    expect(stickerRangeWords(101, 300)).toBe('0101 to 0300')
-    expect(stickerRangeWords(163, 163)).toBe('0163')
-    expect(stickerRangeWords(9990, 10010)).toBe('9990 to 10010')
-  })
-
-  it('names a new box until someone types a name', () => {
-    expect(stickerBoxName(147)).toBe('0147')
+  it('knows when the name on the tape is the box’s own', () => {
+    expect(stickerNameIs('G78', ' g78')).toBe(true)
+    expect(stickerNameIs('G78', 'G78B')).toBe(false)
+    expect(stickerNameIs(null, 'G78')).toBe(false)
   })
 })
 
@@ -92,21 +85,15 @@ describe('a run’s counts', () => {
   it('counts what is on boxes and what is not used, with the unused range', () => {
     const c = stickerRunCounts(run((n) => (n <= 204 ? { containerId: `box-${n}` } : {})))
     expect(c).toEqual({ total: 200, onBoxes: 104, notUsed: 96, lost: 0, unused: [{ first: 205, last: 300 }] })
-    expect(unusedStickersWords(c)).toBe('96 stickers not used yet, 0205 to 0300')
+    // how many, and never which by number: a named run's row adds the names
+    expect(unusedStickersWords(c)).toBe('96 stickers not used yet')
     expect(onBoxesWords(c)).toBe('104 of 200 stickers are on boxes')
   })
 
-  it('names a sticker skipped on the walk beside the rest', () => {
+  it('counts a sticker skipped on the walk with the rest', () => {
     const c = stickerRunCounts(run((n) => (n <= 204 && n !== 163 ? { containerId: `box-${n}` } : {})))
     expect(c.unused).toEqual([{ first: 163, last: 163 }, { first: 205, last: 300 }])
-    expect(unusedStickersWords(c)).toBe('97 stickers not used yet, 0163 and 0205 to 0300')
-  })
-
-  it('names three ranges, and past three says only where they lie', () => {
-    const three = stickerRunCounts(run((n) => (n === 110 || n === 120 || n >= 290 ? {} : { containerId: 'b' })))
-    expect(unusedStickersWords(three)).toBe('13 stickers not used yet, 0110, 0120 and 0290 to 0300')
-    const four = stickerRunCounts(run((n) => (n === 110 || n === 120 || n === 130 || n >= 290 ? {} : { containerId: 'b' })))
-    expect(unusedStickersWords(four)).toBe('14 stickers not used yet, between 0110 and 0300')
+    expect(unusedStickersWords(c)).toBe('97 stickers not used yet')
   })
 
   it('keeps a lost sticker out of both counts', () => {
@@ -116,7 +103,7 @@ describe('a run’s counts', () => {
       { number: 3, containerId: null, lostAt: null },
     ])
     expect(c).toEqual({ total: 3, onBoxes: 1, notUsed: 1, lost: 1, unused: [{ first: 3, last: 3 }] })
-    expect(unusedStickersWords(c)).toBe('1 sticker not used yet, 0003')
+    expect(unusedStickersWords(c)).toBe('1 sticker not used yet')
   })
 
   it('reads rows in any order, and says nothing when every sticker is used', () => {
@@ -158,18 +145,18 @@ describe('the placing verdicts', () => {
   })
 
   it('one already on a box says who and when', () => {
-    expect(placingVerdict({ sticker: onR76, hereJobId: 'job-juniper', now: NOW })).toEqual({ kind: 'on_box', words: 'Marcus put 0147 on R76 a minute ago.', containerId: 'box-r76', jobId: 'job-juniper' })
+    expect(placingVerdict({ sticker: onR76, hereJobId: 'job-juniper', now: NOW })).toEqual({ kind: 'on_box', words: 'Marcus put this sticker on R76 a minute ago.', containerId: 'box-r76', jobId: 'job-juniper' })
   })
 
   it('still reads with no name, no box name or no time', () => {
-    expect(placingVerdict({ sticker: { ...onR76, placedByName: null }, now: NOW })).toMatchObject({ words: '0147 was put on R76 a minute ago.' })
-    expect(placingVerdict({ sticker: { ...onR76, containerLabel: null }, now: NOW })).toMatchObject({ words: 'Marcus put 0147 on a box a minute ago.' })
-    expect(placingVerdict({ sticker: { ...onR76, placedAt: null }, now: NOW })).toMatchObject({ words: 'Marcus put 0147 on R76.' })
+    expect(placingVerdict({ sticker: { ...onR76, placedByName: null }, now: NOW })).toMatchObject({ words: 'This sticker was put on R76 a minute ago.' })
+    expect(placingVerdict({ sticker: { ...onR76, containerLabel: null }, now: NOW })).toMatchObject({ words: 'Marcus put this sticker on a box a minute ago.' })
+    expect(placingVerdict({ sticker: { ...onR76, placedAt: null }, now: NOW })).toMatchObject({ words: 'Marcus put this sticker on R76.' })
   })
 
   it('a lost one says where it was', () => {
-    expect(placingVerdict({ sticker: { ...onR76, state: 'lost', lostAt: NOW }, now: NOW })).toEqual({ kind: 'lost', words: '0147 was on R76 and was marked lost.' })
-    expect(placingVerdict({ sticker: { ...blank, state: 'lost', lostAt: NOW }, now: NOW })).toEqual({ kind: 'lost', words: '0147 was marked lost.' })
+    expect(placingVerdict({ sticker: { ...onR76, state: 'lost', lostAt: NOW }, now: NOW })).toEqual({ kind: 'lost', words: 'This sticker was on R76 and was marked lost.' })
+    expect(placingVerdict({ sticker: { ...blank, state: 'lost', lostAt: NOW }, now: NOW })).toEqual({ kind: 'lost', words: 'This sticker was marked lost.' })
   })
 
   it('a blank one printed for another job asks once', () => {
@@ -222,35 +209,38 @@ describe('one resolver: what a code names', () => {
 
 describe('the pages a scan opens', () => {
   it('a blank sticker says only that, signed out', () => {
-    expect(blankStickerTitle(147)).toBe('Sticker 0147 is not on a box yet')
-    expect(blankStickerPublicWords(147)).toBe('Sticker 0147 is not on a box yet. Sign in to say what it is.')
+    expect(BLANK_STICKER_TITLE).toBe('This sticker is not on a box yet')
+    expect(BLANK_STICKER_PUBLIC_WORDS).toBe('This sticker is not on a box yet. Sign in to say what it is.')
   })
 
   it('a lost one and one out of reach say so', () => {
-    expect(lostStickerTitle(147)).toBe('Sticker 0147 was marked lost')
+    expect(LOST_STICKER_TITLE).toBe('This sticker was marked lost')
     expect(lostStickerDetail(onR76)).toBe('It was on R76. It no longer opens that box.')
     expect(lostStickerDetail(blank)).toBe('It no longer opens a box.')
-    expect(outOfReachStickerTitle(147)).toBe('Sticker 0147 is on a box of a job you are not on')
-    expect(retiredBoxStickerTitle(onR76)).toBe('Sticker 0147 is on R76, which was retired')
-    expect(retiredBoxStickerTitle(blank)).toBe('Sticker 0147 is on a box that was retired')
+    expect(OUT_OF_REACH_STICKER_TITLE).toBe('This sticker is on a box of a job you are not on')
+    expect(retiredBoxStickerTitle(onR76)).toBe('This sticker is on R76, which was retired')
+    expect(retiredBoxStickerTitle(blank)).toBe('This sticker is on a box that was retired')
   })
 
-  it('every sentence a person reads follows the plain-words rules', () => {
+  it('every sentence a person reads follows the plain-words rules, and none says a number', () => {
     const words = [
-      blankStickerPublicWords(147),
-      `${lostStickerTitle(147)}.`,
+      BLANK_STICKER_PUBLIC_WORDS,
+      `${LOST_STICKER_TITLE}.`,
       lostStickerDetail(onR76),
       lostStickerDetail(blank),
-      `${outOfReachStickerTitle(147)}.`,
+      `${OUT_OF_REACH_STICKER_TITLE}.`,
       `${retiredBoxStickerTitle(onR76)}.`,
       'Nobody has said which box it is on.',
       'Open On site and bring the box back to use it.',
       'Ask the office to add you to that job.',
-      `${unusedStickersWords({ notUsed: 97, unused: [{ first: 163, last: 163 }, { first: 205, last: 300 }] })}.`,
-      'Marcus put 0147 on R76 a minute ago.',
-      '0147 was on R76 and was marked lost.',
+      `${unusedStickersWords({ notUsed: 97 })}.`,
+      'Marcus put this sticker on R76 a minute ago.',
+      'This sticker was on R76 and was marked lost.',
       'This sticker was printed for Juniper Ridge. Use it here?',
     ]
-    for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
+    for (const w of words) {
+      expect(plainWordsFailures(w), w).toEqual([])
+      expect(w, w).not.toMatch(/\b0\d{3}\b/)
+    }
   })
 })

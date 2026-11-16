@@ -14,6 +14,17 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
+vi.mock('../paintedMap/PaintedMapShareSheet', () => ({
+  PaintedMapShareSheet: (props: { mapId: string; mapName: string; mayText?: boolean; jobId?: string | null; onClose: () => void }) => (
+    <div data-testid="share-sheet">
+      {props.mapId}|{props.mapName}|{String(props.mayText)}|{props.jobId}
+      <button type="button" onClick={props.onClose}>
+        Close the sheet
+      </button>
+    </div>
+  ),
+}))
+
 import { onPaintedMapAsk, paintedMapsChanged, type PaintedMapAsk } from '../../lib/paintedMap/paintedMapDoor'
 import { JobDocumentsPaintedMaps } from './JobDocumentsPaintedMaps'
 
@@ -55,7 +66,7 @@ describe('JobDocumentsPaintedMaps', () => {
     expect(screen.getByRole('heading', { name: 'Painted maps' })).toBeTruthy()
     await waitFor(() => expect(rowTexts()).toHaveLength(2))
     expect(asked).toEqual([{ jobId: 'job-14', developmentId: 'dev-1' }])
-    expect(rowTexts()).toEqual(['The way in for deliveriesabout 830 ft · 3 places · Painted by Dana on Nov 13.', 'The site roadabout 2,950 ft · Painted by Dana on Nov 10.from Juniper Ridge'])
+    expect(rowTexts()).toEqual(['The way in for deliveriesabout 830 ft · 3 places · Painted by Dana on Nov 13.Share', 'The site roadabout 2,950 ft · Painted by Dana on Nov 10.from Juniper RidgeShare'])
   })
 
   it('a press on a map\'s name opens the map as it is now, at the job\'s address', async () => {
@@ -108,6 +119,15 @@ describe('JobDocumentsPaintedMaps', () => {
 
   it('the names failing to read costs the names and never the list', async () => {
     render(<JobDocumentsPaintedMaps job={JOB} loadNames={() => Promise.reject(new Error('nope'))} loadMaps={landed([WAY])} />)
-    await waitFor(() => expect(rowTexts()).toEqual(['The way in for deliveriesabout 830 ft · 3 places · Painted on Nov 13.']))
+    await waitFor(() => expect(rowTexts()).toEqual(['The way in for deliveriesabout 830 ft · 3 places · Painted on Nov 13.Share']))
+  })
+
+  it('Share on a row opens that map\'s Share sheet for this job, without opening the map', async () => {
+    render(<JobDocumentsPaintedMaps job={JOB} mayText loadNames={names} loadMaps={landed([WAY, SITE])} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Share The site road' }))
+    expect(screen.getByTestId('share-sheet').textContent).toContain('site|The site road|true|job-14')
+    expect(asks).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Close the sheet' }))
+    expect(screen.queryByTestId('share-sheet')).toBeNull()
   })
 })

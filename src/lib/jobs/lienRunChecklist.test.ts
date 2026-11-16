@@ -6,7 +6,7 @@ import type { LienNoticeSignature } from './lienNoticeSignature'
 const owner = (tracking = ''): RunRecipient => ({ key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '4 Example Way, Schertz, TX', email: '', method: 'certified_mail', tracking })
 const gc = (tracking = ''): RunRecipient => ({ key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking })
 
-const typed: LienNoticeSignature = { mode: 'type', printedName: 'Robert Douglas', pngDataUrl: null, signedAtIso: '2026-10-09T19:14:00Z', recordId: 'L650-AAAA', signedWords: 'Signed October 9, 2026 at 2:14 PM CT', auditLine: '', onDeviceOf: null, pen: null }
+const typed: LienNoticeSignature = { mode: 'type', printedName: 'Robert Douglas', pngDataUrl: null, signedAtIso: '2026-10-09T19:14:00Z', recordId: 'L650-AAAA', signedWords: 'Signed October 9, 2026', auditLine: '', onDeviceOf: null, pen: null }
 const pen: LienNoticeSignature = { ...typed, mode: 'pen', signedAtIso: '2026-10-10T17:00:00Z', pen: { recordedByName: 'Taunya', how: 'watched', confirmedAtIso: null } }
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {

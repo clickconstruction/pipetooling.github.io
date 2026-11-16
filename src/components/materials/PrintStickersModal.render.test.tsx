@@ -3,7 +3,9 @@
  * Render smoke for Print blank stickers (punch list #329, PR 2, v2.7272) through the browser's print window, where the
  * test's browser has no USB: the ask with its quick counts and Copies of each; a count out of range and a role that may
  * not mint each hold the press with the database's words; the press mints the run and the strips print once they are
- * on the page; a refusal is said and nothing prints; a run handed in prints and mints nothing.
+ * on the page; a refusal is said and nothing prints; a run handed in prints and mints nothing. Since v2.7438
+ * (Taunya's call of 2026-11-16) no strip and no line of the window carries a sticker's running number: a sticker with
+ * no name prints its code larger in the name's place, and a run with no names is said by its count.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -14,7 +16,6 @@ import type { SiteStickerNames } from '../../lib/materials/stickerRunsIo'
 
 vi.mock('../../lib/materials/stickerRunsIo', () => ({
   mintStickerRun: vi.fn(),
-  fetchLastStickerNumber: vi.fn(async () => 100),
   fetchStickerRuns: vi.fn(async () => []),
   fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: [] })),
 }))
@@ -36,12 +37,12 @@ async function ready() {
   await waitFor(() => expect(screen.queryByTestId('stickers-names-reading')).toBeNull())
 }
 
-function setup(over: { role?: string; mint?: (r: StickerRunRequest) => Promise<MintedRun>; last?: () => Promise<number | null>; blank?: () => Promise<number>; site?: () => Promise<SiteStickerNames>; run?: MintedRun & { title: string } } = {}) {
+function setup(over: { role?: string; mint?: (r: StickerRunRequest) => Promise<MintedRun>; blank?: () => Promise<number>; site?: () => Promise<SiteStickerNames>; run?: MintedRun & { title: string } } = {}) {
   const print = vi.fn()
   const mint = vi.fn(over.mint ?? (async (r: StickerRunRequest) => mintedRun(r)))
   const onMinted = vi.fn()
   renderWithProviders(
-    <PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role={over.role ?? 'assistant'} run={over.run ? { run: over.run.run, stickers: over.run.stickers, title: over.run.title } : null} onClose={() => {}} onMinted={onMinted} mint={mint} lastNumber={over.last ?? (async () => 100)} blankCount={over.blank ?? (async () => 0)} siteNames={over.site ?? (async () => ({ boxes: [], blankNames: [] }))} print={print} />,
+    <PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role={over.role ?? 'assistant'} run={over.run ? { run: over.run.run, stickers: over.run.stickers, title: over.run.title } : null} onClose={() => {}} onMinted={onMinted} mint={mint} blankCount={over.blank ?? (async () => 0)} siteNames={over.site ?? (async () => ({ boxes: [], blankNames: [] }))} print={print} />,
   )
   return { print, mint, onMinted }
 }
@@ -53,15 +54,18 @@ afterEach(() => {
 })
 
 describe('PrintStickersModal · the ask', () => {
-  it('opens on 200 with the quick counts, Copies of each, the last run and the browser note', async () => {
+  it('opens on 200 with the quick counts, Copies of each, where new boxes go and the browser note, and no number', async () => {
     setup()
     expect(screen.getByRole('dialog', { name: 'Print blank stickers' })).toBeTruthy()
     expect(screen.getAllByTestId('stickers-count-preset').map((b) => b.textContent)).toEqual(['30', '60', '100', '200'])
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('200 stickers, one strip each.')
     expect(screen.getByTestId('stickers-print').textContent).toBe('Print 200 stickers')
     expect(screen.getByTestId('stickers-copies').textContent).toBe('1')
-    await waitFor(() => expect(screen.getByTestId('stickers-last-run').textContent).toContain('The last run ended at 0100.'))
-    expect(screen.getByTestId('stickers-last-run').textContent).toContain('go on JP1204 · Juniper Ridge')
+    await ready()
+    expect(screen.getByTestId('stickers-goes-on').textContent).toBe('New boxes made from these stickers go on JP1204 · Juniper Ridge.')
+    // the window says no running number: not where the last run ended, not where this one starts
+    expect(screen.queryByTestId('stickers-last-run')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Print blank stickers' }).textContent).not.toMatch(/last run|numbers start|\b0\d{3}\b/)
     expect(screen.queryByTestId('stickers-blank-count')).toBeNull()
     // no USB in this browser: the way out is said, and the test strip and the setup steps are still offered
     expect(screen.getByTestId('stickers-no-usb')).toBeTruthy()
@@ -75,13 +79,13 @@ describe('PrintStickersModal · the ask', () => {
     await waitFor(() => expect(screen.getByTestId('stickers-blank-count').textContent).toBe('This job has 96 stickers not yet on a box.'))
   })
 
-  it('a quick count and Copies of each change the press to sets, and the first run says so', async () => {
-    setup({ last: async () => null })
+  it('a quick count and Copies of each change the press to sets, and the device remembers the copies', async () => {
+    setup()
     fireEvent.click(screen.getByRole('button', { name: '60' }))
     fireEvent.click(screen.getByTestId('stickers-copies-more'))
     expect(screen.getByTestId('stickers-print').textContent).toBe('Print 60 sets')
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('60 stickers, 2 strips each. 120 strips.')
-    await waitFor(() => expect(screen.getByTestId('stickers-last-run').textContent).toContain('This is the first run. The numbers start at 0001.'))
+    await ready()
     expect(localStorage.getItem('pt.labels.tapeCopies')).toBe('2')
   })
 
@@ -113,8 +117,10 @@ describe('PrintStickersModal · the ask', () => {
     expect(mint).not.toHaveBeenCalled()
     const strips = screen.getAllByTestId('stickers-tape')
     expect(strips).toHaveLength(1)
-    expect(strips[0]!.textContent).toContain('0000')
+    // the test strip reads TEST, never a number a sticker could be taken for
+    expect(strips[0]!.textContent).toContain('TEST')
     expect(strips[0]!.textContent).toContain('Test strip')
+    expect(strips[0]!.textContent).not.toContain('0000')
   })
 })
 
@@ -129,25 +135,28 @@ describe('PrintStickersModal · the run', () => {
     expect(mint).toHaveBeenCalledWith({ jobId: 'job-juniper', count: 60, copies: 2 })
     expect(onMinted).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1))
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Stickers 0101 to 0160 · JP1204 · Juniper Ridge')
-    expect(screen.getByTestId('stickers-count-words').textContent).toBe('0101 to 0160, 2 strips each. 120 strips.')
+    // a run with no names is said by its count (v2.7438: no running number anywhere)
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('60 stickers · JP1204 · Juniper Ridge')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('60 stickers, 2 strips each. 120 strips.')
     // every sticker prints twice: its copy is on the page for the paper and hidden on the screen
     expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(60)
     const first = screen.getAllByTestId('stickers-tape')[0]!
-    expect(first.textContent).toContain('0101')
-    // the address on two lines, the code on the second, and no line of words under it (Taunya's ask of 2026-11-15)
-    expect(within(first).getAllByTestId('stickers-tape-address-line').map((el) => el.textContent)).toEqual(['PRTS.CO/B/', '4F2A-9C00'])
-    expect(first.textContent).toBe('0101PRTS.CO/B/4F2A-9C00')
+    // no name and no number: the address on two lines, the code on the second drawn half again as large
+    expect(within(first).queryByTestId('stickers-tape-name')).toBeNull()
+    const lines = within(first).getAllByTestId('stickers-tape-address-line')
+    expect(lines.map((el) => el.textContent)).toEqual(['PRTS.CO/B/', '4F2A-9C00'])
+    expect(parseFloat(lines[1]!.style.fontSize)).toBeCloseTo(parseFloat(lines[0]!.style.fontSize) * 1.5, 3)
+    expect(first.textContent).toBe('PRTS.CO/B/4F2A-9C00')
     expect(first.style.width).toBe('54mm')
     expect(first.style.height).toBe('24mm')
     // the ask is gone; the press prints the same run again, and the day is remembered
     expect(screen.queryByTestId('stickers-ask')).toBeNull()
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 60 sets, 0101 to 0160')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 60 sets')
     expect(localStorage.getItem('pt.labels.tapePrintedYmd')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     fireEvent.click(screen.getByTestId('stickers-csv'))
     expect(downloadFile).toHaveBeenCalledTimes(1)
     const file = vi.mocked(downloadFile).mock.calls[0]![0] as File
-    expect(file.name).toMatch(/^stickers-0101-0160-\d{4}-\d{2}-\d{2}\.csv$/)
+    expect(file.name).toMatch(/^stickers-60-\d{4}-\d{2}-\d{2}\.csv$/)
     // a header row and sixty rows of four cells; the words themselves are the kernel's test
     expect(file.size).toBeGreaterThan(60 * 40)
   })
@@ -173,11 +182,13 @@ describe('PrintStickersModal · the run', () => {
 
   it('a run handed in opens on its strips, mints nothing, and the press prints it again', () => {
     const minted = mintedRun({ jobId: 'job-juniper', count: 3, copies: 1 })
-    const { print, mint } = setup({ run: { ...minted, title: 'Run of 3 · 0101 to 0103' } })
-    expect(screen.getByRole('dialog', { name: 'Run of 3 · 0101 to 0103' })).toBeTruthy()
+    const { print, mint } = setup({ run: { ...minted, title: 'Run of 3' } })
+    expect(screen.getByRole('dialog', { name: 'Run of 3' })).toBeTruthy()
     expect(screen.queryByTestId('stickers-ask')).toBeNull()
     expect(screen.getAllByTestId('stickers-tape')).toHaveLength(3)
-    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 3 stickers, 0101 to 0103')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 3 stickers')
+    // the range picks a sticker with no name by its code, as the tape prints it
+    expect(within(screen.getByTestId('stickers-range-from')).getAllByRole('option').map((o) => o.textContent)).toEqual(['4F2A-9C00', '4F2A-9C01', '4F2A-9C02'])
     fireEvent.click(screen.getByTestId('stickers-print'))
     expect(print).toHaveBeenCalledTimes(1)
     expect(mint).not.toHaveBeenCalled()
@@ -279,7 +290,7 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1))
   })
 
-  it('the mint is sent the names, and each strip prints its name large with its number small over the address', async () => {
+  it('the mint is sent the names, and each strip prints its name large over the address, with no number', async () => {
     const { mint, print } = setup({ site: site() })
     await ready()
     type('G78-80')
@@ -290,16 +301,20 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Stickers G78 to G80 · JP1204 · Juniper Ridge')
     expect(screen.getByTestId('stickers-count-words').textContent).toBe('G78 to G80, one strip each.')
     const first = screen.getAllByTestId('stickers-tape')[0]!
-    expect(within(first).getByTestId('stickers-tape-number').textContent).toBe('0101')
-    expect(within(first).getAllByTestId('stickers-tape-address-line').map((el) => el.textContent)).toEqual(['PRTS.CO/B/', '4F2A-9C00'])
-    expect(first.textContent).toBe('G780101PRTS.CO/B/4F2A-9C00')
+    expect(within(first).queryByTestId('stickers-tape-number')).toBeNull()
+    const lines = within(first).getAllByTestId('stickers-tape-address-line')
+    expect(lines.map((el) => el.textContent)).toEqual(['PRTS.CO/B/', '4F2A-9C00'])
+    // under a name the code is the link's own size, as on a box label
+    expect(lines[1]!.style.fontSize).toBe(lines[0]!.style.fontSize)
+    expect(first.textContent).toBe('G78PRTS.CO/B/4F2A-9C00')
     expect(screen.getByTestId('stickers-print').textContent).toBe('Print 3 stickers, G78 to G80')
     // the range of the run on the page is picked by name
     expect(within(screen.getByTestId('stickers-range-from')).getAllByRole('option').map((o) => o.textContent)).toEqual(['G78', 'G79', 'G80'])
     fireEvent.click(screen.getByTestId('stickers-csv'))
     const file = vi.mocked(downloadFile).mock.calls[0]![0] as File
     const text = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(file) })
-    expect(text.split('\r\n').slice(0, 2)).toEqual(['Name,Number,Code,Address,QR', 'G78,0101,4F2A-9C00,prts.co/b/4F2A-9C00,HTTPS://PRTS.CO/B/4F2A9C00'])
+    expect(text.split('\r\n').slice(0, 2)).toEqual(['Name,Code,Address,QR', 'G78,4F2A-9C00,prts.co/b/4F2A-9C00,HTTPS://PRTS.CO/B/4F2A9C00'])
+    expect(file.name).toMatch(/^stickers-G78-G80-\d{4}-\d{2}-\d{2}\.csv$/)
   })
 
   it('a long name prints at the smaller size, and the strip is cut for it', async () => {
@@ -316,18 +331,19 @@ describe('PrintStickersModal · a run that names its boxes (design section 10, P
     expect(first.style.width).toBe('61mm')
   })
 
-  it('cleared, the field prints a run of numbers only, as before', async () => {
+  it('cleared, the field prints a run with no names: each strip is its code, larger', async () => {
     const { mint } = setup({ site: site() })
     await ready()
     type('')
-    expect(screen.getByTestId('stickers-names-read').textContent).toBe('Nothing typed: the stickers carry their number only. A leftover works on any site.')
+    expect(screen.getByTestId('stickers-names-read').textContent).toBe('Nothing typed: the stickers carry no name, only their code. A leftover works on any site.')
     expect(screen.getByTestId('stickers-print').textContent).toBe('Print 200 stickers')
     fireEvent.click(screen.getByRole('button', { name: '30' }))
     fireEvent.click(screen.getByTestId('stickers-print'))
     await waitFor(() => expect(screen.getAllByTestId('stickers-tape')).toHaveLength(30))
     expect(mint).toHaveBeenCalledWith({ jobId: 'job-juniper', count: 30, copies: 1 })
-    expect(screen.getAllByTestId('stickers-tape')[0]!.textContent).toBe('0101PRTS.CO/B/4F2A-9C00')
+    expect(screen.getAllByTestId('stickers-tape')[0]!.textContent).toBe('PRTS.CO/B/4F2A-9C00')
     expect(screen.queryByTestId('stickers-tape-number')).toBeNull()
+    expect(screen.queryByTestId('stickers-tape-name')).toBeNull()
   })
 
   it('a site with no named box opens the field empty, and typing first keeps what was typed', async () => {

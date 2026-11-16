@@ -1174,7 +1174,7 @@ export default function LienDeskRunModal({
                 </button>
               ) : null}
               {onTakeBack && printedIds.length > 0 && !takeBackOpen ? (
-                <button type="button" data-testid="run-take-back" onClick={() => { setTakeBackOpen(true); setMoreOpen(false) }} disabled={busy} title="Nothing was mailed? Put the printed notices back in Ready to send." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}>
+                <button type="button" data-testid="run-take-back" onClick={() => { setTakeBackOpen(true); setMoreOpen(false) }} disabled={busy} title="Nothing was mailed? Put the printed notices back in Approved · to print." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}>
                   Take back…
                 </button>
               ) : null}
