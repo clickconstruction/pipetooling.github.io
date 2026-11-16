@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -18,6 +18,19 @@ import { subsRosterEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 import { PeopleSubsLedger } from './PeopleSubsLedger'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
+import { useSubLaborLedger } from '../../hooks/useSubLaborLedger'
+import { useSubsOwed } from '../../hooks/useSubsOwed'
+import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
+import { buildSubOwedBreakdown, owedCsv, owedCsvFileName, owedMoney, owedPersonById, owedPersonMatches, owedTiles, owedUnderFigure, owedView, OWED_SORTS, OWED_SORT_LABEL, type OwedPerson, type OwedSort } from '../../lib/people/subOwedBreakdown'
+import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
+import { sheetOwedToChip, TEAM_SHEET_RULE, teamSheetsLineWords, type TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
+import { isRosterSub } from '../../lib/subWorkOrders/rosterSub'
+import { SubOwedBlock } from './SubOwedBlock'
+import { PeopleSubsReach } from './PeopleSubsReach'
+import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../jobs/SubLaborPaymentModals'
+import { ScheduleSheet } from '../schedule/ScheduleBlockSheet'
+import { WhoseSheetWindow } from './WhoseSheetWindow'
+import { saveBlobAs } from '../../lib/storageSave'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -67,7 +80,7 @@ const DOC_TYPES = ['agreement', 'coi', 'w9', 'license', 'other'] as const
 /** Roster fields the bench reads (v2.2853): dates, notes, and when the row was added. */
 type BenchMeta = { startDate: string | null; endDate: string | null; notes: string | null; createdYmd: string | null }
 
-type BenchFilter = 'active' | 'bench' | 'all'
+type BenchFilter = 'owed' | 'active' | 'bench' | 'all'
 
 const DOT: Record<SubBenchStatus['tone'], string> = { green: '#22c55e', amber: '#f59e0b', gray: '#94a3b8' }
 /** Mirrors the `person_contract_documents` INSERT policy: is_dev / is_master_or_dev / is_assistant (assistant or controller since v2.714). */
@@ -91,7 +104,8 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
       return next
     })
   const personDesk = useOptionalPersonDesk()
-  const { role, readOnly } = useAuth()
+  const { role, readOnly, user, profileName } = useAuth()
+  const narrow = useIsNarrowScreen()
   const canAddDocument = !readOnly && role != null && CAN_ADD_DOCUMENT_ROLES.has(role)
   const [result, setResult] = useState<SubsHqResult | null>(null)
   /** v2.7235: each sub's credit, the sum of their `sub_credit_entries`. Empty until that table exists. */
@@ -112,6 +126,31 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
   const [benchForm, setBenchForm] = useState<{ personId: string; date: string; reason: string } | null>(null)
   const [benchSavingId, setBenchSavingId] = useState<string | null>(null)
   const [todayYmd, setTodayYmd] = useState(() => calendarYmdInAppTzFromIso(new Date().toISOString()))
+  // Punch list #346: what makes up each Balance due. The sheets come through the Jobs page's own hook, the one the
+  // Ledger view reads, so a payment recorded from an open row lands exactly as it does on Jobs → Subs → Pay.
+  const [owedError, setOwedError] = useState<string | null>(null)
+  const ledger = useSubLaborLedger({ authUserId: user?.id, authUserName: profileName, setError: setOwedError })
+  const loadLedger = ledger.loadLaborJobs
+  useEffect(() => {
+    if (user?.id) void loadLedger()
+    // `loadLaborJobs` is made new on every render: the signed-in person is what the read depends on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+  // Taunya's rule of 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
+  const teamRule: TeamSheetRule = TEAM_SHEET_RULE
+  const owed = useSubsOwed(ledger.laborJobs, ledger.laborJobAssigneesByJobId, teamRule)
+  const breakdown = useMemo(() => buildSubOwedBreakdown(owed.inputs, { rule: teamRule }), [owed.inputs, teamRule])
+  const owedReady = ledger.laborJobsLoadedOnce && owed.ready
+  const tiles = useMemo(() => owedTiles(breakdown), [breakdown])
+  /** Teammates with a row on this roster: kind `sub` behind a team login. The login's role, by people id. */
+  const teammateRoleById = useMemo(() => new Map(owed.roster.filter((p) => p.kind === 'sub' && !isRosterSub(p)).map((p) => [p.id, (p.accountRole ?? '').replace(/_/g, ' ')] as const)), [owed.roster])
+  /** The row whose Balance due is open, by the breakdown's key (`id:<people id>`). */
+  const [owedOpenKey, setOwedOpenKey] = useState<string | null>(() => (searchParams.get('owed') ? `id:${searchParams.get('owed')}` : null))
+  const [subSearch, setSubSearch] = useState('')
+  const [owedSort, setOwedSort] = useState<OwedSort>('owed')
+  const paymentModalsRef = useRef<SubLaborPaymentModalsHandle>(null)
+  /** On a phone the roster is cards. The six-column table is one press away, for the bench and the documents. */
+  const [phoneTable, setPhoneTable] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
@@ -386,6 +425,56 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
 
   const balanceDueByPersonId = useMemo(() => new Map((result?.rows ?? []).map((r) => [r.personId, r.balanceDue] as const)), [result])
 
+  // ── Punch list #346: the row that opens, the acts in place, the reach ─────────────────────────────────────
+  const canAct = !readOnly && role != null && CAN_ADD_DOCUMENT_ROLES.has(role)
+  const sheetById = useMemo(() => new Map(ledger.laborJobs.map((j) => [j.id, j] as const)), [ledger.laborJobs])
+  /** A person's open figure: the roster's Balance due for a sub, the breakdown's sum for a teammate paid as sub labor. */
+  const figureFor = useCallback(
+    (row: { personId: string; balanceDue: number }): { amount: number; person: OwedPerson | null; team: boolean } => {
+      const person = owedPersonById(breakdown, row.personId)
+      const team = person?.kind === 'team'
+      return { amount: team ? owedView(person, 'open').open : row.balanceDue, person, team }
+    },
+    [breakdown],
+  )
+  function openPay(sheetId: string) {
+    const job = sheetById.get(sheetId)
+    if (!job) return
+    const b = subLaborJobBalance(job)
+    paymentModalsRef.current?.openMakePayment({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost: b.totalCost, paid: b.paid, outstanding: Math.max(0, b.balance) }, b.balance > 0 ? String(b.balance) : '')
+  }
+  function openBackcharge(sheetId: string) {
+    const job = sheetById.get(sheetId)
+    if (!job) return
+    const b = subLaborJobBalance(job)
+    paymentModalsRef.current?.openBackcharge({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost: b.totalCost, paid: b.paid })
+  }
+  const openSheetOnPay = (sheetId: string) => navigate(`/jobs?tab=subs&view=pay&editLabor=${encodeURIComponent(sheetId)}`)
+  const openPayRunFor = (name: string) => navigate(`/jobs?tab=subs&view=pay&subSearch=${encodeURIComponent(name)}`)
+  const openLedgerFor = (personId: string) =>
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('view', 'ledger')
+      next.set('sub', personId)
+      return next
+    })
+  /** One person's block: under their row on a desk, in a sheet on a phone. */
+  const renderOwedBlock = (personId: string, name: string, balanceDue: number | null, onClose?: () => void) => (
+    <SubOwedBlock
+      person={owedPersonById(breakdown, personId)}
+      name={name}
+      balanceDue={balanceDue}
+      narrow={narrow}
+      onOpenJob={(jobId) => navigate(`/jobs?edit=${encodeURIComponent(jobId)}`)}
+      onOpenSheet={openSheetOnPay}
+      onOpenPayRun={() => openPayRunFor(name)}
+      onByDate={() => openLedgerFor(personId)}
+      onPay={canAct ? openPay : undefined}
+      onBackcharge={canAct ? openBackcharge : undefined}
+      onClose={onClose}
+    />
+  )
+
   const viewSwitch = (
     <div role="group" aria-label="Subs view" style={{ display: 'inline-flex', gap: 4, marginBottom: '0.75rem' }}>
       {(
@@ -463,15 +552,22 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
     </p>
   )
 
-  const crewSummaryLine = crewSheetCount > 0 && (
+  // Sheets with a teammate and no sub: what is open on them, under the rule in force.
+  const teamPeople = [...breakdown.people.values()].filter((p) => p.kind === 'team')
+  const teamSheetCount = teamRule === 'owed' ? teamPeople.reduce((n, p) => n + p.sheets.length, 0) : breakdown.payroll.length
+  const teamSheetsLine = owedReady ? teamSheetsLineWords(teamSheetCount, teamRule === 'owed' ? tiles.teamOpen : tiles.payrollOpen, teamRule) : ''
+  /** Teammates paid as sub labor who have no row on this roster (their roster kind is not `sub`). */
+  const rosterIds = new Set(result.rows.map((r) => r.personId))
+  const teamWithoutRow = teamPeople.filter((p) => !p.personId || !rosterIds.has(p.personId))
+  const crewSummaryLine = (crewSheetCount > 0 || teamSheetCount > 0) && (
     <p data-testid="subs-crew-pay-line" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
-      {crewSheetCount} crew {crewSheetCount === 1 ? 'sheet has' : 'sheets have'} teammates on {crewSheetCount === 1 ? 'it' : 'them'} and no sub. Crew sheets pay through payroll, so they are in nobody's Balance due.{' '}
+      {teamSheetsLine || `${crewSheetCount} ${crewSheetCount === 1 ? 'sheet names' : 'sheets name'} a teammate and no sub.`}{' '}
       <button
         type="button"
         onClick={() => navigate('/jobs?tab=subs&view=pay')}
         style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: 'inherit', color: 'var(--text-link)', fontFamily: 'inherit' }}
       >
-        See them on Jobs → Subs → Pay
+        See {teamSheetCount === 1 ? 'it' : 'them'} on Jobs → Subs → Pay
       </button>
     </p>
   )
@@ -559,9 +655,34 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
         </div>
   )
 
+  // The rows the chips, the search and the sort leave.
+  const allRows = [...benchRows.active, ...benchRows.bench]
+  const owedRows = allRows.filter((x) => figureFor(x.row).amount > 0)
+  const chipRows = benchFilter === 'owed' ? owedRows : benchFilter === 'active' ? benchRows.active : benchFilter === 'bench' ? benchRows.bench : allRows
+  const searchedRows = chipRows.filter((x) => owedPersonMatches(x.row.name, owedPersonById(breakdown, x.row.personId), subSearch))
+  const shownRows =
+    owedSort === 'owed' && benchFilter !== 'owed'
+      ? searchedRows
+      : [...searchedRows].sort((a, b) => {
+          if (owedSort === 'name') return a.row.name.localeCompare(b.row.name)
+          if (owedSort === 'ready') return owedView(figureFor(b.row).person, 'open').ready - owedView(figureFor(a.row).person, 'open').ready || figureFor(b.row).amount - figureFor(a.row).amount
+          if (owedSort === 'worked') return (b.row.lastWorkedYmd ?? '').localeCompare(a.row.lastWorkedYmd ?? '')
+          return figureFor(b.row).amount - figureFor(a.row).amount || a.row.name.localeCompare(b.row.name)
+        })
+  /** The bench's section line reads right only on the page's own order. */
+  const plainOrder = owedSort === 'owed' && !subSearch.trim()
+  const exportShown = () => {
+    const people = shownRows.map((x) => owedPersonById(breakdown, x.row.personId)).filter((p): p is OwedPerson => !!p)
+    saveBlobAs(new Blob(['\uFEFF', owedCsv(people)], { type: 'text/csv;charset=utf-8' }), owedCsvFileName(todayYmd))
+  }
+  const phoneOpen = narrow && owedOpenKey ? allRows.find((x) => `id:${x.row.personId}` === owedOpenKey) ?? null : null
+  const phoneOpenTeam = narrow && owedOpenKey ? teamWithoutRow.find((p) => p.key === owedOpenKey) ?? null : null
+
   return (
     <div>
       {viewSwitch}
+      {owedError ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem' }}>{owedError}</p> : null}
+      {owedReady ? <PeopleSubsReach tiles={tiles} rule={teamRule} narrow={narrow} onOpenPayRun={() => navigate('/jobs?tab=subs&view=pay')} /> : null}
       {actionableGroups.length > 0 && (
         <div
           style={{
@@ -573,10 +694,10 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
           }}
         >
           <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-amber-900)' }}>
-            ⚠ {actionableSheetCount} sub {actionableSheetCount === 1 ? "sheet isn't" : "sheets aren't"} linked to anyone on the roster
+            {actionableSheetCount} {actionableSheetCount === 1 ? 'sheet needs' : 'sheets need'} one sub · {money(actionableGroups.reduce((n, g) => n + g.totalBalance, 0))} open
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', margin: '0.15rem 0 0.5rem' }}>
-            Their open balances are missing from every sub's Balance due column until each sheet is linked.
+            {actionableSheetCount === 1 ? 'Its' : 'Their'} money is counted once, here. It is in no sub's Balance due until {actionableSheetCount === 1 ? 'the sheet names' : 'each sheet names'} one sub.
           </div>
           {visibleGroups.map((g) => {
             const suggestion = suggestionByGroup.get(g.key)
@@ -637,7 +758,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                       g.reason === 'shared' ? 'var(--text-blue-700)' : g.reason === 'archived' ? 'var(--text-amber-900)' : 'var(--text-red-700)',
                   }}
                 >
-                  {g.reason === 'shared' ? 'Multiple subs' : g.reason === 'archived' ? 'Archived person' : 'No roster match'}
+                  {g.reason === 'shared' ? 'Two subs' : g.reason === 'archived' ? 'Archived person' : 'No roster match'}
                 </span>
                 <span
                   style={{
@@ -663,7 +784,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                     onClick={() => setAssignPickerKey((prev) => (prev === g.key ? null : g.key))}
                     style={{ padding: '0.15rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}
                   >
-                    Assign…
+                    Whose is it…
                   </button>
                   {suggestion && (
                     <button
@@ -677,53 +798,6 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                   )}
                   {saving && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Saving…</span>}
                 </span>
-                {assignPickerKey === g.key && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', width: '100%', paddingLeft: '0.1rem' }}>
-                    <select
-                      autoFocus
-                      defaultValue=""
-                      disabled={saving}
-                      onChange={(e) => {
-                        const person = roster.find((r) => r.id === e.target.value)
-                        if (person) void assignGroup(g, person)
-                      }}
-                      style={{ padding: '0.15rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.78rem' }}
-                    >
-                      <option value="" disabled>
-                        {g.reason === 'shared' ? 'Reassign to one sub…' : 'Link these sheets to…'}
-                      </option>
-                      {roster.some((r) => r.benched) ? (
-                        <>
-                          <optgroup label="Active">
-                            {roster.filter((r) => !r.benched).map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.name}
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="On the bench">
-                            {roster.filter((r) => r.benched).map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.name}
-                              </option>
-                            ))}
-                          </optgroup>
-                        </>
-                      ) : (
-                        roster.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    {g.reason === 'shared' && (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Picking one sub replaces the current multi-name assignment.
-                      </span>
-                    )}
-                  </span>
-                )}
               </div>
             )
           })}
@@ -743,6 +817,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', margin: '0.5rem 0 0.35rem' }} role="group" aria-label="Show subs">
         {(
           [
+            ['owed', `Owed · ${owedRows.length}`],
             ['active', `Active · ${benchRows.active.length}`],
             ['bench', `On the bench · ${benchRows.bench.length}`],
             ['all', `All · ${benchRows.active.length + benchRows.bench.length}`],
@@ -768,10 +843,87 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
             {label}
           </button>
         ))}
-        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-          Benched subs can come back any time — their portal, sheets, and balances stay put.
+        <input
+          type="search"
+          aria-label="Search a sub or a job"
+          placeholder="Search a sub or a job…"
+          value={subSearch}
+          onChange={(e) => setSubSearch(e.target.value)}
+          style={{ flex: '1 1 170px', minWidth: 140, maxWidth: 280, padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            Sort
+            <select aria-label="Sort the subs" value={owedSort} onChange={(e) => setOwedSort(e.target.value as OwedSort)} style={{ padding: '0.2rem 0.3rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.78rem', fontFamily: 'inherit' }}>
+              {OWED_SORTS.map((k) => (
+                <option key={k} value={k}>
+                  {OWED_SORT_LABEL[k]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" onClick={exportShown} disabled={!owedReady} title="One row per open sheet of the subs shown" style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: owedReady ? 'pointer' : 'default' }}>
+            Export CSV
+          </button>
         </span>
       </div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 0.35rem' }}>Benched subs can come back any time — their portal, sheets, and balances stay put.</div>
+      {narrow ? (
+        <button type="button" onClick={() => setPhoneTable((v) => !v)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-link)', fontFamily: 'inherit', margin: '0 0 0.4rem' }}>
+          {phoneTable ? 'Show the cards' : 'Show the full table, with the bench and the documents'}
+        </button>
+      ) : null}
+      {narrow && !phoneTable ? (
+        <div data-testid="subs-phone-cards" style={{ display: 'grid', gap: 8 }}>
+          {shownRows.map(({ row, status }) => {
+            const fig = figureFor(row)
+            const v = owedView(fig.person, 'open')
+            return (
+              <div key={row.personId} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.75rem', background: 'var(--surface)', opacity: status.kind === 'bench' ? 0.72 : 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  {personDesk ? (
+                    <button type="button" onClick={() => personDesk.open({ personId: row.personId, displayName: row.name })} style={{ fontWeight: 650, border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.9375rem', textAlign: 'left' }}>
+                      {row.name}
+                    </button>
+                  ) : (
+                    <b>{row.name}</b>
+                  )}
+                  {fig.amount > 0 || (fig.person && fig.person.sheets.length > 0) ? (
+                    <button
+                      type="button"
+                      data-testid={`subs-owed-press-${row.personId}`}
+                      aria-label={`What makes up ${money(fig.amount)} for ${row.name}`}
+                      onClick={() => setOwedOpenKey(`id:${row.personId}`)}
+                      style={{ font: 'inherit', fontWeight: 700, fontVariantNumeric: 'tabular-nums', border: 'none', background: 'none', padding: '0.2rem 0', cursor: 'pointer', color: fig.amount > 0 ? 'var(--text-link)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}
+                    >
+                      {fig.amount > 0 ? money(fig.amount) : 'paid up'} ›
+                    </button>
+                  ) : (
+                    <span style={{ color: 'var(--text-faint)' }}>—</span>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: DOT[status.tone], flexShrink: 0 }} />
+                  <span>
+                    {[status.kind === 'active' ? 'Active' : `Bench since ${status.since}`, v.sheetCount > 0 ? `${v.sheetCount} ${v.sheetCount === 1 ? 'sheet' : 'sheets'} on ${v.jobCount} ${v.jobCount === 1 ? 'job' : 'jobs'}` : status.lastWorkedLine, v.ready > 0 ? `${owedMoney(v.ready)} ready` : ''].filter(Boolean).join(' · ')}
+                  </span>
+                </div>
+                {fig.team ? <div style={{ marginTop: 4, fontSize: '0.7rem', fontWeight: 650, color: 'var(--text-violet-700)' }}>{sheetOwedToChip('team')}</div> : null}
+                {row.badges.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+                    {row.badges.map((b) => (
+                      <span key={b.key} style={{ ...BADGE_STYLE[b.state], fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', whiteSpace: 'nowrap' }}>
+                        {b.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+          {shownRows.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{benchFilter === 'owed' && !subSearch.trim() ? 'Nothing waiting on a sub. Every sheet is paid.' : 'No sub matches. Clear the search or pick another chip.'}</p> : null}
+        </div>
+      ) : (
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
@@ -796,12 +948,15 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
             </tr>
           </thead>
           <tbody>
-            {(benchFilter === 'active' ? benchRows.active : benchFilter === 'bench' ? benchRows.bench : [...benchRows.active, ...benchRows.bench]).flatMap(({ row, status }, idx) => {
+            {shownRows.flatMap(({ row, status }, idx) => {
+              const fig = figureFor(row)
+              const owedKey = `id:${row.personId}`
+              const owedOpen = owedOpenKey === owedKey
               const quiet = status.kind === 'bench'
               const saving = benchSavingId === row.personId
               const formOpen = benchForm?.personId === row.personId
               const sectionRow =
-                benchFilter === 'all' && quiet && idx === benchRows.active.length ? (
+                benchFilter === 'all' && plainOrder && quiet && idx === benchRows.active.length ? (
                   <tr key="bench-section">
                     <td colSpan={6} style={{ padding: '0.35rem 0.6rem', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-faint)', background: 'var(--bg-page)', borderBottom: '1px solid var(--border)' }}>
                       On the bench · {benchRows.bench.length}
@@ -904,9 +1059,14 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                       row.name
                     )}
                     <SubPortalGlobeButton personId={row.personId} personName={row.name} />
+                    {teammateRoleById.has(row.personId) ? (
+                      <span data-testid={`subs-teammate-chip-${row.personId}`} title="On the team, with a row on this roster. A sheet is owed to them only when it names them and no sub." style={{ fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', whiteSpace: 'nowrap', background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' }}>
+                        Teammate
+                      </span>
+                    ) : null}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {row.hasAccount ? row.email ?? 'account linked' : 'roster only — no login'}
+                    {teammateRoleById.has(row.personId) ? `signs in as ${teammateRoleById.get(row.personId) || 'a teammate'}` : row.hasAccount ? row.email ?? 'account linked' : 'roster only — no login'}
                   </div>
                   <button
                     type="button"
@@ -938,8 +1098,23 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                     ))
                   )}
                 </td>
-                <td style={{ padding: '0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: row.balanceDue > 0 ? 700 : 400 }}>
-                  {row.balanceDue > 0 ? money(row.balanceDue) : '—'}
+                <td style={{ padding: '0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: fig.amount > 0 ? 700 : 400 }}>
+                  {fig.amount > 0 || (fig.person && fig.person.sheets.length > 0) ? (
+                    <button
+                      type="button"
+                      data-testid={`subs-owed-press-${row.personId}`}
+                      aria-expanded={owedOpen}
+                      aria-label={`What makes up ${money(fig.amount)} for ${row.name}`}
+                      onClick={() => setOwedOpenKey((prev) => (prev === owedKey ? null : owedKey))}
+                      style={{ font: 'inherit', fontWeight: 'inherit', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: fig.amount > 0 ? 'var(--text-link)' : 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
+                    >
+                      {fig.amount > 0 ? money(fig.amount) : 'paid up'} {owedOpen ? '▾' : '▸'}
+                    </button>
+                  ) : (
+                    '—'
+                  )}
+                  {owedReady && owedUnderFigure(fig.person) ? <div style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>{owedUnderFigure(fig.person)}</div> : null}
+                  {fig.team ? <div style={{ fontSize: '0.7rem', fontWeight: 650, color: 'var(--text-violet-700)' }}>{sheetOwedToChip('team')}</div> : null}
                   {creditNoteWords(creditByPersonId.get(row.personId) ?? 0) ? (
                     <div data-testid={`subs-credit-${row.personId}`} title="Sent past what their sheets needed. The next payment to them offers it first." style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-green-700)' }}>
                       {creditNoteWords(creditByPersonId.get(row.personId) ?? 0)}
@@ -990,8 +1165,23 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                     </td>
                   </tr>
                 ) : null
-              return [sectionRow, tr, docsRow].filter((r): r is JSX.Element => r != null)
+              const owedRow =
+                owedOpen && !narrow ? (
+                  <tr key={`${row.personId}-owed`}>
+                    <td colSpan={6} style={{ padding: '0 0.6rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
+                      {owedReady ? renderOwedBlock(row.personId, row.name, fig.team ? null : row.balanceDue) : <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Loading the sheets…</p>}
+                    </td>
+                  </tr>
+                ) : null
+              return [sectionRow, tr, owedRow, docsRow].filter((r): r is JSX.Element => r != null)
             })}
+            {benchFilter !== 'bench' && shownRows.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ padding: '0.8rem 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {benchFilter === 'owed' && !subSearch.trim() ? 'Nothing waiting on a sub. Every sheet is paid.' : 'No sub matches. Clear the search or pick another chip.'}
+                </td>
+              </tr>
+            ) : null}
             {benchFilter === 'bench' && benchRows.bench.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: '0.8rem 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -1002,8 +1192,75 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
           </tbody>
         </table>
       </div>
+      )}
+
+      {teamRule === 'owed' && teamWithoutRow.length > 0 ? (
+        <div data-testid="subs-team-sub-labor" style={{ marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.9rem' }}>
+          <div style={{ fontWeight: 700, fontSize: '0.875rem' }}>Teammates paid as sub labor</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.1rem 0 0.4rem' }}>They are on the team roster, not this one. A sheet that names one of them and no sub is owed to them.</div>
+          {teamWithoutRow.map((p) => {
+            const v = owedView(p, 'open')
+            const isOpen = owedOpenKey === p.key
+            return (
+              <div key={p.key} style={{ borderTop: '1px solid var(--border)', padding: '0.4rem 0' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.6rem', fontSize: '0.875rem' }}>
+                  <b>{p.name}</b>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' }}>{sheetOwedToChip('team')}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}</span>
+                  <button type="button" aria-expanded={isOpen} onClick={() => setOwedOpenKey((prev) => (prev === p.key ? null : p.key))} style={{ marginLeft: 'auto', font: 'inherit', fontWeight: 700, fontVariantNumeric: 'tabular-nums', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: v.open > 0 ? 'var(--text-link)' : 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
+                    {v.open > 0 ? owedMoney(v.open) : 'paid up'} {isOpen ? '▾' : '▸'}
+                  </button>
+                </div>
+                {isOpen && !narrow && p.personId ? renderOwedBlock(p.personId, p.name, null) : null}
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+
+      {(() => {
+        const g = assignPickerKey ? actionableGroups.find((x) => x.key === assignPickerKey) : null
+        return g ? <WhoseSheetWindow group={g} roster={roster} suggestion={suggestionByGroup.get(g.key) ?? null} saving={assignSavingKey === g.key} onAssign={(person) => void assignGroup(g, person)} onClose={() => setAssignPickerKey(null)} /> : null
+      })()}
+
+      {phoneOpen ? (
+        <ScheduleSheet title={`What we owe ${phoneOpen.row.name}`} onClose={() => setOwedOpenKey(null)}>
+          {renderOwedBlock(phoneOpen.row.personId, phoneOpen.row.name, figureFor(phoneOpen.row).team ? null : phoneOpen.row.balanceDue)}
+        </ScheduleSheet>
+      ) : phoneOpenTeam?.personId ? (
+        <ScheduleSheet title={`What we owe ${phoneOpenTeam.name}`} onClose={() => setOwedOpenKey(null)}>
+          {renderOwedBlock(phoneOpenTeam.personId, phoneOpenTeam.name, null)}
+        </ScheduleSheet>
+      ) : null}
 
 
+      <SubLaborPaymentModals
+        ref={paymentModalsRef}
+        recordLaborJobPayment={async (...a) => {
+          await ledger.recordLaborJobPayment(...a)
+          await load()
+        }}
+        recordLaborJobBackcharge={async (...a) => {
+          await ledger.recordLaborJobBackcharge(...a)
+          await load()
+        }}
+        deleteLaborJobPayment={ledger.deleteLaborJobPayment}
+        updateLaborJobPayment={ledger.updateLaborJobPayment}
+        recordSubSending={async (input) => {
+          const r = await ledger.recordSubSending(input)
+          await load()
+          return r
+        }}
+        applySubCredit={async (...a) => {
+          const r = await ledger.applySubCredit(...a)
+          await load()
+          return r
+        }}
+        laborJobs={ledger.laborJobs}
+        laborJobAssigneesByJobId={ledger.laborJobAssigneesByJobId}
+        laborJobNamesByJobId={ledger.laborJobNamesByJobId}
+        subCreditByPersonId={ledger.subCreditByPersonId}
+      />
     </div>
   )
 }

@@ -1178,6 +1178,11 @@ export default function Jobs() {
     navigate(lienRedirect, { replace: true })
   }, [lienRedirect, navigate])
 
+  // Punch list #346, PR 3: People → Subs and the job's window open the pay run searched to one sub or one job (`&subSearch=`).
+  const subSearchParam = searchParams.get('subSearch')
+  useEffect(() => {
+    if (subSearchParam != null) setSubLaborSearch(subSearchParam)
+  }, [subSearchParam])
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')
   useEffect(() => {
