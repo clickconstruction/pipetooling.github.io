@@ -197,6 +197,12 @@ async function reader(req: Request, admin: Admin, supabaseUrl: string): Promise<
   }
 }
 
+/** One column of what the page said, only when it said something. */
+const kept = (column: string, raw: unknown, max: number): Record<string, string> => {
+  const said = paintedMapClip(raw, max)
+  return said ? { [column]: said } : {}
+}
+
 type VisitRow = { id: string; visitor_name: string; open_count: number; first_located_at: string | null; last_located_at: string | null }
 
 /** `way.open`: the map for a reader who has given a name, or the ask for one. */
@@ -225,12 +231,14 @@ async function wayOpen(req: Request, admin: Admin, supabaseUrl: string, body: Re
     visitor_name: name,
     device_words: paintedMapDeviceWords(userAgent),
     user_agent: paintedMapClip(userAgent, 400),
-    screen: paintedMapClip(device.screen, 40),
-    language: paintedMapClip(device.language, 40),
-    time_zone: paintedMapClip(device.timeZone, 64),
     ip: paintedMapClip(ip === 'unknown' ? '' : ip, 64),
     last_opened_at: nowIso,
     ...(who ? { user_id: who.userId } : {}),
+    // What the page said of the device is kept when it says it. A call that leaves one out does not wipe what an earlier
+    // open kept (seen on the live project, v2.7416).
+    ...kept('screen', device.screen, 40),
+    ...kept('language', device.language, 40),
+    ...kept('time_zone', device.timeZone, 64),
   }
   if (seen) {
     const { error } = await admin.from('painted_map_link_visits').update({ ...said, open_count: (seen.open_count ?? 1) + 1 }).eq('id', seen.id)
