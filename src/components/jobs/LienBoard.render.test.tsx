@@ -5,9 +5,10 @@
  * line that says what the list shows. The rule is `lienBoard.test.ts`; this is the wiring.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import LienBoard, { lienBoardArrowPaths } from './LienBoard'
 import { buildLienBoard, lienBoardForLeader, lienBoardPick, type LienBoardInput } from '../../lib/jobs/lienBoard'
+import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import type { LienDeskEntry, LienDeskPile } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry, LienAffidavitGate, LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
@@ -235,5 +236,53 @@ describe('LienBoard', () => {
     view.unmount()
     render(<LienBoard board={b} isMobile={false} columnsOnly />)
     expect((document.querySelector('[data-lien-board-tile="by_day"] [data-lien-board-tile-line]') as HTMLElement).tagName).toBe('SPAN')
+  })
+
+  it('a chip pointed at shows a card before any press: the job, its address and its customer, then where its paper stands; it goes when the pointer leaves (v2.7381)', async () => {
+    const b = board()
+    const cardFor = vi.fn((chip: Parameters<typeof lienBoardChipCard>[0]) => lienBoardChipCard(chip, b, { todayYmd: TODAY, jobName: 'ZZ Service Visit', address: '12 Sample Rd, Schertz, TX', customer: 'ZZ Homeowner', gc: 'ZZ Builders', detail: 'September 2026' }))
+    const onChip = vi.fn()
+    render(<LienBoard board={b} isMobile={false} onChip={onChip} cardFor={cardFor} columnsOnly />)
+    const chip = document.querySelector('[data-lien-board-chips="notice:to_send"] [data-lien-board-chip]') as HTMLElement
+    // No card until a chip is pointed at, and the browser's own tip stands down for it.
+    expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull()
+    expect(chip.getAttribute('title')).toBeNull()
+    fireEvent.mouseEnter(chip)
+    const card = document.querySelector('[data-lien-board-chip-card]') as HTMLElement
+    expect(card.getAttribute('role')).toBe('tooltip')
+    expect(card.querySelector('[data-lien-board-card-title]')!.textContent).toBe(`${chip.textContent!.replace('!', '')} · ZZ Service Visit`)
+    expect(Array.from(card.querySelectorAll('[data-lien-board-card-fact]')).map((f) => [f.getAttribute('data-lien-board-card-fact'), f.textContent])).toEqual([
+      ['address', '12 Sample Rd, Schertz, TX'],
+      ['customer', 'ZZ Homeowner'],
+      ['gc', 'ZZ Builders'],
+    ])
+    expect(card.querySelector('[data-lien-board-card-status]')!.textContent).toContain('Monthly noticeTo send')
+    expect(card.querySelector('[data-lien-board-card-detail]')!.textContent).toBe('September 2026')
+    expect(card.querySelector('[data-lien-board-card-door]')!.textContent).toBe('Press to open the notice.')
+    // The card never takes the pointer, so the chip's press still lands; nothing is pressed by pointing.
+    expect(card.style.pointerEvents).toBe('none')
+    expect(onChip).not.toHaveBeenCalled()
+    fireEvent.mouseLeave(chip)
+    await waitFor(() => expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull())
+    // The keyboard reaches it too, and a page that moves takes the card away.
+    fireEvent.focus(chip)
+    expect(document.querySelector('[data-lien-board-chip-card]')).not.toBeNull()
+    fireEvent.scroll(window)
+    await waitFor(() => expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull())
+  })
+
+  it('with no card handed in a chip keeps the browser’s one-line tip, and a phone draws no card', () => {
+    const b = board()
+    const view = render(<LienBoard board={b} isMobile={false} columnsOnly />)
+    const chip = () => document.querySelector('[data-lien-board-chips="notice:to_send"] [data-lien-board-chip]') as HTMLElement
+    expect(chip().getAttribute('title')).toBeTruthy()
+    fireEvent.mouseEnter(chip())
+    expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull()
+    view.unmount()
+    render(<LienBoard board={b} isMobile cardFor={(c) => lienBoardChipCard(c, b, { todayYmd: TODAY, jobName: 'ZZ', address: null, customer: null, gc: null })} />)
+    fireEvent.click(document.querySelector('[data-lien-board-fold]') as HTMLButtonElement)
+    fireEvent.mouseEnter(chip())
+    expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull()
+    expect(chip().getAttribute('title')).toBeTruthy()
   })
 })

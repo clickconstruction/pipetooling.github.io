@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { EmptyState } from '../EmptyState'
 import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardLeaderView, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
+import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 
 /**
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
@@ -15,6 +16,11 @@ import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardMode
  * place for its stage when the desk hands `onChip` (PR 3); until then it is a plain chip with its hover words. A chip
  * that stands in both columns for one reason lights in both on hover. The words and the rule are `lienBoard.ts`;
  * nothing here reads or writes.
+ *
+ * Since v2.7381 a chip pointed at, or reached by the keyboard, shows a card before any press (`cardFor`,
+ * `lienBoardChipCard.ts`): the job's name, its address and its customer, then where its paper stands and where the
+ * press goes. The card stands under the chip, never takes the pointer, and goes when the pointer leaves or the page
+ * moves. A phone has no hover and draws none.
  */
 
 const TONE: Record<LienBoardUrgency, { fg: string; bg: string; border: string }> = {
@@ -90,12 +96,23 @@ export function lienBoardArrowPaths(arrows: ReadonlyArray<LienBoardArrow>, boxes
   return out
 }
 
-function Chip({ chip, lit, onChip, onHover }: { chip: LienBoardChip; lit: boolean; onChip?: (chip: LienBoardChip) => void; onHover: (pairKey: string | null) => void }) {
+function Chip({ chip, lit, onChip, onHover, onCard }: { chip: LienBoardChip; lit: boolean; onChip?: (chip: LienBoardChip) => void; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
   const tone = TONE[chip.urgency]
   // The hover: the job's name, its GC and its money, how soon its day is, the risk, and where the press goes (v2.7333).
   const title = [chip.tip, lienBoardUrgencyWords(chip.urgency), chip.atRisk ? 'will not make its day as it stands' : '', onChip ? lienBoardDoorWords(chip.destination) : ''].filter(Boolean).join(' · ')
   const style: CSSProperties = { color: tone.fg, background: tone.bg, borderColor: tone.border }
-  const hover = chip.pairKey ? { onMouseEnter: () => onHover(chip.pairKey), onMouseLeave: () => onHover(null), onFocus: () => onHover(chip.pairKey), onBlur: () => onHover(null) } : {}
+  // Pointed at or focused: the pair lights (a job in both columns), and the card shows when the desk hands one.
+  const enter = (el: HTMLElement) => {
+    if (chip.pairKey) onHover(chip.pairKey)
+    onCard?.(chip, el)
+  }
+  const leave = () => {
+    if (chip.pairKey) onHover(null)
+    onCard?.(chip, null)
+  }
+  const hover = chip.pairKey || onCard ? { onMouseEnter: (e: { currentTarget: HTMLElement }) => enter(e.currentTarget), onMouseLeave: leave, onFocus: (e: { currentTarget: HTMLElement }) => enter(e.currentTarget), onBlur: leave } : {}
+  // The card says all the hover's words and more, so the browser's own tip stands down while it is on.
+  const tip = onCard ? undefined : title
   const body = (
     <>
       {chip.label}
@@ -105,19 +122,19 @@ function Chip({ chip, lit, onChip, onHover }: { chip: LienBoardChip; lit: boolea
   const marks = { 'data-lien-board-chip': chip.jobId, 'data-kind': chip.kind, 'data-urgency': chip.urgency, 'data-at-risk': chip.atRisk ? 'yes' : undefined, 'data-pair': chip.pairKey ?? undefined, 'data-pair-lit': lit ? 'yes' : undefined }
   if (onChip) {
     return (
-      <button type="button" className="lienBoardChip" title={title} aria-label={`${chip.label}: ${title}`} onClick={() => onChip(chip)} style={style} {...marks} {...hover}>
+      <button type="button" className="lienBoardChip" title={tip} aria-label={`${chip.label}: ${title}`} onClick={() => onChip(chip)} style={style} {...marks} {...hover}>
         {body}
       </button>
     )
   }
   return (
-    <span className="lienBoardChip" title={title} tabIndex={chip.pairKey ? 0 : undefined} style={style} {...marks} {...hover}>
+    <span className="lienBoardChip" title={tip} tabIndex={chip.pairKey || onCard ? 0 : undefined} style={style} {...marks} {...hover}>
       {body}
     </span>
   )
 }
 
-function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void }) {
+function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
   const n = bin.chips.length
   const head = (
     <>
@@ -135,7 +152,7 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover }: { bin:
         <div className="lienBoardBinHead" data-lien-board-bin-head={bin.key}>{head}</div>
       )}
       <div className="lienBoardChips" data-lien-board-chips={bin.key}>
-        {n === 0 ? <span data-lien-board-empty style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>none</span> : bin.chips.map((c) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} />)}
+        {n === 0 ? <span data-lien-board-empty style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>none</span> : bin.chips.map((c) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} onCard={onCard} />)}
       </div>
     </div>
   )
@@ -175,6 +192,46 @@ function Tile({ tile, isMobile, onTile }: { tile: LienBoardTile; isMobile: boole
   )
 }
 
+const CARD_DAY_TONE: Record<LienBoardUrgency, string> = { day: 'var(--text-red-700)', week: 'var(--text-amber-800)', waiting: 'var(--text-violet-700)', later: 'var(--text-700)' }
+
+/** The card of the chip under the pointer: the job, where it is and whose it is, then its paper's status and where the press goes. */
+function ChipCard({ card, place, chipKey }: { card: LienBoardChipCard; place: LienBoardCardPlace; chipKey: string }) {
+  const label: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 600 }
+  const fact = (name: string, words: string | null, missing: string) => (
+    <>
+      <span style={label}>{name}</span>
+      <span data-lien-board-card-fact={name.toLowerCase()} style={{ minWidth: 0, color: words ? 'var(--text-strong)' : 'var(--text-muted)', overflowWrap: 'anywhere' }}>{words ?? missing}</span>
+    </>
+  )
+  return (
+    <div
+      role="tooltip"
+      data-lien-board-chip-card={chipKey}
+      data-above={place.above ? 'yes' : undefined}
+      style={{ position: 'absolute', left: place.left, top: place.top, transform: place.above ? 'translateY(-100%)' : undefined, zIndex: 6, width: `min(${LIEN_BOARD_CARD_WIDTH_PX}px, calc(100vw - 32px))`, boxSizing: 'border-box', pointerEvents: 'none', display: 'grid', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 14px 40px rgba(0,0,0,0.35)', fontSize: '0.8125rem', lineHeight: 1.35, color: 'var(--text-700)', textAlign: 'left' }}
+    >
+      <div data-lien-board-card-title style={{ fontWeight: 700, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{card.title}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '3px 10px', alignItems: 'baseline' }}>
+        {fact('Address', card.address, 'No address on the job')}
+        {fact('Customer', card.customer, 'No customer on the job')}
+        {card.gc ? fact('GC', card.gc, '') : null}
+      </div>
+      <div data-lien-board-card-status style={{ display: 'grid', gap: 3, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+        <div>
+          <span style={label}>{card.paper}</span>
+          <span style={{ marginLeft: 6, fontWeight: 700, color: 'var(--text-strong)' }}>{card.stage}</span>
+        </div>
+        {card.detail ? <div data-lien-board-card-detail>{card.detail}</div> : null}
+        {card.day ? <div data-lien-board-card-day style={{ fontWeight: 600, color: CARD_DAY_TONE[card.urgency] }}>{card.day}</div> : null}
+        {card.risk ? <div data-lien-board-card-risk style={{ color: 'var(--text-red-700)' }}>{card.risk}</div> : null}
+        {card.owes ? <div data-lien-board-card-owes style={{ fontVariantNumeric: 'tabular-nums' }}>{card.owes}</div> : null}
+        {card.other ? <div data-lien-board-card-other style={{ color: 'var(--text-muted)' }}>{card.other}</div> : null}
+      </div>
+      <div data-lien-board-card-door style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{card.door}</div>
+    </div>
+  )
+}
+
 export default function LienBoard({
   board,
   isMobile,
@@ -187,6 +244,7 @@ export default function LienBoard({
   foot,
   onLayout,
   leader,
+  cardFor,
 }: {
   board: LienBoardModel
   isMobile: boolean
@@ -211,11 +269,51 @@ export default function LienBoard({
    * counted press for the lot and what it holds, each held paper a chip to its own door; a toggle shows every bin.
    */
   leader?: { view: LienBoardLeaderView; mine: boolean; onToggleMine: () => void; onApprove: () => void; busy?: boolean }
+  /** What a chip says when it is pointed at (v2.7381): the job and where its paper stands. Absent, a chip keeps the browser's one-line tip. */
+  cardFor?: (chip: LienBoardChip) => LienBoardChipCard | null
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState<boolean>(isMobile)
   const [lines, setLines] = useState<Line[]>([])
   const [pairLit, setPairLit] = useState<string | null>(null)
+  // The card of the chip under the pointer (v2.7381), placed in the Board's own box. A short wait before it goes lets
+  // the pointer cross to the next chip without a blink.
+  const boardRef = useRef<HTMLElement | null>(null)
+  const [cardShown, setCardShown] = useState<{ key: string; card: LienBoardChipCard; place: LienBoardCardPlace } | null>(null)
+  const hideTimer = useRef<number | null>(null)
+  const cancelHide = () => {
+    if (hideTimer.current != null) window.clearTimeout(hideTimer.current)
+    hideTimer.current = null
+  }
+  const onCard = useCallback(
+    (chip: LienBoardChip, el: HTMLElement | null) => {
+      if (!cardFor) return
+      cancelHide()
+      const host = boardRef.current
+      if (!el || !host) {
+        hideTimer.current = window.setTimeout(() => setCardShown(null), 90)
+        return
+      }
+      const card = cardFor(chip)
+      if (!card) {
+        setCardShown(null)
+        return
+      }
+      const box = el.getBoundingClientRect()
+      const origin = host.getBoundingClientRect()
+      const place = lienBoardCardPlace({ chip: { left: box.left - origin.left, top: box.top - origin.top, width: box.width, height: box.height }, hostWidth: origin.width, roomBelow: (typeof window === 'undefined' ? 0 : window.innerHeight) - box.bottom })
+      setCardShown({ key: `${chip.kind}:${chip.jobId}`, card, place })
+    },
+    [cardFor],
+  )
+  // The card is placed once, where the chip stood: when anything scrolls it goes, sooner than point at the wrong chip.
+  useEffect(() => {
+    if (!cardShown) return
+    const gone = () => setCardShown(null)
+    window.addEventListener('scroll', gone, true)
+    return () => window.removeEventListener('scroll', gone, true)
+  }, [cardShown])
+  useEffect(() => cancelHide, [])
   // On a phone the bins stand behind one press (2026-11-15): stacked they run a screen and a half, and the tiles
   // already say the day; a pressed bin keeps them open. Session-only.
   const [binsShown, setBinsShown] = useState(false)
@@ -258,6 +356,8 @@ export default function LienBoard({
     return () => ro.disconnect()
   }, [board, isMobile, columnsOnly, notices.length, affidavits.length, binsOpen, mine])
 
+  // A phone has no hover: its chips keep their press and draw no card.
+  const cardHandler = cardFor && !isMobile ? onCard : undefined
   const column = (kind: 'notice' | 'affidavit', title: string, bins: LienBoardBin[], under: ReactNode) => {
     const flow = bins.filter((b) => !b.beside)
     const beside = bins.filter((b) => b.beside)
@@ -266,11 +366,11 @@ export default function LienBoard({
         <h3 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: kind === 'notice' ? 'var(--text-blue-700)' : 'var(--text-red-700)' }}>{title}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: beside.length && !layout ? 'minmax(0, 1fr) minmax(0, 0.55fr)' : '1fr', gap: '0 12px', alignItems: 'start' }}>
           <div data-lien-board-flow={kind} style={{ display: 'grid', gap: 22 }}>
-            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} />)}
+            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} />)}
           </div>
           {beside.length ? (
             <div data-lien-board-beside={kind} style={{ display: 'grid', gap: 10, alignContent: 'start', marginTop: layout ? 10 : 0 }}>
-              {beside.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} />)}
+              {beside.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} />)}
             </div>
           ) : null}
         </div>
@@ -283,7 +383,7 @@ export default function LienBoard({
   const pickWords = pick ? lienBoardPickWords(pick, shown ?? 0) : null
 
   return (
-    <section aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
+    <section ref={boardRef} aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ position: 'relative', display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
       <div data-lien-board-tiles style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
         {board.tiles.map((t) => <Tile key={t.key} tile={t} isMobile={isMobile} onTile={onTile} />)}
       </div>
@@ -331,7 +431,7 @@ export default function LienBoard({
             <div data-lien-board-held style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               {leader.view.held.map((h) => (
                 <span key={`${h.chip.kind}:${h.chip.jobId}`} data-lien-board-held-row={h.chip.jobId} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  <Chip chip={h.chip} lit={false} onChip={onChip} onHover={setPairLit} />
+                  <Chip chip={h.chip} lit={false} onChip={onChip} onHover={setPairLit} onCard={cardHandler} />
                   {h.reason}
                 </span>
               ))}
@@ -348,6 +448,7 @@ export default function LienBoard({
         </div>
       ) : null}
       {foot}
+      {cardShown ? <ChipCard card={cardShown.card} place={cardShown.place} chipKey={cardShown.key} /> : null}
     </section>
   )
 }
