@@ -96,7 +96,7 @@ import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBa
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
-import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { buildLienNextUp, lienRunEntriesFor, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardPickWords, lienBoardRiskPapers, lienBoardRiskPhrase, lienBoardRiskPick, lienBoardRowInPick, lienBoardRowRisk, lienBoardRowStage, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind, type LienBoardTileDestination } from '../../lib/jobs/lienBoard'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
@@ -560,6 +560,8 @@ export default function LienDesk({
   const [runOpen, setRunOpen] = useState(false)
   // The run row's Take back… (punch list #101) opens the run on its confirm.
   const [runTakeBack, setRunTakeBack] = useState(false)
+  // A To do row's Print and mail (v2.7442) opens the run on its GC's approved notices alone; null is every notice.
+  const [runGcId, setRunGcId] = useState<string | null>(null)
   // The sheet's code (v2.7328): the run opens on the notice the phone scanned, its Mailed box under the cursor.
   const [runFocus, setRunFocus] = useState<string | null>(null)
   useEffect(() => {
@@ -1237,6 +1239,7 @@ export default function LienDesk({
     }
     if (t.open === 'run') {
       setRunTakeBack(Boolean(t.takeBack))
+      setRunGcId(t.gcId)
       setRunOpen(true)
     } else if (t.open === 'lien_window') {
       // The last day of work is wrong (punch list #353): the window opens with the day ready to change, where the page has that door.
@@ -4896,7 +4899,7 @@ export default function LienDesk({
             onChanged()
             return out
           }}
-          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) })]}
+          notices={[...buildLienDeskRun(lienRunEntriesFor(data.queue.piles.ready, data.queue.piles.printed, runGcId), data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }), ...buildLienRetainageRun(runGcId ? [] : data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) })]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
@@ -4904,6 +4907,7 @@ export default function LienDesk({
           onClose={() => {
             setRunOpen(false)
             setRunTakeBack(false)
+            setRunGcId(null)
             setRunFocus(null)
           }}
           openOnTakeBack={runTakeBack}
