@@ -36,6 +36,8 @@ Press a sub's **Balance due**. Their sheets open in a row under theirs, grouped 
 
 You can act from the same row. {{button:blue|Pay…}} opens the Record payment window for that sheet. {{button:outline|Back-charge…}} opens the back-charge window. **By date ›** opens their statement on the Ledger.
 
+Two more presses make a paper for the sub. {{button:outline|Statement of account…}} sits at the top of the block. {{button:outline|Work statement…}} sits under an open sheet. Both open [the sub's papers](/help/make-a-statement-of-account-for-a-sub).
+
 :::example Checking one sub's balance
 Harlan Mechanical shows $3,800 due → press the figure → two jobs open under the row → the Cedar Hollow job shows $2,600 open on two sheets → the check reads **✓ the figure in the column**.
 :::
