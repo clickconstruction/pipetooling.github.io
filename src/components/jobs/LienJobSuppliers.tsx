@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { Store } from 'lucide-react'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -16,6 +16,7 @@ import {
   type LienSupplierMark,
   type LienSupplierQuietPart,
 } from '../../lib/jobs/lienJobSuppliers'
+import { lienSuppliersStacked } from '../../lib/jobs/lienSupplierCardShape'
 import { clearSupplierWord, saveSupplierWord } from '../../lib/jobs/lienSupplierWordIo'
 import { supplierPaidButtonWords, supplierPaidDraftProblem, supplierPaidInvoiceWords, supplierPaidPicked, supplierPaidSavedWords, supplierPaidSplitWarning, type LienSupplierPaidDraft } from '../../lib/jobs/lienSupplierPaid'
 import { markSupplierInvoicesPaid } from '../../lib/jobs/lienSupplierPaidIo'
@@ -252,6 +253,21 @@ export function LienJobSuppliersCard({
   const card = buildLienSupplierCard(job, { propertyKind, todayYmd, openBalance, payerName })
   const allPaid = card.owed <= 0.005
   const [unfolded, setUnfolded] = useState(false)
+  // The rows stack by the card's own width (v2.7446): beside the Notices list the pane is far narrower than the window, and the
+  // five columns' amounts ran into each other there. Read before paint, so a narrow card never shows the table first.
+  const cardRef = useRef<HTMLElement>(null)
+  const [cardWidth, setCardWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+    const read = () => setCardWidth(Math.round(el.getBoundingClientRect().width))
+    read()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(read)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const stacked = lienSuppliersStacked(isMobile, cardWidth)
   const foldable = allPaid || startFolded
   const showRows = !foldable || unfolded
   const foldedWords = allPaid ? card.paidLine : (lienSupplierMark(job)?.words ?? '')
@@ -318,12 +334,13 @@ export function LienJobSuppliersCard({
     </div>
   )
 
-  const rows = isMobile ? (
+  const rows = stacked ? (
     <>
       {card.rows.map((r) => {
         const n = noticeWords(r)
         const quiet = lienSupplierQuietLine(r)
         // A house that is owed nothing (v2.7431): its name and a grey $0.00, then one small line. A phone has no hover, so the words wrap here and nothing is cut.
+        // A narrow card on a computer draws these rows too (v2.7446).
         if (quiet)
           return (
             <div key={r.houseId} data-lien-supplier-house={r.name} data-lien-supplier-line="one" style={{ borderBottom: '1px solid var(--border)', padding: '0.35rem 0.8rem', display: 'grid', gap: 1 }}>
@@ -452,7 +469,7 @@ export function LienJobSuppliersCard({
   )
 
   return (
-    <section data-lien-suppliers-card={allPaid ? 'paid' : 'owed'} aria-label="Supply houses on this job" style={{ border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)', fontSize: '0.8125rem', minWidth: 0 }}>
+    <section ref={cardRef} data-lien-suppliers-card={allPaid ? 'paid' : 'owed'} data-lien-suppliers-shape={stacked ? 'stacked' : 'table'} aria-label="Supply houses on this job" style={{ border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)', fontSize: '0.8125rem', minWidth: 0 }}>
       {headless && !foldable ? null : head}
       {showRows ? rows : null}
       {showRows && (card.verdict || card.paidFirst) ? (
@@ -462,7 +479,7 @@ export function LienJobSuppliersCard({
         </div>
       ) : null}
       {showRows ? (
-        <div style={{ display: isMobile ? 'grid' : 'flex', alignItems: 'center', gap: isMobile ? 4 : 14, padding: '0.55rem 0.8rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: '0 0 9px 9px' }}>
+        <div style={{ display: isMobile ? 'grid' : 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? 4 : '6px 14px', padding: '0.55rem 0.8rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: '0 0 9px 9px' }}>
           {!allPaid ? (
             <button type="button" onClick={copy} data-lien-suppliers-copy style={{ minHeight: isMobile ? 44 : 32, padding: '0 14px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>
               Copy for an email

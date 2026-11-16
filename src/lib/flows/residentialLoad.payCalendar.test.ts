@@ -7,7 +7,7 @@ import type { PaySpeedData } from '../jobs/billedExpectedPay'
 import { indexPayCalendars, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from '../jobs/payCalendar'
 import type { ContactRow } from './load'
 import { paidRounds, type PipelineInvoiceRow, type PipelineJobRow, type ResidentialRows } from './residentialLoad'
-import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, residentialRowsOf, type PipelineRows } from './residentialRows'
+import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, payTermRowsOf, residentialRowsOf, type PipelineRows } from './residentialRows'
 
 const NOW = new Date('2026-10-12T17:00:00Z')
 const DANA: ContactRow = { id: 'c-dana', kind: 'customer', off_since: null, off_why: null, off_by: null }
@@ -105,7 +105,26 @@ describe('residentialRowsOf carries the calendars to the loader', () => {
   })
 
   it('names the columns the morning run selects', () => {
-    expect(PIPELINE_SELECTS.payCalendars).toBe('payer_customer_id, job_id, off, cutoff_day, pay_day, months_after, pay_when_paid, clause, words, set_at')
+    expect(PIPELINE_SELECTS.payCalendars).toBe('payer_customer_id, job_id, off, cutoff_day, pay_day, months_after, pay_when_paid, clause, words, set_at, days_after')
+    expect(PIPELINE_SELECTS.billDueDays).toBe('invoice_id, due_on, clause, words, marked_at')
     expect(PIPELINE_SELECTS.acceptedDays).toBe('invoice_id, accepted_on')
+  })
+
+  it('reads the stored rows of both kinds into the rows the loader indexes (punch list #341)', () => {
+    const stored = [{ payer_customer_id: 'cust-dana', job_id: null, off: false, cutoff_day: null, pay_day: null, months_after: 1, pay_when_paid: false, clause: '', words: '', set_at: null, days_after: 45 }, { payer_customer_id: null }]
+    const days = [{ invoice_id: 'inv-1312', due_on: '2027-02-15', clause: '§ 9.4', words: '', marked_at: null }, { invoice_id: 'inv-none', due_on: null }]
+    const both = payTermRowsOf(stored, days)
+    expect(both?.map((r) => [r.payerCustomerId, r.calendar?.daysAfter ?? null, r.invoiceId ?? null, r.ownDue?.dueYmd ?? null])).toEqual([
+      ['cust-dana', 45, null, null],
+      ['', null, 'inv-1312', '2027-02-15'],
+    ])
+    // The bill's own day wins over her terms, and a second bill on the job still reads them.
+    const dana = residentialRowsOf({ ...READ, payCalendars: both }, who)
+    expect(dues(dana)).toEqual(['2027-02-15'])
+    expect(dues(residentialRowsOf({ ...READ, payCalendars: payTermRowsOf(stored, null) }, who))).toEqual(['2026-11-23'])
+    // A half that was not read is left out; with neither read there is nothing to hand on.
+    expect(payTermRowsOf(null, days)?.map((r) => r.invoiceId)).toEqual(['inv-1312'])
+    expect(payTermRowsOf(null, null)).toBeNull()
+    expect(payTermRowsOf([], [])).toEqual([])
   })
 })

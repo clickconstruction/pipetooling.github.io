@@ -2,7 +2,7 @@
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
 group: residual
-status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14 · an approved affidavit moves to Held when a gate closes, v2.7449 (his call of 2026-11-16: the approval stands)
+status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14 · an earlier hand day allowed, v2.7447 (the owner's call of 2026-11-16: any past day, with a second look) · an approved affidavit moves to Held when a gate closes, v2.7449 (his call of 2026-11-16: the approval stands)
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -14,7 +14,7 @@ next: Nothing that was asked for is left. The Also seen list holds smaller thing
 size: M as six small pieces (S · S · XS · M · S · XS), five shipped, and the two Also seen fixes (S · S), both shipped; left: the rest of Also seen, unsized
 blocker: none
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273 · 7449
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273 · 7447 · 7449
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -81,11 +81,13 @@ what still differed. Counts only are given here, since the repo is public.
 
 ## Also seen
 
-- The rule that refuses a typed last day earlier than the clock hours (`lienLastWorkDayProblem`)
-  sits oddly beside row 1's answer. A hand day that later hours follow counts, yet once those hours
-  are approved the office can only clear the day or set a later one. It cannot type or correct an
-  earlier day. **The owner's call, 2026-11-14: allow it.** The box takes an earlier day with the
-  reason still required, and says the later hours do not move it.
+- ~~The rule that refuses a typed last day earlier than the clock hours (`lienLastWorkDayProblem`)
+  sits oddly beside row 1's answer.~~ **Shipped v2.7447.** The owner's call of 2026-11-14 was to
+  allow it, and of 2026-11-16 how early: any past day, with a second look. The box takes an earlier
+  day with the reason still required. The window says the later hours stay and do not move it, names
+  the months with hours that leave the clock, and reads *Set the day anyway* when the day is far
+  from the hours, before the first month with hours, drops a month a recorded notice or the
+  affidavit names, or puts the affidavit's day in the past. `dev-mcp` is deployed after the merge.
 - The Legal desk and the firm's page never read the last day set by hand (`legalLastWorkBasis` in
   `legalLienPaper.ts`, `legalPacket.ts`, the `legal-portal` function's job columns). They date a job
   from its approved hours, else its last work date, else its creation. So counsel's page can show a

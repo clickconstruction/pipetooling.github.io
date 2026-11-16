@@ -111,12 +111,12 @@ const signMock = vi.fn()
 const penMock = vi.fn()
 const wordMock = vi.fn(async () => undefined)
 const submitMock = vi.fn(async () => undefined)
-const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
+const tellLeaderMock = vi.fn(async (..._args: unknown[]): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 // An affidavit sent for approval tells the leader too (punch list #305, v2.7180): one call for every paper of one press.
-const tellAffMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
+const tellAffMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>, _opts?: { remind?: boolean }): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, approveLienDeskItem: (id: string) => approveLotMock(id), redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellAffMock(papers), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])) }
+  return { ...actual, approveLienDeskItem: (id: string) => approveLotMock(id), redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>, opts?: { remind?: boolean }) => (opts ? tellAffMock(papers, opts) : tellAffMock(papers)), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])) }
 })
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
@@ -634,6 +634,8 @@ describe('LienDesk', () => {
     fireEvent.click(confirms[confirms.length - 1]!)
     await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledTimes(1))
     expect((tellLeaderMock.mock.calls[0] as unknown[])[0]).toBe('it1')
+    // The function is told this is a reminder (v2.7445): its email says so.
+    expect((tellLeaderMock.mock.calls[0] as unknown[])[2]).toEqual({ remind: true })
     expect(await screen.findByText('Sam was reminded of 1 paper.')).toBeTruthy()
     await waitFor(() => expect(press().textContent).toMatch(/^Reminded at \d{1,2}:\d{2}/))
     expect(press().disabled).toBe(true)
@@ -642,6 +644,23 @@ describe('LienDesk', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
     await settle()
     expect(document.querySelector('[data-lien-next-up-remind]')).toBeNull()
+  })
+
+  it('a reminder the function took and did not send is never called a reminder sent: the toast says why, and the press stays live (v2.7445)', async () => {
+    tellLeaderMock.mockClear()
+    tellLeaderMock.mockImplementationOnce(async () => ({ ok: true, told: { pushSent: 0, emailSent: false, leaderName: null, held: 0, said: 'Not awaiting approval', told: null } }))
+    const awaiting = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z' } as unknown as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [awaiting], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    const press = () => document.querySelector('[data-lien-next-up-remind]') as HTMLButtonElement
+    fireEvent.click(press())
+    expect(await screen.findByText('Remind Sam of 1 paper?')).toBeTruthy()
+    const confirms = screen.getAllByRole('button', { name: 'Remind Sam' })
+    fireEvent.click(confirms[confirms.length - 1]!)
+    await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/^Sam was not reminded\. 1 reminder did not send: .+ \(not waiting for approval now\)\.$/)).toBeTruthy()
+    expect(press().textContent).toBe('Remind Sam of 1 paper')
+    expect(press().disabled).toBe(false)
   })
 
   it('a chip on the Board, pointed at, says which job it is before any press: its name, address, customer and GC, and where its notice stands (v2.7381)', async () => {
@@ -1311,6 +1330,22 @@ describe('LienDesk', () => {
     expect(submitMock.mock.calls[0]).toEqual(['it-new', { status: 'awaiting_approval', reason: 'first_notice' }])
     await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledWith('it-new', '2026-09-15'))
     expect(await screen.findByText("Sent for approval. Malachi's phone has it.")).toBeTruthy()
+  })
+
+  it('Send for approval says so when the message to the leader did not go, with the reason, and the paper is still sent (v2.7445)', async () => {
+    saveDraftMock.mockClear()
+    submitMock.mockClear()
+    tellLeaderMock.mockClear()
+    tellLeaderMock.mockImplementationOnce(async () => ({ ok: false, reason: 'Not the office' }))
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} leaderNameFor={() => 'Sam'} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /to approve ▸/ }))
+    await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
+    expect(submitMock.mock.calls[0]).toEqual(['it-new', { status: 'awaiting_approval', reason: 'first_notice' }])
+    expect(await screen.findByText('Sent for approval. The message to Sam did not go. Not the office. The paper is on the Dashboard. Tell Sam another way.')).toBeTruthy()
+    // The send is not reported as failed: the paper is with the leader.
+    expect(screen.queryByText(/^Send for approval: /)).toBeNull()
+    expect(screen.queryByText(/phone has it/)).toBeNull()
   })
 
   it('a "send" rule with no notice recorded to the GC still sends the first one to the leader (v2.3469)', async () => {
