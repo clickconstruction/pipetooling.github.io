@@ -49,7 +49,8 @@ export function rpcPayload(press: OutboxPress): Record<string, unknown> {
     }
     case 'job-note': {
       const p = press.payload as JobNotePayload
-      return { job_id: p.jobId, body: p.body }
+      // typed and tagged (punch list #363): the server writes the tags for a typed note alone, and an absent key is false.
+      return { job_id: p.jobId, body: p.body, typed: p.typed === true, tagged: p.tagged ?? [] }
     }
     case 'field-report': {
       const p = press.payload as FieldReportPayload

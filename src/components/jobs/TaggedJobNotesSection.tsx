@@ -18,7 +18,7 @@ import {
   tagIsLate,
   type MyTag,
 } from '../../lib/jobs/noteTags'
-import { markAnswersSeen, markTagDone, noteTagsChanged, postTaggedNote } from '../../lib/jobs/noteTagsIo'
+import { markAnswersSeen, markTagDone, noteTagsChanged, notifyNoteTag, postTaggedNote } from '../../lib/jobs/noteTagsIo'
 import { useNoteTagBox } from './NoteTagBox'
 
 /**
@@ -88,7 +88,8 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
     if (!body || busy) return
     setBusy('post')
     try {
-      await postTaggedNote(tag.jobId, body, tagBox.taggedIds(body))
+      const noteId = await postTaggedNote(tag.jobId, body, tagBox.taggedIds(body))
+      notifyNoteTag({ noteId })
       setDraft('')
       tagBox.reset()
       showToast(`Answered. It is on the notes of ${tag.jobName.trim() || 'the job'}.`, 'success')
@@ -103,7 +104,7 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
     if (busy) return
     setBusy('done')
     try {
-      await markTagDone(tag.tagId)
+      if (await markTagDone(tag.tagId)) notifyNoteTag({ tagId: tag.tagId })
       noteTagsChanged()
     } catch (e: unknown) {
       showToast(formatErrorMessage(e, 'The tag was not cleared'), 'error')

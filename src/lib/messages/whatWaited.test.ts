@@ -110,6 +110,8 @@ describe('While you were off: the line', () => {
     expect(heldKind('dispatch_request_closed')).toBe('dispatch answer')
     expect(heldKind('estimator_request')).toBe('estimator request')
     expect(heldKind('bid_mark')).toBe('marked bid')
+    expect(heldKind('note_tag')).toBe('tagged job note')
+    expect(heldKind('note_tag_answer')).toBe('answer to your tag')
     expect(heldKind('help_feedback')).toBe('help note')
     expect(heldKind('lien_approval_ask')).toBe('lien notice')
     expect(heldKind('lien_affidavit_approval_ask')).toBe('lien affidavit')

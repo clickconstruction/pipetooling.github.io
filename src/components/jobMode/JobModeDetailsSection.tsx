@@ -427,6 +427,9 @@ export default function JobModeDetailsSection({
           draft={threadNotes.draft}
           onDraftChange={threadNotes.setDraft}
           onSubmit={() => void threadNotes.submitNote()}
+          tagJobId={jobId}
+          tagViewerId={authUser?.id ?? null}
+          onSubmitTagged={(tagged) => void threadNotes.submitNote(tagged)}
           submitting={threadNotes.submitting}
           sectionTitle="Job updates"
           showSectionTitle
