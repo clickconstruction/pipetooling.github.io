@@ -60,8 +60,11 @@ import type {
 import { EmptyState } from '../EmptyState'
 import { subLaborPayRunEmptyWords } from '../../lib/subWorkOrders/subLaborPayRunEmptyWords'
 import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
-import { subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
+import { SUB_PAY_FROM_CREDIT, subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
+import { OverToCreditWindow } from './SubSendingRepairWindows'
+import { overToCreditPlan, type OverToCreditPlan } from '../../lib/subWorkOrders/subSendingRepair'
+import { ledgerDayWords, paymentDay } from '../../lib/subWorkOrders/subPaymentsLedger'
 
 export type JobsSubLaborTabProps = {
   error: string | null
@@ -162,6 +165,8 @@ export default function JobsSubLaborTab({
   const [lienWaiverFor, setLienWaiverFor] = useState<LienWaiverSendTarget | null>(null)
   // Taunya's rule of 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
   const teamRule = TEAM_SHEET_RULE
+  /** Punch list #347's residue: a sheet paid past its total, about to become a credit. */
+  const [overFor, setOverFor] = useState<{ title: string; personId: string | null; plan: OverToCreditPlan } | null>(null)
   useEffect(() => {
     if (!stageMenuJobId) return
     const close = () => setStageMenuJobId(null)
@@ -755,6 +760,30 @@ export default function JobsSubLaborTab({
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onPrintJobSubSheet(job) }}>Print</button>
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setStorySheetId(job.id) }}>Story…</button>
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setLienWaiverFor(lienWaiverTarget(r)) }}>Lien waiver…</button>
+                            {/* Punch list #347's residue: a sheet paid past its total. The extra becomes the sub's credit. */}
+                            {balance < -0.005 ? (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                style={menuItem}
+                                onClick={() => {
+                                  setMenuJobId(null)
+                                  const one = !r.crew && parties.contractors.length === 1 ? parties.contractors[0]! : null
+                                  const label = [job.job_number, (job.job_ledger_id ? laborJobNamesByJobId[job.job_ledger_id] : '') || job.address].filter(Boolean).join(' ')
+                                  setOverFor({
+                                    title: `${parties.label || job.assigned_to_name} · ${label}`,
+                                    personId: one?.id ?? null,
+                                    plan: overToCreditPlan(
+                                      { label, total: totalCost - backcharges, paid, over: -balance },
+                                      (job.payments ?? []).filter((p) => Number(p.amount) > 0).map((p) => ({ id: p.id, amount: Number(p.amount), dayWords: ledgerDayWords(paymentDay(p)?.ymd ?? ''), fromCredit: p.method === SUB_PAY_FROM_CREDIT, carriesCredit: (p.credit_kept ?? 0) > 0, at: p.created_at ?? '' })),
+                                      { personId: one?.id ?? null, name: one?.name ?? '' },
+                                    ),
+                                  })
+                                }}
+                              >
+                                Keep the {'$'}{formatCurrency(-balance)} over as credit…
+                              </button>
+                            ) : null}
                           </div>
                         ) : null}
                       </td>
@@ -930,6 +959,7 @@ export default function JobsSubLaborTab({
       <WorkOrderAssemblerModal open={assembler != null} onClose={() => setAssembler(null)} jobs={jobs} initial={assembler} authUserId={authUserId} onChanged={() => { void loadCommitments(); emitWorkOrderChanged() }} />
       <SubPortalVisitsModal personId={visitsFor?.personId ?? null} personName={visitsFor?.name ?? ''} onClose={() => { setVisitsFor(null); visits.reload() }} />
       {lienWaiverFor ? <LienWaiverSendModal target={lienWaiverFor} onClose={() => setLienWaiverFor(null)} /> : null}
+      {overFor ? <OverToCreditWindow title={overFor.title} plan={overFor.plan} personId={overFor.personId} onDone={() => onReloadLaborJobs?.()} onClose={() => setOverFor(null)} /> : null}
       <SheetStoryModal sheetId={storySheetId} onClose={() => setStorySheetId(null)} jobs={jobs} authUserId={authUserId} onOpenSheet={(id) => { const j = laborJobs.find((x) => x.id === id); if (j) onEditLaborJob(j) }} onSheetChanged={() => { void loadCommitments(); onReloadLaborJobs?.() }} />
     </div>
   )
