@@ -228,7 +228,7 @@ describe('StickerNewSheet · a new box', () => {
   })
 })
 
-describe('StickerNewSheet · a sticker that names its box (design section 10, PR 9, v2.7399)', () => {
+describe('StickerNewSheet · a sticker that names its box (design section 10, PR 9, v2.7396)', () => {
   const g = (name: string): StickerFacts => ({ ...blank, id: 's-159', number: 159, boxName: name })
   const onBox = (name: string, id: string, label: string): StickerFacts => ({ ...g(name), state: 'on_box', containerId: id, containerLabel: label, containerKind: 'cage', jobId: 'job-a', placedByName: 'Marcus', placedAt: '2026-11-14T15:00:00Z' })
 

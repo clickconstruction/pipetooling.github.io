@@ -14,7 +14,7 @@
  * Since v2.7298 (punch list #329, PR 3) a blank sticker's scan lands here with `&sticker=<code>` and opens the
  * **Sticker is new** sheet (`StickerNewSheet.tsx`); a box's row and its header read its sticker numbers beside the
  * name (*G12 · 0147*, `useJobStickers`), and a line under the boxes counts the job's stickers not yet on a box.
- * Since v2.7399 (section 10, PR 9) the number recedes: a sticker printed with the box's own name says nothing beside
+ * Since v2.7396 (section 10, PR 9) the number recedes: a sticker printed with the box's own name says nothing beside
  * it, one printed with another name reads *sticker reads G78*, and a scan of that one says so (`stickerMarksWords`).
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'

@@ -243,7 +243,7 @@ describe('plain words', () => {
   })
 })
 
-describe('a sticker that names its box (design section 10, PR 9, v2.7399)', () => {
+describe('a sticker that names its box (design section 10, PR 9, v2.7396)', () => {
   const g78: StickerFacts = { ...blank, id: 's-159', number: 159, boxName: 'G78' }
   const site = (labels: string[], retired: string[] = []) => [...labels.map((label) => ({ id: label.toLowerCase(), label, kind: 'cage', retiredAt: null })), ...retired.map((label) => ({ id: `old-${label.toLowerCase()}`, label, kind: 'cage', retiredAt: '2026-11-01T00:00:00Z' }))]
 

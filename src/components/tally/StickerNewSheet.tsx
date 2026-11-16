@@ -10,7 +10,7 @@
  * needs signal: the press is dead and says so without one, never an outbox press, since two phones may hold the same
  * blank sticker and only the database can say who was first. The words and the order are `lib/materials/stickerPlace.ts`.
  *
- * A sticker printed with a name reads it off the tape (design section 10, PR 9, v2.7399; `stickerOpening`). *Sticker
+ * A sticker printed with a name reads it off the tape (design section 10, PR 9, v2.7396; `stickerOpening`). *Sticker
  * G78 is new* opens on **It is a new box** with G78 filled in, one press. When the site has a G78 already the sheet
  * opens on that box, picked, with the press that puts the sticker on it, and **It is a different box** opens a new
  * box on the next letter at the spot, G78B. The number sits small beside the name, and a row's stickers are said only
