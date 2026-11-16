@@ -685,6 +685,53 @@ describe('LienDesk', () => {
     expect(press().disabled).toBe(false)
   })
 
+  it('a retainage notice has its message: the send for approval tells the leader with the day its window closes, and Remind takes it as a notice (v2.7478)', async () => {
+    const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+    const withRetainage = (items: LienDeskItemRow[]) => {
+      const d = data(J650, [], true)
+      d.retainageRows = [retRow]
+      d.retainage = buildLienRetainageQueue([retRow], items, TODAY)
+      return d
+    }
+    saveDraftMock.mockClear()
+    submitMock.mockClear()
+    tellLeaderMock.mockClear()
+    // The pane's send: the paper lands in Awaiting Master approval, and the leader is told after the write.
+    const pane = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRetainage([])} initialKind="retainage" initialJobId="j650" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    fireEvent.click(within(document.querySelector('[data-lien-desk-footer="retainage"]') as HTMLElement).getByRole('button', { name: /approve ▸/ }))
+    await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
+    expect(submitMock.mock.calls[0]).toEqual(['it-new', { status: 'awaiting_approval', reason: 'first_notice' }])
+    await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledWith('it-new', '2026-10-05'))
+    expect(await screen.findByText("Sent for approval. Malachi's phone has it.")).toBeTruthy()
+    pane.unmount()
+    // A message that does not go is said with its reason, and the paper is still sent.
+    submitMock.mockClear()
+    tellLeaderMock.mockClear()
+    tellLeaderMock.mockImplementationOnce(async () => ({ ok: false, reason: 'Not a lien notice' }))
+    const miss = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRetainage([])} initialKind="retainage" initialJobId="j650" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    fireEvent.click(within(document.querySelector('[data-lien-desk-footer="retainage"]') as HTMLElement).getByRole('button', { name: /approve ▸/ }))
+    expect(await screen.findByText('Sent for approval. The message to Sam did not go. The part of the app that tells the leader is waiting for its update. The paper is on the Dashboard. Tell Sam another way.')).toBeTruthy()
+    expect(submitMock).toHaveBeenCalledTimes(1)
+    miss.unmount()
+    // The To do view's Remind: the retainage notice that waits is one of the papers, sent through the notice's own call.
+    tellLeaderMock.mockClear()
+    const awaiting = { id: 'ret1', job_id: 'j650', kind: 'retainage_53_057', months: [], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z' } as unknown as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRetainage([awaiting])} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    const press = () => document.querySelector('[data-lien-next-up-remind]') as HTMLButtonElement
+    expect(press().textContent).toBe('Remind Sam of 1 paper')
+    fireEvent.click(press())
+    const asked = await screen.findByText(/Sam gets one message for the notice\./)
+    expect(asked.textContent).not.toContain('stays out')
+    const confirms = screen.getAllByRole('button', { name: 'Remind Sam' })
+    fireEvent.click(confirms[confirms.length - 1]!)
+    await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledTimes(1))
+    expect(tellLeaderMock.mock.calls[0]).toEqual(['ret1', '2026-10-05', { remind: true }])
+    expect(await screen.findByText('Sam was reminded of 1 paper.')).toBeTruthy()
+  })
+
   it('a chip on the Board, pointed at, says which job it is before any press: its name, address, customer and GC, and where its notice stands (v2.7381)', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()

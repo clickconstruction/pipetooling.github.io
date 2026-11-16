@@ -31,12 +31,13 @@ export function lienAffidavitTellPapers<P extends { jobId: string; outcome: Lien
 
 /**
  * Why the tell failed, in words the office can read. `Missing item_id` is the answer of the function as it was before
- * it learned the affidavit: until it is redeployed it refuses the new request, and the paper is still sent.
+ * it learned the affidavit: until it is redeployed it refuses the new request, and the paper is still sent. `Not a
+ * lien notice` is its answer to a retainage notice before it learned that one (v2.7478).
  */
 export function lienTellFailureReason(raw: string | null | undefined): string {
   const said = (raw ?? '').trim()
   if (!said) return 'The message could not be sent.'
-  if (/^missing item_id$/i.test(said)) return 'The part of the app that tells the leader is waiting for its update.'
+  if (/^(missing item_id|not a lien notice)$/i.test(said)) return 'The part of the app that tells the leader is waiting for its update.'
   return /[.?!]$/.test(said) ? said : `${said}.`
 }
 
