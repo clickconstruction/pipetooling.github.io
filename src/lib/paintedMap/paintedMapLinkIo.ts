@@ -15,41 +15,74 @@ const FUNCTION_URL = `${supabaseUrl}/functions/v1/painted-map-link`
 
 /** What a link opens on. `signal` is a request that never got an answer. */
 export type PaintedWayView =
-  | { kind: 'open'; map: SharedPaintedMap; company: { name: string; phone: string }; endsOn: string | null }
+  | { kind: 'open'; map: SharedPaintedMap; company: { name: string; phone: string }; endsOn: string | null; visitor?: { name: string; signedIn: boolean } | null }
+  /** This device has given no name on this link: the page asks for one, knowing only the map's name and who sent it. */
+  | { kind: 'name'; mapName: string; company: { name: string; phone: string }; endsOn: string | null }
   | { kind: 'gone' }
   | { kind: 'locked' }
   | { kind: 'signal' }
   | { kind: 'failed'; words: string }
 
+/** What the page says of the reader when it opens a link: the name, when one is known, and the device. */
+export type PaintedWayAsk = { name: string | null; device: { id: string; screen: string; language: string; timeZone: string } }
+
 export interface PaintedWayIo {
-  read(code: string): Promise<PaintedWayView>
-  /** The address of one place's photo. No key in it: the function takes the code alone. */
-  photoUrl(code: string, placeId: string): string
+  /** Open the link as this reader. With no name known for the device, the answer is the ask for one. */
+  open(code: string, ask: PaintedWayAsk): Promise<PaintedWayView>
+  /** Where the reader is, after they pressed Show where I am. Best effort: `false` when it was not kept. */
+  here(code: string, deviceId: string, point: { lat: number; lng: number; accuracyM: number | null }): Promise<boolean>
+  /** The address of one place's photo. It carries the code and this device's id: a photo opens for a device that gave a name. */
+  photoUrl(code: string, placeId: string, deviceId?: string | null): string
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+
+/** A signed-in teammate's session, so the function names them from their account. Everyone else goes as the public does. */
+async function readerHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (token) return { apikey: anonKey, Authorization: `Bearer ${token}` }
+  } catch {
+    // No session to read: the public's headers.
+  }
+  return publicFunctionHeaders(null)
+}
 const words = (body: Record<string, unknown>, fallback: string): string => (typeof body.words === 'string' && body.words ? body.words : typeof body.error === 'string' && body.error && !/^[a-z_]+$/.test(body.error) ? body.error : fallback)
 
 export const paintedWayIo: PaintedWayIo = {
-  async read(code) {
+  async open(code, ask) {
     let res: Response
     try {
-      res = await fetch(`${FUNCTION_URL}?code=${encodeURIComponent(code)}`, { headers: await publicFunctionHeaders(null) })
+      res = await fetch(FUNCTION_URL, { method: 'POST', headers: { ...(await readerHeaders()), 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'way.open', code, name: ask.name, device: ask.device }) })
     } catch {
       return { kind: 'signal' }
     }
     const parsed: unknown = await res.json().catch(() => null)
     const body = isRecord(parsed) ? parsed : {}
+    const sent = isRecord(body.company) ? body.company : {}
+    const company = { name: typeof sent.name === 'string' ? sent.name : '', phone: typeof sent.phone === 'string' ? sent.phone : '' }
+    const endsOn = typeof body.endsOn === 'string' ? body.endsOn : null
     if (res.status === 200 && body.ok === true && isRecord(body.map)) {
-      const company = isRecord(body.company) ? body.company : {}
-      return { kind: 'open', map: body.map as unknown as SharedPaintedMap, company: { name: typeof company.name === 'string' ? company.name : '', phone: typeof company.phone === 'string' ? company.phone : '' }, endsOn: typeof body.endsOn === 'string' ? body.endsOn : null }
+      const who = isRecord(body.visitor) && typeof body.visitor.name === 'string' ? { name: body.visitor.name, signedIn: body.visitor.signedIn === true } : null
+      return { kind: 'open', map: body.map as unknown as SharedPaintedMap, company, endsOn, visitor: who }
     }
+    if (res.status === 200 && body.ok === true && body.needsName === true) return { kind: 'name', mapName: typeof body.mapName === 'string' ? body.mapName : '', company, endsOn }
     if (res.status === 404) return { kind: 'gone' }
     if (res.status === 429 && body.code === 'locked') return { kind: 'locked' }
     return { kind: 'failed', words: words(body, PAINTED_MAP_LINK_WORDS.failed) }
   },
-  photoUrl(code, placeId) {
-    return `${FUNCTION_URL}?code=${encodeURIComponent(code)}&photo=${encodeURIComponent(placeId)}`
+  async here(code, deviceId, point) {
+    try {
+      const res = await fetch(FUNCTION_URL, { method: 'POST', headers: { ...(await readerHeaders()), 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'way.here', code, deviceId, lat: point.lat, lng: point.lng, accuracyM: point.accuracyM }) })
+      const parsed: unknown = await res.json().catch(() => null)
+      return res.status === 200 && isRecord(parsed) && parsed.kept === true
+    } catch {
+      return false
+    }
+  },
+  photoUrl(code, placeId, deviceId) {
+    return `${FUNCTION_URL}?code=${encodeURIComponent(code)}&photo=${encodeURIComponent(placeId)}${deviceId ? `&device=${encodeURIComponent(deviceId)}` : ''}`
   },
 }
 
