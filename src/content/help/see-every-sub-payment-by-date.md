@@ -105,6 +105,19 @@ Only the people who run Banking's Ledger see the picker. They are the controller
 
 {{button:outline|Print}} makes a page of the same lines. On a phone both buttons sit under the list.
 
+## Gather old payments into one
+
+One check that paid three sheets used to be typed as three payments. The Ledger can gather them into one.
+
+1. Press {{button:outline|Gather old payments…}} beside **Download CSV**. It shows only when there is something to gather.
+2. Each group is one person, one day and one way of paying. A ticked group will be gathered.
+3. A group the app is unsure of says **Held** with its reason. Tick it if it was one payment.
+4. Press the blue button. It says how many it will gather.
+
+Gathering changes no amount, date or sheet. The payments get one number. A check mark on one then covers them all.
+
+Payments matched to different bank lines are refused. They were not one payment.
+
 ## See it by sub
 
 Two chips at the top group the ledger. {{chip:gray|By date}} is the list above. {{chip:gray|By sub}} shows one row for each person.
