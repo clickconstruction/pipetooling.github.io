@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   TAG_SECTION_SHOWN,
+  canTagInJobNotes,
   insertPick,
   liveTags,
   mentionIndex,
   nameMatchesQuery,
   noteBodyParts,
+  noteTagMark,
   oldestFirst,
   rankTaggable,
   removePick,
@@ -14,8 +16,10 @@ import {
   tagAgeWords,
   tagIsLate,
   tagQueryAtCaret,
+  tagsByNote,
   waitingOnWords,
   workingDaysWaited,
+  type NoteTagRow,
   type TaggablePerson,
 } from './noteTags'
 
@@ -284,6 +288,69 @@ describe('the age rule', () => {
     expect(tagAgeWords(today, today)).toBe('')
     expect(tagAgeWords('2026-11-14', today)).toBe('1d')
     expect(tagAgeWords('2026-11-11', today)).toBe('4d')
+  })
+})
+
+describe('the mark on a note', () => {
+  const tag = (name: string, userId: string, how: NoteTagRow['clearedHow'] = null): NoteTagRow => ({
+    noteId: 'n1',
+    taggedUserId: userId,
+    taggedName: name,
+    taggerUserId: 'u-marcus',
+    createdAt: '2026-11-11T21:40:00Z',
+    clearedAt: how ? '2026-11-12T15:00:00Z' : null,
+    clearedHow: how,
+  })
+  const at = { viewerId: 'u-marcus', postedYmd: '2026-11-11', todayYmd: '2026-11-15' }
+
+  it('is null for a note with no tag', () => {
+    expect(noteTagMark([], at)).toBeNull()
+  })
+
+  it('says who it waits on, how long, and that it is late', () => {
+    expect(noteTagMark([tag('Dana Whitlock', 'u-dana')], at)).toEqual({
+      names: ['Dana Whitlock'],
+      mine: [],
+      words: 'waiting on Dana · 4d',
+      waiting: true,
+      late: true,
+    })
+  })
+
+  it('says you to the tagged reader, first, and marks their chip', () => {
+    const mark = noteTagMark([tag('Luis Ortega', 'u-luis'), tag('Dana Whitlock', 'u-dana')], { ...at, viewerId: 'u-dana', todayYmd: '2026-11-11' })
+    expect(mark?.words).toBe('waiting on you and Luis')
+    expect(mark?.mine).toEqual(['Dana Whitlock'])
+    expect(mark?.late).toBe(false)
+  })
+
+  it('names only the people still owed while one has answered', () => {
+    expect(noteTagMark([tag('Dana Whitlock', 'u-dana', 'answered'), tag('Luis Ortega', 'u-luis')], at)?.words).toBe('waiting on Luis · 4d')
+  })
+
+  it('says how it ended once all have cleared', () => {
+    expect(noteTagMark([tag('Dana Whitlock', 'u-dana', 'answered')], at)).toMatchObject({ words: 'answered by Dana', waiting: false, late: false })
+    expect(noteTagMark([tag('Dana Whitlock', 'u-dana', 'done')], at)?.words).toBe('Dana: no reply needed')
+    expect(noteTagMark([tag('Dana Whitlock', 'u-dana', 'answered'), tag('Luis Ortega', 'u-luis', 'done')], at)?.words).toBe(
+      'answered by Dana · Luis: no reply needed',
+    )
+  })
+
+  it('writes a shared first name whole', () => {
+    expect(noteTagMark([tag('Chris Bell', 'u-bell')], { ...at, everyone: ['Chris Alvarez'] })?.words).toBe('waiting on Chris Bell · 4d')
+  })
+
+  it('groups the rows of a job by note', () => {
+    const rows = [tag('Dana Whitlock', 'u-dana'), { ...tag('Luis Ortega', 'u-luis'), noteId: 'n2' }, tag('Chris Bell', 'u-bell')]
+    const by = tagsByNote(rows)
+    expect(by.get('n1')?.map((r) => r.taggedName)).toEqual(['Dana Whitlock', 'Chris Bell'])
+    expect(by.get('n2')).toHaveLength(1)
+  })
+
+  it('offers the @ to a dev alone until the section lands', () => {
+    expect(canTagInJobNotes('dev')).toBe(true)
+    expect(canTagInJobNotes('assistant')).toBe(false)
+    expect(canTagInJobNotes(null)).toBe(false)
   })
 })
 

@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: ready
-status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · building since 2026-11-15 · PR 1 (v2.7384) the kernel · PR 2 (v2.7385) the table and functions, pushed to prod and proved 2026-11-15 · nothing on screen yet
+status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · building since 2026-11-15 · PR 1 (v2.7384) the kernel · PR 2 (v2.7385) the table and functions, pushed to prod and proved 2026-11-15 · PR 3 (v2.7400) the list on the Pipeline note boxes, open to a dev alone until PR 4 · a tagged note shows its chip and who it waits on
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,8 +11,8 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: PR 3, the list on the Pipeline row (the picker in `JobActivityView`, typed notes posted through `job_note_post_tagged`). Then PR 4 close behind it, then the push and the second box.
-size: L as a train of six (S · M · M · M · S · S)
+next: Walk PR 3 on prod as the dev login on a ZZ Test job. Then PR 4, where it lands, which opens the list to everyone it offers. PR 6 grew: the job window posts through the outbox, so it needs a migration.
+size: L as a train of six (S · M · M · M · S · M)
 blocker: none; Taunya settled the eight calls on 2026-11-15.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
 ---
@@ -324,15 +324,21 @@ Six PRs, smallest first. Each cut from fresh `main`, each with its release note 
    its grants.
 3. **The list on the Pipeline row** (M). The picker in `JobActivityView`, the chip and the waiting
    line. The guide starts here. A tag made now is seen by the tagged person on that row only, so
-   this PR and the next should land close together.
+   this PR and the next should land close together. **Built: v2.7400**, in the row's own box
+   (`JobsStagesActivityBox`, the one in her screenshot) and in `JobActivityView`. The list is open
+   to a dev alone (`canTagInJobNotes`) until PR 4, so no tag is made that lands nowhere. The guide
+   moved to PR 4 for the same reason.
 4. **Where it lands** (M). The count above Jobs, the section with its answer box and No reply
    needed, the You asked fold with its seen mark, the Needs you line and the window it opens.
    Needs calls 1, 3 and 7. `PROJECT_DOCUMENTATION.md`,
    `GLOSSARY.md` and `ACCESS_CONTROL.md` take their lines here.
 5. **The push** (S). `notify-note-tag`, deployed after the merge, its section in
    `docs/EDGE_FUNCTIONS.md`. Needs call 6.
-6. **The second box** (S). `JobThreadNotesPanel`, which covers the job window, Job Detail, Job Mode
-   and Quickfill. Needs call 8.
+6. **The second box** (M, was S). `JobThreadNotesPanel`, which covers the job window, Job Detail, Job Mode
+   and Quickfill. Needs call 8. Found in PR 3: this box posts through the outbox
+   (`pressThroughOutbox`, kind `job-note`), so a note typed with no signal is kept. That path never
+   reaches `job_note_post_tagged`. The server side of the press needs a migration to write tags and
+   to answer the writer's waiting tags. Until then a note typed in the job window answers no tag.
 
 ## Left to settle while building
 

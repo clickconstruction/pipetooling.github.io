@@ -249,7 +249,7 @@ describe('JobsStagesActivityBox', () => {
     const input = screen.getByLabelText('Note text')
     fireEvent.change(input, { target: { value: 'Check arrived' } })
     fireEvent.keyDown(input, { key: 'Enter' })
-    await vi.waitFor(() => expect(submitNoteWithBody).toHaveBeenCalledWith(job.id, 'Check arrived', 'draft'))
+    await vi.waitFor(() => expect(submitNoteWithBody).toHaveBeenCalledWith(job.id, 'Check arrived', 'draft', { tagged: [] }))
   })
 })
 

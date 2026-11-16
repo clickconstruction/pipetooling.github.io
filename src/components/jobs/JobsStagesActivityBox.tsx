@@ -5,6 +5,12 @@ import { activityBoxTeaser, buildJobActivityBoxFeed, NOBODY_HAS_ANSWERED, type J
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import { JobsWorkedTodayReportIcon } from '../icons/JobsWorkedTodayReportIcon'
 import { seeAllDoorWords } from '../../lib/jobs/stagesRowDoors'
+import { canTagInJobNotes, type NoteTagRow } from '../../lib/jobs/noteTags'
+import { useJobNoteTags } from '../../hooks/useJobNoteTags'
+import { useOptionalAuth } from '../../hooks/useAuth'
+import type { JobThreadNotePostOptions } from '../../hooks/useJobThreadNotes'
+import { useNoteTagBox } from './NoteTagBox'
+import { TaggedNoteBody } from './TaggedNoteBody'
 import {
   formatDispatchNoteDaysAgoShort,
   formatDispatchNoteWeekdayShortTimeChicago,
@@ -136,7 +142,11 @@ const lineButtonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
-function entryLine(e: JobActivityBoxEntry, onOpenLine?: (line: JobActivityBoxLine) => void) {
+function entryLine(
+  e: JobActivityBoxEntry,
+  onOpenLine?: (line: JobActivityBoxLine) => void,
+  tags?: { byNote: ReadonlyMap<string, NoteTagRow[]>; viewerId: string | null },
+) {
   const report = e.kind === 'report'
   const sent = e.kind === 'sent'
   const line = e.kind === 'line' ? e.line : undefined
@@ -180,7 +190,7 @@ function entryLine(e: JobActivityBoxEntry, onOpenLine?: (line: JobActivityBoxLin
         </span>{' '}
         <strong style={{ color: line?.fromThem && line.customer ? 'var(--text-orange-800)' : 'var(--text-strong)' }}>{e.authorName ?? '—'}</strong>
         <span style={{ color: 'var(--text-faint)', margin: '0 5px' }}>|</span>
-        {e.body}
+        {e.noteId && tags ? <TaggedNoteBody body={e.body} tags={tags.byNote.get(e.noteId)} postedIso={e.atIso} viewerId={tags.viewerId} /> : e.body}
         {line?.waiting ? <em style={{ color: 'var(--text-orange-700)', fontWeight: 600, marginLeft: 5, fontStyle: 'normal' }}>{NOBODY_HAS_ANSWERED}</em> : null}
       </span>
     </>
@@ -215,7 +225,7 @@ type Props = {
   /** Lazy full-feed loader — the thread expand's loader, fired on first pointer interaction. */
   loadActivityForJob?: (jobId: string) => void
   /** The thread-note pipeline (optimistic + realtime). Absent → no Post pill (read-only box). */
-  submitNoteWithBody?: (jobId: string, body: string, source: 'draft' | 'stamp') => Promise<boolean>
+  submitNoteWithBody?: (jobId: string, body: string, source: 'draft' | 'stamp', opts?: JobThreadNotePostOptions) => Promise<boolean>
 }
 
 export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNoteWithBody }: Props) {
@@ -236,6 +246,10 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
   const up = ctx.stagesUpcomingByJobId[job.id]
   // A press on a line opens the bubble's sheet, where the thread's last lines and the reply box are.
   const openLine = ctx.onOpenCustomerDoor ? () => ctx.onOpenCustomerDoor?.(job) : undefined
+  // Tags on the job's notes (punch list #363): read once the feed is, and again when it grows.
+  const viewerId = useOptionalAuth()?.user?.id ?? null
+  const noteTags = { byNote: useJobNoteTags(loaded ? job.id : null, feed.length), viewerId }
+  const tagBox = useNoteTagBox({ jobId: job.id, draft, setDraft, inputRef, enabled: Boolean(submitNoteWithBody) && canTagInJobNotes(ctx.authRole), place: 'above' })
 
   const ensureLoaded = () => {
     if (requestedLoadRef.current || loaded || !loadActivityForJob) return
@@ -263,6 +277,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
   const closeComposer = () => {
     setComposerOpen(false)
     setDraft('')
+    tagBox.reset()
   }
   const post = async () => {
     const body = draft.trim()
@@ -274,7 +289,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
     try {
       // Only dismiss the composer when the note actually landed — a failed post
       // used to close the bar and take the typed text with it (v2.1673).
-      if (await submitNoteWithBody(job.id, body, 'draft')) closeComposer()
+      if (await submitNoteWithBody(job.id, body, 'draft', { tagged: tagBox.taggedIds(body) })) closeComposer()
     } finally {
       setSubmitting(false)
     }
@@ -330,7 +345,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           }}
         >
           {loaded ? (
-            feed.map((e) => entryLine(e, openLine))
+            feed.map((e) => entryLine(e, openLine, noteTags))
           ) : teaser?.kind === 'line' ? (
             // The customer's line is the newest thing on the job: it reads as it will in the feed (v2.6689).
             entryLine({ ...teaser, number: null }, openLine)
@@ -450,6 +465,10 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           ) : null}
         </div>
       ) : (
+        /* The picked names sit over the strip and the list of names opens above it (punch list #363), so the strip keeps its height. */
+        <div style={{ position: 'relative' }}>
+          {tagBox.chips ? <div style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', background: 'var(--surface)', paddingTop: 4 }}>{tagBox.chips}</div> : null}
+          {tagBox.list}
         <div
           style={{
             display: 'flex',
@@ -467,8 +486,11 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           <input
             ref={inputRef}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => tagBox.onText(e.target.value, e.target.selectionStart)}
+            onClick={(e) => tagBox.onText(e.currentTarget.value, e.currentTarget.selectionStart)}
             onKeyDown={(e) => {
+              // The list takes its own keys first: Enter picks a name and Escape shuts the list.
+              if (tagBox.onKeyDown(e)) return
               if (e.key === 'Enter') void post()
               if (e.key === 'Escape') closeComposer()
             }}
@@ -477,6 +499,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
             disabled={submitting}
             style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-strong)', fontSize: '0.75rem' }}
           />
+          {tagBox.atButton}
           <button
             type="button"
             onClick={(e) => {
@@ -499,6 +522,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           >
             ✕
           </button>
+        </div>
         </div>
       )}
     </div>
