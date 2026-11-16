@@ -118,7 +118,7 @@ Write why the property is off the lien path. The reason goes on each ticked job.
 
 Nothing is filed and nothing is deleted. Every job at the address leaves the lien bins, now and later. A job that could not go on the attorney's list is named, with the reason.
 
-The property record then reads *Public property, answered Nov 16.* To undo it, press **Put it back on the lien path…** there. Say why, and press the button. Every job at the address returns to the Lien desk. The jobs stay on the attorney's list.
+The property record then reads *Public property, answered Nov 16.* To undo it, press **Put it back on the lien path…** there. Say why, and press the button. Every job at the address returns to the Lien desk. The jobs stay on the attorney's list. If the owner still reads as a public body, the property asks once more.
 
 A private answer can be cleared too. Press **Ask again**, and the property asks once more.
 
