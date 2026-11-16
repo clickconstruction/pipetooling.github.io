@@ -113,6 +113,7 @@ const MOVE_WORDS: Record<LienNextUpAction, string> = {
   send_notice: 'Affidavit · notice first',
   file_affidavit: 'File the affidavit',
   record_service: 'Lien filed · serve it',
+  record_retainage: 'Retainage not on the job',
 }
 
 const SENT_BY: Record<string, string> = {
@@ -179,6 +180,7 @@ function doorFor(row: LienNextUpRow, jobId: string): LienArDoor {
     case 'affidavit_pile':
       return { to: 'desk', jobId, kind: 'affidavit', pile: null }
     case 'retainage':
+    case 'retainage_unrecorded':
       return { to: 'desk', jobId, kind: 'retainage', pile: null }
     case 'run':
       return { to: 'desk', jobId, kind: 'notice', pile: row.action === 'record_mailing' || row.action === 'add_tracking' ? 'printed' : 'ready' }

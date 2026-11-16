@@ -273,4 +273,15 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(lienArLensMatch([green], 'due')).toBe(false)
     expect(lienArLensMatch([green], 'out')).toBe(true)
   })
+
+  it('retainage nobody recorded asks for the answer, with no day to race, and opens the desk’s retainage list', () => {
+    const chip = lienArChipFor(
+      input({
+        nextUp: [row({ key: 'retainage-unrecorded:j273', kind: 'retainage', sub: 'Retainage not on the job · $2,460.00 looks held · 3 bills paid at 90%', detail: '$2,460.00 looks held · 3 bills paid at 90%', action: 'record_retainage', severity: 'amber', dueOn: null, daysLeft: null, group: 'now', target: { open: 'retainage_unrecorded', jobId: 'j273' } })],
+      }),
+    )!
+    expect(chip.words).toBe('Record the retainage')
+    expect(chip.tone).toBe('amber')
+    expect(chip.door).toEqual({ to: 'desk', jobId: 'j273', kind: 'retainage', pile: null })
+  })
 })

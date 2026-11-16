@@ -3270,6 +3270,31 @@ describe('LienDesk retainage (v2.3753)', () => {
     expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
   })
 
+  it('retainage nobody recorded is a To do row and a count on the Board, and its press opens the list at that job (fix A, PR 2)', async () => {
+    const d = data([], [], true)
+    d.retainageUnrecorded = [
+      { jobId: 'j-held', label: 'C2041', name: 'Cedar Hollow Clinic', heldBy: 'Bluebonnet Commercial Builders', status: 'billed', suggestion: { held: 2460, percent: 10, billCount: 3, billIds: ['a', 'b', 'c'] }, noteDay: null },
+      { jobId: 'j-note', label: 'C2077', name: 'Pecan Row Offices', heldBy: 'Bluebonnet Commercial Builders', status: 'billed', suggestion: null, noteDay: '2026-09-21' },
+    ]
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    expect(document.querySelector('[data-lien-board-retainage]')?.textContent).toBe('Retainage · 2 look held, not on the job')
+    const row = document.querySelector('[data-lien-next-up-row="retainage-unrecorded:j-held"]') as HTMLElement
+    expect(row.textContent).toContain('C2041 · Cedar Hollow Clinic')
+    expect(row.textContent).toContain('Retainage not on the job · $2,460.00 looks held · 3 bills paid at 90%')
+    expect(document.querySelector('[data-lien-next-up-row="retainage-unrecorded:j-note"]')?.textContent).toContain('Retainage not on the job · a note of Sep 21 says retainage · no figure yet')
+    fireEvent.click(within(row).getByRole('button', { name: 'Record the retainage' }))
+    await settle()
+    // The Retainage list, whole, with the job's row ringed above the piles; the tab counts both jobs.
+    const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
+    expect(within(list).getByTestId('lien-retainage-unrecorded').textContent).toContain('Looks held · not on the job · 2')
+    expect(within(list).getAllByTestId('lien-retainage-unrecorded-row').map((n) => [n.getAttribute('data-job-id'), n.getAttribute('data-focused')])).toEqual([
+      ['j-held', 'yes'],
+      ['j-note', 'no'],
+    ])
+    expect(screen.getByRole('tab', { name: 'Retainage notices · 2' })).toBeTruthy()
+  })
+
   it('the notice pane names the retainage inside the claim once the job records it, and offers the door when it does not', () => {
     const withRetainage = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     withRetainage.jobsById.j650!.lien_retainage_held = 1_760
