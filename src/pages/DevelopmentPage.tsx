@@ -34,6 +34,7 @@ import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/devel
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPartsCard, type SitePlansWrites } from '../components/developments/DevelopmentPartsCard'
+import { DevelopmentPlansByDate } from '../components/developments/DevelopmentPlansByDate'
 import { JobCardsProvider } from '../components/developments/JobChip'
 import { jobHoverCardLookup } from '../lib/developments/jobHoverCard'
 import { DevelopmentQuestionsLook } from '../components/developments/DevelopmentQuestionsLook'
@@ -58,7 +59,7 @@ import { useSiteLabor } from '../hooks/useSiteLabor'
 import { useSiteOverhead } from '../hooks/useSiteOverhead'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, sortMoneyRows, unbilledTileWords, type MoneySortMode } from '../lib/developments/siteMoney'
 import { countKeysFor, developmentDoorFor, jobDoorClosedWords, OFFICE_READS_MONEY, OFFICE_READS_MONEY_CHIP } from '../lib/developments/readDoor'
-import { isFolded, readFolds, readMoneySort, readMoneyView, readScoreboardCut, readScoreboardWindow, toggleFold, writeFolds, writeMoneySort, writeMoneyView, writeScoreboardCut, writeScoreboardWindow, type MoneyView } from '../lib/developments/devicePrefs'
+import { isFolded, readFolds, readMoneySort, readMoneyView, readPlansView, readScoreboardCut, readScoreboardWindow, toggleFold, writeFolds, writeMoneySort, writeMoneyView, writePlansView, writeScoreboardCut, writeScoreboardWindow, type MoneyView, type PlansView } from '../lib/developments/devicePrefs'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { foldSameDayRuns } from '../lib/developments/historyFolds'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -73,6 +74,7 @@ import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
 import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../lib/plans/sitePlans'
 import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
+import { buildPlansByDate, plansByDateCrewNote, plansByDateUnsentWords, type PlansByDateClock } from '../lib/plans/plansByDate'
 import { moveLineForPaper, papersFromRows, type Paper } from '../lib/papers/papers'
 import { canSeeSiteCosts } from '../lib/developments/siteCosts'
 import { useSiteCosts } from '../hooks/useSiteCosts'
@@ -118,6 +120,12 @@ export default function DevelopmentPage() {
   const setMoneyViewMode = (view: MoneyView) => {
     setMoneyView(view)
     writeMoneyView(developmentId, view)
+  }
+  // The Plans look's view: the parts table, or the sets by date; the device remembers it.
+  const [plansView, setPlansView] = useState<PlansView>(() => readPlansView(developmentId))
+  const setPlansViewMode = (view: PlansView) => {
+    setPlansView(view)
+    writePlansView(developmentId, view)
   }
   const [scoreSort, setScoreSort] = useState<ScoreboardSort>(SCOREBOARD_DEFAULT_SORT)
   // The Scoreboard's cut and window (v2.6558, punch list #250 PR 4): the device remembers both.
@@ -370,7 +378,29 @@ export default function DevelopmentPage() {
   // The scoreboard's reads (v2.6407): the clock for the office door, the day ledger for the finance seats, both only while that view is open; the Timeline reads the clock too.
   const scoreboardOpen = moneyShown && moneyViewShown === 'scoreboard'
   const timelineOpen = moneyShown && moneyViewShown === 'timeline'
-  const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen)
+  // The Plans look's By date view reads the clock's days too, for its crew lane, in the office door and only while it is open.
+  const plansByDateOpen = plansView === 'date' && !isFolded(lookFolds, 'plans', false)
+  const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen || (moneyShown && plansByDateOpen))
+  // By date: the site's sets, bids, work days and kept History lines against time; no money, so both doors draw it.
+  const plansByDateClock: PlansByDateClock = !moneyShown ? 'closed' : !laborRead || laborRead.state === 'reading' ? 'reading' : laborRead.state === 'failed' ? 'failed' : laborRead.labor.daysKnown ? 'read' : 'closed'
+  const plansByDate = useMemo(() => {
+    if (!plansByDateOpen || !counted || !data || !siteRead) return null
+    const labor = laborRead?.state === 'read' ? laborRead.labor : null
+    return buildPlansByDate({
+      parts: siteRead.parts,
+      sets: siteRead.sets,
+      bids: counted.bids.map((b) => ({ id: b.id, label: bidLabel(b), sent: b.bid_date_sent, plansDated: b.design_drawing_plan_date, outcome: b.outcome, outcomeAt: b.outcome_at })),
+      jobs: counted.jobs.map((j) => {
+        const days = new Set<string>()
+        for (const person of labor?.byJobId.get(j.id)?.people ?? []) for (const d of person.byWorkDate ?? []) days.add(d.ymd)
+        return { id: j.id, label: jobLabel(j), days: plansByDateClock === 'read' ? [...days] : null, firstWorkDay: j.first_work_date ?? null, lastWorkDay: j.last_work_date }
+      }),
+      history: data.historyEntries.map((h) => ({ id: h.id, happenedAt: h.happenedAt, source: h.source, body: h.body })),
+      clock: plansByDateClock,
+      today: todayYmdInAppTz(),
+      toYmd: (raw) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso),
+    })
+  }, [plansByDateOpen, counted, data, siteRead, laborRead, plansByDateClock, bidLabel, jobLabel])
   const overheadRead = useSiteOverhead(shownJobIds, (scoreboardOpen || timelineOpen) && canSeeSiteCosts(role))
   // Who holds the card each counted charge went on (v2.6457): the card id alone out of each bank record, while the board is open.
   const cardTxIds = useMemo(() => (costsByJobId?.state === 'read' ? [...costsByJobId.byJobId.values()].flatMap((r) => r.breakdown.cardLines.map((l) => l.txId).filter((id): id is string => !!id)) : []), [costsByJobId])
@@ -1569,8 +1599,40 @@ export default function DevelopmentPage() {
           </Card>
         )}
 
-        <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="what each part of the site builds from">
+        <Card
+          id={DEVELOPMENT_JUMP_ANCHOR.plans}
+          title="Plans"
+          fold={foldFor('plans', lineOf(looks.plans))}
+          meta={plansView === 'date' ? 'every set of drawings on the site, by the date on its sheets' : 'what each part of the site builds from'}
+          right={
+            // The look's two views, as Money holds its own: the parts table, and the sets against time.
+            <span role="group" aria-label="Plans views" style={{ display: phone ? 'flex' : 'inline-flex', width: phone ? '100%' : undefined, gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 9999, background: 'var(--bg-subtle)' }} data-testid="plans-views">
+              {(['part', 'date'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setPlansViewMode(v)}
+                  aria-pressed={plansView === v}
+                  title={v === 'part' ? 'Each part of the site with the set it builds from' : 'Every set on the date on its sheets, with the bids, the crews’ days and the History lines on one axis'}
+                  data-testid={`plans-view-${v}`}
+                  style={{ border: `1px solid ${plansView === v ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 9999, padding: phone ? '3px 6px' : '1px 10px', font: 'inherit', fontSize: '0.76rem', lineHeight: 1.2, cursor: 'pointer', background: plansView === v ? 'var(--surface)' : 'transparent', color: plansView === v ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: plansView === v ? 700 : 500, flex: phone ? 1 : undefined, textAlign: 'center' }}
+                >
+                  {v === 'part' ? 'By part' : 'By date'}
+                </button>
+              ))}
+            </span>
+          }
+        >
+          {plansView === 'date' ? (
+            <DevelopmentPlansByDate
+              model={plansByDate}
+              phone={phone}
+              notes={[plansByDateCrewNote(plansByDateClock), plansByDate ? plansByDateUnsentWords(plansByDate.unsentBids) : null].filter((n): n is string => !!n)}
+              print={{ siteName: dev.name, customerName: data.customer?.name ?? null, printedBy: profileName ?? null, developmentId: dev.id, customerId: data.customer?.id ?? null }}
+            />
+          ) : (
           <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} papers={sitePapers} />
+          )}
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>
