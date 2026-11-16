@@ -1949,6 +1949,41 @@ body.my-time-boundary-dragging {
   animation: dashboard-skeleton-pulse 1.2s ease-in-out infinite;
 }
 
+/* Dashboard · Needs you: the leader's lien notices as a card of its own (v2.7435, Taunya's ask of 2026-11-16, the second
+   drawing she approved). The title says the deadline, then up to three notices, each a row with its own press. Red while
+   a window is inside the week or closed, blue otherwise: the tints are the Lien desk chips' own tokens. The first row's
+   press is the notice's Sign and approve green (`.lienSignFramePress`), a literal under white words in both themes. */
+.lienLeaderCard { background: var(--bg-subtle); border: 1px solid var(--border-blue); border-left-width: 4px; border-radius: 8px; overflow: hidden; }
+.lienLeaderCard[data-tone='red'] { border-color: var(--border-red); }
+.lienLeaderTop { padding: 0.65rem 0.875rem 0.6rem; background: var(--bg-blue-tint); }
+.lienLeaderCard[data-tone='red'] .lienLeaderTop { background: var(--bg-red-tint); }
+.lienLeaderKicker { font-size: 0.65rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-blue-700); }
+.lienLeaderCard[data-tone='red'] .lienLeaderKicker { color: var(--text-red-700); }
+.lienLeaderTitle { margin-top: 1px; font-size: 1rem; font-weight: 700; color: var(--text-strong); }
+.lienLeaderLine { margin-top: 2px; font-size: 0.8125rem; color: var(--text-muted); }
+.lienLeaderLine strong { font-weight: 600; color: var(--text-strong); }
+.lienLeaderRow { display: grid; grid-template-columns: minmax(0, 1.5fr) 5.5rem minmax(0, 0.9fr) minmax(0, 2fr) 10rem; gap: 0.75rem; align-items: center; width: 100%; padding: 0.5rem 0.875rem; border: none; border-top: 1px solid var(--border); border-radius: 0; background: transparent; font: inherit; font-size: 0.8125rem; color: inherit; text-align: left; }
+.lienLeaderName { font-weight: 700; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lienLeaderClaim { font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; text-align: right; }
+.lienLeaderGc { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lienLeaderState { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; color: var(--text-muted); }
+.lienLeaderChip { display: inline-block; padding: 0 7px; border-radius: 5px; font-size: 0.6875rem; font-weight: 700; line-height: 1.6; white-space: nowrap; background: var(--bg-muted); color: var(--text-600); }
+.lienLeaderChip[data-tone='red'] { background: var(--bg-red-tint); color: var(--text-red-700); }
+.lienLeaderChip[data-tone='amber'] { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+.lienLeaderCard[data-tone='red'] .lienLeaderChip[data-tone='red'] { box-shadow: inset 0 0 0 1px var(--border-red); }
+.lienLeaderPress { justify-self: end; display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text-strong); white-space: nowrap; cursor: pointer; }
+.lienLeaderPress[data-primary='yes'] { border-color: transparent; background: #166534; color: #ffffff; font-weight: 700; }
+.lienLeaderPress:focus-visible, .lienLeaderMore:focus-visible, button.lienLeaderRow:focus-visible { outline: 2px solid var(--border-blue); outline-offset: -2px; }
+.lienLeaderMore { display: block; width: 100%; padding: 0.5rem 0.875rem 0.55rem; border: none; border-top: 1px solid var(--border); border-radius: 0; background: transparent; font: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--text-link); text-align: left; cursor: pointer; }
+/* A phone: the name and the claim on one line, the chips under them. Only the first notice has a button, 44px tall, and
+   every other row is the press itself. */
+.lienLeaderCard[data-phone='yes'] .lienLeaderTitle { font-size: 1.0625rem; }
+.lienLeaderCard[data-phone='yes'] .lienLeaderRow { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 0.6rem 0.875rem 0.65rem; }
+.lienLeaderCard[data-phone='yes'] button.lienLeaderRow { cursor: pointer; }
+.lienLeaderCard[data-phone='yes'] .lienLeaderState { grid-column: 1 / -1; font-size: 0.75rem; }
+.lienLeaderCard[data-phone='yes'] .lienLeaderPress { grid-column: 1 / -1; justify-self: stretch; min-height: 44px; margin-top: 4px; font-size: 0.9375rem; }
+.lienLeaderCard[data-phone='yes'] .lienLeaderMore { text-align: center; min-height: 44px; }
+
 /* Bids · Pricing: per-bid resolve skeleton + spinner (v2.2367) */
 .bid-resolve-shimmer {
   background: var(--bg-muted);

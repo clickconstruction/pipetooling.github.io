@@ -117,6 +117,37 @@ describe('useLienDeskData · ZZ test jobs', () => {
     }
   })
 
+  it('in light mode the bills are read for the notices that wait on the leader, and no other (v2.7435): the Dashboard’s card and the desk claim the same money', async () => {
+    const items = TABLES.job_lien_desk_items!
+    const jobsLedger = TABLES.jobs_ledger!
+    TABLES.job_lien_desk_items = [
+      ...items,
+      { id: 'iW', job_id: 'W', kind: 'notice_53_056', status: 'awaiting_approval', submitted_at: '2026-10-07T21:13:00Z', months: ['2026-07'], created_at: '2026-10-07', voided_at: null },
+      { id: 'iS', job_id: 'S', kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-01T15:00:00Z', months: ['2026-07'], created_at: '2026-10-01', voided_at: null },
+    ]
+    TABLES.jobs_ledger = [...jobsLedger, { ...job('W', 'ZZ walk job', 'Ann Lee'), status: 'billed', revenue: 3553.4 }, { ...job('S', '628 Tarrow Rd', 'Dunmere Mallin'), status: 'billed', revenue: 285 }]
+    TABLES.jobs_ledger_invoices = [
+      { id: 'inv-W', job_id: 'W', status: 'billed', amount: 3553.4, sequence_order: 1, billed_at: '2026-07-15' },
+      { id: 'inv-S', job_id: 'S', status: 'billed', amount: 285, sequence_order: 1, billed_at: '2026-07-15' },
+    ]
+    TABLES.jobs_ledger_payments = []
+    try {
+      const data = await read(false)
+      const waiting = data.queue.piles.awaiting.find((e) => e.jobId === 'W')!
+      // No month row for the job, so before this the Dashboard read $0 where the open desk read the bills.
+      expect(waiting.months).toEqual([])
+      expect(waiting.openBalance).toBe(3553.4)
+      expect(data.summary.leader).toMatchObject({ jobs: 1, dollars: 3553.4 })
+      // A sent notice's job is still left to the open desk: the light read stays small.
+      expect(data.queue.entries.find((e) => e.jobId === 'S')!.openBalance).toBe(0)
+    } finally {
+      TABLES.job_lien_desk_items = items
+      TABLES.jobs_ledger = jobsLedger
+      delete TABLES.jobs_ledger_invoices
+      delete TABLES.jobs_ledger_payments
+    }
+  })
+
   it('a job an open in-kind deal pays leaves every list, the jobs and the counts, whoever looks; the deal ended, it is back (v2.7253)', async () => {
     const jobsLedger = TABLES.jobs_ledger!
     const onDeal = (deal: string | null) => jobsLedger.map((j) => ((j as { id: string }).id === 'A' ? { ...(j as object), in_kind_arrangement_id: deal } : j))
