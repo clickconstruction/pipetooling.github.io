@@ -24,7 +24,14 @@ describe('landFieldPress · the press as the RPC reads it', () => {
       bid_id: null,
       notes: '',
     })
-    expect(rpcPayload(newPress({ id: 'c', seq: 3, kind: 'job-note', userId: 'u', pressedAt: T, payload: { jobId: 'j', body: 'Slab is poured.' } }))).toEqual({ job_id: 'j', body: 'Slab is poured.' })
+    expect(rpcPayload(newPress({ id: 'c', seq: 3, kind: 'job-note', userId: 'u', pressedAt: T, payload: { jobId: 'j', body: 'Slab is poured.' } }))).toEqual({ job_id: 'j', body: 'Slab is poured.', typed: false, tagged: [] })
+    // A typed note carries its picks (punch list #363); a press with neither key says typed: false, so it answers no tag.
+    expect(rpcPayload(newPress({ id: 'c2', seq: 3, kind: 'job-note', userId: 'u', pressedAt: T, payload: { jobId: 'j', body: 'Is it in? @Dana Whitlock', typed: true, tagged: ['u-dana'] } }))).toEqual({
+      job_id: 'j',
+      body: 'Is it in? @Dana Whitlock',
+      typed: true,
+      tagged: ['u-dana'],
+    })
     expect(
       rpcPayload(
         newPress({

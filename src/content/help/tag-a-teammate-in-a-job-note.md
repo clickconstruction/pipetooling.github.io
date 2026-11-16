@@ -10,7 +10,7 @@ A job note used to sit on the job until someone opened that row. Now you can tag
 
 ## Tag someone in a note
 
-You tag from the note box on a Pipeline row.
+You tag from a job's note box. These steps use the box on a Pipeline row.
 
 1. On the job's row, press {{button:blue|+ Add}}.
 2. Type your note. Type **@** where the name goes. A list of names opens.
@@ -97,9 +97,12 @@ A new answer counts in the red number above **Jobs** until you have seen it. See
 
 Press **Fold** on the section's top line to shut it. Press **Open** to bring it back. With more than three tags waiting, press **Show the rest** to see them all.
 
-## Where a tag does not work yet
+## Tag from the job's own window
 
-Two places wait for a later update.
+The note box in the job's window has the same **@** button. So does the box in Job Mode. A note you type there answers a tag the same way.
 
-- A note typed in the job's own window does not make a tag. That note does not clear a tag either.
-- A stamp such as Arrived, and a % complete line, clear nothing.
+A note typed with no signal is kept on your phone. The tag goes with the note when the note is sent.
+
+## What does not clear a tag
+
+A stamp such as Arrived clears nothing. A % complete line clears nothing.

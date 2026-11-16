@@ -28,6 +28,11 @@ import { recordedPercentProvenance } from '../lib/jobPercentProvenance'
 import { PercentProvenanceChip } from './jobs/PercentProvenanceChip'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { ReportPhotosStrip } from './reports/ReportPhotosStrip'
+import { canTagInJobNotes } from '../lib/jobs/noteTags'
+import { useJobNoteTags } from '../hooks/useJobNoteTags'
+import { useOptionalAuth } from '../hooks/useAuth'
+import { useNoteTagBox } from './jobs/NoteTagBox'
+import { TaggedNoteBody } from './jobs/TaggedNoteBody'
 import { ReportPhotoCount } from './reports/ReportPhotoCount'
 import { useReportPhotoCounts } from '../hooks/useReportPhotoCounts'
 
@@ -63,6 +68,13 @@ type JobThreadNotesPanelProps = {
   draft: string
   onDraftChange: (v: string) => void
   onSubmit: () => void
+  /**
+   * Tagging a teammate (punch list #363): the Pipeline job these notes belong to. With it and `onSubmitTagged` the
+   * box offers the list of names, and a posted note draws its chips and who it waits on. Absent on an estimate's notes.
+   */
+  tagJobId?: string | null
+  /** The post when the box can tag: the ids of the teammates picked in the words. Used in place of `onSubmit`. */
+  onSubmitTagged?: (taggedUserIds: string[]) => void
   submitting: boolean
   emptyLabel?: string
   /** Centered heading when `showSectionTitle` is true. */
@@ -167,6 +179,8 @@ export function JobThreadNotesPanel({
   draft,
   onDraftChange,
   onSubmit,
+  tagJobId = null,
+  onSubmitTagged,
   submitting,
   emptyLabel = 'No activity yet.',
   sectionTitle = 'Job activity / notes',
@@ -241,6 +255,17 @@ export function JobThreadNotesPanel({
     void onCommitPct?.(pctDraft, draft)
   }, [pctDraft, draft, onCommitPct])
   const noteBodyRef = useRef<HTMLTextAreaElement>(null)
+  // Tagging a teammate (punch list #363): the list above the box, and the tags on the job's posted notes.
+  const viewerId = useOptionalAuth()?.user?.id ?? null
+  const tagging = Boolean(tagJobId && onSubmitTagged)
+  const noteTags = useJobNoteTags(tagJobId, (activityProp ?? notes ?? []).length)
+  const tagBox = useNoteTagBox({ jobId: tagJobId ?? '', draft, setDraft: onDraftChange, inputRef: noteBodyRef, enabled: tagging && canPost && canTagInJobNotes(viewerRole), place: 'above' })
+  const sendNote = () => {
+    if (tagging && onSubmitTagged) {
+      onSubmitTagged(tagBox.taggedIds(draft.trim()))
+      tagBox.reset()
+    } else onSubmit()
+  }
   const activityScrollRef = useRef<HTMLDivElement>(null)
 
   const syncNoteTextareaHeight = useCallback(() => {
@@ -640,7 +665,9 @@ export function JobThreadNotesPanel({
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
                       </div>
-                      <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>{n.body}</div>
+                      <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>
+                        <TaggedNoteBody body={n.body} tags={noteTags.get(n.id)} postedIso={n.created_at} viewerId={viewerId} />
+                      </div>
                     </li>
                   )
                 }
@@ -833,17 +860,25 @@ export function JobThreadNotesPanel({
                   Add a note
                 </label>
               ) : null}
+              {/* The picked names and the list of names sit above the box (punch list #363), clear of a phone's keyboard. */}
+              <div style={{ position: 'relative' }}>
+                {tagBox.list}
+                {tagBox.chips}
+              </div>
               <textarea
                 ref={noteBodyRef}
                 id="job-thread-note-body"
                 aria-label={showComposerLabel ? undefined : 'Add a note'}
                 value={draft}
-                onChange={(e) => onDraftChange(e.target.value)}
+                onChange={(e) => tagBox.onText(e.target.value, e.target.selectionStart)}
+                onClick={(e) => tagBox.onText(e.currentTarget.value, e.currentTarget.selectionStart)}
                 onKeyDown={(e) => {
+                  // The list takes its own keys first: Enter picks a name and Escape shuts the list.
+                  if (tagBox.onKeyDown(e)) return
                   if (e.key !== 'Enter' || e.shiftKey) return
                   e.preventDefault()
                   if (submitting || draft.trim().length === 0) return
-                  onSubmit()
+                  sendNote()
                 }}
                 disabled={submitting}
                 maxLength={2000}
@@ -896,9 +931,10 @@ export function JobThreadNotesPanel({
                     </button>
                   </span>
                 ) : null}
+                {tagBox.atButton}
                 <button
                   type="button"
-                  onClick={onSubmit}
+                  onClick={sendNote}
                   disabled={submitting || draft.trim().length === 0}
                   style={{
                     padding: '0.35rem 0.75rem',

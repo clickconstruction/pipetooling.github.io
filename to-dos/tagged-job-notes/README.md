@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: ready
-status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · building since 2026-11-15 · PR 1 (v2.7384) the kernel · PR 2 (v2.7385) the table and functions, pushed to prod and proved 2026-11-15 · PR 3 (v2.7400) the list on the Pipeline note boxes, a tagged note shows its chip and who it waits on · PR 4 (v2.7407) the count above Jobs, the Tagged job notes section, the Needs you line and its window, the guide, and the list open to the office and the crew · PR 5 (v2.7410) the push, its function waiting on Taunya's go to deploy
+status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · building since 2026-11-15 · PR 1 (v2.7384) the kernel · PR 2 (v2.7385) the table and functions, pushed to prod and proved 2026-11-15 · PR 3 (v2.7400) the list on the Pipeline note boxes, a tagged note shows its chip and who it waits on · PR 4 (v2.7407) the count above Jobs, the Tagged job notes section, the Needs you line and its window, the guide, and the list open to the office and the crew · PR 5 (v2.7410) the push, its function waiting on Taunya's go to deploy · PR 6 (v2.7412) the job window's box, with its migration
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,7 +11,7 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: Deploy `notify-note-tag` on Taunya's go by name. Walk PRs 3 to 5 on prod on a ZZ Test job with two logins. Then PR 6, the job window's box, which needs a migration to `land_field_press`.
+next: Merge the train in order, push each migration, deploy `notify-note-tag` on Taunya's go by name, and walk the whole thing on prod on a ZZ Test job with two logins. Then close the card.
 size: L as a train of six (S · M · M · M · S · M)
 blocker: none; Taunya settled the eight calls on 2026-11-15.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
@@ -340,7 +340,9 @@ Six PRs, smallest first. Each cut from fresh `main`, each with its release note 
    and Quickfill. Needs call 8. Found in PR 3: this box posts through the outbox
    (`pressThroughOutbox`, kind `job-note`), so a note typed with no signal is kept. That path never
    reaches `job_note_post_tagged`. The server side of the press needs a migration to write tags and
-   to answer the writer's waiting tags. Until then a note typed in the job window answers no tag.
+   to answer the writer's waiting tags. **Built: v2.7412.** `land_field_press` writes the tags of a
+   typed note, and `job_note_tags_write` takes a transaction-local marker in place of its
+   two-minute rule, since a kept note lands with the time it was pressed.
 
 ## Left to settle while building
 

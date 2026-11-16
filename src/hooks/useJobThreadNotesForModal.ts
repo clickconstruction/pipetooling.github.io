@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
+import { noteTagsChanged, notifyNoteTag } from '../lib/jobs/noteTagsIo'
+import type { JobThreadNotePostOptions } from './useJobThreadNotes'
 import { KEPT_ON_PHONE_WORDS } from '../lib/offline/pendingSession'
 import { OUTBOX_LANDED_EVENT, type OutboxLandedDetail } from './useOutboxReplay'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
@@ -232,7 +234,7 @@ export function useJobThreadNotesForModal(
   }, [open, jobId, authUserId, realtimeChannelId, reloadActivityQuiet])
 
   const submitNoteWithBody = useCallback(
-    async (body: string, source: 'draft' | 'stamp'): Promise<boolean> => {
+    async (body: string, source: 'draft' | 'stamp', opts?: JobThreadNotePostOptions): Promise<boolean> => {
       const id = openJobIdRef.current
       const trimmed = body.trim()
       if (!authUserId || !id || !trimmed) return false
@@ -250,7 +252,9 @@ export function useJobThreadNotesForModal(
           kind: 'job-note',
           userId: authUserId,
           pressedAt: Date.now(),
-          payload: { jobId: id, body: trimmed },
+          // A typed note carries its picks and answers its writer's waiting tags (punch list #363). A stamp, and a line
+          // the app composed (typed: false), do neither.
+          payload: { jobId: id, body: trimmed, typed: source === 'draft' && opts?.typed !== false, tagged: [...(opts?.tagged ?? [])] },
           about: about ?? '',
           door: '/dashboard',
         })
@@ -263,6 +267,11 @@ export function useJobThreadNotesForModal(
           return true
         }
         const noteId = (outcome.result as { note_id?: string } | null)?.note_id
+        if (source === 'draft' && opts?.typed !== false) {
+          // The count above Jobs and the section read again, and the notice goes to the tagged and to the asker.
+          noteTagsChanged()
+          if (noteId) notifyNoteTag({ noteId })
+        }
         if (!noteId) {
           // Landed, but the answer named no row: the thread reads again and the optimistic row gives way.
           inFlightThreadNoteRef.current = null
@@ -310,11 +319,15 @@ export function useJobThreadNotesForModal(
   }, [open, jobId, reloadActivityQuiet])
 
   /** Post the draft; true once the note is on the thread (the Note sheet closes on it, punch list #189 PR 4). */
-  const submitNote = useCallback(async (): Promise<boolean> => {
-    const body = draft.trim()
-    if (!body) return false
-    return submitNoteWithBody(body, 'draft')
-  }, [draft, submitNoteWithBody])
+  const submitNote = useCallback(
+    /** `tagged` are the teammates picked from the list under the box (punch list #363). */
+    async (tagged?: readonly string[]): Promise<boolean> => {
+      const body = draft.trim()
+      if (!body) return false
+      return submitNoteWithBody(body, 'draft', { tagged })
+    },
+    [draft, submitNoteWithBody],
+  )
 
   const submitStamp = useCallback(
     async (kind: JobThreadStampKind): Promise<boolean> => {
