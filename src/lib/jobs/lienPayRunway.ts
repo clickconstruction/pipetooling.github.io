@@ -356,7 +356,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const passedMailedWords = passedMailed.length > 1 ? `${passedMailed.slice(0, -1).join(', ')} and ${passedMailed[passedMailed.length - 1]}` : passedMailed[0] ?? ''
   const noticeNote =
     (isSub && noticeSent ? ' The § 53.056 notice for this month is recorded.' : '') +
-    (passedMailedWords ? ` The § 53.056 ${passedMailed.length > 1 ? 'notices' : 'notice'} for ${passedMailedWords} ${passedMailed.length > 1 ? 'are' : 'is'} printed and in the mail but not recorded; record the mailing on the Lien desk before the lien is filed.` : '')
+    (passedMailedWords ? ` The § 53.056 ${passedMailed.length > 1 ? 'notices' : 'notice'} for ${passedMailedWords} ${passedMailed.length > 1 ? 'are' : 'is'} printed and in the mail but not recorded; press Enter mail numbers on the Lien desk before the lien is filed.` : '')
 
   // The last month's window closed unsent: every earlier window closed before it. The lien is gone only once the
   // affidavit's own day has passed too; while it is ahead a late notice can still carry it (v2.4708), below.
@@ -457,7 +457,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   }
 
   if (noticeOwed) {
-    const lines = [`notice by ${noticeWords} · lien by ${lienWords}`, noticeMailed ? `record the mailing · ${daysWords(daysToNotice)}` : `send the notice · ${daysWords(daysToNotice)}`]
+    const lines = [`notice by ${noticeWords} · lien by ${lienWords}`, noticeMailed ? `enter mail numbers · ${daysWords(daysToNotice)}` : `send the notice · ${daysWords(daysToNotice)}`]
     return {
       ...NONE,
       state: 'notice_due',
@@ -465,7 +465,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       words: wordsOf(lines),
       lines,
       title: noticeMailed
-        ? `${noticeOwedWords(owedMonths, workMonth, noticeWords)}; it is printed and in the mail, its tracking number not yet recorded. Record the mailing on the Lien desk and the lien affidavit can then be filed by ${lienWords}. ${basis}.${kindNote}`
+        ? `${noticeOwedWords(owedMonths, workMonth, noticeWords)}; it is printed and in the mail, its tracking number not yet recorded. Press Enter mail numbers on the Lien desk and the lien affidavit can then be filed by ${lienWords}. ${basis}.${kindNote}`
         : `${noticeOwedWords(owedMonths, workMonth, noticeWords)}; the lien affidavit can then be filed by ${lienWords}. Send ${owedMonths.length > 1 ? 'them' : 'it'} from the Lien desk. ${basis}.${kindNote}`,
       chipLabel: noticeMailed ? `in the mail · ${daysWords(daysToNotice)}` : `notice in ${daysWords(daysToNotice)}`,
       lienByYmd: lienBy,

@@ -33,6 +33,8 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { isOwnerOrDev } from '../../lib/doorRoles'
 import { isQuickEstimateRole } from '../estimates/QuickEstimateWizard'
 import { EmptyState } from '../EmptyState'
+import { DashboardViewPicker } from '../dashboard/DashboardViewPicker'
+import { canHaveShortDashboard, DASHBOARD_VIEW_PICKER_WORDS } from '../../lib/dashboard/shortDashboard'
 
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 
@@ -343,6 +345,14 @@ export default function SettingsDashboardTab({
   }
   return (
     <>
+      {/* Dashboard view: Short or Full, for the roles the short Dashboard is drawn for. The office can set it too, on the People desk. */}
+      {authUser?.id && canHaveShortDashboard(myRole) ? (
+        <div data-settings-dashboard-view style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
+          <h2 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>{DASHBOARD_VIEW_PICKER_WORDS.label}</h2>
+          <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{DASHBOARD_VIEW_PICKER_WORDS.hintSelf}</p>
+          <DashboardViewPicker userId={authUser.id} self />
+        </div>
+      ) : null}
 
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>

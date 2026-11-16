@@ -14,8 +14,8 @@ afterEach(cleanup)
 
 const PARTS: LienDoNowBarPart[] = [
   { key: 'by_day', words: '21 by tomorrow', tone: 'red', destination: null },
-  { key: 'waiting', words: '3 waiting on Sam', tone: 'violet', destination: { kind: 'stage', stage: 'awaiting' } },
-  { key: 'in_mail', words: '7 in the run', tone: 'amber', destination: { kind: 'run' } },
+  { key: 'waiting', words: '3 waiting on Sam', tone: 'violet', destination: { kind: 'leader' } },
+  { key: 'in_mail', words: '7 to print and mail', tone: 'amber', destination: { kind: 'run' } },
 ]
 
 /** A scroller whose page has moved `scrollTop` px, with the bar at its top (`barTop` 0) or still under the Board. */
@@ -63,11 +63,11 @@ describe('LienDoNowBar', () => {
     scrollTo(700, 100)
     expect(bar().getAttribute('data-stuck')).toBe('yes')
     const parts = document.querySelector('[data-lien-do-now-bar-parts]') as HTMLElement
-    expect(parts.textContent).toBe('21 by tomorrow·3 waiting on Sam·7 in the run')
+    expect(parts.textContent).toBe('21 by tomorrow·3 waiting on Sam·7 to print and mail')
     // The day's count only reads; the other two are presses to where their tiles go.
     expect(document.querySelector('[data-lien-do-now-bar-part="by_day"]')!.tagName).toBe('SPAN')
     fireEvent.click(document.querySelector('button[data-lien-do-now-bar-part="waiting"]') as HTMLButtonElement)
-    expect(onPart).toHaveBeenCalledWith({ kind: 'stage', stage: 'awaiting' })
+    expect(onPart).toHaveBeenCalledWith({ kind: 'leader' })
     fireEvent.click(document.querySelector('button[data-lien-do-now-bar-part="in_mail"]') as HTMLButtonElement)
     expect(onPart).toHaveBeenLastCalledWith({ kind: 'run' })
     const up = document.querySelector('[data-lien-do-now-bar-up]') as HTMLButtonElement

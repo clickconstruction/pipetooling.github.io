@@ -390,6 +390,8 @@ describe('GcOnNoticeModal', () => {
     hookState.data = data()
     view.rerender(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
     const strip = await screen.findByTestId('run-undo')
+    // The window is open on the packet to print, under the press's own name (v2.7448; Send the run until then).
+    expect(screen.getByRole('dialog', { name: 'Print and mail' })).toBeTruthy()
     expect(strip.textContent).toContain('You just approved these 2 notices for Harborline Builders. Pressed it by mistake?')
     fireEvent.click(within(strip).getByRole('button', { name: 'Undo the approval…' }))
     const ask = await screen.findByRole('alertdialog', { name: 'Undo the approval for Harborline Builders?' })
@@ -412,7 +414,7 @@ describe('GcOnNoticeModal', () => {
     expect(io.policies.map((p) => p.policy)).toEqual(['send', 'ask'])
     expect(io.policies[1]!.note).toBe('Undone: the run was approved by mistake')
     expect(io.unshared).toEqual([{ jobIds: ['j994'], invoiceIds: ['inv-9'], on: true }])
-    expect(screen.queryByText(/Send the run/)).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Print and mail' })).toBeNull()
   })
 
   it('printing the packet from this window\u2019s run stamps the notices printed, as the Lien desk\u2019s run does (v2.4558)', async () => {

@@ -7,18 +7,20 @@
  * of the count and named under the chips with its reason, v2.6351), with **Ask the estimators about the N**;
  * **+ Part** names a new part; **+ New
  * set** on a row adds a set through the one form (`PlanSetForm`). Bids keep their own pinned sets and are
- * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set".
+ * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set". **Change the
+ * link** on a set (v2.7464) moves it to another Drive link on its own row, through `PlanSetLinkEditor`.
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { JobChip } from './JobChip'
-import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem, setLineWords, shortDayWords, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
+import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, linkPressWords, newSetDraftProblem, setLineWords, shortDayWords, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
 import { olderSetsFor, orderForPicking, sitePlansAskCount, sitePlansChipWords, sitePlansLeftOutWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
 import { partTimeline, setRowDayWords, setRowLineWords, timelineEntryFor } from '../../lib/plans/planSets'
 import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { PlanSetForm } from '../plans/PlanSetForm'
+import { PlanSetLinkEditor } from '../plans/PlanSetLinkEditor'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 import { countedLabel } from '../../lib/batchWords'
 import { buildPapersView, kindLabel, paperChipWords, paperLineWords, partsToMoveTo, type Paper } from '../../lib/papers/papers'
@@ -32,6 +34,8 @@ export type SitePlansWrites = {
   removeSet: (setId: string) => Promise<boolean>
   /** What changed from the set before it, written on a set already on the part (v2.6356). */
   writeChanges: (setId: string, changes: string) => Promise<boolean>
+  /** A saved set moved to another Drive link, on its own row (v2.7464); the jobs' old link follows by the database's mirror. */
+  changeLink: (setId: string, link: string) => Promise<boolean>
   /** Many jobs onto one part in one press (the Gray Fox spike, 2026-11-02); true when any took it. */
   putJobsOnPart: (partId: string, jobIds: string[]) => Promise<boolean>
   /** A paper onto another part of the site (v2.6632): the set it went with stays behind, and the History gets the line. */
@@ -75,6 +79,8 @@ export function DevelopmentPartsCard({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  // The set whose link box is open (v2.7464).
+  const [linkFor, setLinkFor] = useState<string | null>(null)
   const [openPapers, setOpenPapers] = useState<Record<string, boolean>>({})
   // The paper being moved to another part (v2.6632) and the part picked for it.
   const [moving, setMoving] = useState<{ paperId: string; toPartId: string } | null>(null)
@@ -108,6 +114,23 @@ export function DevelopmentPartsCard({
     setBusy(false)
     return ok
   }
+  const saveLink = async (setId: string, link: string): Promise<boolean> => {
+    if (!writes || busy) return false
+    setBusy(true)
+    setProblem(null)
+    const ok = await writes.changeLink(setId, link)
+    setBusy(false)
+    if (ok) setLinkFor(null)
+    return ok
+  }
+  const linkPress = (s: PlanSetRow) =>
+    canWrite && writes ? (
+      <LinkButton onClick={() => setLinkFor(s.id)} nowrap>
+        {linkPressWords(s)}
+      </LinkButton>
+    ) : null
+  const linkEditor = (s: PlanSetRow, isCurrent: boolean, style?: CSSProperties) =>
+    canWrite && writes && linkFor === s.id ? <PlanSetLinkEditor set={s} isCurrent={isCurrent} busy={busy} onSave={saveLink} onClose={() => setLinkFor(null)} style={{ marginTop: 4, ...style }} /> : null
   const openSetForm = (row: SitePartRow) => {
     const kind = row.current ? 'addendum' : 'issued'
     const draft = emptyNewSetDraft(kind)
@@ -250,10 +273,12 @@ export function DevelopmentPartsCard({
                     <span style={{ fontWeight: 600 }}>{row.current.name}</span>
                     <span style={muted}>{setLineWords(row.current)}</span>
                     {openLink(row.current)}
+                    {linkPress(row.current)}
                   </span>
                 ) : (
                   <Chip label="no set yet" color="#b45309" soft />
                 )}
+                {row.current ? linkEditor(row.current, true, { maxWidth: '26rem' }) : null}
                 {replacedLine ? <div style={muted}>{replacedLine}</div> : null}
               </>
             )
@@ -299,6 +324,7 @@ export function DevelopmentPartsCard({
                         data-testid="site-older-presses"
                       >
                         {openLink(s)}
+                        {linkPress(s)}
                         {canWrite && writes ? (
                           <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
                             Build from this set
@@ -321,6 +347,7 @@ export function DevelopmentPartsCard({
                           {phone ? null : presses}
                         </div>
                         {phone ? presses : null}
+                        {linkFor === s.id ? <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>{linkEditor(s, false, { maxWidth: '26rem' })}</div> : null}
                       </li>
                     )
                   })}
@@ -336,7 +363,9 @@ export function DevelopmentPartsCard({
                       <span style={muted}>{asBuiltLineWords(s, s.created_by ? (names[s.created_by] ?? null) : null, [...row.older, ...(row.current ? [row.current] : [])])}</span>
                       {s.memo ? <span style={muted}>{s.memo}</span> : null}
                       {openLink(s)}
+                      {linkPress(s)}
                       {removePress(s)}
+                      {linkEditor(s, false, { flexBasis: '100%', maxWidth: '26rem' })}
                     </li>
                   ))}
                 </ul>

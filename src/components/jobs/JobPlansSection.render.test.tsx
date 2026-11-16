@@ -78,6 +78,7 @@ function fakeIo(read: Partial<JobPlansRead> = {}, over: Partial<JobPlansIo> = {}
     movePaper: vi.fn(async () => undefined),
     updateMemo: vi.fn(async () => undefined),
     updateChanges: vi.fn(async () => undefined),
+    updateLink: vi.fn(async () => undefined),
     ...over,
   }
 }
@@ -182,6 +183,70 @@ describe('JobPlansSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save what changed' }))
     await waitFor(() => expect(io.updateChanges).toHaveBeenCalledWith('s2', 'Sheet P-2 redrawn.'))
     await waitFor(() => expect(io.read).toHaveBeenCalledTimes(2))
+  })
+
+  it('Change the link moves a saved set to another Drive link on its own row, and tells the window when the job builds from it', async () => {
+    const onPlansLinkChanged = vi.fn()
+    const io = fakeIo({
+      job: { id: 'j1', plan_part_id: 'p1', development_id: null, development_name: null, job_plans_link: 'https://drive.google.com/drive/folders/theirs' },
+      part,
+      sets: [
+        set({ id: 's1', dated: '2026-06-01', link: 'https://drive.google.com/drive/folders/old-issued' }),
+        set({ id: 's2', name: 'Permit set', kind: 'permit', dated: '2026-10-14', replaces_set_id: 's1', link: 'https://drive.google.com/drive/folders/theirs' }),
+        set({ id: 's3', name: 'Bulletin 1', kind: 'bulletin', dated: '2026-05-01', link: '' }),
+      ],
+    })
+    renderWithProviders(<JobPlansSection job={job} io={io} onPlansLinkChanged={onPlansLinkChanged} />)
+    await screen.findByText('Permit set')
+    // The set the job builds from, an older set with a link, and an older set with none: one press each.
+    expect(screen.getAllByRole('button', { name: 'Change the link' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Set the link' })).toHaveLength(1)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Change the link' })[0]!)
+    const box = screen.getByLabelText('New link for Permit set') as HTMLInputElement
+    expect(box.value).toBe('https://drive.google.com/drive/folders/theirs')
+    expect(screen.getByTestId('plan-set-link-editor-s2').textContent).toContain('Open plans on every job that names the part opens the new link.')
+    // The link it already has is not a change, and a link that is not one is said.
+    expect((screen.getByRole('button', { name: 'Save the link' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(box, { target: { value: 'drive.google.com/ours' } })
+    expect(screen.getByRole('alert').textContent).toBe('A link starts with https://. Copy it whole from Drive.')
+    expect((screen.getByRole('button', { name: 'Save the link' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(box, { target: { value: ' https://drive.google.com/drive/folders/ours ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the link' }))
+    await waitFor(() => expect(io.updateLink).toHaveBeenCalledWith('s2', 'https://drive.google.com/drive/folders/ours'))
+    await waitFor(() => expect(onPlansLinkChanged).toHaveBeenCalledWith('https://drive.google.com/drive/folders/ours'))
+    await waitFor(() => expect(screen.queryByTestId('plan-set-link-editor-s2')).toBeNull())
+    // The same row, written once: nothing is added, removed or switched.
+    expect(io.addSet).not.toHaveBeenCalled()
+    expect(io.removeSet).not.toHaveBeenCalled()
+    expect(io.makeCurrent).not.toHaveBeenCalled()
+    await waitFor(() => expect(io.read).toHaveBeenCalledTimes(2))
+  })
+
+  it('an older set’s link changes without telling the window, a failed save keeps the box with its reason, and a reader gets no press', async () => {
+    const onPlansLinkChanged = vi.fn()
+    const read = {
+      job: { id: 'j1', plan_part_id: 'p1', development_id: null, development_name: null, job_plans_link: null },
+      part,
+      sets: [set({ id: 's1', dated: '2026-06-01' }), set({ id: 's2', name: 'Permit set', kind: 'permit', dated: '2026-10-14', replaces_set_id: 's1' })],
+    }
+    const io = fakeIo(read, { updateLink: vi.fn().mockRejectedValueOnce(new Error('This set is not yours to change.')).mockResolvedValue(undefined) })
+    const { unmount } = renderWithProviders(<JobPlansSection job={job} io={io} onPlansLinkChanged={onPlansLinkChanged} />)
+    await screen.findByText('Permit set')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Change the link' })[1]!)
+    expect(screen.getByTestId('plan-set-link-editor-s1').textContent).toContain('Only where its Open ↗ leads changes.')
+    fireEvent.change(screen.getByLabelText('New link for Issued set'), { target: { value: 'https://drive.google.com/drive/folders/ours-issued' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the link' }))
+    expect(await screen.findByText('This set is not yours to change.')).toBeTruthy()
+    expect(screen.getByTestId('plan-set-link-editor-s1')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Save the link' }))
+    await waitFor(() => expect(io.updateLink).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByTestId('plan-set-link-editor-s1')).toBeNull())
+    expect(onPlansLinkChanged).not.toHaveBeenCalled()
+    unmount()
+    auth.role = 'subcontractor'
+    renderWithProviders(<JobPlansSection job={job} io={fakeIo(read)} />)
+    await screen.findByText('Permit set')
+    expect(screen.queryByRole('button', { name: 'Change the link' })).toBeNull()
   })
 
   it('asks what changed on the New set form and sends it with the set', async () => {

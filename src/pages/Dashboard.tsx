@@ -57,6 +57,9 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { PhoneFold } from '../components/dashboard/PhoneFold'
 import { isPhoneOfficeRole } from '../lib/dashboard/phoneOffice'
+import { canHaveShortDashboard, SHORT_DASHBOARD_WORDS } from '../lib/dashboard/shortDashboard'
+import { useDashboardView } from '../hooks/useDashboardView'
+import DashboardShortHome from '../components/dashboard/DashboardShortView'
 import { billingPipelineFoldHeadline, crewDayFoldHeadline, myTimeFoldHeadline, recentReportsFoldHeadline, hideEmptyMySchedule, myInboxFoldHeadline, teamsInboxFoldHeadline, whosInFoldHeadline } from '../lib/dashboard/phoneFolds'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
@@ -492,6 +495,11 @@ export default function Dashboard() {
   // the field-first paint is consistent. The Job Mode toggle in the gear menu
   // remains the persistent setting.
   const [jobModeShowFullDashboard, setJobModeShowFullDashboard] = useState(false)
+  // The short Dashboard: a leader whose view is Short (`users.dashboard_view`, his own choice or the office's) gets
+  // the list of what waits on him alone in place of the page. Everything else opens the page for this visit.
+  const dashboardView = useDashboardView(authUser?.id ?? null, role)
+  const shortDashboardOn = dashboardView === 'short' && canHaveShortDashboard(role)
+  const [shortShowFullDashboard, setShortShowFullDashboard] = useState(false)
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
   const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('with_pins')
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
@@ -1135,7 +1143,8 @@ export default function Dashboard() {
    *  and again in the Job Mode early return between the job card and "Show full dashboard". */
   // The office person's phone (v2.3883, punch list #30 PR 4a-3): one-line clock row, an empty My Schedule hidden,
   // the sections under the money tiles folded to their headlines, and — with Dispatch Mode on — Needs You as a door to the Inbox deck.
-  const phoneOffice = isMobile && isPhoneOfficeRole(role)
+  // A person on the Short view who opened Everything else on a phone gets the same folds, so the page behind the door is a list of headlines.
+  const phoneOffice = isMobile && (isPhoneOfficeRole(role) || shortDashboardOn)
   // What the three sections that count for themselves say on their fold lines (v2.3891).
   const [crewDaySummary, setCrewDaySummary] = useState<{ people: number; jobs: number; flags: number } | null>(null)
   const [recentReportCounts, setRecentReportCounts] = useState<{ listed: number; fresh: number } | null>(null)
@@ -1145,7 +1154,7 @@ export default function Dashboard() {
   /** Write up a change (v2.4047): the wizard's door is on each My Schedule block, not a header button.
       Job Mode's focused view never mounts the wizard, so it gets no opener. */
   const openWriteUpChange =
-    quickEstimateEnabled && !(jobModeEnabled && !jobModeShowFullDashboard)
+    quickEstimateEnabled && !(jobModeEnabled && !jobModeShowFullDashboard) && !(shortDashboardOn && !shortShowFullDashboard)
       ? (jobId: string | null) => {
           setQuickEstimateJobId(jobId)
           setQuickEstimateOpen(true)
@@ -1294,6 +1303,50 @@ export default function Dashboard() {
     )
   }
 
+  // The short Dashboard, after Job Mode's turn: a leader who works in Job Mode keeps its card.
+  if (shortDashboardOn && !shortShowFullDashboard && authUser?.id) {
+    return (
+      <div>
+        <DashboardShortHome
+          authUserId={authUser.id}
+          role={role}
+          displayName={clockDisplayName ?? ''}
+          dispatchAged={dispatchAged}
+          onRateCrew={teamFeedbackHomeEnabled ? () => setTeamFeedbackWizardOpen(true) : undefined}
+          top={
+            <Suspense fallback={null}>
+              <DashboardTrialVerdictSection authUserId={authUser.id} role={role} />
+            </Suspense>
+          }
+          schedule={myScheduleSection}
+          foot={<DashboardTrainingSection userId={authUser.id} role={role} />}
+          onEverythingElse={() => {
+            setShortShowFullDashboard(true)
+            window.scrollTo(0, 0)
+          }}
+        />
+        {teamFeedbackWizardOpen ? <CrewReviewDeck open onClose={() => setTeamFeedbackWizardOpen(false)} userId={authUser.id} source="home_button" skipIntro /> : null}
+        {leaveReportJob && (
+          <AdditionalReportModal
+            open={!!leaveReportJob}
+            onClose={() => setLeaveReportJob(null)}
+            onSaved={() => {
+              setLeaveReportJob(null)
+              void refreshDashboardAssignedJobLists()
+            }}
+            onReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
+            authUserId={authUser.id}
+            userRole={role}
+            jobId={leaveReportJob.id}
+            hcpNumber={leaveReportJob.hcpNumber}
+            jobName={leaveReportJob.jobName}
+            jobAddress={leaveReportJob.jobAddress}
+          />
+        )}
+      </div>
+    )
+  }
+
   const dockAnchorStyle: CSSProperties = { scrollMarginTop: 8 }
   /** Sections offered by the floating bottom dock; mirrors each section's render gate. */
   const dockSections = [
@@ -1417,6 +1470,19 @@ export default function Dashboard() {
           ariaLabel="Dashboard sections"
           onChipClick={(id) => recordNavClick(authUser?.id, role, 'dock', `#${id}`)}
         />
+      ) : null}
+      {shortDashboardOn ? (
+        <button
+          type="button"
+          data-short-back
+          onClick={() => {
+            setShortShowFullDashboard(false)
+            window.scrollTo(0, 0)
+          }}
+          style={{ display: 'block', minHeight: 44, margin: '0 0 0.75rem', padding: '0 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-link)', font: 'inherit', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}
+        >
+          ‹ {SHORT_DASHBOARD_WORDS.back}
+        </button>
       ) : null}
       <QuickEstimateWizard
         open={quickEstimateOpen}

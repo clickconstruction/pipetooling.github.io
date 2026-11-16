@@ -110,12 +110,16 @@ function plausible(day: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(Date.parse(`${day}T00:00:00Z`))
 }
 
-/** Why a typed day cannot be saved, or null when it can. The hours already say later is the one rule the office cannot override. */
-export function lienLastWorkDayProblem(day: string, lastSessionDay: string | null | undefined, todayYmd: string): string | null {
+/**
+ * Why a typed day cannot be saved, or null when it can. The day has to be a real day that has happened. Until
+ * v2.7447 a day earlier than the clock hours was refused too. The owner's call of 2026-11-14 (punch list #335) took
+ * that rule away: a day set by hand is the last day of work, hours approved after it do not move it, so the office
+ * may type or correct an earlier one. The window that saves it says what the earlier day takes off the clock and
+ * asks for a second look where that is a lot (`lienLastWorkPreview`).
+ */
+export function lienLastWorkDayProblem(day: string, todayYmd: string): string | null {
   if (!plausible(day)) return 'Pick a day.'
   if (day > todayYmd) return 'The last day of work cannot be after today.'
-  const hours = (lastSessionDay ?? '').slice(0, 10)
-  if (hours && day < hours) return `The clock hours already say ${formatYmdMonthDay(hours)}. The last day cannot be earlier.`
   return null
 }
 

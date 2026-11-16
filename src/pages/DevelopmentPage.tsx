@@ -343,6 +343,7 @@ export default function DevelopmentPage() {
         return true
       },
       writeChanges: (setId, changes) => after('What changed did not save.')(() => siteIo.updateChanges(setId, changes)),
+      changeLink: (setId, link) => after('The link did not save.')(() => siteIo.updateLink(setId, link)),
       // Many jobs onto one part (the Gray Fox spike, 2026-11-02): one write per job, the ones that will not take it named afterwards, the page read again.
       putJobsOnPart: async (partId, jobIds) => {
         const results = await Promise.allSettled(jobIds.map((id) => siteIo.pickPart(id, partId)))

@@ -53,7 +53,7 @@ describe('LienBoard', () => {
     const section = screen.getByRole('region', { name: 'The Board' })
     expect(section.getAttribute('data-lien-board-layout')).toBe('columns')
     const stages = (kind: string) => Array.from(section.querySelectorAll(`[data-lien-board-column="${kind}"] [data-lien-board-bin]`)).map((el) => el.getAttribute('data-stage'))
-    expect(stages('notice')).toEqual(['needs_owner', 'to_send', 'awaiting', 'in_mail', 'sent', 'held'])
+    expect(stages('notice')).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_print', 'in_mail', 'sent', 'held'])
     expect(stages('affidavit')).toEqual(['needs_property', 'to_send', 'awaiting', 'ready', 'filed'])
     expect(section.querySelector('[data-lien-board-bin="notice:held"]')!.getAttribute('data-beside')).toBe('yes')
     expect(section.querySelector('[data-lien-board-bin="notice:missed"]')).toBeNull()
@@ -76,7 +76,26 @@ describe('LienBoard', () => {
     expect(section.querySelector('[data-lien-board-bin="notice:to_send"]')!.getAttribute('data-lit')).toBe('yes')
     expect(section.querySelectorAll('[data-lit="yes"]')).toHaveLength(1)
   })
-  it('draws the four tiles with their figures and words; the run tile and the waiting tile press, the others only read', () => {
+  it('an approved notice stands in Approved · to print until its packet prints and in Approved · to mail after, each bin under its own name, and both chips open the run (v2.7448)', () => {
+    const onChip = vi.fn()
+    const b = board({ notices: [notice('4', 'ready', { item: item('i4') }), notice('5', 'printed', { item: item('i5', { printed_at: '2026-11-14T10:00:00Z' }) })], affidavits: [] })
+    render(<LienBoard board={b} isMobile={false} onChip={onChip} />)
+    const head = (key: string) => document.querySelector(`[data-lien-board-bin-head="${key}"]`)!.textContent
+    expect(head('notice:to_print')).toBe('Approved · to print1')
+    expect(head('notice:in_mail')).toBe('Approved · to mail1')
+    const chips = (key: string) => Array.from(document.querySelectorAll(`[data-lien-board-chips="${key}"] [data-lien-board-chip]`)).map((el) => el.textContent)
+    expect(chips('notice:to_print')).toEqual(['JP4'])
+    expect(chips('notice:in_mail')).toEqual(['JP5'])
+    fireEvent.click(document.querySelector('[data-lien-board-chip="4"]') as HTMLElement)
+    expect(onChip.mock.calls[0]![0]).toMatchObject({ jobId: '4', stage: 'to_print', destination: { kind: 'run', itemId: 'i4', jobId: '4' } })
+    fireEvent.click(document.querySelector('[data-lien-board-chip="5"]') as HTMLElement)
+    expect(onChip.mock.calls[1]![0]).toMatchObject({ jobId: '5', stage: 'in_mail', destination: { kind: 'run', itemId: 'i5', jobId: '5' } })
+    // The tiles over them: the approved notice is unsigned, so it waits on the leader too.
+    const line = (key: string) => document.querySelector(`[data-lien-board-tile="${key}"] [data-lien-board-tile-line]`)!.textContent
+    expect(line('waiting')).toBe('1 to sign')
+    expect(line('in_mail')).toBe('1 to print · 1 to mail')
+  })
+  it('draws the four tiles with their figures and words; the waiting tile and the print and mail tile press, the others only read', () => {
     const onTile = vi.fn()
     render(<LienBoard board={board()} isMobile={false} onTile={onTile} />)
     const tiles = Array.from(document.querySelectorAll('[data-lien-board-tile]'))
@@ -86,11 +105,14 @@ describe('LienBoard', () => {
     expect(tiles[0]!.querySelector('[data-lien-board-tile-label]')!.textContent).toBe('by tomorrow · 1 to file · 3 to send')
     expect(tiles[0]!.querySelector('[data-lien-board-tile-line]')!.textContent).toBe('2 will not make tomorrow as they stand.')
     expect(tiles[1]!.querySelector('[data-lien-board-tile-label]')!.textContent).toBe('waiting on Malachi')
-    expect(tiles[2]!.querySelector('[data-lien-board-tile-line]')!.textContent).toBe('Type the tracking number.')
+    // One notice awaits approval and none is approved and unsigned; one has printed and none is still to print (v2.7448).
+    expect(tiles[1]!.querySelector('[data-lien-board-tile-line]')!.textContent).toBe('1 to approve')
+    expect(tiles[2]!.querySelector('[data-lien-board-tile-label]')!.textContent).toBe('to print and mail')
+    expect(tiles[2]!.querySelector('[data-lien-board-tile-line]')!.textContent).toBe('1 to mail')
     expect(tiles[0]!.tagName).toBe('DIV')
     expect(tiles[3]!.tagName).toBe('DIV')
     fireEvent.click(tiles[1]!)
-    expect(onTile.mock.calls[0]![0]).toEqual({ kind: 'stage', stage: 'awaiting' })
+    expect(onTile.mock.calls[0]![0]).toEqual({ kind: 'leader' })
     fireEvent.click(tiles[2]!)
     expect(onTile.mock.calls[1]![0]).toEqual({ kind: 'run' })
   })
@@ -165,17 +187,22 @@ describe('LienBoard', () => {
     const b = board()
     const box = (left: number, top: number) => ({ left, top, width: 200, height: 60 })
     const boxes = {
-      'notice:needs_owner': box(0, 0), 'notice:to_send': box(0, 100), 'notice:awaiting': box(0, 200), 'notice:in_mail': box(0, 300), 'notice:sent': box(0, 400),
+      'notice:needs_owner': box(0, 0), 'notice:to_send': box(0, 100), 'notice:awaiting': box(0, 200), 'notice:to_print': box(0, 300), 'notice:in_mail': box(0, 400), 'notice:sent': box(0, 500),
       'affidavit:needs_property': box(300, 0), 'affidavit:to_send': box(300, 100), 'affidavit:awaiting': box(300, 200), 'affidavit:ready': box(300, 300), 'affidavit:filed': box(300, 400),
     }
     const lines = lienBoardArrowPaths(b.arrows, boxes, false)
-    expect(lines).toHaveLength(9)
+    // Five down the notices, which have one more bin than the affidavits since v2.7448, four down the affidavits, one across.
+    expect(lines).toHaveLength(10)
     expect(lines[0]).toEqual({ key: 'notice:needs_owner>notice:to_send', kind: 'down', d: 'M 100 60 L 100 99' })
-    expect(lines[8]).toEqual({ key: 'notice:sent>affidavit:needs_property', kind: 'cross', d: 'M 200 430 H 250 V 30 L 299 30' })
-    expect(lienBoardArrowPaths(b.arrows, boxes, true)).toHaveLength(8)
+    expect(lines.slice(2, 4)).toEqual([
+      { key: 'notice:awaiting>notice:to_print', kind: 'down', d: 'M 100 260 L 100 299' },
+      { key: 'notice:to_print>notice:in_mail', kind: 'down', d: 'M 100 360 L 100 399' },
+    ])
+    expect(lines[9]).toEqual({ key: 'notice:sent>affidavit:needs_property', kind: 'cross', d: 'M 200 530 H 250 V 30 L 299 30' })
+    expect(lienBoardArrowPaths(b.arrows, boxes, true)).toHaveLength(9)
     // With the columns measured the vertical run sits in the gutter between them, clear of a bin beside the notices.
-    const withColumns = { ...boxes, 'col:notice': { left: 0, top: 0, width: 240, height: 500 }, 'col:affidavit': { left: 300, top: 0, width: 240, height: 500 } }
-    expect(lienBoardArrowPaths(b.arrows, withColumns, false)[8]!.d).toBe('M 200 430 H 270 V 30 L 299 30')
+    const withColumns = { ...boxes, 'col:notice': { left: 0, top: 0, width: 240, height: 600 }, 'col:affidavit': { left: 300, top: 0, width: 240, height: 600 } }
+    expect(lienBoardArrowPaths(b.arrows, withColumns, false)[9]!.d).toBe('M 200 530 H 270 V 30 L 299 30')
     // A bin not drawn (Missed while empty) has no box and so no arrow; nothing throws.
     expect(lienBoardArrowPaths([{ from: 'notice:held', to: 'notice:missed', kind: 'down' }], boxes, false)).toEqual([])
   })
@@ -274,7 +301,7 @@ describe('LienBoard', () => {
     fireEvent.mouseEnter(late)
     const lateCard = document.querySelector('[data-lien-board-chip-card]') as HTMLElement
     expect(lateCard.querySelector('[data-lien-board-card-risk]')!.textContent).toBe('Will not make its day as it stands. Still to do, with 1 working day left:')
-    expect(Array.from(lateCard.querySelectorAll('ol[data-lien-board-card-left] li')).map((li) => li.textContent)).toEqual(['Name the owner on the property record', 'Send it for approval', 'Sam approves and signs it', 'Mail it and record the mailing'])
+    expect(Array.from(lateCard.querySelectorAll('ol[data-lien-board-card-left] li')).map((li) => li.textContent)).toEqual(['Name the owner on the property record', 'Send it for approval', 'Sam approves and signs it', 'Print it, mail it and enter its mail number'])
     fireEvent.mouseLeave(late)
     await waitFor(() => expect(document.querySelector('[data-lien-board-chip-card]')).toBeNull())
     // The keyboard reaches it too, and a page that moves takes the card away.

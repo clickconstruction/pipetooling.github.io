@@ -1287,6 +1287,7 @@ export default function LienInstrumentsModal({
                 jobLabel={`${jobNumber} · ${(lastWorkJob.job_name ?? '').trim()}`}
                 clockMonths={(windowWorkMonths?.[lastWorkJob.id]?.months ?? []).map((m) => m.key)}
                 noticedMonths={[...new Set(filings.filter((f) => f.kind === 'notice_53_056' && f.voided_at == null).flatMap((f) => f.months_covered ?? []))]}
+                affidavitMonths={[...new Set(filings.filter((f) => f.kind === 'affidavit' && f.voided_at == null).flatMap((f) => f.months_covered ?? []))]}
                 propertyKind={propertyKind}
               />
             </div>
