@@ -1,8 +1,8 @@
 ---
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
-group: ready
-status: asked 2026-11-15 by Taunya · read the same day from the code and from prod through the dev seat (reads only) · the mock-up drawn, then redrawn after her first look the same day · all eight calls settled by her the same day · building since 2026-11-15 · PR 1 (v2.7384) the kernel · PR 2 (v2.7385) the table and functions, pushed to prod and proved 2026-11-15 · PR 3 (v2.7400) the list on the Pipeline note boxes, a tagged note shows its chip and who it waits on · PR 4 (v2.7407) the count above Jobs, the Tagged job notes section, the Needs you line and its window, the guide, and the list open to the office and the crew · PR 5 (v2.7410) the push, its function waiting on Taunya's go to deploy · PR 6 (v2.7412) the job window's box, with its migration
+group: close
+status: asked 2026-11-15 by Taunya, who settled its eight calls that day and asked for the whole train · built 2026-11-15 and 16 in six PRs (v2.7384, v2.7385, v2.7400, v2.7407, v2.7410, v2.7412) and one fix (v2.7426) · both migrations pushed and proved · `notify-note-tag` deployed on her go · live on prod · the sender's side walked on prod on a ZZ Test job, from the Pipeline row and from the job window · the tagged person's side not walked
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,13 +11,39 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: Merge the train in order, push each migration, deploy `notify-note-tag` on Taunya's go by name, and walk the whole thing on prod on a ZZ Test job with two logins. Then close the card.
+next: A two-login walk, which one pane login cannot do: tag a real teammate on a ZZ Test job, and have them see the red count above Jobs, answer from the section, and press No reply needed on a second tag. Also a phone width, the floating window's box, and a phone that takes the notice.
 size: L as a train of six (S · M · M · M · S · M)
-blocker: none; Taunya settled the eight calls on 2026-11-15.
+blocker: a second person's login. Two ZZ test notes and their two tags sit on the ZZ Test Walk Project job, waiting on the Sample superintendent account: a job note cannot be deleted through the app by anyone.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
 ---
 
 # Tag a teammate in a job note (#363)
+
+## Where it stands (2026-11-16)
+
+**Live.** Everything the card planned is on prod.
+
+| PR | Version | What |
+|---|---|---|
+| #8268 | v2.7384 | the kernel, `src/lib/jobs/noteTags.ts` |
+| #8269 | v2.7385 | `jobs_ledger_note_tags` and its functions, pushed 2026-11-15 |
+| #8302 | v2.7400, v2.7407 | the list of names on the Pipeline note boxes, the count above Jobs, the section, the Needs you line, the guide |
+| #8303 | v2.7410, v2.7412 | `notify-note-tag`, and tagging from the job window, with the second migration, pushed 2026-11-16 |
+| #8313 | v2.7426 | the chip shows the moment a note is posted |
+
+**Walked on prod**, as the dev login, on *ZZ Test Walk Project 2026-11-08*:
+
+- From the Pipeline row: the list on `@` with the crew first, narrowing as letters are typed, the pick by Enter, **Will tag** above the box, the post, the section's You asked line, and the chip with *waiting on Sample*.
+- From the job window: the **@** button, the list above the box, the pick and the post. Prod's rows show that tag landed through `land_field_press`.
+- The list opens above the row's strip and is not clipped.
+
+**Found on the walk**: the chip did not draw until the page was read again. Fixed in v2.7426.
+
+**Not walked**: the tagged person's screen (the red count, the cards, an answer, No reply needed, the question back), the floating window's box, a phone width, and a notice arriving on a phone. The render tests and the `job-note-tags` SQL bed cover the rules; no person has seen those screens with a tag on them.
+
+**Left on prod**: two notes on that ZZ job, *ZZ Test tag walk, please ignore* and *ZZ Test job window tag walk, please ignore*, each tagging the Sample superintendent account. `jobs_ledger_thread_notes` has no delete policy, so they stay, and their two tags wait on that sample account.
+
+**Seen as built**: the ZZ Walk tester account is in training mode, so the list does not offer it. A dev is offered the sample accounts.
 
 ## The ask
 

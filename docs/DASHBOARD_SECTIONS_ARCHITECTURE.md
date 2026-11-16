@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-13
+last_updated: 2026-11-16
 ---
 
 ## Overview
@@ -439,7 +439,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | v2.4702 | `owner-records-signed` | `ownerRecordsSignedEnabled`, `ownerRecordsSigned.count` (`useOwnerRecordsSignedNudge` → `ownerRecordsSignedWaiting`) | amber |
 | 610–659 | `lien-notice-draft` (two shapes) or `lien-window-missed` | `lienDeskEnabled`, `lienDesk.office` / `.missed` | next deadline: red ≤ 7 days, amber ≤ 14, else gray · letter two (*The attorney’s letter is due on a sent notice* since v2.6591): red when any is past day 14, else amber · missed: gray |
 | 662–679 | `lien-notice-batch` | `lienDeskEnabled`, `lienDeskLeader`, `lienDesk.leader.batches` | red ≤ 7 days, else blue |
-| 681–695 | `lien-notice-approve` | the same, `leader.jobs` less the batch jobs | red ≤ 7 days, else blue |
+| 681–695 | `lien-notice-approve` (since v2.7435 a card of its own: `lienLeaderSignItem` carries `lienSign`, and the Cards view draws `LienLeaderSignCardView`) | `lienDeskEnabled`, `lienDeskLeader`, `lienLeaderSign` (`buildLienLeaderSignCard` in `lib/jobs/lienLeaderSignCard.ts` over the desk's awaiting pile, less the notices in a prepared run; the claim is `correctedClaim` over each entry's open balance, which the light read fills from the bills for these jobs) | red while a window is ≤ 7 days off or closed with nothing sent, and then `first`: it leads the list whatever its tier; else blue |
 | 697–712 | `lien-file-window` | `lienWatchEnabled`, `lienWatch.filingDue` | amber |
 | 714–741 | `contract-missing`, `contract-stale` | `contractNudgeEnabled` | amber |
 | 743–755 | `work-orders-unpriced` | `unpricedWorkOrdersEnabled` | amber |

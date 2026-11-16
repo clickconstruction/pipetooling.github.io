@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { buildLienBoard, lienBoardDots, type LienBoardDot } from '../lib/jobs/lienBoard'
 import { isLienOffice } from '../lib/jobs/lienDesk'
+import { buildLienLeaderSignCard } from '../lib/jobs/lienLeaderSignCard'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import type { UserRole } from './useAuth'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
@@ -183,6 +184,19 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     })
     return board.empty ? null : lienBoardDots(board)
   }, [lienEnabled, lienDeskData, role])
+  // The leader's card (v2.7435): the notices that wait on his signature, read off the same desk data as the row it replaces.
+  const lienDeskLeader = role === 'dev' || role === 'master_technician'
+  const lienLeaderSign = useMemo(() => {
+    if (!lienEnabled || !lienDeskData || !lienDeskLeader) return null
+    return buildLienLeaderSignCard({
+      todayYmd: todayYmdInAppTz(),
+      awaiting: lienDeskData.queue.piles.awaiting,
+      jobNumber: (jobId) => { const j = lienDeskData.jobsById[jobId]; return j ? effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—' : jobId.slice(0, 8) },
+      jobName: (jobId) => (lienDeskData.jobsById[jobId]?.job_name ?? '').trim(),
+      gcName: (gcId) => lienDeskData.gcsById[gcId]?.name ?? '',
+      claimCorrection: (jobId) => lienDeskData.claimCorrectionsByJob[jobId] ?? null,
+    })
+  }, [lienEnabled, lienDeskData, lienDeskLeader])
   const ownerRecordsSignedEnabled = lienEnabled
   const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled, hideZzTestJobs, authUserId)
 
@@ -389,7 +403,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     docsmitCredit: docsmit.loaded ? { ...docsmit.credit, warn: docsmit.settings.creditWarn, nowIso: new Date().toISOString() } : null,
     lienDeskEnabled: lienEnabled,
     lienDesk: lienDeskData?.summary ?? null,
-    lienDeskLeader: role === 'dev' || role === 'master_technician',
+    lienDeskLeader,
+    lienLeaderSign,
     ownerRecordsSignedEnabled,
     ownerRecordsSigned,
     hoursApprovalsEnabled,
