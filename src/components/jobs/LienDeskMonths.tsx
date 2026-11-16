@@ -248,7 +248,7 @@ export default function LienDeskMonths({
           {grid.lateUntil ? `a late notice can still go · the affidavit by ${formatYmdMonthDay(grid.lateUntil)}` : 'lien right gone · the money still rides'}
         </div>
       ) : null}
-      <div className="lienMonthsBody" style={{ gridTemplateColumns: 'auto minmax(0, 1fr)' }}>
+      <div className="lienMonthsBody">
         <div className="lienMonthsClaimCol">
           {claimNode ?? (
             <div className="lienMonthsClaim">
