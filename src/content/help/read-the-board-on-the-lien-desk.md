@@ -108,7 +108,7 @@ Point at the bin's name to read where that paper stands. It opens the card the f
 
 A heading carries the day when every row under it shares that day. Then no row repeats it. A row with another day says its own.
 
-{{button:outline|Print 10 affidavits ›}} sits on the **On track** heading. It opens the affidavits list at **Ready to file**, where the batch prints.
+{{button:outline|Print 10 for notarization ›}} sits on the **On track** heading. It opens the affidavits list at **Ready to file**. The button of the same name there prints the batch.
 
 ## Held, Missed and retainage
 

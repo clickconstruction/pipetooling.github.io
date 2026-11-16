@@ -2,7 +2,7 @@
 title: pay a sub with one check across several sheets
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: sub credit, overpayment, overpaid, one check, several sheets, sending, sending number, from credit, use credit, keep a credit, extra, too much, sub labor, record payment, part payment
+keywords: sub credit, overpayment, overpaid, one check, several sheets, sending, sending number, from credit, use credit, keep a credit, extra, too much, sub labor, record payment, part payment, by hand, place a payment, which sheets
 order: 33
 ---
 One check to a sub can pay more than one sheet. You type the whole check once, and the app spreads it for you.
@@ -28,6 +28,17 @@ Anything the check carries past their sheets is kept as the sub's credit. The ne
 The sheet you opened is paid first. The rest goes to the sub's other open sheets, starting with the oldest.
 
 Every line of one check carries the same sending number. A sending number is never used twice.
+
+## Place the payment by hand
+
+The window fills the sub's other open sheets oldest first. You can place the money yourself when the check was for other sheets.
+
+1. Type the amount. Press {{chip:gray|By hand}} beside {{chip:gray|Oldest first}}.
+2. A box opens for each of the sub's open sheets, filled the oldest-first way as a start.
+3. Change the boxes to match the check. The last box keeps money as their credit.
+4. The window shows what is placed against what was sent. The press stays dead until every dollar is placed.
+
+The press says what it will do, like {{button:blue|Record $2,200.00 on 2 sheets}}. By hand shows only when the sub has another open sheet.
 
 ## Keep the extra as a credit
 

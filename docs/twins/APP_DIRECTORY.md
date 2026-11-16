@@ -77,6 +77,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Contracts and document packets → `/documents`
 - Set where a job's Drive files go, move the jobs root, name a job's folder, make the folders for every job without one, or have the app make the **Fleet folder** the machines' check photos file under → `/documents?tab=where-files-go` (the office; the Fleet folder card v2.6564; guide `set-where-a-jobs-files-go`)
 - See every photo uploaded to the app, newest first, with its job, who took it and whether it is in Drive, and open the report, the box, the thread or the job it came with → `/documents?tab=photos` (v2.6270, punch list #232; guide `find-every-photo-that-was-uploaded`)
+- See every painted map you can open, with where it is, what is on it and who painted it, and open one → `/documents?tab=painted-maps` (v2.7409, punch list #345; guide `paint-a-map`)
 - Find a file by the words inside it when you know it exists but not which job holds it → `/documents?tab=search`, the **Find a file** box under the job and bid search (v2.6305; since v2.6319 our own file index answers first, by meaning too once that is set up (v2.6338), Drive's search behind it; the office; guide `find-a-file-when-you-do-not-know-where-it-is`)
 
 **Everything else**

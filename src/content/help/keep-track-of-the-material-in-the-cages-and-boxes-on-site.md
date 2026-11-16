@@ -116,7 +116,11 @@ Tap **It is a new box** when the box is not in the app yet. The sheet fills in t
 
 A line under the name says which job the new box goes on. Tap **Change** to pick another job. The sticker stays in hand while you pick.
 
-Two stickers can sit on one box. Both open it. The box's row reads the numbers beside its name, as *R76 · 0147*. A box's own label from before still opens it too.
+Some stickers are printed with a box's name, like G78. A scan of one opens **Sticker G78 is new**. The name is large at the top, with the sticker's number small beside it. When the site has no G78 yet, the sheet opens on **It is a new box** with G78 filled in. Pick how it sits and its place, then tap {{button:blue|Save box G78}}. When the site already has a G78, the sheet opens on that box with it picked. Tap {{button:blue|Put 0159 on G78}} to put the sticker on it.
+
+Sometimes the cage in front of you is a second one at the same spot. Tap **It is a different box**. The sheet offers the next letter, like G78B. Tap {{button:blue|Save box G78B}}. The sticker still reads G78, and a later scan says so.
+
+Two stickers can sit on one box. Both open it. A sticker that carries a number only shows beside the box's name, as *R76 · 0147*. A sticker printed with the box's own name adds nothing beside it. A sticker printed with another name reads *sticker reads G78* beside the box's name. A box's own label from before still opens it too.
 
 If someone else put the sticker on a box a moment ago, the sheet says who and when. Tap **Open R76** to see that box. A sticker printed for another job asks once. Use it here, and it belongs to the box it lands on. A sticker on a box of a job you are not on says so. Ask the office to add you to that job.
 

@@ -96,23 +96,23 @@ export function useSubLaborLedger({
         (async () => {
           const withCheck = await supabase
             .from('people_labor_job_payments')
-            .select('id, job_id, amount, memo, created_at, payment_date, method, method_ref, sending_id, checked_at, checked_by_name' as 'id, job_id, amount, memo, created_at, payment_date')
+            .select('id, job_id, amount, memo, created_at, hidden_from_sub, payment_date, method, method_ref, sending_id, checked_at, checked_by_name' as 'id, job_id, amount, memo, created_at, payment_date')
             .in('job_id', jobIds)
             .order('sequence_order', { ascending: true })
           if (!withCheck.error) return withCheck
           const withSending = await supabase
             .from('people_labor_job_payments')
-            .select('id, job_id, amount, memo, created_at, payment_date, method, method_ref, sending_id' as 'id, job_id, amount, memo, created_at, payment_date')
+            .select('id, job_id, amount, memo, created_at, hidden_from_sub, payment_date, method, method_ref, sending_id' as 'id, job_id, amount, memo, created_at, payment_date')
             .in('job_id', jobIds)
             .order('sequence_order', { ascending: true })
           if (!withSending.error) return withSending
           const withMethod = await supabase
             .from('people_labor_job_payments')
-            .select('id, job_id, amount, memo, created_at, payment_date, method, method_ref' as 'id, job_id, amount, memo, created_at, payment_date')
+            .select('id, job_id, amount, memo, created_at, hidden_from_sub, payment_date, method, method_ref' as 'id, job_id, amount, memo, created_at, payment_date')
             .in('job_id', jobIds)
             .order('sequence_order', { ascending: true })
           if (!withMethod.error) return withMethod
-          return supabase.from('people_labor_job_payments').select('id, job_id, amount, memo, created_at, payment_date').in('job_id', jobIds).order('sequence_order', { ascending: true })
+          return supabase.from('people_labor_job_payments').select('id, job_id, amount, memo, created_at, hidden_from_sub, payment_date').in('job_id', jobIds).order('sequence_order', { ascending: true })
         })(),
         linkedJobIds.length > 0 ? supabase.from('jobs_ledger').select('id, job_name').in('id', linkedJobIds) : { data: [] },
         // Junction rows + each assignee's CURRENT roster name — keys the
@@ -226,6 +226,8 @@ export function useSubLaborLedger({
           credit_kept: creditKeptByPayment.get(p.id) ?? null,
           checked_at: p.checked_at ?? null,
           checked_by_name: p.checked_by_name ?? null,
+          // Punch list #350: a paper prints the memo the sub reads, so a hidden one must be known here.
+          hidden_from_sub: (p as { hidden_from_sub?: boolean | null }).hidden_from_sub === true,
         })
       }
       setLaborJobNamesByJobId(buildLaborJobNamesById((ledgerJobs ?? []) as Array<{ id: string; job_name: string | null }>))
