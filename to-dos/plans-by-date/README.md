@@ -2,14 +2,14 @@
 name: "Plans by date"
 number: 367
 group: close
-status: design picked by the owner 2026-11-16 ("build it all") · PR 1 the view (v2.7494), PR 2 the item card (v2.7499), PR 3 the columns (its own PR, #8397) PR 4 the schedule (v2.7500) and PR 5 sheets in hand (v2.7501) built · waiting on the merges and the migration push
+status: all five PRs built 2026-11-16 on the owner's "build it all" · the view (v2.7494), the item card (v2.7499) and the columns are on main, the migration is pushed and read back · the schedule (v2.7500) and sheets in hand (v2.7501) are the last two PRs · the live page has not been walked
 summary: >
   The owner had a one-page chart drawn by hand for one site: its drawings set against time, with the bid's
   schedule, the crews' days and a letter on the same axis, a dated list under it and four figures on top.
   The Development page's Plans look now offers it as a second view, By date. What is left is a card on
   every item with its details and its presses, a schedule on a bid with a typed start and end, and a sheet
   count on a set.
-next: Push migration 20261117070000 once PR 3 merges, then see PRs 2, 4 and 5 to their merges and walk the live page. Then delete this card.
+next: Walk the live page on a real site (By date, a card, a schedule set and changed, a sheet count), then delete this card.
 size: M as a train of five (M · M · S · M · S); left: nothing to build
 blocker: none
 ver: v2.7501

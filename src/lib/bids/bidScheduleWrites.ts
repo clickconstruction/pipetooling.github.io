@@ -9,8 +9,7 @@ import type { BidScheduleColumns } from './bidSchedule'
 const REFUSED = 'The schedule was not saved. The bid may have moved, or you may not have the right to change it.'
 
 export async function writeBidSchedule(bidId: string, columns: BidScheduleColumns): Promise<void> {
-  // The columns are newer than the generated types (migration 20261117070000), so the update is named by hand.
-  const { data, error } = await supabase.from('bids').update(columns as never).eq('id', bidId).select('id')
+  const { data, error } = await supabase.from('bids').update(columns).eq('id', bidId).select('id')
   if (error) throw error
   if (!data || data.length === 0) throw new Error(REFUSED)
 }

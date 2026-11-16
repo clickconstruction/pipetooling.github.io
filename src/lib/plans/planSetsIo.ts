@@ -273,8 +273,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
       if (r.error) throw r.error
     },
     async updateSheetCount(setId, count) {
-      // The column is newer than the generated types (migration 20261117070000), so the update is named by hand.
-      const r = await supabase.from('plan_sets').update({ sheet_count: count } as never).eq('id', setId).select('id')
+      const r = await supabase.from('plan_sets').update({ sheet_count: count }).eq('id', setId).select('id')
       if (r.error) throw r.error
       if (!r.data || r.data.length === 0) throw new Error('The sheet count was not saved. The set may have moved, or you may not have the right to change it.')
     },

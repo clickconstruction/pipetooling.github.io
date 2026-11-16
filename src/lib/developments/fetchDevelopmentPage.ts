@@ -99,7 +99,7 @@ type BidScheduleRow = Pick<MemberBid, 'schedule_start' | 'schedule_end' | 'sched
 async function readBidSchedules(developmentId: string): Promise<Map<string, BidScheduleRow>> {
   const out = new Map<string, BidScheduleRow>()
   try {
-    const { data, error } = await supabase.from('bids').select('id, schedule_start, schedule_end, schedule_open_ended' as never).eq('development_id', developmentId).limit(500)
+    const { data, error } = await supabase.from('bids').select('id, schedule_start, schedule_end, schedule_open_ended').eq('development_id', developmentId).limit(500)
     if (error) {
       console.warn('development: bid schedules not read', error.message)
       return out
