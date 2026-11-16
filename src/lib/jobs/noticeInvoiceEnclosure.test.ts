@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { enclosedInvoiceDocument, noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payLineIsNotTheWork, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { enclosedInvoiceDocument, footerWithoutPortalLink, noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payLineIsNotTheWork, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
+import { PORTAL_RETURN_SHORT_ORIGIN } from '../../../supabase/functions/_shared/customerPortalReturnUrl'
 
 const inv = (id: string, amount: number, seq: number, status = 'billed') =>
   ({ id, amount, sequence_order: seq, status, billed_at: '2026-08-18T14:28:00Z', created_at: '2026-08-18T14:27:00Z', sent_to_customer_at: null, estimated_bill_date: '2026-09-05', stripe_invoice_memo: 'Gas install', external_send_note: '', stripe_invoice_footer: null }) as unknown as JobWithDetails['invoices'][number]
@@ -129,5 +130,48 @@ describe("the enclosed invoice prints Stripe's own number and due day (v2.4852)"
     expect(enclosedInvoiceDocument({ ...base, narrativeTitle: 'Gas install', serviceLines: [{ description: 'Rough In', qty: 1, unitPrice: 100, amount: 100 }] } as PhysicalInvoiceDocument, seq, '867', null).narrativeTitle).toBe('Gas install')
     // The note is all the bill says: kept, a blank invoice is worse.
     expect(enclosedInvoiceDocument({ ...base, narrativeTitle: note, serviceLines: [] } as PhysicalInvoiceDocument, seq, '867', null).narrativeTitle).toBe(note)
+  })
+
+  describe('a paper that goes to someone else (v2.7513)', () => {
+    // A made-up company and a made-up portal address.
+    const own = 'Pipe and Wire Co\nPh: 555-010-0000\n1 Shop Rd, Alder TX 78000'
+    const tokenLine = 'See your updated statement any time at https://app.example.test/portal?t=abc123def456&paid=1'
+
+    it('the footer loses the line that carries the customer’s portal address, and keeps the company’s own block', () => {
+      expect(footerWithoutPortalLink(`${own}\n\n${tokenLine}`)).toBe(own)
+      // The short address, as a saved slug gives it, and a link someone typed into the footer by hand.
+      expect(footerWithoutPortalLink(`${own}\n\nSee your updated statement any time at ${PORTAL_RETURN_SHORT_ORIGIN}birch?paid=1`)).toBe(own)
+      expect(footerWithoutPortalLink(`${own}\nYour statement: https://app.example.test/portal?t=abc123`)).toBe(own)
+      // A footer that was only the return line leaves nothing; a footer with no link is untouched; none is none.
+      expect(footerWithoutPortalLink(tokenLine)).toBe('')
+      expect(footerWithoutPortalLink(own)).toBe(own)
+      expect(footerWithoutPortalLink(undefined)).toBe('')
+      expect(footerWithoutPortalLink('a\r\n' + tokenLine + '\r\nb')).toBe('a\nb')
+    })
+
+    it('the enclosed invoice carries no portal address, on the printed page or in the document the PDF is made from', () => {
+      const [first] = noticeInvoiceDocs(job)
+      const withFooter = enclosedInvoiceDocument({ ...first!.doc, footer: `${own}\n\n${tokenLine}` }, { sequence_order: 2 }, '867', null)
+      expect(withFooter.footer).toBe(own)
+      const [html] = noticeInvoicePrintSections([{ ...first!, doc: withFooter }])
+      expect(html).toContain('Pipe and Wire Co')
+      expect(html).not.toContain('portal?t=')
+      expect(html).not.toContain('See your updated statement')
+    })
+
+    it('the printed page does not say the invoice is attached as a PDF; the email still does', async () => {
+      const { buildPhysicalInvoiceEmailBodies } = await import('../physicalInvoiceDocument')
+      const [first] = noticeInvoiceDocs(job)
+      const [html] = noticeInvoicePrintSections([first!])
+      expect(html).not.toMatch(/attached as a PDF/)
+      expect(html).toContain('INVOICE · enclosed with the § 53.056 notice')
+      const email = buildPhysicalInvoiceEmailBodies(first!.doc)
+      expect(email.html).toContain('attached as a PDF')
+      expect(email.text.split('\n')[0]).toBe('Please find your invoice attached as a PDF.')
+      const paper = buildPhysicalInvoiceEmailBodies(first!.doc, { paper: true })
+      expect(paper.text).not.toMatch(/attached as a PDF/)
+      // Leaving the line off changes nothing else.
+      expect(email.html.endsWith(paper.html)).toBe(true)
+    })
   })
 })
