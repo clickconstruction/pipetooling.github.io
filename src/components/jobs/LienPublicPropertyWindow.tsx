@@ -197,7 +197,7 @@ export default function LienPublicPropertyWindow({ addressId, onClose, zIndex = 
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 7, font: 'inherit', resize: 'vertical' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', lineHeight: 1.45, border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text)', resize: 'vertical' }}
                 />
                 {reasonGiven ? null : <span style={{ fontSize: '0.75rem', color: 'var(--text-red-700)' }}>Say why in a few words. The reason goes with each job.</span>}
               </section>

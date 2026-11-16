@@ -130,7 +130,7 @@ export default function LienPublicPutBackWindow({ addressId, onClose, zIndex = 1
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
                   placeholder="For example: the county sold the lot, so the owner is private."
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 7, font: 'inherit', resize: 'vertical' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', lineHeight: 1.45, border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text)', resize: 'vertical' }}
                 />
               </section>
               <section style={{ display: 'grid', gap: '0.3rem', padding: '0.6rem 0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
