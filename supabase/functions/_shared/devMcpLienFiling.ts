@@ -314,7 +314,9 @@ export async function readLienFilingWorld(reads: LienFilingReads, p: LienFilingP
   const correctionRow = (await reads.rows('job_lien_claim_corrections', `select=job_id,amount_off&job_id=eq.${job.id}`))[0]
   const monthsRow = await reads.rows('job_lien_affidavit_months', `select=job_id,months,reason,set_by_name,set_at&job_id=eq.${job.id}`).then((rows) => rows[0], () => undefined)
   const filings = (await reads.rows('job_lien_filings', `select=${LIEN_FILING_FILING_COLS}&job_id=eq.${job.id}&voided_at=is.null&order=created_at.asc`)).map(filingOnRecord)
-  const numberRows = await reads.rows('job_lien_filings', `select=id,job_id,county,filed_at&kind=eq.affidavit&voided_at=is.null&recording_number=eq.${encodeURIComponent(p.recording_number)}&job_id=neq.${job.id}&limit=10`)
+  // The number as other jobs hold it, however it was typed: "2026-0222921", "2026 0222921" and "20260222921" are one
+  // instrument. The read is loose (the letters and digits in order, anything between) and the key decides.
+  const numberRows = (await reads.rows('job_lien_filings', `select=id,job_id,county,filed_at,recording_number&kind=eq.affidavit&voided_at=is.null&recording_number=ilike.${recordingLoosePattern(p.recording_number)}&job_id=neq.${job.id}&limit=50`)).filter((r) => recordingKey(str(r.recording_number)) === recordingKey(p.recording_number))
   const otherJobIds = [...new Set(numberRows.map((r) => str(r.job_id)).filter(Boolean))]
   const otherJobs = otherJobIds.length > 0 ? await reads.rows('jobs_ledger', `select=id,job_name,hcp_number,click_number&id=in.(${otherJobIds.join(',')})`) : []
   const labelById = new Map(otherJobs.map((j) => [str(j.id), jobLabelOf(j as never)]))
@@ -352,6 +354,8 @@ export type LienFilingWrite =
   | { kind: 'record'; row: Json; item: { id: string; from: string; patch: Json } | null; scan: { name: string; mime: string; size_bytes: number; sha256: string } | null }
   /** A filing already on record with this number and no saved copy: the scan alone, as the Filings list's upload does. */
   | { kind: 'attach_scan'; filingId: string; scan: { name: string; mime: string; size_bytes: number; sha256: string } }
+  /** The same filing, and a link to a copy that is already in Drive: the Filings list's *link the saved copy*. */
+  | { kind: 'attach_link'; filingId: string; link: { url: string; note: string } }
 
 export type LienFilingDryRun =
   | { ok: true; status: 'ready'; reply: Json; write: LienFilingWrite }
@@ -373,6 +377,8 @@ export function sameWords(a: string, b: string): boolean {
   const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
   return flat(a) === flat(b)
 }
+/** The PostgREST `ilike` pattern that finds a recording number however it was punctuated: its letters and digits in order, anything between. */
+export const recordingLoosePattern = (s: string): string => [...recordingKey(s)].join('*')
 /** A recording number as compared: its letters and digits alone, so "2026 0222921" and "2026-0222921" are one number. */
 export const recordingKey = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 const countyKey = (s: string) => s.toLowerCase().replace(/\bcounty\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
@@ -424,31 +430,52 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
   const scan = p.scan ? { name: lienFiledScanName(jobNumber, p.filed_on, { name: p.scan.name, type: scanMime(p.scan.name) }), mime: scanMime(p.scan.name), size_bytes: p.scan.size_bytes, sha256: p.scan.sha256 } : null
 
   // A second filing: one affidavit on file a job. The one exception is the Filings list's own later upload: the same
-  // filing, already on record with no saved copy, takes its scan.
+  // filing, already on record with no saved copy, takes its scan, or a link to a copy already in Drive.
+  const dateless = world.filings.find((f) => f.kind === 'affidavit' && !f.filed_at)
+  if (dateless) return { ok: false, refused: `${label}: an affidavit record with no filed day is already on this job (${dateless.recording_number ? `instrument ${dateless.recording_number}` : 'no number'}). Set its day on the job’s Lien window, or void it there if it was made in error, then plan again. The seat records no second affidavit beside it.` }
   const onFile = world.filings.filter((f) => f.kind === 'affidavit' && f.filed_at)
   if (onFile.length > 0) {
     const same = onFile.find((f) => recordingKey(f.recording_number) === recordingKey(p.recording_number))
-    if (same && !same.document_url && scan) {
+    if (same && !same.document_url && (scan || p.saved_copy)) {
       if (same.filed_at !== p.filed_on || (same.county && countyKey(same.county) !== countyKey(p.county))) return { ok: false, refused: `${label}: instrument ${p.recording_number} is on record for this job as filed ${same.filed_at} in ${same.county || 'no county'}, not ${p.filed_on} in ${p.county}. Check the stamp; the record’s day and county are changed on the job’s Lien window.` }
+      const onRecord = { id: same.id, recording_number: same.recording_number, county: same.county, filed_on: same.filed_at, serve_by: same.serve_due, served_on: same.served_at }
+      if (scan) {
+        return {
+          ok: true,
+          status: 'ready',
+          write: { kind: 'attach_scan', filingId: same.id, scan },
+          reply: {
+            action: 'lien_filing',
+            mode: 'attach_scan',
+            status: 'ready',
+            job: jobFacts(job, world, label),
+            matched_because: p.matched_because,
+            filing_on_record: onRecord,
+            file: { lands_in: LIEN_SCAN_LANDING_WORDS, name: scan.name, mime: scan.mime, size_bytes: scan.size_bytes, sha256: scan.sha256 },
+            writes: { saved_copy_on_filing: same.id, note: LIEN_CLERK_SCAN_NOTE },
+            says: `${label}: instrument ${p.recording_number} is already on record with no saved copy. The scan lands in ${LIEN_SCAN_LANDING_WORDS} as ${scan.name} and becomes the filing’s saved copy. Nothing else on the filing changes.`,
+          },
+        }
+      }
+      const link = { url: p.saved_copy!.link, note: p.saved_copy!.note || LIEN_CLERK_SCAN_NOTE }
       return {
         ok: true,
         status: 'ready',
-        write: { kind: 'attach_scan', filingId: same.id, scan },
+        write: { kind: 'attach_link', filingId: same.id, link },
         reply: {
           action: 'lien_filing',
-          mode: 'attach_scan',
+          mode: 'attach_link',
           status: 'ready',
           job: jobFacts(job, world, label),
           matched_because: p.matched_because,
-          filing_on_record: { id: same.id, recording_number: same.recording_number, county: same.county, filed_on: same.filed_at, serve_by: same.serve_due, served_on: same.served_at },
-          file: { lands_in: LIEN_SCAN_LANDING_WORDS, name: scan.name, mime: scan.mime, size_bytes: scan.size_bytes, sha256: scan.sha256 },
-          writes: { saved_copy_on_filing: same.id, note: LIEN_CLERK_SCAN_NOTE },
-          says: `${label}: instrument ${p.recording_number} is already on record with no saved copy. The scan lands in ${LIEN_SCAN_LANDING_WORDS} as ${scan.name} and becomes the filing’s saved copy. Nothing else on the filing changes.`,
+          filing_on_record: onRecord,
+          writes: { saved_copy_on_filing: same.id, link: link.url, note: link.note },
+          says: `${label}: instrument ${p.recording_number} is already on record with no saved copy. The link becomes the filing’s saved copy; no file is uploaded. Nothing else on the filing changes.`,
         },
       }
     }
     const first = same ?? onFile[0]!
-    return { ok: false, refused: `${label}: an affidavit is already on file for this job (instrument ${first.recording_number || 'no number'}, filed ${first.filed_at}${first.document_url ? ', with its saved copy' : same ? ', with no saved copy: send scan to add it' : ''}). One affidavit a job: a second filing is not recorded here. A record made in error is voided on the job’s Lien window first.` }
+    return { ok: false, refused: `${label}: an affidavit is already on file for this job (instrument ${first.recording_number || 'no number'}, filed ${first.filed_at}${first.document_url ? ', with its saved copy' : same ? ', with no saved copy: send scan or saved_copy to add it' : ''}). One affidavit a job: a second filing is not recorded here. A record made in error is voided on the job’s Lien window first.` }
   }
   if (world.sameNumber.length > 0) {
     const other = world.sameNumber[0]!
@@ -703,27 +730,34 @@ export type LienFilingOutcome = {
   stagedRemoved: boolean | null
   /** Why the scan is not the filing's saved copy, when the filing was recorded and the scan did not follow. */
   scanFailed?: string | null
+  /** Other live filed affidavits found on the job after the write: a second record that landed beside this one. */
+  duplicates?: string[]
 }
 
 /** The apply's reply for a recorded filing: what landed, what did not and the press that comes next. */
 export function lienFilingAppliedWords(p: LienFilingPayload, label: string, write: LienFilingWrite, out: LienFilingOutcome): Json {
   if (!out.filing) return { action: p.action, ok: false, why: `${label}: no filing row came back (RLS let none through, or the write was refused). Nothing else was written. Plan again.` }
   const itemFailed = typeof out.item === 'object'
+  const attach = write.kind !== 'record'
+  // A file that is in Drive is never uploaded twice: the plan that finishes the job carries its link.
+  const finish = out.file ? `Plan this filing again with saved_copy: { link: "${out.file.url}" } in place of scan: a filing on record with no saved copy takes the link alone, and the file is not uploaded twice.` : 'Plan this filing again with the same recording number and the scan: a filing on record with no saved copy takes the scan alone.'
   return {
     action: p.action,
     ok: true,
     filing_id: out.filing.id,
-    wrote: write.kind === 'attach_scan' ? 'the scan, as the saved copy of the filing on record' : 'the filing',
+    wrote: write.kind === 'attach_scan' ? 'the scan, as the saved copy of the filing on record' : write.kind === 'attach_link' ? 'the link, as the saved copy of the filing on record' : 'the filing',
     serve_by: out.filing.serve_due,
     saved_copy: out.filing.document_url || null,
     ...(out.file ? { file: out.file } : {}),
-    desk_item: out.item,
-    ...(out.scanFailed ? { saved_copy_not_added: `The filing is recorded, and its scan is not its saved copy: ${out.scanFailed}. Plan this filing again with the same recording number and the scan: a filing on record with no saved copy takes the scan alone.` } : {}),
+    ...(attach ? {} : { desk_item: out.item }),
+    ...(out.scanFailed ? { saved_copy_not_added: `${attach ? 'The filing stands as it was' : 'The filing is recorded'}, and its scan is not its saved copy: ${out.scanFailed}. ${finish}` } : {}),
     ...(itemFailed ? { desk_item_not_marked: `The filing is recorded, and the desk’s affidavit item was not marked sent: ${(out.item as { failed: string }).failed}. Opening the job’s Lien window runs the same mark.` } : {}),
+    ...(out.duplicates && out.duplicates.length > 0 ? { second_affidavit_on_record: `This job now holds more than one live filed affidavit (${[out.filing.id, ...out.duplicates].join(', ')}): another record landed while this one was being written. Void the extra one on the job’s Lien window.` } : {}),
     ...(out.stagedRemoved === false ? { staged_copy_left: 'The staged copy could not be removed. It is private to you.' } : {}),
-    next:
-      write.kind === 'attach_scan'
-        ? `${label}: the scan is the filing’s saved copy. Nothing else on the filing changed.`
-        : `${label}: filed ${p.filed_on}, instrument ${p.recording_number}. Mail the copies by ${out.filing.serve_due ?? 'the serve-by day'} (the Lien desk’s Mail the copies prints them and records the day and the certified mail numbers).`,
+    next: attach
+      ? out.scanFailed
+        ? `${label}: the saved copy was not added. ${finish}`
+        : `${label}: the filing has its saved copy. Nothing else on the filing changed.`
+      : `${label}: filed ${p.filed_on}, instrument ${p.recording_number}. Mail the copies by ${out.filing.serve_due ?? 'the serve-by day'} (the Lien desk’s Mail the copies prints them and records the day and the certified mail numbers).`,
   }
 }

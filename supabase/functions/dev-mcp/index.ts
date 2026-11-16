@@ -1526,6 +1526,12 @@ function evidenceDriveNext(drive: Record<string, unknown>): string {
 
 /** A document's bytes never reach the log (v2.6004), nor an evidence file's (v2.6426): the base64 is replaced by its length. */
 function argsForLog(name: string, args: Record<string, unknown>): Record<string, unknown> {
+  // v2.7511: a lien filing's long words (what the paper says, why it matched) stay out of the log, so an apply's plan_hash is
+  // never lost to the 4,000-character cut that priorApply reads through.
+  if (name === 'apply_lien_filing') {
+    const f = args.filing && typeof args.filing === 'object' && !Array.isArray(args.filing) ? (args.filing as Record<string, unknown>) : null
+    return { filing: f ? { job_id: f.job_id, county: f.county, recording_number: f.recording_number, filed_on: f.filed_on, scan: f.scan ?? null, saved_copy: f.saved_copy ?? null, filed_outside_the_desk: f.filed_outside_the_desk === true, accept_differences: f.accept_differences === true } : null, plan_hash: typeof args.plan_hash === 'string' ? args.plan_hash.trim().toLowerCase() : args.plan_hash }
+  }
   // v2.6792: a password an account verb carries never reaches the log; its key reads "(set, not logged)".
   if (isAccountVerb(name)) return argsWithoutPasswords(args)
   if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {
@@ -2757,9 +2763,10 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
           const hash = await planHash(name, f.p, dry.reply)
           // A ready filing with a file to send gets its signed address: two hours, that one path, in the dev's own folder.
           let upload: Record<string, unknown> | null = null
-          if (dry.write.scan && f.p.scan) {
+          const planScan = dry.write.kind === 'attach_link' ? null : dry.write.scan
+          if (planScan && f.p.scan) {
             const signed = await stagedUploadUrl(session, lienScanStagePath(who.userId, f.p.scan), LIEN_SCAN_STAGING_BUCKET)
-            upload = 'error' in signed ? { error: `${signed.error} The plan stands; plan again for an upload address.` } : { upload_url: signed.url, upload_expires_in: '2 hours', how: lienScanUploadHow(dry.write.scan.mime) }
+            upload = 'error' in signed ? { error: `${signed.error} The plan stands; plan again for an upload address.` } : { upload_url: signed.url, upload_expires_in: '2 hours', how: lienScanUploadHow(planScan.mime) }
           }
           entries.push({ entry: i + 1, plan_hash: hash, ...dry.reply, ...(upload ? { upload } : {}) })
         }
@@ -2784,64 +2791,81 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const label = String((dry.reply.job as { label?: unknown } | undefined)?.label ?? p.job_id)
       const write = dry.write
       // 1 · the staged scan, read back and checked before anything is written: its size, its sha256, its header.
-      const stagePath = write.scan && p.scan ? lienScanStagePath(who.userId, p.scan) : null
+      const scan = write.kind === 'attach_link' ? null : write.scan
+      const stagePath = scan && p.scan ? lienScanStagePath(who.userId, p.scan) : null
       let scanBytes: Uint8Array | null = null
-      if (write.scan && stagePath) {
+      if (scan && stagePath) {
         const staged = await stagedDownload(session, stagePath, LIEN_SCAN_STAGING_BUCKET, 'plan_lien_filing')
         if ('error' in staged) return refused(staged.error, { target: built.target })
-        const problem = stagedScanProblem(staged.bytes, write.scan)
+        const problem = stagedScanProblem(staged.bytes, scan)
         if (problem) return refused(problem, { target: built.target })
         const sha = await sha256HexOf(staged.bytes)
-        if (sha !== write.scan.sha256) return refused(`The staged file's sha256 (${sha.slice(0, 12)}…) is not the plan's (${write.scan.sha256.slice(0, 12)}…). PUT the file you planned, or plan again for this one.`, { target: built.target })
+        if (sha !== scan.sha256) return refused(`The staged file's sha256 (${sha.slice(0, 12)}…) is not the plan's (${scan.sha256.slice(0, 12)}…). PUT the file you planned, or plan again for this one.`, { target: built.target })
         scanBytes = staged.bytes
       }
       // 2 · the row: the window's own insert. The record comes before the file, so a Drive door that fails leaves a
-      // filing with no saved copy (which the plan takes a scan for) and never a file with no filing.
-      let filingId = write.kind === 'attach_scan' ? write.filingId : ''
+      // filing with no saved copy (which the plan takes a scan or a link for) and never a file with no filing.
+      let filingId = write.kind === 'record' ? '' : write.filingId
       let item: LienFilingOutcome['item'] = 'none'
-      const readBack = async (): Promise<Record<string, unknown> | null> => (await rowsOf('job_lien_filings', `select=id,serve_due,document_url&id=eq.${filingId}`))[0] ?? null
-      if (write.kind === 'record') {
-        const made = await restRows(session, 'POST', 'job_lien_filings', 'select=id', write.row)
-        if (!made.ok) return errored(`${label}: the filing was not recorded, and nothing else was written: ${restError(made.status, made.body)}`)
-        // Read the filing back: what an insert returns says nothing about a row RLS kept.
-        let found: Record<string, unknown> | null = null
-        try {
-          found = (await rowsOf('job_lien_filings', `select=id&job_id=eq.${p.job_id}&kind=eq.affidavit&voided_at=is.null&filed_at=eq.${p.filed_on}&recording_number=eq.${encodeURIComponent(p.recording_number)}&order=created_at.desc&limit=1`))[0] ?? null
-        } catch (e) {
-          return errored(e instanceof Error ? e.message : String(e))
-        }
-        if (!found) return errored(String(lienFilingAppliedWords(p, label, write, { file: null, filing: null, item, stagedRemoved: null }).why))
-        filingId = String(found.id ?? '')
-        // 3 · the desk's item, as the window's sync marks it once the filing is on record. A mark that fails is named; the filing stands.
-        if (write.item) {
-          const res = await restRows(session, 'PATCH', 'job_lien_desk_items', `id=eq.${write.item.id}&kind=eq.affidavit&status=eq.${write.item.from}`, { ...write.item.patch, sent_filing_id: filingId })
-          item = res.ok ? 'marked sent' : { failed: restError(res.status, res.body) }
-        }
-      }
-      // 4 · the scan into Sent by us through drive-link's put, then onto the filing as its saved copy, held to a link still empty.
-      let file: LienFilingOutcome['file'] = null
-      let scanFailed: string | null = null
-      if (write.scan && scanBytes) {
-        const put = await invokeAsDev(session, 'drive-link', { action: 'put', job: { jobs_ledger_id: p.job_id }, name: write.scan.name, mime: write.scan.mime, where: LIEN_SCAN_LANDING, base64: bytesToBase64(scanBytes) })
-        const landed = (put.body ?? {}) as { driveFileId?: unknown; url?: unknown }
-        if (!put.ok || typeof landed.url !== 'string' || !landed.url) scanFailed = `the job's Drive folder did not take the file: ${put.ok ? 'drive-link answered with no link' : restError(put.status, put.body)}`
-        else {
-          file = { url: landed.url, driveFileId: String(landed.driveFileId ?? '') }
-          const linked = await restRows(session, 'PATCH', 'job_lien_filings', `id=eq.${filingId}&document_url=eq.`, filingDocumentPayload({ url: file.url, note: LIEN_CLERK_SCAN_NOTE }, { clear: true }))
-          if (!linked.ok) scanFailed = `the file is in the job's Drive folder at ${file.url}, and its link was not saved on the filing: ${restError(linked.status, linked.body)}`
-        }
-      }
-      let back: Record<string, unknown> | null = null
+      let duplicates: string[] = []
+      const liveAffidavits = () => rowsOf('job_lien_filings', `select=id&job_id=eq.${p.job_id}&kind=eq.affidavit&voided_at=is.null&order=created_at.asc`)
       try {
-        back = await readBack()
+        if (write.kind === 'record') {
+          // The staged read above can take seconds: look once more, right before the insert, for an affidavit that landed meanwhile.
+          const since = await liveAffidavits()
+          if (since.length > 0) return refused(`${label}: an affidavit landed on this job since the plan was read (${String(since[0]?.id ?? '')}). Nothing was written. Plan again.`, { target: built.target })
+          const made = await restRows(session, 'POST', 'job_lien_filings', 'select=id', write.row)
+          if (!made.ok) return errored(`${label}: the filing was not recorded, and nothing else was written: ${restError(made.status, made.body)}`)
+          // Read the job's affidavits back: what an insert returns says nothing about a row RLS kept, and a second record that landed beside this one is named.
+          const after = await rowsOf('job_lien_filings', `select=id,created_at&job_id=eq.${p.job_id}&kind=eq.affidavit&voided_at=is.null&filed_at=eq.${p.filed_on}&recording_number=eq.${encodeURIComponent(p.recording_number)}&created_by=eq.${who.userId}&order=created_at.desc&limit=1`)
+          if (!after[0]) return errored(String(lienFilingAppliedWords(p, label, write, { file: null, filing: null, item, stagedRemoved: null }).why))
+          filingId = String(after[0].id ?? '')
+          duplicates = (await liveAffidavits()).map((r) => String(r.id ?? '')).filter((id) => id && id !== filingId)
+        }
       } catch (e) {
         return errored(e instanceof Error ? e.message : String(e))
       }
-      if (back && file && !scanFailed && String(back.document_url ?? '') !== file.url) scanFailed = `the file is in the job's Drive folder at ${file.url}, and the filing already carried another saved copy, which was kept`
-      // A scan alone that did not land wrote nothing: an error, so the plan is not spent.
-      if (write.kind === 'attach_scan' && (scanFailed || !back)) return errored(`${label}: the scan was not added to the filing on record: ${scanFailed ?? 'the filing could not be read back'}. The staged copy is still there; apply again.`)
-      const stagedRemoved = stagePath && !scanFailed ? await stagedRemove(session, stagePath, LIEN_SCAN_STAGING_BUCKET) : null
-      return ok(lienFilingAppliedWords(p, label, write, { file, filing: back ? { id: String(back.id ?? ''), serve_due: typeof back.serve_due === 'string' ? back.serve_due : null, document_url: String(back.document_url ?? '') } : null, item, stagedRemoved, scanFailed }), { target: p.job_id })
+      // 3 · the desk's item, as the window's sync marks it once the filing is on record. A mark that fails, or that
+      // finds the item moved on since the plan, is named; the filing stands.
+      if (write.kind === 'record' && write.item) {
+        const res = await restRows(session, 'PATCH', 'job_lien_desk_items', `id=eq.${write.item.id}&kind=eq.affidavit&status=eq.${write.item.from}&select=id`, { ...write.item.patch, sent_filing_id: filingId }, 'return=representation')
+        item = !res.ok ? { failed: restError(res.status, res.body) } : Array.isArray(res.body) && res.body.length > 0 ? 'marked sent' : { failed: `the item was no longer ${write.item.from} when the mark was made` }
+      }
+      // 4 · the saved copy: the scan into Sent by us through drive-link's put, or the link as given, then onto the
+      // filing, held to a link still empty. A row that did not take it is named, never assumed.
+      let file: LienFilingOutcome['file'] = null
+      let scanFailed: string | null = null
+      const linkOnto = async (url: string, note: string): Promise<string | null> => {
+        const linked = await restRows(session, 'PATCH', 'job_lien_filings', `id=eq.${filingId}&document_url=eq.&select=id`, filingDocumentPayload({ url, note }, { clear: true }), 'return=representation')
+        if (!linked.ok) return `its link was not saved on the filing: ${restError(linked.status, linked.body)}`
+        return Array.isArray(linked.body) && linked.body.length > 0 ? null : 'the filing already carried a saved copy, which was kept'
+      }
+      if (scan && scanBytes) {
+        const put = await invokeAsDev(session, 'drive-link', { action: 'put', job: { jobs_ledger_id: p.job_id }, name: scan.name, mime: scan.mime, where: LIEN_SCAN_LANDING, base64: bytesToBase64(scanBytes) })
+        const landed = (put.body ?? {}) as { driveFileId?: unknown; url?: unknown }
+        if (!put.ok || typeof landed.url !== 'string' || !landed.url) {
+          const why = `the job's Drive folder did not take the file: ${put.ok ? 'drive-link answered with no link' : restError(put.status, put.body)}`
+          // A scan alone that never reached Drive wrote nothing: an error, so the plan is not spent and the same apply can be sent again.
+          if (write.kind === 'attach_scan') return errored(`${label}: the scan was not added to the filing on record: ${why}. Nothing was written and the staged copy is still there; apply again.`)
+          scanFailed = why
+        } else {
+          file = { url: landed.url, driveFileId: String(landed.driveFileId ?? '') }
+          const problem = await linkOnto(file.url, LIEN_CLERK_SCAN_NOTE)
+          if (problem) scanFailed = `the file is in the job's Drive folder at ${file.url}, and ${problem}`
+        }
+      } else if (write.kind === 'attach_link') {
+        const problem = await linkOnto(write.link.url, write.link.note)
+        if (problem) return refused(`${label}: the link was not added: ${problem}. Nothing was written.`, { target: built.target })
+      }
+      let back: Record<string, unknown> | null = null
+      try {
+        back = (await rowsOf('job_lien_filings', `select=id,serve_due,document_url&id=eq.${filingId}`))[0] ?? null
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      // The staged copy goes once its file is in Drive: a later plan carries the Drive link, never the bytes again.
+      const stagedRemoved = stagePath && file ? await stagedRemove(session, stagePath, LIEN_SCAN_STAGING_BUCKET) : null
+      return ok(lienFilingAppliedWords(p, label, write, { file, filing: back ? { id: String(back.id ?? ''), serve_due: typeof back.serve_due === 'string' ? back.serve_due : null, document_url: String(back.document_url ?? '') } : null, item, stagedRemoved, scanFailed, duplicates }), { target: p.job_id })
     }
     case 'plan_sub_labor':
     case 'apply_sub_labor': {

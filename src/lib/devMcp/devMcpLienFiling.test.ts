@@ -151,10 +151,10 @@ describe('the pair and what it stands on', () => {
     expect(apply).toMatchObject({ ok: true, rpc: null, step: 'apply', target: JOB, planHash: HASH })
     expect(writeRpcBody('apply_lien_filing', { filing: filing() }).ok).toBe(false)
     expect(SERVER).toContain("windows: (days) => (windowsRead ??= rowsOf('rpc/list_lien_affidavit_windows', `p_within_days=${days}`))")
-    expect(SERVER).toContain("await invokeAsDev(session, 'drive-link', { action: 'put', job: { jobs_ledger_id: p.job_id }, name: write.scan.name, mime: write.scan.mime, where: LIEN_SCAN_LANDING, base64: bytesToBase64(scanBytes) })")
+    expect(SERVER).toContain("await invokeAsDev(session, 'drive-link', { action: 'put', job: { jobs_ledger_id: p.job_id }, name: scan.name, mime: scan.mime, where: LIEN_SCAN_LANDING, base64: bytesToBase64(scanBytes) })")
     expect(SERVER).toContain("await restRows(session, 'POST', 'job_lien_filings', 'select=id', write.row)")
-    expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_filings', `id=eq.${filingId}&document_url=eq.`, filingDocumentPayload({ url: file.url, note: LIEN_CLERK_SCAN_NOTE }, { clear: true }))")
-    expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_desk_items', `id=eq.${write.item.id}&kind=eq.affidavit&status=eq.${write.item.from}`, { ...write.item.patch, sent_filing_id: filingId })")
+    expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_filings', `id=eq.${filingId}&document_url=eq.&select=id`, filingDocumentPayload({ url, note }, { clear: true }), 'return=representation')")
+    expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_desk_items', `id=eq.${write.item.id}&kind=eq.affidavit&status=eq.${write.item.from}&select=id`, { ...write.item.patch, sent_filing_id: filingId }, 'return=representation')")
     expect(SERVER).toContain('await stagedUploadUrl(session, lienScanStagePath(who.userId, f.p.scan), LIEN_SCAN_STAGING_BUCKET)')
   })
 
@@ -298,7 +298,7 @@ describe('readLienFilingWorld — the reads', () => {
           if (table === 'jobs_ledger' && query.includes(`id=eq.${JOB}`)) return [world().job as never]
           if (table === 'jobs_ledger' && query.includes('job_address=ilike.')) return [{ id: JOB_B, job_name: 'ZZ Test Maple B', hcp_number: '2304', click_number: '', customer_address_id: PROPERTY_B }]
           if (table === 'jobs_ledger' && query.includes('id=in.(')) return [{ id: JOB_B, job_name: 'ZZ Test Maple B', hcp_number: '2304', click_number: '' }]
-          if (table === 'job_lien_filings' && query.includes('recording_number=eq.')) return [{ id: FILING, job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16' }]
+          if (table === 'job_lien_filings' && query.includes('recording_number=ilike.')) return [{ id: FILING, job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', recording_number: '2026-0222921' }, { id: 'near', job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', recording_number: '2026x0222921' }]
           if (table === 'job_lien_filings') return [NOTICE]
           return tables[table] ?? []
         },
@@ -310,7 +310,8 @@ describe('readLienFilingWorld — the reads', () => {
       shaped(),
     )
     expect(asked).toContain(`windows:${LIEN_FILING_WINDOW_DAYS}`)
-    expect(asked.find((q) => q.includes('recording_number=eq.'))).toContain(`recording_number=eq.2026%200222921&job_id=neq.${JOB}`)
+    // The number is read loosely and compared by its letters and digits, so punctuation never hides the same instrument.
+    expect(asked.find((q) => q.includes('recording_number=ilike.'))).toContain(`recording_number=ilike.2*0*2*6*0*2*2*2*9*2*1&job_id=neq.${JOB}`)
     expect(asked.find((q) => q.includes('job_address=ilike.'))).toContain(`job_address=ilike.${encodeURIComponent('14 Maple Ct*')}&id=neq.${JOB}`)
     expect(w.row?.open_balance).toBe(4180)
     expect(w.gc).toEqual({ id: GC, name: 'ZZ Test Builders', address: '5 Builder Way' })
@@ -464,6 +465,11 @@ describe('lienFilingDryRun — what it refuses', () => {
     expect(none.write.item).toBeNull()
   })
 
+  it('an affidavit record with no filed day on the job', () => {
+    const dateless = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: null, recording_number: '', county: '' }
+    expect(refusal(shaped(), world({ filings: [NOTICE, dateless] }))).toContain('an affidavit record with no filed day is already on this job')
+  })
+
   it('a second filing on the job, and a recording number that is already on another job', () => {
     const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-10', recording_number: '555', county: 'Marlow', document_url: 'https://example.test/copy', serve_due: '2026-11-16' }
     expect(refusal(shaped(), world({ filings: [NOTICE, onFile] }))).toContain('an affidavit is already on file for this job (instrument 555, filed 2026-11-10, with its saved copy)')
@@ -480,9 +486,15 @@ describe('lienFilingDryRun — a filing already on record with no saved copy', (
     expect(String((dry.reply as Record<string, unknown>).says)).toContain('Nothing else on the filing changes')
   })
 
+  it('takes a link alone when the copy is already in Drive, with no file to upload', () => {
+    const dry = ready(shaped({ scan: undefined, saved_copy: { link: 'https://drive.google.com/file/d/abc/view' } }), world({ filings: [NOTICE, onFile] }))
+    expect(dry.write).toEqual({ kind: 'attach_link', filingId: FILING, link: { url: 'https://drive.google.com/file/d/abc/view', note: LIEN_CLERK_SCAN_NOTE } })
+    expect(String((dry.reply as Record<string, unknown>).says)).toContain('no file is uploaded')
+  })
+
   it('refuses when the day or the county is not the record’s, and when no scan is sent', () => {
     expect(refusal(shaped({ filed_on: '2026-11-13' }), world({ filings: [onFile] }))).toContain('is on record for this job as filed 2026-11-16')
-    expect(refusal(shaped({ scan: null }), world({ filings: [onFile] }))).toContain('with no saved copy: send scan to add it')
+    expect(refusal(shaped({ scan: null }), world({ filings: [onFile] }))).toContain('with no saved copy: send scan or saved_copy to add it')
   })
 })
 
@@ -507,6 +519,10 @@ describe('the staged copy and the apply’s words', () => {
     const noScan = lienFilingAppliedWords(p, 'JP2291', dry.write, { file: null, filing: { id: FILING, serve_due: '2026-11-23', document_url: '' }, item: { failed: 'refused by the guard' }, stagedRemoved: null, scanFailed: 'the job’s Drive folder did not take the file: 502' })
     expect(noScan.ok).toBe(true)
     expect(String(noScan.saved_copy_not_added)).toContain('takes the scan alone')
+    // A file that reached Drive is never sent again: the words carry its link.
+    const inDrive = lienFilingAppliedWords(p, 'JP2291', dry.write, { file: { url: 'https://drive.google.com/file/d/abc/view', driveFileId: 'abc' }, filing: { id: FILING, serve_due: '2026-11-23', document_url: '' }, item: 'marked sent', stagedRemoved: true, scanFailed: 'its link was not saved on the filing: 403' })
+    expect(String(inDrive.saved_copy_not_added)).toContain('saved_copy: { link: "https://drive.google.com/file/d/abc/view" }')
+    expect(String(lienFilingAppliedWords(p, 'JP2291', dry.write, { file: null, filing: { id: FILING, serve_due: null, document_url: '' }, item: 'none', stagedRemoved: null, duplicates: ['other-id'] }).second_affidavit_on_record)).toContain('Void the extra one')
     expect(String(noScan.desk_item_not_marked)).toContain('refused by the guard')
     expect(String(lienFilingAppliedWords(p, 'JP2291', dry.write, { file: null, filing: { id: FILING, serve_due: null, document_url: '' }, item: 'none', stagedRemoved: false }).staged_copy_left)).toContain('private to you')
   })

@@ -35,6 +35,8 @@ const world = {
   drive: [] as Row[],
   refuseInsert: false,
   refuseDrive: false,
+  refuseLink: false,
+  afterInsert: null as (() => void) | null,
   nextId: 1,
 }
 
@@ -45,7 +47,7 @@ function matches(row: Row, key: string, expr: string): boolean {
   if (expr.startsWith('eq.')) return String(v ?? '') === expr.slice(3)
   if (expr.startsWith('neq.')) return String(v ?? '') !== expr.slice(4)
   if (expr.startsWith('in.(')) return expr.slice(4, -1).split(',').includes(String(v ?? ''))
-  if (expr.startsWith('ilike.')) return String(v ?? '').toLowerCase().startsWith(expr.slice(6).replace(/\*$/, '').toLowerCase())
+  if (expr.startsWith('ilike.')) return new RegExp(`^${expr.slice(6).split('*').map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`, 'i').test(String(v ?? ''))
   throw new Error(`fake REST: no filter "${expr}"`)
 }
 function filtered(table: string, query: string): Row[] {
@@ -69,11 +71,15 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
       if (world.refuseInsert) return json({ message: 'new row violates row-level security policy' }, 403)
       const row = { id: `new-${world.nextId++}`, voided_at: null, created_at: '2026-11-16T18:00:00Z', document_url: '', ...(body as Row) }
       ;(world.tables[table] ??= []).push(row)
+      world.afterInsert?.()
       return json([{ id: row.id }], 201)
     }
     if (method === 'PATCH') {
-      for (const r of filtered(table, query)) Object.assign(r, body as Row)
-      return new Response(null, { status: 204 })
+      if (world.refuseLink && table === 'job_lien_filings') return json({ message: 'permission denied for table job_lien_filings' }, 403)
+      const hit = filtered(table, query)
+      for (const r of hit) Object.assign(r, body as Row)
+      // As PostgREST answers: the rows it changed when asked for them, nothing otherwise.
+      return String((init?.headers as Record<string, string> | undefined)?.Prefer ?? '').includes('return=representation') ? json(hit.map((r) => ({ id: r.id }))) : new Response(null, { status: 204 })
     }
   }
   if (path.startsWith('/storage/v1/object/upload/sign/dev-seat-staging/')) {
@@ -196,6 +202,8 @@ beforeEach(async () => {
   world.drive = []
   world.refuseInsert = false
   world.refuseDrive = false
+  world.refuseLink = false
+  world.afterInsert = null
   world.nextId = 1
 })
 
@@ -282,12 +290,14 @@ describe('apply_lien_filing — one filing', () => {
     expect(insert).toMatchObject({ method: 'POST', table: 'job_lien_filings' })
     expect(insert!.body).toMatchObject({ job_id: JOB, created_by: DEV, kind: 'affidavit', amount: 4180, county: 'Marlow', recording_number: '20260222921', filed_at: '2026-11-16', serve_due: '2026-11-23' })
     expect(Object.keys(insert!.body as Row).sort()).toEqual(['amount', 'county', 'created_by', 'fields', 'filed_at', 'job_id', 'kind', 'recording_number', 'serve_due'])
-    expect(patch).toMatchObject({ method: 'PATCH', table: 'job_lien_desk_items', query: `id=eq.${ITEM}&kind=eq.affidavit&status=eq.approved`, body: { status: 'sent', sent_filing_id: 'new-1' } })
-    expect(link).toEqual({ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.new-1&document_url=eq.', body: { document_url: 'https://drive.google.com/file/d/drv1/view', document_note: LIEN_CLERK_SCAN_NOTE } })
+    expect(patch).toMatchObject({ method: 'PATCH', table: 'job_lien_desk_items', query: `id=eq.${ITEM}&kind=eq.affidavit&status=eq.approved&select=id`, body: { status: 'sent', sent_filing_id: 'new-1' } })
+    expect(link).toEqual({ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.new-1&document_url=eq.&select=id', body: { document_url: 'https://drive.google.com/file/d/drv1/view', document_note: LIEN_CLERK_SCAN_NOTE } })
     expect(world.writes).toHaveLength(3)
     expect(world.removed).toEqual([stagePath()])
     expect(world.tables.job_lien_desk_items!.find((i) => i.id === ITEM)).toMatchObject({ status: 'sent', sent_filing_id: 'new-1' })
     expect(world.log.at(-1)).toMatchObject({ verb: 'apply_lien_filing', status: 'ok', target: JOB })
+    // The log keeps the hash and the clerk's facts, never the long words: one apply per plan reads the hash back.
+    expect(world.log.at(-1)!.args).toEqual({ filing: { job_id: JOB, county: 'Marlow', recording_number: '20260222921', filed_on: '2026-11-16', scan: f.scan, saved_copy: null, filed_outside_the_desk: false, accept_differences: false }, plan_hash: hash })
   })
 
   it('cannot land twice: the job now holds its filing, and the other job is untouched', async () => {
@@ -356,6 +366,62 @@ describe('apply_lien_filing — one filing', () => {
     expect(world.tables.job_lien_filings!.filter((r) => r.kind === 'affidavit')).toHaveLength(1)
   })
 
+  it('a file in Drive whose link did not save is never uploaded twice: the next plan carries its link', async () => {
+    const { f, hash } = await planned()
+    world.staged[stagePath()] = PDF
+    world.refuseLink = true
+    const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
+    expect(out.isError).toBe(false)
+    expect(out.body).toMatchObject({ ok: true, filing_id: 'new-1', saved_copy: null })
+    expect(String(out.body!.saved_copy_not_added)).toContain('saved_copy: { link: "https://drive.google.com/file/d/drv1/view" }')
+    // The file landed, so the staged copy is gone and the same apply is spent.
+    expect(world.removed).toEqual([stagePath()])
+    world.refuseLink = false
+    const spent = await call('apply_lien_filing', { filing: f, plan_hash: hash })
+    expect(spent.isError).toBe(true)
+    const linkOnly = filing({ scan: undefined, saved_copy: { link: 'https://drive.google.com/file/d/drv1/view' } })
+    const again = await call('plan_lien_filing', { filing: linkOnly })
+    const entry = (again.body!.entries as Row[])[0]!
+    expect(entry).toMatchObject({ status: 'ready', mode: 'attach_link' })
+    expect(entry).not.toHaveProperty('upload')
+    const added = await call('apply_lien_filing', { filing: linkOnly, plan_hash: String(entry.plan_hash) })
+    expect(added.body).toMatchObject({ ok: true, filing_id: 'new-1', wrote: 'the link, as the saved copy of the filing on record', saved_copy: 'https://drive.google.com/file/d/drv1/view' })
+    expect(world.drive).toHaveLength(1)
+    expect(world.tables.job_lien_filings!.find((r) => r.id === 'new-1')).toMatchObject({ document_note: LIEN_CLERK_SCAN_NOTE })
+  })
+
+  it('a desk item that moved on since the plan is named, never reported as marked', async () => {
+    const { f, hash } = await planned()
+    world.staged[stagePath()] = PDF
+    world.afterInsert = () => void (world.tables.job_lien_desk_items!.find((i) => i.id === ITEM)!.status = 'held')
+    const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
+    expect(out.body).toMatchObject({ ok: true, filing_id: 'new-1', desk_item: { failed: 'the item was no longer approved when the mark was made' } })
+    expect(String(out.body!.desk_item_not_marked)).toContain('was not marked sent')
+  })
+
+  it('an affidavit that lands on the job while the scan is being read stops the insert', async () => {
+    const { f, hash } = await planned()
+    world.staged[stagePath()] = PDF
+    // The dry run reads the job's filings whole; the last look before the insert reads the affidavits alone.
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/storage/v1/object/authenticated/')) world.tables.job_lien_filings!.push({ id: 'raced', job_id: JOB, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '555', county: 'Marlow', document_url: '', voided_at: null, created_at: '2026-11-16T18:00:01Z' })
+      return fakeFetch(input, init)
+    }) as typeof fetch
+    const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
+    globalThis.fetch = realFetch
+    expect(out.isError).toBe(true)
+    expect(out.text).toContain('an affidavit landed on this job since the plan was read (raced)')
+    expect(world.writes).toEqual([])
+    expect(world.drive).toEqual([])
+  })
+
+  it('the same instrument number on another job is refused however it was punctuated', async () => {
+    world.tables.job_lien_filings!.push({ id: 'other', job_id: JOB_B, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '2026-0222921', county: 'Marlow', document_url: '', voided_at: null, created_at: '2026-11-16T17:00:00Z' })
+    const out = await call('plan_lien_filing', { filing: filing() })
+    expect((out.body!.entries as Row[])[0]).toMatchObject({ status: 'refused', why: expect.stringContaining('is already on JP2304') })
+  })
+
   it('a link typed in place of a file rides on the row, with no upload and no Drive call', async () => {
     const { f, hash } = await planned({ scan: undefined, saved_copy: { link: 'https://drive.google.com/file/d/abc/view', note: 'the clerk’s copy' }, filed_on: '2026-11-13' })
     const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
@@ -374,6 +440,6 @@ describe('apply_lien_filing — one filing', () => {
     world.staged[stagePath()] = PDF
     const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
     expect(out.body).toMatchObject({ ok: true, filing_id: 'on-file', wrote: 'the scan, as the saved copy of the filing on record' })
-    expect(world.writes).toEqual([{ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.on-file&document_url=eq.', body: { document_url: 'https://drive.google.com/file/d/drv1/view', document_note: LIEN_CLERK_SCAN_NOTE } }])
+    expect(world.writes).toEqual([{ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.on-file&document_url=eq.&select=id', body: { document_url: 'https://drive.google.com/file/d/drv1/view', document_note: LIEN_CLERK_SCAN_NOTE } }])
   })
 })
