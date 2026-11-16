@@ -1,10 +1,10 @@
 ---
-title: mark supply-house bills paid
+title: record a payment to a supply house
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: supply house, pay, payment, paid, mark paid, mark unpaid, due day, past due, make payment, apply payment, receipt, link, invoice, bill, reece, ferguson, morrison
+keywords: supply house, pay, payment, paid, mark paid, mark unpaid, record a payment, see the payment, remove a payment, ach, card, check, confirmation number, due day, past due, make payment, apply payment, receipt, link, invoice, bill
 ---
-You open a supply house and its bills come first, in groups by the day they fall due. You mark one bill paid on its own row, or you pay several with one payment.
+You open a supply house and its bills come first, in groups by the day they fall due. You pay the house in its own portal, then you record that payment here. One payment can cover several bills.
 
 ## Read a house's bills
 
@@ -38,27 +38,60 @@ The row stays where it is and turns grey. The row reads **Paid today**. The page
 
 Pressed the wrong bill? Press {{button:outline|Mark unpaid}} on the same row. The grey row stays listed until you close the house.
 
-Each bill is marked by itself. The card has no tick boxes. To pay several bills with one payment, use **Make Payment** below.
+Each bill is marked by itself. The card has no tick boxes. To pay several bills with one payment, use **Record a payment** below.
 
-## Mark several bills paid
+Mark paid keeps the day and the amount. It does not say how the bill was paid. Use **Record a payment** when you know the method and its number.
 
-1. Open **Materials → Supply Houses**. Open the house and press {{button:green|Make Payment}}.
-2. Tick the bills this payment covers. Only unpaid ones are listed. **Show all invoices** brings in the paid ones too.
-3. You may paste the **Payment or receipt link**. That is the bank confirmation, the house's receipt, or the check image.
-4. Press {{button:green|Apply}}. Each ticked bill turns paid, and its paid day is stamped today.
+## Record a payment
 
-Tick **Show paid invoices** at the top of Accounts payable to list the paid bills too. Paid bills sit in a **Paid** group at the bottom of the card.
+Pay the house in its portal first, as you always have. The app never moves money. It writes down what you sent.
+
+1. Open **Materials → Supply Houses**. Open the house and press {{button:green|Record a payment}}.
+2. Tick the bills the payment covered. The open bills are listed oldest due first. **Amount sent** adds itself up as you tick.
+3. Check **Date sent**. It opens on today.
+4. Pick how it was sent: **Card**, **ACH**, **Check**, **Cash** or **Other**. The chips open on how this house was paid last.
+5. Type the method's number in the box under the chips. That is the confirmation number, the check number or the card's last four.
+6. You may paste the **Receipt link**. That is the bank confirmation, the house's receipt or the check image.
+7. Press the green button. It names what it records, like **Record $2,052.40 on 2 bills**.
+
+Each ticked bill turns paid on the day you gave.
+
+:::example The window, with two bills ticked
+**Record a payment to Cedar Fork Supply** · 3 open bills · $2,441.55 · pays on the 20th. **Amount sent** reads 2052.40. {{chip:blue|ACH}} is picked. The line at the bottom reads **$2,052.40 placed of $2,052.40 sent**. The button reads {{button:green|Record $2,052.40 on 2 bills}}.
+:::
+
+Three links sit over the bills:
+
+- **Tick everything due by Nov 20** ticks every bill due by the house's next pay day.
+- **Fill oldest first** ticks every open bill.
+- **Clear** starts over.
+
+You can type **Amount sent** instead of ticking. The app then ticks the oldest bills that the amount pays in full. The button stays grey while money is left over. The line over it says how much is not on a bill yet. Tick the bills the payment covered until the amounts match.
+
+You may not know yet how it was sent. Press **Say later**. The payment is recorded now, and the button's words end in *details later*.
+
+## See a payment, or remove one
+
+A bill paid by a recorded payment names it on its row. The row reads the paid day, the method with its number, and how many bills the payment covered.
 
 :::example A paid bill's row
-**201 · Maple Lofts** · paid 9/25 · S1234567 · billed 9/3 · **See the bill ›** · **Receipt ›** · **$412.80** · {{button:outline|Mark unpaid}}
+**201 · Maple Lofts** · paid 11/12 · ACH 88213 · one of 4 bills on $5,000.00 · S1234567 · billed 10/3 · **See the bill ›** · **Receipt ›** · **$412.80** · {{button:outline|See the payment}}
 :::
+
+Press {{button:outline|See the payment}} on that row. The window lists every bill the payment paid, with the amount on each. The line at the bottom says what the lines add up to.
+
+Recorded the wrong payment? Press **Remove this payment…** in that window. The app asks first and says what will change. Press {{button:outline|Remove payment}} and every bill it paid reads unpaid again. Then record it again with the right bills.
+
+A bill paid by a recorded payment has no **Mark unpaid**. The money was sent, so the payment is removed instead.
+
+Tick **Show paid invoices** at the top of Accounts payable to list the paid bills too. Paid bills sit in a **Paid** group at the bottom of the card. A bill paid before payments were recorded reads its paid day alone.
 
 ## What the two links are
 
 - **See the bill ›** opens the **invoice**. That is the scan or PDF saved on the bill when it was entered.
-- **Receipt ›** opens the payment link you pasted in Make Payment. It is saved **beside** the invoice, never over it. Leaving the box blank changes neither link.
+- **Receipt ›** opens the receipt link you pasted in Record a payment. It is saved **beside** the invoice, never over it. Leaving the box blank changes neither link.
 
-To fix a paid day, use the pencil on the bill's row. To unmark one bill, press {{button:outline|Mark unpaid}} on its row.
+To fix a paid day, use the pencil on the bill's row. To unmark one bill, press {{button:outline|Mark unpaid}} on its row. A bill paid by a recorded payment keeps that payment's day, and its status is locked in the Edit window.
 
 ## See the bills inside an aging cell
 
@@ -80,7 +113,7 @@ A bill with no due date sits in the **No due date** cell. The row offers {{butto
 
 A bill with no job sits under **No job yet**. The row offers {{button:outline|Pick a job ›}}. Press it and the bill opens with the job search ready. Choose the job there. The window then shows the bill under that job.
 
-A house's window offers {{button:outline|Make a payment ›}} at the bottom. Press it and the house's **Apply Payment** window opens over the cell. Tick the bills and press {{button:green|Apply}}. The **Total** row's window spans every house, so it has no payment button.
+A house's window offers {{button:outline|Record a payment ›}} at the bottom. Press it and the house's **Record a payment** window opens over the cell. Tick the bills and press the green button. The **Total** row's window spans every house, so it has no payment button.
 
 :::example A No due date row
 **S124687508.003** · PO 4112 · Jul 3, 2026 · no due date · **$412.80** · {{button:outline|Add a due date ›}}
@@ -92,10 +125,10 @@ On a phone, Accounts payable is a list of houses with what each is owed. Tap a h
 
 - the **balance**, the aging bar and the pay day, with {{button:blue|☎ Call counter}} beside it
 - **Notes on this house** is where you type right there and press {{button:outline|Save notes}}. It is one shared note for the house. The Edit window shows the same one.
-- {{button:outline|Add invoice}} and {{button:outline|Make payment}}
+- {{button:outline|Add invoice}} and {{button:outline|Record a payment}}
 - the invoices as rows under **Unpaid**, **Paid** and **Credits**. Each row shows the number, the due day, the jobs, and one amount. An overdue one carries a {{chip:red|22 d past due}} chip
 
-Tap an invoice for its actions: **Mark paid**, **View the invoice**, **View the receipt**, **Edit**.
+Tap an invoice for its actions: **Mark paid**, **View the invoice**, **View the receipt**, **Edit**. A bill paid by a recorded payment offers **See the payment** in place of **Mark unpaid**.
 
 In the Directory above it, each house's card shows what is owed and its pay day. That is for office logins only.
 

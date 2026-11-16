@@ -32,6 +32,10 @@ export type SupplyBillCardRow = {
   is_paid: boolean
   /** The day it was paid, company time, as `YYYY-MM-DD`; null while unpaid. */
   paidYmd: string | null
+  /** What paid it, after the paid day: `ACH 88213 · one of 4 bills on $5,000.00`. Empty for a bill paid before payments were rows. */
+  paidBy?: string
+  /** A typed payment stands behind this paid bill: the press opens that payment, since Mark unpaid would not unmake it. */
+  seePayment?: boolean
   link: string | null
   payment_link: string | null
   on_job_account: boolean | null
@@ -106,6 +110,7 @@ export function SupplyHouseBillsCard({
     const facts: ReactNode[] = []
     if (paidNow) facts.push(<b key="paidnow">Paid today</b>)
     else if (b.is_paid && b.paidYmd) facts.push(<span key="paid">paid {billDateWords(b.paidYmd, todayYmd)}</span>)
+    if (b.is_paid && b.paidBy) facts.push(<span key="paidby" data-testid="supply-bill-paid-by">{b.paidBy}</span>)
     facts.push(<span key="inv">{b.invoice_number}</span>)
     // The PO's words lead the row when there is no job; they are not said twice.
     if (po && b.jobs.length > 0) {
@@ -163,7 +168,7 @@ export function SupplyHouseBillsCard({
               </a>
             )}
             {b.payment_link && (
-              <a href={b.payment_link} target="_blank" rel="noreferrer" title="Payment or receipt (Make Payment)" style={link}>
+              <a href={b.payment_link} target="_blank" rel="noreferrer" title="The payment's receipt" style={link}>
                 Receipt ›
               </a>
             )}
@@ -185,11 +190,11 @@ export function SupplyHouseBillsCard({
             type="button"
             disabled={payingId != null}
             onClick={() => onTogglePaid(b.id)}
-            aria-label={`${b.is_paid ? 'Mark unpaid' : 'Mark paid'}: ${b.invoice_number}`}
+            aria-label={`${b.is_paid ? (b.seePayment ? 'See the payment' : 'Mark unpaid') : 'Mark paid'}: ${b.invoice_number}`}
             data-testid="supply-bill-mark-paid"
             style={{ minHeight: 36, minWidth: 104, padding: '0.3rem 0.8rem', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', background: 'var(--surface)', color: b.is_paid ? 'var(--text-muted)' : 'var(--text-green-700)', border: `1px solid ${b.is_paid ? 'var(--border-strong)' : 'var(--text-green-700)'}`, borderRadius: 6, cursor: payingId != null ? 'default' : 'pointer' }}
           >
-            {payingId === b.id ? 'Saving…' : b.is_paid ? 'Mark unpaid' : 'Mark paid'}
+            {payingId === b.id ? 'Saving…' : b.is_paid ? (b.seePayment ? 'See the payment' : 'Mark unpaid') : 'Mark paid'}
           </button>
           <button type="button" onClick={() => onEdit(b.id)} title="Edit" aria-label={`Edit ${b.invoice_number}`} style={{ minHeight: 36, minWidth: 36, padding: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--text-muted)' }}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={16} height={16} fill="currentColor" aria-hidden="true">
