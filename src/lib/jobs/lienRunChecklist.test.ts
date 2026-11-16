@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunChecklistWords, lienRunFootWords, lienRunMailLink, lienRunNothingToClaim, lienRunPill, lienRunRowLine, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
+import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunMailLink, lienRunNothingToClaim, lienRunPill, lienRunRowLine, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
 import type { LienNoticeSignature } from './lienNoticeSignature'
 
@@ -186,36 +186,24 @@ describe('lienRunBatchPlans', () => {
     ])
   })
 
-  it('dead only when nothing is ready: bare verbs with nothing to do, a ▸ with only holds', () => {
+  it('dead only when nothing is ready, and a dead press keeps its noun whether or not rows are held (v2.7477)', () => {
     const none = lienRunBatchPlans([])
     expect(none.print.words).toEqual({ button: 'Mark printed', foot: null, dead: true })
     expect(none.mail.words).toEqual({ button: 'Record mailings', foot: null, dead: true })
     const owed = lienRunBatchPlans(lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-08T16:00:00Z' })] }))
     expect(owed.mail.words.dead).toBe(true)
-    expect(owed.mail.words.button).toBe('Record ▸')
+    expect(owed.mail.words.button).toBe('Record mailings')
     expect(owed.print.words.dead).toBe(true)
   })
 })
 
 describe('the words around the checklist', () => {
-  it('the heading counts the three ticks; the foot names what the run waits on most', () => {
-    const rs = lienRunChecklistRows({
-      notices: [notice({ itemId: 'a', printedAt: null, signature: null }), notice({ itemId: 'b', printedAt: '2026-10-08T16:00:00Z' }), notice({ itemId: 'c', printedAt: '2026-10-08T16:00:00Z', recipients: [owner('9407 1118 9876 5432 1098'), gc('9407 1118 9876 5432 1111')] })],
-    })
-    expect(lienRunChecklistWords(rs)).toBe('2 printed · 2 signed · 1 mailed of 3')
-    expect(lienRunChecklistWords([])).toBe('')
-    expect(lienRunFootWords(rs)).toEqual({ line1: '1 to print · 1 owes a number · 1 ready to record', line2: 'Print the packet, or tick Printed on a paper printed elsewhere.' })
-    expect(lienRunFootWords([]).line1).toBe('Nothing is in this run.')
-  })
-
-  it('the foot leaves a paid job out of its counts, and says so when nothing else is left (v2.7337)', () => {
+  it('the Signed batch leaves a paid job out of its count (v2.7337)', () => {
     const paid = (itemId: string) => notice({ itemId, printedAt: '2026-10-09T15:32:00Z', signature: null, amount: 0 })
     const live = (itemId: string) => notice({ itemId, printedAt: '2026-10-08T16:00:00Z', signature: null })
     // The desk of 2026-11-15: seven printed, five paid since.
     const seven = lienRunChecklistRows({ notices: [live('a'), live('b'), paid('c'), paid('d'), paid('e'), paid('f'), paid('g')] })
-    expect(lienRunFootWords(seven)).toEqual({ line1: '2 to sign · 5 held', line2: 'Tick Signed when the leader has signed the paper, and say how you know.' })
     expect(lienRunBatchPlans(seven).sign.words.button).toBe('Mark 2 signed · 5 wait ▸')
-    expect(lienRunFootWords(lienRunChecklistRows({ notices: [paid('c'), paid('d')] }))).toEqual({ line1: '2 held', line2: 'Nothing is owed on these jobs now, so nothing here goes out.' })
   })
 
   it('the pile row’s line names the tick it waits on', () => {
