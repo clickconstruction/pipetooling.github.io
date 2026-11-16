@@ -30,6 +30,14 @@ export type LienPaneSection<K extends string = LienPaneSectionKey> = {
   foot?: boolean
 }
 
+/**
+ * A head's fact as whole words (v2.7446): the fact and its tail on one line, for the `title` of the words a narrow pane
+ * cuts with an ellipsis. The head draws the same two pieces, so the tip and the bar cannot part.
+ */
+export function lienPaneHeadFactWords(section: Pick<LienPaneSection<string>, 'fact' | 'tail'>): string {
+  return section.tail ? `${section.fact} · ${section.tail}` : section.fact
+}
+
 export type LienPaneSectionsInput = {
   /** The timeline's next step, "Draft the Jul + Aug notice — 9 days."; null with no timeline. */
   nextWords: string | null

@@ -4296,7 +4296,9 @@ body.my-time-boundary-dragging {
 .lienMonthsHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; }
 .lienMonthsHead strong { font-size: 0.875rem; }
 .lienMonthsHead span, .lienMonthsNote, .lienMonthsEmpty { font-size: 0.75rem; color: var(--text-muted); }
-.lienMonthsBody { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem 1.1rem; align-items: stretch; }
+/* The claim at the left, the notes beside it. The columns live here and not inline (v2.7446): an inline template beat the
+   520px rule below, so in a narrow card the claim kept its column and the notes ran out of the card. */
+.lienMonthsBody { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.6rem 1.1rem; align-items: stretch; }
 /* A closed month is one line where the card has room (Taunya's ask of 2026-11-15): the hours sit beside the month, and the
    window's chips, its noted line and its press share a row. What a missed window costs is said once under the grid. The
    Windows view's "it was open" words trail the row and give way first, cut with an ellipsis; a press that does not fit
@@ -4328,7 +4330,8 @@ body.my-time-boundary-dragging {
 .lienMonthCard[data-urgent='yes'] .lienMonthCardDue { color: var(--text-red-700); font-weight: 600; }
 .lienMonthsClaim { display: grid; align-content: center; gap: 0; padding-left: 1.1rem; border-left: 1px solid var(--border); min-width: 9.5rem; font-size: 0.72rem; color: var(--text-muted); }
 .lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
-.lienDeskFooterSlot { display: grid; gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
+/* One column held to the slot's width (v2.7446): an `auto` column is as wide as the chip's one line of words, which pushed the row out of a narrow pane. */
+.lienDeskFooterSlot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
 .lienDeskFooterSlot:empty { display: none; }
 /* The verdict band brought the footer up (v2.7321): a ring for a moment, the gate's own. */
 .lienDeskFooterSlot[data-lien-foot-lit] { animation: lienGateBringUp 1.6s ease-out both; --lien-gate-ring: var(--text-link); }
@@ -4418,6 +4421,9 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPageExportBtn:disabled { color: var(--text-muted); cursor: default; }
 .lienPageExportSep { width: 1px; height: 12px; background: var(--border-strong); }
 .lienPageExport[data-phone='yes'] .lienPageExportBtn { height: 32px; min-width: 40px; padding: 0 10px; font-size: 0.875rem; }
+/* A page bar's words in a pane of any width (v2.7446): the muted words after the page's name shrink first, then the name; both end in an ellipsis. */
+.lienPageLabelName { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lienPageLabelMore { flex: 0 9999 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 400; letter-spacing: 0; text-transform: none; }
 /* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
 .lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
 /* The list's find box as a quiet line (v2.7315): no pill — the ⌕ and the words on the list's own background with one hairline under them,
@@ -4449,8 +4455,9 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienDeskTitleBar[data-lien-pane-open] [role="tablist"] { display: none !important; }
 [data-lien-desk-foot-fold] ~ div button { min-height: 40px; }
 [data-lien-desk-foot-fold][aria-expanded="false"] ~ div { display: none !important; }
-/* …and each section is held to the pane's width, with a page of the paper sliding inside its own frame sooner than push the whole pane sideways. */
-[data-lien-pane-phone] [data-lien-pane-body] { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+/* Each section is held to the pane's width on every screen (a phone's rule until v2.7446): a section's grid with an `auto` column is as wide as its
+   widest one-line bar, which slid the whole pane sideways in a 1,024px window. On a phone a page of the paper and the months grid slide inside their own frames. */
+[data-lien-pane-body] { grid-template-columns: minmax(0, 1fr); min-width: 0; }
 [data-lien-pane-phone] [data-lien-desk-months] { overflow-x: auto; }
 /* …and every press under 40 px inside the open paper gets a thumb's square (punch list #352, the leftovers): the pad `watchSmallPresses` marks, drawn unseen over the press, so nothing moves. */
 [data-lien-pane-phone] [data-press-pad] { position: relative; }
@@ -4726,7 +4733,8 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienByHandWords { display: inline-block; line-height: 1.15; text-align: left; }
 /* v2.4855 (the owner's pick, variant A): the awaiting, ready, printed and held footers are one row — the state as a chip
    whose hover is the old sentence, the side doors as links, and one button at the right end. */
-.lienFootChip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); font-size: 0.78rem; font-weight: 600; white-space: nowrap; max-width: 100%; }
+/* The chip is one line while the row has room for it and wraps whole words when it has not (v2.7446): a tablet has no pointer to read a cut chip's tip with. 12px rounds a one-line chip as the pill did. */
+.lienFootChip { display: inline-flex; align-items: baseline; gap: 0.3rem; padding: 2px 9px; border-radius: 12px; border: 1px solid var(--border); font-size: 0.78rem; font-weight: 600; max-width: 100%; min-width: 0; }
 .lienFootChip[data-tone='green'] { background: var(--bg-green-tint); color: var(--text-green-700); }
 .lienFootChip[data-tone='blue'] { background: var(--bg-blue-tint); color: var(--text-link); }
 .lienFootChip[data-tone='amber'] { background: var(--bg-amber-tint); color: var(--text-amber-700); }

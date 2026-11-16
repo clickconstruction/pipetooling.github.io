@@ -55,7 +55,8 @@ export function LienJobHeading({ label, onOpenJob }: { label: string; onOpenJob?
         e.stopPropagation()
         onOpenJob()
       }}
-      style={{ ...LIEN_JOB_DOOR_STYLE, fontSize: '1rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
+      // The heading is a title, so in a pane narrower than its words it wraps whole (v2.7446); it was one unshrinking line that ran out of the pane.
+      style={{ ...LIEN_JOB_DOOR_STYLE, fontSize: '1rem', flex: '0 1 auto', minWidth: 0, whiteSpace: 'normal', overflowWrap: 'anywhere' }}
     >
       {label}
     </button>

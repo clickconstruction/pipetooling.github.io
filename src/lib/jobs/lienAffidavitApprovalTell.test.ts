@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { lienAffidavitBatchToldWords, lienAffidavitTellPapers, lienAffidavitToldWords, lienTellFailureReason, type LienLeaderTellResult } from './lienAffidavitApprovalTell'
-import { leaderToldWords } from './lienDeskIo'
+import { lienNoticeToldWords } from './lienLeaderTold'
 import { plainWordsFailures } from '../plainWords'
 
 const told = (pushSent: number, emailSent: boolean, leaderName: string | null): LienLeaderTellResult => ({ ok: true, told: { pushSent, emailSent, leaderName } })
@@ -27,7 +27,7 @@ describe('the office’s words after one affidavit is sent for approval', () => 
     expect(lienAffidavitToldWords(told(0, false, null))).toBe('Sent for approval. The leader will see it on the Dashboard.')
     expect(lienAffidavitToldWords(null)).toBe('Sent for approval. The leader will see it on the Dashboard.')
     for (const r of [{ pushSent: 2, emailSent: false, leaderName: 'Malachi Whites' }, { pushSent: 0, emailSent: true, leaderName: 'Malachi Whites' }, { pushSent: 0, emailSent: false, leaderName: null }]) {
-      expect(lienAffidavitToldWords({ ok: true, told: r })).toBe(leaderToldWords(r))
+      expect(lienAffidavitToldWords({ ok: true, told: r })).toBe(lienNoticeToldWords({ ok: true, told: r }).said)
     }
   })
 

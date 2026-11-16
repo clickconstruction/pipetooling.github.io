@@ -26,8 +26,10 @@ export type LienApprovalPushInput = {
   dueYmd: string | null
   /** Today in the app's time zone, YYYY-MM-DD. */
   todayYmd: string
-  /** Who sent it for approval; null when the item has no drafter. */
+  /** Who pressed: the caller of the function, never the drafter; null when their row has no name. */
   senderName: string | null
+  /** The To do view's Remind press (v2.7445): the paper was sent earlier, and the email says a reminder. */
+  reminder?: boolean
 }
 
 export type LienApprovalPush = { title: string; body: string; url: string; tag: string; subject: string; emailText: string }
@@ -67,7 +69,7 @@ export function lienApprovalPush(input: LienApprovalPushInput): LienApprovalPush
   const body = [input.jobLabel, owed, mailBy].filter(Boolean).join(' · ')
   const title = 'Approve a lien notice'
   const lines = [
-    `${first ?? 'The office'} sent a lien notice for your approval.`,
+    input.reminder ? `${first ?? 'The office'} is reminding you of a lien notice that waits for your approval.` : `${first ?? 'The office'} sent a lien notice for your approval.`,
     '',
     input.jobLabel,
     owed ? (owed.endsWith('.') ? owed : `${owed}.`) : null,
@@ -223,8 +225,10 @@ export type LienAffidavitApprovalPushInput = {
   papers: ReadonlyArray<LienAffidavitApprovalPaper>
   /** Today in the app's time zone, YYYY-MM-DD. */
   todayYmd: string
-  /** Who sent them for approval; null when unknown. */
+  /** Who pressed: the caller of the function; null when unknown. */
   senderName: string | null
+  /** The To do view's Remind press (v2.7445): the papers were sent earlier, and the email says a reminder. */
+  reminder?: boolean
 }
 
 /** The door that exists: the desk's Affidavits list, opened on the job when the push is about one paper. */
@@ -257,7 +261,7 @@ export function lienAffidavitApprovalPush(input: LienAffidavitApprovalPushInput)
   if (papers.length <= 1) {
     const title = 'Approve a lien affidavit'
     const lines = [
-      `${who} sent a lien affidavit for your approval.`,
+      input.reminder ? `${who} is reminding you of a lien affidavit that waits for your approval.` : `${who} sent a lien affidavit for your approval.`,
       '',
       head.jobLabel,
       day ? `File by ${day}${long}` : null,
@@ -277,7 +281,7 @@ export function lienAffidavitApprovalPush(input: LienAffidavitApprovalPushInput)
   const n = papers.length
   const title = `Approve ${n} lien affidavits`
   const lines = [
-    `${who} sent ${n} lien affidavits for your approval.`,
+    input.reminder ? `${who} is reminding you of ${n} lien affidavits that wait for your approval.` : `${who} sent ${n} lien affidavits for your approval.`,
     '',
     ...papers.map((p) => {
       const d = shortDay(p.fileByYmd)
@@ -346,9 +350,13 @@ export const LIEN_AFFIDAVIT_ASK_FRESH_MS = 15 * 60_000
  * Whether the leader is told of this row: an affidavit on the desk, waiting for his approval, sent for it in the last
  * fifteen minutes. A paper a standing rule approved or held, a notice, a voided row and an old send are all left out,
  * so the call can only repeat what the desk just did.
+ *
+ * A reminder (v2.7445) is by its nature a later call, so the fifteen minutes are not asked of it: the To do view's
+ * Remind press was answered *Not awaiting approval* for every affidavit older than that, and nothing was sent.
  */
-export function lienAffidavitAskable(row: { kind?: string | null; status?: string | null; voided_at?: string | null; submitted_at?: string | null } | null | undefined, nowMs: number): boolean {
+export function lienAffidavitAskable(row: { kind?: string | null; status?: string | null; voided_at?: string | null; submitted_at?: string | null } | null | undefined, nowMs: number, opts?: { reminder?: boolean }): boolean {
   if (!row || row.kind !== 'affidavit' || row.status !== 'awaiting_approval' || row.voided_at) return false
+  if (opts?.reminder) return true
   const sent = Date.parse(row.submitted_at ?? '')
   return Number.isFinite(sent) && nowMs - sent <= LIEN_AFFIDAVIT_ASK_FRESH_MS && sent - nowMs <= LIEN_AFFIDAVIT_ASK_FRESH_MS
 }
