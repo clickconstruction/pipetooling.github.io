@@ -151,7 +151,7 @@ Press **Label** on a box to print that box alone, or **Print labels** for every 
 
 ## Reserve stickers
 
-A sticker is a label printed before its box. Printing a sticker reserves its place. The sticker gets its own link, such as prts.co/b/4F2A-9C18. It also gets the box's name to read, such as G78. Both are held for a box that is filled in later. No sticker prints without a link of its own. Stick one on each cage or box on site. The crew then scans it on the phone and says which box it is on. Read [stick a sticker on a box](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#stick-a-sticker-on-a-box) for that part.
+A sticker is a label printed before its box. Printing a sticker reserves its place. The sticker gets its own link, such as prts.co/b/4F2A-9C18. The sticker also gets the box's name to read, such as G78. The link and the name are held for a box that is filled in later. No sticker prints without a link of its own. Stick one on each cage or box on site. The crew then scans it on the phone and says which box it is on. Read [stick a sticker on a box](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#stick-a-sticker-on-a-box) for that part.
 
 On a job's page, press **Reserve stickers** beside **Print labels**. On the Materials page, press **Reserve stickers** at the right end of the tabs and pick the job. Until November 2026 the press read *Print blank stickers*. New boxes made from the stickers go on that job. The office, a primary and a superintendent can print a run. For everyone else the press is grey and says why.
 
