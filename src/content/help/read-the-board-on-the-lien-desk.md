@@ -122,11 +122,11 @@ Retainage is one line under the notices. It counts the retainage notices by stag
 
 A mechanic's lien does not attach to public property. Some owners read as a city, a county, a school district or the State. Nobody can make the papers for their jobs.
 
-- Its chip carries a ⊘ mark. The chip loses its red day, because no paper can be made there.
-- One amber line sits over the bins, like *2 jobs sit on public property and are still on the lien path*. It gives the money they owe.
+- Such a job's chip carries a ⊘ mark. The chip loses its red day, because no paper can be made there.
+- One amber line sits over the bins, like *2 jobs sit on public property and are still on the lien path*. The line gives the money those jobs owe.
 - {{button:outline|Review them ›}} opens one window for each property in turn. The window asks whether to take the property off the lien path.
 
-A property answered public leaves the bins. Its jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}. Each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
+A property answered public leaves the bins. The property's jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}. Each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
 
 **Put a job back on the lien path…** at the foot of the bin puts a property back. Say why, and its jobs return to the bins. [A public property](/help/file-a-lien-and-never-miss-its-deadlines#a-public-property) has the window's steps.
 
