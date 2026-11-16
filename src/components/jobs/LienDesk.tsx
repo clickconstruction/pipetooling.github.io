@@ -152,6 +152,7 @@ import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
+import { LienEnvelopeCard } from './LienEnvelopeCard'
 import { LienJobSuppliersCard, LienSupplierMarkLine } from './LienJobSuppliers'
 import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
@@ -3234,54 +3235,24 @@ export default function LienDesk({
 
       {paneHead('envelope')}
       <div data-lien-pane-body="envelope" style={{ display: 'grid', gap: '0.6rem' }}>
-      {/* The envelope (v2.3776): who the paper goes to and the cover-note switch, with the paper they describe — the footer keeps only the verbs. */}
-      <div className="lienEnvelope" data-lien-desk-send-line>
-        <span>
-          ✉ To <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong> by certified mail{gc?.email ? <span className="lienFootMuted"> · courtesy PDF to {gc.email}</span> : null}
-        </span>
-        <label title={`Counsel's cover letter for a ${coverLetterKindFor(property)} property (2026-09-22), filled for this job — the first page of the owner's copy; the GC's copy is the form only`}>
-          <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => { setCoverNote(ev.target.checked); touchDraft() }} />
-          <span>Include counsel's cover letter</span>
-        </label>
-        {/* The supply houses in the owner's letter (v2.4725, Taunya's ask): one more tick, drawn only while the letter is on and a house is owed. */}
-        {coverNote && supplierJob && supplierJob.owed > 0 ? (
-          <label data-lien-desk-houses-tick title="A paragraph at the end of counsel's letter: the house, what it is owed, the day its own notice goes out, that it is a separate claim our release does not cover, and that paying us is what clears it">
-            <input type="checkbox" checked={housesInLetter} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setHousesInLetter(ev.target.checked)} />
-            <span>Name the supply {supplierJob.housesOwed === 1 ? 'house' : 'houses'} owed · {formatUsdNoCents(supplierJob.owed)}</span>
-          </label>
-        ) : null}
-        {/* A conditional release of lien in the envelope (v2.4729, Stephen's addition): off until asked for; the tick makes the draft row, the run issues it. */}
-        {coverNote && selected && claimNumber > 0 ? (
-          <label data-lien-desk-release-tick title="The app's § 53.284 conditional release, prefilled from the notice — the claim as the amount, the GC as the check's maker — behind the owner's letter and the GC's form, named in the letter; a draft on the job now, issued when the run is recorded">
-            <input type="checkbox" checked={releaseId != null} disabled={(item != null && item.status !== 'drafted') || busy} onChange={(ev) => toggleRelease(ev.target.checked)} />
-            <span>Enclose a conditional release · {formatUsdNoCents(claimNumber)}</span>
-          </label>
-        ) : null}
-        {coverNote && ((housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL) || (releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL)) ? (
-          <span data-lien-desk-houses-counsel style={{ flexBasis: '100%', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>
-            {housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL && releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL
-              ? 'Counsel has not read the supply house and release paragraphs yet.'
-              : releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL
-                ? 'Counsel has not read the release paragraph yet.'
-                : 'Counsel has not read the supply house paragraph yet.'}
-          </span>
-        ) : null}
-      </div>
-
-      {/* The paper is the editor (v2.3694): the four values the office may change sit in shaded boxes on the notice itself; this row keeps only the legend and the preview door. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.4rem 0.75rem', border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-desk-paper-legend>
-        {wordingLocked ? (
-          <span>{office ? 'Sent for approval — pull it back to a draft to change the wording.' : 'The values in a box were typed by the office; the rest is the statute’s form or filled from the job.'}</span>
-        ) : (
-          <span>
-            <span aria-hidden="true" style={{ display: 'inline-block', width: 22, height: 12, verticalAlign: 'middle', marginRight: 6, borderRadius: 4, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)' }} />a shaded box is yours to change — click it, on the paper · plain text is the statute’s form or filled from the job; hover says where
-          </span>
-        )}
-        <span style={{ flex: 1 }} />
-        <button type="button" onClick={openPreview} style={linkBtn} title="The notice as the packet prints it, in its own tab, with the values you can change marked">
-          Preview in a new window ↗
-        </button>
-      </div>
+      {/* The envelope as one card (v2.7427): who the paper goes to, what rides with the notice, the key to the shaded boxes and the preview door. */}
+      <LienEnvelopeCard
+        ownerName={ownerName || 'the owner of record'}
+        contractorName={gc?.name || 'the original contractor'}
+        courtesyEmail={gc?.email || null}
+        cover={{
+          checked: coverNote,
+          disabled: item != null && item.status !== 'drafted',
+          onChange: (on) => { setCoverNote(on); touchDraft() },
+          title: `Counsel's cover letter for a ${coverLetterKindFor(property)} property (2026-09-22), filled for this job — the first page of the owner's copy; the GC's copy is the form only`,
+        }}
+        // The supply houses in the owner's letter (v2.4725, Taunya's ask): drawn only while the letter is on and a house is owed.
+        houses={coverNote && supplierJob && supplierJob.owed > 0 ? { checked: housesInLetter, disabled: item != null && item.status !== 'drafted', onChange: setHousesInLetter, count: supplierJob.housesOwed, amount: formatUsdNoCents(supplierJob.owed), unread: housesInLetter && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL } : null}
+        // A conditional release of lien in the envelope (v2.4729, Stephen's addition): off until asked for; the tick makes the draft row, the run issues it.
+        release={coverNote && selected && claimNumber > 0 ? { checked: releaseId != null, disabled: (item != null && item.status !== 'drafted') || busy, onChange: toggleRelease, amount: formatUsdNoCents(claimNumber), unread: releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL } : null}
+        lockedWords={wordingLocked ? (office ? 'Sent for approval — pull it back to a draft to change the wording.' : 'The values in a box were typed by the office; the rest is the statute’s form or filled from the job.') : null}
+        onPreview={openPreview}
+      />
 
       {/* What goes in the envelope (v2.3540): the cover page first while it is ticked, then the notice — the pages as the packet prints them. */}
       {coverHtml ? (

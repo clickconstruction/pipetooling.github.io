@@ -90,7 +90,7 @@ The leader sees his own lane the same way. It is called **Awaiting your signatur
 
 ## Enclose one with a lien notice
 
-The Lien desk can put a conditional release in the envelope with a § 53.056 notice. The § 53.056 notice is the Texas form we send the owner and the GC for each unpaid month. A box above the paper reads **Enclose a conditional release**. It shows the claim beside it. It starts off. Tick it when the GC or the owner has asked for a release before they cut the check.
+The Lien desk can put a conditional release in the envelope with a § 53.056 notice. The § 53.056 notice is the Texas form we send the owner and the GC for each unpaid month. A box above the paper reads **A conditional release**. It shows the claim at its right. It starts off. Tick it when the GC or the owner has asked for a release before they cut the check.
 
 The release is the app's own form, filled from the notice. The claim is the amount. The GC is the one the check comes from. The form is ***Conditional · progress*** when the claim is less than everything open on the job. It is ***Conditional · final*** when the claim is all of it.
 
