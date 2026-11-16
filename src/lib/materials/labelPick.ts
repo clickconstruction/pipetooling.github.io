@@ -114,3 +114,56 @@ export function stoppedDetailWords(whole: ReadonlyArray<string>, partial: { name
 export function restCountWords(boxes: number, strips: number): string {
   return `${boxes} ${boxes === 1 ? 'box' : 'boxes'}, ${strips} ${strips === 1 ? 'strip' : 'strips'} to go.`
 }
+
+// ── a stopped run kept through a closed window ───────────────────────────────────────────────
+
+/**
+ * A run that stopped part way, as this device keeps it for the rest of the day (Taunya, 2026-11-15: the tape ran out
+ * half way through G37, and a window closed to change it came back with every box ticked). The job, the day, the
+ * copies, the boxes left out and the one part way.
+ */
+export type StoppedRun = { jobId: string; day: string; copies: number; left: string[]; partial: PartialBox | null }
+
+/** What to keep after a run ends part way; null when there is no job to key it by. */
+export function stoppedRunToKeep(jobId: string | null | undefined, day: string, copies: number, left: ReadonlySet<string>, partial: PartialBox | null): StoppedRun | null {
+  if (!jobId) return null
+  return { jobId, day, copies: clampTapeCopies(copies), left: [...left], partial }
+}
+
+/** A kept run read back from storage: the shape checked, since anything may be in a browser's store. */
+export function stoppedRunOf(value: unknown): StoppedRun | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  if (typeof v.jobId !== 'string' || typeof v.day !== 'string' || !Array.isArray(v.left) || !v.left.every((id) => typeof id === 'string')) return null
+  const copies = clampTapeCopies(v.copies)
+  const p = v.partial as Record<string, unknown> | null | undefined
+  const partial = p && typeof p.id === 'string' && Number.isInteger(p.done) && Number.isInteger(p.copies) ? { id: p.id, done: p.done as number, copies: p.copies as number } : null
+  return { jobId: v.jobId, day: v.day, copies, left: v.left as string[], partial }
+}
+
+/**
+ * The kept run as the window opens on it: only for the same job on the same day, only the boxes the job still has,
+ * and only while something is left to print. Anything else is a fresh window with every box ticked.
+ */
+export function stoppedRunToResume(kept: StoppedRun | null, jobId: string | null | undefined, today: string, ids: ReadonlyArray<string>): { left: Set<string>; partial: PartialBox | null; copies: number } | null {
+  if (!kept || !jobId || kept.jobId !== jobId || kept.day !== today) return null
+  const left = new Set(kept.left.filter((id) => ids.includes(id)))
+  const ticked = ids.filter((id) => !left.has(id))
+  if (ticked.length === 0) return null
+  const partial = partialThatHolds(kept.partial, ticked, kept.copies)
+  // A run stopped inside its first box has no box done, only one part way: that is still a run to pick up.
+  if (left.size === 0 && !partial) return null
+  return { left, partial, copies: kept.copies }
+}
+
+/**
+ * Said when the window opens on a kept run: *Picked up where today's run stopped. 36 boxes are done and unticked.
+ * G37 has 3 of its 5 strips to go. Press Every box to start over.*
+ */
+export function resumedRunWords(done: number, partial: { name: string; toGo: number; copies: number } | null): string {
+  const parts = ['Picked up where today’s run stopped.']
+  if (done > 0) parts.push(done === 1 ? '1 box is done and unticked.' : `${done} boxes are done and unticked.`)
+  if (partial) parts.push(`${partial.name} has ${partial.toGo} of its ${partial.copies} strips to go.`)
+  parts.push('Press Every box to start over.')
+  return parts.join(' ')
+}

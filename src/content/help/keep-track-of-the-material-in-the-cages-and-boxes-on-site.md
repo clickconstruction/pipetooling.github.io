@@ -136,6 +136,8 @@ Once it is connected, the window names the printer and the tape inside it. Press
 
 While a run prints, the window names the box and the strip, as in G2, strip 2 of 5. Press **Stop printing** to end a run early. One more strip prints, so the printer can cut the tape. The boxes that are done are unticked, and the window names them. A box that was part way keeps its place, and only its missing strips print. Press the print press again to print the rest. If the printer stops by itself, the window keeps the rest the same way.
 
+Did the tape run out part way? Put in a new cassette and close the cover. The window checks the printer by itself every few seconds. When it reads ready, press the print press, and it prints the rest. You can press **Check the printer again** if you do not want to wait. The window remembers the run for the rest of the day. If you close it to change the tape, it opens on the rest. Press **Every box** to start over.
+
 Safari and Firefox cannot reach a USB printer. There the Brother tape choice says Needs Chrome or Edge. Press **Copy the link to this page** and paste it into Chrome or Edge. Brother makes no printer driver for a Mac, so the print window cannot print tape on one.
 
 On Windows with Brother's driver, you can press **Use the print window instead**. After the first print it sits under **Printer setup**. In the print window, pick the P-touch and the paper that matches your tape, 18 mm or 24 mm.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { afterStop, leftAfterRangePick, partialThatHolds, rangeCountWords, restCountWords, runStrips, stoppedDetailWords, tickedRange } from './labelPick'
+import { afterStop, leftAfterRangePick, partialThatHolds, rangeCountWords, restCountWords, resumedRunWords, runStrips, stoppedDetailWords, stoppedRunOf, stoppedRunToKeep, stoppedRunToResume, tickedRange } from './labelPick'
 
 const ids = ['g1', 'g2', 'g3', 'g4', 'g5', 'g6']
 const ticked = (left: ReadonlySet<string>) => ids.filter((id) => !left.has(id))
@@ -114,5 +114,54 @@ describe('a run that stops part way', () => {
     expect(stoppedDetailWords(['G1', 'G2'], null, 0)).toBe('G1 and G2 are done and unticked.')
     expect(restCountWords(90, 447)).toBe('90 boxes, 447 strips to go.')
     expect(restCountWords(1, 1)).toBe('1 box, 1 strip to go.')
+  })
+})
+
+describe('a stopped run kept through a closed window (Taunya, 2026-11-15: the tape ran out half way through G37)', () => {
+  const partial = { id: 'g3', done: 2, copies: 5 }
+  const kept = stoppedRunToKeep('job-1', '2026-11-15', 5, new Set(['g1', 'g2']), partial)!
+
+  it('keeps the job, the day, the copies, the boxes done and the one part way', () => {
+    expect(kept).toEqual({ jobId: 'job-1', day: '2026-11-15', copies: 5, left: ['g1', 'g2'], partial })
+    expect(stoppedRunToKeep(null, '2026-11-15', 5, new Set(['g1']), null)).toBeNull()
+  })
+
+  it('reads back through storage, and takes nothing it does not know the shape of', () => {
+    expect(stoppedRunOf(JSON.parse(JSON.stringify(kept)))).toEqual(kept)
+    expect(stoppedRunOf(null)).toBeNull()
+    expect(stoppedRunOf('x')).toBeNull()
+    expect(stoppedRunOf({ jobId: 'j', day: 'd', left: [1, 2] })).toBeNull()
+    expect(stoppedRunOf({ jobId: 'j', day: 'd', left: ['a'], copies: 99, partial: { id: 'a' } })).toEqual({ jobId: 'j', day: 'd', left: ['a'], copies: 6, partial: null })
+  })
+
+  it('opens the window on the rest: the same job, the same day', () => {
+    const got = stoppedRunToResume(kept, 'job-1', '2026-11-15', ids)!
+    expect([...got.left]).toEqual(['g1', 'g2'])
+    expect(got.partial).toEqual(partial)
+    expect(got.copies).toBe(5)
+    // and the run it gives is g3's three missing strips, then the three boxes after it
+    expect(runStrips(ids.filter((id) => !got.left.has(id)), got.copies, got.partial)).toHaveLength(3 + 15)
+  })
+
+  it('is a fresh window for another job, another day, or a run with nothing left', () => {
+    expect(stoppedRunToResume(kept, 'job-2', '2026-11-15', ids)).toBeNull()
+    expect(stoppedRunToResume(kept, 'job-1', '2026-11-16', ids)).toBeNull()
+    expect(stoppedRunToResume(null, 'job-1', '2026-11-15', ids)).toBeNull()
+    expect(stoppedRunToResume(stoppedRunToKeep('job-1', '2026-11-15', 5, new Set(ids), null), 'job-1', '2026-11-15', ids)).toBeNull()
+    expect(stoppedRunToResume(stoppedRunToKeep('job-1', '2026-11-15', 5, new Set(), null), 'job-1', '2026-11-15', ids)).toBeNull()
+  })
+
+  it('a run stopped inside its first box is still picked up, and a box since removed is dropped', () => {
+    const first = stoppedRunToResume(stoppedRunToKeep('job-1', '2026-11-15', 5, new Set(), { id: 'g1', done: 2, copies: 5 }), 'job-1', '2026-11-15', ids)!
+    expect(first.left.size).toBe(0)
+    expect(first.partial).toEqual({ id: 'g1', done: 2, copies: 5 })
+    const gone = stoppedRunToResume(stoppedRunToKeep('job-1', '2026-11-15', 5, new Set(['g1', 'zz']), null), 'job-1', '2026-11-15', ids)!
+    expect([...gone.left]).toEqual(['g1'])
+  })
+
+  it('says so as the window opens', () => {
+    expect(resumedRunWords(36, { name: 'G37', toGo: 3, copies: 5 })).toBe('Picked up where today’s run stopped. 36 boxes are done and unticked. G37 has 3 of its 5 strips to go. Press Every box to start over.')
+    expect(resumedRunWords(1, null)).toBe('Picked up where today’s run stopped. 1 box is done and unticked. Press Every box to start over.')
+    expect(resumedRunWords(0, { name: 'G1', toGo: 2, copies: 5 })).toBe('Picked up where today’s run stopped. G1 has 2 of its 5 strips to go. Press Every box to start over.')
   })
 })
