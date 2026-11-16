@@ -304,7 +304,7 @@ function ReachSheet({ sheet, onClose }: { sheet: BoxPageSheet; onClose: () => vo
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'grid', alignItems: 'end', justifyItems: 'center' }} data-testid="box-page-sheet">
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'grid', alignItems: 'end', justifyItems: 'center', paddingTop: 'var(--app-top-chrome, 0px)' }} data-testid="box-page-sheet">
       <button type="button" aria-label="Not now" onClick={onClose} style={{ position: 'absolute', inset: 0, border: 0, padding: 0, background: 'rgba(22, 40, 60, 0.46)', cursor: 'pointer' }} data-testid="box-page-sheet-backdrop" />
       <div role="dialog" aria-modal="true" aria-labelledby="box-page-sheet-title" style={{ position: 'relative', width: '100%', maxWidth: 452, boxSizing: 'border-box', background: PAPER, color: INK, borderRadius: '22px 22px 0 0', padding: '10px 18px 22px', boxShadow: '0 -10px 30px rgba(22, 40, 60, 0.25)', display: 'grid', gap: 10 }}>
         <div aria-hidden style={{ width: 40, height: 5, borderRadius: 3, background: HAIR, justifySelf: 'center', marginBottom: 4 }} />
