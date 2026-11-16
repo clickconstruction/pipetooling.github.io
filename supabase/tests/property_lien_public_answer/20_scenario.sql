@@ -97,7 +97,8 @@ SELECT bedt.ok('again: the job is already on the list and its bond already says 
 SELECT bedt.ok('again: still one Collections line', (SELECT count(*) = 1 FROM public.job_activity_events WHERE job_id = bedt.id('10') AND event_type = 'collections_change'));
 SELECT bedt.ok('again: the master''s press is the one on record', (SELECT lien_public_answered_by = bedt.id('3') FROM public.customer_addresses WHERE id = bedt.id('800')));
 -- With no bond handed in, the jobs keep their own.
-SELECT bedt.ok('no bond handed in: the job keeps its own', (SELECT (bedt.line(public.set_property_lien_public_answer(bedt.id('800'), 'public', 'Public property.', jsonb_build_array(jsonb_build_object('job_id', bedt.id('11')))), '11')->>'bond_set')::boolean IS FALSE) AND (SELECT lien_payment_bond = 'no' FROM public.jobs_ledger WHERE id = bedt.id('11')));
+SELECT bedt.ok('no bond handed in: the press writes none', (SELECT (bedt.line(public.set_property_lien_public_answer(bedt.id('800'), 'public', 'Public property.', jsonb_build_array(jsonb_build_object('job_id', bedt.id('11')))), '11')->>'bond_set')::boolean IS FALSE));
+SELECT bedt.ok('no bond handed in: the job keeps its own', (SELECT lien_payment_bond = 'no' FROM public.jobs_ledger WHERE id = bedt.id('11')));
 
 -- 6 · Put it back on the lien path: a reason is asked, the answer goes, who, when and why stay, and no job is touched.
 SELECT bedt.as_user('4');
@@ -109,7 +110,9 @@ SELECT bedt.ok('back: unanswered, with who, when and why', (SELECT lien_public_a
 SELECT bedt.ok('back: the job stays on the attorney''s list and keeps its bond', (SELECT collections_at IS NOT NULL AND lien_payment_bond = 'no' FROM public.jobs_ledger WHERE id = bedt.id('10')));
 -- Taking back an answer that was private asks no reason.
 SELECT bedt.as_user('5');
-SELECT bedt.ok('a private answer is taken back with no reason', public.set_property_lien_public_answer(bedt.id('801'), 'unanswered')->>'ok' = 'true' AND (SELECT lien_public_answer IS NULL FROM public.customer_addresses WHERE id = bedt.id('801')));
+-- The press and the read of what it wrote are two statements: one statement would read the record as it stood before.
+SELECT bedt.ok('a private answer is taken back with no reason', public.set_property_lien_public_answer(bedt.id('801'), 'unanswered')->>'ok' = 'true');
+SELECT bedt.ok('and the record is unanswered again, with who took it back', (SELECT lien_public_answer IS NULL AND lien_public_answered_by = bedt.id('5') FROM public.customer_addresses WHERE id = bedt.id('801')));
 
 DO $$ BEGIN RAISE NOTICE 'property_lien_public_answer PASSED'; END $$;
 ROLLBACK;
