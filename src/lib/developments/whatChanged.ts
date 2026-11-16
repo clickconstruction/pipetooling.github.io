@@ -8,8 +8,11 @@
 import { bidStatusWord, requestIsOpen, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
 import type { UploadedPhotoRow } from '../photos/uploadedPhotos'
 
-/** `photos` (punch list #247, PR 2): a batch of the crews' photos on one piece by one person within an hour, with its thumbnails. */
-export type ChangeKind = 'asked' | 'answered' | 'sent' | 'contact' | 'won' | 'lost' | 'plans' | 'stage' | 'billed' | 'paid' | 'note' | 'new_bid' | 'new_job' | 'entry' | 'photos'
+/**
+ * `photos` (punch list #247, PR 2): a batch of the crews' photos on one piece by one person within an hour, with its thumbnails.
+ * `mail` (v2.7479): an email tied to one of the site's bids or jobs in Messages, drawn from its own row at its own time.
+ */
+export type ChangeKind = 'asked' | 'answered' | 'sent' | 'contact' | 'won' | 'lost' | 'plans' | 'stage' | 'billed' | 'paid' | 'note' | 'new_bid' | 'new_job' | 'entry' | 'photos' | 'mail'
 
 /** Where a history entry came from (punch list #208, the History look): the badge and the verb. */
 export type HistorySource = 'email' | 'call' | 'text' | 'on_site' | 'letter' | 'note'
@@ -47,6 +50,10 @@ export type ChangeLine = {
   entryId?: string
   /** `detail` is the first words of a longer body the list did not read (punch list #280); the window reads the rest by `entryId`. */
   detailIsHead?: boolean
+  /** A `mail` line's subject, drawn before its words. */
+  subject?: string | null
+  /** Where a `mail` line's mail lives: its thread in Messages, open at the mail. Absent for a reader who cannot open Messages. */
+  threadHref?: string
 }
 
 export type ChangeInputs = {
@@ -64,6 +71,8 @@ export type ChangeInputs = {
   entryLines: ReadonlyArray<ChangeLine>
   /** The crews' photos, already folded into lines (`foldPhotoBatches` in `photoLines.ts`); absent on a reader with none. */
   photoLines?: ReadonlyArray<ChangeLine>
+  /** The mail tied to the site's bids and jobs, already shaped as lines (`mailLines` in `history.ts`); absent on a reader with none. */
+  mailLines?: ReadonlyArray<ChangeLine>
   /** The customers' contact log (the Customers page's dated comments), with the customers' names. */
   customerContacts: ReadonlyArray<{ id: string; customer_id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }>
   customerNames: ReadonlyMap<string, string>
@@ -167,6 +176,8 @@ export function buildWhatChanged(inp: ChangeInputs): ChangeLine[] {
   for (const l of inp.entryLines) lines.push(l)
   // The crews' photos, placed by their own time (punch list #247).
   for (const l of inp.photoLines ?? []) lines.push(l)
+  // The mail tied to a bid or a job in Messages, each at its own time (v2.7479).
+  for (const l of inp.mailLines ?? []) lines.push(l)
   for (const r of inp.requests) {
     const b = r.bid_id ? bidsById.get(r.bid_id) : null
     const j = r.job_ledger_id ? jobsById.get(r.job_ledger_id) : null
@@ -209,13 +220,13 @@ export function placeSinceLine(lines: readonly ChangeLine[], lastLookedIso: stri
 /**
  * The feed's search (the owner, 2026-10-28: *search for people or jobs or bids … to see movement or
  * track down problems*): every word typed must appear somewhere on the line — the record's number
- * and name, the verb, the words, or who did it. Case does not matter. An empty search is every line.
+ * and name, the verb, a mail's subject, the words, or who did it. Case does not matter. An empty search is every line.
  */
 export function filterChangeLines(lines: readonly ChangeLine[], query: string): ChangeLine[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   if (words.length === 0) return [...lines]
   return lines.filter((l) => {
-    const hay = `${l.about.label} ${l.verb} ${l.detail ?? ''} ${l.by ?? ''} ${l.searchText ?? ''}`.toLowerCase()
+    const hay = `${l.about.label} ${l.verb} ${l.subject ?? ''} ${l.detail ?? ''} ${l.by ?? ''} ${l.searchText ?? ''}`.toLowerCase()
     return words.every((w) => hay.includes(w))
   })
 }

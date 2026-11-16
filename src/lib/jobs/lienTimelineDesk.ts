@@ -3,6 +3,7 @@ import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow 
 import { monthFromBill, monthIsStandIn } from './lienDesk'
 import { lienStandInMonth, type LienBill } from './lienBillMonths'
 import { lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey } from './lienDeskAffidavits'
+import { lienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import { buildLienMonthHistory } from './lienMonthHistory'
 import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineAffidavitState, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
 import { parseCourtesyRecords } from './lienCourtesyNotice'
@@ -100,6 +101,9 @@ function affidavitStateOf(entry: Pick<LienAffidavitEntry, 'pile' | 'item'> | nul
   // A paper a gate holds after its approval (punch list #335) reads as the fact that holds it, as a paper not yet sent does: the header names the gate, not the leader's hold.
   if (lienAffidavitGateHeld(entry)) return 'needs_property'
   switch (entry?.pile) {
+    // Waiting on its notice alone (v2.7457) is still a paper a gate holds: the timeline reads the closed gate by key.
+    case 'needs_notice':
+      return 'needs_property'
     case 'needs_property':
     case 'to_draft':
     case 'awaiting':
@@ -171,6 +175,8 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
           // Where the paper stands on the desk (v2.7187, punch list #335, row 2), so the desk's own timeline names the step too.
           state: affidavitFiling ? '' : affidavitStateOf(src.affidavit),
           missingKeys: (src.affidavit?.gates ?? []).filter((g) => !g.ok).map((g) => g.key),
+          // Where the job's notice stands while the notice gate is closed, so the band's press names what the notice still needs.
+          noticeStanding: src.affidavit ? lienAffidavitNoticeStanding(src.affidavit, src.entry) : null,
           holdUntil: src.affidavit?.item?.hold_until ?? null,
         }
       : null

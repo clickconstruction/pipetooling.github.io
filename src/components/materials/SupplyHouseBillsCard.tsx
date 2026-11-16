@@ -34,6 +34,8 @@ export type SupplyBillCardRow = {
   paidYmd: string | null
   /** What paid it, after the paid day: `ACH 88213 · one of 4 bills on $5,000.00`. Empty for a bill paid before payments were rows. */
   paidBy?: string
+  /** On an unpaid bill a payment has taken part of: `$300.00 paid · $512.40 left of $812.40`. `amount` is then what is left. */
+  partPaid?: string
   /** A typed payment stands behind this paid bill: the press opens that payment, since Mark unpaid would not unmake it. */
   seePayment?: boolean
   link: string | null
@@ -70,6 +72,7 @@ export function SupplyHouseBillsCard({
   jobAccountsInUse,
   paidThisVisit,
   payingId,
+  onAccount = 0,
   empty,
   onTogglePaid,
   onEdit,
@@ -83,6 +86,8 @@ export function SupplyHouseBillsCard({
   paidThisVisit: ReadonlySet<string>
   /** The bill whose Mark paid is saving; every press waits while one saves. */
   payingId: string | null
+  /** What earlier payments sent past their bills, still with the house. Shown when above zero. */
+  onAccount?: number
   /** What to say when there is no bill to list. */
   empty: ReactNode
   onTogglePaid: (id: string) => void
@@ -111,6 +116,7 @@ export function SupplyHouseBillsCard({
     if (paidNow) facts.push(<b key="paidnow">Paid today</b>)
     else if (b.is_paid && b.paidYmd) facts.push(<span key="paid">paid {billDateWords(b.paidYmd, todayYmd)}</span>)
     if (b.is_paid && b.paidBy) facts.push(<span key="paidby" data-testid="supply-bill-paid-by">{b.paidBy}</span>)
+    if (!b.is_paid && b.partPaid) facts.push(<b key="part" data-testid="supply-bill-part-paid">{b.partPaid}</b>)
     facts.push(<span key="inv">{b.invoice_number}</span>)
     // The PO's words lead the row when there is no job; they are not said twice.
     if (po && b.jobs.length > 0) {
@@ -216,6 +222,13 @@ export function SupplyHouseBillsCard({
             <div style={quiet}>{s.sub}</div>
           </div>
         ))}
+        {onAccount > 0.005 ? (
+          <div data-testid="supply-bills-stat-account" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.55rem 0.75rem', minWidth: 0 }}>
+            <div style={label}>On account</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', color: 'var(--text-green-700)' }}>${formatCurrency(onAccount)}</div>
+            <div style={quiet}>sent past the bills, offered on the next payment</div>
+          </div>
+        ) : null}
       </div>
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
         {groups.length === 0

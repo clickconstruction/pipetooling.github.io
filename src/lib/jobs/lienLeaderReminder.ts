@@ -7,6 +7,9 @@
  * words go by email (`notify-lien-approval`). A notice is one message each, as its send was; the affidavits are one
  * message that names the count, as theirs was. Nothing on a paper changes.
  *
+ * A retainage notice is a notice here (v2.7478): one message each, through the same call. Until then it had no
+ * message at all, and the press left it out with that as its reason.
+ *
  * Pure: which papers the press acts on and which it leaves with a reason, and every word a person reads before
  * and after. The sending is the desk's, through `tellLeaderOfLienApproval` and `tellLeaderOfLienAffidavits`.
  */
@@ -24,7 +27,7 @@ export type LienReminderPaper = {
 export type LienReminderSend = { itemId: string; dueYmd: string | null; label: string }
 
 export type LienReminderPlan = {
-  /** One message each. */
+  /** One message each: the monthly notices and the retainage notices. */
   notices: LienReminderSend[]
   /** One message for the lot. */
   affidavits: LienReminderSend[]
@@ -36,7 +39,6 @@ export type LienReminderPlan = {
 
 export const LIEN_REMINDER_HOLDS = {
   noItem: 'has no paper on the desk to point at',
-  retainage: 'is a retainage notice, which has no message yet',
 } as const
 
 export function lienReminderPlan(papers: ReadonlyArray<LienReminderPaper>): LienReminderPlan {
@@ -44,9 +46,8 @@ export function lienReminderPlan(papers: ReadonlyArray<LienReminderPaper>): Lien
   const affidavits: LienReminderSend[] = []
   const held: LienReminderPlan['held'] = []
   for (const p of papers) {
-    if (p.kind === 'retainage') held.push({ label: p.label, reason: LIEN_REMINDER_HOLDS.retainage })
-    else if (!p.itemId) held.push({ label: p.label, reason: LIEN_REMINDER_HOLDS.noItem })
-    else (p.kind === 'notice' ? notices : affidavits).push({ itemId: p.itemId, dueYmd: p.dueYmd, label: p.label })
+    if (!p.itemId) held.push({ label: p.label, reason: LIEN_REMINDER_HOLDS.noItem })
+    else (p.kind === 'affidavit' ? affidavits : notices).push({ itemId: p.itemId, dueYmd: p.dueYmd, label: p.label })
   }
   return { notices, affidavits, held, ready: notices.length + affidavits.length }
 }

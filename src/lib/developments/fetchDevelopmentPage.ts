@@ -6,14 +6,16 @@
  * not read at all. Members come by `development_id`; the records at the members' address that are
  * not in it come by an address search narrowed to exact normalized-key matches in `splitMembers`, so
  * the real site (13 bids and 29 jobs at one address, 9 jobs tagged) fills the page without a write.
+ * The mail tied to those bids and jobs in Messages (v2.7479) is read under the reader's own policies on
+ * `messages`, for the roles that open Messages, and fails soft: History stands without it and says why.
  */
-import { HISTORY_HEAD_COLUMNS, headRowToEntry, rowToEntry, type HistoryEntry, type HistoryHeadRow, type HistoryRow } from './history'
+import { HISTORY_HEAD_COLUMNS, TIED_MAIL_COLUMNS, headRowToEntry, rowToEntry, type HistoryEntry, type HistoryHeadRow, type HistoryRow, type TiedMailContact, type TiedMailRow } from './history'
 import { supabase } from '../supabase'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../jobs/billedExpectedPay'
 import { indexPayCalendars, type PayCalendarIndex } from '../jobs/payCalendar'
 import { loadInvoiceAcceptances, loadPayCalendars } from '../jobs/payCalendarIo'
 import { paySpeedPayerIds } from './siteMoney'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { addressSearchPattern, memberAddressKeys, splitMembers, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
 import { parseDevelopmentOverview, stripBidMoney, type DevelopmentDoor, type DevelopmentOverview } from './readDoor'
 
@@ -73,6 +75,12 @@ export type DevelopmentPageData = {
   payCalendars?: PayCalendarIndex | null
   /** The day a payer accepted each bill that has one, by the bill's id; null when the read fails, absent on an older read. */
   acceptedByInvoice?: ReadonlyMap<string, string> | null
+  /** The emails tied to the shown bids and jobs in Messages (v2.7479), as the reader's own policies give them; absent on an older read. */
+  tiedMail?: TiedMailRow[]
+  /** The people that mail is with, for a name and the door to the thread. */
+  mailContacts?: TiedMailContact[]
+  /** Why the tied mail did not come, when its read failed: History draws without it and says so. */
+  tiedMailError?: string | null
 }
 
 function fail(label: string, error: { message: string } | null): void {
@@ -208,6 +216,53 @@ async function readHistoryHeads(developmentId: string): Promise<HistoryHeadsRead
   return { data: whole.error ? null : ((whole.data ?? []) as unknown as HistoryRow[]), error: whole.error }
 }
 
+/** How many ids one `in` filter carries: a site with every record at its address stays inside a URL. */
+const MAIL_ID_SLICE = 100
+/** The most mail one slice brings, newest first. */
+const TIED_MAIL_MAX = 300
+
+const slices = <T,>(ids: readonly T[], size: number): T[][] => Array.from({ length: Math.ceil(ids.length / size) }, (_, i) => ids.slice(i * size, (i + 1) * size))
+
+export type TiedMailRead = { rows: TiedMailRow[]; contacts: TiedMailContact[]; error: string | null }
+
+/**
+ * The emails tied to the site's bids and jobs in Messages (v2.7479): the rows of `messages` on channel
+ * email whose `bid_id` or `jobs_ledger_id` is one of the page's. The read is the reader's own, so the
+ * policies on `messages` decide what comes (the office team reads every line; `messages_candidate_door`
+ * keeps a candidate's thread to the people who may read candidates), exactly as on the Messages page.
+ * A row carries at most one of the two columns, so the two reads never bring the same mail. The read
+ * fails soft: a failure hands back no mail and its reason, never a blank History. The people the mail is
+ * with are a second read that fails softer still, since a line reads without a name.
+ */
+export async function readTiedMail(bidIds: readonly string[], jobIds: readonly string[]): Promise<TiedMailRead> {
+  if (bidIds.length === 0 && jobIds.length === 0) return { rows: [], contacts: [], error: null }
+  try {
+    const reads: Array<Promise<TiedMailRow[]>> = []
+    for (const [column, ids] of [
+      ['bid_id', bidIds],
+      ['jobs_ledger_id', jobIds],
+    ] as const) {
+      for (const slice of slices(ids, MAIL_ID_SLICE)) {
+        reads.push(
+          withSupabaseRetry(() => supabase.from('messages').select(TIED_MAIL_COLUMNS).eq('channel', 'email').in(column, slice).order('at', { ascending: false }).limit(TIED_MAIL_MAX), 'read mail tied to this site').then((data) => (data ?? []) as unknown as TiedMailRow[]),
+        )
+      }
+    }
+    const rows = (await Promise.all(reads)).flat()
+    const contactIds = [...new Set(rows.map((r) => r.contact_id))]
+    let contacts: TiedMailContact[] = []
+    try {
+      const got = await Promise.all(slices(contactIds, MAIL_ID_SLICE).map((slice) => supabase.from('contacts').select('id, kind, name, goes_by').in('id', slice)))
+      contacts = got.flatMap((r) => (r.error ? [] : ((r.data ?? []) as unknown as TiedMailContact[])))
+    } catch {
+      /* the names did not come: a line reads with the words its row kept */
+    }
+    return { rows, contacts, error: null }
+  } catch (e) {
+    return { rows: [], contacts: [], error: formatErrorMessage(e, 'The mail could not be read.') }
+  }
+}
+
 /** One entry's whole body, for the window a line's *more ›* opens (punch list #280); throws with the reason. */
 export async function readHistoryBody(entryId: string): Promise<string> {
   const row = (await withSupabaseRetry(() => supabase.from('development_history_entries' as never).select('id, body').eq('id', entryId).maybeSingle(), 'read history line')) as unknown as { body: string } | null
@@ -244,9 +299,11 @@ export async function readUserNamesAndTwins(userIds: readonly string[]): Promise
  * The whole page. `includeAddress` widens every list to the records at the members' address that
  * are not in the development (the spike's toggle; PR 3's *Put the N in* is the write that makes
  * the toggle unnecessary). `door` is the reader's (`developmentDoorFor`): the office reads every
- * table; the overview door reads the pieces through the definer read and no money at all.
+ * table; the overview door reads the pieces through the definer read and no money at all. `opts.mail`
+ * is whether the reader opens Messages (`canOpenMessages`): only then is the tied mail read, so the
+ * page shows a reader no mail that Messages would not.
  */
-export async function fetchDevelopmentPage(developmentId: string, includeAddress: boolean, door: DevelopmentDoor = 'office'): Promise<DevelopmentPageData> {
+export async function fetchDevelopmentPage(developmentId: string, includeAddress: boolean, door: DevelopmentDoor = 'office', opts: { mail?: boolean } = {}): Promise<DevelopmentPageData> {
   const office = door === 'office'
   // The read is four round trips deep, not seven (the Gray Fox spike, 2026-11-02): the row and the members go
   // out together, the pay-speed read rides in the fan-out once the members name the payers (punch list #280 PR 2;
@@ -299,7 +356,10 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   const payCalendarsP: Promise<PayCalendarIndex | null> = office ? loadPayCalendars(supabase).then(indexPayCalendars, () => null) : Promise.resolve(null)
   const acceptedP: Promise<ReadonlyMap<string, string> | null> = office ? loadInvoiceAcceptances(supabase).catch(() => null) : Promise.resolve(null)
 
-  const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes, historyRes] = await Promise.all([
+  // The mail tied to the shown bids and jobs (v2.7479) rides the fan-out and never throws.
+  const tiedMailP: Promise<TiedMailRead> = opts.mail ? readTiedMail(bidIds, jobIds) : Promise.resolve({ rows: [], contacts: [], error: null })
+
+  const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes, historyRes, tiedMail] = await Promise.all([
     readRequests('estimators', bidIds, jobIds, developmentId),
     readRequests('dispatch', bidIds, jobIds, developmentId),
     bidIds.length
@@ -328,6 +388,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
       ? supabase.from('customer_contacts').select('id, customer_id, contact_date, contact_method, details, created_by').in('customer_id', customerIds).order('contact_date', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
     readHistoryHeads(developmentId),
+    tiedMailP,
     priorNumbersP,
   ])
   fail('submission entries', entriesRes.error)
@@ -340,6 +401,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   fail('customer contacts', contactsRes.error)
   // The entries' table lands with its migration after the client deploys (v2.6042): until then the read fails and the stream goes without them, and the composer's keep names the reason.
   if (historyRes.error) console.warn('development: history entries not read', historyRes.error.message)
+  if (tiedMail.error) console.warn('development: tied mail not read', tiedMail.error)
   fail('team', teamRes.error)
   fail('customers', customersRes.error)
   const statusEvents = office ? ((eventsRes.data ?? []) as DevelopmentPageData['statusEvents']) : overview?.statusEvents ?? []
@@ -364,6 +426,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   for (const c of (contactsRes.data ?? []) as Array<{ created_by: string | null }>) if (c.created_by) userIds.add(c.created_by)
   for (const h of historyRes.data ?? []) if (h.author_user_id) userIds.add(h.author_user_id)
   for (const t of teamMembers) userIds.add(t.user_id)
+  for (const m of tiedMail.rows) if (m.who_user_id) userIds.add(m.who_user_id)
   // Who sent the bills and booked the payments, named on the Scoreboard's office line (v2.6457).
   for (const i of (invoicesRes.data ?? []) as Array<{ sent_by_user_id?: string | null }>) if (i.sent_by_user_id) userIds.add(i.sent_by_user_id)
   for (const p of (paymentsRes.data ?? []) as Array<{ created_by?: string | null }>) if (p.created_by) userIds.add(p.created_by)
@@ -397,5 +460,8 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     paySpeed,
     payCalendars,
     acceptedByInvoice,
+    tiedMail: tiedMail.rows,
+    mailContacts: tiedMail.contacts,
+    tiedMailError: tiedMail.error,
   }
 }

@@ -147,7 +147,13 @@ A line the app cannot save stays on the table with its reason under it. The line
 
 ## Print a label
 
-Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** at the right end of the tabs and pick the job. A job's row there has **Labels** too. A paper label carries the stencil, the job, the place, a small code and ruled lines to write on. A tape label carries the stencil and the code alone. The crew's camera opens the box from the code.
+Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. A job's row on the Materials page has **Labels** too. A paper label carries the stencil, the job, the place, a small code and ruled lines to write on. A tape label carries the stencil and the code alone. The crew's camera opens the box from the code.
+
+On the Materials page, press **Print labels** at the right end of the tabs. A window lists every job that holds a cage or a box. The band on top shows what this computer prints on, with one label drawn at its printed size. Press **Change to paper** or **Change to Brother tape** to switch.
+
+Each job is a card. It says how many boxes and cages the job has, their names, and how many stand in each place. A green chip counts the boxes added this week. A blue chip counts the boxes that already wear a sticker. A line says how much tape the job takes, or how many pages.
+
+Press a job's name to open its labels. The buttons under a card open a part of them. **The 6 new** ticks only the boxes added this week. **All 91** ticks every box. When a run stopped earlier today, the card says so, and **The rest, 51 boxes** picks it up. Nothing prints until you press the print button in the next window.
 
 ## Print blank stickers
 

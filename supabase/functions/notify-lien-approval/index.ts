@@ -21,6 +21,10 @@
 // was never told. The gate is the office now, as the affidavit's is. `remind: true` marks the To do view's Remind
 // press: the words say a reminder, and an affidavit's fifteen-minute rule is lifted, since a reminder is by its
 // nature a later call (without it the function answered a reminder 200 with nothing sent).
+//
+// A retainage notice (v2.7478): the plain body on a `retainage_53_057` item. It told nobody on a send and the Remind
+// press left it out, so the paper waited until the leader opened the desk. The same gate and the same answer as a
+// notice, its own words (`lienRetainageApprovalPush`) and its own door, the Retainage list on that job.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
@@ -36,6 +40,7 @@ import {
   lienApprovalPush,
   lienCodeUsedPush,
   lienPenRecordedPush,
+  lienRetainageApprovalPush,
   lienWaiverCodeUsedPush,
   signedYmdOf,
   type LienAffidavitApprovalPaper,
@@ -139,7 +144,7 @@ serve(async (req) => {
     const waiverCodeUsed = kind === 'waiver_code_used'
     // Punch list #305 (v2.7180): `kind: 'affidavit'` + items tells the leader of one affidavit, or of every affidavit of one press.
     const affidavitAsk = kind === 'affidavit'
-    // v2.7445: the plain body, `item_id` and no kind, is a notice sent for approval. `remind: true` is the To do view's Remind press.
+    // v2.7445: the plain body, `item_id` and no kind, is a notice sent for approval, the monthly one or (v2.7478) the retainage one. `remind: true` is the To do view's Remind press.
     const noticeAsk = !penRecorded && !codeUsed && !waiverCodeUsed && !affidavitAsk
     const reminder = remind === true
     const asked = affidavitAsk ? lienAffidavitAskItems(items) : []
@@ -200,6 +205,8 @@ serve(async (req) => {
     }
 
     let item: { job_id: string | null; fields?: unknown; signed_by?: string | null; signed_at?: string | null; signed_witness_how?: string | null }
+    // v2.7478: the plain body on a retainage notice. Its words and its door are its own.
+    let retainageAsk = false
     let waiverAmount: number | null = null
     let waiverFormType = ''
     // v2.5958: a waiver made on a bid (Bids → Lien Release) has no job; the words name the bid instead.
@@ -233,9 +240,10 @@ serve(async (req) => {
         if (!noticeItem || noticeItem.signer_signature_mode !== 'code' || !noticeItem.signed_by) return json({ error: 'Not a code signature' }, 403)
         if (noticeItem.signed_on_device_of !== user.id) return json({ error: noticeItem.signed_on_device_of ? 'Not your screen' : 'Signed on his own screen' }, noticeItem.signed_on_device_of ? 403 : 200)
       } else {
-        // The office was checked above. These words are a notice's: an affidavit has its own kind, and a retainage notice has no message yet.
+        // The office was checked above. These words are a notice's, the monthly one or the retainage one: an affidavit has its own kind.
         if (!noticeItem) return json({ error: 'Paper not found' }, 404)
-        if (noticeItem.kind !== 'notice_53_056') return json({ error: 'Not a lien notice' }, 400)
+        retainageAsk = noticeItem.kind === 'retainage_53_057'
+        if (noticeItem.kind !== 'notice_53_056' && !retainageAsk) return json({ error: 'Not a lien notice' }, 400)
         if (noticeItem.status !== 'awaiting_approval' || noticeItem.voided_at) return json({ success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' })
       }
       item = noticeItem
@@ -297,6 +305,17 @@ serve(async (req) => {
           recorderName: sender?.name ?? null,
           how: (item.signed_witness_how as string | null) ?? null,
         })
+      : retainageAsk
+      ? lienRetainageApprovalPush({
+          jobLabel,
+          jobId,
+          retainage: Number.isFinite(claimRaw) ? claimRaw : null,
+          gcName: (gc?.name ?? '').trim() || null,
+          dueYmd,
+          todayYmd: todayYmdInAppTz(new Date()),
+          senderName: sender?.name ?? null,
+          reminder,
+        })
       : lienApprovalPush({
           jobLabel,
           jobId,
@@ -308,7 +327,7 @@ serve(async (req) => {
           reminder,
         })
 
-    const templateType = waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask'
+    const templateType = waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : retainageAsk ? 'lien_retainage_approval_ask' : 'lien_approval_ask'
     const sent = await tellLeaders(admin, leaders, words, templateType, waiverBid ? 'Open the bid' : waiverCodeUsed ? 'Open the Pipeline' : 'Open the Lien desk')
 
     return json({ success: true, push_sent: sent.pushSent, email_sent: sent.emailSent > 0, held: sent.held, leader_name: leaders.length === 1 ? leaders[0]!.name : null })
