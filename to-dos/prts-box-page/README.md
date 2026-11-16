@@ -2,7 +2,7 @@
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
 group: close
-status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · left: the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents · left: the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -19,7 +19,7 @@ summary: >
   CSV for Brother's label editor, and a Copy the label code press on the phone for Brother's app.
   His third ask: the code reads 4F2A-9C18 everywhere a person reads it, so it can be relayed by
   voice, while the bare code keeps working and the QR stays as small as it is.
-next: The owner's walk of the redrawn page on a phone with no session (direction B of `to-dos/prts-box-page/landing-before-after.html`, built as v2.6868 and v2.6874); press Text the office once on a real phone and see the text land on the Messages page (it goes to the team line since v2.6910). The owner makes the second Cloudflare rule for bare prts.co from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in v2.6797's fragment on a phone with no session; the tape walk on the PT-E720BT and on 18 mm tape, from Labels → Brother tape (the PT-D610BT printed 24 mm straight over USB from Chrome, v2.6865 and v2.6881). Retire the card once the walks pass.
+next: Taunya's walk of the sealed page (v2.7379, the last section) on a phone with no session; press Ask for a bid, Text the office and Work with us once each on a real phone and see the texts land on the Messages page (they go to the team line since v2.6910). The owner makes the second Cloudflare rule for bare prts.co from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in v2.6797's fragment on a phone with no session; the tape walk on the PT-E720BT and on 18 mm tape, from Labels → Brother tape (the PT-D610BT printed 24 mm straight over USB from Chrome, v2.6865 and v2.6881). Retire the card once the walks pass.
 size: M as a train of five (XS · S · S · XS · S), all five shipped; left: the walks (S)
 blocker: None. The second Cloudflare rule is the owner's step and nothing waits on it; the tape walk needs the printers on the office Mac.
 opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
@@ -222,3 +222,22 @@ The guide's Scan a label section moves with each PR.
 6. A way to say something is wrong with no sign-in: a text to the office, a form, or nothing? *The text, to the number the bill page shows.*
 7. The photo as a band 150 tall, or as tall as today? *The band.*
 8. A retired cage's page: drop the Find press, or let a retired label search its old site? *Drop it.*
+
+## What is inside needs a sign-in (2026-11-15)
+
+Taunya asked, as a subcontractor, what she would not want the GC, the people who own the building or another trade to see from a scan, and whether everyone should sign in before seeing what is in a box. The answer was yes. The page built above is a list of what is worth taking and where it stands. A photo of the label opens it from anywhere for as long as the box is live. The counts, the shortage notes and the count dates are the company's own business if pay or a backcharge is argued. **Everything above this section about what a signed-out scan shows is the design as it stood until v2.7379.**
+
+[`signed-out-shapes.html`](./signed-out-shapes.html) drew three shapes beside each other: today's page, a page with the name and the office's presses only, and one with part names and no counts, with what each shows a thief, the GC and another trade and what it costs a crew member with no sign-in. Taunya answered with a picture of her own, which is what v2.7379 builds:
+
+- The label's address and *Not signed in* across the top.
+- The navy plate: *Box on this site*, the name as the label prints it, the code, *Counted and photographed by its crew.*
+- *This material belongs to* Click Plumbing and Electrical, the letterhead's line, **Ask for a bid** and the office's number.
+- **Text the office about box G81**, **Work with us**, **Sign in to see what is inside**.
+
+**The gate is in the function.** `box-read` selects the box's name, kind and code and no more, and answers `&find=` and `&photo=` with 401 `sign_in` before the database is touched. The name is cut to what the label prints (`G12 COPPER 90` answers `G12`), since an old name can say what the box holds. Signed in, a scan opens the box in the app as before. The link and the code did not change, so the labels printed that day keep working.
+
+**Picked while building, each hers to reverse.** Ask for a bid and Work with us are texts to the office, since the app has no public page for either. The number is the team line the function has answered since v2.6910, where her picture shows the letterhead's. The search from the Scan a label page went with the search.
+
+**Who it costs** (the live accounts, 2026-11-15): Click's own crew can sign in, and 9 of the 10 live helpers have. 16 of the 19 live subcontractor rows never have, so a sub's person sees no contents until the office gets them online.
+
+**Left**: `box-read` deployed after the merge and proved signed out on a ZZ Test box; the three texts pressed once on a real phone.

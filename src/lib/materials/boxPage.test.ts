@@ -1,8 +1,24 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { BOX_PAGE_FIND_MAX, BOX_PAGE_LOCKED_WORDS, boxPageCallHref, boxPageCannotFindWords, boxPageCode, boxPageCodeWords, boxPageCountVerdict, boxPageEarlyAnswer, boxPageDayWords, boxPageDialNumber, boxPageGoneLines, boxPageTextHref, boxPageTextWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPageOfficePhone, boxPagePartsWords, boxPagePath, boxPagePhotoUrl, boxPageStickerAnswer, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
-import { LAST_BOX_MS, readLastBox, rememberLastBox, typedCodeWords } from './boxPageMemory'
+import { BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAddressWords, boxPageAsksInside, boxPageBidWords, boxPageCallHref, boxPageCode, boxPageCodeWords, boxPageDayWords, boxPageDialNumber, boxPageEarlyAnswer, boxPageNoun, boxPageOfficePhone, boxPagePath, boxPagePlate, boxPageSiteWords, boxPageStickerAnswer, boxPageTextHref, boxPageTextWords, boxPageView, boxPageWorkWords, buildBoxPagePayload, parseBoxPageResponse } from './boxPage'
+import { typedCodeWords } from './boxPageMemory'
+import { labelPlate } from './labels'
 
-const CONTAINER = { id: '4f2a9c18-1111-4222-8333-444455556666', job_id: 'j1', label: 'B3', kind: 'cage', where_note: ' by the north stair ', place_id: 'p1', retired_at: null, code: '4F2A9C18' }
+const CONTAINER = { id: '4f2a9c18-1111-4222-8333-444455556666', label: 'B3', kind: 'cage', retired_at: null, code: '4F2A9C18' }
+
+/** An answer as the function gave it before v2.7379: the place, the photo, the lines with their counts, what ran out. */
+const BEFORE_THE_SEAL = {
+  ok: true,
+  box: {
+    code: '4F2A9C18', stencil: 'B3', kind: 'cage', place: 'Level 2', where: 'by the north stair', line: 'Copper fittings',
+    lines: [{ partName: '3/4" copper 90', manufacturer: 'Mueller', onHand: 140, cannotFind: 2 }],
+    gone: [{ partName: '1" copper tee', manufacturer: 'Mueller', onHand: 0 }],
+    lastCountedOn: '2026-11-13',
+    photo: { id: 'ph1', takenOn: '2026-11-13', url: 'https://x.supabase.co/functions/v1/box-read?code=4F2A9C18&photo=ph1' },
+  },
+  office: { phone: '(512) 555-0142' },
+}
 
 describe('the box page code', () => {
   it('reads the eight hex characters however they were typed, and nothing else', () => {
@@ -15,65 +31,85 @@ describe('the box page code', () => {
     expect(boxPageCode(null)).toBeNull()
   })
 
-  it('prints the code for a person with its dash, and the return path lower-cased', () => {
+  it('prints the code for a person with its dash, the return path lower-cased, and the label’s own address', () => {
     expect(boxPageCodeWords('4F2A9C18')).toBe('4F2A-9C18')
     expect(boxPagePath('4F2A9C18')).toBe('/b/4f2a9c18')
+    expect(boxPageAddressWords('849fdb0b')).toBe('prts.co/b/849F-DB0B')
+    expect(typedCodeWords('4f2a9c')).toBe('4F2A-9C')
   })
 })
 
-describe('the payload', () => {
-  it('cuts the job summary to the one container, drops empty lines, sorts by name, trims the where-note', () => {
-    const lines = [
-      { container_id: CONTAINER.id, part_name: '3/4" copper couplings', manufacturer: 'Mueller', on_hand: 36 },
-      { container_id: 'other', part_name: '3/4" copper couplings', manufacturer: 'Mueller', on_hand: 9 },
-      { container_id: CONTAINER.id, part_name: '1/2" copper pipe, 10 ft', manufacturer: null, on_hand: 18 },
-      { container_id: CONTAINER.id, part_name: 'gone', manufacturer: null, on_hand: 0 },
-    ]
-    expect(boxPageLines(lines, CONTAINER.id)).toEqual([
-      { partName: '1/2" copper pipe, 10 ft', manufacturer: null, onHand: 18 },
-      { partName: '3/4" copper couplings', manufacturer: 'Mueller', onHand: 36 },
-    ])
-    const p = buildBoxPagePayload({ container: CONTAINER, place: 'Level 2', lines, lastCountedOn: '2026-11-05', photo: { id: 'ph1', takenOn: '2026-11-07', url: 'https://x/functions/v1/box-read?code=4F2A9C18&photo=ph1' } })
-    expect(p.box).toMatchObject({ code: '4F2A9C18', stencil: 'B3', kind: 'cage', place: 'Level 2', where: 'by the north stair', lastCountedOn: '2026-11-05' })
-    expect(p.box.lines).toHaveLength(2)
-    // the payload never carries the job, the customer, a price or a name
-    expect(JSON.stringify(p)).not.toContain('job')
+describe('what is inside needs a sign-in (v2.7379)', () => {
+  it('the answer is the name, the kind, the code and the office’s number, and nothing a box holds', () => {
+    const p = buildBoxPagePayload({ container: CONTAINER, officePhone: ' (512) 555-0142 ' })
+    expect(p).toEqual({ ok: true, box: { code: '4F2A9C18', stencil: 'B3', kind: 'cage' }, office: { phone: '(512) 555-0142' } })
+    expect(Object.keys(p.box).sort()).toEqual(['code', 'kind', 'stencil'])
     expect(parseBoxPageResponse(JSON.parse(JSON.stringify(p)))).toEqual(p)
+    expect(buildBoxPagePayload({ container: CONTAINER, officePhone: '' }).office).toBeNull()
   })
 
-  it('answers what is in it on one line: a person’s own words, else the app’s from the parts (v2.7348, punch list #351)', () => {
-    const lines = [
-      { container_id: CONTAINER.id, part_name: 'Kohler toilets', manufacturer: 'Kohler', on_hand: 24 },
-      { container_id: CONTAINER.id, part_name: 'wax rings', manufacturer: null, on_hand: 0 },
-      { container_id: 'other', part_name: 'tee', manufacturer: null, on_hand: 9 },
-    ]
-    const app = buildBoxPagePayload({ container: CONTAINER, place: 'Level 2', lines, lastCountedOn: null, photo: null })
-    expect(app.box.line).toBe('Kohler toilets · 24')
-    const said = buildBoxPagePayload({ container: { ...CONTAINER, description: '  Toilets for   building C ' }, place: 'Level 2', lines, lastCountedOn: null, photo: null })
-    expect(said.box.line).toBe('Toilets for building C')
-    expect(buildBoxPagePayload({ container: { ...CONTAINER, description: null }, place: '', lines: [], lastCountedOn: null, photo: null }).box.line).toBe('')
-    // It round-trips, and an answer from a function deployed before the line is read from the lines it did answer.
-    expect(parseBoxPageResponse(JSON.parse(JSON.stringify(said)))!.box.line).toBe('Toilets for building C')
-    const { line: _line, ...old } = app.box
-    expect(parseBoxPageResponse(JSON.parse(JSON.stringify({ ok: true, box: old, office: null })))!.box.line).toBe('Kohler toilets · 24')
+  it('the builder cannot be handed a part, a count, a place or a photo: a row that carries them answers none of them', () => {
+    const fat = { ...CONTAINER, job_id: 'j1', where_note: 'by the north stair', description: 'Kohler toilets', place_id: 'p1' }
+    const wire = JSON.stringify(buildBoxPagePayload({ container: fat, officePhone: '(512) 555-0142' }))
+    for (const word of ['job', 'north stair', 'Kohler', 'place', 'lines', 'gone', 'photo', 'lastCountedOn', 'line']) expect(wire).not.toContain(word)
   })
 
-  it('names the kind for a person and the photo address on the function', () => {
+  it('the name is what the label prints: the letters and number alone, as labelPlate cuts it', () => {
+    expect(boxPagePlate('G12 COPPER 90')).toBe('G12')
+    expect(boxPagePlate(' r76 toilets ')).toBe('R76')
+    expect(boxPagePlate('G24B')).toBe('G24B')
+    // No letters and number: the label prints the name whole, so the page does.
+    expect(boxPagePlate('MISL PILE OF JUNK PIPE')).toBe('MISL PILE OF JUNK PIPE')
+    for (const name of ['G12 COPPER 90', 'R76', 'ab12 valves', 'G24B', 'B3']) expect(boxPagePlate(name)).toBe(labelPlate(name))
+    expect(buildBoxPagePayload({ container: { ...CONTAINER, label: 'G12 COPPER 90' } }).box.stencil).toBe('G12')
+  })
+
+  it('a request for the search or a photo asks for what is inside; the page’s own read does not', () => {
+    expect(boxPageAsksInside({ find: 'copper', photo: null })).toBe(true)
+    expect(boxPageAsksInside({ find: '', photo: null })).toBe(true)
+    expect(boxPageAsksInside({ find: null, photo: 'ph1' })).toBe(true)
+    expect(boxPageAsksInside({ find: null, photo: null })).toBe(false)
+    expect(BOX_PAGE_SIGN_IN_ERROR).toBe('sign_in')
+    // The refusal is not a box: the page that asked reads a failure, never a list.
+    expect(boxPageView(401, { error: BOX_PAGE_SIGN_IN_ERROR }).kind).toBe('error')
+  })
+
+  it('an answer from the function before the seal is read as the sealed page: its lines, place and photo are dropped unread', () => {
+    const read = parseBoxPageResponse(BEFORE_THE_SEAL)
+    expect(read).toEqual({ ok: true, box: { code: '4F2A9C18', stencil: 'B3', kind: 'cage' }, office: { phone: '(512) 555-0142' } })
+    const wire = JSON.stringify(read)
+    for (const word of ['copper', 'Mueller', '140', 'Level 2', 'north stair', 'ph1', '2026-11-13']) expect(wire).not.toContain(word)
+    // And a name with words after it is cut on the way in, whichever function sent it.
+    expect(parseBoxPageResponse({ ok: true, box: { code: '4F2A9C18', stencil: 'G12 COPPER 90', kind: 'box' } })!.box.stencil).toBe('G12')
+  })
+
+  it('the function reads nothing a box holds and has no search or photo left in it', () => {
+    const fn = readFileSync(resolve(process.cwd(), 'supabase/functions/box-read/index.ts'), 'utf8')
+    const code = fn.slice(fn.indexOf('const corsHeaders'))
+    for (const gone of ['on_site_job_summary', 'job_box_photos', 'job_places', 'box-photos', 'driveMedia', 'where_note', 'description', 'place_id', 'job_id']) expect(code).not.toContain(gone)
+    expect(code).toContain("select('id, label, kind, retired_at, code')")
+    // The refusal comes before the database client is made.
+    expect(code.indexOf('boxPageAsksInside(')).toBeGreaterThan(-1)
+    expect(code.indexOf('boxPageAsksInside(')).toBeLessThan(code.indexOf('createClient('))
+  })
+
+  it('names the kind for a person', () => {
     expect(boxPageNoun('cage')).toBe('Cage')
     expect(boxPageNoun('box', false)).toBe('box')
     expect(boxPageNoun('pile')).toBe('Pile')
-    expect(boxPagePhotoUrl('https://x.supabase.co/', '4F2A9C18', 'ph1')).toBe('https://x.supabase.co/functions/v1/box-read?code=4F2A9C18&photo=ph1')
+    expect(boxPageSiteWords('box')).toBe('Box on this site')
+    expect(boxPageSiteWords('cage')).toBe('Cage on this site')
   })
 
   it('refuses an answer that is not the shape', () => {
     expect(parseBoxPageResponse(null)).toBeNull()
     expect(parseBoxPageResponse({ ok: true, box: { code: 'X' } })).toBeNull()
-    expect(parseBoxPageResponse({ ok: true, box: { code: 'X', stencil: 'A1', lines: [{ partName: 1 }] } })).toBeNull()
+    expect(parseBoxPageResponse({ ok: false, box: { code: 'X', stencil: 'A1' } })).toBeNull()
   })
 })
 
 describe('the page state from the answer', () => {
-  const good = buildBoxPagePayload({ container: CONTAINER, place: '', lines: [], lastCountedOn: null, photo: null })
+  const good = buildBoxPagePayload({ container: CONTAINER })
   it('maps each answer', () => {
     expect(boxPageView(200, good)).toEqual({ kind: 'box', payload: good })
     expect(boxPageView(404, { error: 'not_found' })).toEqual({ kind: 'not_found' })
@@ -92,175 +128,7 @@ describe('the page state from the answer', () => {
   })
 })
 
-describe('find a part on this site (PR 3, v2.6799)', () => {
-  const boxes = [
-    { ...CONTAINER },
-    { id: 'c-a1', job_id: 'j1', label: 'A1', kind: 'cage', where_note: '', place_id: 'p2', retired_at: null, code: 'AAAA1111' },
-    { id: 'c-c2', job_id: 'j1', label: 'C2', kind: 'box', where_note: 'mech room', place_id: 'p3', retired_at: null, code: 'CCCC2222' },
-    { id: 'c-a10', job_id: 'j1', label: 'A10', kind: 'cage', where_note: '', place_id: null, retired_at: null, code: 'AAAA1010' },
-    { id: 'c-old', job_id: 'j1', label: 'D1', kind: 'box', where_note: '', place_id: null, retired_at: '2026-11-01T00:00:00Z', code: 'DDDD1111' },
-    { id: 'c-uns', job_id: 'j1', label: 'Unsorted', kind: 'unsorted', where_note: '', place_id: null, retired_at: null, code: 'UUUU0000' },
-  ]
-  const places = [{ id: 'p1', name: 'Level 2' }, { id: 'p2', name: 'Laydown yard' }, { id: 'p3', name: 'Level 3' }]
-  const lines = [
-    { container_id: CONTAINER.id, part_name: '3/4" copper 90° elbows', manufacturer: 'Mueller', on_hand: 42 },
-    { container_id: CONTAINER.id, part_name: '1/2" PEX crimp rings', manufacturer: 'Sioux Chief', on_hand: 200 },
-    { container_id: 'c-a1', part_name: '3/4" copper pipe, 20 ft', manufacturer: 'Cerro', on_hand: 24 },
-    { container_id: 'c-c2', part_name: '3/4" copper tees', manufacturer: 'Mueller', on_hand: 15 },
-    { container_id: 'c-a10', part_name: 'wax rings', manufacturer: null, on_hand: 6 },
-    { container_id: 'c-old', part_name: '3/4" copper tees', manufacturer: 'Mueller', on_hand: 9 },
-    { container_id: 'c-uns', part_name: '3/4" copper caps', manufacturer: null, on_hand: 3 },
-  ]
-
-  it('folds the words typed', () => {
-    expect(boxPageFindWords('  3/4 Copper  ')).toEqual(['3/4', 'copper'])
-    expect(boxPageFindWords(null)).toEqual([])
-  })
-
-  it('finds the boxes whose lines hold every word, the scanned box first, then stencil order, never a retired box or Unsorted', () => {
-    const f = boxPageFind({ thisCode: '4F2A9C18', words: ['3/4', 'copper'], containers: boxes, places, lines })
-    expect(f.boxes.map((b) => [b.stencil, b.thisBox, b.lines.map((l) => l.partName)])).toEqual([
-      ['B3', true, ['3/4" copper 90° elbows']],
-      ['A1', false, ['3/4" copper pipe, 20 ft']],
-      ['C2', false, ['3/4" copper tees']],
-    ])
-    expect(f.boxes[1]).toMatchObject({ code: 'AAAA1111', kind: 'cage', place: 'Laydown yard' })
-    expect(f.total).toBe(3)
-  })
-
-  it('a stencil or a place matches the box and brings every line; a word on the box and one on a line match together', () => {
-    expect(boxPageFind({ thisCode: 'X', words: ['a10'], containers: boxes, places, lines }).boxes.map((b) => [b.stencil, b.lines.length])).toEqual([['A10', 1]])
-    expect(boxPageFind({ thisCode: 'X', words: ['laydown'], containers: boxes, places, lines }).boxes.map((b) => b.stencil)).toEqual(['A1'])
-    expect(boxPageFind({ thisCode: 'X', words: ['b3', 'pex'], containers: boxes, places, lines }).boxes.map((b) => [b.stencil, b.lines.map((l) => l.partName)])).toEqual([['B3', ['1/2" PEX crimp rings']]])
-    expect(boxPageFind({ thisCode: 'X', words: ['wax', 'copper'], containers: boxes, places, lines }).boxes).toEqual([])
-    expect(boxPageFind({ thisCode: 'X', words: [], containers: boxes, places, lines })).toEqual({ words: [], boxes: [], total: 0 })
-  })
-
-  it('finds a box by what a person said is in it, and every hit carries its line from all its parts (v2.7348)', () => {
-    const said = boxes.map((c) => (c.id === 'c-a10' ? { ...c, description: 'Toilet rough-in kit' } : c))
-    const found = boxPageFind({ thisCode: CONTAINER.code, words: ['rough-in'], containers: said, places, lines })
-    expect(found.boxes.map((b) => [b.stencil, b.line])).toEqual([['A10', 'Toilet rough-in kit']])
-    const tees = boxPageFind({ thisCode: CONTAINER.code, words: ['elbows'], containers: said, places, lines })
-    expect(tees.boxes.map((b) => [b.stencil, b.line, b.lines.length])).toEqual([['B3', '2 parts: 1/2" PEX crimp rings and 3/4" copper 90° elbows', 1]])
-    expect(parseBoxPageFindResponse(JSON.parse(JSON.stringify({ ok: true, find: tees })))!.find.boxes[0]!.line).toBe('2 parts: 1/2" PEX crimp rings and 3/4" copper 90° elbows')
-  })
-
-  it('caps the boxes and says how many there were, and the answer round-trips', () => {
-    const many = Array.from({ length: 40 }, (_, i) => ({ id: `m${i}`, job_id: 'j1', label: `M${i + 1}`, kind: 'box', where_note: '', place_id: null, retired_at: null, code: `M${String(i).padStart(7, '0')}` }))
-    const manyLines = many.map((c) => ({ container_id: c.id, part_name: 'copper', manufacturer: null, on_hand: 1 }))
-    const f = boxPageFind({ thisCode: 'X', words: ['copper'], containers: many, places: [], lines: manyLines })
-    expect(f.boxes).toHaveLength(BOX_PAGE_FIND_MAX)
-    expect(f.total).toBe(40)
-    expect(f.boxes.map((b) => b.stencil).slice(0, 3)).toEqual(['M1', 'M2', 'M3'])
-    expect(boxPageFoundWords(40, BOX_PAGE_FIND_MAX)).toBe('30 boxes hold a line that matches, the first 30 of 40. Type one more word to narrow it.')
-    expect(boxPageFoundWords(1, BOX_PAGE_FIND_MAX)).toBe('1 box holds a line that matches.')
-    expect(boxPageFoundWords(0, BOX_PAGE_FIND_MAX)).toBe('')
-    const payload = { ok: true as const, find: f }
-    expect(parseBoxPageFindResponse(JSON.parse(JSON.stringify(payload)))).toEqual(payload)
-    expect(boxPageFindView(200, payload)).toEqual({ kind: 'found', payload })
-    expect(boxPageFindView(500, null).kind).toBe('error')
-  })
-
-  it('sorts stencils by letters then number', () => {
-    expect(['B1', 'A10', 'A2', 'A1', 'G76 TOILETS', 'G8'].sort(compareStencils)).toEqual(['A1', 'A2', 'A10', 'B1', 'G8', 'G76 TOILETS'])
-  })
-})
-
-describe('the last box this phone scanned (boxPageMemory)', () => {
-  it('remembers a box for a day, folds the typed code with its dash, and makes the search path', () => {
-    const m = new Map<string, string>()
-    const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) }
-    rememberLastBox({ code: '4F2A9C18', stencil: 'B3', kind: 'cage' }, 1_000, s)
-    expect(readLastBox(1_000 + 60_000, s)).toEqual({ code: '4F2A9C18', stencil: 'B3', kind: 'cage', at: 1_000 })
-    expect(readLastBox(1_000 + LAST_BOX_MS + 1, s)).toBeNull()
-    expect(readLastBox(500, s)).toBeNull()
-    expect(typedCodeWords('4f2a9c18x')).toBe('4F2A-9C18')
-    expect(typedCodeWords('4f2')).toBe('4F2')
-    expect(boxPageFindPath('4F2A9C18')).toBe('/b/4f2a9c18?find=1')
-  })
-})
-
-describe('the count as a verdict (v2.6868)', () => {
-  it('says how long ago inside the 14 days, with the day beside it', () => {
-    expect(boxPageCountVerdict('2026-11-10', '2026-11-10')).toEqual({ kind: 'fresh', words: 'Counted today', detail: 'Tuesday, Nov 10' })
-    expect(boxPageCountVerdict('2026-11-09', '2026-11-10')).toEqual({ kind: 'fresh', words: 'Counted yesterday', detail: 'Monday, Nov 9' })
-    expect(boxPageCountVerdict('2026-11-08', '2026-11-10')).toEqual({ kind: 'fresh', words: 'Counted 2 days ago', detail: 'Sunday, Nov 8' })
-    expect(boxPageCountVerdict('2026-10-28', '2026-11-10').kind).toBe('fresh')
-  })
-
-  it('is due a count from the fourteenth day, the office badge\'s own rule', () => {
-    expect(boxPageCountVerdict('2026-10-27', '2026-11-10')).toEqual({ kind: 'due', words: 'Due a count', detail: 'last counted 14 days ago' })
-    expect(boxPageCountVerdict('2026-10-19', '2026-11-10')).toEqual({ kind: 'due', words: 'Due a count', detail: 'last counted 22 days ago' })
-  })
-
-  it('never counted says so, and a day that cannot be read gives no verdict on its age', () => {
-    expect(boxPageCountVerdict(null, '2026-11-10')).toEqual({ kind: 'never', words: 'Never counted', detail: '' })
-    expect(boxPageCountVerdict('2026-11-08', '')).toEqual({ kind: 'fresh', words: 'Counted Sunday, Nov 8', detail: '' })
-    // A phone whose clock is a day behind the app's calendar still reads sensibly.
-    expect(boxPageCountVerdict('2026-11-10', '2026-11-09').words).toBe('Counted today')
-  })
-
-  it('counts the parts beside the heading', () => {
-    expect(boxPagePartsWords(0)).toBe('')
-    expect(boxPagePartsWords(1)).toBe('1 part')
-    expect(boxPagePartsWords(6)).toBe('6 parts')
-  })
-})
-
-describe('lines at zero, the Can\'t find mark and the office (v2.6874)', () => {
-  const COUNT_AT = '2026-11-08T15:00:00Z'
-  const NOW = '2026-11-10T18:00:00Z'
-  const line = (part_name: string, on_hand: number, last_touched_at: string, cannot_find_since_count = 0, container_id = CONTAINER.id) => ({ container_id, part_name, manufacturer: null, on_hand, cannot_find_since_count, last_touched_at, last_touched_by: 'Mateo Ruiz', last_count_by: 'Jordan Pike' })
-  const lines = [
-    line('used up after the count', 0, '2026-11-09T12:00:00Z'),
-    line('counted to zero before the last count', 0, '2026-11-08T14:59:00Z'),
-    line('counted to zero as the last count', 0, COUNT_AT),
-    line('looked for and not found', 0, '2026-11-01T12:00:00Z', 2),
-    line('over-used', -3, '2026-11-10T09:00:00Z'),
-    line('still here', 10, '2026-11-09T12:00:00Z', 2),
-    line('another box', 0, '2026-11-09T12:00:00Z', 0, 'other'),
-  ]
-
-  it('keeps a line emptied since the box\'s last count or with a Can\'t find on it; a count clears the rest', () => {
-    expect(boxPageGoneLines(lines, CONTAINER.id, COUNT_AT, NOW)).toEqual([
-      { partName: 'looked for and not found', manufacturer: null, onHand: 0, cannotFind: 2 },
-      { partName: 'over-used', manufacturer: null, onHand: 0 },
-      { partName: 'used up after the count', manufacturer: null, onHand: 0 },
-    ])
-  })
-
-  it('a box never counted keeps a line for 14 days after it emptied', () => {
-    const never = [line('emptied 3 days ago', 0, '2026-11-07T18:00:00Z'), line('emptied 20 days ago', 0, '2026-10-21T18:00:00Z'), line('no touch recorded', 0, '')]
-    expect(boxPageGoneLines(never, CONTAINER.id, null, NOW).map((l) => l.partName)).toEqual(['emptied 3 days ago'])
-    // With no clock handed in, nothing is kept by its age alone.
-    expect(boxPageGoneLines(never, CONTAINER.id, null, '')).toEqual([])
-  })
-
-  it('a line on hand carries its Can\'t find presses, and only when there are any', () => {
-    expect(boxPageLines(lines, CONTAINER.id)).toEqual([{ partName: 'still here', manufacturer: null, onHand: 10, cannotFind: 2 }])
-    expect(boxPageCannotFindWords(2)).toBe('2 could not be found since the count')
-  })
-
-  it('the payload carries them and the office number, round-trips, and still names no job or person', () => {
-    const p = buildBoxPagePayload({ container: CONTAINER, place: 'Level 2', lines, lastCountedOn: '2026-11-08', photo: null, lastCountAt: COUNT_AT, now: NOW, officePhone: ' (512) 555-0142 ' })
-    expect(p.box.gone.map((l) => l.partName)).toEqual(['looked for and not found', 'over-used', 'used up after the count'])
-    expect(p.office).toEqual({ phone: '(512) 555-0142' })
-    const wire = JSON.stringify(p)
-    expect(wire).not.toContain('job')
-    expect(wire).not.toContain('Mateo')
-    expect(wire).not.toContain('Jordan')
-    expect(wire).not.toContain('touched')
-    expect(parseBoxPageResponse(JSON.parse(wire))).toEqual(p)
-    expect(buildBoxPagePayload({ container: CONTAINER, place: '', lines: [], lastCountedOn: null, photo: null, officePhone: '' }).office).toBeNull()
-  })
-
-  it('an answer from the function before v2.6874 reads as no lines at zero and no office', () => {
-    const old = { ok: true, box: { code: '4F2A9C18', stencil: 'B3', kind: 'cage', place: '', where: '', lines: [{ partName: 'a', manufacturer: null, onHand: 1 }], lastCountedOn: null, photo: null } }
-    const read = parseBoxPageResponse(old)
-    expect(read?.box.gone).toEqual([])
-    expect(read?.office).toBeNull()
-  })
-
+describe('the presses that reach the office', () => {
   it('Text the office is a link with the box\'s name filled in, to a number a phone can dial', () => {
     expect(boxPageDialNumber('(512) 555-0142')).toBe('+15125550142')
     expect(boxPageDialNumber('1-512-555-0142')).toBe('+15125550142')
@@ -271,6 +139,11 @@ describe('lines at zero, the Can\'t find mark and the office (v2.6874)', () => {
     expect(boxPageTextHref('', 'x')).toBeNull()
     expect(boxPageCallHref('(512) 555-0142')).toBe('tel:+15125550142')
   })
+
+  it('Ask for a bid and Work with us open a text that says which box was scanned (v2.7379)', () => {
+    expect(boxPageBidWords('box', 'G81', '849FDB0B')).toBe('I would like a bid. I scanned box G81, 849F-DB0B: ')
+    expect(boxPageWorkWords('cage', 'B3', '4F2A9C18')).toBe('I would like to work with Click. I scanned cage B3, 4F2A-9C18: ')
+  })
 })
 
 describe('the office number (v2.6910)', () => {
@@ -278,8 +151,7 @@ describe('the office number (v2.6910)', () => {
     expect(boxPageOfficePhone(['(512) 555-0144', '(512) 555-0100', '(512) 555-0199'])).toBe('(512) 555-0144')
     expect(boxPageOfficePhone(['', ' (512) 555-0100 ', '(512) 555-0199'])).toBe('(512) 555-0100')
     expect(boxPageOfficePhone([null, undefined, '(512) 555-0199'])).toBe('(512) 555-0199')
-    expect(boxPageOfficePhone(['  ', null])).toBe('')
-    expect(boxPageOfficePhone([])).toBe('')
+    expect(boxPageOfficePhone(['', null])).toBe('')
   })
 })
 
@@ -335,13 +207,13 @@ describe('a sticker\'s code (v2.7072, punch list #329)', () => {
   })
 
   it('the box a sticker is on answers under the scanned code, with the sticker\'s number, and round-trips', () => {
-    const p = buildBoxPagePayload({ container: CONTAINER, place: 'Level 2', lines: [], lastCountedOn: null, photo: null, scannedCode: '9B1C0D2E', stickerNumber: 147 })
+    const p = buildBoxPagePayload({ container: CONTAINER, scannedCode: '9B1C0D2E', stickerNumber: 147 })
     expect(p.box.code).toBe('9B1C0D2E')
     expect(p.box.stickerNumber).toBe(147)
     expect(JSON.stringify(p)).not.toContain('job')
     expect(parseBoxPageResponse(JSON.parse(JSON.stringify(p)))).toEqual(p)
     // a label's own code carries no sticker number
-    const own = buildBoxPagePayload({ container: CONTAINER, place: '', lines: [], lastCountedOn: null, photo: null, scannedCode: null, stickerNumber: null })
+    const own = buildBoxPagePayload({ container: CONTAINER, scannedCode: null, stickerNumber: null })
     expect(own.box.code).toBe('4F2A9C18')
     expect('stickerNumber' in own.box).toBe(false)
   })

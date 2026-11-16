@@ -3,7 +3,6 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import BoxScan from './BoxScan'
-import { rememberLastBox } from '../lib/materials/boxPageMemory'
 
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: null, loading: false }) }))
 
@@ -36,13 +35,11 @@ describe('BoxScan (the bare /b page, v2.6799)', () => {
     expect(await screen.findByTestId('box-page')).toBeTruthy()
   })
 
-  it('offers the site search when this phone scanned a box today, and not otherwise', () => {
+  it('offers no search of a site, even on a phone that scanned a box before v2.7379: what is in a box needs a sign-in', () => {
+    localStorage.setItem('pt.boxPage.last', JSON.stringify({ code: '4F2A9C18', stencil: 'B3', kind: 'cage', at: Date.now() - 60_000 }))
     mount()
     expect(screen.queryByTestId('box-scan-last')).toBeNull()
-    cleanup()
-    rememberLastBox({ code: '4F2A9C18', stencil: 'B3', kind: 'cage' })
-    mount()
-    expect(screen.getByTestId('box-scan-last').textContent).toContain('You scanned Cage B3 today')
-    expect(screen.getByTestId('box-scan-find').getAttribute('href')).toBe('/b/4f2a9c18?find=1')
+    expect(screen.queryByTestId('box-scan-find')).toBeNull()
+    expect(screen.getByTestId('box-scan-open')).toBeTruthy()
   })
 })
