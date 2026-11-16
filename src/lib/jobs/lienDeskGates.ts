@@ -2,6 +2,7 @@ import { ownerKind } from './ownerConfirm'
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
 import { DATED_FROM_BILL_WORDS, MONTH_STAND_IN_DOOR_WORDS } from './lienBillMonths'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
+import { lienAffidavitNoticeWaits, lienAffidavitNoticeWords, type LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 
 /**
  * The Lien desk's four gates as numbered steps (v2.3657). Each gate has a fixed
@@ -276,19 +277,21 @@ export function lienGateShortWords(gate: Pick<LienGate, 'key' | 'value' | 'label
 }
 
 /** The affidavit's hold line (v2.4806), the notice's sentence's sibling: *Don't file yet.* then the one thing to do first. */
-export function lienAffidavitFootBlockedSentence(gate: { key: LienAffidavitGateKey; label: string } | null): string {
+export function lienAffidavitFootBlockedSentence(gate: { key: LienAffidavitGateKey; label: string } | null, opts: { noticeStanding?: LienAffidavitNoticeStanding | null; leader?: string | null } = {}): string {
   const stop = "Don't file yet."
   if (!gate) return `${stop} Clear what the gates show first.`
   if (gate.key === 'owner') return `${stop} Enter the owner of record and a mailing address on the property record first.`
   if (gate.key === 'public_owner') return `${stop} This is public property, so no lien can be filed. Ask the attorney about the payment bond.`
   if (gate.key === 'legal') return `${stop} Add the county and the legal description on the property record first.`
   if (gate.key === 'contractor') return `${stop} Add the general contractor's address on its customer record first.`
-  if (gate.key === 'notice') return `${stop} Send the § 53.056 notice first. A late one counts while this window is open.`
+  // Where the notice stands (`lienAffidavitNoticeStanding.ts`): approved and not mailed is not *send the notice first*.
+  if (gate.key === 'notice') return `${stop} ${lienAffidavitNoticeWords(lienAffidavitNoticeWaits(opts.noticeStanding) ? opts.noticeStanding : 'late', { leader: opts.leader }).foot}`
   if (gate.key === 'homestead_answer') return `${stop} Answer whether this home is the owner's homestead on the property record first.`
   return `${stop} Talk to your attorney first. A homestead lien needs a recorded pre-work contract signed by both spouses (§ 53.254).`
 }
 
 /** The affidavit's red chip words (v2.4806). */
-export function lienAffidavitGateShortWords(gate: { key: LienAffidavitGateKey }): string {
+export function lienAffidavitGateShortWords(gate: { key: LienAffidavitGateKey }, opts: { noticeStanding?: LienAffidavitNoticeStanding | null } = {}): string {
+  if (gate.key === 'notice' && lienAffidavitNoticeWaits(opts.noticeStanding)) return lienAffidavitNoticeWords(opts.noticeStanding).short
   return gate.key === 'owner' ? 'owner of record missing' : gate.key === 'public_owner' ? 'public property' : gate.key === 'legal' ? 'county or legal description missing' : gate.key === 'contractor' ? 'no address for the general contractor' : gate.key === 'homestead_answer' ? 'homestead question not answered' : gate.key === 'notice' ? 'no § 53.056 notice on the job' : 'homestead'
 }

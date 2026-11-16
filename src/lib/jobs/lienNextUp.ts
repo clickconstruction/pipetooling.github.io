@@ -25,6 +25,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_NOTICE_OWED_DOORS, lienNoticeOwedMonths, lienNoticeOwedWords } from './lienNoticeOwed'
 import { describeNoticeMonths } from './lienNoticeMonthWords'
 import { lienActFor } from './lienActWords'
+import { lienAffidavitNoticePile, lienAffidavitNoticeStanding, lienAffidavitNoticeWaits, lienAffidavitNoticeWords } from './lienAffidavitNoticeStanding'
 
 export type LienNextUpKind = 'notice' | 'affidavit' | 'retainage'
 
@@ -403,7 +404,24 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       const lead = approved ? 'Affidavit approved, held · ' : 'Affidavit · '
       // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
       const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
-      if (failing.length === 1 && failing[0] === 'notice') push({ ...base, key, sub: `${lead}send the § 53.056 notice first — late is allowed while this window is open`, detail: `Send the § 53.056 notice first. Late is allowed while this window is open.${stands}`, action: 'send_notice', button: office ? BUTTON.send_notice : null, target: { open: 'notices', jobId: e.jobId, pile: 'missed' } })
+      if (failing.length === 1 && failing[0] === 'notice') {
+        // Where that notice stands (`lienAffidavitNoticeStanding.ts`, v2.7457): the row says it, and the press goes to the step
+        // that is really next. A notice already approved is printed and mailed from the run, never *sent first* again.
+        const notice = input.notices.find((n) => n.jobId === e.jobId) ?? null
+        const found = lienAffidavitNoticeStanding(e, notice)
+        const standing = lienAffidavitNoticeWaits(found) ? found : 'late'
+        const words = lienAffidavitNoticeWords(standing, { leader: input.leaderName?.(e.jobId) })
+        const pane: LienNextUpTarget = { open: 'notices', jobId: e.jobId, pile: standing === 'late' ? 'missed' : lienAffidavitNoticePile(notice) }
+        const press: { button: string | null; target: LienNextUpTarget } =
+          standing === 'approved'
+            ? { button: office ? BUTTON.send : null, target: notice?.gcCustomerId ? { open: 'run', gcId: notice.gcCustomerId } : pane }
+            : standing === 'printed'
+              ? { button: office ? BUTTON.record_mailing : null, target: { open: 'run', gcId: null } }
+              : standing === 'late'
+                ? { button: office ? BUTTON.send_notice : null, target: pane }
+                : { button: canAct ? 'Open the notice' : null, target: pane }
+        push({ ...base, key, sub: `${lead}${words.sub}`, detail: `${words.detail}${stands}`, action: 'send_notice', ...press })
+      }
       // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
       // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
       else if (failing.includes('public_owner')) push({ ...base, key, sub: `${lead}public property, no lien attaches. Ask the attorney about the bond`, detail: 'Public property, no lien attaches. Ask the attorney about the bond.', action: 'fix_property', button: null })
@@ -417,6 +435,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     }
     switch (e.pile) {
       case 'needs_property':
+      case 'needs_notice':
         pushHold(false)
         break
       case 'to_draft':

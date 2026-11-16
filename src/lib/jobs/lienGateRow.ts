@@ -1,4 +1,5 @@
 import { HOMESTEAD_QUESTION_DOOR } from '../customers/homesteadAnswer'
+import { lienAffidavitNoticeWaits, lienAffidavitNoticeWords, type LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 
 /**
  * The affidavit pane's gate rows as presses (v2.7313). Pure.
@@ -23,6 +24,10 @@ export type LienGateRowFacts = {
   gcAddress?: string | null
   /** The last notice to the owner on record, as words: `sent Sep 22`. */
   noticeSentWords?: string | null
+  /** Where the job's notice stands while the gate is closed (`lienAffidavitNoticeStanding.ts`); absent, the row keeps *Send the notice first ›*. */
+  noticeStanding?: LienAffidavitNoticeStanding | null
+  /** The job's leader by name, for a notice that waits on him. */
+  leaderName?: string | null
 }
 
 /** Which homes the page wired: without `property` the owner and legal doors open Edit Job, as before; without `contractor` the GC row is words alone. */
@@ -62,7 +67,13 @@ export function lienGateRow(gate: { key: string; ok: boolean }, facts: LienGateR
       return { fact: join([facts.gcName, facts.gcAddress]), door: 'contractor', doorWords: gate.ok ? 'Change ›' : 'Add the address ›', title: 'Opens the general contractor’s customer record, where its address is typed' }
     case 'notice':
       if (!facts.isSub) return none
-      return { fact: gate.ok ? join([facts.noticeSentWords]) : '', door: 'notices', doorWords: gate.ok ? 'See it ›' : 'Send the notice first ›', title: 'Opens Monthly notices on this job' }
+      if (gate.ok) return { fact: join([facts.noticeSentWords]), door: 'notices', doorWords: 'See it ›', title: 'Opens Monthly notices on this job' }
+      // Closed: where the notice stands, so a notice already approved is not asked for again.
+      if (lienAffidavitNoticeWaits(facts.noticeStanding)) {
+        const words = lienAffidavitNoticeWords(facts.noticeStanding, { leader: facts.leaderName })
+        return { fact: words.fact, door: 'notices', doorWords: words.door, title: 'Opens Monthly notices on this job' }
+      }
+      return { fact: '', door: 'notices', doorWords: 'Send the notice first ›', title: 'Opens Monthly notices on this job' }
     case 'homestead_answer':
       return { fact: '', door: 'property_homestead', doorWords: HOMESTEAD_QUESTION_DOOR, title: 'Opens the property record at the homestead question' }
     case 'homestead':

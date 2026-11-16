@@ -21,6 +21,7 @@ import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import { lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords } from '../../lib/jobs/lienDeskGates'
+import { lienAffidavitNoticeStanding } from '../../lib/jobs/lienAffidavitNoticeStanding'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
@@ -416,7 +417,10 @@ export default function LienDeskAffidavitPane({
   // The facts each gate row shows after its label (v2.7313): the record's own values, and the last notice to the owner's day.
   const ownerSends = lienAffidavitOwnerSends(data.filingsByJob[entry.jobId] ?? [])
   const lastOwnerSend = ownerSends[ownerSends.length - 1]
-  const gateFacts: LienGateRowFacts = { isSub: entry.isSub, ownerName, county: property.county, legalDescription: property.legalDescription, gcName: gc?.name, gcAddress: gc?.address, noticeSentWords: lastOwnerSend ? `sent ${formatYmdMonthDay(lastOwnerSend.sentOn)}` : '' }
+  // Where the job's notice stands while its gate is closed (`lienAffidavitNoticeStanding.ts`): the gate row, the hold line and
+  // the gates head say it, so a notice already approved and waiting to be mailed is never asked for again.
+  const noticeStanding = lienAffidavitNoticeStanding(entry, data.queue.entries.find((e) => e.jobId === entry.jobId))
+  const gateFacts: LienGateRowFacts = { isSub: entry.isSub, ownerName, county: property.county, legalDescription: property.legalDescription, gcName: gc?.name, gcAddress: gc?.address, noticeSentWords: lastOwnerSend ? `sent ${formatYmdMonthDay(lastOwnerSend.sentOn)}` : '', noticeStanding, leaderName }
 
   // The band's press (v2.7321): the kernel's act in this viewer's words. The leader approves what the office sends for approval;
   // the office waits on him once it is sent, and takes a held paper back to draft. A paper the gates hold keeps the gate's door.
@@ -488,6 +492,7 @@ export default function LienDeskAffidavitPane({
   const paneHeads = lienAffidavitPaneSections({
     nextWords: timeline.next.words,
     gates: entry.gates,
+    noticeStanding,
     window: { lastMonth: entry.lastMonth, fromCreation: Boolean(entry.lastMonthFromCreation), fromBill: Boolean(entry.lastMonthFromBill) },
     ownerCall,
     bond,
@@ -502,7 +507,7 @@ export default function LienDeskAffidavitPane({
   // ---------- footer ----------
   let footer: React.ReactNode = null
   const forfeit = <span style={{ color: 'var(--text-red-600)' }}>The lien right on {label} ends {demandDate(entry.deadline)}.</span>
-  if (entry.pile === 'needs_property' || entry.pile === 'to_draft') {
+  if (entry.pile === 'needs_property' || entry.pile === 'needs_notice' || entry.pile === 'to_draft') {
     const blocked = !entry.ready
     const foot = lienFooter({ role: authRole, paper: 'affidavit', leaderName, blocked, route: policy === 'send' && !promise ? 'run' : 'leader' })
     footer = wordOpen ? (
@@ -661,7 +666,7 @@ export default function LienDeskAffidavitPane({
               const gate = entry.gates.find((g) => !g.ok) ?? null
               if (!gate) return null
               const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : onFixProperty && gate.key === 'homestead_answer' ? { label: HOMESTEAD_QUESTION_DOOR, onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, 'homestead_answer') } } : gate.key === 'notice' ? { label: 'Open it on Monthly notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : gate.key === 'contractor' && contractorDoor ? { label: 'Add the address ›', onPress: () => { setStopOpen(null); contractorDoor() } } : null
-              return { words: lienAffidavitFootBlockedSentence(gate), short: lienAffidavitGateShortWords(gate), act: fix }
+              return { words: lienAffidavitFootBlockedSentence(gate, { noticeStanding, leader: leaderName }), short: lienAffidavitGateShortWords(gate, { noticeStanding }), act: fix }
             }}
           />
         ) : null}
