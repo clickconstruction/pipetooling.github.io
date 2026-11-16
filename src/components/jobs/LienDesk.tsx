@@ -1242,7 +1242,7 @@ export default function LienDesk({
       setRunGcId(t.gcId)
       setRunOpen(true)
     } else if (t.open === 'lien_window') {
-      // The last day of work is wrong (punch list #353): the window opens with the day ready to change, where the page has that door.
+      // Change the last day of work… (punch list #353): the window opens with the day ready to change, where the page has that door.
       if (t.openLastWork && onOpenCalendarLastWork) onOpenCalendarLastWork(t.jobId)
       else (onOpenLienAffidavit ?? onOpenLienInstruments)(t.jobId)
     } else if (t.open === 'notice_record_months') {

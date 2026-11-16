@@ -429,7 +429,7 @@ describe('buildLienNextUp — a notice on record that still owes a month (punch 
     expect([r.action, r.button]).toEqual(['draft', 'Open the notice'])
     expect(r.doors).toEqual([
       { words: 'The paper named September 2026 too', target: { open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] } },
-      { words: 'The last day of work is wrong', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
+      { words: 'Change the last day of work…', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
     ])
   })
   it('with no notice on record, or no months handed in, the row keeps its plain words and no doors', () => {

@@ -47863,6 +47863,16 @@ export type Database = {
         }
         Returns: Json
       }
+      place_sticker_range: {
+        Args: {
+          p_job_id: string
+          p_kind?: string
+          p_names: string[]
+          p_place_id?: string
+          p_where_note?: string
+        }
+        Returns: Json
+      }
       plan_job_names_from_work: {
         Args: { p_apply?: boolean }
         Returns: {
