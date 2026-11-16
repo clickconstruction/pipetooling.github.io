@@ -66,9 +66,33 @@ Three links sit over the bills:
 - **Fill oldest first** ticks every open bill.
 - **Clear** starts over.
 
-You can type **Amount sent** instead of ticking. The app then ticks the oldest bills that the amount pays in full. The button stays grey while money is left over. The line over it says how much is not on a bill yet. Tick the bills the payment covered until the amounts match.
+You can type **Amount sent** instead of ticking. The app then fills the oldest bills first. The last bill it reaches may be paid in part.
 
 You may not know yet how it was sent. Press **Say later**. The payment is recorded now, and the button's words end in *details later*.
+
+## Pay part of a bill
+
+Each ticked bill has a box with what the bill has open. Type a smaller amount in the box to pay part of it. The line under the bill says how much stays open.
+
+The bill stays unpaid until the rest is paid. Its row lists what is left, and says what was paid.
+
+:::example A bill paid in part
+**201 · Maple Lofts** · **$300.00 paid · $512.40 left of $812.40** · S4402277 · billed 10/1 · **$512.40** · {{button:outline|Mark paid}}
+:::
+
+The numbers at the top of the card count what is left. So do the aging table and Held for suppliers.
+
+## Use a credit memo
+
+An open credit memo sits under the bills in the window. Tick it. **Amount sent** drops by the credit, the way the house's statement nets it. The credit memo then reads used.
+
+A credit covers bills, so tick the bills it goes on too. The button stays grey while the credit is more than the bills ticked.
+
+## Keep money on account
+
+Sometimes you send more than the bills you ticked. The line at the bottom says how much is not on a bill yet. A tick box under it names the amount, like **Keep $187.40 on account with Cedar Fork Supply**. Tick it and the button comes alive.
+
+The house's card then shows **On account** beside its other numbers. The next payment to that house offers the money first, like **Use $187.40 on account first**. Tick it and that money goes on the oldest bills you tick.
 
 ## See a payment, or remove one
 

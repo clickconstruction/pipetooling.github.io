@@ -9,6 +9,8 @@ import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type Li
 import { FilingSheetNote } from './FilingSheetNote'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
 import LienRecordSheet from './LienRecordSheet'
+import { LienFiledScanPress } from './LienFiledScanPress'
+import { LIEN_CLERK_SCAN_NOTE } from '../../lib/jobs/lienScanFile'
 import { recordSheetField, recordSheetLabel } from './lienRecordSheetStyles'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
@@ -710,6 +712,20 @@ export default function LienFilingTabs({
       <input type="text" value={docNote} onChange={(e) => setDocNote(e.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" style={{ width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
     </div>
   )
+  /** A scan uploaded on a filing already recorded (punch list #366) is its saved copy at once: the file is in Drive, so the link is written with no second press. */
+  const saveFilingScan = async (f: JobLienFilingRow, url: string) => {
+    try {
+      await withSupabaseRetry(
+        () => supabase.from('job_lien_filings').update(filingDocumentPayload({ url, note: LIEN_CLERK_SCAN_NOTE }, { clear: true }) as never).eq('id', f.id),
+        'save lien filing scan',
+      )
+      showToast('Scan saved as the filing’s saved copy.', 'success')
+      setDocEditId(null)
+      onChanged()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The scan is in the job’s Drive folder, but its link was not saved on the filing.'), 'error')
+    }
+  }
   /** Add or change the saved copy on a recorded filing (v2.3763) — the run's link is often typed later, once the scan is in Drive. */
   const saveFilingDocument = async (f: JobLienFilingRow) => {
     if (busy) return
@@ -828,6 +844,12 @@ export default function LienFilingTabs({
                     <input type="text" value={docEdit.note} onChange={(e) => setDocEdit((d) => ({ ...d, note: e.target.value }))} placeholder="note" aria-label="Saved copy — note" style={{ padding: '0.25rem 0.4rem', fontSize: '0.72rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
                     <button type="button" onClick={() => void saveFilingDocument(f)} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>Save</button>
                     <button type="button" onClick={() => setDocEditId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>Cancel</button>
+                    {/* A filed affidavit's scan from this computer (punch list #366), in place of a link typed by hand. */}
+                    {f.kind === 'affidavit' && f.filed_at ? (
+                      <span style={{ gridColumn: '1 / -1' }}>
+                        <LienFiledScanPress jobId={job.id} jobNumber={jobNumber} day={f.filed_at} url="" compact onSaved={(url) => void saveFilingScan(f, url)} />
+                      </span>
+                    ) : null}
                   </span>
                 )
               }
@@ -928,18 +950,32 @@ export default function LienFilingTabs({
   )
   /** A photo of the clerk's stamped page fills the filing's saved copy (punch list #314): the link, and a note that says what it is. */
   const clerkPagePhoto = (compact: boolean) => (
-    <LienReceiptPhotoPress
-      jobId={job.id}
-      jobNumber={jobNumber}
-      of="clerk"
-      day={filingDate}
-      url={docNote.trim() === LIEN_CLERK_PAGE_NOTE ? docUrl : ''}
-      compact={compact}
-      onSaved={(url) => {
-        setDocUrl(url)
-        setDocNote(LIEN_CLERK_PAGE_NOTE)
-      }}
-    />
+    <span data-lien-clerk-copy style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem', alignItems: 'center' }}>
+      <LienReceiptPhotoPress
+        jobId={job.id}
+        jobNumber={jobNumber}
+        of="clerk"
+        day={filingDate}
+        url={docNote.trim() === LIEN_CLERK_PAGE_NOTE ? docUrl : ''}
+        compact={compact}
+        onSaved={(url) => {
+          setDocUrl(url)
+          setDocNote(LIEN_CLERK_PAGE_NOTE)
+        }}
+      />
+      {/* The scanned PDF from this computer (punch list #366): the same saved copy, with a note that says it is the scan. */}
+      <LienFiledScanPress
+        jobId={job.id}
+        jobNumber={jobNumber}
+        day={filingDate}
+        url={docNote.trim() === LIEN_CLERK_SCAN_NOTE ? docUrl : ''}
+        compact={compact}
+        onSaved={(url) => {
+          setDocUrl(url)
+          setDocNote(LIEN_CLERK_SCAN_NOTE)
+        }}
+      />
+    </span>
   )
   const sheetSavedCopy = (
     <div data-testid="filing-saved-copy" style={{ display: 'grid', gap: '0.5rem' }}>

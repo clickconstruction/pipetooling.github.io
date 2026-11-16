@@ -99,7 +99,7 @@ import { dueGroupKey } from '../lib/materials/supplyBillGroups'
 import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
-import { billPaidBy } from '../lib/materials/payments/supplyPayment'
+import { billPaidBy, houseOnAccount, openAmount, paidByBill, partPaidWords, supplyBillOpen } from '../lib/materials/payments/supplyPayment'
 import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
 import { EmptyState } from './EmptyState'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
@@ -140,6 +140,8 @@ type AgingInvoiceRow = {
   purchase_order_number: string | null
   invoice_date: string
   amount: number
+  /** The bill's own amount, when a payment has taken part of it and `amount` is what is left. */
+  billed?: number
   due_date: string | null
   on_job_account: boolean | null
   link: string | null
@@ -584,8 +586,12 @@ export function SupplyHousesTab({
     }
     const { data: invoices } = await supabase
       .from('supply_house_invoices')
-      .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id')
-    const invoicesList = (invoices ?? []) as (AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null })[]
+      .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, amount_paid, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id')
+    // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole, here
+    // or in the aging table. `billed` keeps the bill's own amount for the row that says so.
+    const invoicesList = ((invoices ?? []) as (AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null; amount_paid: number | null })[]).map((inv) =>
+      inv.is_paid ? inv : { ...inv, amount: openAmount(inv), billed: Number(inv.amount) },
+    )
     setAgingUnpaidInvoices(invoicesList.filter((inv) => !inv.is_paid))
     setAgingBookLoaded(true)
     // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
@@ -2065,6 +2071,7 @@ export function SupplyHousesTab({
                                     {(() => {
                                       // A bill marked paid on this visit stays listed, so the rows under it do not move.
                                       const billToday = todayYmdInAppTz()
+                                      const paidOnBills = paidByBill(housePayments.payments, housePayments.lines)
                                       const invoicesToShow = showPaidInvoices
                                         ? supplyHouseInvoices
                                         : supplyHouseInvoices.filter((inv) => !inv.is_paid || paidThisVisit.has(inv.id))
@@ -2074,13 +2081,16 @@ export function SupplyHousesTab({
                                         const paper = papersByInvoice.get(inv.id) ?? null
                                         // What paid it: the payment's method and number, and how many bills it covered.
                                         const paidBy = billPaidBy(inv.id, housePayments.payments, housePayments.lines)
+                                        // A bill paid in part lists for what is left on it, and says what was paid.
+                                        const paidOnIt = paidOnBills.get(inv.id) ?? 0
                                         return {
                                           id: inv.id,
                                           invoice_number: inv.invoice_number,
                                           purchase_order_number: inv.purchase_order_number,
                                           invoice_date: inv.invoice_date,
                                           due_date: inv.due_date,
-                                          amount: inv.amount,
+                                          amount: inv.is_paid ? inv.amount : supplyBillOpen(inv, paidOnIt),
+                                          partPaid: partPaidWords(inv, paidOnIt),
                                           is_paid: inv.is_paid,
                                           paidYmd: inv.paid_at ? calendarYmdInAppTzFromIso(inv.paid_at) : null,
                                           paidBy: inv.is_paid ? paidBy.words : '',
@@ -2106,6 +2116,7 @@ export function SupplyHousesTab({
                                           jobAccountsInUse={!!selectedSupplyHouseForDetail.job_accounts?.trim() || supplyHouseInvoices.some((inv) => inv.on_job_account === true)}
                                           paidThisVisit={paidThisVisit}
                                           payingId={payingInvoiceId}
+                                          onAccount={houseOnAccount(housePayments.payments, housePayments.lines).reduce((sum, x) => sum + x.amount, 0)}
                                           empty={
                                             <EmptyState
                                               compact
@@ -2242,7 +2253,14 @@ export function SupplyHousesTab({
           house={selectedSupplyHouseForDetail}
           money={supplyHouseCardMoney(supplyHouseSummary, agingMatrix.rows)[selectedSupplyHouseForDetail.id] ?? null}
           loading={supplyHouseDetailLoading}
-          invoices={supplyHouseInvoices}
+          invoices={(() => {
+            // An unpaid bill lists for what is left on it, and says what was paid.
+            const paidOnBills = paidByBill(housePayments.payments, housePayments.lines)
+            return supplyHouseInvoices.map((inv) => {
+              const paidOnIt = paidOnBills.get(inv.id) ?? 0
+              return inv.is_paid || paidOnIt === 0 ? inv : { ...inv, amount: supplyBillOpen(inv, paidOnIt), partPaid: partPaidWords(inv, paidOnIt) }
+            })
+          })()}
           jobLabel={(jobId) => {
             const d = supplyHouseJobDetailsMap[jobId]
             return d ? effectiveJobLedgerNumber(d.hcp_number, d.click_number) : jobId.slice(0, 8)
@@ -2339,7 +2357,9 @@ export function SupplyHousesTab({
           const po = inv.purchase_order_number?.trim()
           const poDate = `${po ? `PO ${po} · ` : ''}${formatYmdLocal(inv.invoice_date)}`
           const pair = creditPairingLine(inv, agingUnpaidInvoices)
-          const rowNote = [pair, note].filter(Boolean).join(' · ')
+          // A bill paid in part sits in the cell for what is left on it, and says what it was billed for.
+          const partNote = inv.billed != null && Math.abs(inv.billed - inv.amount) > 0.005 ? `left of $${formatCurrency(Math.abs(inv.billed))}` : null
+          const rowNote = [partNote, pair, note].filter(Boolean).join(' · ')
           return (
             <div key={inv.id} className="aging-win-row">
               <AgingInvoiceDoor invoiceNumber={inv.invoice_number} busy={agingCellDoorBusy === inv.id} onOpen={() => void openInvoiceFromAgingCell(inv, null)} />
@@ -3389,6 +3409,7 @@ export function SupplyHousesTab({
           })}
           io={supabaseSupplyPaymentsIo}
           todayYmd={todayYmdInAppTz()}
+          parts
           onClose={() => setRecordPaymentOpen(false)}
           onRecorded={(_result, words) => {
             setRecordPaymentOpen(false)

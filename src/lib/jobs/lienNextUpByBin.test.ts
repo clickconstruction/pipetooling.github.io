@@ -84,6 +84,17 @@ describe('groupLienNextUpByBin — the list in the Board’s order (punch list #
     expect(g.groups[0]!.rows.map((r) => r.key)).toEqual(['notice:3', 'notice:1', 'notice:2'])
   })
 
+  it('a retainage notice that waits on the leader has no bin: its head carries the reminder press when no bin does, and never a second one (v2.7478)', () => {
+    const waitingRetainage = row('retainage:7', { bin: null, action: 'approve', button: null })
+    const alone = groupLienNextUpByBin([waitingRetainage, row('retainage:8', { bin: null })], { binFor, waitingOn: 'Malachi' })
+    expect(alone.groups.map((x) => [x.key, Boolean(x.remind)])).toEqual([['other', true]])
+    // A bin that holds a waiting paper keeps the press: one press reminds of every paper that waits.
+    const both = groupLienNextUpByBin([waitingRetainage, row('notice:1', { bin: 'notice:awaiting', action: 'approve', button: null })], { binFor, waitingOn: 'Malachi' })
+    expect(both.groups.map((x) => [x.key, Boolean(x.remind)])).toEqual([['notice:awaiting', true], ['other', false]])
+    // Nothing waits: no press.
+    expect(groupLienNextUpByBin([row('retainage:8', { bin: null })], { binFor }).groups.map((x) => Boolean(x.remind))).toEqual([false])
+  })
+
   it('the leader’s own rows lead, the papers the office waits on sit in their bin with the reminder press on the first such head, and reminders keep their group', () => {
     const rows = [
       row('notice:1', { bin: 'notice:awaiting', action: 'approve', button: null }),

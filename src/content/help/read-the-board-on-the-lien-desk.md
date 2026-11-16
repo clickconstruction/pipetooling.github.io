@@ -13,7 +13,7 @@ The first tile counts what is due by the next day. It reads like *21 by Monday*,
 
 The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Press the tile and the list shows only those rows.
 
-The third tile counts the approved notices still to print and mail. Its small line says how many are to print and how many are to mail. Press it and the run opens.
+The third tile counts the approved notices still to print and mail. Its small line says how many are to print and how many are to mail. The press that opens the run stands right under the tiles. Read [the two prints under the tiles](#the-two-prints-under-the-tiles).
 
 The fourth tile is the money still unpaid on the desk. Each job counts once.
 
@@ -66,13 +66,13 @@ A paper opened from a chip is a step of its own in the browser. Press Back and t
 
 The same press sits on the job number of every To do row. It also sits on the number of every notice and affidavit row on **By paper**. Every row on **By date** has it too. A number is a zoom everywhere on the desk. On a To do row the job's name still opens the job itself.
 
-## The print at the foot of each column
+## The two prints under the tiles
 
-Each column ends in its own print, under a thin line. Only the lien office sees them.
+Two presses stand between the tiles and the columns. Each stands over its own column, so they show as soon as the desk opens. Only the lien office sees them.
 
-Under the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
+Over the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
 
-Under the affidavits the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under it says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
+Over the affidavits the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under it says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
 
 A press with nothing ready is grey. The line under it still says what waits. A column with no approved paper has no press.
 
@@ -104,7 +104,7 @@ Each heading says how many papers the bin holds and what their jobs still owe. I
 
 Papers that share one act are one row. Twelve affidavits ready to file read as one row, *12 affidavits approved and ready to file*. Its press is {{button:blue|Print 10 for notarization ›}}. It opens the affidavits list at **Ready to file**. The button of the same name there prints the batch. Press **The 12 jobs** on the row to see each job, its notice and what it owes. Affidavits not yet sent for approval fold the same way, under {{button:blue|Send 3 for approval ›}}.
 
-A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. The desk asks first. Then the leader gets the message again, on the phone or by email. Anyone in the office can send it, whoever sent the paper. A notice is one message each. The affidavits share one message. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. After a send the button says when, like *Reminded at 2:14 PM*.
+A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. When only a retainage notice waits, the press is on the **Other lien papers** heading. The desk asks first. Then the leader gets the message again, on the phone or by email. Anyone in the office can send it, whoever sent the paper. A notice is one message each. A retainage notice is one message too. The affidavits share one message. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. After a send the button says when, like *Reminded at 2:14 PM*.
 
 The leader's own rows stay on top, under **Only you can sign** and **Only you can approve**. **Reminders** keep their own heading. A paper with no bin, like a retainage notice, sits under **Other lien papers**.
 
