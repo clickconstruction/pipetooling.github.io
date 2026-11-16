@@ -79,7 +79,111 @@ export const PAINTED_MAP_LINK_WORDS = {
   training: 'This is a training account, so no link was made.',
   empty: 'This map has nothing on it yet. Draw a line or add a place first.',
   tooMany: 'This map has too many links open. End one first.',
+  /** The page asked for the map with no name, or one that is not a name. */
+  needsName: 'Type your name to open the map.',
+  /** The page sent no device id, or one of the wrong shape. A page that cannot keep one makes one a visit. */
+  needsDevice: 'This page could not be opened here. Reload it and try again.',
+  /** A point that is not a point. The reader's dot still shows on their own phone. */
+  badPoint: 'That place could not be kept.',
 } as const
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Who is looking (v2.7413). A reader who is not signed in gives a name before the map opens, and the page says what
+// is kept before it asks: the name, the device, and where they are once they choose to show it.
+
+export const PAINTED_MAP_VISITOR_NAME_MAX = 80
+
+/**
+ * A name as it is kept: control characters out, runs of space made one, trimmed, at most eighty characters. Null when
+ * nothing a person could be called is left. A name is not proven, so nothing else is asked of it.
+ */
+export function paintedMapVisitorName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  // deno-lint-ignore no-control-regex
+  const name = raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, PAINTED_MAP_VISITOR_NAME_MAX).trim()
+  return /[\p{L}\p{N}]/u.test(name) ? name : null
+}
+
+/** The id the page put on the device: a UUID, kept lower case. Null for anything else. */
+export function paintedMapDeviceId(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const id = raw.trim().toLowerCase()
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) ? id : null
+}
+
+/** A string the browser said about itself, cut to what its column holds. */
+export function paintedMapClip(raw: unknown, max: number): string {
+  // deno-lint-ignore no-control-regex
+  return typeof raw === 'string' ? raw.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : ''
+}
+
+/**
+ * The device in two words, from the browser's own description: `iPhone · Safari`, `Android · Chrome`,
+ * `Windows · Edge`. What the office reads beside a name. `A phone or computer` when the browser said nothing known.
+ */
+export function paintedMapDeviceWords(userAgent: string | null | undefined): string {
+  const ua = userAgent ?? ''
+  const device = /iPhone/.test(ua)
+    ? 'iPhone'
+    : /iPad/.test(ua)
+      ? 'iPad'
+      : /Android/.test(ua)
+        ? /Mobile/.test(ua)
+          ? 'Android phone'
+          : 'Android tablet'
+        : /Windows/.test(ua)
+          ? 'Windows'
+          : /Macintosh|Mac OS X/.test(ua)
+            ? 'Mac'
+            : /CrOS/.test(ua)
+              ? 'Chromebook'
+              : /Linux/.test(ua)
+                ? 'Linux'
+                : ''
+  // Order matters: Edge and Opera say Chrome too, and every one of them says Safari.
+  const browser = /EdgA?\/|EdgiOS\//.test(ua)
+    ? 'Edge'
+    : /OPR\/|OPiOS\//.test(ua)
+      ? 'Opera'
+      : /SamsungBrowser\//.test(ua)
+        ? 'Samsung Internet'
+        : /Firefox\/|FxiOS\//.test(ua)
+          ? 'Firefox'
+          : /Chrome\/|CriOS\//.test(ua)
+            ? 'Chrome'
+            : /Safari\//.test(ua)
+              ? 'Safari'
+              : ''
+  return [device, browser].filter(Boolean).join(' · ') || 'A phone or computer'
+}
+
+export type PaintedMapVisitPoint = { lat: number; lng: number; accuracyM: number | null }
+
+/** A place the reader chose to show: two finite numbers on the globe, and how sure the phone was when it said. */
+export function paintedMapVisitPoint(lat: unknown, lng: unknown, accuracyM: unknown): PaintedMapVisitPoint | null {
+  if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
+  // Nobody stands at exactly nothing, nothing: a phone that failed says so this way.
+  if (lat === 0 && lng === 0) return null
+  const sure = typeof accuracyM === 'number' && Number.isFinite(accuracyM) && accuracyM >= 0 ? Math.min(accuracyM, 100000) : null
+  return { lat, lng, accuracyM: sure }
+}
+
+/** The least time between two kept points of one visit. The page sends about one a minute; this holds a page that sends more. */
+export const PAINTED_MAP_VISIT_POINT_GAP_MS = 20_000
+
+type VisitPointsIn = { first_located_at: string | null; last_located_at: string | null }
+
+/**
+ * The columns a point sets on a visit: the first point once, then the latest, never a trail. Null when the last kept
+ * point is too fresh to write again.
+ */
+export function paintedMapVisitPointColumns(visit: VisitPointsIn, point: PaintedMapVisitPoint, nowIso: string): Record<string, number | string | null> | null {
+  if (!visit.first_located_at) return { first_lat: point.lat, first_lng: point.lng, first_accuracy_m: point.accuracyM, first_located_at: nowIso }
+  const latest = Date.parse(visit.last_located_at ?? visit.first_located_at)
+  if (Number.isFinite(latest) && Date.parse(nowIso) - latest < PAINTED_MAP_VISIT_POINT_GAP_MS) return null
+  return { last_lat: point.lat, last_lng: point.lng, last_accuracy_m: point.accuracyM, last_located_at: nowIso }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // What the page is told.

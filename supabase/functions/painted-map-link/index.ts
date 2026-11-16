@@ -6,10 +6,16 @@ import {
   PAINTED_MAP_LINKS_OPEN_MAX,
   PAINTED_MAP_LINK_WORDS,
   mintPaintedMapLinkCode,
+  paintedMapClip,
+  paintedMapDeviceId,
+  paintedMapDeviceWords,
   paintedMapHexOf,
   paintedMapLinkCode,
   paintedMapLinkExpiry,
   paintedMapLinkOpen,
+  paintedMapVisitPoint,
+  paintedMapVisitPointColumns,
+  paintedMapVisitorName,
   sharedMapIsEmpty,
   sharedPaintedMap,
 } from '../_shared/paintedMapLink.ts'
@@ -29,6 +35,22 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  *                                           counted; 429 `locked` past 20 in the hour).
  *   GET  ?code=<code>&photo=<place id>    → the bytes of one place's photo, for a place on this link's map alone. From
  *                                           the painted-map-photos bucket. The page never learns the file's name.
+ *
+ * Who is looking (v2.7413, Taunya's ask of 2026-11-15). The page that asks a signed-out reader's name opens the map
+ * here, and the plain GET above stays for the page that is live until the new one has replaced it:
+ *   POST { action: 'way.open', code, name?, device: { id, screen?, language?, timeZone? } }
+ *                                         → { ok, needsName: true, mapName, company, endsOn } when this device has given
+ *                                           no name on this link and none came with the call. Nothing of the map but
+ *                                           its name. Otherwise { ok, map, company, endsOn, visitor: { name, signedIn } }
+ *                                           and one row of `painted_map_link_visits` is made or counted again: the name,
+ *                                           the device id the page keeps on that phone, the browser's own words, the
+ *                                           screen, the language, the time zone and the address the call came from. A
+ *                                           signed-in teammate (their session in Authorization) is named from their
+ *                                           account and types nothing.
+ *   POST { action: 'way.here', code, deviceId, lat, lng, accuracyM? } → { ok, kept } where the reader is, sent only
+ *                                           after they pressed Show where I am on a page that says the company will see
+ *                                           it. The first point once, then the latest, never a trail, and never more
+ *                                           often than every twenty seconds. 403 `name` for a device with no visit.
  *
  * Whoever painted the map, or the office, signed in:
  *   POST { action: 'desk.mint', mapId }   → { code, endsOn } a new code, handed out once and kept only as its hash.
@@ -126,6 +148,126 @@ async function sharer(req: Request, supabaseUrl: string, mapId: string): Promise
   return { userId, mayShare: office === true }
 }
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+const gone = () => json({ error: 'gone', words: PAINTED_MAP_LINK_WORDS.gone }, 404)
+
+/**
+ * The open link a code names, or the answer for a code that names none: a wrong code is a miss, counted, and an ended
+ * link and an expired one answer exactly as a wrong code does without counting as one.
+ */
+async function openLink(admin: Admin, req: Request, rawCode: unknown, nowIso: string): Promise<{ link: LinkRow } | { refused: Response }> {
+  const code = paintedMapLinkCode(typeof rawCode === 'string' ? rawCode : null)
+  if (!code) return { refused: gone() }
+  const link = await findLink(admin, code)
+  if (!link) {
+    console.log(JSON.stringify({ event: 'painted_map_link_open', state: 'not_found' }))
+    const miss = await recordEstimateLinkMiss(admin, req, 'painted-map-link')
+    if (miss.locked) return { refused: json({ error: PAINTED_MAP_LINK_WORDS.locked, code: ESTIMATE_LINK_LOCKED_CODE }, 429) }
+    return { refused: gone() }
+  }
+  if (!paintedMapLinkOpen(link, nowIso)) {
+    console.log(JSON.stringify({ event: 'painted_map_link_open', link: link.id, state: 'closed' }))
+    return { refused: gone() }
+  }
+  return { link }
+}
+
+/**
+ * The signed-in teammate reading a link, when the page carried their session: their id and their name. Null for
+ * everyone else, and for an account that has left, who types a name as a stranger does.
+ */
+async function reader(req: Request, admin: Admin, supabaseUrl: string): Promise<{ userId: string; name: string } | null> {
+  const auth = req.headers.get('Authorization') ?? ''
+  const anon = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+  const token = auth.replace(/^Bearer\s+/i, '').trim()
+  if (!token || token === anon) return null
+  try {
+    const mine = createClient(supabaseUrl, anon, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } })
+    const { data: u } = await mine.auth.getUser()
+    const userId = u?.user?.id
+    if (!userId) return null
+    const { data: row } = await admin.from('users').select('name, email, archived_at').eq('id', userId).maybeSingle()
+    const me = row as { name: string | null; email: string | null; archived_at: string | null } | null
+    if (!me || me.archived_at) return null
+    const name = paintedMapVisitorName(me.name) ?? paintedMapVisitorName(me.email)
+    return name ? { userId, name } : null
+  } catch {
+    return null
+  }
+}
+
+type VisitRow = { id: string; visitor_name: string; open_count: number; first_located_at: string | null; last_located_at: string | null }
+
+/** `way.open`: the map for a reader who has given a name, or the ask for one. */
+async function wayOpen(req: Request, admin: Admin, supabaseUrl: string, body: Record<string, unknown>, ip: string): Promise<Response> {
+  const nowIso = new Date().toISOString()
+  const found = await openLink(admin, req, body.code, nowIso)
+  if ('refused' in found) return found.refused
+  const link = found.link
+  const device = isRecord(body.device) ? body.device : {}
+  const deviceId = paintedMapDeviceId(device.id)
+  if (!deviceId) return json({ error: 'device', words: PAINTED_MAP_LINK_WORDS.needsDevice }, 400)
+  const shared = await loadMap(admin, link.map_id)
+  if (!shared || sharedMapIsEmpty(shared)) return gone()
+
+  const who = await reader(req, admin, supabaseUrl)
+  const { data: seenRow, error: seenErr } = await admin.from('painted_map_link_visits').select('id, visitor_name, open_count, first_located_at, last_located_at').eq('link_id', link.id).eq('device_id', deviceId).maybeSingle()
+  if (seenErr) throw new Error(`the visit: ${seenErr.message}`)
+  const seen = seenRow as VisitRow | null
+  const name = who?.name ?? paintedMapVisitorName(body.name) ?? seen?.visitor_name ?? null
+  const about = { company: { name: PORTAL_COMPANY.name, phone: PORTAL_COMPANY.phone }, endsOn: calendarYmdInAppTzFromIso(link.expires_at) }
+  // No name yet: the page learns the map's name and who sent it, and nothing else of the map.
+  if (!name) return json({ ok: true, needsName: true, mapName: shared.name, ...about })
+
+  const userAgent = req.headers.get('user-agent')
+  const said = {
+    visitor_name: name,
+    device_words: paintedMapDeviceWords(userAgent),
+    user_agent: paintedMapClip(userAgent, 400),
+    screen: paintedMapClip(device.screen, 40),
+    language: paintedMapClip(device.language, 40),
+    time_zone: paintedMapClip(device.timeZone, 64),
+    ip: paintedMapClip(ip === 'unknown' ? '' : ip, 64),
+    last_opened_at: nowIso,
+    ...(who ? { user_id: who.userId } : {}),
+  }
+  if (seen) {
+    const { error } = await admin.from('painted_map_link_visits').update({ ...said, open_count: (seen.open_count ?? 1) + 1 }).eq('id', seen.id)
+    if (error) throw new Error(`counting the visit: ${error.message}`)
+  } else {
+    const { error } = await admin.from('painted_map_link_visits').insert({ ...said, link_id: link.id, map_id: link.map_id, device_id: deviceId, first_opened_at: nowIso })
+    // Two calls from one page at once: the other one made the row.
+    if (error && error.code !== '23505') throw new Error(`keeping the visit: ${error.message}`)
+  }
+  void admin.from('painted_map_links').update({ opened_at: link.opened_at ?? nowIso, last_opened_at: nowIso, open_count: (link.open_count ?? 0) + 1 }).eq('id', link.id).then(() => {}, () => {})
+  // The log says that a visit was kept. Never the name, the device or the address.
+  console.log(JSON.stringify({ event: 'painted_map_link_open', link: link.id, state: 'open', named: true, signed_in: !!who, again: !!seen, lines: shared.lines.length, places: shared.places.length }))
+  return json({ ok: true, map: shared, visitor: { name, signedIn: !!who }, ...about })
+}
+
+/** `way.here`: where the reader is, after they chose to show it on a page that says the company will see it. */
+async function wayHere(req: Request, admin: Admin, body: Record<string, unknown>): Promise<Response> {
+  const nowIso = new Date().toISOString()
+  const found = await openLink(admin, req, body.code, nowIso)
+  if ('refused' in found) return found.refused
+  const deviceId = paintedMapDeviceId(body.deviceId)
+  if (!deviceId) return json({ error: 'device', words: PAINTED_MAP_LINK_WORDS.needsDevice }, 400)
+  const point = paintedMapVisitPoint(body.lat, body.lng, body.accuracyM)
+  if (!point) return json({ error: 'point', words: PAINTED_MAP_LINK_WORDS.badPoint }, 400)
+  const { data: row, error: readErr } = await admin.from('painted_map_link_visits').select('id, visitor_name, open_count, first_located_at, last_located_at').eq('link_id', found.link.id).eq('device_id', deviceId).maybeSingle()
+  if (readErr) throw new Error(`the visit: ${readErr.message}`)
+  const visit = row as VisitRow | null
+  // A place is kept only beside a name: a device that gave none has no row to keep it on.
+  if (!visit) return json({ error: 'name', words: PAINTED_MAP_LINK_WORDS.needsName }, 403)
+  const columns = paintedMapVisitPointColumns(visit, point, nowIso)
+  if (columns) {
+    const { error } = await admin.from('painted_map_link_visits').update(columns).eq('id', visit.id)
+    if (error) throw new Error(`keeping the place: ${error.message}`)
+  }
+  console.log(JSON.stringify({ event: 'painted_map_link_here', link: found.link.id, kept: !!columns }))
+  return json({ ok: true, kept: !!columns })
+}
+
 async function desk(req: Request, admin: Admin, supabaseUrl: string, body: Record<string, unknown>): Promise<Response> {
   const mapId = typeof body.mapId === 'string' ? body.mapId : ''
   if (!UUID_RE.test(mapId)) return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)
@@ -187,25 +329,15 @@ serve(async (req) => {
       if (!parsed || typeof parsed !== 'object') return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)
       const body = parsed as Record<string, unknown>
       if (body.action === 'desk.mint' || body.action === 'desk.end') return await desk(req, admin, supabaseUrl, body)
+      if (body.action === 'way.open') return await wayOpen(req, admin, supabaseUrl, body, ip)
+      if (body.action === 'way.here') return await wayHere(req, admin, body)
       return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)
     }
 
-    const gone = () => json({ error: 'gone', words: PAINTED_MAP_LINK_WORDS.gone }, 404)
-    const code = paintedMapLinkCode(url.searchParams.get('code'))
-    if (!code) return gone()
-    const link = await findLink(admin, code)
-    if (!link) {
-      console.log(JSON.stringify({ event: 'painted_map_link_open', state: 'not_found' }))
-      const miss = await recordEstimateLinkMiss(admin, req, 'painted-map-link')
-      if (miss.locked) return json({ error: PAINTED_MAP_LINK_WORDS.locked, code: ESTIMATE_LINK_LOCKED_CODE }, 429)
-      return gone()
-    }
     const nowIso = new Date().toISOString()
-    // An ended link and an expired one answer exactly as a wrong code does, without counting as a miss.
-    if (!paintedMapLinkOpen(link, nowIso)) {
-      console.log(JSON.stringify({ event: 'painted_map_link_open', link: link.id, state: 'closed' }))
-      return gone()
-    }
+    const found = await openLink(admin, req, url.searchParams.get('code'), nowIso)
+    if ('refused' in found) return found.refused
+    const link = found.link
 
     // One place's photo: only a place on this link's map, and only a name of the one shape under that map.
     const photoOf = url.searchParams.get('photo')
