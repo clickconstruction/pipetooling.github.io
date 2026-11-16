@@ -12,6 +12,7 @@ import type { PaintedMapSearchRow } from '../../lib/paintedMap/paintedMapSearch'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { PAINT_SWATCH } from '../paintedMap/paintedMapLook'
+import { PaintedMapShareSheet } from '../paintedMap/PaintedMapShareSheet'
 import { documentsHeading, documentsLinkButton, documentsQuietButton, documentsTd, documentsTh } from '../jobs/jobDocumentsStyles'
 
 type Props = {
@@ -44,6 +45,8 @@ const FIND_FROM = 7
 export function DocumentsPaintedMapsTab({ loadMaps = loadPaintedMapsEvery, loadHomes = loadPaintedMapsForSearch, loadNames = loadPainterNames }: Props) {
   const [read, setRead] = useState<Read>({ kind: 'loading' })
   const [find, setFind] = useState('')
+  /** Share on a row (v2.7415): the map's Share sheet, without opening the map. */
+  const [sharing, setSharing] = useState<{ id: string; name: string } | null>(null)
 
   const load = useCallback(async () => {
     const res = await loadMaps()
@@ -122,6 +125,7 @@ export function DocumentsPaintedMapsTab({ loadMaps = loadPaintedMapsEvery, loadH
                     <th style={documentsTh}>{WORDS.columns.where}</th>
                     <th style={documentsTh}>{WORDS.columns.holds}</th>
                     <th style={documentsTh}>{WORDS.columns.painted}</th>
+                    <th style={documentsTh} aria-label={WORDS.share} />
                   </tr>
                 </thead>
                 <tbody>
@@ -139,6 +143,11 @@ export function DocumentsPaintedMapsTab({ loadMaps = loadPaintedMapsEvery, loadH
                       <td style={documentsTd}>{row.where}</td>
                       <td style={{ ...documentsTd, whiteSpace: 'nowrap' }}>{row.holds}</td>
                       <td style={{ ...documentsTd, color: 'var(--text-muted)' }}>{row.painted ?? ''}</td>
+                      <td style={{ ...documentsTd, textAlign: 'right', whiteSpace: 'nowrap', width: '1%' }}>
+                        <button type="button" style={documentsQuietButton} aria-label={`${WORDS.share} ${row.name}`} onClick={() => setSharing({ id: row.id, name: row.name })}>
+                          {WORDS.share}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -147,6 +156,7 @@ export function DocumentsPaintedMapsTab({ loadMaps = loadPaintedMapsEvery, loadH
           )}
         </>
       )}
+      {sharing ? <PaintedMapShareSheet mapId={sharing.id} mapName={sharing.name} onClose={() => setSharing(null)} /> : null}
     </section>
   )
 }

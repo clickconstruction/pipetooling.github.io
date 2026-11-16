@@ -5,12 +5,15 @@ import { loadPaintedMapsFor, loadPainterNames, type Landed, type PaintedMapWhole
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { PAINT_SWATCH } from '../paintedMap/paintedMapLook'
+import { PaintedMapShareSheet } from '../paintedMap/PaintedMapShareSheet'
 import { documentsChip, documentsHeading, documentsLinkButton, documentsQuietButton, documentsTd } from './jobDocumentsStyles'
 
 type Props = {
   job: { id: string; job_name?: string | null; job_address?: string | null; development_id?: string | null; development?: { id: string; name: string | null } | null }
   /** May this person see the copies that went out? Then the section says where a map's fixed copy is. */
   sentCopiesShown?: boolean
+  /** May this person text a customer? Then a row's Share sheet offers Text it…, to this job's customer. */
+  mayText?: boolean
   /** The job's painted maps and its development's. For a smoke. */
   loadMaps?: (home: { jobId: string; developmentId: string | null }) => Promise<Landed<PaintedMapWhole[]>>
   /** The painters' names. For a smoke. */
@@ -32,9 +35,13 @@ const dayOf = (iso: string): string | null => {
  * window, and **Paint a map** starts one for the job. Nothing is stored here: a map keeps changing,
  * and the copy that went out is already under *Sent from this job*. The line under the job's
  * address stays, since that is where the crew meets a map.
+ *
+ * **Share** on a row (v2.7415) opens the map's Share sheet without opening the map: the link that
+ * asks a reader's name, and who has opened it. A copy to print is in the map's own window.
  */
-export function JobDocumentsPaintedMaps({ job, sentCopiesShown = false, loadMaps = loadPaintedMapsFor, loadNames = loadPainterNames }: Props) {
+export function JobDocumentsPaintedMaps({ job, sentCopiesShown = false, mayText = false, loadMaps = loadPaintedMapsFor, loadNames = loadPainterNames }: Props) {
   const [read, setRead] = useState<Read>({ kind: 'loading' })
+  const [sharing, setSharing] = useState<{ id: string; name: string } | null>(null)
   const developmentId = job.development_id ?? job.development?.id ?? null
   const developmentLabel = job.development?.name ?? null
 
@@ -99,6 +106,11 @@ export function JobDocumentsPaintedMaps({ job, sentCopiesShown = false, loadMaps
                       {row.from ? <span style={{ ...documentsChip, marginLeft: 0, background: 'var(--bg-muted)', color: 'var(--text-700)' }}>{row.from}</span> : null}
                     </span>
                   </td>
+                  <td style={{ ...documentsTd, textAlign: 'right', whiteSpace: 'nowrap', width: '1%' }}>
+                    <button type="button" style={documentsQuietButton} aria-label={`${PAINTED_MAP_DOCUMENT_WORDS.share} ${row.name}`} onClick={() => setSharing({ id: row.id, name: row.name })}>
+                      {PAINTED_MAP_DOCUMENT_WORDS.share}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -106,6 +118,7 @@ export function JobDocumentsPaintedMaps({ job, sentCopiesShown = false, loadMaps
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{sentCopiesShown ? PAINTED_MAP_DOCUMENT_WORDS.copies : PAINTED_MAP_DOCUMENT_WORDS.live}</p>
         </>
       )}
+      {sharing ? <PaintedMapShareSheet mapId={sharing.id} mapName={sharing.name} mayText={mayText} jobId={job.id} onClose={() => setSharing(null)} /> : null}
     </section>
   )
 }

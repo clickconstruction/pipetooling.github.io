@@ -28,6 +28,7 @@ import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
 import { JobDocumentsIndexFolder } from './JobDocumentsIndexFolder'
 import { JobPlansSection } from './JobPlansSection'
 import { JobDocumentsPaintedMaps } from './JobDocumentsPaintedMaps'
+import { jobBoxOffered } from '../../lib/messages/jobBox'
 import { JobDocumentsAddFile } from './JobDocumentsAddFile'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
@@ -184,7 +185,7 @@ export function JobWindowDocumentsTab({
       <JobPlansSection job={job} onPlansLinkChanged={(link) => onFoldersMade?.({ job_plans_link: link })} onLeave={onLeave} />
 
       {/* The job's painted maps (punch list #345): each a door to the map as it is now. Nothing is stored here. */}
-      <JobDocumentsPaintedMaps job={job} sentCopiesShown={canReadSentCopies(role)} />
+      <JobDocumentsPaintedMaps job={job} sentCopiesShown={canReadSentCopies(role)} mayText={jobBoxOffered(role)} />
 
       <section aria-labelledby="job-documents-pay-apps" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
