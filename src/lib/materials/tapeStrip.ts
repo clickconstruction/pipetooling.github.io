@@ -14,6 +14,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { QRCodeSVG } from 'qrcode.react'
 import { dotFontSquare, dotTextHeight } from './tapeDotFont'
+import { TAPE_NAME_SMALL_RATIO } from './tapeLabel'
 
 export type TapeStripLayout = {
   /** The dots the tape prints across: the strip's height. */
@@ -67,10 +68,20 @@ export function tapeAddressLines(address: string): string[] {
 /** One line under the stencil: a piece of the address in the code's face, or the test strip's words. */
 export type TapeStripLine = { text: string; kind: 'code' | 'words' }
 
-/** The lines under the stencil: the address on its lines, then the words when a strip has any (the test strip alone). */
-export function tapeStripLines(address: string, words?: string): TapeStripLine[] {
+/**
+ * The lines under the stencil: a named sticker's number first (punch list #329, section 10: the name prints large
+ * where the number did, and the number small before the address), then the address on its lines, then the words when
+ * a strip has any (the test strip alone).
+ */
+export function tapeStripLines(address: string, words?: string, number?: string): TapeStripLine[] {
   const lines: TapeStripLine[] = tapeAddressLines(address).map((text) => ({ text, kind: 'code' }))
+  if (number) lines.unshift({ text: number, kind: 'code' })
   return words ? [...lines, { text: words, kind: 'words' }] : lines
+}
+
+/** The stencil's type size for a strip: the layout's, or the smaller size for a named sticker's long name. */
+export function tapeStencilPx(l: TapeStripLayout, small = false): number {
+  return small ? Math.round(l.stencilPx * TAPE_NAME_SMALL_RATIO) : l.stencilPx
 }
 
 /** A line with its type size and its baseline, both in dots from the strip's top. */
@@ -81,18 +92,24 @@ export const TAPE_STRIP_GAP = 6
 
 /**
  * Where the stencil and its lines sit: one block centred on the strip's height, the stencil's baseline first, then
- * each line a line's height under the one before.
+ * each line a line's height under the one before. A block taller than the tape (a named sticker's three lines on
+ * 18 mm tape) closes its lines up: six dots clear under the stencil and four between lines, two squares of the dot
+ * font, so the name keeps its size. `stencilPx` is the stencil's own size when it is not the layout's.
  */
-export function tapeStripBlock(l: TapeStripLayout, lines: ReadonlyArray<TapeStripLine>): { stencilBaseline: number; lines: TapeStripPlacedLine[] } {
+export function tapeStripBlock(l: TapeStripLayout, lines: ReadonlyArray<TapeStripLine>, stencilPx: number = l.stencilPx): { stencilBaseline: number; lines: TapeStripPlacedLine[]; tight: boolean } {
   const sized = lines.map((line) => ({ ...line, px: line.kind === 'code' ? l.codePx : l.wordsPx }))
-  const block = l.stencilPx * 0.78 + TAPE_STRIP_GAP + sized.reduce((sum, line) => sum + line.px * 1.2, 0)
-  const stencilBaseline = Math.round((l.dots - block) / 2 + l.stencilPx * 0.78)
+  const open = stencilPx * 0.78 + TAPE_STRIP_GAP + sized.reduce((sum, line) => sum + line.px * 1.2, 0)
+  const tight = open > l.dots
+  const cap = dotTextHeight(l.codeSquare)
+  const step = (line: { px: number }, i: number) => (tight ? (i === 0 ? TAPE_STRIP_GAP + cap : cap + 2 * l.codeSquare) : i === 0 ? TAPE_STRIP_GAP + Math.round(line.px * 1.05) : Math.round(line.px * 1.25))
+  const block = tight ? stencilPx * 0.78 + sized.reduce((sum, line, i) => sum + step(line, i), 0) : open
+  const stencilBaseline = Math.round((l.dots - block) / 2 + stencilPx * 0.78)
   let y = stencilBaseline
   const placed = sized.map((line, i) => {
-    y += i === 0 ? TAPE_STRIP_GAP + Math.round(line.px * 1.05) : Math.round(line.px * 1.25)
+    y += step(line, i)
     return { ...line, baseline: y }
   })
-  return { stencilBaseline, lines: placed }
+  return { stencilBaseline, lines: placed, tight }
 }
 
 /** The dark runs of a QR's drawing, as the library writes them (`M8 0h1v1H8z`, or `M18,0 h7v1H18z` at a row's end), as a grid. */
