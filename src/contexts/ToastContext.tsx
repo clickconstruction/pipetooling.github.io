@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { Toast, type ToastAction, type ToastAnchor, type ToastPlacement } from '../components/Toast'
+import { troubleMemory } from '../lib/tellTheDev/trouble'
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
 
@@ -42,6 +43,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       placement: ToastPlacement = 'corner',
     ) => {
       const id = Date.now()
+      // Tell the dev (punch list #380): the last error lines shown ride on a note, in this tab's memory alone.
+      if (type === 'error') troubleMemory.noteErrorLine(message)
       setToasts((prev) => [...prev, { id, message, type, durationMs, anchor, placement }])
     },
     [],
