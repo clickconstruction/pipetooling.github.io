@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, yesterday, not ticked, did it, skipped, missed, mark several done, round, all at once, do first, what comes first, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -20,6 +20,12 @@ The top of the page shows the date and one line that says where you stand. It re
 Press {{button:blue|Mark done}} on the **Next** card. On a task under **Then**, tap its checkbox. That's it. There is no save button. Want to say something about how it went, like "used the scrap ply, looks clean"? Tap **＋ Note** and post it. Once a task has notes, the press shows their count, like *2 notes*. Open it to read the thread or add another.
 
 A finished task moves under **Done today** as one struck line. Tapping its green check reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
+
+## Mark a round of tasks done at once
+
+Is your day a round of the same tasks? When two or more of today's repeating tasks are open, a press under them reads like {{button:outline|Mark 3 done}}. Press it. A window asks once, and its press says the same words. Each task then finishes as if you had ticked it.
+
+Some tasks are left out of the round, since each has steps of its own. A one-time task is left out. So is a task with lines to tick, and a task that asks for a photo. A line under the press says how many are left out. Finish those from their own cards.
 
 ## Add a photo to a task
 
@@ -174,6 +180,21 @@ Found something that needs doing? Press {{button:outline|＋ Add a task for me}}
 Finished a task and it turned up more work? Press **Follow-up** on the finished task. The window opens on that task's words, and you type what comes next. A task that had a place brings its place along. The person who gave you the first task hears when the follow-up is done.
 
 [Give someone a task](/help/give-someone-a-task) covers the rest of the window.
+
+## When yesterday's task was not ticked
+
+A daily or weekly task that is not ticked drops off your list the next morning. The next day the top of Today asks about it once, under a label like *Yesterday · 2 not ticked*.
+
+- Press **Did it** when you did the work and forgot the tick. That day is marked done.
+- Press **Skipped** when it did not get done. The task leaves the question.
+
+Either answer keeps the record right, and History shows a skipped day as **Skipped**. The question looks back three days, so Monday asks about Friday.
+
+## Choose what to do first
+
+The **Next** card is the first open task in the order the office set. Want to start on another one? Press **⋯ More** on that task, then **Do first**. The task moves into **Next**, and a line under the label reads *You picked this to do first.*
+
+Your pick is kept on this phone or computer. Nobody else sees it. To go back to the list's own order, press **⋯ More** on the Next card, then **Stop doing it first**.
 
 ## Move a task to another day
 

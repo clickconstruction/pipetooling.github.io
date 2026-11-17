@@ -31,7 +31,7 @@ describe('ChecklistStuckSection', () => {
   it('Sorted takes the mark off as the office, tells the person, and reads the list again', async () => {
     let rows = ROWS
     const load = vi.fn(async () => ({ rows, error: null }))
-    const saySorted = vi.fn(async (_a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck'; words: string }) => {
+    const saySorted = vi.fn(async (_a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck' | 'skipped'; words: string }) => {
       rows = ROWS.slice(1)
       return null
     })

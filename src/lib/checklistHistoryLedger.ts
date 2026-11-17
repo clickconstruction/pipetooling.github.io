@@ -51,6 +51,8 @@ export type LedgerChip =
   | { kind: 'done_by_other'; byUserId: string | null; completedAt: string }
   | { kind: 'reopened' }
   | { kind: 'missed' }
+  /** A past day the person said they skipped (punch list #369, step D3): not done, and answered for. */
+  | { kind: 'skipped' }
   | { kind: 'open' }
 
 /**
@@ -77,6 +79,7 @@ export function ledgerChip(
     if (e.event_type === 'reopened') return { kind: 'reopened' }
     if (e.event_type === 'completed') break
   }
+  if (events.some((e) => e?.event_type === 'skipped')) return { kind: 'skipped' }
   return { kind: 'missed' }
 }
 

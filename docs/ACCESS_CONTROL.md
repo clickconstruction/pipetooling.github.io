@@ -1241,7 +1241,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   `docs/migrations/20261117120000_task_doer_acts.md`): four narrow `SECURITY DEFINER` functions behind one gate, `task_doer_may` (the office or an assignee of the day row through `can_work_checklist_instance`, never a training account, a twin or an archived account): **`task_move_day`** moves a one-time task's due day, **`task_no_longer_applies`** closes a one-time task that is neither a roadmap nor a vehicle task with a reason, **`task_hand_on`** swaps one person for another on the same task (the office may name whose;
   the taker must be able to sign in), and **`task_add_map`** puts a map the caller painted on a task that has none.
   Each writes its own line in the thread (`moved`, `dropped`, `handed`, `map`), kinds no client may insert by hand;
-  `stuck` and `unstuck` are inserted like a note, by whoever reads the row.
+  `stuck`, `unstuck` and, since v2.7551 (`20261117130000_task_skipped_line.md`), `skipped` are inserted like a note, by whoever reads the row.
   The task's maker and the office keep every right they had.
 - **Your people's week, the Monday email** (v2.6603, punch list #273 PR 5, `docs/migrations/20261106233000_people_week_email.md`): **`people_week_email_requests`** takes a row only in the caller's own name as its own recipient, and only from the office (`is_dev_or_master_or_assistant()`, primaries included) or with `people_user_ids` equal to exactly the caller;
   **read** requester, recipient or a dev;

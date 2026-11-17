@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1 to C7 built (v2.7533, v2.7536, v2.7537, v2.7539, v2.7541, v2.7542, v2.7543, v2.7544, v2.7545, v2.7546, v2.7547, v2.7548) · C1's migration to push right after its merge · step D to build
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps built, A1 to D3 (v2.7533 to v2.7551) · two migrations to push, each right after its merge · left: a walk on a real phone
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -11,10 +11,10 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: Push the C1 migration right after its merge. Then D, the three small ones.
-size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: D (S · S · S)
-blocker: none
-ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548
+next: See each PR through the merge queue, pushing the two migrations as they land. Then someone walks Task Mode on a real phone: nothing in this train was seen drawn in the app.
+size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S), built; left: a walk on a phone (XS)
+blocker: a person at a phone for the walk.
+ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549 · v2.7550 · v2.7551
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
 
@@ -108,7 +108,9 @@ One small PR per line, each with its guide, release note and fragment.
 | C5 | Tool 4: Go through the old ones. Built after C6 | none | S | built, v2.7547 |
 | C6 | Tool 2: Can't do it, with the stuck list on Review. Built ahead of C5 | uses C1 | M | built, v2.7546 |
 | C7 | Tool 7: Hand it on. Both of the page's Forward windows call the same function and keep the task whole. Dashboard's My Inbox has a third Forward, not touched | uses C1 | M | built, v2.7548 |
-| D | Do first, Mark 3 done, Yesterday | none | S each | |
+| D1 | Do first: a press under More that lifts one task into Next on this device | none | S | built, v2.7549 |
+| D2 | Mark N done: one press for a round of daily tasks | none | S | built, v2.7550 |
+| D3 | Yesterday: a missed repeating task asks once, did it or skipped (`20261117130000_task_skipped_line.sql`) | a small migration | S | built, v2.7551; push after merge |
 
 ## How to verify
 
@@ -122,5 +124,10 @@ One small PR per line, each with its guide, release note and fragment.
 
 ## Where it stands
 
-Step A1 is built and not yet walked in the app: its look was a static page at phone and desk width, light
-and dark. The first walk is on the live site, on a real phone.
+All fifteen steps are built, each as its own PR stacked on the one before. None has been walked in the app:
+step A1 and A2 were looked at as a static page at phone and desk width, and the rest stand on their tests.
+The first walk is on the live site, on a real phone.
+
+Two things fall short of the mock-up, and each fragment says so. A roadmap task and a vehicle task cannot be
+closed as no longer applying, since a close is a completion (v2.7545). And the finish offers the photo and
+the note in words beside their presses, with no sheet on every Mark done (v2.7539).

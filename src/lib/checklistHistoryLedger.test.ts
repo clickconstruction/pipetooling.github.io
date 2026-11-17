@@ -149,3 +149,15 @@ describe('outstanding (v2.1864)', () => {
     expect(days[0]).toMatchObject({ date: '2026-08-18', dueCount: 1, doneCount: 1 })
   })
 })
+
+describe('ledgerChip, a skipped day (punch list #369, step D3)', () => {
+  const past = { id: 'a', scheduled_date: '2026-08-18', completed_at: null, completed_by_user_id: null } as unknown as Parameters<typeof ledgerChip>[0]
+  const ev = (event_type: string, created_at: string) => ({ id: `${event_type}-${created_at}`, instance_id: 'a', event_type, actor_user_id: 'me', body: '', created_at })
+  it('a past day the person said they skipped reads skipped, not missed', () => {
+    expect(ledgerChip(past, 'me', '2026-08-20', [ev('skipped', '2026-08-19T12:00:00Z')]).kind).toBe('skipped')
+    expect(ledgerChip(past, 'me', '2026-08-20', []).kind).toBe('missed')
+  })
+  it('a day sent back still reads reopened, whatever was said before', () => {
+    expect(ledgerChip(past, 'me', '2026-08-20', [ev('skipped', '2026-08-19T12:00:00Z'), ev('reopened', '2026-08-19T13:00:00Z')]).kind).toBe('reopened')
+  })
+})

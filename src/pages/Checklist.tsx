@@ -81,6 +81,10 @@ import { taskPlaceDots, taskPlaceDraft, taskPlaceFarShort, taskTitlePlain } from
 import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, lateFirst, nextTaskId, splitToday, stillOpenIsLate, stillOpenMeta, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
+import { DO_FIRST_MARK, doFirstId, readDoFirst, writeDoFirst } from '../lib/tasks/doFirst'
+import { MISSED_ASK, MISSED_DID_LABEL, MISSED_SKIPPED_LABEL, MISSED_WORDS, missedLabel, yesterdayMissed } from '../lib/tasks/yesterdayMissed'
+import { sayTaskStuck } from '../lib/tasks/taskDoerActsIo'
+import { ROUND_MIN, roundConfirmMessage, roundHeldCount, roundHeldWords, roundOutcome, roundPressLabel, roundTaskIds } from '../lib/tasks/markRound'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
 import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
@@ -501,13 +505,27 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     authUserId,
     todayYmd: todayYmdInAppTz(),
     onChanged: () => rereadDay(),
+    onDoFirst: (instanceId) => {
+      writeDoFirst(authUserId, instanceId)
+      setDoFirstPick(instanceId)
+    },
     // The pass's Done answer is the tick's own path, by the day row's id.
     markDone: async (instanceId) => {
       const inst = [...todayInstances, ...outstandingInstances].find((i) => i.id === instanceId)
       if (!inst || inst.completed_at) return
-      await toggleComplete(inst)
+      if (!(await toggleComplete(inst))) throw new Error('The task did not mark done.')
     },
   })
+  // Step D2: one press for a round of daily tasks, behind a window that names the act.
+  const confirmRound = useConfirmDialog()
+  const { showToast: showRoundToast } = useToastContext()
+  const [roundBusy, setRoundBusy] = useState(false)
+  /** Step D3: the repeating days that went unticked, and the ones answered as skipped. */
+  const [missedRows, setMissedRows] = useState<ChecklistInstance[]>([])
+  const [missedSkippedIds, setMissedSkippedIds] = useState<ReadonlySet<string>>(new Set())
+  const [missedBusyId, setMissedBusyId] = useState<string | null>(null)
+  /** Do first (step D1): the task this person lifted into Next on this device. */
+  const [doFirstPick, setDoFirstPick] = useState<string | null>(() => readDoFirst(authUserId))
   /** Tasks finished in this visit (punch list #369, step B2): each one's done line offers the photo and the note once. */
   const [doneHere, setDoneHere] = useState<ReadonlySet<string>>(new Set())
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
@@ -672,16 +690,22 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     const qualifying = pastIncomplete.filter((i) => qualifiesOutstanding(i.checklist_items))
     const rest = pastIncomplete.filter((i) => !qualifiesOutstanding(i.checklist_items))
     let reopenedOnes: ChecklistInstance[] = []
+    let skippedIds = new Set<string>()
     if (rest.length > 0) {
       const { data: transData } = await supabase
         .from('checklist_instance_events')
         .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
         .in('instance_id', rest.map((r) => r.id))
-        .in('event_type', ['completed', 'reopened'])
+        .in('event_type', ['completed', 'reopened', 'skipped'])
         .order('created_at', { ascending: true })
       const grouped = groupEventsByInstance((transData ?? []) as unknown as ChecklistCardEvent[])
       reopenedOnes = rest.filter((i) => lastTransitionIsReopen(grouped.get(i.id) ?? []))
+      // Step D3: the repeating days that went unticked, and which of them the person already answered as skipped.
+      skippedIds = new Set(rest.filter((i) => (grouped.get(i.id) ?? []).some((e) => e.event_type === 'skipped')).map((i) => i.id))
     }
+    const reopenedIds = new Set(reopenedOnes.map((i) => i.id))
+    setMissedRows(rest.filter((i) => !reopenedIds.has(i.id)))
+    setMissedSkippedIds(skippedIds)
     const overdueData = [...qualifying, ...reopenedOnes]
     // Punch list #369: a task whose due day has passed leads the list, so the one red row is never behind the fold.
     setOutstandingInstances(lateFirst(sortOutstanding(overdueData), today))
@@ -790,9 +814,10 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     setUpcomingInstances((data ?? []) as unknown as ChecklistInstance[])
   }
 
-  async function toggleComplete(inst: ChecklistInstance) {
-    if (!authUserId) return
-    if (toggleCompleteInFlightRef.current.has(inst.id)) return
+  /** Resolves true once the change is saved, false when it was refused or did not run (step D2 counts them). */
+  async function toggleComplete(inst: ChecklistInstance): Promise<boolean> {
+    if (!authUserId) return false
+    if (toggleCompleteInFlightRef.current.has(inst.id)) return false
     toggleCompleteInFlightRef.current.add(inst.id)
 
     setError(null)
@@ -829,9 +854,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         void sendCompletionNotifications(inst)
         void maybeCreateNextInstance(inst)
       }
+      return true
     } catch (e: unknown) {
       setTodayInstances((prev) => prev.map((row) => (row.id === inst.id ? previous : row)))
       setError(formatErrorMessage(e, 'Failed to update checklist'))
+      return false
     } finally {
       toggleCompleteInFlightRef.current.delete(inst.id)
     }
@@ -929,7 +956,12 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   // Step C6: a stuck task waits under the ones that can be done, and is never Next.
   const isStuck = (i: ChecklistInstance) => stuckReason(eventsByInstance.get(i.id) ?? []) !== null
   const stuckRows = todayOpen.filter(isStuck)
-  const nextId = nextTaskId(todayOpen.filter((i) => !isStuck(i)), outstandingInstances.filter((i) => !isStuck(i)), sentBackIds)
+  const todayReady = todayOpen.filter((i) => !isStuck(i))
+  const olderReady = outstandingInstances.filter((i) => !isStuck(i))
+  // Step D1: the person's own pick is Next while it can be. Past that, the list's order stands.
+  const pickedFirst = doFirstId(doFirstPick, [...todayReady, ...olderReady])
+  const listNextId = nextTaskId(todayReady, olderReady, sentBackIds)
+  const nextId = pickedFirst ?? listNextId
   const nextInst = nextId ? (todayOpen.find((i) => i.id === nextId) ?? outstandingInstances.find((i) => i.id === nextId) ?? null) : null
   const thenRows = todayOpen.filter((i) => i.id !== nextId && !isStuck(i))
   const olderRows = outstandingInstances.filter((i) => i.id !== nextId)
@@ -970,7 +1002,60 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       giverName: giverId ? (eventActorNameById[giverId] ?? null) : null,
       dueYmd: it?.due_date ?? null,
       stuck: isStuck(inst),
+      first: pickedFirst === inst.id,
+      next: listNextId === inst.id,
       meta: inst.scheduled_date < todayYmdInAppTz() ? stillOpenMeta(inst.scheduled_date, it?.due_date ?? null, todayYmdInAppTz()) : null,
+    }
+  }
+  // Step D2: the round is today's open repeating tasks with a plain tick. Anything with steps of its own is left out.
+  const roundTasks = todayInstances.map((i) => ({
+    id: i.id,
+    open: !i.completed_at,
+    ring: takesRing({ repeatType: i.checklist_items?.repeat_type ?? 'once', roadmapTaskId: i.checklist_items?.roadmap_group_task_id ?? null }),
+    hasLines: taskLines.linesFor(i.id).length > 0,
+    asksForPhoto: cardAsksForPhoto({ asksForPhoto: i.checklist_items?.asks_for_photo }, { asksForPhoto: i.checklist_items?.checklist_tech_tree_group_tasks?.asks_for_photo }),
+    stuck: isStuck(i),
+  }))
+  const roundIds = roundTaskIds(roundTasks)
+  const roundHeld = roundHeldWords(roundHeldCount(roundTasks))
+  const markRound = async () => {
+    if (roundBusy || roundIds.length < ROUND_MIN) return
+    if (!(await confirmRound({ message: roundConfirmMessage(roundIds.length), confirmLabel: roundPressLabel(roundIds.length) }))) return
+    setRoundBusy(true)
+    try {
+      let done = 0
+      let failed = 0
+      // One at a time, and past a task that does not mark: each takes the tick's own path, pushes and all.
+      for (const id of roundIds) {
+        const inst = todayInstances.find((i) => i.id === id)
+        if (!inst || inst.completed_at) continue
+        if (await toggleComplete(inst)) {
+          done += 1
+          setDoneHere((prev) => new Set(prev).add(id))
+        } else failed += 1
+      }
+      const out = roundOutcome(done, failed)
+      showRoundToast(out.line, out.tone)
+    } finally {
+      setRoundBusy(false)
+    }
+  }
+  // Step D3: Yesterday. A repeating task that went unticked asks once whether it was done or skipped.
+  const missed = yesterdayMissed(missedRows, toLocalDateString(new Date()), missedSkippedIds)
+  const answerMissed = async (inst: ChecklistInstance, did: boolean) => {
+    if (missedBusyId || !authUserId) return
+    setMissedBusyId(inst.id)
+    try {
+      if (did) {
+        // That day's row is finished, by the tick's own path. It leaves the question because it is done.
+        if (await toggleComplete(inst)) setMissedRows((prev) => prev.filter((r) => r.id !== inst.id))
+        return
+      }
+      const refused = await sayTaskStuck({ instanceId: inst.id, userId: authUserId, kind: 'skipped', words: '' })
+      if (refused) setError(refused)
+      else setMissedSkippedIds((prev) => new Set(prev).add(inst.id))
+    } finally {
+      setMissedBusyId(null)
     }
   }
   const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
@@ -1081,6 +1166,29 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         {modeBar}
       </div>
       <TaskPlacesMapCard tasks={mapTasks} onShowTask={showTask} onMe={setMe} />
+      {missed.day && !dayFailure ? (
+        <section data-yesterday style={{ marginBottom: '0.9rem' }}>
+          <h3 style={{ ...TODAY_PART_LABEL, marginTop: 0 }}>{missedLabel(missed.day, toLocalDateString(new Date()), missed.rows.length)}</h3>
+          <p style={{ margin: '0 2px 0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {MISSED_ASK} {MISSED_WORDS}
+          </p>
+          <ul style={{ ...TODAY_PART_LIST, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
+            {missed.rows.map((inst, i) => (
+              <li key={inst.id} data-yesterday-row={inst.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+                <span style={{ flex: '1 1 160px', minWidth: 0, fontSize: '0.9375rem', lineHeight: 1.3 }}>{taskTitlePlain(inst.checklist_items?.title)}</span>
+                <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
+                  <button type="button" disabled={missedBusyId !== null} onClick={() => void answerMissed(inst, true)} style={{ ...TASK_PILL_STYLE, minHeight: 38, opacity: missedBusyId === inst.id ? 0.6 : 1 }}>
+                    {MISSED_DID_LABEL}
+                  </button>
+                  <button type="button" disabled={missedBusyId !== null} onClick={() => void answerMissed(inst, false)} style={{ ...TASK_PILL_STYLE, minHeight: 38, opacity: missedBusyId === inst.id ? 0.6 : 1 }}>
+                    {MISSED_SKIPPED_LABEL}
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <section style={{ marginBottom: '1.5rem' }}>
         {dayFailure ? (
           // A read is safe to repeat: when the signal returns the day reads again by itself.
@@ -1092,6 +1200,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
             {nextInst ? (
               <>
                 <h3 style={TODAY_PART_LABEL}>{todayPartLabel('next', 1)}</h3>
+                {pickedFirst ? (
+                  <p data-do-first-mark style={{ margin: '0 2px 0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {DO_FIRST_MARK}
+                  </p>
+                ) : null}
                 <ul style={TODAY_PART_LIST}>{renderTodayCard(nextInst, true)}</ul>
               </>
             ) : null}
@@ -1100,6 +1213,19 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
                 <h3 style={TODAY_PART_LABEL}>{todayPartLabel('then', thenRows.length)}</h3>
                 <ul style={TODAY_PART_LIST}>{thenRows.map((inst) => renderTodayCard(inst, false))}</ul>
               </>
+            ) : null}
+            {roundIds.length >= ROUND_MIN ? (
+              <div data-mark-round style={{ marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => void markRound()}
+                  disabled={roundBusy}
+                  style={{ display: 'block', width: '100%', minHeight: 44, font: 'inherit', fontSize: 14, fontWeight: 600, borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: roundBusy ? 'not-allowed' : 'pointer', opacity: roundBusy ? 0.6 : 1 }}
+                >
+                  {roundBusy ? 'Marking…' : roundPressLabel(roundIds.length)}
+                </button>
+                {roundHeld ? <p style={{ margin: '4px 2px 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{roundHeld}</p> : null}
+              </div>
             ) : null}
             {stuckRows.length > 0 ? (
               <>

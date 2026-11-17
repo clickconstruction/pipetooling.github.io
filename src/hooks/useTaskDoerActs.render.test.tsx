@@ -17,7 +17,7 @@ const PEOPLE = [
   { id: 'u-imani', name: 'Imani' },
   { id: 'u-me', name: 'Theo' },
 ]
-type SayStuck = (a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck'; words: string }) => Promise<string | null>
+type SayStuck = (a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck' | 'skipped'; words: string }) => Promise<string | null>
 function Host({ target, moveDay, drop = async () => null, sayStuck = async () => null, handOn = async () => null, tellGiver, onChanged, authUserId = 'u-me' }: { handOn?: HandOn; target: TaskDoerActsTarget; moveDay: (id: string, ymd: string) => Promise<string | null>; drop?: (id: string, reason: string) => Promise<string | null>; sayStuck?: SayStuck; tellGiver: (a: { giverId: string | null; instanceId: string; title: string; body: string }) => Promise<void>; onChanged: () => void; authUserId?: string }) {
   const doer = useTaskDoerActs({ authUserId, todayYmd: '2026-11-16', onChanged, moveDay, drop, sayStuck, handOn, loadPeople: async () => ({ people: PEOPLE, error: null }), tellGiver, nameOf: async () => 'Theo' })
   return (
@@ -234,6 +234,29 @@ describe('useTaskDoerActs', () => {
     render(<Host target={{ ...TASK, roadmap: true }} moveDay={vi.fn()} tellGiver={vi.fn()} onChanged={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
     expect(screen.queryByRole('button', { name: /Hand it on/ })).toBeNull()
+  })
+
+  it('Do first tells the page which task, with no sheet, and its undo clears it', () => {
+    function FirstHost({ target, onDoFirst }: { target: TaskDoerActsTarget; onDoFirst: (id: string | null) => void }) {
+      const doer = useTaskDoerActs({ authUserId: 'u-me', todayYmd: '2026-11-16', onChanged: () => {}, onDoFirst })
+      return (
+        <div>
+          {doer.morePress(target)}
+          {doer.sheets}
+        </div>
+      )
+    }
+    const onDoFirst = vi.fn()
+    const { unmount } = render(<FirstHost target={TASK} onDoFirst={onDoFirst} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /Do first/ }))
+    expect(onDoFirst).toHaveBeenCalledWith('inst-1')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    unmount()
+    render(<FirstHost target={{ ...TASK, first: true }} onDoFirst={onDoFirst} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /Stop doing it first/ }))
+    expect(onDoFirst).toHaveBeenLastCalledWith(null)
   })
 
   describe('the pass', () => {

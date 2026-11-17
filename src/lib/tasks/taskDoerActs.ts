@@ -4,6 +4,8 @@
  * (`20261117120000_task_doer_acts.sql`). Pure: the calls are in `taskDoerActsIo.ts`.
  */
 
+import { DO_FIRST_LABEL, DO_FIRST_OFF_LABEL, DO_FIRST_OFF_WORDS, DO_FIRST_WORDS } from './doFirst'
+
 /** One row of a choice sheet: what it is called and one line on what it does. */
 export type TaskChoice<K extends string = string> = { key: K; label: string; words: string }
 
@@ -43,10 +45,14 @@ export type TaskDoerTarget = {
   giverName: string | null
   /** The person has said something is in the way (step C6). More then offers to take the mark off. */
   stuck?: boolean
+  /** The person picked this task to do first on this device (step D1). */
+  first?: boolean
+  /** This task is Next already, by the list's own order: lifting it would change nothing. */
+  next?: boolean
 }
 
 /** The acts behind the card's More. It grows a row with each tool. */
-export type TaskMoreKey = 'move' | 'stuck' | 'unstuck' | 'drop' | 'hand'
+export type TaskMoreKey = 'first' | 'unfirst' | 'move' | 'stuck' | 'unstuck' | 'drop' | 'hand'
 
 export const TASK_MORE_LABEL = '⋯ More'
 export const TASK_MORE_TITLE = 'More for this task'
@@ -55,8 +61,13 @@ export const TASK_MORE_TITLE = 'More for this task'
  * The rows of More for one task. Only what the database would allow is offered, so a press never ends in a refusal the
  * screen could have seen coming. An empty list draws no More at all.
  */
-export function taskMoreChoices(t: Pick<TaskDoerTarget, 'once' | 'done'> & Partial<Pick<TaskDoerTarget, 'roadmap' | 'vehicle' | 'stuck'>>): TaskChoice<TaskMoreKey>[] {
+export function taskMoreChoices(t: Pick<TaskDoerTarget, 'once' | 'done'> & Partial<Pick<TaskDoerTarget, 'roadmap' | 'vehicle' | 'stuck' | 'first' | 'next'>>): TaskChoice<TaskMoreKey>[] {
   const rows: TaskChoice<TaskMoreKey>[] = []
+  // Do first leads, since it is the one row that changes nothing but the person's own order. A stuck task is never Next.
+  if (!t.done && !t.stuck) {
+    if (t.first) rows.push({ key: 'unfirst', label: DO_FIRST_OFF_LABEL, words: DO_FIRST_OFF_WORDS })
+    else if (!t.next) rows.push({ key: 'first', label: DO_FIRST_LABEL, words: DO_FIRST_WORDS })
+  }
   if (t.once && !t.done) rows.push({ key: 'move', label: 'Not today', words: 'Move it to a day you can do it.' })
   // Any open task can be stuck, a repeating one and a roadmap one too: the line is a note that someone is told of.
   if (!t.done) rows.push(t.stuck ? { key: 'unstuck', label: UNSTUCK_LABEL, words: 'Take the stuck mark off.' } : { key: 'stuck', label: STUCK_TITLE, words: 'Say what is in the way. Whoever gave it is told.' })
@@ -153,6 +164,8 @@ export function doerLineWords(eventType: string, body: string): string | null {
       return b ? `handed it to ${b}` : 'handed it on'
     case 'map':
       return b ? `put a map on it: ${b}` : 'put a map on it'
+    case 'skipped':
+      return b ? `skipped it that day: ${b}` : 'skipped it that day'
     default:
       return null
   }
