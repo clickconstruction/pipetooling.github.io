@@ -1318,6 +1318,46 @@ describe('the windows', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
+  it.each([
+    ['/prospects?tab=follow-up&kind=subs', 'sub', /A sub/],
+    ['/prospects?tab=follow-up&kind=gc-leads', 'gc_lead', /A job to GC|Jobs to GC|job/i],
+    ['/prospects?tab=follow-up', 'customer', /A customer/],
+  ])('an empty lane’s New Prospect opens on that lane’s kind (%s)', async (route, laneKind) => {
+    world.prospects = world.prospects.filter((p) => p.kind !== laneKind)
+    open(route)
+    const empty = await waitFor(() => {
+      const el = document.querySelector('[data-empty-state]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    fireEvent.click(within(empty).getByRole('button', { name: 'New Prospect' }))
+    const dialog = await screen.findByRole('dialog')
+    const cards = within(dialog).getAllByRole('radio')
+    const picked = cards.findIndex((c) => c.getAttribute('aria-checked') === 'true')
+    expect(picked).toBe(['customer', 'gc_lead', 'sub'].indexOf(laneKind))
+  })
+
+  it('an empty lane’s New Prospect opens with clean boxes, whatever was typed before', async () => {
+    world.prospects = world.prospects.filter((p) => p.kind !== 'sub')
+    await deck('/prospects')
+    press('New Prospect')
+    let dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Half Typed' } })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    fireEvent.click(await screen.findByRole('button', { name: /^Leave/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    press('Subs')
+    const empty = await waitFor(() => {
+      const el = document.querySelector('[data-empty-state]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    fireEvent.click(within(empty).getByRole('button', { name: 'New Prospect' }))
+    dialog = await screen.findByRole('dialog')
+    expect((within(dialog).getByLabelText('Company') as HTMLInputElement).value).toBe('')
+    expect(within(dialog).getByRole('radio', { name: /A sub/ }).getAttribute('aria-checked')).toBe('true')
+  })
+
   it('the Dashboard’s link opens New Prospect and drops its key from the address', async () => {
     open('/prospects?tab=follow-up&newProspect=true')
     expect(await screen.findByRole('dialog')).toBeTruthy()

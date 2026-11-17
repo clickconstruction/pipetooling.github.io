@@ -1424,7 +1424,7 @@ export default function Prospects() {
           setScriptOpen={setScriptOpen}
           setTimerHistoryModalOpen={setTimerHistoryModalOpen}
           setMyTimeModalOpen={setMyTimeModalOpen}
-          setNewProspectModalOpen={setNewProspectModalOpen}
+          openNewProspect={openNewProspect}
           subsStrip={subsStrip}
           setTradeFilter={setTradeFilter}
           openAddSub={openAddSub}
