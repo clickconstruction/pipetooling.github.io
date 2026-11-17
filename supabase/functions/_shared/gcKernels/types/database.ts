@@ -5474,6 +5474,13 @@ export type Database = {
           covers_group_id: string | null
           created_at: string
           created_by: string | null
+          drive_file_hold: string | null
+          drive_file_hold_words: string | null
+          drive_file_id: string | null
+          drive_file_origin: string | null
+          drive_file_tried_at: string | null
+          drive_filed_at: string | null
+          drive_void_marked_at: string | null
           fields: Json
           first_viewed_at: string | null
           id: string
@@ -5543,6 +5550,13 @@ export type Database = {
           covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          drive_file_hold?: string | null
+          drive_file_hold_words?: string | null
+          drive_file_id?: string | null
+          drive_file_origin?: string | null
+          drive_file_tried_at?: string | null
+          drive_filed_at?: string | null
+          drive_void_marked_at?: string | null
           fields?: Json
           first_viewed_at?: string | null
           id?: string
@@ -5612,6 +5626,13 @@ export type Database = {
           covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          drive_file_hold?: string | null
+          drive_file_hold_words?: string | null
+          drive_file_id?: string | null
+          drive_file_origin?: string | null
+          drive_file_tried_at?: string | null
+          drive_filed_at?: string | null
+          drive_void_marked_at?: string | null
           fields?: Json
           first_viewed_at?: string | null
           id?: string
@@ -8813,6 +8834,8 @@ export type Database = {
           form_template_id: string | null
           form_values: Json | null
           id: string
+          job_id: string | null
+          job_required_paper_id: string | null
           lineage_version: number
           note: string | null
           office_attested_at: string | null
@@ -8862,6 +8885,8 @@ export type Database = {
           form_template_id?: string | null
           form_values?: Json | null
           id?: string
+          job_id?: string | null
+          job_required_paper_id?: string | null
           lineage_version?: number
           note?: string | null
           office_attested_at?: string | null
@@ -8911,6 +8936,8 @@ export type Database = {
           form_template_id?: string | null
           form_values?: Json | null
           id?: string
+          job_id?: string | null
+          job_required_paper_id?: string | null
           lineage_version?: number
           note?: string | null
           office_attested_at?: string | null
@@ -8967,6 +8994,20 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_job_required_paper_id_fkey"
+            columns: ["job_required_paper_id"]
+            isOneToOne: false
+            referencedRelation: "job_required_papers"
             referencedColumns: ["id"]
           },
           {
