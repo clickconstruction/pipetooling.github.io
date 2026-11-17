@@ -34,7 +34,7 @@ import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, lastTransitionIsReopen, stuckReason, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActivity'
 import { completeChecklistInstance, createNextChecklistRepeat } from '../lib/checklistCompleteInstance'
-import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
+import { weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import {
@@ -74,6 +74,8 @@ import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
 import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatWholeDollars, sumEstimateDollars } from '../lib/checklistCostEstimate'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { useTaskLines } from '../hooks/useTaskLines'
+import type { PersonDayRow, RoadmapTaskEmbed } from '../lib/tasks/personDay'
+import { readPersonAhead, readPersonDay } from '../lib/tasks/personDayIo'
 import { cardAsksForPhoto, takesRing } from '../lib/taskProgress'
 import { setTaskPercent } from '../lib/taskProgressIo'
 import { useTaskPhotos } from '../hooks/useTaskPhotos'
@@ -81,7 +83,7 @@ import { useTaskPlaces } from '../hooks/useTaskPlaces'
 import { useTaskSpotPhotos } from '../hooks/useTaskSpotPhotos'
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from '../components/checklist/TaskPlacesMapCard'
 import { taskPlaceDots, taskPlaceDraft, taskPlaceFarShort, taskTitlePlain } from '../lib/tasks/taskPlace'
-import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, lateFirst, nextTaskId, splitToday, stillOpenIsLate, stillOpenMeta, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
+import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, nextTaskId, splitToday, stillOpenIsLate, stillOpenMeta, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { DO_FIRST_MARK, doFirstId, readDoFirst, writeDoFirst } from '../lib/tasks/doFirst'
@@ -109,45 +111,8 @@ type UserRole =
 /** The daily list's tabs. The Roadmap moved to its own page (`/roadmap`, Tier-2 #41); `?tab=roadmap` links redirect there. */
 type ChecklistTab = 'today' | 'history' | 'review' | 'manage'
 
-type ChecklistInstance = {
-  id: string
-  checklist_item_id: string
-  scheduled_date: string
-  completed_at: string | null
-  /** Task cards (#273): the day row's percent; a done row reads 100 whatever is stored. */
-  percent_complete?: number | null
-  notes: string | null
-  completed_by_user_id: string | null
-  created_at: string | null
-  reviewed_at: string | null
-  reviewed_by: string | null
-  checklist_items?: {
-    title: string
-    links?: string[] | null
-    notify_on_complete_user_id?: string | null
-    notify_creator_on_complete?: boolean
-    created_at?: string | null
-    created_by_user_id?: string | null
-    show_until_completed?: boolean | null
-    due_date?: string | null
-    repeat_type?: string | null
-    roadmap_group_task_id?: string | null
-    /** Task cards (#273): the writer's switch; the finish holds for a photo. */
-    asks_for_photo?: boolean | null
-    checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
-  } | null
-}
-
-type RoadmapTaskEmbed = {
-  group_id?: string
-  /** Task cards (#273): the roadmap task's own switch; a card made from it reads it too. */
-  asks_for_photo?: boolean | null
-  checklist_tech_tree_groups?: {
-    title?: string | null
-    roadmap_id?: string
-    checklist_tech_tree_roadmaps?: { title?: string | null } | null
-  } | null
-}
+/** One task on one day. The shape is the day's read, kept with it (punch list #381). */
+type ChecklistInstance = PersonDayRow
 
 /**
  * Stage-name chip for roadmap-born items: JUST the stage title (owner call,
@@ -675,76 +640,19 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
 
   async function loadToday() {
     if (!authUserId) return
-    const today = toLocalDateString(new Date())
-    const { data: todayData, error: e1 } = await supabase
-      .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, asks_for_photo, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, asks_for_photo, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
-      .eq('checklist_instance_assignees.user_id', authUserId)
-      .eq('scheduled_date', today)
-      .order('created_at', { ascending: true })
-    if (e1) {
-      setDayFailure(recoveryFailureFromError(e1, "Couldn't load today's checklist"))
+    const r = await readPersonDay(authUserId, toLocalDateString(new Date()))
+    if ('failure' in r) {
+      setDayFailure(recoveryFailureFromError(r.failure, "Couldn't load today's checklist"))
       return
     }
     setDayFailure(null)
-    // Outstanding (v2.1864, widened v2.1869): overdue instances whose work is
-    // still wanted — one-off tasks, show-until-completed items, OR anything a
-    // human deliberately reopened (last transition = reopened outranks the
-    // recurrings-don't-carry-over rule). One capped query, qualified
-    // client-side so the reopened check can share the same rows.
-    const { data: pastData } = await supabase
-      .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, asks_for_photo, show_until_completed, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, asks_for_photo, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
-      .eq('checklist_instance_assignees.user_id', authUserId)
-      .is('completed_at', null)
-      .lt('scheduled_date', today)
-      .order('scheduled_date', { ascending: false })
-      .limit(300)
-    // The percent column is younger than the generated types (#273); the types PR after the push removes the unknown step.
-    const pastIncomplete = (pastData ?? []) as unknown as ChecklistInstance[]
-    const qualifying = pastIncomplete.filter((i) => qualifiesOutstanding(i.checklist_items))
-    const rest = pastIncomplete.filter((i) => !qualifiesOutstanding(i.checklist_items))
-    let reopenedOnes: ChecklistInstance[] = []
-    let skippedIds = new Set<string>()
-    if (rest.length > 0) {
-      const { data: transData } = await supabase
-        .from('checklist_instance_events')
-        .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
-        .in('instance_id', rest.map((r) => r.id))
-        .in('event_type', ['completed', 'reopened', 'skipped'])
-        .order('created_at', { ascending: true })
-      const grouped = groupEventsByInstance((transData ?? []) as unknown as ChecklistCardEvent[])
-      reopenedOnes = rest.filter((i) => lastTransitionIsReopen(grouped.get(i.id) ?? []))
-      // Step D3: the repeating days that went unticked, and which of them the person already answered as skipped.
-      skippedIds = new Set(rest.filter((i) => (grouped.get(i.id) ?? []).some((e) => e.event_type === 'skipped')).map((i) => i.id))
-    }
-    const reopenedIds = new Set(reopenedOnes.map((i) => i.id))
-    setMissedRows(rest.filter((i) => !reopenedIds.has(i.id)))
-    setMissedSkippedIds(skippedIds)
-    const overdueData = [...qualifying, ...reopenedOnes]
-    // Punch list #369: a task whose due day has passed leads the list, so the one red row is never behind the fold.
-    setOutstandingInstances(lateFirst(sortOutstanding(overdueData), today))
-    const merged = [...(todayData ?? [])] as unknown as ChecklistInstance[]
-    const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
-    const orderMap = new Map<string, number>()
-    if (mergedItemIds.length > 0) {
-      const { data: orderData } = await supabase
-        .from('checklist_item_assignees')
-        .select('checklist_item_id, display_order')
-        .eq('user_id', authUserId)
-        .in('checklist_item_id', mergedItemIds)
-      for (const row of (orderData ?? []) as Array<{ checklist_item_id: string; display_order: number | null }>) {
-        orderMap.set(row.checklist_item_id, row.display_order ?? 999999)
-      }
-    }
-    merged.sort((a, b) => {
-      const orderA = orderMap.get(a.checklist_item_id) ?? 999999
-      const orderB = orderMap.get(b.checklist_item_id) ?? 999999
-      if (orderA !== orderB) return orderA - orderB
-      return a.scheduled_date.localeCompare(b.scheduled_date)
-    })
-    setTodayInstances(merged)
-    void loadCardEvents([...merged.map((r) => r.id), ...overdueData.map((r) => r.id)])
+    // Outstanding (v2.1864, widened v2.1869): older tasks whose work is still wanted. The repeating days that went
+    // unticked are step D3's, with the ones already answered as skipped. `personDay.ts` holds the rule.
+    setMissedRows(r.day.missed)
+    setMissedSkippedIds(r.day.skippedIds)
+    setOutstandingInstances(r.day.stillOpen)
+    setTodayInstances(r.day.today)
+    void loadCardEvents([...r.day.today.map((row) => row.id), ...r.day.stillOpen.map((row) => row.id)])
   }
 
   /** Fetch the card history for the visible instances + names for its actors. */
@@ -817,16 +725,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     // Upcoming (future-dated instances) is dev-only since v2.2269 — it was
     // empty for nearly everyone and its name collided with the waiting list.
     if (!authUserId || !canForward) return
-    const today = toLocalDateString(new Date())
-    const { data, error: e } = await supabase
-      .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
-      .eq('checklist_instance_assignees.user_id', authUserId)
-      .gt('scheduled_date', today)
-      .order('scheduled_date', { ascending: true })
-      .limit(30)
-    if (e) return
-    setUpcomingInstances((data ?? []) as unknown as ChecklistInstance[])
+    const ahead = await readPersonAhead(authUserId, toLocalDateString(new Date()))
+    if (ahead) setUpcomingInstances(ahead)
   }
 
   /** Resolves true once the change is saved, false when it was refused or did not run (step D2 counts them). */
