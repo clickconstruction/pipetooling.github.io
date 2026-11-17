@@ -214,7 +214,10 @@ A person's signed copy is a `person_contract_documents` row with its `job_id`, n
 **Take off** removes a paper from the job and keeps every signature.
 The roster in the section lists each person who can open the job against each paper, and **Copy the signing link** puts a person's links on the clipboard.
 The chip *2 papers to sign* in the job window's head counts them.
-The lock itself lands in later steps: until then the section says the job does not lock yet.
+**The prompt** (v2.7652, `JobPapersGate.tsx`): opening a job you owe a paper on draws **Before you open J…** in place of the job, with **Read and sign** on the first paper not signed and **Open the job** when nothing is left.
+A locked job in a list shows its number and a lock, never its name, for everyone but the office.
+The Needs you line **Papers to sign** leads to the prompt.
+Until the database lock lands the prompt is the only lock, and the section says so.
 
 ### E chip (the estimate's author on a job)
 A small red square with a white **E** beside a person's name wherever a job's people are listed — the people line over Job activity, the Assigned Team on the Job window, **Everyone on the job** from the Pipeline's crew line (v2.6694, punch list #129, the owner's call of 2026-11-08).

@@ -1836,9 +1836,16 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
 
-### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646)
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646; the prompt v2.7652)
 
-It locks nothing yet: the prompt and the lock in the database are later steps.
+The prompt is the only lock until the database lock lands: a direct request still reads the job's rows.
+**The prompt** (`JobPapersGateModal` over `useJobsClosedToMe`) is drawn in place of the job window for anyone who owes a paper, every role, the office too.
+It shows the job's number and the papers' names and nothing else of the job.
+No clock starts on a job the caller owes a paper on: the picker, Job Mode's On my way and the job change all open the prompt instead.
+**Lists** hide a closed job's name, address, customer and note from every role but the office (`useJobsLockedInLists`): Job Mode's card, the crew's schedule, the calendar and the clock-in picker show its number and a lock.
+The office's lists keep showing the job, by the owner's call: for the office the prompt at the job and the Needs you line are the lock.
+From the prompt the office can open the job's papers and who has signed, so a paper can come off without signing it first.
+`get-contract-signing-link-for-self` mints a link for a job's paper only for the roster person it was made for, matched by `people.account_user_id`.
 The section **Papers before this job opens** on the job window's Documents tab and the chip in the job's head are drawn for the office roles alone (`isOfficeRole`: dev, master technician, assistant, controller).
 `job_required_papers` holds the papers a job requires of everyone who opens it.
 The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
