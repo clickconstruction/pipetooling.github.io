@@ -34,6 +34,13 @@ vi.mock('react-router-dom', async () => {
   return { ...real, useNavigate: () => navigate }
 })
 
+// The bid's press reads the line's files itself (its own render test); here it stands in as what it was handed.
+vi.mock('../bids/BidMailSetDoor', () => ({
+  BidMailSetDoor: (p: { bidId: string; bidLabel: string; messageId: string; mail: { subject: string | null; who: string; at: string } }) => (
+    <span data-bid-door>{`${p.bidLabel}|${p.bidId}|${p.messageId}|${p.mail.subject}`}</span>
+  ),
+}))
+
 const { useEmailViewerThreadSlots } = await import('./useEmailViewerThreadSlots')
 
 afterEach(cleanup)
@@ -193,6 +200,17 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Put it on a bid…' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Put it on a bid' })).getByRole('button', { name: /B512 Oak Hill Clinic/ }))
     expect((await screen.findByRole('alert')).textContent).toBe('Tie the email to the bid first.')
+  })
+
+  it('an email on a bid that carries a file gets the bid’s press, handed the bid, its number and the line (punch list #368)', () => {
+    const pdf = { id: 'f1', name: 'specs.pdf', mime: 'application/pdf', size: 1000, kept: 'copy' as const, url: null, icon: 'pdf' as const, paper: null, paperAnswer: null, paperAnsweredBy: null, paperAnsweredAt: null }
+    const link = { ...pdf, id: 'f2', name: 'Dropbox', kept: 'link' as const, url: 'https://example.com/x', icon: 'link' as const }
+    draw(fakeIo(), [line('m-files', { jobId: 'bid:b-oak', invitation: null, subject: 'Re: Addendum 2', files: [pdf, link] }), line('m-link-only', { jobId: 'bid:b-oak', invitation: null, files: [link] }), line('m-no-file', { jobId: 'bid:b-oak', invitation: null })])
+    expect(document.querySelector('[data-line="m-files"] [data-bid-door]')!.textContent).toBe('B512|b-oak|m-files|Re: Addendum 2')
+    expect(buttonsOf('m-files')).toEqual(['Open the bid'])
+    // A link is no file to keep, and a mail with no file is already on the bid's history.
+    expect(document.querySelector('[data-line="m-link-only"] [data-bid-door]')).toBeNull()
+    expect(document.querySelector('[data-line="m-no-file"] [data-bid-door]')).toBeNull()
   })
 
   it('Open the bid closes the thread and opens the Bid Board on it', () => {

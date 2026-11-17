@@ -2,7 +2,7 @@
 title: make a statement of account for a sub
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: statement of account, work statement, payment record, sub statement, pay due report, still open, what we owe a sub, sub papers, pdf, download, print, part payment, partial payment, back-charge, last payments, period, sub labor, reverse invoice, payment receipt, how it adds up, sent copies, paper for a sub
+keywords: statement of account, work statement, payment record, paper number, revision, WS number, SA number, PR number, since the last statement, sub statement, pay due report, still open, what we owe a sub, sub papers, pdf, download, print, part payment, partial payment, back-charge, last payments, period, sub labor, reverse invoice, payment receipt, how it adds up, sent copies, paper for a sub
 order: 34
 ---
 A statement of account is one paper for one sub. The paper lists their work, what was paid and what is still open. You make it as a PDF and hand it to them.
@@ -26,9 +26,10 @@ The window opens on the paper you asked for. The chips at the top switch to anot
 
 ## Pick the period
 
-A statement of account covers a period. Four chips set it.
+A statement of account covers a period. Five chips set it.
 
-- {{chip:gray|To date}} covers everything up to today. The window opens on this chip.
+- {{chip:gray|Since the last statement}} starts the day after the last statement ended. The window opens on this chip once a statement has been made for the sub.
+- {{chip:gray|To date}} covers everything up to today. The first statement for a sub opens on this chip.
 - {{chip:gray|This month}} starts on the first of the month and ends today.
 - {{chip:gray|This year}} starts on January 1 and ends today.
 - {{chip:gray|Pick dates}} shows two date boxes.
@@ -65,17 +66,32 @@ A memo the office hid from the sub is left off. The amounts always show.
 
 ## Print it or save it
 
-Press {{button:outline|Print}} to open the PDF in a new tab, ready to print. Press {{button:outline|Download the PDF}} to save the file. The line under the buttons shows the file's name.
+Press {{button:outline|Print}} to open the PDF in a new tab, ready to print. Press {{button:outline|Download the PDF}} to save the file. The file is named for the paper's number.
 
 Each print and each download files a copy. You find it on [Documents → Sent copies](/documents?tab=sent), under **Statements and reports**. The copy is filed on the sub and on each job.
 
 This window does not send the paper. Give the sub the printed page, or attach the file to your own message.
 
+## How the papers are numbered
+
+A paper takes its number when you make it. Printing and downloading both count as making it. The preview shows no number until then.
+
+- **A work statement** is numbered for its job, like *WS-2041-1*. The sheet keeps that number for good.
+- **A statement of account** takes the next number each time, like *SA-0007*. Every one you make is a new paper.
+- **A payment record** carries its payment's own number, like *PR-0231*. A payment recorded before those numbers reads *Not numbered*.
+
+No number is ever given out twice.
+
+**A reprint keeps the number.** Print the same work statement again and nothing changes.
+
+**A change makes a revision.** A back-charge or a payment after the first copy makes revision 2 under the same number. The foot of the new copy says which copy it replaces. The copy that went out before stays under Sent copies.
+
+Sometimes a paper cannot be numbered. A paper with no number is not made, and a red line says why. An account in training cannot make a paper.
+
 ## What the papers do not have yet
 
-- **No number on two of them.** A work statement and a statement of account say the day and time they were prepared. Their numbers come in a later change.
-- **A payment record has one.** It carries its payment's own number, like *PR-0231*. A payment recorded before those numbers reads *Not numbered*.
 - **Draft sentences.** A few sentences are boxed and marked §. The boxed sentences are draft wording until our lawyer has read them.
+- **Sending.** The window does not send a paper yet. Sending comes in a later change.
 
 ## When the papers do not add up
 

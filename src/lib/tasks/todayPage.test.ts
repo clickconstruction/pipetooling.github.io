@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { doneLineWords, nextTaskId, notePressLabel, splitToday, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from './todayPage'
+import { dayLabel } from '../checklistDueDates'
+import { doneLineWords, lateFirst, nextTaskId, notePressLabel, showMoreLabel, splitToday, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from './todayPage'
 
 describe('todayHeadDate', () => {
   it('reads the weekday, the short month and the day', () => {
@@ -90,5 +91,69 @@ describe('labels', () => {
     expect(notePressLabel(0)).toBe('＋ Note')
     expect(notePressLabel(1)).toBe('1 note')
     expect(notePressLabel(3)).toBe('3 notes')
+  })
+})
+
+describe('stillOpenAge', () => {
+  const today = '2026-11-16'
+  it('a task with no due day says when it was given and wears its age, amber after a week', () => {
+    expect(stillOpenAge('2026-08-20', null, today)).toEqual({ words: `given ${dayLabel('2026-08-20')}`, pill: '88 days', tone: 'old' })
+    expect(stillOpenAge('2026-11-13', null, today)).toEqual({ words: `given ${dayLabel('2026-11-13')}`, pill: '3 days', tone: 'soft' })
+    expect(stillOpenAge('2026-11-15', undefined, today).pill).toBe('1 day')
+    expect(stillOpenAge('2026-11-09', null, today).tone).toBe('old')
+  })
+  it('red is kept for a due day that has passed', () => {
+    expect(stillOpenAge('2026-10-01', '2026-11-06', today)).toEqual({ words: `due ${dayLabel('2026-11-06')}`, pill: '10 days late', tone: 'late' })
+    expect(stillOpenAge('2026-10-01', '2026-11-15', today).pill).toBe('1 day late')
+    expect(stillOpenIsLate('2026-11-06', today)).toBe(true)
+    expect(stillOpenIsLate('2026-11-16', today)).toBe(false)
+    expect(stillOpenIsLate(null, today)).toBe(false)
+  })
+  it('a task still inside its window is calm, and amber on its due day', () => {
+    expect(stillOpenAge('2026-10-01', '2026-11-20', today)).toEqual({ words: `due ${dayLabel('2026-11-20')}`, pill: null, tone: 'soft' })
+    expect(stillOpenAge('2026-10-01', today, today)).toEqual({ words: 'due today', pill: null, tone: 'old' })
+  })
+  it('never says due for a task that has no due day', () => {
+    expect(stillOpenAge('2026-08-20', null, today).words.startsWith('due')).toBe(false)
+  })
+})
+
+describe('stillOpenShown', () => {
+  const rows = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => ({ id }))
+  it('folds past three rows and counts the rest', () => {
+    const { shown, hidden } = stillOpenShown(rows, false)
+    expect(shown.map((r) => r.id)).toEqual(['a', 'b', 'c'])
+    expect(hidden).toBe(3)
+    expect(showMoreLabel(hidden)).toBe('Show 3 more')
+  })
+  it('draws a list one past the fold whole', () => {
+    expect(stillOpenShown(rows.slice(0, 4), false)).toEqual({ shown: rows.slice(0, 4), hidden: 0 })
+  })
+  it('opens for the press, and for a row opened from the map that sat below the fold', () => {
+    expect(stillOpenShown(rows, true).hidden).toBe(0)
+    expect(stillOpenShown(rows, false, 'e').hidden).toBe(0)
+    expect(stillOpenShown(rows, false, 'b').hidden).toBe(3)
+  })
+  it('labels the list with its count', () => {
+    expect(stillOpenLabel(8)).toBe('Still open · 8')
+  })
+})
+
+describe('lateFirst', () => {
+  const rows = [
+    { id: 'old', checklist_items: { due_date: null } },
+    { id: 'late', checklist_items: { due_date: '2026-11-06' } },
+    { id: 'older', checklist_items: null },
+    { id: 'in-window', checklist_items: { due_date: '2026-11-20' } },
+  ]
+  it('lifts a task whose due day has passed to the top and keeps the rest in order', () => {
+    expect(lateFirst(rows, '2026-11-16').map((r) => r.id)).toEqual(['late', 'old', 'older', 'in-window'])
+  })
+  it('leaves a list with nothing late as it came', () => {
+    expect(lateFirst(rows, '2026-11-01').map((r) => r.id)).toEqual(['old', 'late', 'older', 'in-window'])
+  })
+  it('the words beside the label say the order', () => {
+    expect(stillOpenOrderWords(true)).toBe('late first, then oldest')
+    expect(stillOpenOrderWords(false)).toBe('oldest first')
   })
 })

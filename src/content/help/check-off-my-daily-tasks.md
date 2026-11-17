@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -145,9 +145,11 @@ Fix it up, reply on the thread if useful, and check it off again.
 
 Under your finished task a line says when you did it and who hears. It reads like *Done 12:22 PM. Imani hears it is done.* When that person signs off, the line reads *Signed off by Imani*. Nothing more is needed from you.
 
-## Outstanding: overdue work that still needs doing
+## Still open: older work that still needs doing
 
-Below your Today list you may see a red-framed **Outstanding** section. It holds one-off tasks whose day came and went without getting done. Each row shows how overdue it is. It reads *due Thu, Jul 30 · 20 days ago*. Check it off right there when you knock it out. Or tap the row to read its notes first. Daily and weekly tasks never pile up here. Only work that's still genuinely waiting does.
+Below your Today list you may see a **Still open** list. It holds one-off tasks whose day came and went without getting done. Each row says when the task was given, like *given Thu, Jul 30*. A pill at the end of the row shows its age, like *20 days*. The pill turns {{chip:yellow|amber}} after a week. A task with a due day that has passed shows a {{chip:red|red}} pill, like *3 days late*.
+
+Check a task off right there when you knock it out. Or tap the row to read its notes first. The list shows three rows and folds the rest. Press **Show 5 more** to see them all. Daily and weekly tasks never pile up here. Only work that's still genuinely waiting does.
 
 Nothing escalates on its own. An overdue one-off doesn't page anyone or move up someone else's list. What the office does see is its age. On Checklist → Manage the open one-offs sort oldest first. A chip turns {{chip:yellow|amber}} after a week and {{chip:red|red}} after a month. A **🔔 Remind** from whoever assigned it is a person deciding to nudge you, not a timer.
 

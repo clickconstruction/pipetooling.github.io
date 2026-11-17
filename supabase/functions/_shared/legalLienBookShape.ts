@@ -10,7 +10,7 @@
  * Lives in `_shared` so the edge function and the client tests read one list;
  * `src/lib/legal/legalLienBookShape.ts` is the client's door.
  */
-import { jobOffLienDeskInKind, withLienInKindColumn } from './gcKernels/lib/jobs/lienInKind.ts'
+import { jobOffLienDesk, withLienOffDeskColumns } from './gcKernels/lib/jobs/lienInKind.ts'
 
 type Row = Record<string, unknown>
 
@@ -29,12 +29,12 @@ export const LIEN_BOOK_GC_COLUMNS = ['id', 'name', 'lien_notice_policy'] as cons
  * (`src/lib/jobs/lienTimelineBookAssemble.ts`), and the test beside the client's door holds the two equal.
  */
 export const LIEN_BOOK_JOB_COLUMNS_SENT = ['id', 'hcp_number', 'click_number', 'job_name', 'job_address', 'gc_customer_id', 'customer_address_id', 'revenue', 'payments_made', 'last_work_date', 'lien_payment_bond', 'lien_contract_ended_on'] as const
-/** Read for a rule and cut before the book is sent: `customer_name` for the ZZ test-job rule, the in-kind deal's link for the paid-in-kind rule. */
-const LIEN_BOOK_JOB_RULE_COLUMNS = ['customer_name', 'in_kind_arrangement_id'] as const
+/** Read for a rule and cut before the book is sent: `customer_name` for the ZZ test-job rule, the in-kind deal's link for the paid-in-kind rule, the job's own answer for the off-the-lien-path rule. */
+const LIEN_BOOK_JOB_RULE_COLUMNS = ['customer_name', 'in_kind_arrangement_id', 'lien_path_answer'] as const
 
 export const LIEN_BOOK_COUNSEL_SELECT = {
-  /** The sent columns, then `customer_name`, then the deal's link through the Lien desk's own `withLienInKindColumn`. */
-  jobs: withLienInKindColumn([...LIEN_BOOK_JOB_COLUMNS_SENT, 'customer_name'].join(', ')),
+  /** The sent columns, then `customer_name`, then the deal's link and the job's own answer through the Lien desk's own `withLienOffDeskColumns`. */
+  jobs: withLienOffDeskColumns([...LIEN_BOOK_JOB_COLUMNS_SENT, 'customer_name'].join(', ')),
   deskItems: LIEN_BOOK_DESK_ITEM_COLUMNS.join(', '),
   filings: LIEN_BOOK_FILING_COLUMNS.join(', '),
   owners: LIEN_BOOK_OWNER_COLUMNS.join(', '),
@@ -74,7 +74,7 @@ export type LienBookForCounsel = {
 
 /**
  * The book as the firm may hold it: every row cut to its list. The RPC rows and the jobs already carry only dates and
- * dollars; the jobs lose `customer_name` and `in_kind_arrangement_id`, which are read only for the two rules below.
+ * dollars; the jobs lose `customer_name`, `in_kind_arrangement_id` and `lien_path_answer`, which are read only for the rules below.
  *
  * ZZ test jobs (punch list #61, v2.5124) leave every list: a job whose own name or customer's name is a ZZ name, or
  * whose GC's is, with its months, affidavit windows, desk items, filings and owners. A ZZ GC leaves too, and so do a
@@ -84,13 +84,16 @@ export type LienBookForCounsel = {
  * the generated copy): a job on an open in-kind deal is treated as paid, so it is on the firm's grid no more than on
  * the office's By job book. Its GC stays unless no other job points at it. Ending the deal clears the link, and the
  * job is back on the next read.
+ *
+ * A job a person took off the lien path leaves the same way (v2.7521, `lienJobPath.ts`): the office said no lien
+ * stands behind it, so it is on the firm's lien grid no more than on the office's. Put back, it is on the next read.
  */
 export function shapeLienBookForCounsel(raw: { rows?: unknown[]; affidavitRows?: unknown[]; items?: unknown[]; filings?: unknown[]; jobs?: unknown[]; gcs?: unknown[]; addresses?: unknown[]; owners?: unknown[] }): LienBookForCounsel {
   const gcsRead = (raw.gcs ?? []) as Row[]
   const jobsRead = (raw.jobs ?? []) as Row[]
   const zzGcIds = new Set(gcsRead.filter((g) => isZzName(g.name)).map((g) => g.id))
   const isZzJob = (j: Row) => isZzName(j.job_name) || isZzName(j.customer_name) || zzGcIds.has(j.gc_customer_id)
-  const offJobIds = new Set(jobsRead.filter((j) => isZzJob(j) || jobOffLienDeskInKind(j as { in_kind_arrangement_id?: string | null })).map((j) => j.id))
+  const offJobIds = new Set(jobsRead.filter((j) => isZzJob(j) || jobOffLienDesk(j as { in_kind_arrangement_id?: string | null; lien_path_answer?: string | null })).map((j) => j.id))
   const jobs = jobsRead.filter((j) => !offJobIds.has(j.id))
   const keptGcIds = new Set(jobs.map((j) => j.gc_customer_id))
   const keptAddressIds = new Set(jobs.map((j) => j.customer_address_id))

@@ -105,6 +105,8 @@ type ChecklistInstanceCardProps = {
   /** The dot's number, once the list has a map over it (PR 4). */
   placeNumber?: number | null
   placeOverdue?: boolean
+  /** The dot is amber: an older task that is not late (punch list #369). */
+  placeOld?: boolean
   /** How far the place is, once the person asked where they are on the map above: `250 ft north-east`. */
   placeFar?: string | null
   /** Bumped by Show the task on the map (PR 4): the card opens. Zero or absent does nothing. */
@@ -152,6 +154,7 @@ export function ChecklistInstanceCard({
   mapId = null,
   placeNumber = null,
   placeOverdue = false,
+  placeOld = false,
   placeFar = null,
   openSignal = 0,
   spotPhotoUrl = null,
@@ -567,7 +570,7 @@ export function ChecklistInstanceCard({
           >
             {title}
           </div>
-          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} far={placeFar} /> : null}
+          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} old={placeOld} far={placeFar} /> : null}
           {!place ? <TaskMapLine map={taskMap} /> : null}
           {freshStatus}
           {reopenedCallout}
@@ -697,7 +700,7 @@ export function ChecklistInstanceCard({
           >
             {title}
           </div>
-          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} far={placeFar} /> : null}
+          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} old={placeOld} far={placeFar} /> : null}
           {!place ? <TaskMapLine map={taskMap} /> : null}
           {statusStrip}
           {reopenedCallout}

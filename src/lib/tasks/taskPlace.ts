@@ -310,6 +310,8 @@ export type TaskPlaceDot = TaskPlacePoint & {
   number: number
   name: string
   overdue: boolean
+  /** An older task with no due day that has passed: amber, where overdue is red (punch list #369). */
+  old: boolean
 }
 
 /**
@@ -317,7 +319,7 @@ export type TaskPlaceDot = TaskPlacePoint & {
  * Every task with a place gets its own number, so a card can wear it. Nothing is dropped: a task
  * with no place is counted, and the caller says so under the map.
  */
-export function taskPlaceDots<T extends { id: string; place: TaskPlace | null; overdue?: boolean }>(
+export function taskPlaceDots<T extends { id: string; place: TaskPlace | null; overdue?: boolean; old?: boolean }>(
   tasks: ReadonlyArray<T>,
 ): { dots: TaskPlaceDot[]; numberById: Map<string, number>; withoutPlace: number } {
   const dots: TaskPlaceDot[] = []
@@ -330,7 +332,7 @@ export function taskPlaceDots<T extends { id: string; place: TaskPlace | null; o
     }
     const number = dots.length + 1
     numberById.set(t.id, number)
-    dots.push({ id: t.id, number, lat: t.place.lat, lng: t.place.lng, name: t.place.name, overdue: t.overdue === true })
+    dots.push({ id: t.id, number, lat: t.place.lat, lng: t.place.lng, name: t.place.name, overdue: t.overdue === true, old: t.old === true && t.overdue !== true })
   }
   return { dots, numberById, withoutPlace }
 }
@@ -346,6 +348,8 @@ export type TaskPlaceDotGroup = TaskPlacePoint & {
   label: string
   /** Red when any task at the place is overdue. */
   overdue: boolean
+  /** Amber when a task at the place is old and none is overdue. */
+  old: boolean
 }
 
 /**
@@ -361,10 +365,11 @@ export function taskPlaceDotGroups(dots: ReadonlyArray<TaskPlaceDot>): TaskPlace
       home.taskIds.push(d.id)
       home.numbers.push(d.number)
       home.overdue = home.overdue || d.overdue
+      home.old = !home.overdue && (home.old || d.old)
       home.label = `${home.numbers[0]}+`
       continue
     }
-    groups.push({ id: d.id, lat: d.lat, lng: d.lng, name: d.name, taskIds: [d.id], numbers: [d.number], label: String(d.number), overdue: d.overdue })
+    groups.push({ id: d.id, lat: d.lat, lng: d.lng, name: d.name, taskIds: [d.id], numbers: [d.number], label: String(d.number), overdue: d.overdue, old: d.old })
   }
   return groups
 }
