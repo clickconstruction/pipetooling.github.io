@@ -18,6 +18,7 @@ sections: What this surface is; Master summary table; Shared substrate; Per-tab 
 > **Line numbers are exact as of `6af60c5bcf`** (re-mapped 2026-11-17 from `a05cef4c4`: `Prospects.tsx` read again whole against its `npm run map` fact sheet, 3,962 → 5,600 lines; `TeamProspectsTab.tsx` re-anchored through its diff, 2,383 → 2,376 lines, and checked by symbol).
 > They drift with every edit. Search for the named symbol; the range is a hint.
 > Regenerate the fact sheet with `npm run map -- src/pages/Prospects.tsx`.
+> The cuts in [the extraction order](#recommended-extraction-order-value--risk) are shipping one PR a step; each step's line says what moved and the page's size after it, and the ranges below it in the file sit that much lower than this map says until the next re-anchor.
 
 ## What this surface is
 
@@ -496,7 +497,7 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Most ru
 
 | # | Candidate | Currently | Target |
 |---|---|---|---|
-| 1 | `substituteCopyPlaceholders` 312–337, `getBlankPlaceholderFields` 269–295, `getBlankFieldsForMail` 297–310 + `COPY_TEMPLATE_KEYS`/`COPY_TEMPLATE_LABELS`/`APP_SETTINGS_KEYS`/`APP_SUBJECT_SETTINGS_KEYS` 105–124; the override-fallback rule in `getResolvedCopyText`/`Subject` 1480–1490; the defaults and overrides fold in `loadCopyTemplates` 1320–1355 | module-level / inline, **untested** | `lib/prospects/prospectCopyTemplates.ts` + tests: placeholder substitution, `_______` per-template behavior, blank-field detection incl. the `forMail` prospect-email rule, `null`-or-`''` → default |
+| 1 | `substituteCopyPlaceholders` 312–337, `getBlankPlaceholderFields` 269–295, `getBlankFieldsForMail` 297–310 + `COPY_TEMPLATE_KEYS`/`COPY_TEMPLATE_LABELS`/`APP_SETTINGS_KEYS`/`APP_SUBJECT_SETTINGS_KEYS` 105–124; the override-fallback rule in `getResolvedCopyText`/`Subject` 1480–1490; the defaults and overrides fold in `loadCopyTemplates` 1320–1355 | **shipped v2.7595** | `lib/prospects/prospectCopyTemplates.ts`, 27 tests: placeholder substitution, `_______` per-template behavior, blank-field detection incl. the `forMail` prospect-email rule, `null`-or-`''` → default (`resolveCopyText`), the two reads' fold (`foldCopyTemplateRows`) |
 | 2 | The `Prospect` type 148–184, `PROSPECT_COLUMNS` 187–188, `ProspectComment` 190–198 | page-local types; every component cut needs them | `lib/prospects/prospectRow.ts` (types and the column list, with a test that every type key is in the list) |
 | 3 | `formatDateTime`, `formatInteractionType`, `formatTimerButtonName`, `formatTimerSeconds`, `formatWebsiteDisplay`, `getWebsiteHref` (222–267); TPT `formatLastContact` 341–347 | module-level, untested | `lib/prospects/prospectFormat.ts` + tests |
 | 4 | The queue after a card leaves, six copies of `nextList` / `nextIdx = Math.min(index, Math.max(0, length − 1))`: `handleDeleteProspect` 2167–2171, `handleNoLongerFit` 2270–2275, `handleCantReach` 2297–2302, `handleConverted` 2348–2353, `handleBenchSave` 2419–2429 (with the row-before-the-pointer branch), `leaveQueueAsLanded` 2448–2453 | inline | `queueAfterRemoval(list, index, id)` in `callingOrder.ts` + tests; the six call sites adopt it one PR later |
@@ -582,7 +583,7 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Most ru
 
 The page is 5,600 lines: 313 of module scope, about 2,800 of state, effects and handlers, and 2,378 of render. Every step is one small PR that changes no behaviour. Steps 1 and 2 need no render smoke; step 3 is the smoke every later step leans on.
 
-1. **Stage A, the copy-template rules** → `lib/prospects/prospectCopyTemplates.ts` (inventory row 1). The only business rules on the page with no test, and they move without touching a hook. −60 lines.
+1. **Stage A, the copy-template rules** → `lib/prospects/prospectCopyTemplates.ts` (inventory row 1) — **shipped v2.7595** (the three rules, `resolveCopyText`, `foldCopyTemplateRows`, and `formatDateTime` as the first export of `prospectFormat.ts`; 29 tests; the page is 5,481 lines).
 2. **Stage A, the rest**, one kernel a PR, in the inventory's order: the `Prospect` type and columns (row 2, which every component cut needs), the formatters, `queueAfterRemoval`, the timer sums, the two window helpers, `sourceProspectOf`, `orderSubsDeck`, `benchReadFromBoard`, the smaller folds. About −200 lines, and the deck's riskiest arithmetic gains tests.
 3. **The page's first render smoke**, `src/pages/Prospects.render.test.tsx`: every `?tab=` key on every lane for every role, the lane doors, a `?prospect_id=`, a run, the two estimator cases. Tests only.
 4. **The Subs lane's drawn pieces → `components/prospects/`:** `SubsPathStrip` (`renderSubsStrip`), `SubsPlansPicker` (`renderPlansPicker`), `SubsLaneList` (`renderSubsList`), `SubsNeedsPanel` (3318–3419), `GcWorkStrip` (3420–3469). Each is already a function of its arguments. About −350 lines.
