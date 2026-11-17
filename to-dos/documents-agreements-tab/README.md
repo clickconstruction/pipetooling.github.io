@@ -1,8 +1,8 @@
 ---
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
-group: gated
-status: asked 2026-11-17 · looked at, drawn and rendered the same day · seven calls put to the owner · nothing built, and nothing is built before he says build
+group: ready
+status: asked 2026-11-17 · looked at, drawn and rendered the same day · seven calls put to the owner, who took all seven picks the same day · nothing built, and nothing is built before he says build
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,9 +12,9 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: The owner's look at the mock-up and his answers to calls 1 to 7. Then PR 1, the rules, alone.
+next: The owner's word to build. Then PR 1, the rules, alone. Call 7's card, signed contracts in Google Drive, is still to be written.
 size: M as a train of five (S · M · M · S · S)
-blocker: The owner's go. Calls 1 to 3 shape PR 2's view, so they come before it.
+blocker: The owner's word to build. The calls are settled, so nothing else holds PR 1.
 opinion: build — the papers exist and the office already reads them in four places; the tab is a read over what is there, with no new table and no change to who can see what
 ---
 
@@ -34,6 +34,9 @@ light and dark, before it was shown.
 
 Shown what the look found, he answered **Yes, design it**. This card is the design. No app code ships
 from it until he says build.
+
+Shown the mock-up and the seven calls the same day, and asked whether he takes the picks as drawn, he
+answered **Take the picks**. That settles the calls. It is not the word to build.
 
 ## What the look found
 
@@ -213,7 +216,7 @@ Each step is one PR, with its release note and fragment. Nothing is built until 
 
 ## Left out on purpose
 
-- **Drafts.** A draft stays in the window that made it, as on every Documents tab today (call 6).
+- **Drafts.** A draft stays in the window that made it, as on every Documents tab today (call 6, settled).
 - **What is missing.** A job with no contract, or one marked Not needed, is the Contract sweep's list on
   the Pipeline. This tab lists paper that exists and points there.
 - **Accepted estimates and signed bid proposals.** They stay on the Estimates and Bids tabs (call 1).
@@ -225,27 +228,25 @@ Each step is one PR, with its release note and fragment. Nothing is built until 
 - **The follow-up, as its own card (call 7):** a signed job contract is not saved to Google Drive or the
   file index, so Find a file cannot find it.
 
-## The owner's open calls
+## The owner's calls, settled 2026-11-17
 
-Each with the pick the mock-up draws.
+He took all seven picks as the mock-up draws them.
 
-1. **Which kinds are in.** Pick: job contracts, warranties, a GC's own paper, signed papers the office
-   filed, staff and sub agreements, partner agreements and work orders, with GC mode's three in PR 5.
-   The other way: accepted estimates as lines too. They are signed, but there are many and they have a
-   tab.
-2. **Staff papers on this page.** Pick: in. The four office roles already read them on People →
-   Contracts, and a line shows the paper's name and state only. The other way: keep them off the list
-   until the Staff and subs chip is pressed, or leave them on People alone.
-3. **Who sees the tab.** Pick: the office's four roles, as with Sent copies. The other way: the estimator
-   too, who would see work orders only.
-4. **One list or sections.** Pick: one list, newest first, with chips for kind and state. The other way: a
-   section per kind, easier to scan one kind and harder to see what was signed this week.
-5. **The word.** Pick: the tab is Agreements, and Contract under a job stays. The other way: call the tab
-   Contracts, shorter, but a warranty and a work order are not contracts.
-6. **Drafts and voided.** Pick: drafts out, and voided, declined and cancelled behind their own chip. The
-   other way: a Drafts chip, so a contract started and never sent is seen.
-7. **Signed contracts in Google Drive.** Pick: a card of its own after this one. The other way: fold it
-   into this train, which makes the tab wait on Drive work.
+1. **Which kinds are in.** Job contracts, warranties, a GC's own paper, signed papers the office filed,
+   staff and sub agreements, partner agreements and work orders, with GC mode's three in PR 5. Not taken:
+   accepted estimates as lines too.
+2. **Staff papers on this page.** In. The four office roles already read them on People → Contracts, and
+   a line shows the paper's name and state only. Not taken: off the list until the Staff and subs chip is
+   pressed, or left on People alone.
+3. **Who sees the tab.** The office's four roles, as with Sent copies. Not taken: the estimator too, with
+   work orders only.
+4. **One list or sections.** One list, newest first, with chips for kind and state. Not taken: a section
+   per kind.
+5. **The word.** The tab is Agreements, and Contract under a job stays. Not taken: Contracts.
+6. **Drafts and voided.** Drafts out, and voided, declined and cancelled behind their own chip. Not
+   taken: a Drafts chip.
+7. **Signed contracts in Google Drive.** A card of its own after this one. Not taken: folding it into
+   this train. That card is not written yet.
 
 ## How to verify, once built
 
