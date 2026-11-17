@@ -1,6 +1,6 @@
 /**
- * dev-mcp's own handler, run here for find_task / get_task, plan_task → apply_task (v2.7584) and plan_task_place →
- * apply_task_place (v2.7589): the function's index.ts with its three URL imports stood in for, and one `fetch` behind
+ * dev-mcp's own handler, run here for find_task / get_task, plan_task → apply_task (v2.7584), plan_task_place →
+ * apply_task_place (v2.7589) and plan_task_photo → apply_task_photo (v2.7592, behind the fake staging and photo buckets): the function's index.ts with its three URL imports stood in for, and one `fetch` behind
  * which sit a recording fake database and a fake Census geocoder. Nothing reaches a network. The proof that matters
  * most is the first of each: a plan writes nothing.
  */
@@ -40,6 +40,12 @@ const world = {
   /** What the fake Census geocoder knows, by the address asked, and every address it was asked. */
   census: {} as Record<string, { x: number; y: number }>,
   censusAsked: [] as string[],
+  /** The staging bucket and the photo bucket, by path, and what was signed, put and removed. */
+  staged: {} as Record<string, Uint8Array>,
+  bucket: {} as Record<string, Uint8Array>,
+  storage: [] as string[],
+  /** The next put into the photo bucket is refused. */
+  refusePut: false,
 }
 
 function matches(row: Row, key: string, expr: string): boolean {
@@ -97,6 +103,31 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
       const hit = filtered(table, query)
       world.tables[table] = (world.tables[table] ?? []).filter((r) => !hit.includes(r))
       return json(hit.map((r) => ({ id: r.id })))
+    }
+  }
+  const OBJECT = '/storage/v1/object/'
+  if (path.startsWith(`${OBJECT}upload/sign/dev-seat-staging/`)) {
+    const at = path.slice(`${OBJECT}upload/sign/dev-seat-staging/`.length)
+    world.storage.push(`sign ${at}`)
+    return json({ url: `/object/upload/sign/dev-seat-staging/${at}?token=tok` })
+  }
+  if (path.startsWith(`${OBJECT}authenticated/dev-seat-staging/`)) {
+    const bytes = world.staged[path.slice(`${OBJECT}authenticated/dev-seat-staging/`.length)]
+    return bytes ? new Response(bytes, { status: 200 }) : json({ message: 'Object not found' }, 404)
+  }
+  for (const [name, store] of [['dev-seat-staging', world.staged], ['task-spot-photos', world.bucket]] as const) {
+    if (!path.startsWith(`${OBJECT}${name}/`)) continue
+    const at = path.slice(`${OBJECT}${name}/`.length)
+    if (method === 'DELETE') {
+      world.storage.push(`remove ${name}/${at}`)
+      delete store[at]
+      return json({})
+    }
+    if (method === 'POST') {
+      world.storage.push(`put ${name}/${at}`)
+      if (world.refusePut) return json({ message: 'new row violates row-level security policy' }, 403)
+      store[at] = new Uint8Array(init?.body as ArrayBuffer)
+      return json({ Key: `${name}/${at}` })
     }
   }
   if (url.hostname === 'geocoding.geo.census.gov') {
@@ -162,6 +193,12 @@ afterAll(() => {
   vi.useRealTimers()
 })
 
+const JPG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46])
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00])
+async function sha256(bytes: Uint8Array): Promise<string> {
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 const person = (id: string, name: string, over: Row = {}): Row => ({ id, name, role: 'master_technician', archived_at: null, is_digital_twin: false, is_sample: false, is_walk_tester: false, login_attached_at: '2026-01-05T00:00:00Z', ...over })
 
 beforeEach(() => {
@@ -188,14 +225,18 @@ beforeEach(() => {
     task_criteria: [{ id: 'l1', checklist_item_id: OLD_TASK, body: 'ZZ the gate is shut', sort_index: 0, retired_at: null }],
     task_photos: [],
     checklist_instance_assignees: [],
-    checklist_tech_tree_group_tasks: [{ id: ROADMAP_TASK, place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null, painted_map_id: null }],
+    checklist_tech_tree_group_tasks: [{ id: ROADMAP_TASK, spot_photo_path: null, place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null, painted_map_id: null }],
   }
   ;(world.tables.checklist_items as Row[]).push(
-    { id: BARE_TASK, title: 'ZZ bare task', start_date: '2026-11-12', created_at: '2026-11-12T15:00:00Z', created_by_user_id: DEV, roadmap_group_task_id: null, place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null, painted_map_id: MAP },
+    { id: BARE_TASK, title: 'ZZ bare task', start_date: '2026-11-12', created_at: '2026-11-12T15:00:00Z', created_by_user_id: DEV, roadmap_group_task_id: null, spot_photo_path: null, place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null, painted_map_id: MAP },
     { id: ROADMAP_ITEM, title: 'ZZ roadmap step', start_date: '2026-11-12', created_at: '2026-11-12T16:00:00Z', created_by_user_id: DEV, roadmap_group_task_id: ROADMAP_TASK, place_name: null, place_lat: null, place_lng: null },
   )
   world.census = { '9 Elm St, Marlow, TX 78000': { x: -97.52, y: 30.44 } }
   world.censusAsked = []
+  world.staged = {}
+  world.bucket = { [`item/${OLD_TASK}/p1.jpg`]: JPG }
+  world.storage = []
+  world.refusePut = false
   world.writes = []
   world.log = []
   world.refuse = {}
@@ -589,5 +630,134 @@ describe('what an independent review found (v2.7589)', () => {
     // Three live people hold "ZZ"; the archived twenty-five never crowd them out of the read.
     expect(out.text).toContain('matches 3 people')
     expect((await call('plan_task', { task: { for: 'ZZ Gone Away', text: 'ZZ a task' } })).text).toContain('is archived')
+
+describe('plan_task_photo → apply_task_photo', () => {
+  const fileOf = async (bytes: Uint8Array, name = 'spot.jpg') => ({ name, size_bytes: bytes.length, sha256: await sha256(bytes) })
+  const stageOf = async (bytes: Uint8Array) => `${DEV}/task-spot-photos/${(await sha256(bytes)).slice(0, 32)}.jpg`
+  const pathOn = (id: string) => [...(world.tables.checklist_items as Row[]), ...(world.tables.checklist_tech_tree_group_tasks as Row[])].find((x) => x.id === id)!.spot_photo_path as string | null
+
+  it('a plan writes nothing, puts nothing in a bucket, and hands back where to PUT the file', async () => {
+    const photo = { task: BARE_TASK, file: await fileOf(JPG) }
+    const out = await call('plan_task_photo', { photo })
+    expect(out.isError).toBe(false)
+    expect(world.writes).toEqual([])
+    // The one storage call is the signed address, in the dev's own staging folder.
+    expect(world.storage).toEqual([`sign ${await stageOf(JPG)}`])
+    expect(out.body).toMatchObject({
+      action: 'put',
+      task: { id: BARE_TASK, words: 'ZZ bare task' },
+      on: 'task',
+      has_a_photo_now: false,
+      reads: '"ZZ bare task" gets a photo of the spot.',
+      file: { name: 'spot.jpg', mime: 'image/jpeg', size_bytes: JPG.length },
+      upload: { upload_url: `${BASE}/storage/v1/object/upload/sign/dev-seat-staging/${await stageOf(JPG)}?token=tok`, upload_expires_in: '2 hours' },
+    })
+    expect(String(out.body!.what_it_is)).toContain('never counts as the finishing photo')
+    // The signed address is no part of the hash: a second plan gives the same one.
+    expect((await call('plan_task_photo', { photo })).body!.plan_hash).toBe(out.body!.plan_hash)
+  })
+
+  it('an apply checks the staged copy, puts the picture under the task\'s own name, points the task at it and clears the staging', async () => {
+    const photo = { task: BARE_TASK, file: await fileOf(JPG) }
+    const plan = await call('plan_task_photo', { photo })
+    // Before the file is PUT, the apply has nothing to read.
+    const early = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(early.isError).toBe(true)
+    expect(early.text).toContain('Nothing is staged for this plan')
+    expect(world.writes).toEqual([])
+    world.staged[await stageOf(JPG)] = JPG
+    world.storage = []
+    const out = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    const path = pathOn(BARE_TASK)!
+    expect(path).toMatch(new RegExp(`^item/${BARE_TASK}/[0-9a-f-]{36}\\.jpg$`))
+    expect(world.writes).toEqual([{ method: 'PATCH', table: 'checklist_items', query: `id=eq.${BARE_TASK}&select=id`, prefer: 'return=representation', body: { spot_photo_path: path } }])
+    expect(world.storage).toEqual([`put task-spot-photos/${path}`, `remove dev-seat-staging/${await stageOf(JPG)}`])
+    expect(world.bucket[path]).toEqual(JPG)
+    expect(out.body).toMatchObject({ task_id: BARE_TASK, photo: path, staged_copy: 'removed', on: 'task' })
+    // The task has a photo now: the same plan again is turned away, and writes nothing more.
+    const again = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(again.isError).toBe(true)
+    expect(again.text).toContain('already has a photo of the spot')
+    expect(world.writes).toHaveLength(1)
+  })
+
+  it('a task that has a photo takes another only with replace, and the old picture leaves the bucket', async () => {
+    const file = await fileOf(JPG)
+    const refused = await call('plan_task_photo', { photo: { task: OLD_TASK, file } })
+    expect(refused.isError).toBe(true)
+    expect(refused.text).toContain('Pass replace: true')
+    const photo = { task: OLD_TASK, file, replace: true }
+    const plan = await call('plan_task_photo', { photo })
+    expect(plan.body).toMatchObject({ has_a_photo_now: true, replaces: `item/${OLD_TASK}/p1.jpg`, reads: 'A new photo of the spot replaces the one on "ZZ walk the yard".' })
+    world.staged[await stageOf(JPG)] = JPG
+    world.storage = []
+    const out = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    const path = pathOn(OLD_TASK)!
+    expect(world.storage).toEqual([`put task-spot-photos/${path}`, `remove task-spot-photos/item/${OLD_TASK}/p1.jpg`, `remove dev-seat-staging/${await stageOf(JPG)}`])
+    expect(Object.keys(world.bucket)).toEqual([path])
+  })
+
+  it('a file that is not the one planned, or not a JPEG, is turned away before anything is written', async () => {
+    const photo = { task: BARE_TASK, file: await fileOf(JPG) }
+    const plan = await call('plan_task_photo', { photo })
+    world.staged[await stageOf(JPG)] = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x99])
+    expect((await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })).text).toContain("sha256")
+    world.staged[await stageOf(JPG)] = new Uint8Array([0xff, 0xd8, 0xff])
+    expect((await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })).text).toContain('The staged file is 3 bytes; the plan says 10')
+    // A PNG wearing a .jpg name.
+    const fake = { task: BARE_TASK, file: await fileOf(PNG) }
+    const fakePlan = await call('plan_task_photo', { photo: fake })
+    world.staged[await stageOf(PNG)] = PNG
+    expect((await call('apply_task_photo', { photo: fake, plan_hash: fakePlan.body!.plan_hash })).text).toContain('is not a JPEG')
+    expect(world.writes).toEqual([])
+    expect(world.storage.filter((l) => l.startsWith('put '))).toEqual([])
+    expect(pathOn(BARE_TASK)).toBeNull()
+  })
+
+  it('a path that does not save takes the new picture back out, and a put the bucket refuses writes no row', async () => {
+    const photo = { task: BARE_TASK, file: await fileOf(JPG) }
+    const plan = await call('plan_task_photo', { photo })
+    world.staged[await stageOf(JPG)] = JPG
+    world.refuse = { checklist_items: 'kept' }
+    const kept = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(kept.isError).toBe(true)
+    expect(kept.text).toContain('The picture was taken back out of the bucket')
+    expect(Object.keys(world.bucket)).toEqual([`item/${OLD_TASK}/p1.jpg`])
+    // The staged copy is still there, so the same plan can be applied once it is put right.
+    expect(world.staged[await stageOf(JPG)]).toEqual(JPG)
+    world.refuse = {}
+    world.refusePut = true
+    world.writes = []
+    const noPut = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(noPut.isError).toBe(true)
+    expect(noPut.text).toContain('Could not store the file')
+    expect(world.writes).toEqual([])
+  })
+
+  it('remove takes the photo off and its file out, and is refused where there is none', async () => {
+    const photo = { task: OLD_TASK, remove: true }
+    const plan = await call('plan_task_photo', { photo })
+    expect(plan.body).toMatchObject({ action: 'remove', removes: `item/${OLD_TASK}/p1.jpg` })
+    expect('upload' in plan.body!).toBe(false)
+    expect(world.storage).toEqual([])
+    const out = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(pathOn(OLD_TASK)).toBeNull()
+    expect(world.storage).toEqual([`remove task-spot-photos/item/${OLD_TASK}/p1.jpg`])
+    expect((await call('plan_task_photo', { photo: { task: BARE_TASK, remove: true } })).text).toContain('has no photo of the spot to take off')
+  })
+
+  it('a task from a roadmap keeps its photo on the roadmap task', async () => {
+    const photo = { task: ROADMAP_ITEM, file: await fileOf(JPG) }
+    const plan = await call('plan_task_photo', { photo })
+    expect(plan.body).toMatchObject({ on: 'roadmap task' })
+    expect(String(plan.body!.lands)).toContain(`roadmap/${ROADMAP_TASK}/`)
+    world.staged[await stageOf(JPG)] = JPG
+    const out = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(pathOn(ROADMAP_TASK)).toMatch(new RegExp(`^roadmap/${ROADMAP_TASK}/[0-9a-f-]{36}\\.jpg$`))
+    expect(world.writes.map((w) => w.table)).toEqual(['checklist_tech_tree_group_tasks'])
   })
 })
