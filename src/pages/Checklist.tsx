@@ -82,6 +82,7 @@ import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, la
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { DO_FIRST_MARK, doFirstId, readDoFirst, writeDoFirst } from '../lib/tasks/doFirst'
+import { ROUND_MIN, roundConfirmMessage, roundHeldCount, roundHeldWords, roundOutcome, roundPressLabel, roundTaskIds } from '../lib/tasks/markRound'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
 import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
@@ -510,9 +511,13 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     markDone: async (instanceId) => {
       const inst = [...todayInstances, ...outstandingInstances].find((i) => i.id === instanceId)
       if (!inst || inst.completed_at) return
-      await toggleComplete(inst)
+      if (!(await toggleComplete(inst))) throw new Error('The task did not mark done.')
     },
   })
+  // Step D2: one press for a round of daily tasks, behind a window that names the act.
+  const confirmRound = useConfirmDialog()
+  const { showToast: showRoundToast } = useToastContext()
+  const [roundBusy, setRoundBusy] = useState(false)
   /** Do first (step D1): the task this person lifted into Next on this device. */
   const [doFirstPick, setDoFirstPick] = useState<string | null>(() => readDoFirst(authUserId))
   /** Tasks finished in this visit (punch list #369, step B2): each one's done line offers the photo and the note once. */
@@ -797,9 +802,10 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     setUpcomingInstances((data ?? []) as unknown as ChecklistInstance[])
   }
 
-  async function toggleComplete(inst: ChecklistInstance) {
-    if (!authUserId) return
-    if (toggleCompleteInFlightRef.current.has(inst.id)) return
+  /** Resolves true once the change is saved, false when it was refused or did not run (step D2 counts them). */
+  async function toggleComplete(inst: ChecklistInstance): Promise<boolean> {
+    if (!authUserId) return false
+    if (toggleCompleteInFlightRef.current.has(inst.id)) return false
     toggleCompleteInFlightRef.current.add(inst.id)
 
     setError(null)
@@ -836,9 +842,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         void sendCompletionNotifications(inst)
         void maybeCreateNextInstance(inst)
       }
+      return true
     } catch (e: unknown) {
       setTodayInstances((prev) => prev.map((row) => (row.id === inst.id ? previous : row)))
       setError(formatErrorMessage(e, 'Failed to update checklist'))
+      return false
     } finally {
       toggleCompleteInFlightRef.current.delete(inst.id)
     }
@@ -987,6 +995,39 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       meta: inst.scheduled_date < todayYmdInAppTz() ? stillOpenMeta(inst.scheduled_date, it?.due_date ?? null, todayYmdInAppTz()) : null,
     }
   }
+  // Step D2: the round is today's open repeating tasks with a plain tick. Anything with steps of its own is left out.
+  const roundTasks = todayInstances.map((i) => ({
+    id: i.id,
+    open: !i.completed_at,
+    ring: takesRing({ repeatType: i.checklist_items?.repeat_type ?? 'once', roadmapTaskId: i.checklist_items?.roadmap_group_task_id ?? null }),
+    hasLines: taskLines.linesFor(i.id).length > 0,
+    asksForPhoto: cardAsksForPhoto({ asksForPhoto: i.checklist_items?.asks_for_photo }, { asksForPhoto: i.checklist_items?.checklist_tech_tree_group_tasks?.asks_for_photo }),
+    stuck: isStuck(i),
+  }))
+  const roundIds = roundTaskIds(roundTasks)
+  const roundHeld = roundHeldWords(roundHeldCount(roundTasks))
+  const markRound = async () => {
+    if (roundBusy || roundIds.length < ROUND_MIN) return
+    if (!(await confirmRound({ message: roundConfirmMessage(roundIds.length), confirmLabel: roundPressLabel(roundIds.length) }))) return
+    setRoundBusy(true)
+    try {
+      let done = 0
+      let failed = 0
+      // One at a time, and past a task that does not mark: each takes the tick's own path, pushes and all.
+      for (const id of roundIds) {
+        const inst = todayInstances.find((i) => i.id === id)
+        if (!inst || inst.completed_at) continue
+        if (await toggleComplete(inst)) {
+          done += 1
+          setDoneHere((prev) => new Set(prev).add(id))
+        } else failed += 1
+      }
+      const out = roundOutcome(done, failed)
+      showRoundToast(out.line, out.tone)
+    } finally {
+      setRoundBusy(false)
+    }
+  }
   const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
     // Next can be an older task once today is finished: its dot is the map's colour for it, red only when late.
     const todayYmd = toLocalDateString(new Date())
@@ -1119,6 +1160,19 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
                 <h3 style={TODAY_PART_LABEL}>{todayPartLabel('then', thenRows.length)}</h3>
                 <ul style={TODAY_PART_LIST}>{thenRows.map((inst) => renderTodayCard(inst, false))}</ul>
               </>
+            ) : null}
+            {roundIds.length >= ROUND_MIN ? (
+              <div data-mark-round style={{ marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => void markRound()}
+                  disabled={roundBusy}
+                  style={{ display: 'block', width: '100%', minHeight: 44, font: 'inherit', fontSize: 14, fontWeight: 600, borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: roundBusy ? 'not-allowed' : 'pointer', opacity: roundBusy ? 0.6 : 1 }}
+                >
+                  {roundBusy ? 'Marking…' : roundPressLabel(roundIds.length)}
+                </button>
+                {roundHeld ? <p style={{ margin: '4px 2px 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{roundHeld}</p> : null}
+              </div>
             ) : null}
             {stuckRows.length > 0 ? (
               <>

@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, do first, what comes first, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, mark several done, round, all at once, do first, what comes first, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -20,6 +20,12 @@ The top of the page shows the date and one line that says where you stand. It re
 Press {{button:blue|Mark done}} on the **Next** card. On a task under **Then**, tap its checkbox. That's it. There is no save button. Want to say something about how it went, like "used the scrap ply, looks clean"? Tap **＋ Note** and post it. Once a task has notes, the press shows their count, like *2 notes*. Open it to read the thread or add another.
 
 A finished task moves under **Done today** as one struck line. Tapping its green check reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
+
+## Mark a round of tasks done at once
+
+Is your day a round of the same tasks? When two or more of today's repeating tasks are open, a press under them reads like {{button:outline|Mark 3 done}}. Press it. A window asks once, and its press says the same words. Each task then finishes as if you had ticked it.
+
+Some tasks are left out of the round, since each has steps of its own. A one-time task is left out. So is a task with lines to tick, and a task that asks for a photo. A line under the press says how many are left out. Finish those from their own cards.
 
 ## Add a photo to a task
 

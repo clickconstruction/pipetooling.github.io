@@ -5,14 +5,14 @@
  * one joined Today and History bar in place of the tab strip and the page's title.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { installDomShims, renderWithProviders, SMOKE_AUTH_USER_ID } from '../test/renderSmokeMocks'
 import { taskModeStorageKey } from '../lib/taskModeToggle'
 
 installDomShims()
 
 type Row = Record<string, unknown>
-const H = vi.hoisted(() => ({ today: [] as Record<string, unknown>[], older: [] as Record<string, unknown>[] }))
+const H = vi.hoisted(() => ({ today: [] as Record<string, unknown>[], older: [] as Record<string, unknown>[], updates: [] as Array<{ id: string; patch: Record<string, unknown> }>, refuseIds: [] as string[] }))
 
 vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
@@ -26,6 +26,13 @@ vi.mock('../lib/supabase', async () => {
     let older = false
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'is', 'gt', 'gte', 'lte', 'order', 'limit', 'in', 'not']) b[m] = () => b
+    // a tick's save: counted, and refused for the ids a test names
+    b.update = (patch: Record<string, unknown>) => ({
+      eq: (_col: string, id: string) => {
+        H.updates.push({ id, patch })
+        return Promise.resolve({ error: H.refuseIds.includes(id) ? { message: 'refused', details: '', hint: '', code: '42501' } : null })
+      },
+    })
     b.lt = () => {
       older = true
       return b
@@ -72,6 +79,8 @@ function row(id: string, title: string, over: Row = {}, item: Row = {}): Row {
 beforeEach(() => {
   H.today = []
   H.older = []
+  H.updates = []
+  H.refuseIds = []
   localStorage.clear()
 })
 
@@ -192,5 +201,30 @@ describe('Checklist → Today, the day in parts', () => {
     fireEvent.click(screen.getByRole('button', { name: /Stop doing it first/ }))
     await waitFor(() => expect(document.querySelector('[data-fresh-lead]')?.textContent).toContain('Check the truck fluids'))
     expect(document.querySelector('[data-do-first-mark]')).toBeNull()
+  })
+
+  it('Mark N done: a round of repeating tasks is one press behind a window that names the act, and it keeps going past one that fails', async () => {
+    H.today = [row('a', 'Feed the chickens'), row('b', 'Check the truck fluids'), row('c', 'Sweep the shop bays'), row('d', 'Order the shelf brackets', {}, { repeat_type: 'once', show_until_completed: true })]
+    H.refuseIds = ['b']
+    renderWithProviders(<Checklist />)
+    await screen.findByText('Feed the chickens')
+    // three repeating tasks make the round; the one-time task has its own steps and is said to be left out
+    const press = screen.getByRole('button', { name: 'Mark 3 done' })
+    expect(document.querySelector('[data-mark-round]')?.textContent).toContain('1 more task has its own steps. Finish it from its card.')
+    fireEvent.click(press)
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog.textContent).toContain('Mark these 3 tasks done? Each finishes as if you had ticked it.')
+    expect(H.updates).toHaveLength(0)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark 3 done' }))
+    await waitFor(() => expect(H.updates.map((u) => u.id)).toEqual(['a', 'b', 'c']))
+    await screen.findByText('Marked 2 tasks done. 1 did not mark.')
+  })
+
+  it('Mark N done is not offered for one repeating task, or for one-time tasks alone', async () => {
+    const once = { repeat_type: 'once', show_until_completed: true }
+    H.today = [row('a', 'Feed the chickens'), row('d', 'Order the shelf brackets', {}, once), row('e', 'Label the pipe racks', {}, once)]
+    renderWithProviders(<Checklist />)
+    await screen.findByText('Feed the chickens')
+    expect(document.querySelector('[data-mark-round]')).toBeNull()
   })
 })
