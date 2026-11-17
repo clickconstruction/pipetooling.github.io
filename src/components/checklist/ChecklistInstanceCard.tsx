@@ -20,7 +20,7 @@ import { TaskMapBlock, TaskMapLine } from './TaskMapBlock'
 import { useTaskMapWhole } from '../../hooks/useTaskMapWhole'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { doneLineWords, notePressLabel } from '../../lib/tasks/todayPage'
+import { PHOTO_PRESS_LABEL, beforeStartWords, doneLineWords, justDoneWords, notePressLabel } from '../../lib/tasks/todayPage'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
 
 export type ChecklistInstanceCardInstance = {
@@ -57,6 +57,12 @@ type ChecklistInstanceCardProps = {
   lead?: boolean
   /** Who hears when this task is done, for the `fresh` look's done line. Left out, the line says only when. */
   hearsName?: string | null
+  /**
+   * The fresh look: this task was finished in this visit (punch list #369, step B2). Its done line then offers the
+   * photo and the note in words, once, in place of a sheet on every Mark done. The parent knows it, since a task that
+   * is finished moves from Next to Done today and is mounted anew.
+   */
+  justDone?: boolean
   /**
    * v2.2017: when set, tapping the title toggles the thread, and the open
    * thread renders the task's FULL history (the shared ChecklistItemActivity
@@ -142,6 +148,7 @@ export function ChecklistInstanceCard({
   variant = 'card',
   lead = false,
   hearsName = null,
+  justDone = false,
   fullHistory,
   lines,
   onTickLine,
@@ -318,7 +325,8 @@ export function ChecklistInstanceCard({
   const ringPress = cardSheets.ringPress
   const linesBlock = hasLines && lines ? <TaskLinesList lines={lines} onTick={onTickLine ? cardSheets.tickLine : undefined} readOnly={!onTickLine || isCompleted} nameOf={name} /> : null
   const photoStrip = photos && photos.length > 0 ? <TaskPhotoStrip photos={photos} compact={variant === 'row'} /> : null
-  const ringSheet = ring || asksForPhoto ? cardSheets.sheets : null
+  // The fresh look offers a photo on every card (punch list #369, step B2), so its sheets are always there.
+  const ringSheet = ring || asksForPhoto || variant === 'fresh' ? cardSheets.sheets : null
   const linesChip =
     hasLines && lines ? (
       <button
@@ -498,10 +506,17 @@ export function ChecklistInstanceCard({
       {notePressLabel(comments)}
     </button>
   )
+  const freshPhotoPress = onPhotoAdded ? (
+    <button type="button" data-fresh-photo onClick={cardSheets.photoPress} style={TASK_PILL_STYLE} title="Add a photo of the work to this task">
+      {PHOTO_PRESS_LABEL}
+    </button>
+  ) : null
+  const freshBefore = !isCompleted && status.kind !== 'reopened' ? beforeStartWords(hearsName, asksForPhoto) : null
   const freshStatus =
     status.kind === 'waiting_review' ? (
       <div data-fresh-done style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
         {doneLineWords(stripStamp(status.at), hearsName)}
+        {justDone ? <span data-fresh-just-done style={{ display: 'block', color: 'var(--text-green-700)' }}>{justDoneWords(hearsName)}</span> : null}
       </div>
     ) : status.kind === 'signed_off' ? (
       <div data-fresh-done style={{ fontSize: '0.78rem', color: 'var(--text-green-700)', marginTop: 2 }}>
@@ -572,6 +587,11 @@ export function ChecklistInstanceCard({
           </div>
           {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} old={placeOld} far={placeFar} /> : null}
           {!place ? <TaskMapLine map={taskMap} /> : null}
+          {freshBefore ? (
+            <div data-fresh-before style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              {freshBefore}
+            </div>
+          ) : null}
           {freshStatus}
           {reopenedCallout}
           {linesBlock}
@@ -580,6 +600,7 @@ export function ChecklistInstanceCard({
         {lead ? null : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', maxWidth: '55%', flexShrink: 0 }}>
             {freshNotePress}
+            {freshPhotoPress}
             {actions}
           </div>
         )}
@@ -587,6 +608,7 @@ export function ChecklistInstanceCard({
       {lead ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', marginTop: '0.6rem' }}>
           {freshNotePress}
+          {freshPhotoPress}
           {actions}
         </div>
       ) : null}

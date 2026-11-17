@@ -415,6 +415,17 @@ describe('mailLines: the mail tied to a bid or a job in Messages', () => {
     expect(keepFilesDoorWords(3)).toBe('Keep its 3 files…')
   })
 
+  it('a signature’s picture is not a file to keep: a mail that carries only one draws no press (v2.7556)', () => {
+    const files = [
+      { message_id: 'm1', kind: 'file', bucket_path: 'gm/image001.png', name: 'image001.png' },
+      { message_id: 'm2', kind: 'file', bucket_path: 'gm/image001.png', name: 'image001.png' },
+      { message_id: 'm2', kind: 'file', bucket_path: 'gm/specs.pdf', name: 'specs.pdf' },
+    ]
+    const lines = mailLines([mail({ id: 'm1' }), mail({ id: 'm2' })], { ...ctx, files })
+    expect(lines[0]!.mail).toBeUndefined()
+    expect(lines[1]!.mail).toMatchObject({ ready: 1, kept: 0 })
+  })
+
   it('reads only columns the messages table has', () => {
     const types = readFileSync(join(process.cwd(), 'src/types/database.ts'), 'utf8')
     const start = types.indexOf('      messages: {')

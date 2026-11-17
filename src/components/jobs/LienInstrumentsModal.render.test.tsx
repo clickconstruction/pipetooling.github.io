@@ -358,25 +358,33 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
         expect(el?.textContent).toMatch(re)
         return el!
       })
-    // An original contractor sends no notice, so the affidavit is the next paper whatever day the suite runs.
-    const direct = () => job({ created_at: new Date().toISOString(), last_work_date: null, gc_customer_id: null, gcCustomer: null })
-    const first = renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} />)
-    await settle()
-    expect((await verdict(/affidavit/)).textContent).toMatch(/File the affidavit/)
-    first.unmount()
-    const onOpenLienDesk = vi.fn()
-    const second = renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} onOpenLienDesk={onOpenLienDesk} deskAffidavit={{ state: 'to_draft', missing: [], holdUntil: null }} />)
-    await settle()
-    const card = await verdict(/Draft the affidavit/)
-    expect(card.textContent).toContain('the affidavit to be drafted')
-    expect(card.textContent).not.toMatch(/File the affidavit/)
-    fireEvent.click(document.querySelector('[data-lien-window-next-step-button]') as HTMLElement)
-    expect(onOpenLienDesk).toHaveBeenCalledWith(expect.any(String), 'affidavit')
-    second.unmount()
-    renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} deskAffidavit={{ state: 'needs_property', missing: ['homestead_answer'], holdUntil: null }} />)
-    await settle()
-    const held = await verdict(/Answer the homestead question, then file the affidavit/)
-    expect(held.textContent).toContain('a yes or a no on the homestead question')
+    // An original contractor sends no notice, so the affidavit is the next paper while its window is open. The window
+    // counts from the fixture's bill (Aug 18, 2026, residential: open to Nov 15), so the case pins its day inside it;
+    // read from the real clock it began failing on Nov 16, 2026. Only Date is faked, so waitFor's timers stay real.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-01T15:00:00Z'))
+    try {
+      const direct = () => job({ created_at: new Date().toISOString(), last_work_date: null, gc_customer_id: null, gcCustomer: null })
+      const first = renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} />)
+      await settle()
+      expect((await verdict(/affidavit/)).textContent).toMatch(/File the affidavit/)
+      first.unmount()
+      const onOpenLienDesk = vi.fn()
+      const second = renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} onOpenLienDesk={onOpenLienDesk} deskAffidavit={{ state: 'to_draft', missing: [], holdUntil: null }} />)
+      await settle()
+      const card = await verdict(/Draft the affidavit/)
+      expect(card.textContent).toContain('the affidavit to be drafted')
+      expect(card.textContent).not.toMatch(/File the affidavit/)
+      fireEvent.click(document.querySelector('[data-lien-window-next-step-button]') as HTMLElement)
+      expect(onOpenLienDesk).toHaveBeenCalledWith(expect.any(String), 'affidavit')
+      second.unmount()
+      renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} deskAffidavit={{ state: 'needs_property', missing: ['homestead_answer'], holdUntil: null }} />)
+      await settle()
+      const held = await verdict(/Answer the homestead question, then file the affidavit/)
+      expect(held.textContent).toContain('a yes or a no on the homestead question')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('demands of the GC the bill went to, points the owner to the notice, and lists the bill as sent', async () => {

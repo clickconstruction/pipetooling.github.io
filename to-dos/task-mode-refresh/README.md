@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1, A2 and B1 built (v2.7533, v2.7536, v2.7537) · steps B2 to D to build
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1, A2, B1 and B2 built (v2.7533, v2.7536, v2.7537, v2.7539) · steps B3 to D to build
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -11,10 +11,10 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: B2 and B3, the last tools that need no database change. Then C1, the ground migration, pushed right after its merge.
-size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: B2 to D (S · S · M · S · S · M · S · M · M · S · S · S)
+next: B3, the Map press on a task that has a map. Then C1, the ground migration, pushed right after its merge.
+size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: B3 to D (S · M · S · S · M · S · M · M · S · S · S)
 blocker: none
-ver: v2.7533 · v2.7536 · v2.7537
+ver: v2.7533 · v2.7536 · v2.7537 · v2.7539
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
 
@@ -99,7 +99,7 @@ One small PR per line, each with its guide, release note and fragment.
 | A1 | The top half of Today: the head and its sentence, the Today and History bar in Task Mode, Next, Then, Done today, presses with names | none | M | built, v2.7533 |
 | A2 | The lower half: Still open with amber age, *given* in place of *due*, the whole tag, the fold | none | S | built, v2.7536 |
 | B1 | Tool 6: ＋ Add a task for me, and Follow-up on a done task | none | S | built, v2.7537 |
-| B2 | Tool 5: who hears, and the finish sheet with Photo, Note and Map | none | S | |
+| B2 | Tool 5: who hears before the start, 📷 Photo on every card, and the photo and the note offered in words once a task is done (no sheet on every Mark done; see v2.7539) | none | S | built, v2.7539 |
 | B3 | Tool 8, first half: Map on a task that has a map opens it at Add to it | none | S | |
 | C1 | The ground for the rest, no screen: the new thread marks and one narrow function per act | migration | M | |
 | C2 | Tool 8, second half: the doer paints a map or leaves a point on a task with none | uses C1 | S | |

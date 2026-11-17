@@ -13,6 +13,7 @@ import {
   cameByMailMemo,
   fileSizeWords,
   isDriveFolderLink,
+  isInlinePicture,
   keepPressWords,
   mailBySet,
   mailKeptWords,
@@ -63,6 +64,33 @@ describe('bidMailState: what the mail offers', () => {
   })
 })
 
+describe('a signature’s picture is not a file to keep (v2.7556)', () => {
+  it('knows the pictures an email program puts inside the words', () => {
+    for (const name of ['image001.png', 'image002.jpg', 'Image003.JPEG', 'image.png', ' image0.gif ']) expect(isInlinePicture({ name }), name).toBe(true)
+    for (const name of ['P-201-revised.pdf', 'site-photo.jpg', 'image001.pdf', 'marked image001.png', 'IMG_4411.jpg']) expect(isInlinePicture({ name }), name).toBe(false)
+  })
+  it('a mail that carries nothing else offers no press', () => {
+    expect(bidMailState([file({ id: 'logo', name: 'image001.png' })])).toEqual({ kind: 'none' })
+    // With a file that stayed in Gmail beside it, the mail still says why there is nothing to keep.
+    const big = file({ id: 'big', copied: false, leftWhy: 'too_big' })
+    expect(bidMailState([file({ id: 'logo', name: 'image001.png' }), big])).toEqual({ kind: 'left', left: [big] })
+    // Once its real files are kept, the logo does not bring the press back.
+    const kept = file({ id: 'a', setId: 'set-1' })
+    expect(bidMailState([kept, file({ id: 'logo', name: 'image001.png' })])).toEqual({ kind: 'kept', kept: [kept], left: [] })
+  })
+  it('beside a real file it is listed and starts unticked', () => {
+    const files = [file({ id: 'a' }), file({ id: 'logo', name: 'image001.png' })]
+    const state = bidMailState(files)
+    expect(state.kind).toBe('keep')
+    if (state.kind !== 'keep') throw new Error('not a keep')
+    expect(state.ready.map((f) => f.id)).toEqual(['a', 'logo'])
+    expect(bidMailDraft(mail, state.ready, []).picked).toEqual(['a'])
+  })
+  it('the list under Plan sets leaves out a mail that carries only one', () => {
+    expect(bidMailLines([{ id: 'm1', at: '2026-11-16T15:04:00.000Z', subject: 'Thanks', who_text: 'x', message_attachments: [{ kind: 'file', name: 'image001.png' }] }, { id: 'm2', at: '2026-11-16T15:04:00.000Z', subject: 'Specs', who_text: 'x', message_attachments: [{ kind: 'file', name: 'image001.png' }, { kind: 'file', name: 'specs.pdf' }] }]).map((m) => `${m.id}:${m.files}`)).toEqual(['m2:1'])
+  })
+})
+
 describe('the form, filled from the mail', () => {
   it('names the set from the subject, dates it the mail’s own day, and says who it came from', () => {
     const ready = [file({ id: 'a' }), file({ id: 'b' })]
@@ -88,6 +116,14 @@ describe('the form, filled from the mail', () => {
     expect(mailSender('Dana Whitfield')).toBe('Dana Whitfield')
     expect(mailSender(null)).toBe('')
     expect(cameByMailMemo('Dana Whitfield to the bids box', mail.at)).toBe('Came by mail from Dana Whitfield, Nov 16.')
+  })
+  it('reads the name off a From that carries the address, as the company boxes write it (v2.7556)', () => {
+    expect(mailSender('Dana Whitfield <dana@ridgeway.example> to bids@')).toBe('Dana Whitfield')
+    expect(mailSender('"Whitfield, Dana" <dana@ridgeway.example> to bids@, cc Sam')).toBe('Whitfield, Dana')
+    expect(mailSender('<dana@ridgeway.example> to bids@')).toBe('dana@ridgeway.example')
+    expect(mailSender('dana@ridgeway.example to bids@')).toBe('dana@ridgeway.example')
+    expect(cameByMailMemo('Dana Whitfield <dana@ridgeway.example> to bids@', mail.at)).toBe('Came by mail from Dana Whitfield, Nov 16.')
+    expect(bidMailLineWords({ who: 'Dana Whitfield <dana@ridgeway.example> to bids@', at: mail.at, files: 1 })).toBe('Dana Whitfield · Nov 16 · 1 file')
   })
   it('offers a new set first, then only the sets whose link is a Drive folder', () => {
     expect(isDriveFolderLink(FOLDER)).toBe(true)
@@ -146,9 +182,11 @@ describe('what it says after', () => {
     expect(mailKeptWords([''], 'B482')).toBe('Kept on B482')
   })
   it('reads a file’s size, or nothing when the row holds none', () => {
-    expect(fileSizeWords(2_202_009)).toBe('2.1 MB')
-    expect(fileSizeWords(880_640)).toBe('860 KB')
-    expect(fileSizeWords(400)).toBe('1 KB')
+    // The attachment row's own words (lineFiles' sizeWords), so the form and the row above it agree (v2.7556).
+    expect(fileSizeWords(2_202_009)).toBe('2.2 MB')
+    expect(fileSizeWords(248_000)).toBe('248 KB')
+    expect(fileSizeWords(400)).toBe('400 bytes')
+    expect(fileSizeWords(0)).toBe('')
     expect(fileSizeWords(null)).toBe('')
   })
 })

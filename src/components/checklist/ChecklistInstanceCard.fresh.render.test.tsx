@@ -133,4 +133,48 @@ describe('ChecklistInstanceCard, the fresh look', () => {
     const mute = screen.getByRole('button', { name: 'Mute alerts' })
     expect(mute.parentElement).toBe(screen.getByRole('button', { name: '＋ Note' }).parentElement)
   })
+
+  it('an open task says who hears and that a photo is asked for, before the person starts', async () => {
+    renderFresh({ hearsName: 'Imani', asksForPhoto: true })
+    await settle()
+    expect(document.querySelector('[data-fresh-before]')?.textContent).toBe('Imani hears when it is done. It asks for a photo at the finish.')
+  })
+
+  it('a task nobody hears and that asks for nothing says nothing before the start', async () => {
+    renderFresh()
+    await settle()
+    expect(document.querySelector('[data-fresh-before]')).toBeNull()
+  })
+
+  it('📷 Photo sits beside the note pill once photos can be added, and opens the Add a photo sheet with a dead press', async () => {
+    renderFresh({ onPhotoAdded: vi.fn() })
+    await settle()
+    const photo = screen.getByRole('button', { name: '📷 Photo' })
+    expect(photo.parentElement).toBe(screen.getByRole('button', { name: '＋ Note' }).parentElement)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(photo)
+    const sheet = screen.getByRole('dialog', { name: 'Add a photo' })
+    expect(sheet.textContent).toContain('Check the truck fluids')
+    expect((screen.getByRole('button', { name: 'Add the photo' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('with no way to add a photo the press is not drawn', async () => {
+    renderFresh()
+    await settle()
+    expect(screen.queryByRole('button', { name: '📷 Photo' })).toBeNull()
+  })
+
+  it('a task finished in this visit offers the photo and the note in words, once it is done', async () => {
+    renderFresh({ instance: { id: 'inst-1', completed_at: new Date().toISOString(), reviewed_at: null }, hearsName: 'Imani', justDone: true })
+    await settle()
+    expect(document.querySelector('[data-fresh-just-done]')?.textContent).toBe('Add a photo or a note for Imani if it helps.')
+  })
+
+  it('a task finished before this visit keeps its done line alone', async () => {
+    renderFresh({ instance: { id: 'inst-1', completed_at: new Date().toISOString(), reviewed_at: null }, hearsName: 'Imani' })
+    await settle()
+    expect(document.querySelector('[data-fresh-just-done]')).toBeNull()
+  })
 })

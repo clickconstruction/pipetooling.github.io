@@ -11,6 +11,7 @@ import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { lineInvitation } from '../../lib/followUp/newLaneRows'
 import { canOpenMessages } from '../../lib/gc/access'
+import { isInlinePicture } from '../../lib/bids/bidMailSet'
 import { viewerPresses, type ViewerPress } from '../../lib/messages/emailViewerActions'
 import { supabaseEmailViewerIo, type EmailViewerIo } from '../../lib/messages/emailViewerActionsIo'
 import type { ThreadSlots } from '../gc/messages/threadSlots'
@@ -47,7 +48,8 @@ export function useEmailViewerThreadSlots(io?: EmailViewerIo): Pick<ThreadSlots,
         ? {
             messageWindowFirst: (m) => {
               const inv = lineInvitation({ channel: m.channel, direction: m.direction, subject: m.subject, body: m.body, at: m.at, invitation: m.invitation })
-              const files = (m.files ?? []).filter((f) => f.kept !== 'link').length
+              // A link is no file, and a signature's picture (image001.png) is not one to keep: most mail carries one (v2.7556).
+              const files = (m.files ?? []).filter((f) => f.kept !== 'link' && !isInlinePicture(f)).length
               const presses = viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role, files }).filter(
                 (p): p is Exclude<ViewerPress, 'change_order'> => p !== 'change_order',
               )

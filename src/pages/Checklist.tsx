@@ -490,6 +490,8 @@ export default function Checklist() {
 
 function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAddTask = false, setError, modeBar = null }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; /** May this person write a task? The roles the header's Task press shows for. */ canAddTask?: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
   const addTaskModal = useChecklistAddModal()
+  /** Tasks finished in this visit (punch list #369, step B2): each one's done line offers the photo and the note once. */
+  const [doneHere, setDoneHere] = useState<ReadonlySet<string>>(new Set())
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
   const [todayInstances, setTodayInstances] = useState<ChecklistInstance[]>([])
   const [upcomingInstances, setUpcomingInstances] = useState<ChecklistInstance[]>([])
@@ -970,11 +972,15 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
           variant="fresh"
           lead={lead}
           hearsName={hearsNameFor(inst)}
+          justDone={doneHere.has(inst.id)}
           title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items, undefined, { wrap: true })}</div> : null}{dueCardChip(inst.checklist_items?.due_date)}</>}
           events={eventsByInstance.get(inst.id) ?? []}
           nameById={eventActorNameById}
           currentUserId={authUserId}
-          onToggleComplete={() => void toggleComplete(inst)}
+          onToggleComplete={() => {
+            if (!inst.completed_at) setDoneHere((prev) => new Set(prev).add(inst.id))
+            void toggleComplete(inst)
+          }}
           onPostComment={(body) => postCardComment(inst, body)}
           lines={taskLines.linesFor(inst.id)}
           onTickLine={async (criterionId, ticked) => {

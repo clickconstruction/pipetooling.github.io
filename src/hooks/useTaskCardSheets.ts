@@ -20,6 +20,7 @@
 import { createElement, useCallback, useState, type ReactNode } from 'react'
 import { TaskFinishSheet } from '../components/checklist/TaskFinishSheet'
 import { TaskPercentSheet } from '../components/checklist/TaskPercentSheet'
+import { TaskPhotoSheet } from '../components/checklist/TaskPhotoSheet'
 import { getCurrentUserName } from '../lib/getCurrentUserName'
 import { isImpersonationSessionActive } from '../lib/impersonationSession'
 import { keptPhotos } from '../lib/offline/keptPhotos'
@@ -62,6 +63,8 @@ export type TaskCardSheetsInput = {
 
 export type TaskCardSheets = {
   ringPress: () => void
+  /** The card's Photo press (punch list #369, step B2): a photo at any time, which finishes nothing. */
+  photoPress: () => void
   /** A press that says *done* outright, such as the Next card's Mark done: the finishing sheet first on a card that asks for a photo. */
   donePress: () => Promise<void>
   tickLine: (criterionId: string, ticked: boolean) => Promise<void>
@@ -82,6 +85,7 @@ export function keptTaskPhotoOf(shot: TaskShot, a: { kind: TaskPhotoKind; percen
 
 export function useTaskCardSheets(a: TaskCardSheetsInput): TaskCardSheets {
   const [percentOpen, setPercentOpen] = useState(false)
+  const [photoOpen, setPhotoOpen] = useState(false)
   const [pending, setPending] = useState<Pending | null>(null)
   const [error, setError] = useState<string | null>(null)
   const ticked = a.lines.filter((l) => l.checked).length
@@ -199,6 +203,25 @@ export function useTaskCardSheets(a: TaskCardSheetsInput): TaskCardSheets {
     [a, pending, send],
   )
 
+  const photoPress = useCallback(() => {
+    setError(null)
+    setPhotoOpen(true)
+  }, [])
+
+  // A photo for the card with no percent or finish riding on it: `progress` at where the card stands, `finish` once done.
+  const onAddPhoto = useCallback(
+    async (shot: TaskShot): Promise<SheetPressOutcome> => {
+      try {
+        const out = a.isCompleted ? await send(shot, 'finish', null, null) : await send(shot, 'progress', typeof a.percentComplete === 'number' ? a.percentComplete : null, null)
+        return { ok: true, shotKept: out.kind === 'kept' }
+      } catch (e) {
+        setError(formatErrorMessage(e, 'The photo did not send.'))
+        return { ok: false }
+      }
+    },
+    [a.isCompleted, a.percentComplete, send],
+  )
+
   const donePress = useCallback(async () => {
     if (a.isCompleted) return
     setError(null)
@@ -227,7 +250,14 @@ export function useTaskCardSheets(a: TaskCardSheetsInput): TaskCardSheets {
       onClose: () => setPending(null),
       error,
     }),
+    createElement(TaskPhotoSheet, {
+      open: photoOpen,
+      title: a.title,
+      onAdd: onAddPhoto,
+      onClose: () => setPhotoOpen(false),
+      error,
+    }),
   )
 
-  return { ringPress, donePress, tickLine, ring, sheets, error }
+  return { ringPress, photoPress, donePress, tickLine, ring, sheets, error }
 }
