@@ -2,7 +2,7 @@
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
 group: close
-status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage; the page's number is the company's from Settings (v2.7390); the page redrawn as the company's card from her drawing the same evening (v2.7405), `box-read` redeployed and the card proved live signed out on 2026-11-16 · the second Cloudflare rule live 2026-11-17 (bare prts.co opens Scan a label) · left: each press of the card on a real phone, the ZZ walk of the public page, the tape walk on both printers
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage; the page's number is the company's from Settings (v2.7390); the page redrawn as the company's card from her drawing the same evening (v2.7405), `box-read` redeployed and the card proved live signed out on 2026-11-16 · the second Cloudflare rule live 2026-11-17 (bare prts.co opens Scan a label) · the ZZ walk passed 2026-11-17, signed out and through the sign-in back to the cage (the section *The ZZ walk*) · left: each press of the card on a real phone, the tape walk on both printers
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -19,7 +19,7 @@ summary: >
   CSV for Brother's label editor, and a Copy the label code press on the phone for Brother's app.
   His third ask: the code reads 4F2A-9C18 everywhere a person reads it, so it can be relayed by
   voice, while the bare code keeps working and the QR stays as small as it is.
-next: Taunya's walk of the company's card (v2.7405, the last section) on a phone with no session; press Ask for a bid, the call, and Send a text and Send an email in each sheet once on a real phone, and see the bid ask land in the app from bids@ (the texts go to the company's number from Settings, which is not one of the app's lines today, so they do not reach the Messages page). The owner makes the second Cloudflare rule for bare prts.co from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in v2.6797's fragment on a phone with no session; the tape walk on the PT-E720BT and on 18 mm tape, from Labels → Brother tape (the PT-D610BT printed 24 mm straight over USB from Chrome, v2.6865 and v2.6881). Retire the card once the walks pass.
+next: Taunya's walk of the company's card (v2.7405, the section *The company's card*) on a real phone with no session, pressing Ask for a bid, the call, and Send a text and Send an email in each sheet once, and seeing the bid ask land in the app from bids@ (the texts go to the company's number from Settings, which is not one of the app's lines today, so they do not reach the Messages page). The tape walk on the PT-E720BT and on 18 mm tape, from Labels → Brother tape (the PT-D610BT printed 24 mm straight over USB from Chrome, v2.6865 and v2.6881). Retire the card once the walks pass.
 size: M as a train of five (XS · S · S · XS · S), all five shipped; left: the walks (S)
 blocker: None. The tape walk needs the printers on the office Mac.
 opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
@@ -167,7 +167,7 @@ Later, not owed: a development's sibling jobs in the search; a *Print this list*
 - [`scan.html`](./scan.html): the scanned box on a phone, signed out, at 375 and 320, and the retired and not-a-box states.
 - [`search.html`](./search.html): Find a part on this site with its results, the empty answer, and the bare `prts.co` page with and without a remembered site.
 - [`sign-in.html`](./sign-in.html): the hand-off in three frames: the public page's press, the sign-in page, the box's screen in the app with its presses.
-- [`landing-before-after.html`](./landing-before-after.html): the page a scan opens, today and three after directions, the pick in its states, where each piece comes from, and the owner's calls (2026-11-10, see the last section).
+- [`landing-before-after.html`](./landing-before-after.html): the page a scan opens, today and three after directions, the pick in its states, where each piece comes from, and the owner's calls (2026-11-10, see *The page a scan opens, a second look*).
 - [`tape-labels.html`](./tape-labels.html): the strip on 24 mm tape at print size and enlarged, the Labels panel with its Sheet · Tape chips and the counted press, the print window's first-time picks, and the phone's Copy the label code press.
 
 Every job, person, street, part and count in them is made up: Ridgeway Builders' Oak Hollow Apartments Building C, cage B3 at Level 2 by the north stair, Mateo Ruiz and Jordan Pike on the crew, the parts and their counts.
@@ -193,7 +193,7 @@ Designed 2026-11-09 from the owner's ask of that morning; the tape labels and th
 
 **Probed live** after each deploy, with `?preview=1` so no view counted: a real cage answers with its stencil, its lines, the last count's day and its newest photo (190 KB streamed from Drive); `?find=` lists the scanned cage first; an unknown code answers 404 and a non-code 400; the JSON names no job, customer, price or person.
 
-**Left**: the owner's walk of the redrawn page, Text the office pressed once on a real phone (the last section); the ZZ walk in v2.6797's fragment on a phone with no session, sign-in hand-off included; the tape walk on both printers and both widths. Then retire the card and let the release notes carry it.
+**Left**: each press of the company's card pressed once on a real phone (*The company's card*); the tape walk on both printers and both widths. The ZZ walk passed 2026-11-17, sign-in hand-off included (*The ZZ walk*). Then retire the card and let the release notes carry it.
 
 **Learned on the way** (for the next stacked train): after a replay onto main the SQL beds run can post only its `changes` job, so the required `sql-beds` check never appears and the queue will not take the PR; `gh run rerun` on that run posts it, then `enqueuePullRequest`. PR 3 sat four hours on this.
 
@@ -242,7 +242,7 @@ Taunya asked, as a subcontractor, what she would not want the GC, the people who
 
 **Probed live** (2026-11-15, after #8258 merged and `box-read` was deployed on Taunya's go, with `?preview=1` so no view counted): the ZZ1 test cage, which holds a part, a count day and a photo, answers its name, kind and code and the office's number and nothing else; `&find=` and `&photo=` answer 401 `sign_in`; a retired pile still answers 410 with its name. The live page drawn signed out in a fresh browser reads as her picture does.
 
-**Left**: see the last section.
+**Left**: see *The company's card*.
 
 ## The company's card (2026-11-15, the same evening)
 
@@ -262,3 +262,28 @@ With the sealed page live, Taunya asked whether it could be better and more prof
 **Live 2026-11-16.** `box-read` was redeployed after the merge. Signed out on ZZ Test cage ZZ1 it answers the name, the kind, the code, the number and the two addresses and nothing a box holds; `&find=` and `&photo=` answer 401 and the retired pile 410. The live page draws the card with each link in place.
 
 **Left**: each press pressed once on a real phone.
+
+## The ZZ walk (2026-11-17)
+
+Walked on the live site on the owner's ask, on the ZZ test job's own boxes: cages ZZ1 and ZZ2, box ZZ4 and the retired pile ZZ3. A phone-sized browser 390 wide started with no session and ended signed in. Nothing was seeded. Every scan but one carried `?preview=1`, so the walk left one counted view of ZZ1, one counted miss and the dev's own sign-in.
+
+| The step | What it showed |
+|---|---|
+| Plain `prts.co` | Forwards to `/b`, **Scan a label**, with the box for a typed code and the sign-in line under it. |
+| A code typed short | *Type all eight characters under the QR code.* |
+| The code typed in lower case with no dash | The box shows it in capitals with its dash, and **Open the box** opens Cage ZZ1. |
+| The label's own address, `PRTS.CO/B/<code>` | The company's card: the mark, the name and tagline, *Our cage on this site*, **Cage ZZ1** with its code, *Counted and photographed by its crew.* |
+| Ask for a bid, Call | An email to the bids box with the cage in its words, and the dialler with the company's number. |
+| The two rows | Each opens its sheet with Send a text and Send an email, the cage in the words, and closes again. |
+| What the function sent | The box's code, name and kind, the office's number and its two addresses. No job, place, part, count or photo. `&find=` and `&photo=` answer 401. |
+| A box, and the dashed lower-case spelling | *Our box on this site*, **Box ZZ4**. `prts.co/b/<code with its dash>` opens Cage ZZ2. |
+| A code no box carries, and words that are not a code | *0000-0000 is not a box on any job* with **Type the code**, which opens Scan a label. *That is not a box code.* |
+| The retired pile | *Pile ZZ3 was retired*, the day it left, *This label can come off*, **Scan another label** and the text to the office. |
+| Sign in to see what is inside | Keeps the box's path and opens the sign-in. Signed in by an emailed link, the app opens the On site tab on cage ZZ1 with its part, its count, its photo and Count this box. The kept path is cleared. |
+| Signed in, plain `prts.co` and another label | The On site tab, then cage ZZ2's screen. |
+
+Every page fit 390 wide with no sideways scroll.
+
+**What the walk did not cover.** A real camera reading a printed label. What Mail, Messages and the dialler do with each press: the walk read where each press points and pressed none, so the walk on a real phone still stands. A helper's session: the sign-in was the dev's, by the emailed-link door, with no password typed.
+
+**Seen on the way, both small.** Signed in, the retired pile's own label reads *did not open a box* over a line that the box may be retired or on a job the reader is not on, while the signed-out page names the pile and says it was retired. The Scan a label page's tab reads *ClickTooling*, where a box's page reads the box's name and the company's.
