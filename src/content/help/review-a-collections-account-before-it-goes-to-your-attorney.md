@@ -95,7 +95,7 @@ The firm sees each document under Evidence on its portal, with a link that opens
 
 A letter kept as a .md or .txt file can go straight into an email. Open the **Evidence** tab. Press {{button:outline|Read}} on the letter's row. The copy presses sit over the words. Press {{button:dark|Copy the letter}}. Open your email and paste.
 
-The copy is plain text. It has no stars, pound signs or rule lines. Lists keep their dashes. Line breaks stay where they were written.
+The copy is plain text. The copy has no stars, pound signs or rule lines. Lists keep their dashes. Line breaks stay where they were written.
 
 The copy leaves two things out. One is a draft note at the top of the document. The other is any section whose heading starts with INTERNAL. A line over the words names what the copy left out.
 
@@ -103,7 +103,7 @@ A blank in square brackets stays as written, such as `[DATE]`. An amber line lis
 
 A document can hold more than one letter. A large heading starts each one. Each letter gets its own press, named by its heading, such as {{button:outline|Copy “Short version”}}. A draft says so on the press, as in {{button:dark|Copy the draft letter}}.
 
-{{button:outline|Copy everything as text}} takes the whole document. That includes the draft note and the internal sections. A counsel-only paper has no copy press.
+{{button:outline|Copy everything as text}} takes the whole document. The whole document includes the draft note and the internal sections. A counsel-only paper has no copy press.
 
 A paper filed as a PDF or a picture has no {{button:outline|Read}}. Neither does a text file put on the matter before the desk kept text. Add the file again as a .md or .txt to read and copy it.
 
