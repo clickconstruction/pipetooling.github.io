@@ -4689,6 +4689,10 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunCheckAmt { font-weight: 700; font-variant-numeric: tabular-nums; }
 /* The property's street beside a job's name (v2.7489), on a row and on an envelope's copy line: quieter than the name. */
 .lienRunStreet { font-weight: 500; color: var(--text-muted); }
+/* The envelope's line about its properties (v2.7559): where the other jobs at them stand, and the press to see one whole. */
+.lienRunCardProperty { margin-top: 0.35rem; padding-top: 0.3rem; border-top: 1px dashed var(--border); font-size: 0.75rem; color: var(--text-muted); }
+.lienRunCardPropertyPresses { display: flex; flex-wrap: wrap; gap: 0 0.9rem; }
+.lienRunCardProperty button { background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-weight: 600; color: var(--text-link); text-align: left; }
 .lienRunCheckWho { color: var(--text-muted); font-size: 0.72rem; }
 .lienRunCheckLine { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
 .lienRunCheckHeld { color: var(--text-red-600); font-size: 0.72rem; font-weight: 600; }

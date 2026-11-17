@@ -55,6 +55,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem, lienMailedCopyTakenOffWords, type LienMailedCopy } from '../../lib/jobs/lienMailedCopies'
 import { addLienMailedCopy, removeLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
 import { LIEN_RUN_ACT, lienRunWhatWords, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
+import { lienRunEnvelopePropertyLine, type LienRunProperty } from '../../lib/jobs/lienRunEnvelopeProperty'
 
 /** Which of the window's three stacks a notice's envelopes sit in, by its part (`lienRunParts`): what prints now, what printed, what is stopped. */
 const stackOf = (part: LienRunPartKey | undefined): 'ready' | 'printed' | 'rest' => (part === 'ready' ? 'ready' : part === 'owe' || part === 'record' ? 'printed' : 'rest')
@@ -93,6 +94,8 @@ export default function LienDeskRunModal({
   focusMailItemId = null,
   addMailedCopy = addLienMailedCopy,
   removeMailedCopy = removeLienMailedCopy,
+  properties = null,
+  onOpenProperty,
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -130,6 +133,13 @@ export default function LienDeskRunModal({
   addMailedCopy?: typeof addLienMailedCopy
   /** Take a file off a notice's list (v2.7525); a test hands its own. */
   removeMailedCopy?: typeof removeLienMailedCopy
+  /**
+   * Every property the host's desk holds a job at (v2.7559, `lienRunProperties`): an envelope says where the other jobs
+   * at its properties stand. Absent on a host with no desk in hand: the envelope then says nothing about them.
+   */
+  properties?: ReadonlyMap<string, LienRunProperty> | null
+  /** Open one property whole, over the run. Absent = the line is drawn with no press. */
+  onOpenProperty?: (addressId: string) => void
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
@@ -187,6 +197,8 @@ export default function LienDeskRunModal({
   const combinable = useMemo(() => combineSummary(combineNoticesByProperty(notices, { combine: true })), [notices])
   const shown: CombinedRunNotice[] = useMemo(() => combineNoticesByProperty(notices, { combine }), [notices, combine])
   const partsOf = (n: CombinedRunNotice) => (n.parts && n.parts.length > 1 ? n.parts : null)
+  // The property record each job points at (v2.7559), read off the notices as handed in: a combined notice's jobs each keep their own.
+  const propertyOfJob = useMemo(() => new Map(notices.map((n) => [n.jobId, n.propertyId ?? null])), [notices])
   // The unpaid invoices behind each notice (v2.3437, § 53.056(a-3)) — loaded once per job.
   const [invoiceDocsByJob, setInvoiceDocsByJob] = useState<Record<string, NoticeInvoiceDoc[]>>({})
   const [payByJob, setPayByJob] = useState<Record<string, { rows: PayPageRow[]; assets: PayPageAssets }>>({})
@@ -1250,6 +1262,24 @@ export default function LienDeskRunModal({
                     )
                       })}
                       </div>
+                      {(() => {
+                        // The other jobs at this envelope's properties (v2.7559): one line for the envelope, and a press a property.
+                        const line = lienRunEnvelopePropertyLine({ inside: env.contents.flatMap(({ notice: n }) => (partsOf(n as CombinedRunNotice) ?? [n]).map((j) => ({ jobId: j.jobId, propertyId: propertyOfJob.get(j.jobId) ?? null }))), properties })
+                        return line ? (
+                          <div className="lienRunCardProperty" data-testid={`run-property-${env.n}`}>
+                            <span>{line.words}</span>
+                            {onOpenProperty ? (
+                              <span className="lienRunCardPropertyPresses">
+                                {line.presses.map((p) => (
+                                  <button key={p.addressId} type="button" onClick={() => onOpenProperty(p.addressId)} data-testid={`run-property-open-${env.n}-${p.addressId}`} title="Every job at this property, with where each paper stands">
+                                    {p.label}
+                                  </button>
+                                ))}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null
+                      })()}
                   </div>
                   <div className="lienRunCardSide">
                       <select value={env.method} onChange={(ev) => setEnvelope(env, { method: ev.target.value as RunSendMethod })} aria-label={`${who} — method`} className="lienRunSelect" style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>

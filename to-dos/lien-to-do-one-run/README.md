@@ -16,7 +16,7 @@ summary: >
 next: Step 5, the Get it right checklist with Leave out (M), the first step of the run. Ask where a left-out paper is remembered and whether the next run takes it by itself, before it is built.
 size: L for D as five steps (M · M · M · S · M); B, the first three, and step 4, the list by bin, are built; left: steps 5 to 8 (M · M · S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559
 ---
 
 # Lien desk To do: one run (#362)
@@ -255,13 +255,12 @@ Tabs **Today**, **1 Get them right**, **2 Print**, **3 Mail and record** and **T
   right and nothing on screen said why. The head now reads *Monthly notices (§ 53.056), approved and
   not yet mailed*, and says a job whose notice already went and the lien affidavits are not here. A
   row shows the property's street after a job's name that does not say it.
-- **Waiting: the line that counts a property's other jobs** (*At this property: 1 notice in this
-  envelope · 4 notices mailed Oct 14 · 6 lien affidavits ready to file*), with a press to see them.
-  Its reasons come from the whole-property view's kernel (`lienPropertyPapers.ts`), which is on
-  `main` now, so the line is the next PR. The owner picked the shape on 2026-11-16: **one line for
-  the envelope**. A contractor's envelope that spans properties gets a single line that totals them
-  (*At these 2 properties: 3 notices in this envelope · 6 notices mailed earlier · 9 lien affidavits
-  ready to file*), not one line a property.
+- **The envelope says where the property's other jobs stand, built, v2.7559.** An envelope's card
+  ends with one line (*At this property: 1 notice in this envelope · 4 notices sent Oct 14 · 6 lien
+  affidavits ready to file*) and a press that opens the property card over the run. Its words are
+  the whole-property view's own (`lienPropertyPapers.ts`). The owner picked the shape on 2026-11-16:
+  **one line for the envelope**. A contractor's envelope that spans properties gets a single line
+  that totals them, with a press a property, not one line a property.
 - **Not checked on the live desk.** It was looked at with sample ZZ rows at 1,280, 1,024 and 375 px.
 
 ## How to verify

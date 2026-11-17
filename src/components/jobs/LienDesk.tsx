@@ -72,6 +72,7 @@ import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorWords } from '../../lib/jobs/lienDeskRun'
+import { lienRunProperties } from '../../lib/jobs/lienRunEnvelopeProperty'
 import { lienRunOnePlan } from '../../lib/jobs/lienRunOne'
 import { lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_RUN_NOW_TO_PRINT, lienRunActLabel } from '../../lib/jobs/lienRunWords'
@@ -678,6 +679,9 @@ export default function LienDesk({
   // A job's entry in the desk's own queues wins over the book's (`LienPropertyDesk`): the card says what the Board says.
   const bookProperties = useMemo(() => (book ? buildLienProperties(book.rows, { notices: data?.queue.entries, affidavits: data?.affidavits.entries }) : []), [book, data])
   const [propertyCard, setPropertyCard] = useState<{ addressId: string; fromJobId: string | null } | null>(null)
+  // The run's envelopes say where the other jobs at their properties stand (v2.7559), from the desk's own queues: no
+  // read of the book is waited for. The card the line opens reads the book, which looks further back than the desk.
+  const runProperties = useMemo(() => (data ? lienRunProperties({ jobsById: data.jobsById, addressesById: data.addressesById, notices: data.queue.entries, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob }) : null), [data])
   const [bookGroup, setBookGroup] = useState<LienBookGroup>('none')
   const openProperty = useCallback((addressId: string, fromJobId: string | null = null) => {
     setBookOpened(true)
@@ -5334,6 +5338,8 @@ export default function LienDesk({
           focusMailItemId={runFocus}
           onRecorded={onChanged}
           viewer={{ userId: authUserId, name: authName }}
+          properties={runProperties}
+          onOpenProperty={(addressId) => openProperty(addressId)}
         />
       ) : null}
     </section>
