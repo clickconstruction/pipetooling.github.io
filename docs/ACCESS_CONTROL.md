@@ -704,6 +704,9 @@ closed to twins since v2.6396), written by the service role alone — `drive-lin
 
 **The file index** (`file_index`, v2.6319, the words inside the Shared Drive's files;
 closed to twins in v2.6396, `20261102215000`): the office and the estimators read it through `file_index_select`, `(SELECT is_office_or_estimator()) AND NOT (SELECT is_digital_twin())`, and `search_file_index` is SECURITY INVOKER, so the policy decides.
+Since v2.7645 (punch list #377) a signed job contract is filed in its job's Drive folder, so an estimator, who cannot read `job_contracts`, reads a filed contract through this index, Find a file and the jobs Shared Drive.
+The owner settled that on 2026-11-17 as the card's call 1.
+The table `job_contracts` itself stays the four office roles'.
 A subcontractor, helper, primary or superintendent reads nothing, a digital twin reads nothing though it is an estimator, and anon is refused.
 Only the service role writes (`drive-link`'s `index` and `index_job`, the `file-index-sweep` cron, and since v2.6714 `hr-evidence-drive` and `dev-mcp` through the records pass).
 Since v2.6714 (`20261108200000`, punch list #285) the index also holds the words of the files on a person's HR file and a matter's Evidence tab (`source` `hr_attachment` · `matter_document`): `file_index_select` opens those rows to a dev alone (`source = 'drive' OR is_dev()`), the restrictive `file_index_counsel_only_seat` refused the dev seat a counsel-only one until v2.6986, when it began to ask `counsel_only_held_from_seat()`, which answers false, and Find a file's two searches read Drive rows alone.

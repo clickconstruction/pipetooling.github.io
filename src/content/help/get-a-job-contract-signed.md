@@ -244,3 +244,19 @@ Customers with a portal link also see the **Agreements** group of **Your papers*
 ## The signed copy
 
 The moment a customer signs on the page, the app emails them their signed copy. The PDF is attached, and the same link stays live. For a paper signature nothing is emailed until you press **Email a copy…** in the Contract window's signed rail. That sends the PDF. Both show as the **Signed copy** step on the customer's *Their journey*. That is on the Customer page and the Job window.
+
+## The signed copy in Google Drive
+
+The app files each signed contract in its job's Google Drive folder. It goes under **Team only**, in a folder named **Contracts**. The app makes that folder the first time it files a paper there. The file's name starts with the day it was signed. Then it says what the paper is, the job's number and who signed.
+
+This happens by itself within ten minutes of the signing. A scan you upload is filed the same way. So is a builder's own paper.
+
+Open the Contract window on a signed job to see where the copy is. The **Drive** line reads *In the job's Drive folder*. Press **Open in Drive** to see the file. A paper signed a moment ago reads *Not in Drive yet*. Press {{button:outline|File it in Drive now}} if you do not want to wait.
+
+**A paper already in Drive stays where it is.** When the record's link names a file in the jobs shared drive, the app ties that file to the record. It does not copy, move or rename it. The line reads *In Drive, where the office put it*.
+
+**When it cannot be filed, the line says why.** The paper stays safe in the app. A job whose Drive folder is held shows the job's own reason. Fix the folder and the paper files itself within the hour. A record with no scan and no link reads *Nothing to file*. Press **Add the scan** and pick the file. The app never files a contract in a folder that anyone with the link can open. Close the link in Drive, then press {{button:outline|Try again}}.
+
+**A voided contract keeps its copy.** The app renames the copy so its name starts with VOIDED. Nobody reads it as a paper in force.
+
+**Who can open it.** Everyone on the jobs shared drive can open the file. The office and estimators can also find it with Find a file. See [find a file when you do not know where it is](/help/find-a-file-when-you-do-not-know-where-it-is).
