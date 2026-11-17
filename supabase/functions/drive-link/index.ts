@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
+import { driveFailureOf } from '../_shared/driveFailure.ts'
 import { NO_COMPANY_FOLDER_WORDS } from '../_shared/whereFilesGo.ts'
 import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
@@ -508,6 +509,10 @@ serve(async (req) => {
     return json({ error: 'GET or POST only.' }, 405)
   } catch (e) {
     console.error('drive-link failed', e)
-    return json({ error: 'failed' }, 500)
+    // The public link's door says no more than that it failed. The office's door says who refused and in whose
+    // words, and whether the same ask can go again (v2.7635): the screen used to show the one word `failed`.
+    if (req.method !== 'POST') return json({ error: 'failed' }, 500)
+    const failure = driveFailureOf(e)
+    return json({ error: failure.error, why: failure.why, retry: failure.retry }, failure.status)
   }
 })

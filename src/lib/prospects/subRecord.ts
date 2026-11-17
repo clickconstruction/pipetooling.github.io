@@ -76,3 +76,21 @@ export type RecordTone = 'green' | 'amber' | 'red' | 'grey'
 export function recordTone(record: AnswerRecord): RecordTone {
   return record === 'reliable' ? 'green' : record === 'mixed' ? 'amber' : record === 'silent' ? 'red' : 'grey'
 }
+
+/**
+ * The prospects somebody wrote back to: a line in on a thread whose contact is a prospect's. A contact with no
+ * prospect, and a line on a contact we did not read, count for nobody. Moved out of `loadLaneExtras` in
+ * `src/pages/Prospects.tsx`.
+ */
+export function inboundProspects(
+  contacts: readonly { id: string; prospect_id: string | null }[],
+  inboundLines: readonly { contact_id: string }[],
+): Set<string> {
+  const byContact = new Map(contacts.map((c) => [c.id, c.prospect_id]))
+  const inbound = new Set<string>()
+  for (const l of inboundLines) {
+    const pid = byContact.get(l.contact_id)
+    if (pid) inbound.add(pid)
+  }
+  return inbound
+}

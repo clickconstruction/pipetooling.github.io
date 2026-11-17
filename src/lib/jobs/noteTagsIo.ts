@@ -7,14 +7,20 @@ import type { MyTag } from './noteTags'
  * the Needs you line share, and the one signal that tells all three a tag changed.
  */
 
-/** The section in one read: what waits on the reader and what the reader asked. */
+/** Every list in one read: what waits on the reader and what the reader asked, in job notes and task notes alike. */
 export async function loadMyTags(): Promise<MyTag[]> {
-  const rows = await withSupabaseRetry(async () => supabase.rpc('job_note_tags_mine'), 'read tagged job notes')
+  const rows = await withSupabaseRetry(async () => supabase.rpc('note_tags_mine'), 'read tagged notes')
   return (rows ?? []).map((r) => ({
     tagId: r.tag_id,
     kind: r.kind === 'waiting' ? 'waiting' : 'asked',
+    source: r.source === 'task' ? 'task' : 'job',
+    instanceId: r.instance_id ?? null,
+    itemId: r.item_id ?? null,
+    taskTitle: r.task_title ?? null,
+    taskDate: r.task_date ?? null,
+    taggedLeft: r.tagged_left === true,
     noteId: r.note_id,
-    jobId: r.job_id,
+    jobId: r.job_id ?? '',
     jobName: r.job_name ?? '',
     jobNumber: r.job_number ?? null,
     jobKind: r.job_kind ?? null,
@@ -47,16 +53,30 @@ export async function postTaggedNote(jobId: string, body: string, tagged: readon
   return data
 }
 
-/** No reply needed. False when the tag no longer waits. */
-export async function markTagDone(tagId: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc('job_note_tag_done', { p_tag_id: tagId })
+/**
+ * A typed task note with the teammates picked in it (punch list #375), in one transaction: the note in the task's
+ * thread and its tags. Returns the note's id. Not retried, so it posts once.
+ */
+export async function postTaggedTaskNote(instanceId: string, body: string, tagged: readonly string[]): Promise<string> {
+  const { data, error } = await supabase.rpc('task_note_post_tagged', { p_instance_id: instanceId, p_body: body, p_tagged: [...tagged] })
+  if (error) throw error
+  if (!data) throw new Error('The note was not posted')
+  return data
+}
+
+/** No reply needed, on a job tag or a task tag. False when the tag no longer waits. */
+export async function markTagDone(tagId: string, source: 'job' | 'task' = 'job'): Promise<boolean> {
+  const { data, error } = await supabase.rpc(source === 'task' ? 'task_note_tag_done' : 'job_note_tag_done', { p_tag_id: tagId })
   if (error) throw error
   return data === true
 }
 
-/** The reader has had their answers on screen. */
-export async function markAnswersSeen(): Promise<number> {
-  const { data, error } = await supabase.rpc('job_note_tags_seen')
+/**
+ * The reader has had their answers on screen. Each kind has its own mark, so a list that shows one
+ * kind marks that kind alone and the other still counts where it is shown.
+ */
+export async function markAnswersSeen(source: 'job' | 'task' = 'job'): Promise<number> {
+  const { data, error } = await supabase.rpc(source === 'task' ? 'task_note_tags_seen' : 'job_note_tags_seen')
   if (error) throw error
   return typeof data === 'number' ? data : 0
 }
@@ -66,8 +86,9 @@ export async function markAnswersSeen(): Promise<number> {
  * the words from the rows. A notice that fails changes nothing on screen, so its failure is dropped: the tag is
  * already on the job and in the count.
  */
-export function notifyNoteTag(what: { noteId: string } | { tagId: string }): void {
-  const body = 'noteId' in what ? { note_id: what.noteId } : { tag_id: what.tagId }
+export function notifyNoteTag(what: { noteId: string } | { tagId: string } | { taskEventId: string } | { taskTagId: string }): void {
+  // A task note is named by its line in the task's thread, and a task tag by its own id (punch list #375).
+  const body = 'noteId' in what ? { note_id: what.noteId } : 'tagId' in what ? { tag_id: what.tagId } : 'taskEventId' in what ? { task_event_id: what.taskEventId } : { task_tag_id: what.taskTagId }
   void supabase.functions.invoke('notify-note-tag', { body }).then(
     () => {},
     () => {},

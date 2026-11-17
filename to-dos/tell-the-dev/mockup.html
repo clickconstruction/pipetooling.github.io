@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tell the dev (#380): the wrench, a note to the dev from any page</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --ink: #1c2430; --muted: #5b6675; --faint: #8b95a3;
+    --line: #dde2e9; --blue: #2563eb; --blue-bg: #e8effd; --green: #15803d; --green-bg: #e6f4ea;
+    --amber: #b45309; --amber-bg: #fdf1e0; --red: #b91c1c; --red-bg: #fde8e8; --violet: #6d28d9; --violet-bg: #efe9fb;
+    --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); }
+  header.top { padding: 26px 20px 8px; max-width: 1180px; margin: 0 auto; }
+  header.top h1 { margin: 0 0 6px; font-size: 23px; line-height: 1.2; }
+  header.top p { margin: 0; color: var(--muted); max-width: 860px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--amber); background: var(--amber-bg); border-radius: 999px; padding: 2px 10px; margin-bottom: 8px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 12px 20px 60px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .lenses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .lens { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .lens h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--violet); }
+  .lens p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .lens b { color: var(--ink); }
+  section.frame { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 20px; }
+  section.frame h2 { margin: 0; font-size: 17px; }
+  section.frame h2 .num { display: inline-block; min-width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; text-align: center; line-height: 26px; font-size: 13px; margin-right: 8px; }
+  section.frame .lede { margin: 4px 0 14px; color: var(--muted); max-width: 860px; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--muted); white-space: nowrap; }
+  .chip.blue { background: var(--blue-bg); color: var(--blue); border-color: transparent; }
+  .chip.green { background: var(--green-bg); color: var(--green); border-color: transparent; }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); border-color: transparent; }
+  .chip.red { background: var(--red-bg); color: var(--red); border-color: transparent; }
+  .chip.violet { background: var(--violet-bg); color: var(--violet); border-color: transparent; }
+
+  /* the desk screen */
+  .desk { position: relative; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); height: 790px; overflow: hidden; }
+  .desk .nav { height: 40px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 13px; color: var(--muted); }
+  .desk .nav b { color: var(--ink); }
+  .desk .nav .sp { flex: 1; }
+  .desk .page { padding: 14px 16px; }
+  .desk .page h4 { margin: 0 0 8px; font-size: 15px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs span { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+  .tabs span.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  table.rows { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; }
+  table.rows td, table.rows th { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.rows th { color: var(--faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  table.rows td.r, table.rows th.r { text-align: right; }
+  .wrench { position: absolute; width: 44px; height: 44px; border-radius: 999px; background: var(--ink); color: #fff; display: grid; place-items: center; box-shadow: 0 4px 14px rgba(20,30,50,.25); }
+  .wrench svg { width: 21px; height: 21px; }
+  .desk .wrench { left: 14px; bottom: 14px; }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 34px rgba(20,30,50,.22); padding: 14px; font-size: 13px; }
+  .desk .box { position: absolute; left: 14px; bottom: 68px; width: 384px; }
+  .box h5 { margin: 0 0 2px; font-size: 15px; }
+  .box .sub { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; }
+  .starts { display: flex; flex-direction: column; gap: 5px; margin-bottom: 9px; }
+  .start { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-weight: 600; color: var(--muted); background: var(--surface); }
+  .start i { width: 13px; height: 13px; border-radius: 999px; border: 2px solid var(--faint); flex: none; }
+  .start.on { border-color: var(--blue); background: var(--blue-bg); color: var(--ink); }
+  .start.on i { border-color: var(--blue); background: radial-gradient(var(--blue) 45%, #fff 50%); }
+  .ta { border: 1px solid #c5ccd6; border-radius: 8px; padding: 8px 9px; min-height: 66px; line-height: 1.4; background: var(--surface); }
+  .ta .pre { color: var(--faint); }
+  .ta .caret { display: inline-block; width: 1px; height: 14px; background: var(--ink); vertical-align: -2px; margin-left: 1px; }
+  .goes { margin-top: 9px; border: 1px dashed var(--line); border-radius: 8px; padding: 7px 9px; background: var(--bg); }
+  .goes .h { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); margin-bottom: 4px; }
+  .goes dl { margin: 0; display: grid; grid-template-columns: 92px 1fr; gap: 2px 8px; font-size: 12px; }
+  .goes dt { color: var(--faint); }
+  .goes dd { margin: 0; color: var(--ink); }
+  .goes .no { margin-top: 5px; font-size: 12px; color: var(--green); font-weight: 600; }
+  .send { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .btn { display: inline-block; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 700; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .btn.pri { background: var(--blue); color: #fff; border-color: transparent; }
+  .btn.sm { padding: 4px 10px; font-size: 12px; }
+  .send .cnt { font-size: 11.5px; color: var(--faint); }
+  .mine { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .mine .h { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); margin-bottom: 5px; }
+  .note { padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .note:last-child { border-bottom: 0; }
+  .note .q { color: var(--ink); }
+  .note .a { margin-top: 3px; padding-left: 9px; border-left: 2px solid var(--green); color: var(--muted); }
+  .callout { position: absolute; font-size: 12px; color: var(--violet); background: var(--violet-bg); border-radius: 8px; padding: 6px 9px; max-width: 250px; line-height: 1.35; }
+
+  /* phones */
+  .phones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+  .phcol .cap { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .phcol .cap b { color: var(--ink); }
+  .phone { position: relative; width: 100%; max-width: 300px; height: 560px; margin: 0 auto; border: 2px solid #2b3442; border-radius: 26px; background: var(--bg); overflow: hidden; }
+  .phone .hdr { height: 44px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 13px; }
+  .phone .hdr b { flex: 1; }
+  .ico { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); background: var(--surface); flex: none; }
+  .ico svg { width: 16px; height: 16px; }
+  .ico.w { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .ico.ring { outline: 2px solid var(--violet); outline-offset: 2px; }
+  .phone .body { padding: 10px; font-size: 12.5px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; margin-bottom: 8px; }
+  .card .t { font-weight: 700; }
+  .card .m { color: var(--muted); font-size: 12px; }
+  .jm { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: #101826; color: #fff; display: flex; align-items: center; justify-content: space-around; font-size: 11px; font-weight: 600; }
+  .press { position: absolute; left: 0; right: 0; bottom: 56px; background: var(--surface); border-top: 1px solid var(--line); padding: 7px 8px; display: flex; gap: 6px; }
+  .press span { flex: 1; text-align: center; padding: 10px 0; border-radius: 8px; font-weight: 700; font-size: 12.5px; color: #fff; background: var(--green); }
+  .press span.b { background: var(--blue); }
+  .toast { position: absolute; top: 50px; right: 8px; background: #101826; color: #fff; font-size: 11.5px; padding: 6px 9px; border-radius: 8px; }
+  .zone { position: absolute; font-size: 10.5px; font-weight: 700; color: var(--red); background: rgba(253,232,232,.94); border: 1px dashed var(--red); border-radius: 6px; padding: 2px 6px; }
+  .ghost { position: absolute; width: 40px; height: 40px; border-radius: 999px; border: 2px dashed var(--red); display: grid; place-items: center; color: var(--red); background: rgba(253,232,232,.8); }
+  .ghost svg { width: 18px; height: 18px; }
+  .scrim { position: absolute; inset: 0; background: rgba(16,24,38,.45); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; border: 0; box-shadow: 0 -8px 30px rgba(20,30,50,.3); padding: 12px 12px 14px; }
+  .sheet .grab { width: 38px; height: 4px; border-radius: 4px; background: var(--line); margin: 0 auto 8px; }
+  .sheet .start { padding: 5px 8px; font-size: 12.5px; }
+  .sheet .ta { min-height: 52px; }
+
+  /* the dev's inbox */
+  .inbox { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .inbox .hd { background: var(--bg); padding: 8px 12px; font-weight: 700; font-size: 13.5px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); }
+  .item { padding: 11px 12px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .item:last-child { border-bottom: 0; }
+  .item .who { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; color: var(--muted); font-size: 12.5px; }
+  .item .who b { color: var(--ink); }
+  .item .said { margin: 2px 0 6px; }
+  .item .ctx { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  .item .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .field { flex: 1 1 260px; border: 1px solid #c5ccd6; border-radius: 7px; padding: 5px 9px; font-size: 12.5px; color: var(--faint); background: var(--surface); }
+  .field.filled { color: var(--ink); }
+  .legend { margin: 10px 0 0; font-size: 13px; color: var(--muted); max-width: 860px; }
+  .legend b { color: var(--ink); }
+
+  @media (max-width: 860px) {
+    .lenses { grid-template-columns: 1fr; }
+    .phones { grid-template-columns: 1fr; }
+    .desk { height: 900px; }
+    .desk .box { width: auto; right: 14px; }
+    .desk .callout { display: none; }
+    .desk table.rows th:nth-child(2), .desk table.rows td:nth-child(2) { display: none; }
+  }
+
+  .fixes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+  .fix { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--muted); }
+  .fix b { color: var(--ink); }
+  .fix i { font-style: normal; font-weight: 700; color: var(--green); }
+  .mk { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--violet); color: #fff; font-size: 12.5px; font-weight: 800; }
+  .mk.sm { width: 18px; height: 18px; font-size: 10.5px; border-radius: 5px; margin-right: 5px; vertical-align: -3px; }
+  .mk.no { background: var(--faint); }
+  .pill { position: absolute; left: 14px; bottom: 14px; height: 44px; padding: 0 16px 0 6px; border-radius: 999px; background: var(--ink); color: #fff; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; box-shadow: 0 4px 14px rgba(20,30,50,.25); }
+  .pill .wr { position: relative; width: 32px; height: 32px; display: grid; place-items: center; }
+  .pill svg { width: 20px; height: 20px; }
+  .dot { position: absolute; top: 1px; right: 1px; width: 10px; height: 10px; border-radius: 999px; background: #22c55e; border: 2px solid var(--ink); }
+  .ico { position: relative; }
+  .ico .dot { top: -4px; right: -4px; border-color: #fff; }
+  .ico.sm { width: 26px; height: 26px; }
+  .mark { position: absolute; font-size: 12px; color: var(--violet); background: var(--violet-bg); box-shadow: 0 0 0 2px var(--surface); border-radius: 7px; padding: 3px 8px 3px 5px; white-space: nowrap; }
+  .hint { margin-top: 6px; font-size: 12px; color: var(--violet); }
+  .ta.empty { min-height: 38px; }
+  .phones.four { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .phones.four .phone { max-width: 262px; height: 540px; }
+  .phones.four .jm { font-size: 10.5px; }
+  .errtoast { position: absolute; top: 50px; left: 8px; right: 8px; background: #7f1d1d; color: #fff; font-size: 12px; line-height: 1.35; padding: 8px 10px; border-radius: 9px; box-shadow: 0 6px 18px rgba(20,30,50,.3); z-index: 2; }
+  .errtoast .tt { margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; font-weight: 700; background: #fff; color: #7f1d1d; border-radius: 999px; padding: 3px 10px 3px 7px; outline: 2px solid var(--violet); outline-offset: 2px; }
+  .errtoast svg { width: 13px; height: 13px; }
+  .win { position: absolute; left: 8px; right: 8px; top: 70px; background: var(--surface); border-radius: 14px; padding: 0 12px 14px; box-shadow: 0 12px 34px rgba(20,30,50,.35); font-size: 12.5px; }
+  .win .wt { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); margin-bottom: 9px; }
+  .win .wt b { flex: 1; font-size: 13.5px; }
+  .win .x { color: var(--faint); font-size: 15px; width: 22px; text-align: center; }
+  .win .m { color: var(--muted); margin-bottom: 6px; }
+  .win .sig { border: 1px dashed #c5ccd6; border-radius: 8px; height: 74px; display: grid; place-items: center; color: var(--faint); margin-bottom: 10px; }
+  .win .row2 { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .meter { margin-left: auto; font-weight: 600; font-size: 12px; color: var(--muted); }
+  .said.nowords { color: var(--faint); font-style: italic; }
+  .brief { margin-top: 12px; border: 1px dashed var(--line); background: var(--bg); border-radius: 10px; padding: 10px 12px; font: 12.5px/1.5 ui-monospace, Menlo, monospace; color: var(--muted); }
+  .brief .h { font: 700 11px/1.4 var(--font); letter-spacing: .04em; text-transform: uppercase; color: var(--faint); margin-bottom: 4px; }
+  .gear { position: absolute; right: 12px; top: 44px; width: 172px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px rgba(20,30,50,.16); font-size: 13px; overflow: hidden; }
+  .gear .g { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--ink); }
+  .gear .g:last-child { border-bottom: 0; }
+  .gear .g.on { font-weight: 700; }
+  .gear .g em { font-style: normal; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; background: #16a34a; color: #fff; font-size: 11px; }
+  @media (max-width: 860px) {
+    .fixes { grid-template-columns: 1fr; }
+    .phones.four { grid-template-columns: 1fr; }
+    .mark { display: none; }
+    .meter { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="tag">Punch list #380 · the plan's sketch, revised after asking "is this the best we can do?" · every name is invented</span>
+  <h1>The wrench: a note to the dev from any page</h1>
+  <p>The owner's idea: a small wrench on every page. Press it, finish a sentence, and the note goes to the dev with the page it was written on. The first sketch answered where the wrench sits. This one answers a harder question: what would make people use it, and what would make each note worth reading.</p>
+</header>
+<main>
+  <div class="lenses">
+    <div class="lens"><h3>The asker's seat</h3><p>The dev wants <b>more notes, sooner</b>, from the people using each page, without waiting for someone to relay them.</p></div>
+    <div class="lens"><h3>The job behind the ask</h3><p>The app already has this box. It sits at the <b>bottom of each Help guide</b>, and it has taken <b>no notes</b> since July. The pipe works. The door is in the wrong place.</p></div>
+    <div class="lens"><h3>The whole office</h3><p>On a crew's phone <b>both bottom corners are taken</b> by Job Mode, and toasts use the top right. A floating wrench fits a desk. A phone needs doors that cover nothing.</p></div>
+  </div>
+
+  <section class="frame">
+    <h2><span class="num">★</span>What the first sketch got wrong, and what changed</h2>
+    <p class="lede">Six faults, each with its fix, and two things the owner added. The letters match the marks on the frames below.</p>
+    <div class="fixes">
+      <div class="fix"><span class="mk">A</span><div><b>A wrench alone says nothing.</b> In a plumbing app it reads as a tool. <i>Fix:</i> it carries the words Tell the dev until the person has opened it once.</div></div>
+      <div class="fix"><span class="mk">B</span><div><b>A sentence is a lot to ask of a tech on a phone.</b> <i>Fix:</i> the page and its state do the talking. Confusing and Went wrong can be sent with no words at all.</div></div>
+      <div class="fix"><span class="mk">C</span><div><b>The best moment was missed.</b> People want to tell someone the second an error shows. <i>Fix:</i> every error line carries a Tell the dev press, with the error already attached.</div></div>
+      <div class="fix"><span class="mk">D</span><div><b>On a phone, the header is out of reach inside a window.</b> Most confusion happens in a window. <i>Fix:</i> the shared window's title row gets the wrench too.</div></div>
+      <div class="fix"><span class="mk">E</span><div><b>The answer waited to be found.</b> <i>Fix:</i> the wrench shows a dot when an answer is waiting, so the answer finds the sender.</div></div>
+      <div class="fix"><span class="mk">G</span><div><b>The owner: a lost signal is not a fault to report.</b> The phone already keeps the press and sends it when the signal is back. <i>Rule:</i> an error line that only says the signal dropped carries no Tell the dev press.</div></div>
+      <div class="fix"><span class="mk">H</span><div><b>The owner: Fix mode.</b> A row in the gear menu, beside Job Mode. On, the wrench shows. Off, it is gone from that person's screens. It starts on, so the test can be seen.</div></div>
+      <div class="fix"><span class="mk">F</span><div><b>The dev's side was a list to read, not work ready to start.</b> <i>Fix:</i> Copy as a brief hands a note to a coding session, and the usage ledger counts opens against sends.</div></div>
+    </div>
+  </section>
+
+  <section class="frame">
+    <h2><span class="num">1</span>At a desk: the wrench floats, bottom left</h2>
+    <p class="lede">Bottom left, because the section dock's stub already sits bottom right. The box names what goes with the note before the press, and it says no picture is taken.</p>
+    <div class="desk">
+      <div class="nav"><b>PipeTooling</b><span>Dashboard</span><span><b>Jobs</b></span><span>Bids</span><span>Schedule</span><span class="sp"></span><span>Search</span><span>Settings</span></div>
+      <div class="page">
+        <h4>Jobs</h4>
+        <div class="tabs"><span>Billing</span><span class="on">Pipeline</span><span>Reports</span><span>Sub Sheet</span></div>
+        <table class="rows">
+          <tr><th>Job</th><th>Customer</th><th>Stage</th><th class="r">Contract</th><th class="r">Billed</th></tr>
+          <tr><td>Maple Court, Lot 12</td><td>Harlan Homes</td><td><span class="chip blue">Working</span></td><td class="r">$18,400</td><td class="r">$9,200</td></tr>
+          <tr><td>Maple Court, Lot 14</td><td>Harlan Homes</td><td><span class="chip blue">Working</span></td><td class="r">$18,400</td><td class="r">$0</td></tr>
+          <tr><td>Juniper Clinic remodel</td><td>Tessaro Builders</td><td><span class="chip amber">Ready to bill</span></td><td class="r">$42,750</td><td class="r">$31,000</td></tr>
+          <tr><td>Okafor residence</td><td>N. Okafor</td><td><span class="chip green">Paid</span></td><td class="r">$3,150</td><td class="r">$3,150</td></tr>
+          <tr><td>Birchline Storage, Bldg C</td><td>Tessaro Builders</td><td><span class="chip blue">Working</span></td><td class="r">$27,900</td><td class="r">$13,950</td></tr>
+          <tr><td>Maple Court, Lot 15</td><td>Harlan Homes</td><td><span class="chip">Not started</span></td><td class="r">$18,400</td><td class="r">$0</td></tr>
+          <tr><td>Wren Street duplex</td><td>P. Castellan</td><td><span class="chip amber">Ready to bill</span></td><td class="r">$11,600</td><td class="r">$5,800</td></tr>
+          <tr><td>Juniper Clinic, phase 2</td><td>Tessaro Builders</td><td><span class="chip">Not started</span></td><td class="r">$36,200</td><td class="r">$0</td></tr>
+          <tr><td>Maple Court, Lot 16</td><td>Harlan Homes</td><td><span class="chip">Not started</span></td><td class="r">$18,400</td><td class="r">$0</td></tr>
+          <tr><td>Hollis Bakery grease trap</td><td>Hollis Bakery</td><td><span class="chip blue">Working</span></td><td class="r">$6,900</td><td class="r">$3,450</td></tr>
+          <tr><td>Wren Street triplex</td><td>P. Castellan</td><td><span class="chip">Not started</span></td><td class="r">$16,300</td><td class="r">$0</td></tr>
+          <tr><td>Okafor rental, unit B</td><td>N. Okafor</td><td><span class="chip blue">Working</span></td><td class="r">$2,480</td><td class="r">$0</td></tr>
+          <tr><td>Birchline Storage, Bldg D</td><td>Tessaro Builders</td><td><span class="chip">Not started</span></td><td class="r">$27,900</td><td class="r">$0</td></tr>
+          <tr><td>Hollis Bakery, second sink</td><td>Hollis Bakery</td><td><span class="chip green">Paid</span></td><td class="r">$1,940</td><td class="r">$1,940</td></tr>
+          <tr><td>Maple Court, Lot 17</td><td>Harlan Homes</td><td><span class="chip">Not started</span></td><td class="r">$18,400</td><td class="r">$0</td></tr>
+          <tr><td>Castellan shop, backflow</td><td>P. Castellan</td><td><span class="chip amber">Ready to bill</span></td><td class="r">$4,300</td><td class="r">$0</td></tr>
+          <tr><td>Juniper Clinic, phase 3</td><td>Tessaro Builders</td><td><span class="chip">Not started</span></td><td class="r">$29,800</td><td class="r">$0</td></tr>
+        </table>
+      </div>
+
+      <div class="box">
+        <h5>Tell the dev</h5>
+        <p class="sub">Pick a start. Finish the sentence if you can.</p>
+        <div class="starts">
+          <div class="start"><i></i>I want…</div>
+          <div class="start on"><i></i>This page is confusing because…</div>
+          <div class="start"><i></i>Something went wrong when I…</div>
+        </div>
+        <div class="ta"><span class="pre">This page is confusing because </span>Contract and Billed sit side by side and I can't tell which one the customer has seen.<span class="caret"></span></div>
+        <div class="hint"><span class="mk sm">B</span>No words? Send it anyway. The dev still sees which page.</div>
+        <div class="goes">
+          <div class="h">Goes with your note</div>
+          <dl>
+            <dt>Page</dt><dd>Jobs · Pipeline</dd>
+            <dt>Window open</dt><dd>None</dd>
+            <dt>From</dt><dd>Dana Whitfield, Assistant</dd>
+            <dt>Screen</dt><dd>Desk, 1440 wide</dd>
+            <dt>App version</dt><dd>v2.7585</dd>
+            <dt>Last error line</dt><dd>None in the last 5 minutes</dd>
+          </dl>
+          <div class="no">No picture of the screen is sent.</div>
+        </div>
+        <div class="send"><span class="btn pri">Send to the dev</span><span class="cnt">The owner and the dev read these.</span></div>
+        <div class="mine">
+          <div class="h">Your notes</div>
+          <div class="note"><div class="q">I want the PO number on the first line of a bill. <span class="chip green">Answered Nov 12</span></div><div class="a">Shipped in v2.7412. It is under the bill's code now.</div></div>
+          <div class="note"><div class="q">This page is confusing because the two Send buttons look the same. <span class="chip">Sent Nov 14</span></div></div>
+        </div>
+      </div>
+      <div class="gear"><div class="g on"><span>Fix mode</span><em>✓</em></div><div class="g">Help</div><div class="g">Settings</div></div>
+      <div class="mark" style="right: 196px; top: 50px;"><span class="mk sm">H</span>in the gear menu</div>
+      <div class="pill" title="Tell the dev"><span class="wr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><em class="dot"></em></span>Tell the dev</div>
+      <div class="mark" style="left: 166px; bottom: 12px;"><span class="mk sm">A</span>words until the first open</div>
+      <div class="mark" style="left: 166px; bottom: 39px;"><span class="mk sm">E</span>a dot when an answer waits</div>
+    </div>
+    <p class="legend"><b>The start is the choice.</b> It also says how fast the note should reach the dev. A went wrong note pushes now. The other two wait for the day's read.</p>
+    <p class="legend"><b>The press is read before anything can close.</b> The page, the open window and the last error are taken the instant the wrench is pressed, so a menu that shuts under the pointer is still in the note.</p>
+  </section>
+
+  <section class="frame">
+    <h2><span class="num">2</span>On a phone: three doors, none of them floating</h2>
+    <p class="lede">A crew's phone has no free corner. So the wrench is where the trouble is: in the header, on the error line, and in a window's title row. All three open the same sheet.</p>
+    <div class="phones four">
+      <div class="phcol">
+        <div class="phone">
+          <div class="hdr"><b>Today</b><span class="ico w ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><em class="dot"></em></span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span></div>
+          <div class="body">
+            <div class="card"><div class="t">Maple Court, Lot 12</div><div class="m">Rough-in · 7:00 to 3:30</div></div>
+            <div class="card"><div class="t">Your tasks</div><div class="m">Photo of the water heater tag</div><div class="m">Sign the tailgate sheet</div></div>
+            <div class="card"><div class="t">Materials on site</div><div class="m">2 boxes in the cage, bay 3</div></div>
+          </div>
+          <div class="ghost" style="right: 10px; bottom: 122px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+          <div class="zone" style="right: 56px; bottom: 132px;">not here</div>
+          <div class="press"><span>Clock out</span><span class="b">Add a photo</span></div>
+          <div class="jm"><span>Home</span><span>Schedule</span><span>Inbox</span><span>Call</span></div>
+        </div>
+        <div class="cap"><b>Door 1, the header.</b> Beside Search, with the answer dot. The dashed one is where a floating wrench would sit on a row's press.</div>
+      </div>
+      <div class="phcol">
+        <div class="phone">
+          <div class="hdr"><b>Today</b><span class="ico w"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span></div>
+          <div class="errtoast"><div>Could not save the photo. The file is too big to send.</div><div class="tt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Tell the dev</div></div>
+          <div class="body" style="padding-top: 104px;">
+            <div class="card"><div class="t">Your tasks</div><div class="m">Photo of the water heater tag</div><div class="m">Sign the tailgate sheet</div></div>
+            <div class="card"><div class="t">Materials on site</div><div class="m">2 boxes in the cage, bay 3</div></div>
+          </div>
+          <div class="press"><span>Clock out</span><span class="b">Add a photo</span></div>
+          <div class="jm"><span>Home</span><span>Schedule</span><span>Inbox</span><span>Call</span></div>
+        </div>
+        <div class="cap"><span class="mk sm">C</span><b>Door 2, the error line.</b> One press from the error itself, with the error attached. <span class="mk sm">G</span>A line that says the signal dropped gets no press.</div>
+      </div>
+      <div class="phcol">
+        <div class="phone">
+          <div class="hdr"><b>Today</b><span class="ico w"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span></div>
+          <div class="scrim"></div>
+          <div class="win">
+            <div class="wt"><b>Sign the tailgate sheet</b><span class="ico w ring sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span><span class="x">✕</span></div>
+            <div class="m">Topic: ladders and lifts</div>
+            <div class="sig">Sign here</div>
+            <div class="m">Crew on site</div>
+            <div class="row2"><span>M. Ruiz</span><span class="chip green">Signed</span></div>
+            <div class="row2"><span>T. Bell</span><span class="chip">Not yet</span></div>
+            <div class="send"><span class="btn pri">Save the sheet</span></div>
+          </div>
+        </div>
+        <div class="cap"><span class="mk sm">D</span><b>Door 3, a window's title row.</b> One change to the shared window, so the note says which window was open.</div>
+      </div>
+      <div class="phcol">
+        <div class="phone">
+          <div class="hdr"><b>Today</b><span class="ico w"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span></div>
+          <div class="body"><div class="card"><div class="t">Maple Court, Lot 12</div><div class="m">Rough-in · 7:00 to 3:30</div></div></div>
+          <div class="scrim"></div>
+          <div class="box sheet">
+            <div class="grab"></div>
+            <h5>Tell the dev</h5>
+            <div class="starts">
+              <div class="start"><i></i>I want…</div>
+              <div class="start"><i></i>This page is confusing because…</div>
+              <div class="start on"><i></i>Something went wrong when I…</div>
+            </div>
+            <div class="ta empty"><span class="pre">Something went wrong when I…</span></div>
+            <div class="hint"><span class="mk sm">B</span>No words? Send it anyway.</div>
+            <div class="goes">
+              <div class="h">Goes with your note</div>
+              <dl>
+                <dt>Page</dt><dd>Dashboard · Today</dd>
+                <dt>From</dt><dd>Marco Ruiz, Helper</dd>
+                <dt>Last error</dt><dd>Could not save the photo, just now</dd>
+              </dl>
+              <div class="no">No picture of the screen is sent.</div>
+            </div>
+            <div class="send"><span class="btn pri">Send to the dev</span></div>
+          </div>
+        </div>
+        <div class="cap"><b>The sheet.</b> From the error line it needs one press to send. The error says what the tech would have had to type.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="frame">
+    <h2><span class="num">3</span>What the dev reads</h2>
+    <p class="lede">The inbox that exists today, on the Dashboard and in the Checklist's review, with the page and the state on each note. The answer typed here is what the sender sees, with the dot.</p>
+    <div class="inbox">
+      <div class="hd">Notes to the dev <span class="chip amber">3 open</span><span class="meter"><span class="mk sm">F</span>Last 14 days: opened 31 times · 12 sent · 6 people</span></div>
+      <div class="item">
+        <div class="who"><span class="chip red">Went wrong</span><b>Marco Ruiz</b><span>Helper · today 7:41 · from the error line</span></div>
+        <div class="said nowords">No words. Sent from the error line.</div>
+        <div class="ctx"><span class="chip violet">Dashboard · Today</span><span class="chip">Phone, Job Mode on</span><span class="chip">v2.7585</span><span class="chip red">Error: could not save the photo</span><span class="chip red">1 call refused: task-photo, 413</span></div>
+        <div class="acts"><span class="btn sm">Open that page</span><span class="btn sm">Copy as a brief</span><span class="field">Answer, one line…</span><span class="btn sm pri">Answer and close</span></div>
+      </div>
+      <div class="item">
+        <div class="who"><span class="chip amber">Confusing</span><b>Dana Whitfield</b><span>Assistant · today 9:12</span></div>
+        <div class="said">This page is confusing because Contract and Billed sit side by side and I can't tell which one the customer has seen.</div>
+        <div class="ctx"><span class="chip violet">Jobs · Pipeline</span><span class="chip">Desk, 1440 wide</span><span class="chip">v2.7585</span></div>
+        <div class="acts"><span class="btn sm">Open that page</span><span class="btn sm">Copy as a brief</span><span class="field filled">On the punch list now. I will tell you when it ships.</span><span class="btn sm pri">Answer and close</span></div>
+      </div>
+      <div class="item">
+        <div class="who"><span class="chip blue">Want</span><b>Priya Anand</b><span>Estimator · yesterday 4:30</span></div>
+        <div class="said">I want the fixture count to stay on screen while I price.</div>
+        <div class="ctx"><span class="chip violet">Bids · Pricing</span><span class="chip">Window open: Price a fixture</span><span class="chip">Desk, 1680 wide</span><span class="chip">v2.7581</span></div>
+        <div class="acts"><span class="btn sm">Open that page</span><span class="btn sm">Copy as a brief</span><span class="field">Answer, one line…</span><span class="btn sm pri">Answer and close</span></div>
+      </div>
+    </div>
+    <div class="brief"><div class="h">Copy as a brief puts this on the clipboard</div>A note from the app, to work through the three lenses. An assistant on Jobs · Pipeline, at a desk, v2.7585, no window open, no error shown, wrote: "This page is confusing because Contract and Billed sit side by side and I can't tell which one the customer has seen." Restate it in your own words with no real names, since the repo is public.</div>
+    <p class="legend"><b>The meter is how the test is judged.</b> Opens with no sends means the box asks too much. No opens means nobody saw the wrench. Both are counted in the usage ledger the app already keeps.</p>
+    <p class="legend">A coding session can already read this list through the dev seat, since it reads any table as the dev.</p>
+  </section>
+
+  <section class="frame">
+    <h2><span class="num">4</span>Looked at and left out</h2>
+    <p class="lede">Each of these is better on paper. None belongs in a two-week test.</p>
+    <div class="fixes">
+      <div class="fix"><span class="mk no">✕</span><div><b>A picture of the screen.</b> It can hold a customer's address, a pay rate or an HR note, and it is slow on a phone. Open that page, viewed as the sender, shows the dev the same screen.</div></div>
+      <div class="fix"><span class="mk no">✕</span><div><b>Guessing confusion from presses.</b> The usage ledger already counts presses and errors. It says where people struggle. Only words say why.</div></div>
+      <div class="fix"><span class="mk no">✕</span><div><b>Notes with no name.</b> An answer has to reach someone, and a company this size has no real anonymity.</div></div>
+      <div class="fix"><span class="mk no">✕</span><div><b>Customers and public pages.</b> A write box with no sign-in invites spam. A customer already has the text thread.</div></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

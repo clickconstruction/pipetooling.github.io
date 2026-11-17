@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Signed contracts in Google Drive</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@700&display=swap">
+<style>
+  /* Layout: one column of sections. Every drawn screen is made by one script from one list of made-up contracts
+     (ROWS below), so a count on the Where files go card, its press and its held list are counted from the rows drawn
+     and cannot disagree with them. Drawn 2026-11-17. Nothing here is built.
+     Every customer, person, company, job, street and date on a drawn screen is made up. No live row is on this page. */
+  :root {
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-blue-700: #1d4ed8; --text-green-700: #15803d; --text-green-800: #166534; --text-amber-800: #92400e;
+    --text-red-700: #b91c1c;
+    --bg-blue-tint: #eff6ff; --bg-green-tint: #f0fdf4; --bg-amber-tint: #fffbeb; --bg-amber-100: #fef3c7;
+    --bg-red-tint: #fef2f2; --bg-red-100: #fee2e2;
+    --new: #7c3aed; --new-tint: #f5f3ff; --mark: #fde68a;
+    --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --display: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+      --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+      --border: #374151; --border-strong: #4b5563;
+      --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+      --text-blue-700: #93c5fd; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d;
+      --text-red-700: #f87171;
+      --bg-blue-tint: #1e3358; --bg-green-tint: #12301f; --bg-amber-tint: #3a2f11; --bg-amber-100: #45390f;
+      --bg-red-tint: #3b1a1a; --bg-red-100: #4c1d1d;
+      --new: #c4b5fd; --new-tint: #2a2350; --mark: #6b5a12;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-blue-700: #93c5fd; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d;
+    --text-red-700: #f87171;
+    --bg-blue-tint: #1e3358; --bg-green-tint: #12301f; --bg-amber-tint: #3a2f11; --bg-amber-100: #45390f;
+    --bg-red-tint: #3b1a1a; --bg-red-100: #4c1d1d;
+    --new: #c4b5fd; --new-tint: #2a2350; --mark: #6b5a12;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 80px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font: 700 28px/1.15 var(--display); color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; max-width: 78ch; }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+  h2 { font: 700 20px/1.2 var(--display); margin: 46px 0 4px; color: var(--text-strong); text-wrap: balance; }
+  h3 { font-size: 14px; margin: 0 0 4px; color: var(--text-strong); }
+  p { margin: 0; }
+  .lede { max-width: 78ch; margin: 0 0 6px; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 86ch; border-radius: 0 8px 8px 0; }
+  .note b, .lede b, li b, td b { color: var(--text-strong); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .say { font-size: 13px; max-width: 64ch; }
+  .frame { border: 2px solid var(--new); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); background: var(--bg-page); color: var(--text-base); min-width: 0; overflow: hidden; margin-top: 14px; }
+  .frame.today { border: 1px solid var(--border-strong); }
+  .grid .frame { margin-top: 0; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
+
+  /* the short of it */
+  .short { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 0; margin-top: 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .short > div { padding: 12px 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 0 -1px -1px 0; }
+  .short b { display: block; color: var(--text-strong); font: 700 14px/1.3 var(--display); margin-bottom: 2px; }
+  .short span { font-size: 13px; }
+
+  /* who reads it */
+  .who { width: 100%; border-collapse: collapse; margin-top: 14px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .who th, .who td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .who th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  .who tr:last-child td { border-bottom: 0; }
+  .yes { color: var(--text-green-700); font-weight: 700; }
+  .no { color: var(--text-muted); }
+  .gain { background: var(--bg-amber-tint); }
+  .gain .yes { color: var(--text-amber-800); }
+  .scroll { overflow-x: auto; }
+
+  /* the folder tree */
+  .tree { margin-top: 14px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; font: 13px/1.6 var(--mono); color: var(--text-700); }
+  .tree > div { padding: 2px 0 2px calc(var(--d, 0) * 20px); overflow-wrap: anywhere; }
+  .tree .gap { height: 10px; padding: 0; }
+  .tree .d { color: var(--text-strong); font-weight: 700; }
+  .tree .n { color: var(--new); font-weight: 700; }
+  .tree .f { color: var(--text-base); }
+  .tree .v { color: var(--text-red-700); }
+  .tree .q { color: var(--text-muted); font-family: var(--font); font-size: 12px; margin-left: 10px; white-space: nowrap; }
+  .tree .q.lead { margin-left: 0; white-space: normal; }
+
+  /* the app's own pieces */
+  .appbar { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-700); flex-wrap: wrap; }
+  .appbar .on { color: var(--text-link); }
+  .appbar .as { margin-left: auto; font-weight: 400; color: var(--text-muted); font-size: 12px; }
+  .page { padding: 10px 16px 14px; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tab { font: 400 13.5px/1.4 var(--font); padding: 5px 14px; border-radius: 6px; color: var(--text-muted); white-space: nowrap; }
+  .tab.on { background: #2563eb; color: #fff; font-weight: 700; }
+  .press { font: 600 13px/1.2 var(--font); padding: 8px 13px; border-radius: 7px; border: 1px solid #2563eb; background: #2563eb; color: #fff; }
+  .press.dead { background: var(--bg-muted); border-color: var(--border-strong); color: var(--text-muted); }
+  .quiet { font: 500 13px/1.2 var(--font); padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); }
+  .door { color: var(--text-link); font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .chip { display: inline-block; font-size: 11.2px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  .chip.green { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .chip.red { background: var(--bg-red-100); color: var(--text-red-700); }
+  .chip.amber { background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .chip.grey { background: var(--bg-muted); color: var(--text-700); }
+
+  /* the Contract window */
+  .modal { background: var(--surface); }
+  .mhead { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .mhead b { color: var(--text-strong); font-size: 15px; overflow-wrap: anywhere; }
+  .mhead span { color: var(--text-muted); font-size: 12.5px; }
+  .mbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 280px); gap: 0; }
+  .sheet { padding: 14px; border-right: 1px solid var(--border); min-width: 0; }
+  .banner { padding: 9px 11px; border-radius: 8px; background: var(--bg-green-tint); border: 1px solid var(--text-green-700); color: var(--text-strong); font-size: 13px; }
+  .banner.void { background: var(--bg-red-tint); border-color: var(--text-red-700); }
+  .banner b { color: var(--text-green-800); }
+  .banner.void b { color: var(--text-red-700); }
+  .lines { margin-top: 12px; display: grid; gap: 7px; }
+  .lines i { display: block; height: 8px; border-radius: 4px; background: var(--bg-muted); }
+  .rail { padding: 12px; display: grid; gap: 12px; align-content: start; min-width: 0; background: var(--bg-subtle); }
+  .rgroup { display: grid; gap: 6px; }
+  .rgroup .rl { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .rbtn { font: 500 13px/1.3 var(--font); padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); text-align: left; }
+  .rbtn small { color: var(--text-muted); margin-left: 4px; }
+  .drive { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 9px 10px; display: grid; gap: 6px; min-width: 0; }
+  .drive.fresh { box-shadow: 0 0 0 2px var(--new); }
+  .drive .dl { font-size: 13px; color: var(--text-strong); font-weight: 600; overflow-wrap: anywhere; }
+  .drive .ds { font-size: 12.5px; color: var(--text-muted); overflow-wrap: anywhere; }
+  .drive .da { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; }
+  .drive.ok .dl::before { content: "✓ "; color: var(--text-green-700); }
+  .drive.held { background: var(--bg-amber-tint); border-color: var(--text-amber-800); }
+  .drive.held .dl { color: var(--text-amber-800); }
+  .drive.void .dl { color: var(--text-red-700); }
+
+  /* Where files go */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 10px; }
+  .card h4 { margin: 0 0 4px; font-size: 14px; color: var(--text-strong); }
+  .card p { font-size: 13px; color: var(--text-700); max-width: 74ch; }
+  .card p + p { margin-top: 4px; }
+  .card.fresh { box-shadow: 0 0 0 2px var(--new); }
+  .counts { display: flex; gap: 6px 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  .acts { display: flex; gap: 8px 12px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .acts .after { font-size: 12.8px; color: var(--text-muted); }
+  .heldline { margin-top: 12px; padding: 7px 10px; border-radius: 6px; background: var(--bg-amber-tint); color: var(--text-amber-800); font-weight: 600; font-size: 13px; }
+  .hrow { display: flex; gap: 4px 14px; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; padding: 8px 2px; border-bottom: 1px solid var(--border); }
+  .hrow:last-child { border-bottom: 0; }
+  .hrow .l { flex: 1 1 300px; min-width: 0; }
+  .hrow .l b { color: var(--text-strong); font-weight: 600; overflow-wrap: anywhere; }
+  .hrow .l div { font-size: 12.8px; color: var(--text-700); overflow-wrap: anywhere; }
+  .inside { margin-top: 6px; font: 12.5px/1.7 var(--mono); color: var(--text-700); overflow-x: auto; white-space: nowrap; }
+  .inside .n { color: var(--new); font-weight: 700; }
+  .good { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--bg-green-tint); color: var(--text-green-800); font-size: 13px; font-weight: 600; }
+
+  /* Find a file */
+  .find { width: 100%; padding: 8px 11px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-strong); font: 400 14px/1.4 var(--font); }
+  .found { margin: 8px 0 0; font-size: 13px; color: var(--text-muted); }
+  .band { margin: 10px 0 0; padding: 6px 10px; border-radius: 6px; background: var(--bg-subtle); border-left: 3px solid var(--text-blue-700); color: var(--text-strong); font-size: 13.5px; font-weight: 800; overflow-wrap: anywhere; }
+  .hit { padding: 9px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .hit .nm { color: var(--text-link); font-weight: 600; overflow-wrap: anywhere; }
+  .hit .meta { font-size: 12.5px; color: var(--text-muted); margin-top: 1px; overflow-wrap: anywhere; }
+  .hit .ex { font-size: 13px; color: var(--text-700); margin-top: 4px; overflow-wrap: anywhere; }
+  .hit mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
+  .hit .ha { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 6px; font-size: 12.8px; }
+  .hit.fresh { box-shadow: inset 3px 0 0 var(--new); }
+
+  /* the Drive pass */
+  .srow { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 9px 10px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .srow b { color: var(--text-strong); font-weight: 600; overflow-wrap: anywhere; }
+  .srow small { display: block; color: var(--text-muted); font-size: 12.5px; overflow-wrap: anywhere; }
+
+  /* the phone */
+  .phonewrap { display: grid; grid-template-columns: minmax(0, 372px) minmax(0, 1fr); gap: 28px; margin-top: 16px; align-items: start; }
+  .phone { width: min(100%, 372px); border: 8px solid var(--text-strong); border-radius: 30px; background: var(--bg-page); overflow: hidden; box-shadow: 0 8px 26px rgba(0,0,0,.2); outline: 2px solid var(--new); outline-offset: 3px; }
+  .phone .mbody { grid-template-columns: minmax(0, 1fr); }
+  .phone .sheet { border-right: 0; border-bottom: 1px solid var(--border); }
+
+  /* the calls */
+  .calls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 12px; margin-top: 14px; }
+  .call { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .call .num { font: 700 12px/1 var(--display); color: var(--copper); letter-spacing: .06em; text-transform: uppercase; }
+  .call h3 { font-size: 15px; }
+  .call .pick { font-size: 13px; padding: 7px 9px; border-radius: 7px; background: var(--bg-green-tint); color: var(--text-strong); }
+  .call .pick b { color: var(--text-green-800); }
+  .call .or { font-size: 13px; color: var(--text-700); }
+  .call.done { border: 2px solid var(--text-green-700); }
+  .call.done .num { color: var(--text-green-700); }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 23px; }
+    .mbody { grid-template-columns: minmax(0, 1fr); }
+    .sheet { border-right: 0; border-bottom: 1px solid var(--border); }
+    .phonewrap { grid-template-columns: minmax(0, 1fr); }
+    .page { padding: 8px 10px 12px; }
+    .who, .who tbody, .who tr, .who td { display: block; }
+    .who thead { display: none; }
+    .who tr { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .who tr:last-child { border-bottom: 0; }
+    .who td { padding: 1px 0; border: 0; }
+    .who td[data-l]::before { content: attr(data-l) ": "; font-weight: 700; color: var(--text-muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #377 · a design · nothing here is built · call 7 of #376</p>
+  <h1>Signed contracts, filed in the job’s Drive folder and found by Find a file</h1>
+  <p>A signed job contract lives in the app’s own storage today, and nowhere in Google Drive. So <b>Find a file</b> cannot find it. This page draws how each signed paper reaches its job’s folder, what the office sees, and what happens when it cannot be filed. Every name, job and date drawn here is made up.</p>
+  <nav class="jump" aria-label="On this page">
+    <a href="#short">The short of it</a>
+    <a href="#who">Who can read it</a>
+    <a href="#folder">The folder and the name</a>
+    <a href="#window">The Contract window</a>
+    <a href="#wfg">Where files go</a>
+    <a href="#find">Find a file</a>
+    <a href="#pass">The Drive pass</a>
+    <a href="#calls">Your calls</a>
+  </nav>
+</header>
+
+<h2 id="short">The short of it</h2>
+<div class="short">
+  <div><b>Where it goes</b><span>The job’s own Drive folder, under Team only › Contracts. The folder is made the first time a paper is filed.</span></div>
+  <div><b>When</b><span>A sweep files it within ten minutes. The signing itself is not touched, so nothing here can fail a signature.</span></div>
+  <div><b>Already in Drive</b><span>A paper the office already keeps in the jobs drive is tied to its record where it sits. It is not copied, moved or renamed.</span></div>
+  <div><b>When it cannot</b><span>The paper stays safe in the app. Its reason and its door show on the Contract window and on Where files go.</span></div>
+  <div><b>Who can read it</b><span>Everyone who can open the jobs drive or use Find a file. That includes estimators, who cannot read a contract in the app today.</span></div>
+</div>
+<p class="note"><b>On day one this uploads nothing.</b> No contract on the live site has a file in the app’s storage yet. Most of the signed ones are links to a file the office already put in the jobs drive. The first run ties those to their records and names why the rest cannot be filed. The uploads start with the first contract signed through the link.</p>
+
+<h2 id="who">Who can read a signed contract <span class="tag">call 1 · settled</span></h2>
+<p class="lede">This was the call that mattered most, so it came first. <b>Filing in the job’s folder lets the estimator role read a signed contract.</b> Nobody else gains anything. You chose the job’s folder on 2026-11-17.</p>
+<div class="scroll">
+<table class="who">
+  <thead><tr><th>Who</th><th>Today, in the app</th><th>After it is filed in the job’s folder</th></tr></thead>
+  <tbody>
+    <tr><td><b>Dev, master technician, assistant, controller</b></td><td class="yes" data-l="Today">Reads it</td><td class="yes" data-l="After">Reads it, and finds it in Find a file</td></tr>
+    <tr class="gain"><td><b>Estimator</b></td><td class="no" data-l="Today">Does not read it</td><td class="yes" data-l="After">Reads it: Find a file, the job’s folder list, and Drive itself as a member of the jobs drive</td></tr>
+    <tr><td><b>Primary, superintendent, crew</b></td><td class="no" data-l="Today">Does not read it</td><td class="no" data-l="After">Does not read it</td></tr>
+    <tr><td><b>A sub, a customer, a GC</b></td><td class="no" data-l="Today">The customer has the copy we emailed</td><td class="no" data-l="After">No change. The app holds the paper if the job’s folder is open to anyone with its link</td></tr>
+    <tr><td><b>A digital twin</b></td><td class="no" data-l="Today">Does not read it</td><td class="no" data-l="After">Does not read it. Find a file and Drive both refuse a twin</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="note">The jobs drive has five people’s addresses on it today and the app’s own account. One of the five is an estimator. Several signed contracts already sit in that drive, where the office put them, so an estimator can already read those. <b>Settled: the paper is filed in the job’s folder, and estimators read it there.</b> The way not taken was a drive of its own for contracts, as the People folder has.</p>
+
+<h2 id="folder">The folder and the name</h2>
+<p class="lede">One new folder, <b>Contracts</b>, inside Team only. The name starts with the signed day, as a photo’s name does, then says what the paper is.</p>
+<div class="tree" id="tree"></div>
+<p class="note"><b>Team only is a name, not a lock.</b> Drive gives a folder the sharing of the folder above it. Team only is the half the office never hands a link to.</p>
+
+<h2 id="window">The Contract window, signed</h2>
+<p class="lede">One new block, <b>Drive</b>, under the doors the window already has. The first frame is the whole window. Under it is the block in each state it can be in.</p>
+<div class="frame" id="winframe"></div>
+<div class="grid" id="states"></div>
+
+<h3 style="margin-top:26px">On a phone</h3>
+<div class="phonewrap">
+  <div class="phone" id="phone"></div>
+  <div class="col">
+    <p class="say">The window is one column on a phone, as it is today. The Drive block sits under the doors and wraps its words. A hold shows its reason first, then its door and <b>Try again</b>.</p>
+    <p class="say">This one is held because the job’s own folder is held. The words are the job’s, the same ones the job window and Where files go already show.</p>
+  </div>
+</div>
+
+<h2 id="wfg">Documents → Where files go</h2>
+<p class="lede">A new card, <b>Signed contracts</b>, after <i>What is inside</i>. Its counts, its press and its held list are counted from the same made-up contracts drawn on this page.</p>
+<div class="frame" id="wfgframe"></div>
+<div class="grid">
+  <div class="col"><span class="cap">After the press</span><div class="frame today"><div class="page" id="wfgafter"></div></div><p class="say">The press files what is ready and names what it held, with the reason. One held paper never stops the rest.</p></div>
+  <div class="col"><span class="cap">Nothing waiting</span><div class="frame today"><div class="page" id="wfggood"></div></div><p class="say">Empty is the good state here, so the card says so and the press is dead.</p></div>
+</div>
+
+<h2 id="find">Documents → Search → Find a file</h2>
+<p class="lede">A filed paper is a Drive file like any other, so the index reads it and Find a file finds it by its words. The hit says what it is.</p>
+<div class="grid">
+  <div class="col"><span class="cap">As the office</span><div class="frame" id="findoffice"></div><p class="say"><b>Open the contract</b> opens the Contract window on that record. It shows to the four office roles.</p></div>
+  <div class="col"><span class="cap">As an estimator</span><div class="frame" id="findest"></div><p class="say">An estimator finds the same paper and opens it in Drive. This is call 1, as you settled it. There is no Open the contract, since an estimator cannot read the record.</p></div>
+</div>
+
+<h2 id="pass">The Contract sweep’s Drive pass</h2>
+<p class="lede">The sweep looks in Drive for contracts that are already there and offers each to a job with none. It never checks a file against the papers already on file. So a filed copy would be offered to the same customer’s next job.</p>
+<div class="grid">
+  <div class="col"><span class="cap">Without the fix</span><div class="frame today" id="passbefore"></div><p class="say">The sister job has no contract, the folder names the same customer, and the file’s name says signed contract. The sweep offers it as a find to check.</p></div>
+  <div class="col"><span class="cap">With it</span><div class="frame" id="passafter"></div><p class="say">The scan drops every file that is already a paper on file, by its Drive id and never by its name. The row offers nothing, and the office sends a contract.</p></div>
+</div>
+
+<h2 id="calls">Your calls: all seven settled</h2>
+<p class="lede">You settled call 1 in your own words, then took the picks for calls 2 to 7, on 2026-11-17. The screens above draw them. Nothing is built before you say build.</p>
+<div class="calls" id="callgrid"></div>
+
+</div>
+<script>
+// One list of made-up contracts. Every screen above is drawn from it.
+const ROWS = [
+  { id: 'a', job: '1042', jobName: 'Ridgeway Lot 14', customer: 'Ridgeway Builders', kind: 'contract', signer: 'Dana Whitfield', day: '2026-11-14', dayWords: 'Nov 14', how: 'Typed on their phone', state: 'filed' },
+  { id: 'b', job: '1039', jobName: 'Ortega Water Heater', customer: 'Luis Ortega', kind: 'warranty', signer: 'Luis Ortega', day: '2026-11-12', dayWords: 'Nov 12', how: 'Drawn on their phone', state: 'filed' },
+  { id: 'c', job: '1017', jobName: 'Mesa Ridge Remodel', customer: 'Mesa Ridge Homes', kind: 'scan', signer: 'Priya Raman', day: '2026-10-30', dayWords: 'Oct 30', how: 'Signed on paper, uploaded by the office', state: 'held', why: 'This job’s folder is in Kim Soto’s My Drive, where the app can make folders but cannot save a file. Move it into the app’s Shared Drive, or clear the link on the Edit tab.', door: 'Open the job’s Edit tab' },
+  { id: 'd', job: '1003', jobName: 'Alder Street Clinic', customer: 'Tolliver Construction', kind: 'their', signer: 'Master Subcontract Agreement', day: '2026-10-21', dayWords: 'Oct 21', how: 'Their paper, signed by us', state: 'filed' },
+  { id: 'e', job: '988', jobName: 'Harlan Duplex', customer: 'Harlan Custom Homes', kind: 'link', signer: 'Ray Harlan', day: '2026-09-30', dayWords: 'Sep 30', how: 'Signed outside the app · filed as a link', state: 'adopted', ownName: 'Harlan Duplex signed contract.pdf' },
+  { id: 'f', job: '251', jobName: 'Harlan Lot 3', customer: 'Harlan Custom Homes', kind: 'group', signer: 'Harlan Custom Homes', day: '2026-09-18', dayWords: 'Sep 18', how: 'Signed on paper, uploaded by the office', state: 'filed', covers: '251, 825 and 843' },
+  { id: 'g', job: '825', jobName: 'Harlan Lot 9', customer: 'Harlan Custom Homes', kind: 'group', signer: 'Harlan Custom Homes', day: '2026-09-18', dayWords: 'Sep 18', how: 'Signed on paper, uploaded by the office', state: 'filed', covers: '251, 825 and 843' },
+  { id: 'h', job: '843', jobName: 'Harlan Lot 11', customer: 'Harlan Custom Homes', kind: 'group', signer: 'Harlan Custom Homes', day: '2026-09-18', dayWords: 'Sep 18', how: 'Signed on paper, uploaded by the office', state: 'filed', covers: '251, 825 and 843' },
+  { id: 'i', job: '1046', jobName: 'Quarry Road Shop', customer: 'Benton Supply Co', kind: 'contract', signer: 'Ada Benton', day: '2026-11-17', dayWords: 'Nov 17', how: 'Typed on their phone', state: 'waiting' },
+  { id: 'j', job: '1044', jobName: 'Pruitt Bath', customer: 'Sam Pruitt', kind: 'contract', signer: 'Sam Pruitt', day: '2026-11-16', dayWords: 'Nov 16', how: 'Signed in person on our device', state: 'waiting' },
+  { id: 'k', job: '1021', jobName: 'Cedar Flats Unit B', customer: 'Ines Calloway', kind: 'none', signer: 'Ines Calloway', day: '2026-10-09', dayWords: 'Oct 9', how: 'Signed on paper', state: 'held', why: 'Nothing to file. This record has no scan and no link.', door: 'Add the scan', noRetry: true },
+  { id: 'v', job: '1008', jobName: 'Larkin Kitchen', customer: 'Jo Larkin', kind: 'contract', signer: 'Jo Larkin', day: '2026-10-02', dayWords: 'Oct 2', how: 'Typed on their phone', state: 'void', voidedWords: 'Nov 3' },
+]
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const KIND_WORDS = { contract: 'Signed contract', warranty: 'Signed warranty', scan: 'Signed contract scan', their: 'Their paper signed by us', group: 'Signed contract', link: 'Signed contract', none: 'Signed contract' }
+// The file's name in Drive: the signed day, what it is, the job's number, who signed.
+function driveName(r) {
+  if (r.state === 'adopted') return r.ownName
+  const mid = r.kind === 'group' ? `covers ${r.covers}` : r.job
+  const base = `${r.day} ${KIND_WORDS[r.kind]} · ${mid} · ${r.signer}.pdf`
+  return r.state === 'void' ? `VOIDED · ${base}` : base
+}
+const jobLabel = (r) => `${r.job} · ${r.jobName}`
+const pathOf = (r) => r.state === 'adopted' ? `Jobs › ${r.customer} › ${jobLabel(r)}` : `Jobs › ${r.customer} › ${jobLabel(r)} › Team only › Contracts`
+const live = ROWS.filter((r) => r.state !== 'void')
+const count = (s) => live.filter((r) => r.state === s).length
+const inDrive = count('filed') + count('adopted')
+const waiting = count('waiting')
+const held = live.filter((r) => r.state === 'held')
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
+
+// ── the folder tree ─────────────────────────────────────────────────────────────────────────────────────────────
+{
+  const a = ROWS.find((r) => r.id === 'a'), v = ROWS.find((r) => r.id === 'v'), g = ROWS.find((r) => r.id === 'f')
+  const b = ROWS.find((r) => r.id === 'b'), c = ROWS.find((r) => r.id === 'c'), d = ROWS.find((r) => r.id === 'd')
+  const line = (d, html) => `<div style="--d:${d}">${html}</div>`
+  document.getElementById('tree').innerHTML = [
+    line(0, `<span class="d">Jobs</span>`),
+    line(1, `└ <span class="d">${esc(a.customer)}</span>`),
+    line(2, `└ <span class="d">${esc(jobLabel(a))}</span>`),
+    line(3, `├ Customer Pictures`),
+    line(3, `├ Plans`),
+    line(3, `└ Team only`),
+    line(4, `├ Photos`),
+    line(4, `├ Sent by us`),
+    line(4, `└ <span class="n">Contracts</span> <span class="q">new · made on first use</span>`),
+    line(5, `└ <span class="f">${esc(driveName(a))}</span>`),
+    `<div class="gap"></div>`,
+    line(0, `<span class="q lead">The other kinds, each in its own job’s Contracts folder:</span>`),
+    line(0, `<span class="f">${esc(driveName(b))}</span> <span class="q">a warranty</span>`),
+    line(0, `<span class="f">${esc(driveName({ ...c, state: 'filed' }))}</span> <span class="q">a scan the office uploaded</span>`),
+    line(0, `<span class="f">${esc(driveName(d))}</span> <span class="q">a GC’s own paper</span>`),
+    line(0, `<span class="f">${esc(driveName(g))}</span> <span class="q">one paper over three jobs, a copy in each</span>`),
+    line(0, `<span class="v">${esc(driveName(v))}</span> <span class="q">voided: renamed and kept</span>`),
+  ].join('')
+}
+
+// ── the Drive block, one state ──────────────────────────────────────────────────────────────────────────────────
+function driveBlock(r, fresh) {
+  const f = fresh ? ' fresh' : ''
+  if (r.state === 'filed') return `<div class="drive ok${f}"><div class="dl">In the job’s Drive folder</div><div class="ds">Team only › Contracts · filed ${esc(r.dayWords)}</div><div class="da"><a class="door" href="#window">Open in Drive ↗</a></div></div>`
+  if (r.state === 'adopted') return `<div class="drive ok${f}"><div class="dl">In Drive, where the office put it</div><div class="ds">${esc(pathOf(r))}</div><div class="da"><a class="door" href="#window">Open in Drive ↗</a></div></div>`
+  if (r.state === 'waiting') return `<div class="drive${f}"><div class="dl">Not in Drive yet</div><div class="ds">The app files it within ten minutes.</div><div class="da"><span class="quiet">File it in Drive now</span></div></div>`
+  if (r.state === 'void') return `<div class="drive void${f}"><div class="dl">Voided</div><div class="ds">The Drive copy is renamed VOIDED and kept.</div><div class="da"><a class="door" href="#window">Open in Drive ↗</a></div></div>`
+  return `<div class="drive held${f}"><div class="dl">Not in Drive yet</div><div class="ds">${esc(r.why)}</div><div class="da"><a class="door" href="#window">${esc(r.door)}</a>${r.noRetry ? '' : '<span class="quiet">Try again</span>'}</div></div>`
+}
+
+function contractWindow(r) {
+  const voided = r.state === 'void'
+  const paper = r.kind === 'scan' || r.kind === 'group' || r.kind === 'none' || r.kind === 'link'
+  const doors = paper
+    ? `<span class="rbtn">Open the uploaded copy</span><span class="rbtn">Email a copy… <small>PDF attached</small></span>`
+    : `<span class="rbtn">Email a copy… <small>PDF attached</small></span><span class="rbtn">Copy the customer’s link</span>`
+  const paperDoors = paper ? '' : `<div class="rgroup"><span class="rl">The paper</span><span class="rbtn">Download PDF</span><span class="rbtn">Print</span></div>`
+  return `<div class="modal">
+    <div class="mhead"><b>Contract · ${esc(jobLabel(r))}</b><span>${esc(r.customer)}</span></div>
+    <div class="mbody">
+      <div class="sheet">
+        <div class="banner${voided ? ' void' : ''}"><b>${voided ? 'Voided' : 'Signed ✓'}</b> ${esc(r.signer)} · ${esc(voided ? r.voidedWords : r.dayWords)}, 2026<br>${esc(r.how)}</div>
+        <div class="lines"><i style="width:92%"></i><i style="width:78%"></i><i style="width:85%"></i><i style="width:60%"></i><i style="width:88%"></i><i style="width:42%"></i><i style="width:0;height:6px"></i><i style="width:90%"></i><i style="width:74%"></i><i style="width:83%"></i><i style="width:66%"></i><i style="width:30%"></i></div>
+      </div>
+      <div class="rail">
+        <div class="rgroup"><span class="rl">Share</span>${doors}</div>
+        ${paperDoors}
+        <div class="rgroup"><span class="rl">Drive <span class="tag">new</span></span>${driveBlock(r, true)}</div>
+      </div>
+    </div>
+  </div>`
+}
+
+document.getElementById('winframe').innerHTML = contractWindow(ROWS.find((r) => r.id === 'a'))
+document.getElementById('phone').innerHTML = contractWindow(ROWS.find((r) => r.id === 'c'))
+
+{
+  const pick = [
+    ['Filed by the app', 'a', 'The paper is in its job’s folder. The press opens the file in Drive.'],
+    ['Already in Drive', 'e', 'The office keeps this one in the job’s folder under its own name. The app ties it to the record and leaves it where it is.'],
+    ['Just signed', 'i', 'The sweep has not run yet. The press files it at once for someone who wants it now.'],
+    ['Held: the job’s folder', 'c', 'The reason is the job’s own. Once the folder is fixed the paper files itself.'],
+    ['Held: nothing to file', 'k', 'A signed record with no scan and no link. The door adds the scan.'],
+    ['Voided', 'v', 'The app’s copy is renamed and kept, so nobody reads it as a paper in force.'],
+  ]
+  document.getElementById('states').innerHTML = pick.map(([cap, id, say]) => {
+    const r = ROWS.find((x) => x.id === id)
+    return `<div class="col"><span class="cap">${esc(cap)}</span>${driveBlock(r, false)}<p class="say">${esc(say)}</p></div>`
+  }).join('')
+}
+
+// ── Where files go ──────────────────────────────────────────────────────────────────────────────────────────────
+function countsLine(d, w, h) {
+  return `<div class="counts"><span class="chip grey">${plural(d + w + h, 'signed contract', 'signed contracts')}</span><span class="chip green">${d} in Drive</span><span class="chip ${w ? 'amber' : 'grey'}">${w} waiting</span><span class="chip ${h ? 'amber' : 'grey'}">${h} held</span></div>`
+}
+function heldList(list) {
+  if (!list.length) return ''
+  return `<div class="heldline">${plural(list.length, 'signed contract is', 'signed contracts are')} held. Each says why.</div>` + list.map((r) => `<div class="hrow"><div class="l"><b>${esc(jobLabel(r))}</b> · ${esc(r.customer)}<div>${esc(r.why)}</div></div><a class="door" href="#wfg">${esc(r.door)}</a></div>`).join('')
+}
+const cardIntro = `<h4>Signed contracts <span class="tag">new</span></h4>
+  <p>Each signed contract is filed in its job’s folder, under Team only › Contracts. Find a file finds it by its words.</p>
+  <p>Who can open it: the members of the jobs drive, and the office and estimators through Find a file.</p>`
+
+document.getElementById('wfgframe').innerHTML = `
+  <div class="appbar"><span>Dashboard</span><span>Jobs</span><span class="on">Documents</span><span>People</span><span class="as">as the office</span></div>
+  <div class="page">
+    <div class="tabs"><span class="tab">Search</span><span class="tab">Jobs</span><span class="tab">Sent copies</span><span class="tab">Company</span><span class="tab on">Where files go</span></div>
+    <div class="card"><h4>What is inside</h4>
+      <p>Each job gets its folder under its customer’s folder. The names stay as they are. The sweeps file by them.</p>
+      <div class="inside">Customer Pictures<br>Plans<br>Team only<br>&nbsp;&nbsp;Photos<br>&nbsp;&nbsp;Sent by us<br>&nbsp;&nbsp;<span class="n">Contracts</span> · made when the first signed contract is filed</div>
+    </div>
+    <div class="card fresh">${cardIntro}
+      ${countsLine(inDrive, waiting, held.length)}
+      <div class="acts"><span class="press${waiting ? '' : ' dead'}">File ${plural(waiting, 'signed contract', 'signed contracts')}</span><span class="after">The sweep also files them by itself, every ten minutes.</span></div>
+      ${heldList(held)}
+    </div>
+  </div>`
+
+document.getElementById('wfgafter').innerHTML = `<div class="card" style="margin-top:0">${cardIntro}
+  ${countsLine(inDrive + waiting, 0, held.length)}
+  <div class="acts"><span class="press dead">File 0 signed contracts</span><span class="after">Filed ${waiting}. Held ${held.length}: ${esc(held.map(jobLabel).join(' and '))}.</span></div>
+  ${heldList(held)}</div>`
+
+document.getElementById('wfggood').innerHTML = `<div class="card" style="margin-top:0">${cardIntro}
+  ${countsLine(live.length, 0, 0)}
+  <div class="good">Nothing waiting on Drive. Every signed contract is filed.</div>
+  <div class="acts"><span class="press dead">File 0 signed contracts</span></div></div>`
+
+// ── Find a file ─────────────────────────────────────────────────────────────────────────────────────────────────
+function findFrame(office) {
+  const a = ROWS.find((r) => r.id === 'a'), v = ROWS.find((r) => r.id === 'v')
+  const hit = (r, chip, tone, ex) => `<div class="hit fresh"><div class="nm">${esc(driveName(r))} <span class="chip ${tone}">${chip}</span></div>
+    <div class="meta">${esc(pathOf({ ...r, state: 'filed' }))} · ${esc(r.dayWords)} · 212 KB</div>
+    <div class="ex">${ex}</div>
+    <div class="ha">${office ? '<a class="door" href="#find">Open the contract</a>' : ''}<a class="door" href="#find">Open in Drive</a><a class="door" href="#find">Open the job</a></div></div>`
+  return `<div class="appbar"><span class="on">Documents</span><span class="as">as ${office ? 'the office' : 'an estimator'}</span></div>
+  <div class="page">
+    <div class="tabs"><span class="tab on">Search</span><span class="tab">Estimates</span><span class="tab">Jobs</span></div>
+    <div class="find">balance due on completion</div>
+    <p class="found">3 files say <b>balance due on completion</b>. Our own index answered.</p>
+    <div class="band">${esc(jobLabel(a))} · ${esc(a.customer)}</div>
+    ${hit(a, 'Signed contract', 'green', '…50% down to begin work, <mark>balance due on completion</mark>. Signed by Dana Whitfield…')}
+    <div class="hit"><div class="nm">Ridgeway Lot 14 proposal rev 2.pdf</div><div class="meta">Jobs › ${esc(a.customer)} › ${esc(jobLabel(a))} · Nov 9 · 148 KB</div><div class="ex">…deposit at signing and the <mark>balance due on completion</mark> of rough-in…</div><div class="ha"><a class="door" href="#find">Open in Drive</a><a class="door" href="#find">Open the job</a></div></div>
+    <div class="band">${esc(jobLabel(v))} · ${esc(v.customer)}</div>
+    ${hit(v, 'Voided contract', 'red', '…<mark>balance due on completion</mark> of the work. Signed by Jo Larkin…')}
+  </div>`
+}
+document.getElementById('findoffice').innerHTML = findFrame(true)
+document.getElementById('findest').innerHTML = findFrame(false)
+
+// ── the Drive pass ──────────────────────────────────────────────────────────────────────────────────────────────
+{
+  const a = ROWS.find((r) => r.id === 'a')
+  const row = (find) => `<div class="appbar"><span class="on">Pipeline</span><span>Contract sweep</span></div><div class="page">
+    <div class="srow"><div><b>1049 · Ridgeway Lot 15</b><small>${esc(a.customer)} · no contract yet</small></div>${find ? '<span class="chip amber">📄 in Drive? check</span>' : '<span class="quiet">Send a contract</span>'}</div>
+    ${find ? `<div class="srow"><div><small>A file in Drive might be their contract:</small><b>${esc(driveName(a))}</b><small>${esc(pathOf(a))}</small></div></div>` : ''}
+  </div>`
+  document.getElementById('passbefore').innerHTML = row(true)
+  document.getElementById('passafter').innerHTML = row(false)
+}
+
+// ── the calls ───────────────────────────────────────────────────────────────────────────────────────────────────
+const CALLS = [
+  ['Who reads it', 'The paper is filed in its job’s folder, and estimators can read it there and in Find a file. Your words: Yes, job’s folder.', 'A drive of its own for contracts, with the office’s four roles as members, as the People folder has.', true],
+  ['Which papers', 'Every signed paper with a file: a contract, a warranty, a scan the office uploaded, a GC’s own paper. A paper already in the drive is tied where it sits.', 'Only papers signed through the link.', true],
+  ['The folder and the name', 'Team only › Contracts, made on first use. Named by the signed day, what it is, the job’s number and who signed.', 'Team only › Sent by us, with no new folder, beside the signed hours statements.', true],
+  ['A voided paper', 'The app’s copy is renamed VOIDED and kept.', 'Moved to Drive’s trash. Or left as it is.', true],
+  ['One paper over several jobs', 'A copy in each covered job’s folder, so each folder is whole.', 'One copy in the customer’s folder, above the jobs.', true],
+  ['When, and the old ones', 'The sweep files it within ten minutes and never runs inside the signing. One press files one at once. The old ones are filed by the same sweep.', 'The old ones wait for a press on Where files go.', true],
+  ['The link field', 'The link the office typed stays as it is. The Drive copy gets its own Open in Drive door.', 'The app fills the link with the Drive file.', true],
+]
+document.getElementById('callgrid').innerHTML = CALLS.map(([t, pick, or, done], i) => `<div class="call${done ? ' done' : ''}"><span class="num">Call ${i + 1}${done ? ' · settled Nov 17' : ''}</span><h3>${esc(t)}</h3><div class="pick"><b>${done ? 'Settled' : 'Pick'}:</b> ${esc(pick)}</div><div class="or"><b>${done ? 'Not taken' : 'Or'}:</b> ${esc(or)}</div></div>`).join('')
+</script>
+</body>
+</html>

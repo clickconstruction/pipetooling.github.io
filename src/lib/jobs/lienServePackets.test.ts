@@ -131,10 +131,28 @@ describe('the stack', () => {
     expect(sheet).toContain('Copies of filed lien affidavits: 3 envelopes')
     expect(sheet.indexOf('2104 · Sample Job')).toBeLessThan(sheet.indexOf('2291 · Sample Job'))
     expect(sheet).toContain('Nov 11 · late')
-    expect(sheet).toContain('<td>Original contractor</td>')
+    expect(sheet).toContain('>Original contractor</td>')
     expect(sheet).toContain('Not printed: no recording number yet. <span style="font-weight:400">Type the number the clerk gave.</span>')
     expect(sheet).toContain('The first letter is the next page')
     expect(lienServeMailSheetHtml(plan, { printedOn: '', letter: false })).toContain('The first copy is the next page')
+  })
+
+  it('keeps the number, Copy to and Mail by no wider than their longest text', () => {
+    const sheet = lienServeMailSheetHtml(plan, { printedOn: '', letter: true })
+    const fit = ' style="width:1%;white-space:nowrap"'
+    // The table lays itself out by its content: no fixed column widths are left to pad the three.
+    expect(sheet).toContain('<table class="lien-help-rows" style="table-layout:auto">')
+    expect(sheet).not.toContain('<colgroup>')
+    expect(sheet).toContain(`<th${fit}>#</th>`)
+    expect(sheet).toContain(`<th${fit}>Copy to</th>`)
+    expect(sheet).toContain(`<th${fit}>Mail by</th>`)
+    expect(sheet).toContain(`<td${fit}>1</td>`)
+    expect(sheet).toContain(`<td${fit}>Original contractor</td>`)
+    expect(sheet).toContain(`<td${fit}>Nov 11 · late</td>`)
+    // The job, the envelope's name and address, and the blank for the number keep the room.
+    expect(sheet).toContain('<th style="width:22%">Job</th>')
+    expect(sheet).toContain('<th>Name and address on the envelope</th>')
+    expect(sheet).toContain('<th style="width:22%">Certified mail number</th>')
   })
 
   it('prints one document behind the sheet and hands each job its own papers to file', () => {

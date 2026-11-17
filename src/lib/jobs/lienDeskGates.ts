@@ -16,6 +16,15 @@ export type LienGateKey = 'owner' | 'gc' | 'kind' | 'months' | 'billed'
 export type LienGateTone = 'ok' | 'blocker' | 'check'
 
 /** The gate box's fold press, closed and open (v2.7423, Taunya's words of 2026-11-15: *details can become "more details"*). */
+/**
+ * Two lines of the notice pane that open on *No* and are not empty lists (v2.7619): the leader's one-screen approve
+ * with no deadline to mail by, and the GC gate's row for a customer with no mailing address, whose door is the
+ * gate's own press beside it. They are named here, with the gates' other words, since `check:empty-words` reads a
+ * sentence written straight into markup as an empty state.
+ */
+export const LIEN_APPROVE_NO_MAIL_BY = 'No mail-by day yet'
+export const LIEN_GC_GATE_NO_ADDRESS = 'No mailing address on the customer.'
+
 export const LIEN_GATES_FOLD_WORDS = { open: 'More details ∨', close: 'Fewer details ∧' } as const
 
 export interface LienGate {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienAffidavitNoticeTag, lienDayLeftWords, lienHeadDay, lienRowLine } from './lienRowWords'
+import { lienAffidavitNoticeTag, lienDayLeftWords, lienHeadDay, lienRowLine, lienDeskDeadlineWords } from './lienRowWords'
 
 describe('lienRowLine', () => {
   it('the Board’s bin first, then the one thing to know; a stage that says it all stands alone', () => {
@@ -78,5 +78,27 @@ describe('lienHeadDay', () => {
 
   it('the words for how far a day is', () => {
     expect([lienDayLeftWords(3), lienDayLeftWords(1), lienDayLeftWords(0), lienDayLeftWords(-1), lienDayLeftWords(-4)]).toEqual(['3 days left', '1 day left', 'today', '1 day late', '4 days late'])
+  })
+})
+
+describe('lienDeskDeadlineWords (out of LienDesk.tsx, v2.7608)', () => {
+  const row = (daysLeft: number | null, earliestDeadline: string | null = '2026-12-15', missedMonths: string[] = []) => ({ daysLeft, earliestDeadline, missedMonths })
+  it('counts down inside two weeks', () => {
+    expect(lienDeskDeadlineWords(row(0))).toBe('due today')
+    expect(lienDeskDeadlineWords(row(1))).toBe('due tomorrow')
+    expect(lienDeskDeadlineWords(row(2))).toBe('due in 2d')
+    expect(lienDeskDeadlineWords(row(14))).toBe('due in 14d')
+  })
+  it('past two weeks names the day', () => {
+    expect(lienDeskDeadlineWords(row(15))).toMatch(/^by /)
+    expect(lienDeskDeadlineWords(row(15))).not.toContain('due')
+  })
+  it('a day already past is a closed window', () => {
+    expect(lienDeskDeadlineWords(row(-1))).toBe('window closed')
+  })
+  it('with no day left, months already missed read as a closed window and nothing else says nothing', () => {
+    expect(lienDeskDeadlineWords(row(null, null, ['2026-08']))).toBe('window closed')
+    expect(lienDeskDeadlineWords(row(null, null))).toBe('')
+    expect(lienDeskDeadlineWords(row(5, null))).toBe('')
   })
 })

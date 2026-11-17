@@ -5,6 +5,7 @@ import {
   backspaceTag,
   backspacedTag,
   canTagInJobNotes,
+  canTagInTaskNotes,
   draftMarkParts,
   insertPick,
   liveTags,
@@ -20,11 +21,16 @@ import {
   tagAgeDays,
   tagAgeWords,
   tagIsLate,
+  tagIsTask,
+  tagPersonSays,
   tagNameQueryAtCaret,
   tagQueryAtCaret,
   tagTypingAtCaret,
+  tagWhere,
+  taskOffer,
   tagsByNote,
   tagsNeed,
+  tagsOfKind,
   waitingOnWords,
   workingDaysWaited,
   type MyTag,
@@ -223,6 +229,42 @@ describe('insertPick', () => {
   it('leaves a query the list can no longer read', () => {
     const next = insertPick('@lu', 3, 'Luis Ortega')
     expect(tagQueryAtCaret(next.text, next.caret)).toBeNull()
+  })
+})
+
+describe('a task\'s own people (punch list #375)', () => {
+  const TASK: TaggablePerson[] = [
+    { userId: 'u-marcus', name: 'Marcus Hale', role: 'master_technician', onJob: false },
+    { userId: 'u-luis', name: 'Luis Ortega', role: 'superintendent', onJob: false, onTask: true },
+    { userId: 'u-dana', name: 'Dana Whitlock', role: 'assistant', onJob: false, onTask: true, gave: true },
+    { userId: 'u-ana', name: 'Ana Ruiz', role: 'helpers', onJob: false, onTask: true },
+    { userId: 'u-bo', name: 'Bo Tran', role: 'helpers', onJob: false, onTask: true },
+  ]
+
+  it('lists the task\'s people before the office', () => {
+    expect(names(rankTaggable(TASK, ''))).toEqual(['task:Ana Ruiz', 'task:Bo Tran', 'task:Dana Whitlock', 'task:Luis Ortega', 'office:Marcus Hale'])
+  })
+
+  it('says what each person is to the task', () => {
+    const says = Object.fromEntries(rankTaggable(TASK, '').map((r) => [r.person.name, tagPersonSays(r)]))
+    expect(says).toEqual({ 'Ana Ruiz': 'has this task', 'Bo Tran': 'has this task', 'Dana Whitlock': 'gave this task', 'Luis Ortega': 'has this task', 'Marcus Hale': 'office' })
+    // A job's rows read as they did.
+    expect(rankTaggable(PEOPLE, 'luis').map(tagPersonSays)).toEqual(['superintendent · on this job'])
+    expect(tagPersonSays({ person: PEOPLE[0]!, group: 'asked' })).toBe('asked you')
+  })
+
+  it('offers three of the task\'s own people before a letter is typed, whoever gave it first', () => {
+    expect(taskOffer(TASK).map((r) => r.person.name)).toEqual(['Dana Whitlock', 'Ana Ruiz', 'Bo Tran'])
+    // Someone already tagged is not offered again, and the office never is.
+    expect(taskOffer(TASK, ['u-dana', 'u-ana']).map((r) => r.person.name)).toEqual(['Bo Tran', 'Luis Ortega'])
+    expect(taskOffer(PEOPLE)).toEqual([])
+  })
+
+  it('opens the @ in a task\'s note box to the roles a job\'s is open to', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'superintendent', 'helpers', 'primary']) expect(canTagInTaskNotes(role)).toBe(true)
+    expect(canTagInTaskNotes('subcontractor')).toBe(false)
+    expect(canTagInTaskNotes('estimator')).toBe(false)
+    expect(canTagInTaskNotes(null)).toBe(false)
   })
 })
 
@@ -543,6 +585,50 @@ describe('the reader\'s own tags', () => {
     expect(tagsNeed(myTagsView(tags))).toEqual({ count: 3, title: '2 job notes tagged you · 1 answer to a note you tagged', detail: 'Tanner residence · Cedar Bluff Lofts' })
     expect(tagsNeed(myTagsView([tags[0]!]))?.title).toBe('1 job note tagged you')
     expect(tagsNeed(myTagsView([tags[3]!]))).toBeNull()
+  })
+
+  describe('job tags and task tags side by side (punch list #375)', () => {
+    const jobTag = mine({ tagId: 'j1', jobName: 'Cedar Bluff Lofts', createdAt: '2026-11-15T16:04:00Z' })
+    const taskTag = mine({ tagId: 't1', source: 'task', jobId: '', jobName: '', instanceId: 'inst-1', itemId: 'item-1', taskTitle: '{{1:1466 · Cedar Bluff Lofts}} — Sweep the shop bays', taskDate: '2026-11-17', createdAt: '2026-11-14T10:00:00Z' })
+    const askedTask = mine({ tagId: 't2', kind: 'asked', source: 'task', jobId: '', jobName: '', taskTitle: 'Lock the yard gate', clearedAt: '2026-11-16T10:00:00Z', clearedHow: 'answered' })
+
+    it('tells the kinds apart and keeps each list to its own', () => {
+      expect(tagIsTask(jobTag)).toBe(false)
+      expect(tagIsTask(taskTag)).toBe(true)
+      expect(tagsOfKind([jobTag, taskTag], 'job').map((t) => t.tagId)).toEqual(['j1'])
+      expect(tagsOfKind([jobTag, taskTag], 'task').map((t) => t.tagId)).toEqual(['t1'])
+      expect(tagsOfKind([jobTag, taskTag], 'both').map((t) => t.tagId)).toEqual(['j1', 't1'])
+      // Each count is its own kind's: the number above Jobs never holds a task tag.
+      expect(myTagsView(tagsOfKind([jobTag, taskTag, askedTask], 'job')).count).toBe(1)
+      expect(myTagsView(tagsOfKind([jobTag, taskTag, askedTask], 'task')).count).toBe(2)
+    })
+
+    it('names a task by its title as plain words, the job token and all', () => {
+      expect(tagWhere(taskTag)).toBe('1466 · Cedar Bluff Lofts — Sweep the shop bays')
+      expect(tagWhere(jobTag)).toBe('Cedar Bluff Lofts')
+      expect(tagWhere(mine({ jobName: '  ' }))).toBe('A job')
+      expect(tagWhere(mine({ source: 'task', taskTitle: null }))).toBe('Task')
+    })
+
+    it('lists both in one window, the oldest first', () => {
+      expect(myTagsView([jobTag, taskTag]).waiting.map((t) => t.tagId)).toEqual(['t1', 'j1'])
+    })
+
+    it('writes one Needs you line for both kinds', () => {
+      expect(tagsNeed(myTagsView([jobTag, taskTag, askedTask]))).toEqual({
+        count: 3,
+        title: '1 job note tagged you · 1 task note tagged you · 1 answer to a note you tagged',
+        detail: '1466 · Cedar Bluff Lofts — Sweep the shop bays · Cedar Bluff Lofts',
+      })
+      expect(tagsNeed(myTagsView([taskTag, { ...taskTag, tagId: 't3' }]))?.title).toBe('2 task notes tagged you')
+    })
+
+    it('says has left for an open tag on someone archived, in place of an age', () => {
+      const open = mine({ kind: 'asked', taggedLeft: true })
+      expect(askedLineWords(open, '2026-11-17', '2026-11-10')).toEqual({ words: 'has left', tone: 'late' })
+      // A tag that cleared before the person left still says how.
+      expect(askedLineWords({ ...open, clearedAt: '2026-11-11T10:00:00Z', clearedHow: 'done' }, '2026-11-17', '2026-11-10').words).toBe('no reply needed')
+    })
   })
 })
 

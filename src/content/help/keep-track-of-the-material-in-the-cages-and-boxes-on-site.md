@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, materials page, track, sticker, reserved sticker, blank sticker, stick a sticker on a box, sticker is new, it is on a box i know, it is a new box, sticker name, named sticker, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, materials page, track, where is it, find a box, lost box, lost cage, i found it, show where i am, move the pin by hand, sticker, reserved sticker, blank sticker, stick a sticker on a box, sticker is new, it is on a box i know, it is a new box, sticker name, named sticker, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -92,7 +92,17 @@ Search finds a box by your words too. Type toilets and the box that says Kohler 
 
 ## Find a box on the site
 
-Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map**. Stand where the box is and tap **Use my location**, or drag the map until the ring sits on it. Then tap **Put A1 here**. Tap **Move box** when it moves to another place.
+On a box, tap {{button:outline|Where is it?}}. The sheet says what the app knows. The words name the place and the note. The words say who pinned the box and on what day. Under the words is the newest photo, then the site from above with the box's pin.
+
+Tap {{button:blue|Show where I am}} to see your own dot and a dashed line to the pin. The sheet says about how far the pin is and which way. The line is straight. The line knows no fence, wall or gate. Indoors the phone is unsure, so go by the place, the note and the photo. Your dot stays on your phone. The dot moves while the sheet is open and the screen is on.
+
+When you find the box, tap {{button:blue|I found it}}. The app pins the box where you stand, with your name and the day. The next person who looks starts from your pin. Then the sheet asks if the box is still in the same place. Tap **Move box** when it is not.
+
+A box nobody has pinned says so. Stand at it and tap **I found it**. A phone that is not sure within about 150 ft is refused. Step into the open and tap **Try again**. Or tap **Move the pin by hand** and drag the map until the ring sits on the box. Then tap **Put A1 here**.
+
+The app also asks for a pin when you are standing at a box. That is after a count, a photo, a scanned label or a new box. The box's screen then reads **Pin A1 where you stand?** Tap {{button:blue|Pin it here}}, or tap **Not now**. The app asks once a day for a box. A box pinned in the last week is not asked about.
+
+A pin older than 30 days carries a caution, since boxes get moved. Tap **Directions** for the drive to the pin. Tap **Map** on the tab to see every pinned box on the site.
 
 ## Scan a label
 
@@ -164,7 +174,7 @@ Is the box moved, damaged or in the way? Press **Moved, damaged or in the way?**
 
 To see what is in the box, press **Sign in to see what is inside**. The press has an orange outline. After you sign in you land on that box, with its parts and counts. You sign in once in a phone's browser. After that a scan opens the box's own screen.
 
-A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
+A label from a retired box says so and offers **Scan another label**. Signed in, it names the box and the day it left. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 

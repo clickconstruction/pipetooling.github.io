@@ -9,7 +9,8 @@
  * printed name when it has one and its code when it does not, and a sentence about one sticker says *this sticker*.
  * The number stays in the database, where it keeps a run in order and tells two stickers of one name apart.
  */
-import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { boxPageDayWords, boxPageKind, boxPageNameWords } from './boxPage'
 import { dashedCode } from './labels'
 import type { Container } from './onSite'
 
@@ -209,20 +210,23 @@ export function placingVerdict(input: {
  *  - `blank`: a sticker on no box yet.
  *  - `lost`: a sticker that was marked lost.
  *  - `retired`: a sticker on a box that was retired.
+ *  - `retired_label`: a box's own label, on a box that was retired and that the reader may still see (v2.7630).
  *  - `out_of_reach`: a sticker on a box the reader's own RLS does not show, a job they are not on.
- *  - `none`: no sticker and no live box carries the code.
+ *  - `none`: no sticker carries the code, and no box the reader may see does.
  */
 export type CodeLookup =
   | { kind: 'box'; container: Container; sticker: StickerFacts | null }
   | { kind: 'blank'; sticker: StickerFacts }
   | { kind: 'lost'; sticker: StickerFacts }
   | { kind: 'retired'; sticker: StickerFacts }
+  | { kind: 'retired_label'; container: Container }
   | { kind: 'out_of_reach'; sticker: StickerFacts }
   | { kind: 'none' }
 
 /**
  * The verdict from what was read: the sticker the code names (null when none), the box that sticker is on as the
- * reader may see it, and the live box whose own label carries the code. The sticker wins, so a code means one thing.
+ * reader may see it, and the box whose own label carries the code, live or retired. The sticker wins, so a code means
+ * one thing.
  */
 export function codeLookup(input: { sticker: StickerFacts | null; stickerBox: Container | null; ownBox: Container | null }): CodeLookup {
   const s = input.sticker
@@ -233,7 +237,7 @@ export function codeLookup(input: { sticker: StickerFacts | null; stickerBox: Co
     if (!input.stickerBox) return { kind: 'out_of_reach', sticker: s }
     return { kind: 'box', container: input.stickerBox, sticker: s }
   }
-  if (input.ownBox && !input.ownBox.retiredAt) return { kind: 'box', container: input.ownBox, sticker: null }
+  if (input.ownBox) return input.ownBox.retiredAt ? { kind: 'retired_label', container: input.ownBox } : { kind: 'box', container: input.ownBox, sticker: null }
   return { kind: 'none' }
 }
 
@@ -276,6 +280,22 @@ export function noBoxTitle(codeWords: string): string {
   return `${codeWords} did not open a box`
 }
 export const NO_BOX_DETAIL = 'The box may be on a job you are not on, or it may be retired. Ask the office, or open On site and find the box by its stencil.'
+
+/**
+ * A box's own label on a box that was retired, for a reader who may still see the box (v2.7630). Until then it read
+ * *did not open a box* over both reasons, while the page with no sign-in named the box and said it was retired, so
+ * someone signed in read less than a stranger. A retired box of a job the reader is not on still comes back as no
+ * row, and `noBoxTitle` keeps its words for that.
+ */
+export function retiredLabelTitle(box: Pick<Container, 'kind' | 'label'>): string {
+  return `${boxPageNameWords(boxPageKind(box.kind), box.label)} was retired`
+}
+
+/** Under it: the day the box left, and who brings one back. */
+export function retiredLabelDetail(box: Pick<Container, 'retiredAt'>): string {
+  const day = box.retiredAt ? boxPageDayWords(calendarYmdInAppTzFromIso(box.retiredAt)) : ''
+  return `${day ? `It left the job on ${day}. ` : ''}The office brings a retired box back from the Retired fold on its Materials page.`
+}
 
 /** A sticker on a box of a job the reader is not on. */
 export const OUT_OF_REACH_STICKER_TITLE = 'This sticker is on a box of a job you are not on'

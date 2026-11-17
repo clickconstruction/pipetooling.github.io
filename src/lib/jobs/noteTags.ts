@@ -10,28 +10,37 @@
  */
 import { andList } from '../gc/wordToTrades'
 import { ymdAddDays } from '../../utils/dateUtils'
+import { taskTitlePlain } from '../tasks/taskPlace'
 
-/** One person the list may offer on a job: someone who can open that job's notes. */
+/** One person the list may offer on a job or a task: someone who can open its notes. */
 export type TaggablePerson = {
   userId: string
   name: string
   role: string | null
   /** On the job's crew, as against the office. */
   onJob: boolean
+  /** One of a task's own people (punch list #375): whoever gave it, or whoever has it. */
+  onTask?: boolean
+  /** The person who gave the task. */
+  gave?: boolean
 }
 
-/** The list's three groups, in the order they are drawn. */
-export type TagGroup = 'asked' | 'job' | 'office'
+/** The list's groups, in the order they are drawn. */
+export type TagGroup = 'asked' | 'task' | 'job' | 'office'
 
 export type TagListRow = { person: TaggablePerson; group: TagGroup }
 
-export const TAG_GROUP_ORDER: readonly TagGroup[] = ['asked', 'job', 'office']
+export const TAG_GROUP_ORDER: readonly TagGroup[] = ['asked', 'task', 'job', 'office']
 
 export const TAG_GROUP_WORDS: Record<TagGroup, string> = {
   asked: 'Asked you',
+  task: 'On this task',
   job: 'On this job',
   office: 'Office',
 }
+
+/** A task's note box offers this many of its own people before a letter is typed. */
+export const TASK_OFFER_MAX = 3
 
 /** A tag turns amber once it has waited this many working days. */
 export const TAG_LATE_AFTER_WORKING_DAYS = 2
@@ -144,7 +153,7 @@ export function rankTaggable(
     seen.add(person.userId)
     if (picked.has(person.userId) || person.userId === opts.selfId) continue
     if (!nameMatchesQuery(person.name, query)) continue
-    const group: TagGroup = person.userId === opts.askerId ? 'asked' : person.onJob ? 'job' : 'office'
+    const group: TagGroup = person.userId === opts.askerId ? 'asked' : person.onTask ? 'task' : person.onJob ? 'job' : 'office'
     rows.push({ person, group })
   }
   return rows.sort(
@@ -403,6 +412,39 @@ export function noteTagMark(
   return { names, mine, words: said.join(' · '), waiting: false, late: false }
 }
 
+/** What a name press says under the name: what the person is to this job or this task. */
+export function tagPersonSays(row: TagListRow): string {
+  if (row.group === 'asked') return 'asked you'
+  const person = row.person
+  if (person.gave) return 'gave this task'
+  if (person.onTask) return 'has this task'
+  const role = person.role === 'helpers' || person.role === 'primary' ? 'crew' : person.role === 'superintendent' ? 'superintendent' : 'office'
+  return person.onJob && role !== 'office' ? `${role} · on this job` : role
+}
+
+/**
+ * The names a task's note box offers before a letter is typed (punch list #375): the task's own
+ * people, whoever gave it first, three at most, without anyone already tagged.
+ */
+export function taskOffer(people: readonly TaggablePerson[], pickedIds: readonly string[] = []): TagListRow[] {
+  return rankTaggable(
+    people.filter((p) => p.onTask),
+    '',
+    { pickedIds },
+  )
+    .sort((a, b) => Number(b.person.gave === true) - Number(a.person.gave === true))
+    .slice(0, TASK_OFFER_MAX)
+}
+
+/**
+ * Who is offered the @ in a task's note box (punch list #375): the same seven roles as on a job.
+ * The server still decides task by task: only a task's own people and the office are on its list,
+ * and anyone else gets a plain box.
+ */
+export function canTagInTaskNotes(role: string | null | undefined): boolean {
+  return canTagInJobNotes(role)
+}
+
 /** The roles job_note_people() lists (punch list #363): the office, and the roles a job's crew is made of. */
 const TAGGING_ROLES: readonly string[] = ['dev', 'master_technician', 'assistant', 'controller', 'superintendent', 'helpers', 'primary']
 
@@ -415,10 +457,25 @@ export function canTagInJobNotes(role: string | null | undefined): boolean {
   return role != null && TAGGING_ROLES.includes(role)
 }
 
-/** One row of `job_note_tags_mine()`: a tag that waits on the reader, or one the reader made. */
+/** Which notes a list of tags holds: a job's, a task's, or both side by side. */
+export type TagKinds = 'job' | 'task' | 'both'
+
+/**
+ * One row of `note_tags_mine()`: a tag that waits on the reader, or one the reader made, in a job
+ * note or a task note. A job tag carries its job and a task tag its day row, task and title.
+ */
 export type MyTag = {
   tagId: string
   kind: 'waiting' | 'asked'
+  /** Where the note is (punch list #375). Left out, the tag is a job's. */
+  source?: 'job' | 'task'
+  /** A task tag's day row, its task, the task's title as written and the day row's date. */
+  instanceId?: string | null
+  itemId?: string | null
+  taskTitle?: string | null
+  taskDate?: string | null
+  /** The tagged person is archived: an open tag on them will never be answered. */
+  taggedLeft?: boolean
   noteId: string
   jobId: string
   jobName: string
@@ -450,6 +507,22 @@ export type MyTagsView = {
   count: number
 }
 
+/** True for a tag in a task note. */
+export function tagIsTask(t: Pick<MyTag, 'source'>): boolean {
+  return t.source === 'task'
+}
+
+/** The tags of one kind, or all of them. */
+export function tagsOfKind<T extends Pick<MyTag, 'source'>>(tags: readonly T[], kinds: TagKinds): T[] {
+  if (kinds === 'both') return [...tags]
+  return tags.filter((t) => tagIsTask(t) === (kinds === 'task'))
+}
+
+/** What a tag is about, as the lists name it: the job's name, or the task's title as plain words. */
+export function tagWhere(t: Pick<MyTag, 'source' | 'jobName' | 'taskTitle'>): string {
+  return tagIsTask(t) ? taskTitlePlain(t.taskTitle) : t.jobName.trim() || 'A job'
+}
+
 function askedRank(t: MyTag): number {
   if (t.clearedAt != null && t.askerSeenAt == null) return 0
   return t.clearedAt == null ? 1 : 2
@@ -466,6 +539,8 @@ export function myTagsView(tags: readonly MyTag[]): MyTagsView {
 
 /** What a You asked line says after the name: how the tag stands, and whether it is late. */
 export function askedLineWords(tag: MyTag, todayYmd: string, postedYmd: string): { words: string; tone: 'late' | 'waiting' | 'cleared' } {
+  // A tag on someone who has left waits forever, so the line says so in place of an age.
+  if (tag.clearedAt == null && tag.taggedLeft) return { words: 'has left', tone: 'late' }
   if (tag.clearedAt == null) {
     const age = tagAgeWords(postedYmd, todayYmd)
     return { words: `no answer yet${age ? ` · ${age}` : ''}`, tone: tagIsLate(postedYmd, todayYmd) ? 'late' : 'waiting' }
@@ -479,15 +554,21 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
-/** The Needs you line for tags (punch list #363): its title and the jobs under it. Null when nothing waits. */
+/**
+ * The Needs you line for tags (punch list #363, and task notes since #375): its title and the jobs
+ * and tasks under it, in the order they wait. Null when nothing waits.
+ */
 export function tagsNeed(view: Pick<MyTagsView, 'waiting' | 'unseen' | 'count'>): { count: number; title: string; detail: string } | null {
   if (view.count === 0) return null
+  const taskNotes = view.waiting.filter(tagIsTask).length
+  const jobNotes = view.waiting.length - taskNotes
   const parts = [
-    view.waiting.length > 0 ? `${plural(view.waiting.length, 'job note', 'job notes')} tagged you` : '',
+    jobNotes > 0 ? `${plural(jobNotes, 'job note', 'job notes')} tagged you` : '',
+    taskNotes > 0 ? `${plural(taskNotes, 'task note', 'task notes')} tagged you` : '',
     view.unseen > 0 ? `${plural(view.unseen, 'answer', 'answers')} to a note you tagged` : '',
   ].filter(Boolean)
-  const jobs = [...new Set(view.waiting.map((t) => t.jobName.trim()).filter(Boolean))]
-  const detail = jobs.length > 3 ? `${jobs.slice(0, 3).join(' · ')} and ${jobs.length - 3} more` : jobs.join(' · ')
+  const names = [...new Set(view.waiting.map((t) => (tagIsTask(t) || t.jobName.trim() ? tagWhere(t) : '')).filter(Boolean))]
+  const detail = names.length > 3 ? `${names.slice(0, 3).join(' · ')} and ${names.length - 3} more` : names.join(' · ')
   return { count: view.count, title: parts.join(' · '), detail }
 }
 

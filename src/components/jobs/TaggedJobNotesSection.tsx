@@ -16,24 +16,36 @@ import {
   sectionSplit,
   tagAgeWords,
   tagIsLate,
+  tagIsTask,
+  tagWhere,
+  tagsOfKind,
   type MyTag,
+  type TagKinds,
 } from '../../lib/jobs/noteTags'
-import { markAnswersSeen, markTagDone, noteTagsChanged, notifyNoteTag, postTaggedNote } from '../../lib/jobs/noteTagsIo'
+import { markAnswersSeen, markTagDone, noteTagsChanged, notifyNoteTag, postTaggedNote, postTaggedTaskNote } from '../../lib/jobs/noteTagsIo'
 import { useNoteTagBox } from './NoteTagBox'
 
 /**
- * Tagged job notes (punch list #363): the job notes that tagged the reader and still wait, each
- * with a box to answer on the job and a No reply needed press, then the notes the reader tagged.
+ * Tagged notes (punch list #363, and task notes since #375): the notes that tagged the reader and
+ * still wait, each with a box to answer where the note is and a No reply needed press, then the
+ * notes the reader tagged.
  *
- * `pipeline` is the section at the top of Jobs → Pipeline: it draws nothing when nothing waits and
- * nothing was asked, so an idle Pipeline looks as it did. `window` is the same list inside the
- * Dashboard's window, for the roles with no Pipeline, and says so when it is empty.
+ * `pipeline` is the section at the top of Jobs → Pipeline, for job notes: it draws nothing when
+ * nothing waits and nothing was asked, so an idle Pipeline looks as it did. `today` is the same
+ * section at the top of the Checklist's Today, for task notes, and for both kinds in Task Mode,
+ * where no other page is open. `window` is the list inside the Dashboard's window, both kinds,
+ * and says so when it is empty.
  *
  * An answer clears a tag and opening one does not. An answer to the reader's own tag counts for
  * them until this list has been on their screen, and is then marked seen with nothing to press.
  */
 
-const FOLD_KEY = 'pt.taggedJobNotes.folded'
+type Variant = 'pipeline' | 'today' | 'window'
+
+const FOLD_KEYS: Record<Variant, string> = { pipeline: 'pt.taggedJobNotes.folded', today: 'pt.taggedTaskNotes.folded', window: '' }
+
+/** What each list is called, by the notes it holds. */
+const TITLE: Record<TagKinds, string> = { job: 'Tagged job notes', task: 'Tagged task notes', both: 'Tagged notes' }
 
 const chip: CSSProperties = {
   display: 'inline-block',
@@ -52,18 +64,44 @@ function firstWord(name: string): string {
   return name.trim().split(/\s+/)[0] ?? ''
 }
 
-function readFolded(): boolean {
+function readFolded(variant: Variant): boolean {
+  if (!FOLD_KEYS[variant]) return false
   try {
-    return window.localStorage.getItem(FOLD_KEY) === '1'
+    return window.localStorage.getItem(FOLD_KEYS[variant]) === '1'
   } catch {
     return false
   }
 }
 
-function JobName({ tag, onOpenJob }: { tag: MyTag; onOpenJob?: (jobId: string) => void }) {
-  const name = tag.jobName.trim() || 'A job'
-  return onOpenJob ? (
-    <button type="button" style={linkLook} title="Open the job" onClick={() => onOpenJob(tag.jobId)}>
+/** The doors a list may be handed: the job's window, and the task on the Checklist. */
+type Doors = {
+  onOpenJob?: (jobId: string) => void
+  onOpenTask?: (instanceId: string) => void
+  /** False when the page that hosts the list cannot show this task, so its title is plain words and no dead press. */
+  taskOpens?: (instanceId: string) => boolean
+}
+
+/** The task's day, as the line under its title says it: `Nov 17`. */
+function taskDayWords(ymd: string | null | undefined): string {
+  if (!ymd) return ''
+  const d = new Date(`${ymd}T12:00:00`)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
+/** The few words after the name: a job's number and customer, or that it is a task and its day. */
+function whereMeta(tag: MyTag): string {
+  if (tagIsTask(tag)) return ['task', taskDayWords(tag.taskDate)].filter(Boolean).join(' · ')
+  return [tag.jobNumber, tag.customerName].map((s) => (s ?? '').trim()).filter(Boolean).join(' · ')
+}
+
+/** The job's name or the task's title: the card's only door, where one was handed. */
+function WhereName({ tag, onOpenJob, onOpenTask, taskOpens }: { tag: MyTag } & Doors) {
+  const name = tagWhere(tag)
+  const task = tagIsTask(tag)
+  const instanceId = tag.instanceId ?? null
+  const open = task ? (onOpenTask && instanceId && (taskOpens?.(instanceId) ?? true) ? () => onOpenTask(instanceId) : null) : onOpenJob ? () => onOpenJob(tag.jobId) : null
+  return open ? (
+    <button type="button" style={linkLook} title={task ? 'Open the task' : 'Open the job'} onClick={open}>
       {name}
     </button>
   ) : (
@@ -71,7 +109,7 @@ function JobName({ tag, onOpenJob }: { tag: MyTag; onOpenJob?: (jobId: string) =
   )
 }
 
-function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJob?: (jobId: string) => void }) {
+function TagCard({ tag, today, onOpenJob, onOpenTask, taskOpens }: { tag: MyTag; today: string } & Doors) {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState<'post' | 'done' | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -79,7 +117,9 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
   const narrow = typeof window !== 'undefined' && window.innerWidth <= 700
   // The person who asked is offered before a letter is typed (punch list #375): one tap tags them back.
   const offer = useMemo(() => [{ userId: tag.taggerUserId, name: tag.taggerName, says: 'asked you' }], [tag.taggerUserId, tag.taggerName])
-  const tagBox = useNoteTagBox({ jobId: tag.jobId, draft, setDraft, inputRef, enabled: true, askerId: tag.taggerUserId, offer, place: narrow ? 'above' : 'below' })
+  const task = tagIsTask(tag)
+  const where = tagWhere(tag)
+  const tagBox = useNoteTagBox({ jobId: task ? '' : tag.jobId, taskInstanceId: task ? tag.instanceId : null, draft, setDraft, inputRef, enabled: true, askerId: tag.taggerUserId, offer, place: narrow ? 'above' : 'below' })
   const posted = calendarYmdInAppTzFromIso(tag.noteCreatedAt)
   const late = tagIsLate(posted, today)
   const age = tagAgeWords(posted, today)
@@ -90,11 +130,16 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
     if (!body || busy) return
     setBusy('post')
     try {
-      const noteId = await postTaggedNote(tag.jobId, body, tagBox.taggedIds(body))
-      notifyNoteTag({ noteId })
+      if (task) {
+        // The answer is a note on the task's thread, on the day row the tagged note is on.
+        notifyNoteTag({ taskEventId: await postTaggedTaskNote(tag.instanceId ?? '', body, tagBox.taggedIds(body)) })
+      } else {
+        const noteId = await postTaggedNote(tag.jobId, body, tagBox.taggedIds(body))
+        notifyNoteTag({ noteId })
+      }
       setDraft('')
       tagBox.reset()
-      showToast(`Answered. It is on the notes of ${tag.jobName.trim() || 'the job'}.`, 'success')
+      showToast(task ? `Answered. It is on the notes of the task ${where}.` : `Answered. It is on the notes of ${tag.jobName.trim() || 'the job'}.`, 'success')
       noteTagsChanged()
     } catch (e: unknown) {
       showToast(formatErrorMessage(e, 'The answer was not posted'), 'error')
@@ -106,7 +151,7 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
     if (busy) return
     setBusy('done')
     try {
-      if (await markTagDone(tag.tagId)) notifyNoteTag({ tagId: tag.tagId })
+      if (await markTagDone(tag.tagId, task ? 'task' : 'job')) notifyNoteTag(task ? { taskTagId: tag.tagId } : { tagId: tag.tagId })
       noteTagsChanged()
     } catch (e: unknown) {
       showToast(formatErrorMessage(e, 'The tag was not cleared'), 'error')
@@ -118,8 +163,8 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
   return (
     <div data-tagged-note style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'grid', gap: 6 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
-        <JobName tag={tag} onOpenJob={onOpenJob} />
-        <span style={meta}>{[tag.jobNumber, tag.customerName].map((s) => (s ?? '').trim()).filter(Boolean).join(' · ')}</span>
+        <WhereName tag={tag} onOpenJob={onOpenJob} onOpenTask={onOpenTask} taskOpens={taskOpens} />
+        <span style={meta}>{whereMeta(tag)}</span>
         <span style={{ marginLeft: 'auto', fontSize: '0.75rem', whiteSpace: 'nowrap', fontWeight: late ? 700 : 400, color: late ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
           {formatDispatchNoteWeekdayShortTimeChicago(tag.noteCreatedAt)}
           {age ? ` · ${age}` : ''}
@@ -153,8 +198,8 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
                 if (tagBox.onKeyDown(e)) return
                 if (e.key === 'Enter') void post()
               }}
-              placeholder={`Answer ${asker} on the job's notes…`}
-              aria-label={`Answer ${asker} on ${tag.jobName.trim() || 'the job'}`}
+              placeholder={task ? `Answer ${asker} on the task's notes…` : `Answer ${asker} on the job's notes…`}
+              aria-label={`Answer ${asker} on ${task ? where : tag.jobName.trim() || 'the job'}`}
               disabled={busy != null}
               maxLength={2000}
               style={{ position: 'relative', flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-strong)', fontSize: '0.8125rem' }}
@@ -183,12 +228,12 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
   )
 }
 
-function AskedLine({ tag, today, fresh, onOpenJob }: { tag: MyTag; today: string; fresh: boolean; onOpenJob?: (jobId: string) => void }) {
+function AskedLine({ tag, today, fresh, onOpenJob, onOpenTask, taskOpens }: { tag: MyTag; today: string; fresh: boolean } & Doors) {
   const said = askedLineWords(tag, today, calendarYmdInAppTzFromIso(tag.noteCreatedAt))
   const who = tag.taggedName.trim() || 'A teammate'
   return (
     <div data-asked-note style={{ fontSize: '0.8125rem', color: 'var(--text-700)', overflowWrap: 'anywhere', fontWeight: fresh ? 600 : 400 }}>
-      <JobName tag={tag} onOpenJob={onOpenJob} /> <span style={meta}>{(tag.jobNumber ?? '').trim()}</span> ·{' '}
+      <WhereName tag={tag} onOpenJob={onOpenJob} onOpenTask={onOpenTask} taskOpens={taskOpens} /> <span style={meta}>{tagIsTask(tag) ? 'task' : (tag.jobNumber ?? '').trim()}</span> ·{' '}
       {tag.clearedAt == null ? (
         <>
           you tagged <span style={theirChip}>@{who}</span>
@@ -206,33 +251,45 @@ function AskedLine({ tag, today, fresh, onOpenJob }: { tag: MyTag; today: string
   )
 }
 
-export function TaggedJobNotesSection({ variant, onOpenJob }: { variant: 'pipeline' | 'window'; onOpenJob?: (jobId: string) => void }) {
+export function TaggedJobNotesSection({
+  variant,
+  kinds = variant === 'pipeline' ? 'job' : variant === 'today' ? 'task' : 'both',
+  onOpenJob,
+  onOpenTask,
+  taskOpens,
+}: {
+  variant: Variant
+  /** Which notes the list holds. The Pipeline's are a job's, Today's a task's, the window's both. */
+  kinds?: TagKinds
+} & Doors) {
   const role = useOptionalAuth()?.role ?? null
   const { tags, error } = useMyNoteTags(canTagInJobNotes(role))
-  const view = useMemo(() => myTagsView(tags ?? []), [tags])
-  const [folded, setFolded] = useState(readFolded)
+  const view = useMemo(() => myTagsView(tagsOfKind(tags ?? [], kinds)), [tags, kinds])
+  const [folded, setFolded] = useState(() => readFolded(variant))
   const [showAll, setShowAll] = useState(false)
   // The answers that were new when this list came on screen keep their mark until it is left.
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set())
   const today = todayYmdInAppTz()
   const open = variant === 'window' || !folded
 
-  const unseenIds = useMemo(() => view.asked.filter((t) => t.clearedAt != null && t.askerSeenAt == null).map((t) => t.tagId), [view.asked])
-  const unseenKey = unseenIds.join(',')
+  const unseen = useMemo(() => view.asked.filter((t) => t.clearedAt != null && t.askerSeenAt == null), [view.asked])
+  const unseenKey = unseen.map((t) => t.tagId).join(',')
   useEffect(() => {
-    if (!open || unseenIds.length === 0) return
-    setFresh((prev) => new Set([...prev, ...unseenIds]))
-    // An answer clears when it is seen: this list is on screen, so it is. A failed mark tries again on the next read.
-    void markAnswersSeen()
+    if (!open || unseen.length === 0) return
+    setFresh((prev) => new Set([...prev, ...unseen.map((t) => t.tagId)]))
+    // An answer clears when it is seen: this list is on screen, so it is. Each kind has its own mark, and only
+    // the kinds on this list are marked. A failed mark tries again on the next read.
+    const sources = [...new Set(unseen.map((t) => (tagIsTask(t) ? 'task' : 'job') as 'job' | 'task'))]
+    void Promise.all(sources.map((source) => markAnswersSeen(source)))
       .then(noteTagsChanged)
       .catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- unseenKey stands for unseenIds
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unseenKey stands for unseen
   }, [open, unseenKey])
 
   const toggleFold = () => {
     setFolded((was) => {
       try {
-        window.localStorage.setItem(FOLD_KEY, was ? '0' : '1')
+        window.localStorage.setItem(FOLD_KEYS[variant], was ? '0' : '1')
       } catch {
         /* a private window keeps the fold for this visit only */
       }
@@ -241,7 +298,7 @@ export function TaggedJobNotesSection({ variant, onOpenJob }: { variant: 'pipeli
   }
 
   const nothing = view.waiting.length === 0 && view.asked.length === 0
-  if (variant === 'pipeline' && (tags == null || nothing) && !error) return null
+  if (variant !== 'window' && (tags == null || nothing) && !error) return null
 
   const split = sectionSplit(view.waiting, showAll)
   const body = (
@@ -254,7 +311,7 @@ export function TaggedJobNotesSection({ variant, onOpenJob }: { variant: 'pipeli
       {tags == null && !error ? <p style={{ margin: 0, padding: '10px 14px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Reading…</p> : null}
       {tags != null && nothing ? <EmptyState compact main={emptyWords({ kind: 'waiting', who: 'you' }).main} /> : null}
       {split.shown.map((t) => (
-        <TagCard key={t.tagId} tag={t} today={today} onOpenJob={onOpenJob} />
+        <TagCard key={t.tagId} tag={t} today={today} onOpenJob={onOpenJob} onOpenTask={onOpenTask} taskOpens={taskOpens} />
       ))}
       {split.rest > 0 ? (
         <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)' }}>
@@ -267,7 +324,7 @@ export function TaggedJobNotesSection({ variant, onOpenJob }: { variant: 'pipeli
         <div data-you-asked style={{ padding: '9px 14px', display: 'grid', gap: 5 }}>
           <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-strong)' }}>You asked · {view.asked.length}</div>
           {view.asked.map((t) => (
-            <AskedLine key={t.tagId} tag={t} today={today} fresh={fresh.has(t.tagId)} onOpenJob={onOpenJob} />
+            <AskedLine key={t.tagId} tag={t} today={today} fresh={fresh.has(t.tagId)} onOpenJob={onOpenJob} onOpenTask={onOpenTask} taskOpens={taskOpens} />
           ))}
         </div>
       ) : null}
@@ -277,9 +334,9 @@ export function TaggedJobNotesSection({ variant, onOpenJob }: { variant: 'pipeli
   if (variant === 'window') return <div data-tagged-job-notes="window">{body}</div>
 
   return (
-    <section data-tagged-job-notes="pipeline" aria-label="Tagged job notes" style={{ margin: '0 0 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
+    <section data-tagged-job-notes={variant} aria-label={TITLE[kinds]} style={{ margin: '0 0 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
       <h3 style={{ margin: 0, padding: '10px 14px', fontSize: '0.84375rem', color: 'var(--text-strong)', borderBottom: open ? '1px solid var(--border)' : 'none', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        Tagged job notes
+        {TITLE[kinds]}
         {view.count > 0 ? <span style={{ ...NAV_BADGE_STYLE, position: 'static', border: 'none' }}>{navBadgeWords(view.count)}</span> : null}
         <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.78rem' }}>
           {view.waiting.length > 0 ? 'waiting on you, oldest first · an answer or No reply needed clears one' : emptyWords({ kind: 'waiting', who: 'you' }).main}

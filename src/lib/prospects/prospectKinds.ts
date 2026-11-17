@@ -265,3 +265,21 @@ export function prospectLandedToast(kind: ProspectKind, prospectName: string, ta
   if (kind === 'gc_lead') return `${who} asked us → ${targetName.trim() || 'customer'}`
   return `${who} converted → ${targetName.trim() || 'customer'}`
 }
+
+/**
+ * The kind's facts as the row holds them, from the New and Edit windows' boxes: where we found them for every
+ * kind; a sub's trades and its range in whole miles (blank, zero or a word is no range); a GC lead's role when
+ * it is one we know. A kind's fact is cleared on the other kinds. Moved out of `src/pages/Prospects.tsx`.
+ */
+export function kindFieldsPayload(
+  k: ProspectKind,
+  f: { source: string; trades: string; maxMiles: string; role: string },
+): { source: string | null; trades: string[]; max_miles: number | null; company_role: ProspectCompanyRole | null } {
+  const miles = Number(f.maxMiles)
+  return {
+    source: f.source.trim() || null,
+    trades: k === 'sub' ? parseTradesText(f.trades) : [],
+    max_miles: k === 'sub' && Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
+    company_role: k === 'gc_lead' && isProspectCompanyRole(f.role) ? f.role : null,
+  }
+}

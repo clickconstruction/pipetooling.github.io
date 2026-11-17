@@ -1566,13 +1566,14 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  // Tagged job notes (punch list #363): amber, a teammate is waiting on an answer. The press opens the list in place.
+  // Tagged notes (punch list #363, and task notes since #375): amber, a teammate is waiting on an answer in a job
+  // note or a task note. The press opens the list of both in place.
   if (inputs.taggedNotesEnabled && inputs.taggedNotes && inputs.taggedNotes.count > 0) {
     const t = inputs.taggedNotes
     items.push({
       key: 'tagged-notes',
       severity: 'amber',
-      kicker: 'Tagged job notes',
+      kicker: 'Tagged notes',
       title: t.title,
       detail: t.detail,
       figure: t.count > 99 ? '99+' : String(t.count),

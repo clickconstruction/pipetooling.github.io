@@ -6,6 +6,13 @@ import { buildManageTimeline, commentTargetInstance, type ManageInstanceLite } f
 import type { DueChangeRow } from '../../lib/checklistDuePushes'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { useOptionalAuth } from '../../hooks/useAuth'
+import { useTaskNoteTags } from '../../hooks/useTaskNoteTags'
+import { canTagInTaskNotes } from '../../lib/jobs/noteTags'
+import { noteTagsChanged, notifyNoteTag, postTaggedTaskNote } from '../../lib/jobs/noteTagsIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { useNoteTagBox } from '../jobs/NoteTagBox'
+import { TaggedNoteBody } from '../jobs/TaggedNoteBody'
 
 /** A long-running repeating task can have years of instances — cap the activity fetch. */
 export const ITEM_ACTIVITY_INSTANCE_CAP = 120
@@ -179,26 +186,60 @@ export function ChecklistItemActivity({
   const targetInstance = postTargetId ? instances.find((i) => i.id === postTargetId) ?? null : null
   const canComplete = !!onComplete && !!authUserId && !!targetInstance && !targetInstance.completed_at
 
+  // Tagging a teammate in a task note (punch list #375): the names at the box come from the day row the note
+  // lands on, and a posted note that carries a tag draws its chip and who it waits on.
+  const viewerRole = useOptionalAuth()?.role ?? null
+  const tagBox = useNoteTagBox({
+    jobId: '',
+    taskInstanceId: postTargetId,
+    draft,
+    setDraft,
+    inputRef: draftRef,
+    enabled: !!authUserId && !!postTargetId && canTagInTaskNotes(viewerRole),
+    place: 'above',
+    bigAt: true,
+  })
+  const tagsByNote = useTaskNoteTags(loading ? null : item.id, events.length)
+
   async function postComment(): Promise<boolean> {
     const body = draft.trim()
     if (!body || posting || !authUserId || !postTargetId) return false
+    const tagged = tagBox.taggedIds(body)
     setPosting(true)
     try {
-      const { error: e } = await supabase.from('checklist_instance_events').insert({
-        instance_id: postTargetId,
-        event_type: 'comment',
-        actor_user_id: authUserId,
-        body,
-      })
-      if (e) {
-        setError(e.message)
-        return false
+      let noteId = `local-${Date.now()}`
+      // The note's own id, when the database handed one back: the phone notice is asked for by it.
+      let postedId: string | null = null
+      if (tagged.length > 0) {
+        // A note that tags someone posts with its tags in one transaction, or not at all.
+        try {
+          noteId = await postTaggedTaskNote(postTargetId, body, tagged)
+          postedId = noteId
+        } catch (err: unknown) {
+          setError(formatErrorMessage(err, 'The note was not posted'))
+          return false
+        }
+      } else {
+        const { data: row, error: e } = await supabase
+          .from('checklist_instance_events')
+          .insert({ instance_id: postTargetId, event_type: 'comment', actor_user_id: authUserId, body })
+          .select('id')
+          .maybeSingle()
+        if (e) {
+          setError(e.message)
+          return false
+        }
+        postedId = row?.id ?? null
       }
+      // The notice (punch list #375): the people this note tags, and anyone whose tag on this task it answered. The
+      // function sends nothing for a note that does neither, and a notice that fails changes nothing here.
+      if (postedId) notifyNoteTag({ taskEventId: postedId })
       setDraft('')
+      tagBox.reset()
       setEvents((prev) => [
         ...prev,
         {
-          id: `local-${Date.now()}`,
+          id: noteId,
           instance_id: postTargetId,
           event_type: 'comment',
           actor_user_id: authUserId,
@@ -207,6 +248,8 @@ export function ChecklistItemActivity({
         },
       ])
       onPosted?.(postTargetId, body)
+      // A typed note may tag someone, and it answers any tag that waited on its writer on this task.
+      noteTagsChanged()
       return true
     } finally {
       setPosting(false)
@@ -293,7 +336,8 @@ export function ChecklistItemActivity({
               return (
                 <div key={entry.id} style={{ fontSize: '0.9375rem', color: 'var(--text-700)', lineHeight: 1.45 }}>
                   <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span>{' '}
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{stripStamp(entry.at)}{dayChip}</span> — {entry.body}
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{stripStamp(entry.at)}{dayChip}</span> —{' '}
+                  <TaggedNoteBody body={entry.body ?? ''} tags={tagsByNote.get(entry.id)} postedIso={entry.at} viewerId={authUserId} />
                 </div>
               )
             }
@@ -349,13 +393,23 @@ export function ChecklistItemActivity({
         // One wrapping row (v2.2143): the note box keeps ≥240px and takes all the
         // slack; when the row is too narrow for it plus the buttons (a phone),
         // the button group drops underneath and fills the width. No breakpoint.
+        // The names offered and picked sit above the box, and the row of names opens above them, clear of a phone's keyboard (punch list #375).
+        <div style={{ position: 'relative' }}>
+        {tagBox.list}
+        {tagBox.chips}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {/* The mark in the words is drawn under the box, so the box is see-through and this holds its background. */}
+          <div style={{ position: 'relative', flex: '999 1 240px', minWidth: 0, display: 'flex', background: 'var(--surface)', borderRadius: 10 }}>
+          {tagBox.mark}
           <textarea
             ref={draftRef}
             value={draft}
             rows={1}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => tagBox.onText(e.target.value, e.target.selectionStart)}
+            onClick={(e) => tagBox.onText(e.currentTarget.value, e.currentTarget.selectionStart)}
             onKeyDown={(e) => {
+              // The row of names takes its own keys first: Enter picks a name and Escape shuts the row.
+              if (tagBox.onKeyDown(e)) return
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 void postComment()
@@ -366,7 +420,9 @@ export function ChecklistItemActivity({
             enterKeyHint="send"
             aria-label={`Add a note to ${item.title}`}
             style={{
-              flex: '999 1 240px',
+              position: 'relative',
+              flex: '1 1 auto',
+              width: '100%',
               minWidth: 0,
               minHeight: 44,
               maxHeight: DRAFT_MAX_HEIGHT,
@@ -379,9 +435,13 @@ export function ChecklistItemActivity({
               fontFamily: 'inherit',
               border: '2px solid var(--text-600)',
               borderRadius: 10,
+              background: 'transparent',
+              color: 'var(--text-strong)',
             }}
           />
+          </div>
           <div style={{ flex: '1 0 auto', display: 'flex', gap: '0.5rem' }}>
+            {tagBox.atButton}
             <button
               type="button"
               onClick={() => void postComment()}
@@ -425,6 +485,7 @@ export function ChecklistItemActivity({
               </button>
             ) : null}
           </div>
+        </div>
         </div>
       ) : null}
       {footerActions ? (

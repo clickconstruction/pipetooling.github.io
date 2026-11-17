@@ -1,7 +1,7 @@
 /**
  * "How do I get paid?" — the sub portal's help guide (v2.2922). Bottom line
  * first, then the four steps of the sub's money with the same dots the job
- * cards use, the one button, new work offers, documents, deductions and what
+ * cards use, the one button, new work offers, documents, deductions, statements and what
  * is coming. Every line has an en/es pair; the page's own language toggle
  * picks. Pure content: no React.
  */
@@ -30,6 +30,8 @@ export type GuideContent = {
   offers: { title: string; sub: string; body: string }
   documents: { title: string; sub: string; body: string; currentTitle: string; currentBody: string; lapsedTitle: string; lapsedBody: string; lapsedButton: string }
   deductions: { title: string; sub: string; body: string }
+  /** v2.7597 (punch list #371): the Statements view, in a paragraph. */
+  statements: { title: string; sub: string; body: string }
   comingSoon: { title: string; sub: string; tag: string; items: Array<{ title: string; body: string }> }
   plansPill: string
   plansCaption: string
@@ -112,6 +114,11 @@ const EN: GuideContent = {
     title: 'Payments & deductions',
     sub: 'Reading the ledger',
     body: 'The Payments list shows every payment with the day it went out and a memo. A minus amount is a deduction we went over with you first — punch work we paid someone else to finish, a restock, a redo — and its memo says why. The balance at the bottom is what is still owed to you across every job, the same figure at the top of the page.',
+  },
+  statements: {
+    title: 'Your statements',
+    sub: 'Papers for your records',
+    body: 'Tap Statements at the top of the page. It shows your statement of account, a work statement for each job and each payment as one record, paid ones too. Each one saves as a PDF, the same paper our office prints. A number shows where our office has made the paper. The PDFs are in English. Tap Got it on a payment once it reaches you. If a figure looks wrong, tap Something is wrong and tell us. Neither one changes what you are paid.',
   },
   comingSoon: {
     title: 'Coming soon',
@@ -203,6 +210,11 @@ const ES: GuideContent = {
     title: 'Pagos y descuentos',
     sub: 'Cómo leer el registro',
     body: 'La lista de Pagos muestra cada pago con la fecha en que salió y una nota. Un monto negativo es un descuento que revisamos con usted primero — remate que le pagamos a alguien más, una reposición, un retrabajo — y su nota dice por qué. El saldo al final es lo que todavía se le debe en todos los trabajos, la misma cifra de arriba.',
+  },
+  statements: {
+    title: 'Sus estados de cuenta',
+    sub: 'Papeles para sus registros',
+    body: 'Toque Estados en la parte de arriba de la página. Ahí aparece su estado de cuenta, una constancia por cada trabajo y cada pago como un solo registro, también los ya pagados. Cada uno se guarda como PDF, el mismo papel que imprime nuestra oficina. Un número aparece cuando nuestra oficina ya hizo el papel. Los PDF están en inglés. Toque Ya lo recibí en un pago cuando le llegue. Si una cifra se ve mal, toque Algo está mal y díganos. Ninguna de las dos cambia lo que se le paga.',
   },
   comingSoon: {
     title: 'Próximamente',

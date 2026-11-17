@@ -12,7 +12,9 @@ import {
   rankTaggable,
   removePick,
   tagNameQueryAtCaret,
+  tagPersonSays,
   tagTypingAtCaret,
+  taskOffer,
   type TagListRow,
   type TaggablePerson,
 } from '../../lib/jobs/noteTags'
@@ -76,14 +78,6 @@ const pressSaysStyle: CSSProperties = { fontSize: '0.6875rem', color: 'var(--tex
 /** The keys a phone keyboard reports when it does not say which key was pressed. */
 const UNNAMED_KEYS: readonly string[] = ['Unidentified', 'Process']
 
-/** What the person does, as the press says it under the name. */
-function roleWords(row: TagListRow): string {
-  if (row.group === 'asked') return 'asked you'
-  const person = row.person
-  const role = person.role === 'helpers' ? 'crew' : person.role === 'superintendent' ? 'superintendent' : person.role === 'primary' ? 'crew' : 'office'
-  return person.onJob && role !== 'office' ? `${role} · on this job` : role
-}
-
 export type NoteTagBox = {
   /** The line above the box, in the flow: the picked names, each with its ×, and the names offered before a letter is typed (null when neither). */
   chips: ReactNode
@@ -107,7 +101,14 @@ export type NoteTagBox = {
 }
 
 export function useNoteTagBox(opts: {
+  /** The job whose notes the box writes. Empty when the box is a task's. */
   jobId: string
+  /**
+   * The task day row whose thread the box writes (punch list #375). With it the names come from
+   * `task_note_taggable`, they are read as soon as the box is drawn so the task's own people can
+   * be offered before a letter is typed, and a caller the task's list refuses gets a plain box.
+   */
+  taskInstanceId?: string | null
   draft: string
   setDraft: (value: string) => void
   inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>
@@ -119,8 +120,15 @@ export function useNoteTagBox(opts: {
   offer?: readonly NoteTagOffer[]
   /** A phone opens the row above the box, clear of the keyboard. */
   place?: 'above' | 'below'
+  /** The @ button as tall as a box whose buttons are 44 px, a task's. */
+  bigAt?: boolean
 }): NoteTagBox {
-  const { jobId, draft, setDraft, inputRef, enabled, askerId = null, offer, place = 'below' } = opts
+  const { jobId, taskInstanceId = null, draft, setDraft, inputRef, askerId = null, offer, place = 'below', bigAt = false } = opts
+  // What the names are read for. A task's box and a job's box never share a list.
+  const target = taskInstanceId ? `task:${taskInstanceId}` : `job:${jobId}`
+  // The task's list refused this caller: they are not one of its people, so the box is plain.
+  const [refusedFor, setRefusedFor] = useState<string | null>(null)
+  const enabled = opts.enabled && refusedFor !== target
   const [picked, setPicked] = useState<Picked[]>([])
   const [caret, setCaret] = useState<number | null>(null)
   const [dismissed, setDismissed] = useState(false)
@@ -141,28 +149,48 @@ export function useNoteTagBox(opts: {
   const offerableNames = useMemo(() => offerable.map((r) => r.person.name), [offerable])
 
   const typing = enabled && caret != null ? tagTypingAtCaret(draft, caret) : null
-  const wanted = typing != null
+  // A job's names wait for the first @. A task's are read with the box, for the names offered before a letter.
+  const wanted = enabled && (typing != null || taskInstanceId != null)
   const query = enabled && !dismissed && caret != null ? tagNameQueryAtCaret(draft, caret, offerableNames, liveNames) : null
 
-  // The names are read once per job, the first time an @ is typed.
+  // The names are read once per job or task.
   useEffect(() => {
-    if (!wanted || askedFor.current === jobId) return
-    askedFor.current = jobId
+    if (!wanted || askedFor.current === target) return
+    askedFor.current = target
     setPeople(null)
     setLoadError(null)
     let alive = true
-    void supabase.rpc('job_note_taggable', { p_job_id: jobId }).then(({ data, error }) => {
-      if (!alive) return
-      if (error) {
-        setLoadError(formatErrorMessage(error, 'The names could not be read'))
-        return
-      }
-      setPeople((data ?? []).map((r) => ({ userId: r.user_id, name: r.name, role: r.role, onJob: r.on_job })))
-    })
+    let answered = false
+    if (taskInstanceId) {
+      void supabase.rpc('task_note_taggable', { p_instance_id: taskInstanceId }).then(({ data, error }) => {
+        if (!alive) return
+        answered = true
+        if (error) {
+          // 42501 is the list saying this caller is not one of the task's people. That is no failure to show.
+          if (error.code === '42501') setRefusedFor(target)
+          else setLoadError(formatErrorMessage(error, 'The names could not be read'))
+          return
+        }
+        setPeople((data ?? []).map((r) => ({ userId: r.user_id, name: r.name, role: r.role, onJob: false, onTask: r.on_task, gave: r.gave })))
+      })
+    } else {
+      void supabase.rpc('job_note_taggable', { p_job_id: jobId }).then(({ data, error }) => {
+        if (!alive) return
+        answered = true
+        if (error) {
+          setLoadError(formatErrorMessage(error, 'The names could not be read'))
+          return
+        }
+        setPeople((data ?? []).map((r) => ({ userId: r.user_id, name: r.name, role: r.role, onJob: r.on_job })))
+      })
+    }
     return () => {
       alive = false
+      // A read dropped before it answered (the @ was typed and taken back at once) is asked again the next time
+      // the names are wanted. Before, the box said Reading the names… from then on.
+      if (!answered) askedFor.current = null
     }
-  }, [wanted, jobId])
+  }, [wanted, target, taskInstanceId, jobId])
 
   const rows: TagListRow[] = useMemo(() => (query ? rankTaggable(offerable.map((r) => r.person), query.query, { askerId }) : []), [query, offerable, askerId])
   const active = rows.length === 0 ? 0 : Math.min(sel, rows.length - 1)
@@ -320,8 +348,13 @@ export function useNoteTagBox(opts: {
     </button>
   )
 
-  // Offered before a letter is typed. Once the names are read, only someone the list holds.
-  const offered = enabled && !open ? (offer ?? []).filter((o) => o.name.trim() && !live.some((p) => p.userId === o.userId) && (people == null || people.some((p) => p.userId === o.userId))) : []
+  // Offered before a letter is typed. In an answer box, whoever the box was handed, and once the names are
+  // read only someone the list holds. In a task's own box, its own people, three at most.
+  const offered: NoteTagOffer[] = !enabled || open
+    ? []
+    : taskInstanceId && !offer
+      ? taskOffer(people ?? [], live.map((p) => p.userId)).map((r) => ({ userId: r.person.userId, name: r.person.name, says: tagPersonSays(r) }))
+      : (offer ?? []).filter((o) => o.name.trim() && !live.some((p) => p.userId === o.userId) && (people == null || people.some((p) => p.userId === o.userId)))
 
   const chips =
     enabled && (live.length > 0 || offered.length > 0) ? (
@@ -366,7 +399,11 @@ export function useNoteTagBox(opts: {
         e.stopPropagation()
         pressAt()
       }}
-      style={{ background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 999, minWidth: 28, padding: '1px 8px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+      style={
+        bigAt
+          ? { background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 10, width: 44, height: 44, padding: 0, fontSize: '1rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }
+          : { background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 999, minWidth: 28, padding: '1px 8px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }
+      }
     >
       @
     </button>
@@ -402,9 +439,9 @@ export function useNoteTagBox(opts: {
       ) : people == null ? (
         <div style={hintStyle}>Reading the names…</div>
       ) : rows.length === 0 ? (
-        <EmptyState compact main="Nobody else can be tagged on this job" />
+        <EmptyState compact main={taskInstanceId ? 'Nobody else can be tagged on this task' : 'Nobody else can be tagged on this job'} />
       ) : (
-        rows.map((row, i) => namePress(row.person, roleWords(row), { option: true, selected: i === active }))
+        rows.map((row, i) => namePress(row.person, tagPersonSays(row), { option: true, selected: i === active }))
       )}
     </div>
   ) : null

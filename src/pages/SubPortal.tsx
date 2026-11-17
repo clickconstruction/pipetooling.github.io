@@ -3,7 +3,7 @@ import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSamp
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
@@ -25,6 +25,9 @@ import { SUB_PORTAL_FOCUS_PARAM, isSubPortalFocused, parseSubPortalFocus, subPor
 import { PlansPill, SubPortalGuideButton, SubPortalGuideSheet } from '../components/subPortal/SubPortalGuide'
 import { SubPortalDatePicker } from '../components/subPortal/SubPortalDatePicker'
 import { SubPortalYourDays } from '../components/subPortal/SubPortalYourDays'
+import { SubPortalStatementsView, type SubPortalAnswer, type SubPortalAnswerResult } from '../components/subPortal/SubPortalStatementsView'
+import { parseSubPortalAnswer } from '../lib/subPortal/subPortalPapersPayload'
+import { paperDay } from '../../supabase/functions/_shared/subPapers'
 import { pickEndFromStart } from '../../supabase/functions/_shared/subPick'
 import { subPortalGuide } from '../lib/subPortal/subPortalGuideStrings'
 import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
@@ -45,6 +48,11 @@ import {
  * sub-visible by design), sign-to-accept work offers, and paperwork STATUS.
  * Bilingual (EN/ES toggle), print-ready (the Print button is the PDF path),
  * deliberately single-theme light with every color painted explicitly.
+ *
+ * Since v2.7597 (punch list #371) a switch under the head, Today and Statements,
+ * opens a second view of the same page: the sub's own papers
+ * (`SubPortalStatementsView`). Today is this page as it always was, and Print
+ * still prints it, whichever view is showing.
  */
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -146,6 +154,8 @@ export default function SubPortal() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   /** Bumped by Try again: the statement reads again. */
   const [reloadKey, setReloadKey] = useState(0)
+  /** Today is the page a sub knows. Statements is their papers. A link can open on Statements (`?view=statements`). */
+  const [view, setView] = useState<'today' | 'statements'>(() => (params.get('view') === 'statements' ? 'statements' : 'today'))
 
   const t = (key: SubPortalStringKey, vars?: Record<string, string>) => subPortalT(lang, key, vars)
 
@@ -191,6 +201,31 @@ export default function SubPortal() {
 
   const submitToken = state.kind === 'ready' ? (state.payload.requestToken ?? token) : token
 
+  /**
+   * One answer from the Statements view (v2.7609): *Got it* on a payment, or *Something is wrong* on a statement
+   * or a payment. It goes to the page's own function as a POST, with the link in the body. The sample and demo
+   * pages send nothing and answer as the function would.
+   */
+  const answerFromPage = async (a: SubPortalAnswer): Promise<SubPortalAnswerResult> => {
+    if (demoMode || sample) {
+      const day = paperDay(state.kind === 'ready' && state.payload.papers?.ok ? state.payload.papers.ctx.today : '')
+      return a.action === 'got_it' ? { ok: true, received: { [a.key]: day } } : { ok: true, wrong: { about: a.about, key: a.key, day, note: a.note } }
+    }
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/sub-portal${preview ? `?${PUBLIC_PREVIEW_PARAM}=1` : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) },
+        body: JSON.stringify({ ...(submitToken ? { token: submitToken } : { slug }), ...a }),
+      })
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
+      // Two refusals have words of the page's own: the office looking at a sub's page, and a tenth note in a day.
+      if (!res.ok || !json?.ok) return { ok: false, failure: portalFailureCause(res.status, json, 'send'), ...(res.status === 403 ? { say: 'answerOfficeLooking' as const } : res.status === 429 ? { say: 'answerTooManyNotes' as const } : {}) }
+      return { ok: true, ...parseSubPortalAnswer(json) }
+    } catch (e) {
+      return { ok: false, failure: portalFailureKind(e) }
+    }
+  }
+
   return (
     <div
       data-theme="light"
@@ -229,6 +264,9 @@ export default function SubPortal() {
         @keyframes sp-focus-pulse{0%{box-shadow:0 0 0 6px transparent,0 0 0 9px transparent;background:transparent}10%,74%{box-shadow:0 0 0 6px ${CARD},0 0 0 9px ${COPPER};background:#fbf1e8}100%{box-shadow:0 0 0 6px transparent,0 0 0 9px transparent;background:transparent}}
         @media (prefers-reduced-motion:reduce){.sp-focus{animation:none;box-shadow:0 0 0 6px ${CARD},0 0 0 9px ${COPPER};background:#fbf1e8}}
         @media print{.sp-focus{animation:none;box-shadow:none;background:transparent}}
+        /* Statements showing: Today leaves the screen and stays the paper Print prints */
+        .sp-today-off{display:none}
+        @media print{.sp-today-off{display:block !important}}
       `}</style>
       <div style={{ maxWidth: 730, margin: '0 auto' }}>
         <div data-screen-only style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 8 }}>
@@ -307,9 +345,35 @@ export default function SubPortal() {
           </div>
         )}
 
-        {state.kind === 'ready' && (
-          <SubPortalStatement payload={state.payload} lang={lang} t={t} submitToken={submitToken} focus={focus} />
-        )}
+        {state.kind === 'ready' &&
+          (() => {
+            const papers = state.payload.papers
+            const showing = papers && view === 'statements' ? 'statements' : 'today'
+            // The switch is drawn only when the function handed papers over: a page without them is the page as it was.
+            const switcher = papers ? (
+              <div data-screen-only role="group" aria-label={`${t('viewToday')} / ${t('viewStatements')}`} style={{ display: 'inline-flex', gap: 3, marginTop: 16, padding: 3, border: `1px solid ${HAIR}`, borderRadius: 999, background: CARD }}>
+                {(['today', 'statements'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={showing === v}
+                    onClick={() => setView(v)}
+                    style={{ background: showing === v ? INK : 'transparent', color: showing === v ? '#fff' : INK, border: 'none', borderRadius: 999, padding: '0.4rem 1.1rem', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {t(v === 'today' ? 'viewToday' : 'viewStatements')}
+                  </button>
+                ))}
+              </div>
+            ) : null
+            return (
+              <>
+                <div className={showing === 'statements' ? 'sp-today-off' : undefined}>
+                  <SubPortalStatement payload={state.payload} lang={lang} t={t} submitToken={submitToken} focus={focus} switcher={switcher} />
+                </div>
+                {papers && showing === 'statements' ? <SubPortalStatementsView papers={papers} subName={state.payload.subName} lang={lang} t={t} switcher={switcher} onAnswer={answerFromPage} /> : null}
+              </>
+            )
+          })()}
       </div>
     </div>
   )
@@ -347,12 +411,15 @@ function SubPortalStatement({
   t,
   submitToken,
   focus,
+  switcher,
 }: {
   payload: SubPortalPayload
   lang: SubPortalLang
   t: T
   submitToken: string
   focus: SubPortalFocus | null
+  /** The Today and Statements switch (v2.7597), drawn under the head. Null when the page has no papers. */
+  switcher?: ReactNode
 }) {
   const payRunDayLabel = formatPayRunDay(payload.payRun.day, lang)
   // "How do I get paid?" (v2.2922): the guide at the very bottom, a sheet on phones and a dialog on desktop.
@@ -395,6 +462,8 @@ function SubPortalStatement({
           ) : null}
         </div>
       </div>
+
+      {switcher ?? null}
 
       <div data-screen-only style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 16 }}>
         <span style={{ fontSize: 11, color: FAINT }}>{t('printHint')}</span>

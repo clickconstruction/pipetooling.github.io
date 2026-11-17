@@ -12,6 +12,12 @@ import type { LienDeskEntry, LienNoticePolicy } from './lienDesk'
  */
 
 export const LIEN_GC_PICKER_URGENT_DAYS = 7
+/**
+ * The head over the GCs whose windows have all closed, at the foot of the picker (v2.3817). It opens on *Nothing*
+ * and is a section's title, not an empty list, so it is named here: `check:empty-words` reads a sentence written
+ * straight into markup as an empty state.
+ */
+export const LIEN_GC_PICKER_NOTHING_LEFT = 'Nothing left to claim'
 
 export type LienGcPickerOption = {
   id: string

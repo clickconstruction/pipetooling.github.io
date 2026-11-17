@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Documents: an Agreements tab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@700&display=swap">
+<style>
+  /* Layout: one column of sections. Every drawn screen is made by one script from one list of made-up agreements
+     (ROWS below), so a count on a chip, a band or a line is counted from the rows drawn and cannot disagree with
+     them. The first frame works: its chips and its find box filter the list. Drawn 2026-11-17. Nothing here is built.
+     Every customer, person, company, job, street and date on a drawn screen is made up. No live row is on this page. */
+  :root {
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-blue-700: #1d4ed8; --text-green-700: #15803d; --text-green-800: #166534; --text-amber-800: #92400e;
+    --text-red-700: #b91c1c; --text-violet-700: #6d28d9;
+    --bg-blue-tint: #eff6ff; --bg-green-tint: #f0fdf4; --bg-amber-tint: #fffbeb; --bg-amber-100: #fef3c7;
+    --bg-red-tint: #fef2f2; --bg-red-100: #fee2e2; --bg-violet-tint: #f5f3ff;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --display: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+      --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+      --border: #374151; --border-strong: #4b5563;
+      --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+      --text-blue-700: #93c5fd; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d;
+      --text-red-700: #f87171; --text-violet-700: #c4b5fd;
+      --bg-blue-tint: #1e3358; --bg-green-tint: #12301f; --bg-amber-tint: #3a2f11; --bg-amber-100: #45390f;
+      --bg-red-tint: #3b1a1a; --bg-red-100: #4c1d1d; --bg-violet-tint: #2c2350;
+      --new: #c4b5fd; --new-tint: #2a2350;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-blue-700: #93c5fd; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d;
+    --text-red-700: #f87171; --text-violet-700: #c4b5fd;
+    --bg-blue-tint: #1e3358; --bg-green-tint: #12301f; --bg-amber-tint: #3a2f11; --bg-amber-100: #45390f;
+    --bg-red-tint: #3b1a1a; --bg-red-100: #4c1d1d; --bg-violet-tint: #2c2350;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 80px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font: 700 28px/1.15 var(--display); color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; max-width: 78ch; }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+  h2 { font: 700 20px/1.2 var(--display); margin: 46px 0 4px; color: var(--text-strong); text-wrap: balance; }
+  h3 { font-size: 14px; margin: 0 0 4px; color: var(--text-strong); }
+  p { margin: 0; }
+  .lede { max-width: 78ch; margin: 0 0 6px; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 86ch; border-radius: 0 8px 8px 0; }
+  .note b, .lede b, li b, td b { color: var(--text-strong); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .say { font-size: 13px; max-width: 64ch; }
+  .frame { border: 2px solid var(--new); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); background: var(--bg-page); color: var(--text-base); min-width: 0; overflow: hidden; margin-top: 14px; }
+  .frame.today { border: 1px solid var(--border-strong); }
+  .grid .frame { margin-top: 0; }
+  .grid .tab { padding: 5px 11px; font-size: 13px; }
+  .grid .page { padding: 6px 10px 12px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
+
+  /* the short of it */
+  .short { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 0; margin-top: 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .short > div { padding: 12px 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 0 -1px -1px 0; }
+  .short b { display: block; color: var(--text-strong); font: 700 14px/1.3 var(--display); margin-bottom: 2px; }
+  .short span { font-size: 13px; }
+
+  /* the app's own pieces: the Documents page */
+  .appbar { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-700); flex-wrap: wrap; }
+  .appbar .on { color: var(--text-link); }
+  .appbar .as { margin-left: auto; font-weight: 400; color: var(--text-muted); font-size: 12px; }
+  .page { padding: 6px 16px 14px; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tab { font: 400 14px/1.4 var(--font); padding: 6px 20px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); white-space: nowrap; }
+  .tab.on { background: #2563eb; color: #fff; font-weight: 700; }
+  .tab.fresh { box-shadow: 0 0 0 2px var(--new); }
+  .find { width: 100%; padding: 8px 11px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-strong); font: 400 14px/1.4 var(--font); }
+  div.find { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+  .chips .lbl { font-size: 12px; color: var(--text-muted); margin-right: 2px; }
+  .chipb { font: 500 12.5px/1.3 var(--font); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; }
+  button.chipb { cursor: pointer; }
+  .chipb.on { font-weight: 700; background: var(--bg-blue-tint); border-color: #3b82f6; color: var(--text-blue-700); }
+  .chipb .n { font-weight: 700; margin-left: 4px; }
+  .count { margin: 10px 0 0; font-size: 13px; color: var(--text-muted); }
+  .band { margin: 8px 0 0; padding: 6px 10px; border-radius: 6px; background: var(--bg-subtle); border-left: 3px solid var(--text-blue-700); color: var(--text-strong); font-size: 14px; font-weight: 800; }
+  .band span { margin-left: 8px; color: var(--text-muted); font-weight: 500; font-size: 13px; }
+  .arow { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: flex-start; justify-content: space-between; padding: 9px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .arow:first-of-type { border-radius: 8px 8px 0 0; }
+  .arow .l { min-width: 0; flex: 1 1 320px; }
+  .arow .r { display: flex; gap: 8px; align-items: center; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; }
+  .arow .ttl { color: var(--text-link); font-weight: 600; overflow-wrap: anywhere; }
+  .arow .sub { font-size: 12.8px; color: var(--text-muted); margin-top: 1px; overflow-wrap: anywhere; }
+  .arow .sub b { color: var(--text-700); font-weight: 600; }
+  .arow .sub .job { color: var(--text-green-700); font-weight: 500; }
+  .arow .when { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ktag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; margin-right: 7px; white-space: nowrap; vertical-align: 1px; }
+  .k-jobs { background: var(--bg-blue-tint); color: var(--text-blue-700); }
+  .k-warranty { background: var(--bg-green-tint); color: var(--text-green-800); }
+  .k-people { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .k-partners { background: var(--bg-violet-tint); color: var(--text-violet-700); }
+  .k-orders { background: var(--bg-muted); color: var(--text-700); }
+  .k-gc { background: transparent; color: var(--text-700); box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .st { display: inline-block; font-size: 11.2px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  .st.waiting { background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .st.signed { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .st.ended { background: var(--bg-red-100); color: var(--text-red-700); }
+  .more { margin-top: 10px; }
+  .quiet { font: 500 13px/1.3 var(--font); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); }
+  .doors { margin-top: 12px; font-size: 12.8px; color: var(--text-muted); }
+  .doors a { color: var(--text-link); font-weight: 600; text-decoration: none; }
+  .empty { margin-top: 10px; padding: 28px 16px; text-align: center; color: var(--text-muted); background: var(--surface); border: 1px dashed var(--border-strong); border-radius: 8px; display: grid; gap: 10px; justify-items: center; }
+  .empty b { color: var(--text-strong); font-weight: 600; }
+  .press { font: 600 13px/1 var(--font); padding: 8px 13px; border-radius: 7px; border: 1px solid #2563eb; background: #2563eb; color: #fff; }
+  .failed { margin-top: 10px; padding: 12px 14px; border-radius: 8px; background: var(--bg-red-tint); border: 1px solid var(--text-red-700); color: var(--text-strong); display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .failed small { display: block; color: var(--text-700); font-size: 12.8px; }
+  .gone { margin-top: 4px; padding: 12px 14px; border-radius: 8px; background: var(--surface); border: 1px dashed var(--border-strong); color: var(--text-muted); font-size: 13px; }
+  .phone { width: min(100%, 372px); border: 8px solid var(--text-strong); border-radius: 30px; background: var(--bg-page); overflow: hidden; box-shadow: 0 8px 26px rgba(0,0,0,.2); justify-self: center; outline: 2px solid var(--new); outline-offset: 3px; }
+  .phone .page { padding: 6px 10px 12px; }
+  .phone .tab { padding: 6px 12px; }
+  .phonewrap { display: grid; grid-template-columns: minmax(0, 372px) minmax(0, 1fr); gap: 28px; margin-top: 16px; align-items: start; }
+  @media (max-width: 760px) { .phonewrap { grid-template-columns: minmax(0, 1fr); } }
+
+  /* tables */
+  .tbl { overflow-x: auto; margin-top: 14px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  th { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  tr:last-child td { border-bottom: 0; }
+  td.pick { color: var(--text-strong); font-weight: 600; }
+  td.no { color: var(--text-red-700); font-weight: 600; }
+  td.yes { color: var(--text-green-700); font-weight: 600; }
+  ul.plain { margin: 10px 0 0; padding-left: 18px; max-width: 80ch; display: grid; gap: 5px; }
+  .train { display: grid; gap: 8px; margin-top: 14px; }
+  .pr { display: grid; grid-template-columns: 54px 1fr auto; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .pr .k { font: 700 13px/1.4 var(--display); color: var(--copper); }
+  .pr .sz { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text-muted); border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+  .pr b { color: var(--text-strong); }
+  .pr p { font-size: 13px; }
+  @media (max-width: 520px) { .pr { grid-template-columns: 1fr auto; } .pr .k { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #376 · drawn 17 November 2026 · the calls settled the same day · nothing here is built</p>
+    <h1>Documents: an Agreements tab</h1>
+    <p>The app makes, sends and signs agreements in six places, and the Documents page lists none of them as agreements. This page draws one tab that does. Every name, job and date on a drawn screen is made up. A violet outline marks what would be new.</p>
+    <nav class="jump" aria-label="Sections">
+      <a href="#short">The short of it</a>
+      <a href="#today">Today</a>
+      <a href="#tab">The tab</a>
+      <a href="#states">Its states</a>
+      <a href="#phone">On a phone</a>
+      <a href="#who">Who sees what</a>
+      <a href="#opens">What a press opens</a>
+      <a href="#plan">The plan</a>
+      <a href="#out">Left out</a>
+      <a href="#calls">The calls</a>
+    </nav>
+  </header>
+
+  <section id="short">
+    <div class="short">
+      <div><b>One list, every kind</b><span>Job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders, newest first.</span></div>
+      <div><b>It adds a view and renames nothing</b><span>Contract under a job stays. A press opens the window that kind already has. No new viewer.</span></div>
+      <div><b>Row security decides</b><span>The tab is the office's, like Sent copies. Nobody reads a paper here that they cannot already read.</span></div>
+      <div><b>Not capped, and findable</b><span>Every agreement, a hundred at a time. Find one by customer, job number, person, company or the paper's name.</span></div>
+    </div>
+  </section>
+
+  <section id="today">
+    <h2>Today: where each agreement lives</h2>
+    <p class="lede">Read in the code on 17 November. The Documents page has ten tabs and none is for agreements. A job's signed paper shows there only as a line under its job on the Jobs tab.</p>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:27%">Kind</th><th style="width:33%">Where it is made and kept</th><th>On Documents today</th></tr></thead>
+      <tbody>
+        <tr><td><b>Job contract, warranty, a GC's own paper, a signed paper filed by the office</b></td><td>The Contract window on a job. The Customer page's Agreements card for one paper over several jobs.</td><td>A line under its job on the Jobs tab. That tab reads the newest 200 jobs, its search does not match these lines, and a customer cannot be looked up by their paper.</td></tr>
+        <tr><td><b>Staff and sub agreements</b></td><td>People → Contracts, by person and by document.</td><td class="no">Not listed. Only the emailed copy, under Sent copies.</td></tr>
+        <tr><td><b>Partner agreement</b></td><td>Partnerships → Agreements, a dev's page. The paper itself is a person's agreement.</td><td class="no">Not listed.</td></tr>
+        <tr><td><b>Sub work order</b></td><td>The work order window on a job, signed on the sub's page.</td><td class="no">Not listed. Only a printed copy, under Sent copies.</td></tr>
+        <tr><td><b>GC mode: our contract with the owner, a trade's statement of work, a trade company's agreement</b></td><td>The GC project, the trade's page and the customer's page.</td><td class="no">Not listed.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">A brief the digital twins read already says <b>Contracts and document packets → /documents</b>. The page has never had that list.</p>
+  </section>
+
+  <section id="tab">
+    <h2>The tab <span class="tag">new</span></h2>
+    <p class="lede">This frame works. Press a chip or type in the box. <b>Agreements</b> sits after Sent copies, since both are the office's ledgers of paper. Each line is one agreement: its kind, its name, who it is with, the job or the person, its state in that kind's own words, and its day.</p>
+    <div class="frame" id="live"></div>
+    <p class="note">The second row of chips opens on <b>Sent and signed</b>, so a voided paper stays out of the way until its chip is pressed. The count on <b>Waiting on a signature</b> is the list of what to chase.</p>
+  </section>
+
+  <section id="states">
+    <h2>Its states</h2>
+    <p class="lede">The same list, drawn still in each state the tab can be in.</p>
+    <div class="grid">
+      <div class="col"><div class="cap">A chip pressed: waiting on a signature</div><div class="frame" id="s-waiting"></div></div>
+      <div class="col"><div class="cap">The find box: a job's name</div><div class="frame" id="s-find"></div></div>
+      <div class="col"><div class="cap">A kind chip: staff and subs</div><div class="frame" id="s-people"></div></div>
+      <div class="col"><div class="cap">Voided or ended</div><div class="frame" id="s-ended"></div></div>
+      <div class="col"><div class="cap">Nothing on file yet</div><div class="frame" id="s-empty"></div><p class="say">An empty list names what fills it and offers the press.</p></div>
+      <div class="col"><div class="cap">Nothing matches</div><div class="frame" id="s-nomatch"></div></div>
+      <div class="col"><div class="cap">The read failed</div><div class="frame" id="s-failed"></div><p class="say">A failed read says so with its reason and Retry. It never reads as an empty ledger.</p></div>
+    </div>
+  </section>
+
+  <section id="phone">
+    <h2>On a phone</h2>
+    <div class="phonewrap">
+      <div class="phone" id="s-phone"></div>
+      <div class="col">
+        <p class="say">The tab row wraps as it does today. The chips wrap under the find box. Each line stacks: the name first, who and which job under it, then the state and the day.</p>
+        <p class="say">Nothing scrolls sideways. A line is a list line, as on Sent copies, and never a wide table.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="who">
+    <h2>Who sees what</h2>
+    <p class="lede">The database decides which rows a person reads, and the tab shows only to roles whose rows it would hold. Today the office reads every job contract and every person's agreement. An estimator, a primary and a superintendent read neither.</p>
+    <div class="grid">
+      <div class="col"><div class="cap">The office: assistant, controller, owner, dev</div><div class="frame" id="w-office"></div><p class="say">The four roles that already read these papers on the job, on People → Contracts and under Sent copies.</p></div>
+      <div class="col"><div class="cap">A dev, once GC mode's kinds are in</div><div class="frame" id="w-dev"></div><p class="say">GC mode's papers show only to the roles GC mode opens them to. The owner contract is a dev's today. A statement of work is also the owner's and the controller's.</p></div>
+      <div class="col"><div class="cap">An estimator</div><div class="frame today" id="w-estimator"></div><p class="say">No Agreements tab, as with Sent copies. Their work orders stay where they make them, on the job.</p></div>
+      <div class="col"><div class="cap">A primary or a superintendent</div><div class="frame today" id="w-primary"></div><p class="say">No Agreements tab. An old link to it lands on Estimates.</p></div>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:34%">Kind</th><th>Who the database lets read it today</th></tr></thead>
+      <tbody>
+        <tr><td><b>Job contract, warranty, their paper, signed paper</b></td><td>Dev, owner, assistant, controller.</td></tr>
+        <tr><td><b>Staff, sub, partner and trade company agreements</b></td><td>Dev, owner, assistant, controller. The same four who open People → Contracts.</td></tr>
+        <tr><td><b>Sub work order</b></td><td>Those four and the estimator. A superintendent on their own jobs. The sub named on it.</td></tr>
+        <tr><td><b>A trade's statement of work</b></td><td>Dev, owner, controller.</td></tr>
+        <tr><td><b>Our contract with the owner on a GC job</b></td><td>Dev only.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="opens">
+    <h2>What a press opens</h2>
+    <p class="lede">Each kind keeps the window it has. The tab builds no viewer of its own.</p>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:30%">A line of this kind</th><th>Opens</th></tr></thead>
+      <tbody>
+        <tr><td><b>Contract, warranty, their paper, signed paper</b></td><td>The Contract window on that record, as the Jobs tab's line does today. The job's name on the line opens the job.</td></tr>
+        <tr><td><b>Staff, sub or partner agreement, signed</b></td><td>The signed record window People → Contracts uses.</td></tr>
+        <tr><td><b>Staff, sub or partner agreement, still waiting</b></td><td>People → Contracts on that paper, where it is sent again.</td></tr>
+        <tr><td><b>Work order</b></td><td>The work order window, read only once it is sent.</td></tr>
+        <tr><td><b>Owner contract, statement of work, trade company agreement</b></td><td>The GC project or the company it belongs to.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="plan">
+    <h2>The plan</h2>
+    <p class="lede">Small steps, each one PR. Nothing ships until the owner says build.</p>
+    <div class="train">
+      <div class="pr"><div class="k">PR 1</div><div><p><b>The rules, alone.</b> One file that turns any kind's row into a line: its tag, its name, who it is with, its state and its day, the chips, the find words and the month bands. Unit tests. No screen.</p></div><div class="sz">S</div></div>
+      <div class="pr"><div class="k">PR 2</div><div><p><b>The read.</b> One database view over the agreement tables, where each table's own row security decides what the reader sees, as the Photos tab's view does. Sorted, filtered, searched and paged by the database. A test bed proves each role reads only its own rows. Pushed right after the merge.</p></div><div class="sz">M</div></div>
+      <div class="pr"><div class="k">PR 3</div><div><p><b>The tab.</b> Agreements after Sent copies, for the office. The lines, both rows of chips, the find box, Show more, the empty states and the retry panel. A press opens each kind's own window. A help guide, the release note and the docs.</p></div><div class="sz">M</div></div>
+      <div class="pr"><div class="k">PR 4</div><div><p><b>Search.</b> The Documents Search tab gets an Agreements section under Jobs, fed by the same read, so one box finds a job and its paper.</p></div><div class="sz">S</div></div>
+      <div class="pr"><div class="k">PR 5</div><div><p><b>GC mode's kinds.</b> Our contract with the owner, a trade's statement of work and a trade company's agreement join the view. Each shows only to the roles GC mode gives it to.</p></div><div class="sz">S</div></div>
+    </div>
+  </section>
+
+  <section id="out">
+    <h2>Left out on purpose</h2>
+    <ul class="plain">
+      <li><b>Drafts.</b> A draft is not an agreement yet. It stays in the window that made it, as on every Documents tab today.</li>
+      <li><b>What is missing.</b> A job with no contract, or one marked Not needed, is the Contract sweep's list on the Pipeline. This tab lists paper that exists and points there.</li>
+      <li><b>Accepted estimates and signed bid proposals.</b> They stay on the Estimates and Bids tabs. The tab points there.</li>
+      <li><b>Papers that are not agreements.</b> A W-9, an insurance certificate, a licence, an hours statement, a lien waiver.</li>
+      <li><b>A machine rental.</b> The app keeps only its agreement number.</li>
+      <li><b>Any change to who can read a paper.</b> No row security changes.</li>
+      <li><b>Saving a signed job contract to Google Drive.</b> Today its PDF is kept by the app and Find a file cannot find it. That is the follow-up, as its own card.</li>
+    </ul>
+  </section>
+
+  <section id="calls">
+    <h2>The calls, settled</h2>
+    <p class="lede">On 17 November the owner took all seven picks as this page draws them. That settles the calls. It is not yet the word to build.</p>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:27%">Call</th><th style="width:36%">Settled</th><th>Not taken</th></tr></thead>
+      <tbody>
+        <tr><td><b>1 · Which kinds are in</b></td><td class="pick">Job contracts, warranties, a GC's own paper, signed papers, staff and sub agreements, partner agreements, work orders. GC mode's three come last.</td><td>Add accepted estimates as lines too. They are signed, but there are many and they have a tab.</td></tr>
+        <tr><td><b>2 · Staff papers on this page</b></td><td class="pick">In. The four office roles already read them on People → Contracts, and a line shows only the paper's name and state.</td><td>Keep them off the list until the Staff and subs chip is pressed. Or leave them on People alone.</td></tr>
+        <tr><td><b>3 · Who sees the tab</b></td><td class="pick">The office's four roles, as with Sent copies.</td><td>Also the estimator, who would see work orders only.</td></tr>
+        <tr><td><b>4 · One list or sections</b></td><td class="pick">One list, newest first, with chips for kind and state.</td><td>A section per kind. Easier to scan one kind, harder to see what was signed this week.</td></tr>
+        <tr><td><b>5 · The word</b></td><td class="pick">The tab is Agreements. Contract under a job and in the job window stays as it is.</td><td>Call the tab Contracts. Shorter, but a warranty and a work order are not contracts.</td></tr>
+        <tr><td><b>6 · Drafts and voided</b></td><td class="pick">Drafts out. Voided, declined and cancelled behind their own chip.</td><td>Show drafts under a Drafts chip, so a contract started and never sent is seen.</td></tr>
+        <tr><td><b>7 · Signed contracts in Google Drive</b></td><td class="pick">A card of its own, after this one: file each signed job contract in the job's Drive folder, so Find a file finds it.</td><td>Fold it into this card. One bigger train, and the tab waits on Drive work.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  /* One list of made-up agreements. `tone` is the common state: waiting, signed or ended. `words` is the state in that
+     kind's own words, as its window says it today. `gc: true` rows are GC mode's (PR 5) and show to a dev only here. */
+  var ROWS = [
+    { at: '2026-11-16', group: 'jobs', tag: 'Contract', name: 'Residential plumbing contract', who: 'Harlan Pierce', job: 'J2418 · Pierce kitchen repipe', tail: '410 Maple St', tone: 'waiting', words: 'sent ×2 · opened 3×', day: 'Sent Nov 16' },
+    { at: '2026-11-14', group: 'orders', tag: 'Work order', name: 'WO-2391-01 · Rough-in, building B', who: 'Ortega Mechanical', job: 'J2391 · Cedar Bluff Lofts', tail: '1200 Quarry Rd', tone: 'signed', words: '✍ Signed', day: 'Signed Nov 14' },
+    { at: '2026-11-13', group: 'warranty', tag: 'Warranty', name: 'One-year workmanship warranty', who: 'Lena Marsh', job: 'J2402 · Marsh water heater', tail: '88 Linden Ct', tone: 'signed', words: 'signed ✓', day: 'Signed Nov 13' },
+    { at: '2026-11-12', group: 'people', tag: 'Staff', name: 'Tool and vehicle use agreement', who: 'Marcus Hale', tone: 'waiting', words: 'viewed, not signed', day: 'Sent Nov 12' },
+    { at: '2026-11-10', group: 'jobs', tag: 'Their paper', name: 'Subcontract Agreement, Ridgeway form', who: 'Ridgeway Builders', job: 'J2391 · Cedar Bluff Lofts', tail: '1200 Quarry Rd', tone: 'signed', words: 'signed by us only · they rely on it', day: 'Signed Nov 10' },
+    { at: '2026-11-06', group: 'people', tag: 'Sub', name: 'Master subcontract', who: 'Ortega Mechanical', tone: 'signed', words: 'signed ✓', day: 'Signed Nov 6' },
+    { at: '2026-11-05', group: 'orders', tag: 'Work order', name: 'WO-2418-01 · Trench and backfill', who: 'Tall Pine Excavating', job: 'J2418 · Pierce kitchen repipe', tail: '410 Maple St', tone: 'waiting', words: 'Sent · awaiting signature', day: 'Sent Nov 5' },
+    { at: '2026-10-30', group: 'jobs', tag: 'Contract', name: 'Signed paper · scan', who: 'Dalton Property Group', job: 'J2377 · Dalton duplex A', tail: 'and 2 more jobs', tone: 'signed', words: 'on file · paper', day: 'Signed Oct 30' },
+    { at: '2026-10-28', group: 'partners', tag: 'Partner', name: 'Referral partner agreement', who: 'Bryce Tolland', tone: 'signed', words: 'signed ✓', day: 'Signed Oct 28' },
+    { at: '2026-10-22', group: 'jobs', tag: 'Contract', name: 'Commercial service contract', who: 'Juniper Dental', job: 'J2360 · Juniper Dental remodel', tail: '52 Foster Ave', tone: 'signed', words: 'signed ✓', day: 'Signed Oct 22' },
+    { at: '2026-10-20', group: 'people', tag: 'Staff', name: 'Employee handbook', who: 'Priya Nair', tone: 'signed', words: 'signed ✓', day: 'Signed Oct 20' },
+    { at: '2026-10-15', group: 'jobs', tag: 'Contract', name: 'Residential plumbing contract', who: 'Harlan Pierce', job: 'J2418 · Pierce kitchen repipe', tail: '410 Maple St', tone: 'ended', words: 'voided', day: 'Voided Oct 15' },
+    { at: '2026-10-09', group: 'orders', tag: 'Work order', name: 'WO-2360-02 · Core drilling', who: 'Granite Core Drilling', job: 'J2360 · Juniper Dental remodel', tail: '52 Foster Ave', tone: 'ended', words: 'Declined', day: 'Declined Oct 9' },
+    { at: '2026-09-30', group: 'gc', gc: true, tag: 'Owner contract', name: 'Our contract with the owner', who: 'Westfield Clinic Partners', tail: 'GC project · Westfield Clinic', tone: 'signed', words: 'signed ✓', day: 'Signed Sep 30' },
+    { at: '2026-09-24', group: 'gc', gc: true, tag: 'Statement of work', name: 'Statement of work · Electrical', who: 'Brightline Electric', tail: 'GC project · Westfield Clinic', tone: 'waiting', words: 'waiting on their signature', day: 'Sent Sep 24' },
+    { at: '2026-09-18', group: 'gc', gc: true, tag: 'Trade company', name: 'Master Services Agreement', who: 'Brightline Electric', tone: 'signed', words: 'signed ✓', day: 'Signed Sep 18' }
+  ];
+  var KINDS = [
+    { key: 'all', label: 'All' },
+    { key: 'jobs', label: 'Job contracts' },
+    { key: 'warranty', label: 'Warranties' },
+    { key: 'people', label: 'Staff and subs' },
+    { key: 'partners', label: 'Partners' },
+    { key: 'orders', label: 'Work orders' },
+    { key: 'gc', label: 'GC projects', gc: true }
+  ];
+  var STATES = [
+    { key: 'live', label: 'Sent and signed' },
+    { key: 'waiting', label: 'Waiting on a signature' },
+    { key: 'signed', label: 'Signed' },
+    { key: 'ended', label: 'Voided or ended' }
+  ];
+  /* The Documents tab row, by role, as Documents.tsx draws it today, with Agreements after Sent copies for the office. */
+  var TABS = {
+    office: ['Search', 'Estimates', 'Bids', 'Jobs', 'Supply invoices', 'Sent copies', 'Agreements', 'Photos', 'Painted maps', 'Company', 'Where files go'],
+    dev: ['Search', 'Estimates', 'Bids', 'Jobs', 'Supply invoices', 'Sent copies', 'Agreements', 'Photos', 'Painted maps', 'Company', 'Where files go'],
+    estimator: ['Search', 'Estimates', 'Bids', 'Jobs', 'Supply invoices', 'Photos', 'Painted maps', 'Company'],
+    primary: ['Search', 'Estimates', 'Bids', 'Jobs', 'Supply invoices', 'Photos', 'Painted maps']
+  };
+  var AS = { office: 'Seen as the office', dev: 'Seen as a dev', estimator: 'Seen as an estimator', primary: 'Seen as a primary' };
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function counted(n, one, many) { return n === 1 ? '1 ' + one : n + ' ' + many; }
+  function seenBy(viewer) { return ROWS.filter(function (r) { return viewer === 'dev' || !r.gc; }); }
+  function inState(r, state) { return state === 'live' ? r.tone !== 'ended' : r.tone === state; }
+  function says(r, typed) {
+    var words = typed.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    var hay = [r.tag, r.name, r.who, r.job || '', r.tail || ''].join(' ').toLowerCase();
+    return words.every(function (w) { return hay.indexOf(w) !== -1; });
+  }
+  function rowsFor(o) {
+    return seenBy(o.viewer).filter(function (r) {
+      return (o.kind === 'all' || r.group === o.kind) && inState(r, o.state) && (o.typed.trim().length < 2 || says(r, o.typed));
+    });
+  }
+  function rowHtml(r) {
+    var about = r.job ? '<span class="job">' + esc(r.job) + '</span>' + (r.tail ? ' · ' + esc(r.tail) : '') : esc(r.tail || '');
+    return '<div class="arow"><div class="l"><div><span class="ktag k-' + r.group + '">' + esc(r.tag) + '</span><span class="ttl">' + esc(r.name) + '</span></div>'
+      + '<div class="sub">With <b>' + esc(r.who) + '</b>' + (about ? ' · ' + about : '') + '</div></div>'
+      + '<div class="r"><span class="st ' + r.tone + '">' + esc(r.words) + '</span><span class="when">' + esc(r.day) + '</span></div></div>';
+  }
+  function listHtml(rows) {
+    var out = '', month = '';
+    rows.forEach(function (r) {
+      var m = r.at.slice(0, 7);
+      if (m !== month) {
+        month = m;
+        var n = rows.filter(function (x) { return x.at.slice(0, 7) === m; }).length;
+        out += '<h3 class="band">' + MONTHS[Number(m.slice(5)) - 1] + ' ' + m.slice(0, 4) + '<span>' + counted(n, 'agreement', 'agreements') + '</span></h3>';
+      }
+      out += rowHtml(r);
+    });
+    return out;
+  }
+  function tabsHtml(viewer, on) {
+    return '<div class="tabs">' + TABS[viewer].map(function (t) {
+      return '<span class="tab' + (t === on ? ' on' : '') + (t === 'Agreements' ? ' fresh' : '') + '">' + t + '</span>';
+    }).join('') + '</div>';
+  }
+  function chipsHtml(o, live) {
+    var el = live ? 'button type="button"' : 'span';
+    var end = live ? 'button' : 'span';
+    var waiting = seenBy(o.viewer).filter(function (r) { return r.tone === 'waiting' && (o.kind === 'all' || r.group === o.kind); }).length;
+    var kinds = KINDS.filter(function (k) { return !k.gc || o.viewer === 'dev'; }).map(function (k) {
+      return '<' + el + ' class="chipb' + (o.kind === k.key ? ' on' : '') + '" data-kind="' + k.key + '" aria-pressed="' + (o.kind === k.key) + '">' + k.label + '</' + end + '>';
+    }).join('');
+    var states = STATES.map(function (s) {
+      var n = s.key === 'waiting' && waiting > 0 ? '<span class="n">' + waiting + '</span>' : '';
+      return '<' + el + ' class="chipb' + (o.state === s.key ? ' on' : '') + '" data-state="' + s.key + '" aria-pressed="' + (o.state === s.key) + '">' + s.label + n + '</' + end + '>';
+    }).join('');
+    return '<div class="chips" role="group" aria-label="Kind of agreement">' + kinds + '</div><div class="chips" role="group" aria-label="State">' + states + '</div>';
+  }
+  var DOORS = '<p class="doors">A job with no contract is on the Pipeline, in the <a>Contract sweep</a>. An accepted estimate is on the <a>Estimates</a> tab.</p>';
+
+  function draw(el, opts, live) {
+    var o = { viewer: opts.viewer || 'office', kind: opts.kind || 'all', state: opts.state || 'live', typed: opts.typed || '', mode: opts.mode || 'list', bar: opts.bar !== false };
+    var hasTab = TABS[o.viewer].indexOf('Agreements') !== -1;
+    var html = '';
+    if (o.bar) html += '<div class="appbar"><span>Dashboard</span><span>Jobs</span><span>Bids</span><span class="on">Documents</span><span class="as">' + AS[o.viewer] + '</span></div>';
+    html += '<div class="page">' + tabsHtml(o.viewer, hasTab ? 'Agreements' : 'Estimates');
+    if (!hasTab) {
+      html += '<div class="gone">The row has no Agreements tab for this role. The page opens on Estimates, as it does today.</div></div>';
+      el.innerHTML = html;
+      return;
+    }
+    var typedAttr = esc(o.typed);
+    html += live
+      ? '<input class="find" type="search" value="' + typedAttr + '" placeholder="Find an agreement: a customer, a job number, a person, a paper" aria-label="Find an agreement">'
+      : '<div class="find"' + (o.typed ? '' : ' style="color:var(--text-muted)"') + '>' + (o.typed ? typedAttr : 'Find an agreement: a customer, a job number, a person, a paper') + '</div>';
+    html += chipsHtml(o, live);
+    if (o.mode === 'failed') {
+      html += '<div class="failed"><div><b>The agreements did not read.</b><small>You are offline. This reads again by itself when the signal is back.</small></div><span class="quiet">Retry</span></div>';
+    } else if (o.mode === 'empty') {
+      html += '<div class="empty"><div><b>No agreement is on file yet.</b> One shows here when a contract is sent to sign or a signed paper is filed on a job.</div><span class="press">Open the Pipeline</span></div>';
+    } else {
+      var rows = rowsFor(o);
+      if (rows.length === 0) {
+        var q = o.typed.trim().length >= 2 ? o.typed.trim() : '';
+        html += '<div class="empty"><div><b>' + (q ? 'No agreements match ‘' + esc(q) + '’.' : 'No agreements match the filters.') + '</b></div><span class="press">' + (q ? 'Clear the search' : 'Clear the filters') + '</span></div>';
+      } else {
+        html += '<p class="count">' + counted(rows.length, 'agreement', 'agreements') + '</p>' + listHtml(rows) + DOORS;
+      }
+    }
+    html += '</div>';
+    el.innerHTML = html;
+    if (!live) return;
+    el.querySelectorAll('[data-kind]').forEach(function (b) { b.addEventListener('click', function () { opts.kind = b.getAttribute('data-kind'); draw(el, opts, true); }); });
+    el.querySelectorAll('[data-state]').forEach(function (b) { b.addEventListener('click', function () { opts.state = b.getAttribute('data-state'); draw(el, opts, true); }); });
+    var box = el.querySelector('input.find');
+    box.addEventListener('input', function () {
+      opts.typed = box.value;
+      var at = box.selectionStart;
+      draw(el, opts, true);
+      var again = el.querySelector('input.find');
+      again.focus();
+      again.setSelectionRange(at, at);
+    });
+  }
+  function still(id, opts) { draw(document.getElementById(id), opts, false); }
+
+  draw(document.getElementById('live'), { viewer: 'office' }, true);
+  still('s-waiting', { state: 'waiting', bar: false });
+  still('s-find', { typed: 'cedar', bar: false });
+  still('s-people', { kind: 'people', bar: false });
+  still('s-ended', { state: 'ended', bar: false });
+  still('s-empty', { mode: 'empty', bar: false });
+  still('s-nomatch', { typed: 'harbor', bar: false });
+  still('s-failed', { mode: 'failed', bar: false });
+  still('s-phone', { bar: false });
+  still('w-office', { viewer: 'office', kind: 'people' });
+  still('w-dev', { viewer: 'dev', kind: 'gc' });
+  still('w-estimator', { viewer: 'estimator' });
+  still('w-primary', { viewer: 'primary' });
+})();
+</script>
+</body>
+</html>

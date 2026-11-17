@@ -84,6 +84,16 @@ describe('BoxCode, signed in', () => {
     expect(screen.getByTestId('box-code-detail').textContent).toBe('Ask the office to add you to that job.')
   })
 
+  it('a retired box’s own label names the box and the day it left (v2.7630)', async () => {
+    // The page said the code did not open a box, while the page with no sign-in named the box and said it was retired.
+    resolveBoxCode.mockResolvedValue({ kind: 'retired_label', container: { ...r76, kind: 'loose', label: 'ZZ3', retiredAt: '2026-11-14T21:44:15.831Z' } })
+    mount('89e5-3496')
+    const title = await screen.findByTestId('box-code-title')
+    expect(title.textContent).toBe('Pile ZZ3 was retired')
+    expect(title.getAttribute('data-kind')).toBe('retired_label')
+    expect(screen.getByTestId('box-code-detail').textContent).toBe('It left the job on Saturday, Nov 14. The office brings a retired box back from the Retired fold on its Materials page.')
+  })
+
   it('a code nothing carries reads as before, and a failed read names its reason', async () => {
     resolveBoxCode.mockResolvedValue({ kind: 'none' })
     mount()

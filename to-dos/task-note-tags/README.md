@@ -2,7 +2,7 @@
 name: "Tag a teammate in a task note"
 number: 375
 group: ready
-status: asked 2026-11-16 · looked at and drawn the same day · the owner settled call 0 and liked the picks for the rest · building since 2026-11-17 · PR A, the easier box, shipped (v2.7566) · PR 1 to PR 5 not built
+status: asked 2026-11-16 · looked at and drawn the same day · the owner settled call 0 and liked the picks for the rest · building since 2026-11-17 · PR A, the easier box (v2.7566), PR 1, the ground (v2.7570, pushed 2026-11-17) PR 2, the @ in a task's note box (v2.7574) PR 3, where a tag lands (v2.7576, open to the team) and PR 4, the notice (v2.7577), shipped · PR 5 built, not merged
 summary: >
   Tagging a teammate went live on job notes as #363. The owner asked for the same in task notes, and for
   the box to be easier on a phone. A task note tells nobody today: no notice, no count, no Dashboard line.
@@ -11,11 +11,11 @@ summary: >
   the one Needs you line that both kinds share. It sends the same phone notice. The box gets easier for job
   and task notes alike: the names show as big presses above the keyboard while you type, the tag is marked
   in your words, and one Backspace takes it off. A tag is still only a tap or Enter, never a typed name.
-next: Build PR 1, the ground, alone, and push its migration right after its merge. Then PR 2 to PR 5, none armed before PR 1 is pushed.
-size: L as a train of six (M · M · M · M · S · S), PR A done
-blocker: None for PR 1, since #369's train landed on 2026-11-17. PR 2 to PR 5 call PR 1's functions, so none of them is armed before PR 1 is pushed.
+next: Deploy `notify-note-tag`, if it is not out yet. Merge PR 5. Then the walk as two people on a phone.
+size: L as a train of six (M · M · M · M · S · S), PR A and PR 1 to PR 4 done
+blocker: None. The notice needs `supabase functions deploy notify-note-tag` after PR 4's merge.
 opinion: build — a task note reaches nobody today, and #363 already proved the rules on jobs; one new table, the rest reused
-ver: v2.7566 · builds on #363 (v2.7384 · v2.7385 · v2.7407 · v2.7410 · v2.7412)
+ver: v2.7566 · 7570 · 7574 · 7576 · 7577 · builds on #363 (v2.7384 · v2.7385 · v2.7407 · v2.7410 · v2.7412)
 ---
 
 # Tag a teammate in a task note (#375)
@@ -305,6 +305,22 @@ Then a walk as two people, on a phone, which covers #363's unwalked screens on t
   Two things it settled past the mock-up: letters that are nobody's name show no row, where the old list said
   nobody by that name can be tagged, and a pick whose name is changed in the words is dropped, so typing it
   back makes no tag.
-- PR 1 to PR 5: not built.
+- **PR 1, the ground, shipped as v2.7570** (2026-11-17): `20261117160000_task_note_tags.sql` and the
+  `task-note-tags` SQL bed. Pushed to prod the same morning, right after its merge. Two things it settled past
+  this card. `task_note_people` reads the day row, not the task, so a person who gave away one day of a
+  repeating task is not offered on that day. The read of both kinds names its column `source`, since the job
+  read already uses `kind`. Its doc is `docs/migrations/20261117160000_task_note_tags.md`.
+- **PR 2, the @ in a task's note box, shipped as v2.7574** (2026-11-17), held to a dev until PR 3. The
+  task's own people are offered above the box, a tagged note posts in one call, and a posted note shows its
+  chip and who it waits on. A caller the task's list refuses gets a plain box.
+- **PR 3, where a tag lands, shipped as v2.7576** (2026-11-17), and the @ is open to the seven roles a job's
+  is. The count on Checklist, Tagged task notes at the top of Today, both kinds in Task Mode and in the Needs
+  you window, *waiting on* on Review's rows, *has left* under You asked, and the guide
+  `tag-a-teammate-in-a-task-note`. A task tag's title in the Dashboard's window opens
+  `/checklist?tab=today&task=<day row>`, a pick this card had left open. No phone notice yet.
+- **PR 4, the notice, shipped as v2.7577** (2026-11-17): `notify-note-tag` takes a task note and a task tag,
+  with its own reader of a task title's job token, held to the app's by a test. The tap lands on the
+  Checklist for every role. It needs its function deployed after the merge.
+- PR 5: built and tested on a branch, going up after PR 4 merges.
 
 The design and the working box are in [mockup.html](mockup.html).

@@ -6,11 +6,17 @@ import { isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectTeamActivity'
+import { getOrderedDateKeysLast30Days } from '../lib/prospectTeamActivityChartData'
+import { myTimeWindows, sumTimerSeconds, sumTimerSecondsByProspect } from '../lib/prospects/prospectTimerSums'
 import {
   CALL_INTERACTION_TYPES,
   CALLING_ORDER_STORAGE_KEY,
+  indexAfterOtherRowLeft,
+  insertColdest,
   orderFollowUpProspects,
+  queueAfterRemoval,
   queueAge,
+  queueWindowStart,
   readCallingOrderMode,
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
@@ -36,7 +42,7 @@ import {
   type ListSectionKey,
   type ProspectLastCall,
 } from '../lib/prospects/prospectListGrouping'
-import { findRetaggableNote, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
+import { findRetaggableNote, lastCallByProspect, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
 import { callingLockCutoffIso, callingLockDecision, type CallingLockRow, type CallingLockTrigger } from '../lib/prospects/callingLock'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { useAuth } from '../hooks/useAuth'
@@ -48,13 +54,16 @@ import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewC
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import {
   canAccessProspectPipeline,
+  convertBidRows,
+  convertContactRows,
   customerDraftFromProspect,
   markProspectConverted,
   recordProspectConverted,
   markProspectOnBench,
+  sourceProspectOf,
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
-import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, isProspectCompanyRole, kindFromUrlKey, parseTradesText, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
+import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, kindFieldsPayload, kindFromUrlKey, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
 import { addGcCompany, askGcCompanies, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import { tradeBenches } from '../lib/gc/bench'
@@ -73,7 +82,7 @@ import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
 import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
-import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
+import { anyTyped, editDirty, editSnapshotOf } from '../lib/prospects/windowLeave'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
@@ -85,11 +94,11 @@ import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchT
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { SubsBoard } from '../components/prospects/SubsBoard'
-import { subRecords } from '../lib/prospects/subRecord'
+import { inboundProspects, subRecords } from '../lib/prospects/subRecord'
 import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
 import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow } from '../lib/prospects/subsRanks'
 import { tradeKey } from '../lib/prospects/subsLane'
-import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_CHANNEL, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextNote, runTextPlan, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
+import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_CHANNEL, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, firstCallbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextNote, runTextPlan, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
 import { loadProspectThread, startProspectThread } from '../lib/prospects/prospectThreadIo'
 import { textRefusal } from '../lib/prospects/textingRule'
 import { benchAskFor, benchAskedToast, type BenchAsk } from '../lib/prospects/benchAsk'
@@ -101,27 +110,20 @@ import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
-
-const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
-type CopyTemplateKey = (typeof COPY_TEMPLATE_KEYS)[number]
-
-const COPY_TEMPLATE_LABELS: Record<CopyTemplateKey, string> = {
-  no_response_email: 'No Response Email',
-  phone_followup_email: 'Phone call Follow up Email',
-  just_checking_in_email: 'Just checking in Email',
-}
-
-const APP_SETTINGS_KEYS: Record<CopyTemplateKey, string> = {
-  no_response_email: 'prospect_copy_no_response_email',
-  phone_followup_email: 'prospect_copy_phone_followup_email',
-  just_checking_in_email: 'prospect_copy_just_checking_in_email',
-}
-
-const APP_SUBJECT_SETTINGS_KEYS: Record<CopyTemplateKey, string> = {
-  no_response_email: 'prospect_copy_no_response_email_subject',
-  phone_followup_email: 'prospect_copy_phone_followup_email_subject',
-  just_checking_in_email: 'prospect_copy_just_checking_in_email_subject',
-}
+import {
+  APP_SETTINGS_KEYS,
+  APP_SUBJECT_SETTINGS_KEYS,
+  COPY_TEMPLATE_KEYS,
+  COPY_TEMPLATE_LABELS,
+  foldCopyTemplateRows,
+  getBlankFieldsForMail,
+  getBlankPlaceholderFields,
+  resolveCopyText,
+  substituteCopyPlaceholders,
+  type CopyTemplateKey,
+} from '../lib/prospects/prospectCopyTemplates'
+import { formatDateTime, formatInteractionType, formatTimerButtonName, formatTimerSeconds, formatWebsiteDisplay, getWebsiteHref } from '../lib/prospects/prospectFormat'
+import { PROSPECT_COLUMNS, type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
 
 const EnvelopeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
@@ -145,58 +147,6 @@ type ProspectsTopTab = 'customers' | 'team' | 'research'
 
 type ProspectsTab = 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity'
 
-type Prospect = {
-  id: string
-  master_user_id: string
-  created_by: string
-  warmth_count: number
-  prospect_fit_status: string | null
-  company_name: string | null
-  contact_name: string | null
-  phone_number: string | null
-  email: string | null
-  address: string | null
-  links_to_website: string | null
-  notes: string | null
-  last_contact: string | null
-  created_at: string | null
-  updated_at: string | null
-  /** v2.5559: customer · gc_lead · sub, and each kind's facts. */
-  kind: ProspectKind
-  source: string | null
-  trades: string[] | null
-  max_miles: number | null
-  lang: string | null
-  company_role: string | null
-  customer_id: string | null
-  converted_customer_id: string | null
-  converted_gc_company_id: string | null
-  /** v2.5601: the person we call, and whether we may text them. */
-  is_person: boolean
-  contact_title: string | null
-  contact_phone: string | null
-  ok_to_text: string | null
-  maps_url: string | null
-  license: string | null
-  also_reach: string | null
-  /** v2.5809: the office's priority on the Subs board, 1 Call first, null Normal, 3 Later. */
-  priority: number | null
-}
-
-/** Every column the deck reads (v2.5559 added the kind and its facts, v2.5809 the priority). */
-const PROSPECT_COLUMNS =
-  'id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at, kind, source, trades, max_miles, lang, company_role, customer_id, converted_customer_id, converted_gc_company_id, is_person, contact_title, contact_phone, ok_to_text, maps_url, license, also_reach, priority'
-
-type ProspectComment = {
-  id: string
-  prospect_id: string
-  created_by: string
-  created_at: string
-  comment_text: string
-  interaction_type: string
-  created_by_user?: { name: string | null; email: string | null } | null
-}
-
 const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'board', 'prospect-list', 'convert', 'activity']
 
 /** The needs panel's tones (v2.5782): the theme's text tokens, so dark mode lightens them. */
@@ -218,123 +168,6 @@ const tabStyle = (active: boolean) => ({
   padding: '0.5rem 0.6rem',
   fontSize: '0.9375rem',
 })
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-function formatInteractionType(type: string): string {
-  switch (type) {
-    case 'answered': return 'Answered'
-    case 'didnt_answer': return "Didn't answer"
-    case 'no_longer_fit': return 'No longer a fit'
-    case 'user_comment': return 'Comment'
-    case 'converted': return 'Converted'
-    default: return type
-  }
-}
-
-function formatTimerButtonName(buttonName: string): string {
-  switch (buttonName) {
-    case 'no_longer_fit': return 'No Longer a Fit'
-    case 'next_prospect': return 'Next Prospect'
-    case 'cant_reach': return "Can't reach"
-    case 'converted': return 'Converted'
-    default: return buttonName
-  }
-}
-
-function formatTimerSeconds(seconds: number): string {
-  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
-}
-
-function formatWebsiteDisplay(url: string | null): string {
-  if (!url || !url.trim()) return '—'
-  let s = url.trim()
-  s = s.replace(/^https?:\/\//i, '')
-  s = s.replace(/^www\./i, '')
-  s = s.replace(/\/+$/, '')
-  return s || '—'
-}
-
-function getWebsiteHref(url: string | null): string {
-  if (!url || !url.trim()) return '#'
-  const s = url.trim()
-  if (/^https?:\/\//i.test(s)) return s
-  return 'https://' + s
-}
-
-function getBlankPlaceholderFields(
-  template: string,
-  authUserName: string,
-  authUserEmail: string,
-  prospect: Prospect,
-  personPhone: string | null,
-  templateKey: CopyTemplateKey,
-  comments: ProspectComment[],
-  forMail?: boolean
-): string[] {
-  const blank: string[] = []
-  if (forMail && !prospect.email?.trim()) blank.push('Prospect email')
-  const userName = (authUserName || authUserEmail || '').trim()
-  if (template.includes('[User name]') && !userName) blank.push('User name')
-  if (template.includes('[user email]') && !authUserEmail?.trim()) blank.push('User email')
-  if (template.includes('[user phone number]') && !personPhone?.trim()) blank.push('User phone number')
-  if (template.includes('[company name]') && !prospect.company_name?.trim()) blank.push('Company name')
-  if (template.includes('[prospect phone number]') && !prospect.phone_number?.trim()) blank.push('Prospect phone number')
-  if (template.includes('[prospect contact name]') && !prospect.contact_name?.trim()) blank.push('Prospect contact name')
-  if (template.includes('[prospect last contact]') && !prospect.last_contact) blank.push('Prospect last contact')
-  if (template.includes('[prospect last successful contact]') && !comments.find((c) => c.interaction_type === 'answered')) blank.push('Prospect last successful contact')
-  if (template.includes('_______')) {
-    if (templateKey === 'phone_followup_email' && !prospect.contact_name?.trim()) blank.push('Contact name')
-    else if (templateKey === 'just_checking_in_email' && !prospect.phone_number?.trim() && !prospect.email?.trim()) blank.push('Contact info')
-  }
-  return blank
-}
-
-function getBlankFieldsForMail(
-  body: string,
-  subject: string,
-  authUserName: string,
-  authUserEmail: string,
-  prospect: Prospect,
-  personPhone: string | null,
-  templateKey: CopyTemplateKey,
-  comments: ProspectComment[]
-): string[] {
-  const bodyBlanks = getBlankPlaceholderFields(body, authUserName, authUserEmail, prospect, personPhone, templateKey, comments, true)
-  const subjectBlanks = getBlankPlaceholderFields(subject, authUserName, authUserEmail, prospect, personPhone, templateKey, comments, false)
-  return [...new Set([...bodyBlanks, ...subjectBlanks])]
-}
-
-function substituteCopyPlaceholders(
-  template: string,
-  authUser: { name: string; email: string },
-  prospect: Prospect,
-  personPhone: string | null,
-  templateKey: CopyTemplateKey,
-  comments: ProspectComment[]
-): string {
-  const lastSuccessfulContact = comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null
-  let text = template
-    .replace(/\[User name\]/g, authUser.name ?? '')
-    .replace(/\[user email\]/g, authUser.email ?? '')
-    .replace(/\[user phone number\]/g, personPhone ?? '')
-    .replace(/\[company name\]/g, prospect.company_name ?? '')
-    .replace(/\[prospect phone number\]/g, prospect.phone_number ?? '')
-    .replace(/\[prospect contact name\]/g, prospect.contact_name ?? '')
-    .replace(/\[prospect last contact\]/g, formatDateTime(prospect.last_contact))
-    .replace(/\[prospect last successful contact\]/g, formatDateTime(lastSuccessfulContact))
-  if (templateKey === 'phone_followup_email') {
-    text = text.replace(/_______/, prospect.contact_name ?? '_______')
-  } else if (templateKey === 'just_checking_in_email') {
-    const contactInfo = prospect.phone_number ?? prospect.email ?? '_______'
-    text = text.replace(/_______/, contactInfo)
-  }
-  return text
-}
 
 
 /** The boxes a kind adds to New Prospect and Edit prospect (v2.5559): where we found them for every kind; a sub's trades, range and language; a GC lead's role. */
@@ -1137,14 +970,8 @@ export default function Prospects() {
   async function loadMyTimeStats() {
     if (!authUser?.id) return
     setMyTimeStatsLoading(true)
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-    const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0)
-    const sevenDaysAgo = new Date(now)
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
-    const sum = (rows: { timer_seconds: number }[]) => rows.reduce((a, r) => a + r.timer_seconds, 0)
+    const { startOfToday, endOfToday, startOfYesterday, sevenDaysAgo } = myTimeWindows(new Date())
+    const sum = sumTimerSeconds
 
     const [todayRes, yesterdayRes, last7Res, lifetimeRes] = await Promise.all([
       (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id).gte('created_at', startOfToday.toISOString()).lte('created_at', endOfToday.toISOString()),
@@ -1164,17 +991,14 @@ export default function Prospects() {
 
   async function loadMyTimeToday() {
     if (!authUser?.id) return
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+    const { startOfToday, endOfToday } = myTimeWindows(new Date())
     const { data } = await (supabase as any)
       .from('prospect_timer_events')
       .select('timer_seconds')
       .eq('user_id', authUser.id)
       .gte('created_at', startOfToday.toISOString())
       .lte('created_at', endOfToday.toISOString())
-    const sum = ((data ?? []) as { timer_seconds: number }[]).reduce((a, r) => a + r.timer_seconds, 0)
-    setMyTimeTodaySeconds(sum)
+    setMyTimeTodaySeconds(sumTimerSeconds((data ?? []) as { timer_seconds: number }[]))
   }
 
   async function loadProspectListProspects() {
@@ -1197,11 +1021,7 @@ export default function Prospects() {
       return
     }
     // Rows arrive newest-first, so the first row per prospect is its latest call.
-    const lastCalls: Record<string, ProspectLastCall> = {}
-    for (const r of (callRows ?? []) as { prospect_id: string; interaction_type: string; created_at: string | null }[]) {
-      if (!(r.prospect_id in lastCalls)) lastCalls[r.prospect_id] = { interaction_type: r.interaction_type, created_at: r.created_at }
-    }
-    setProspectLastCallMap(lastCalls)
+    setProspectLastCallMap(lastCallByProspect((callRows ?? []) as { prospect_id: string; interaction_type: string; created_at: string | null }[]))
     const callList = (callRows ?? []) as { prospect_id: string; interaction_type: string }[]
     setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
     setLaneCallRows(callList)
@@ -1285,14 +1105,10 @@ export default function Prospects() {
     try {
       const { data: contacts } = await supabase.from('contacts').select('id, prospect_id').in('prospect_id', ids)
       const contactRows = (contacts ?? []) as { id: string; prospect_id: string | null }[]
-      const inbound = new Set<string>()
+      let inbound = new Set<string>()
       if (contactRows.length > 0) {
         const { data: lines } = await supabase.from('messages').select('contact_id').eq('direction', 'in').in('contact_id', contactRows.map((c) => c.id))
-        const byContact = new Map(contactRows.map((c) => [c.id, c.prospect_id]))
-        for (const l of (lines ?? []) as { contact_id: string }[]) {
-          const pid = byContact.get(l.contact_id)
-          if (pid) inbound.add(pid)
-        }
+        inbound = inboundProspects(contactRows, (lines ?? []) as { contact_id: string }[])
       }
       setInboundProspectIds(inbound)
     } catch {
@@ -1301,10 +1117,7 @@ export default function Prospects() {
     void loadLaneRanks()
     try {
       const { data: cbs } = await supabase.from('prospect_callbacks').select('prospect_id, callback_date').gte('callback_date', new Date().toISOString()).in('prospect_id', ids).order('callback_date', { ascending: true })
-      const words: Record<string, string> = {}
-      const now = new Date()
-      for (const r of (cbs ?? []) as { prospect_id: string; callback_date: string }[]) if (!(r.prospect_id in words)) words[r.prospect_id] = callbackWords(new Date(r.callback_date), now)
-      setLaneCallbacks(words)
+      setLaneCallbacks(firstCallbackWords((cbs ?? []) as { prospect_id: string; callback_date: string }[], new Date()))
     } catch {
       setLaneCallbacks({})
     }
@@ -1317,42 +1130,11 @@ export default function Prospects() {
       supabase.from('app_settings').select('key, value_text').in('key', allKeys),
       supabase.from('user_prospect_copy_templates').select('template_key, value_text, subject_text').eq('user_id', authUser.id),
     ])
-    const defaultsMap: Record<CopyTemplateKey, string> = {
-      no_response_email: '',
-      phone_followup_email: '',
-      just_checking_in_email: '',
-    }
-    const subjectDefaultsMap: Record<CopyTemplateKey, string> = {
-      no_response_email: '',
-      phone_followup_email: '',
-      just_checking_in_email: '',
-    }
-    for (const r of defaultsRes.data ?? []) {
-      const key = Object.entries(APP_SETTINGS_KEYS).find(([, v]) => v === r.key)?.[0] as CopyTemplateKey | undefined
-      if (key && r.value_text) defaultsMap[key] = r.value_text
-      const subjectKey = Object.entries(APP_SUBJECT_SETTINGS_KEYS).find(([, v]) => v === r.key)?.[0] as CopyTemplateKey | undefined
-      if (subjectKey && r.value_text != null) subjectDefaultsMap[subjectKey] = r.value_text
-    }
-    setCopyDefaults(defaultsMap)
-    setCopySubjectDefaults(subjectDefaultsMap)
-    const overridesMap: Record<CopyTemplateKey, string | null> = {
-      no_response_email: null,
-      phone_followup_email: null,
-      just_checking_in_email: null,
-    }
-    const subjectOverridesMap: Record<CopyTemplateKey, string | null> = {
-      no_response_email: null,
-      phone_followup_email: null,
-      just_checking_in_email: null,
-    }
-    for (const r of overridesRes.data ?? []) {
-      if (COPY_TEMPLATE_KEYS.includes(r.template_key as CopyTemplateKey)) {
-        overridesMap[r.template_key as CopyTemplateKey] = r.value_text
-        subjectOverridesMap[r.template_key as CopyTemplateKey] = (r as { subject_text?: string | null }).subject_text ?? null
-      }
-    }
-    setCopyOverrides(overridesMap)
-    setCopySubjectOverrides(subjectOverridesMap)
+    const texts = foldCopyTemplateRows(defaultsRes.data ?? [], overridesRes.data ?? [])
+    setCopyDefaults(texts.defaults)
+    setCopySubjectDefaults(texts.subjectDefaults)
+    setCopyOverrides(texts.overrides)
+    setCopySubjectOverrides(texts.subjectOverrides)
   }
 
   async function loadPersonPhone() {
@@ -1478,15 +1260,11 @@ export default function Prospects() {
   }
 
   function getResolvedCopyText(key: CopyTemplateKey): string {
-    const override = copyOverrides[key]
-    if (override != null && override !== '') return override
-    return copyDefaults[key] ?? ''
+    return resolveCopyText(copyOverrides[key], copyDefaults[key])
   }
 
   function getResolvedCopySubject(key: CopyTemplateKey): string {
-    const override = copySubjectOverrides[key]
-    if (override != null && override !== '') return override
-    return copySubjectDefaults[key] ?? ''
+    return resolveCopyText(copySubjectOverrides[key], copySubjectDefaults[key])
   }
 
   async function handleCopyTemplate(key: CopyTemplateKey) {
@@ -1694,9 +1472,7 @@ export default function Prospects() {
       .select('timer_seconds')
       .eq('user_id', authUser.id)
       .eq('prospect_id', prospectId)
-    const rows = (data ?? []) as Array<{ timer_seconds: number }>
-    const sum = rows.reduce((acc, r) => acc + (r.timer_seconds ?? 0), 0)
-    setProspectLedgerSeconds(sum)
+    setProspectLedgerSeconds(sumTimerSeconds((data ?? []) as Array<{ timer_seconds: number }>))
   }
 
   useEffect(() => {
@@ -1713,14 +1489,7 @@ export default function Prospects() {
       .from('prospect_timer_events')
       .select('prospect_id, timer_seconds')
       .eq('user_id', authUser.id)
-    const rows = (data ?? []) as Array<{ prospect_id: string | null; timer_seconds: number }>
-    const map: Record<string, number> = {}
-    for (const r of rows) {
-      if (r.prospect_id) {
-        map[r.prospect_id] = (map[r.prospect_id] ?? 0) + (r.timer_seconds ?? 0)
-      }
-    }
-    setProspectLedgerSecondsMap(map)
+    setProspectLedgerSecondsMap(sumTimerSecondsByProspect((data ?? []) as Array<{ prospect_id: string | null; timer_seconds: number }>))
   }
 
   useEffect(() => {
@@ -2006,7 +1775,7 @@ export default function Prospects() {
   }
 
   function renderQueueRows(limit: number, collapseOnJump: boolean) {
-    const start = Math.max(0, Math.min(currentProspectIndex - 2, followUpProspects.length - limit))
+    const start = queueWindowStart(currentProspectIndex, followUpProspects.length, limit)
     const nowMs = Date.now()
     return followUpProspects.slice(start, start + limit).map((p, i) => {
       const absIdx = start + i
@@ -2106,35 +1875,11 @@ export default function Prospects() {
     setEditModalOpen(true)
   }
 
-  /** The Edit window's boxes as a prospect fills them (v2.5582): what the window opened with, for the leave guard. */
-  function editSnapshotOf(p: Prospect): Record<string, string> {
-    const blocks = blocksFromRow(p)
-    return {
-      ...blocks.person,
-      ...blocks.company,
-      source: p.source ?? '',
-      trades: tradesText(p.trades),
-      miles: p.max_miles == null ? '' : String(p.max_miles),
-      role: p.company_role ?? '',
-    }
-  }
-
   function setEditKindFields(p: Prospect) {
     setEditSource(p.source ?? '')
     setEditTrades(tradesText(p.trades))
     setEditMaxMiles(p.max_miles == null ? '' : String(p.max_miles))
     setEditRole(p.company_role ?? '')
-  }
-
-  /** The kind's facts as the row holds them (v2.5559), from the Edit and New windows' boxes. */
-  function kindFieldsPayload(k: ProspectKind, f: { source: string; trades: string; maxMiles: string; role: string }) {
-    const miles = Number(f.maxMiles)
-    return {
-      source: f.source.trim() || null,
-      trades: k === 'sub' ? parseTradesText(f.trades) : [],
-      max_miles: k === 'sub' && Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
-      company_role: k === 'gc_lead' && isProspectCompanyRole(f.role) ? f.role : null,
-    }
   }
 
   function openEditModalForProspect(p: Prospect) {
@@ -2164,11 +1909,10 @@ export default function Prospects() {
       setFollowUpProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
       setProspectListProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
       if (currentProspect?.id === prospectToEdit.id) {
-        const nextList = followUpProspects.filter((p) => p.id !== prospectToEdit.id)
-        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-        setCurrentProspectIndex(nextIdx)
+        const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospectToEdit.id)
+        setCurrentProspectIndex(left.index)
         setFollowUpTimerSeconds(0)
-        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+        updateUrlProspectId(left.nextId)
       }
       setEditModalOpen(false)
       setEditingProspect(null)
@@ -2219,7 +1963,7 @@ export default function Prospects() {
   async function saveCallback() {
     if (!currentProspect || !authUser?.id || saving) return
     const dateTime = new Date(`${callbackDate}T${callbackTime}`).toISOString()
-    const title = `Call back: ${(currentProspect.company_name || 'Unknown').trim()} - ${(currentProspect.contact_name || 'Unknown').trim()}`
+    const title = runCallbackTitle(currentProspect.company_name, currentProspect.contact_name)
     setSaving(true)
     const { error } = await supabase.from('prospect_callbacks').insert({
       prospect_id: currentProspect.id,
@@ -2267,12 +2011,11 @@ export default function Prospects() {
       comment_text: 'Marked as not a fit',
       interaction_type: 'no_longer_fit',
     })
-    const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
-    setFollowUpProspects(nextList)
-    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-    setCurrentProspectIndex(nextIdx)
+    const left = queueAfterRemoval(followUpProspects, currentProspectIndex, currentProspect.id)
+    setFollowUpProspects(left.queue)
+    setCurrentProspectIndex(left.index)
     setFollowUpTimerSeconds(0)
-    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    updateUrlProspectId(left.nextId)
     setSaving(false)
   }
 
@@ -2294,12 +2037,11 @@ export default function Prospects() {
     noteRunOutcome(prospectId, 'cant_reach')
     const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
     setProspectListProspects((prev) => prev.map((p) => (p.id === currentProspect.id ? updated : p)))
-    const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
-    setFollowUpProspects(nextList)
-    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-    setCurrentProspectIndex(nextIdx)
+    const left = queueAfterRemoval(followUpProspects, currentProspectIndex, currentProspect.id)
+    setFollowUpProspects(left.queue)
+    setCurrentProspectIndex(left.index)
     setFollowUpTimerSeconds(0)
-    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    updateUrlProspectId(left.nextId)
     setSaving(false)
   }
 
@@ -2316,19 +2058,7 @@ export default function Prospects() {
     const prospect = currentProspect
     newCustomerModal.openNewCustomerModal({
       initialValues: customerDraftFromProspect(prospect),
-      sourceProspect: {
-        id: prospect.id,
-        company_name: prospect.company_name,
-        contact_name: prospect.contact_name,
-        phone_number: prospect.phone_number,
-        email: prospect.email,
-        address: prospect.address,
-        prospect_fit_status: prospect.prospect_fit_status,
-        is_person: prospect.is_person,
-        contact_title: prospect.contact_title,
-        contact_phone: prospect.contact_phone,
-        lang: prospect.lang,
-      },
+      sourceProspect: sourceProspectOf(prospect),
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
         const convertedId = meta?.convertedProspectId ?? null
@@ -2345,12 +2075,11 @@ export default function Prospects() {
         loadMyTimeToday()
         const updated = { ...prospect, prospect_fit_status: 'converted' as const }
         setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
-        const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
-        setFollowUpProspects(nextList)
-        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-        setCurrentProspectIndex(nextIdx)
+        const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospect.id)
+        setFollowUpProspects(left.queue)
+        setCurrentProspectIndex(left.index)
         setFollowUpTimerSeconds(0)
-        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+        updateUrlProspectId(left.nextId)
         showToast(prospectLandedToast(prospect.kind, prospect.company_name || '', customer.name || ''), 'success')
       },
     })
@@ -2416,16 +2145,15 @@ export default function Prospects() {
       const updated = { ...prospect, prospect_fit_status: 'converted' as const, converted_gc_company_id: companyId }
       setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
       setLaneAllRows((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
-      const wasAt = followUpProspects.findIndex((p) => p.id === prospect.id)
-      const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
-      setFollowUpProspects(nextList)
+      const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospect.id)
+      setFollowUpProspects(left.queue)
       if (onDeck) {
-        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-        setCurrentProspectIndex(nextIdx)
+        setCurrentProspectIndex(left.index)
         setFollowUpTimerSeconds(0)
-        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
-      } else if (wasAt >= 0 && wasAt < currentProspectIndex) {
-        setCurrentProspectIndex(currentProspectIndex - 1)
+        updateUrlProspectId(left.nextId)
+      } else {
+        const stays = indexAfterOtherRowLeft(followUpProspects, currentProspectIndex, prospect.id)
+        if (stays !== currentProspectIndex) setCurrentProspectIndex(stays)
       }
       setBenchDraft(null)
       noteRunOutcome(prospect.id, 'bench', { asked })
@@ -2445,12 +2173,11 @@ export default function Prospects() {
     loadMyTimeToday()
     const updated = { ...prospect, prospect_fit_status: 'converted' as const, ...patch }
     setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
-    const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
-    setFollowUpProspects(nextList)
-    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-    setCurrentProspectIndex(nextIdx)
+    const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospect.id)
+    setFollowUpProspects(left.queue)
+    setCurrentProspectIndex(left.index)
     setFollowUpTimerSeconds(0)
-    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    updateUrlProspectId(left.nextId)
   }
 
   /**
@@ -2487,19 +2214,7 @@ export default function Prospects() {
     if (!newCustomerModal) return
     newCustomerModal.openNewCustomerModal({
       initialValues: customerDraftFromProspect(prospect),
-      sourceProspect: {
-        id: prospect.id,
-        company_name: prospect.company_name,
-        contact_name: prospect.contact_name,
-        phone_number: prospect.phone_number,
-        email: prospect.email,
-        address: prospect.address,
-        prospect_fit_status: prospect.prospect_fit_status,
-        is_person: prospect.is_person,
-        contact_title: prospect.contact_title,
-        contact_phone: prospect.contact_phone,
-        lang: prospect.lang,
-      },
+      sourceProspect: sourceProspectOf(prospect),
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
         if ((meta?.convertedProspectId ?? null) !== prospect.id) {
@@ -2568,17 +2283,7 @@ export default function Prospects() {
       .eq('id', p.id)
     if (!error) {
       setProspectListProspects((prev) => prev.map((x) => (x.id === p.id ? { ...x, prospect_fit_status: null } : x)))
-      setFollowUpProspects((prev) => {
-        const exists = prev.some((x) => x.id === p.id)
-        if (exists) return prev
-        const added = { ...p, prospect_fit_status: null }
-        return [...prev, added].sort((a, b) => {
-          const aLc = a.last_contact ? new Date(a.last_contact).getTime() : 0
-          const bLc = b.last_contact ? new Date(b.last_contact).getTime() : 0
-          if (aLc !== bLc) return aLc - bLc
-          return (a.company_name ?? '').localeCompare(b.company_name ?? '')
-        })
-      })
+      setFollowUpProspects((prev) => insertColdest(prev, { ...p, prospect_fit_status: null }))
     }
     setSaving(false)
   }
@@ -2943,28 +2648,13 @@ export default function Prospects() {
       if (!customer) throw new Error('Failed to create customer')
       const customerId = (customer as { id: string }).id
 
-      for (const cp of convertContactPersons) {
-        if (!cp.name.trim()) continue
-        const phoneVal = cp.phone.trim() || null
-        const { error: cpErr } = await supabase.from('customer_contact_persons').insert({
-          customer_id: customerId,
-          name: cp.name.trim(),
-          phone: phoneVal,
-          email: cp.email.trim() || null,
-          note: cp.note.trim() || null,
-        })
+      for (const row of convertContactRows(convertContactPersons, customerId)) {
+        const { error: cpErr } = await supabase.from('customer_contact_persons').insert(row)
         if (cpErr) throw new Error(`Failed to add contact: ${cpErr.message}`)
       }
 
-      for (const b of convertBids) {
-        if (!b.project_name.trim() || !b.service_type_id) continue
-        const { error: bidErr } = await supabase.from('bids').insert({
-          customer_id: customerId,
-          created_by: authUser.id,
-          service_type_id: b.service_type_id,
-          project_name: b.project_name.trim(),
-          materials_model: 'rough',
-        })
+      for (const row of convertBidRows(convertBids, customerId, authUser.id)) {
+        const { error: bidErr } = await supabase.from('bids').insert(row)
         if (bidErr) throw new Error(`Failed to add bid: ${bidErr.message}`)
       }
 
@@ -4883,14 +4573,8 @@ export default function Prospects() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {(() => {
-                const today = new Date()
-                today.setHours(0, 0, 0, 0)
-                const dates: string[] = []
-                for (let i = 0; i < 30; i++) {
-                  const d = new Date(today)
-                  d.setDate(d.getDate() - i)
-                  dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
-                }
+                // Newest day first; the chart's helper reads the same 30 days oldest first.
+                const dates = [...getOrderedDateKeysLast30Days()].reverse()
                 return dates
                   .map((dk) => {
                     const rows = teamDataByDate[dk] ?? []
