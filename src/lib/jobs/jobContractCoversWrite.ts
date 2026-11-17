@@ -13,6 +13,7 @@ import { coSignatureOnFile, fileSignedJobContract, JOB_CONTRACT_BUCKET, paperUpl
 import type { JobContractRow } from './jobContractLifecycle'
 import { isAwaitingPaperCopy } from './jobContractHandoff'
 import { dispatchJobContractChanged } from './jobContractNotNeeded'
+import { fileContractInDriveQuietly } from './jobContractDriveQuiet'
 import { coversGroupKey, groupPapers, type CoverableJobInput, type CoversPaper, type PaperRowLike } from './jobContractCovers'
 
 export type PartyJob = CoverableJobInput & {
@@ -113,12 +114,15 @@ export async function fileContractForJobs(input: {
       link: input.link,
       file: input.file,
       authUserId: input.authUserId,
+      // The group goes on below: Drive is asked once every row names the jobs the paper covers (#377).
+      driveLater: true,
     })
     if (!row) throw new Error(`The contract was not recorded for every job. ${rowIds.length} of ${jobIds.length} were filed.`)
     rowIds.push(row.id)
     uploadError = uploadError ?? upErr
   }
   if (rowIds.length > 1) await setGroup(rowIds, rowIds[0]!)
+  for (const id of rowIds) fileContractInDriveQuietly(id)
   dispatchJobContractChanged()
   return { filed: rowIds.length, uploadError }
 }
@@ -141,6 +145,8 @@ export async function addJobToPaper(paper: CoversPaper, jobId: string, authUserI
     link: src.signed_document_url ?? '',
     file: null,
     authUserId,
+    // The row's group and its own copy of the scan are written below, and Drive is asked after them (#377).
+    driveLater: true,
   })
   if (!row) throw new Error('The job was not added to the paper.')
   let uploadPath: string | null = null
@@ -165,6 +171,7 @@ export async function addJobToPaper(paper: CoversPaper, jobId: string, authUserI
   )
   // A lone filing has one row, and its id becomes the group's.
   if (!src.covers_group_id) await setGroup([src.id], groupId)
+  fileContractInDriveQuietly(row.id)
   dispatchJobContractChanged()
 }
 
@@ -180,6 +187,8 @@ export async function voidPaperRows(rowIds: ReadonlyArray<string>, authUserId: s
         .eq('status', 'signed'),
     'take the paper off',
   )
+  // A voided paper's copy in Drive is renamed VOIDED (#377); the sweep does the same within ten minutes.
+  for (const id of rowIds) fileContractInDriveQuietly(id)
   dispatchJobContractChanged()
 }
 

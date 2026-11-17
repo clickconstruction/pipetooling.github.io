@@ -1452,7 +1452,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** and the jobs root (the office's setting, `DRIVE_JOBS_FOLDER_ID` while it is empty), as [job-drive-folders](#job-drive-folders); the OCR and embeddings secrets the index reads, when set. Nothing new to set up.
 
-**Status**: v2.7643. Deploy after `20261117213000_job_contracts_drive_file.sql` is pushed, since every call reads the new columns. No cron yet and no screen calls it: the sweep is switched on by a later migration, once [drive-contract-scan](#drive-contract-scan) leaves a filed copy alone.
+**Status**: v2.7643. Deploy after `20261117213000_job_contracts_drive_file.sql` is pushed, since every call reads the new columns. Since v2.7645 the cron `job-contract-drive-sweep` (`6,16,26,36,46,56 * * * *`, migration `20261117233000`) calls the sweep only while a paper is due, and the Contract window calls the press (**File it in Drive now**, **Try again**, **Add the scan**), as do the office's own paper filings right after their write (`src/lib/jobs/jobContractDriveIo.ts`, `jobContractDriveQuiet.ts`).
 
 ---
 
