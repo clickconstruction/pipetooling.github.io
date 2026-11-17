@@ -305,6 +305,26 @@ describe('Estimates — a sent estimate', () => {
   })
 })
 
+describe('Estimates — a sent estimate, a no by phone', () => {
+  it('Mark declined records the no through its RPC, with the note and how it was heard', async () => {
+    renderAt('/estimates/102', [sentRow()])
+    const control = await screen.findByTestId('estimate-record-decline-control')
+    await settle()
+    fireEvent.click(within(control).getByRole('button'))
+    const form = await screen.findByTestId('estimate-record-decline-form')
+    fireEvent.change(within(form).getByPlaceholderText(/Went with another bid/), { target: { value: 'ZZ went with another bid' } })
+    fireEvent.click(within(form).getByRole('button', { name: 'Mark this estimate declined' }))
+    await waitFor(() => expect(world.rpcs.some((r) => r.name === 'record_estimate_decline')).toBe(true))
+    expect(world.rpcs.find((r) => r.name === 'record_estimate_decline')!.args).toEqual({ p_estimate_id: 'e-2', p_note: 'ZZ went with another bid', p_channel: 'phone' })
+  })
+
+  it('says so when nobody was set to be told and no activity is on record', async () => {
+    renderAt('/estimates/102', [sentRow()])
+    expect(await screen.findByText('No staff email recipients were set for this quote.')).toBeTruthy()
+    expect(await screen.findByText('No link views or acceptance events recorded yet.')).toBeTruthy()
+  })
+})
+
 describe('Estimates — an accepted estimate', () => {
   it('shows the acceptance record and offers the job', async () => {
     renderAt('/estimates/103', [acceptedRow()])

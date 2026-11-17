@@ -59,8 +59,8 @@ Each lists: anchor (symbol + lines as of `6af60c5bcf`), **owned state** (moves w
 | Detail: loader + hydration | `load` 1590–1772 + the reset and IO effects 1364–1784 | ~470 | highest — `load` writes 23 states | high | inline | Stage A the pure hydration plan, then the seam |
 | Detail: draft persistence | payload 2640–2665 · `saveDraft` 2678–2716 · autosave + leave 2718–2806 | 172 | highest — payload reads 16 states | high | inline; payload kernel + autosave slice tested | moves whole into the seam, never split |
 | Detail: send flow | `sendToCustomer` 2808–2870 · `sendEstimateEmailAnswer` 2878–2948 · `sendEstimateEmail` 2951–2959 · `tellSheet` 3123–3149 | 179 | med (calls `saveDraft`, `load`) | **med, customer-facing, untested** | inline | **Stage A first** — one send client + answer kernel + send-plan kernel |
-| Detail: sent-side actions | accept URL 2158–2173 · decline 2175–2201 · extend + remail 2203–2271 · resend 2273–2354 · PDF 2378–2407 · unlink 2979–3015 | ~290 | **low** — touches `row`, `load`, events, `lastAcceptUrl` only | low-med | inline | `useEstimateSentActions` — needs no seam |
-| Detail: sent / accepted / declined view | `!isDraft` 4705–5035 + read-only header 3453–3511 | 331 + 59 | reads 15 / writes 1 | med | inline; every control extracted | `EstimateSentView`, with the hook above |
+| Detail: sent-side actions | accept URL 2158–2173 · decline 2175–2201 · extend + remail 2203–2271 · resend 2273–2354 · PDF 2378–2407 · unlink 2979–3015 | ~290 | **low** — touches `row`, `load`, events, `lastAcceptUrl` only | low-med | **out, v2.7613** — [`hooks/useEstimateSentActions.ts`](../src/hooks/useEstimateSentActions.ts) (decline, extend + remail, resend, unlink); the accept-URL pair and the PDF pair stay in the page | done |
+| Detail: sent / accepted / declined view | `!isDraft` 4705–5035 + read-only header 3453–3511 | 331 + 59 | reads 15 / writes 1 | med | **out, v2.7613** — [`EstimateSentView.tsx`](../src/components/estimates/EstimateSentView.tsx) (the view + the Unlink job window) and `EstimateCustomerActivitySection.tsx`; the read-only header is still inline | the read-only header, with the next piece that touches it |
 | Detail: customer experience | gate + `<details>` 5037–5292 · `renderCxDraftSectionFields` 2459–2589 · memos 2356–2376, 2409–2457 | 256 + 131 + 90 | med-high (`cxOverrideFields` persisted by the payload) | med | inline | `EstimateCustomerExperienceSection` (controlled) |
 | Detail: step rail + customer view | `railData` 2017–2044 · `handleRailStepClick` 2046–2059 · `railStepDot` 2062–2070 · render 3168–3179, 3515–3561 | ~110 | med (`railStepDot` in 5 sections) | low-med | `EstimateDraftStepRail` out; wiring inline | stays in the parent |
 | Detail: draft customer picker | `isDraft` 3180–3398 + handlers 2591–2619, 1786–1836, 1879–1907 | 219 + ~100 | reads 9 / writes 7 | med-high | inline | `EstimateDraftCustomerSection` after the seam |
@@ -84,7 +84,7 @@ Each lists: anchor (symbol + lines as of `6af60c5bcf`), **owned state** (moves w
 - **CX config (data):** `CX_FIELD_LABELS` 309–326 (16 keys), `CX_OVERRIDE_SECTIONS` 338–369 (Email / Acceptance page / Thank you), `cxOverrideFieldRows` 371–374. Read only by the CX section.
 - **Thin wrappers:** `lineItemsFromJson(raw, allowNegative)` 522–524 and `sumLineItems` 526–528 over [`lib/estimateLineItemNormalize.ts`](../src/lib/estimateLineItemNormalize.ts).
 - **Types:** `EstimateDetailRow` 377–379, `LineItem` 499, `EstimateDraftCustomerGateProps` 530–534, `EstimateListTab` 563.
-- **Small components:** the two activity components 203–307 (the sent, accepted and declined branches mount the section) and `EstimateDraftCustomerGate` 537–561.
+- **Small components:** `EstimateDraftCustomerGate` 537–561. The two activity components (was 203–307) left with the sent view, v2.7613, to `components/estimates/EstimateCustomerActivitySection.tsx`.
 - **Status:** no pure logic left here. Low risk. The CSS strings go to the styles file when either page component gets its own file; the activity section goes with the sent view; the gate stays beside `EstimateDetail`.
 
 ### `EstimateList` — Pipeline + Ledger (565–1248)
@@ -130,7 +130,7 @@ Each lists: anchor (symbol + lines as of `6af60c5bcf`), **owned state** (moves w
 - **Shared, read only:** `row`, `user`, `role`, `customers`, `acceptancePreviewForLine`, `staffResolvedExperience`. **Shared, written:** `lastAcceptUrl` (setter) and `whatWentRevision` (bump); it calls `load` and `loadEstimateCustomerEvents`.
 - **Why it is separable:** every handler returns early unless the row is sent or accepted, and none reads or writes the draft form cluster. The hook's whole input is `{ row, user, role, load, loadEvents, setLastAcceptUrl, bumpWhatWent }`.
 - **Tests:** the verdict kernels (`estimateDecline`, `estimateLinkResend`, `estimateGoodThroughExtend`, `estimateViewPreview`, `estimatePaper`), and each control's render test; the handlers themselves have none.
-- **Status:** inline, **low-medium risk** (two RPCs, two fetches, one UPDATE, all moved verbatim). Extract as `useEstimateSentActions` once the send client exists, in the same PR as, or one PR before, the view below.
+- **Status:** **out, v2.7613** — `useEstimateSentActions({ row, user, role, load, loadEstimateCustomerEvents, setLastAcceptUrl, bumpWhatWent, showToast })` owns the six busy and window states and the handlers for decline, extend with the letter again, resend and unlink, moved verbatim (two RPCs, two sends, one UPDATE). Left in the page on purpose: `customerAcceptUrl` with its copy and open (the customer experience section reads them too), `buildEstimatePdf` / `estimatePdfFiling` (three mounts), `openCreateJobModal` and `createJobModalOpen` (the `?createJob=1` effect sets it), `detailCustomerSnapshotId` (the route reset clears it).
 
 ### `EstimateDetail` — sent / accepted / declined view (`!isDraft`, 4705–5035)
 
@@ -138,7 +138,7 @@ Each lists: anchor (symbol + lines as of `6af60c5bcf`), **owned state** (moves w
 - **Shared state read:** `row`, `customers`, `estimateCustomerEvents(+Loading)`, `acceptNotifyResolvedUsers`, `acceptorSignatureSignedUrl` (also read by the CX Page tab), `rowOfferedOptions` 2119, `acceptanceDocHeaderBrand` 2123, `staffResolvedExperience`, `customerAttachmentPreview`, `coFields`, `whatWentRevision`, `loading`.
 - **Modals that come with it:** the unlink confirm 5338–5393 (an inline `role="dialog"`), `CreateJobFromEstimateModal` 5395–5409 (`onSuccess` → `tieEstimateTextsToJob`, then `load()`, then `/jobs?edit=<jobId>`), `CustomerSnapshotModal` 5410–5415.
 - **Tests:** render tests for the resend, extend, PDF, offered-options, What went, customer-document and create-job pieces; `estimateAcceptedRecord.test`, `whatWent.test`, `acceptLinkTie.test`.
-- **Status:** inline, **medium risk**, read-mostly, and **the part of the page that grows** (six of the last seven features landed here). Extract as `EstimateSentView` taking `row`, the read-only values and the `useEstimateSentActions` bundle. The `#estimate-job` / `#extend-good-through` hash effect 1388–1404 and the `?createJob=1` effect 1306–1313 stay in the parent; `?createJob=1` sets `createJobModalOpen`, so the hook exposes an opener.
+- **Status:** inline, **medium risk**, read-mostly, and **the part of the page that grows** (six of the last seven features landed here). **Out, v2.7613**: `EstimateSentView` takes `row`, the read-only values and the `useEstimateSentActions` bundle as `actions`; the JSX is the page's own, with the Unlink job window moved in beside it, and the page is 4,571 lines. Two sentences changed shape, because `check:empty-words` reads a moved line as a written one: *No staff email recipients were set for this quote.* and *No link views or acceptance events recorded yet.* are drawn with `EmptyState`. The `#estimate-job` / `#extend-good-through` hash effect and the `?createJob=1` effect stay in the parent, which hands the view `openCreateJobModal`; `CreateJobFromEstimateModal` and `CustomerSnapshotModal` are still mounted by the page, and the read-only header (the For line, the good-through line, the options or the lines) is still inline above the draft editor.
 
 ### `EstimateDetail` — customer experience (`<details>`, 5037–5292)
 
@@ -227,7 +227,7 @@ The fact sheet lists no edge functions because the call is a `fetch`, since v2.7
 
 ### Seam hook candidates
 
-1. **`useEstimateSentActions`** — the sent-side handlers and their eight states. Needs nothing from the draft cluster. New in this re-map.
+1. **`useEstimateSentActions`** — the sent-side handlers and their states. Needs nothing from the draft cluster. **Exists since v2.7613.**
 2. **`useEstimateDetailData`** — `row`, `loading`, `load`, the `customers` cache, the hydrated form cluster, the reset and IO effects, the shared memos, and **the persistence trio**. Smaller than the first map planned, because the sent side and two fieldsets leave first.
 3. **`useEstimateThreadNotes`** — exists; needs a test.
 
@@ -293,7 +293,7 @@ The first map's inventory is **done** (v2.3866–v2.3868, v2.3870, v2.5864, v2.5
 The first pass's steps 1–3 are shipped and are not repeated here. From today's file:
 
 1. **Stage A, one kernel per PR** — rows 1–4 of the [inventory](#stage-a-inventory-pure-logic-to-lib--tests-before-any-component-moves). **First: the send client and its answer (row 1)** — it is the only path that emails a customer, and it was written three times with no test — **shipped v2.7596**. Then the send plan (row 2, with the recipient rule, row 5) — **shipped v2.7601** — the option transitions (row 3) — **shipped v2.7605** — the hydration plan (row 4) — **shipped v2.7607**. Rows 1–5 of the inventory are done.
-2. **`useEstimateSentActions` + `EstimateSentView`** — about 620 lines out (the handlers, the view, the read-only header, the unlink dialog and the two modals), no seam needed, and it takes the region that has grown fastest out of the file. Two PRs if the hook reads cleaner alone.
+2. **`useEstimateSentActions` + `EstimateSentView`** — **shipped v2.7613**, 686 lines out (the handlers, the view, the activity section and the unlink window; the page is 4,571 lines), no seam needed, behind the page's render smoke (v2.7610). The read-only header and the two modals stayed, by the reasons in the dossier.
 3. **The two controlled fieldsets** — `EstimateSupportingDocumentFieldset` (≈175 lines, owns its check) and `EstimateDeliverySection` (≈195 lines, owns the notify and project loaders). Low risk, one PR each.
 4. **`EstimateCustomerExperienceSection`** — ≈450 lines with the override editor and the CX config; `cxOverrideFields` and `previewSelectedOptionKeys` stay controlled.
 5. **`EstimateOptionsStrip`** — ≈195 lines of JSX over the kernel from step 1.

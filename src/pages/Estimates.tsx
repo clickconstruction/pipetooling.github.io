@@ -7,7 +7,7 @@ import { EstimateLineItemCatalogModal } from '../components/estimates/EstimateLi
 import { estDangerOutlineButton, estInputBase, estInputBlock, estPrimaryButton, estSecondaryButton, estSendButton, estSmallPrimaryButton, estSmallSecondaryButton } from '../components/estimates/estimatesPageStyles'
 import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from '../components/estimates/EstimateKindChips'
 import { ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS, EstimateListCards, EstimateListTable, type EstimateListStagesThread } from '../components/estimates/EstimateListTable'
-import { estimateCustomerEventLabel, estimateDeclinedRowLabel, estimateLinkedJobHcp, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
+import { estimateDeclinedRowLabel, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
 import { buildEstimateDraftPersistPayload, estimateDraftHeldDateMessage, estimateDraftUnfinishedDateBlocksSend, estimateDraftUnfinishedDates } from '../lib/estimates/estimateDraftPersist'
 import { heldDatesToTell } from '../lib/autosaveDateHold'
 import {
@@ -21,7 +21,6 @@ import {
   patchDraftLine,
 } from '../lib/estimates/estimateDraftLines'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { MessagesButton } from '../components/messages/MessagesButton'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { groupEstimateNotifyOptions, type EstimateNotifyUserOption } from '../lib/estimates/estimateNotifyOptions'
@@ -43,29 +42,15 @@ import { bridgedCostImpactText } from '../lib/bidDocuments/changeOrderBridge'
 import { CO_CREDIT_LABEL_PREFIX, isCoCreditLine, type CoCostPromptMode } from '../lib/coCostLinePrompt'
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import { countMeaningfulEstimateLines, computeLedgerTotals, isBidProposalDocKind, ledgerRowPasses, type LedgerKindFilter, isEmptyEstimateDraft, splitFollowupRows } from '../lib/estimatePipelineRefresh'
+import { countMeaningfulEstimateLines, computeLedgerTotals, ledgerRowPasses, type LedgerKindFilter, isEmptyEstimateDraft, splitFollowupRows } from '../lib/estimatePipelineRefresh'
 import { estimateOpenState, groupEventsByEstimateId, type EstimateOpenState } from '../lib/estimateOpenState'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { withEstimatePreviewMarker } from '../lib/estimateViewPreview'
-import {
-  canDeclineEstimate,
-  estimateDeclinedLabel,
-  parseEstimateDeclineMetadata,
-  type EstimateDeclineChannel,
-} from '../../supabase/functions/_shared/estimateDecline'
-import EstimateRecordDeclineControl from '../components/estimates/EstimateRecordDeclineControl'
 import EstimateDownloadPdfButton from '../components/estimates/EstimateDownloadPdfButton'
 import { estimatePaperModel } from '../lib/estimates/estimatePaper'
 import { estimatePaperPdfBlob, loadEstimateBrandLogo } from '../lib/estimates/estimatePaperPdf'
 import { estimateTermsPageHref } from '../lib/estimateTermsPageHref'
-import EstimateExtendGoodThroughPanel from '../components/estimates/EstimateExtendGoodThroughPanel'
-import {
-  EXTEND_WORDS,
-  canExtendEstimateGoodThrough,
-  goodThroughExtendedLine,
-  goodThroughState,
-  parseGoodThroughExtendedMetadata,
-} from '../lib/estimates/estimateGoodThroughExtend'
+import { goodThroughState } from '../lib/estimates/estimateGoodThroughExtend'
 import { EXTEND_GOOD_THROUGH_HASH } from '../lib/estimates/estimateGoodThroughChip'
 import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail'
 import { useToastContext } from '../contexts/ToastContext'
@@ -87,7 +72,6 @@ import CustomerAcceptanceRecordModal from '../components/estimates/CustomerAccep
 import EstimateAcceptedNotifySettingsModal from '../components/estimates/EstimateAcceptedNotifySettingsModal'
 import { EmptyState } from '../components/EmptyState'
 import { estimateLaneEmptyWords, estimatesLedgerEmptyWords, estimatesListEmptyWords, estimatesSearchEmptyWords } from '../lib/estimates/estimatesEmptyWords'
-import { EstimateAcceptTypedSignatureLine } from '../components/estimates/EstimateAcceptTypedSignatureLine'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import {
   acceptanceCxOmitKeys,
@@ -111,15 +95,14 @@ import CreateJobFromEstimateModal, {
 import { CustomerSnapshotModal } from '../components/customers/CustomerSnapshotModal'
 import { AcceptHeaderBrandPicker } from '../components/estimates/AcceptHeaderBrandPicker'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
-import EstimateCustomerDocument, {
-  EstimateLineItemsTable,
-} from '../components/estimates/EstimateCustomerDocument'
+import { EstimateLineItemsTable } from '../components/estimates/EstimateCustomerDocument'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
-import EstimateResendLinkPanel from '../components/estimates/EstimateResendLinkPanel'
 import EstimateOfferedOptions from '../components/estimates/EstimateOfferedOptions'
-import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
 import { postSendEstimate, sendEstimateAnswerFrom } from '../lib/estimates/sendEstimateIo'
 import { estimateRecipientEmail, estimateSendPlan } from '../lib/estimates/estimateSendPlan'
+import type { EstimateDetailRow } from '../lib/estimates/estimateDetailRow'
+import { useEstimateSentActions } from '../hooks/useEstimateSentActions'
+import EstimateSentView, { ESTIMATE_JOB_SECTION_HASH } from '../components/estimates/EstimateSentView'
 import { customerFieldsFromEstimate, defaultAcceptNotifyIds, estimateFormFromRow, estimateInitialTitle } from '../lib/estimates/estimateDetailHydration'
 import {
   addEstimateOptionToEditor,
@@ -133,11 +116,9 @@ import {
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { formatCurrency } from '../lib/format'
 import { TellCustomerSheet } from '../components/customers/TellCustomerSheet'
-import { EstimateWhatWent } from '../components/estimates/EstimateWhatWent'
 import { tieEstimateTextsToJob } from '../lib/estimates/estimateTextsTieIo'
 import type { TellSendEmailAnswer } from '../lib/tellCustomer/tellCustomer'
 import { estimateDraftFormSnapshot, shouldDiscardFreshEstimateDraftOnLeave } from '../lib/estimateFreshDraftDiscard'
-import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import { SearchableMultiSelect } from '../components/SearchableMultiSelect'
 import { SearchableSelect, type SearchableSelectOption } from '../components/SearchableSelect'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
@@ -165,8 +146,6 @@ import { estimateEmailFrom } from '../lib/customerEmailFrom'
 import { buildEstimateLetterheadEmail } from '../lib/estimateEmailLetterhead'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../utils/dateUtils'
 import { formatValidUntilForDisplay } from '../lib/formatEstimateValidUntilDisplay'
-import { formatEstimateUpdatedRelativeCompact } from '../lib/formatEstimateListUpdated'
-import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 import { checkGoogleDriveAttachmentUrl } from '../lib/checkGoogleDriveAttachmentUrl'
 import {
   normalizeCustomerAttachmentDraftForDb,
@@ -193,7 +172,6 @@ import {
   type EstimateOption,
   type EstimateOptionKind,
 } from '../lib/estimates/estimateOptions'
-import { acceptedEstimateOptionKeys, describeAcceptedEstimateRecord } from '../lib/estimates/estimateAcceptedRecord'
 
 const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'dev',
@@ -206,112 +184,6 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
 ])
 
 
-
-function EstimateCustomerActivityDetails({
-  defaultOpen,
-  children,
-}: {
-  defaultOpen: boolean
-  children: ReactNode
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <details
-      open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
-      style={{ marginTop: '1rem' }}
-    >
-      {children}
-    </details>
-  )
-}
-
-function EstimateDetailCustomerActivitySection({
-  estimateId,
-  status,
-  defaultOpen,
-  loading,
-  events,
-}: {
-  estimateId: string
-  status: 'sent' | 'customer_accepted' | 'declined'
-  defaultOpen: boolean
-  loading: boolean
-  events: Tables<'estimate_customer_events'>[]
-}) {
-  return (
-    <EstimateCustomerActivityDetails
-      key={`customer-activity-${estimateId}-${status}`}
-      defaultOpen={defaultOpen}
-    >
-      <summary
-        style={{
-          fontSize: '1rem',
-          fontWeight: 600,
-          cursor: 'pointer',
-          color: 'var(--text-strong)',
-        }}
-      >
-        Customer activity
-      </summary>
-      {loading ? (
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Loading…</p>
-      ) : events.length === 0 ? (
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-          No link views or acceptance events recorded yet.
-        </p>
-      ) : (
-        <ul
-          style={{
-            margin: '0.5rem 0 0',
-            paddingLeft: '1.25rem',
-            fontSize: '0.9rem',
-            color: 'var(--text-700)',
-          }}
-        >
-          {events.map((ev) => {
-            const meta = ev.metadata && typeof ev.metadata === 'object' && !Array.isArray(ev.metadata)
-              ? (ev.metadata as Record<string, unknown>)
-              : null
-            const sig =
-              ev.event_type === 'public_accept_submitted' && meta && meta.had_signature === true
-                ? ' (with signature)'
-                : ''
-            const optionName =
-              ev.event_type === 'option_viewed' && meta && typeof meta.option_name === 'string' && meta.option_name.trim()
-                ? ` — ${meta.option_name.trim()}`
-                : ''
-            // v2.2873: "Declined by customer — went with another bid" / "Declined — office heard it by phone — …".
-            const declineMeta = ev.event_type === 'declined' ? parseEstimateDeclineMetadata(meta) : null
-            // v2.5992: the office's own line — "Good-through date extended to Nov 26, 2026 by Taunya (was Oct 24, 2026)".
-            const extendedMeta = ev.event_type === 'good_through_extended' ? parseGoodThroughExtendedMetadata(meta) : null
-            const declineNote = declineMeta?.note ? ` — “${declineMeta.note}”` : ''
-            return (
-              <li key={ev.id} style={{ marginBottom: '0.35rem' }}>
-                {ev.event_type === 'declined'
-                  ? estimateDeclinedLabel(declineMeta)
-                  : extendedMeta
-                    ? goodThroughExtendedLine(extendedMeta)
-                    : estimateCustomerEventLabel(ev.event_type)}
-                {optionName}
-                {declineNote}
-                {sig}
-                {ev.client_ip?.trim() ? (
-                  <>
-                    {' · '}
-                    <IpAddressMapButton ip={ev.client_ip} />
-                  </>
-                ) : null}{' '}
-                — {formatNotificationDatetime(ev.occurred_at)}
-                {ev.occurred_at?.trim() ? ` ${formatEstimateUpdatedRelativeCompact(ev.occurred_at)}` : ''}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </EstimateCustomerActivityDetails>
-  )
-}
 
 const CX_FIELD_LABELS: Record<EstimateExperienceOverrideKey, string> = {
   email_subject_template: 'Email subject template',
@@ -380,27 +252,8 @@ function cxOverrideFieldRows(k: EstimateExperienceOverrideKey): number {
   return 2
 }
 
-/** Detail load embeds linked job HCP when `job_ledger_id` is set. */
-type EstimateDetailRow = Tables<'estimates'> & {
-  jobs_ledger?: { hcp_number: string } | null
-}
-
-const ESTIMATE_JOB_SECTION_HASH = 'estimate-job'
 
 /** Primary blue — detail Job section “Create job from estimate”. */
-const estimateDetailCreateJobButtonStyle: CSSProperties = {
-  padding: '0.35rem 0.75rem',
-  fontSize: '0.8125rem',
-  lineHeight: 1.2,
-  fontWeight: 600,
-  border: 'none',
-  borderRadius: 6,
-  background: '#2563eb',
-  color: 'white',
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-}
-
 const ESTIMATES_PAGE_CLASS = 'estimates-page-modern'
 
 /** Width clamp + responsive padding; modifiers cap content width on large screens. */
@@ -1314,15 +1167,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     setDetailSearchParams(next, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row?.id])
-  const [unlinkingJob, setUnlinkingJob] = useState(false)
-  const [unlinkJobConfirmOpen, setUnlinkJobConfirmOpen] = useState(false)
   const [customerPreviewTab, setCustomerPreviewTab] = useState<'email' | 'page' | 'thankyou'>('email')
   const [lastAcceptUrl, setLastAcceptUrl] = useState<string | null>(null)
   /** Tell the customer (v2.5594): a normal estimate's send goes through the sheet — the email, the text with the link, the receipt with the call. */
   const [tellEstimate, setTellEstimate] = useState<{ estimateId: string; customerId: string; customerName: string | null; email: string; totalCents: number; number: number; title: string; jobId: string | null } | null>(null)
-  // Resend link (v2.2856, J17-F2/N3): the fresh URL is shown once, in the tab that asked for it.
-  const [resending, setResending] = useState(false)
-  const [resentInfo, setResentInfo] = useState<{ email: string; emailed: boolean; url: string } | null>(null)
   const [appCxSettings, setAppCxSettings] = useState<{ key: string; value_text: string | null }[]>([])
   const [catalogLineItems, setCatalogLineItems] = useState<EstimateCatalogLineItem[]>([])
   const [catalogModalOpen, setCatalogModalOpen] = useState(false)
@@ -2071,162 +1919,20 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     window.open(withEstimatePreviewMarker(url), '_blank', 'noopener,noreferrer')
   }, [customerAcceptUrl])
 
-  // v2.2873 (J17-N1): the office heard a "no" on the phone — record it. One RPC flips
-  // sent → declined and writes the `declined` event (metadata.by = staff) in one transaction.
-  const [recordingDecline, setRecordingDecline] = useState(false)
-  const [extendingGoodThrough, setExtendingGoodThrough] = useState(false)
-  const declineVerdict = useMemo(() => canDeclineEstimate(row?.status), [row?.status])
-  async function recordStaffDecline(note: string, channel: EstimateDeclineChannel) {
-    if (!row || recordingDecline || !user || !declineVerdict.ok) return
-    setRecordingDecline(true)
-    try {
-      // The RPC ships with this PR's migration; generated types catch up on the next gen-types run.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).rpc('record_estimate_decline', {
-        p_estimate_id: row.id,
-        p_note: note,
-        p_channel: channel,
-      })
-      if (error) throw error
-      showToast('Marked declined.', 'success')
-      recordNavClick(user.id, role, 'estimate_declined', '#staff')
-      await load()
-      await loadEstimateCustomerEvents()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Could not mark declined'), 'error')
-    } finally {
-      setRecordingDecline(false)
-    }
-  }
-
-  /** Resend link (v2.2856): can THIS row take a re-mint? Same kernel the edge function enforces. */
-  /**
-   * Extend good-through (v2.5992, punch list #206 PR 1): `extend_estimate_good_through` moves the date,
-   * pushes the link's own end past it (the hash untouched, so every copy of the link keeps working)
-   * and writes the trail row; the page reloads the row and its events.
-   */
-  const extendVerdict = useMemo(
-    () => canExtendEstimateGoodThrough(row?.status, row?.sent_at, { inBidRoom: Boolean(row?.bid_room_id) }),
-    [row?.status, row?.sent_at, row?.bid_room_id],
-  )
   const todayYmd = todayYmdInAppTz()
   /** What went re-reads after a letter goes from this page (v2.5997). */
   const [whatWentRevision, setWhatWentRevision] = useState(0)
-  /**
-   * The letter again with the same link (v2.5997, #206 PR 4): `send-estimate-to-customer` in mode
-   * `remail` mails the stored letter with today's date and the link they already hold; nothing on the
-   * row moves. The words name the address, or why it did not go.
-   */
-  async function remailCustomerLetter(): Promise<void> {
-    if (!row || !user) return
-    const post = await postSendEstimate({ estimateId: row.id, mode: 'remail' })
-    if (post.kind === 'no-session') throw new Error('Not signed in')
-    if (post.kind !== 'reply') throw new Error('The letter did not go')
-    const json = post.json
-    if (!post.httpOk || !json.ok) throw new Error(json.error || 'The letter did not go')
-    if (json.accept_url) {
-      setLastAcceptUrl(json.accept_url)
-      storeEstimateAcceptUrl(row.id, json.accept_url)
-    }
-    const to = json.sent_to?.trim() || row.customer_email?.trim() || 'them'
-    if (json.emailed) showToast(`Emailed again to ${to}, same link.`, 'success')
-    else showToast(`The letter did not go. ${json.warning || json.email_error || ''}`.trim(), 'error')
-    recordNavClick(user.id, role, 'estimate_letter_remailed', json.emailed ? '#emailed' : '#not-sent')
-    setWhatWentRevision((n) => n + 1)
-  }
-  async function extendGoodThrough(ymd: string, emailAgain = false) {
-    if (!row || extendingGoodThrough || !user || !extendVerdict.ok) return
-    const wasPassed = goodThroughState(row.valid_until, todayYmdInAppTz()).kind === 'passed'
-    setExtendingGoodThrough(true)
-    try {
-      // The RPC ships with this PR's migration; generated types catch up on the next gen-types run.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).rpc('extend_estimate_good_through', {
-        p_estimate_id: row.id,
-        p_valid_until: ymd,
-      })
-      if (error) throw error
-      showToast(EXTEND_WORDS.done(ymd, wasPassed), 'success')
-      recordNavClick(user.id, role, 'estimate_good_through_extended', '#staff')
-      if (emailAgain) {
-        try {
-          await remailCustomerLetter()
-        } catch (e) {
-          showToast(formatErrorMessage(e, 'The date moved, but the letter did not go. Use Resend link for a fresh one.'), 'error')
-        }
-      }
-      await load()
-      await loadEstimateCustomerEvents()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Could not extend the good-through date'), 'error')
-    } finally {
-      setExtendingGoodThrough(false)
-    }
-  }
-
-  const resendVerdict = useMemo(
-    () =>
-      canResendEstimateLink(row?.status, row?.sent_at, new Date(), {
-        validUntil: row?.valid_until ?? null,
-        inBidRoom: Boolean(row?.bid_room_id),
-      }),
-    [row?.status, row?.sent_at, row?.valid_until, row?.bid_room_id],
-  )
-
-  // A different estimate → forget the one-time URL panel.
-  useEffect(() => {
-    setResentInfo(null)
-  }, [row?.id])
-
-  const copyResentUrl = useCallback(
-    (url: string) => {
-      void navigator.clipboard.writeText(url).then(
-        () => showToast('Customer link copied.', 'success'),
-        () => showToast('Could not copy link.', 'error'),
-      )
-    },
-    [showToast],
-  )
-
-  /**
-   * Resend link (v2.2856, J17-F2/N3): `send-estimate-to-customer` in `mode: 'resend'` mints a
-   * fresh token (the old link dies), mails the stored email again to the address on the row,
-   * and returns the new URL — kept in this tab like a first send, and shown once below.
-   */
-  async function resendCustomerLink() {
-    if (!row || resending || !user || !resendVerdict.ok) return
-    setResending(true)
-    try {
-      const post = await postSendEstimate({ estimateId: row.id, mode: 'resend' })
-      if (post.kind === 'no-session') {
-        showToast('Not signed in', 'error')
-        return
-      }
-      if (post.kind !== 'reply') {
-        showToast('Resend failed', 'error')
-        return
-      }
-      const json = post.json
-      if (!post.httpOk || !json.ok || !json.accept_url) {
-        showToast(json.error || 'Resend failed', 'error')
-        return
-      }
-      const email = json.sent_to?.trim() || row.customer_email?.trim() || ''
-      setLastAcceptUrl(json.accept_url)
-      storeEstimateAcceptUrl(row.id, json.accept_url)
-      setResentInfo({ email, emailed: Boolean(json.emailed), url: json.accept_url })
-      showToast(
-        json.emailed ? `Link resent to ${email}.` : `New link ready — email did not go out. ${json.warning || json.email_error || ''}`.trim(),
-        json.emailed ? 'success' : 'error',
-      )
-      recordNavClick(user.id, role, 'estimate_link_resent', json.emailed ? '#emailed' : '#link-only')
-      await load()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Resend failed'), 'error')
-    } finally {
-      setResending(false)
-    }
-  }
+  // The sent side's presses — Resend link, Extend, Mark declined, Unlink job — and their state (`useEstimateSentActions`, v2.7613).
+  const sentActions = useEstimateSentActions({
+    row,
+    user,
+    role,
+    load,
+    loadEstimateCustomerEvents,
+    setLastAcceptUrl,
+    bumpWhatWent: () => setWhatWentRevision((n) => n + 1),
+    showToast,
+  })
 
   const staffResolvedExperience = useMemo((): EstimateCustomerExperienceResolved | null => {
     if (!row) return null
@@ -2813,39 +2519,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   function openCreateJobModal() {
     if (!row || row.status !== 'customer_accepted' || row.job_ledger_id) return
     setCreateJobModalOpen(true)
-  }
-
-  function openUnlinkJobConfirm() {
-    if (!row || row.status !== 'customer_accepted' || !row.job_ledger_id || unlinkingJob) return
-    setUnlinkJobConfirmOpen(true)
-  }
-
-  function closeUnlinkJobConfirm() {
-    if (unlinkingJob) return
-    setUnlinkJobConfirmOpen(false)
-  }
-
-  async function confirmUnlinkLinkedJob() {
-    if (!row || row.status !== 'customer_accepted' || !row.job_ledger_id || unlinkingJob) return
-    setUnlinkingJob(true)
-    try {
-      await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('estimates')
-            .update({ job_ledger_id: null })
-            .eq('id', row.id)
-            .eq('status', 'customer_accepted'),
-        'unlink estimate job',
-      )
-      showToast('Job unlinked', 'success')
-      setUnlinkJobConfirmOpen(false)
-      await load()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Could not unlink job'), 'error')
-    } finally {
-      setUnlinkingJob(false)
-    }
   }
 
   /**
@@ -4537,335 +4210,33 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       </EstimateDraftCustomerGate>
 
       {!isDraft && (
-        <div style={{ marginTop: '1rem' }}>
-          {row.customer_id && row.sent_at && (row.status === 'sent' || row.status === 'customer_accepted') ? (
-            // What went (v2.5683, punch list #133 PR 2): the receipt's facts, kept where the estimate is read.
-            <EstimateWhatWent
-              customerId={row.customer_id}
-              customerName={customers.find((c) => c.id === row.customer_id)?.name ?? null}
-              email={row.customer_email ?? null}
-              sentAt={row.sent_at}
-              tokenHash={row.public_token_hash ?? null}
-              estimateId={row.id}
-              revision={whatWentRevision}
-            />
-          ) : null}
-          <div
-            style={{
-              marginBottom: '1rem',
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              fontSize: '0.875rem',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Acceptance notify recipients</div>
-            {acceptNotifyResolvedUsers.length === 0 ? (
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>No staff email recipients were set for this quote.</p>
-            ) : (
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                {acceptNotifyResolvedUsers.map((u) => (
-                  <li key={u.id} style={{ marginBottom: '0.25rem' }}>
-                    {u.name?.trim() || '—'} · {u.email?.trim() || '—'}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              This list was locked when the quote was sent.
-            </p>
-          </div>
-          {row.status === 'customer_accepted' ? (
-            <div
-              key={`customer-accepted-record-${row.id}`}
-              style={{
-                marginTop: 0,
-                padding: '1rem',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                maxWidth: 'min(640px, 100%)',
-                width: '100%',
-                boxSizing: 'border-box',
-                background: 'var(--surface)',
-                fontFamily: 'system-ui, sans-serif',
-              }}
-            >
-              <EstimateCustomerDocument
-                title={row.title ?? ''}
-                forLine={acceptancePreviewForLine}
-                validUntil={row.valid_until ?? null}
-                lineItemsSnapshot={row.line_items_snapshot}
-                termsSnapshot={row.terms_snapshot ?? ''}
-                totalCents={row.total_cents}
-                headerBrand={acceptanceDocHeaderBrand}
-                lineItemsHeading={staffResolvedExperience?.docLineItemsHeading ?? (isCO ? 'Impact on cost' : 'Line items')}
-                termsHeading={staffResolvedExperience?.docTermsHeading ?? 'Terms'}
-                totalLabel={staffResolvedExperience?.docTotalLabel ?? (isCO ? 'Net change to contract' : 'Total')}
-                changeOrder={isCO ? coFields : null}
-              />
-              {customerAttachmentPreview ? (
-                <div style={{ marginTop: '1.25rem' }}>
-                  <EstimateCustomerAttachmentCard attachment={customerAttachmentPreview} />
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <p>
-              {isCO ? (
-                <>
-                  <strong>Net change to contract:</strong> {formatSignedCentsUsd(row.total_cents)}
-                </>
-              ) : (
-                <>
-                  <strong>Total:</strong> {formatMoney(row.total_cents)}
-                </>
-              )}
-            </p>
-          )}
-          {row.status === 'customer_accepted' && rowOfferedOptions.length >= 2 ? (
-            // v2.5988 (#206 PR 2): what they passed on, in full, under what they took.
-            <EstimateOfferedOptions options={rowOfferedOptions} accepted />
-          ) : null}
-          {(row.customer_id || row.customer_email) && (
-            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
-              {row.customer_id ? (
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Customer:</strong>{' '}
-                  {(() => {
-                    const displayName =
-                      customers.find((c) => c.id === row.customer_id)?.name?.trim() || row.customer_id
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => setDetailCustomerSnapshotId(row.customer_id)}
-                        title="View customer"
-                        aria-label={`View customer ${displayName}`}
-                        style={{
-                          margin: 0,
-                          padding: 0,
-                          border: 'none',
-                          background: 'transparent',
-                          cursor: 'pointer',
-                          font: 'inherit',
-                          color: 'var(--text-link)',
-                          textDecoration: 'underline',
-                          textUnderlineOffset: '2px',
-                        }}
-                      >
-                        {displayName}
-                      </button>
-                    )
-                  })()}{' '}
-                  <MessagesButton customerId={row.customer_id} customerName={customers.find((c) => c.id === row.customer_id)?.name} size={14} />
-                </p>
-              ) : null}
-              {row.customer_email && (
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Email used for link:</strong> {row.customer_email}
-                </p>
-              )}
-            </div>
-          )}
-          {row.status === 'customer_accepted' && (
-            <>
-              {isBidProposalDocKind(row.doc_kind) && row.bid_id ? (
-                <div style={{ marginTop: '1rem', fontSize: '0.85rem', background: 'var(--bg-violet-100)', color: 'var(--text-indigo-800)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
-                  Signed bid-room proposal — the record of a GC signature.{' '}
-                  <Link to={`/bids?bidId=${row.bid_id}`} style={{ fontWeight: 600 }}>
-                    Open the bid
-                  </Link>
-                </div>
-              ) : null}
-              <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Customer acceptance</h2>
-              {(() => {
-                // Estimate Options (v2.2462): what they chose, and what they passed on.
-                // v2.3556: several options may have been accepted (a choice plus add-ons, or
-                // add-ons alone) — the key list first, the single key for older acceptances.
-                const offered = normalizeEstimateOptionsFromJson(row.options_snapshot)
-                if (offered.length < 2) return null
-                const record = describeAcceptedEstimateRecord(
-                  offered,
-                  acceptedEstimateOptionKeys(row),
-                  formatMoney,
-                  row.total_cents,
-                )
-                return (
-                  <div style={{ fontSize: '0.9rem', color: 'var(--text-700)', margin: '0.25rem 0 0.5rem' }} data-testid="estimate-accepted-record">
-                    <div>
-                      <strong>{record.headline}</strong> <span style={{ color: 'var(--text-muted)' }}>{record.offeredNote}</span>
-                    </div>
-                    <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem', color: 'var(--text-muted)' }}>
-                      {record.addOnLines.map((t) => (
-                        <li key={t}>{t}</li>
-                      ))}
-                      {record.notChosenLines.map((t) => (
-                        <li key={t}>{t}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )
-              })()}
-              <ul style={{ fontSize: '0.9rem', color: 'var(--text-700)' }}>
-                <li>Name: {row.acceptor_printed_name || '—'}</li>
-                <li>
-                  At:{' '}
-                  {row.acceptor_consented_at?.trim() ? (
-                    <>
-                      {new Date(row.acceptor_consented_at).toLocaleString()}
-                      {` ${formatEstimateUpdatedRelativeCompact(row.acceptor_consented_at)}`}
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </li>
-                <li>
-                  IP: <IpAddressMapButton ip={row.acceptor_ip} />
-                </li>
-                {acceptorSignatureSignedUrl ? (
-                  <li style={{ marginTop: '0.75rem', listStyle: 'none', marginLeft: '-1rem' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Signature</div>
-                    <img
-                      src={acceptorSignatureSignedUrl}
-                      alt="Customer signature"
-                      style={{ maxWidth: 400, width: '100%', border: '1px solid var(--border)', borderRadius: 6 }}
-                    />
-                  </li>
-                ) : row.acceptor_signature_storage_path ? (
-                  <li style={{ marginTop: '0.5rem' }}>Signature: (loading preview…)</li>
-                ) : row.acceptor_printed_name?.trim() ? (
-                  <li style={{ marginTop: '0.75rem', listStyle: 'none', marginLeft: '-1rem' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Signature</div>
-                    <div style={{ maxWidth: 400 }}>
-                      <EstimateAcceptTypedSignatureLine
-                        printedName={row.acceptor_printed_name ?? ''}
-                        consentAtIso={row.acceptor_consented_at}
-                      />
-                    </div>
-                  </li>
-                ) : null}
-              </ul>
-              <EstimateDetailCustomerActivitySection
-                estimateId={row.id}
-                status="customer_accepted"
-                defaultOpen={false}
-                loading={estimateCustomerEventsLoading}
-                events={estimateCustomerEvents}
-              />
-              <div id={ESTIMATE_JOB_SECTION_HASH} style={{ marginTop: '1rem', textAlign: 'center' }}>
-                <h2 style={{ fontSize: '1rem', margin: 0 }}>Job</h2>
-                {!row.job_ledger_id ? (
-                  <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'center' }}>
-                    <button type="button" onClick={openCreateJobModal} style={estimateDetailCreateJobButtonStyle}>
-                      {isCO ? 'Apply change order to job' : 'Create job from estimate'}
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      marginTop: '0.5rem',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.65rem',
-                    }}
-                  >
-                    <span>
-                      {(() => {
-                        const hcp = estimateLinkedJobHcp(row)
-                        return (
-                          <>
-                            Linked job:{' '}
-                            <Link to={`/jobs?edit=${row.job_ledger_id}`}>{hcp ? `Job #${hcp}` : 'Open in Jobs'}</Link>
-                          </>
-                        )
-                      })()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={openUnlinkJobConfirm}
-                      disabled={unlinkingJob || loading || saving}
-                      aria-label="Remove job link from this estimate"
-                      style={{
-                        ...estSmallSecondaryButton(),
-                        cursor: unlinkingJob || loading || saving ? 'not-allowed' : 'pointer',
-                        opacity: unlinkingJob || loading || saving ? 0.65 : 1,
-                      }}
-                    >
-                      {unlinkingJob ? 'Unlinking…' : 'Unlink job'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-          {row.status === 'sent' && (
-            <>
-              <EstimateDetailCustomerActivitySection
-                estimateId={row.id}
-                status="sent"
-                defaultOpen
-                loading={estimateCustomerEventsLoading}
-                events={estimateCustomerEvents}
-              />
-              {row.bid_room_id ? (
-                <p style={{ marginTop: '1rem', color: 'var(--text-amber-800)' }}>
-                  In the bid room — the GC reviews and signs this change order on their room page, alongside the proposal.
-                </p>
-              ) : (
-                <EstimateResendLinkPanel
-                  sentTo={row.customer_email?.trim() || null}
-                  verdict={resendVerdict}
-                  busy={resending || loading}
-                  onResend={() => void resendCustomerLink()}
-                  resent={resentInfo}
-                  onCopyUrl={copyResentUrl}
-                />
-              )}
-              {extendVerdict.ok ? (
-                <EstimateExtendGoodThroughPanel
-                  id={EXTEND_GOOD_THROUGH_HASH}
-                  validUntil={row.valid_until ?? null}
-                  todayYmd={todayYmd}
-                  busy={extendingGoodThrough || loading}
-                  emailTo={row.customer_email?.trim() || null}
-                  onExtend={(ymd, emailAgain) => void extendGoodThrough(ymd, emailAgain)}
-                />
-              ) : null}
-              <EstimateCustomerAcceptLinkButtons
-                customerAcceptUrl={customerAcceptUrl}
-                isDraft={isDraft}
-                resendAvailable={resendVerdict.ok}
-                onCopy={copyCustomerAcceptUrl}
-                onOpen={openCustomerAcceptUrl}
-                style={{ marginTop: '0.75rem' }}
-              />
-              <EstimateDownloadPdfButton build={buildEstimatePdf} filing={estimatePdfFiling} disabled={loading} style={{ marginTop: '0.5rem' }} />
-              <EstimateRecordDeclineControl
-                busy={recordingDecline || loading}
-                onRecord={(note, channel) => void recordStaffDecline(note, channel)}
-                style={{ marginTop: '1rem' }}
-              />
-            </>
-          )}
-          {row.status === 'declined' && (
-            <>
-              <p style={{ marginTop: '1rem', color: 'var(--text-700)' }}>
-                <strong>Declined.</strong> Nothing more is waiting on the customer — the row sits in the Pipeline's
-                Declined bucket. To quote again, start a New estimate from the Estimates page.
-              </p>
-              <EstimateDetailCustomerActivitySection
-                estimateId={row.id}
-                status="declined"
-                defaultOpen
-                loading={estimateCustomerEventsLoading}
-                events={estimateCustomerEvents}
-              />
-              <EstimateDownloadPdfButton build={buildEstimatePdf} filing={estimatePdfFiling} disabled={loading} style={{ marginTop: '0.75rem' }} />
-            </>
-          )}
-        </div>
+        <EstimateSentView
+          row={row}
+          isCO={isCO}
+          customers={customers}
+          loading={loading}
+          saving={saving}
+          whatWentRevision={whatWentRevision}
+          acceptNotifyResolvedUsers={acceptNotifyResolvedUsers}
+          acceptancePreviewForLine={acceptancePreviewForLine}
+          acceptanceDocHeaderBrand={acceptanceDocHeaderBrand}
+          staffResolvedExperience={staffResolvedExperience}
+          coFields={coFields}
+          customerAttachmentPreview={customerAttachmentPreview}
+          rowOfferedOptions={rowOfferedOptions}
+          acceptorSignatureSignedUrl={acceptorSignatureSignedUrl}
+          estimateCustomerEvents={estimateCustomerEvents}
+          estimateCustomerEventsLoading={estimateCustomerEventsLoading}
+          todayYmd={todayYmd}
+          customerAcceptUrl={customerAcceptUrl}
+          copyCustomerAcceptUrl={copyCustomerAcceptUrl}
+          openCustomerAcceptUrl={openCustomerAcceptUrl}
+          buildEstimatePdf={buildEstimatePdf}
+          estimatePdfFiling={estimatePdfFiling}
+          setDetailCustomerSnapshotId={setDetailCustomerSnapshotId}
+          openCreateJobModal={openCreateJobModal}
+          actions={sentActions}
+        />
       )}
 
       <EstimateDraftCustomerGate active={draftNeedsCustomer} onBlockedInteraction={requestCustomerFirst}>
@@ -4882,7 +4253,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <EstimateCustomerAcceptLinkButtons
               customerAcceptUrl={customerAcceptUrl}
               isDraft={isDraft}
-              resendAvailable={resendVerdict.ok}
+              resendAvailable={sentActions.resendVerdict.ok}
               onCopy={copyCustomerAcceptUrl}
               onOpen={openCustomerAcceptUrl}
               style={{ marginBottom: '1rem' }}
@@ -5168,63 +4539,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           </div>
         </div>
       )}
-
-      {unlinkJobConfirmOpen && row ? (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1002,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="unlink-job-confirm-title"
-            aria-describedby="unlink-job-confirm-desc"
-            style={{
-              background: 'var(--surface)',
-              padding: '1.5rem',
-              borderRadius: 8,
-              minWidth: 320,
-              maxWidth: 440,
-              margin: '0 1rem',
-            }}
-          >
-            <h2 id="unlink-job-confirm-title" style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>
-              Unlink job
-            </h2>
-            <p id="unlink-job-confirm-desc" style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-              Remove the job link from this estimate? The job will stay in Jobs; only the link here is cleared.
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={closeUnlinkJobConfirm}
-                disabled={unlinkingJob}
-                style={estSecondaryButton(unlinkingJob)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={unlinkingJob}
-                onClick={() => {
-                  void confirmUnlinkLinkedJob()
-                }}
-                style={estPrimaryButton(!!unlinkingJob)}
-              >
-                {unlinkingJob ? 'Unlinking…' : 'Unlink'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <CreateJobFromEstimateModal
         open={createJobModalOpen && row != null}
