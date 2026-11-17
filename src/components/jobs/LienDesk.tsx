@@ -179,9 +179,9 @@ import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
-import { LienRetainageUnrecorded } from './LienRetainageUnrecorded'
-import { type RetainageUnrecordedRow } from '../../lib/ar/retainageSuggested'
-import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
+import { LienDeskRetainageList } from './LienDeskRetainageList'
+import { lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
+import { LIEN_RETAINAGE_PILES, lienRetainageListView, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates, { LienGatesSentFold } from './LienDeskGates'
@@ -339,15 +339,6 @@ const isLeader = isLienLeader
 const isOffice = isLienOffice
 const canSendOnWord = canSendLienOnWord
 
-/** One empty list for every render with no such job, so the list's effect stays put. */
-const NO_RETAINAGE_UNRECORDED: ReadonlyArray<RetainageUnrecordedRow> = []
-
-function severityColors(sev: LienDeskEntry['severity']): { bg: string; fg: string } {
-  if (sev === 'red') return { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' }
-  if (sev === 'amber') return { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
-  return { bg: 'var(--bg-subtle)', fg: 'var(--text-muted)' }
-}
-
 function deadlineWords(e: LienDeskEntry): string {
   if (e.daysLeft == null || !e.earliestDeadline) return e.missedMonths.length ? 'window closed' : ''
   if (e.daysLeft < 0) return 'window closed'
@@ -357,18 +348,6 @@ function deadlineWords(e: LienDeskEntry): string {
   return `by ${formatYmdMonthDay(e.earliestDeadline)}`
 }
 
-const chip = (bg: string, fg: string): React.CSSProperties => ({
-  display: 'inline-block',
-  padding: '0 6px',
-  borderRadius: 5,
-  fontSize: '0.68rem',
-  fontWeight: 600,
-  lineHeight: '18px',
-  whiteSpace: 'nowrap',
-  background: bg,
-  color: fg,
-  verticalAlign: 'middle',
-})
 /** Filled buttons carry a white label, so the fill is a literal that holds in both themes — the `--text-*` tokens go pale in dark mode and the label with them. */
 const FILL = { primary: '#2563eb', green: '#166534', amber: '#92400e' } as const
 /** The footer's state chip (v2.4855): a few words, the old sentence on hover. */
@@ -2177,9 +2156,8 @@ export default function LienDesk({
     for (const copy of run.copies) void fileSentCopy({ ...copy.filing, how: 'print' }, { html: copy.html })
   }
   const retEntries = data?.retainage.entries ?? []
-  const retVisibleAll = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key)))
-  const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retVisibleAll.filter((e) => e.pile === p.key && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
-  const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!oneColumn ? retVisible[0] : undefined) ?? null
+  // What the Retainage list shows and which row is open (`lienRetainageListView`, v2.7583).
+  const { visible: retVisible, selected: retSelected, pilesShown: retPilesShown } = lienRetainageListView({ entries: retEntries, pile: retPile, finding, matches: (e, pileLabel) => lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [pileLabel]), findWords).ok, selectedJobId: retSelectedJobId, oneColumn })
   const retCount = retEntries.filter((e) => e.pile !== 'sent').length + (data?.retainageUnrecorded?.length ?? 0)
   const retReady = data?.retainage.counts.ready ?? 0
   /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
@@ -3700,62 +3678,31 @@ export default function LienDesk({
       <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
     )
 
-  // ---------- retainage: the list and the pane (v2.3753) ----------
-  const retPilesShown = LIEN_RETAINAGE_PILES.map((p) => ({ p: p.key, label: p.label, rows: retVisible.filter((e) => e.pile === p.key), total: retVisibleAll.filter((e) => e.pile === p.key).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
-  const retHeads = useLienPileHeads(retPilesShown.map((x) => x.p), isMobile)
+  // ---------- retainage: the list and the pane (v2.3753; the list is `LienDeskRetainageList` since v2.7583) ----------
   const retList = (
-    <div ref={retHeads.listRef} onScroll={retHeads.onScroll} style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
-      {pileStrip(retPileChips)}
-      {finding || retPile ? null : <LienRetainageUnrecorded rows={data?.retainageUnrecorded ?? NO_RETAINAGE_UNRECORDED} failure={data?.retainageUnrecordedFailure ?? null} office={office} focusJobId={retUnrecordedFocus} onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')} onRecorded={onChanged} />}
-      {retVisible.length === 0 ? (
-        !loading && data != null && (finding || retPile) ? (
-          <div data-lien-retainage-empty={finding ? 'find' : retPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
-            <EmptyState compact {...(finding ? lienListFindEmptyWords(find, () => setFind('')) : lienPileEmptyWords(() => setRetPile(null)))} />
-          </div>
-        ) : (
-          <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-            {loading || data == null ? 'Looking at every job with retainage…' : 'No job with a GC has retainage recorded. Edit Job → Our contract on this job is where it goes.'}
-          </p>
-        )
-      ) : null}
-      {retPilesShown.map(({ p, label, rows, total }, i) => (
-          <Fragment key={p}>
-            <LienPileHead pile={p} label={label} count={lienPileHeadCount(rows.length, total, data?.retainage.counts[p], finding)} i={i} n={retPilesShown.length} phone={isMobile} on={retHeads.lit === p} empty={finding && rows.length === 0} onPress={() => retHeads.scrollToPile(p, i)} onShowEvery={retPile ? () => setRetPile(null) : null} />
-            <div data-lien-pile-rows={p}>
-            {rows.map((e) => {
-              const j = data?.jobsById[e.jobId]
-              const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
-              const sel = e.jobId === retSelected?.jobId
-              return (
-                <button
-                  key={e.jobId}
-                  type="button"
-                  onClick={() => {
-                    setRetSelectedJobId(e.jobId)
-                    setMobileListShown(false)
-                  }}
-                  aria-current={sel ? 'true' : undefined}
-                  style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto', gap: '0.2rem 0.6rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: sel ? 'var(--bg-blue-tint)' : 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}
-                >
-                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
-                  <span style={{ minWidth: 0 }}>
-                    <strong>{jobLabel(j, e.jobId)}</strong>
-                    <span style={{ color: 'var(--text-muted)' }}> · {g?.name ?? ''}</span>
-                  </span>
-                  <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.retainageHeld)}</span>
-                  <span style={{ gridColumn: '2 / 4', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    <span style={chip(severityColors(e.severity).bg, severityColors(e.severity).fg)}>{retainageDeadlineWords(e, formatYmdMonthDay)}</span>
-                    <span>{contractEndedWords(e.contractEndedHow, e.contractEndedOn, formatYmdMonthDay)}</span>
-                    <span>· {e.inClaim ? 'in the § 53.056 claim' : 'not yet in a § 53.056 claim'}</span>
-                    <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
-                  </span>
-                </button>
-              )
-            })}
-            </div>
-          </Fragment>
-      ))}
-    </div>
+    <LienDeskRetainageList
+      data={data}
+      loading={loading}
+      isMobile={isMobile}
+      office={office}
+      pilesShown={retPilesShown}
+      rowCount={retVisible.length}
+      selectedJobId={retSelected?.jobId ?? null}
+      pile={retPile}
+      onShowEveryPile={() => setRetPile(null)}
+      finding={finding}
+      find={find}
+      onClearFind={() => setFind('')}
+      focusJobId={retUnrecordedFocus}
+      pileChips={pileStrip(retPileChips)}
+      supplierMarks={supplierMarks}
+      onPick={(jobId) => {
+        setRetSelectedJobId(jobId)
+        setMobileListShown(false)
+      }}
+      onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')}
+      onChanged={onChanged}
+    />
   )
   const retPane =
     retSelected && data ? (
