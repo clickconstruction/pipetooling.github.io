@@ -31,6 +31,26 @@ describe('assembleLienBookInput', () => {
     expect(input.policyByCustomer['gc-1']).toBeDefined()
     expect(input.todayYmd).toBe(TODAY)
   })
+  it('the money is what the sent bills still owe, not the job’s price less payments (v2.7530): a job billed one stage of three', () => {
+    // The whole contract is $42,300 and $15,100 is paid. One stage was billed, and its bills owe $2,976. The desk's rows say so.
+    const base = raw()
+    const staged = raw({
+      rows: [{ ...base.rows[0]!, open_balance: 2976 }],
+      affidavitRows: [{ ...base.affidavitRows[0]!, open_balance: 2976 }],
+      jobs: [{ ...base.jobs[0]!, revenue: 42300, payments_made: 15100 }],
+    })
+    const input = assembleLienBookInput(staged, TODAY)
+    expect(input.jobs['job-273']!.openBalance).toBe(2976)
+    const book = buildLienTimelineBook(input)
+    expect(book.rows[0]!.job.openBalance).toBe(2976)
+  })
+  it('the notice month’s row wins over the affidavit’s, and a job on no row keeps the job’s balance', () => {
+    const base = raw()
+    const input = assembleLienBookInput(raw({ rows: [{ ...base.rows[0]!, open_balance: 500 }], affidavitRows: [{ ...base.affidavitRows[0]!, open_balance: 900 }] }), TODAY)
+    expect(input.jobs['job-273']!.openBalance).toBe(500)
+    const filedOnly = assembleLienBookInput(raw({ rows: [], affidavitRows: [] }), TODAY)
+    expect(filedOnly.jobs['job-273']!.openBalance).toBe(17585)
+  })
   it('the same fold feeds the book: one row for the job, on the GC, the affidavit as its next step', () => {
     const book = buildLienTimelineBook(assembleLienBookInput(raw(), TODAY))
     expect(book.rows).toHaveLength(1)

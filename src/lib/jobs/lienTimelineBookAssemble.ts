@@ -77,6 +77,13 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
   const demandLettersByJob: Record<string, JobDemandLetterRow[]> = {}
   for (const l of raw.demandLetters ?? []) (demandLettersByJob[l.job_id] ??= []).push(l)
 
+  // What each job's sent bills still owe, as the desk's own rows carry it (`lien_billed_open()`, v2.4969). Until v2.7530 the
+  // book counted the job's whole price less payments here, so a job billed one stage of three read as owing the stages
+  // never billed, on the office's Timeline and on counsel's grid, where the desk beside it read the bills.
+  const billedOpenByJob: Record<string, number> = {}
+  for (const r of affidavitRows) billedOpenByJob[r.job_id] = r.open_balance
+  for (const r of rows) billedOpenByJob[r.job_id] = r.open_balance
+
   const jobs: Record<string, LienBookJob> = {}
   for (const j of raw.jobs) {
     const address = j.customer_address_id ? addressById[j.customer_address_id] ?? null : null
@@ -95,7 +102,8 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
       precinct: ((address as { jp_precinct?: string | null } | null)?.jp_precinct ?? '').trim(),
       precinctNote: ((address as { jp_precinct_note?: string | null } | null)?.jp_precinct_note ?? '').trim(),
       ownerName: lienPropertyOwnerDisplayName(property.owner),
-      openBalance: Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)),
+      // A job on no row of either queue (its paper already filed or released) has no bills read here, and keeps the job's balance.
+      openBalance: billedOpenByJob[j.id] ?? Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)),
       lastWorkDate: j.last_work_date,
       isSub: isSubByJob[j.id] ?? Boolean(j.gc_customer_id),
       paymentBond: j.lien_payment_bond ?? null,
