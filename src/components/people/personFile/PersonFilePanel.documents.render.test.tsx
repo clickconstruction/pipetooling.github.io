@@ -100,6 +100,28 @@ describe('PersonFilePanel · named documents', () => {
     expect(await screen.findByText(/The document is saved\./)).toBeTruthy()
   })
 
+  it('a document with a draft note or an internal section also offers the part to send; a plain one keeps Copy as text alone (v2.7683)', async () => {
+    io.documents = [row({})]
+    const written: string[] = []
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(async (t: string) => { written.push(t) }) } })
+    io.loadPersonDocument.mockResolvedValueOnce({ document: { id: 'doc-1', person_id: 'p-marcus', title: 'Notice to customers', content: '**DRAFT, not sent**\n\n*For review.*\n\nDear [NAME],\n\n**Marcus Reed** no longer acts for us.\n\n## INTERNAL: notes\n\nHold until the review.', counsel_only: false, author_label: 'Robert', updated_by: 'u-dev', created_at: '2026-11-01T00:00:00Z', updated_at: '2026-11-07T20:00:00Z', archived_at: null, chars: 120, sections: 1 }, why: null })
+    renderWithProviders(<PersonFilePanel personId="p-marcus" userId="u-marcus" personName="Marcus Reed" viewer={VIEWER} initialView="narrative" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Interview guide' }))
+    const open = await screen.findByTestId('hr-doc-open')
+    expect(within(open).getByRole('button', { name: 'Copy as text' })).toBeTruthy()
+    const press = within(open).getByRole('button', { name: 'Copy the draft letter' })
+    expect(press.getAttribute('title')).toBe('The copy leaves out the draft note at the top and the section “INTERNAL: notes”.')
+    fireEvent.click(press)
+    expect(await screen.findByText('Copied the draft letter. 1 blank is still open in it.')).toBeTruthy()
+    expect(written).toEqual(['Dear [NAME],\n\nMarcus Reed no longer acts for us.'])
+    // The plain guide leaves nothing out, so it keeps the one press.
+    fireEvent.click(within(open).getByRole('button', { name: '‹ Documents' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Interview guide' }))
+    const plain = await screen.findByTestId('hr-doc-open')
+    expect(within(plain).getByRole('button', { name: 'Copy as text' })).toBeTruthy()
+    expect(within(plain).queryByTestId('hr-doc-copy-letter-0')).toBeNull()
+  })
+
   it('From a file reads the file in the browser, proposes the title from its name, and Add saves it with the mark', async () => {
     renderWithProviders(<PersonFilePanel personId="p-marcus" userId="u-marcus" personName="Marcus Reed" viewer={VIEWER} initialView="narrative" />)
     fireEvent.click(await screen.findByRole('button', { name: 'From a file (.md or .txt)' }))

@@ -9,6 +9,8 @@ import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCom
 import { EmptyState } from '../../EmptyState'
 import { COUNSEL_ONLY_DOCUMENT_WORDS, LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_SENT_HOWS, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentIsText, legalDocumentKindWords, legalDocumentMime, legalDocumentPassesFilter, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateChipWords, legalDocumentStateWords, legalDocumentTimelineDay, legalDocumentTitleFromName, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalPortalDocumentFromRow, type LegalDocumentDraft, type LegalDocumentFilter, type LegalDocumentSentDraft, type LegalDocumentWhose } from '../../../lib/legal/legalMatterDocuments'
 import { hrDocMarkdownToSafeHtml } from '../../../lib/people/hrDocMarkdown'
+import { letterBlanksWords, letterCopiedWords, letterCopyText, letterLeavesWordsOut, letterLeftOutWords, letterPieceLabel, type LetterCopy } from '../../../lib/legal/letterCopyText'
+import { useOptionalToastContext } from '../../../contexts/ToastContext'
 import { EVIDENCE_LANDING_LIT_MS, evidenceLanding, evidenceRowSelector } from '../../../lib/legal/evidenceLanding'
 import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, readLegalMatterDocumentText, retireLegalMatterDocument, setLegalMatterDocumentCounselOnly, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { EVIDENCE_FROM_MESSAGES_WORDS, evidenceJobTiles, messagesLineHref, type EvidenceJobRow } from '../../../lib/legal/evidenceFromMessages'
@@ -48,6 +50,11 @@ import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
  * Since v2.6720 (punch list #288 PR 2) a paper can be **counsel-only**: the Add form's tick, the row's lock chip and the
  * menu's *Counsel-only* / *Not counsel-only after all*. The firm still reads it on its portal (with a lock); the printed
  * packet leaves it out; since v2.6986 the dev seat reads it as the dev it reads as (`COUNSEL_ONLY_DOCUMENT_WORDS`).
+ *
+ * Since v2.7683 **Read** carries copy presses over the words: one per piece to send (*Copy the letter*, a variant by its
+ * heading, a draft named as one), each putting plain email text on the clipboard without the draft note at the top or an
+ * internal section (`letterCopyText`), and a quiet *Copy everything as text*. The view says what the copy leaves out and
+ * lists the bracketed blanks still to fill, and the toast counts them. A counsel-only paper has no copy press, as on the HR file.
  */
 const shortDay = (ymd: string) => (ymd ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '')
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
@@ -80,7 +87,8 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
   const [whoseFor, setWhoseFor] = useState<{ id: string; whose: LegalDocumentWhose | '' } | null>(null)
   const [menuFor, setMenuFor] = useState<string | null>(null)
   /** v2.6716: the text document open under its row — its rendered words, or why they could not be read. */
-  const [reading, setReading] = useState<{ id: string; html: string | null; why: string | null } | null>(null)
+  const [reading, setReading] = useState<{ id: string; html: string | null; why: string | null; /** v2.7683: what the copy presses put on the clipboard. */ copy?: LetterCopy } | null>(null)
+  const toast = useOptionalToastContext()
   /** v2.6276: the From the job's messages… window, and the door's reads for this matter and account. */
   const [pullOpen, setPullOpen] = useState(false)
   const pullJobs = fromMessages?.jobs
@@ -187,10 +195,22 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
     setReading({ id: d.id, html: null, why: null })
     try {
       const text = await readLegalMatterDocumentText(supabase, d.text_document_id)
-      setReading({ id: d.id, html: hrDocMarkdownToSafeHtml(text), why: null })
+      setReading({ id: d.id, html: hrDocMarkdownToSafeHtml(text), why: null, copy: letterCopyText(text) })
     } catch (e) {
       setReading({ id: d.id, html: null, why: formatErrorMessage(e, 'Could not read the document’s text.') })
     }
+  }
+  /** v2.7683: plain text onto the clipboard; the toast says what went and what is still open in it. */
+  const copyText = (text: string, done: { words: string; warn: boolean }) => {
+    void Promise.resolve()
+      .then(() => navigator.clipboard.writeText(text))
+      .then(
+        () => {
+          setError(null)
+          toast?.showToast(done.words, done.warn ? 'warning' : 'success')
+        },
+        (e) => setError(formatErrorMessage(e, 'Could not copy: the clipboard refused.')),
+      )
   }
 
   return (
@@ -373,6 +393,35 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                     </span>
                   ) : <span />}
                   {d.held_reason ? <div data-legal-document-held-words style={{ gridColumn: '1 / -1', color: 'var(--text-amber-700)', fontSize: '0.72rem', marginTop: -2 }}>Held from the firm: {d.held_reason}</div> : null}
+                  {reading?.id === d.id && reading.copy ? (
+                    // v2.7683: the copy presses over the words. A counsel-only paper has none, as on the HR file.
+                    (() => {
+                      const copy = reading.copy
+                      const draft = doc.state === 'draft' || copy.draftBanner !== null
+                      const leftOut = letterLeftOutWords(copy)
+                      if (d.counsel_only) return <div data-legal-document-copy-bar style={{ gridColumn: '1 / -1', ...MUTED, fontSize: '0.74rem' }}>A counsel-only paper has no copy press.</div>
+                      return (
+                        <div data-legal-document-copy-bar style={{ gridColumn: '1 / -1', display: 'grid', gap: 3, marginTop: 2 }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {copy.pieces.map((p, i) => (
+                              <button key={i} type="button" data-legal-document-copy={i} onClick={() => copyText(p.text, letterCopiedWords(copy, i, draft))} title="Plain text for an email, on the clipboard" style={i === 0 ? btnPrimary : btn}>
+                                {letterPieceLabel(copy, i, draft)}
+                              </button>
+                            ))}
+                            <button type="button" data-legal-document-copy-all onClick={() => copyText(copy.everything, { words: 'Copied everything as text.', warn: false })} title={letterLeavesWordsOut(copy) ? 'The whole document as plain text, the draft note and the internal sections included' : 'The whole document as plain text'} style={{ ...btn, border: 'none', padding: '0 4px', color: 'var(--text-muted)' }}>
+                              Copy everything as text
+                            </button>
+                          </div>
+                          {copy.pieces.length === 0 ? <div data-legal-document-copy-none style={{ ...MUTED, fontSize: '0.74rem' }}>Every word here is a draft note or an internal section, so there is no letter to copy.</div> : null}
+                          {copy.pieces.length > 0 && leftOut ? <div data-legal-document-copy-left-out style={{ ...MUTED, fontSize: '0.74rem' }}>{leftOut}</div> : null}
+                          {copy.pieces.map((_p, i) => {
+                            const open = letterBlanksWords(copy, i)
+                            return open ? <div key={i} data-legal-document-copy-blanks={i} style={{ color: 'var(--text-amber-700)', fontSize: '0.74rem' }}>{open}</div> : null
+                          })}
+                        </div>
+                      )
+                    })()
+                  ) : null}
                   {reading?.id === d.id ? (
                     <div data-legal-document-text style={{ gridColumn: '1 / -1', margin: '2px 0 6px', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', fontSize: '0.84rem', maxHeight: '60vh', overflow: 'auto' }}>
                       {reading.why ? <span role="alert" style={{ color: 'var(--text-red-700)' }}>{reading.why}</span> : reading.html === null ? <span style={MUTED}>Reading…</span> : <div className="hr-doc-body" dangerouslySetInnerHTML={{ __html: reading.html }} />}
