@@ -8813,6 +8813,8 @@ export type Database = {
           form_template_id: string | null
           form_values: Json | null
           id: string
+          job_id: string | null
+          job_required_paper_id: string | null
           lineage_version: number
           note: string | null
           office_attested_at: string | null
@@ -8862,6 +8864,8 @@ export type Database = {
           form_template_id?: string | null
           form_values?: Json | null
           id?: string
+          job_id?: string | null
+          job_required_paper_id?: string | null
           lineage_version?: number
           note?: string | null
           office_attested_at?: string | null
@@ -8911,6 +8915,8 @@ export type Database = {
           form_template_id?: string | null
           form_values?: Json | null
           id?: string
+          job_id?: string | null
+          job_required_paper_id?: string | null
           lineage_version?: number
           note?: string | null
           office_attested_at?: string | null
@@ -8967,6 +8973,20 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_job_required_paper_id_fkey"
+            columns: ["job_required_paper_id"]
+            isOneToOne: false
+            referencedRelation: "job_required_papers"
             referencedColumns: ["id"]
           },
           {
