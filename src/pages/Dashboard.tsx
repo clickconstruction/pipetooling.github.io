@@ -8,7 +8,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
@@ -57,7 +57,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { PhoneFold } from '../components/dashboard/PhoneFold'
 import { isPhoneOfficeRole } from '../lib/dashboard/phoneOffice'
-import { canHaveShortDashboard, SHORT_DASHBOARD_WORDS } from '../lib/dashboard/shortDashboard'
+import { canHaveShortDashboard, isShortDashboardHomePress, SHORT_DASHBOARD_WORDS } from '../lib/dashboard/shortDashboard'
 import { useDashboardView } from '../hooks/useDashboardView'
 import DashboardShortHome from '../components/dashboard/DashboardShortView'
 import { billingPipelineFoldHeadline, crewDayFoldHeadline, myTimeFoldHeadline, recentReportsFoldHeadline, hideEmptyMySchedule, myInboxFoldHeadline, teamsInboxFoldHeadline, whosInFoldHeadline } from '../lib/dashboard/phoneFolds'
@@ -500,6 +500,13 @@ export default function Dashboard() {
   const dashboardView = useDashboardView(authUser?.id ?? null, role)
   const shortDashboardOn = dashboardView === 'short' && canHaveShortDashboard(role)
   const [shortShowFullDashboard, setShortShowFullDashboard] = useState(false)
+  // The bar's Dashboard tab is the way home (punch list #365, PR 4): a press on it leaves Everything else.
+  const shortHomeLocation = useLocation()
+  useEffect(() => {
+    if (!isShortDashboardHomePress(shortHomeLocation.state)) return
+    setShortShowFullDashboard(false)
+    window.scrollTo(0, 0)
+  }, [shortHomeLocation.key, shortHomeLocation.state])
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
   const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('with_pins')
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)

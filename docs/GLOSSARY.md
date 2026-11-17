@@ -2466,6 +2466,7 @@ What a leader whose **Dashboard view** is **Short** opens onto in place of the f
 `DashboardShortView.tsx`, the rule and the words in `lib/dashboard/shortDashboard.ts`): **Waiting on you**, the Needs you lines only he can clear, each with one press (a lien notice's approval and signature, a GC's run, a lien waiver, the weekly line budgets, a job note that tagged him;
 the lien notices as the leader's lien card), then My Schedule, then one line for what the office is handling and one door, **Everything else**, which opens the full Dashboard for the visit, folded on a phone, with **Back to the short Dashboard** on top.
 It never says *Nothing waiting on you* while the Lien desk is being read or after that read failed.
+For a person on Short the bottom bar's **Dashboard** tab opens the short page whichever mode is on, and one press on it leaves **Everything else** (v2.7572, `shortHome` on `DispatchModeFooter`).
 The view is `users.dashboard_view` through `set_dashboard_view`, pressed in Settings → Dashboard & alerts by the person or on the People desk's **Dashboard view** section by the office;
 only a leader's or a dev's account takes one, and every account reads as **Full** until someone presses. → *Needs You card*;
 guide `use-the-short-dashboard`.

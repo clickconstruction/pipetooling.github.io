@@ -38,6 +38,12 @@ Press **Back to the short Dashboard** at the top to return. The next time you op
 
 Some of your own lines may sit behind the door. When they do, the door says how many.
 
+## The Dashboard tab at the bottom
+
+On a phone, the **Dashboard** tab in the bottom bar opens the short page. This is true with Dispatch Mode on too.
+
+The tab is also the way home. After **Everything else**, press **Dashboard** once to return to the short page.
+
 ## Turn it on or off
 
 :::steps
