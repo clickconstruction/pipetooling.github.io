@@ -1,3 +1,5 @@
+import { buildSubPortalPapers } from '../../../supabase/functions/_shared/subPortalPapers'
+import { harlanRows, SENDING_226 } from './subPortalPapersFixture'
 import type { SubPortalPayload } from './subPortalPayload'
 
 /**
@@ -145,5 +147,7 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
     offDays: ['2026-09-15'],
   },
   requestToken: null,
+  // The Statements view's block (punch list #371), from the same made-up rows its tests read.
+  papers: buildSubPortalPapers(harlanRows({ acks: [{ kind: 'received', paper_id: null, labor_job_id: null, sending_id: SENDING_226, payment_id: null, note: null, created_at: '2026-11-02T18:00:00Z' }] }), { subName: 'Harlan Mechanical', company: { name: 'Your Company Name', lines: ['100 Example Way, Suite 4', '(555) 010-0100'] }, officePhone: '(555) 010-0100', now: new Date('2026-11-16T15:30:00Z') }),
   slug: 'dv-mechanical',
 }
