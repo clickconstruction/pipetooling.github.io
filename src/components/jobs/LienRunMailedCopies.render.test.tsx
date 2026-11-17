@@ -17,6 +17,7 @@ const row = (mailedCopies: LienMailedCopy[]): LienRunRow => ({
   jobId: 'j650',
   jobNumber: '650',
   label: '650 · AXO Schertz',
+  street: '',
   recipients: [],
   amount: 33_500,
   printed: { at: '2026-11-15T15:00:00.000Z', by: null },
