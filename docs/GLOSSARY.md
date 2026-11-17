@@ -6014,6 +6014,8 @@ its kernels (`src/lib/mail/`, v2.5375) carry the run's **Mail through Docsmit** 
 It lists every mailed file with its own link, then each envelope with its number and its receipt.
 **Mail proof** is its count: the files count as one piece and each posted copy's receipt as one, so *Mail proof: 2 of 3 on file* names one thing missing and the **Next:** line says which.
 A copy sent by email, handed over or carried by a mail provider owes no receipt.
+Since v2.7695 the row reads as four numbered steps, Printed, Signed, In the envelope and Mailed: the file that goes in the envelope has a step of its own, and each envelope's number has **Add the receipt** under it.
+A **Next:** line under the row's name says the one thing to do now.
 
 **Signed with a pen** (the pen train, v2.5366–v2.5368): the third way a notice is signed — on the paper as printed, with a pen, written down by the office.
 *He signed the paper ▸* on a held envelope in the run, or *He signed the paper ›* on a ready notice's footer, or since **v2.7297** *He signed the paper…* on a draft notice (a row of the footer's *He already okayed it ▾* since v2.7324;

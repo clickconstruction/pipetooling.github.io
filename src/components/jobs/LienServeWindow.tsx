@@ -241,7 +241,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
               </div>
             ) : null}
           </div>
-          <button type="button" onClick={onClose} disabled={busy} aria-label="Close" style={{ ...btn, padding: '0.25rem 0.6rem' }}>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close" style={{ ...btn, padding: '0.25rem 0.6rem', ...(isMobile ? { minHeight: 44, minWidth: 44 } : {}) }}>
             ×
           </button>
         </div>
@@ -261,7 +261,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
                     <span style={{ fontWeight: 700 }}>{h.job.jobLabel}</span>
                     <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>{h.holds.map((x) => x.words).join(', ')}.</span>
                     <span style={{ color: 'var(--text-muted)' }}>{[...new Set(h.holds.map((x) => x.act))].join(' ')}</span>
-                    <button type="button" onClick={() => onOpenJob(h.job.jobId)} style={{ ...btn, marginLeft: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
+                    <button type="button" onClick={() => onOpenJob(h.job.jobId)} style={{ ...btn, marginLeft: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.75rem', ...(isMobile ? { minHeight: 44 } : {}) }}>
                       Open the Lien window
                     </button>
                   </li>
@@ -332,7 +332,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', justifyContent: 'flex-end', padding: '0.7rem 1.1rem', borderTop: '1px solid var(--border)' }}>
           {recordWords.dead && rows.length > 0 ? <span style={{ ...small, marginRight: 'auto' }}>{recordWords.why}</span> : null}
-          <button type="button" onClick={onClose} disabled={busy} style={btn}>
+          <button type="button" onClick={onClose} disabled={busy} style={{ ...btn, ...(isMobile ? { minHeight: 44 } : {}) }}>
             Close
           </button>
           <button type="button" onClick={() => void recordNow()} disabled={recordWords.dead || busy} data-lien-serve-record style={{ ...(recordWords.dead ? dead : press), ...(busy ? { cursor: 'wait' } : {}), ...(isMobile ? { minHeight: 44 } : {}) }}>
