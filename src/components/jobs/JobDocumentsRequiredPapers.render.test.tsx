@@ -82,7 +82,8 @@ describe('JobDocumentsRequiredPapers', () => {
     // Saved: the roster.
     await screen.findByTestId('job-papers-summary')
     expect(screen.getByTestId('job-papers-summary').textContent).toBe('0 of 3 have signed. 3 still owe a paper.')
-    expect(screen.getByTestId('job-papers-stage-note').textContent).toMatch(/only lock for now/)
+    // The database holds the lock now, so the section carries no note about what is still to land.
+    expect(screen.queryByTestId('job-papers-stage-note')).toBeNull()
   })
 
   it('the roster shows who has signed, copies a person’s links, and says why a row has none', async () => {
