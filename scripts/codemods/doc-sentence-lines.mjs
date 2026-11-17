@@ -17,10 +17,11 @@
  *   (none)         rewrites the files
  *   --dry          lists what it would split, writes nothing
  *   --check        the same, and exits 1 when a line holds two sentences or runs past its cap
- *   --resolve      in a merge or rebase stopped on these docs: splits the base and both sides, merges the three
- *                  again, stages each doc that comes out clean, and splits what the branch added to a doc git
- *                  merged by itself; exits 1 when a doc still conflicts, which means both sides changed the
- *                  same sentence or added one at the same spot, and leaves that one marked for a hand
+ *   --resolve      after merging main into a branch cut before the sweep, whether git stopped on these docs or
+ *                  settled them by itself (`-X ours`, one side's copy taken whole, the merge already committed):
+ *                  splits the base and both sides, merges the three again and stages each doc that comes out
+ *                  clean; exits 1 when a doc still conflicts, which means both sides changed the same sentence
+ *                  or added one at the same spot, and leaves that one marked for a hand
  *   --prove <rev>  renders each file as it stands at <rev> and as it stands on disk, and exits 1 unless the two
  *                  pages are the same HTML once runs of white space outside <pre> are folded to one space
  */
@@ -82,54 +83,92 @@ if (PROVE) {
 }
 
 if (RESOLVE) {
+  const git = (args) => spawnSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 })
+  const commitOf = (name) => {
+    const r = git(['rev-parse', '--verify', '--quiet', `${name}^{commit}`])
+    return r.status === 0 ? r.stdout.trim() : null
+  }
+  const show = (spec) => {
+    const r = git(['show', spec])
+    return r.status === 0 ? r.stdout : null
+  }
+  // The merge being resolved: one stopped part way (MERGE_HEAD), or one just committed (HEAD has two parents).
+  // The second is how a merge that git settled by itself (`-X ours`, one side's copy taken whole) is found again.
+  const mergeHead = commitOf('MERGE_HEAD')
+  const merge = mergeHead
+    ? { ours: commitOf('HEAD'), theirs: mergeHead, committed: false }
+    : commitOf('HEAD^2')
+      ? { ours: commitOf('HEAD^1'), theirs: commitOf('HEAD^2'), committed: true }
+      : null
+  const bases = merge ? git(['merge-base', '--all', merge.ours, merge.theirs]).stdout.split('\n').filter(Boolean) : []
   // Stages 1, 2 and 3 of an unmerged path are the base, this side and the other side.
   const unmerged = new Set(
-    execFileSync('git', ['ls-files', '-u', '--', ...files], { encoding: 'utf8' })
-      .split('\n')
+    git(['ls-files', '-u', '--', ...files])
+      .stdout.split('\n')
       .filter(Boolean)
       .map((l) => l.split('\t')[1]),
   )
-  if (unmerged.size === 0) console.log('No conflict on these docs to resolve.')
   const dir = mkdtempSync(path.join(tmpdir(), 'doc-lines-'))
   let stuck = 0
-  for (const file of unmerged) {
-    const sides = [2, 1, 3].map((stage) => {
-      const r = spawnSync('git', ['show', `:${stage}:${file}`], { encoding: 'utf8', maxBuffer: 1 << 28 })
-      return r.status === 0 ? reflowDocument(r.stdout).text : null
-    })
-    if (sides.includes(null)) {
+  let staged = 0
+
+  /** Splits the three copies a sentence a line, merges them again, and stages the doc when it comes out clean. */
+  const mergeSplit = (file, [ours, base, theirs], how) => {
+    if ([ours, base, theirs].includes(null)) {
       console.log(`${file}: one side added or deleted the whole file, so this one is merged by hand`)
       stuck++
-      continue
+      return
     }
     const names = ['ours', 'base', 'theirs'].map((n) => path.join(dir, n))
-    sides.forEach((text, i) => writeFileSync(names[i], text))
-    const merged = spawnSync('git', ['merge-file', '-p', '-L', 'ours', '-L', 'base', '-L', 'theirs', ...names], { encoding: 'utf8', maxBuffer: 1 << 28 })
+    ;[ours, base, theirs].forEach((text, i) => writeFileSync(names[i], reflowDocument(text).text))
+    const merged = git(['merge-file', '-p', '-L', 'ours', '-L', 'base', '-L', 'theirs', ...names])
     if (merged.status === null || merged.status < 0 || merged.status > 126) {
       console.log(`${file}: git merge-file failed: ${merged.stderr.trim()}`)
       stuck++
-      continue
+      return
     }
     writeFileSync(file, merged.stdout)
     if (merged.status === 0) {
       execFileSync('git', ['add', '--', file])
-      console.log(`${file}: merged and staged`)
+      staged++
+      console.log(`${file}: ${how} and staged`)
     } else {
       stuck++
       console.log(`${file}: ${merged.status} place${merged.status === 1 ? '' : 's'} where both sides changed the same sentence, or added one at the same spot; marked in the file for a hand`)
     }
   }
-  rmSync(dir, { recursive: true, force: true })
-  // A doc git merged by itself can still carry a whole entry the branch added as one line.
+
   for (const file of files) {
-    if (unmerged.has(file)) continue
-    const source = readFileSync(file, 'utf8')
-    const { text, split } = reflowDocument(source)
+    if (unmerged.has(file)) {
+      mergeSplit(file, [2, 1, 3].map((stage) => show(`:${stage}:${file}`)), 'merged a sentence a line')
+      continue
+    }
+    const { text, split } = reflowDocument(readFileSync(file, 'utf8'))
     if (split.length === 0) continue
-    writeFileSync(file, text)
-    execFileSync('git', ['add', '--', file])
-    console.log(`${file}: ${split.length} line${split.length === 1 ? '' : 's'} the branch added split and staged`)
+    if (merge && bases.length === 1) {
+      // Git settled this doc by itself and it still holds a line with two sentences: one side's copy of an entry
+      // won whole, and the other side's sentences in it are gone. Merge it again from the merge's own copies,
+      // unless someone has changed it since the merge: that change is theirs to keep.
+      if (git(['diff', '--quiet', ...(merge.committed ? ['HEAD'] : []), '--', file]).status !== 0) {
+        console.log(`${file}: changed since the merge, so this one is merged by hand (or set the change aside and run this again)`)
+        stuck++
+        continue
+      }
+      mergeSplit(file, [merge.ours, bases[0], merge.theirs].map((rev) => show(`${rev}:${file}`)), 'merged again from both sides, a sentence a line,')
+    } else if (merge) {
+      console.log(`${file}: the merge has ${bases.length === 0 ? 'no' : 'more than one'} merge base, so this one is merged by hand`)
+      stuck++
+    } else {
+      // No merge to read: a whole entry written as one line is split where it stands.
+      writeFileSync(file, text)
+      execFileSync('git', ['add', '--', file])
+      staged++
+      console.log(`${file}: ${split.length} line${split.length === 1 ? '' : 's'} split and staged`)
+    }
   }
+  rmSync(dir, { recursive: true, force: true })
+  if (staged === 0 && stuck === 0) console.log('Nothing to resolve: these docs hold one sentence a line.')
+  if (staged > 0 && merge?.committed) console.log('The merge itself is already committed, so commit these docs on top of it.')
   process.exit(stuck > 0 ? 1 : 0)
 }
 
@@ -157,6 +196,7 @@ for (const file of files) {
 if (CHECK && left > 0) {
   console.log('\nA line in these docs holds one sentence, so two PRs that amend one entry still merge.')
   console.log('Fix: node scripts/codemods/doc-sentence-lines.mjs   (a line over its cap is rewritten by hand: two sentences, or a table cell moved under the table)')
+  console.log('Right after merging main into a branch: node scripts/codemods/doc-sentence-lines.mjs --resolve, which merges these docs again a sentence a line so neither side loses one')
   process.exit(1)
 }
 if (CHECK) console.log(`${files.length} doc${files.length === 1 ? '' : 's'}: one sentence a line, none over its cap`)
