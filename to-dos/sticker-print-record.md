@@ -2,19 +2,19 @@
 name: "Stickers: record that a sticker's strips came out of the printer"
 number: 373
 group: ready
-status: asked 2026-11-16 · designed the same evening, nothing built · the owner put it here for a later session
+status: asked 2026-11-16 · designed the same evening · the owner's go 2026-11-17 · PR 1, the column, built as v2.7564 (migration 20261117140000, not pushed yet) · PR 2, the screens, not built
 summary: >
   The app reserves a run of stickers at the press, before any strip leaves the printer, and keeps no record
   that one did. `sticker_runs.printed_at` is the moment the run was made, so every screen reads *Printed
   Nov 16 by Dana* whether or not anything printed. This card adds one column on a sticker, the time its
   strips last went out, written when the P-touch finishes them. A job's reserved line can then say *None
   printed yet* or *18 not printed yet*, and a press can print only the ones that never came out.
-next: Build PR 1 (the column, alone), push it, then PR 2 (the screens). The two calls below have a recommended answer each and need no wait.
+next: Merge PR 1, push its migration, then build PR 2 (the screens). The two calls below are taken as recommended.
 size: M as a train of two (S · M)
 blocker: None. PR 2 must not merge before PR 1's migration is pushed.
 mockup: not required — it adds one sentence and one press to lines the screens already draw, and the card writes both out
 opinion: build — a run that never printed looks the same as one that did, and the owner met that on his first run
-ver: v2.7523 · 7553
+ver: v2.7564
 ---
 
 # Stickers: record that a sticker's strips came out of the printer (#373)
@@ -126,5 +126,11 @@ mark began, and say nothing about the older ones until they print. The 58 of 202
 
 ## Where it stands
 
-Nothing is built. The session that wrote this read the tables, the policies and the label mark's client on
-2026-11-16 and wrote no code for it.
+- **PR 1, the column: built 2026-11-17 as v2.7564.** `supabase/migrations/20261117140000_sticker_printed.sql`
+  with its page, as designed above: the column, the column grant, `box_stickers_update` and the stamp trigger
+  `box_stickers_stamp_printed`, which speaks to a direct caller alone as the on-site guards do. A `DO` block
+  fails the migration if the revoke or the grant did not take. The bed is
+  `supabase/tests/sticker_names/40_printed_mark.sql`. Not pushed until it is on `main`.
+- **PR 2, the screens: not built.** It waits for the push.
+- The two calls are taken as recommended: the print window marks when it closes and offers **They did not
+  print**, and nothing is said about the stickers made before the mark.
