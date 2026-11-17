@@ -100,6 +100,7 @@ function jobOf(r: Record<string, unknown>): MemberJob {
     revenue: null,
     payments_made: null,
     pct_complete: null,
+    first_work_date: str(r.first_work_date),
     last_work_date: str(r.last_work_date),
     last_bill_date: null,
     job_plans_link: str(r.job_plans_link),

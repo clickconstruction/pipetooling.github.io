@@ -2123,6 +2123,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "send-scheduled-reminders",
   "send-sign-in-email",
   "send-stripe-invoice",
+  "send-sub-paper-email",
   "send-submittal-reply-email",
   "send-submittal-room-link",
   "send-supply-house-job-account",
