@@ -87,6 +87,18 @@ describe('WhereIsBox', () => {
     expect(screen.queryByText('Is A7 still at Laydown yard?')).toBeNull()
   })
 
+  it('with the dot on, I found it uses the reading already on the screen and asks the phone nothing more', async () => {
+    phoneAt({ lat: 29.5004, lng: -98.4003, accuracy: 5 })
+    draw(pinned)
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    await screen.findByTestId('where-is-box-far')
+    const once = vi.fn()
+    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: { getCurrentPosition: once, watchPosition: () => 7, clearWatch: vi.fn() } })
+    fireEvent.click(screen.getByRole('button', { name: 'I found it' }))
+    expect(pinContainer).toHaveBeenCalledWith('a7', { lat: 29.5004, lng: -98.4003 }, { accuracyM: 5, byName: 'Priya Nair' })
+    expect(once).not.toHaveBeenCalled()
+  })
+
   it('a reading too wide to keep is refused in words, with Try again and the map to drag', async () => {
     phoneAt({ lat: 29.5004, lng: -98.4003, accuracy: 120 })
     draw(pinned)

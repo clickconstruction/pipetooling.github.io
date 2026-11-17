@@ -248,8 +248,17 @@ export function stillThereAsk(label: string, places: ReadonlyArray<Place>, locat
 
 /** After I found it on a box with no place: the one press that gives it one. */
 export function noPlaceAsk(label: string): string {
-  return `${label} has no place yet. Move box gives it one.`
+  return `Move box gives ${label} a place.`
 }
+
+/** The line over the newest photo: `The newest photo, from Nov 12.` The photo is what the person is looking for. */
+export function newestPhotoWords(at: string | null | undefined, now: Date): string {
+  const day = dayWords(at, now)
+  return day ? `The newest photo, from ${day}.` : 'The newest photo.'
+}
+
+/** A reading from Show where I am is fresh enough for I found it while it is younger than this. */
+export const WHERE_LIVE_FIX_MS = 15_000
 
 /** A dot on the sheet's map: the box itself, and the other live boxes of its place drawn faint around it. */
 export type WhereMapPin = { id: string; label: string; lat: number; lng: number; tone: 'target' | 'target-old' | 'dim' }

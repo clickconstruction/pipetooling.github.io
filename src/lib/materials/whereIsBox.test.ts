@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Container, ContainerMove, Movement, Place } from './onSite'
-import { BOX_PIN_OLD_DAYS, boxPinSentence, boxPinShort, foundNoFixWords, foundVerdict, lastPutOf, lastTouchOf, noPlaceAsk, stillThereAsk, whereIsBoxFar, whereIsBoxWords, whereMapPins, whereNoPinWords } from './whereIsBox'
+import { BOX_PIN_OLD_DAYS, boxPinSentence, boxPinShort, foundNoFixWords, foundVerdict, lastPutOf, lastTouchOf, newestPhotoWords, noPlaceAsk, stillThereAsk, whereIsBoxFar, whereIsBoxWords, whereMapPins, whereNoPinWords } from './whereIsBox'
 import { PLAIN_WORDS_MAX_SENTENCE_WORDS } from '../plainWords'
 
 // Noon on the company's calendar, Tuesday Nov 17 2026. Every name, place and point here is made up.
@@ -138,7 +138,10 @@ describe('after I found it', () => {
   it('asks whether the place changed too, or offers the one press that gives a box a place', () => {
     expect(stillThereAsk('A7', places, 'yard')).toBe('Is A7 still at Laydown yard?')
     expect(stillThereAsk('A7', places, null)).toBeNull()
-    expect(noPlaceAsk('A7')).toBe('A7 has no place yet. Move box gives it one.')
+    expect(noPlaceAsk('A7')).toBe('Move box gives A7 a place.')
+    expect(newestPhotoWords('2026-11-12T15:00:00Z', NOW)).toBe('The newest photo, from Nov 12.')
+    expect(newestPhotoWords('2026-11-17T15:00:00Z', NOW)).toBe('The newest photo, from today.')
+    expect(newestPhotoWords(null, NOW)).toBe('The newest photo.')
   })
 })
 

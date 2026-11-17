@@ -31,7 +31,9 @@ import {
   foundNoFixWords,
   foundVerdict,
   lastPutOf,
+  WHERE_LIVE_FIX_MS,
   lastTouchOf,
+  newestPhotoWords,
   noPlaceAsk,
   stillThereAsk,
   whereIsBoxFar,
@@ -93,6 +95,8 @@ export default function WhereIsBox({ container, containers, places, moves, movem
   const [me, setMe] = useState<MyFix | null>(null)
   const [noFix, setNoFix] = useState<string | null>(null)
   const watchId = useRef<number | null>(null)
+  /** When the newest reading came, so I found it can use it while it is fresh. */
+  const meAt = useRef(0)
   useEffect(() => {
     if (!showMe) return
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -104,6 +108,7 @@ export default function WhereIsBox({ container, containers, places, moves, movem
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
         setNoFix(null)
+        meAt.current = Date.now()
         setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null })
       },
       (err) => {
@@ -129,20 +134,26 @@ export default function WhereIsBox({ container, containers, places, moves, movem
   const [asked, setAsked] = useState(false)
   const foundIt = () => {
     if (finding) return
-    setFinding(true)
     setRefused(null)
+    const take = (fix: MyFix) => {
+      setFinding(false)
+      const v = foundVerdict(label, fix)
+      if (!v.ok) {
+        setRefused(v.words)
+        return
+      }
+      pinContainer(container.id, v.pin, { accuracyM: v.accuracyM, byName })
+      setFound(v.words)
+      setAsked(true)
+    }
+    // The dot is on and its reading is fresh: that reading is where the finder stands, and asking again only waits.
+    if (showMe && me && Date.now() - meAt.current < WHERE_LIVE_FIX_MS) {
+      take(me)
+      return
+    }
+    setFinding(true)
     requestMyFix(
-      (fix) => {
-        setFinding(false)
-        const v = foundVerdict(label, fix)
-        if (!v.ok) {
-          setRefused(v.words)
-          return
-        }
-        pinContainer(container.id, v.pin, { accuracyM: v.accuracyM, byName })
-        setFound(v.words)
-        setAsked(true)
-      },
+      take,
       (why) => {
         setFinding(false)
         setRefused(foundNoFixWords(label, why))
@@ -207,7 +218,12 @@ export default function WhereIsBox({ container, containers, places, moves, movem
       ) : null}
       {far?.rough && far.note && !placing ? <p style={waitBox}>{far.note}</p> : null}
       {noFix ? <p style={muted}>{noFix}</p> : null}
-      {newest && !placing ? <BoxPhotos photos={[newest]} canAct={false} size={72} /> : null}
+      {newest && !placing ? (
+        <div style={{ display: 'grid', gap: '0.3rem' }}>
+          <span style={muted}>{newestPhotoWords(newest.at, today)}</span>
+          <BoxPhotos photos={[newest]} canAct={false} size={72} />
+        </div>
+      ) : null}
       <Suspense fallback={<p style={muted}>Loading the map…</p>}>
         <OnSiteMapLazy
           center={jobCenter}
