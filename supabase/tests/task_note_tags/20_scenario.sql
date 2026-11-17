@@ -64,6 +64,13 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
+-- No claims at all, as the service role has none: the guard on users lets the archive flow's own write through.
+CREATE FUNCTION tnt.signed_out() RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', '', true);
+  PERFORM set_config('request.jwt.claim.sub', '', true);
+  PERFORM set_config('request.jwt.claim.role', '', true);
+END $$;
 -- The list for a day row as one line, in the order the function hands it back.
 CREATE FUNCTION tnt.list(p_instance uuid) RETURNS text LANGUAGE sql AS $$
   SELECT coalesce(string_agg(t.name || ':' || t.on_task || CASE WHEN t.gave THEN ':gave' ELSE '' END, ', ' ORDER BY t.ord), '')
@@ -324,6 +331,7 @@ SELECT tnt.same('one count for both', public.note_tags_count()::text, '5');
 RESET ROLE;
 
 -- 17 · Marcus leaves. The tag Luis made on him reads has left, on the task's own read and on the one for both.
+SELECT tnt.signed_out();
 UPDATE public.users SET archived_at = now() WHERE id = '00000000-0000-0000-0000-0000003750a2';
 SELECT tnt.as_user('00000000-0000-0000-0000-0000003750a3');
 SET LOCAL ROLE authenticated;
