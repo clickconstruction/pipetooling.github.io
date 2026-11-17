@@ -78,7 +78,7 @@ describe('LienFilingTabs · record steps', () => {
     expect(note()!.getAttribute('data-lien-window-desk-note')).toBe('ready')
     expect(note()!.textContent).toContain('The Lien desk holds this job’s approved notice.')
     expect(note()!.textContent).toContain('A print from this tab is a new copy with no signature.')
-    expect(screen.getByRole('button', { name: 'Print' })).toBeTruthy()
+    expect(screen.getByTestId('notice-print-envelopes').textContent).toMatch(/^Print /)
     fireEvent.click(screen.getByRole('button', { name: 'Open it on the Lien desk ›' }))
     expect(onOpenDeskNotice).toHaveBeenCalledTimes(1)
     tab.unmount()
