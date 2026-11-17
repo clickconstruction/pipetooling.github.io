@@ -27,6 +27,11 @@ const world = vi.hoisted(() => ({
   jobs: [] as Array<Record<string, unknown>>,
   timerEvents: [] as Array<Record<string, unknown>>,
   appSettings: [] as Array<Record<string, unknown>>,
+  /** Calling locks on record. A live one held by somebody else hides its prospect from the deck. */
+  locks: [] as Array<Record<string, unknown>>,
+  /** A prospect's Messages thread: the contact that points at it, and that contact's numbers. */
+  contacts: [] as Array<Record<string, unknown>>,
+  channels: [] as Array<Record<string, unknown>>,
   writes: [] as Array<{ table: string; method: string; payload: unknown; filters: Record<string, unknown> }>,
   invokes: [] as Array<{ name: string; body: unknown }>,
   /** The GC board's read: null refuses it (the lanes then draw without their strips). */
@@ -86,6 +91,8 @@ vi.mock('../lib/supabase', () => {
         if (filters.kind) rows = rows.filter((p) => p.kind === filters.kind)
         if (filters.id) rows = rows.filter((p) => p.id === filters.id)
         if (has(steps, 'or')) rows = rows.filter((p) => p.prospect_fit_status !== 'not_a_fit')
+        const notIn = steps.find((st) => st.method === 'not' && st.args[0] === 'id' && st.args[1] === 'in')?.args[2]
+        if (typeof notIn === 'string') rows = rows.filter((p) => !notIn.slice(1, -1).split(',').includes(String(p.id)))
         return list(rows)
       }
       case 'prospect_comments': {
@@ -103,6 +110,17 @@ vi.mock('../lib/supabase', () => {
         return list(world.timerEvents)
       case 'app_settings':
         return list(world.appSettings)
+      case 'prospect_calling_locks': {
+        const notMine = steps.find((st) => st.method === 'neq' && st.args[0] === 'user_id')?.args[1]
+        let rows = world.locks
+        if (notMine) rows = rows.filter((l) => l.user_id !== notMine)
+        if (filters.prospect_id) rows = rows.filter((l) => l.prospect_id === filters.prospect_id)
+        return list(rows)
+      }
+      case 'contacts':
+        return list(filters.prospect_id ? world.contacts.filter((c) => c.prospect_id === filters.prospect_id) : world.contacts)
+      case 'contact_channels':
+        return list(world.channels.filter((c) => c.contact_id === filters.contact_id))
       case 'users':
         if (filters.id) return list([{ id: 'smoke-auth-user-1', name: 'Pat Office', email: 'pat@example.test', phone: '555-0199', role: world.role }])
         return list([{ id: 'smoke-auth-user-1', name: 'Pat Office', email: 'pat@example.test', role: world.role }])
@@ -249,6 +267,9 @@ function seed() {
   world.jobs = []
   world.timerEvents = []
   world.appSettings = [{ key: 'prospect_copy_no_response_email', value_text: 'Hello [company name], this is [User name].' }]
+  world.locks = []
+  world.contacts = []
+  world.channels = []
   world.writes = []
   world.invokes = []
   world.gcBoard = null
@@ -937,6 +958,139 @@ describe('Activity', () => {
     expect(screen.getByText('A referral')).toBeTruthy()
     expect(screen.getByText(/^Subs · This week —/)).toBeTruthy()
     expect(screen.getByText(/0 to the bench/)).toBeTruthy()
+  })
+})
+
+describe('the calling lock', () => {
+  const lockUpserts = () => writesTo('prospect_calling_locks', 'upsert')
+
+  it('looking at a card takes no lock; focusing the composer takes it, once', async () => {
+    await deck('/prospects')
+    expect(lockUpserts()).toHaveLength(0)
+    const composer = screen.getByPlaceholderText(/^Type what happened/)
+    fireEvent.focus(composer)
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    expect(lockUpserts()[0]?.payload).toMatchObject({ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1' })
+    fireEvent.focus(composer)
+    await settle()
+    expect(lockUpserts()).toHaveLength(1)
+  })
+
+  it('an outcome press takes the lock for its card, and the next card takes its own', async () => {
+    await deck('/prospects')
+    press('Didn\'t Answer')
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    press('Next Prospect →')
+    await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
+    press('Set callback')
+    await waitFor(() => expect(lockUpserts()).toHaveLength(2))
+    expect(lockUpserts()[1]?.payload).toMatchObject({ prospect_id: 'cu-2' })
+  })
+
+  it('a colleague’s live lock keeps its prospect off the deck', async () => {
+    world.locks = [{ prospect_id: 'cu-1', user_id: 'other-user', locked_at: new Date().toISOString() }]
+    await deck('/prospects')
+    expect(onCard()).toContain('Bravo Homes')
+    expect(screen.getByText('1 of 2')).toBeTruthy()
+  })
+
+  it('a colleague who took the card after it came up is named on it, and their lock is left alone', async () => {
+    await deck('/prospects')
+    world.locks = [{ prospect_id: 'cu-1', user_id: 'other-user', locked_at: new Date().toISOString() }]
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    expect(await screen.findByText('Pat Office is calling this one')).toBeTruthy()
+    expect(lockUpserts()).toHaveLength(0)
+  })
+
+  it('a colleague’s stale lock is taken over', async () => {
+    await deck('/prospects')
+    world.locks = [{ prospect_id: 'cu-1', user_id: 'other-user', locked_at: '2026-01-01T00:00:00Z' }]
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    expect(screen.queryByText(/is calling this one/)).toBeNull()
+  })
+})
+
+describe('the copy templates', () => {
+  it('show on the Customers lane only', async () => {
+    await deck('/prospects?tab=follow-up&kind=subs')
+    expect(screen.queryByRole('button', { name: 'No Response Email' })).toBeNull()
+  })
+
+  it('a template that names a detail the prospect lacks lists what is missing and copies nothing', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    world.appSettings = [{ key: 'prospect_copy_phone_followup_email', value_text: 'Hi [prospect contact name], call me at [user phone number].' }]
+    world.prospects = world.prospects.map((p) => (p.id === 'cu-1' ? { ...p, contact_name: null } : p))
+    await deck('/prospects')
+    fireEvent.click(await screen.findByRole('button', { name: 'Phone call Follow up Email' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Missing information')).toBeTruthy()
+    expect(within(dialog).getByText('Prospect contact name')).toBeTruthy()
+    expect(writeText).not.toHaveBeenCalled()
+  })
+
+  it('Edit template saves a person’s own words, and Copy then uses them', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    await deck('/prospects')
+    fireEvent.click((await screen.findAllByTitle('Edit template'))[0] as HTMLElement)
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Edit No Response Email')).toBeTruthy()
+    const body = within(dialog).getByDisplayValue('Hello [company name], this is [User name].')
+    fireEvent.change(body, { target: { value: 'Hi [company name].' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Save/ }))
+    await waitFor(() => expect(writesTo('user_prospect_copy_templates', 'upsert')).toHaveLength(1))
+    expect(writesTo('user_prospect_copy_templates', 'upsert')[0]?.payload).toEqual({ user_id: 'smoke-auth-user-1', template_key: 'no_response_email', value_text: 'Hi [company name].', subject_text: null })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'No Response Email' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('Hi Alpha Builders.'))
+  })
+
+  it('Open in email opens the mail, records it sent and turns the envelope', async () => {
+    const real = window.location
+    const fake = { href: '' }
+    Object.defineProperty(window, 'location', { value: fake, configurable: true, writable: true })
+    try {
+      await deck('/prospects')
+      fireEvent.click((await screen.findAllByTitle('Open in email'))[0] as HTMLElement)
+      await waitFor(() => expect(writesTo('prospect_email_sent', 'upsert')).toHaveLength(1))
+      expect(fake.href).toBe(`mailto:${encodeURIComponent('pat@example.test')}?subject=&body=${encodeURIComponent('Hello Alpha Builders, this is Pat Office.')}`)
+      expect(writesTo('prospect_email_sent', 'upsert')[0]?.payload).toEqual({ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1', template_key: 'no_response_email' })
+      expect(await screen.findByTitle('Email sent')).toBeTruthy()
+    } finally {
+      Object.defineProperty(window, 'location', { value: real, configurable: true, writable: true })
+    }
+  })
+})
+
+describe('the run’s text', () => {
+  const run = '/prospects?tab=follow-up&kind=subs&run=su-2,su-1&trade=Concrete'
+  const ledger = () => document.querySelector('[data-run-ledger]') as HTMLElement
+
+  it('is held until they said we may text', async () => {
+    await deck(run)
+    press('Didn\'t Answer')
+    await waitFor(() => expect(ledger()).toBeTruthy())
+    const ask = within(ledger()).getByRole('button', { name: 'Ask first' }) as HTMLButtonElement
+    expect(ask.disabled).toBe(true)
+    expect(ask.title).toContain('has not said we may text')
+    expect(world.invokes).toHaveLength(0)
+  })
+
+  it('goes to the number on their thread, is noted on the card and reads Text sent', async () => {
+    world.prospects = world.prospects.map((p) => (p.id === 'su-2' ? { ...p, ok_to_text: 'yes' } : p))
+    world.contacts = [{ id: 'ct-1', prospect_id: 'su-2' }]
+    world.channels = [{ id: 'ch-1', contact_id: 'ct-1', kind: 'phone', value: '555-0100', opted_out_at: null }]
+    await deck(run)
+    press('Didn\'t Answer')
+    await waitFor(() => expect(ledger()).toBeTruthy())
+    fireEvent.click(within(ledger()).getByRole('button', { name: 'Text them' }))
+    await waitFor(() => expect(world.invokes).toHaveLength(1))
+    expect(world.invokes[0]).toMatchObject({ name: 'quo-send', body: { contactId: 'ct-1', channelId: 'ch-1' } })
+    expect(await within(ledger()).findByText('Text sent')).toBeTruthy()
+    const notes = writesTo('prospect_comments', 'insert').map((w) => w.payload as Row)
+    expect(notes.some((n) => n.interaction_type === 'user_comment' && String(n.comment_text).startsWith('Text sent: '))).toBe(true)
   })
 })
 

@@ -31,8 +31,7 @@ import {
   type ProspectLastCall,
 } from '../lib/prospects/prospectListGrouping'
 import { findRetaggableNote, lastCallByProspect, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
-import { callingLockCutoffIso, callingLockDecision, type CallingLockRow, type CallingLockTrigger } from '../lib/prospects/callingLock'
-import { recordNavClick } from '../lib/navClickTelemetry'
+import { callingLockCutoffIso } from '../lib/prospects/callingLock'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
@@ -75,6 +74,12 @@ import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
 import { ProspectsActivityTab } from '../components/prospects/ProspectsActivityTab'
 import { ProspectsConvertTab } from '../components/prospects/ProspectsConvertTab'
+import { ProspectCopyBlankFieldsModal } from '../components/prospects/ProspectCopyBlankFieldsModal'
+import { ProspectCopyTemplateEditModal } from '../components/prospects/ProspectCopyTemplateEditModal'
+import { ProspectCopyTemplateRow } from '../components/prospects/ProspectCopyTemplateRow'
+import { useProspectCopyTemplates } from '../components/prospects/useProspectCopyTemplates'
+import { useCallRun } from '../components/prospects/useCallRun'
+import { useCallingLock } from '../components/prospects/useCallingLock'
 import { useProspectConvert } from '../components/prospects/useProspectConvert'
 import { useProspectDoubles } from '../components/prospects/useProspectDoubles'
 import { useProspectJobs } from '../components/prospects/useProspectJobs'
@@ -90,50 +95,17 @@ import { inboundProspects, subRecords } from '../lib/prospects/subRecord'
 import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
 import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow } from '../lib/prospects/subsRanks'
 import { tradeKey } from '../lib/prospects/subsLane'
-import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_CHANNEL, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, firstCallbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextNote, runTextPlan, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
-import { loadProspectThread, startProspectThread } from '../lib/prospects/prospectThreadIo'
+import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, firstCallbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt } from '../lib/prospects/callRun'
 import { textRefusal } from '../lib/prospects/textingRule'
 import { benchAskFor, benchAskedToast, type BenchAsk } from '../lib/prospects/benchAsk'
-import { callerFirstName } from '../lib/gc/callScript'
-import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
-import {
-  APP_SETTINGS_KEYS,
-  APP_SUBJECT_SETTINGS_KEYS,
-  COPY_TEMPLATE_KEYS,
-  COPY_TEMPLATE_LABELS,
-  foldCopyTemplateRows,
-  getBlankFieldsForMail,
-  getBlankPlaceholderFields,
-  resolveCopyText,
-  substituteCopyPlaceholders,
-  type CopyTemplateKey,
-} from '../lib/prospects/prospectCopyTemplates'
 import { formatDateTime, formatInteractionType, formatTimerSeconds, formatWebsiteDisplay, getWebsiteHref } from '../lib/prospects/prospectFormat'
 import { PROSPECT_COLUMNS, type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
-
-const EnvelopeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
-    <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z" />
-  </svg>
-)
-
-const EnvelopeCheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
-    <path d="M64 176C64 149.5 85.5 128 112 128L528 128C554.5 128 576 149.5 576 176L576 257.4C551.6 246.2 524.6 240 496 240C408.3 240 334.3 298.8 311.3 379.2C304.2 377.9 297.2 375 291.2 370.4L83.2 214.4C71.1 205.3 64 191.1 64 176zM304 432C304 460.6 310.2 487.6 321.4 512L128 512C92.7 512 64 483.3 64 448L64 260L262.4 408.8C275 418.2 289.3 424.2 304.1 426.7C304.1 428.5 304 430.2 304 432zM352 432C352 352.5 416.5 288 496 288C575.5 288 640 352.5 640 432C640 511.5 575.5 576 496 576C416.5 576 352 511.5 352 432zM553.4 371.1C546.3 365.9 536.2 367.5 531 374.6L478 447.5L451.2 420.7C445 414.5 434.8 414.5 428.6 420.7C422.4 426.9 422.4 437.1 428.6 443.3L468.6 483.3C471.9 486.6 476.5 488.3 481.2 487.9C485.9 487.5 490.1 485.1 492.9 481.4L556.9 393.4C562.1 386.3 560.5 376.2 553.4 371.1z" />
-  </svg>
-)
-
-const EditIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
-    <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z" />
-  </svg>
-)
 
 type ProspectsTopTab = 'customers' | 'team' | 'research'
 
@@ -284,22 +256,10 @@ export default function Prospects() {
   const [inboundProspectIds, setInboundProspectIds] = useState<Set<string>>(() => new Set())
   const [laneCallbacks, setLaneCallbacks] = useState<Record<string, string>>({})
   const run = kind === 'sub' ? runFromSearch(location.search) : null
-  const runKey = run ? run.ids.join(',') : ''
-  const [runOutcomes, setRunOutcomes] = useState<RunOutcome[]>([])
-  const [runDone, setRunDone] = useState(false)
-  const [runCallbackAt, setRunCallbackAt] = useState<Date | null>(null)
-  const [runTextState, setRunTextState] = useState<Record<string, 'sending' | 'sent'>>({})
   const subRecordMap = useMemo(() => subRecords({ calls: laneCallRows, inbound: inboundProspectIds }), [laneCallRows, inboundProspectIds])
   // The board's pins (v2.5809): one row a company a trade, read with the lane, written on a drop.
   const [laneRanks, setLaneRanks] = useState<RankRow[]>([])
   const lanePins = useMemo(() => pinsByTrade(laneRanks), [laneRanks])
-  useEffect(() => {
-    // A new run starts clean; the same run survives a refresh except for its receipt, which the ids cannot carry.
-    setRunOutcomes([])
-    setRunDone(false)
-    setRunCallbackAt(null)
-    setRunTextState({})
-  }, [runKey])
   // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const { gcWork, gcBidding, customerDoubles, prospectDoubles } = useProspectDoubles({ kind, newKind, newProspectModalOpen, userId: authUser?.id ?? null })
@@ -318,13 +278,6 @@ export default function Prospects() {
   const [saving, setSaving] = useState(false)
   const [scheduledCallback, setScheduledCallback] = useState<{ callback_date: string; note: string | null } | null>(null)
   const [followUpTimerSeconds, setFollowUpTimerSeconds] = useState(0)
-  // Calling lock (v2.2850 — journey-map #14(b)): taken on INTENT, never on
-  // view. `lockTakenForRef` remembers which prospect THIS tab locked so the
-  // release effect only deletes a row we wrote; `lockHeldBy` names a colleague
-  // whose live lock we found (and did not steal) on the displayed prospect.
-  const lockTakenForRef = useRef<string | null>(null)
-  const lockAttemptForRef = useRef<string | null>(null)
-  const [lockHeldBy, setLockHeldBy] = useState<{ prospectId: string; name: string | null } | null>(null)
 
   // Edit form state
   const [editSource, setEditSource] = useState('')
@@ -390,39 +343,10 @@ export default function Prospects() {
   const [textAskOpen, setTextAskOpen] = useState(false)
   const [newCompany, setNewCompany] = useState<CompanyFields>(EMPTY_COMPANY)
 
-  // Copy templates (defaults from app_settings, overrides from user_prospect_copy_templates)
-  const [copyDefaults, setCopyDefaults] = useState<Record<CopyTemplateKey, string>>({
-    no_response_email: '',
-    phone_followup_email: '',
-    just_checking_in_email: '',
-  })
-  const [copyOverrides, setCopyOverrides] = useState<Record<CopyTemplateKey, string | null>>({
-    no_response_email: null,
-    phone_followup_email: null,
-    just_checking_in_email: null,
-  })
-  const [copySubjectDefaults, setCopySubjectDefaults] = useState<Record<CopyTemplateKey, string>>({
-    no_response_email: '',
-    phone_followup_email: '',
-    just_checking_in_email: '',
-  })
-  const [copySubjectOverrides, setCopySubjectOverrides] = useState<Record<CopyTemplateKey, string | null>>({
-    no_response_email: null,
-    phone_followup_email: null,
-    just_checking_in_email: null,
-  })
-  const [personPhone, setPersonPhone] = useState<string | null>(null)
-  const [authUserName, setAuthUserName] = useState<string>('')
-  const [editingCopyTemplateKey, setEditingCopyTemplateKey] = useState<CopyTemplateKey | null>(null)
-  const [editingCopyText, setEditingCopyText] = useState('')
-  const [editingCopySubject, setEditingCopySubject] = useState('')
-  const [copyTemplateSaving, setCopyTemplateSaving] = useState(false)
-  const [copyBlankFieldsModalOpen, setCopyBlankFieldsModalOpen] = useState(false)
-  const [copyBlankFieldsList, setCopyBlankFieldsList] = useState<string[]>([])
-  const [emailSentTemplateKeys, setEmailSentTemplateKeys] = useState<Set<string>>(new Set())
-  const copyTemplateTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Activity tab state (dev and assistant) - last 30 days
+  /** The caller's own name off `users`: the copy templates, the bench's ask and the run's text sign with it. */
+  const [authUserName, setAuthUserName] = useState<string>('')
   /** The week the Activity tab's pager is on. It stays here so it survives a visit to another tab. */
   const [weekOffset, setWeekOffset] = useState(0)
   const canAccessActivityTab = authRole === 'dev' || isAssistantLike(authRole)
@@ -936,44 +860,6 @@ export default function Prospects() {
     }
   }
 
-  async function loadCopyTemplates() {
-    if (!authUser?.id) return
-    const allKeys = [...Object.values(APP_SETTINGS_KEYS), ...Object.values(APP_SUBJECT_SETTINGS_KEYS)]
-    const [defaultsRes, overridesRes] = await Promise.all([
-      supabase.from('app_settings').select('key, value_text').in('key', allKeys),
-      supabase.from('user_prospect_copy_templates').select('template_key, value_text, subject_text').eq('user_id', authUser.id),
-    ])
-    const texts = foldCopyTemplateRows(defaultsRes.data ?? [], overridesRes.data ?? [])
-    setCopyDefaults(texts.defaults)
-    setCopySubjectDefaults(texts.subjectDefaults)
-    setCopyOverrides(texts.overrides)
-    setCopySubjectOverrides(texts.subjectOverrides)
-  }
-
-  async function loadPersonPhone() {
-    if (!authUser?.id) return
-    // Prefer users.phone (set in Settings > My Profile); fall back to people.phone
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('phone')
-      .eq('id', authUser.id)
-      .maybeSingle()
-    const userPhone = (userRow as { phone: string | null } | null)?.phone
-    if (userPhone != null && userPhone.trim() !== '') {
-      setPersonPhone(userPhone.trim())
-      return
-    }
-    const { data: peopleData } = await supabase
-      .from('people')
-      .select('phone')
-      .is('archived_at', null)
-      .eq('master_user_id', authUser.id)
-      .not('phone', 'is', null)
-      .limit(1)
-    const first = (peopleData ?? [])[0] as { phone: string | null } | undefined
-    setPersonPhone(first?.phone ?? null)
-  }
-
   async function loadQuickNotes() {
     if (!authUser?.id) return
     const { data } = await supabase
@@ -986,8 +872,6 @@ export default function Prospects() {
 
   useEffect(() => {
     if (authUser?.id) {
-      loadCopyTemplates()
-      loadPersonPhone()
       loadQuickNotes()
       supabase.from('users').select('name').eq('id', authUser.id).maybeSingle().then(({ data }) => {
         setAuthUserName((data as { name: string } | null)?.name ?? '')
@@ -1056,6 +940,19 @@ export default function Prospects() {
 
   const currentProspect = followUpProspects[currentProspectIndex] ?? null
   const currentProspectId = currentProspect?.id ?? null
+  // The advisory calling lock: taken on intent (a dial, the composer, an outcome, a callback), never on view.
+  const { lockHeldBy, takeCallingLock } = useCallingLock({ onDeck: topTab === 'customers' && activeTab === 'follow-up', currentProspectId, userId: authUser?.id ?? null, authRole })
+  // What the run has done so far: its notes, its receipt flag, the callback a missed call set, the text press.
+  const { runOutcomes, runDone, setRunDone, runCallbackAt, setRunCallbackAt, runTextState, noteRunOutcome, sendRunText } = useCallRun({
+    run,
+    userId: authUser?.id ?? null,
+    authUserName,
+    projectName: plansPick?.name ?? null,
+    currentProspectId,
+    loadComments,
+  })
+  // The Customers lane's three email templates: their words, the presses, the two windows' state.
+  const copy = useProspectCopyTemplates({ userId: authUser?.id ?? null, userEmail: authUser?.email, authUserName, currentProspect, comments })
   // A lead's jobs and the Jobs box's writes. The loaders above call `mergeJobs`; it is theirs by the time they run.
   const { jobsByProspect, mergeJobs, addJobFor, editJobFor, changeJob, markJobLost, removeJob } = useProspectJobs({ userId: authUser?.id ?? null, currentProspectId })
   useEffect(() => {
@@ -1089,104 +986,6 @@ export default function Prospects() {
     setFollowUpNotes(currentProspect?.notes ?? '')
   }
 
-  function getResolvedCopyText(key: CopyTemplateKey): string {
-    return resolveCopyText(copyOverrides[key], copyDefaults[key])
-  }
-
-  function getResolvedCopySubject(key: CopyTemplateKey): string {
-    return resolveCopyText(copySubjectOverrides[key], copySubjectDefaults[key])
-  }
-
-  async function handleCopyTemplate(key: CopyTemplateKey) {
-    if (!authUser || !currentProspect) return
-    const text = getResolvedCopyText(key)
-    if (!text.trim()) {
-      showToast('No text to copy. Edit the template first.', 'warning')
-      return
-    }
-    const blankFields = getBlankPlaceholderFields(
-      text,
-      authUserName ?? '',
-      authUser.email ?? '',
-      currentProspect,
-      personPhone,
-      key,
-      comments
-    )
-    if (blankFields.length > 0) {
-      setCopyBlankFieldsList(blankFields)
-      setCopyBlankFieldsModalOpen(true)
-      return
-    }
-    const userInfo = { name: (authUserName || authUser.email) ?? '', email: authUser.email ?? '' }
-    const substituted = substituteCopyPlaceholders(text, userInfo, currentProspect, personPhone, key, comments)
-    try {
-      await navigator.clipboard.writeText(substituted)
-      showToast('Copied to clipboard', 'success')
-    } catch {
-      showToast('Failed to copy to clipboard', 'error')
-    }
-  }
-
-  async function handleOpenMail(key: CopyTemplateKey) {
-    if (!authUser || !currentProspect) return
-    const body = getResolvedCopyText(key)
-    const subject = getResolvedCopySubject(key)
-    const blankFields = getBlankFieldsForMail(
-      body,
-      subject,
-      authUserName ?? '',
-      authUser.email ?? '',
-      currentProspect,
-      personPhone,
-      key,
-      comments
-    )
-    if (blankFields.length > 0) {
-      setCopyBlankFieldsList(blankFields)
-      setCopyBlankFieldsModalOpen(true)
-      return
-    }
-    const userInfo = { name: (authUserName || authUser.email) ?? '', email: authUser.email ?? '' }
-    const substitutedBody = substituteCopyPlaceholders(body, userInfo, currentProspect, personPhone, key, comments)
-    const substitutedSubject = substituteCopyPlaceholders(subject, userInfo, currentProspect, personPhone, key, comments)
-    const to = encodeURIComponent(currentProspect.email!.trim())
-    const subjectEnc = encodeURIComponent(substitutedSubject)
-    const bodyEnc = encodeURIComponent(substitutedBody)
-    const mailtoUrl = `mailto:${to}?subject=${subjectEnc}&body=${bodyEnc}`
-    window.location.href = mailtoUrl
-    await supabase.from('prospect_email_sent').upsert(
-      { prospect_id: currentProspect.id, user_id: authUser.id, template_key: key },
-      { onConflict: 'prospect_id,user_id,template_key' }
-    )
-    setEmailSentTemplateKeys((prev) => new Set([...prev, key]))
-  }
-
-  function openEditCopyModal(key: CopyTemplateKey) {
-    setEditingCopyTemplateKey(key)
-    setEditingCopyText(getResolvedCopyText(key))
-    setEditingCopySubject(getResolvedCopySubject(key))
-  }
-
-  async function saveCopyTemplate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!authUser?.id || !editingCopyTemplateKey) return
-    setCopyTemplateSaving(true)
-    const { error } = await supabase.from('user_prospect_copy_templates').upsert(
-      { user_id: authUser.id, template_key: editingCopyTemplateKey, value_text: editingCopyText, subject_text: editingCopySubject || null },
-      { onConflict: 'user_id,template_key' }
-    )
-    setCopyTemplateSaving(false)
-    if (error) {
-      showToast(error.message, 'error')
-      return
-    }
-    setCopyOverrides((prev) => ({ ...prev, [editingCopyTemplateKey]: editingCopyText }))
-    setCopySubjectOverrides((prev) => ({ ...prev, [editingCopyTemplateKey]: editingCopySubject || null }))
-    setEditingCopyTemplateKey(null)
-    showToast('Template saved', 'success')
-  }
-
   // The caller's own fresh plain note on the current prospect — Didn't Answer /
   // Answered will retag it into the call (see callLogState.ts), and the
   // composer says so while that holds.
@@ -1212,25 +1011,6 @@ export default function Prospects() {
       setComments([])
     }
   }, [currentProspect?.id])
-
-  async function loadEmailSentTemplateKeys(prospectId: string) {
-    if (!authUser?.id) return
-    const { data } = await supabase
-      .from('prospect_email_sent')
-      .select('template_key')
-      .eq('prospect_id', prospectId)
-      .eq('user_id', authUser.id)
-    const keys = new Set((data ?? []).map((r) => r.template_key))
-    setEmailSentTemplateKeys(keys)
-  }
-
-  useEffect(() => {
-    if (currentProspect?.id && authUser?.id) {
-      loadEmailSentTemplateKeys(currentProspect.id)
-    } else {
-      setEmailSentTemplateKeys(new Set())
-    }
-  }, [currentProspect?.id, authUser?.id])
 
   async function loadProspectLedgerSeconds(prospectId: string) {
     if (!authUser?.id) return
@@ -1293,66 +1073,6 @@ export default function Prospects() {
   useEffect(() => {
     loadScheduledCallback()
   }, [loadScheduledCallback])
-
-  // Calling lock — RELEASE only. Viewing a prospect writes nothing (v2.2850,
-  // journey-map #14(b) / J34-F5): the row is taken by `takeCallingLock` on
-  // the first sign of intent. On prospect change / tab leave, delete the row
-  // only if THIS tab took it.
-  useEffect(() => {
-    if (topTab !== 'customers' || activeTab !== 'follow-up' || !currentProspect?.id || !authUser?.id) return
-    const prospectId = currentProspect.id
-    const userId = authUser.id
-    return () => {
-      lockAttemptForRef.current = null
-      setLockHeldBy((prev) => (prev?.prospectId === prospectId ? null : prev))
-      if (lockTakenForRef.current !== prospectId) return
-      lockTakenForRef.current = null
-      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', userId)
-    }
-  }, [topTab, activeTab, currentProspect?.id, authUser?.id])
-
-  /**
-   * Take the advisory calling lock on the displayed prospect because the
-   * caller showed intent (`trigger`). Once per prospect per tab. Never steals:
-   * a colleague's lock younger than the TTL leaves the row alone and names
-   * them on the card; a stale one (closed tab) is taken over.
-   */
-  const takeCallingLock = useCallback(
-    (trigger: CallingLockTrigger) => {
-      if (!currentProspect?.id || !authUser?.id) return
-      const prospectId = currentProspect.id
-      const me = authUser.id
-      if (lockAttemptForRef.current === prospectId) return
-      lockAttemptForRef.current = prospectId
-      void (async () => {
-        try {
-          const { data } = await supabase
-            .from('prospect_calling_locks')
-            .select('prospect_id, user_id, locked_at')
-            .eq('prospect_id', prospectId)
-            .maybeSingle()
-          const existing = (data ?? null) as CallingLockRow | null
-          const decision = callingLockDecision({ existing, now: Date.now(), me })
-          if (decision === 'held-by-other' && existing) {
-            const { data: holder } = await supabase.from('users').select('name').eq('id', existing.user_id).maybeSingle()
-            setLockHeldBy({ prospectId, name: (holder as { name?: string | null } | null)?.name ?? null })
-            return
-          }
-          const { error } = await supabase
-            .from('prospect_calling_locks')
-            .upsert({ prospect_id: prospectId, user_id: me, locked_at: new Date().toISOString() }, { onConflict: 'prospect_id' })
-          if (error) throw error
-          lockTakenForRef.current = prospectId
-          setLockHeldBy((prev) => (prev?.prospectId === prospectId ? null : prev))
-          recordNavClick(me, authRole, 'prospect_lock_taken', `#${trigger}${decision === 'stale-take' ? '-stale' : ''}`)
-        } catch {
-          // Advisory lock — the call goes on without it; allow a later retry.
-          lockAttemptForRef.current = null
-        }
-      })()
-    },
-    [currentProspect?.id, authUser?.id, authRole],
-  )
 
   // Follow Up timer: counts up while on tab, resets when user leaves and comes back
   useEffect(() => {
@@ -1993,62 +1713,6 @@ export default function Prospects() {
   function markCalledLocally(prospectId: string, type: CallInteractionType, nowIso: string) {
     setCalledProspectIds((prev) => withCalledProspect(prev, prospectId))
     setProspectLastCallMap((prev) => withLastCall<ProspectLastCall>(prev, prospectId, { interaction_type: type, created_at: nowIso }))
-  }
-
-  /** What the run did to a card (v2.5808), one note a card, the newest outcome standing. */
-  function noteRunOutcome(id: string, kindOf: RunOutcome['kind'], patch: Partial<RunOutcome> = {}) {
-    if (!run) return
-    setRunOutcomes((prev) => {
-      const was = prev.find((o) => o.id === id)
-      const next: RunOutcome = { ...(was ?? { id, kind: kindOf }), kind: kindOf, ...patch }
-      return [...prev.filter((o) => o.id !== id), next]
-    })
-  }
-
-  /**
-   * The one-press text after a missed call in a run (v2.5808): held by the texting rule until they said we may, sent
-   * through quo-send to the number on their Messages thread, and noted on the card. The first text to a sub nobody
-   * has written to starts their thread from the card's number (v2.6032: `runTextPlan` → `contact_for_prospect`).
-   */
-  async function sendRunText(prospect: Prospect) {
-    if (!run || !authUser?.id) return
-    const held = textRefusal(prospect)
-    if (held) {
-      showToast(held.words, 'info')
-      return
-    }
-    setRunTextState((st) => ({ ...st, [prospect.id]: 'sending' }))
-    const clear = () =>
-      setRunTextState((st) => {
-        const next = { ...st }
-        delete next[prospect.id]
-        return next
-      })
-    try {
-      let plan = runTextPlan(prospect, await loadProspectThread(prospect.id))
-      let started = false
-      if (plan.kind === 'start') {
-        plan = runTextPlan(prospect, await startProspectThread(prospect.id), true)
-        started = true
-      }
-      if (plan.kind !== 'send') {
-        showToast(plan.kind === 'hold' ? plan.words : TEXT_NO_CHANNEL, 'info')
-        clear()
-        return
-      }
-      const body = runTextWords({ caller: callerFirstName(authUserName), company: PORTAL_COMPANY.name, trade: run.trade, projectName: plansPick?.name ?? null })
-      const { data, error } = await supabase.functions.invoke('quo-send', { body: { contactId: plan.contactId, channelId: plan.channelId, body } })
-      const answer = (data ?? null) as { ok?: boolean; words?: string } | null
-      if (error || !answer?.ok) throw new Error(answer?.words ?? 'The text did not go.')
-      await supabase.from('prospect_comments').insert({ prospect_id: prospect.id, created_by: authUser.id, comment_text: runTextNote(body, started), interaction_type: 'user_comment' })
-      setRunTextState((st) => ({ ...st, [prospect.id]: 'sent' }))
-      noteRunOutcome(prospect.id, 'didnt_answer', { texted: true })
-      showToast(TEXT_SENT, 'success')
-      if (currentProspect?.id === prospect.id) await loadComments(prospect.id)
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'The text did not go.'), 'error')
-      clear()
-    }
   }
 
   /** Pass on a board card (v2.5808): Not a fit, after one question, since the board has no undo of its own. */
@@ -2967,62 +2631,7 @@ export default function Prospects() {
                     </button>
                   </div>
                   {/* Copy templates: the customer deck's words (v2.5563); a sub's or an owner's email waits on the owner's own words. */}
-                  {kind === 'customer' && (
-                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                      {COPY_TEMPLATE_KEYS.map((key) => (
-                        <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyTemplate(key)}
-                            style={{
-                              padding: '0.35rem 0.6rem',
-                              fontSize: '0.8125rem',
-                              background: 'var(--bg-muted)',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {COPY_TEMPLATE_LABELS[key]}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenMail(key)}
-                            title={emailSentTemplateKeys.has(key) ? 'Email sent' : 'Open in email'}
-                            style={{
-                              padding: '0.35rem',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: emailSentTemplateKeys.has(key) ? 'var(--text-green-600)' : 'var(--text-muted)',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            {emailSentTemplateKeys.has(key) ? <EnvelopeCheckIcon /> : <EnvelopeIcon />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditCopyModal(key)}
-                            title="Edit template"
-                            style={{
-                              padding: '0.35rem',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'var(--text-muted)',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            <EditIcon />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  )}
+                  {kind === 'customer' && <ProspectCopyTemplateRow copy={copy} />}
                 </div>
               </div>
               {/* The advance bar: the last thing you hit after logging the outcome and notes. */}
@@ -3587,188 +3196,9 @@ export default function Prospects() {
 
       {callbackModalOpen && currentProspect && <ProspectCallbackModal saving={saving} onSave={saveCallback} onClose={() => setCallbackModalOpen(false)} />}
 
-      {/* Copy template edit modal */}
-      {editingCopyTemplateKey && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 560,
-              width: '90%',
-              maxHeight: 'min(85vh, 100%)',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0' }}>Edit {COPY_TEMPLATE_LABELS[editingCopyTemplateKey]}</h3>
-            <form onSubmit={saveCopyTemplate} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Subject</label>
-                <input
-                  type="text"
-                  value={editingCopySubject}
-                  onChange={(e) => setEditingCopySubject(e.target.value)}
-                  placeholder="Email subject (supports same placeholders as body)"
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    fontSize: '0.9375rem',
-                    fontFamily: 'inherit',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <textarea
-                ref={copyTemplateTextareaRef}
-                value={editingCopyText}
-                onChange={(e) => setEditingCopyText(e.target.value)}
-                placeholder="Template text. Use [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] as placeholders."
-                style={{
-                  width: '100%',
-                  minHeight: 200,
-                  padding: '0.75rem',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  fontSize: '0.9375rem',
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                  flex: 1,
-                  boxSizing: 'border-box',
-                }}
-              />
-              <div style={{ marginTop: '0.75rem' }}>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.375rem' }}>Placeholders:</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                  {[
-                    { text: '[User name]' },
-                    { text: '[user email]' },
-                    { text: '[user phone number]' },
-                    { text: '[company name]' },
-                    { text: '[prospect phone number]' },
-                    { text: '[prospect contact name]' },
-                    { text: '[prospect last contact]' },
-                    { text: '[prospect last successful contact]' },
-                    ...(editingCopyTemplateKey === 'phone_followup_email' || editingCopyTemplateKey === 'just_checking_in_email'
-                      ? [{ text: '_______', tooltip: editingCopyTemplateKey === 'phone_followup_email' ? '(contact name)' : '(contact info)' }]
-                      : []),
-                  ].map(({ text, tooltip }) => (
-                    <button
-                      key={text}
-                      type="button"
-                      title={tooltip}
-                      onClick={() => {
-                        const ta = copyTemplateTextareaRef.current
-                        const start = ta ? ta.selectionStart : editingCopyText.length
-                        const end = ta ? ta.selectionEnd : editingCopyText.length
-                        const before = editingCopyText.slice(0, start)
-                        const after = editingCopyText.slice(end)
-                        setEditingCopyText(before + text + after)
-                        if (ta) {
-                          ta.focus()
-                          const newPos = start + text.length
-                          setTimeout(() => ta.setSelectionRange(newPos, newPos), 0)
-                        }
-                      }}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        background: 'var(--bg-muted)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 9999,
-                        fontSize: '0.8125rem',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      {text}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button
-                  type="submit"
-                  disabled={copyTemplateSaving}
-                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: copyTemplateSaving ? 'not-allowed' : 'pointer' }}
-                >
-                  {copyTemplateSaving ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
-                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {copy.editingCopyTemplateKey && <ProspectCopyTemplateEditModal copy={copy} />}
 
-      {/* Copy blank fields modal */}
-      {copyBlankFieldsModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={() => setCopyBlankFieldsModalOpen(false)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 400,
-              width: '90%',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0' }}>Missing information</h3>
-            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
-              The following fields are blank but used in your template. Please fill them in before copying:
-            </p>
-            <ul style={{ margin: '0 0 1rem 0', paddingLeft: '1.25rem' }}>
-              {copyBlankFieldsList.map((field) => (
-                <li key={field} style={{ marginBottom: '0.25rem' }}>{field}</li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => setCopyBlankFieldsModalOpen(false)}
-              style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+      {copy.copyBlankFieldsModalOpen && <ProspectCopyBlankFieldsModal copy={copy} />}
 
       {timerHistoryModalOpen && <ProspectTimerHistoryModal userId={authUser?.id ?? null} onClose={() => setTimerHistoryModalOpen(false)} />}
 
