@@ -85,6 +85,12 @@ export function applyOnSiteWrites(rows: OnSiteRows, writes: ReadonlyArray<OnSite
                 ...(has(r, 'description') ? { said: str(r.description) } : {}),
                 // The printed mark (v2.7519): the time its label went out, or null when the mark was taken off.
                 ...(has(r, 'label_printed_at') ? { labelPrintedAt: strOrNull(r.label_printed_at) } : {}),
+                // What the pin remembers (v2.7575): its day, its person and its margin, each as the press sent it. A
+                // pin taken off takes them with it, as the database does.
+                ...(has(r, 'pinned_at') ? { pinnedAt: strOrNull(r.pinned_at) } : {}),
+                ...(has(r, 'pinned_by_name') ? { pinnedByName: strOrNull(r.pinned_by_name) } : {}),
+                ...(has(r, 'pin_accuracy_m') ? { pinAccuracyM: numOrNull(r.pin_accuracy_m) } : {}),
+                ...(has(r, 'lat') && numOrNull(r.lat) == null ? { pinnedAt: null, pinnedByName: null, pinAccuracyM: null } : {}),
               },
         )
       }

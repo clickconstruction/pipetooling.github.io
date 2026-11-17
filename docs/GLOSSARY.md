@@ -6494,6 +6494,15 @@ Across a whole development, the **material location report** (v2.6533, punch lis
 The money a shortfall is worth reads the parts book's price since v2.6673 (the owner's call 5;
 `lib/materials/bookPrice.ts`: the supply house's latest check wins, a same-day tie the lower price, a row at zero or at the book's stand-in never a price since v2.7249, stale past 90 days, the invoice price the office read on this device standing in where the book has none), a chip naming the source and the checked day beside every figure on Missing, amber past 90 days, and **Read the parts book again** when the read failed.
 A box photo's file **follows its job** in Drive (v2.6885 the seat's move, v2.6915 any change of job, v2.6927 the strip): when a combine or a move changes a photo's job the file is marked due and moved into the new job's photo folder by the photo sweep, and the job's screens show the count while it runs and name a **held** file, one that could not move, with its reason.
+**Where is it?** on a box (v2.7575, punch list #372) is the press that says where a cage or box stands and draws the way to it.
+It is the middle chip on the phone's box screen, in place of *Pin on map*, and the third tab of the office's box window (`WhereIsBox.tsx` over `whereIsBox.ts`).
+It says the place, the where note, and the **pin** with its day, its person and the phone's margin, which the pin has kept since v2.7573 (`pinned_at`, `pinned_by_name`, `pin_accuracy_m`).
+**Show where I am** draws the reader's own dot and a dashed straight line to the pin, with the distance said as *about* and the phone's margin beside it.
+The dot is drawn on the phone and sent nowhere.
+**I found it** reads the phone once and pins the box where the finder stands, and a reading the phone is not sure of within about 150 ft is refused in words.
+**Move the pin by hand** is the map to drag, with the ring at its centre.
+A pin older than 30 days is an **old pin** and carries a caution.
+A task's place has a sheet of the same name, which is a different thing: there the giver says where the task is.
 
 ### A site's materials (punch list #330)
 Everything in the cages and boxes of one **site**, a development's jobs, on one screen (v2.7074): `?site=<development id>` on Materials → On site and Jobs → Materials, opened from the desk's **site row**, the Development page's **Open the site’s materials** or a field role's **Open the site**.
