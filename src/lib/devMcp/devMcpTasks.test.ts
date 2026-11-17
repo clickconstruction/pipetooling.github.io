@@ -1,8 +1,9 @@
 /** The dev seat's task verbs (v2.7584): the call's shape, who the window offers, and the draft the window's own send runs on. */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { TASK_PEOPLE_MAX, TASK_TEXT_MAX, TASK_VERBS, isTaskVerb, mapLink, notOfferedWhy, taskDraft, taskDryRun, taskInput, type TaskPayload, type TaskWorld } from '../../../supabase/functions/_shared/devMcpTasks'
-import { WRITE_VERBS, alreadyApplied, isWriteVerb, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { TASK_PEOPLE_MAX, TASK_TEXT_MAX, TASK_VERBS, isTaskVerb, notOfferedWhy, taskDraft, taskDryRun, taskInput, type TaskPayload, type TaskWorld } from '../../../supabase/functions/_shared/devMcpTasks'
+import { mapLink, type PlaceFound } from '../../../supabase/functions/_shared/devMcpTaskPlace'
+import { WRITE_VERBS, isWriteVerb, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 import { asksForPhotoDefault } from '../taskProgress'
 
@@ -29,7 +30,7 @@ const refusal = (task: Record<string, unknown>): string => {
   if (built.ok) throw new Error('expected a refusal')
   return built.error
 }
-const worldOf = (over: Partial<TaskWorld> = {}): TaskWorld => ({ people: [{ ref: ANA, person: { id: ANA, name: 'ZZ Ana Field', role: 'master_technician' } }], tell: null, held: [], already: [], ...over })
+const worldOf = (over: Partial<TaskWorld> = {}): TaskWorld => ({ people: [{ ref: ANA, person: { id: ANA, name: 'ZZ Ana Field', role: 'master_technician' } }], tell: null, held: [], already: [], place: null, ...over })
 
 describe('the task verbs are on the allowlist with no wrapper RPC', () => {
   it('are two write verbs, plan before apply, and the server and the README name them and the reads', () => {
@@ -77,8 +78,13 @@ describe('the task verbs are on the allowlist with no wrapper RPC', () => {
     }
   })
 
-  it('a replay is answered in the task\'s own words', () => {
-    expect(alreadyApplied('apply_task', { target: 'x', at: '2026-11-17T18:00:00Z' })).toContain('Giving it again would make a second task')
+  it('a replay is refused by the world, never by the call log: a task given, deleted and given again is a second act', () => {
+    expect(stateGuarded('apply_task')).toBe(true)
+    expect(stateGuarded('plan_task')).toBe(false)
+    const branch = SERVER.slice(SERVER.indexOf("    case 'plan_task':"), SERVER.indexOf("    case 'plan_task_place':"))
+    expect(branch).not.toContain('hooks.priorApply')
+    // After the task exists, every write goes through the helper that turns a throw into a named step.
+    expect(branch.match(/await post\('/g)?.length).toBe(4)
   })
 })
 
@@ -128,10 +134,13 @@ describe('taskInput — the call, shaped', () => {
   it('links are http(s) addresses, and a place is a whole point with a short name', () => {
     expect(p({ links: [' https://example.test/a ', 'https://example.test/a'] }).links).toEqual(['https://example.test/a'])
     expect(refusal({ links: ['ftp://example.test'] })).toContain('http(s) address')
-    expect(p({ place: { name: '  ZZ pump   house ', lat: 30.1, lng: -97.7 } }).place).toEqual({ name: 'ZZ pump house', lat: 30.1, lng: -97.7 })
-    expect(p({ place: { lat: 30.1, lng: -97.7 } }).place).toEqual({ lat: 30.1, lng: -97.7 })
-    expect(refusal({ place: { name: 'ZZ gate', lat: 0, lng: 0 } })).toContain('not an address')
-    expect(refusal({ place: { address: '1 Main St' } })).toContain('not an address')
+    expect(p({ place: { name: '  ZZ pump   house ', lat: 30.1, lng: -97.7 } }).place).toEqual({ how: 'point', name: 'ZZ pump house', lat: 30.1, lng: -97.7 })
+    expect(p({ place: { lat: 30.1, lng: -97.7 } }).place).toEqual({ how: 'point', lat: 30.1, lng: -97.7 })
+    // The four ways are the place verb's own (devMcpTaskPlace.test.ts holds each).
+    expect(p({ place: { address: '14 Maple Ct, Marlow, TX 78000' } }).place).toEqual({ how: 'address', address: '14 Maple Ct, Marlow, TX 78000' })
+    expect(p({ place: { like: 'ZZ gate' } }).place).toEqual({ how: 'like', like: 'ZZ gate' })
+    expect(refusal({ place: { name: 'ZZ gate', lat: 0, lng: 0 } })).toContain('place: lat and lng are numbers on the globe')
+    expect(refusal({ place: { name: 'ZZ gate' } })).toContain('a place is said one way, not none')
     expect(refusal({ place: { name: 'x'.repeat(41), lat: 30.1, lng: -97.7 } })).toContain('the most is 40')
   })
 
@@ -170,13 +179,21 @@ describe('the draft and the dry run', () => {
   })
 
   it('the plan holds no clock and no place in a list, so a task given to them in between does not turn it away', () => {
-    const a = taskDryRun(p({ place: { lat: 30.1, lng: -97.7 } }), worldOf({ held: [{ user_id: ANA, display_order: 4 }] }), ME, TODAY)
-    const b = taskDryRun(p({ place: { lat: 30.1, lng: -97.7 } }), worldOf({ held: [{ user_id: ANA, display_order: 9 }] }), ME, TODAY)
+    const at: PlaceFound = { ok: true, lat: 30.1, lng: -97.7, name: '', found_by: 'the point you gave' }
+    const a = taskDryRun(p({ place: { lat: 30.1, lng: -97.7 } }), worldOf({ held: [{ user_id: ANA, display_order: 4 }], place: at }), ME, TODAY)
+    const b = taskDryRun(p({ place: { lat: 30.1, lng: -97.7 } }), worldOf({ held: [{ user_id: ANA, display_order: 9 }], place: at }), ME, TODAY)
     if (!a.ok || !b.ok) throw new Error('expected two plans')
     expect(a.reply).toEqual(b.reply)
     expect(JSON.stringify(a.reply)).not.toContain('place_set_at":')
     expect(a.reply.stamped_at_apply).toEqual(['place_set_at'])
     expect(mapLink(30.1, -97.7)).toBe('https://www.google.com/maps?q=30.1,-97.7')
+  })
+
+  it('a place that cannot be found turns the plan away in the finder\'s words, and a found one names how it was found', () => {
+    expect(taskDryRun(p({ place: { address: '1 Nowhere Rd, Marlow, TX' } }), worldOf({ place: { ok: false, refused: 'No point was found' } }), ME, TODAY)).toMatchObject({ ok: false, refused: 'place: No point was found' })
+    const found = taskDryRun(p({ place: { like: 'ZZ gate' } }), worldOf({ place: { ok: true, lat: 30.2, lng: -97.7, name: 'ZZ gate', found_by: 'the place "ZZ gate" another task already carries' } }), ME, TODAY)
+    expect(found.ok && found.reply.place).toEqual({ name: 'ZZ gate', lat: 30.2, lng: -97.7, found_by: 'the place "ZZ gate" another task already carries', check_it_here: 'https://www.google.com/maps?q=30.2,-97.7' })
+    expect(found.ok && found.reply.row).toMatchObject({ place_name: 'ZZ gate', place_lat: 30.2, place_lng: -97.7, place_accuracy_m: null })
   })
 
   it('refuses the same person named twice, a repeat that ends before it starts, and a repeat with no day in five weeks', () => {

@@ -27,7 +27,7 @@ describe('the theme-mark verbs (v2.6552)', () => {
     expect(SERVER).toContain("case 'plan_theme_marks':")
     expect(SERVER).toContain("case 'apply_theme_marks':")
     expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
-    expect(SERVER).toContain('one hundred and fifteen verbs')
+    expect(SERVER).toContain('one hundred and seventeen verbs')
   })
 
   it('shapes the marks and the stand, and refuses a bad one in words', () => {

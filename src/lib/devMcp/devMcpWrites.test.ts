@@ -48,7 +48,7 @@ describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     // v2.6317: the four plan-part verbs name no RPC — they write the rows the Plans section writes, under RLS (devMcpPlanSets.test.ts).
     const tableVerbs = Object.entries(WRITE_VERBS).filter(([, v]) => v.rpc === null).map(([k]) => k)
-    expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper', 'plan_person_report', 'apply_person_report', 'plan_matter_open_person', 'apply_matter_open_person', 'plan_job', 'apply_job', 'plan_job_update', 'apply_job_update', 'plan_bill', 'apply_bill', 'plan_collections_flag', 'apply_collections_flag', 'plan_contract_ended', 'apply_contract_ended', 'plan_property_record', 'apply_property_record', 'plan_last_work_day', 'apply_last_work_day', 'plan_notice_by_hand', 'apply_notice_by_hand', 'plan_affidavit_draft', 'apply_affidavit_draft', 'plan_lien_filing', 'apply_lien_filing', 'plan_lien_service', 'apply_lien_service', 'plan_account', 'apply_account', 'plan_login', 'apply_login', 'plan_password_reset', 'apply_password_reset', 'plan_submittal_rows', 'apply_submittal_rows', 'plan_submittal_log', 'apply_submittal_log', 'plan_activity_note', 'apply_activity_note', 'plan_job_payment', 'apply_job_payment', 'plan_job_combine', 'apply_job_combine', 'plan_bid_update', 'apply_bid_update', 'plan_bid_counts', 'apply_bid_counts', 'plan_bid_takeoff', 'apply_bid_takeoff', 'plan_bid_labor', 'apply_bid_labor', 'plan_bid_pricing', 'apply_bid_pricing', 'plan_bid_submission', 'apply_bid_submission', 'plan_sub_labor', 'apply_sub_labor', 'plan_sub_labor_payment', 'apply_sub_labor_payment', 'plan_task', 'apply_task']) // v2.6944: the sub labor verbs write the rows Jobs → Subs → Pay writes and POST the payment's own remove_labor_job_payment (devMcpSubLabor.test.ts); v2.6430: the report verbs POST the HR queue's own RPCs after the server's read of the report (devMcpPersonReport.test.ts); v2.6582: the person-matter verbs POST the HR file's own legal_person_matter_open (devMcpPersonMatter.test.ts)
+    expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper', 'plan_person_report', 'apply_person_report', 'plan_matter_open_person', 'apply_matter_open_person', 'plan_job', 'apply_job', 'plan_job_update', 'apply_job_update', 'plan_bill', 'apply_bill', 'plan_collections_flag', 'apply_collections_flag', 'plan_contract_ended', 'apply_contract_ended', 'plan_property_record', 'apply_property_record', 'plan_last_work_day', 'apply_last_work_day', 'plan_notice_by_hand', 'apply_notice_by_hand', 'plan_affidavit_draft', 'apply_affidavit_draft', 'plan_lien_filing', 'apply_lien_filing', 'plan_lien_service', 'apply_lien_service', 'plan_account', 'apply_account', 'plan_login', 'apply_login', 'plan_password_reset', 'apply_password_reset', 'plan_submittal_rows', 'apply_submittal_rows', 'plan_submittal_log', 'apply_submittal_log', 'plan_activity_note', 'apply_activity_note', 'plan_job_payment', 'apply_job_payment', 'plan_job_combine', 'apply_job_combine', 'plan_bid_update', 'apply_bid_update', 'plan_bid_counts', 'apply_bid_counts', 'plan_bid_takeoff', 'apply_bid_takeoff', 'plan_bid_labor', 'apply_bid_labor', 'plan_bid_pricing', 'apply_bid_pricing', 'plan_bid_submission', 'apply_bid_submission', 'plan_sub_labor', 'apply_sub_labor', 'plan_sub_labor_payment', 'apply_sub_labor_payment', 'plan_task', 'apply_task', 'plan_task_place', 'apply_task_place']) // v2.6944: the sub labor verbs write the rows Jobs → Subs → Pay writes and POST the payment's own remove_labor_job_payment (devMcpSubLabor.test.ts); v2.6430: the report verbs POST the HR queue's own RPCs after the server's read of the report (devMcpPersonReport.test.ts); v2.6582: the person-matter verbs POST the HR file's own legal_person_matter_open (devMcpPersonMatter.test.ts)
     const rpcs = new Set(Object.values(WRITE_VERBS).flatMap((v) => (v.rpc === null ? [] : [v.rpc])))
     expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hours_statement_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_event_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_move_job', 'dev_on_site_rename', 'dev_on_site_write', 'dev_person_doc_write', 'dev_person_evidence_write', 'dev_person_license_write', 'dev_theme_marks_write', 'dev_theme_review_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
@@ -214,7 +214,7 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
     }
     expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
     expect(SERVER).toContain('plan_matter_event → apply_matter_event')
-    expect(SERVER).toContain('one hundred and fifteen verbs')
+    expect(SERVER).toContain('one hundred and seventeen verbs')
   })
 })
 
@@ -589,7 +589,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
     expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
-    expect(SERVER).toContain('Writes are one hundred and fifteen verbs and nothing else')
+    expect(SERVER).toContain('Writes are one hundred and seventeen verbs and nothing else')
   })
 })
 
@@ -813,7 +813,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
     expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
-    expect(SERVER).toContain('Writes are one hundred and fifteen verbs and nothing else')
+    expect(SERVER).toContain('Writes are one hundred and seventeen verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
 })
@@ -921,8 +921,8 @@ describe('the Materials on site move (v2.6808, punch list #209)', () => {
     }
     expect(SERVER).toContain('plan_materials_move → apply_materials_move')
     expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
-    expect(SERVER).toContain('Writes are one hundred and fifteen verbs and nothing else')
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(115)
+    expect(SERVER).toContain('Writes are one hundred and seventeen verbs and nothing else')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(117)
   })
 })
 
@@ -1235,7 +1235,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
     }
     expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
-    expect(SERVER).toContain('one hundred and fifteen verbs')
+    expect(SERVER).toContain('one hundred and seventeen verbs')
   })
 })
 
