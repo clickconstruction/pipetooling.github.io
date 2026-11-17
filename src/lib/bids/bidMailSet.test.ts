@@ -117,6 +117,14 @@ describe('the form, filled from the mail', () => {
     expect(mailSender(null)).toBe('')
     expect(cameByMailMemo('Dana Whitfield to the bids box', mail.at)).toBe('Came by mail from Dana Whitfield, Nov 16.')
   })
+  it('reads the name off a From that carries the address, as the company boxes write it (v2.7556)', () => {
+    expect(mailSender('Dana Whitfield <dana@ridgeway.example> to bids@')).toBe('Dana Whitfield')
+    expect(mailSender('"Whitfield, Dana" <dana@ridgeway.example> to bids@, cc Sam')).toBe('Whitfield, Dana')
+    expect(mailSender('<dana@ridgeway.example> to bids@')).toBe('dana@ridgeway.example')
+    expect(mailSender('dana@ridgeway.example to bids@')).toBe('dana@ridgeway.example')
+    expect(cameByMailMemo('Dana Whitfield <dana@ridgeway.example> to bids@', mail.at)).toBe('Came by mail from Dana Whitfield, Nov 16.')
+    expect(bidMailLineWords({ who: 'Dana Whitfield <dana@ridgeway.example> to bids@', at: mail.at, files: 1 })).toBe('Dana Whitfield · Nov 16 · 1 file')
+  })
   it('offers a new set first, then only the sets whose link is a Drive folder', () => {
     expect(isDriveFolderLink(FOLDER)).toBe(true)
     expect(isDriveFolderLink('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view')).toBe(false)
@@ -174,9 +182,11 @@ describe('what it says after', () => {
     expect(mailKeptWords([''], 'B482')).toBe('Kept on B482')
   })
   it('reads a file’s size, or nothing when the row holds none', () => {
-    expect(fileSizeWords(2_202_009)).toBe('2.1 MB')
-    expect(fileSizeWords(880_640)).toBe('860 KB')
-    expect(fileSizeWords(400)).toBe('1 KB')
+    // The attachment row's own words (lineFiles' sizeWords), so the form and the row above it agree (v2.7556).
+    expect(fileSizeWords(2_202_009)).toBe('2.2 MB')
+    expect(fileSizeWords(248_000)).toBe('248 KB')
+    expect(fileSizeWords(400)).toBe('400 bytes')
+    expect(fileSizeWords(0)).toBe('')
     expect(fileSizeWords(null)).toBe('')
   })
 })

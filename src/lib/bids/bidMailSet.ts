@@ -12,6 +12,7 @@ import { countedLabel } from '../batchWords'
 import { nameFromSubject } from '../papers/papers'
 import { fileAgainLabel } from '../plans/planSetFiles'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { sizeWords } from '../messages/lineFiles'
 import { planSetDateWords, type BidPlanSetRow } from './bidPlanSets'
 
 /** A row of `message_attachments` as the press reads it. The last two columns are optional: a read may leave them out. */
@@ -81,9 +82,15 @@ export const INTO_NEW = 'new'
 
 export type BidMailDraft = { into: string; name: string; planDate: string; memo: string; picked: string[] }
 
-/** Who wrote the mail, from the line's who words (*Dana Whitfield to the bids box*): the part before *to*. */
+/**
+ * Who wrote the mail, from the line's who words: the part before *to*. The company boxes' reader writes the sender as
+ * the mail's own From, *Dana Whitfield <dana@ridgeway.example> to bids@*, so the address in angle brackets and any
+ * quotes around the name come off (v2.7556, found on the first live look). A From with no name reads as its address.
+ */
 export function mailSender(who: string | null | undefined): string {
-  return (who ?? '').split(/\s+to\s+/)[0]!.split(' · ')[0]!.trim()
+  const from = (who ?? '').split(/\s+to\s+/)[0]!.split(' · ')[0]!.trim()
+  const name = from.replace(/<[^>]*>/g, ' ').replace(/["“”]/g, '').replace(/\s+/g, ' ').trim()
+  return name || (/<([^>]+)>/.exec(from)?.[1] ?? '').trim()
 }
 
 /** The memo a set kept from a mail starts with: *Came by mail from Dana Whitfield, Nov 16.* */
@@ -220,10 +227,10 @@ export function nothingToKeepWords(left: number): string {
   return left === 1 ? 'This mail’s file stayed in Gmail, so there is no copy here to keep on the bid.' : `This mail’s ${left} files stayed in Gmail, so there is no copy here to keep on the bid.`
 }
 
-/** A file's size as the form says it, or '' when the row holds none. */
+/**
+ * A file's size as the form says it, or '' when the row holds none: the words the mail's own attachment row uses
+ * (`sizeWords`, a Mac's units), so one file never reads as two sizes on one screen (v2.7556).
+ */
 export function fileSizeWords(bytes: number | null): string {
-  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return ''
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  const mb = bytes / (1024 * 1024)
-  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`
+  return bytes != null && bytes > 0 ? sizeWords(bytes) : ''
 }

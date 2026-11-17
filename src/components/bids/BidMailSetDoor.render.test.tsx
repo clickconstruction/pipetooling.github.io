@@ -71,7 +71,7 @@ describe('BidMailSetDoor: the press on a mail tied to a bid', () => {
     expect((within(f).getByDisplayValue('Addendum 2, revised plumbing specs') as HTMLInputElement).value).toBe('Addendum 2, revised plumbing specs')
     expect(within(f).getByDisplayValue('2026-11-16')).toBeTruthy()
     expect(within(f).getByDisplayValue('Came by mail from Dana Whitfield, Nov 16.')).toBeTruthy()
-    expect(f.textContent).toContain('specs.pdf· 2.1 MB')
+    expect(f.textContent).toContain('specs.pdf· 2.2 MB')
     expect(f.textContent).toContain('reissue.pdf · stays in Gmail, too big for us to keep')
     expect(f.textContent).toContain('Goes to the bid’s Drive folder, under Plans › Addendum 2, revised plumbing specs.')
     expect(f.textContent).toContain('1 file stays in Gmail. We hold no copy of it.')
