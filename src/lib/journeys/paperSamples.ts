@@ -10,6 +10,8 @@
  * and say so in the memo lines.
  */
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
+import { buildStatementOfAccount, type PaperContext, type PaperMoneyLine, type PaperSheet, type StatementRange } from '../../../supabase/functions/_shared/subPapers'
+import { statementOfAccountHtml, SUB_PAPER_CSS } from '../subWorkOrders/subPapersHtml'
 import { SAMPLE_HOMEOWNER, ymdPlusDays } from '../customerSample'
 import { buildPhysicalInvoiceDocument, buildPhysicalInvoiceEmailBodies, physicalInvoiceEmailSubject, type PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import { buildHazmatFeeNoticeHtml, type HazmatNoticeJobInfo } from '../jobsDocuments/hazmatFeeNotice'
@@ -23,9 +25,9 @@ import { buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverFootLines, li
 /** The lien group's own papers (punch list #326) are built in `lienLetterSamples.ts`, on one made-up unpaid job. */
 export { SAMPLE_OWNER, sampleOwnerNotice, sampleOwnerNoticeInputs } from './lienLetterSamples'
 
-export type PaperId = 'bill-by-email' | 'hazmat-notice' | 'demand-letter' | 'owner-notice' | 'lien-release' | 'lien-cover-letter' | 'lien-letter-paid-out' | 'lien-letter-quiet' | 'lien-affidavit' | 'lien-release-of-record' | 'lien-retainage'
+export type PaperId = 'bill-by-email' | 'hazmat-notice' | 'demand-letter' | 'owner-notice' | 'lien-release' | 'lien-cover-letter' | 'lien-letter-paid-out' | 'lien-letter-quiet' | 'lien-affidavit' | 'lien-release-of-record' | 'lien-retainage' | 'sub-statement-of-account'
 
-export const PAPER_IDS: readonly PaperId[] = ['bill-by-email', 'hazmat-notice', 'demand-letter', 'owner-notice', 'lien-release', 'lien-cover-letter', 'lien-letter-paid-out', 'lien-letter-quiet', 'lien-affidavit', 'lien-release-of-record', 'lien-retainage']
+export const PAPER_IDS: readonly PaperId[] = ['bill-by-email', 'hazmat-notice', 'demand-letter', 'owner-notice', 'lien-release', 'lien-cover-letter', 'lien-letter-paid-out', 'lien-letter-quiet', 'lien-affidavit', 'lien-release-of-record', 'lien-retainage', 'sub-statement-of-account']
 
 export type PaperSample = {
   /** The document's name, as the office knows it. */
@@ -222,6 +224,55 @@ export function sampleLienRelease(todayYmd: string): PaperSample {
   }
 }
 
+/** The sub's own name on the sub journey's cards (`customerJourneys.ts`). */
+const SAMPLE_SUB_NAME = "Sam's Plumbing LLC"
+
+/** A made-up sub's sheets: one paid in part with a back-charge, one not paid yet. No paper carries a number yet, so none is drawn. */
+export function sampleSubPaperInputs(todayYmd: string): { sheets: PaperSheet[]; ctx: PaperContext; range: StatementRange } {
+  const money = (id: string, amount: number, daysAgo: number, how: string, memo = ''): PaperMoneyLine => {
+    const ymd = ymdPlusDays(todayYmd, -daysAgo)
+    return { id, amount, ymd, recorded: false, at: localNoonIso(ymd), how, memo, sendingId: amount > 0 ? `sample-${id}` : null, sendingNo: null, fromCredit: false, creditKept: 0, clientDirect: false }
+  }
+  const sheet = (id: string, jobNumber: string, jobName: string, daysAgo: number, lines: Array<[string, number]>, lineMoney: PaperMoneyLine[]): PaperSheet => ({
+    id,
+    number: '',
+    revision: 1,
+    replacesCopyOf: '',
+    jobNumber,
+    jobName,
+    address: SAMPLE_JOB.address,
+    day: ymdPlusDays(todayYmd, -daysAgo),
+    lines: lines.map(([label, amount]) => ({ label, amount })),
+    money: lineMoney,
+    confirm: null,
+  })
+  return {
+    sheets: [
+      sheet('sample-sheet-1', SAMPLE_JOB.number, SAMPLE_JOB.name, 20, [['Rough-in', 2400], ['Top-out', 1800]], [money('p1', 1500, 16, 'Check 1182'), money('b1', -100, 6, '', 'cleanup after top-out')]),
+      sheet('sample-sheet-2', '1057', 'Slab sleeves, lot 12', 9, [['Slab sleeves', 2500]], []),
+    ],
+    ctx: { company: { name: PORTAL_COMPANY.name, lines: [] }, sub: { name: SAMPLE_SUB_NAME, lines: [] }, today: todayYmd, preparedAt: todayYmd, zone: 'Central time' },
+    range: { from: null, to: null },
+  }
+}
+
+/** The statement of account a sub is sent (punch list #350): the papers' own kernel on made-up sheets. */
+export function sampleSubStatementOfAccount(todayYmd: string): PaperSample {
+  const { sheets, ctx, range } = sampleSubPaperInputs(todayYmd)
+  const paper = buildStatementOfAccount(sheets, range, ctx)
+  return {
+    title: 'Statement of account',
+    subject: `Your statement of account from ${PORTAL_COMPANY.name}`,
+    html: `<!doctype html><html><head><meta charset="utf-8"><title>Statement of account</title><style>body{margin:0;background:#fff}${SUB_PAPER_CSS}</style></head><body>${statementOfAccountHtml(paper, range)}</body></html>`,
+    filename: 'Statement-of-account-sample.pdf',
+    pdf: async () => {
+      const [lib, { buildStatementOfAccountPdf }] = await Promise.all([import('pdf-lib'), import('../../../supabase/functions/_shared/subPapersPdf')])
+      const bytes = await buildStatementOfAccountPdf(lib as unknown as Parameters<typeof buildStatementOfAccountPdf>[0], paper, range)
+      return new Blob([bytes as BlobPart], { type: 'application/pdf' })
+    },
+  }
+}
+
 export function paperSample(id: PaperId, todayYmd: string): PaperSample {
   switch (id) {
     case 'bill-by-email':
@@ -246,5 +297,7 @@ export function paperSample(id: PaperId, todayYmd: string): PaperSample {
       return sampleReleaseOfRecord(todayYmd)
     case 'lien-retainage':
       return sampleRetainageNotice(todayYmd)
+    case 'sub-statement-of-account':
+      return sampleSubStatementOfAccount(todayYmd)
   }
 }

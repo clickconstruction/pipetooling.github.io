@@ -12,6 +12,7 @@ import { LIEN_SERVE_NUMBERS_WORDS, lienServeDraftFor, lienServeDraftWith, lienSe
 import { recordLienServices, type LienServeRecordResult } from '../../lib/jobs/lienServeNumbersIo'
 import { LIEN_SERVICE_PROOF_WORDS, type ServiceCopy, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
 import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
+import { LIEN_SCAN_BATCH_WORDS } from '../../lib/jobs/lienScanBatch'
 import { useLienServeLetterChoice } from './lienHelpSheetChoice'
 
 type Props = {
@@ -24,6 +25,8 @@ type Props = {
   onOpenJob: (jobId: string) => void
   /** The desk reads again after a record. */
   onChanged: () => void
+  /** The door to Add the stamped scans; absent draws none. */
+  onAddScans?: () => void
   onClose: () => void
   /** The write, handed in by a test. */
   record?: typeof recordLienServices
@@ -58,7 +61,7 @@ function chipStyle(late: boolean, today: boolean): CSSProperties {
  *
  * Each print is filed on its own job. Nothing here mails anything: the office does, and says so by ticking *Mailed*.
  */
-export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOpenJob, onChanged, onClose, record = recordLienServices, zIndex = 1200 }: Props) {
+export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose, record = recordLienServices, zIndex = 1200 }: Props) {
   const isTopmost = useModalStackEntry()
   const { showToast } = useToastContext()
   const [letterOn, setLetterOn] = useLienServeLetterChoice()
@@ -250,6 +253,17 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
               )
             })}
           </section>
+
+          {/* The clerk's stamped scans for several liens at once (punch list #366): its own window, since a scan is the filing's saved copy and not part of the mailing. */}
+          {onAddScans ? (
+            <section data-lien-serve-scans-part style={{ display: 'grid', gap: '0.35rem', justifyItems: 'start' }}>
+              <h3 style={head}>3 · The clerk’s stamped scans</h3>
+              <button type="button" onClick={onAddScans} disabled={busy} data-lien-serve-add-scans style={{ ...btn, ...(isMobile ? { minHeight: 44 } : {}) }}>
+                {LIEN_SCAN_BATCH_WORDS.door}
+              </button>
+              <div style={small}>{LIEN_SCAN_BATCH_WORDS.where}</div>
+            </section>
+          ) : null}
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', justifyContent: 'flex-end', padding: '0.7rem 1.1rem', borderTop: '1px solid var(--border)' }}>
