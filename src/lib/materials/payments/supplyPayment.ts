@@ -190,6 +190,8 @@ export type BillPaidBy = {
   receiptLink: string | null
   /** The typed payments on this bill, newest first: what a Mark unpaid would take the bill off. */
   typed: { payment: SupplyPayment; onThisBill: number; bills: number }[]
+  /** The newest payment on this bill that still needs how it was paid, for the row's Finish… press. Absent when none does. */
+  needsHowId?: string
 }
 
 /** What paid a bill, from the house's payments and lines. A bill with no line read here says nothing. */
@@ -214,6 +216,7 @@ export function billPaidBy(billId: string, payments: ReadonlyArray<SupplyPayment
     words,
     receiptLink: entries.find((e) => (e.payment.receipt_link ?? '').trim())?.payment.receipt_link?.trim() ?? null,
     typed: entries.filter((e) => !isPressPayment(e.payment, lines)),
+    ...(entries.some((e) => needsHowPaid(e.payment)) ? { needsHowId: (entries.find((e) => needsHowPaid(e.payment)) as (typeof entries)[number]).payment.id } : {}),
   }
 }
 

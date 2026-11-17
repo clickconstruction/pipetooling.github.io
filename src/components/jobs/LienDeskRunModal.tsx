@@ -52,8 +52,8 @@ import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem } from '../../lib/jobs/lienMailedCopies'
-import { addLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
+import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem, lienMailedCopyTakenOffWords, type LienMailedCopy } from '../../lib/jobs/lienMailedCopies'
+import { addLienMailedCopy, removeLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
 import { LIEN_RUN_ACT, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 
 /** Which of the window's three stacks a notice's envelopes sit in, by its part (`lienRunParts`): what prints now, what printed, what is stopped. */
@@ -92,6 +92,7 @@ export default function LienDeskRunModal({
   viewer = null,
   focusMailItemId = null,
   addMailedCopy = addLienMailedCopy,
+  removeMailedCopy = removeLienMailedCopy,
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -127,6 +128,8 @@ export default function LienDeskRunModal({
   focusMailItemId?: string | null
   /** The upload behind *Add what was mailed*; a test hands its own. */
   addMailedCopy?: typeof addLienMailedCopy
+  /** Take a file off a notice's list (v2.7525); a test hands its own. */
+  removeMailedCopy?: typeof removeLienMailedCopy
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
@@ -594,7 +597,9 @@ export default function LienDeskRunModal({
     }
     setAddingCopy(row.itemId)
     try {
-      const list = await addMailedCopy({ itemId: row.itemId, jobId: row.jobId, jobNumber: row.jobNumber, file, todayYmd, userId })
+      // The file's name says which paper it is: a retainage notice rides in this run beside the monthly ones (v2.7525).
+      const paper = notices.find((n) => n.itemId === row.itemId)?.kind === 'retainage_53_057' ? 'retainage' : 'notice'
+      const list = await addMailedCopy({ itemId: row.itemId, jobId: row.jobId, jobNumber: row.jobNumber, file, todayYmd, userId, paper })
       setNotices((prev) => prev.map((n) => (n.itemId === row.itemId ? { ...n, mailedCopies: list } : n)))
       const last = list[list.length - 1]
       if (last) showToast(lienMailedCopyAddedWords(last.name), 'success')
@@ -603,6 +608,21 @@ export default function LienDeskRunModal({
       showToast(formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.failed), 'error')
     } finally {
       setAddingCopy(null)
+    }
+  }
+  // Take off (v2.7525): the notice forgets one file. The file stays in the job's Drive folder, and the words say so.
+  const [removingCopy, setRemovingCopy] = useState<string | null>(null)
+  const removeCopy = async (row: LienRunRow, copy: LienMailedCopy) => {
+    setRemovingCopy(row.itemId)
+    try {
+      const list = await removeMailedCopy({ itemId: row.itemId, copy })
+      setNotices((prev) => prev.map((n) => (n.itemId === row.itemId ? { ...n, mailedCopies: list } : n)))
+      showToast(lienMailedCopyTakenOffWords(copy.name), 'success')
+      onRecorded()
+    } catch (e) {
+      showToast(formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.takeOffFailed), 'error')
+    } finally {
+      setRemovingCopy(null)
     }
   }
   const markPrintedByHand = (row: LienRunRow) => {
@@ -1058,7 +1078,7 @@ export default function LienDeskRunModal({
             focusMailItemId={focusMailItemId}
             // Close… (v2.7353): a paid row's own press and the fold's ask for the confirm above; nothing is written until it is pressed.
             paid={onClosePaid ? { readyIds: paidSplit.ready, heldWhy: paidHeldWhy, onClose: (ids) => { setClosedPaid(null); setTakeBackOpen(false); setTakeBackOne(null); setClosePaidIds(ids) } } : undefined}
-            mailedCopies={{ onAdd: (row, file) => void addCopy(row, file), addingItemId: addingCopy }}
+            mailedCopies={{ onAdd: (row, file) => void addCopy(row, file), addingItemId: addingCopy, onRemove: (row, copy) => void removeCopy(row, copy), removingItemId: removingCopy }}
             // Un-print one (v2.7481): a ticked Printed is a press on every row the run could take back; the confirm above asks first.
             unprint={onTakeBack ? { ids: printedIds, onAsk: (row) => { setTakeBackOpen(false); setClosePaidIds(null); setTakenBack(null); setTakeBackOne(row.itemId) } } : undefined}
             // The groups (v2.7477): each row under its part's head, what is stopped first.

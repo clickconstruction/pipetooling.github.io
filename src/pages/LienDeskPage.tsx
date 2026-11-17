@@ -240,6 +240,16 @@ export default function LienDeskPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyAsked])
 
+  // Add the stamped scans over the desk (punch list #366): `?scans=1`, consumed once, the same way.
+  const [scansDoor, setScansDoor] = useState<{ key: number } | null>(null)
+  const scansAsked = address.scans
+  useEffect(() => {
+    if (!scansAsked) return
+    setScansDoor({ key: Date.now() })
+    navigate(lienDeskHref({ kind: address.kind, job: address.job, pile: address.pile }), { replace: true, state: location.state })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scansAsked])
+
   // A way back: the page behind when there is one, else the Pipeline, as `/accounts-receivable` does.
   const canGoBack = hasInAppHistory(typeof window !== 'undefined' ? window.history.state : null, location.key)
   const goBack = useCallback(() => {
@@ -329,6 +339,7 @@ export default function LienDeskPage() {
         initialPile={address.pile}
         openRun={runDoor}
         openProperty={propertyDoor}
+        openScans={scansDoor}
         calendarRows={calendarRows}
         onCalendarChanged={(what) => {
           // The pen (v2.4153): a promise re-reads the pay dates; a kind or a last day re-reads the clocks; the desk's own queue follows either.

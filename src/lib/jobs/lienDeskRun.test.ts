@@ -243,6 +243,10 @@ describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
     expect(run).toHaveLength(1)
     const n = run[0]!
     expect(n.kind).toBe('retainage_53_057')
+    // What was mailed (v2.7525): the retainage notice carries its scans as the monthly notice does, so its row has the press.
+    expect(n.mailedCopies).toEqual([])
+    const scan = { url: 'https://drive.google.com/file/d/f1/view', driveFileId: 'f1', name: 'Retainage notice as mailed · 650 · 2026-09-14.pdf', at: '2026-09-14T18:00:00.000Z', by: 'u1' }
+    expect(buildLienRetainageRun([{ ...entry, item: { ...retItem, mailed_copies: [scan] } as LienDeskItemRow }], d, null, () => 'Robert', TODAY)[0]!.mailedCopies).toEqual([scan])
     // The last day to mail rides on the notice, for Today's mail (punch list #314).
     expect(n.mailBy).toBe('2026-10-05')
     expect(runPacketHtml([n], TODAY, null)).toContain('<b>Mail every envelope by October 5, 2026.</b>')
@@ -295,6 +299,10 @@ describe('the pay page in the packet (v2.3758)', () => {
     expect(owner.find((b) => b.kind === 'callout')).toMatchObject({ text: expect.stringContaining('only if Lowbeck Contracting has told you in writing') })
     expect(owner.filter((b) => b.kind === 'payRow')).toHaveLength(1)
     expect(runPayPageBlocks(n, n.recipients[1]!, rows, assets, '')).toEqual([])
+    // The page names the cover letter only when this notice prints one (v2.7514).
+    const calloutOf = (x: typeof n) => (runPayPageBlocks(x, x.recipients[0]!, rows, assets, '').find((b) => b.kind === 'callout') as { text: string }).text
+    expect(calloutOf({ ...n, coverLetter: 'Dear owner,\n\nPlease hold this back.', coverNote: null })).toMatch(/, as the cover letter asks\.$/)
+    expect(calloutOf({ ...n, coverLetter: null, coverNote: null })).toMatch(/hold the amount back from Lowbeck Contracting\.$/)
   })
 
   it('carries the pay offer (v2.4713) from the approved item to the page', () => {

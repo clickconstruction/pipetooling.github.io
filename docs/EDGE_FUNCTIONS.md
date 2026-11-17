@@ -231,6 +231,7 @@ when_to_read:
    - [gc-word-ask](#gc-word-ask)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-lien-release-email](#send-lien-release-email)
+   - [send-sub-paper-email](#send-sub-paper-email)
    - [send-test-report](#send-test-report)
    - [open-test-report-pdf](#open-test-report-pdf)
    - [auto-send-test-reports](#auto-send-test-reports)
@@ -4053,6 +4054,8 @@ The tap opens `/jobs?tab=stages` for the office, whose section is at the top of 
 
 **A retainage notice (v2.7478)**: the plain body on a `retainage_53_057` item, with the notice's gate and answers. Until then the function refused it, the retainage pane's **Send for approval** told nobody and **Remind** left the paper out as *a retainage notice, which has no message yet*. The words are its own (`lienRetainageApprovalPush`): title *Approve a retainage notice*, body *891 · Tune 5 Liberty Hill · $12,400 retainage held by Brund & Assoc. · mail by Oct 15 · 8 days* (the figure is the draft's `fields.notice.claimAmount`, which a retainage draft sets to the retainage held; `due_ymd` is the day the § 53.057 window closes), tag `lien-retainage-approval-<job>` so a monthly notice's push on the same job never replaces it, and the tap opens `/lien-desk?tab=retainage&job=…`, which the desk now opens on that job's paper. Logged as `lien_retainage_approval_ask` (*retainage notice* on the **While you were off** line). The client asks through `tellLeaderOfLienApproval`, the notice's own helper; a desk ahead of the function reads the 400 as *The part of the app that tells the leader is waiting for its update.* (`lienTellFailureReason`).
 
+**A notice to sign (v2.7491)**: `{ "kind": "signature", "items": [{ "item_id": "<id>", "due_ymd": "2026-11-20" }], "remind": true }` reminds the leader of approved notices that wait on his signature; `due_ymd` is the day to mail by. Until then no press told him of these: **Remind** took a paper awaiting approval alone, and on a day with nothing to approve it was not drawn at all. The caller must hold an office role (403 *Not the office*). The body is read as the affidavit's is (`lienAffidavitAskItems`, 400 *Missing items* when none) and the batch rule is the affidavit's: each leader gets ONE message whatever the count. `lienSignatureAskable` keeps a row only when it is a monthly notice (`notice_53_056`), `approved`, not voided, not printed, and unsigned by the desk's own rule (`lienRowUnsigned`, [`_shared/lienFieldsHash.ts`](../supabase/functions/_shared/lienFieldsHash.ts): never signed, signed with no name, or changed since he signed), so a notice signed or printed since the list was drawn is left out; with none left it answers 200 *Not waiting on a signature*, and `told` is how many it told him of. The words come from `lienSignatureReminderPush`: one notice reads *Sign a lien notice* over *650 · Tune 5 Liberty Hill · mail by Nov 20 · 4 days* and opens `/lien-desk?tab=notices&job=…&pile=ready`; eight read *Sign 8 lien notices* over *8 jobs · first to mail by Nov 16 · today* and open `/lien-desk?tab=notices&pile=ready`, the email listing each job beside its own day. Always worded as a reminder, since no press sends a notice for signature. Logged as `lien_signature_ask` (*lien notice to sign* on the **While you were off** line). The client asks through `tellLeaderOfLienSignatures`, from the Board's line *8 wait on Malachi's signature* and from To do's waiting head; a desk ahead of the function is answered 400 *Missing item_id*, which it reads as the function waiting for its update.
+
 `due_ymd` is optional and must be a date; it is the only thing the caller may say. The function writes the words itself from [`_shared/lienApprovalPush.ts`](../supabase/functions/_shared/lienApprovalPush.ts) (re-exported at `src/lib/jobs/lienApprovalPush.ts`; since v2.6780 the push's `url` is the desk's page, `/lien-desk?tab=notices&job=…&pile=awaiting` or `…&pile=ready`, punch list #182): title *Approve a lien notice*, body *891 · Tune 5 Liberty Hill · $27,199 owed by Brund & Assoc. · mail by Oct 15 · 8 days*, the tap opening that address. The leader is the job's master when he holds a leader role (`dev`, `master_technician`), else every leader on the roster but the caller (`REAL_ACCOUNT`). One push per registered device (`push_subscriptions`); a leader with no device gets the same words by email to his own address (our own staff, so no sent copy). Each reached leader gets one `notification_history` row, `template_type = 'lien_approval_ask'`, `channel` push or email.
 
 #### Response
@@ -5073,6 +5076,27 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 **v2.4304 — the account card**: when the recipient has a portal, the email ends with the bill emails' **Your account, any time** card — the QR code (inline `cid:portal-qr` attachment) beside the short address, *Every lien waiver and bill for your jobs, with no login.* — and the text body gains the address. The recipient's customer row is the GC when `customer_email` is the GC's billing email, else the job's customer (`waiverEmailRecipientCustomerId` in [`_shared/lienWaiverEmailCard.ts`](../supabase/functions/_shared/lienWaiverEmailCard.ts)); the address is read with the service role (`ensurePortalShortAddress` + `loadPortalReturnUrl`, as `send-stripe-invoice`), never from the body. Any failure sends the waiver without the card. New secret read: `SUPABASE_SERVICE_ROLE_KEY` (`APP_ORIGIN` optional).
 
 > **v2.6080 — redeploy only**: bundles [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose statement card's link takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
+### send-sub-paper-email
+
+**Purpose** (punch list #350, the sub papers train): email a sub their papers with the PDFs attached. One message carries a Work statement, a Payment record, a Statement of account, or several. **Deployed only on Taunya's go that names it.** Until the Send press lands in the papers window (`SubPapersWindow`), nothing in the app calls it.
+
+**Endpoint**: `POST /functions/v1/send-sub-paper-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, `verify_jwt = false` on the gateway (the send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`.
+
+Body: `{ person_id, by: 'email', subject?, message?, papers: [{ kind, title?, file_name, job_ids?, pdf_base64 }] }`. The PDFs arrive from the client, drawn by the kernel the window previews ([`_shared/subPapers.ts`](../supabase/functions/_shared/subPapers.ts), [`_shared/subPapersPdf.ts`](../supabase/functions/_shared/subPapersPdf.ts)).
+
+Guards, each answered with its reason before anything is sent:
+
+- **Who.** The caller is one of the office roles who see sub pay (dev, master technician, assistant, controller), read from `users` with the service role. An account in training (`read_only`) and an archived account (`refuseArchivedCaller`) are refused.
+- **Where it goes.** The recipient is the roster's own `people.email` for `person_id`, read under the caller's policies. No address in the body is read, so a paper about one sub cannot be mailed to another address. A person with no email is refused with the door to add one.
+- **What.** 1 to 12 papers. Each `kind` is `sub_work_statement`, `sub_payment_record` or `sub_statement_of_account`. Each PDF is at most 3,000,000 base64 characters, and 9,000,000 in all. A file name loses any path and always ends in `.pdf`.
+- **How.** `by: 'text'` is refused: a texted link is not built, and is never sent as an email.
+
+The send goes through `sendEmailViaResend` as the company ([`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts)), logged as `email_type` `sub_paper`. The message is the office's words, escaped. After a successful send each paper is filed as a sent copy of its own through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts): its own `kind`, the person, the jobs it names, the message and that paper's PDF. A refused send files nothing. [`SENT_COPIES.md`](./SENT_COPIES.md).
+
+Returns `{ ok: true, to, papers, resend_email_id }`, or `{ error }` with 400, 401, 403 or 502.
+
+Run under vitest with a recorded `fetch`: `src/lib/subWorkOrders/sendSubPaperEmail.run.test.ts`.
 
 ### send-lien-filing-email
 
