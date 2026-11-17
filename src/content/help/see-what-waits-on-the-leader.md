@@ -6,7 +6,7 @@ keywords: waiting on, leader, owner, remind, reminder, chase, lien notices, appr
 where: /dashboard
 order: 15
 ---
-The Waiting on card lists what only the leader can do. It sits under Needs you on the office Dashboard, so you can chase each line.
+The Waiting on card lists what only the leader can do. The card sits under Needs you on the office Dashboard, so you can chase each line.
 
 The rows are the same lines the leader's short Dashboard lists. Read [see only what waits on me on the dashboard](/help/use-the-short-dashboard) for that page.
 
@@ -15,8 +15,8 @@ The rows are the same lines the leader's short Dashboard lists. Read [see only w
 The card is named for the leader, like **Waiting on Marcus**. The number beside the name counts everything that waits.
 
 - Lien notices to approve. The row says when the leader was asked and when the first window closes.
-- Lien notices to sign. They are approved, and the run holds them until the leader signs.
-- Lien waivers to sign. Each goes out when the leader signs.
+- Lien notices to sign. These notices are approved, and the run holds them until the leader signs.
+- Lien waivers to sign. Each waiver goes out when the leader signs.
 - Tagged job notes to answer. A teammate is waiting on the answer.
 - Assumed lines to review. The review is on the leader's Dashboard.
 
@@ -40,7 +40,7 @@ The leader gets the message on the phone, or by email. A text with the link goes
 
 The app then says how many papers the leader was reminded of. A reminder that did not go is named with its reason. After a send the button says when, like *Reminded 2:14 PM*.
 
-This is the same reminder the Lien desk sends. Read [read the Board on the Lien desk](/help/read-the-board-on-the-lien-desk) for more.
+The Lien desk sends the same reminder. Read [read the Board on the Lien desk](/help/read-the-board-on-the-lien-desk) for more.
 
 ## Rows with no reminder
 
@@ -50,7 +50,7 @@ Press {{button:outline|Open the job}} on a waiver or a tagged note to open its j
 
 ## When the leader is beside you
 
-When a notice waits on a signature, the card has one wide button. It reads like {{button:blue|Marcus is here, sign with the signing code}}.
+When a notice waits on a signature, the card has one wide button. The button reads like {{button:blue|Marcus is here, sign with the signing code}}.
 
 Press it to open the approved notices on the Lien desk. The leader types the signing code on your screen there.
 
