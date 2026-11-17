@@ -887,6 +887,41 @@ function OpenWithFollowUpOnMount() {
   return null
 }
 
+function OpenOnAPlaceWithItsWay() {
+  const modal = useChecklistAddModal()
+  const opened = useRef(false)
+  useEffect(() => {
+    if (modal && !opened.current) {
+      opened.current = true
+      // What a box's Where is it? sheet hands over (punch list #372, step 5). Every name and point is made up.
+      modal.openAddModal({ preset: { title: 'Find A7 at Laydown yard', links: [], place: { lat: 29.5512, lng: -98.2874, name: 'A7 at Laydown yard', accuracyM: 6, mapId: 'way-1', mapName: 'The way to Laydown yard' } } })
+    }
+  }, [modal])
+  return null
+}
+
+describe('ChecklistAddModal, opened on a place that brings its way in (punch list #372)', () => {
+  it('the place chip wears the way’s mark, and Send saves the place with its map', async () => {
+    inserted.length = 0
+    updated.length = 0
+    renderWithProviders(
+      <ChecklistAddModalProvider>
+        <OpenOnAPlaceWithItsWay />
+        <ChecklistAddModal />
+      </ChecklistAddModalProvider>,
+    )
+    await screen.findByText('Robert')
+    expect((screen.getByDisplayValue('Find A7 at Laydown yard') as HTMLTextAreaElement).value).toBe('Find A7 at Laydown yard')
+    expect(document.querySelectorAll('[data-task-place-way-mark]').length).toBe(1)
+    await screen.findByRole('button', { name: 'Send to Robert' }, { timeout: 4000 })
+    fireEvent.click(sendPress())
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
+    expect(row).toMatchObject({ place_name: 'A7 at Laydown yard', place_lat: 29.5512, place_lng: -98.2874, place_accuracy_m: 6, painted_map_id: 'way-1' })
+    cleanup()
+  })
+})
+
 describe('ChecklistAddModal, a follow-up from a finished task (punch list #369)', () => {
   it('opens on the first task’s words and place, and Send keeps the place and who hears', async () => {
     inserted.length = 0

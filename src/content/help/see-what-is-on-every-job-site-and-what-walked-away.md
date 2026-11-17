@@ -109,6 +109,8 @@ Beside **Edit** on a box, press {{button:outline|Where is it?}}. The box's windo
 
 Beside a place's name above its boxes, press **＋ Paint the way here**. The painting window opens on a new map named for the place. Draw the way from the gate to the place and save it. The crew then opens that way from any box in the place. A place with a way reads **Open the way** and **Take the way off**. Taking the way off keeps the map.
 
+On the **Where is it?** tab, press **Send someone to it** to make a task for the box. The New task window opens with the words, the box's pin as the task's place and the painted way. Pick the person and send it.
+
 ## Move everything on site to another job
 
 A crew can start a count under the wrong job. The boxes then sit on a job that is not theirs. This press moves them to the right job in one go.

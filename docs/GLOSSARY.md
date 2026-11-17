@@ -6535,6 +6535,7 @@ It is asked of a box with no pin or a pin older than seven days, and once a day 
 **The way to a place** (v2.7580 the column, v2.7581 the screens) is one painted map a place on a site can carry, `job_places.painted_map_id`, painted once so it serves every box that stands there.
 **＋ Paint the way here** under a place opens the painting window on a new map on the job named *The way to Level 2*, and the saved map goes onto the place (`placeWayPaint.ts` over `placeWay.ts`).
 A box's **Where is it?** then reads *The way to Level 2 is painted.* with **Open the way**.
+**Send someone to it** (v2.7582) on that sheet opens the New task window on *Find A7*, with the box's pin as the task's place and the place's way as the place's map (`findBoxTask` in `whereIsBox.ts`), so a person who is not on the job's crew reads both through the task.
 A task's place has a sheet of the same name, which is a different thing: there the giver says where the task is.
 
 ### A site's materials (punch list #330)
