@@ -137,6 +137,9 @@ describe('LegalPortalLienGrid', () => {
     const courts: LienBookRaw = {
       ...raw,
       jobs: raw.jobs.map((j) => (j.id === 'job-273' ? { ...j, customer_address_id: 'addr-273' } : j.id === 'job-300' ? { ...j, customer_address_id: 'addr-300', revenue: 24_800 } : j)),
+      // The grid's money is what the sent bills still owe (v2.7530), so the job over the limit is one whose bills owe that much.
+      rows: raw.rows.map((r) => (r.job_id === 'job-300' ? { ...r, open_balance: 24_800 } : r)),
+      affidavitRows: raw.affidavitRows.map((r) => (r.job_id === 'job-300' ? { ...r, open_balance: 24_800 } : r)),
       addresses: [address('addr-273', 'Hays', '2'), address('addr-300', 'Bexar County', '')],
     }
     const { container } = render(<LegalPortalLienGrid raw={courts} todayYmd={TODAY} companyName="Click" initialShow="all" />)

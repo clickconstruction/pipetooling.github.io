@@ -339,7 +339,18 @@ function paymentHistoryTextLines(doc: PhysicalInvoiceDocument): string[] {
   return out
 }
 
-export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument): { text: string; html: string } {
+/** The email's first line: the invoice rides the email as a PDF. A printed page has no attachment, so `paper` leaves the line off. */
+const INVOICE_EMAIL_LEAD_TEXT = 'Please find your invoice attached as a PDF.'
+const INVOICE_EMAIL_LEAD_HTML = '<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#111827">Please find your invoice <strong>attached as a PDF</strong>.</p>'
+
+/**
+ * The invoice as an email's body. With `paper` (v2.7513) the same body is a printed page: the line that says the
+ * invoice is attached as a PDF is left off, since nothing is attached to paper. The § 53.056 notice's enclosed
+ * invoice prints this way (`noticeInvoicePrintSections`).
+ */
+export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument, opts: { paper?: boolean } = {}): { text: string; html: string } {
+  const leadText = opts.paper ? [] : [INVOICE_EMAIL_LEAD_TEXT, '']
+  const leadHtml = opts.paper ? '' : INVOICE_EMAIL_LEAD_HTML
   const tagline = (doc.issuer.tagline ?? '').trim()
   const taglineHtml = tagline
     ? `<p style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#111827;white-space:pre-wrap;margin:0 0 12px"><strong>${escapeHtml(
@@ -348,7 +359,7 @@ export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument): {
     : ''
 
   if (doc.layout === 'detailed') {
-    const textLines = ['Please find your invoice attached as a PDF.', '']
+    const textLines = [...leadText]
     if (tagline) {
       textLines.push(tagline, '')
     }
@@ -413,7 +424,7 @@ export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument): {
           doc.narrativeTitle,
         )}</p>`
       : ''
-    const html = `<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#111827">Please find your invoice <strong>attached as a PDF</strong>.</p>${taglineHtml}<table style="border-collapse:collapse;margin:16px 0;font-family:system-ui,sans-serif">${emailMetaRow(
+    const html = `${leadHtml}${taglineHtml}<table style="border-collapse:collapse;margin:16px 0;font-family:system-ui,sans-serif">${emailMetaRow(
       'Invoice',
       doc.invoiceNumberDisplay,
     )}${emailMetaRow('Amount due', doc.amountFormatted)}${emailMetaRow('Bill to', doc.customerName)}${emailMetaRow(
@@ -445,7 +456,7 @@ ${scopeHtml}${lineRowsHtml('Services', doc.serviceLines)}${lineRowsHtml('Materia
     return { text, html }
   }
 
-  const textLines = ['Please find your invoice attached as a PDF.', '']
+  const textLines = [...leadText]
   if (tagline) {
     textLines.push(tagline, '')
   }
@@ -474,7 +485,7 @@ ${scopeHtml}${lineRowsHtml('Services', doc.serviceLines)}${lineRowsHtml('Materia
         doc.lineDescription,
       )}</p>`
     : ''
-  const html = `<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#111827">Please find your invoice <strong>attached as a PDF</strong>.</p>${taglineHtml}<table style="border-collapse:collapse;margin:16px 0;font-family:system-ui,sans-serif">${emailMetaRow(
+  const html = `${leadHtml}${taglineHtml}<table style="border-collapse:collapse;margin:16px 0;font-family:system-ui,sans-serif">${emailMetaRow(
     'Amount due',
     doc.amountFormatted,
   )}${emailMetaRow('Bill to', doc.customerName)}${emailMetaRow('Job', doc.jobName)}${emailMetaRow(
