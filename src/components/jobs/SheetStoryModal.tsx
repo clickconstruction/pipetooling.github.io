@@ -26,6 +26,7 @@ import { emitWorkOrderChanged } from '../../hooks/useJobWorkOrderCoverage'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
 import { resolveSubPortalUrl } from '../../lib/subPortal/resolveSubPortalUrl'
 import { withSubPortalFocus, type SubPortalFocus } from '../../lib/subPortal/subPortalFocus'
+import { subOwedShapeFlagFromSearch, withSubOwedShape } from '../../lib/subPortal/subOwedBands'
 import { withPreviewFlag } from '../../lib/publicViewCounting'
 import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 import { useSubPortalVisitSummaries } from '../../hooks/useSubPortalVisitSummaries'
@@ -341,7 +342,8 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
         showToast('Could not open their portal — no portal link for this sub', 'error')
         return
       }
-      const url = withSubPortalFocus(withPreviewFlag(base), focus)
+      // Punch list #217 (field-2): a page opened with `?shape=1` or `?sbs=1` passes the flag along, so the portal opens the same way.
+      const url = withSubOwedShape(withSubPortalFocus(withPreviewFlag(base), focus), subOwedShapeFlagFromSearch(window.location.search))
       if (tab) tab.location.href = url
       else window.open(url, '_blank', 'noopener')
     })()
