@@ -49,6 +49,7 @@ import {
   GO_ANYWHERE_WORDS,
   doorQuery,
   doorsFor,
+  fieldLookupDoors,
   nextGroupStart,
   searchDoors,
   type Door,
@@ -297,7 +298,7 @@ export function HeaderGlobalSearchProvider({
     const siteGroups = sitesAllowed && storeVersion >= 0 ? groupDeskBySite(jobIdsWithData(), onSiteSites.siteOfJob, onSiteSites.siteNames) : []
     const sites = siteDoors(siteGroups.flatMap((g) => (g.kind === 'site' ? [{ siteId: g.siteId, name: g.name, jobs: g.jobIds.length, boxes: g.jobIds.reduce((n, id) => n + listContainers(id).filter((c) => !c.retiredAt && c.kind !== 'unsorted').length, 0) }] : [])))
     const maps = paintedMapDoors(paintedMaps)
-    return fieldLookup ? [...mine.filter((d) => d.kind === 'guide'), ...sites, ...boxes, ...maps] : [...mine, ...sites, ...boxes, ...maps]
+    return fieldLookup ? [...fieldLookupDoors(mine, viewer), ...sites, ...boxes, ...maps] : [...mine, ...sites, ...boxes, ...maps]
   }, [viewer, sources, fieldLookup, boxJobs, storeVersion, sitesAllowed, onSiteSites, paintedMaps])
   const [onlyGroup, setOnlyGroup] = useState<DoorGroupKey | null>(null)
   const [recentIds, setRecentIds] = useState<string[]>([])

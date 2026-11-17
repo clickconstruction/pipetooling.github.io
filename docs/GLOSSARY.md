@@ -6517,6 +6517,9 @@ The dot is drawn on the phone and sent nowhere.
 A pin older than 30 days is an **old pin** and carries a caution.
 The **pin ask** (v2.7579) is the one line a box's screen on the phone draws after a count, a photo, a scanned label or a new box: *Pin A7 where you stand?*, with **Pin it here** and **Not now** (`PinAskStrip.tsx` over `pinAsk.ts`).
 It is asked of a box with no pin or a pin older than seven days, and once a day for a box on a device.
+**The way to a place** (v2.7580 the column, v2.7581 the screens) is one painted map a place on a site can carry, `job_places.painted_map_id`, painted once so it serves every box that stands there.
+**＋ Paint the way here** under a place opens the painting window on a new map on the job named *The way to Level 2*, and the saved map goes onto the place (`placeWayPaint.ts` over `placeWay.ts`).
+A box's **Where is it?** then reads *The way to Level 2 is painted.* with **Open the way**.
 A task's place has a sheet of the same name, which is a different thing: there the giver says where the task is.
 
 ### A site's materials (punch list #330)

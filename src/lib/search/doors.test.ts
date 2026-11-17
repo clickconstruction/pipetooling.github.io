@@ -23,6 +23,7 @@ import {
   searchDoors,
   type Door,
   type DoorViewer,
+  fieldLookupDoors,
 } from './doors'
 
 const root = resolve(__dirname, '../../..')
@@ -334,5 +335,30 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     expect(searchDoors('lien', assistant, { only: 'settings' })[0]?.doors.some((d) => d.to === '/settings#settings-lien-sign-code') ?? false).toBe(false)
     expect(searchDoors('# quick', dev).map((g) => [g.key, g.doors.map((d) => d.id)])).toEqual([['todo', ['todo:126']]])
     expect(searchDoors('# quick', assistant)).toEqual([])
+  })
+})
+
+describe('fieldLookupDoors — what a field role’s search keeps (punch list #372)', () => {
+  it('keeps the guides and a window marked for the field, and drops every page and Settings card', () => {
+    for (const role of ['helpers', 'subcontractor'] as const) {
+      const viewer = plainViewer(role)
+      const kept = fieldLookupDoors(doorsFor(viewer, sources), viewer)
+      expect(kept.some((d) => d.id === 'window:/dashboard?paintMap=1'), `${role}: Paint a map`).toBe(true)
+      expect(kept.every((d) => d.kind === 'guide' || d.forField === true), role).toBe(true)
+      expect(kept.some((d) => d.kind === 'page' || d.kind === 'settings'), role).toBe(false)
+      expect(searchDoors('paint', kept).flatMap((g) => g.doors).some((d) => d.label === 'Paint a map'), `${role}: typed`).toBe(true)
+    }
+  })
+
+  it('every window marked for the field opens for every role the route guard admits', () => {
+    const marked = allDoors(sources).filter((d) => d.forField)
+    expect(marked.map((d) => d.label)).toEqual(['Paint a map'])
+    for (const d of marked) expect(d.kind).toBe('window')
+  })
+
+  it('a window the route guard would bounce is not kept, whatever its mark', () => {
+    const viewer = plainViewer('helpers')
+    const bounced = { id: 'window:/jobs?tab=stages&x=1', kind: 'window' as const, label: 'A jobs window', where: '', words: [], to: '/jobs?tab=stages&x=1', gate: () => true, forField: true as const }
+    expect(fieldLookupDoors([bounced], viewer)).toEqual([])
   })
 })
