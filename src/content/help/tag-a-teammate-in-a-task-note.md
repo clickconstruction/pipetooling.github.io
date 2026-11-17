@@ -38,7 +38,7 @@ Press Backspace right after a shaded name to take the tag off.
 
 You can tag only people who can already open the task.
 
-The task's own people come first. They are the person who gave the task and the people who have it. The office comes after them.
+The task's own people come first. The task's own people are the person who gave it and the people who have it. The office comes after them.
 
 The row does not offer a sub or an estimator. The row does not offer someone who has left.
 
