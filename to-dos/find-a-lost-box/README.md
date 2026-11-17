@@ -2,7 +2,7 @@
 name: "Find a lost box: show where a cage or box was last put, and draw the way to it"
 number: 372
 group: close
-status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17 · call 1 answered the same day (*Yes, cage or box*) · the owner's word the same day (*Build all the steps*), taken as the train of five with every other call at the card's pick · all five steps built and tested the same day · step 1 merged (#8503) and its migration on the live database · steps 2 and 3 walked on a test job in a local browser · step 2 (#8510) and the way's column (#8511) in the merge queue · step 3 in this PR · the way's screens and step 5 built, each waiting its turn · not tried on a real phone
+status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17 · call 1 answered the same day (*Yes, cage or box*) · the owner's word the same day (*Build all the steps*), taken as the train of five with every other call at the card's pick · all five steps built and tested the same day · steps 1 and 2 and the way's column merged (#8503, #8510, #8511), both migrations on the live database · all five steps walked on a test job in a local browser · step 3 in this PR · the way's screens and step 5 built, each waiting its turn · not tried on a real phone
 summary: >
   The owner wants the app to show someone where their crate is when it is lost, and to draw a path
   to where they can find it. The app has no crate: this card takes it to mean a cage or a box from
@@ -215,9 +215,9 @@ not yet merged are in their titles.
 | Step | PR | What went in |
 |---|---|---|
 | 1 | #8503, merged | The pin remembers. Four columns on `job_containers` and the `job_containers_stamp_pin` trigger. Migration `20261117170000`, on the live database. |
-| 2 | #8510 | **Where is it?**: the sheet on the phone's box screen, and the third tab of the office's box window. |
+| 2 | #8510, merged | **Where is it?**: the sheet on the phone's box screen, and the third tab of the office's box window. |
 | 3 | the PR that carries this edit | The pin ask: *Pin A7 where you stand?* after a count, a photo, a scanned label and a new box. |
-| 4, the column | #8511 | A place can carry the way to it. One column, an update policy and a guard on `job_places`. Migration `20261117180000`, to push after it merges. |
+| 4, the column | #8511, merged | A place can carry the way to it. One column, an update policy and a guard on `job_places`. Migration `20261117180000`, on the live database. |
 | 4, the screens | built, not opened | **＋ Paint the way here** on a place, **Open the way** on a box's sheet, and a helper's search offering **Paint a map** (call 8). |
 | 5 | built, not opened | **Send someone to it**: the New task window on *Find A7*, with the pin as the task's place and the way as its map. |
 
@@ -241,9 +241,12 @@ not yet merged are in their titles.
 **Walked**, on a dev server against the live database, in a headless Chromium at phone and desk
 width, as the dev account, with a made-up location, on a test job's test cage: the sheet on a box
 nobody pinned, **I found it**, **Show where I am** from 240 ft away, a margin too wide to trust,
-**Move the pin by hand**, **Remove the pin**, the office's tab, and the pin ask after a count. No
-request failed. Dark mode was not looked at. The test cage keeps one pin from the walk, to be
-taken off when the last step is walked.
+**Move the pin by hand**, **Remove the pin**, the office's tab, the pin ask after a count, a way
+painted to a made-up place and opened from the cage, and **Send someone to it** as far as the New
+task window, with nothing sent. No request failed. The walk of step 5 found that the New task
+window kept a place and dropped its way, which step 5's PR fixes. Dark mode was not looked at. The
+pin and the made-up way were taken off after. The made-up place stays on the test job, since a
+place cannot be removed in the app.
 
 **Not done**: step 0, the owner's try. Nothing has been tried on a real phone.
 
