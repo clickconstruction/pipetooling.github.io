@@ -1,9 +1,7 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import type { LienDeskKind } from '../../lib/lien/lienDeskRoute'
-import { EmptyState } from '../EmptyState'
-import { LIEN_SHOW_EVERY_PILE } from '../../lib/jobs/lienDeskEmptyWords'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
@@ -18,7 +16,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { workMonthLabel, workMonthShort, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import {
-  LIEN_DESK_PILES, lienEmptyPileWords,
+  LIEN_DESK_PILES,
   LIEN_NOTICE_POLICIES,
   draftReadiness,
   holdUntilFor,
@@ -27,10 +25,8 @@ import {
   ruleWaitsOnFirstNotice,
   submitOutcome,
   type LienAskReason,
-  type LienDeskEntry,
   type LienDeskPile,
   type LienNoticePolicy } from '../../lib/jobs/lienDesk'
-import { lienStandInWords } from '../../lib/jobs/lienBillMonths'
 import {
   holdLienDeskItem,
   pullBackLienDeskItem,
@@ -43,7 +39,7 @@ import {
   startLetterTwo,
   noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
-import { wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { wordRecordPreview, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { type LienSignWay } from '../../lib/jobs/lienFooterMenu'
 import { penWordApproval } from '../../lib/jobs/lienPenRecord'
 import { shortDay as footShortDay } from '../../lib/jobs/lienFootChip'
@@ -65,8 +61,7 @@ import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorWords } from '../../lib/jobs/lienDeskRun'
 import { lienRunProperties } from '../../lib/jobs/lienRunEnvelopeProperty'
-import { lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
-import { LIEN_RUN_NOW_TO_PRINT, lienRunActLabel } from '../../lib/jobs/lienRunWords'
+import { LIEN_RUN_NOW_TO_PRINT } from '../../lib/jobs/lienRunWords'
 import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
 import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
@@ -79,8 +74,7 @@ import { loadCourtesyRecipients, sendCourtesyNotice, writeCourtesyRecord, type C
 import type { LienDeskItemRow } from '../../lib/jobs/lienDesk'
 import { LienCallerDoor } from './LienCallerDoor'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
-import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { filingMailTail, jobsWithMailPieces } from '../../lib/mail/lienMailPieces'
+import { jobsWithMailPieces } from '../../lib/mail/lienMailPieces'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienDeskItem, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { takeBackNoticeConfirm, takeBackNoticeDoneWords } from '../../lib/jobs/lienRunTakeBack'
 import { lienNoticeParted } from '../../lib/jobs/lienNoticeParted'
@@ -93,7 +87,7 @@ import { lienBoardChipFor, lienBoardDoorWords, lienBoardPickWords, lienBoardRowI
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
 import { lienBoardAffidavitPrint, lienBoardNoticePrint, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
-import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
+import { useLienPileHeads } from './LienPileHeads'
 import LienBoard from './LienBoard'
 import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
 import { lienServeDoorWords, lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
@@ -134,7 +128,7 @@ import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { LienEnvelopeCard } from './LienEnvelopeCard'
-import { LienJobSuppliersCard, LienSupplierMarkLine } from './LienJobSuppliers'
+import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
@@ -146,6 +140,7 @@ import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LienDeskAffidavitList } from './LienDeskAffidavitList'
+import { LienDeskNoticeList } from './LienDeskNoticeList'
 import { LienDeskRetainageList } from './LienDeskRetainageList'
 import { LIEN_HEAD_DOOR as headDoor, lienBtnStyle as btn } from './lienDeskButtonStyles'
 import { LienDeskGcPicker } from './LienDeskGcPicker'
@@ -160,7 +155,7 @@ import { useLienDeskTitleBarFit } from './useLienDeskTitleBarFit'
 import { useLienDeskWindows } from './useLienDeskWindows'
 import { LienDeskWindows } from './LienDeskWindows'
 import { useLienDeskAffidavits } from './useLienDeskAffidavits'
-import { lienBoxHeadStyle as boxHead, lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
+import { lienBoxHeadStyle as boxHead, lienRowChipStyle as chip } from './lienDeskRowStyles'
 import { LIEN_RETAINAGE_PILES, lienRetainageListView, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
@@ -168,7 +163,7 @@ import LienDeskGates, { LienGatesSentFold } from './LienDeskGates'
 import LienPageExportPresses from './LienPageExportPresses'
 import { isLienExportPageKey, lienExportDraftLine, lienExportFileName, lienExportFiling, lienExportTitle } from '../../lib/jobs/lienPageExport'
 import { lienPageExportBlob } from '../../lib/jobs/lienPageExportIo'
-import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
+import LienDeskFindBox, { LienFindMarked } from './LienDeskFindBox'
 import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
 import LienDeskJobScreen from './LienDeskJobScreen'
@@ -176,7 +171,7 @@ import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../.
 import { LIEN_DESK_HINT, LIEN_DESK_NAME, LIEN_DESK_TITLE_BAR_ROW_GAP_PX, lienDeskFirstTab, lienDeskTitleBarLayout } from '../../lib/jobs/lienDeskTitleBar'
 import { DeskLegendCard } from '../help/LegendCard'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
-import { lienFindMatch, lienFindNothingWords, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
+import { lienFindMatch, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
 import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import LienNoticeAlreadyWent from './LienNoticeAlreadyWent'
@@ -314,21 +309,10 @@ const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'read
 const isLeader = isLienLeader
 const isOffice = isLienOffice
 
-function deadlineWords(e: LienDeskEntry): string {
-  if (e.daysLeft == null || !e.earliestDeadline) return e.missedMonths.length ? 'window closed' : ''
-  if (e.daysLeft < 0) return 'window closed'
-  if (e.daysLeft === 0) return 'due today'
-  if (e.daysLeft === 1) return 'due tomorrow'
-  if (e.daysLeft <= 14) return `due in ${e.daysLeft}d`
-  return `by ${formatYmdMonthDay(e.earliestDeadline)}`
-}
-
 /**
  * The title bar's doors share § Rules' height (v2.4746, the owner's ask): its 0.78rem line at the root's 1.5, 2px of
  * padding above and below, and the 1px border. Send the run, Put a GC on notice…, ☎ and Share (on a computer) take it.
  */
-/** A press inside a pile's title on a phone: taller and in a size a thumb reads (punch list #352, PR 5). */
-const PHONE_PILE_PRESS: React.CSSProperties = { minHeight: 30, padding: '0 10px', fontSize: '0.8125rem' }
 const PHONE_CHIP: React.CSSProperties = { flex: 'none', minHeight: 40, padding: '2px 14px', fontSize: '0.875rem', whiteSpace: 'nowrap' }
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 /** The page labels (v2.4726) stack like the Notices list's pile titles (v2.4651): one bar each, as tall as the pane's heads (one number since v2.7323). */
@@ -2040,167 +2024,41 @@ export default function LienDesk({
   const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p), total: visibleAll.filter((e) => e.pile === p).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
   const noticeHeads = useLienPileHeads(pilesShown.map((x) => x.p), isMobile)
   const list = (
-    <div ref={noticeHeads.listRef} onScroll={noticeHeads.onScroll} data-lien-desk-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
-      {visible.length === 0 && finding && visibleAll.length > 0 && alsoSent.length === 0 ? (
-        <div data-testid="lien-desk-find-nothing" style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4 }}>
-          <strong style={{ color: 'var(--text-strong)' }}>{lienFindNothingWords(find).head}</strong>
-          <span>{lienFindNothingWords(find).tryWords}</span>
-          <span>{lienFindNothingWords(find).elsewhere}</span>
-        </div>
-      ) : visible.length === 0 && pile && !loading && data ? (
-        <div data-lien-desk-empty-pile={pile} style={{ fontSize: '0.8125rem' }}>
-          <EmptyState
-            compact
-            main={`${lienEmptyPileWords(pile, entries.length - visibleAll.length).head} ${lienEmptyPileWords(pile, entries.length - visibleAll.length).rest}`}
-            next={{ label: LIEN_SHOW_EVERY_PILE, onPress: () => setPile(null) }}
-          />
-        </div>
-      ) : visible.length === 0 ? (
-        <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-          {loading || data == null ? 'Looking at every unpaid sub job…' : 'Nothing is due — every unpaid month on a sub job is noticed, or is more than 30 days from its deadline.'}
-        </p>
-      ) : null}
-      {calendarJobFilter ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.5rem 0.9rem 0', fontSize: '0.75rem' }} data-testid="lien-desk-calendar-filter">
-          <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontWeight: 700 }}>
-            {calendarJobFilter.jobIds.size} {calendarJobFilter.jobIds.size === 1 ? 'job' : 'jobs'} from the calendar · by {formatYmdMonthDay(calendarJobFilter.ymd)}
-          </span>
-          <button type="button" onClick={() => setCalendarJobFilter(null)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>
-            show every job
-          </button>
-        </div>
-      ) : null}
-      {pilesShown.map(({ p, rows, total }, i) => {
-        const label = LIEN_DESK_PILES.find((x) => x.key === p)?.label ?? p
-        return (
-          <Fragment key={p}>
-            <LienPileHead pile={p} label={label} count={lienPileHeadCount(rows.length, total, counts?.[p], finding)} i={i} n={pilesShown.length} phone={isMobile} on={noticeHeads.lit === p} empty={finding && rows.length === 0} onPress={() => noticeHeads.scrollToPile(p, i)} onShowEvery={pile ? () => setPile(null) : null}>
-              {p === 'ready' && office && runCount > 0 ? (
-                <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap', ...(isMobile ? PHONE_PILE_PRESS : null) }}>
-                  {lienRunActLabel('print', runCount)}
-                </button>
-              ) : null}
-              {p === 'sent' && mailedJobIds.size > 0 ? (
-                <button type="button" data-lien-pile-deliveries={deliveriesOnly ? 'on' : 'off'} onClick={() => setDeliveriesOnly((v) => !v)} title={deliveriesOnly ? 'Every sent notice' : 'Only the notices mailed through Docsmit, with where each envelope is'} style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: deliveriesOnly ? 'var(--bg-blue-tint)' : 'var(--surface)', color: deliveriesOnly ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' , ...(isMobile ? PHONE_PILE_PRESS : null) }}>
-                  {deliveriesOnly ? 'Every sent notice' : `Deliveries · ${mailedJobIds.size}`}
-                </button>
-              ) : null}
-            </LienPileHead>
-            <div data-lien-pile-rows={p}>
-            {rows.map((e) => {
-              const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
-              const sel = e.jobId === selectedJobId
-              const sev = severityColors(e.severity)
-              const named = e.item && e.item.status !== 'sent' && e.item.status !== 'missed' && e.item.months.length ? e.item.months : e.dueMonths
-              const state =
-                e.pile === 'awaiting'
-                  ? `awaiting approval · ${e.item?.submitted_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.submitted_at)) : ''}`
-                  : e.pile === 'ready'
-                    ? `${
-                        e.item?.approval_mode === 'word'
-                          ? wordRecordWords(e.item, leaderNameFor?.(data?.jobsById[e.jobId]?.master_user_id ?? null))
-                          : e.item?.approval_mode === 'rule'
-                            ? 'standing rule'
-                            : 'approved'
-                      }${e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' ? ' · unsigned' : ''}`
-                    : e.pile === 'printed'
-                      // Approved · to mail (*In the run* until v2.7434): the row names the tick it waits on, as the run's checklist does.
-                      ? lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)
-                    : e.pile === 'held'
-                      ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`
-                      : e.pile === 'sent'
-                        ? `sent ${e.item?.sent_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.sent_at)) : ''}${(() => { const f = (data?.filingsByJob[e.jobId] ?? []).find((x) => x.id === e.item?.sent_filing_id); if (!f) return ''; const pieces = data?.mailPiecesByFiling?.[f.id] ?? []; return pieces.length ? filingMailTail(pieces, formatYmdMonthDay) : sendsTrackingOwed(f.sends).length ? ' · tracking owed' : '' })()}`
-                        : e.pile === 'missed'
-                          ? `window closed on ${e.missedMonths.map(workMonthShort).join(', ')}`
-                          : e.pile === 'needs_owner'
-                            ? 'owner of record missing'
-                            : e.item
-                              ? 'draft saved'
-                              : ''
-              // A notice that went inside thirty days on a row off the Sent pile (v2.6624, punch list #248): the day it went stays in the row's words.
-              const sentWords = e.pile !== 'sent' && e.sentItem?.sent_at ? `sent ${formatYmdMonthDay(calendarYmdInAppTzFromIso(e.sentItem.sent_at))}` : ''
-              return (
-                <button
-                  key={e.jobId}
-                  type="button"
-                  onClick={() => {
-                    // Stacked, the notice opens through the address, as a history entry of its own (punch list #182 PR 3).
-                    if (stacked && onOpenNotice) onOpenNotice(e.jobId, pile)
-                    else {
-                      setSelectedJobId(e.jobId)
-                      setMobileListShown(false)
-                    }
-                  }}
-                  aria-current={sel ? 'true' : undefined}
-                  style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto', gap: '0.2rem 0.6rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: sel ? 'var(--bg-blue-tint)' : 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}
-                >
-                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
-                  <span style={{ minWidth: 0 }}>
-                    {listLabel(e.jobId, 'notice', true)}
-                    {g?.name ? <span style={{ color: 'var(--text-muted)' }}> · GC <LienFindMarked text={g.name} words={findWords} /></span> : null}
-                  </span>
-                  <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.openBalance)}</span>
-                  <span style={{ gridColumn: '2 / 4', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {deadlineWords(e) ? <span style={chip(sev.bg, sev.fg)}>{deadlineWords(e)}</span> : null}
-                    {e.pile !== 'missed' && e.missedMonths.length ? (
-                      <span style={chip('var(--bg-red-tint)', 'var(--text-red-600)')} data-lien-desk-missed-chip title={e.missedUnrecorded.length ? 'The window closed with nothing recorded — the pane has the note' : 'The window closed; someone noted it'}>
-                        {e.missedMonths.map(workMonthShort).join(', ')} window closed{e.missedUnrecorded.length ? ' · not noted' : ''}
-                      </span>
-                    ) : null}
-                    <span>{named.map(workMonthShort).join(' + ')}</span>
-                    {e.datedFromCreation ? <span data-lien-desk-dated-from-creation>· {lienStandInWords(e.datedFromBill === true)}</span> : null}
-                    {state ? <span>· {state}</span> : null}
-                    {sentWords ? <span data-lien-desk-sent-words>· {sentWords}</span> : null}
-                    {(() => {
-                      // Letter two (v2.3760): the second letter's clock on a sent notice, and its mark on a draft that is one.
-                      const lt = data?.letterTwoByJob[e.jobId]
-                      const draftTwo = e.item && e.item.status !== 'sent' ? parseLienDeskDraftFields(e.item.fields)?.letterTwo : undefined
-                      if (draftTwo) return <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two="draft">the attorney’s letter · {letterTwoKindLabel(draftTwo.kind)}</span>
-                      if (!lt || (e.pile !== 'sent' && !e.sentItem) || lt.state === 'none' || lt.state === 'paid') return null
-                      const tone = lt.state === 'overdue' ? chip('var(--bg-red-tint)', 'var(--text-red-600)') : lt.state === 'due' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : lt.state === 'sent' || lt.state === 'gc_authorized' || lt.state === 'owner_called' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : chip('var(--bg-subtle)', 'var(--text-muted)')
-                      return <span style={tone} data-lien-letter-two={lt.state}>{lt.words}</span>
-                    })()}
-                    <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
-                    <LienFindHits hits={findHits.get(e.jobId)} words={findWords} />
-                  </span>
-                </button>
-              )
-            })}
-            </div>
-          </Fragment>
-        )
-      })}
-      {alsoSent.length ? (
-        <>
-          <div className="lienPileHead" data-lien-pile-head="also_sent" data-on="no" style={{ position: 'static', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)' }}>
-            <span className="lienPileHeadBtn" style={{ cursor: 'default' }}>
-              Also sent · every notice out
-              <span className="n" data-lien-pile-count="also_sent">{alsoSent.length}</span>
-            </span>
-          </div>
-          <div data-lien-pile-rows="also_sent">
-            {alsoSent.map((h) => (
-              <button
-                key={h.itemId}
-                type="button"
-                onClick={() => setCallerJobId(h.jobId)}
-                data-lien-also-sent={h.jobId}
-                title="Open the owner’s call on this notice"
-                style={{ display: 'grid', gap: '0.2rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
-              >
-                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <strong><LienFindMarked text={h.who} words={findWords} /></strong>
-                  <span style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>Open the call ›</span>
-                </span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  <span style={{ padding: '0 7px', borderRadius: 999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontWeight: 700 }}>Sent {formatYmdMonthDay(h.facts.mailedOn)}</span> · <LienFindMarked text={h.what} words={findWords} />
-                </span>
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
-    </div>
+    <LienDeskNoticeList
+      data={data}
+      loading={loading}
+      isMobile={isMobile}
+      stacked={stacked}
+      office={office}
+      entries={entries}
+      visible={visible}
+      visibleAll={visibleAll}
+      pilesShown={pilesShown}
+      noticeHeads={noticeHeads}
+      counts={counts}
+      runCount={runCount}
+      pile={pile}
+      setPile={setPile}
+      finding={finding}
+      find={find}
+      findWords={findWords}
+      findHits={findHits}
+      alsoSent={alsoSent}
+      calendarJobFilter={calendarJobFilter}
+      setCalendarJobFilter={setCalendarJobFilter}
+      deliveriesOnly={deliveriesOnly}
+      setDeliveriesOnly={setDeliveriesOnly}
+      mailedJobIds={mailedJobIds}
+      selectedJobId={selectedJobId}
+      setSelectedJobId={setSelectedJobId}
+      setMobileListShown={setMobileListShown}
+      setRunOpen={setRunOpen}
+      setCallerJobId={setCallerJobId}
+      supplierMarks={supplierMarks}
+      leaderNameFor={leaderNameFor}
+      listLabel={listLabel}
+      onOpenNotice={onOpenNotice}
+    />
   )
 
   // The page labels (v2.4726): the pages in the pane in order, each label a sticky bar that stacks under the strip once
