@@ -260,6 +260,10 @@ describe('Estimates — a draft', () => {
     expect(screen.getByDisplayValue('ZZ Water heater')).toBeTruthy()
     expect(screen.getByDisplayValue('ZZ terms')).toBeTruthy()
     expect(screen.getByText('Customer experience')).toBeTruthy()
+    // The customer section and the line items, their own pieces since v2.7633.
+    expect(screen.getByDisplayValue('ZZ Test Customer - 1 Main St')).toBeTruthy()
+    expect(screen.getByText('555-0100', { exact: false })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add line' })).toBeTruthy()
     // The two fieldsets that are their own pieces (v2.7618): Supporting document and Delivery.
     expect(screen.getByRole('button', { name: 'Check link' })).toBeTruthy()
     expect(screen.getByText('Email when customer accepts')).toBeTruthy()
@@ -379,6 +383,9 @@ describe('Estimates — the draft’s engine', () => {
     renderAt('/estimates/101', [estimate({ doc_kind: 'change_order', change_order_fields: { description_of_change: 'ZZ add a hose bibb' }, title: 'ZZ change order' })])
     const send = await screen.findByRole('button', { name: 'Send to customer' })
     await settle()
+    // The change order's own fields, and its lines under Impact on cost.
+    expect(screen.getByDisplayValue('ZZ add a hose bibb')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Impact on cost/ })).toBeTruthy()
     fireEvent.click(send)
     const dialog = await screen.findByRole('alertdialog')
     expect(within(dialog).getByText('Send to owner@customer.test?')).toBeTruthy()

@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { defaultEstimateTitle, shouldReplaceTitleOnCustomerChange } from '../lib/estimates/estimateTitle'
 import { pickBidRoomForChangeOrder } from '../lib/estimates/changeOrderRoomPick'
-import { EstimateLineItemCatalogModal } from '../components/estimates/EstimateLineItemCatalogModal'
 import { estDangerOutlineButton, estInputBase, estInputBlock, estSecondaryButton, estSendButton, estSmallSecondaryButton } from '../components/estimates/estimatesPageStyles'
 import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from '../components/estimates/EstimateKindChips'
-import { estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney } from '../lib/estimates/estimateListRows'
+import { estimateStatusLabel as statusLabel } from '../lib/estimates/estimateListRows'
 import {
   catalogEntryToLineItem,
-  coerceDraftQuantity,
-  draftUnitPriceInputCents,
   emptyDraftLine,
   isDefaultDraftStubShape,
   isReplaceableStubLine,
@@ -27,9 +24,8 @@ import type { UserRole } from '../hooks/useAuth'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { EstimateFieldPhotosStrip } from '../components/estimates/EstimateFieldPhotosStrip'
 import { EstimateFirstLookStrip } from '../components/firstLook/EstimateFirstLookStrip'
-import { formatSignedCentsUsd, isChangeOrderDocKind, isLegacyChangeOrderTitledEstimate } from '../lib/estimateChangeOrder'
-import { bridgedCostImpactText } from '../lib/bidDocuments/changeOrderBridge'
-import { CO_CREDIT_LABEL_PREFIX, isCoCreditLine, type CoCostPromptMode } from '../lib/coCostLinePrompt'
+import { isChangeOrderDocKind, isLegacyChangeOrderTitledEstimate } from '../lib/estimateChangeOrder'
+import { CO_CREDIT_LABEL_PREFIX, type CoCostPromptMode } from '../lib/coCostLinePrompt'
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { countMeaningfulEstimateLines, } from '../lib/estimatePipelineRefresh'
@@ -37,15 +33,11 @@ import { withEstimatePreviewMarker } from '../lib/estimateViewPreview'
 import { estimatePaperModel } from '../lib/estimates/estimatePaper'
 import { estimatePaperPdfBlob, loadEstimateBrandLogo } from '../lib/estimates/estimatePaperPdf'
 import { estimateTermsPageHref } from '../lib/estimateTermsPageHref'
-import { goodThroughState } from '../lib/estimates/estimateGoodThroughExtend'
 import { EXTEND_GOOD_THROUGH_HASH } from '../lib/estimates/estimateGoodThroughChip'
 import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
-import CustomerSearchCombobox from '../components/customers/CustomerSearchCombobox'
 import NewCustomerForm from '../components/NewCustomerForm'
-import { filterActiveCustomersForPicker } from '../lib/customerArchive'
-import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
 import { useCustomerContactsForCustomer } from '../hooks/useCustomerContactsForCustomer'
 import {
   extractContactFromCustomer,
@@ -67,13 +59,15 @@ import CreateJobFromEstimateModal, {
 import { CustomerSnapshotModal } from '../components/customers/CustomerSnapshotModal'
 import { AcceptHeaderBrandPicker } from '../components/estimates/AcceptHeaderBrandPicker'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
-import { EstimateLineItemsTable } from '../components/estimates/EstimateCustomerDocument'
-import EstimateOfferedOptions from '../components/estimates/EstimateOfferedOptions'
 import { postSendEstimate, sendEstimateAnswerFrom } from '../lib/estimates/sendEstimateIo'
 import { estimateRecipientEmail, estimateSendPlan } from '../lib/estimates/estimateSendPlan'
 import { useEstimateSentActions } from '../hooks/useEstimateSentActions'
 import { useEstimateDetailData } from '../hooks/useEstimateDetailData'
 import EstimatesListPage from '../components/estimates/EstimatesListPage'
+import EstimateDraftCustomerSection from '../components/estimates/EstimateDraftCustomerSection'
+import EstimateChangeOrderFieldsBlock from '../components/estimates/EstimateChangeOrderFields'
+import EstimateDraftLineItems from '../components/estimates/EstimateDraftLineItems'
+import EstimateSentHeader from '../components/estimates/EstimateSentHeader'
 import { ESTIMATES_PAGE_CLASS, estimatesFocusVisibleCss, estimatesPageShellCss } from '../components/estimates/estimatesPageCss'
 import EstimateSentView, { ESTIMATE_JOB_SECTION_HASH } from '../components/estimates/EstimateSentView'
 import EstimateSupportingDocumentFieldset from '../components/estimates/EstimateSupportingDocumentFieldset'
@@ -108,21 +102,18 @@ import {
 } from '../lib/addCalendarDaysYmd'
 import {
   acceptHeaderBrandImageSrc,
-  acceptHeaderBrandLabel,
   parseAcceptHeaderBrand,
   type EstimateAcceptHeaderBrand,
 } from '../lib/estimateAcceptHeaderBrand'
 import { estimateEmailFrom } from '../lib/customerEmailFrom'
 import { buildEstimateLetterheadEmail } from '../lib/estimateEmailLetterhead'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../utils/dateUtils'
-import { formatValidUntilForDisplay } from '../lib/formatEstimateValidUntilDisplay'
 import {
   normalizeCustomerAttachmentDraftForDb,
   parseCustomerAttachmentSent,
   type CustomerAttachmentPayload,
 } from '../lib/estimateCustomerAttachment'
 import {
-  normalizeEstimateLineItemsFromJson,
   type EstimateLineItemNormalized,
 } from '../lib/estimateLineItemNormalize'
 import {
@@ -198,27 +189,6 @@ const estimateDetailPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisible
 /** Amber "Change order" pill (v2.1831 CO train) — list rows + detail header. */
 
 type LineItem = EstimateLineItemNormalized
-
-/** Guided CO cost-entry chips (“+ Added work” / “− Credit / removed work”). */
-function coPromptChipStyle(kind: 'add' | 'credit'): CSSProperties {
-  return {
-    padding: '0.45rem 1rem',
-    fontWeight: 600,
-    fontSize: '0.85rem',
-    borderRadius: 9999,
-    border: `1.5px dashed ${kind === 'add' ? 'var(--text-green-600)' : 'var(--text-red-700)'}`,
-    background: 'var(--bg-subtle)',
-    color: 'var(--text-700)',
-    cursor: 'pointer',
-  }
-}
-
-const coPromptPanelStyle: CSSProperties = {
-  border: '1px solid var(--border)',
-  background: 'var(--bg-subtle)',
-  borderRadius: 8,
-  padding: '0.85rem 0.95rem',
-}
 
 type EstimateDraftCustomerGateProps = {
   active: boolean
@@ -1138,223 +1108,40 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         />
       ) : null}
       {isDraft && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            marginBottom: '1rem',
-          }}
-        >
-          <div
-            id="est-step-customer"
-            ref={customerSearchSectionRef}
-            className={
-              'est-region-tint' +
-              (customerSearchHighlight || railFlashStep === 'customer' ? ' estimate-customer-search-highlight' : '')
-            }
-            style={{ width: '100%', maxWidth: 480, textAlign: 'left' }}
-          >
-            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem' }}>{railStepDot('customer')}Customer</span>
-            <CustomerSearchCombobox
-              customers={filterActiveCustomersForPicker(customers, customerId)}
-              loading={customersLoading}
-              valueId={customerId}
-              searchText={customerSearch}
-              onSearchTextChange={handleCustomerSearchChange}
-              onSelect={handleSelectCustomer}
-              onClear={() => {
-                setCustomerId(null)
-                setCustomerSearch('')
-                setSendEmailOverride('')
-                setForAddress('')
-              }}
-              onRequestCreateNew={() => setCreateCustomerOpen(true)}
-              placeholder="Search customers…"
-            />
-            {selectedCustomer && (
-              <div
-                style={{
-                  marginTop: '0.5rem',
-                  fontSize: '0.875rem',
-                  color: 'var(--text-700)',
-                  padding: '0.5rem 0.75rem',
-                  background: 'var(--bg-subtle)',
-                  borderRadius: 6,
-                  maxWidth: 480,
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      rowGap: '0.25rem',
-                    }}
-                  >
-                    <strong>Email:</strong>{' '}
-                    {crmEmailForSelected ? (
-                      <span>{crmEmailForSelected}</span>
-                    ) : showSendEmailOverride ? (
-                      emailOverrideRevealed || sendEmailOverride.trim() ? null : (
-                        <button
-                          type="button"
-                          aria-label="Add email for acceptance delivery"
-                          onClick={() => {
-                            setEmailOverrideRevealed(true)
-                            queueMicrotask(() => sendEmailOverrideInputRef.current?.focus())
-                          }}
-                          style={{
-                            padding: 0,
-                            border: 'none',
-                            background: 'none',
-                            color: 'var(--text-red-700)',
-                            cursor: 'pointer',
-                            font: 'inherit',
-                            fontSize: '0.875rem',
-                            textDecoration: 'underline',
-                            textUnderlineOffset: '2px',
-                            maxWidth: '100%',
-                            textAlign: 'left',
-                          }}
-                        >
-                          required, click to add
-                        </button>
-                      )
-                    ) : (
-                      <span>—</span>
-                    )}
-                  </div>
-                  {showSendEmailOverride && !crmEmailForSelected && (emailOverrideRevealed || sendEmailOverride.trim()) ? (
-                    <input
-                      ref={sendEmailOverrideInputRef}
-                      type="email"
-                      autoComplete="email"
-                      value={sendEmailOverride}
-                      onChange={(e) => setSendEmailOverride(e.target.value)}
-                      placeholder="Address for acceptance link"
-                      style={estInputBlock({ marginTop: '0.35rem' })}
-                    />
-                  ) : null}
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    marginTop: '0.35rem',
-                  }}
-                >
-                  <div>
-                    <strong>Phone:</strong> {extractContactFromCustomer(selectedCustomer).phone.trim() || '—'}
-                  </div>
-                  {editCustomerModal && customerId ? (
-                    <button
-                      type="button"
-                      onClick={openDraftCustomerForEdit}
-                      style={{
-                        padding: 0,
-                        border: 'none',
-                        background: 'none',
-                        color: 'var(--text-link)',
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        fontSize: '0.875rem',
-                        textDecoration: 'underline',
-                        textUnderlineOffset: '2px',
-                        flexShrink: 0,
-                        marginLeft: 'auto',
-                      }}
-                    >
-                      Edit customer
-                    </button>
-                  ) : null}
-                </div>
-                <div style={{ marginTop: '0.5rem' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '0.5rem',
-                      flexWrap: 'wrap',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    {showRecentCustomerNotePreview ? (
-                      <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                        <strong>Most recent note:</strong>{' '}
-                        {customerNotesLoading && customerNotesEntries.length === 0 ? (
-                          <span style={{ color: 'var(--text-muted)' }}>Loading…</span>
-                        ) : (
-                          <span
-                            style={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              wordBreak: 'break-word',
-                            }}
-                          >
-                            {recentNotePreviewText}
-                          </span>
-                        )}
-                      </div>
-                    ) : null}
-                    <button
-                      type="button"
-                      aria-expanded={customerNotesExpanded}
-                      onClick={() => setCustomerNotesExpanded((v) => !v)}
-                      style={{
-                        padding: 0,
-                        border: 'none',
-                        background: 'none',
-                        color: 'var(--text-link)',
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        fontSize: '0.875rem',
-                        textDecoration: 'underline',
-                        textUnderlineOffset: '2px',
-                        flexShrink: 0,
-                        ...(!showRecentCustomerNotePreview ? { marginLeft: 'auto' } : {}),
-                      }}
-                    >
-                      {draftNotesToggleLabel}
-                    </button>
-                  </div>
-                  {customerNotesExpanded && customerId ? (
-                    <div
-                      style={{
-                        marginTop: '0.75rem',
-                        maxWidth: '100%',
-                        minWidth: 0,
-                        overflowX: 'auto',
-                      }}
-                    >
-                      <CustomerNotesTable
-                        customerId={customerId}
-                        customerName={selectedCustomer.name?.trim() || 'Customer'}
-                        title=""
-                        hasBidsAbove={false}
-                        contactsState={{
-                          entries: customerNotesEntries,
-                          loading: customerNotesLoading,
-                          refetch: refetchCustomerNotes,
-                        }}
-                        onLoadError={(m) => showToast(m, 'error')}
-                        onMutated={() => {
-                          void refetchCustomerNotes()
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <EstimateDraftCustomerSection
+          customerSearchSectionRef={customerSearchSectionRef}
+          customerSearchHighlight={customerSearchHighlight}
+          flash={railFlashStep === 'customer'}
+          stepDot={railStepDot('customer')}
+          customers={customers}
+          customerId={customerId}
+          customersLoading={customersLoading}
+          customerSearch={customerSearch}
+          handleCustomerSearchChange={handleCustomerSearchChange}
+          handleSelectCustomer={handleSelectCustomer}
+          setCustomerId={setCustomerId}
+          setCustomerSearch={setCustomerSearch}
+          setSendEmailOverride={setSendEmailOverride}
+          setForAddress={setForAddress}
+          setCreateCustomerOpen={setCreateCustomerOpen}
+          selectedCustomer={selectedCustomer}
+          crmEmailForSelected={crmEmailForSelected}
+          showSendEmailOverride={showSendEmailOverride}
+          emailOverrideRevealed={emailOverrideRevealed}
+          sendEmailOverride={sendEmailOverride}
+          setEmailOverrideRevealed={setEmailOverrideRevealed}
+          sendEmailOverrideInputRef={sendEmailOverrideInputRef}
+          editCustomerModal={Boolean(editCustomerModal)}
+          openDraftCustomerForEdit={openDraftCustomerForEdit}
+          showRecentCustomerNotePreview={showRecentCustomerNotePreview}
+          customerNotesLoading={customerNotesLoading}
+          customerNotesEntries={customerNotesEntries}
+          recentNotePreviewText={recentNotePreviewText}
+          customerNotesExpanded={customerNotesExpanded}
+          setCustomerNotesExpanded={setCustomerNotesExpanded}
+          draftNotesToggleLabel={draftNotesToggleLabel}
+          refetchCustomerNotes={refetchCustomerNotes}
+        />
       )}
       <EstimateDraftCustomerGate active={draftNeedsCustomer} onBlockedInteraction={requestCustomerFirst}>
         <div
@@ -1411,63 +1198,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       </div>
 
       {!isDraft && row.status !== 'customer_accepted' ? (
-        <>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: 'var(--text-700)' }}>
-            <strong>For:</strong>{' '}
-            {(() => {
-              const cust = row.customer_id ? customers.find((c) => c.id === row.customer_id) : undefined
-              const crm = cust?.address?.trim() ?? ''
-              return row.for_address?.trim() || crm || '—'
-            })()}
-          </p>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: 'var(--text-700)' }}>
-            <strong>Acceptance page logo:</strong>{' '}
-            {acceptanceDocHeaderBrand ? acceptHeaderBrandLabel(acceptanceDocHeaderBrand) : 'None'}
-          </p>
-          {(() => {
-            // v2.5992 (#206 PR 1): the office reads the good-through day where the customer does, and sees when it passed.
-            const gt = goodThroughState(row.valid_until, todayYmd)
-            if (gt.kind === 'none') return null
-            return (
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: 'var(--text-700)' }} data-testid="estimate-good-through">
-                <strong>Good through:</strong> {formatValidUntilForDisplay(gt.ymd)}
-                {gt.kind === 'passed' ? <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}> · passed</span> : null}
-              </p>
-            )
-          })()}
-          {isCO ? (
-            <section style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
-              <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>Change order</h2>
-              <p style={{ margin: '0.25rem 0' }}>
-                <strong>Description of change:</strong> {coFields.description_of_change.trim() || '—'}
-              </p>
-              <p style={{ margin: '0.25rem 0' }}>
-                <strong>Reason for change:</strong> {coFields.reason_for_change.trim() || '—'}
-              </p>
-              <p style={{ margin: '0.25rem 0' }}>
-                <strong>Impact on schedule:</strong> {coFields.impact_on_schedule.trim() || '—'}
-              </p>
-              {coFields.response_requested_by.trim() ? (
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Response requested by:</strong> {coFields.response_requested_by}
-                </p>
-              ) : null}
-            </section>
-          ) : null}
-          {rowOfferedOptions.length >= 2 ? (
-            // What was offered (v2.5988, #206 PR 2): every option as it went, not the recommended one's frozen lines alone.
-            <EstimateOfferedOptions options={rowOfferedOptions} />
-          ) : (
-            <section style={{ marginTop: '1rem' }}>
-              <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>
-                {staffResolvedExperience?.docLineItemsHeading ?? (isCO ? 'Impact on cost' : 'Line items')}
-              </h2>
-              <div style={{ fontSize: '0.9rem', color: 'var(--text-700)' }}>
-                <EstimateLineItemsTable lines={normalizeEstimateLineItemsFromJson(row.line_items_snapshot, { allowNegative: isCO })} />
-              </div>
-            </section>
-          )}
-        </>
+        <EstimateSentHeader row={row} customers={customers} acceptanceDocHeaderBrand={acceptanceDocHeaderBrand} todayYmd={todayYmd} isCO={isCO} coFields={coFields} rowOfferedOptions={rowOfferedOptions} staffResolvedExperience={staffResolvedExperience} />
       ) : null}
 
       {isDraft && (
@@ -1701,61 +1432,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <EstimateFieldPhotosStrip estimateId={row.id} />
             <EstimateFirstLookStrip estimateId={row.id} />
             {isCO ? (
-              <div
-                id="est-step-change"
-                className={'est-region-tint' + (railFlashStep === 'change' ? ' estimate-customer-search-highlight' : '')}
-                style={{
-                  border: '1px solid #f59e0b',
-                  borderRadius: 8,
-                  padding: '0.6rem 0.8rem 0.8rem',
-                  marginBottom: '1rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.6rem',
-                }}
-              >
-                <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{railStepDot('change')}Change order</h2>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
-                  Description of change
-                  <AutosizeTextarea
-                    value={coFields.description_of_change}
-                    onChange={(e) => setCoFields((prev) => ({ ...prev, description_of_change: e.target.value }))}
-                    placeholder="What is changing — scope, plan reference…"
-                    minRows={2}
-                    style={{ ...estInputBase, fontWeight: 400, width: '100%', padding: '0.5rem' }}
-                  />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
-                  Reason for change
-                  <AutosizeTextarea
-                    value={coFields.reason_for_change}
-                    onChange={(e) => setCoFields((prev) => ({ ...prev, reason_for_change: e.target.value }))}
-                    placeholder="Owner directive, field condition, plan revision…"
-                    minRows={1}
-                    style={{ ...estInputBase, fontWeight: 400, width: '100%', padding: '0.5rem' }}
-                  />
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600, flex: '1 1 200px' }}>
-                    Impact on schedule
-                    <input
-                      value={coFields.impact_on_schedule}
-                      onChange={(e) => setCoFields((prev) => ({ ...prev, impact_on_schedule: e.target.value }))}
-                      placeholder='"+2 working days", "none"…'
-                      style={{ ...estInputBase, fontWeight: 400, padding: '0.5rem' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600, flex: '0 1 180px' }}>
-                    Response requested by
-                    <input
-                      type="date"
-                      value={coFields.response_requested_by}
-                      onChange={(e) => setCoFields((prev) => ({ ...prev, response_requested_by: e.target.value }))}
-                      style={{ ...estInputBase, fontWeight: 400, padding: '0.5rem' }}
-                    />
-                  </label>
-                </div>
-              </div>
+              <EstimateChangeOrderFieldsBlock flash={railFlashStep === 'change'} stepDot={railStepDot('change')} coFields={coFields} setCoFields={setCoFields} />
             ) : null}
             {!isCO && isDraft ? (
               <EstimateOptionsStrip
@@ -1774,316 +1451,27 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 setPreviewSelectedOptionKeys={setPreviewSelectedOptionKeys}
               />
             ) : null}
-            {(() => {
-              // v2.2911 (J16-F2 / P2): a draft bridged from Bids shows the typed cost text
-              // where the money is entered, instead of leaving it to the internal note.
-              if (!isCO) return null
-              const bridged = bridgedCostImpactText({ lines, internalNotes })
-              if (!bridged) return null
-              return (
-                <div
-                  role="note"
-                  style={{ margin: '0 0 0.6rem', padding: '0.55rem 0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderLeft: '3px solid #f59e0b', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.45 }}
-                >
-                  <span style={{ fontWeight: 600, color: 'var(--text-amber-800)' }}>From the Bids form — Impact on Cost as typed:</span>{' '}
-                  <span style={{ whiteSpace: 'pre-wrap' }}>{bridged}</span>
-                  <span style={{ display: 'block', marginTop: '0.2rem', color: 'var(--text-muted)' }}>
-                    {totalCents === 0
-                      ? 'The draft was created at $0 — add the cost lines below if the price changes.'
-                      : `Carried below as one net-change line (${formatSignedCentsUsd(totalCents)}). Split it into itemized lines if the customer wants the breakdown.`}
-                  </span>
-                </div>
-              )
-            })()}
-            <div
-              id="est-step-cost"
-              className={'est-region-ruled' + (railFlashStep === 'cost' ? ' estimate-customer-search-highlight' : '')}
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '0.5rem',
-              }}
-            >
-              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{railStepDot('cost')}{isCO ? 'Impact on cost' : 'Line items'}</h2>
-              {lineItemRecentChips.map((c) => {
-                const primary = (c.line_item.trim() || c.description.trim() || '(line)').slice(0, 40)
-                const short = primary.length > 36 ? `${primary.slice(0, 35)}…` : primary
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => applyFromCatalogEntry(c)}
-                    title={`${c.line_item ? `${c.line_item} · ` : ''}${c.description} — ${c.quantity} × ${formatMoney(c.unit_price_cents)}`}
-                    style={{
-                      padding: '0.35rem 0.65rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 500,
-                      borderRadius: 4,
-                      border: '1px solid var(--border-strong)',
-                      background: 'var(--bg-muted)',
-                      color: 'var(--text-700)',
-                      cursor: 'pointer',
-                      maxWidth: 200,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {short}
-                  </button>
-                )
-              })}
-            </div>
-            <EstimateLineItemCatalogModal open={catalogModalOpen} onClose={() => setCatalogModalOpen(false)} catalogLineItems={catalogLineItems} onReloadCatalog={loadCatalogFromDb} canManage={canManageEstimateCatalog} onInsert={applyFromCatalogEntry} />
-            {isCO && lines.length === 0 ? (
-              <div style={{ ...coPromptPanelStyle, textAlign: 'center', marginBottom: '0.75rem' }}>
-                <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>What does this change include?</p>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  Each line becomes part of the signed contract change.
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button type="button" onClick={() => addCoLine('add')} style={coPromptChipStyle('add')}>
-                    + Added work
-                  </button>
-                  <button type="button" onClick={() => addCoLine('credit')} style={coPromptChipStyle('credit')}>
-                    − Credit / removed work
-                  </button>
-                </div>
-                {canManageEstimateCatalog || catalogLineItems.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setCatalogModalOpen(true)}
-                    style={{
-                      marginTop: '0.6rem',
-                      padding: 0,
-                      border: 'none',
-                      background: 'none',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      font: 'inherit',
-                      fontSize: '0.8rem',
-                      textDecoration: 'underline',
-                      textUnderlineOffset: '2px',
-                    }}
-                  >
-                    or pick from the line-item catalog
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-            <ul
-              style={{
-                paddingLeft: '1.25rem',
-                margin: 0,
-                listStylePosition: 'outside',
-              }}
-            >
-              {lines.map((ln, i) => {
-                const coCredit = isCO && isCoCreditLine(ln.line_item, ln.unit_price_cents)
-                return (
-                <li key={i} style={{ marginBottom: '0.35rem' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.35rem',
-                    }}
-                  >
-                    <div className="estimate-detail-line-item-block">
-                      <div className="estimate-detail-line-item-line">
-                        <input
-                          ref={(el) => {
-                            if (el && coFocusLineIndexRef.current === i) {
-                              coFocusLineIndexRef.current = null
-                              el.focus()
-                            }
-                          }}
-                          placeholder="Line item"
-                          value={ln.line_item}
-                          onChange={(e) => updateLine(i, { line_item: e.target.value })}
-                          style={{ ...estInputBase, padding: '0.5rem' }}
-                        />
-                      </div>
-                      <div className="estimate-detail-line-item-qty-unit">
-                        <input
-                          className="no-spinner"
-                          type="number"
-                          min={0}
-                          step="any"
-                          placeholder="Count"
-                          title="Count"
-                          value={ln.quantity}
-                          onChange={(e) => updateLine(i, { quantity: coerceDraftQuantity(e.target.value) })}
-                          style={{ ...estInputBase, width: 72, padding: '0.5rem' }}
-                        />
-                        <input
-                          className="no-spinner"
-                          type="number"
-                          min={isCO ? undefined : 0}
-                          step="0.01"
-                          placeholder="Unit ($)"
-                          title={
-                            coCredit
-                              ? 'Credit line — this amount is credited back to the customer'
-                              : isCO
-                                ? 'Negative unit price = credit line'
-                                : undefined
-                          }
-                          value={
-                            ln.unit_price_cents
-                              ? (coCredit ? Math.abs(ln.unit_price_cents) : ln.unit_price_cents) / 100
-                              : ''
-                          }
-                          onChange={(e) => updateLine(i, { unit_price_cents: draftUnitPriceInputCents(e.target.value, { credit: coCredit }) })}
-                          style={{
-                            ...estInputBase,
-                            width: 100,
-                            padding: '0.5rem',
-                            ...(coCredit ? { color: 'var(--text-red-700)' } : {}),
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setLines((p) => p.filter((_, j) => j !== i))}
-                          aria-label="Remove line"
-                          title="Remove line"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: 28,
-                            height: 28,
-                            margin: 0,
-                            padding: 0,
-                            border: '1px solid var(--border-red)',
-                            borderRadius: '50%',
-                            background: 'var(--bg-red-tint)',
-                            color: 'var(--text-red-700)',
-                            fontSize: '1.125rem',
-                            fontWeight: 500,
-                            lineHeight: 0,
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                          }}
-                        >
-                          −
-                        </button>
-                      </div>
-                    </div>
-                    <input
-                      placeholder="Description (optional)"
-                      aria-label="Description (optional)"
-                      value={ln.description}
-                      onChange={(e) => updateLine(i, { description: e.target.value })}
-                      style={{
-                        ...estInputBase,
-                        width: '100%',
-                        minWidth: 0,
-                        boxSizing: 'border-box',
-                        padding: '0.5rem',
-                      }}
-                    />
-                  </div>
-                </li>
-                )
-              })}
-              {isCO && lines.length === 0 ? null : (
-              <li style={{ marginBottom: '0.35rem' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    minHeight: 38,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  {isCO ? (
-                    <>
-                      <button type="button" onClick={() => addCoLine('add')} style={coPromptChipStyle('add')}>
-                        + Added work
-                      </button>
-                      <button type="button" onClick={() => addCoLine('credit')} style={coPromptChipStyle('credit')}>
-                        − Credit / removed work
-                      </button>
-                    </>
-                  ) : (
-                  <button
-                    type="button"
-                    onClick={() => setLines((p) => [...p, emptyDraftLine()])}
-                    aria-label="Add line"
-                    title="Add line"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 28,
-                      height: 28,
-                      margin: 0,
-                      padding: 0,
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: '50%',
-                      background: 'var(--bg-subtle)',
-                      color: 'var(--text-700)',
-                      fontSize: '1.125rem',
-                      fontWeight: 500,
-                      lineHeight: 1,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    +
-                  </button>
-                  )}
-                  <button
-                    type="button"
-                    aria-label="Open line item catalog"
-                    onClick={() => setCatalogModalOpen(true)}
-                    disabled={!canManageEstimateCatalog && catalogLineItems.length === 0}
-                    title={
-                      !canManageEstimateCatalog && catalogLineItems.length === 0
-                        ? 'No catalog items'
-                        : canManageEstimateCatalog && catalogLineItems.length === 0
-                          ? 'Open catalog to add preset line items'
-                          : 'Preset line items (edit catalog in modal)'
-                    }
-                    onMouseEnter={() => {
-                      if (canManageEstimateCatalog || catalogLineItems.length > 0) setCatalogIconHovered(true)
-                    }}
-                    onMouseLeave={() => setCatalogIconHovered(false)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      margin: 0,
-                      padding: 0,
-                      border: 'none',
-                      background: 'transparent',
-                      lineHeight: 0,
-                      flexShrink: 0,
-                      cursor:
-                        !canManageEstimateCatalog && catalogLineItems.length === 0 ? 'not-allowed' : 'pointer',
-                      color:
-                        !canManageEstimateCatalog && catalogLineItems.length === 0 ? 'var(--text-faint)'
-                        : catalogIconHovered ? 'var(--text-blue-700)'
-                        : 'var(--text-link)',
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={22} height={22} aria-hidden>
-                      <path
-                        fill="currentColor"
-                        d="M192 576L512 576C529.7 576 544 561.7 544 544C544 526.3 529.7 512 512 512L512 445.3C530.6 438.7 544 420.9 544 400L544 112C544 85.5 522.5 64 496 64L448 64L448 233.4C448 245.9 437.9 256 425.4 256C419.4 256 413.6 253.6 409.4 249.4L368 208L326.6 249.4C322.4 253.6 316.6 256 310.6 256C298.1 256 288 245.9 288 233.4L288 64L192 64C139 64 96 107 96 160L96 480C96 533 139 576 192 576zM160 480C160 462.3 174.3 448 192 448L448 448L448 512L192 512C174.3 512 160 497.7 160 480z"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </li>
-              )}
-            </ul>
-            <p style={{ fontWeight: 600, textAlign: 'right' }}>
-              {isCO ? <>Net change to contract: {formatSignedCentsUsd(totalCents)}</> : <>Total: {formatMoney(totalCents)}</>}
-            </p>
+            <EstimateDraftLineItems
+              isCO={isCO}
+              totalCents={totalCents}
+              flash={railFlashStep === 'cost'}
+              stepDot={railStepDot('cost')}
+              lines={lines}
+              internalNotes={internalNotes}
+              lineItemRecentChips={lineItemRecentChips}
+              applyFromCatalogEntry={applyFromCatalogEntry}
+              catalogModalOpen={catalogModalOpen}
+              setCatalogModalOpen={setCatalogModalOpen}
+              catalogLineItems={catalogLineItems}
+              loadCatalogFromDb={loadCatalogFromDb}
+              canManageEstimateCatalog={canManageEstimateCatalog}
+              addCoLine={addCoLine}
+              coFocusLineIndexRef={coFocusLineIndexRef}
+              updateLine={updateLine}
+              setLines={setLines}
+              catalogIconHovered={catalogIconHovered}
+              setCatalogIconHovered={setCatalogIconHovered}
+            />
             {customerAttachmentPreview ?
               <EstimateCustomerAttachmentCard attachment={customerAttachmentPreview} />
             : (
