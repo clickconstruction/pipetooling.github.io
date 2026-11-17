@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { supplyBookTotal, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
 import { SupplyHousePhoneScreen } from './materials/SupplyHousePhoneScreen'
-import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { supabasePaperIo, type PaperIo } from '../lib/materials/lines/paperIo'
@@ -11,7 +10,6 @@ import { BillLinesHeld } from './materials/BillLinesHeld'
 import { supabaseHeldBillsIo, type HeldBillsIo } from '../lib/materials/lines/heldBillsIo'
 import { billsToRecordWords } from '../lib/materials/bills/billWords'
 import { useAuth } from '../hooks/useAuth'
-import { formatErrorMessage } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatCurrency } from '../lib/format'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
@@ -30,41 +28,33 @@ import {
 } from '../lib/supplyHouseAging'
 import { SupplyHouseDirectory } from './materials/SupplyHouseDirectory'
 import { useSupplyHouseEditor } from './materials/useSupplyHouseEditor'
-import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import {
 } from '../lib/materials/supplyHouseInvoiceForm'
 import { ariaSortFor, nextSupplyHouseSummarySort, parseSupplyHouseSummarySort, serializeSupplyHouseSummarySort, sortSupplyHouseSummary, type SupplyHouseSummarySort, type SupplyHouseSummarySortKey } from '../lib/materials/supplyHouseSummarySort'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
-import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
-import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { billDateWords } from '../lib/materials/supplyBillGroups'
-import { removedLately } from '../lib/materials/payments/supplyPaymentMove'
 import { supabaseSupplyFinishIo } from '../lib/materials/payments/supplyPaymentsFinishIo'
 import { SupplyPaymentsToFinish } from './materials/SupplyPaymentsToFinish'
-import { SupplyPaymentHowEditor } from './materials/SupplyPaymentHowEditor'
 import { SupplyBankUnclaimed } from './materials/SupplyBankUnclaimed'
-import { useSupplyHouseBank } from '../hooks/useSupplyHouseBank'
 import { supabaseSupplyBankIo } from '../lib/materials/payments/supplyPaymentBankIo'
 import { bankCandidatesFor, supplyBankLineWords } from '../lib/materials/payments/supplyPaymentBank'
-import type { SupplyPayChip } from '../lib/materials/payments/supplyPayment'
-import { SupplyHouseBillsCard } from './materials/SupplyHouseBillsCard'
-import { houseOnAccountTotal, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds } from '../lib/materials/supplyHouseBillRows'
-import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
-import { supabaseSupplyPaymentsIo } from '../lib/materials/payments/supplyPaymentsIo'
-import { billPaidBy, lastMethodUsed } from '../lib/materials/payments/supplyPayment'
-import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
+import { supplyPhoneBills, typedPaidBillIds } from '../lib/materials/supplyHouseBillRows'
 import { EmptyState } from './EmptyState'
 import { SupplyHouseInvoiceFormModal } from './materials/SupplyHouseInvoiceFormModal'
 import { useSupplyHouseAgingWindows } from './materials/useSupplyHouseAgingWindows'
+import { useSupplyHousePayments } from './materials/useSupplyHousePayments'
+import { SupplyHousePaymentWindows } from './materials/SupplyHousePaymentWindows'
+import { SupplyHouseDetailPanel } from './materials/SupplyHouseDetailPanel'
 import { AgingCellWindow, JOB_ACCOUNT_LINE_TITLE } from './materials/AgingCellWindow'
 import { useSupplyHouseAccountsPayable, type AgingInvoiceRow } from './materials/useSupplyHouseAccountsPayable'
 import { useSupplyHouseInvoiceForm, type SupplyHouse, type SupplyHouseInvoice, type SupplyHousesTabRole } from './materials/useSupplyHouseInvoiceForm'
-import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
+import { SUPPLY_HOUSE_AGING_EMPTY } from '../lib/materials/materialsEmptyWords'
 
 type UserRole = SupplyHousesTabRole
 
@@ -151,6 +141,7 @@ export function SupplyHousesTab({
   const [directoryReloadKey, setDirectoryReloadKey] = useState(0)
 
   // The data: the house list, the book and the open house, with their loaders. One engine for both mounts.
+  const ap = useSupplyHouseAccountsPayable({ supplyHousesProp, onSupplyHousesChange, autoOpenHouseId, onAutoOpenHouseHandled, setError, loadPapersFor })
   const {
     supplyHousesList,
     supplyHouseSummary,
@@ -162,7 +153,6 @@ export function SupplyHousesTab({
     setSelectedSupplyHouseForDetail,
     supplyHouseInvoices,
     setSupplyHouseInvoices,
-    supplyHousePOs,
     poGeneratorEntriesForSelectedHouse,
     setPoGeneratorEntriesForSelectedHouse,
     poGeneratorCodesForSelectedHouse,
@@ -171,13 +161,12 @@ export function SupplyHousesTab({
     housePayments,
     setHousePayments,
     interestYearWords,
-    paidThisVisit,
     setPaidThisVisit,
     loadSupplyHouses,
     loadSupplyHouseSummary,
     loadSupplyHouseDetail,
     loadHousePayments,
-  } = useSupplyHouseAccountsPayable({ supplyHousesProp, onSupplyHousesChange, autoOpenHouseId, onAutoOpenHouseHandled, setError, loadPapersFor })
+  } = ap
   // The aging windows: the cell window and the move window, their state, reads and writes.
   const agingWindows = useSupplyHouseAgingWindows({ agingUnpaidInvoices, setAgingUnpaidInvoices, agingBookLoaded, selectedSupplyHouseForDetail, loadSupplyHouseDetail, setError, openList, onOpenListHandled })
   const { agingCellModal, setAgingCellModal, setAgingCellJobsRefresh, agingMoveData } = agingWindows
@@ -226,22 +215,9 @@ export function SupplyHousesTab({
     if (!paper) return
     setPaperLook({ paper, invoice: inv, bytes: paper.filePath ? await paperBytesOf(paper.filePath) : null })
   }
-  /** Record a payment (2026-11-16): the window that took Apply Payment's place, and the open house's payments. */
-  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false)
-  /** The payment a paid row opened, by id. */
-  const [paymentViewId, setPaymentViewId] = useState<string | null>(null)
-  /** The finish-later list under Accounts payable: opened by the Needs You door, and read again when a payment changes. */
-  const [finishListOpen, setFinishListOpen] = useState(false)
-  const [finishReloadKey, setFinishReloadKey] = useState(0)
-  /** The payment whose "how it was sent" is being edited from its own window or a paid row. */
-  const [howEditId, setHowEditId] = useState<string | null>(null)
-  /** The removed payment whose Put it back is saving. */
-  const [puttingBackPaymentId, setPuttingBackPaymentId] = useState<string | null>(null)
-  /** The bank side (v2.7471): the feed's money out, the matches that stand, and the lines to a house nobody recorded. Supply houses only: a line to an insurer or a rental yard is not a bill's payment. */
-  const bankHouses = useMemo(() => supplyHousesList.filter((h: SupplyHouse) => (h.vendor_kind ?? 'supply_house') === 'supply_house').map((h: SupplyHouse) => ({ id: h.id, name: h.name })), [supplyHousesList])
-  const bankSide = useSupplyHouseBank(agingBookLoaded, supabaseSupplyBankIo, bankHouses)
-  /** Record a payment opened from a bank line: what to fill, and the line the recorded payment is matched to. */
-  const [recordStart, setRecordStart] = useState<{ lineId: string; amount: number; paidOn: string; chip: SupplyPayChip; words: string } | null>(null)
+  // The payments: which payment window is open, the bank side, and the writes that keep the house's rows in place.
+  const payments = useSupplyHousePayments({ supplyHousesList, agingBookLoaded, openList, onOpenListHandled, housePayments, setHousePayments, setSupplyHouseInvoices, setPaidThisVisit, loadSupplyHouseSummary, loadHousePayments })
+  const { finishListOpen, finishReloadKey, bankSide, setRecordStart, openRecordPayment, refreshHouseMoney, toggleInvoicePaid } = payments
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
   // The three Accounts-payable toggles survive a refresh (v2.3568 — a May follow-up;
@@ -252,8 +228,6 @@ export function SupplyHousesTab({
   // Punch list #334 PR 5: a house's card opens on its bills. The job accounts fold under them, and start folded.
   const [jobAccountsOpen, setJobAccountsOpen] = useState(() => readRememberedToggle('job-accounts-open', false))
   useEffect(() => writeRememberedToggle('job-accounts-open', jobAccountsOpen), [jobAccountsOpen])
-  /** The bill whose Mark paid is saving, and the bills marked paid on this visit, which stay where they were. */
-  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null)
   const [showLastPayment, setShowLastPayment] = useState(() => readRememberedToggle('show-last-payment', false))
   // v2.3604: the summary table's sort — every header a button, the pick remembered on the device.
   const [summarySort, setSummarySort] = useState<SupplyHouseSummarySort>(() => {
@@ -334,13 +308,6 @@ export function SupplyHousesTab({
 
 
 
-  // The other Needs You door (v2.7469): `?list=finish` lands with the finish-later list open.
-  useEffect(() => {
-    if (openList !== 'finish') return
-    setFinishListOpen(true)
-    onOpenListHandled?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openList])
 
 
 
@@ -428,72 +395,10 @@ export function SupplyHousesTab({
   }
 
 
-  function openRecordPayment() {
-    setRecordPaymentOpen(true)
-  }
 
 
-  /**
-   * After a payment is recorded, moved, removed or put back: the house's bills and payments are read again where
-   * they stand. The card keeps its place and an open payment window stays open, since neither is emptied first.
-   */
-  async function refreshHouseMoney(houseId: string) {
-    const [billsRes, pays] = await Promise.all([
-      supabase.from('supply_house_invoices').select('id, is_paid, paid_at').eq('supply_house_id', houseId),
-      supabaseSupplyPaymentsIo.loadHouse(houseId).catch(() => null),
-    ])
-    const now = new Map((billsRes.data ?? []).map((r) => [r.id, r]))
-    setSupplyHouseInvoices((list) =>
-      list.map((row) => {
-        const fresh = now.get(row.id)
-        return fresh ? { ...row, is_paid: fresh.is_paid, paid_at: fresh.paid_at } : row
-      }),
-    )
-    if (pays) setHousePayments(pays)
-    setFinishReloadKey((k) => k + 1)
-    void loadSupplyHouseSummary()
-  }
 
 
-  async function toggleInvoicePaid(inv: SupplyHouseInvoice) {
-    // One bill at a time. The row is changed where it stands: reading the whole card again would fold it to
-    // "Loading…" and lose the place, which made paying several bills in a row a scroll back each time.
-    if (inv.is_paid) {
-      // A typed payment is money that was sent, so Mark unpaid does not unmake it: the row opens the payment instead.
-      const typed = billPaidBy(inv.id, housePayments.payments, housePayments.lines).typed[0]
-      if (typed) {
-        setPaymentViewId(typed.payment.id)
-        return
-      }
-    }
-    setPayingInvoiceId(inv.id)
-    try {
-      const { data: saved, error } = await supabase
-        .from('supply_house_invoices')
-        .update({ is_paid: !inv.is_paid })
-        .eq('id', inv.id)
-        .select('is_paid, paid_at')
-        .single()
-      if (error) {
-        showToast(`${inv.invoice_number} was not changed. ${formatErrorMessage(error)}`, 'error', 5000)
-        return
-      }
-      const isPaid = saved?.is_paid ?? !inv.is_paid
-      setSupplyHouseInvoices((list) => list.map((row) => (row.id === inv.id ? { ...row, is_paid: isPaid, paid_at: saved?.paid_at ?? null } : row)))
-      setPaidThisVisit((ids) => {
-        const next = new Set(ids)
-        if (isPaid) next.add(inv.id)
-        else next.delete(inv.id)
-        return next
-      })
-      void loadSupplyHouseSummary()
-      loadHousePayments(inv.supply_house_id)
-      // Mark paid made a payment with no method: the finish-later list counts it.
-      setFinishReloadKey((k) => k + 1)
-    } finally {
-      setPayingInvoiceId(null)
-    }
-  }
 
 
 
@@ -1012,206 +917,7 @@ export function SupplyHousesTab({
                       {isExpanded && selectedSupplyHouseForDetail && (
                         <tr>
                           <td colSpan={showLastPayment ? 6 : 5} style={{ padding: 0, verticalAlign: 'top', borderBottom: '1px solid var(--border)' }}>
-                            <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-subtle)', borderLeft: '3px solid #3b82f6' }}>
-                              {supplyHouseDetailLoading ? (
-                                <p>Loading…</p>
-                              ) : (
-                                <>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-                                    {selectedSupplyHouseForDetail.address && (
-                                      <div><strong>Address:</strong> {selectedSupplyHouseForDetail.address}</div>
-                                    )}
-                                    {(selectedSupplyHouseForDetail.phone || selectedSupplyHouseForDetail.website_url?.trim()) && (
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-                                        {selectedSupplyHouseForDetail.phone && (
-                                          <span><strong>Phone:</strong> <a href={telHrefFor(selectedSupplyHouseForDetail.phone)} style={{ color: 'var(--text-link)' }}>{selectedSupplyHouseForDetail.phone}</a></span>
-                                        )}
-                                        <SupplyHouseWebsiteLink websiteUrl={selectedSupplyHouseForDetail.website_url} />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <section style={{ marginBottom: '1.5rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                      <h3 style={{ margin: 0, fontSize: '1rem' }}>
-                                        Invoices{' '}
-                                        <span style={{ fontWeight: 400, fontSize: '0.875rem', color: 'var(--text-muted)' }} data-testid="supply-bills-payday">
-                                          {(() => {
-                                            const day = sortedSupplyHouseSummary.find((r) => r.supply_house_id === selectedSupplyHouseForDetail.id)?.monthlyPaymentDay
-                                            return day ? `pays on the ${ordinalDay(day)}` : ''
-                                          })()}
-                                        </span>
-                                      </h3>
-                                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); openAddInvoice() }}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                        >
-                                          Add Invoice
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); openRecordPayment() }}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                        >
-                                          Record a payment
-                                        </button>
-                                      </div>
-                                    </div>
-                                    {(() => {
-                                      // A bill marked paid on this visit stays listed, so the rows under it do not move.
-                                      const billToday = todayYmdInAppTz()
-                                      const rows = supplyBillCardRows({
-                                        shown: supplyBillsToList(supplyHouseInvoices, showPaidInvoices, paidThisVisit),
-                                        all: supplyHouseInvoices,
-                                        payments: housePayments,
-                                        jobs: supplyHouseJobDetailsMap,
-                                        ledgerCodes: poGeneratorCodesForSelectedHouse,
-                                        papers: papersByInvoice,
-                                        paperNames,
-                                      })
-                                      const byId = (id: string) => supplyHouseInvoices.find((x) => x.id === id) ?? null
-                                      return (
-                                        <SupplyHouseBillsCard
-                                          bills={rows}
-                                          todayYmd={billToday}
-                                          jobAccountsInUse={!!selectedSupplyHouseForDetail.job_accounts?.trim() || supplyHouseInvoices.some((inv) => inv.on_job_account === true)}
-                                          paidThisVisit={paidThisVisit}
-                                          payingId={payingInvoiceId}
-                                          onAccount={houseOnAccountTotal(housePayments)}
-                                          empty={
-                                            <EmptyState
-                                              compact
-                                              {...supplyHouseInvoicesEmptyWords({
-                                                house: selectedSupplyHouseForDetail.name.trim() || 'this house',
-                                                total: supplyHouseInvoices.length,
-                                                addInvoice: openAddInvoice,
-                                                showPaid: () => setShowPaidInvoices(true),
-                                              })}
-                                            />
-                                          }
-                                          onTogglePaid={(id) => {
-                                            const inv = byId(id)
-                                            if (inv) void toggleInvoicePaid(inv)
-                                          }}
-                                          onEdit={(id) => {
-                                            const inv = byId(id)
-                                            if (inv) openEditInvoice(inv)
-                                          }}
-                                          onLook={(id) => {
-                                            const inv = byId(id)
-                                            if (inv) void openPaperLook(inv)
-                                          }}
-                                          removedPayments={removedLately(housePayments.payments, Date.now(), (ymd) => billDateWords(ymd, billToday), calendarYmdInAppTzFromIso).map((r) => ({ id: r.payment.id, words: r.words }))}
-                                          puttingBackId={puttingBackPaymentId}
-                                          onFinish={(billId) => setHowEditId(billPaidBy(billId, housePayments.payments, housePayments.lines).needsHowId ?? null)}
-                                          onPutBack={(paymentId) => {
-                                            const houseId = selectedSupplyHouseForDetail.id
-                                            setPuttingBackPaymentId(paymentId)
-                                            supabaseSupplyPaymentsIo
-                                              .restore(paymentId)
-                                              .then(async () => {
-                                                showToast('The payment is back. Its bills read as they did.', 'success')
-                                                await refreshHouseMoney(houseId)
-                                              })
-                                              .catch((e: unknown) => showToast(formatErrorMessage(e, 'The payment was not put back.'), 'error', 6000))
-                                              .finally(() => setPuttingBackPaymentId(null))
-                                          }}
-                                        />
-                                      )
-                                    })()}
-                                  </section>
-                                  {/* The job accounts sit under the bills, folded until asked for. The fold is remembered. */}
-                                  <section style={{ marginBottom: '1.5rem' }} data-testid="supply-job-accounts-fold">
-                                    <button
-                                      type="button"
-                                      aria-expanded={jobAccountsOpen}
-                                      onClick={(e) => { e.stopPropagation(); setJobAccountsOpen((o) => !o) }}
-                                      style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', width: '100%', minHeight: 44, padding: '0.5rem 0.75rem', marginBottom: jobAccountsOpen ? '0.75rem' : 0, font: 'inherit', textAlign: 'left', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
-                                    >
-                                      <span aria-hidden style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{jobAccountsOpen ? '▾' : '▸'}</span>
-                                      <b>Job accounts</b>
-                                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{jobAccountsOpen ? 'fold them away' : 'each job’s account with this house'}</span>
-                                    </button>
-                                    {jobAccountsOpen && (
-                                    <SupplyHouseJobAccountsRoster
-                                      house={selectedSupplyHouseForDetail}
-                                      invoices={supplyHouseInvoices}
-                                      jobDetails={supplyHouseJobDetailsMap}
-                                      onInvoicesChanged={() => void loadSupplyHouseDetail(selectedSupplyHouseForDetail)}
-                                    />
-                                    )}
-                                  </section>
-                                  <section>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                      <h3 style={{ margin: 0, fontSize: '1rem' }}>Purchase Orders</h3>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); createBlankPOForSupplyHouse(selectedSupplyHouseForDetail.id) }}
-                                        disabled={creatingPOForSupplyHouse || !serviceTypeId}
-                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: creatingPOForSupplyHouse || !serviceTypeId ? 'not-allowed' : 'pointer' }}
-                                      >
-                                        {creatingPOForSupplyHouse ? 'Creating…' : 'Create PO'}
-                                      </button>
-                                    </div>
-                                    {!serviceTypeId && (
-                                      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                                        {selectedServiceTypeIdProp !== undefined ? 'Select a service type above to create POs.' : 'Loading service types…'}
-                                      </p>
-                                    )}
-                                    <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                        <thead style={{ background: 'var(--bg-subtle)' }}>
-                                          <tr>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Name</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {supplyHousePOs.length === 0 ? (
-                                            <tr>
-                                              <td colSpan={3} style={{ padding: 0 }}>
-                                                <EmptyState
-                                                  compact
-                                                  {...supplyHousePosEmptyWords({
-                                                    house: selectedSupplyHouseForDetail.name.trim() || 'this house',
-                                                    createPo: serviceTypeId && !creatingPOForSupplyHouse ? () => void createBlankPOForSupplyHouse(selectedSupplyHouseForDetail.id) : null,
-                                                  })}
-                                                />
-                                              </td>
-                                            </tr>
-                                          ) : (
-                                            supplyHousePOs.map((po) => (
-                                              <tr key={po.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>{po.name}</td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>{po.status}</td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); handleNavigateToPO(po.id) }}
-                                                    style={{ marginRight: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}
-                                                  >
-                                                    View
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); handleNavigateToPO(po.id) }}
-                                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}
-                                                  >
-                                                    Edit
-                                                  </button>
-                                                </td>
-                                              </tr>
-                                            ))
-                                          )}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </section>
-                                </>
-                              )}
-                            </div>
+                            <SupplyHouseDetailPanel ap={ap} payments={payments} sortedSupplyHouseSummary={sortedSupplyHouseSummary} showPaidInvoices={showPaidInvoices} setShowPaidInvoices={setShowPaidInvoices} jobAccountsOpen={jobAccountsOpen} setJobAccountsOpen={setJobAccountsOpen} papersByInvoice={papersByInvoice} paperNames={paperNames} openPaperLook={openPaperLook} openAddInvoice={openAddInvoice} openEditInvoice={openEditInvoice} serviceTypeId={serviceTypeId} selectedServiceTypeIdProp={selectedServiceTypeIdProp} creatingPOForSupplyHouse={creatingPOForSupplyHouse} createBlankPOForSupplyHouse={createBlankPOForSupplyHouse} handleNavigateToPO={handleNavigateToPO} />
                           </td>
                         </tr>
                       )}
@@ -1273,109 +979,7 @@ export function SupplyHousesTab({
 
       <SupplyHouseInvoiceFormModal form={invoiceForm} selectedSupplyHouseForDetail={selectedSupplyHouseForDetail} supplyHouseInvoices={supplyHouseInvoices} poGeneratorEntriesForSelectedHouse={poGeneratorEntriesForSelectedHouse} poGeneratorCodesForSelectedHouse={poGeneratorCodesForSelectedHouse} narrowAging={narrowAging} />
 
-      {recordPaymentOpen && selectedSupplyHouseForDetail && (
-        <RecordSupplyPaymentModal
-          house={{
-            id: selectedSupplyHouseForDetail.id,
-            name: selectedSupplyHouseForDetail.name,
-            monthlyPaymentDay: selectedSupplyHouseForDetail.monthly_payment_day ?? null,
-          }}
-          bills={recordPaymentBills(supplyHouseInvoices, supplyHouseJobDetailsMap)}
-          io={supabaseSupplyPaymentsIo}
-          todayYmd={todayYmdInAppTz()}
-          parts
-          start={recordStart ?? undefined}
-          onClose={() => {
-            setRecordPaymentOpen(false)
-            setRecordStart(null)
-          }}
-          onRecorded={(result, words) => {
-            const houseId = selectedSupplyHouseForDetail.id
-            const fromBank = recordStart
-            setRecordPaymentOpen(false)
-            setRecordStart(null)
-            showToast(words, 'success')
-            // Opened from a bank line: the payment it recorded is the one that line is.
-            const matched = fromBank && result.payment_id ? supabaseSupplyBankIo.match(result.payment_id, fromBank.lineId, false).catch((e: unknown) => showToast(formatErrorMessage(e, 'The payment is recorded. It was not matched to its bank line.'), 'error', 6000)) : Promise.resolve()
-            void matched.then(() => {
-              bankSide.reload()
-              return refreshHouseMoney(houseId)
-            })
-          }}
-        />
-      )}
-
-      {(() => {
-        const viewed = paymentViewId ? housePayments.payments.find((p) => p.id === paymentViewId) : null
-        if (!viewed || !selectedSupplyHouseForDetail) return null
-        const house = selectedSupplyHouseForDetail
-        return (
-          <SupplyPaymentWindow
-            payment={viewed}
-            payments={housePayments.payments}
-            lines={housePayments.lines}
-            bills={paymentWindowBills(supplyHouseInvoices, supplyHouseJobDetailsMap)}
-            events={housePayments.events}
-            houseName={house.name.trim() || 'this house'}
-            todayYmd={todayYmdInAppTz()}
-            onClose={() => setPaymentViewId(null)}
-            onRemove={async (payment, reason) => {
-              await supabaseSupplyPaymentsIo.remove(payment.id, reason)
-              setPaymentViewId(null)
-              showToast('The payment is removed. Its bills read unpaid again. It can be put back for 30 days.', 'success')
-              await refreshHouseMoney(house.id)
-            }}
-            onMove={async (input) => {
-              await supabaseSupplyPaymentsIo.move(input)
-              showToast('The money is moved. Both bills say where it went.', 'success')
-              await refreshHouseMoney(house.id)
-            }}
-            onUndoMove={async (eventId) => {
-              await supabaseSupplyPaymentsIo.undoMove(eventId)
-              showToast('The move is taken back.', 'success')
-              await refreshHouseMoney(house.id)
-            }}
-            onEditHow={() => setHowEditId(viewed.id)}
-            bank={{
-              matched: bankSide.lines.find((b) => b.id === bankSide.matchedByPayment.get(viewed.id)) ?? null,
-              hasMatch: bankSide.matchedByPayment.has(viewed.id),
-              candidates: bankSide.matchedByPayment.has(viewed.id) ? [] : bankCandidatesFor(viewed, house.name, bankSide.lines, bankSide.taken),
-              onMatch: async (bankLineId) => {
-                await supabaseSupplyBankIo.match(viewed.id, bankLineId, false)
-                showToast('The bank agrees with this payment.', 'success')
-                bankSide.reload()
-              },
-              onUnmatch: async () => {
-                await supabaseSupplyBankIo.unmatch(viewed.id)
-                showToast('The payment is off its bank line.', 'success')
-                bankSide.reload()
-              },
-            }}
-          />
-        )
-      })()}
-
-      {/* How a payment was sent, said after the fact: from a paid row's Finish…, or from the payment's own window. */}
-      {(() => {
-        const editing = howEditId ? housePayments.payments.find((p) => p.id === howEditId) : null
-        if (!editing || !selectedSupplyHouseForDetail) return null
-        const house = selectedSupplyHouseForDetail
-        const numbers = [...new Set(housePayments.lines.filter((l) => l.payment_id === editing.id).map((l) => supplyHouseInvoices.find((inv) => inv.id === l.invoice_id)?.invoice_number ?? ''))].filter(Boolean)
-        return (
-          <SupplyPaymentHowEditor
-            payment={editing}
-            title={[house.name.trim() || 'This house', numbers.length === 1 ? numbers[0] : numbers.length > 1 ? `${numbers.length} bills` : 'on account'].join(' · ')}
-            lastMethod={lastMethodUsed(housePayments.payments)}
-            onClose={() => setHowEditId(null)}
-            onSave={async (paymentId, patch, words) => {
-              await supabaseSupplyFinishIo.saveHowSent(paymentId, patch)
-              setHowEditId(null)
-              showToast(words, 'success')
-              await refreshHouseMoney(house.id)
-            }}
-          />
-        )
-      })()}
+      <SupplyHousePaymentWindows ap={ap} payments={payments}  />
 
       {paperLook ? (
         <PaperLookModal

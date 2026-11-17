@@ -300,3 +300,6 @@ export function useSupplyHouseAccountsPayable(host: SupplyHouseAccountsPayableHo
     loadHousePayments,
   }
 }
+
+/** The tab's data as its windows read it. */
+export type SupplyHouseAccountsPayable = ReturnType<typeof useSupplyHouseAccountsPayable>
