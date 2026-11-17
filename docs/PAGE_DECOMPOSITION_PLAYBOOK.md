@@ -5,7 +5,7 @@ file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
 purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 lines at the start) and People.tsx (~21,435). Also the one home for the large-file inventory and the seams that cut across maps.
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-11-17
 ---
 
 ## What this is
@@ -19,7 +19,7 @@ The repo still has several God components:
 | File | Lines | Map | Notes |
 |---|---|---|---|
 | `src/pages/Materials.tsx` (+ `SupplyHousesTab` 1,898) | 2,012 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | page **decomposition complete** (all 7 tab bodies out, 3 seam hooks); the weight is now `SupplyHousesTab` — Stage A its untested AP money math, then lift the 428-line invoice form into a modal |
-| `src/pages/Estimates.tsx` | 6,982 | [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | two page components behind a URL router; title/bucket/owner helpers are in lib, every detail region is inline — Stage A the untested draft-line money + `buildDraftPersistPayload`, then the free `EstimateListTable` file move |
+| `src/pages/Estimates.tsx` | 5,423 (at `6af60c5bcf`) | [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | two page components behind a URL router; the list table and cards, the catalog modal and the first map's Stage A are out, and the 4,169-line `EstimateDetail` is the weight — Stage A the send client and its answer (three hand-written fetches of the one path that emails a customer, no test), then the sent side (`useEstimateSentActions` + `EstimateSentView`), which reads no draft state and needs no seam |
 | `src/pages/Workflow.tsx` | 1,010 | [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | region-based (not tabbed); `StepFormModal`, `StepCommitmentPanel`, the three header strips (Superintendents, Jobs, Subs — the first two with a loader hook the page calls) the six line-item windows, the six step windows, the Projections & Ledger panel and the stage list out — the map's ten steps are done; the money kernels (unified rows, ledger rail, paste parser) are out with tests, `normalizeUrl` and `formatLineItemDate` imported from the Forecast lib, the formatters / status style / ymd helpers the stage-card kernels (defaults, display items, pills), the expected-dates linkage and the invoice search out with tests — Stage A is done and the line-item handlers call the Forecast lib; every region is a component or a hook the page calls, and a page render smoke covers the whole; left, optional: a separate `WorkflowStageCard`, and the contact modal |
 | `src/pages/People.tsx` | 4,700 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | every tab extracted, but the Payroll (~1,700 lines), Hours-shell (~1,500) and Users (~550) clusters stay in the parent — Stage A the duplicated pay-report assembly first |
 | `src/pages/Bids.tsx` | 2,642 (at `f423bd6e5`) | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | every tab key renders an extracted child, and the robot layer, the Edit Bid controller, the trade switch and the URL routing are hooks the page calls — the map's extraction order names what is left |
