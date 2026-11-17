@@ -83,6 +83,8 @@ export function applyOnSiteWrites(rows: OnSiteRows, writes: ReadonlyArray<OnSite
                 ...(has(r, 'where_note') ? { where: str(r.where_note) } : {}),
                 // What is in it (punch list #351): a person's words, or null when they were cleared.
                 ...(has(r, 'description') ? { said: str(r.description) } : {}),
+                // The printed mark (v2.7519): the time its label went out, or null when the mark was taken off.
+                ...(has(r, 'label_printed_at') ? { labelPrintedAt: strOrNull(r.label_printed_at) } : {}),
               },
         )
       }

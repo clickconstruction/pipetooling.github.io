@@ -40,6 +40,7 @@ import { labelsCsvFileName, labelsCsvRows, labelsCsvText } from '../../lib/mater
 import { readLabelFormat, readTapeCopies, readTapePrintedDay, readTapeWidth, writeLabelFormat, writeTapeCopies, writeTapePrintedDay, writeTapeWidth, readStoppedRun, writeStoppedRun } from '../../lib/materials/labelPrefs'
 import { helpGuideHref } from '../../lib/helpGuideAnchors'
 import { linesOf, type Container, type ContainerLine } from '../../lib/materials/onSite'
+import { markLabelsPrinted } from '../../lib/materials/onSiteStore'
 import { downloadFile } from '../../lib/materials/photoShare'
 import { printRootCss } from '../../lib/printRoot'
 import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NEEDS_BROWSER, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_CHECK_AGAIN_LABEL, PTOUCH_NOT_ANSWERING, PTOUCH_RECHECK_MS, PTOUCH_RECHECK_WORDS, PTOUCH_STOP_LABEL, PTOUCH_STOPPING, PTOUCH_STOPPING_LABEL, PTOUCH_STRIP_INSIDE, ptouchCannotPrintWords, ptouchNeedsRecheck, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
@@ -49,6 +50,7 @@ import TapeStripBitmap from './TapeStripBitmap'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { LABEL_OUTPUTS, TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, labelCountWords, longestNameChars, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps, tapeStoppedWords, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { tapeAddressLines } from '../../lib/materials/tapeStrip'
+import { MARK_AS_LABELLED_WHY, MARK_UNDO_ASK, boxesWhoseLabelWent, labelPrinted, markAsLabelledLabel, markedWords, newlyMarkedIds, takeMarkOffLabel, unmarkedWords } from '../../lib/materials/labelMark'
 import { LABEL_RANGE_FROM, LABEL_RANGE_TO, afterStop, leftAfterRangePick, partialThatHolds, rangeCountWords, restCountWords, resumedRunWords, runStrips, stoppedDetailWords, stoppedRunToKeep, stoppedRunToResume, tickedRange, type PartialBox, type RunStrip } from '../../lib/materials/labelPick'
 
 const BLUE = '#2563eb'
@@ -75,12 +77,14 @@ type Props = {
   onClose: () => void
   /** The print itself; a test hands a spy. */
   print?: () => void
+  /** The printed mark's write (`markLabelsPrinted`); a test hands a spy. */
+  mark?: (ids: ReadonlyArray<string>, at: string | null) => void
 }
 
 /** A door's pick: every box from the start, or these boxes alone. */
 export type LabelsStart = { kind: 'all' } | { kind: 'ids'; ids: ReadonlyArray<string> }
 
-export default function LabelsPrintModal({ jobLabel: jl, containers, lines, places, only, start, onClose, print = () => window.print() }: Props) {
+export default function LabelsPrintModal({ jobLabel: jl, containers, lines, places, only, start, onClose, print = () => window.print(), mark = markLabelsPrinted }: Props) {
   const candidates = useMemo(() => (only ? containers.filter((c) => c.id === only) : containers), [containers, only])
   const one = candidates.length === 1 ? candidates[0] : null
   const [format, setFormatState] = useState<LabelFormat>(() => readLabelFormat())
@@ -121,6 +125,32 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
     window.addEventListener('afterprint', clear)
     return () => window.removeEventListener('afterprint', clear)
   }, [testOnly])
+  /**
+   * The printed mark (v2.7519): a box whose label went out is marked on its row, so Print labels can say which boxes
+   * still wait. The line under a run counts the boxes that had no mark before, and its press takes those back off for
+   * a print that did not come out. A test strip marks nothing.
+   */
+  const [markNote, setMarkNote] = useState<{ ids: string[]; off: boolean } | null>(null)
+  const markPrinted = (ids: ReadonlyArray<string>) => {
+    if (ids.length === 0) return
+    const fresh = newlyMarkedIds(ids, containers)
+    mark(ids, new Date().toISOString())
+    setMarkNote(fresh.length > 0 ? { ids: fresh, off: false } : null)
+  }
+  const takeMarkOff = () => {
+    if (!markNote || markNote.off) return
+    mark(markNote.ids, null)
+    setMarkNote({ ids: markNote.ids, off: true })
+  }
+  /** The boxes the print window was opened on: marked once that window closes, since the app cannot see the paper. */
+  const windowRun = useRef<string[] | null>(null)
+  const markPrintedRef = useRef(markPrinted)
+  markPrintedRef.current = markPrinted
+  useEffect(() => {
+    const done = () => { const ids = windowRun.current; windowRun.current = null; if (ids) markPrintedRef.current(ids) }
+    window.addEventListener('afterprint', done)
+    return () => window.removeEventListener('afterprint', done)
+  }, [])
   const tape = format === 'tape'
   const copies = tape ? copiesState : 1
   // Straight to the P-touch over USB (v2.6865): where the browser can, tape goes that way unless the print window is asked for.
@@ -254,6 +284,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
     setUsbSlip(null)
     setSentWords(null)
     setRestWords(null)
+    setMarkNote(null)
     setProgress({ done: 0, total: labels.length, strips: test ? [] : strips })
     stopRef.current = false
     setStopping(false)
@@ -276,6 +307,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
     }
     try {
       await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length, strips: test ? [] : strips }) }, () => stopRef.current)
+      if (!test) markPrinted(boxesWhoseLabelWent(strips, done))
       const today = todayYmdInAppTz()
       writeTapePrintedDay(today)
       setTapeDay(today)
@@ -292,6 +324,8 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
       // A run that stops part way leaves its last printed strip short of the cutter: the strips share one lead-in (v2.6881).
       const inside = done > 0 && done < labels.length ? ` ${PTOUCH_STRIP_INSIDE}` : ''
       setUsbSlip(`${tapeSentWords(done, labels.length, formatErrorMessage(e, PTOUCH_NOT_ANSWERING))}${inside}`)
+      // The strips that did come out are labels on boxes all the same.
+      if (!test) markPrinted(boxesWhoseLabelWent(strips, done))
       // What is kept reads on its own line under the printer's reason, which is long enough alone.
       setRestWords(keepTheRest() || null)
       // A printer that stopped answering needs connecting again.
@@ -314,8 +348,12 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
     }
     // The strip has to be alone on the page before the print window reads it.
     if (test) flushSync(() => setTestOnly(true))
+    else windowRun.current = shown.map((c) => c.id)
+    setMarkNote(null)
     print()
   }
+  /** Boxes that wear a label the app did not print: the ticked ones with no mark. */
+  const unmarkedShown = shown.filter((c) => !labelPrinted(c))
   const deadStyle: CSSProperties = dead ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}
   const lth: CSSProperties = { textAlign: 'left', padding: '0.2rem 0.3rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-700)', borderBottom: '2px solid #111827' }
   /** Rows tall enough for a pen on paper: about 8 mm printed. */
@@ -534,6 +572,13 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
           ) : null}
           {sentWords && !progress ? <div role="status" style={{ color: 'var(--text-green-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-usb-sent">{sentWords}</div> : null}
           {restWords && !progress ? <div role="status" style={{ color: 'var(--text-strong)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-rest">{restWords}</div> : null}
+          {markNote && !progress ? (
+            /* The printed mark (v2.7519): what was just marked, and the way back for a print that did not come out. */
+            <div role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', color: 'var(--text-700)', fontSize: '0.85rem' }} data-testid="labels-marked">
+              <span>{markNote.off ? unmarkedWords(markNote.ids.length) : `${markedWords(markNote.ids.length)} ${MARK_UNDO_ASK}`}</span>
+              {markNote.off ? null : <button type="button" style={quietLink} onClick={takeMarkOff} data-testid="labels-mark-off">{takeMarkOffLabel(markNote.ids.length)}</button>}
+            </div>
+          ) : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {direct && !link ? (
               /* Not connected yet: the press is the connection, since a print with no printer does nothing. */
@@ -544,7 +589,9 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
             {/* One strip before a run (punch list #304): the first ticked box, so the test is a real label and a wrong paper size costs one strip. */}
             {tape && !one && !(direct && !link) ? <button type="button" disabled={dead} aria-disabled={dead} style={{ ...btn, ...deadStyle }} onClick={() => run(true)} data-testid="labels-test-strip">{TAPE_TEST_STRIP_LABEL}</button> : null}
             {/* v2.6800 (punch list #294): one row per box for Brother's P-touch Editor, which merges a CSV into a tape label template. */}
-            {one ? null : <button type="button" style={{ ...quietLink, marginLeft: 'auto' }} title="One row per cage or box: the stencil, the place, the code with its dash, the address and the QR's text, for a label editor that merges a CSV" onClick={exportCsv}>Export the labels as a CSV</button>}
+            {/* A label from a CSV or made by hand (v2.7519): the app cannot see it, so a person says it. */}
+            {unmarkedShown.length > 0 && usbBusy == null ? <button type="button" style={{ ...quietLink, marginLeft: 'auto' }} title={MARK_AS_LABELLED_WHY} onClick={() => markPrinted(unmarkedShown.map((c) => c.id))} data-testid="labels-mark-said">{markAsLabelledLabel(unmarkedShown.length)}</button> : null}
+            {one ? null : <button type="button" style={{ ...quietLink, ...(unmarkedShown.length > 0 && usbBusy == null ? {} : { marginLeft: 'auto' }) }} title="One row per cage or box: the stencil, the place, the code with its dash, the address and the QR's text, for a label editor that merges a CSV" onClick={exportCsv}>Export the labels as a CSV</button>}
           </div>
         </div>
       </div>
