@@ -1358,6 +1358,11 @@ Since v2.5636 each notice and demand letter also writes a line in the job's trai
 
 Done: panes/tabs/dialogs listed in the Neighbours "extracted children" table (~2,600 lines out), plus every kernel above.
 
+Done in v2.7571, the first cut of the file itself: [`useLienDeskBoard.ts`](../src/components/jobs/useLienDeskBoard.ts) holds the By date view's logic as it stood, and `LienDesk.tsx` went from 5,371 lines to 5,103.
+The hook holds the To do rows, the Board, its picks, the leader's one press, the frame that pins the find box and the reminder to the leader, and the desk still draws `LienBoard`, `LienDoNowBar` and `LienDeskNextUp` from what it returns.
+The window flags the Board opens (`serveOpen`, `scansOpen`, `publicReview`, `publicPutBack`, `jobPath`) stay in the desk with their windows.
+The twelve steps below predate the Board, so this cut is not one of them, and none of the twelve is done.
+
 1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
 2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines;
    puts `jobBalance` under a test.
