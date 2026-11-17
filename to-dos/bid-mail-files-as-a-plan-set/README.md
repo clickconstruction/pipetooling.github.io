@@ -142,6 +142,12 @@ Built 2026-11-16, all four PRs. What was checked: each piece's tests, sweeps of 
 Messages, bids and the Development page, and a look at the press, its form, the result line and the kept mark with
 made-up rows at desktop and phone width.
 
+Looked at live on 2026-11-16 once PR 2 deployed, on a bid's invitation to bid in Messages: the press sits beside
+*Open the bid*, and its form fills the PDF, the name, the day and the memo and reads *Keep 1 file as a set on 589*.
+It was closed with *Not now*; nothing was kept. That look found two blemishes and confirmed the signature logo case,
+all three fixed in v2.7556. A tab running the old bundle shows no press until the app's *A new version is ready*
+banner is pressed.
+
 What was not: the function has not been watched filing into a real Drive folder from the app, and the History
 line's press, the list under Plan sets and the job's paper press on the mail's window were covered by render tests
-alone. The five steps above are that look.
+alone. The first real keep is the owner's, and the five steps above are that look.
