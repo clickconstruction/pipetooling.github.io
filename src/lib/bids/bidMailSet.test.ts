@@ -13,6 +13,7 @@ import {
   cameByMailMemo,
   fileSizeWords,
   isDriveFolderLink,
+  isInlinePicture,
   keepPressWords,
   mailBySet,
   mailKeptWords,
@@ -60,6 +61,33 @@ describe('bidMailState: what the mail offers', () => {
     expect(bidMailState(files)).toEqual({ kind: 'left', left: files })
     expect(nothingToKeepWords(1)).toBe('This mail’s file stayed in Gmail, so there is no copy here to keep on the bid.')
     expect(nothingToKeepWords(3)).toBe('This mail’s 3 files stayed in Gmail, so there is no copy here to keep on the bid.')
+  })
+})
+
+describe('a signature’s picture is not a file to keep (v2.7556)', () => {
+  it('knows the pictures an email program puts inside the words', () => {
+    for (const name of ['image001.png', 'image002.jpg', 'Image003.JPEG', 'image.png', ' image0.gif ']) expect(isInlinePicture({ name }), name).toBe(true)
+    for (const name of ['P-201-revised.pdf', 'site-photo.jpg', 'image001.pdf', 'marked image001.png', 'IMG_4411.jpg']) expect(isInlinePicture({ name }), name).toBe(false)
+  })
+  it('a mail that carries nothing else offers no press', () => {
+    expect(bidMailState([file({ id: 'logo', name: 'image001.png' })])).toEqual({ kind: 'none' })
+    // With a file that stayed in Gmail beside it, the mail still says why there is nothing to keep.
+    const big = file({ id: 'big', copied: false, leftWhy: 'too_big' })
+    expect(bidMailState([file({ id: 'logo', name: 'image001.png' }), big])).toEqual({ kind: 'left', left: [big] })
+    // Once its real files are kept, the logo does not bring the press back.
+    const kept = file({ id: 'a', setId: 'set-1' })
+    expect(bidMailState([kept, file({ id: 'logo', name: 'image001.png' })])).toEqual({ kind: 'kept', kept: [kept], left: [] })
+  })
+  it('beside a real file it is listed and starts unticked', () => {
+    const files = [file({ id: 'a' }), file({ id: 'logo', name: 'image001.png' })]
+    const state = bidMailState(files)
+    expect(state.kind).toBe('keep')
+    if (state.kind !== 'keep') throw new Error('not a keep')
+    expect(state.ready.map((f) => f.id)).toEqual(['a', 'logo'])
+    expect(bidMailDraft(mail, state.ready, []).picked).toEqual(['a'])
+  })
+  it('the list under Plan sets leaves out a mail that carries only one', () => {
+    expect(bidMailLines([{ id: 'm1', at: '2026-11-16T15:04:00.000Z', subject: 'Thanks', who_text: 'x', message_attachments: [{ kind: 'file', name: 'image001.png' }] }, { id: 'm2', at: '2026-11-16T15:04:00.000Z', subject: 'Specs', who_text: 'x', message_attachments: [{ kind: 'file', name: 'image001.png' }, { kind: 'file', name: 'specs.pdf' }] }]).map((m) => `${m.id}:${m.files}`)).toEqual(['m2:1'])
   })
 })
 

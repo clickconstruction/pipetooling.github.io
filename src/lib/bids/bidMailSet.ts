@@ -35,8 +35,18 @@ export function bidMailFiles(rows: ReadonlyArray<BidMailFileRow>): BidMailFile[]
 }
 
 /**
+ * A picture an email program put inside the mail's words, most often the logo in a signature: *image001.png*. It
+ * sits on the line as a file like any other, and it is not a set of plans. A mail that carries nothing else offers
+ * no press, and beside a real file it starts unticked (v2.7556, found on the first look at real mail: most mail
+ * carries one). A person can still tick it.
+ */
+export function isInlinePicture(f: { name: string }): boolean {
+  return /^image\d{0,4}\.(png|jpe?g|gif|bmp)$/i.test(f.name.trim())
+}
+
+/**
  * What the mail offers.
- *  - `none`: the mail carries no file. It is already on the bid's history, and there is nothing to keep.
+ *  - `none`: the mail carries no file, or nothing but a signature's picture. It is already on the bid's history, and there is nothing to keep.
  *  - `keep`: at least one file we hold is in no set yet. The press shows.
  *  - `kept`: every file we hold is in a set. The mail says so, with the door to the set.
  *  - `left`: the mail has files and we hold a copy of none, so nothing can be filed. It says why.
@@ -52,9 +62,9 @@ export function bidMailState(files: ReadonlyArray<BidMailFile>): BidMailState {
   const kept = files.filter((f) => f.setId !== null)
   const ready = files.filter((f) => f.setId === null && f.copied)
   const left = files.filter((f) => f.setId === null && !f.copied)
-  if (ready.length > 0) return { kind: 'keep', ready, kept, left }
+  if (ready.some((f) => !isInlinePicture(f))) return { kind: 'keep', ready, kept, left }
   if (kept.length > 0) return { kind: 'kept', kept, left }
-  return { kind: 'left', left }
+  return left.length > 0 ? { kind: 'left', left } : { kind: 'none' }
 }
 
 /** The press on the mail, wherever the mail is read. */
@@ -87,14 +97,14 @@ const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b
 
 /**
  * The form as the press opens it: the set's name from the subject, its date the mail's own day, a memo that says it
- * came by mail and from whom, every file we hold ticked. When the bid already has a set of that name the app can
+ * came by mail and from whom, every file we hold ticked but a signature's picture. When the bid already has a set of that name the app can
  * file into, the files go into it, since a later mail of the same conversation carries the same subject.
  */
 export function bidMailDraft(mail: { subject: string | null | undefined; who: string | null | undefined; at: string }, ready: ReadonlyArray<BidMailFile>, sets: ReadonlyArray<Pick<BidPlanSetRow, 'id' | 'name' | 'link'>>): BidMailDraft {
   const planDate = calendarYmdInAppTzFromIso(mail.at)
   const name = nameFromSubject(mail.subject ?? '') || `Mail of ${formatWorkDateYmdMonthDayShort(planDate)}`
   const same = sets.find((s) => sameName(s.name, name) && isDriveFolderLink(s.link))
-  return { into: same ? same.id : INTO_NEW, name, planDate, memo: cameByMailMemo(mail.who, mail.at), picked: ready.map((f) => f.id) }
+  return { into: same ? same.id : INTO_NEW, name, planDate, memo: cameByMailMemo(mail.who, mail.at), picked: ready.filter((f) => !isInlinePicture(f)).map((f) => f.id) }
 }
 
 /** *Put them in*: a new set first, then the bid's sets the app can file into, each with its date. */
@@ -187,15 +197,15 @@ export const FROM_A_MAIL_PRESS = '+ From a mail on this bid'
 export const FROM_A_MAIL_HEAD = 'From a mail on this bid'
 
 /** A mail on the bid as the read embeds its files. */
-export type BidMailLineRow = { id: string; at: string; subject: string | null; who_text: string | null; message_attachments: Array<{ kind: string }> | null }
+export type BidMailLineRow = { id: string; at: string; subject: string | null; who_text: string | null; message_attachments: Array<{ kind: string; name?: string | null }> | null }
 
 /** A mail on the bid that carries at least one file, for the list under Plan sets. */
 export type BidMailLine = { id: string; at: string; subject: string; who: string; files: number }
 
-/** The bid's mail that carries a file, newest first as read; a mail whose only attachment is a link is left out. */
+/** The bid's mail that carries a file, newest first as read; a mail whose only attachment is a link or a signature's picture is left out. */
 export function bidMailLines(rows: ReadonlyArray<BidMailLineRow>): BidMailLine[] {
   return rows
-    .map((r) => ({ id: r.id, at: r.at, subject: (r.subject ?? '').trim() || '(no subject)', who: r.who_text ?? '', files: (r.message_attachments ?? []).filter((a) => a.kind === 'file').length }))
+    .map((r) => ({ id: r.id, at: r.at, subject: (r.subject ?? '').trim() || '(no subject)', who: r.who_text ?? '', files: (r.message_attachments ?? []).filter((a) => a.kind === 'file' && !isInlinePicture({ name: a.name ?? '' })).length }))
     .filter((m) => m.files > 0)
 }
 

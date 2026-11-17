@@ -11,6 +11,7 @@
 import type { ChangeAbout, ChangeLine, HistorySource } from './whatChanged'
 import type { MemberBid, MemberJob, Members } from './overview'
 import { samePlanLink } from '../bids/bidPlanSets'
+import { isInlinePicture } from '../bids/bidMailSet'
 
 export type { HistorySource } from './whatChanged'
 
@@ -212,10 +213,10 @@ export type TiedMailRow = {
 export const TIED_MAIL_COLUMNS = 'id, contact_id, bid_id, jobs_ledger_id, direction, who_user_id, who_text, at, subject, body, gmail_id'
 
 /** A file on a tied mail's line, as the page reads it for the bid's press (punch list #368). The mark's column may be absent on a read. */
-export type TiedMailFileRow = { message_id: string; kind: string; bucket_path: string | null; bid_plan_set_id?: string | null }
+export type TiedMailFileRow = { message_id: string; kind: string; bucket_path: string | null; name?: string | null; bid_plan_set_id?: string | null }
 
 /** The columns the page reads of a tied mail's files, without the kept mark and with it. */
-export const TIED_MAIL_FILE_COLUMNS = 'message_id, kind, bucket_path'
+export const TIED_MAIL_FILE_COLUMNS = 'message_id, kind, bucket_path, name'
 export const TIED_MAIL_FILE_COLUMNS_WITH_MARK = `${TIED_MAIL_FILE_COLUMNS}, bid_plan_set_id`
 
 /** The press on a bid's mail line that carries files it could keep: *Keep its file…*, *Keep its 2 files…*. */
@@ -268,13 +269,13 @@ export function mailLines(
   },
 ): ChangeLine[] {
   const contactById = new Map(ctx.contacts.map((c) => [c.id, c]))
-  // A mail's files by its line: how many we hold that are in no set yet, and how many already are. A link is no file.
+  // A mail's files by its line: how many we hold that are in no set yet, and how many already are. A link is no file, and a signature's picture is not one to keep (v2.7556).
   const filesByMail = new Map<string, { ready: number; kept: number }>()
   for (const f of ctx.files ?? []) {
     if (f.kind !== 'file') continue
     const n = filesByMail.get(f.message_id) ?? { ready: 0, kept: 0 }
     if (f.bid_plan_set_id) n.kept += 1
-    else if (f.bucket_path) n.ready += 1
+    else if (f.bucket_path && !isInlinePicture({ name: f.name ?? '' })) n.ready += 1
     filesByMail.set(f.message_id, n)
   }
   const seenIds = new Set<string>()
