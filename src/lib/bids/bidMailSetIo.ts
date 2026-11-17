@@ -9,7 +9,7 @@ import { supabase } from '../supabase'
 import { fnProblem, type FnResult } from '../gc/gcIo'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { BID_PLAN_SET_SELECT, type BidPlanSetRow } from './bidPlanSets'
-import { bidMailFiles, mailBySet, type BidMailFile, type BidMailFileRow, type SetMail, type SetMailRow } from './bidMailSet'
+import { bidMailFiles, bidMailLines, mailBySet, type BidMailFile, type BidMailFileRow, type BidMailLine, type BidMailLineRow, type SetMail, type SetMailRow } from './bidMailSet'
 
 export type KeptSet = { id: string; bid_id: string; name: string; link: string }
 export type KeepReply = { set: KeptSet; folderUrl: string; made: boolean; reused: boolean }
@@ -26,6 +26,8 @@ export type BidMailSetIo = {
   saveAttachment(setId: string, attachmentId: string): Promise<FiledOnBid>
   /** The mail each of these sets came from, for the chip and the door on the bid's Plan sets. A courtesy: a read that fails answers none. */
   mailOfSets(setIds: ReadonlyArray<string>): Promise<Map<string, SetMail>>
+  /** The bid's mail that carries a file, newest first, for the list under Plan sets. A read that fails throws. */
+  mailsOf(bidId: string): Promise<BidMailLine[]>
 }
 
 const FILE_COLUMNS = 'id, name, mime, kind, bucket_path, left_in_gmail, size_bytes'
@@ -73,6 +75,11 @@ export const supabaseBidMailSetIo: BidMailSetIo = {
     } catch {
       return new Map()
     }
+  },
+  async mailsOf(bidId) {
+    const r = await supabase.from('messages').select('id, at, subject, who_text, message_attachments(kind)').eq('bid_id', bidId).eq('channel', 'email').order('at', { ascending: false }).limit(100)
+    checkSupabaseError(r, 'read mail on this bid')
+    return bidMailLines((r.data ?? []) as unknown as BidMailLineRow[])
   },
   async saveAttachment(setId, attachmentId) {
     const r = (await supabase.functions.invoke('bid-plan-set-files', { body: { action: 'save_attachment', set_id: setId, attachment_id: attachmentId } })) as FnResult

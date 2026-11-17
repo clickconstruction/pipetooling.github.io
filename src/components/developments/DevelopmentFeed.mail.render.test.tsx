@@ -14,6 +14,11 @@ import { threadHrefByKind } from '../../lib/messages/customerThread'
 import { DevelopmentFeed } from './DevelopmentFeed'
 import { DevelopmentLineWindow } from './DevelopmentLineWindow'
 
+// The bid's press reads the mail's files itself (its own render test); here it stands in as what it was handed.
+vi.mock('../bids/BidMailSetDoor', () => ({
+  BidMailSetDoor: (p: { bidId: string; bidLabel: string; messageId: string }) => <span data-bid-door>{`${p.bidLabel}|${p.bidId}|${p.messageId}`}</span>,
+}))
+
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
@@ -91,5 +96,32 @@ describe('DevelopmentLineWindow: the whole of a tied mail', () => {
     renderWithProviders(<DevelopmentLineWindow line={{ id: 'note:1', at: '2026-11-16T15:04:00.000Z', kind: 'note', verb: 'Note', about: onJob, detail: 'Called the super.', by: 'Sam', waitingDays: null }} onClose={() => {}} openAbout={() => {}} onOpenThread={() => {}} />)
     expect(screen.queryByTestId('history-line-window-subject')).toBeNull()
     expect(screen.queryByText('Open in Messages')).toBeNull()
+  })
+
+  it('a bid’s mail that carries files draws the bid’s press for a reader who may keep them, and none without that (punch list #368)', () => {
+    const line = lines([mail({ id: 'm1' })])[0]!
+    const withFiles = { ...line, mail: { messageId: 'm1', bidId: 'b401', bidLabel: 'BP401', ready: 2, kept: 0 } }
+    const first = renderWithProviders(<DevelopmentLineWindow line={withFiles} onClose={() => {}} openAbout={() => {}} onOpenThread={() => {}} onKeptFiles={() => {}} />)
+    expect(within(screen.getByTestId('history-line-window-keep')).getByText('BP401|b401|m1')).toBeTruthy()
+    first.unmount()
+    renderWithProviders(<DevelopmentLineWindow line={withFiles} onClose={() => {}} openAbout={() => {}} onOpenThread={() => {}} />)
+    expect(screen.queryByTestId('history-line-window-keep')).toBeNull()
+  })
+})
+
+describe('DevelopmentFeed: a bid’s mail that carries files (punch list #368)', () => {
+  const withFiles = (ready: number, kept: number) => lines([mail({ id: 'm1' })]).map((l) => ({ ...l, mail: { messageId: 'm1', bidId: 'b401', bidLabel: 'BP401', ready, kept } }))
+  it('the line’s press opens the line’s window, where the form is', () => {
+    const onMore = vi.fn()
+    const feed = withFiles(2, 0)
+    renderWithProviders(<DevelopmentFeed lines={feed} sinceIndex={null} lastLooked={null} openAbout={() => {}} olderOpen={false} onToggleOlder={() => {}} onMore={onMore} onOpenThread={() => {}} />)
+    fireEvent.click(within(screen.getByTestId('history-mail-line')).getByText('Keep its 2 files… ›'))
+    expect(onMore).toHaveBeenCalledWith(feed[0])
+  })
+  it('once the files are kept the line says so and offers no press', () => {
+    renderWithProviders(<DevelopmentFeed lines={withFiles(0, 2)} sinceIndex={null} lastLooked={null} openAbout={() => {}} olderOpen={false} onToggleOlder={() => {}} onMore={() => {}} onOpenThread={() => {}} />)
+    const row = screen.getByTestId('history-mail-line')
+    expect(within(row).getByTestId('history-mail-kept').textContent).toContain('kept on the bid')
+    expect(within(row).queryByText(/Keep its/)).toBeNull()
   })
 })

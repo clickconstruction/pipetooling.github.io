@@ -20,8 +20,10 @@ import { fetchBidVersionNames } from '../../lib/bids/bidVersionNames'
 import { partMovedOnNotes, PRICED_ON_WORDS, pricedOnItem, pricedOnLine, type BidJobPlanState } from '../../lib/bids/bidPricedOn'
 import { supabaseBidPricedOnIo, type BidPricedOnIo } from '../../lib/bids/bidPricedOnIo'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
-import { FROM_MAIL_CHIP, THE_MAIL_DOOR, THE_MAIL_DOOR_TIP, type SetMail } from '../../lib/bids/bidMailSet'
+import { FROM_A_MAIL_HEAD, FROM_A_MAIL_PRESS, FROM_MAIL_CHIP, THE_MAIL_DOOR, THE_MAIL_DOOR_TIP, bidMailLineWords, type BidMailLine, type SetMail } from '../../lib/bids/bidMailSet'
 import { supabaseBidMailSetIo, type BidMailSetIo } from '../../lib/bids/bidMailSetIo'
+import { BidMailSetDoor } from './BidMailSetDoor'
+import { EmptyState } from '../EmptyState'
 import type { ContactKind } from '../../lib/contacts/kernel'
 import { threadHrefByKind } from '../../lib/messages/customerThread'
 
@@ -51,7 +53,9 @@ export type BidPlanSetsFieldProps = {
    */
   host?: 'form' | 'window'
   /** The read behind a set's *From a mail* chip (punch list #368); a test hands in a fake. */
-  mailIo?: Pick<BidMailSetIo, 'mailOfSets'>
+  mailIo?: Pick<BidMailSetIo, 'mailOfSets'> & Partial<BidMailSetIo>
+  /** The bid's number as the mail press names it: *B482*. Without it the press says *this bid*. */
+  bidLabel?: string
 }
 
 type Draft = { name: string; planDate: string; memo: string; link: string }
@@ -70,7 +74,7 @@ async function probeLink(link: string): Promise<ProbeAnswer | null> {
   }
 }
 
-export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnSetId = null, pricedOnIo = supabaseBidPricedOnIo, host = 'form', mailIo = supabaseBidMailSetIo }: BidPlanSetsFieldProps) {
+export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnSetId = null, pricedOnIo = supabaseBidPricedOnIo, host = 'form', mailIo = supabaseBidMailSetIo, bidLabel = 'this bid' }: BidPlanSetsFieldProps) {
   const inForm = host === 'form'
   const { user } = useAuth()
   const jobFormModal = useJobFormModal()
@@ -80,6 +84,17 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
   const [versionNames, setVersionNames] = useState<ReadonlyMap<string, string>>(new Map())
   // The mail a set's files came with (punch list #368): the chip and the door back to it. A courtesy read.
   const [fromMail, setFromMail] = useState<ReadonlyMap<string, SetMail>>(new Map())
+  // + From a mail on this bid: the bid's mail that carries a file, read when the list opens; null while closed.
+  const [mails, setMails] = useState<{ state: 'reading' } | { state: 'read'; rows: BidMailLine[] } | { state: 'failed'; why: string } | null>(null)
+  const openMails = useCallback(async () => {
+    if (!mailIo.mailsOf) return
+    setMails({ state: 'reading' })
+    try {
+      setMails({ state: 'read', rows: await mailIo.mailsOf(bidId) })
+    } catch (e) {
+      setMails({ state: 'failed', why: formatErrorMessage(e, 'The mail on this bid did not read.') })
+    }
+  }, [mailIo, bidId])
   const [loaded, setLoaded] = useState(false)
   const [gen, setGen] = useState(0)
   const [adding, setAdding] = useState(false)
@@ -429,10 +444,50 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setAdding(true)} style={{ ...btn, marginTop: '0.5rem', border: '1px dashed var(--border-strong)', background: 'var(--bg-subtle)' }}>
-          + Add a set of plans
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+          <button type="button" onClick={() => setAdding(true)} style={{ ...btn, border: '1px dashed var(--border-strong)', background: 'var(--bg-subtle)' }}>
+            + Add a set of plans
+          </button>
+          {mailIo.mailsOf && !mails ? (
+            <button type="button" onClick={() => void openMails()} title="The mail tied to this bid that carries a file: keep its files here as a set of plans" data-testid="bid-plan-sets-from-mail" style={{ ...btn, border: '1px dashed var(--border-strong)', background: 'var(--bg-subtle)' }}>
+              {FROM_A_MAIL_PRESS}
+            </button>
+          ) : null}
+        </div>
       )}
+      {mails ? (
+        <div data-testid="bid-plan-sets-mails" style={{ marginTop: '0.5rem', padding: '0.6rem 0.7rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', display: 'grid', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
+            <strong style={{ fontSize: '0.85rem' }}>{FROM_A_MAIL_HEAD}</strong>
+            <button type="button" onClick={() => setMails(null)} style={btn}>
+              Close
+            </button>
+          </div>
+          {mails.state === 'reading' ? <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Reading the mail on this bid…</div> : null}
+          {mails.state === 'failed' ? (
+            <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-700)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {mails.why}
+              <button type="button" onClick={() => void openMails()} style={btn}>
+                Read again
+              </button>
+            </div>
+          ) : null}
+          {mails.state === 'read' && mails.rows.length === 0 ? <EmptyState main="Nothing waiting on this bid’s mail." tail="A mail tied to this bid that carries a file shows here." compact /> : null}
+          {mails.state === 'read'
+            ? mails.rows.map((m) => (
+                <div key={m.id} data-testid="bid-plan-sets-mail" style={{ display: 'grid', gap: '0.3rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.85rem', overflowWrap: 'anywhere' }}>{m.subject}</div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{bidMailLineWords(m)}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <BidMailSetDoor bidId={bidId} bidLabel={bidLabel} messageId={m.id} mail={{ subject: m.subject, who: m.who, at: m.at }} io={mailIo.filesOf ? (mailIo as BidMailSetIo) : undefined} onKept={() => setGen((g) => g + 1)} />
+                  </div>
+                </div>
+              ))
+            : null}
+        </div>
+      ) : null}
       {error ? (
         <div style={{ fontSize: '0.8rem', color: 'var(--text-red-700)', marginTop: '0.35rem' }}>{error}</div>
       ) : null}
