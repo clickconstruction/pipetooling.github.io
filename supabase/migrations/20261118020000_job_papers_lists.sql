@@ -17,6 +17,8 @@ SET lock_timeout = '3s';
 --   * The two functions the schedule emails read, list_job_schedule_blocks_for_schedule_email and
 --     list_schedule_blocks_for_share, blank a block's job name, address and note for a person locked out of it.
 --
+--   * job_papers_roster leaves the walk tester out of the office it lists.
+--
 -- Nothing changes while no job requires a paper: every answer begins with the look at job_required_papers' live rows.
 -- No CREATE TABLE. Idempotent: CREATE OR REPLACE with unchanged RETURNS, so the grants in force stay.
 
@@ -519,3 +521,104 @@ AS $function$
     )
   ORDER BY assignee_name ASC, jsb.work_date ASC, jsb.time_start ASC;
 $function$;
+
+-- 8) job_papers_roster, from 20261117220000: the office set leaves the walk tester out, as it leaves out the sample
+-- accounts. The first walk on prod listed it among the office.
+CREATE OR REPLACE FUNCTION public.job_papers_roster(p_job_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = public
+SET row_security = off
+AS $$
+DECLARE
+  v_out jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_office_staff() THEN
+    RAISE EXCEPTION 'Only the office reads who has signed a job''s papers.' USING ERRCODE = '42501';
+  END IF;
+
+  WITH live AS (
+    SELECT r.id, r.paper_name, r.form_template_id, r.required_at, r.book_document_id
+    FROM public.job_required_papers r WHERE r.job_id = p_job_id AND r.removed_at IS NULL
+  ), by_user AS (
+    SELECT u.id AS user_id, 'office'::text AS way
+    FROM public.users u
+    WHERE u.role::text IN ('dev', 'master_technician', 'assistant', 'controller')
+      AND u.archived_at IS NULL AND u.login_attached_at IS NOT NULL
+      AND NOT u.is_digital_twin AND NOT u.is_sample AND NOT u.is_walk_tester
+    UNION
+    SELECT m.user_id, 'crew' FROM public.jobs_ledger_team_members m WHERE m.job_id = p_job_id
+    UNION
+    SELECT b.assignee_user_id, 'crew' FROM public.job_schedule_blocks b
+    WHERE b.job_id = p_job_id AND b.work_date >= date_trunc('week', public.app_today())::date - 7
+  ), by_person AS (
+    SELECT a.person_id, 'sub'::text AS way
+    FROM public.people_labor_job_assignees a
+    JOIN public.people_labor_jobs lj ON lj.id = a.labor_job_id
+    WHERE lj.job_ledger_id = p_job_id
+    UNION
+    SELECT c.person_id, 'sub' FROM public.step_commitments c
+    WHERE c.job_id = p_job_id AND c.status NOT IN ('draft', 'declined', 'cancelled')
+    UNION
+    SELECT d.person_id, 'paper' FROM public.person_contract_documents d
+    JOIN live ON live.id = d.job_required_paper_id
+    WHERE d.person_id IS NOT NULL
+  ), members AS (
+    SELECT bu.user_id,
+      (SELECT p.id FROM public.people p WHERE p.account_user_id = bu.user_id AND p.archived_at IS NULL LIMIT 1) AS person_id,
+      bu.way
+    FROM by_user bu
+    JOIN public.users u ON u.id = bu.user_id
+    WHERE u.archived_at IS NULL AND NOT u.is_digital_twin
+    UNION ALL
+    SELECT p.account_user_id, p.id, bp.way
+    FROM by_person bp
+    JOIN public.people p ON p.id = bp.person_id
+    WHERE p.archived_at IS NULL
+  ), folded AS (
+    SELECT coalesce(m.person_id, m.user_id) AS key,
+      max(m.person_id::text)::uuid AS person_id,
+      max(m.user_id::text)::uuid AS user_id,
+      array_agg(DISTINCT m.way) FILTER (WHERE m.way <> 'paper') AS ways
+    FROM members m
+    WHERE coalesce(m.person_id, m.user_id) IS NOT NULL
+    GROUP BY coalesce(m.person_id, m.user_id)
+  ), rows AS (
+    SELECT f.key, f.person_id, f.user_id, coalesce(f.ways, '{}'::text[]) AS ways,
+      coalesce(nullif(btrim(p.name), ''), nullif(btrim(u.name), ''), 'No name') AS name,
+      coalesce(u.role::text, p.kind, '') AS role,
+      (u.id IS NOT NULL AND u.login_attached_at IS NOT NULL) AS has_login
+    FROM folded f
+    LEFT JOIN public.people p ON p.id = f.person_id
+    LEFT JOIN public.users u ON u.id = f.user_id
+  )
+  SELECT jsonb_build_object(
+    'job_number', public.job_paper_job_number(p_job_id),
+    'papers', coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+        'id', l.id, 'paper_name', l.paper_name, 'is_form', l.form_template_id IS NOT NULL,
+        'book_document_id', l.book_document_id, 'required_at', l.required_at
+      ) ORDER BY l.required_at, l.id) FROM live l
+    ), '[]'::jsonb),
+    'people', coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+        'key', r.key, 'person_id', r.person_id, 'user_id', r.user_id, 'name', r.name, 'role', r.role,
+        'ways', to_jsonb(r.ways), 'has_login', r.has_login,
+        'linked', r.person_id IS NOT NULL,
+        'papers', coalesce((
+          SELECT jsonb_agg(jsonb_build_object(
+            'required_paper_id', l.id, 'document_id', d.id, 'status', coalesce(d.status, 'none'),
+            'signed_at', CASE WHEN d.status = 'signed' THEN d.signed_at END
+          ) ORDER BY l.required_at, l.id)
+          FROM live l
+          LEFT JOIN public.person_contract_documents d ON d.job_required_paper_id = l.id AND d.person_id = r.person_id
+        ), '[]'::jsonb)
+      ) ORDER BY
+        CASE WHEN 'office' = ANY (r.ways) THEN 0 WHEN 'crew' = ANY (r.ways) THEN 1 WHEN 'sub' = ANY (r.ways) THEN 2 ELSE 3 END,
+        lower(r.name), r.key)
+      FROM rows r
+    ), '[]'::jsonb)
+  ) INTO v_out;
+  RETURN v_out;
+END;
+$$;
