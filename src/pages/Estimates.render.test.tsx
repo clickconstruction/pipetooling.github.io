@@ -246,6 +246,10 @@ describe('Estimates — a draft', () => {
     expect(screen.getByDisplayValue('ZZ Water heater')).toBeTruthy()
     expect(screen.getByDisplayValue('ZZ terms')).toBeTruthy()
     expect(screen.getByText('Customer experience')).toBeTruthy()
+    // The two fieldsets that are their own pieces (v2.7618): Supporting document and Delivery.
+    expect(screen.getByRole('button', { name: 'Check link' })).toBeTruthy()
+    expect(screen.getByText('Email when customer accepts')).toBeTruthy()
+    expect(screen.getByText('Internal notes')).toBeTruthy()
     // Nothing of the sent side on a draft.
     expect(screen.queryByTestId('estimate-resend-link-panel')).toBeNull()
     expect(screen.queryByText('Acceptance notify recipients')).toBeNull()
