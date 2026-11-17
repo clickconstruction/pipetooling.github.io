@@ -75,8 +75,9 @@ export function taskHearsId(item: { notify_on_complete_user_id?: string | null; 
 }
 
 /** The small-caps labels over the parts of the day, with their counts. */
-export function todayPartLabel(part: 'next' | 'then' | 'done', count: number): string {
+export function todayPartLabel(part: 'next' | 'then' | 'stuck' | 'done', count: number): string {
   if (part === 'next') return 'Next'
+  if (part === 'stuck') return `Stuck · ${count}`
   return part === 'then' ? `Then · ${count}` : `Done today · ${count}`
 }
 
@@ -116,6 +117,12 @@ export function stillOpenAge(scheduledDate: string, dueDate: string | null | und
   const words = `given ${dayLabel(scheduledDate)}`
   if (days == null || days <= 0) return { words, pill: null, tone: 'soft' }
   return { words, pill: days === 1 ? '1 day' : `${days} days`, tone: days >= STILL_OPEN_OLD_DAYS ? 'old' : 'soft' }
+}
+
+/** A still-open task's age as one line, for a sheet that has no room for a pill: *given Thu, Aug 20 · 88 days*. */
+export function stillOpenMeta(scheduledDate: string, dueDate: string | null | undefined, todayStr: string): string {
+  const age = stillOpenAge(scheduledDate, dueDate, todayStr)
+  return age.pill ? `${age.words} · ${age.pill}` : age.words
 }
 
 /** True when the task has a due day and it has passed: the one case the list and the map draw in red. */

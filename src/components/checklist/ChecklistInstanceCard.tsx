@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type 
 import {
   cardStatus,
   commentCount,
+  droppedReason,
+  stuckReason,
   stripStamp,
   type ChecklistCardEvent,
 } from '../../lib/checklistCardEvents'
@@ -17,12 +19,15 @@ import { ChecklistItemActivity, type ChecklistItemActivityItem } from './Checkli
 import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
 import { TaskPlaceAddHere } from './TaskPlaceAddHere'
 import { TaskMapBlock, TaskMapLine } from './TaskMapBlock'
+import { TaskDoerMapPress } from './TaskDoerMapPress'
 import { useTaskMapWhole } from '../../hooks/useTaskMapWhole'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { MAP_PRESS_LABEL, MAP_PRESS_TITLE, PHOTO_PRESS_LABEL, beforeStartWords, doneLineWords, justDoneWords, notePressLabel, taskMapIdOf } from '../../lib/tasks/todayPage'
 import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
+import { doerLineWords, droppedLineWords, stuckChipWords } from '../../lib/tasks/taskDoerActs'
+import { dayLabel } from '../../lib/checklistDueDates'
 
 export type ChecklistInstanceCardInstance = {
   id: string
@@ -125,6 +130,11 @@ type ChecklistInstanceCardProps = {
    * an open card with no place then offers one quiet line. Called once the place has landed.
    */
   onPlaceAdded?: () => void
+  /**
+   * The fresh look, on a task with no map (punch list #369, step C2): the person doing the task may draw one or leave a
+   * point, and it goes on the task. Passed only where that is true. Called once the map is on the task.
+   */
+  onMapAdded?: () => void
 }
 
 /**
@@ -167,6 +177,7 @@ export function ChecklistInstanceCard({
   openSignal = 0,
   spotPhotoUrl = null,
   onPlaceAdded,
+  onMapAdded,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   useEffect(() => {
@@ -518,13 +529,19 @@ export function ChecklistInstanceCard({
     <button type="button" data-fresh-map onClick={() => void openPaintedMap(freshMapId)} style={{ ...TASK_PILL_STYLE, ...TASK_PILL_LIT_STYLE }} title={MAP_PRESS_TITLE}>
       {MAP_PRESS_LABEL}
     </button>
+  ) : onMapAdded ? (
+    <TaskDoerMapPress instanceId={instance.id} taskWords={titleText} place={place} onAdded={onMapAdded} />
   ) : null
   const freshBefore = !isCompleted && status.kind !== 'reopened' ? beforeStartWords(hearsName, asksForPhoto) : null
+  // Step C6: the person has said something is in the way. The task wears it in amber until it is taken off or done.
+  const freshStuck = !isCompleted ? stuckReason(events) : null
+  // Step C4: a task closed as no longer applying is a finished task that says so, in place of *Done*.
+  const freshDropped = isCompleted ? droppedReason(events) : null
   const freshStatus =
     status.kind === 'waiting_review' ? (
-      <div data-fresh-done style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
-        {doneLineWords(stripStamp(status.at), hearsName)}
-        {justDone ? <span data-fresh-just-done style={{ display: 'block', color: 'var(--text-green-700)' }}>{justDoneWords(hearsName)}</span> : null}
+      <div data-fresh-done {...(freshDropped !== null ? { 'data-fresh-dropped': '' } : {})} style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+        {freshDropped !== null ? droppedLineWords(stripStamp(status.at), freshDropped) : doneLineWords(stripStamp(status.at), hearsName)}
+        {justDone && freshDropped === null ? <span data-fresh-just-done style={{ display: 'block', color: 'var(--text-green-700)' }}>{justDoneWords(hearsName)}</span> : null}
       </div>
     ) : status.kind === 'signed_off' ? (
       <div data-fresh-done style={{ fontSize: '0.78rem', color: 'var(--text-green-700)', marginTop: 2 }}>
@@ -595,6 +612,13 @@ export function ChecklistInstanceCard({
           </div>
           {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} old={placeOld} far={placeFar} /> : null}
           {!place ? <TaskMapLine map={taskMap} /> : null}
+          {freshStuck !== null ? (
+            <div style={{ marginTop: 4 }}>
+              <span data-fresh-stuck style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, padding: '2px 9px', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)' }}>
+                {stuckChipWords(freshStuck)}
+              </span>
+            </div>
+          ) : null}
           {freshBefore ? (
             <div data-fresh-before style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
               {freshBefore}
@@ -861,6 +885,14 @@ export function ChecklistInstanceCard({
                       <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span> ·{' '}
                       {typeof e.percent === 'number' ? `${e.percent}%` : 'moved it'} · {stripStamp(e.created_at)}
                       {e.body ? <> · “{e.body}”</> : null}
+                    </div>
+                  )
+                }
+                const doerWords = doerLineWords(e.event_type, e.event_type === 'moved' && /^\d{4}-\d{2}-\d{2}$/.test(e.body) ? dayLabel(e.body) : e.body)
+                if (doerWords) {
+                  return (
+                    <div key={e.id} data-doer-line={e.event_type} style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span> {doerWords} · {stripStamp(e.created_at)}
                     </div>
                   )
                 }

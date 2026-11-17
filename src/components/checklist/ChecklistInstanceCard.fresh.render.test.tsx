@@ -12,7 +12,7 @@ import { settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 const openPaintedMap = vi.fn().mockReturnValue(true)
-vi.mock('../../lib/paintedMap/paintedMapDoor', () => ({ openPaintedMap: (...a: unknown[]) => openPaintedMap(...a) }))
+vi.mock('../../lib/paintedMap/paintedMapDoor', () => ({ openPaintedMap: (...a: unknown[]) => openPaintedMap(...a), paintPaintedMap: () => false }))
 vi.mock('../../hooks/useTaskMapWhole', () => ({ useTaskMapWhole: () => ({ kind: 'none' }) }))
 
 function ev(partial: Partial<ChecklistCardEvent> & { event_type: string; created_at: string }): ChecklistCardEvent {
@@ -200,5 +200,49 @@ describe('ChecklistInstanceCard, the fresh look', () => {
     renderFresh()
     await settle()
     expect(screen.queryByRole('button', { name: '🗺 Map' })).toBeNull()
+  })
+
+  it('a task with no map offers an unlit 🗺 Map press once the person may add one, done or not', async () => {
+    const { unmount } = renderFresh({ onMapAdded: vi.fn() })
+    await settle()
+    const map = screen.getByRole('button', { name: '🗺 Map' })
+    expect(map.hasAttribute('data-doer-map')).toBe(true)
+    expect(map.style.fontWeight).not.toBe('700')
+    unmount()
+    renderFresh({ onMapAdded: vi.fn(), instance: { id: 'inst-1', completed_at: new Date().toISOString(), reviewed_at: null } })
+    await settle()
+    expect(screen.getByRole('button', { name: '🗺 Map' })).toBeTruthy()
+  })
+
+  it('a task that has a map keeps its lit press, which opens the map and offers no new one', async () => {
+    renderFresh({ onMapAdded: vi.fn(), mapId: 'map-9' })
+    await settle()
+    const map = screen.getByRole('button', { name: '🗺 Map' })
+    expect(map.hasAttribute('data-fresh-map')).toBe(true)
+  })
+
+  it('a task closed as no longer applying says so and why, in place of Done', async () => {
+    const at = new Date().toISOString()
+    renderFresh({
+      instance: { id: 'inst-1', completed_at: at, reviewed_at: null },
+      hearsName: 'Imani',
+      justDone: true,
+      events: [ev({ event_type: 'completed', created_at: at }), ev({ event_type: 'dropped', created_at: at, body: 'Plans changed' })],
+    })
+    await settle()
+    const line = document.querySelector('[data-fresh-dropped]')
+    expect(line?.textContent).toMatch(/^Closed .+ as no longer applying\. Plans changed\.$/)
+    expect(line?.textContent).not.toContain('hears it is done')
+    expect(document.querySelector('[data-fresh-just-done]')).toBeNull()
+  })
+
+  it('a stuck task wears an amber Stuck line with what is in the way, until it is taken off', async () => {
+    const { unmount } = renderFresh({ events: [ev({ event_type: 'stuck', created_at: '2026-11-16T15:00:00Z', body: 'Waiting on a part' })] })
+    await settle()
+    expect(document.querySelector('[data-fresh-stuck]')?.textContent).toBe('Stuck: Waiting on a part')
+    unmount()
+    renderFresh({ events: [ev({ event_type: 'stuck', created_at: '2026-11-16T15:00:00Z', body: 'Waiting on a part' }), ev({ event_type: 'unstuck', created_at: '2026-11-16T16:00:00Z' })] })
+    await settle()
+    expect(document.querySelector('[data-fresh-stuck]')).toBeNull()
   })
 })

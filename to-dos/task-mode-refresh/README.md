@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1 to B3 built (v2.7533, v2.7536, v2.7537, v2.7539, v2.7541) · steps C1 to D to build
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1 to C7 built (v2.7533, v2.7536, v2.7537, v2.7539, v2.7541, v2.7542, v2.7543, v2.7544, v2.7545, v2.7546, v2.7547, v2.7548) · C1's migration to push right after its merge · step D to build
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -11,10 +11,10 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: C1, the ground migration with no screen, pushed right after its merge. Then C2 to C7, the tools on it.
-size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: C1 to D (M · S · S · M · S · M · M · S · S · S)
+next: Push the C1 migration right after its merge. Then D, the three small ones.
+size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: D (S · S · S)
 blocker: none
-ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541
+ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
 
@@ -101,13 +101,13 @@ One small PR per line, each with its guide, release note and fragment.
 | B1 | Tool 6: ＋ Add a task for me, and Follow-up on a done task | none | S | built, v2.7537 |
 | B2 | Tool 5: who hears before the start, 📷 Photo on every card, and the photo and the note offered in words once a task is done (no sheet on every Mark done; see v2.7539) | none | S | built, v2.7539 |
 | B3 | Tool 8, first half: Map on a task that has a map opens it at Add to it | none | S | built, v2.7541 |
-| C1 | The ground for the rest, no screen: the new thread marks and one narrow function per act | migration | M | |
-| C2 | Tool 8, second half: the doer paints a map or leaves a point on a task with none | uses C1 | S | |
-| C3 | Tool 1: Not today | uses C1 | S | |
-| C4 | Tool 3: No longer applies, drawn in History and Review | uses C1 | M | |
-| C5 | Tool 4: Go through the old ones | none | S | |
-| C6 | Tool 2: Can't do it, with the stuck list on Review | uses C1 | M | |
-| C7 | Tool 7: Hand it on. FWD becomes the same press and keeps the task whole | uses C1 | M | |
+| C1 | The ground for the rest, no screen: the new thread marks and one narrow function per act (`20261117120000_task_doer_acts.sql`, bed `task-doer-acts`) | migration | M | built, v2.7542; push after merge |
+| C2 | Tool 8, second half: the doer paints a map or leaves a point on a task with none | uses C1 | S | built, v2.7543 |
+| C3 | Tool 1: Not today, with the card's ⋯ More and the thread's words for every tool's line | uses C1 | S | built, v2.7544 |
+| C4 | Tool 3: No longer applies, drawn in History and Review. Not offered on a roadmap or a vehicle task, whose close would say work was done | uses C1 | M | built, v2.7545 |
+| C5 | Tool 4: Go through the old ones. Built after C6 | none | S | built, v2.7547 |
+| C6 | Tool 2: Can't do it, with the stuck list on Review. Built ahead of C5 | uses C1 | M | built, v2.7546 |
+| C7 | Tool 7: Hand it on. Both of the page's Forward windows call the same function and keep the task whole. Dashboard's My Inbox has a third Forward, not touched | uses C1 | M | built, v2.7548 |
 | D | Do first, Mark 3 done, Yesterday | none | S each | |
 
 ## How to verify

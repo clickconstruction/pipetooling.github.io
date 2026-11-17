@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -107,6 +107,16 @@ A tap on the picture opens the map too. You can add a place you find to it.
 
 A task that has a painted map wears a lit **🗺 Map** press. Press it and the map opens. Press **Draw a line** to trace a line with your finger. Press **＋ Place** to leave a point with a name, words and a photo. What you add is saved on the map for everyone who can open the task.
 
+## Draw a map for a task that has none
+
+A task with no map shows a plain **🗺 Map** press. Press it and pick how to start.
+
+- **Draw it by hand** lets you trace a line with your finger.
+- **Walk or drive it** paints the line as you go. It shows on a phone that can say where it is.
+- **Leave a point** lets you tap one spot and give it a name, words and a photo.
+
+Save in the map window. When you close it, the map goes on the task and the press lights up. The person who gave you the task can open the map. A map closed with nothing saved changes nothing.
+
 ## Add a place to a task that has none
 
 Some tasks come with no place. If you are standing at the task, you can add its place yourself.
@@ -165,11 +175,45 @@ Finished a task and it turned up more work? Press **Follow-up** on the finished 
 
 [Give someone a task](/help/give-someone-a-task) covers the rest of the window.
 
+## Move a task to another day
+
+Cannot do a one-time task today? Press **⋯ More** on the task, then **Not today**. Pick **Tomorrow**, **Monday**, or **Pick a day**. A green line says what will happen, like *It moves to Fri, Nov 20. Imani is told.* Then press the blue press, which names the day.
+
+The task keeps its place in your list, with its notes and photos. Its row then reads the new due day and stops reading late. The person who gave you the task gets a message. A row that was moved says so, like *moved twice*.
+
+A task that repeats has no **Not today**. A missed day of a repeating task drops off by itself.
+
+## Say you cannot do a task
+
+Something in the way? Press **⋯ More** on the task, then **Can't do it**. Press what is in the way, like **Waiting on a part**, or type your own words. The press names who is told, like {{button:blue|Tell Imani}}.
+
+The task stays yours. It wears an amber line, like *Stuck: Waiting on a part*, and sits under a **Stuck** label below the tasks you can do. The person who gave you the task gets a message, and the office sees every stuck task in one list.
+
+When the way is clear, press **⋯ More**, then **No longer stuck**. The office can also press **Sorted**, and you get a message. Finishing the task takes the mark off too.
+
+## Hand a task to someone else
+
+Is the task for someone else? Press **⋯ More** on the task, then **Hand it on**. Press **Back to Imani** to give it back to the person who gave it. Or type a name in **Find a person** and press that person. You can say why in the box below. The press names who takes it, like {{button:blue|Hand it to Hal}}.
+
+The task goes as it is. Its notes, its place and its photos go with it. The person who takes it gets a message. So does the person who gave it, when someone else takes it.
+
+A task that repeats is handed on for that day alone, and stays yours after. A roadmap task is handed on from the Roadmap.
+
+## Close a task that no longer applies
+
+Some tasks stop mattering. The work got done another way, or the plans changed. Press **⋯ More** on the task, then **No longer applies**. Press a reason, or type your own. Then press {{button:blue|Close this task}}.
+
+The task leaves your list. Under **Done today** its line says it was closed, like *Closed 12:22 PM as no longer applying*, with your reason after it. The person who gave you the task gets a message. That person can put the task back. You can put it back yourself from **History**.
+
+A task that repeats cannot be closed this way. Neither can a roadmap task or a vehicle task. For those, say why in a note.
+
 ## Still open: older work that still needs doing
 
 Below your Today list you may see a **Still open** list. It holds one-off tasks whose day came and went without getting done. Each row says when the task was given, like *given Thu, Jul 30*. A pill at the end of the row shows its age, like *20 days*. The pill turns {{chip:yellow|amber}} after a week. A task with a due day that has passed shows a {{chip:red|red}} pill, like *3 days late*.
 
-Check a task off right there when you knock it out. Or tap the row to read its notes first. The list shows three rows and folds the rest. Press **Show 5 more** to see them all. Daily and weekly tasks never pile up here. Only work that's still genuinely waiting does.
+Check a task off right there when you knock it out. Or tap the row to read its notes first. The open row also holds **⋯ More**.
+
+A long list is quicker to clear one task at a time. Press **Go through them** beside the list's name. Each task comes up by itself with its answers. Press **Done**, **Still on it**, **Can't do it**, **No longer applies** or **Skip**. A skipped task stays as it is. At the end a line says what changed, like *You sorted 3. 5 are as they were.* The list shows three rows and folds the rest. Press **Show 5 more** to see them all. Daily and weekly tasks never pile up here. Only work that's still genuinely waiting does.
 
 Nothing escalates on its own. An overdue one-off doesn't page anyone or move up someone else's list. What the office does see is its age. On Checklist → Manage the open one-offs sort oldest first. A chip turns {{chip:yellow|amber}} after a week and {{chip:red|red}} after a month. A **🔔 Remind** from whoever assigned it is a person deciding to nudge you, not a timer.
 

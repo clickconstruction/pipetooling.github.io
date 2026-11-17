@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { stuckReason, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { type LedgerInstance } from '../../lib/checklistHistoryLedger'
+import { PASS_MIN_TASKS, PASS_PRESS_LABEL, movedTimesWords, stuckChipWords } from '../../lib/tasks/taskDoerActs'
 import { showMoreLabel, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, type StillOpenTone } from '../../lib/tasks/todayPage'
 import type { LineState } from '../../lib/taskCriteria'
 import { useTaskCardSheets } from '../../hooks/useTaskCardSheets'
@@ -60,6 +61,8 @@ export function ChecklistOutstandingSection({
   openInstance,
   spotPhotoUrlFor,
   onPlaceAdded,
+  extrasFor,
+  onGoThrough,
 }: {
   instances: LedgerInstance[]
   eventsByInstance: Map<string, ChecklistCardEvent[]>
@@ -95,6 +98,10 @@ export function ChecklistOutstandingSection({
   spotPhotoUrlFor?: (inst: LedgerInstance) => string | null
   /** The person doing a task may add its missing place from where they stand (PR 8). Called once it has landed. */
   onPlaceAdded?: () => void
+  /** Quiet presses for one row, drawn at the top of its open panel: the doer's More (punch list #369, step C3). */
+  extrasFor?: (inst: LedgerInstance) => ReactNode
+  /** Go through the list one task at a time (punch list #369, step C5). The press shows once the list holds two tasks. */
+  onGoThrough?: () => void
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
@@ -119,7 +126,14 @@ export function ChecklistOutstandingSection({
     <section data-still-open style={{ marginBottom: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', margin: '0.9rem 2px 0.4rem' }}>
         <h3 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{stillOpenLabel(instances.length)}</h3>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{stillOpenOrderWords(instances.some((i) => stillOpenIsLate(i.checklist_items?.due_date ?? null, todayStr)))}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{stillOpenOrderWords(instances.some((i) => stillOpenIsLate(i.checklist_items?.due_date ?? null, todayStr)))}</span>
+          {onGoThrough && instances.length >= PASS_MIN_TASKS ? (
+            <button type="button" data-go-through onClick={onGoThrough} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, background: 'none', border: 'none', padding: 0, color: 'var(--text-blue-700)', cursor: 'pointer' }}>
+              {PASS_PRESS_LABEL}
+            </button>
+          ) : null}
+        </span>
       </div>
       <ul
         style={{
@@ -163,6 +177,7 @@ export function ChecklistOutstandingSection({
             placeFar={placeFarFor?.(inst) ?? null}
             spotPhotoUrl={spotPhotoUrlFor?.(inst) ?? null}
             onPlaceAdded={onPlaceAdded}
+            extras={extrasFor ? extrasFor(inst) : null}
             placedByName={(() => {
               const by = placeFor?.(inst)?.setBy
               return by && nameById?.[by] ? nameById[by]! : null
@@ -224,6 +239,7 @@ function OutstandingRow({
   placedByName,
   spotPhotoUrl,
   onPlaceAdded,
+  extras = null,
 }: {
   inst: LedgerInstance
   events: ChecklistCardEvent[]
@@ -254,8 +270,11 @@ function OutstandingRow({
   placedByName: string | null
   spotPhotoUrl: string | null
   onPlaceAdded?: () => void
+  extras?: ReactNode
 }) {
   const notes = events.filter((e) => e.event_type === 'comment').length
+  const stuck = stuckReason(events)
+  const moved = movedTimesWords(events.filter((e) => e.event_type === 'moved').length)
   const age = stillOpenAge(inst.scheduled_date, inst.checklist_items?.due_date ?? null, todayStr)
   const late = stillOpenIsLate(inst.checklist_items?.due_date ?? null, todayStr)
   // A map by itself is read for the row that has no place. With a place, the place's block reads its own way in.
@@ -318,6 +337,8 @@ function OutstandingRow({
             {lines.length > 0 ? <span> · {lines.filter((l) => l.checked).length} of {lines.length} done when…</span> : null}
             {photos.length > 0 ? <span> · 📷 {photos.length}</span> : null}
             {notes > 0 ? <span> · {notes} {notes === 1 ? 'note' : 'notes'}</span> : null}
+            {moved ? <span data-still-open-moved> · {moved}</span> : null}
+            {stuck !== null ? <span data-still-open-stuck style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}> · {stuckChipWords(stuck)}</span> : null}
           </span>
         </button>
         {age.pill ? (
@@ -331,6 +352,11 @@ function OutstandingRow({
       </div>
       {expanded ? (
         <div style={{ padding: '0 0.75rem 0.7rem 3.1rem' }}>
+          {extras ? (
+            <div data-still-open-extras style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', marginBottom: '0.6rem' }}>
+              {extras}
+            </div>
+          ) : null}
           {lines.length > 0 ? (
             <div style={{ marginBottom: '0.6rem' }}>
               <TaskLinesList lines={lines} onTick={onTickLine ? sheets.tickLine : undefined} readOnly={Boolean(inst.completed_at)} nameOf={nameOf} />

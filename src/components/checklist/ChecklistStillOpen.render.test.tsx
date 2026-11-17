@@ -14,7 +14,7 @@ function inst(id: string, title: string, scheduled: string, due: string | null =
   return { id, scheduled_date: scheduled, completed_at: null, checklist_items: { title, due_date: due, repeat_type: 'once', show_until_completed: true } } as unknown as LedgerInstance
 }
 
-function renderList(instances: LedgerInstance[], openInstance: { id: string; n: number } | null = null) {
+function renderList(instances: LedgerInstance[], openInstance: { id: string; n: number } | null = null, onGoThrough?: () => void) {
   const onToggleComplete = vi.fn()
   render(
     <ChecklistOutstandingSection
@@ -27,6 +27,7 @@ function renderList(instances: LedgerInstance[], openInstance: { id: string; n: 
       onToggleComplete={onToggleComplete}
       setError={() => {}}
       openInstance={openInstance}
+      onGoThrough={onGoThrough}
     />,
   )
   return { onToggleComplete }
@@ -86,5 +87,17 @@ describe('Still open', () => {
     const { onToggleComplete } = renderList(SIX.slice(0, 2))
     fireEvent.click(screen.getAllByRole('button', { name: 'Mark done' })[0]!)
     expect(onToggleComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('Go through them sits by the label once the list holds two tasks, and calls the page', () => {
+    const go = vi.fn()
+    renderList(SIX, null, go)
+    fireEvent.click(screen.getByRole('button', { name: 'Go through them' }))
+    expect(go).toHaveBeenCalledTimes(1)
+  })
+
+  it('one old task needs no pass, and a list with no pass handler offers none', () => {
+    renderList(SIX.slice(0, 1), null, vi.fn())
+    expect(screen.queryByRole('button', { name: 'Go through them' })).toBeNull()
   })
 })

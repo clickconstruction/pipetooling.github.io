@@ -1237,6 +1237,12 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   It is written by whoever may write the task, the database refuses a map the writer cannot open, and the doer's card reads the map under the caller's own RLS with no role check of its own: a map the reader may not open, or one that is gone, leaves the place as it was.
   Since v2.7364 a task may carry a map and no place (the **Map** press;
   a roadmap task since v2.7368), written by the same people under the same guard, and a map painted from that press (v2.7366) is on no job: its maker's and the office's, and whoever reads a task that carries it.
+- **Task Mode tools: what the doer may do** (punch list #369, v2.7542;
+  `docs/migrations/20261117120000_task_doer_acts.md`): four narrow `SECURITY DEFINER` functions behind one gate, `task_doer_may` (the office or an assignee of the day row through `can_work_checklist_instance`, never a training account, a twin or an archived account): **`task_move_day`** moves a one-time task's due day, **`task_no_longer_applies`** closes a one-time task that is neither a roadmap nor a vehicle task with a reason, **`task_hand_on`** swaps one person for another on the same task (the office may name whose;
+  the taker must be able to sign in), and **`task_add_map`** puts a map the caller painted on a task that has none.
+  Each writes its own line in the thread (`moved`, `dropped`, `handed`, `map`), kinds no client may insert by hand;
+  `stuck` and `unstuck` are inserted like a note, by whoever reads the row.
+  The task's maker and the office keep every right they had.
 - **Your people's week, the Monday email** (v2.6603, punch list #273 PR 5, `docs/migrations/20261106233000_people_week_email.md`): **`people_week_email_requests`** takes a row only in the caller's own name as its own recipient, and only from the office (`is_dev_or_master_or_assistant()`, primaries included) or with `people_user_ids` equal to exactly the caller;
   **read** requester, recipient or a dev;
   **delete** a pending row's requester or recipient, or a dev;

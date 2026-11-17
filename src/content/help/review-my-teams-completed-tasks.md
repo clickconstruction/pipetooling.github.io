@@ -2,7 +2,7 @@
 title: review my team's completed tasks
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: checklist review, sign off, dismiss, reopen, teams inbox, completed tasks, subordinates, map, where the open tasks are, place, who is where
+keywords: checklist review, stuck, who is stuck, sorted, sign off, dismiss, reopen, teams inbox, completed tasks, subordinates, map, where the open tasks are, place, who is where
 order: 41
 ---
 When someone finishes a checklist task you assigned, it lands in Checklist review. You sign it off there, or send it back with a comment.
@@ -17,6 +17,12 @@ Michael A · done yesterday 4:41 PM · "Mounted and tested"
 ## The three tiles up top
 
 **To sign off**, **Outstanding** and **Missed this week** are tappable. Each shows its number. The number is grey with a green ✓ caption when it's zero. Each has a caption that answers *who / how old*, like *one-offs · 7 people · oldest 118 days*. You tap **To sign off** to open the sign-off list. You tap **Outstanding** to jump to the by-person board. You tap **Missed this week** to flip that board to the Missed view. The tile for the view you're on stays outlined in blue. So the tiles double as a range switcher.
+
+## Who is stuck
+
+When someone presses **Can't do it** on a task, a **Stuck** list opens at the top of Review. Each row names the task, who is stuck and what is in the way. The oldest is first.
+
+Deal with what is in the way, then press {{button:outline|Sorted}} on the row. The stuck mark comes off and that person gets a message. With nobody stuck, the list is not drawn.
 
 ## Signing off
 
