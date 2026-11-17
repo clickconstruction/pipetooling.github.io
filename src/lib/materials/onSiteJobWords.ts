@@ -15,6 +15,22 @@ export function onSiteJobNumber(job: Pick<OnSiteJobNamed, 'hcp_number' | 'click_
   return effectiveJobLedgerNumber(job?.hcp_number, job?.click_number)
 }
 
+/** The head of a job's page: `press` opens the job window, `rest` is read beside it, `openLabel` is what the press is called. */
+export type OnSiteJobHead = { press: string; rest: string; openLabel: string }
+
+/**
+ * A job's page is headed by its number and its name, and the number is the press that opens the job (the owner's ask
+ * of 2026-11-17, in place of a button at the far end of the line). A job with no number is opened by its name, and a
+ * job the page could not name by the words it has for it (`fallback`), so the head always holds one press.
+ */
+export function onSiteJobHead(job: OnSiteJobNamed | null | undefined, fallback: string): OnSiteJobHead {
+  if (!job) return { press: fallback, rest: '', openLabel: `Open ${fallback}` }
+  const number = onSiteJobNumber(job)
+  const name = (job.job_name ?? '').trim() || (job.customer_name ?? '').trim()
+  if (number) return { press: number, rest: name || '—', openLabel: `Open job ${number}` }
+  return { press: name || '—', rest: '', openLabel: name ? `Open the job ${name}` : 'Open the job' }
+}
+
 /** `224 · Phase 2 draws`. A dash stands for a half the job does not have; the customer's name stands in for a missing job name. */
 export function onSiteJobWords(job: OnSiteJobNamed): string {
   return `${onSiteJobNumber(job) || '—'} · ${(job.job_name ?? '').trim() || (job.customer_name ?? '').trim() || '—'}`

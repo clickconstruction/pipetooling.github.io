@@ -86,8 +86,9 @@ export async function markAnswersSeen(source: 'job' | 'task' = 'job'): Promise<n
  * the words from the rows. A notice that fails changes nothing on screen, so its failure is dropped: the tag is
  * already on the job and in the count.
  */
-export function notifyNoteTag(what: { noteId: string } | { tagId: string }): void {
-  const body = 'noteId' in what ? { note_id: what.noteId } : { tag_id: what.tagId }
+export function notifyNoteTag(what: { noteId: string } | { tagId: string } | { taskEventId: string } | { taskTagId: string }): void {
+  // A task note is named by its line in the task's thread, and a task tag by its own id (punch list #375).
+  const body = 'noteId' in what ? { note_id: what.noteId } : 'tagId' in what ? { tag_id: what.tagId } : 'taskEventId' in what ? { task_event_id: what.taskEventId } : { task_tag_id: what.taskTagId }
   void supabase.functions.invoke('notify-note-tag', { body }).then(
     () => {},
     () => {},

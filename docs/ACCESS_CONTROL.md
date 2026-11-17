@@ -243,7 +243,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and fifteen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and fifteen since v2.7584, whose given task is the New task window's own rows on `checklist_items`, its assignee tables, `checklist_instances` and `task_criteria` under the dev's RLS, no new role and no new policy;
+The one write path (v2.3722) is one hundred and seventeen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
+one hundred and fifteen since v2.7584, whose given task is the New task window's own rows on `checklist_items`, its assignee tables, `checklist_instances` and `task_criteria` under the dev's RLS, no new role and no new policy;
 one hundred and thirteen since v2.7515, whose served copies are the Lien window's own `served_at` and `sends` on the filing's row under the dev's RLS, no new role and no new policy;
 one hundred and eleven since v2.7511, whose recorded lien filing is the Lien window's own `job_lien_filings` row and the desk item's mark under the dev's RLS, with its scan staged in the private `dev-seat-staging` bucket a dev reaches only inside their own folder, `docs/migrations/20261117100000_dev_seat_staging_bucket.md`, no new role;
 one hundred and nine since v2.7247, whose affidavit draft is the Lien desk pane's own `job_lien_desk_items` row under the dev's RLS, no new role and no new policy;
@@ -1329,6 +1330,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Since v2.7569 (punch list #371) that function also writes what a sub answers into `sub_paper_acks`, each row naming its person and its sheet, sending or payment (`docs/migrations/20261117150000_sub_paper_ack_targets.md`).
   It reads `sub_papers` and never writes it, so a number is given only by the office.
   A signed-in teammate or a preview of a sub's page cannot answer for the sub.
+  Since v2.7609 the office marks a sub's note answered through `answer_sub_paper_ack` (`docs/migrations/20261117190000_sub_paper_ack_answered.md`), a definer function for the same office roles that refuses a training account, a digital twin and an archived account.
+  It writes three columns and nothing else, and the table stays read only by grant.
 - **`sub_payment_sendings` · `sub_credit_entries`** (punch list #347, `docs/migrations/20261114020000_sub_credit_and_sendings.md`, v2.7235): one money movement to a sub, and the credit kept past what their sheets needed.
   **Read / insert** by the office (`is_office_staff()`), nothing else by policy: a credit entry goes with its payment row (`ON DELETE CASCADE`), and the functions do the rest.
   `record_sub_sending` and `apply_sub_credit` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the policies decide;
@@ -1820,6 +1823,23 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 **Two-party forms** (v2.2802): `complete-contract-form-office` lets dev · master_technician · assistant · controller fill a form's `party: 'office'` boxes on the filed PDF and flatten it (the I-9's Section 2), provided the row is readable under their own RLS.
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
+
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`)
+
+No screen calls it yet, and it locks nothing: the prompt and the lock in the database are later steps.
+`job_required_papers` holds the papers a job requires of everyone who opens it.
+The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
+It has no write policy and no write grant: rows are written only by `job_papers_require` and `job_paper_remove`, both office only.
+Everyone must sign, the office too: `job_closed_to_me(job)` is true for any signed-in user who has not signed every live paper on the job, and false for the service role.
+The signer is the roster person tied to the login (`people.account_user_id`), never a name match.
+A login tied to no roster person reads as owing and cannot start a paper.
+`job_papers_mine(job)` hands any signed-in user the job's number and its papers' names, and nothing else of the job.
+`job_paper_start` makes the caller's own copy.
+Only the office or the service role makes one for someone else.
+`job_papers_roster(job)` is office only.
+`job_papers_for_person` and `job_paper_job_number` run for the service role alone.
+The policies on `person_contract_documents` are unchanged: a person never reads their own paper's row, only the functions' answers and the signing page.
+A training-mode account cannot sign, since starting a paper is a write.
 
 ### Contract documents: type/expiry/identity columns (v2.1213, `20260801200000_contract_doc_types_expiry.sql`)
 - `person_contract_documents` gains `doc_type` (agreement|coi|w9|license|other, default agreement), `expires_at`, and `person_id` (FK `people`, resolver backfill + `contract_docs_set_person_id` trigger).

@@ -260,6 +260,27 @@ const STRINGS = {
   checkingCall: { en: 'Call the office if you need a figure today', es: 'Llame a la oficina si necesita una cifra hoy' },
   sharedOne: { en: 'One job you share with someone else is on Today only.', es: 'Un trabajo que comparte con otra persona aparece solo en Hoy.' },
   sharedMany: { en: '{count} jobs you share with someone else are on Today only.', es: '{count} trabajos que comparte con otra persona aparecen solo en Hoy.' },
+  // v2.7609 (punch list #371) — Got it and Something is wrong. The owner reads the Spanish before it ships (call 5).
+  gotIt: { en: 'Got it', es: 'Ya lo recibí' },
+  gotItQuestion: { en: 'Did this payment reach you?', es: '¿Le llegó este pago?' },
+  gotItDetail: { en: '{amount} by {how}, sent {date}.', es: '{amount} por {how}, enviado el {date}.' },
+  gotItDetailNoHow: { en: '{amount}, sent {date}.', es: '{amount}, enviado el {date}.' },
+  gotItMeans: { en: 'This tells the office the money arrived. It is not a release or a waiver of any lien right.', es: 'Esto le avisa a la oficina que el dinero llegó. No es una liberación ni una renuncia a ningún derecho de gravamen.' },
+  gotItYes: { en: 'Yes, I got it', es: 'Sí, lo recibí' },
+  gotItNotYet: { en: 'Not yet', es: 'Todavía no' },
+  somethingWrong: { en: 'Something is wrong', es: 'Algo está mal' },
+  wrongTitle: { en: 'Tell the office what looks wrong', es: 'Dígale a la oficina qué se ve mal' },
+  wrongAbout: { en: 'About {what}.', es: 'Sobre {what}.' },
+  wrongPlaceholder: { en: 'What looks wrong?', es: '¿Qué se ve mal?' },
+  wrongSend: { en: 'Send to the office', es: 'Enviar a la oficina' },
+  cancelPress: { en: 'Cancel', es: 'Cancelar' },
+  wrongSent: { en: 'Sent to the office. Nothing on the statement changes. The office reads the note and answers you.', es: 'Enviado a la oficina. Nada cambia en el estado. La oficina lee la nota y le responde.' },
+  youTold: { en: 'You told the office on {date}.', es: 'Le avisó a la oficina el {date}.' },
+  sendingAnswer: { en: 'Sending…', es: 'Enviando…' },
+  thePaymentOf: { en: 'the payment of {date}', es: 'el pago del {date}' },
+  // Two of the function's refusals, said in the page's own words.
+  answerOfficeLooking: { en: 'This is the office looking at the page. Only the sub can answer, from their own link.', es: 'Esta es la oficina viendo la página. Solo el subcontratista puede responder, desde su propio enlace.' },
+  answerTooManyNotes: { en: 'You have sent the office several notes today. Please call the office about anything more.', es: 'Hoy ya envió varias notas a la oficina. Llame a la oficina para cualquier otra cosa.' },
 } as const
 
 export type SubPortalStringKey = keyof typeof STRINGS

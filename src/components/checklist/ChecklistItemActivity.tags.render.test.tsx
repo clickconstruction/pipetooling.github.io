@@ -22,11 +22,12 @@ const db = vi.hoisted(() => ({
   tagRows: [] as unknown[],
   rpcCalls: [] as Array<{ name: string; args: unknown }>,
   inserts: [] as Array<{ table: string; row: unknown }>,
+  notices: [] as unknown[],
 }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
-  const stub = makeSupabaseStub() as unknown as { from: (t: string) => unknown; rpc: (n: string, a?: unknown) => unknown }
+  const stub = makeSupabaseStub() as unknown as { from: (t: string) => unknown; rpc: (n: string, a?: unknown) => unknown; functions: { invoke: (n: string, o?: { body?: unknown }) => Promise<unknown> } }
   const rpc = stub.rpc.bind(stub)
   const DATA: Record<string, () => unknown[]> = {
     checklist_instances: () => [{ id: 'inst-1', scheduled_date: '2026-11-17', completed_at: null }],
@@ -40,9 +41,10 @@ vi.mock('../../lib/supabase', async () => {
   const rows = (table: string) => {
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'in', 'lte', 'gt', 'order', 'limit']) b[m] = () => b
+    // The plain insert hands its new row's id back, which the phone notice is asked for by.
     b.insert = (row: unknown) => {
       db.inserts.push({ table, row })
-      return Promise.resolve({ data: null, error: null })
+      return { select: () => ({ maybeSingle: () => Promise.resolve({ data: { id: 'ev-plain' }, error: null }) }) }
     }
     b.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: (DATA[table] ?? (() => []))(), error: null }).then(ok)
     return b
@@ -53,6 +55,12 @@ vi.mock('../../lib/supabase', async () => {
     if (name === 'task_note_taggable') return Promise.resolve(db.taggableError ? { data: null, error: db.taggableError } : { data: db.taggable ?? TAGGABLE, error: null })
     if (name === 'task_note_post_tagged') return Promise.resolve({ data: 'ev-new', error: null })
     return rpc(name, args)
+  }
+  stub.functions = {
+    invoke: (name: string, opts?: { body?: unknown }) => {
+      if (name === 'notify-note-tag') db.notices.push(opts?.body)
+      return Promise.resolve({ data: null, error: null })
+    },
   }
   return { supabase: stub }
 })
@@ -85,6 +93,7 @@ beforeEach(() => {
   db.tagRows = []
   db.rpcCalls.length = 0
   db.inserts.length = 0
+  db.notices.length = 0
 })
 
 describe('ChecklistItemActivity, tagging a teammate', () => {
@@ -109,6 +118,8 @@ describe('ChecklistItemActivity, tagging a teammate', () => {
     expect(db.inserts).toEqual([])
     await vi.waitFor(() => expect(onPosted).toHaveBeenCalledWith('inst-1', '@Dana Whitlock bay 2 or bay 3?'))
     await vi.waitFor(() => expect(box.value).toBe(''))
+    // The phone notice is asked for by the note's id. The function writes the words.
+    expect(db.notices).toEqual([{ task_event_id: 'ev-new' }])
   })
 
   it('opens the row of names on @, the task\'s people first, and Enter picks', async () => {
@@ -133,6 +144,8 @@ describe('ChecklistItemActivity, tagging a teammate', () => {
     await vi.waitFor(() => expect(db.inserts).toEqual([{ table: 'checklist_instance_events', row: { instance_id: 'inst-1', event_type: 'comment', actor_user_id: 'u-luis', body: 'Bay 2 is done. @dana knows' } }]))
     expect(db.rpcCalls.some((c) => c.name === 'task_note_post_tagged')).toBe(false)
     await vi.waitFor(() => expect(onPosted).toHaveBeenCalled())
+    // A plain note can answer a tag that waited on its writer, so it asks for the notice too.
+    expect(db.notices).toEqual([{ task_event_id: 'ev-plain' }])
   })
 
   it('draws the chip and who it waits on, on a note that carries a tag', async () => {

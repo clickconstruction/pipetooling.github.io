@@ -90,3 +90,13 @@ export function parseSubPortalPapers(raw: unknown): SubPortalPapers | null {
   }
   return { ok: true, ctx, sheets, numbers, received, wrong, stillOpen: raw.stillOpen, sharedSheets: isNum(raw.sharedSheets) ? raw.sharedSheets : 0, officePhone }
 }
+
+/** What the function answers to *Got it* or *Something is wrong*, read as defensively as the block. */
+export function parseSubPortalAnswer(raw: unknown): { received?: Record<string, string>; wrong?: PortalWrongNote | null } {
+  if (!isObj(raw)) return {}
+  const received: Record<string, string> = {}
+  if (isObj(raw.received)) for (const [key, day] of Object.entries(raw.received)) if (isStr(day)) received[key] = day
+  const w = raw.wrong
+  const wrong: PortalWrongNote | null = isObj(w) && (w.about === 'statement' || w.about === 'payment') && isStr(w.key) && w.key ? { about: w.about, key: w.key, day: isStr(w.day) ? w.day : '', note: isStr(w.note) ? w.note : '' } : null
+  return { ...(Object.keys(received).length > 0 ? { received } : {}), ...(wrong ? { wrong } : {}) }
+}

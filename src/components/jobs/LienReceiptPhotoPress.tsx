@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties } from 'react'
 import { shrinkPhoto } from '../../lib/materials/photoShrink'
 import { putJobFolderFile } from '../../lib/jobs/jobFolderAddFileIo'
 import { addFileTooBig } from '../../lib/jobs/jobFolderAddFile'
+import { ADD_FILE_FAILURE_WORDS, addFileCanRetry } from '../../lib/jobs/addFileFailure'
 import { LIEN_SERVICE_PROOF_WORDS, lienReceiptPhotoName, receiptReadWords, type LienReceiptPaper, type LienReceiptPhotoOf } from '../../lib/jobs/lienServiceProof'
 import { readTrackingFromPhoto } from '../../lib/jobs/lienReceiptReadIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -17,6 +18,9 @@ import { useToastContext } from '../../contexts/ToastContext'
  *
  * With `onRead` (a § 53.056 notice's sends, v2.7557) the press also reads the certified mail number off the photo's
  * barcode and hands it to the form, and says under the press what it read or that it read none.
+ *
+ * A photo that does not go up stays in hand (v2.7635): the reason stands under the press, and where a second try can
+ * get past it (a lost connection, a busy Drive) **Try again** sends the same shot, so nobody takes the photo twice.
  */
 export function LienReceiptPhotoPress({
   jobId,
@@ -55,11 +59,14 @@ export function LienReceiptPhotoPress({
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [readSaid, setReadSaid] = useState('')
+  // The shot that did not go up, with its reason; `retry` is whether the same shot can go again.
+  const [failed, setFailed] = useState<{ file: File; words: string; retry: boolean } | null>(null)
   const words = LIEN_SERVICE_PROOF_WORDS
 
   const take = async (file: File) => {
     setBusy(true)
     setReadSaid('')
+    setFailed(null)
     try {
       const shot = await shrinkPhoto(file)
       // A shot the browser could not decode goes as it came, under its own extension.
@@ -75,7 +82,9 @@ export function LienReceiptPhotoPress({
         setReadSaid(receiptReadWords(tracking))
       }
     } catch (e) {
-      showToast(formatErrorMessage(e, 'Could not save the photo.'), 'error')
+      const said = formatErrorMessage(e, 'Could not save the photo.')
+      setFailed({ file, words: said, retry: addFileCanRetry(e) })
+      showToast(said, 'error')
     } finally {
       setBusy(false)
       if (input.current) input.current.value = ''
@@ -108,6 +117,16 @@ export function LienReceiptPhotoPress({
         <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: compact ? '0.75rem' : '0.8125rem', fontWeight: 600, color: 'var(--text-link)' }}>
           {words.saved} ›
         </a>
+      ) : null}
+      {failed && !busy ? (
+        <span role="alert" data-lien-receipt-failed style={{ flexBasis: '100%', display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: compact ? '0.72rem' : '0.8rem', color: 'var(--text-red-700)' }}>
+          {failed.words}
+          {failed.retry ? (
+            <button type="button" data-lien-receipt-retry onClick={() => void take(failed.file)} style={{ ...press, color: 'var(--text-strong)' }}>
+              {ADD_FILE_FAILURE_WORDS.tryAgain}
+            </button>
+          ) : null}
+        </span>
       ) : null}
       {readSaid && !busy ? (
         <span role="status" data-lien-receipt-read style={{ flexBasis: '100%', fontSize: compact ? '0.72rem' : '0.8rem', color: 'var(--text-muted)' }}>

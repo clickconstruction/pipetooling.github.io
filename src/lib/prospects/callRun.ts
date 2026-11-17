@@ -244,3 +244,13 @@ export function inRun(run: CallRun | null, id: string): boolean {
 export function runTradeKey(run: CallRun | null): string {
   return run?.trade ? tradeKey(run.trade) : ''
 }
+
+/**
+ * Each prospect's next callback in words, from the upcoming callbacks read soonest first: the first row a
+ * prospect has is its next one. Moved out of `loadLaneExtras` in `src/pages/Prospects.tsx`.
+ */
+export function firstCallbackWords(rows: readonly { prospect_id: string; callback_date: string }[], now: Date): Record<string, string> {
+  const words: Record<string, string> = {}
+  for (const r of rows) if (!(r.prospect_id in words)) words[r.prospect_id] = callbackWords(new Date(r.callback_date), now)
+  return words
+}

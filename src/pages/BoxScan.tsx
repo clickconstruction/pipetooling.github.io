@@ -2,20 +2,27 @@
  * Scan a label (punch list #294, v2.6799): the page bare `prts.co` lands on, outside the sign-in. Point the camera at a
  * label and its own page opens, or type the code under the QR. A signed-in person goes to the On site tab, which has
  * the app's own search. Until v2.7379 a phone that had scanned a box that day could search that box's site from here;
- * what is in a box needs a sign-in now, so that press is gone with the search.
+ * what is in a box needs a sign-in now, so that press is gone with the search. The tab reads the page's own name since
+ * v2.7630, where it read the app's.
  */
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useTabTitle } from '../hooks/useTabTitle'
 import { boxPageCode, boxPagePath } from '../lib/materials/boxPage'
 import { typedCodeWords } from '../lib/materials/boxPageMemory'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
+
+/** The tab's title, the company after the page as a box's own page has it. */
+const BOX_SCAN_TAB_TITLE = 'Scan a label · Click Plumbing & Electrical'
 
 export default function BoxScan() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
   const [typed, setTyped] = useState('')
   const [slip, setSlip] = useState<string | null>(null)
+  // Only the page with no sign-in names the tab: someone signed in leaves for the On site tab at once.
+  useTabTitle(!loading && !user ? BOX_SCAN_TAB_TITLE : null)
   if (loading) return null
   if (user) return <Navigate to="/tally?tab=on-site" replace />
 

@@ -25,7 +25,9 @@ import { SUB_PORTAL_FOCUS_PARAM, isSubPortalFocused, parseSubPortalFocus, subPor
 import { PlansPill, SubPortalGuideButton, SubPortalGuideSheet } from '../components/subPortal/SubPortalGuide'
 import { SubPortalDatePicker } from '../components/subPortal/SubPortalDatePicker'
 import { SubPortalYourDays } from '../components/subPortal/SubPortalYourDays'
-import { SubPortalStatementsView } from '../components/subPortal/SubPortalStatementsView'
+import { SubPortalStatementsView, type SubPortalAnswer, type SubPortalAnswerResult } from '../components/subPortal/SubPortalStatementsView'
+import { parseSubPortalAnswer } from '../lib/subPortal/subPortalPapersPayload'
+import { paperDay } from '../../supabase/functions/_shared/subPapers'
 import { pickEndFromStart } from '../../supabase/functions/_shared/subPick'
 import { subPortalGuide } from '../lib/subPortal/subPortalGuideStrings'
 import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
@@ -199,6 +201,31 @@ export default function SubPortal() {
 
   const submitToken = state.kind === 'ready' ? (state.payload.requestToken ?? token) : token
 
+  /**
+   * One answer from the Statements view (v2.7609): *Got it* on a payment, or *Something is wrong* on a statement
+   * or a payment. It goes to the page's own function as a POST, with the link in the body. The sample and demo
+   * pages send nothing and answer as the function would.
+   */
+  const answerFromPage = async (a: SubPortalAnswer): Promise<SubPortalAnswerResult> => {
+    if (demoMode || sample) {
+      const day = paperDay(state.kind === 'ready' && state.payload.papers?.ok ? state.payload.papers.ctx.today : '')
+      return a.action === 'got_it' ? { ok: true, received: { [a.key]: day } } : { ok: true, wrong: { about: a.about, key: a.key, day, note: a.note } }
+    }
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/sub-portal${preview ? `?${PUBLIC_PREVIEW_PARAM}=1` : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) },
+        body: JSON.stringify({ ...(submitToken ? { token: submitToken } : { slug }), ...a }),
+      })
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
+      // Two refusals have words of the page's own: the office looking at a sub's page, and a tenth note in a day.
+      if (!res.ok || !json?.ok) return { ok: false, failure: portalFailureCause(res.status, json, 'send'), ...(res.status === 403 ? { say: 'answerOfficeLooking' as const } : res.status === 429 ? { say: 'answerTooManyNotes' as const } : {}) }
+      return { ok: true, ...parseSubPortalAnswer(json) }
+    } catch (e) {
+      return { ok: false, failure: portalFailureKind(e) }
+    }
+  }
+
   return (
     <div
       data-theme="light"
@@ -343,7 +370,7 @@ export default function SubPortal() {
                 <div className={showing === 'statements' ? 'sp-today-off' : undefined}>
                   <SubPortalStatement payload={state.payload} lang={lang} t={t} submitToken={submitToken} focus={focus} switcher={switcher} />
                 </div>
-                {papers && showing === 'statements' ? <SubPortalStatementsView papers={papers} subName={state.payload.subName} lang={lang} t={t} switcher={switcher} /> : null}
+                {papers && showing === 'statements' ? <SubPortalStatementsView papers={papers} subName={state.payload.subName} lang={lang} t={t} switcher={switcher} onAnswer={answerFromPage} /> : null}
               </>
             )
           })()}

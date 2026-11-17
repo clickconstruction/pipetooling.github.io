@@ -1,8 +1,8 @@
 ---
 name: "Find a lost box: show where a cage or box was last put, and draw the way to it"
 number: 372
-group: gated
-status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17, steps 1 and 2 at phone width first · the nine calls put to the owner the same day, call 1 first and alone · call 1 answered the same day (*Yes, cage or box*) · calls 2 to 11 open · nothing built
+group: close
+status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17 · call 1 answered the same day (*Yes, cage or box*) · the owner's word the same day (*Build all the steps*), taken as the train of five with every other call at the card's pick · all five steps built and tested the same day · steps 1 and 2 and the way's column merged (#8503, #8510, #8511), both migrations on the live database · all five steps walked on a test job in a local browser · step 3 in this PR · the way's screens and step 5 built, each waiting its turn · not tried on a real phone
 summary: >
   The owner wants the app to show someone where their crate is when it is lost, and to draw a path
   to where they can find it. The app has no crate: this card takes it to mean a cage or a box from
@@ -14,10 +14,10 @@ summary: >
   honest distance, and ends with I found it, which pins the box where the finder stands. A way
   painted once to each place where boxes stand (#345) is the path that knows about gates and
   fences, and a task carries it to someone who is not on the crew.
-next: The owner says whether to build step 1 (the pin remembers), now that call 1 is answered, and answers calls 2 to 11 with the mock-up in front of him. No session should build any of it before he says build. A try that costs nothing can run now, on presses that are live. Pin five boxes on the test job with Use my location, some outdoors and some inside, and look at where the dots land.
-size: L as a train of five (S · M · S · M · S), on the card's picks; the first two are the smallest version worth building
-blocker: The owner's word to build, and his answers to calls 2 to 11. He has answered call 1 and no other. Nothing in Paint a map (#345) has been tried on a real phone, and this stands on it.
-opinion: your call — worth building as far as step 2, and only if crews will pin boxes. A path to a box nobody pinned is a line to nowhere, so step 3 is what decides whether it is used.
+next: The rest of the train lands one PR at a time: step 3, then the way's screens once the way's migration is pushed, then step 5, which closes the card's table. Then the owner's try on a real phone, which is step 0 and more: pin five boxes on a test job with I found it, some outdoors and some inside, walk away and press Show where I am, lock the phone mid-walk, and read what the sheet says indoors. Calls 2 to 11 stay his to change.
+size: L as a train of five (S · M · S · M · S), on the card's picks; left: three PRs to land and a real phone (S)
+blocker: None to build. The merge queue, one PR at a time. Nothing here, and nothing in Paint a map (#345) that it stands on, has been tried on a real phone.
+opinion: build — built on the owner's word. Whether it is used turns on crews pinning boxes, which step 3 asks for and a count of pinned boxes will show.
 ---
 
 # Find a lost box (#372)
@@ -30,9 +30,17 @@ The owner, 2026-11-16:
 > they can find it
 
 He said no more than that. He asked for it on the punch list and not built now. This card is the
-reading, the smallest thing worth building, what it would cost, and his calls. **Nothing is
-built.** [mockup.html](mockup.html) draws the smallest version worth building on made-up data. It
-was drawn on 2026-11-17, while the calls were put to him.
+reading, the smallest thing worth building, what it would cost, and his calls.
+[mockup.html](mockup.html) draws the smallest version worth building on made-up data. It was drawn
+on 2026-11-17, while the calls were put to him.
+
+On 2026-11-17, with call 1 answered, he said:
+
+> Build all the steps
+
+**So the train is built.** *What is built* below says what went in and what differs from this
+card. The sections above it are the card as it was written, kept for the reasons behind each
+choice.
 
 ## What I took it to mean
 
@@ -198,6 +206,50 @@ site* has a section *Find a box on the site*, which each step amends. Step 1 and
 `docs/migrations/` note, a types regen and a line in `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`.
 Step 4 owes a line in `docs/ACCESS_CONTROL.md`.
 
+## What is built
+
+2026-11-17, on the owner's word *Build all the steps*. Each step is its own PR with its tests, a
+release note and a fragment, and the fragments say more than this table. The versions of the PRs
+not yet merged are in their titles.
+
+| Step | PR | What went in |
+|---|---|---|
+| 1 | #8503, merged | The pin remembers. Four columns on `job_containers` and the `job_containers_stamp_pin` trigger. Migration `20261117170000`, on the live database. |
+| 2 | #8510, merged | **Where is it?**: the sheet on the phone's box screen, and the third tab of the office's box window. |
+| 3 | the PR that carries this edit | The pin ask: *Pin A7 where you stand?* after a count, a photo, a scanned label and a new box. |
+| 4, the column | #8511, merged | A place can carry the way to it. One column, an update policy and a guard on `job_places`. Migration `20261117180000`, on the live database. |
+| 4, the screens | built, not opened | **＋ Paint the way here** on a place, **Open the way** on a box's sheet, and a helper's search offering **Paint a map** (call 8). |
+| 5 | built, not opened | **Send someone to it**: the New task window on *Find A7*, with the pin as the task's place and the way as its map. |
+
+**What differs from the card**, each in its fragment:
+
+- **The pin keeps four facts, not three.** The name is kept beside the person, as a box move keeps
+  it, because the crew's roles cannot read the users table.
+- **The distance uses a task place's words, with a direction**, as the mock-up drew.
+- **The office has a third tab in the box's window**, not a window of its own.
+- **I found it uses the reading on the screen while the dot is on.** The walk found that asking
+  the phone a second time took several seconds.
+- **The pin ask is offered to a box with no pin or a pin older than seven days**, once a day for a
+  box on a device. The card said *never twice in a day* and named no age. The seven is a guess.
+- **The way's guard carries its own error code**, so the app prints its reasons.
+- **Take the way off** is a press the card did not name, on the office page. A wrong way needs a
+  way out that does not throw the map away.
+- **The newest photo is only as good as today's box photos.** A box photo's picture stays on the
+  phone that took it, and the app draws none from Drive. On another phone the sheet shows the
+  photo's name and who took it, with no picture.
+
+**Walked**, on a dev server against the live database, in a headless Chromium at phone and desk
+width, as the dev account, with a made-up location, on a test job's test cage: the sheet on a box
+nobody pinned, **I found it**, **Show where I am** from 240 ft away, a margin too wide to trust,
+**Move the pin by hand**, **Remove the pin**, the office's tab, the pin ask after a count, a way
+painted to a made-up place and opened from the cage, and **Send someone to it** as far as the New
+task window, with nothing sent. No request failed. The walk of step 5 found that the New task
+window kept a place and dropped its way, which step 5's PR fixes. Dark mode was not looked at. The
+pin and the made-up way were taken off after. The made-up place stays on the test job, since a
+place cannot be removed in the app.
+
+**Not done**: step 0, the owner's try. Nothing has been tried on a real phone.
+
 ## What a walk of the live app found, and what it means here
 
 A session walked Paint a map on the live app on 2026-11-16 and 17. Each finding below was checked
@@ -271,7 +323,9 @@ with words and a photo, and why step 0 is a try on a real phone before any code.
 
 Each has my pick first. All nine were put to the owner in the session on 2026-11-17, call 1 first
 and alone, then the other eight in one message, each as one sentence with its pick. Call 1 is
-answered and the rest are open. His answers go here, on the call's own line, as they come.
+answered. He then said *Build all the steps*, which this card took as the train of five with every
+other call at its pick. He has not spoken to calls 2 to 11 one by one, so each stays his to
+change, and a change goes on the call's own line.
 
 1. **What is a crate, and who is looking for it?** My pick: a cage or a box from Materials on
    site, looked for by the job's crew or the office. Or: a box that has left the site, where the
@@ -347,3 +401,7 @@ call 1 and his word to build.
 2026-11-17, later: the owner answered call 1, *Yes, cage or box*. He has not said build, and
 calls 2 to 11 are open. Step 1 hangs on none of them: a pin that keeps its day, its person and its
 margin is wanted under every answer but a tag on the box (call 9).
+
+2026-11-17, later still: the owner said *Build all the steps*. All five were built that day and
+are landing one PR at a time. *What is built* above has the table. The card moved from *gated* to
+*close*: nothing waits on a decision.
