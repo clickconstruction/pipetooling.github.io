@@ -101,27 +101,19 @@ import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
-
-const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
-type CopyTemplateKey = (typeof COPY_TEMPLATE_KEYS)[number]
-
-const COPY_TEMPLATE_LABELS: Record<CopyTemplateKey, string> = {
-  no_response_email: 'No Response Email',
-  phone_followup_email: 'Phone call Follow up Email',
-  just_checking_in_email: 'Just checking in Email',
-}
-
-const APP_SETTINGS_KEYS: Record<CopyTemplateKey, string> = {
-  no_response_email: 'prospect_copy_no_response_email',
-  phone_followup_email: 'prospect_copy_phone_followup_email',
-  just_checking_in_email: 'prospect_copy_just_checking_in_email',
-}
-
-const APP_SUBJECT_SETTINGS_KEYS: Record<CopyTemplateKey, string> = {
-  no_response_email: 'prospect_copy_no_response_email_subject',
-  phone_followup_email: 'prospect_copy_phone_followup_email_subject',
-  just_checking_in_email: 'prospect_copy_just_checking_in_email_subject',
-}
+import {
+  APP_SETTINGS_KEYS,
+  APP_SUBJECT_SETTINGS_KEYS,
+  COPY_TEMPLATE_KEYS,
+  COPY_TEMPLATE_LABELS,
+  foldCopyTemplateRows,
+  getBlankFieldsForMail,
+  getBlankPlaceholderFields,
+  resolveCopyText,
+  substituteCopyPlaceholders,
+  type CopyTemplateKey,
+} from '../lib/prospects/prospectCopyTemplates'
+import { formatDateTime } from '../lib/prospects/prospectFormat'
 
 const EnvelopeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
@@ -219,12 +211,6 @@ const tabStyle = (active: boolean) => ({
   fontSize: '0.9375rem',
 })
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
-}
-
 function formatInteractionType(type: string): string {
   switch (type) {
     case 'answered': return 'Answered'
@@ -264,76 +250,6 @@ function getWebsiteHref(url: string | null): string {
   const s = url.trim()
   if (/^https?:\/\//i.test(s)) return s
   return 'https://' + s
-}
-
-function getBlankPlaceholderFields(
-  template: string,
-  authUserName: string,
-  authUserEmail: string,
-  prospect: Prospect,
-  personPhone: string | null,
-  templateKey: CopyTemplateKey,
-  comments: ProspectComment[],
-  forMail?: boolean
-): string[] {
-  const blank: string[] = []
-  if (forMail && !prospect.email?.trim()) blank.push('Prospect email')
-  const userName = (authUserName || authUserEmail || '').trim()
-  if (template.includes('[User name]') && !userName) blank.push('User name')
-  if (template.includes('[user email]') && !authUserEmail?.trim()) blank.push('User email')
-  if (template.includes('[user phone number]') && !personPhone?.trim()) blank.push('User phone number')
-  if (template.includes('[company name]') && !prospect.company_name?.trim()) blank.push('Company name')
-  if (template.includes('[prospect phone number]') && !prospect.phone_number?.trim()) blank.push('Prospect phone number')
-  if (template.includes('[prospect contact name]') && !prospect.contact_name?.trim()) blank.push('Prospect contact name')
-  if (template.includes('[prospect last contact]') && !prospect.last_contact) blank.push('Prospect last contact')
-  if (template.includes('[prospect last successful contact]') && !comments.find((c) => c.interaction_type === 'answered')) blank.push('Prospect last successful contact')
-  if (template.includes('_______')) {
-    if (templateKey === 'phone_followup_email' && !prospect.contact_name?.trim()) blank.push('Contact name')
-    else if (templateKey === 'just_checking_in_email' && !prospect.phone_number?.trim() && !prospect.email?.trim()) blank.push('Contact info')
-  }
-  return blank
-}
-
-function getBlankFieldsForMail(
-  body: string,
-  subject: string,
-  authUserName: string,
-  authUserEmail: string,
-  prospect: Prospect,
-  personPhone: string | null,
-  templateKey: CopyTemplateKey,
-  comments: ProspectComment[]
-): string[] {
-  const bodyBlanks = getBlankPlaceholderFields(body, authUserName, authUserEmail, prospect, personPhone, templateKey, comments, true)
-  const subjectBlanks = getBlankPlaceholderFields(subject, authUserName, authUserEmail, prospect, personPhone, templateKey, comments, false)
-  return [...new Set([...bodyBlanks, ...subjectBlanks])]
-}
-
-function substituteCopyPlaceholders(
-  template: string,
-  authUser: { name: string; email: string },
-  prospect: Prospect,
-  personPhone: string | null,
-  templateKey: CopyTemplateKey,
-  comments: ProspectComment[]
-): string {
-  const lastSuccessfulContact = comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null
-  let text = template
-    .replace(/\[User name\]/g, authUser.name ?? '')
-    .replace(/\[user email\]/g, authUser.email ?? '')
-    .replace(/\[user phone number\]/g, personPhone ?? '')
-    .replace(/\[company name\]/g, prospect.company_name ?? '')
-    .replace(/\[prospect phone number\]/g, prospect.phone_number ?? '')
-    .replace(/\[prospect contact name\]/g, prospect.contact_name ?? '')
-    .replace(/\[prospect last contact\]/g, formatDateTime(prospect.last_contact))
-    .replace(/\[prospect last successful contact\]/g, formatDateTime(lastSuccessfulContact))
-  if (templateKey === 'phone_followup_email') {
-    text = text.replace(/_______/, prospect.contact_name ?? '_______')
-  } else if (templateKey === 'just_checking_in_email') {
-    const contactInfo = prospect.phone_number ?? prospect.email ?? '_______'
-    text = text.replace(/_______/, contactInfo)
-  }
-  return text
 }
 
 
@@ -1317,42 +1233,11 @@ export default function Prospects() {
       supabase.from('app_settings').select('key, value_text').in('key', allKeys),
       supabase.from('user_prospect_copy_templates').select('template_key, value_text, subject_text').eq('user_id', authUser.id),
     ])
-    const defaultsMap: Record<CopyTemplateKey, string> = {
-      no_response_email: '',
-      phone_followup_email: '',
-      just_checking_in_email: '',
-    }
-    const subjectDefaultsMap: Record<CopyTemplateKey, string> = {
-      no_response_email: '',
-      phone_followup_email: '',
-      just_checking_in_email: '',
-    }
-    for (const r of defaultsRes.data ?? []) {
-      const key = Object.entries(APP_SETTINGS_KEYS).find(([, v]) => v === r.key)?.[0] as CopyTemplateKey | undefined
-      if (key && r.value_text) defaultsMap[key] = r.value_text
-      const subjectKey = Object.entries(APP_SUBJECT_SETTINGS_KEYS).find(([, v]) => v === r.key)?.[0] as CopyTemplateKey | undefined
-      if (subjectKey && r.value_text != null) subjectDefaultsMap[subjectKey] = r.value_text
-    }
-    setCopyDefaults(defaultsMap)
-    setCopySubjectDefaults(subjectDefaultsMap)
-    const overridesMap: Record<CopyTemplateKey, string | null> = {
-      no_response_email: null,
-      phone_followup_email: null,
-      just_checking_in_email: null,
-    }
-    const subjectOverridesMap: Record<CopyTemplateKey, string | null> = {
-      no_response_email: null,
-      phone_followup_email: null,
-      just_checking_in_email: null,
-    }
-    for (const r of overridesRes.data ?? []) {
-      if (COPY_TEMPLATE_KEYS.includes(r.template_key as CopyTemplateKey)) {
-        overridesMap[r.template_key as CopyTemplateKey] = r.value_text
-        subjectOverridesMap[r.template_key as CopyTemplateKey] = (r as { subject_text?: string | null }).subject_text ?? null
-      }
-    }
-    setCopyOverrides(overridesMap)
-    setCopySubjectOverrides(subjectOverridesMap)
+    const texts = foldCopyTemplateRows(defaultsRes.data ?? [], overridesRes.data ?? [])
+    setCopyDefaults(texts.defaults)
+    setCopySubjectDefaults(texts.subjectDefaults)
+    setCopyOverrides(texts.overrides)
+    setCopySubjectOverrides(texts.subjectOverrides)
   }
 
   async function loadPersonPhone() {
@@ -1478,15 +1363,11 @@ export default function Prospects() {
   }
 
   function getResolvedCopyText(key: CopyTemplateKey): string {
-    const override = copyOverrides[key]
-    if (override != null && override !== '') return override
-    return copyDefaults[key] ?? ''
+    return resolveCopyText(copyOverrides[key], copyDefaults[key])
   }
 
   function getResolvedCopySubject(key: CopyTemplateKey): string {
-    const override = copySubjectOverrides[key]
-    if (override != null && override !== '') return override
-    return copySubjectDefaults[key] ?? ''
+    return resolveCopyText(copySubjectOverrides[key], copySubjectDefaults[key])
   }
 
   async function handleCopyTemplate(key: CopyTemplateKey) {

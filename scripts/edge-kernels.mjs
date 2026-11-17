@@ -257,6 +257,14 @@ export const ENTRIES = {
   'lib/jobs/lienScanFile.ts': { values: [], types: [] },
   // The dev seat's plan_lien_service and read_lien_filings: the proof a served copy keeps, the form's own sends and the receipt's name in Drive.
   'lib/jobs/lienServiceProof.ts': { values: [], types: [] },
+  // The dev seat's plan_task (v2.7584): the New task window's send, its Done when… lines, its photo switch's default and
+  // the name a giver's photo of the spot takes. The place kernel rides in as the send's own import.
+  'lib/tasks/newTaskSend.ts': { values: [], types: [] },
+  'lib/taskCriteria.ts': { values: [], types: [] },
+  'lib/taskProgress.ts': { values: [], types: [] },
+  'lib/tasks/taskSpotPhoto.ts': { values: [], types: [] },
+  // Who the New task window offers: the roster's own predicate, which plan_task holds each person to.
+  'lib/people/activeRoster.ts': { values: [], types: [] },
   // The firm's lien grid (legal-portal, through _shared/legalLienBookShape.ts): a job paid in kind is off the book, by
   // the Lien desk's own rule and its own column helper.
   'lib/jobs/lienInKind.ts': { values: [], types: [] },

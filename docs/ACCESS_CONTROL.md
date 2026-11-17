@@ -243,7 +243,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and thirteen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and thirteen since v2.7515, whose served copies are the Lien window's own `served_at` and `sends` on the filing's row under the dev's RLS, no new role and no new policy;
+The one write path (v2.3722) is one hundred and fifteen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and fifteen since v2.7584, whose given task is the New task window's own rows on `checklist_items`, its assignee tables, `checklist_instances` and `task_criteria` under the dev's RLS, no new role and no new policy;
+one hundred and thirteen since v2.7515, whose served copies are the Lien window's own `served_at` and `sends` on the filing's row under the dev's RLS, no new role and no new policy;
 one hundred and eleven since v2.7511, whose recorded lien filing is the Lien window's own `job_lien_filings` row and the desk item's mark under the dev's RLS, with its scan staged in the private `dev-seat-staging` bucket a dev reaches only inside their own folder, `docs/migrations/20261117100000_dev_seat_staging_bucket.md`, no new role;
 one hundred and nine since v2.7247, whose affidavit draft is the Lien desk pane's own `job_lien_desk_items` row under the dev's RLS, no new role and no new policy;
 one hundred and seven since v2.7241, whose box edit and part rename go through `dev_on_site_rename`, the second `SECURITY INVOKER` wrapper, under the dev's own RLS, `docs/migrations/20261114050000_dev_on_site_rename.md`;
@@ -307,6 +308,9 @@ A training account or a twin is refused in words, and so is a target account tha
 A person reads their own row and the office reads the desk's;
 no new policy.
 The controller sees the desk's section and presses nothing.
+
+The office's **Waiting on** card (v2.7568, punch list #365, PR 2) is drawn for the assistant and the controller alone (`canSeeWaitingOnLeader`).
+It adds no policy and no function: the waivers, the tagged notes and the line budgets are read under the office's own row-level security, and its **Remind** is `notify-lien-approval`, whose gate is the office roles.
 
 ### GC projects — New project, the plans, the questions and the scope book (door 1, v2.4832, `20261008003000_gc_door_1_new_project_team.sql`)
 
@@ -999,13 +1003,14 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Movements and moves are select + insert only: a wrong press gets a new row, never an edit, with one exception since v2.7212: a typed part's name is fixed by inserting a `job_part_renames` row (read and insert by the same gate, never updated or deleted, `docs/migrations/20261113230000_on_site_part_renames.md`), whose definer trigger sets `part_name` alone on the job's typed ledger rows after the caller's own RLS let the row in.
   Containers allow update (a move, a pin, a retirement, and since v2.7179 an edit of the name, the kind or the where line by the same gate, and since v2.7348 of the box's line, `description`, with no policy of its own;
   since v2.7276 a new or changed name is judged by the `job_containers_name_rule` trigger, `SECURITY DEFINER` so it reads every job of the site: a caller who cannot read the job next door is still held to its names, and the refusal names that job's number, `docs/migrations/20261114100000_box_name_rule.md`);
-  a place is insert only;
+  a place is insert only but for one column: since v2.7580 a place's `painted_map_id`, the way to it, may be updated by the same gate (`job_places_update`), and the `job_places_guard_way` trigger holds a direct caller to that column and holds the way, from anyone, to a painted map the writer can open on the place's own job or its development (`docs/migrations/20261117180000_place_painted_way.md`, punch list #372);
   a photo row may be updated by the one who took it.
   **The gate says which job;
   since v2.7240 triggers say which columns** (`docs/migrations/20261114013000_on_site_teammate_guards.md`, punch list #344 PR 5), for a direct caller alone (`current_user` is `authenticated` or `anon`;
   the service role and definer functions pass): a new ledger row and a new box move take the caller as `by_user_id`, the caller's own name as `by_name` (a dev's is kept, for the dev seat's agent label) and the server's time where the phone's is ahead, and a ledger row is stamped `recorded_at`, when it reached the office;
   a box photo's `drive_file_id`, `filed_at`, `refile_due_at`, `fail_why` and the status `filed` are the sweep's, its box, job and taker never change, and its `storage_path` is `<a job id>/<its own id>.jpg`;
   a box's `job_id` cannot be changed by a direct update.
+  Since v2.7573 a box's pin remembers who set it: `pinned_by` is the caller, never what the phone sent, and `pinned_by_name`, `pinned_at` and `pin_accuracy_m` change only with the pin and go when it goes (`job_containers_stamp_pin`, `docs/migrations/20261117170000_box_pin_remembers.md`, punch list #372).
   **The dev seat writes the same rows through `dev_on_site_write`** (v2.6367, `20261102100000`) **and, for a box's edit and a part's rename, `dev_on_site_rename`** (v2.7241, `20261114050000`): `SECURITY INVOKER`, so these policies, the CHECKs, training mode's blocks and the twin fence decide every insert as they do on the screen;
   gated `is_dev()` first, a training account and a digital twin refused in words;
   every row stamped `<agent_label> · MCP as <dev>` with the dev as `by_user_id`.

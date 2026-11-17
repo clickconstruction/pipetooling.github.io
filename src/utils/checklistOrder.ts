@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from './errorHandling'
+import { nextDisplayOrders } from '../lib/tasks/newTaskSend'
 
 /**
  * Returns the next display_order for each user (max + 1).
@@ -24,14 +25,6 @@ export async function getNextDisplayOrders(
     },
     'get next display orders for checklist assignees'
   )
-  const maxByUser = new Map<string, number>()
-  for (const row of (data ?? []) as Array<{ user_id: string; display_order: number | null }>) {
-    const current = maxByUser.get(row.user_id) ?? 0
-    maxByUser.set(row.user_id, Math.max(current, row.display_order ?? 0))
-  }
-  const result = new Map<string, number>()
-  for (const uid of userIds) {
-    result.set(uid, (maxByUser.get(uid) ?? 0) + 1)
-  }
-  return result
+  // One past the highest each person holds: the rule is the send's own (`nextDisplayOrders`), shared with the dev seat.
+  return nextDisplayOrders((data ?? []) as Array<{ user_id: string; display_order: number | null }>, userIds)
 }

@@ -2471,6 +2471,16 @@ The view is `users.dashboard_view` through `set_dashboard_view`, pressed in Sett
 only a leader's or a dev's account takes one, and every account reads as **Full** until someone presses. → *Needs You card*;
 guide `use-the-short-dashboard`.
 
+### Waiting on card (the office's side of the short Dashboard)
+A card on an assistant's or a controller's Dashboard, under Needs you, named for the leader, like *Waiting on Marcus* (v2.7568, punch list #365, PR 2).
+The card is `DashboardWaitingOnLeaderCard.tsx`, and its rows and words are in `lib/dashboard/waitingOnLeader.ts`.
+It lists the lines the leader's **Short Dashboard** lists as his alone: lien notices to approve and to sign, lien waivers, tagged job notes and the weekly line budgets.
+A lien row has **Remind**, the Lien desk's own reminder sent through `sendLienReminder`.
+A waiver, a tagged note and the line budgets have no message yet, and the row says so.
+With a notice to sign, one press opens the desk's Ready pile, where a notice takes the leader's signing code.
+It reads under the office's own row-level security and is drawn only when something waits or a read failed. → *Short Dashboard*;
+guide `see-what-waits-on-the-leader`.
+
 ### Bring back (the person desk)
 A teammate whose employment ended comes back on the same account (v2.6523, punch list #256).
 On an archived desk whose roster row has an end date, **Bring back…** sits where Restore sat, on the Status row and in the header's ⋯ menu, and on People → Users → Archived's two lists;
@@ -4484,6 +4494,9 @@ Taunya kept the papers' names on 2026-11-16.
 The register is `sub_papers` (v2.7474), which registers each paper with its number, its revision and the paper as issued, written only by `mint_sub_paper` (`WS-<job>-<n>` per job, `PR-<n>` from the sending, `SA-<n>` across the company, never given out twice;
 a change is a revision, a reprint makes nothing) and voided only by `void_sub_paper`.
 Guide: `make-a-statement-of-account-for-a-sub`.
+Since v2.7597 (punch list #371) a sub reads the same papers on their own page: a switch under the head, **Today** and **Statements**, opens `SubPortalStatementsView` over the `papers` block of `sub-portal` (`src/lib/subPortal/subPortalStatements.ts`).
+The sub's page never gives out a number: a statement of account saved there reads *Saved from your page*, and a work statement that changed since the office's copy says so and drops its revision.
+Print on the sub's page still prints the Today paper, whichever view shows.
 
 ### Sub payment trace (move / remove / undo)
 
@@ -5056,8 +5069,8 @@ The MCP server a **dev's** coding agent reads the app through, at `https://mcp.c
 A **Dev MCP key** (`ptd_…`, Settings → Your account, one per machine) resolves to a person;
 the server reads **as that person**, GET-only, so RLS applies and the database refuses writes;
 secrets are redacted and every call lands in `dev_mcp_calls`.
-Writes are a second path, one hundred and thirteen plan → apply verbs since v2.7515 — fifty-one over twenty-one dev-gated RPCs, four over the Plans section's own rows (a plan set, a paper), four over a surface's own RPC (a waiting field report, a matter opened on a person), ten over the job's own doors (a job, v2.6790, its update, v2.6793, an activity note, v2.6822, and a payment and a combine, v2.6940), ten over a bid's own rows (a bid changed, v2.6945, its count rows, v2.6967, its takeoff, v2.6968, its labor, v2.6976, and its prices, v2.6992), two over a bid's sent paper (filed from Drive into Team only › Sent by us and linked, v2.7154;
-the link is the Sent by us folder once it holds several papers, v2.7186), two over a property record's lien facts (v2.6950), ten over the Lien desk's own rows (a job's last day of work, v2.7206, a notice already mailed, v2.7229, an affidavit drafted, v2.7247, a filed affidavit recorded with its scan, v2.7511, its copies recorded as mailed, v2.7515), four over the Sub Labor screens' own rows (a sheet and what was paid against it, v2.6944), six over the People page's own doors (an account, a login, a password reset, v2.6792), four over the submittal log's own rows (the rows and a log line, v2.6804), two over a bill (v2.6794) and four over a job's marks (the Collections flag and the contract's end, v2.6795): a cost batch, an HR entry, a legal matter's narrative, planned steps, statements, documents and gap answers, a development's History line, a bid and its plan set, and since v2.6367 Materials on site's presses — a cage or box, a delivery, a movement, a count — through the one `SECURITY INVOKER` wrapper, so the screens' own RLS and fences hold, and since v2.6808 a whole job's on-site rows moved to another job through a definer of its own, since the ledger takes no update under anyone's RLS, and since v2.7241 a box's name, kind and where line and a typed part's name through a second invoker wrapper, `dev_on_site_rename` (`docs/dev-mcp/README.md`).
+Writes are a second path, one hundred and fifteen plan → apply verbs since v2.7584 — fifty-one over twenty-one dev-gated RPCs, four over the Plans section's own rows (a plan set, a paper), four over a surface's own RPC (a waiting field report, a matter opened on a person), ten over the job's own doors (a job, v2.6790, its update, v2.6793, an activity note, v2.6822, and a payment and a combine, v2.6940), ten over a bid's own rows (a bid changed, v2.6945, its count rows, v2.6967, its takeoff, v2.6968, its labor, v2.6976, and its prices, v2.6992), two over a bid's sent paper (filed from Drive into Team only › Sent by us and linked, v2.7154;
+the link is the Sent by us folder once it holds several papers, v2.7186), two over a property record's lien facts (v2.6950), ten over the Lien desk's own rows (a job's last day of work, v2.7206, a notice already mailed, v2.7229, an affidavit drafted, v2.7247, a filed affidavit recorded with its scan, v2.7511, its copies recorded as mailed, v2.7515), four over the Sub Labor screens' own rows (a sheet and what was paid against it, v2.6944), six over the People page's own doors (an account, a login, a password reset, v2.6792), four over the submittal log's own rows (the rows and a log line, v2.6804), two over a bill (v2.6794), two over the Checklist's own rows (a task given as the New task window gives it, through the window's own send kernel, v2.7584) and four over a job's marks (the Collections flag and the contract's end, v2.6795): a cost batch, an HR entry, a legal matter's narrative, planned steps, statements, documents and gap answers, a development's History line, a bid and its plan set, and since v2.6367 Materials on site's presses — a cage or box, a delivery, a movement, a count — through the one `SECURITY INVOKER` wrapper, so the screens' own RLS and fences hold, and since v2.6808 a whole job's on-site rows moved to another job through a definer of its own, since the ledger takes no update under anyone's RLS, and since v2.7241 a box's name, kind and where line and a typed part's name through a second invoker wrapper, `dev_on_site_rename` (`docs/dev-mcp/README.md`).
 Since v2.6565 the seat also searches **the company's own Gmail** (`search_mail` / `read_mail`): every login of the Workspace read as that person under the service account's domain-wide delegation with the read-only scope alone, so the token cannot label, move or delete;
 and since v2.6568 it files what it finds — a file off a mail onto a job's folder, a person's HR file or a matter (`plan_mail_file` / `apply_mail_file`), and a whole conversation onto a job's Activity and notes through gmail-mine's own tag as that login, or since v2.6715 onto a person's HR file as one dated entry a mail, written as the dev (`plan_mail_tag` / `apply_mail_tag`), and since v2.7022 back off its job again when the seat's own tag put it there (`plan_mail_untag` / `apply_mail_untag`), each plan first, then apply quoting the hash.
 Since v2.7154 it also reads **a Drive folder** or one file's facts through the intake service account on a read-only token (`read_drive_folder`, a dev's own key alone, never through View as).
@@ -6494,6 +6507,15 @@ Across a whole development, the **material location report** (v2.6533, punch lis
 The money a shortfall is worth reads the parts book's price since v2.6673 (the owner's call 5;
 `lib/materials/bookPrice.ts`: the supply house's latest check wins, a same-day tie the lower price, a row at zero or at the book's stand-in never a price since v2.7249, stale past 90 days, the invoice price the office read on this device standing in where the book has none), a chip naming the source and the checked day beside every figure on Missing, amber past 90 days, and **Read the parts book again** when the read failed.
 A box photo's file **follows its job** in Drive (v2.6885 the seat's move, v2.6915 any change of job, v2.6927 the strip): when a combine or a move changes a photo's job the file is marked due and moved into the new job's photo folder by the photo sweep, and the job's screens show the count while it runs and name a **held** file, one that could not move, with its reason.
+**Where is it?** on a box (v2.7575, punch list #372) is the press that says where a cage or box stands and draws the way to it.
+It is the middle chip on the phone's box screen, in place of *Pin on map*, and the third tab of the office's box window (`WhereIsBox.tsx` over `whereIsBox.ts`).
+It says the place, the where note, and the **pin** with its day, its person and the phone's margin, which the pin has kept since v2.7573 (`pinned_at`, `pinned_by_name`, `pin_accuracy_m`).
+**Show where I am** draws the reader's own dot and a dashed straight line to the pin, with the distance said as *about* and the phone's margin beside it.
+The dot is drawn on the phone and sent nowhere.
+**I found it** reads the phone once and pins the box where the finder stands, and a reading the phone is not sure of within about 150 ft is refused in words.
+**Move the pin by hand** is the map to drag, with the ring at its centre.
+A pin older than 30 days is an **old pin** and carries a caution.
+A task's place has a sheet of the same name, which is a different thing: there the giver says where the task is.
 
 ### A site's materials (punch list #330)
 Everything in the cages and boxes of one **site**, a development's jobs, on one screen (v2.7074): `?site=<development id>` on Materials → On site and Jobs → Materials, opened from the desk's **site row**, the Development page's **Open the site’s materials** or a field role's **Open the site**.

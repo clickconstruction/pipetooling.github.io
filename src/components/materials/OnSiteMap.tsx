@@ -7,13 +7,16 @@
  */
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { Circle, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import type { PaintedLayerMap } from '../../lib/paintedMap/paintedMapLayer'
 import { PaintedMapsLayer } from '../paintedMap/PaintedMapsLayer'
 import type { LatLng } from '../../lib/materials/myLocation'
 
-/** `me` is where the person stands, when they asked (a task's place, punch list #328). */
-export type OnSiteMapPin = { id: string; label: string; lat: number; lng: number; tone?: 'ok' | 'amber' | 'dim' | 'me' }
+/**
+ * `me` is where the person stands, when they asked (a task's place, punch list #328). `target` is the one box a
+ * person is looking for and `target-old` the same box when its pin is old (Where is it?, punch list #372).
+ */
+export type OnSiteMapPin = { id: string; label: string; lat: number; lng: number; tone?: 'ok' | 'amber' | 'dim' | 'me' | 'target' | 'target-old' }
 
 type Props = {
   /** The job's address, placed; the map opens here when no pin exists. */
@@ -39,11 +42,17 @@ type Props = {
   /** The job's painted maps (#345), drawn under the pins: the way in beside what is where. A press opens the map. */
   painted?: ReadonlyArray<PaintedLayerMap>
   onPaintedTap?: (mapId: string) => void
+  /**
+   * The reader's own dot (Where is it?, punch list #372): drawn with the phone's margin as a ring, and a dashed
+   * straight line to `lineTo`. The map fits both once, when the dot first appears, and leaves a later drag alone.
+   */
+  me?: { lat: number; lng: number; accuracyM: number | null } | null
+  lineTo?: LatLng | null
 }
 
 const SATELLITE = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }
 const STREETS = { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
-const TONE: Record<NonNullable<OnSiteMapPin['tone']>, string> = { ok: '#2563eb', amber: '#d97706', dim: '#6b7280', me: '#111827' }
+const TONE: Record<NonNullable<OnSiteMapPin['tone']>, string> = { ok: '#2563eb', amber: '#d97706', dim: '#6b7280', me: '#111827', target: '#dc2626', 'target-old': '#d97706' }
 const toggle: CSSProperties = { minHeight: 32, padding: '0 0.7rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer' }
 
 /** Leaflet measures its box once; inside a sheet that opens later, or a flex box that settles, it needs telling. */
@@ -69,6 +78,20 @@ function FlyTo({ to, zoom }: { to: LatLng | null | undefined; zoom: number }) {
   return null
 }
 
+/** The reader and the pin in one view, once: the first time the dot appears. A drag after that is the reader's own. */
+function FitMe({ me, to }: { me: LatLng | null; to: LatLng | null }) {
+  const map = useMap()
+  const done = useRef(false)
+  useEffect(() => {
+    if (!me) { done.current = false; return }
+    if (done.current) return
+    done.current = true
+    if (to) map.fitBounds([[me.lat, me.lng], [to.lat, to.lng]], { padding: [36, 36], maxZoom: 19 })
+    else map.setView([me.lat, me.lng], 18)
+  }, [map, me, to])
+  return null
+}
+
 function CenterTracker({ onMove }: { onMove: (c: LatLng) => void }) {
   const map = useMapEvents({
     move: () => { const c = map.getCenter(); onMove({ lat: c.lat, lng: c.lng }) },
@@ -78,7 +101,7 @@ function CenterTracker({ onMove }: { onMove: (c: LatLng) => void }) {
   return null
 }
 
-export default function OnSiteMap({ center, pins, height, onPinTap, placing, flyTo, onCenterChange, focusId, emptyWords, startZoom, still, onTilesFailed, painted, onPaintedTap }: Props) {
+export default function OnSiteMap({ center, pins, height, onPinTap, placing, flyTo, onCenterChange, focusId, emptyWords, startZoom, still, onTilesFailed, painted, onPaintedTap, me, lineTo }: Props) {
   const [layer, setLayer] = useState<'satellite' | 'streets'>('satellite')
   const tilesSeen = useRef({ loaded: false, told: false })
   const focus = pins.find((p) => p.id === focusId) ?? null
@@ -116,8 +139,13 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
         <FlyTo to={flyTo} zoom={19} />
         {placing && onCenterChange ? <CenterTracker onMove={onCenterChange} /> : null}
         {painted && painted.length > 0 ? <PaintedMapsLayer maps={painted} onOpen={still ? undefined : onPaintedTap} quiet /> : null}
+        <FitMe me={me ?? null} to={lineTo ?? null} />
+        {/* Leaflet writes these as SVG attributes, which read no CSS variable: the map's own blue, as a pin's. */}
+        {me && lineTo ? <Polyline positions={[[me.lat, me.lng], [lineTo.lat, lineTo.lng]]} pathOptions={{ color: TONE.ok, weight: 3, dashArray: '8 7', opacity: 0.9 }} interactive={false} /> : null}
+        {me && me.accuracyM != null && me.accuracyM > 0 ? <Circle center={[me.lat, me.lng]} radius={me.accuracyM} pathOptions={{ color: TONE.ok, weight: 1, fillColor: TONE.ok, fillOpacity: 0.16 }} interactive={false} /> : null}
+        {me ? <CircleMarker center={[me.lat, me.lng]} radius={7} pathOptions={{ color: '#ffffff', weight: 2, fillColor: TONE.ok, fillOpacity: 1 }} interactive={false} /> : null}
         {pins.map((p) => (
-          <CircleMarker key={p.id} center={[p.lat, p.lng]} radius={9} pathOptions={{ color: '#ffffff', weight: 2, fillColor: TONE[p.tone ?? 'ok'], fillOpacity: 0.95 }} eventHandlers={onPinTap ? { click: () => onPinTap(p.id) } : undefined}>
+          <CircleMarker key={p.id} center={[p.lat, p.lng]} radius={p.tone === 'dim' ? 7 : 9} pathOptions={{ color: '#ffffff', weight: 2, fillColor: TONE[p.tone ?? 'ok'], fillOpacity: p.tone === 'dim' ? 0.6 : 0.95 }} eventHandlers={onPinTap ? { click: () => onPinTap(p.id) } : undefined}>
             <Tooltip permanent direction="top" offset={[0, -8]} className="on-site-pin-label">{p.label}</Tooltip>
           </CircleMarker>
         ))}

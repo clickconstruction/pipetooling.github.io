@@ -27,6 +27,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   listMovements: () => store.movements,
   listPhotos: () => [],
   listPlaces: () => [],
+  listContainerMoves: () => [],
   moveContainer: vi.fn(),
   pinContainer: vi.fn(),
   retireContainer: vi.fn(),
@@ -205,6 +206,20 @@ describe('TallyOnSiteTab · Add a part offers the names the job already has (pun
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the parts book' }), { target: { value: 'wax ring' } })
     expect(screen.queryByTestId('add-part-already')).toBeNull()
     expect(screen.getByRole('button', { name: 'Use “wax ring” as typed' })).toBeTruthy()
+  })
+})
+
+describe('TallyOnSiteTab · Where is it? (punch list #372)', () => {
+  it('the box screen’s middle chip opens the sheet, which says what the app knows', async () => {
+    open()
+    // One chip, pinned or not: the old Pin on map press is gone from the box screen.
+    expect(screen.queryByRole('button', { name: /Pin on map|On the map/ })).toBeNull()
+    fireEvent.click(await screen.findByRole('button', { name: 'Where is A2?' }))
+    const sheet = screen.getByRole('dialog', { name: 'Where is A2?' })
+    expect(sheet.textContent).toContain('Nobody has pinned A2.')
+    expect(sheet.textContent).toContain('It has no place yet.')
+    expect(screen.getByRole('button', { name: 'I found it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Move the pin by hand' })).toBeTruthy()
   })
 })
 
