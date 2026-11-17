@@ -21,3 +21,6 @@ export const lienRowChipStyle = (bg: string, fg: string): CSSProperties => ({
   color: fg,
   verticalAlign: 'middle',
 })
+
+/** The small capitals over a box or a menu on the desk. */
+export const lienBoxHeadStyle: CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }

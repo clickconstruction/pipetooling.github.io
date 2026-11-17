@@ -1370,6 +1370,8 @@ Done in v2.7583: the Retainage list is [`LienDeskRetainageList.tsx`](../src/comp
 The retainage pick, pile, lit title and footer slot stay in the desk, which is 5,052 lines.
 Done in v2.7585: the Affidavits list is [`LienDeskAffidavitList.tsx`](../src/components/jobs/LienDeskAffidavitList.tsx) over [`useLienDeskAffidavits.ts`](../src/components/jobs/useLienDeskAffidavits.ts), which holds what the list shows and its three batch presses (redraw, send, print).
 The affidavit pick, pile, held-only press and lit title stay in the desk, `btn` and `FILL` are shared from `lienDeskButtonStyles.ts`, and the desk is 4,718 lines.
+Done in v2.7586: the title bar's measured fits are [`useLienDeskTitleBarFit.ts`](../src/components/jobs/useLienDeskTitleBarFit.ts), the Put a GC on notice door and menu are [`LienDeskGcPicker.tsx`](../src/components/jobs/LienDeskGcPicker.tsx), and the view tabs and By paper's tabs are [`LienDeskViewTabs.tsx`](../src/components/jobs/LienDeskViewTabs.tsx).
+The bar's own line stays in the desk, which is 4,622 lines.
 
 1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
 2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines;
