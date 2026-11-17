@@ -17,7 +17,7 @@ const PEOPLE = [
   { id: 'u-imani', name: 'Imani' },
   { id: 'u-me', name: 'Theo' },
 ]
-type SayStuck = (a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck'; words: string }) => Promise<string | null>
+type SayStuck = (a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck' | 'skipped'; words: string }) => Promise<string | null>
 function Host({ target, moveDay, drop = async () => null, sayStuck = async () => null, handOn = async () => null, tellGiver, onChanged, authUserId = 'u-me' }: { handOn?: HandOn; target: TaskDoerActsTarget; moveDay: (id: string, ymd: string) => Promise<string | null>; drop?: (id: string, reason: string) => Promise<string | null>; sayStuck?: SayStuck; tellGiver: (a: { giverId: string | null; instanceId: string; title: string; body: string }) => Promise<void>; onChanged: () => void; authUserId?: string }) {
   const doer = useTaskDoerActs({ authUserId, todayYmd: '2026-11-16', onChanged, moveDay, drop, sayStuck, handOn, loadPeople: async () => ({ people: PEOPLE, error: null }), tellGiver, nameOf: async () => 'Theo' })
   return (

@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { groupEventsByInstance, stripStamp, type ChecklistCardEvent, droppedReason } from '../../lib/checklistCardEvents'
 import { DROPPED_CHIP } from '../../lib/tasks/taskDoerActs'
+import { SKIPPED_CHIP } from '../../lib/tasks/yesterdayMissed'
 import {
   completedDayGroups,
   groupByDayDesc,
@@ -254,6 +255,12 @@ export function ChecklistHistoryLedger({
         return (
           <span style={{ ...base, background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>
             Reopened
+          </span>
+        )
+      case 'skipped':
+        return (
+          <span data-ledger-skipped style={{ ...base, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-700)' }}>
+            {SKIPPED_CHIP}
           </span>
         )
       case 'missed':

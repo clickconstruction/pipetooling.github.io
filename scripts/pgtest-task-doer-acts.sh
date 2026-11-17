@@ -17,6 +17,9 @@
 # repeating one for that day alone, a roadmap task not at all, and the office hands on for someone else; a map the
 # caller painted, with a line on it, lands on a task that has none, on the roadmap task when there is one, and never
 # swaps a map that is there. It raises on its first failed assertion and ends with "task_doer_acts PASSED".
+# A second scenario, 20_skipped.sql (v2.7551, step D3, migration *_task_skipped_line), holds the skipped line: one more
+# kind in the same check, written like a note by whoever reads the day row, as themself, with the row left not done and
+# the functions' own kinds still closed to a hand; it ends with "task_skipped_line PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a
 # ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -25,7 +28,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55637}"
 NAME="pgtest-task-doer-acts"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_task_doer_acts.sql)"
+WRITES="$(ls supabase/migrations/*_task_doer_acts.sql supabase/migrations/*_task_skipped_line.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -48,5 +51,8 @@ for f in $WRITES; do
 done
 out="$(psql_as postgres -f - < supabase/tests/task_doer_acts/10_acts.sql 2>&1 || true)"
 if ! grep -q "task_doer_acts PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/task_doer_acts/20_skipped.sql 2>&1 || true)"
+if ! grep -q "task_skipped_line PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "task-doer-acts bed ok"

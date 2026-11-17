@@ -227,4 +227,42 @@ describe('Checklist → Today, the day in parts', () => {
     await screen.findByText('Feed the chickens')
     expect(document.querySelector('[data-mark-round]')).toBeNull()
   })
+
+  describe('Yesterday', () => {
+    const ymd = (daysBack: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() - daysBack)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+
+    it('a repeating task that went unticked yesterday asks once: Did it finishes that day, Skipped takes it off the question', async () => {
+      H.today = [row('a', 'Check the truck fluids')]
+      H.older = [row('y1', 'Feed the chickens', { scheduled_date: ymd(1) }), row('y2', 'Sweep the shop bays', { scheduled_date: ymd(1) }), row('old', 'Water the garden', { scheduled_date: ymd(9) })]
+      renderWithProviders(<Checklist />)
+      await screen.findByText('Feed the chickens')
+      const strip = document.querySelector('[data-yesterday]') as HTMLElement
+      expect(within(strip).getByRole('heading', { name: 'Yesterday · 2 not ticked' })).toBeTruthy()
+      expect(strip.textContent).toContain('Did you do it?')
+      // a day nine days back is past the question's reach, and a repeating miss never joins Still open
+      expect(screen.queryByText('Water the garden')).toBeNull()
+      expect(document.querySelector('[data-still-open]')).toBeNull()
+      // Skipped writes its line and the row leaves
+      fireEvent.click(within(document.querySelector('[data-yesterday-row="y2"]') as HTMLElement).getByRole('button', { name: 'Skipped' }))
+      await waitFor(() => expect(document.querySelector('[data-yesterday-row="y2"]')).toBeNull())
+      expect(within(document.querySelector('[data-yesterday]') as HTMLElement).getByRole('heading', { name: 'Yesterday · 1 not ticked' })).toBeTruthy()
+      // Did it finishes that day's row by the tick's own save
+      H.older = []
+      fireEvent.click(within(document.querySelector('[data-yesterday-row="y1"]') as HTMLElement).getByRole('button', { name: 'Did it' }))
+      await waitFor(() => expect(H.updates.map((u) => u.id)).toEqual(['y1']))
+      await waitFor(() => expect(document.querySelector('[data-yesterday]')).toBeNull())
+    })
+
+    it('with nothing unticked in reach, nothing is asked', async () => {
+      H.today = [row('a', 'Check the truck fluids')]
+      H.older = [row('old', 'Water the garden', { scheduled_date: ymd(9) })]
+      renderWithProviders(<Checklist />)
+      await screen.findByText('Check the truck fluids')
+      expect(document.querySelector('[data-yesterday]')).toBeNull()
+    })
+  })
 })

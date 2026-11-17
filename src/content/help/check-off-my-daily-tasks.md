@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, mark several done, round, all at once, do first, what comes first, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, yesterday, not ticked, did it, skipped, missed, mark several done, round, all at once, do first, what comes first, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -180,6 +180,15 @@ Found something that needs doing? Press {{button:outline|＋ Add a task for me}}
 Finished a task and it turned up more work? Press **Follow-up** on the finished task. The window opens on that task's words, and you type what comes next. A task that had a place brings its place along. The person who gave you the first task hears when the follow-up is done.
 
 [Give someone a task](/help/give-someone-a-task) covers the rest of the window.
+
+## When yesterday's task was not ticked
+
+A daily or weekly task that is not ticked drops off your list the next morning. The next day the top of Today asks about it once, under a label like *Yesterday · 2 not ticked*.
+
+- Press **Did it** when you did the work and forgot the tick. That day is marked done.
+- Press **Skipped** when it did not get done. The task leaves the question.
+
+Either answer keeps the record right, and History shows a skipped day as **Skipped**. The question looks back three days, so Monday asks about Friday.
 
 ## Choose what to do first
 

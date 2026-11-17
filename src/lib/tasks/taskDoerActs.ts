@@ -164,6 +164,8 @@ export function doerLineWords(eventType: string, body: string): string | null {
       return b ? `handed it to ${b}` : 'handed it on'
     case 'map':
       return b ? `put a map on it: ${b}` : 'put a map on it'
+    case 'skipped':
+      return b ? `skipped it that day: ${b}` : 'skipped it that day'
     default:
       return null
   }

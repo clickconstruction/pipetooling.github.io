@@ -82,6 +82,8 @@ import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, la
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { DO_FIRST_MARK, doFirstId, readDoFirst, writeDoFirst } from '../lib/tasks/doFirst'
+import { MISSED_ASK, MISSED_DID_LABEL, MISSED_SKIPPED_LABEL, MISSED_WORDS, missedLabel, yesterdayMissed } from '../lib/tasks/yesterdayMissed'
+import { sayTaskStuck } from '../lib/tasks/taskDoerActsIo'
 import { ROUND_MIN, roundConfirmMessage, roundHeldCount, roundHeldWords, roundOutcome, roundPressLabel, roundTaskIds } from '../lib/tasks/markRound'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
@@ -518,6 +520,10 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   const confirmRound = useConfirmDialog()
   const { showToast: showRoundToast } = useToastContext()
   const [roundBusy, setRoundBusy] = useState(false)
+  /** Step D3: the repeating days that went unticked, and the ones answered as skipped. */
+  const [missedRows, setMissedRows] = useState<ChecklistInstance[]>([])
+  const [missedSkippedIds, setMissedSkippedIds] = useState<ReadonlySet<string>>(new Set())
+  const [missedBusyId, setMissedBusyId] = useState<string | null>(null)
   /** Do first (step D1): the task this person lifted into Next on this device. */
   const [doFirstPick, setDoFirstPick] = useState<string | null>(() => readDoFirst(authUserId))
   /** Tasks finished in this visit (punch list #369, step B2): each one's done line offers the photo and the note once. */
@@ -684,16 +690,22 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     const qualifying = pastIncomplete.filter((i) => qualifiesOutstanding(i.checklist_items))
     const rest = pastIncomplete.filter((i) => !qualifiesOutstanding(i.checklist_items))
     let reopenedOnes: ChecklistInstance[] = []
+    let skippedIds = new Set<string>()
     if (rest.length > 0) {
       const { data: transData } = await supabase
         .from('checklist_instance_events')
         .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
         .in('instance_id', rest.map((r) => r.id))
-        .in('event_type', ['completed', 'reopened'])
+        .in('event_type', ['completed', 'reopened', 'skipped'])
         .order('created_at', { ascending: true })
       const grouped = groupEventsByInstance((transData ?? []) as unknown as ChecklistCardEvent[])
       reopenedOnes = rest.filter((i) => lastTransitionIsReopen(grouped.get(i.id) ?? []))
+      // Step D3: the repeating days that went unticked, and which of them the person already answered as skipped.
+      skippedIds = new Set(rest.filter((i) => (grouped.get(i.id) ?? []).some((e) => e.event_type === 'skipped')).map((i) => i.id))
     }
+    const reopenedIds = new Set(reopenedOnes.map((i) => i.id))
+    setMissedRows(rest.filter((i) => !reopenedIds.has(i.id)))
+    setMissedSkippedIds(skippedIds)
     const overdueData = [...qualifying, ...reopenedOnes]
     // Punch list #369: a task whose due day has passed leads the list, so the one red row is never behind the fold.
     setOutstandingInstances(lateFirst(sortOutstanding(overdueData), today))
@@ -1028,6 +1040,24 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       setRoundBusy(false)
     }
   }
+  // Step D3: Yesterday. A repeating task that went unticked asks once whether it was done or skipped.
+  const missed = yesterdayMissed(missedRows, toLocalDateString(new Date()), missedSkippedIds)
+  const answerMissed = async (inst: ChecklistInstance, did: boolean) => {
+    if (missedBusyId || !authUserId) return
+    setMissedBusyId(inst.id)
+    try {
+      if (did) {
+        // That day's row is finished, by the tick's own path. It leaves the question because it is done.
+        if (await toggleComplete(inst)) setMissedRows((prev) => prev.filter((r) => r.id !== inst.id))
+        return
+      }
+      const refused = await sayTaskStuck({ instanceId: inst.id, userId: authUserId, kind: 'skipped', words: '' })
+      if (refused) setError(refused)
+      else setMissedSkippedIds((prev) => new Set(prev).add(inst.id))
+    } finally {
+      setMissedBusyId(null)
+    }
+  }
   const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
     // Next can be an older task once today is finished: its dot is the map's colour for it, red only when late.
     const todayYmd = toLocalDateString(new Date())
@@ -1136,6 +1166,29 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         {modeBar}
       </div>
       <TaskPlacesMapCard tasks={mapTasks} onShowTask={showTask} onMe={setMe} />
+      {missed.day && !dayFailure ? (
+        <section data-yesterday style={{ marginBottom: '0.9rem' }}>
+          <h3 style={{ ...TODAY_PART_LABEL, marginTop: 0 }}>{missedLabel(missed.day, toLocalDateString(new Date()), missed.rows.length)}</h3>
+          <p style={{ margin: '0 2px 0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {MISSED_ASK} {MISSED_WORDS}
+          </p>
+          <ul style={{ ...TODAY_PART_LIST, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
+            {missed.rows.map((inst, i) => (
+              <li key={inst.id} data-yesterday-row={inst.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+                <span style={{ flex: '1 1 160px', minWidth: 0, fontSize: '0.9375rem', lineHeight: 1.3 }}>{taskTitlePlain(inst.checklist_items?.title)}</span>
+                <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
+                  <button type="button" disabled={missedBusyId !== null} onClick={() => void answerMissed(inst, true)} style={{ ...TASK_PILL_STYLE, minHeight: 38, opacity: missedBusyId === inst.id ? 0.6 : 1 }}>
+                    {MISSED_DID_LABEL}
+                  </button>
+                  <button type="button" disabled={missedBusyId !== null} onClick={() => void answerMissed(inst, false)} style={{ ...TASK_PILL_STYLE, minHeight: 38, opacity: missedBusyId === inst.id ? 0.6 : 1 }}>
+                    {MISSED_SKIPPED_LABEL}
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <section style={{ marginBottom: '1.5rem' }}>
         {dayFailure ? (
           // A read is safe to repeat: when the signal returns the day reads again by itself.

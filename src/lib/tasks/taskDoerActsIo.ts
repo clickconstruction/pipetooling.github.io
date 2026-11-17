@@ -57,10 +57,10 @@ export async function tellTaskGiver(a: { giverId: string | null; instanceId: str
 }
 
 /**
- * A stuck line, or the line that takes it off, written like a note: whoever can read a task may write either, as
+ * A stuck line, the line that takes it off, or a skipped line (step D3), written like a note: whoever can read a task may write either, as
  * themself. No function stands between, since the line changes nothing but the thread.
  */
-export async function sayTaskStuck(a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck'; words: string }): Promise<string | null> {
+export async function sayTaskStuck(a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck' | 'skipped'; words: string }): Promise<string | null> {
   try {
     const { error } = await supabase.from('checklist_instance_events').insert({ instance_id: a.instanceId, event_type: a.kind, actor_user_id: a.userId, body: a.words } as never)
     return error ? formatErrorMessage(error, 'That did not save.') : null
