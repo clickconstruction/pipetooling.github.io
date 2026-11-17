@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -182,6 +182,14 @@ Cannot do a one-time task today? Press **⋯ More** on the task, then **Not toda
 The task keeps its place in your list, with its notes and photos. Its row then reads the new due day and stops reading late. The person who gave you the task gets a message. A row that was moved says so, like *moved twice*.
 
 A task that repeats has no **Not today**. A missed day of a repeating task drops off by itself.
+
+## Say you cannot do a task
+
+Something in the way? Press **⋯ More** on the task, then **Can't do it**. Press what is in the way, like **Waiting on a part**, or type your own words. The press names who is told, like {{button:blue|Tell Imani}}.
+
+The task stays yours. It wears an amber line, like *Stuck: Waiting on a part*, and sits under a **Stuck** label below the tasks you can do. The person who gave you the task gets a message, and the office sees every stuck task in one list.
+
+When the way is clear, press **⋯ More**, then **No longer stuck**. The office can also press **Sorted**, and you get a message. Finishing the task takes the mark off too.
 
 ## Close a task that no longer applies
 

@@ -235,4 +235,14 @@ describe('ChecklistInstanceCard, the fresh look', () => {
     expect(line?.textContent).not.toContain('hears it is done')
     expect(document.querySelector('[data-fresh-just-done]')).toBeNull()
   })
+
+  it('a stuck task wears an amber Stuck line with what is in the way, until it is taken off', async () => {
+    const { unmount } = renderFresh({ events: [ev({ event_type: 'stuck', created_at: '2026-11-16T15:00:00Z', body: 'Waiting on a part' })] })
+    await settle()
+    expect(document.querySelector('[data-fresh-stuck]')?.textContent).toBe('Stuck: Waiting on a part')
+    unmount()
+    renderFresh({ events: [ev({ event_type: 'stuck', created_at: '2026-11-16T15:00:00Z', body: 'Waiting on a part' }), ev({ event_type: 'unstuck', created_at: '2026-11-16T16:00:00Z' })] })
+    await settle()
+    expect(document.querySelector('[data-fresh-stuck]')).toBeNull()
+  })
 })

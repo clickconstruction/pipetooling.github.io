@@ -147,3 +147,29 @@ export function droppedReason(events: ReadonlyArray<ChecklistCardEvent>): string
   }
   return null
 }
+
+/**
+ * What a person says is in the way of an open task (punch list #369, step C6), or null when the task is not stuck. A
+ * `stuck` line stands until an `unstuck` line, or until the task is finished: the last of the three decides. The
+ * empty string is a stuck task whose words were lost; callers treat it as stuck.
+ */
+export function stuckReason(events: ReadonlyArray<ChecklistCardEvent>): string | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]
+    if (!e) continue
+    if (e.event_type === 'unstuck' || e.event_type === 'completed') return null
+    if (e.event_type === 'stuck') return (e.body ?? '').trim()
+  }
+  return null
+}
+
+/** Who said the task is stuck, and when: the same last `stuck` line `stuckReason` reads. */
+export function stuckSaidBy(events: ReadonlyArray<ChecklistCardEvent>): { userId: string | null; at: string } | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]
+    if (!e) continue
+    if (e.event_type === 'unstuck' || e.event_type === 'completed') return null
+    if (e.event_type === 'stuck') return { userId: e.actor_user_id, at: e.created_at }
+  }
+  return null
+}

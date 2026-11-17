@@ -29,7 +29,7 @@ import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstance
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
 import { historyShortDate, splitHistoryItems } from '../lib/checklistHistorySplit'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
-import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
+import { groupEventsByInstance, lastTransitionIsReopen, stuckReason, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActivity'
 import { completeChecklistInstance, createNextChecklistRepeat } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
@@ -83,6 +83,7 @@ import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, la
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
+import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
 import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
@@ -938,9 +939,12 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   // what is done folds to a line each. With today finished, Next is a task that was sent back, then the oldest.
   const { open: todayOpen, done: todayDone } = splitToday(todayInstances)
   const sentBackIds = new Set(outstandingInstances.filter((i) => lastTransitionIsReopen(eventsByInstance.get(i.id) ?? [])).map((i) => i.id))
-  const nextId = nextTaskId(todayOpen, outstandingInstances, sentBackIds)
+  // Step C6: a stuck task waits under the ones that can be done, and is never Next.
+  const isStuck = (i: ChecklistInstance) => stuckReason(eventsByInstance.get(i.id) ?? []) !== null
+  const stuckRows = todayOpen.filter(isStuck)
+  const nextId = nextTaskId(todayOpen.filter((i) => !isStuck(i)), outstandingInstances.filter((i) => !isStuck(i)), sentBackIds)
   const nextInst = nextId ? (todayOpen.find((i) => i.id === nextId) ?? outstandingInstances.find((i) => i.id === nextId) ?? null) : null
-  const thenRows = todayOpen.filter((i) => i.id !== nextId)
+  const thenRows = todayOpen.filter((i) => i.id !== nextId && !isStuck(i))
   const olderRows = outstandingInstances.filter((i) => i.id !== nextId)
   const showSentence = !loading && !dayFailure && (todayInstances.length > 0 || outstandingInstances.length > 0)
   const hearsNameFor = (inst: ChecklistInstance): string | null => {
@@ -978,6 +982,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       giverId,
       giverName: giverId ? (eventActorNameById[giverId] ?? null) : null,
       dueYmd: it?.due_date ?? null,
+      stuck: isStuck(inst),
     }
   }
   const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
@@ -1106,6 +1111,12 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
               <>
                 <h3 style={TODAY_PART_LABEL}>{todayPartLabel('then', thenRows.length)}</h3>
                 <ul style={TODAY_PART_LIST}>{thenRows.map((inst) => renderTodayCard(inst, false))}</ul>
+              </>
+            ) : null}
+            {stuckRows.length > 0 ? (
+              <>
+                <h3 style={TODAY_PART_LABEL}>{todayPartLabel('stuck', stuckRows.length)}</h3>
+                <ul style={TODAY_PART_LIST}>{stuckRows.map((inst) => renderTodayCard(inst, false))}</ul>
               </>
             ) : null}
             {todayDone.length > 0 ? (
@@ -2864,6 +2875,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <ChecklistStuckSection authUserId={authUserId} />
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', maxWidth: 640, marginLeft: 'auto', marginRight: 'auto' }}>
         {reviewTile('To sign off', reviewCount, reviewTileTone('signoff', reviewCount), signOffTileCaption(reviewCount), foldReviewOpen, () => {
           setFoldReviewOpen(true)

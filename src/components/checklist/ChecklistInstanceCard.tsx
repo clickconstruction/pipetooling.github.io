@@ -3,6 +3,7 @@ import {
   cardStatus,
   commentCount,
   droppedReason,
+  stuckReason,
   stripStamp,
   type ChecklistCardEvent,
 } from '../../lib/checklistCardEvents'
@@ -25,7 +26,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { MAP_PRESS_LABEL, MAP_PRESS_TITLE, PHOTO_PRESS_LABEL, beforeStartWords, doneLineWords, justDoneWords, notePressLabel, taskMapIdOf } from '../../lib/tasks/todayPage'
 import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
-import { doerLineWords, droppedLineWords } from '../../lib/tasks/taskDoerActs'
+import { doerLineWords, droppedLineWords, stuckChipWords } from '../../lib/tasks/taskDoerActs'
 import { dayLabel } from '../../lib/checklistDueDates'
 
 export type ChecklistInstanceCardInstance = {
@@ -532,6 +533,8 @@ export function ChecklistInstanceCard({
     <TaskDoerMapPress instanceId={instance.id} taskWords={titleText} place={place} onAdded={onMapAdded} />
   ) : null
   const freshBefore = !isCompleted && status.kind !== 'reopened' ? beforeStartWords(hearsName, asksForPhoto) : null
+  // Step C6: the person has said something is in the way. The task wears it in amber until it is taken off or done.
+  const freshStuck = !isCompleted ? stuckReason(events) : null
   // Step C4: a task closed as no longer applying is a finished task that says so, in place of *Done*.
   const freshDropped = isCompleted ? droppedReason(events) : null
   const freshStatus =
@@ -609,6 +612,13 @@ export function ChecklistInstanceCard({
           </div>
           {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} old={placeOld} far={placeFar} /> : null}
           {!place ? <TaskMapLine map={taskMap} /> : null}
+          {freshStuck !== null ? (
+            <div style={{ marginTop: 4 }}>
+              <span data-fresh-stuck style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, padding: '2px 9px', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)' }}>
+                {stuckChipWords(freshStuck)}
+              </span>
+            </div>
+          ) : null}
           {freshBefore ? (
             <div data-fresh-before style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
               {freshBefore}

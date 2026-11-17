@@ -11,8 +11,9 @@ vi.mock('./useIsMobile', () => ({ useIsMobile: () => true }))
 
 const TASK: TaskDoerActsTarget = { instanceId: 'inst-1', title: 'Give every tool a home', once: true, roadmap: false, vehicle: false, done: false, giverId: 'u-imani', giverName: 'Imani', dueYmd: null }
 
-function Host({ target, moveDay, drop = async () => null, tellGiver, onChanged, authUserId = 'u-me' }: { target: TaskDoerActsTarget; moveDay: (id: string, ymd: string) => Promise<string | null>; drop?: (id: string, reason: string) => Promise<string | null>; tellGiver: (a: { giverId: string | null; instanceId: string; title: string; body: string }) => Promise<void>; onChanged: () => void; authUserId?: string }) {
-  const doer = useTaskDoerActs({ authUserId, todayYmd: '2026-11-16', onChanged, moveDay, drop, tellGiver, nameOf: async () => 'Theo' })
+type SayStuck = (a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck'; words: string }) => Promise<string | null>
+function Host({ target, moveDay, drop = async () => null, sayStuck = async () => null, tellGiver, onChanged, authUserId = 'u-me' }: { target: TaskDoerActsTarget; moveDay: (id: string, ymd: string) => Promise<string | null>; drop?: (id: string, reason: string) => Promise<string | null>; sayStuck?: SayStuck; tellGiver: (a: { giverId: string | null; instanceId: string; title: string; body: string }) => Promise<void>; onChanged: () => void; authUserId?: string }) {
+  const doer = useTaskDoerActs({ authUserId, todayYmd: '2026-11-16', onChanged, moveDay, drop, sayStuck, tellGiver, nameOf: async () => 'Theo' })
   return (
     <div>
       {doer.morePress(target)}
@@ -30,9 +31,12 @@ function setup(over: { target?: Partial<TaskDoerActsTarget>; refuse?: string | n
 }
 
 describe('useTaskDoerActs', () => {
-  it('a task that repeats, or one that is done, has no More', () => {
+  it('a task that repeats offers Can\'t do it alone, and one that is done has no More', () => {
     const { unmount } = render(<Host target={{ ...TASK, once: false }} moveDay={vi.fn()} tellGiver={vi.fn()} onChanged={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: '⋯ More' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    expect(screen.getByRole('button', { name: /Can't do it/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Not today/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /No longer applies/ })).toBeNull()
     unmount()
     render(<Host target={{ ...TASK, done: true }} moveDay={vi.fn()} tellGiver={vi.fn()} onChanged={vi.fn()} />)
     expect(screen.queryByRole('button', { name: '⋯ More' })).toBeNull()
@@ -139,5 +143,35 @@ describe('useTaskDoerActs', () => {
     fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
     expect(screen.getByRole('button', { name: /Not today/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /No longer applies/ })).toBeNull()
+  })
+
+  it('Can\'t do it: a reason frees a press that names who is told, writes the stuck line, tells the giver and re-reads', async () => {
+    const sayStuck = vi.fn<SayStuck>(async () => null)
+    const tellGiver = vi.fn(async (_a: { giverId: string | null; instanceId: string; title: string; body: string }) => {})
+    const onChanged = vi.fn()
+    render(<Host target={TASK} moveDay={vi.fn()} sayStuck={sayStuck} tellGiver={tellGiver} onChanged={onChanged} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /Can't do it/ }))
+    expect(screen.getByRole('dialog', { name: "Can't do it" }).textContent).toContain('What is in the way?')
+    expect(document.querySelector('[data-stuck-press]')?.textContent).toBe('Say what is in the way first')
+    fireEvent.click(screen.getByRole('button', { name: 'Waiting on a part' }))
+    expect(document.querySelector('[data-stuck-sentence]')?.textContent).toBe('Imani is told now. The task stays yours.')
+    fireEvent.click(screen.getByRole('button', { name: 'Tell Imani' }))
+    await waitFor(() => expect(sayStuck).toHaveBeenCalledWith({ instanceId: 'inst-1', userId: 'u-me', kind: 'stuck', words: 'Waiting on a part' }))
+    await waitFor(() => expect(tellGiver).toHaveBeenCalledTimes(1))
+    expect(tellGiver.mock.calls[0]![0].body).toBe('Theo is stuck on "Give every tool a home": Waiting on a part')
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
+  })
+
+  it('a stuck task offers No longer stuck, which takes the mark off in one press with no sheet', async () => {
+    const sayStuck = vi.fn<SayStuck>(async () => null)
+    const onChanged = vi.fn()
+    render(<Host target={{ ...TASK, stuck: true }} moveDay={vi.fn()} sayStuck={sayStuck} tellGiver={vi.fn()} onChanged={onChanged} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    expect(screen.queryByRole('button', { name: /Can't do it/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /No longer stuck/ }))
+    await waitFor(() => expect(sayStuck).toHaveBeenCalledWith({ instanceId: 'inst-1', userId: 'u-me', kind: 'unstuck', words: '' }))
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

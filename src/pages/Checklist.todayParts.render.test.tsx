@@ -161,15 +161,15 @@ describe('Checklist → Today, the day in parts', () => {
     expect(probe.getAttribute('data-probe-tell')).toBe('u-imani')
   })
 
-  it('a one-time task wears ⋯ More on its card and in its open Still open row; a repeating task does not', async () => {
+  it('an open task wears ⋯ More on its card, and a one-time task in its open Still open row offers Not today', async () => {
     const once = { repeat_type: 'once', show_until_completed: true }
     H.today = [row('a', 'Check the truck fluids'), row('b', 'Order the shelf brackets', {}, once)]
     H.older = [row('o1', 'Give every carpentry tool a home', { scheduled_date: '2026-08-20' }, once)]
     renderWithProviders(<Checklist />)
     await screen.findByText('Order the shelf brackets')
-    // the repeating task is Next and has no More; the one-time task under Then has one
-    expect(document.querySelector('[data-fresh-lead] [data-task-more]')).toBeNull()
-    expect(document.querySelectorAll('[data-task-more]')).toHaveLength(1)
+    // every open task has More: the repeating one for Can't do it, the one-time one for the rest too
+    expect(document.querySelector('[data-fresh-lead] [data-task-more]')).toBeTruthy()
+    expect(document.querySelectorAll('[data-task-more]')).toHaveLength(2)
     fireEvent.click(document.querySelector('[data-still-open] [data-task-instance="o1"] button[aria-expanded]') as HTMLElement)
     await waitFor(() => expect(document.querySelector('[data-still-open-extras] [data-task-more]')).toBeTruthy())
     fireEvent.click(document.querySelector('[data-still-open-extras] [data-task-more]') as HTMLElement)

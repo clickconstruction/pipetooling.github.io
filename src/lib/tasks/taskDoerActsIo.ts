@@ -55,3 +55,16 @@ export async function tellTaskGiver(a: { giverId: string | null; instanceId: str
     // the thread carries the line; a lost push is not the act's failure
   }
 }
+
+/**
+ * A stuck line, or the line that takes it off, written like a note: whoever can read a task may write either, as
+ * themself. No function stands between, since the line changes nothing but the thread.
+ */
+export async function sayTaskStuck(a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck'; words: string }): Promise<string | null> {
+  try {
+    const { error } = await supabase.from('checklist_instance_events').insert({ instance_id: a.instanceId, event_type: a.kind, actor_user_id: a.userId, body: a.words } as never)
+    return error ? formatErrorMessage(error, 'That did not save.') : null
+  } catch (e) {
+    return formatErrorMessage(e, 'That did not save.')
+  }
+}

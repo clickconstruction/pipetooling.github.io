@@ -75,8 +75,9 @@ export function taskHearsId(item: { notify_on_complete_user_id?: string | null; 
 }
 
 /** The small-caps labels over the parts of the day, with their counts. */
-export function todayPartLabel(part: 'next' | 'then' | 'done', count: number): string {
+export function todayPartLabel(part: 'next' | 'then' | 'stuck' | 'done', count: number): string {
   if (part === 'next') return 'Next'
+  if (part === 'stuck') return `Stuck · ${count}`
   return part === 'then' ? `Then · ${count}` : `Done today · ${count}`
 }
 

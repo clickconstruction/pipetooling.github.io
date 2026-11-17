@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { droppedReason } from '../checklistCardEvents'
-import { DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
+import { droppedReason, stuckReason, stuckSaidBy } from '../checklistCardEvents'
+import { STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
 
 describe('a map from the person doing the task', () => {
   it('offers a line by hand, a walked line and a point, in that order', () => {
@@ -20,7 +20,7 @@ describe('a map from the person doing the task', () => {
 describe('More', () => {
   it('offers Not today first on an open one-time task, and nothing on a repeating or a done one', () => {
     expect(taskMoreChoices({ once: true, done: false }).map((r) => r.key)[0]).toBe('move')
-    expect(taskMoreChoices({ once: false, done: false })).toEqual([])
+    expect(taskMoreChoices({ once: false, done: false }).some((r) => r.key === 'move')).toBe(false)
     expect(taskMoreChoices({ once: true, done: true })).toEqual([])
   })
   it('names itself and its rows in plain words', () => {
@@ -92,10 +92,11 @@ describe('the thread', () => {
 
 describe('No longer applies', () => {
   it('is offered on an open one-time task that is neither a roadmap nor a vehicle task', () => {
-    expect(taskMoreChoices({ once: true, done: false, roadmap: false, vehicle: false }).map((r) => r.key)).toEqual(['move', 'drop'])
-    expect(taskMoreChoices({ once: true, done: false, roadmap: true, vehicle: false }).map((r) => r.key)).toEqual(['move'])
-    expect(taskMoreChoices({ once: true, done: false, roadmap: false, vehicle: true }).map((r) => r.key)).toEqual(['move'])
-    expect(taskMoreChoices({ once: false, done: false, roadmap: false, vehicle: false })).toEqual([])
+    const has = (t: Parameters<typeof taskMoreChoices>[0]) => taskMoreChoices(t).some((r) => r.key === 'drop')
+    expect(has({ once: true, done: false, roadmap: false, vehicle: false })).toBe(true)
+    expect(has({ once: true, done: false, roadmap: true, vehicle: false })).toBe(false)
+    expect(has({ once: true, done: false, roadmap: false, vehicle: true })).toBe(false)
+    expect(has({ once: false, done: false, roadmap: false, vehicle: false })).toBe(false)
   })
   it('holds the press until there is a reason of three characters, tidied', () => {
     expect(dropRule('')).toBe('Say why in a few words.')
@@ -136,5 +137,54 @@ describe('droppedReason', () => {
   })
   it('a note after the close does not undo it', () => {
     expect(droppedReason([ev('completed', '2026-11-16T12:00:00Z'), ev('dropped', '2026-11-16T12:00:01Z', 'A double'), ev('comment', '2026-11-16T12:05:00Z', 'ok')])).toBe('A double')
+  })
+})
+
+describe("Can't do it", () => {
+  it('is offered on any open task, and swaps to No longer stuck once the task is stuck', () => {
+    expect(taskMoreChoices({ once: false, done: false }).map((r) => r.key)).toEqual(['stuck'])
+    expect(taskMoreChoices({ once: true, done: false, roadmap: true }).map((r) => r.key)).toEqual(['move', 'stuck'])
+    expect(taskMoreChoices({ once: true, done: false, stuck: true }).map((r) => r.key)).toEqual(['move', 'unstuck', 'drop'])
+    expect(taskMoreChoices({ once: true, done: true })).toEqual([])
+  })
+  it('holds the press until something is said, and names who is told', () => {
+    expect(stuckRule('')).toBe('Say what is in the way.')
+    expect(stuckRule('Need a hand')).toBeNull()
+    expect(stuckPressLabel(false, 'Imani')).toBe('Say what is in the way first')
+    expect(stuckPressLabel(true, 'Imani')).toBe('Tell Imani')
+    expect(stuckPressLabel(true, null)).toBe('Mark it stuck')
+    for (const r of STUCK_REASONS) expect(stuckRule(r)).toBeNull()
+  })
+  it('says what happens, in plain words', () => {
+    expect(stuckSentence('Imani')).toBe('Imani is told now. The task stays yours.')
+    expect(stuckSentence(null)).toBe('The task stays yours and shows as stuck.')
+    for (const s of [stuckSentence('Imani'), stuckSentence(null)]) expect(plainWordsFailures(s)).toEqual([])
+  })
+  it('words the chip, the two pushes and the office\'s row', () => {
+    expect(stuckChipWords('Waiting on a part')).toBe('Stuck: Waiting on a part')
+    expect(stuckChipWords('')).toBe('Stuck')
+    expect(stuckPush('Theo', 'Check the truck fluids', 'Waiting on a part').body).toBe('Theo is stuck on "Check the truck fluids": Waiting on a part')
+    expect(sortedPush('Imani', 'Check the truck fluids').body).toBe('Imani says "Check the truck fluids" is sorted. You can carry on.')
+    expect(stuckRowWords('Theo', 'Need a hand')).toBe('Theo: Need a hand')
+    expect(stuckRowWords('Theo', '')).toBe('Theo is stuck')
+    expect(stuckListLabel(2)).toBe('Stuck · 2')
+  })
+})
+
+describe('stuckReason', () => {
+  const ev = (event_type: string, created_at: string, body = '', actor = 'u-theo') => ({ id: `${event_type}-${created_at}`, instance_id: 'i', event_type, actor_user_id: actor, body, created_at })
+  it('stands until it is taken off or the task is finished', () => {
+    expect(stuckReason([ev('stuck', '2026-11-16T12:00:00Z', 'Need a hand')])).toBe('Need a hand')
+    expect(stuckReason([ev('stuck', '2026-11-16T12:00:00Z', 'Need a hand'), ev('comment', '2026-11-16T12:05:00Z', 'on my way')])).toBe('Need a hand')
+    expect(stuckReason([ev('stuck', '2026-11-16T12:00:00Z', 'x'), ev('unstuck', '2026-11-16T13:00:00Z')])).toBeNull()
+    expect(stuckReason([ev('stuck', '2026-11-16T12:00:00Z', 'x'), ev('completed', '2026-11-16T13:00:00Z')])).toBeNull()
+    expect(stuckReason([])).toBeNull()
+  })
+  it('a task stuck again after it was sorted is stuck', () => {
+    expect(stuckReason([ev('stuck', '2026-11-16T12:00:00Z', 'a'), ev('unstuck', '2026-11-16T13:00:00Z'), ev('stuck', '2026-11-16T14:00:00Z', 'b')])).toBe('b')
+  })
+  it('knows who said it and when', () => {
+    expect(stuckSaidBy([ev('stuck', '2026-11-16T12:00:00Z', 'a', 'u-theo')])).toEqual({ userId: 'u-theo', at: '2026-11-16T12:00:00Z' })
+    expect(stuckSaidBy([ev('stuck', '2026-11-16T12:00:00Z', 'a'), ev('unstuck', '2026-11-16T13:00:00Z')])).toBeNull()
   })
 })

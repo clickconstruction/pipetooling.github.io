@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { stuckReason, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { type LedgerInstance } from '../../lib/checklistHistoryLedger'
-import { movedTimesWords } from '../../lib/tasks/taskDoerActs'
+import { movedTimesWords, stuckChipWords } from '../../lib/tasks/taskDoerActs'
 import { showMoreLabel, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, type StillOpenTone } from '../../lib/tasks/todayPage'
 import type { LineState } from '../../lib/taskCriteria'
 import { useTaskCardSheets } from '../../hooks/useTaskCardSheets'
@@ -263,6 +263,7 @@ function OutstandingRow({
   extras?: ReactNode
 }) {
   const notes = events.filter((e) => e.event_type === 'comment').length
+  const stuck = stuckReason(events)
   const moved = movedTimesWords(events.filter((e) => e.event_type === 'moved').length)
   const age = stillOpenAge(inst.scheduled_date, inst.checklist_items?.due_date ?? null, todayStr)
   const late = stillOpenIsLate(inst.checklist_items?.due_date ?? null, todayStr)
@@ -327,6 +328,7 @@ function OutstandingRow({
             {photos.length > 0 ? <span> · 📷 {photos.length}</span> : null}
             {notes > 0 ? <span> · {notes} {notes === 1 ? 'note' : 'notes'}</span> : null}
             {moved ? <span data-still-open-moved> · {moved}</span> : null}
+            {stuck !== null ? <span data-still-open-stuck style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}> · {stuckChipWords(stuck)}</span> : null}
           </span>
         </button>
         {age.pill ? (

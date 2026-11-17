@@ -41,10 +41,12 @@ export type TaskDoerTarget = {
   /** Who gave the task, told of what the person does with it. Null when the person gave it to themself. */
   giverId: string | null
   giverName: string | null
+  /** The person has said something is in the way (step C6). More then offers to take the mark off. */
+  stuck?: boolean
 }
 
 /** The acts behind the card's More. It grows a row with each tool. */
-export type TaskMoreKey = 'move' | 'drop'
+export type TaskMoreKey = 'move' | 'stuck' | 'unstuck' | 'drop'
 
 export const TASK_MORE_LABEL = '⋯ More'
 export const TASK_MORE_TITLE = 'More for this task'
@@ -53,9 +55,11 @@ export const TASK_MORE_TITLE = 'More for this task'
  * The rows of More for one task. Only what the database would allow is offered, so a press never ends in a refusal the
  * screen could have seen coming. An empty list draws no More at all.
  */
-export function taskMoreChoices(t: Pick<TaskDoerTarget, 'once' | 'done'> & Partial<Pick<TaskDoerTarget, 'roadmap' | 'vehicle'>>): TaskChoice<TaskMoreKey>[] {
+export function taskMoreChoices(t: Pick<TaskDoerTarget, 'once' | 'done'> & Partial<Pick<TaskDoerTarget, 'roadmap' | 'vehicle' | 'stuck'>>): TaskChoice<TaskMoreKey>[] {
   const rows: TaskChoice<TaskMoreKey>[] = []
   if (t.once && !t.done) rows.push({ key: 'move', label: 'Not today', words: 'Move it to a day you can do it.' })
+  // Any open task can be stuck, a repeating one and a roadmap one too: the line is a note that someone is told of.
+  if (!t.done) rows.push(t.stuck ? { key: 'unstuck', label: UNSTUCK_LABEL, words: 'Take the stuck mark off.' } : { key: 'stuck', label: STUCK_TITLE, words: 'Say what is in the way. Whoever gave it is told.' })
   // A close is a completion, and a roadmap task's or a vehicle task's completion says work was done. So neither is offered.
   if (t.once && !t.done && !t.roadmap && !t.vehicle) rows.push({ key: 'drop', label: DROP_TITLE, words: 'Close it with a reason.' })
   return rows
@@ -193,4 +197,62 @@ export const DROPPED_CHIP = 'No longer applies'
 /** The push the giver gets when a person closes their task this way. */
 export function dropPush(who: string, title: string, reason: string): { title: string; body: string } {
   return { title: 'A task was closed', body: `${who} closed "${title}" as no longer applying: ${dropReasonTidy(reason)}` }
+}
+
+// --- Can't do it: the person says what is in the way (a stuck line, written like a note) ---
+
+export const STUCK_TITLE = "Can't do it"
+export const STUCK_ASK = 'What is in the way?'
+export const UNSTUCK_LABEL = 'No longer stuck'
+/** The reasons one press writes. The person may type their own instead. */
+export const STUCK_REASONS: readonly string[] = ['Waiting on a part', 'Need a hand', 'Not sure how', 'Not mine']
+export const STUCK_REASON_MIN = 3
+export const STUCK_REASON_MAX = 200
+
+/** The words as the thread will keep them: one line, trimmed, cut at the limit. */
+export function stuckReasonTidy(raw: string): string {
+  return raw.replace(/\s+/g, ' ').trim().slice(0, STUCK_REASON_MAX)
+}
+
+/** Why the press is dead, or null when it can go. */
+export function stuckRule(reason: string): string | null {
+  return stuckReasonTidy(reason).length < STUCK_REASON_MIN ? 'Say what is in the way.' : null
+}
+
+/** The press names who is told, or what it does on a task the person gave themself. */
+export function stuckPressLabel(ready: boolean, giverName: string | null): string {
+  if (!ready) return 'Say what is in the way first'
+  const name = (giverName ?? '').trim()
+  return name ? `Tell ${name}` : 'Mark it stuck'
+}
+
+export function stuckSentence(giverName: string | null): string {
+  const name = (giverName ?? '').trim()
+  return name ? `${name} is told now. The task stays yours.` : 'The task stays yours and shows as stuck.'
+}
+
+/** The amber words a stuck task wears: *Stuck: Waiting on a part*. */
+export function stuckChipWords(reason: string): string {
+  const why = reason.trim()
+  return why ? `Stuck: ${why}` : 'Stuck'
+}
+
+export function stuckPush(who: string, title: string, reason: string): { title: string; body: string } {
+  return { title: 'Someone is stuck on a task', body: `${who} is stuck on "${title}": ${stuckReasonTidy(reason)}` }
+}
+
+/** The push the stuck person gets when someone in the office says it is sorted. */
+export function sortedPush(who: string, title: string): { title: string; body: string } {
+  return { title: 'Your task is sorted', body: `${who} says "${title}" is sorted. You can carry on.` }
+}
+
+/** The office's press on a stuck task, and the label of its list on Review. */
+export const SORTED_LABEL = 'Sorted'
+export function stuckListLabel(count: number): string {
+  return `Stuck · ${count}`
+}
+/** One stuck row's words on Review: *Theo: Waiting on a part*. */
+export function stuckRowWords(who: string, reason: string): string {
+  const why = reason.trim()
+  return why ? `${who}: ${why}` : `${who} is stuck`
 }
