@@ -55,7 +55,7 @@ Each lists: anchor (symbol + lines as of `6af60c5bcf`), **owned state** (moves w
 | Region | Anchor (as of `6af60c5bcf`) | Size | Coupling | Risk | Status | Recommended action |
 |---|---|---|---|---|---|---|
 | Module layer | 190–563 | 374 | consumed by both pages | low | inline; helpers already in `lib/estimates/*` | CSS strings 397–495 → `estimatesPageStyles.ts`; CX config moves with the CX section |
-| List shell (Pipeline + Ledger) | `EstimateList` 565–1248 | 684 | self-contained (URL only) | low | inline; table/cards out | leave, or one file move last (`EstimatesListPage`) |
+| List shell (Pipeline + Ledger) | `EstimateList` 565–1248 | 684 | self-contained (URL only) | low | **out, v2.7629** — [`EstimatesListPage.tsx`](../src/components/estimates/EstimatesListPage.tsx), moved whole; the shell and focus CSS in `estimatesPageCss.ts` | done |
 | Detail: loader + hydration | `load` 1590–1772 + the reset and IO effects 1364–1784 | ~470 | highest — `load` writes 23 states | high | **out, v2.7627** — [`hooks/useEstimateDetailData.ts`](../src/hooks/useEstimateDetailData.ts) | done |
 | Detail: draft persistence | payload 2640–2665 · `saveDraft` 2678–2716 · autosave + leave 2718–2806 | 172 | highest — payload reads 16 states | high | **out, v2.7627** — in `useEstimateDetailData`, whole, beside the loader | done |
 | Detail: send flow | `sendToCustomer` 2808–2870 · `sendEstimateEmailAnswer` 2878–2948 · `sendEstimateEmail` 2951–2959 · `tellSheet` 3123–3149 | 179 | med (calls `saveDraft`, `load`) | **med, customer-facing, untested** | inline | **Stage A first** — one send client + answer kernel + send-plan kernel |
@@ -96,7 +96,7 @@ Each lists: anchor (symbol + lines as of `6af60c5bcf`), **owned state** (moves w
 - **Loaders / writes:** `load` 605–628 (`estimates` `*, customers(name, address, contact_info), jobs_ledger(hcp_number)`, optional `?customer=`, `updated_at` desc, **limit 200**); events effect 649–678 (one chunked `estimate_customer_events` read through `fetchAllRowsChunkedIn`, best effort); `cleanUpEmptyDrafts` 712–734 (confirm, bulk DELETE draft-gated); `createDraft(projectId?, docKind, trigger)` 773–820 (company owner via `resolveMasterUserId`, INSERT, telemetry, navigate with `state.freshEstimateDraft`). Effects: 320 ms thread-stats refresh 737–744, collapse thread off-Pipeline 746–748, `?newEstimate=true&project=` 757–771.
 - **Sub-components (all extracted):** `EstimateListTable` / `EstimateListCards`, `EmptyState` ×7 over `estimatesEmptyWords`, `EstimateAcceptedNotifySettingsModal`, `CustomerAcceptanceRecordModal`, `CustomerSnapshotModal`, `CreateJobFromEstimateModal`.
 - **Tests:** `estimatePipelineRefresh.test`, `estimateOpenState.test`, `estimateListRows.test`, `estimatesEmptyWords.test`, `EstimateListTable.render.test`, `supabasePaging.test`; e2e `viewport-smoke.spec.ts` (the `/estimates` marker only). The page smoke (`Estimates.render.test.tsx`, v2.7610) mounts the shell and reads the lanes and the Ledger's totals; `useEstimateThreadNotes` and `estimateMasterUser` untested.
-- **Status:** inline, **low risk**, and already close to a thin shell — 288 lines of logic over extracted pieces. Not worth cutting per tab (the tabs share `listSearch`, `filteredRows`, the modals and the empty words). Move it whole to `EstimatesListPage.tsx` last, if at all.
+- **Status:** **out, v2.7629** — moved whole to `components/estimates/EstimatesListPage.tsx` (739 lines), the code the page's own; `Estimates.tsx` mounts it from the router and is 2,393 lines. The page shell and focus-ring CSS strings, which both pages use, are `components/estimates/estimatesPageCss.ts`; the list's own CSS went with it. Not cut per tab: the tabs share `listSearch`, `filteredRows`, the modals and the empty words.
 
 ### `EstimateDetail` — loader + hydration (the future seam)
 
@@ -299,7 +299,7 @@ The first pass's steps 1–3 are shipped and are not repeated here. From today's
 5. **`EstimateOptionsStrip`** — **shipped v2.7624**, 181 lines of JSX out over the kernel from step 1; the option state and its handlers stay in the page until the seam.
 6. **The seam: `useEstimateDetailData`** — **shipped v2.7627**: `load` over the hydration kernel, the `customers` cache, the form cluster and **the persistence trio together**; no JSX moved; the page is 3,141 lines. Eight smoke cases were written against the unmoved page first — autosave, Save draft, the leave-discard three ways, the id redirect, a missing number, a send — and pass on the moved one with no edit. Not yet walked on a live throwaway draft: a customer change's autosave is the one path the smoke does not press.
 7. **The draft sections against the seam** — `EstimateChangeOrderFields`, `EstimateDraftCustomerSection` (with the create-customer overlay), `EstimateDraftLineRows`, then the remainder as `EstimateDraftEditor` with the button row.
-8. **Optionally** `EstimateList` → its own file; `Estimates.tsx` becomes the router and two shells.
+8. `EstimateList` → its own file — **shipped v2.7629** (`EstimatesListPage.tsx`, 746 lines out); `Estimates.tsx` is the router and the detail page.
 
 After steps 1–5 the file is near 3,500 lines with the high-risk seam untouched; after 6–7, near 1,500.
 
