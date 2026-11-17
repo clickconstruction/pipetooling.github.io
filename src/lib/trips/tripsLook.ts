@@ -172,19 +172,28 @@ export function filterTripRows(rows: ReadonlyArray<TripLookRow>, filter: TripsFi
   return [...rows]
 }
 
-/** The look's one line on the strip and when folded: *5 trips*, and in amber *1 out now* while a trip is out. */
-function lookWords(n: number, out: number): { n: number; count: string; need: string | null } {
-  if (n === 0) return { n: 0, count: 'none yet', need: null }
-  return { n, count: `${n} ${n === 1 ? 'trip' : 'trips'}`, need: out > 0 ? `${out} out now` : null }
+/** Offers in the look's one line: *1 looks like a trip*, *2 look like trips*. */
+export function tripOffersNeedWords(offers: number): string {
+  return offers === 1 ? '1 looks like a trip' : `${offers} look like trips`
 }
 
-export function tripsLookWords(model: TripsLookModel): { n: number; count: string; need: string | null } {
-  return lookWords(model.rows.length, model.rows.filter((r) => r.standing === 'out').length)
+/**
+ * The look's one line on the strip and when folded: *5 trips*, and in amber what waits on a person, a trip
+ * that is out first (*1 out now*), then the runs of punches no trip covers (*1 looks like a trip*).
+ */
+function lookWords(n: number, out: number, offers: number): { n: number; count: string; need: string | null } {
+  const need = [out > 0 ? `${out} out now` : null, offers > 0 ? tripOffersNeedWords(offers) : null].filter(Boolean).join(' · ') || null
+  if (n === 0) return { n: 0, count: 'none yet', need }
+  return { n, count: `${n} ${n === 1 ? 'trip' : 'trips'}`, need }
 }
 
-/** The same line from the kept trips alone, for the strip, which needs no hours. */
-export function tripsStripWords(records: ReadonlyArray<TripRecord>, todayYmd: string): { n: number; count: string; need: string | null } {
-  return lookWords(records.length, records.filter((r) => tripStanding(tripOfRecord(r, NO_TRIP_PEOPLE), todayYmd) === 'out').length)
+export function tripsLookWords(model: TripsLookModel, offers = 0): { n: number; count: string; need: string | null } {
+  return lookWords(model.rows.length, model.rows.filter((r) => r.standing === 'out').length, offers)
+}
+
+/** The same line from the kept trips alone, for the strip, which needs no hours. The card says how many offers it holds. */
+export function tripsStripWords(records: ReadonlyArray<TripRecord>, todayYmd: string, offers = 0): { n: number; count: string; need: string | null } {
+  return lookWords(records.length, records.filter((r) => tripStanding(tripOfRecord(r, NO_TRIP_PEOPLE), todayYmd) === 'out').length, offers)
 }
 
 /** The share of the hours at the site, as *43%*; null with no hours. */

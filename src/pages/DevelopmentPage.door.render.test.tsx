@@ -20,7 +20,7 @@ vi.mock('../hooks/useAuth', () => ({
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('react-router-dom')>()), useParams: () => ({ id: 'dev-zz' }) }))
 // The trips hook reads over the network, and this file is not about trips (DevelopmentPage.trips.render.test.tsx is): the trips are not read yet here.
 vi.mock('../hooks/useSiteTrips', () => ({
-  useSiteTrips: () => ({ records: null, failure: null, miles: null, sitePoint: null, sitePointKnown: true, shows: false, roster: [], punches: [], punchesFailed: false, askRoster: () => {}, reload: () => {}, save: async () => {}, remove: async () => {} }),
+  useSiteTrips: () => ({ records: null, failure: null, miles: null, sitePoint: null, sitePointKnown: true, shows: false, roster: [], punches: [], punchesFailed: false, dismissals: [], names: new Map(), askRoster: () => {}, reload: () => {}, save: async () => {}, remove: async () => {}, dismiss: async () => [], undismiss: async () => {} }),
 }))
 
 const fetchCalls: Array<{ door: string | undefined }> = []

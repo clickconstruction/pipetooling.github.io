@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back
+keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -106,6 +106,24 @@ Nobody types where a trip stands. The page reads it from the days and today.
 
 The strip under the band shows the year's trips against time. A planned trip is drawn faint. Press a bar to open its trip.
 
+## Answer Looks like a trip
+
+Sometimes people punch in at the site on days no trip covers. The look then says **Looks like a trip** above the trips. The line names who punched in, on how many days, and when.
+
+The app never makes a trip by itself. You answer each line once.
+
+1. Press {{button:blue|Make it a trip}} to open a new trip.
+2. Check the people and the days. Each day they punched in at the site is painted At the site.
+3. Change what you need and press {{button:blue|Save the trip}}.
+
+Nothing is saved until you press **Save the trip**. Close the sheet to leave everything as before.
+
+Press {{button:outline|Not a trip}} when those days were not a trip. The page remembers your answer and does not offer those days again. A message offers **Undo** for one minute.
+
+The look shows three of these lines at most. A quiet line under them counts the rest.
+
+No line shows while the clock is being read. No line shows on a site whose address has no point on the map.
+
 ## Open a trip
 
 1. Press a trip's row.
@@ -113,6 +131,22 @@ The strip under the band shows the year's trips against time. A planned trip is 
 3. Read the right side for what was counted from the clock.
 
 A trip with no punch at the site says so in amber. The trip still stands as painted.
+
+## Read What shows it
+
+An open trip says **What shows it** under the counted hours. Each chip is a count over the trip's own days.
+
+{{chip:green|8 punches at the site}} {{chip:green|4 On my way and I'm here stamps}} {{chip:gray|3 lines in History}}
+
+- The first chip counts clock rows by the trip's people, on their trip days, at the site.
+- The second chip counts the **On my way** and **I'm here** presses on those same days.
+- The third chip counts the History lines on the trip's days. The trip's own two lines are left out.
+
+A green chip means the clock saw something. A grey chip with a zero means nothing was found.
+
+A day a person was off is not their trip day. A punch on that day shows nothing for the trip.
+
+The counts change nothing. They only say what stands behind the painted days.
 
 ## Change or delete a trip
 

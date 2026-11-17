@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { SiteLabor } from '../developments/siteLabor'
-import { placeKey, placesByPersonDay, pointsOfPunch, tripHourRowsFromLabor, type PunchRow } from './tripHourRows'
+import { placeKey, placesByPersonDay, pointsOfPunch, sitePunchDays, tripHourRowsFromLabor, type PunchRow } from './tripHourRows'
 import { tripPeopleIndex } from './tripRecord'
 
 // Made-up points and people: a site, a motel about eleven miles off, a shop far away.
 const site = { lat: 35.0, lng: -76.6 }
 const index = tripPeopleIndex([{ id: 'p-luis', name: 'Luis Ortega', userId: 'u-luis' }])
-const punch = (over: Partial<PunchRow>): PunchRow => ({ user_id: 'u-luis', work_date: '2026-10-31', clock_in_lat: null, clock_in_lng: null, clock_in_location_source: null, arrived_lat: null, arrived_lng: null, arrived_location_source: null, clock_out_lat: null, clock_out_lng: null, clock_out_location_source: null, ...over })
+const punch = (over: Partial<PunchRow>): PunchRow => ({ user_id: 'u-luis', work_date: '2026-10-31', clock_in_lat: null, clock_in_lng: null, clock_in_location_source: null, arrived_lat: null, arrived_lng: null, arrived_location_source: null, clock_out_lat: null, clock_out_lng: null, clock_out_location_source: null, travel_started_at: null, arrived_at: null, ...over })
 
 describe('the places a punch carries', () => {
   it('reads clock in, arrival and clock out, a network guess marked rough', () => {
@@ -46,6 +46,33 @@ describe('a person’s day against the site', () => {
 
   it('checks nothing when the site has no point', () => {
     expect([...placesByPersonDay([punch({ clock_in_lat: 35.0, clock_in_lng: -76.6, clock_in_location_source: 'gps' })], null, index).values()]).toEqual(['none'])
+  })
+})
+
+describe('the days a person punched in at the site', () => {
+  const places = new Map([
+    [placeKey('p:p-luis', '2026-11-01'), 'site' as const],
+    [placeKey('u:u-other', '2026-10-31'), 'site' as const],
+    [placeKey('p:p-luis', '2026-10-31'), 'site' as const],
+    [placeKey('p:p-luis', '2026-11-02'), 'elsewhere' as const],
+    [placeKey('p:p-luis', '2026-11-03'), 'none' as const],
+  ])
+
+  it('keeps only the days whose place is the site, oldest first, each under the person’s key', () => {
+    expect(sitePunchDays(places)).toEqual([
+      { personKey: 'p:p-luis', name: undefined, ymd: '2026-10-31' },
+      { personKey: 'u:u-other', name: undefined, ymd: '2026-10-31' },
+      { personKey: 'p:p-luis', name: undefined, ymd: '2026-11-01' },
+    ])
+  })
+
+  it('names each person when a name is known', () => {
+    expect(sitePunchDays(places, (key) => (key === 'p:p-luis' ? 'Luis Ortega' : undefined)).map((d) => d.name)).toEqual(['Luis Ortega', undefined, 'Luis Ortega'])
+  })
+
+  it('gives nothing from no punches, or from a site with no point', () => {
+    expect(sitePunchDays(new Map())).toEqual([])
+    expect(sitePunchDays(placesByPersonDay([punch({ clock_in_lat: 35.0, clock_in_lng: -76.6, clock_in_location_source: 'gps' })], null, index))).toEqual([])
   })
 })
 
