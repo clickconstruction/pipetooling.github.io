@@ -37201,6 +37201,9 @@ export type Database = {
       sub_paper_acks: {
         Row: {
           amount: number | null
+          answered_at: string | null
+          answered_by: string | null
+          answered_by_name: string | null
           created_at: string
           id: string
           kind: string
@@ -37216,6 +37219,9 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          answered_at?: string | null
+          answered_by?: string | null
+          answered_by_name?: string | null
           created_at?: string
           id?: string
           kind: string
@@ -37231,6 +37237,9 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          answered_at?: string | null
+          answered_by?: string | null
+          answered_by_name?: string | null
           created_at?: string
           id?: string
           kind?: string
@@ -37245,6 +37254,13 @@ export type Database = {
           sending_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sub_paper_acks_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sub_paper_acks_labor_job_id_fkey"
             columns: ["labor_job_id"]
@@ -43621,6 +43637,7 @@ export type Database = {
         Args: { p_answer: string; p_message_id: string; p_reason?: string }
         Returns: undefined
       }
+      answer_sub_paper_ack: { Args: { p_ack_id: string }; Returns: string }
       answered_from_own_mailbox: {
         Args: {
           p_contact_id: string
