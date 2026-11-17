@@ -7,7 +7,7 @@
  */
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { fromPlane, type PaintedPoint } from '../../lib/paintedMap/paintedLine'
 import type { PaintedFix } from '../../lib/paintedMap/paintedTrack'
 import { startWalk, walkFix, walkHidden, walkPause, walkResume, walkShown, type WalkState } from '../../lib/paintedMap/paintedWalk'
@@ -302,6 +302,33 @@ describe('a walk and the phone it lives on', () => {
     const last = phone.kept[phone.kept.length - 1] as { state: WalkState }
     expect(last.state.status).toBe('paused')
     expect(last.state.strokes).toHaveLength(1)
+  })
+
+  it('the same question throws the walk away: three presses, and the phone keeps nothing (v2.7690)', async () => {
+    let closed = 0
+    render(<PaintedMapWindow ask={{ start: START }} onClose={() => (closed += 1)} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    give(walked())
+    await waitFor(() => expect(phone.kept.length).toBeGreaterThan(0))
+    fireEvent.click(screen.getByRole('button', { name: 'Close the painted map' }))
+    const ask = screen.getByRole('alertdialog')
+    // Keep, throw away, stay: in that order down the window, the keep in blue over the red press.
+    expect(within(ask).getAllByRole('button').map((b) => [b.textContent, b.style.order])).toEqual([
+      ['Close, and keep the walk on this phone', '1'],
+      ['Stay', '3'],
+      ['Close, and throw the walk away', '2'],
+    ])
+    fireEvent.click(within(ask).getByRole('button', { name: 'Stay' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(closed).toBe(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close the painted map' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close, and throw the walk away' }))
+    expect(closed).toBe(1)
+    expect(phone.calls).toContain('clear')
+    expect(phone.calls).not.toContain('pause')
+    // The last thing written to the phone is nothing: the app has no walk to offer back.
+    expect(phone.kept[phone.kept.length - 1]).toBeNull()
   })
 
   it('takes up a walk found on the phone: paused, with its gap, and reads nothing until asked', async () => {

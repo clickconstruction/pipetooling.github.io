@@ -120,14 +120,15 @@ const MEASURED_CHIPS: ReadonlyArray<{ how: PaintedMeasuredHow; label: string }> 
 ]
 
 /** What each confirm asks, and the press that names its act. */
-const CONFIRM_WORDS: Record<'line' | 'place' | 'map' | 'leave' | 'stop' | 'walk' | 'leaveWalk' | 'leaveOut', { title: string; body: string; confirm: string; cancel: string }> = {
+const CONFIRM_WORDS: Record<'line' | 'place' | 'map' | 'leave' | 'stop' | 'walk' | 'leaveWalk' | 'leaveOut', { title: string; body: string; confirm: string; cancel: string; /** A second way out that loses nothing, drawn over the red press. */ keep?: string }> = {
   line: { title: 'Remove this line?', body: 'The line comes off the map for everyone. This cannot be undone.', confirm: 'Remove the line', cancel: 'Cancel' },
   place: { title: 'Remove this place?', body: 'The place and its photo come off the map for everyone. This cannot be undone.', confirm: 'Remove the place', cancel: 'Cancel' },
   map: { title: 'Throw this map away?', body: 'The map, its lines and its places go for everyone. This cannot be undone.', confirm: 'Throw the map away', cancel: 'Cancel' },
   leave: { title: 'Stop without saving?', body: 'The line you are drawing is not saved yet.', confirm: 'Stop, and lose the line', cancel: 'Keep drawing' },
   stop: { title: 'Stop without saving?', body: 'The line you are drawing is not saved yet.', confirm: 'Stop, and lose the line', cancel: 'Keep drawing' },
   walk: { title: 'Throw the walk away?', body: 'What you painted goes from this phone. Nothing was sent anywhere, so nothing is left behind.', confirm: 'Throw the walk away', cancel: 'Keep it' },
-  leaveWalk: { title: 'Close the map?', body: 'The walk is not saved. It stays on this phone for a day, paused, and the app offers it back when you open it.', confirm: 'Close, and keep the walk on this phone', cancel: 'Stay' },
+  // Two ways out (v2.7690, the owner's ask): keep the walk on the phone, or throw it away here, with no second trip to Look it over.
+  leaveWalk: { title: 'Close the map?', body: 'The walk is not saved. Kept, it stays on this phone for a day, paused, and the app offers it back. Thrown away, it is gone from this phone.', keep: 'Close, and keep the walk on this phone', confirm: 'Close, and throw the walk away', cancel: 'Stay' },
   leaveOut: { title: 'Leave this line out?', body: 'The line goes from this phone. It was not saved, so it cannot be brought back.', confirm: 'Leave the line out', cancel: 'Keep it' },
 }
 
@@ -602,6 +603,17 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     paintedMapsChanged()
   }
 
+  /** Close, and keep the walk on this phone: the phone stops being read now, and the walk stays, paused, for a day. */
+  const closeAndKeepWalk = () => {
+    setConfirm(null)
+    if (user?.id && map && walk.state) {
+      const keptMap: KeptPaintedWalk = { mapId: map.id, start: saved ? null : { id: map.id, name: map.name, words: map.words, home: starting?.home ?? { jobId: map.jobId, developmentId: map.developmentId }, first: 'walk' }, address, pending }
+      writeKeptWalk(user.id, { savedAtMs: Date.now(), map: keptMap, state: walkPause(walk.state, Date.now()) })
+    }
+    walk.pause()
+    onClose()
+  }
+
   const confirmed = async () => {
     const what = confirm
     setConfirm(null)
@@ -626,12 +638,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
       return
     }
     if (what.kind === 'leaveWalk') {
-      // The phone stops being read now. The walk stays on this phone, paused, for a day.
-      if (user?.id && map && walk.state) {
-        const keptMap: KeptPaintedWalk = { mapId: map.id, start: saved ? null : { id: map.id, name: map.name, words: map.words, home: starting?.home ?? { jobId: map.jobId, developmentId: map.developmentId }, first: 'walk' }, address, pending }
-        writeKeptWalk(user.id, { savedAtMs: Date.now(), map: keptMap, state: walkPause(walk.state, Date.now()) })
-      }
-      walk.pause()
+      // Close, and throw the walk away: the readings and the lines go from the phone, and nothing was ever sent. The
+      // phone's copy is cleared here and not left to the effect above, since the window is gone before it would run.
+      walk.clear()
+      setPending([])
+      if (user?.id) writeKeptWalk(user.id, null)
       onClose()
       return
     }
@@ -1036,6 +1047,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         body={CONFIRM_WORDS[confirm.kind].body}
         confirmLabel={CONFIRM_WORDS[confirm.kind].confirm}
         cancelLabel={CONFIRM_WORDS[confirm.kind].cancel}
+        {...(confirm.kind === 'leaveWalk' && CONFIRM_WORDS.leaveWalk.keep ? { keep: { label: CONFIRM_WORDS.leaveWalk.keep, onPress: closeAndKeepWalk } } : {})}
         onConfirm={() => void confirmed()}
         onCancel={() => setConfirm(null)}
       />

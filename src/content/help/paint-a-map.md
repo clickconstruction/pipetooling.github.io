@@ -103,7 +103,11 @@ If the save does not go through, the walk stays on your phone. The app says so. 
 
 ### A walk you did not save
 
-Close the map before saving and the walk stays on your phone, paused, for a day. The app offers it back with **Look it over** and **Throw it away**.
+Close the map before saving and the app asks what to do with the walk.
+
+- **Close, and keep the walk on this phone** keeps it for a day, paused. The app offers it back with **Look it over** and **Throw it away**.
+- **Close, and throw the walk away** drops it at once. Nothing was sent anywhere, so nothing is left behind.
+- **Stay** goes back to the map.
 
 ## Draw the line by hand
 

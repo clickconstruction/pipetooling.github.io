@@ -3061,6 +3061,7 @@ A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;
 a stretch the phone was not sure of is drawn faint and left out of the length.
 Done opens **Look it over**, where nothing has left the phone, and a walk closed unsaved is kept on the phone for a day and offered back.
+Closing the window on an unsaved walk asks **Close the map?** with three presses since v2.7690: **Close, and keep the walk on this phone**, **Close, and throw the walk away**, and **Stay** (`ConfirmDialog`'s `keep`, the blue press over the red one).
 **A shared link** (since v2.7223): **Share** on a map makes a link, `/way/<code>`, that anyone can open with no sign-in until it is ended or ninety days pass (`PaintedMapShareSheet`, the page `PaintedWay`, the `painted-map-link` function, table `painted_map_links`).
 The reader sees the map and nothing else from the app, and **Show where I am** stays on their phone.
 On that page a line's length stands alone on its row, and one sentence under it says how the line was made and, unless the length was measured, that it is a guide for how far and not a measurement (since v2.7408, `wayLineUnderWords` in `paintedWay.ts`: *Drawn by hand, so the length is a guide for how far, not a measurement.*;
