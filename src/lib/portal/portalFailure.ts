@@ -68,7 +68,7 @@ const CALL_US_AFTER: ReadonlySet<PortalKey> = new Set<PortalKey>([
   'saidProposalOnFile', 'saidEstimateNotWaiting', 'saidOptionGone', 'saidEstimateTaken', 'saidGcNotOnLink',
   'saidAgreementWithdrawn', 'saidAgreementNotOut', 'saidNoSecondSigner', 'saidWorkOrderNotOpen',
   'saidWorkOrderClosed', 'saidLinkIncomplete', 'saidReviewClosed', 'saidRevisionNotHere', 'saidRowsNotHere',
-  'saidRequestClosed',
+  'saidRequestClosed', 'saidJobPaperNotYours',
 ])
 
 /** Every known sentence: the `said*` keys of `gc/portalI18n.ts`. */

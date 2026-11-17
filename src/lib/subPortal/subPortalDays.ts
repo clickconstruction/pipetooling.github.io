@@ -16,6 +16,8 @@ export type SubPortalBooking = {
   source: 'pick' | 'office'
   commitmentId: string | null
   note: string | null
+  /** Papers before a job opens: set on a booking held back until the sub signs its job's papers. */
+  papersFirstJobId?: string | null
 }
 
 export type SubPortalDays = { bookings: SubPortalBooking[]; offDays: string[] }

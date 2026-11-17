@@ -6,6 +6,7 @@
 
 import type { SubPortalBooking, SubPortalDays } from './subPortalDays'
 import { parseSubPortalPapers, type SubPortalPapers } from './subPortalPapersPayload'
+import { parseSubPortalJobPapers, type SubPortalJobPapers } from './subPortalJobPapers'
 export type { SubPortalBooking, SubPortalDays } from './subPortalDays'
 
 export type SubPortalCompany = {
@@ -41,6 +42,8 @@ export type SubPortalSheet = {
   dates: SubPortalDates | null
   /** v2.2931: their last percent report; null until they report. */
   progress: { pct: number; note: string | null; on: string | null } | null
+  /** Papers before a job opens: set on a sheet held back until the sub signs its job's papers. The job's id in `jobPapers`. */
+  papersFirstJobId?: string | null
 }
 
 /** v2.2928: the dates the sub picked (or the office set) and the room they still have to move them. */
@@ -100,6 +103,8 @@ export type SubPortalOffer = {
   /** v2.2928: the span to pick a start inside (null = sign without dates) and how long the job runs. */
   window: { start: string; end: string } | null
   workDays: number | null
+  /** Papers before a job opens: set on an offer held back until the sub signs its job's papers. The job's id in `jobPapers`. */
+  papersFirstJobId?: string | null
 }
 
 export type SubPortalDocDetail =
@@ -134,6 +139,8 @@ export type SubPortalPayload = {
   days: SubPortalDays
   /** v2.7597 (punch list #371): the Statements view's block. Null when the function sent none, or one the page cannot read. */
   papers: SubPortalPapers | null
+  /** Papers before a job opens (step 6): the jobs that wait on this sub's signature. Empty when none do, or the function predates it. */
+  jobPapers?: SubPortalJobPapers[]
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -222,6 +229,7 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
     plansUrl: /^https?:\/\//i.test(str(r.plansUrl).trim()) ? str(r.plansUrl).trim() : null,
     dates: parseDates(r.dates),
     progress: parseProgress(r.progress),
+    ...(strOrNull(r.papersFirstJobId) ? { papersFirstJobId: strOrNull(r.papersFirstJobId) } : {}),
   }
 }
 
@@ -264,6 +272,7 @@ function parseOffer(raw: unknown): SubPortalOffer | null {
     acknowledgements: strList(r.acknowledgements),
     bond: r.bond === 'furnished' ? 'furnished' : 'none',
     specialProvisions: strOrNull(r.specialProvisions),
+    ...(strOrNull(r.papersFirstJobId) ? { papersFirstJobId: strOrNull(r.papersFirstJobId) } : {}),
   }
 }
 
@@ -351,6 +360,7 @@ export function parseSubPortalPayload(raw: unknown): SubPortalPayload | null {
     slug: strOrNull(r.slug),
     days: parseDays(r.days),
     papers: parseSubPortalPapers(r.papers),
+    jobPapers: parseSubPortalJobPapers(r.job_papers),
   }
 }
 
@@ -380,6 +390,7 @@ function parseDays(raw: unknown): SubPortalDays {
       source: x.source === 'pick' ? 'pick' : 'office',
       commitmentId: strOrNull(x.commitmentId),
       note: strOrNull(x.note),
+      ...(strOrNull(x.papersFirstJobId) ? { papersFirstJobId: strOrNull(x.papersFirstJobId) } : {}),
     })
   }
   const offDays = (Array.isArray(r.offDays) ? r.offDays : []).map(ymdOrNull).filter((d): d is string => !!d)

@@ -167,3 +167,33 @@ describe('ContractAccept · a paper built from clauses', () => {
     expect(posts[0]).not.toHaveProperty('paperRevision')
   })
 })
+
+describe('ContractAccept · the way back after signing a job’s paper (papers before a job opens)', () => {
+  beforeEach(() => window.sessionStorage.clear())
+
+  it('a sub with no login is offered Back to your page, before any call to sign in, and the press ends the trip', async () => {
+    window.sessionStorage.setItem('job-papers-return', JSON.stringify({ jobId: 'job-cedar', path: '/sub?t=0123456789abcdef0123456789abcdef' }))
+    open()
+    await waitFor(() => expect(screen.getByText('Term: one year from signing.')).toBeTruthy())
+    sign('Tall Pine Excavating')
+    const back = await screen.findByRole('link', { name: 'Back to your page' })
+    expect(back.getAttribute('href')).toBe('/sub?t=0123456789abcdef0123456789abcdef')
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
+    expect(screen.queryByText('Checking for more contracts…')).toBeNull()
+    fireEvent.click(back)
+    expect(window.sessionStorage.getItem('job-papers-return')).toBeNull()
+    // Nothing is armed for a job window: the sub's page has none.
+    expect(window.sessionStorage.getItem('job-papers-back')).toBeNull()
+  })
+
+  it('a signed-in person who left a job’s prompt is still offered Back to the job, and the press arms the job', async () => {
+    window.sessionStorage.setItem('job-papers-return', JSON.stringify({ jobId: '00000000-0000-4000-8000-000000002391', path: '/dashboard?tab=today' }))
+    open()
+    await waitFor(() => expect(screen.getByText('Term: one year from signing.')).toBeTruthy())
+    sign('Greg Paulk')
+    const back = await screen.findByRole('link', { name: 'Back to the job' })
+    expect(back.getAttribute('href')).toBe('/dashboard?tab=today')
+    fireEvent.click(back)
+    expect(window.sessionStorage.getItem('job-papers-back')).toBe('00000000-0000-4000-8000-000000002391')
+  })
+})
