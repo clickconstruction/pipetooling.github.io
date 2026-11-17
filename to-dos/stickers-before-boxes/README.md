@@ -682,6 +682,14 @@ stickers window on the run and mints nothing; stickers already on boxes are left
 them. The words say *reserved* and never *again*, because a run is made at the press and the app keeps no record
 that a strip came out. A role that may not print a run sees the press dead with its reason. The line before **Print
 future stickers** on such a card says that press reserves new ones. The phone has no such press: it prints no
-stickers. One thing is left for its own PR and the owner's go, since it needs a column: recording that a run's
-strips went out, so a line can say *never printed* where today it says *Printed Nov 16*.
+stickers. One thing is left for its own PR, since it needs a column: recording that a run's
+strips went out, so a line can say *never printed* where today it says *Printed Nov 16*. It is card #373,
+`to-dos/sticker-print-record.md`, put there by the owner on 2026-11-16 for a later session.
 `docs/recent-features/v2.7523.md` has the three answers.
+
+2026-11-16: **a run opened to print has Copies of each**, built as v2.7553. The owner pressed the new press on his
+card and the window opened on his run, whose head read *5 strips each*, with no way to see or change that count: the
+stepper was in the ask alone. His words: *I need to be able to choose how many copies to be able to print, for example
+for each of these I need to print 5.* The window on a run now has the same stepper under **From** and **to**. It
+opens on the count the run was made with, one to six, and changes that print only: the run's own count and the count
+the device remembers for the next new run are left as they were.

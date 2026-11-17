@@ -35,6 +35,7 @@ import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPartsCard, type SitePlansWrites } from '../components/developments/DevelopmentPartsCard'
 import { DevelopmentPlansByDate } from '../components/developments/DevelopmentPlansByDate'
+import { PlansViewSwitch } from '../components/developments/PlansViewSwitch'
 import { JobCardsProvider } from '../components/developments/JobChip'
 import { jobHoverCardLookup } from '../lib/developments/jobHoverCard'
 import { DevelopmentQuestionsLook } from '../components/developments/DevelopmentQuestionsLook'
@@ -76,7 +77,8 @@ import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../
 import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
 import { buildPlansByDate, plansByDateCrewNote, plansByDateUnsentWords, type PlansByDateClock, type PlansByDateInput } from '../lib/plans/plansByDate'
 import { buildPlansByDateCards, type PbdCardAction } from '../lib/plans/plansByDateCards'
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { useConfirmDialog, usePromptDialog } from '../contexts/ConfirmDialogContext'
+import { SHEET_COUNT_PROBLEM, sheetCountOf } from '../lib/plans/planSets'
 import { BidScheduleSheet } from '../components/bids/BidScheduleSheet'
 import { scheduleDraftOf, type BidScheduleColumns } from '../lib/bids/bidSchedule'
 import { writeBidSchedule } from '../lib/bids/bidScheduleWrites'
@@ -89,7 +91,7 @@ import { markWonConfirm, markedWonBack, pairAllConfirm, pairConfirm, pairedAllBa
 import { markBidsWon, pairJobToBid, pairMany, unmarkBidsWon, unpairJob, unpairMany } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
-import { aboutIsPiece, entryBodyIsHead, entryLine, mailLines, narrowLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
+import { aboutIsPiece, entryBodyIsHead, entryLine, mailLines, narrowLines, setLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
 import { keepHistoryEntry } from '../lib/developments/historyWrites'
 import { DevelopmentHistoryChips, DevelopmentHistoryComposer } from '../components/developments/DevelopmentHistoryTools'
 import { aboutGroups, aboutKeyOfPiece, aboutRows, type AboutGroup } from '../lib/developments/aboutPicker'
@@ -103,6 +105,7 @@ import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { canOpenMessages } from '../lib/gc/access'
+import { useBidPlanSetsByBid } from '../hooks/useBidPlanSetsByBid'
 import { threadHrefByKind } from '../lib/messages/customerThread'
 import type { ContactKind } from '../lib/contacts/kernel'
 import type { Database } from '../types/database'
@@ -174,6 +177,9 @@ export default function DevelopmentPage() {
   const door = developmentDoorFor(role)
   // Who reads the mail tied to the site's bids and jobs, and gets its door: the roles that open Messages (v2.7479).
   const readsMail = canOpenMessages(role)
+  // A set kept from a History line's window (punch list #368): the page reads again when the window closes, not under it.
+  const [setsGen, setSetsGen] = useState(0)
+  const keptFilesInWindow = useRef(false)
   const moneyShown = door === 'office'
   const { showToast, showActionToast } = useToastContext()
 
@@ -261,6 +267,15 @@ export default function DevelopmentPage() {
   }, [developmentId, includeAddress, authLoading, door, readsMail])
 
   useEffect(() => {
+    void load()
+  }, [load])
+
+  // The line's window closes; when a mail's files were kept as a set from it, the page reads again now, not under the window.
+  const closeLineWindow = useCallback(() => {
+    setLineOpen(null)
+    if (!keptFilesInWindow.current) return
+    keptFilesInWindow.current = false
+    setSetsGen((g) => g + 1)
     void load()
   }, [load])
 
@@ -429,6 +444,7 @@ export default function DevelopmentPage() {
   // The By date view's *+ New set* lands on the parts table's own form.
   const [startSetOn, setStartSetOn] = useState<{ partId: string; nonce: number } | null>(null)
   const confirmDialog = useConfirmDialog()
+  const promptDialog = usePromptDialog()
   const overheadRead = useSiteOverhead(shownJobIds, (scoreboardOpen || timelineOpen) && canSeeSiteCosts(role))
   // Who holds the card each counted charge went on (v2.6457): the card id alone out of each bank record, while the board is open.
   const cardTxIds = useMemo(() => (costsByJobId?.state === 'read' ? [...costsByJobId.byJobId.values()].flatMap((r) => r.breakdown.cardLines.map((l) => l.txId).filter((id): id is string => !!id)) : []), [costsByJobId])
@@ -523,9 +539,32 @@ export default function DevelopmentPage() {
             names: data.names,
             // Job activity's own door for a tied line: the Messages page, or GC projects' Messages for a trade partner or an architect.
             threadHref: readsMail ? (kind, contactId, messageId) => threadHrefByKind((kind ?? 'customer') as ContactKind, contactId, messageId) : null,
+            // The files on a bid's mail, for the press that keeps them as a set of plans (punch list #368).
+            files: data.tiedMailFiles ?? [],
+            bidShort: (id) => {
+              const b = shown.bids.find((x) => x.id === id)
+              return b ? bidLabel(b) : null
+            },
           })
         : [],
     [shown, data, jobLabel, bidLabel, readsMail],
+  )
+  // A set of plans added to one of the site's bids draws its own line (punch list #368), however it was added.
+  const bidSetsByBid = useBidPlanSetsByBid(shownBidIds, !!data, setsGen)
+  const newSetLines = useMemo<ChangeLine[]>(
+    () =>
+      shown && data
+        ? setLines([...bidSetsByBid.values()].flat(), {
+            bid: (id) => {
+              const b = shown.bids.find((x) => x.id === id)
+              return b ? { kind: 'bid', id, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim() } : null
+            },
+            robotLink: (bidId) => shown.bids.find((x) => x.id === bidId)?.plans_link ?? null,
+            fromMail: new Set((data.tiedMailFiles ?? []).map((f) => f.bid_plan_set_id).filter((id): id is string => !!id)),
+            names: data.names,
+          })
+        : [],
+    [shown, data, bidSetsByBid, bidLabel],
   )
   const feed = useMemo<ChangeLine[]>(
     () =>
@@ -555,7 +594,7 @@ export default function DevelopmentPage() {
               }),
             ),
             photoLines,
-            mailLines: tiedMailLines,
+            mailLines: [...tiedMailLines, ...newSetLines],
             customerContacts: data.customerContacts,
             customerNames: new Map(data.customers.map((c) => [c.id, c.name])),
             names: data.names,
@@ -568,7 +607,7 @@ export default function DevelopmentPage() {
             nowMs,
           })
         : [],
-    [shown, data, entries, photoLines, tiedMailLines, bidLabel, jobLabel, nowMs],
+    [shown, data, entries, photoLines, tiedMailLines, newSetLines, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
   // The runs fold (the Gray Fox spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
@@ -1214,6 +1253,23 @@ export default function DevelopmentPage() {
       setComposing(true)
       window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
     } else if (a.kind === 'set-schedule') setScheduleFor(a.bidId)
+    else if (a.kind === 'set-sheets') {
+      // A set's sheet count, typed by a person: an empty answer clears it, Cancel leaves it.
+      const typed = await promptDialog({ title: a.setName, message: 'How many sheets does this set have? Leave it empty if nobody has counted.', confirmLabel: 'Save the sheet count', defaultValue: a.count != null ? String(a.count) : '', placeholder: 'like 64' })
+      if (typed === null) return
+      const count = typed.trim() ? sheetCountOf(typed) : null
+      if (typed.trim() && count === null) {
+        showToast(SHEET_COUNT_PROBLEM, 'error')
+        return
+      }
+      try {
+        await siteIo.updateSheetCount(a.setId, count)
+        setSiteGen((n) => n + 1)
+        showToast(count === null ? 'The sheet count is cleared.' : 'The sheet count is saved.', 'success')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'The sheet count did not save.'), 'error')
+      }
+    }
     else if (a.kind === 'build-from') {
       if (!siteWrites) return
       if (!(await confirmDialog({ message: a.message, confirmLabel: a.confirmLabel }))) return
@@ -1293,7 +1349,7 @@ export default function DevelopmentPage() {
     <JobCardsProvider cardFor={jobCardFor}>
     <div data-testid="development-page">
       {/* The whole of a long History line (the owner, 2026-10-29: the rest in a modal). */}
-      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} onOpenThread={(href) => navigate(href)} />
+      <DevelopmentLineWindow line={lineOpen} onClose={closeLineWindow} onKeptFiles={readsMail ? () => { keptFilesInWindow.current = true } : undefined} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} onOpenThread={(href) => navigate(href)} />
       <DevelopmentAskSheet open={ask !== null} preset={ask} options={askOptions} siteName={dev.name} busy={asking} onSend={sendAskDraft} onClose={() => setAsk(null)} />
       <div style={{ marginBottom: '0.4rem', display: 'flex', gap: 12, fontSize: '0.8rem' }}>
         <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(moneyShown ? '/jobs?tab=stages' : '/bids'))}>← Back</LinkButton>
@@ -1675,21 +1731,7 @@ export default function DevelopmentPage() {
           meta={plansView === 'date' ? 'every set of drawings on the site, by the date on its sheets' : 'what each part of the site builds from'}
           right={
             // The look's two views, as Money holds its own: the parts table, and the sets against time.
-            <span role="group" aria-label="Plans views" style={{ display: phone ? 'flex' : 'inline-flex', width: phone ? '100%' : undefined, gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 9999, background: 'var(--bg-subtle)' }} data-testid="plans-views">
-              {(['part', 'date'] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setPlansViewMode(v)}
-                  aria-pressed={plansView === v}
-                  title={v === 'part' ? 'Each part of the site with the set it builds from' : 'Every set on the date on its sheets, with the bids, the crews’ days and the History lines on one axis'}
-                  data-testid={`plans-view-${v}`}
-                  style={{ border: `1px solid ${plansView === v ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 9999, padding: phone ? '3px 6px' : '1px 10px', font: 'inherit', fontSize: '0.76rem', lineHeight: 1.2, cursor: 'pointer', background: plansView === v ? 'var(--surface)' : 'transparent', color: plansView === v ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: plansView === v ? 700 : 500, flex: phone ? 1 : undefined, textAlign: 'center' }}
-                >
-                  {v === 'part' ? 'By part' : 'By date'}
-                </button>
-              ))}
-            </span>
+            <PlansViewSwitch view={plansView} onChange={setPlansViewMode} phone={phone} />
           }
         >
           {plansView === 'date' ? (

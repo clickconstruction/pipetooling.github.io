@@ -20,7 +20,7 @@ import {
   shortDayWords,
 } from './planSets'
 
-import { setRowDayWords, setRowLineWords } from './planSets'
+import { SHEET_COUNT_PROBLEM, setRowDayWords, setRowLineWords, sheetCountOf, sheetCountWords } from './planSets'
 
 function set(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
   return {
@@ -177,5 +177,31 @@ describe('a new set', () => {
     expect(jobShortLabel({})).toBe('this job')
     expect(partNameForJob({ job_name: '  Harlow Ranch gas test ', click_number: '972' })).toBe('Harlow Ranch gas test')
     expect(partNameForJob({ job_name: '', click_number: '972' })).toBe('JP972')
+  })
+})
+
+describe('a set’s sheet count (punch list #367)', () => {
+  it('reads a typed count as a whole number, with or without a comma, and nothing else', () => {
+    expect(sheetCountOf('64')).toBe(64)
+    expect(sheetCountOf(' 1,204 ')).toBe(1204)
+    expect(sheetCountOf('0')).toBe(0)
+    expect(sheetCountOf('')).toBeNull()
+    expect(sheetCountOf(undefined)).toBeNull()
+    expect(sheetCountOf('sixty')).toBeNull()
+    expect(sheetCountOf('6.5')).toBeNull()
+    expect(sheetCountOf('-3')).toBeNull()
+    expect(sheetCountOf('100001')).toBeNull()
+  })
+  it('says a count in words, and nothing when nobody counted', () => {
+    expect(sheetCountWords(64)).toBe('64 sheets')
+    expect(sheetCountWords(1)).toBe('1 sheet')
+    expect(sheetCountWords(1204)).toBe('1,204 sheets')
+    expect(sheetCountWords(null)).toBe('')
+  })
+  it('lets a new set save with no count and names what is wrong with one that is not a number', () => {
+    const draft = { ...emptyNewSetDraft('issued'), name: 'Issued set' }
+    expect(newSetDraftProblem(draft)).toBeNull()
+    expect(newSetDraftProblem({ ...draft, sheets: '64' })).toBeNull()
+    expect(newSetDraftProblem({ ...draft, sheets: 'lots' })).toBe(SHEET_COUNT_PROBLEM)
   })
 })

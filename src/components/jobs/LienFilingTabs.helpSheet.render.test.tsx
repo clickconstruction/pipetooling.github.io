@@ -262,3 +262,70 @@ describe('LienFilingTabs · the notice record and the copies of the notices prin
     expect(openPrintMock.mock.calls[0]![0]).not.toContain('lien-record')
   })
 })
+
+describe('LienFilingTabs · a § 53.056 notice prints a set for each envelope behind its divider (the owner, 2026-11-16)', () => {
+  const sections = (html: string) => [...html.matchAll(/<section style="[^"]*">([\s\S]*?)<\/section>(?=<section|<\/body>)/g)].map((m) => m[1]!)
+
+  it('the press says how many envelopes, and the print is the help sheet, then each divider and its pages', () => {
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'notice' })} />)
+    const press = screen.getByTestId('notice-print-envelopes')
+    expect(press.textContent).toBe('Print 2 envelopes')
+    expect(document.querySelector('[data-lien-notice-print-words]')?.textContent).toContain('The signature does not print from this window.')
+    fireEvent.click(press)
+    expect(openPrintMock).toHaveBeenCalledTimes(1)
+    const pages = sections(openPrintMock.mock.calls[0]![0])
+    expect(pages[0]).toContain('data-lien-help="notice"')
+    // The sheet names both envelopes, each as its divider does, and asks for ink: the signature never prints here.
+    expect(pages[0]).toContain('Envelope 1 of 2 · The owner')
+    expect(pages[0]).toContain('Envelope 2 of 2 · The original contractor')
+    expect(pages[0]).toContain('signs the notice behind each divider, in ink.')
+    expect(pages[0]).not.toMatch(/Copy every page/)
+    expect(pages[1]).toContain('data-run-divider="1"')
+    expect(pages[1]).toContain('Envelope 1 of 2 · Owner of record')
+    expect(pages[1]).toContain('Jordan and Casey Sample')
+    expect(pages[2]).toContain('Copy for: Owner of record')
+    const second = pages.findIndex((p) => p.includes('data-run-divider="2"'))
+    expect(second).toBeGreaterThan(2)
+    expect(pages[second]).toContain('Envelope 2 of 2 · Original contractor')
+    expect(pages[second]).toContain('Ridgeway Builders')
+    expect(pages[second + 1]).toContain('Copy for: Original contractor')
+    // Each divider counts the pages behind it.
+    const count1 = Number(/(\d+) documents? follows? this page/.exec(pages[1]!)?.[1])
+    expect(second - 2).toBe(count1)
+    // Filed once, as one notice: the sets, with no sheet and no divider.
+    expect(fileCopyMock).toHaveBeenCalledTimes(1)
+    const [filing, body] = fileCopyMock.mock.calls[0]!
+    expect(filing).toMatchObject({ kind: 'lien_notice_53_056', how: 'print', jobIds: ['job-412'] })
+    expect(body.html).not.toContain('data-run-divider')
+    expect(body.html).not.toContain('lien-help')
+    expect((body.html.match(/Copy for: /g) ?? []).length).toBe(2)
+  })
+
+  it('reprints one envelope alone behind its divider, and the box turns the sheet off', () => {
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'notice' })} />)
+    fireEvent.click(screen.getByTestId('notice-reprint-2'))
+    const one = openPrintMock.mock.calls[0]![0]
+    expect(one).not.toContain('data-lien-help="notice"')
+    expect(one).not.toContain('data-run-divider="1"')
+    expect(one).toContain('data-run-divider="2"')
+    expect(screen.getByTestId('notice-reprint-1').textContent).toBe('Reprint envelope 1 · the owner ›')
+    fireEvent.click(document.querySelector('[data-lien-window-help-sheet="notice"] input') as HTMLInputElement)
+    fireEvent.click(screen.getByTestId('notice-print-envelopes'))
+    const noSheet = openPrintMock.mock.calls[1]![0]
+    expect(noSheet).not.toContain('data-lien-help="notice"')
+    expect(sections(noSheet)[0]).toContain('data-run-divider="1"')
+  })
+
+  it('a contractor with no mailing address is held with the reason, and the owner’s envelope prints 1 of 1', () => {
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'notice', originalContractorAddress: '' })} />)
+    expect(screen.getByTestId('notice-print-envelopes').textContent).toBe('Print 1 envelope · 1 held ▸')
+    expect(document.querySelector('[data-lien-notice-print-words]')?.textContent).toContain('Original contractor: No mailing address.')
+    expect(screen.queryByTestId('notice-reprint-1')).toBeNull()
+    fireEvent.click(screen.getByTestId('notice-print-envelopes'))
+    const pages = sections(openPrintMock.mock.calls[0]![0])
+    expect(pages[0]).toContain('Envelope 1 of 1 · The owner')
+    expect(pages[0]).toContain('Held · The original contractor')
+    expect(pages[1]).toContain('Envelope 1 of 1 · Owner of record')
+    expect(pages.some((p) => p.includes('data-run-divider="2"'))).toBe(false)
+  })
+})

@@ -8,7 +8,7 @@
  */
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
-import { PBD_PAINT, PLANS_BY_DATE_CLUSTER_WORDS, PLANS_BY_DATE_NARROW, dayWords, layoutPlansByDate, plansByDateGlyph, plansByDatePrintHtml, type PbdClass, type PbdGlyph, type PbdInk, type PbdPrim, type PlansByDateModel } from '../../lib/plans/plansByDate'
+import { PBD_PAINT, PLANS_BY_DATE_CLUSTER_WORDS, PLANS_BY_DATE_NARROW, dayWords, plansByDateListHead, plansByDateListRows, layoutPlansByDate, plansByDateGlyph, plansByDatePrintHtml, type PbdClass, type PbdGlyph, type PbdInk, type PbdPrim, type PlansByDateModel } from '../../lib/plans/plansByDate'
 import { EmptyState } from '../EmptyState'
 import { plansByDateClusterCard, plansByDateTipCard, type PbdCard, type PbdCardAction } from '../../lib/plans/plansByDateCards'
 import { LinkButton } from './developmentPageBits'
@@ -78,6 +78,8 @@ function Glyph({ glyph }: { glyph: PbdGlyph }) {
 
 /** Past this many lines the list opens on the newest and folds the older ones behind a press. */
 export const PLANS_BY_DATE_LIST_FOLD = 40
+/** The list folds only past this many lines, so a list a few lines over forty is not cut for a handful. */
+export const PLANS_BY_DATE_LIST_FOLD_AT = 60
 
 export type PlansByDatePrint = { siteName: string; customerName: string | null; printedBy: string | null; /** Where the printed page's copy is filed: a print counts as a send. */ developmentId: string; customerId: string | null }
 
@@ -100,6 +102,8 @@ export function DevelopmentPlansByDate({
   onAct?: (action: PbdCardAction) => void
 }) {
   const [allRows, setAllRows] = useState(false)
+  // The list opens on the drawings and the bids, as the owner's chart did; a press adds the crews' days and the History lines.
+  const [withLog, setWithLog] = useState(false)
   // On a narrow screen the key folds behind a press, so the chart is not pushed six lines down the page.
   const [keyOpen, setKeyOpen] = useState(false)
   const [printNote, setPrintNote] = useState<string | null>(null)
@@ -151,10 +155,11 @@ export function DevelopmentPlansByDate({
     item.close()
     onAct?.(action)
   }
-  const listRows = model.rows.length - 1
-  const folded = !allRows && model.rows.length > PLANS_BY_DATE_LIST_FOLD
-  const rows = folded ? model.rows.slice(model.rows.length - PLANS_BY_DATE_LIST_FOLD) : model.rows
-  const older = model.rows.length - rows.length
+  const list = plansByDateListRows(model.rows, withLog)
+  const head = plansByDateListHead(list)
+  const folded = !allRows && list.rows.length > PLANS_BY_DATE_LIST_FOLD_AT
+  const rows = folded ? list.rows.slice(list.rows.length - PLANS_BY_DATE_LIST_FOLD) : list.rows
+  const older = list.rows.length - rows.length
 
   const openPrint = () => {
     const html = plansByDatePrintHtml({
@@ -164,6 +169,7 @@ export function DevelopmentPlansByDate({
       notes,
       printedAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
       printedBy: print.printedBy,
+      withLog,
     })
     // A print counts as a send (the owner's rule, `docs/SENT_COPIES.md`): the page that printed is filed in Documents under the site.
     const printed = printAndFile(html, { kind: 'plans_by_date', title: `Plans by date · ${print.siteName}`, customerId: print.customerId, source: { table: 'developments', id: print.developmentId } })
@@ -172,7 +178,7 @@ export function DevelopmentPlansByDate({
 
   return (
     <div data-testid="plans-by-date" style={{ minWidth: 0 }}>
-      <div data-testid="pbd-figures" style={{ display: 'grid', gridTemplateColumns: `repeat(${narrow ? 2 : 4}, minmax(0, 1fr))`, gap: 8, marginBottom: 10 }}>
+      <div data-testid="pbd-figures" style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8, marginBottom: 10 }}>
         {model.figures.map((f) => (
           <div key={f.key} role="button" tabIndex={0} {...item.bind(`figure-${f.key}`)} data-testid={`pbd-figure-${f.key}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', background: 'var(--bg-subtle)', minWidth: 0, cursor: 'pointer' }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</div>
@@ -258,7 +264,22 @@ export function DevelopmentPlansByDate({
 
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 10px', margin: '12px 0 4px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
         <span>
-          <strong style={{ color: 'var(--text-strong)' }}>Every dated line on the chart</strong> · {listRows} {listRows === 1 ? 'line' : 'lines'} · oldest first
+          <strong style={{ color: 'var(--text-strong)' }}>{head.title}</strong> · {head.count} · oldest first
+          {list.hidden > 0 ? (
+            <>
+              {' · '}
+              <LinkButton onClick={() => setWithLog(true)} title="Lists the crews' days and the lines kept on History too">
+                Also show the {list.hidden} crew and History {list.hidden === 1 ? 'line' : 'lines'}
+              </LinkButton>
+            </>
+          ) : withLog && list.issues > 0 ? (
+            <>
+              {' · '}
+              <LinkButton onClick={() => setWithLog(false)} title="Lists the drawings and the bids alone">
+                Show only the drawings and the bids
+              </LinkButton>
+            </>
+          ) : null}
         </span>
         <span style={{ display: 'inline-flex', gap: 8, alignItems: 'baseline', fontSize: '0.78rem' }}>
           {printNote ? <span data-testid="pbd-print-note">{printNote}</span> : null}

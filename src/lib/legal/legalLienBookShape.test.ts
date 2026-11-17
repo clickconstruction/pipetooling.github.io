@@ -169,12 +169,39 @@ describe('shapeLienBookForCounsel · a job paid in kind (the owner’s rule of 2
 
   it('reads the jobs with the app’s own columns, the deal’s link among them', () => {
     expect(LIEN_BOOK_COUNSEL_SELECT.jobs).toBe(LIEN_BOOK_JOB_COLUMNS)
-    expect(LIEN_BOOK_COUNSEL_SELECT.jobs.split(', ')).toEqual([...LIEN_BOOK_JOB_COLUMNS_SENT, 'customer_name', 'in_kind_arrangement_id'])
+    expect(LIEN_BOOK_COUNSEL_SELECT.jobs.split(', ')).toEqual([...LIEN_BOOK_JOB_COLUMNS_SENT, 'customer_name', 'in_kind_arrangement_id', 'lien_path_answer'])
     expect(Object.keys((book(null).jobs as Record<string, unknown>[])[0] ?? {})).toEqual([...LIEN_BOOK_JOB_COLUMNS_SENT])
   })
 
   it('is the select the function runs: no column list of its own, so the link cannot be forgotten', () => {
     const source = readFileSync(resolve(__dirname, '../../../supabase/functions/legal-portal/index.ts'), 'utf8')
     expect(source).toContain(".from('jobs_ledger').select(LIEN_BOOK_COUNSEL_SELECT.jobs).in('id', jobIds)")
+  })
+
+  it('drops a job a person took off the lien path the same way, sends no answer, and brings it back once it is put back (v2.7521)', () => {
+    const offPath = (answer: string | null) =>
+      shapeLienBookForCounsel({
+        rows: ['j1', 'j2'].map(month),
+        affidavitRows: ['j1', 'j2'].map(month),
+        items: ['j1', 'j2'].map(forJob),
+        filings: [filing, { ...filing, id: 'f2', job_id: 'j2' }],
+        jobs: [{ ...job('j1', 'g1', 'a1', null), lien_path_answer: null }, { ...job('j2', 'g2', 'a2', null), lien_path_answer: answer }],
+        gcs: [gc, { ...gc, id: 'g2', name: 'Second Contracting' }],
+        addresses: ['a1', 'a2'].map((id) => ({ ...address, id })),
+        owners: ['j1', 'j2'].map((id) => ({ ...owner, job_id: id })),
+      })
+    const off = offPath('off_path')
+    expect(ids(off.jobs)).toEqual(['j1'])
+    expect(jobIds(off.rows)).toEqual(['j1'])
+    expect(jobIds(off.affidavitRows)).toEqual(['j1'])
+    expect(jobIds(off.items)).toEqual(['j1'])
+    expect(jobIds(off.filings)).toEqual(['j1'])
+    expect(jobIds(off.owners)).toEqual(['j1'])
+    expect(ids(off.gcs)).toEqual(['g1'])
+    expect(ids(off.addresses)).toEqual(['a1'])
+    expect(JSON.stringify(off)).not.toContain('lien_path_answer')
+    const back = offPath(null)
+    expect(ids(back.jobs)).toEqual(['j1', 'j2'])
+    expect(JSON.stringify(back)).not.toContain('lien_path_answer')
   })
 })

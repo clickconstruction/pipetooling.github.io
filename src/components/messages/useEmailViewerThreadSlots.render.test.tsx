@@ -34,6 +34,20 @@ vi.mock('react-router-dom', async () => {
   return { ...real, useNavigate: () => navigate }
 })
 
+// The bid's press reads the line's files itself (its own render test); here it stands in as what it was handed.
+vi.mock('../bids/BidMailSetDoor', () => ({
+  BidMailSetDoor: (p: { bidId: string; bidLabel: string; messageId: string; mail: { subject: string | null; who: string; at: string } }) => (
+    <span data-bid-door>{`${p.bidLabel}|${p.bidId}|${p.messageId}|${p.mail.subject}`}</span>
+  ),
+}))
+
+// The job's paper press reads the job itself (its own render test); here it stands in as what it was handed.
+vi.mock('../papers/MailPaperDoor', () => ({
+  MailPaperDoor: (p: { jobId: string; jobLabel: string; subject: string; senderAddress: string | null; messageId: string | null; mailFileCount: number }) => (
+    <span data-paper-door>{`${p.jobLabel}|${p.jobId}|${p.messageId}|${p.subject}|${p.senderAddress}|${p.mailFileCount}`}</span>
+  ),
+}))
+
 const { useEmailViewerThreadSlots } = await import('./useEmailViewerThreadSlots')
 
 afterEach(cleanup)
@@ -193,6 +207,31 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Put it on a bid…' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Put it on a bid' })).getByRole('button', { name: /B512 Oak Hill Clinic/ }))
     expect((await screen.findByRole('alert')).textContent).toBe('Tie the email to the bid first.')
+  })
+
+  it('an email on a bid that carries a file gets the bid’s press, handed the bid, its number and the line (punch list #368)', () => {
+    const pdf = { id: 'f1', name: 'specs.pdf', mime: 'application/pdf', size: 1000, kept: 'copy' as const, url: null, icon: 'pdf' as const, paper: null, paperAnswer: null, paperAnsweredBy: null, paperAnsweredAt: null }
+    const link = { ...pdf, id: 'f2', name: 'Dropbox', kept: 'link' as const, url: 'https://example.com/x', icon: 'link' as const }
+    draw(fakeIo(), [line('m-files', { jobId: 'bid:b-oak', invitation: null, subject: 'Re: Addendum 2', files: [pdf, link] }), line('m-link-only', { jobId: 'bid:b-oak', invitation: null, files: [link] }), line('m-no-file', { jobId: 'bid:b-oak', invitation: null })])
+    expect(document.querySelector('[data-line="m-files"] [data-bid-door]')!.textContent).toBe('B512|b-oak|m-files|Re: Addendum 2')
+    expect(buttonsOf('m-files')).toEqual(['Open the bid'])
+    // A link is no file to keep, and a mail with no file is already on the bid's history.
+    cleanup()
+    // Nor is a signature's picture: most mail carries one, and the press would show on all of it (v2.7556).
+    draw(fakeIo(), [line('m-logo', { jobId: 'bid:b-oak', invitation: null, files: [{ ...pdf, id: 'f3', name: 'image001.png', mime: 'image/png', icon: 'image' as const }] }), line('m-link-only', { jobId: 'bid:b-oak', invitation: null, files: [link] }), line('m-no-file', { jobId: 'bid:b-oak', invitation: null })])
+    expect(document.querySelector('[data-line="m-logo"] [data-bid-door]')).toBeNull()
+    expect(buttonsOf('m-logo')).toEqual(['Open the bid'])
+    expect(document.querySelector('[data-line="m-link-only"] [data-bid-door]')).toBeNull()
+    expect(document.querySelector('[data-line="m-no-file"] [data-bid-door]')).toBeNull()
+  })
+
+  it('an email on a Pipeline job that carries a file gets the job’s paper press on its own row, handed the job, the line and the sender (punch list #368, PR 4)', () => {
+    const pdf = { id: 'f1', name: 'spec-book.pdf', mime: 'application/pdf', size: 1000, kept: 'copy' as const, url: null, icon: 'pdf' as const, paper: null, paperAnswer: null, paperAnsweredBy: null, paperAnsweredAt: null }
+    draw(fakeIo(), [line('m-job-file', { jobId: 'pipeline:j-579', invitation: null, subject: 'Spec book', files: [pdf] }), line('m-job-bare', { jobId: 'pipeline:j-579', invitation: null })])
+    const door = document.querySelector('[data-line="m-job-file"] [data-keep-paper] [data-paper-door]')!
+    // The thread has no tile for this job, so the press names it the job; the sender is the thread's own address.
+    expect(door.textContent).toBe('the job|j-579|m-job-file|Spec book|glenn@marrexbuilders.example|1')
+    expect(document.querySelector('[data-line="m-job-bare"] [data-paper-door]')).toBeNull()
   })
 
   it('Open the bid closes the thread and opens the Bid Board on it', () => {

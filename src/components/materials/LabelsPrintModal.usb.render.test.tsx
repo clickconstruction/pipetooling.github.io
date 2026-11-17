@@ -110,6 +110,37 @@ describe('LabelsPrintModal · straight to the P-touch over USB', () => {
     expect((usb.print.mock.calls[0]![0] as unknown[]).length).toBe(1)
   })
 
+  it('a run marks the boxes whose label went, the line takes the mark back, and a test strip marks nothing (v2.7519)', async () => {
+    usb.granted = true
+    const mark = vi.fn()
+    renderWithProviders(<LabelsPrintModal jobLabel="Oak Hollow Apartments Building C" containers={containers} lines={lines} places={[]} only={null} onClose={() => {}} print={vi.fn()} mark={mark} />)
+    fireEvent.click(await screen.findByTestId('labels-test-strip'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-sent').textContent).toBe('1 tape label printed.'))
+    expect(mark).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('labels-marked')).toBeNull()
+    fireEvent.click(screen.getByTestId('labels-print'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-sent').textContent).toBe('2 tape labels printed.'))
+    expect(mark).toHaveBeenCalledTimes(1)
+    expect(mark.mock.calls[0]![0]).toEqual([A1, B3])
+    expect(mark.mock.calls[0]![1]).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(screen.getByTestId('labels-marked').textContent).toBe('2 boxes are now marked as labelled. Did they not print?Take the mark off 2 boxes')
+    fireEvent.click(screen.getByTestId('labels-mark-off'))
+    expect(mark).toHaveBeenLastCalledWith([A1, B3], null)
+    expect(screen.getByTestId('labels-marked').textContent).toBe('The mark is off 2 boxes.')
+  })
+
+  it('a printer that stops part way marks the boxes that came out and no other (v2.7519)', async () => {
+    usb.granted = true
+    usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => { onLabel?.(1); throw new Error('The printer’s cover is open.') })
+    const mark = vi.fn()
+    renderWithProviders(<LabelsPrintModal jobLabel="Oak Hollow Apartments Building C" containers={containers} lines={lines} places={[]} only={null} onClose={() => {}} print={vi.fn()} mark={mark} />)
+    fireEvent.click(await screen.findByTestId('labels-print'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-slip')).toBeTruthy())
+    expect(mark).toHaveBeenCalledTimes(1)
+    expect(mark.mock.calls[0]![0]).toEqual([A1])
+    expect(screen.getByTestId('labels-marked').textContent).toContain('1 box is now marked as labelled.')
+  })
+
   it('a printer that stops says how many went and why, and the press is Connect again', async () => {
     usb.granted = true
     usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => { onLabel?.(1); throw new Error('The printer’s cover is open.') })

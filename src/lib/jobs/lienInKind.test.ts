@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_IN_KIND_COLUMN, LIEN_IN_KIND_WINDOW_NOTE, jobOffLienDeskInKind, lienInKindJobIds, lienInKindWindowNote, lienJobIdsOffDesk, withLienInKindColumn } from './lienInKind'
+import { LIEN_IN_KIND_COLUMN, LIEN_IN_KIND_WINDOW_NOTE, jobOffLienDeskInKind, lienInKindJobIds, lienInKindWindowNote, jobOffLienDesk, lienJobIdsOffDesk, lienOffDeskJobIds, withLienOffDeskColumns } from './lienInKind'
 import { plainWordsFailures } from '../plainWords'
 
 const job = (id: string, deal: string | null = null) => ({ id, in_kind_arrangement_id: deal })
@@ -38,7 +38,7 @@ describe('lienInKind (v2.7253: paid in kind is paid, as far as the Lien desk goe
 
   it('a read of the desk’s jobs names the link through the kernel', () => {
     expect(LIEN_IN_KIND_COLUMN).toBe('in_kind_arrangement_id')
-    expect(withLienInKindColumn('id, status')).toBe('id, status, in_kind_arrangement_id')
+    expect(withLienOffDeskColumns('id, status')).toBe('id, status, in_kind_arrangement_id, lien_path_answer')
   })
 
   it('the job’s own Lien window says so in plain words, and only on such a job', () => {
@@ -47,5 +47,19 @@ describe('lienInKind (v2.7253: paid in kind is paid, as far as the Lien desk goe
     expect(LIEN_IN_KIND_WINDOW_NOTE.line).toContain('off the Lien desk')
     expect(LIEN_IN_KIND_WINDOW_NOTE.line).toContain('They still run')
     expect(plainWordsFailures(LIEN_IN_KIND_WINDOW_NOTE.line)).toEqual([])
+  })
+
+  it('leaves off a job a person took off the lien path, by the same door (v2.7521)', () => {
+    expect(jobOffLienDesk({ lien_path_answer: 'off_path' })).toBe(true)
+    expect(jobOffLienDesk({ in_kind_arrangement_id: 'deal-1' })).toBe(true)
+    expect(jobOffLienDesk({ lien_path_answer: null, in_kind_arrangement_id: null })).toBe(false)
+    expect(jobOffLienDesk({})).toBe(false)
+    expect(jobOffLienDesk(null)).toBe(false)
+    const jobs = [{ id: 'a', lien_path_answer: 'off_path' }, { id: 'b', in_kind_arrangement_id: 'deal-1' }, { id: 'c' }, { id: 'zz' }]
+    expect([...lienOffDeskJobIds(jobs)].sort()).toEqual(['a', 'b'])
+    expect([...(lienJobIdsOffDesk(jobs, new Set(['zz'])) ?? [])].sort()).toEqual(['a', 'b', 'zz'])
+    expect(lienJobIdsOffDesk([{ id: 'c' }], null)).toBeNull()
+    // A job put back carries no answer and is on the desk on the next read.
+    expect(lienJobIdsOffDesk([{ id: 'a', lien_path_answer: null }], null)).toBeNull()
   })
 })

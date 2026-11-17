@@ -90,6 +90,10 @@ export function PlanSetForm({
             <span>Dated</span>
             <input style={input} type="date" value={draft.dated} onChange={(e) => put({ dated: e.target.value })} title="The date printed on the sheets" />
           </label>
+          <label style={field}>
+            <span>Sheets</span>
+            <input style={{ ...input, maxWidth: '8rem' }} type="text" inputMode="numeric" value={draft.sheets ?? ''} onChange={(e) => put({ sheets: e.target.value })} placeholder="how many" title="How many sheets the set has; leave it empty if nobody counted" data-testid="plan-set-sheets" />
+          </label>
           <label style={{ ...field, alignItems: 'start' }}>
             <span>What changed</span>
             <textarea style={{ ...input, minHeight: '3.4rem', resize: 'vertical' }} rows={2} value={draft.changes ?? ''} placeholder={changesPlaceholder(current)} onChange={(e) => put({ changes: e.target.value })} data-testid="plan-set-changes" />

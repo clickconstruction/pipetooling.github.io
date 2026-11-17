@@ -256,6 +256,52 @@ describe('PrintStickersModal · the run', () => {
     expect(mint).not.toHaveBeenCalled()
   })
 
+  it('a run on the page has Copies of each: it opens on the run’s own count and changes this print alone (v2.7553)', () => {
+    const minted = mintedRun({ jobId: 'job-juniper', count: 3, copies: 5, names: ['G93', 'G94', 'G95'] })
+    const { print, mint } = setup({ run: { ...minted, title: 'Reserved stickers, G93 to G95' } })
+    // it opens on the five the run was made with, and says each copy opens the same box
+    expect(screen.getByTestId('stickers-copies').textContent).toBe('5')
+    expect(screen.getByTestId('stickers-copies-note').textContent).toBe('Every copy opens the same box.')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G95, 5 strips each. 15 strips.')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 3 sets, G93 to G95')
+    expect(screen.getAllByTestId('stickers-tape')).toHaveLength(3)
+    expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(12)
+    // fewer: the head, the press and the strips on the page follow, and the note says what the run was made with
+    fireEvent.click(screen.getByTestId('stickers-copies-less'))
+    fireEvent.click(screen.getByTestId('stickers-copies-less'))
+    expect(screen.getByTestId('stickers-copies').textContent).toBe('3')
+    expect(screen.getByTestId('stickers-copies-note').textContent).toBe('The run was made with 5 of each. Every copy opens the same box.')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G95, 3 strips each. 9 strips.')
+    expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(6)
+    // down to one each: plain stickers, no copies on the page
+    fireEvent.click(screen.getByTestId('stickers-copies-less'))
+    fireEvent.click(screen.getByTestId('stickers-copies-less'))
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 3 stickers, G93 to G95')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G95, one strip each.')
+    expect(screen.queryAllByTestId('stickers-tape-copy')).toHaveLength(0)
+    expect((screen.getByTestId('stickers-copies-less') as HTMLButtonElement).disabled).toBe(true)
+    // the count is this print's alone: the device's remembered count is not written
+    expect(localStorage.getItem('pt.labels.tapeCopies')).toBeNull()
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    expect(print).toHaveBeenCalledTimes(1)
+    expect(mint).not.toHaveBeenCalled()
+  })
+
+  it('a run made with one of each can be printed five of each, and six is the most', () => {
+    const minted = mintedRun({ jobId: 'job-juniper', count: 2, copies: 1, names: ['G93', 'G94'] })
+    setup({ run: { ...minted, title: 'Run of 2 · G93 to G94' } })
+    expect(screen.getByTestId('stickers-copies').textContent).toBe('1')
+    expect(screen.getByTestId('stickers-copies-note').textContent).toBe('For a box with more than one side, print each sticker more than once.')
+    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByTestId('stickers-copies-more'))
+    expect(screen.getByTestId('stickers-copies').textContent).toBe('5')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 sets, G93 to G94')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G94, 5 strips each. 10 strips.')
+    expect(screen.getByTestId('stickers-copies-note').textContent).toBe('The run was made with 1 of each. Every copy opens the same box.')
+    expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(8)
+    fireEvent.click(screen.getByTestId('stickers-copies-more'))
+    expect((screen.getByTestId('stickers-copies-more') as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('a run handed in opens on its strips, mints nothing, and the press prints it again', () => {
     const minted = mintedRun({ jobId: 'job-juniper', count: 3, copies: 1 })
     const { print, mint } = setup({ run: { ...minted, title: 'Run of 3' } })

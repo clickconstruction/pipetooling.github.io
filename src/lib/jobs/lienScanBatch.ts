@@ -75,8 +75,8 @@ export type LienScanPiece = LienScanFileLike & {
   key: string
 }
 
-/** How a piece came to its lien: its name carried the recording number or the job's number, it took the next free lien in order, or a person picked it. */
-export type LienScanMatchRule = 'recording_number' | 'job_number' | 'order' | 'hand'
+/** How a piece came to its lien: its name carried the recording number or the job's number, it took the next free lien in order, a person picked it, or it is a lien's pages of a split stack (`lienScanStack.ts`), whose own page rows say how each page got there. */
+export type LienScanMatchRule = 'recording_number' | 'job_number' | 'order' | 'hand' | 'stack'
 
 export type LienScanMatch = { filingId: string; by: LienScanMatchRule } | null
 
@@ -133,6 +133,7 @@ export const LIEN_SCAN_MATCH_WORDS: Record<LienScanMatchRule, string> = {
   job_number: 'Its name has this job’s number.',
   order: 'Matched by its place in the list. Check it against the stamp.',
   hand: '',
+  stack: '',
 }
 
 export type LienScanHoldKey = 'no_lien' | 'second_for_lien' | 'bad_file'

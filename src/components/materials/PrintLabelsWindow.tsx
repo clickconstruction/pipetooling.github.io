@@ -49,13 +49,12 @@ type Props = {
   onScan?: () => void
   /** Reads one job's boxes again, for a card that says it did not load. */
   onReadAgain?: (jobId: string) => void
-  /** The cards' small reads, the printer and the clock; a test hands spies. */
+  /** The cards' small reads and the printer; a test hands spies. */
   reads?: {
     sites?: (jobIds: ReadonlyArray<string>) => Promise<Map<string, string>>
     stickered?: (containerIds: ReadonlyArray<string>) => Promise<Set<string>>
     connect?: (options: { ask: boolean }) => Promise<PtouchLink | null>
     usbHere?: boolean
-    now?: () => number
   }
 }
 
@@ -98,7 +97,6 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
   const [tapeDay] = useState<string | null>(() => readTapePrintedDay())
   /** A run this computer stopped part way, as it was when the window opened. */
   const [kept] = useState(() => readStoppedRun())
-  const [nowMs] = useState(() => (reads?.now ?? Date.now)())
   const [query, setQuery] = useState('')
   const usbHere = useMemo(() => reads?.usbHere ?? ptouchUsbAvailable(), [reads?.usbHere])
   const tape = format === 'tape'
@@ -127,7 +125,7 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
   useEffect(() => {
     if (!asking || !boxIdsKey) return
     let live = true
-    readStickered(boxIdsKey.split('|')).then((got) => { if (live) setStickeredIds(got) }).catch(() => { /* the chip is left out */ })
+    readStickered(boxIdsKey.split('|')).then((got) => { if (live) setStickeredIds(got) }).catch(() => { /* Unread stickers count as none: the chip is left out, and what waits for a label stands on the printed mark alone. */ if (live) setStickeredIds(new Set()) })
     return () => { live = false }
   }, [asking, boxIdsKey, readStickered])
 
@@ -143,8 +141,8 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
   const width: TapeWidthMm = link && isTapeWidth(link.status.tapeMm) ? link.status.tapeMm : prefWidth
 
   const facts = useMemo(
-    () => labelJobsInOrder(withBoxes, { nowMs, today: todayYmdInAppTz(), kept, format, widthMm: width, copies, stickeredIds, siteOf: (id) => sites?.get(id) }),
-    [withBoxes, nowMs, kept, format, width, copies, stickeredIds, sites],
+    () => labelJobsInOrder(withBoxes, { today: todayYmdInAppTz(), kept, format, widthMm: width, copies, stickeredIds, siteOf: (id) => sites?.get(id) }),
+    [withBoxes, kept, format, width, copies, stickeredIds, sites],
   )
   const shown = findLabelJobs(facts, query)
 
