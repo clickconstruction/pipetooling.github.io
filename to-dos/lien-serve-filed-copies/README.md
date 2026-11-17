@@ -136,8 +136,7 @@ Later, each its own card when asked:
   an affidavit served when the first of two pieces mails, and `sendsWithPiece` rebuilds a send without its
   `receipt_url`, which would erase a receipt photo. It also never adds a send row to an affidavit whose `sends`
   is empty.
-- **The scan from Drive.** Print the photographed stamped page behind the letter. Needs a way to read a Drive
-  file back and more than one page (#322 named the same need for notices).
+- **The scan from Drive.** Its own card since 2026-11-17: [#378](../lien-served-copy-is-the-scan.md), where the signed scan becomes the copy and a lien with none cannot print.
 - **The letter and the COPY on Settings → What customers see → Lien letters** (#326), beside the affidavit.
 - **The Dashboard's card** reads *Record service* and shows from three days out. It could open the desk on the
   batch.
