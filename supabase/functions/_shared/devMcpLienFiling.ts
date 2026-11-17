@@ -411,7 +411,7 @@ export function lienFilingDifferences(p: LienFilingPayload, desk: { claim: numbe
   return { differences: out, notChecked }
 }
 
-const NOT_DONE = 'A record alone. No copy is mailed and nobody is told: the copies to the owner and the original contractor are due by the serve-by day, and Record service… on the job’s Lien window records them once they are mailed. The table’s own trigger writes the job’s Activity line.'
+const NOT_DONE = 'A record alone. No copy is mailed and nobody is told: the copies to the owner and the original contractor are due by the serve-by day, and plan_lien_service records them once they are mailed. No line lands on the job’s Activity: the table’s trigger posts notices, not affidavits.'
 
 /**
  * What the plan says and what the hash commits to: the job as a person would check the match, where its affidavit
@@ -595,7 +595,7 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
     writes: {
       filing: row,
       desk_item: item ? { id: item.id, from: item.from, to: 'sent', sent_at: sentAt ?? 'the moment of the write' } : 'none: the desk holds no affidavit item short of sent for this job',
-      file: scan ? { lands_in: LIEN_SCAN_LANDING_WORDS, name: scan.name, mime: scan.mime, size_bytes: scan.size_bytes, sha256: scan.sha256, becomes: `the filing’s saved copy, noted “${LIEN_CLERK_SCAN_NOTE}”` } : p.saved_copy ? { saved_copy: p.saved_copy.link, note: p.saved_copy.note || null } : 'none: the filing is recorded with no saved copy; plan again with the same number and a scan to add one',
+      file: scan ? { lands_in: LIEN_SCAN_LANDING_WORDS, name: scan.name, mime: scan.mime, size_bytes: scan.size_bytes, sha256: scan.sha256, becomes: `the filing’s saved copy, noted “${LIEN_CLERK_SCAN_NOTE}”` } : p.saved_copy ? { saved_copy: p.saved_copy.link, note: p.saved_copy.note || null } : 'none: the filing is recorded with no saved copy; read_lien_filings lists it until one is added',
     },
     says: `${label}: affidavit filed ${p.filed_on} in ${p.county} County as instrument ${p.recording_number}, claim ${usd(claim)}. Copies go to ${copies} by ${serveBy}.`,
     not_done: NOT_DONE,
@@ -705,8 +705,8 @@ export function lienScanStagePath(userId: string, scan: Pick<LienFilingScan, 'sh
 }
 
 /** The curl line that puts one file at its signed address. */
-export function lienScanUploadHow(mime: string): string {
-  return `curl -sS -X PUT "<upload_url>" -H "Content-Type: ${mime}" -H "x-upsert: true" --data-binary @"<the file>" — then apply_lien_filing with this filing and its plan_hash. The staged copy is read back, checked against size_bytes and sha256, filed in the job’s Drive folder and removed.`
+export function lienScanUploadHow(mime: string, then = 'apply_lien_filing with this filing and its plan_hash'): string {
+  return `curl -sS -X PUT "<upload_url>" -H "Content-Type: ${mime}" -H "x-upsert: true" --data-binary @"<the file>" — then ${then}. The staged copy is read back, checked against size_bytes and sha256, filed in the job’s Drive folder and removed.`
 }
 
 /** Whether staged bytes are the kind their name says: a PDF by its header, a picture by its own. */
@@ -758,6 +758,6 @@ export function lienFilingAppliedWords(p: LienFilingPayload, label: string, writ
       ? out.scanFailed
         ? `${label}: the saved copy was not added. ${finish}`
         : `${label}: the filing has its saved copy. Nothing else on the filing changed.`
-      : `${label}: filed ${p.filed_on}, instrument ${p.recording_number}. Mail the copies by ${out.filing.serve_due ?? 'the serve-by day'} (the Lien desk’s Mail the copies prints them and records the day and the certified mail numbers).`,
+      : `${label}: filed ${p.filed_on}, instrument ${p.recording_number}. Mail the copies by ${out.filing.serve_due ?? 'the serve-by day'} (the Lien desk’s Mail the copies prints them), then plan_lien_service records the day and the certified mail numbers.`,
   }
 }
