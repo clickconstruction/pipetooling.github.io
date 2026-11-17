@@ -26,7 +26,7 @@ import { canReadSentCopies } from '../lib/sent/sentCopies'
 import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
 import { DocumentsPhotosTab } from '../components/documents/DocumentsPhotosTab'
 import { DocumentsPaintedMapsTab } from '../components/documents/DocumentsPaintedMapsTab'
-import { FindAFile } from '../components/documents/FindAFile'
+import { FindAFileSection } from '../components/documents/FindAFileSection'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
 import {
@@ -1875,7 +1875,8 @@ export default function Documents() {
         <Fragment>
           <DocumentsUnifiedSearchTab />
           {/* Find a file (v2.6305): every job's Drive files by their words, under the job and bid search. */}
-          <FindAFile />
+          {/* Punch list #377: a hit that is a signed contract's Drive copy opens the Contract window, for a role that reads the record. */}
+          <FindAFileSection />
         </Fragment>
       ) : null}
       {documentsTab === 'estimates' ? <DocumentsEstimatesLedger /> : null}

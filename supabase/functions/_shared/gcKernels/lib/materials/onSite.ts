@@ -61,6 +61,11 @@ export type Place = {
   jobId: string
   name: string
   createdAt: string
+  /**
+   * The painted map that is the way to this place (`job_places.painted_map_id`, v2.7580; `placeWay.ts`), on the
+   * place's own job or its development. Null or absent until someone paints it.
+   */
+  wayMapId?: string | null
 }
 
 /** A box moved from one place to another: the container's own history, apart from its parts. */

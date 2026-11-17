@@ -10,7 +10,8 @@
  * One resolver answers both (`resolveBoxCode`, a sticker first). A sticker on a box goes to that box as a label does.
  * A blank one goes to the On site tab's **Sticker is new** sheet since v2.7298 (PR 3), on the job its run was printed
  * for (`&sticker=<code>`, `onSiteAddress.ts`). A lost one, one on a retired box and one on a box of a job the reader
- * is not on each say so.
+ * is not on each say so. Since v2.7630 a box's own label on a retired box the reader may see names the box and the day
+ * it left, as the page with no sign-in does.
  */
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
@@ -18,7 +19,7 @@ import { BoxPublicPage } from '../components/materials/BoxPublicPage'
 import { useAuth } from '../hooks/useAuth'
 import { boxCodeWords, normalizeBoxCode } from '../lib/materials/labels'
 import { resolveBoxCode } from '../lib/materials/onSiteStore'
-import { blankStickerPath, lostStickerDetail, LOST_STICKER_TITLE, NO_BOX_DETAIL, noBoxTitle, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, type CodeLookup } from '../lib/materials/stickers'
+import { blankStickerPath, lostStickerDetail, LOST_STICKER_TITLE, NO_BOX_DETAIL, noBoxTitle, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, retiredLabelDetail, retiredLabelTitle, type CodeLookup } from '../lib/materials/stickers'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { noteScannedBox } from '../lib/materials/pinAsk'
 
@@ -45,6 +46,8 @@ function wordsFor(found: CodeLookup, words: string, wanted: string, error: strin
       return { title: LOST_STICKER_TITLE, detail: lostStickerDetail(found.sticker) }
     case 'retired':
       return { title: retiredBoxStickerTitle(found.sticker), detail: 'The office brings a retired box back from the Retired fold on its Materials page.' }
+    case 'retired_label':
+      return { title: retiredLabelTitle(found.container), detail: retiredLabelDetail(found.container) }
     case 'out_of_reach':
       return { title: OUT_OF_REACH_STICKER_TITLE, detail: 'Ask the office to add you to that job.' }
     default:

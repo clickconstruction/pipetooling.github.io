@@ -77,6 +77,8 @@ export interface Door {
   reads?: { file: string; text: string }
   /** A second press on the row: a guide's **Go there**, the page the guide is about (its `where:` line). */
   also?: { label: string; to: string }
+  /** A window a field role's search keeps (`fieldLookupDoors`): work that starts in the field, such as Paint a map. */
+  forField?: true
 }
 
 /** The sources that live in Vite-only modules, handed in by the caller. */
@@ -139,7 +141,7 @@ const settingsTabVisible = (tabId: string): Gate => (v) => getZonedSettingsGroup
 // Pages and windows — hand-kept, with the directory's "Go here when…" lines as their words.
 // ---------------------------------------------------------------------------
 
-type PageSeed = { label: string; where: string; words: readonly string[]; to: string; gate: Gate; kind?: 'page' | 'window'; reads?: Door['reads'] }
+type PageSeed = { label: string; where: string; words: readonly string[]; to: string; gate: Gate; kind?: 'page' | 'window'; reads?: Door['reads']; forField?: true }
 
 const p = (seed: PageSeed): Door => ({
   id: `${seed.kind ?? 'page'}:${seed.to}`,
@@ -150,6 +152,7 @@ const p = (seed: PageSeed): Door => ({
   to: seed.to,
   gate: seed.gate,
   ...(seed.reads ? { reads: seed.reads } : {}),
+  ...(seed.forField ? { forField: true as const } : {}),
 })
 
 const BIDS_TAB_LABELS: Readonly<Record<BidsTabKey, string>> = {
@@ -245,7 +248,7 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Dashboard', where: 'Your day', words: ['home', 'today', 'needs you', 'my schedule', 'clock in', 'pins', 'nudges', 'dashboard'], to: '/dashboard', gate: everyone }),
   ...jobsTabDoors(),
   // Paint a map (punch list #345): the door with no job open. The one host in the Layout reads the key on any page.
-  p({ label: 'Paint a map', kind: 'window', where: 'The way in to a job, drawn or walked', words: ['paint a map', 'painted map', 'paint', 'draw a map', 'map the way in', 'way in', 'walk a line', 'where to park', 'gate'], to: '/dashboard?paintMap=1', gate: everyone, reads: { file: 'src/components/paintedMap/PaintedMapHost.tsx', text: 'paintedMapAskFromSearch(searchParams)' } }),
+  p({ label: 'Paint a map', kind: 'window', where: 'The way in to a job, drawn or walked', words: ['paint a map', 'painted map', 'paint', 'draw a map', 'map the way in', 'way in', 'walk a line', 'where to park', 'gate'], to: '/dashboard?paintMap=1', gate: everyone, forField: true, reads: { file: 'src/components/paintedMap/PaintedMapHost.tsx', text: 'paintedMapAskFromSearch(searchParams)' } }),
   p({ label: 'New job', kind: 'window', where: 'Jobs · Stages, the job form', words: ['add job', 'create job', 'new job', 'add a job'], to: '/jobs?tab=stages&newJob=true', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('newJob')" } }),
   // The Lien desk is a page since punch list #182 (v2.6777): its door is its own address, the office's gate.
   p({ label: 'Lien desk', where: 'The notices, affidavits and retainage notices on every job with money open', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/lien-desk', gate: office }),
@@ -528,6 +531,16 @@ export function plainViewer(role: UserRole): DoorViewer {
 export function isDevOnly(door: Door): boolean {
   if (!door.gate(plainViewer('dev'))) return false
   return ROLES.filter((r) => r !== 'dev').every((r) => !door.gate(plainViewer(r)) && !door.gate({ ...plainViewer(r), estimatorProspectsAccess: true, teamProspectsAccess: true }))
+}
+
+/**
+ * What a field role's search keeps of the index's own doors (punch list #181, widened for #372). A field role's few
+ * pages stay where its own nav puts them, so the pages and the Settings cards go. The guides stay, and so does a window
+ * marked for the field that the route guard admits: a helper who types *paint* is offered **Paint a map**, which until
+ * v2.7581 a helper could start only from a job card.
+ */
+export function fieldLookupDoors(doors: readonly Door[], viewer: DoorViewer): Door[] {
+  return doors.filter((d) => d.kind === 'guide' || (d.kind === 'window' && d.forField === true && doorAllowedByRouteGuard(d, viewer)))
 }
 
 /** The route guard's word on a door for a viewer: a door the guard would bounce is a drift the test reports. */

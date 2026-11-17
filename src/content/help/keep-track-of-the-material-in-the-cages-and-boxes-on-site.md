@@ -100,7 +100,9 @@ When you find the box, tap {{button:blue|I found it}}. The app pins the box wher
 
 A box nobody has pinned says so. Stand at it and tap **I found it**. A phone that is not sure within about 150 ft is refused. Step into the open and tap **Try again**. Or tap **Move the pin by hand** and drag the map until the ring sits on the box. Then tap **Put A1 here**.
 
-The app also asks for a pin when you are standing at a box. That is after a count, a photo, a scanned label or a new box. The box's screen then reads **Pin A1 where you stand?** Tap {{button:blue|Pin it here}}, or tap **Not now**. The app asks once a day for a box. A box pinned in the last week is not asked about.
+The app also asks for a pin when you are standing at a box. The app asks after a count, a photo, a scanned label or a new box. The box's screen then reads **Pin A1 where you stand?** Tap {{button:blue|Pin it here}}, or tap **Not now**. The app asks once a day for a box. A box pinned in the last week is not asked about.
+
+A straight line can cross a fence. A painted way knows the gate, because a person drew it. Tap **Places** at the top of the tab. Under a place, tap **＋ Paint the way here**. The painting window opens on a new map named for the place, like The way to Level 2. Draw or walk the way from the gate and save it. The way then stays on the place. One way serves every box that stands there. On a box in that place, **Where is it?** reads **The way to Level 2 is painted.** Tap {{button:outline|Open the way}} to see it. [Paint a map](/help/paint-a-map) says how to draw and walk a line.
 
 A pin older than 30 days carries a caution, since boxes get moved. Tap **Directions** for the drive to the pin. Tap **Map** on the tab to see every pinned box on the site.
 
@@ -174,7 +176,7 @@ Is the box moved, damaged or in the way? Press **Moved, damaged or in the way?**
 
 To see what is in the box, press **Sign in to see what is inside**. The press has an orange outline. After you sign in you land on that box, with its parts and counts. You sign in once in a phone's browser. After that a scan opens the box's own screen.
 
-A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
+A label from a retired box says so and offers **Scan another label**. Signed in, it names the box and the day it left. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 

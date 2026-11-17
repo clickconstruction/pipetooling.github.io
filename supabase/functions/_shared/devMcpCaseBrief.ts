@@ -11,9 +11,17 @@
 // counted a page at a time (one read stopped the count at 200), and a brief that is still too long is shortened by
 // devMcpReplyFit.ts in a fixed order — the documents' section indexes first, as outlines — with each shortened block
 // named in `shortened` beside the call that reads it whole.
+//
+// v2.7651 (server 0.97.0): the brief opens with the manifest and the reading rules (devMcpPersonManifest.ts). A large
+// file is shortened here and in get_person_file, so neither said in one place how many of each thing the file holds or
+// which call opens it; `manifest` does, one line a part with its whole count, and `reading` carries the rules an agent
+// follows on an HR file. The Timeline's sources are counted by get_person_file's own kernel (its `tally` and
+// `counts`), so a number here is the number that verb answers. No fit step touches either block.
 import { ALL_ROWS_MAX, newestFirst, readAllRows, readRowsByIds, type Reader, type Row } from './devMcpComposites.ts'
 import type { RowFilter } from './devMcpDoor.ts'
-import { resolvePerson } from './devMcpPersonFile.ts'
+import { PERSON_FILE_LINE_CHARS_MIN, getPersonFile, resolvePerson } from './devMcpPersonFile.ts'
+import { HR_READING_RECEIPT, HR_READING_RULES, buildPersonManifest, type ManifestHeld, type PersonManifestInput } from './devMcpPersonManifest.ts'
+import type { PersonTimelineSource } from './personTimeline.ts'
 import { cutText, fitReply, outlineHeadings, type FitStep, type Shortened } from './devMcpReplyFit.ts'
 import { counselOnlyStillHeld } from './devMcpCounselOnly.ts'
 import { AMENDMENTS_NOTE, amendmentCounts, amendmentDays, newestAmendments, readPersonAmendments, seatAmendmentBits } from './devMcpAmendments.ts'
@@ -38,14 +46,14 @@ const BRIEF_MATTER_ROWS = 40
 const BRIEF_SUMMARY_CHARS = 6000
 
 type Heading = { n: number | null; level: number; heading: string; line: number }
-type EntryRow = { id: string; entry_date: string; source: string; created_at?: string | null }
-type EvidenceRow = { id: string; dated_on: string; title: string; counsel_only: boolean | null }
+type EntryRow = { id: string; entry_date: string; source: string; created_at?: string | null; gmail_message_id?: string | null }
+type EvidenceRow = { id: string; dated_on: string; title: string; counsel_only: boolean | null; drive_folder_id?: string | null }
 type FileIndexRow = { kind: string; chars: number; sections: number; headings: Heading[] | null; updated_at: string; covered_through: string | null; author_label: string | null }
 type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; updated_at: string; archived_at: string | null; chars: number; sections: number; headings: Heading[] | null; evidence_id?: string | null }
 type MatterRow = { id: string; stage: string | null; narrative_md: string | null; narrative_updated_at: string | null; closed_at: string | null }
 type MatterEntryRow = { id: string; kind: string; occurred_on: string | null; body: string | null; meta: { done_at?: string | null } | null; voided_at: string | null }
 type MatterDocRow = { id: string; title: string; state: string | null; dated_on: string | null; voided_at: string | null; mime: string | null; counsel_only?: boolean | null }
-type MarkRow = { theme_id: string; proposed: boolean | null; removed_at: string | null }
+type MarkRow = { theme_id: string; proposed: boolean | null; kept_at?: string | null; removed_at: string | null }
 type ThemeRow = { id: string; name: string }
 type HistoryLine = { at: string; body: string; kind?: string; by?: string | null }
 
@@ -109,15 +117,40 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     return newestBy ? newestFirst(r.rows, newestBy) : r.rows
   }
 
+  // v2.7651: what only the manifest counts. Each is read on its own and fail-soft into its own part (count null, held),
+  // never into the brief's `held`, which names the sources the brief itself draws. Started here, awaited with the rest.
+  const counted = async <T>(table: string, select: string, filters: RowFilter[], key = 'id'): Promise<T[] | ManifestHeld> => {
+    if (!isDev) return { held: 'dev only' }
+    try {
+      const r = await readAllRows(reader, table, { select, filters }, key)
+      if (r.capped) return { held: `more than ${ALL_ROWS_MAX} rows of ${table}: the read stopped there` }
+      return r.rows as unknown as T[]
+    } catch (e) {
+      return { held: e instanceof Error ? e.message : String(e) }
+    }
+  }
+  const manifestReads = Promise.all([
+    counted<{ text_source: string | null; text_why: string | null }>('file_index', 'drive_file_id,text_source,text_why', eq('person_id', personId), 'drive_file_id'),
+    counted<{ state: string; closed_at: string | null }>('person_case_items', 'id,state,closed_at', eq('person_id', personId)),
+    counted<{ id: string }>('person_case_log', 'id', eq('person_id', personId)),
+    counted<{ withdrawn_at: string | null }>('person_engagements', 'id,withdrawn_at', eq('person_id', personId)),
+    counted<{ state: string }>('dev_seat_kept_plans', 'id,state', eq('person_id', personId)),
+    counted<{ untagging_at: string | null }>('email_tag_threads', 'id,untagging_at', eq('person_id', personId)),
+    // The Timeline's sources, through get_person_file's own reads and kernel: its tally and counts are whole whatever it shortened.
+    isDev
+      ? getPersonFile(reader, { person: personId, brief: true, docs: false, line_chars: PERSON_FILE_LINE_CHARS_MIN }, who).catch((e) => ({ refused: e instanceof Error ? e.message : String(e) }))
+      : Promise.resolve({ refused: 'dev only' }),
+  ])
+
   // The entries without their words — the count is exact, and `entries.at_cap` is true only past readAllRows' own stop.
   let entriesCapped = false
   const [entryRows, evidence, fileIndex, docIndex, matters, marks, themes] = await Promise.all([
     read<EntryRow>('entries', async () => {
-      const all = await readAllRows(reader, 'person_file_entries', { select: 'id,entry_date,source,created_at', filters: eq('person_id', personId) })
+      const all = await readAllRows(reader, 'person_file_entries', { select: 'id,entry_date,source,created_at,gmail_message_id', filters: eq('person_id', personId) })
       entriesCapped = all.capped
       return all.rows
     }),
-    read<EvidenceRow>('evidence', every('evidence', 'person_file_evidence', 'id,dated_on,title,counsel_only', eq('person_id', personId), 'dated_on')),
+    read<EvidenceRow>('evidence', every('evidence', 'person_file_evidence', 'id,dated_on,title,counsel_only,drive_folder_id', eq('person_id', personId), 'dated_on')),
     read<FileIndexRow>('summary and narrative', () => reader.rows('person_file_index', { select: 'kind,chars,sections,headings,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 4 })),
     // v2.6713 (punch list #287): evidence_id, the record a document transcribes; read without it when the catalog does not know the column yet.
     read<DocIndexRow>('documents', async () => {
@@ -129,7 +162,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     }),
     read<MatterRow>('matter', () => reader.rows('legal_matters', { select: 'id,stage,narrative_md,narrative_updated_at,closed_at', filters: eq('person_id', personId), limit: 2 })),
     // One read asked for 1,000 marks and the door answered 200: paged, a theme's count is whole.
-    read<MarkRow>('themes', every('themes', 'legal_theme_marks', 'id,theme_id,proposed,removed_at', eq('person_id', personId))),
+    read<MarkRow>('themes', every('themes', 'legal_theme_marks', 'id,theme_id,proposed,kept_at,removed_at', eq('person_id', personId))),
     read<ThemeRow>('themes', every('themes', 'legal_themes', 'id,name', [{ column: 'retired_at', op: 'is', value: null }])),
   ])
 
@@ -203,8 +236,11 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   for (const e of entries) bySource[e.source] = (bySource[e.source] ?? 0) + 1
   const entryDates = entries.map((e) => e.entry_date).sort()
   const liveMarks = marks.filter((m) => !m.removed_at)
+  // v2.7651: a mark the agent proposed and a dev kept is a kept mark (legalThemes.ts → markIsProposed). The brief counted
+  // every mark an agent had proposed as still proposed, kept or not, so a file whose marks were all kept read as waiting.
+  const waits = (m: MarkRow): boolean => Boolean(m.proposed) && !m.kept_at
   const themeRows = themes
-    .map((t) => ({ id: t.id, name: t.name, marked: liveMarks.filter((m) => m.theme_id === t.id && !m.proposed).length, proposed: liveMarks.filter((m) => m.theme_id === t.id && m.proposed).length }))
+    .map((t) => ({ id: t.id, name: t.name, marked: liveMarks.filter((m) => m.theme_id === t.id && !waits(m)).length, proposed: liveMarks.filter((m) => m.theme_id === t.id && waits(m)).length }))
     .filter((t) => t.marked + t.proposed > 0)
     .sort((a, b) => b.marked + b.proposed - (a.marked + a.proposed))
   const seen = new Set<string>()
@@ -234,10 +270,76 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   // v2.6986: counsel-only papers come back to the seat while the switch stands open; held names only the ones that did not.
   const counselOnlyHeld = counselOnlyStillHeld(counselOnlyCount, matterDocs.filter((d) => !d.voided_at && d.counsel_only === true).length)
 
+  // v2.7651: the manifest. A part the brief reads takes its count from the rows above, or `held` when its source is
+  // named in the brief's `held`; the rest comes from the manifest's own reads and from get_person_file's tally.
+  const [fileIndexRows, caseItemRows, caseLogRows, engagementRows, keptPlanRows, mailRows, fileRead] = await manifestReads
+  const whyHeld = (source: string): ManifestHeld | null => {
+    const h = held.find((x) => x.source === source)
+    return h ? { held: h.reason } : null
+  }
+  const isHeldRead = (v: unknown): v is ManifestHeld => !Array.isArray(v)
+  const fileOk = 'refused' in fileRead ? null : fileRead
+  const fileHeld: ManifestHeld = { held: 'refused' in fileRead ? fileRead.refused : 'not read' }
+  const heldSources: Partial<Record<PersonTimelineSource, string>> = {}
+  for (const h of fileOk?.held ?? []) heldSources[h.source] ??= h.reason
+  const liveDocs = matterDocs.filter((d) => !d.voided_at)
+  const planSteps = matterEntries.filter((e) => e.kind === 'plan' && !e.voided_at)
+  const withoutWords: Record<string, number> = {}
+  if (!isHeldRead(fileIndexRows)) for (const f of fileIndexRows) if (!f.text_source) withoutWords[f.text_why ?? 'not read yet'] = (withoutWords[f.text_why ?? 'not read yet'] ?? 0) + 1
+  const recordFolders = evidence.filter((r) => r.drive_folder_id)
+  const manifestInput: PersonManifestInput = {
+    personId,
+    agentNotes: whyHeld('documents') ?? (notesDoc ? { doc_id: notesDoc.id, chars: notesDoc.chars, updated_at: notesDoc.updated_at, entries_since: entries.filter((e) => (e.created_at ?? '') > notesDoc.updated_at).length } : null),
+    summary: whyHeld('summary and narrative') ?? (summaryIndex ? { chars: summaryIndex.chars, sections: count(summaryIndex.headings), covered_through: summaryIndex.covered_through } : null),
+    narrative: whyHeld('summary and narrative') ?? (narrativeIndex ? { chars: narrativeIndex.chars, sections: count(narrativeIndex.headings) } : null),
+    documents: whyHeld('documents') ?? {
+      count: listed.length,
+      chars: listed.reduce((n, d) => n + (d.chars ?? 0), 0),
+      counsel_only: listed.filter((d) => d.counsel_only).length,
+      counsel_only_chars: listed.filter((d) => d.counsel_only).reduce((n, d) => n + (d.chars ?? 0), 0),
+    },
+    entries: whyHeld('entries') ?? { count: entries.length, first: entryDates[0] ?? null, last: entryDates[entryDates.length - 1] ?? null, from_mail: entries.filter((e) => e.gmail_message_id).length },
+    evidence: whyHeld('evidence') ?? { count: evidence.length, counsel_only: evidence.filter((r) => r.counsel_only).length, in_drive_folders: recordFolders.length, a_record_folder: recordFolders[0]?.drive_folder_id ?? null },
+    files: fileOk ? (heldSources.file ? { held: heldSources.file } : fileOk.tally.files) : fileHeld,
+    fileWords: isHeldRead(fileIndexRows) ? fileIndexRows : { indexed: fileIndexRows.length, with_words: fileIndexRows.filter((f) => f.text_source).length, without_words: withoutWords },
+    timelineLines: fileOk ? fileOk.counts.bySource : fileHeld,
+    heldSources,
+    rows: fileOk ? fileOk.tally.rows : fileHeld,
+    correctionLinks: !isDev ? { held: 'dev only' } : amendRead && !amendRead.heldWhy ? amendmentCounts(amendRead).live : { held: amendRead?.heldWhy ?? 'not read' },
+    caseItems: isHeldRead(caseItemRows) ? caseItemRows : { count: caseItemRows.length, open: caseItemRows.filter((i) => !i.closed_at).length },
+    caseLog: isHeldRead(caseLogRows) ? caseLogRows : caseLogRows.length,
+    standing: isHeldRead(engagementRows) ? engagementRows : engagementRows.filter((e) => !e.withdrawn_at).length,
+    keptPlans: isHeldRead(keptPlanRows) ? keptPlanRows : { count: keptPlanRows.length, waiting: keptPlanRows.filter((k) => k.state === 'waiting').length },
+    mailConversations: isHeldRead(mailRows) ? mailRows : mailRows.filter((t) => !t.untagging_at).length,
+    themes: whyHeld('themes') ?? { themes: themeRows.length, kept: liveMarks.filter((x) => !waits(x)).length, proposed: liveMarks.filter(waits).length },
+    matter:
+      whyHeld('matter') ??
+      (matter
+        ? {
+            id: matter.id,
+            stage: matter.stage,
+            narrative_chars: (matter.narrative_md ?? '').length,
+            narrative_sections: matterHeadings.length,
+            steps: planSteps.length,
+            steps_done: planSteps.filter((e) => Boolean(e.meta?.done_at)).length,
+            events: matterEntries.filter((e) => e.kind !== 'plan' && !e.voided_at).length,
+            documents: liveDocs.length,
+            documents_text: liveDocs.filter((d) => Boolean(d.mime && /^text\//.test(d.mime))).length,
+            documents_counsel_only: liveDocs.filter((d) => d.counsel_only === true).length,
+          }
+        : null),
+    developments: { count: developments.length, jobs: developments.reduce((n, d) => n + d.jobs.length, 0), other_jobs: jobs.filter((j) => !j.development_id).length },
+    login: Boolean(userId),
+  }
+
   // The small blocks first, the long lists last: what a cut would take is the part another verb reads anyway.
   const whole = {
     person: { id: person.id, name: person.name, kind: person.kind, start_date: person.start_date, end_date: person.end_date, archived_at: person.archived_at, login: Boolean(userId) },
     read_as: { role: who.role, today: who.todayYmd },
+    // v2.7651: how to read an HR file, and how to prove what was read; one constant (devMcpPersonManifest.ts).
+    reading: { rules: HR_READING_RULES, receipt: HR_READING_RECEIPT },
+    // v2.7651: every part of the file with its whole count and the call that opens it. Never shortened.
+    manifest: buildPersonManifest(manifestInput),
     // v2.6935: null when the brief is whole; else why it was shortened and each block with what it kept and the call that reads the rest.
     shortened: null as Shortened | null,
     held: heldOnce,

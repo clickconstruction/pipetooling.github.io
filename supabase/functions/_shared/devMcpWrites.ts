@@ -122,7 +122,7 @@ export const WRITE_VERBS = {
   // (dev_history_entry_write inserts development_history_entries with via = mcp).
   plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
   apply_history_entry: { rpc: 'dev_history_entry_write', step: 'apply' },
-  // v2.7670 / 0.97.0 (punch list #379 PR 4): a trip to a site away from home, kept on its development or on a job with
+  // v2.7670 / 0.98.0 (punch list #379 PR 4): a trip to a site away from home, kept on its development or on a job with
   // none — who went and each person's days, saved whole through the app's own trip_save (SECURITY INVOKER, gated by
   // trips_office(), so the rows land under the dev's own RLS) with via = mcp and the robot's name. The server makes
   // the id of a trip that has none and ties each name to the roster before the dry run (devMcpTrips.ts). It changes

@@ -2,7 +2,7 @@
 name: "Find a lost box: show where a cage or box was last put, and draw the way to it"
 number: 372
 group: close
-status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17 · call 1 answered the same day (*Yes, cage or box*) · the owner's word the same day (*Build all the steps*), taken as the train of five with every other call at the card's pick · all five steps built and tested the same day · steps 1 and 2 and the way's column merged (#8503, #8510, #8511), both migrations on the live database · all five steps walked on a test job in a local browser · step 3 in this PR · the way's screens and step 5 built, each waiting its turn · not tried on a real phone
+status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17 · call 1 answered the same day (*Yes, cage or box*) · the owner's word the same day (*Build all the steps*), taken as the train of five with every other call at the card's pick · all five steps built and tested the same day · steps 1, 2 and 3 and the way's column merged (#8503, #8510, #8531, #8511), both migrations on the live database · all five steps walked on a test job in a local browser · the way's screens in this PR · step 5 built, waiting its turn · not tried on a real phone
 summary: >
   The owner wants the app to show someone where their crate is when it is lost, and to draw a path
   to where they can find it. The app has no crate: this card takes it to mean a cage or a box from
@@ -14,8 +14,8 @@ summary: >
   honest distance, and ends with I found it, which pins the box where the finder stands. A way
   painted once to each place where boxes stand (#345) is the path that knows about gates and
   fences, and a task carries it to someone who is not on the crew.
-next: The rest of the train lands one PR at a time: step 3, then the way's screens once the way's migration is pushed, then step 5, which closes the card's table. Then the owner's try on a real phone, which is step 0 and more: pin five boxes on a test job with I found it, some outdoors and some inside, walk away and press Show where I am, lock the phone mid-walk, and read what the sheet says indoors. Calls 2 to 11 stay his to change.
-size: L as a train of five (S · M · S · M · S), on the card's picks; left: three PRs to land and a real phone (S)
+next: The rest of the train lands one PR at a time: the way's screens, then step 5, which closes the card's table. Then the owner's try on a real phone, which is step 0 and more: pin five boxes on a test job with I found it, some outdoors and some inside, walk away and press Show where I am, lock the phone mid-walk, and read what the sheet says indoors. Calls 2 to 11 stay his to change.
+size: L as a train of five (S · M · S · M · S), on the card's picks; left: two PRs to land and a real phone (S)
 blocker: None to build. The merge queue, one PR at a time. Nothing here, and nothing in Paint a map (#345) that it stands on, has been tried on a real phone.
 opinion: build — built on the owner's word. Whether it is used turns on crews pinning boxes, which step 3 asks for and a count of pinned boxes will show.
 ---
@@ -216,9 +216,9 @@ not yet merged are in their titles.
 |---|---|---|
 | 1 | #8503, merged | The pin remembers. Four columns on `job_containers` and the `job_containers_stamp_pin` trigger. Migration `20261117170000`, on the live database. |
 | 2 | #8510, merged | **Where is it?**: the sheet on the phone's box screen, and the third tab of the office's box window. |
-| 3 | the PR that carries this edit | The pin ask: *Pin A7 where you stand?* after a count, a photo, a scanned label and a new box. |
+| 3 | #8531, merged | The pin ask: *Pin A7 where you stand?* after a count, a photo, a scanned label and a new box. |
 | 4, the column | #8511, merged | A place can carry the way to it. One column, an update policy and a guard on `job_places`. Migration `20261117180000`, on the live database. |
-| 4, the screens | built, not opened | **＋ Paint the way here** on a place, **Open the way** on a box's sheet, and a helper's search offering **Paint a map** (call 8). |
+| 4, the screens | the PR that carries this edit | **＋ Paint the way here** on a place, **Open the way** on a box's sheet, and a helper's search offering **Paint a map** (call 8). |
 | 5 | built, not opened | **Send someone to it**: the New task window on *Find A7*, with the pin as the task's place and the way as its map. |
 
 **What differs from the card**, each in its fragment:

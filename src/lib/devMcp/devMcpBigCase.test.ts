@@ -84,7 +84,7 @@ describe('get_case_brief on a large case (v2.6935): 60 documents, one with 400 h
     const out = await getCaseBrief(reader(), { person: BIG_PERSON }, DEV)
     if ('refused' in out) throw new Error(out.refused)
     expectWholeThroughTheDoor(out)
-    expect(Object.keys(out)).toEqual(['person', 'read_as', 'shortened', 'held', 'counts', 'agent_notes', 'summary', 'entries', 'amendments', 'matter', 'themes', 'developments', 'read_next', 'narrative', 'evidence', 'documents'])
+    expect(Object.keys(out)).toEqual(['person', 'read_as', 'reading', 'manifest', 'shortened', 'held', 'counts', 'agent_notes', 'summary', 'entries', 'amendments', 'matter', 'themes', 'developments', 'read_next', 'narrative', 'evidence', 'documents'])
     expect(out.held).toEqual([])
     // Whole, this brief is past the cut: the documents' section indexes fill it by themselves.
     expect(out.shortened?.why).toMatch(/^As asked this reply is 1\d\d,\d{3} characters, and the door cuts a reply at 80,000\.$/)
@@ -124,8 +124,9 @@ describe('get_case_brief on a large case (v2.6935): 60 documents, one with 400 h
     const out = await getCaseBrief(r, { person: BIG_PERSON }, DEV)
     if ('refused' in out) throw new Error(out.refused)
     expect(out.entries.count).toBe(BIG_ENTRIES)
-    // Two pages of the light read, then the newest ten's words.
-    expect(r.asked.filter((a) => a === 'rows:person_file_entries')).toHaveLength(3)
+    // Two pages of the light read, then the newest ten's words; and two more pages for the manifest, which counts the
+    // Timeline through get_person_file's own reads (v2.7651).
+    expect(r.asked.filter((a) => a === 'rows:person_file_entries')).toHaveLength(5)
   })
 
   it('a case too long for the documents\' step alone goes on down the steps, each block named, and still fits', async () => {
@@ -160,7 +161,7 @@ async function file(ask: Record<string, unknown>, r = reader()): Promise<PersonF
   if ('refused' in out) throw new Error(String(out.refused))
   return out as PersonFileReply
 }
-const FILE_KEYS = ['person', 'read_as', 'shortened', 'next_until', 'source', 'facts', 'chips', 'signed_papers', 'signed_papers_note', 'hours_statements', 'hours_statements_note', 'counts', 'lanes', 'sources', 'held', 'at_cap', 'filter', 'amendments', 'ahead', 'months', 'evidence', 'files_before_records', 'docs', 'documents', 'documents_note']
+const FILE_KEYS = ['person', 'read_as', 'read_first', 'shortened', 'next_until', 'source', 'facts', 'chips', 'signed_papers', 'signed_papers_note', 'hours_statements', 'hours_statements_note', 'counts', 'tally', 'lanes', 'sources', 'held', 'at_cap', 'filter', 'amendments', 'ahead', 'months', 'evidence', 'files_before_records', 'docs', 'documents', 'documents_note']
 
 describe('get_person_file on a large file (v2.6935): 250 entries, 80 evidence records, a long narrative', () => {
   it('reads every entry a page at a time: the chip says 250 and no table is at the cap', async () => {
@@ -308,7 +309,8 @@ describe('every list past 200 rows (v2.6939): each source of both verbs is read 
     expect(out.matter!.documents[0]!.id).toBe(`md-${DEEP.matterDocuments - 1}`)
     // 240 jobs off the schedule, read by id a hundred at a time: the development lists them all.
     expect(out.developments.map((d) => [d.name, d.jobs.length])).toEqual([['Quail Ridge', DEEP.jobs]])
-    expect(times(r, 'rows:person_file_evidence')).toBe(2)
+    // Two pages for the brief's own list, and two more for the manifest, which counts the Timeline through get_person_file (v2.7651).
+    expect(times(r, 'rows:person_file_evidence')).toBe(4)
     expect(times(r, 'rows:legal_theme_marks')).toBe(3)
     expect(times(r, 'rows:jobs_ledger')).toBe(3)
   })
@@ -360,7 +362,7 @@ describe('every list past 200 rows (v2.6939): each source of both verbs is read 
 
 describe('the server and the docs carry the fit (v2.6935) and the paged sources (v2.6939 / 0.66.0)', () => {
   it('get_person_file takes until, brief and line_chars; both verbs say shortened; the README rows say how to read on', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.98.0'")
     expect(SERVER).toContain('until: args.until, docs: args.docs, brief: args.brief, line_chars: args.line_chars')
     for (const arg of ['until:', 'brief:', 'line_chars:']) expect(SERVER.slice(SERVER.indexOf("name: 'get_person_file'"), SERVER.indexOf("name: 'get_hours_statement'"))).toContain(arg)
     expect(SERVER.slice(SERVER.indexOf("name: 'get_case_brief'"), SERVER.indexOf("name: 'get_document_history'"))).toContain('shortened')

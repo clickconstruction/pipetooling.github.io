@@ -39,6 +39,7 @@ import {
   twinRefusalWords,
 } from '../_shared/driveLink.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { papersAmong, withPaperMark } from '../_shared/driveLinkPapers.ts'
 
 /**
  * Messages, cut 7b (v2.5383): our own link to one Drive file of one job, and the office's door to a job's Drive folder.
@@ -69,6 +70,10 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  *                                                        url, home, path, excerpt, excerptWhy }], more, noRoot }; a read a training
  *                                                        account may run; since v2.6306 the first ten hits carry the line around
  *                                                        the words (`excerpt`), or why there is none (`excerptWhy`)
+ *                                                        since v2.7649 (punch list #377) a hit of `search` or a row of `search_index`
+ *                                                        that is a signed job contract's Drive copy carries `paper` ('signed' |
+ *                                                        'voided'), and for the four roles that read the record `contract_id` and
+ *                                                        `contract_job_id` (`_shared/driveLinkPapers.ts`)
  *   POST { action: 'index', driveFileId }                → one file into our own text index, file_index (punch list #240, PR 1,
  *                                                        v2.6319): walked up to its job or bid, its text read by _shared/fileText.ts,
  *                                                        one row upserted → { indexed, held: [{ id, name, why }], remaining }; a
@@ -336,7 +341,11 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
       if (r.error) return json({ error: `The index did not answer: ${r.error.message}` }, 500)
       rows = r.data
     }
-    return json({ rows: Array.isArray(rows) ? rows : [], meaning, note: error })
+    // Punch list #377: a row that is a signed job contract's Drive copy says so (`paper`), and for the four roles that read
+    // the record, which one (`contract_id`, `contract_job_id`).
+    const list = (Array.isArray(rows) ? rows : []) as Record<string, unknown>[]
+    const papers = await papersAmong(admin, list.map((r) => String(r.drive_file_id ?? '')))
+    return json({ rows: list.map((r) => withPaperMark(r, papers.get(String(r.drive_file_id ?? '')), who.role)), meaning, note: error })
   }
 
   if (ask.action === 'embed_probe') {
@@ -384,7 +393,13 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     return json({ driveFileId: put.id, url: driveViewUrl(put.id) })
   }
 
-  if (ask.action === 'search') return json(await searchFiles(admin, google, ask.words))
+  if (ask.action === 'search') {
+    const found = await searchFiles(admin, google, ask.words)
+    // The same mark on Drive's own finds (#377): the box draws one chip whichever search named the file.
+    const hits = (Array.isArray(found.hits) ? found.hits : []) as Record<string, unknown>[]
+    const papers = await papersAmong(admin, hits.map((h) => String(h.id ?? '')))
+    return json({ ...found, hits: hits.map((h) => withPaperMark(h, papers.get(String(h.id ?? '')), who.role)) })
+  }
 
   // Find a file's first answer (PR 4): our own index, by the words alone (search_file_index) or, once GEMINI_API_KEY is
   // set, by the words and the meaning fused (search_file_index_meaning, the query embedded here). The RPC runs as the

@@ -2059,6 +2059,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "hr-evidence-drive",
   "import-manual-transactions",
   "invite-user",
+  "job-contract-drive",
   "job-drive-folders",
   "job-photos",
   "job-rating",

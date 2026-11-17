@@ -204,6 +204,18 @@ since v2.5655 the same predicate holds a primary's paid verbs, `mark_job_paid`, 
 
 **Database**: `jobs_ledger.account_manager_user_id`, `jobs_ledger.account_manager_relationship`
 
+### Required paper (papers before a job opens)
+
+A paper a job requires of everyone who opens it: an NDA, site rules, a GC's own form.
+The office sets them on the job window's Documents tab, in **Papers before this job opens** (v2.7646, `JobDocumentsRequiredPapers.tsx`).
+Everyone signs each one, the office too.
+A required paper keeps the words it had in the Contract Book on the day it was required (`job_required_papers`, v2.7641).
+A person's signed copy is a `person_contract_documents` row with its `job_id`, named with the job's number.
+**Take off** removes a paper from the job and keeps every signature.
+The roster in the section lists each person who can open the job against each paper, and **Copy the signing link** puts a person's links on the clipboard.
+The chip *2 papers to sign* in the job window's head counts them.
+The lock itself lands in later steps: until then the section says the job does not lock yet.
+
 ### E chip (the estimate's author on a job)
 A small red square with a white **E** beside a person's name wherever a job's people are listed — the people line over Job activity, the Assigned Team on the Job window, **Everyone on the job** from the Pipeline's crew line (v2.6694, punch list #129, the owner's call of 2026-11-08).
 It marks the estimator who wrote the signed estimate the job was made from (`estimates.created_by`, `job_ledger_id`, `customer_accepted`, not a change order), who is one of **the job's people** (`is_job_people`, `20261108100000_job_people_estimate_author.sql`) the same as a won bid's estimator: they write down and read the customer's word on paying for that job.
@@ -6520,6 +6532,9 @@ The dot is drawn on the phone and sent nowhere.
 A pin older than 30 days is an **old pin** and carries a caution.
 The **pin ask** (v2.7579) is the one line a box's screen on the phone draws after a count, a photo, a scanned label or a new box: *Pin A7 where you stand?*, with **Pin it here** and **Not now** (`PinAskStrip.tsx` over `pinAsk.ts`).
 It is asked of a box with no pin or a pin older than seven days, and once a day for a box on a device.
+**The way to a place** (v2.7580 the column, v2.7581 the screens) is one painted map a place on a site can carry, `job_places.painted_map_id`, painted once so it serves every box that stands there.
+**＋ Paint the way here** under a place opens the painting window on a new map on the job named *The way to Level 2*, and the saved map goes onto the place (`placeWayPaint.ts` over `placeWay.ts`).
+A box's **Where is it?** then reads *The way to Level 2 is painted.* with **Open the way**.
 A task's place has a sheet of the same name, which is a different thing: there the giver says where the task is.
 
 ### A site's materials (punch list #330)

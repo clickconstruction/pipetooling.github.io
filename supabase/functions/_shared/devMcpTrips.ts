@@ -1,4 +1,4 @@
-// A trip to a site away from home, from the dev seat (v2.7670 / 0.97.0, punch list #379 PR 4). A trip is one going-out
+// A trip to a site away from home, from the dev seat (v2.7670 / 0.98.0, punch list #379 PR 4). A trip is one going-out
 // to a site and coming back, kept on a development (or on a job that has none): who went, and for each person their
 // days, each Getting ready, On the road or At the site. The seat reads a site's trips (read_trips) and files one
 // (plan_trip → apply_trip) so trips already known from a ledger can be kept on the owner's word.
