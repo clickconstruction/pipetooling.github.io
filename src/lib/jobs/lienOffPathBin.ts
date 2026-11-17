@@ -26,6 +26,8 @@ export type LienOffPathJob = {
   since: string | null
   /** Who took it off (`users.id`); null when the person is gone. */
   byUserId: string | null
+  /** That person's name, when the read found it. */
+  byName?: string | null
   /** When the job went on the attorney's list (the Collections flag), or null when it is not on it. */
   attorneySince: string | null
   /** The job's status (`jobs_ledger.status`): the Collections flag takes a billed job only. */
@@ -67,7 +69,7 @@ function attorneyWords(j: Pick<LienOffPathJob, 'attorneySince' | 'status'>): str
   return why ? `not on the attorney’s list, the job ${why}` : 'not on the attorney’s list'
 }
 
-/** The bin, the most money first; null with no job off the lien path. `userName` names who took a job off. */
+/** The bin, the most money first; null with no job off the lien path. `userName` names who took a job off when the job's own `byName` is empty. */
 export function buildLienOffPathBin(jobs: ReadonlyArray<LienOffPathJob>, opts: { userName?: (id: string) => string | null | undefined } = {}): LienOffPathBin | null {
   if (jobs.length === 0) return null
   const sorted = [...jobs].sort((a, b) => b.unpaid - a.unpaid || (a.number < b.number ? -1 : 1))
@@ -79,7 +81,7 @@ export function buildLienOffPathBin(jobs: ReadonlyArray<LienOffPathJob>, opts: {
       jobId: j.jobId,
       label: j.name ? `${j.number} · ${j.name}` : j.number,
       unpaidWords: formatUsdNoCents(j.unpaid),
-      line: [j.gcName, lienOffPathSinceWords(j.since, j.byUserId ? opts.userName?.(j.byUserId) : null), attorneyWords(j)].filter(Boolean).join(' · '),
+      line: [j.gcName, lienOffPathSinceWords(j.since, (j.byName ?? '').trim() || (j.byUserId ? opts.userName?.(j.byUserId) : null)), attorneyWords(j)].filter(Boolean).join(' · '),
       reason: j.reason.trim() || LIEN_OFF_PATH_NO_REASON,
     })),
     backLabel: LIEN_OFF_PATH_BACK_LABEL,

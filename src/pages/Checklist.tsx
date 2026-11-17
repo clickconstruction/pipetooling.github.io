@@ -78,8 +78,9 @@ import { useTaskPhotos } from '../hooks/useTaskPhotos'
 import { useTaskPlaces } from '../hooks/useTaskPlaces'
 import { useTaskSpotPhotos } from '../hooks/useTaskSpotPhotos'
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from '../components/checklist/TaskPlacesMapCard'
-import { taskPlaceDots, taskPlaceFarShort, taskTitlePlain } from '../lib/tasks/taskPlace'
-import { lateFirst, nextTaskId, splitToday, stillOpenIsLate, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
+import { taskPlaceDots, taskPlaceDraft, taskPlaceFarShort, taskTitlePlain } from '../lib/tasks/taskPlace'
+import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, lateFirst, nextTaskId, splitToday, stillOpenIsLate, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
+import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
@@ -461,7 +462,7 @@ export default function Checklist() {
 
       {/* Punch list #188 rows 35 and 65 (v2.6758): forwarding and Upcoming are office work; History's edit mode and Review's acts for others are the owner's with a dev. */}
       {activeTab === 'today' && (
-        <ChecklistTodayTab modeBar={taskDayBar} authUserId={authUser?.id ?? null} canForward={isOfficeRole(role)} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
+        <ChecklistTodayTab modeBar={taskDayBar} canAddTask={showHeaderTaskChecklistButton(role)} authUserId={authUser?.id ?? null} canForward={isOfficeRole(role)} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
       )}
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={isOwnerOrDev(role)} setError={setError} />
@@ -487,7 +488,8 @@ export default function Checklist() {
   )
 }
 
-function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setError, modeBar = null }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
+function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAddTask = false, setError, modeBar = null }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; /** May this person write a task? The roles the header's Task press shows for. */ canAddTask?: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
+  const addTaskModal = useChecklistAddModal()
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
   const [todayInstances, setTodayInstances] = useState<ChecklistInstance[]>([])
   const [upcomingInstances, setUpcomingInstances] = useState<ChecklistInstance[]>([])
@@ -937,6 +939,24 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
     const id = taskHearsId(inst.checklist_items, authUserId)
     return id ? (eventActorNameById[id] ?? null) : null
   }
+  // Punch list #369, step B1: the person's own task, and a follow-up from a task they finished. Both open the New task
+  // window that exists, so nothing new is saved here. The day reads again once the window has sent.
+  const canWriteTask = canAddTask && !!addTaskModal && !!authUserId
+  const addOwnTask = () => addTaskModal?.openAddModal({ assigneeUserId: authUserId, onSaved: () => void loadDay() })
+  const addFollowUp = (inst: ChecklistInstance) => {
+    const place = taskPlaceDraft(taskPlaces.placeFor(inst.checklist_item_id))
+    addTaskModal?.openAddModal({
+      assigneeUserId: authUserId,
+      preset: {
+        title: followUpTitle(taskTitlePlain(inst.checklist_items?.title)),
+        links: [],
+        // The place alone: a way in painted for the first task stays with that task.
+        place: place ? { lat: place.lat, lng: place.lng, name: place.name, accuracyM: place.accuracyM } : null,
+        tellUserId: followUpTellsId(inst.checklist_items?.created_by_user_id, authUserId),
+      },
+      onSaved: () => void loadDay(),
+    })
+  }
   const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
     // Next can be an older task once today is finished: its dot is the map's colour for it, red only when late.
     const todayYmd = toLocalDateString(new Date())
@@ -1014,6 +1034,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
                   Forward
                 </button>
               )}
+              {canWriteTask && inst.completed_at ? (
+                <button type="button" data-follow-up onClick={() => addFollowUp(inst)} style={TASK_PILL_STYLE} title="Write a new task for what this one turned up">
+                  {FOLLOW_UP_LABEL}
+                </button>
+              ) : null}
             </>
           }
         />
@@ -1062,6 +1087,16 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
             ) : null}
           </>
         )}
+        {canWriteTask && !dayFailure ? (
+          <button
+            type="button"
+            data-add-own-task
+            onClick={addOwnTask}
+            style={{ display: 'block', width: '100%', minHeight: 44, marginTop: '0.6rem', font: 'inherit', fontSize: 14, fontWeight: 600, borderRadius: 10, border: '1px dashed var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+          >
+            {ADD_OWN_TASK_LABEL}
+          </button>
+        ) : null}
       </section>
 
       <ChecklistOutstandingSection

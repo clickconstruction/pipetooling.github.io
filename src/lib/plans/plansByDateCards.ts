@@ -12,7 +12,7 @@
  */
 import { HISTORY_SOURCE, historyVerb } from '../developments/history'
 import { scheduleLengthWords, scheduleStanding } from '../bids/bidSchedule'
-import { isDrawingSet, kindLabel, sourceWords } from './planSets'
+import { isDrawingSet, kindLabel, sheetCountWords, sourceWords } from './planSets'
 import { agoWords, clip, crewRuns, dayOfYmd, dayWords, isOurs, isWon, jobsWords, plural, ymdOfDay, type PbdGlyph, type PlansByDateInput, type PlansByDateModel } from './plansByDate'
 
 export type PbdCardAction =
@@ -26,6 +26,7 @@ export type PbdCardAction =
   | { kind: 'read-line'; label: string; entryId: string }
   | { kind: 'keep'; label: string }
   | { kind: 'set-schedule'; label: string; bidId: string }
+  | { kind: 'set-sheets'; label: string; setId: string; setName: string; count: number | null }
 
 /** A line of a card; `to` is the card it leads to, null when it is only words. */
 export type PbdCardRow = { key: string; glyph: PbdGlyph; day: string; text: string; soft: string; to: string | null }
@@ -65,6 +66,8 @@ export const PBD_PRESS = {
   keep: 'Write a line',
   setSchedule: 'Set the schedule',
   changeSchedule: 'Change the schedule',
+  setSheets: 'Set the sheet count',
+  changeSheets: 'Change the sheet count',
 } as const
 
 /** Why a job's number opens nothing for a reader with no job read. */
@@ -139,6 +142,7 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
     const parentPart = parent ? partById.get(parent.part_id) : undefined
     const facts: PbdCard['facts'] = [{ label: 'On the sheets', value: hasDate ? dayWords(s.ymd) : 'no date' }]
     if (cameYmd) facts.push({ label: 'Came', value: `${dayWords(cameYmd)} · ${agoWords(today - (dayOfYmd(cameYmd) ?? today))}` })
+    if (s.sheet_count != null) facts.push({ label: 'Sheets', value: sheetCountWords(s.sheet_count) })
     if (parent) facts.push({ label: 'Replaces', value: `${parent.name.trim() || kindLabel(parent.kind)}${parentPart && parentPart.id !== p.id ? ` on ${parentPart.name}` : ''}` })
     const by = s.created_by ? names[s.created_by] : undefined
     if (by) facts.push({ label: 'Added by', value: by })
@@ -148,6 +152,7 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
     const link = (s.link ?? '').trim()
     if (/^https?:\/\//i.test(link)) actions.push({ kind: 'open-link', label: PBD_PRESS.open, href: link })
     if (caps.canWritePlans && !current && !ours) actions.push({ kind: 'build-from', label: PBD_PRESS.buildFrom, partId: p.id, setId: s.id, message: `Build ${p.name} from ${name}? Every job on ${p.name} follows the set its part builds from.`, confirmLabel: `Build from ${name}` })
+    if (caps.canWritePlans) actions.push({ kind: 'set-sheets', label: s.sheet_count != null ? PBD_PRESS.changeSheets : PBD_PRESS.setSheets, setId: s.id, setName: name, count: s.sheet_count ?? null })
     actions.push({ kind: 'show-part', label: PBD_PRESS.showPart, partId: p.id })
     if (caps.canAsk) actions.push({ kind: 'ask', label: PBD_PRESS.ask, title: `${p.name}: ${name}` })
     add(
@@ -321,8 +326,16 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
       rows = [...(crew?.spans ?? [])].reverse().flatMap((s) => rowTo(s.key))
       rowsTitle = rows.length ? 'Newest first' : null
     }
+    if (f.key === 'sheets') {
+      // The sets being built from, each with its count or the words that nobody has counted it.
+      rows = parts.flatMap((p) => {
+        const cur = placed.find((s) => s.id === p.current_set_id)
+        return cur ? rowTo(`set-${cur.id}`).map((r) => ({ ...r, text: r.text.replace(', the set it builds from', ''), soft: cur.sheet_count != null ? sheetCountWords(cur.sheet_count) : 'not counted yet' })) : []
+      })
+      rowsTitle = rows.length ? 'The sets being built from' : null
+    }
     if (f.key === 'schedule' && f.bidId) rows = [...rowTo(`schedstart-${f.bidId}`), ...rowTo(`schedend-${f.bidId}`)]
-    add(card({ key: `figure-${f.key}`, title: f.label, kicker: `${f.value} · ${f.sub}`, rowsTitle, ...capRows(rows), quiet: f.key === 'since' ? 'Our own as-builts are not counted. They were not issued to us.' : null }))
+    add(card({ key: `figure-${f.key}`, title: f.label, kicker: `${f.value} · ${f.sub}`, rowsTitle, ...capRows(rows), quiet: f.key === 'since' ? 'Our own as-builts are not counted. They were not issued to us.' : f.key === 'sheets' ? 'A person types a set’s sheet count on its card.' : null }))
   }
 
   // Today

@@ -54,6 +54,22 @@ export function lienRunWindowTitle(act: LienRunAct, notices: number): string {
 }
 
 /**
+ * What the run window holds, said in its head (v2.7489, the office's two reports of 2026-11-16). She counted a
+ * property's invoices, then its lien affidavits, against an envelope of the notices' run, and each time the envelope
+ * was right: the run holds the notices approved and not yet mailed, and nothing on the screen said so. `line` names
+ * the paper and the stage, `not` what is not here, and `more` (behind the ?) where the affidavits print and when
+ * their copies go out.
+ */
+export function lienRunWhatWords(kinds: { monthly: number; retainage: number }): { line: string; not: string; more: string } {
+  const paper = kinds.retainage > 0 && kinds.monthly > 0 ? 'Monthly notices (§ 53.056) and retainage notices (§ 53.057)' : kinds.retainage > 0 ? 'Retainage notices (§ 53.057)' : 'Monthly notices (§ 53.056)'
+  return {
+    line: `${paper}, approved and not yet mailed.`,
+    not: 'A job whose notice already went is not here. Lien affidavits are not here either.',
+    more: 'Lien affidavits print from the Board, with Print N for notarization. Their copies to the owner and the original contractor go out after the filing.',
+  }
+}
+
+/**
  * Where a notice stands once it is approved, as a sentence for a toast or a line under a press. A sentence says the
  * step in plain words, since the pile's name carries a dot (`plainWords.ts` reads a dot as glue inside a sentence).
  */

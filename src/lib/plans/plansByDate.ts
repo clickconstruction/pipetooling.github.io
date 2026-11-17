@@ -67,7 +67,7 @@ export type PlansByDateClock = 'read' | 'reading' | 'failed' | 'closed'
 
 export type PlansByDateInput = {
   parts: ReadonlyArray<Pick<PlanPartRow, 'id' | 'name' | 'position' | 'created_at' | 'current_set_id'>>
-  sets: ReadonlyArray<Pick<PlanSetRow, 'id' | 'part_id' | 'name' | 'kind' | 'source' | 'dated' | 'came_at' | 'replaces_set_id'> & Partial<Pick<PlanSetRow, 'memo' | 'changes' | 'link' | 'created_by'>>>
+  sets: ReadonlyArray<Pick<PlanSetRow, 'id' | 'part_id' | 'name' | 'kind' | 'source' | 'dated' | 'came_at' | 'replaces_set_id'> & Partial<Pick<PlanSetRow, 'memo' | 'changes' | 'link' | 'created_by' | 'sheet_count'>>>
   bids: ReadonlyArray<PlansByDateBid>
   jobs: ReadonlyArray<PlansByDateJob>
   history: ReadonlyArray<PlansByDateHistory>
@@ -101,7 +101,7 @@ export type PbdLane = {
 /** A line of the dated list under the chart. */
 export type PbdRow = { key: string; day: number; ymd: string; lane: string; glyph: PbdGlyph; text: string; soft: string; bid: boolean; today: boolean }
 
-export type PbdFigure = { key: 'first' | 'schedule' | 'since' | 'newest' | 'crew'; label: string; value: string; sub: string; /** Past the schedule's end: the one figure drawn in red. */ over?: boolean; /** The bid whose schedule the figure reads. */ bidId?: string }
+export type PbdFigure = { key: 'first' | 'schedule' | 'since' | 'newest' | 'crew' | 'sheets'; label: string; value: string; sub: string; /** Past the schedule's end: the one figure drawn in red. */ over?: boolean; /** The bid whose schedule the figure reads. */ bidId?: string }
 
 export type PlansByDateModel = {
   lanes: PbdLane[]
@@ -396,8 +396,42 @@ export function buildPlansByDate(input: PlansByDateInput): PlansByDateModel {
   else if (lastOnSite) figures.push({ key: 'crew', label: 'Last on site', value: dayWords(ymdOfDay(lastOnSite.day)), sub: `${lastOnSite.label} · ${agoWords(today - lastOnSite.day)}` })
   else figures.push({ key: 'crew', label: 'Days on site', value: input.clock === 'reading' ? '…' : 'None yet', sub: input.clock === 'reading' ? 'reading the clock' : input.clock === 'failed' ? 'the clock did not read' : 'no work day on any job' })
 
+  // Sheets in hand: the sheets of the sets being built from, against the sheets we held when the bid was sent.
+  // The figure is drawn only once someone has counted a set, and it says how many sets are still uncounted.
+  const sheets = plansByDateSheets(issued, parts, anchor ? anchor.sentDay : null)
+  if (sheets) figures.push({ key: 'sheets', label: 'Sheets in hand', value: sheets.now.toLocaleString('en-US'), sub: [anchor ? `${sheets.atBid.toLocaleString('en-US')} at the bid` : 'in the sets being built from', sheets.uncounted ? `${sheets.uncounted} ${sheets.uncounted === 1 ? 'set' : 'sets'} not counted` : ''].filter(Boolean).join(' · ') })
+
   const legend = LEGEND_ORDER.filter((g) => used.has(g)).map((glyph) => ({ glyph, words: GLYPH_WORDS[glyph] }))
   return { lanes, links, rows, figures, legend, start, end, today, unsentBids, empty }
+}
+
+/**
+ * The sheets in hand: `now` adds the sheet counts of the sets the parts build from; `atBid` adds, part by part,
+ * the newest set we held on the day the bid was sent; `uncounted` is how many of the sets being built from
+ * nobody has counted. Null until some set on the site has a count.
+ */
+export function plansByDateSheets(
+  issued: ReadonlyArray<{ id: string; part_id: string; day: number; sheet_count?: number | null }>,
+  parts: ReadonlyArray<{ id: string; current_set_id: string | null }>,
+  bidDay: number | null,
+): { now: number; atBid: number; uncounted: number } | null {
+  if (!issued.some((s) => s.sheet_count != null)) return null
+  let now = 0
+  let atBid = 0
+  let uncounted = 0
+  for (const p of parts) {
+    const mine = issued.filter((s) => s.part_id === p.id)
+    const current = mine.find((s) => s.id === p.current_set_id)
+    if (current) {
+      if (current.sheet_count != null) now += current.sheet_count
+      else uncounted += 1
+    }
+    if (bidDay != null) {
+      const held = mine.filter((s) => s.day <= bidDay).sort((a, b) => b.day - a.day)[0]
+      if (held?.sheet_count != null) atBid += held.sheet_count
+    }
+  }
+  return { now, atBid, uncounted }
 }
 
 /** *2 bids have no sent day, so they are not on the chart: B12, B14.* Null when every bid has one. */
@@ -786,7 +820,7 @@ body { font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; col
 .head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5px solid #111827; padding-bottom: 4px; margin-bottom: 8px; }
 h1 { font-size: 17px; margin: 0; }
 .head span { font-size: 12px; color: #4b5563; }
-.figs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px; }
+.figs { display: grid; grid-template-columns: repeat(${model.figures.length}, 1fr); gap: 8px; margin-bottom: 6px; }
 .fig { border: 1px solid #cfd4db; border-radius: 6px; padding: 3px 8px; }
 .fig .k { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
 .fig .v { font-size: 15px; font-weight: 700; }

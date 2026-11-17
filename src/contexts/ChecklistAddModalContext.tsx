@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import type { ChecklistJobPreset } from '../lib/checklistJobPreset'
+import type { TaskPlaceDraft } from '../lib/tasks/taskPlace'
 
 export type ChecklistAddModalPreset = {
   title: string
@@ -14,6 +15,10 @@ export type ChecklistAddModalPreset = {
   asksForPhoto?: boolean
   /** The key of the one thing the card is made for (the Bridge's to-do key), kept on the card as `source_tag` so the page that made it finds it again (punch list #334, PR 12). */
   sourceTag?: string | null
+  /** The place the window opens with (punch list #369): a follow-up starts at the place of the task it follows. */
+  place?: TaskPlaceDraft | null
+  /** Who hears when the task is done, lit in the Add row as *Tell someone else* (punch list #369): a follow-up tells the first task's giver. */
+  tellUserId?: string | null
 }
 
 export type ChecklistAddModalOpenOptions = {

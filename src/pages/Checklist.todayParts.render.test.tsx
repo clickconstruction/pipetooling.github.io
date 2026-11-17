@@ -44,6 +44,13 @@ vi.mock('../lib/supabase', async () => {
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
 
 const { default: Checklist } = await import('./Checklist')
+const { ChecklistAddModalProvider, useChecklistAddModal } = await import('../contexts/ChecklistAddModalContext')
+
+/** What the New task window was opened with, read off the page. The window itself is mounted by the app shell. */
+function AddModalProbe() {
+  const m = useChecklistAddModal()
+  return <output data-probe-open={m?.isOpen ? '1' : '0'} data-probe-assignee={m?.initialAssigneeUserId ?? ''} data-probe-title={m?.initialPreset?.title ?? ''} data-probe-tell={m?.initialPreset?.tellUserId ?? ''} />
+}
 
 function row(id: string, title: string, over: Row = {}, item: Row = {}): Row {
   return {
@@ -118,5 +125,39 @@ describe('Checklist → Today, the day in parts', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'History' }).getAttribute('aria-pressed')).toBe('true'))
     expect(document.querySelector('[data-task-day-bar]')).toBeTruthy()
     expect(document.querySelector('[data-today-head]')).toBeNull()
+  })
+
+  it('＋ Add a task for me opens New task for the person themself', async () => {
+    H.today = [row('a', 'Check the truck fluids')]
+    renderWithProviders(
+      <ChecklistAddModalProvider>
+        <Checklist />
+        <AddModalProbe />
+      </ChecklistAddModalProvider>,
+    )
+    await screen.findByText('Check the truck fluids')
+    fireEvent.click(screen.getByRole('button', { name: '＋ Add a task for me' }))
+    const probe = document.querySelector('[data-probe-open]') as HTMLElement
+    expect(probe.getAttribute('data-probe-open')).toBe('1')
+    expect(probe.getAttribute('data-probe-assignee')).toBe(SMOKE_AUTH_USER_ID)
+    expect(probe.getAttribute('data-probe-title')).toBe('')
+  })
+
+  it('Follow-up sits on a done task alone, and opens New task on its words with the giver told', async () => {
+    H.today = [row('a', 'Check the truck fluids'), row('c', 'Sweep the shop bays', { completed_at: new Date().toISOString() })]
+    renderWithProviders(
+      <ChecklistAddModalProvider>
+        <Checklist />
+        <AddModalProbe />
+      </ChecklistAddModalProvider>,
+    )
+    await screen.findByText('Sweep the shop bays')
+    const presses = screen.getAllByRole('button', { name: 'Follow-up' })
+    expect(presses).toHaveLength(1)
+    fireEvent.click(presses[0]!)
+    const probe = document.querySelector('[data-probe-open]') as HTMLElement
+    expect(probe.getAttribute('data-probe-open')).toBe('1')
+    expect(probe.getAttribute('data-probe-title')).toBe('After Sweep the shop bays: ')
+    expect(probe.getAttribute('data-probe-tell')).toBe('u-imani')
   })
 })

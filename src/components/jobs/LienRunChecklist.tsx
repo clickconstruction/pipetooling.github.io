@@ -122,7 +122,11 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
     return (
       <div key={r.itemId} className="lienRunCheckRow" data-testid={`run-check-${r.itemId}`} data-waits={r.waitsOn ?? 'none'} data-held={r.held ? 'yes' : 'no'}>
         <div className="lienRunCheckHead">
-          <b>{r.label}</b>
+          <b>
+            {r.label}
+            {/* Two jobs at one address read as two at that address (v2.7489): the street, when the name does not say it. */}
+            {r.street ? <span className="lienRunStreet" data-testid={`run-check-street-${r.itemId}`}> · {r.street}</span> : null}
+          </b>
           <span className="lienRunCheckAmt">{formatUsdNoCents(r.amount)}</span>
           <span className="lienRunCheckWho">{who}</span>
           {r.held ? (
