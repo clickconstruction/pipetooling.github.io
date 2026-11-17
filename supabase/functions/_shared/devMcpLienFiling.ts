@@ -411,7 +411,7 @@ export function lienFilingDifferences(p: LienFilingPayload, desk: { claim: numbe
   return { differences: out, notChecked }
 }
 
-const NOT_DONE = 'A record alone. No copy is mailed and nobody is told: the copies to the owner and the original contractor are due by the serve-by day, and plan_lien_service records them once they are mailed. The table’s own trigger writes the job’s Activity line.'
+const NOT_DONE = 'A record alone. No copy is mailed and nobody is told: the copies to the owner and the original contractor are due by the serve-by day, and plan_lien_service records them once they are mailed. No line lands on the job’s Activity: the table’s trigger posts notices, not affidavits.'
 
 /**
  * What the plan says and what the hash commits to: the job as a person would check the match, where its affidavit
