@@ -67,6 +67,8 @@ import type { SubPapersOpen } from './SubPapersWindow'
 import { OverToCreditWindow } from './SubSendingRepairWindows'
 import { overToCreditPlan, type OverToCreditPlan } from '../../lib/subWorkOrders/subSendingRepair'
 import { ledgerDayWords, paymentDay } from '../../lib/subWorkOrders/subPaymentsLedger'
+import { useSubPaperAnswers } from '../../hooks/useSubPaperAnswers'
+import { noteAnsweredWords, noteFlagWords, notesForSheet, paymentReceivedDay, receivedChipWords, waitingNotes } from '../../lib/subWorkOrders/subPaperAnswers'
 
 export type JobsSubLaborTabProps = {
   error: string | null
@@ -299,6 +301,23 @@ export default function JobsSubLaborTab({
   // Did the sub look? One RPC for every sub on the run; the line under the name opens the trail.
   const visitPersonIds = useMemo(() => payRun.subs.map((s) => s.personId).filter((id): id is string => !!id), [payRun.subs])
   const visits = useSubPortalVisitSummaries(visitPersonIds)
+  // Punch list #371: what subs said back from their pages. A payment marked received is a quiet chip. A note that
+  // something is wrong flags its sheet until someone here marks it answered.
+  const paperAnswers = useSubPaperAnswers()
+  const [answeringNote, setAnsweringNote] = useState<string | null>(null)
+  const [answerNoteError, setAnswerNoteError] = useState<{ id: string; message: string } | null>(null)
+  const markNoteAnswered = (ackId: string) => {
+    if (answeringNote) return
+    setAnsweringNote(ackId)
+    setAnswerNoteError(null)
+    void paperAnswers
+      .markAnswered(ackId)
+      .then((r) => {
+        if (!r.ok) setAnswerNoteError({ id: ackId, message: r.message })
+      })
+      .finally(() => setAnsweringNote(null))
+  }
+  const answersToday = todayYmdInAppTz()
   const [visitsFor, setVisitsFor] = useState<{ personId: string; name: string } | null>(null)
 
   /** The ledger: rows the chip leaves, grouped under their sub in the pay run's order, payable first inside a group. */
@@ -630,6 +649,10 @@ export default function JobsSubLaborTab({
                             Statement of account…
                           </button>
                         ) : null}
+                        {(() => {
+                          const waiting = g.rows.reduce((n, row) => n + waitingNotes(notesForSheet(paperAnswers.answers, row.job)), 0)
+                          return waiting > 0 ? <span data-testid={`sublabor-notes-waiting-${sub?.personId ?? g.key}`}>{tag(`⚑ ${waiting} ${waiting === 1 ? 'note' : 'notes'} from their page`, 'red', 'This sub said something is wrong. Open the flagged sheet to read it.')}</span> : null
+                        })()}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {g.rows.length} sheet{g.rows.length === 1 ? '' : 's'}
                           {sub && sub.teammates.length > 0 ? ` · with ${sub.teammates.join(', ')}` : ''}
@@ -728,6 +751,7 @@ export default function JobsSubLaborTab({
                         />
                       </td>
                       <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                        {waitingNotes(notesForSheet(paperAnswers.answers, job)) > 0 ? <div style={{ marginBottom: 3 }}>{tag('⚑ Something is wrong', 'red', 'The sub sent a note about this sheet from their page. Open the sheet to read it.')}</div> : null}
                         <div>{tag(payWhen.label, payWhen.tone, PAY_RUN_FILTER_HINT[payWhen.kind === 'work' || payWhen.kind === 'walk' || payWhen.kind === 'hold' ? 'due' : payWhen.kind === 'unpriced' || payWhen.kind === 'paid' ? 'paid' : payWhen.kind])}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>
                           {payWhen.kind === 'paid' && paidInFull ? paidInFull : payWhen.detail}
@@ -873,6 +897,30 @@ export default function JobsSubLaborTab({
                                     </tbody>
                                   </table>
                                 </div>
+                                {(() => {
+                                  const notes = notesForSheet(paperAnswers.answers, job)
+                                  if (notes.length === 0) return null
+                                  return (
+                                    <div data-testid={`sublabor-notes-${job.id}`} style={{ marginBottom: '1rem' }}>
+                                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>From the sub's page</h4>
+                                      {notes.map((n) => (
+                                        <div key={n.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px', padding: '0.5rem 0.75rem', marginBottom: 4, borderRadius: 4, fontSize: '0.875rem', border: '1px solid var(--border)', background: n.answeredOn ? 'var(--bg-subtle)' : 'var(--bg-red-tint)', color: n.answeredOn ? 'var(--text-muted)' : 'var(--text-red-700)' }}>
+                                          <span style={{ flex: '1 1 260px' }}>
+                                            {n.answeredOn ? '' : '⚑ '}
+                                            {noteFlagWords(n, answersToday)}
+                                            {n.answeredOn ? <span> · {noteAnsweredWords(n, answersToday)}</span> : null}
+                                          </span>
+                                          {!n.answeredOn && paperAnswers.canAnswer ? (
+                                            <button type="button" disabled={answeringNote != null} onClick={() => markNoteAnswered(n.id)} style={{ ...btnBlue, background: 'var(--bg-200)', color: 'var(--text-700)' }}>
+                                              {answeringNote === n.id ? 'Marking…' : 'Mark answered'}
+                                            </button>
+                                          ) : null}
+                                          {answerNoteError?.id === n.id ? <span role="alert" style={{ flexBasis: '100%', color: 'var(--text-red-700)' }}>Not marked answered: {answerNoteError.message}</span> : null}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                })()}
                                 <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Payments</h4>
                                 <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -888,7 +936,7 @@ export default function JobsSubLaborTab({
                                       {(job.payments ?? []).map((p) => (
                                         <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
-                                          <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}{p.sending_no ? <span data-sub-payment-sending style={{ color: 'var(--text-muted)' }}> · sending {p.sending_no}</span> : null}{p.credit_kept ? <span data-sub-payment-kept style={{ color: 'var(--text-green-700)' }}> · {creditNoteWords(p.credit_kept)} kept</span> : null}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}{p.sending_no ? <span data-sub-payment-sending style={{ color: 'var(--text-muted)' }}> · sending {p.sending_no}</span> : null}{p.credit_kept ? <span data-sub-payment-kept style={{ color: 'var(--text-green-700)' }}> · {creditNoteWords(p.credit_kept)} kept</span> : null}{paymentReceivedDay(paperAnswers.answers, p) ? <span data-sub-payment-received style={{ marginLeft: 8 }}>{tag(receivedChipWords(paymentReceivedDay(paperAnswers.answers, p), answersToday), 'gray', 'The sub marked this payment received on their page. It is not a release or a waiver.')}</span> : null}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}><AmountSmallCents value={Number(p.amount)} /></td>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>
                                             {p.memo?.trim() ? p.memo : '—'}

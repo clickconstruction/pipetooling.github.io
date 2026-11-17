@@ -2,7 +2,7 @@
 title: see what a sub sees on their portal
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: sub portal, subcontractor portal, statements, statement of account, work statement, payment record, still open, work and pay, what the sub sees, how do i get paid, backcharge memo, pay run, paperwork, plans, stage, inspection, work done, waiting on customer, queued, window, pick a start day, days off, progress, percent
+keywords: sub portal, subcontractor portal, got it, something is wrong, received, mark answered, statements, statement of account, work statement, payment record, still open, work and pay, what the sub sees, how do i get paid, backcharge memo, pay run, paperwork, plans, stage, inspection, work done, waiting on customer, queued, window, pick a start day, days off, progress, percent
 ---
 A sub's portal shows their jobs, their pay and their paperwork. Each job card says in one sentence what stands between them and the money.
 
@@ -81,6 +81,23 @@ A memo you hid stays hidden. The amount always shows.
 Sometimes the papers do not add up. The sub then sees no figure. The page says the office is checking, with your phone number. You see the reason on your own **Statement of account…** window.
 
 Print still prints the ***Today*** page.
+
+### What they say back
+
+A sub can answer two ways from ***Statements***. Neither is a condition of being paid.
+
+- {{button:gray|Got it}} sits on a payment. It asks one question, *Did this payment reach you?* A yes marks the payment received. It cannot be undone from their page.
+- ***Something is wrong*** sits under a statement and under a payment. It sends you a note in the sub's own words. Nothing on the statement changes.
+
+You see both on **Jobs → Subs → Pay**:
+
+- A payment they marked wears a grey chip, like {{chip:gray|Received Nov 2 · from their page}}. A payment nobody marked says nothing. A sub who never taps the button has done nothing wrong.
+- A note flags the sub's group and the sheet in red. A note about a payment shows on each sheet that payment paid on. Open the sheet to read it under **From the sub's page**.
+- A note also lands in the dispatch inbox, and phones hear it. It reads like *Harlan says something is wrong on WS-2041-1*.
+
+Answer the sub the way you usually would. Then press {{button:gray|Mark answered}} on the note. The flag goes away. The note stays on the sheet with who answered it and when.
+
+You cannot answer for a sub. When you open their page signed in, or as a preview, both presses are refused.
 
 How you make these papers is in [make a statement of account for a sub](/help/make-a-statement-of-account-for-a-sub).
 

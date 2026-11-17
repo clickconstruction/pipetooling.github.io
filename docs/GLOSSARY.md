@@ -4497,6 +4497,9 @@ Guide: `make-a-statement-of-account-for-a-sub`.
 Since v2.7597 (punch list #371) a sub reads the same papers on their own page: a switch under the head, **Today** and **Statements**, opens `SubPortalStatementsView` over the `papers` block of `sub-portal` (`src/lib/subPortal/subPortalStatements.ts`).
 The sub's page never gives out a number: a statement of account saved there reads *Saved from your page*, and a work statement that changed since the office's copy says so and drops its revision.
 Print on the sub's page still prints the Today paper, whichever view shows.
+Since v2.7609 a sub answers from that view: **Got it** marks a payment received, once, and **Something is wrong** sends the office a note about a statement or a payment (`sub_paper_acks`, written by `sub-portal`).
+The Pay view reads them back (`src/lib/subWorkOrders/subPaperAnswers.ts`, `useSubPaperAnswers`): a grey *Received · from their page* chip on the payment's line, and a red flag on the sheet until someone presses **Mark answered** (`answer_sub_paper_ack`).
+A note also lands in the dispatch inbox with a push, and a payment nobody marked says nothing.
 
 ### Sub payment trace (move / remove / undo)
 

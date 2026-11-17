@@ -3,7 +3,7 @@
  * on a POST. Its `index.ts` with the URL imports stood in for and the fake database from `src/test/edgeFakeDb.ts`,
  * so nothing here reaches a database. Every name, job and amount is made up (`subPortalPapersFixture.ts`).
  */
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeClient, makeFakeDb, type FakeDb, type FakeRow } from '../../test/edgeFakeDb'
 import {
   ALDER_1,
@@ -59,18 +59,29 @@ const ENV: Record<string, string> = { SUPABASE_URL: 'http://127.0.0.1:9', SUPABA
 // A Deno file: loaded by path at run time, so the app's typecheck does not follow it into Deno's globals.
 const FUNCTION_FILE = '../../../supabase/functions/sub-portal/index.ts'
 
+/** Every request the function made to another function: only the push for a note. Nothing leaves this machine. */
+const calls: Array<{ url: string; body: unknown }> = []
+
 beforeAll(async () => {
   ;(globalThis as unknown as { Deno: unknown }).Deno = { env: { get: (k: string) => ENV[k] } }
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), body: typeof init?.body === 'string' ? JSON.parse(init.body) : null })
+    return new Response('{}', { status: 200 })
+  })
   await import(/* @vite-ignore */ FUNCTION_FILE)
+})
+afterAll(() => {
+  vi.unstubAllGlobals()
 })
 
 beforeEach(() => {
   box.db = makeFakeDb()
   box.refuse = new Set()
+  calls.length = 0
   const copy = <T,>(rows: readonly T[]): FakeRow[] => rows.map((r) => ({ ...(r as FakeRow) }))
   box.db.tables.sub_portal_links = [
-    { person_id: HARLAN, token: HARLAN_TOKEN, revoked_at: null },
-    { person_id: ORA, token: ORA_TOKEN, revoked_at: null },
+    { id: 'link-harlan', person_id: HARLAN, token: HARLAN_TOKEN, revoked_at: null, created_by: 'u-office' },
+    { id: 'link-ora', person_id: ORA, token: ORA_TOKEN, revoked_at: null, created_by: 'u-office' },
   ]
   box.db.tables.people = copy(PEOPLE)
   box.db.tables.users = copy(USERS)
@@ -99,7 +110,7 @@ async function answer(body: Record<string, unknown>, opts: { headers?: Record<st
 }
 
 const acks = () => box.db.tables.sub_paper_acks ?? []
-const wrote = () => box.db.writes.filter((w) => w.table !== 'public_page_views').map((w) => `${w.op} ${w.table}`)
+const wrote = () => box.db.writes.filter((w) => w.table !== 'public_page_views' && w.table !== 'dispatch_requests').map((w) => `${w.op} ${w.table}`)
 
 describe('sub-portal: the papers block on the read', () => {
   it('hands back every sheet that is the sub’s alone, paid ones too, with the letterhead and the numbers the office gave', async () => {
@@ -206,6 +217,32 @@ describe('sub-portal: Something is wrong', () => {
     expect(acks()[0]).toMatchObject({ kind: 'something_wrong', person_id: HARLAN, labor_job_id: CEDAR_1, sending_id: null, payment_id: null, paper_id: PAPER_CEDAR_1_REV_2, revision: 2, amount: 1500, note: 'The back-charge was never talked about with me.', said_by_name: 'Harlan Mechanical' })
     const { body } = await read(HARLAN_TOKEN)
     expect(body.papers!.wrong).toHaveLength(1)
+  })
+
+  it('tells the office: a line in the dispatch inbox naming the sub, the statement and the note, and a push (v2.7609)', async () => {
+    await answer({ token: HARLAN_TOKEN, action: 'something_wrong', about: 'statement', key: CEDAR_1, note: 'The back-charge was never talked about with me.' })
+    const notes = box.db.tables.dispatch_requests ?? []
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({
+      from_user_id: 'u-office',
+      title: 'Harlan Mechanical says something is wrong on WS-2041-1 · #2041 Cedar Hollow Clinic: “The back-charge was never talked about with me.”',
+      pending_payload: { source: 'sub_portal', subPortalLinkId: 'link-harlan', kind: 'sub_paper_wrong', personId: HARLAN, about: 'WS-2041-1 · #2041 Cedar Hollow Clinic', laborJobId: CEDAR_1, sendingId: null, paymentId: null, ackId: acks()[0]!.id },
+    })
+    expect(calls.map((c) => [c.url, c.body])).toEqual([['http://127.0.0.1:9/functions/v1/notify-dispatch-request', { dispatch_request_id: notes[0]!.id }]])
+  })
+
+  it('Got it tells nobody: a quiet chip, not a to-do', async () => {
+    await answer({ token: HARLAN_TOKEN, action: 'got_it', key: SENDING_231 })
+    expect(box.db.tables.dispatch_requests ?? []).toEqual([])
+    expect(calls).toEqual([])
+  })
+
+  it('a note the office cannot be told of is still kept', async () => {
+    box.refuse.add('app_settings')
+    box.db.tables.sub_portal_links![0]!.created_by = null
+    const res = await answer({ token: HARLAN_TOKEN, action: 'something_wrong', about: 'payment', key: SENDING_226, note: 'The check was short.' })
+    expect(res.status).toBe(200)
+    expect(acks()).toHaveLength(1)
   })
 
   it('takes a note about a payment, and about a sheet the office has not papered', async () => {
