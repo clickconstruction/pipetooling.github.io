@@ -215,8 +215,8 @@ function markTitle(m: LienCalendarMark, j: LienCalendarJob, todayYmd?: string): 
         : m.mailed
           ? todayYmd && m.ymd < todayYmd
             ? // v2.5529: its date has passed — no "by" a day gone by; the record says when it went out.
-              `The ${monthWords(m.monthKey)} notice is printed and in the mail; its date, ${labelOf(m.ymd)}, has passed — record its tracking number and the day it went out, and it is on file`
-            : `The ${monthWords(m.monthKey)} notice is printed and in the mail — record its tracking number by ${labelOf(m.ymd)} and it is on file`
+              `The ${monthWords(m.monthKey)} notice is printed and waits to mail; its date, ${labelOf(m.ymd)}, has passed — record its tracking number and the day it went out, and it is on file`
+            : `The ${monthWords(m.monthKey)} notice is printed and waits to mail — record its tracking number by ${labelOf(m.ymd)} and it is on file`
           : `A § 53.056 notice is owed for ${monthWords(m.monthKey)} — send it by ${labelOf(m.ymd)}`
     case 'lien':
       return m.closed ? (j.runway.closedBy === 'notice' ? `The notice window closed ${labelOf(m.ymd)} unsent — the lien is gone, the money still owed` : `The lien window closed ${labelOf(m.ymd)} — money still owed`) : `Last day to file the lien affidavit: ${labelOf(m.ymd)} (§ 53.052)`
@@ -857,7 +857,7 @@ function BucketBar({ b, open, onToggle, onDraft, onRecord, top, phone }: { b: Li
       {draft || record ? (
         <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
           {record ? (
-            <button type="button" className="lienCalDraft" data-testid="lien-cal-record" onClick={() => onRecord?.(record.jobIds)} title="Enter mail numbers: these notices are printed and in the mail, their numbers owed">
+            <button type="button" className="lienCalDraft" data-testid="lien-cal-record" onClick={() => onRecord?.(record.jobIds)} title="Enter mail numbers: these notices are printed and wait to mail, their numbers owed">
               {record.label} ›
             </button>
           ) : null}

@@ -11,7 +11,7 @@ import { lienRunGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runEnvelopeHold, runMailing, type RunMailing } from '../../lib/jobs/lienRunPaper'
 import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
-import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticePrintRefusal, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
@@ -23,7 +23,7 @@ import { runCourtesyEmails, runCourtesyPreviewHtml, type RunCourtesyAttachment }
 import { COMPANY_EMAIL_FROM_LABEL } from '../../lib/customerEmailFrom'
 import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
-import { runMarkedPrintedWords, runNoticesTakenBack, runPrintedItemIds, runSittingWithout, runTakeBackConfirm, runTakeBackOneConfirm, runTakenBackOneWords, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
+import { runMarkedPrintedWords, runNoticesTakenBack, runPrintedItemIds, runSignedCount, runSittingWithout, runTakeBackConfirm, runTakeBackOneConfirm, runTakenBackOneWords, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
 import { RUN_CLOSE_PAID_CAUTION, runClosePaidConfirm, runClosedPaidWords, runNoticesClosed, runPaidNotices } from '../../lib/jobs/lienRunClosePaid'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPreviewOverlay'
@@ -166,7 +166,7 @@ export default function LienDeskRunModal({
   // handed in is already printed (v2.4823: the run then opens on recording, not on printing again) — and the day the envelopes went out.
   const opening = useMemo(() => runOpening(initial), [initial])
   // Taken back in this sitting (punch list #101): the window goes back to printing, whatever the opening said.
-  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null; job?: string; signed?: boolean } | null>(null)
+  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null; signed: number; job?: string } | null>(null)
   // Un-print one notice (v2.7481): the row whose Printed tick was pressed, while its confirm is up; and the rows just
   // marked printed by hand, whose undo is one press away. `stamping` is the desk's printed stamps still on their way,
   // so a take-back pressed a moment after a mark waits for the stamp it undoes.
@@ -708,6 +708,12 @@ export default function LienDeskRunModal({
     notePrinted(runMailing(runEnvelopes(ns)).mailed.flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key)))))
   }
   const printCopy = (n: CombinedRunNotice, r: RunRecipient) => {
+    // v2.7517: a notice whose paper and bills have parted prints by no route, this one included.
+    const refused = runNoticePrintRefusal(n)
+    if (refused) {
+      showToast(refused, 'error')
+      return
+    }
     const filing = { kind: 'lien_notice', title: `${n.label} · copy for ${r.label.toLowerCase()}`, jobIds: partsIds(n).map((p) => p.jobId), recipientName: r.name || null }
     if (!printAndFile(runCopyHtml(n, r, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the copy.', 'error')
@@ -717,6 +723,11 @@ export default function LienDeskRunModal({
   }
   const printEnvelope = (env: RunEnvelope) => {
     const inside = env.contents.map((c) => c.notice as CombinedRunNotice)
+    const refused = inside.map((n) => runNoticePrintRefusal(n)).find(Boolean)
+    if (refused) {
+      showToast(refused, 'error')
+      return
+    }
     const filing = { kind: 'lien_notice', title: `Envelope ${env.n} · ${env.label} ${env.name}`.trim(), jobIds: inside.flatMap((n) => partsIds(n).map((p) => p.jobId)), recipientName: env.name || null }
     if (!printAndFile(runEnvelopeHtml(env, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the envelope.', 'error')
@@ -749,13 +760,16 @@ export default function LienDeskRunModal({
   // Take back (punch list #101): every notice that printed — before this sitting or in it — and is still here, unrecorded.
   const printedIds = useMemo(() => runPrintedItemIds(notices, printedNow), [notices, printedNow])
   const lastPrintedAt = printedAt ?? notices.reduce<string | null>((m, n) => (n.printedAt && (!m || n.printedAt > m) ? n.printedAt : m), null)
-  const takeBackWords = runTakeBackConfirm({ count: printedIds.length, printedAt: lastPrintedAt, typed: runTypedTrackingCount(notices, printedIds), all: printedIds.length === notices.length })
+  // v2.7503: a take-back clears the signature, so the confirm counts the signed ones and the strip says who is next.
+  const takeBackSigned = runSignedCount(notices, printedIds)
+  const takeBackWords = runTakeBackConfirm({ count: printedIds.length, printedAt: lastPrintedAt, typed: runTypedTrackingCount(notices, printedIds), all: printedIds.length === notices.length, signed: takeBackSigned })
   const takeBack = async () => {
     if (!onTakeBack || busy || printedIds.length === 0) return
     setBusy(true)
     try {
       const ids = printedIds
       await stamping.current
+      const signed = takeBackSigned
       const count = await onTakeBack(ids)
       setNotices((prev) => runNoticesTakenBack(prev, ids))
       setTakeBackOne(null)
@@ -765,7 +779,7 @@ export default function LienDeskRunModal({
       setPrintedAt(null)
       setPrintedNowAt(new Map())
       setTakeBackOpen(false)
-      setTakenBack({ count, printedAt: lastPrintedAt })
+      setTakenBack({ count, printedAt: lastPrintedAt, signed })
     } catch (e) {
       showToast(`Not taken back: ${formatErrorMessage(e, 'try again')}`, 'error')
     } finally {
@@ -787,9 +801,9 @@ export default function LienDeskRunModal({
       const one = ids.length === 1 ? notices.find((n) => n.itemId === ids[0]) : undefined
       const stamps = ids.map((id) => printedNowAt.get(id)?.at ?? notices.find((n) => n.itemId === id)?.printedAt ?? null).filter((at): at is string => !!at).sort()
       const left = runSittingWithout({ copies: printedCopies, ids: printedNow, stamps: printedNowAt }, ids)
-      // A take-back takes the signature off (the owner's call of 2026-11-16): the window drops it too, so it never shows or prints one the desk no longer holds.
-      const signed = ids.some((id) => notices.find((n) => n.itemId === id)?.signature != null)
-      setNotices((prev) => runNoticesTakenBack(prev, ids).map((n) => (ids.includes(n.itemId) && n.signature != null ? { ...n, signature: null } : n)))
+      // A take-back takes the signature off (v2.7503): `runNoticesTakenBack` drops it in the window too, so it never shows or prints one the desk no longer holds.
+      const signed = runSignedCount(notices, ids)
+      setNotices((prev) => runNoticesTakenBack(prev, ids))
       setPrintedCopies(left.copies)
       setPrintedNow(left.ids)
       setPrintedNowAt(left.stamps)
@@ -1065,7 +1079,7 @@ export default function LienDeskRunModal({
         ) : null}
         {takenBack ? (
           <div data-testid="run-taken-back" role="status" style={{ margin: '0.6rem 1.25rem 0', padding: '0.5rem 0.8rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.8125rem' }}>
-            {takenBack.job ? runTakenBackOneWords(takenBack.job, takenBack.signed) : runTakenBackWords(takenBack.count, takenBack.printedAt)}
+            {takenBack.job ? runTakenBackOneWords(takenBack.job, takenBack.signed > 0) : runTakenBackWords(takenBack.count, takenBack.printedAt, takenBack.signed)}
           </div>
         ) : null}
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
