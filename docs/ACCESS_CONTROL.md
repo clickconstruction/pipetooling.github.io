@@ -1245,7 +1245,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The task's maker and the office keep every right they had.
   On the screen **⋯ More** is drawn for whoever holds the task, with only the rows that task allows (`taskMoreChoices`);
   **＋ Add a task for me** and **Follow-up** are drawn for the roles of the header's Task press (`showHeaderTaskChecklistButton`), so never for a superintendent, who may not write a task (v2.7537);
-  the office's **Forward** calls `task_hand_on` too since v2.7548.
+  the office's **Forward** calls `task_hand_on` too since v2.7548, and My Inbox's since v2.7563.
 - **Your people's week, the Monday email** (v2.6603, punch list #273 PR 5, `docs/migrations/20261106233000_people_week_email.md`): **`people_week_email_requests`** takes a row only in the caller's own name as its own recipient, and only from the office (`is_dev_or_master_or_assistant()`, primaries included) or with `people_user_ids` equal to exactly the caller;
   **read** requester, recipient or a dev;
   **delete** a pending row's requester or recipient, or a dev;

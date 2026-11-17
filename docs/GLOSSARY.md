@@ -2945,7 +2945,7 @@ three rows show and **Show N more** opens the rest.
 Every card carries **＋ Note**, **📷 Photo** (a photo on any task, finishing nothing, v2.7539) and **🗺 Map** (lit when the task has a painted map, v2.7541, and unlit it paints one or leaves a point, v2.7543, → *Painted map*).
 **⋯ More** lists what the task allows: **Do first** (kept on the device, v2.7549), **Not today** (moves a one-time task's due day, v2.7544), **Can't do it** and **No longer stuck** (v2.7546), **Hand it on** (v2.7548) and **No longer applies** (closes a one-time task with a reason, never a roadmap or a vehicle task, v2.7545).
 The giver is told by a push of each one that changes the task.
-A task handed on is the same task, with its thread, place and photos, and the office's **Forward** (*FWD* until v2.7533) is the same act since v2.7548.
+A task handed on is the same task, with its thread, place and photos, and the office's **Forward** (*FWD* until v2.7533) is the same act since v2.7548, on the Dashboard's My Inbox card too since v2.7563 (`TaskForwardWindow`), where it also began to tell the taker by a push (`tellForwardTaker`).
 **Go through them** beside Still open asks about the old tasks one at a time (v2.7547), **Mark N done** finishes a round of plain repeating tasks behind one confirm (v2.7550), and the **Yesterday** strip asks once about a repeating task left unticked in the last three days, **Did it** or **Skipped** (v2.7551, and History then reads **Skipped** where it read *Missed*).
 **＋ Add a task for me** and **Follow-up** on a done task open the *New task window* (v2.7537).
 For the office, Review opens on a **Stuck** list with **Sorted** while anyone is stuck.

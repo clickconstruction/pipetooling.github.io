@@ -20,7 +20,7 @@ describe('tellForwardTaker', () => {
   it('still sends when the name cannot be read', async () => {
     const tell = vi.fn(async () => {})
     await tellForwardTaker(TASK, { tell, nameOf: async () => { throw new Error('offline') } })
-    expect(tell.mock.calls[0][0].body).toBe('Someone handed you "Sort the fittings wall".')
+    expect(tell).toHaveBeenCalledWith(expect.objectContaining({ giverId: 'u-hal', body: 'Someone handed you "Sort the fittings wall".' }))
   })
 
   it('tells nobody when the task comes back to the forwarder', async () => {
