@@ -459,6 +459,8 @@ export function runPayPageBlocks(n: RunNotice, r: RunRecipient, rows: readonly P
     contactPerson: n.fields.contactPerson,
     phone,
     extras: n.extras,
+    // The page names the cover letter only when this notice prints one (v2.7514).
+    coverLetter: Boolean(n.coverLetter || n.coverNote),
     offer: n.offer ?? null,
     lines: n.payLines ?? null,
   })

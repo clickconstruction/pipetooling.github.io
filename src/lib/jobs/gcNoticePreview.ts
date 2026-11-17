@@ -105,6 +105,7 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
       contactPerson: fields.contactPerson,
       phone: (input.phone ?? '').trim(),
       extras,
+      coverLetter: coverBlocks.length > 0,
     })
     return blocks.length ? [{ key: 'pay', label: 'pay codes', blocks }] : []
   }

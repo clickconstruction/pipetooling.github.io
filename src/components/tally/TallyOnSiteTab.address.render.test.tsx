@@ -45,7 +45,7 @@ vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ loaded: tr
 vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords: () => ({ coords: new Map() }) }))
 vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
 // The job's stickers (punch list #329, PR 3): none in these tests.
-vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: { count: 0, runs: 0, span: '', names: [], anyNamed: false, printedByName: '', printedAt: '' }, loaded: true, refresh: () => {} }) }))
+vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: { count: 0, runs: 0, span: '', names: [], anyNamed: false, printedByName: '', printedAt: '' }, toPrint: [], loaded: true, refresh: () => {} }) }))
 vi.mock('../../hooks/useOnSiteDeskJobs', () => ({ useOnSiteDeskJobs: () => ({ jobs: [], rows: [], loading: false, loaded: false, error: null, raw: null, retry: () => {} }) }))
 vi.mock('../../lib/materials/shortRequestIo', () => ({ sendShortRequest: vi.fn() }))
 
