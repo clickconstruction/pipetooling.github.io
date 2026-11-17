@@ -173,7 +173,8 @@ export function DevelopmentTripsLook({
                 ))}
             {strip.todayPct != null ? (
               <span aria-hidden style={{ position: 'absolute', top: -4, bottom: 0, left: `${strip.todayPct}%`, width: 0, borderLeft: '2px solid var(--text-red-700)' }}>
-                <span style={{ position: 'absolute', top: -13, left: -16, fontSize: '0.64rem', fontWeight: 700, color: 'var(--text-red-700)' }}>today</span>
+                {/* On a phone the months are one letter wide and the word would sit on them: the line alone says today. */}
+                {phone ? null : <span style={{ position: 'absolute', top: -13, left: -16, fontSize: '0.64rem', fontWeight: 700, color: 'var(--text-red-700)' }}>today</span>}
               </span>
             ) : null}
           </div>

@@ -1159,6 +1159,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **`trip_save(p, p_dry_run)`** is the one write door, SECURITY INVOKER, so the policies above decide who: a trip saved whole (its fields, its people, its jobs) or not at all, and a dry run that writes nothing.
   It touches the trip's own three tables and no other: no clock row, bill or cost.
 - The read-only blocks, the twin fence and the archived seal stand on all four tables.
+- **The Trips look** (v2.7661) is drawn for the Development page's office door alone, the same five roles, so whoever sees the look reads its rows.
+  An estimator's page has no Trips look and no door to a first trip, and the page never asks for a trip on that door.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 
