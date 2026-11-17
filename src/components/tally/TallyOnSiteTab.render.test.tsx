@@ -15,6 +15,7 @@ const store = vi.hoisted(() => ({
 vi.mock('../../lib/materials/onSiteStore', () => ({
   addContainer: vi.fn(),
   loadJob: vi.fn(async () => {}),
+  markLabelsPrinted: vi.fn(),
   resolveBoxCode: vi.fn(async () => ({ kind: 'none' })),
   addMovement: vi.fn(),
   addPlace: vi.fn(),
