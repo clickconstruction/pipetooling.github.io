@@ -6273,7 +6273,7 @@ Readers are the sent copies' own: dev, master, assistant, controller.
 
 v2.7617 (punch list #376).
 The Documents page's list of every agreement on file, for the office: a job's contract, a warranty, a GC's own paper, a signed paper the office filed, a staff, sub or partner agreement and a sub work order, one line each, newest first under a band per month.
-A line is a kind tag (*Contract · Warranty · Their paper · Staff · Sub · Partner · Work order*), the paper's name, who it is with, the job, where it stands in that kind's own words, and the day it was signed, sent or ended.
+A line is a kind tag (*Contract · Warranty · Their paper · Staff · Sub · Partner · Work order*, and since v2.7625 GC mode's *Owner contract · Statement of work · Trade company*), the paper's name, who it is with, the job, where it stands in that kind's own words, and the day it was signed, sent or ended.
 Every kind shares three states, *waiting*, *signed* and *ended*, which the second row of chips asks for: **Sent and signed** (where the tab opens), **Waiting on a signature** with its count, **Signed**, **Voided or ended**.
 A draft is never on it, and a signed paper filed over several jobs is one line that names the first job and counts the rest.
 It reads the `agreements_on_file` view, where each table's own row security decides what the reader sees ([`agreementsLedger.ts`](../src/lib/documents/agreementsLedger.ts), [`DocumentsAgreementsTab.tsx`](../src/components/documents/DocumentsAgreementsTab.tsx)).

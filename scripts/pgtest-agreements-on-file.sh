@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/agreements_on_file against a throwaway copy of the WHOLE schema (Documents → Agreements' one list,
-# punch list #376: the agreements_on_file view over job_contracts, person_contract_documents and step_commitments).
+# punch list #376: the agreements_on_file view over job_contracts, person_contract_documents, step_commitments,
+# gc_owner_contract_sends and gc_sows).
 #
 #   npm run test:pg:agreements-on-file
 #
 # The same bed as scripts/pgtest-helper-on-job.sh: the Supabase Postgres image with every file in supabase/migrations
-# applied in order, then this migration a second time, which must change nothing. The scenario, inside one transaction
+# applied in order, then the view's newest migration a second time, which must change nothing. The scenario, inside one transaction
 # that rolls back: the office reads every agreement in the order the page draws them, with its state, name, party, job
 # and day; one paper filed over three jobs is one line; drafts, unsent papers and papers that are not agreements are
 # absent; the facts carry each kind's own columns and no amount; and each role reads only what its tables allow (an
@@ -19,7 +20,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55814}"
 NAME="pgtest-agreements-on-file"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_agreements_on_file.sql)"
+# The newest definition of the view: re-applying an older one would put the older view back.
+WRITES="$(ls supabase/migrations/*_agreements_on_file_gc.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

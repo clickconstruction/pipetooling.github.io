@@ -26,6 +26,7 @@ Each line is one agreement. It starts with a tag that says its kind.
 - **Staff** and **Sub** are a person's agreement from People.
 - **Partner** is a partner's agreement.
 - **Work order** is a sub work order on a job.
+- **Owner contract**, **Statement of work** and **Trade company** are a GC project's papers.
 
 After the tag comes the paper's name. Under it you see who it is with, then the job as a green link.
 
@@ -53,7 +54,7 @@ Search looks at every agreement, voided ones included. Each line still says wher
 
 ## Pick a kind
 
-Press a chip in the first row. **All** shows every kind. The others are **Job contracts**, **Warranties**, **Staff and subs**, **Partners** and **Work orders**.
+Press a chip in the first row. **All** shows every kind. The others are **Job contracts**, **Warranties**, **Staff and subs**, **Partners**, **Work orders** and **GC projects**.
 
 ## See what is waiting
 
@@ -76,6 +77,7 @@ Press the name on a line.
 - A signed staff, sub or partner agreement opens its signed record.
 - One that is still waiting opens People, on Contracts, at that paper.
 - A work order opens the work order window.
+- A GC project's paper opens the GC page.
 
 Press the green job name to open the job.
 
@@ -98,6 +100,8 @@ You can still find it by any of those jobs. Type one of their numbers in the box
 The office can. That is the leader, the assistants, the controller and a dev.
 
 Other roles do not see the tab. Nobody reads a paper here that they could not already open.
+
+A GC project's papers follow GC mode. An owner contract shows to a dev. A statement of work shows to the leader, the controller and a dev.
 
 ## Related
 
