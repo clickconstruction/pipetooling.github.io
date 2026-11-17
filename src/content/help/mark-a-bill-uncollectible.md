@@ -10,7 +10,7 @@ Some bills will never be paid. You can mark such a job **Uncollectible** from th
 
 The job must already be in **Collections**. On **Jobs → Pipeline**, open the Collections section and find the row.
 
-1. Under the row's icons, press {{button:outline|Uncollectible…}}.
+1. Under the row's icons, press {{button:outline|Uncollectible…}}. The window says what the job's sent bills still owe. Work not billed yet is named apart.
 2. Write the reason. It needs at least a short sentence. It is stamped on the row for everyone to read.
 3. Press {{button:red|Mark Uncollectible}}.
 

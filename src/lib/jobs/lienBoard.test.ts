@@ -375,6 +375,13 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     expect(lienBoardRetainageLine([retainage('1', 'needs_owner'), retainage('2', 'to_draft'), retainage('3', 'to_draft'), retainage('4', 'awaiting'), retainage('5', 'held')])).toBe('Retainage · 1 needs the owner · 2 to send for approval · 1 awaiting approval · 1 held')
     expect(build({ retainage: [retainage('1', 'ready')] }).retainageLine).toBe('Retainage · 1 approved to mail')
   })
+  it('counts retainage nobody recorded on that line, last, and by itself when no notice is on the desk', () => {
+    expect(lienBoardRetainageLine([], 1)).toBe('Retainage · 1 looks held, not on the job')
+    expect(lienBoardRetainageLine([retainage('1', 'sent'), retainage('2', 'clock_not_started')], 3)).toBe('Retainage · 3 look held, not on the job')
+    expect(lienBoardRetainageLine([retainage('1', 'to_draft')], 2)).toBe('Retainage · 1 to send for approval · 2 look held, not on the job')
+    expect(build({ retainage: [retainage('1', 'ready')], retainageUnrecorded: 4 }).retainageLine).toBe('Retainage · 1 approved to mail · 4 look held, not on the job')
+    expect(build({ retainageUnrecorded: 0 }).retainageLine).toBeNull()
+  })
   it('gives the Dashboard four dots: the tiles’ figures with a word each', () => {
     const board = build({ notices: [notice('1', 'to_draft'), notice('2', 'awaiting', { openBalance: 2000 })] })
     expect(lienBoardDots(board)).toEqual([

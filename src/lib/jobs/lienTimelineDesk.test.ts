@@ -108,7 +108,7 @@ describe('the Lien window’s header names the desk’s step on a notice in work
     ['to_draft', 'Draft the Jul notice — 22 days.', 'the notice to be drafted and mailed', '22 days · to draft'],
     ['awaiting', 'Approve the Jul notice — 22 days.', 'the leader’s approval of the notice', '22 days · awaiting approval'],
     ['ready', 'Print and mail the Jul notice — 22 days.', 'the notice to be mailed', '22 days · approved to print'],
-    ['printed', 'Enter mail numbers for the Jul notice — 22 days.', 'the envelope’s certified number to be typed in', '22 days · in the mail · tracking owed'],
+    ['printed', 'Enter mail numbers for the Jul notice — 22 days.', 'the envelope’s certified number to be typed in', '22 days · approved to mail'],
   ])('a notice on the %s pile: %s', (pile, next, waiting, stepWords) => {
     const t = buildLienTimelineFromWindow({ ...src, deskNotice: lienWindowDeskNotice(entry(pile)) })
     expect(t.next.kind).toBe('notice')
@@ -188,6 +188,19 @@ describe('the Lien window’s header names the desk’s step on an affidavit in 
     expect(t.next).toMatchObject({ kind: 'affidavit', words: next, affidavitState: 'needs_property', daysLeft: 54 })
     expect(t.waitingOn).toEqual({ who: 'ours', words: waiting })
     expect(affidavitStep(t).words).toBe(stepWords)
+  })
+
+  it('an affidavit that waits on its notice names the notice’s own next step when the opener says where the notice stands (v2.7527)', () => {
+    const waits = lienWindowDeskAffidavit(entry('needs_notice', ['notice']))
+    expect(waits).toMatchObject({ state: 'needs_property', missing: ['notice'] })
+    const approved = buildLienTimelineFromWindow({ ...src, deskAffidavit: waits, deskNotice: { state: 'ready', holdUntil: null } })
+    expect(approved.next.words).toBe('Print and mail the notice, then file the affidavit — 54 days.')
+    const printed = buildLienTimelineFromWindow({ ...src, deskAffidavit: waits, deskNotice: { state: 'printed', holdUntil: null } })
+    expect(printed.next.words).toBe('Enter mail numbers, then file the affidavit — 54 days.')
+    // With no word on the notice the header keeps the late notice, as before.
+    expect(buildLienTimelineFromWindow({ ...src, deskAffidavit: waits }).next.words).toBe('Send the late notice, then file the affidavit — 54 days.')
+    // The stop under the header says what is missing: a mailing, not a notice.
+    expect(affidavitStep(approved).words).toBe('54 days · a mailed notice missing')
   })
 
   it('public property has no day to race: the fact, and who to ask', () => {

@@ -54,6 +54,6 @@ DO $$
 BEGIN
   PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_invoices WHERE amount_paid IS DISTINCT FROM pg_temp.on_bill(id)) = 0, 'every bill''s amount_paid is the sum of its live lines');
   PERFORM pg_temp.expect((SELECT count(*) FROM public.supply_house_payments p WHERE pg_temp.on_account(p.id) < -0.005) = 0, 'no payment places more than it sent');
-  RAISE NOTICE 'supply house payments: ALL PASSED';
+  RAISE NOTICE 'M2 interest agrees PASSED';
 END;
 $$;

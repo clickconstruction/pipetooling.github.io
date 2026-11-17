@@ -43,6 +43,12 @@ function money(n: number): string {
   return (Math.round(n * 100) / 100).toFixed(2)
 }
 
+/** The first job among them whose stored paper has parted from its bills, carrying its own number; null when none has. */
+function partedOf(notices: ReadonlyArray<RunNotice>): RunNotice['parted'] {
+  const hit = notices.find((n) => n.parted)
+  return hit?.parted ? { ...hit.parted, job: hit.jobNumber } : null
+}
+
 /** "273 + 858 + 866" */
 export function combinedJobNumbers(parts: ReadonlyArray<Pick<CombinedPart, 'jobNumber'>>): string {
   return parts.map((p) => p.jobNumber).join(' + ')
@@ -83,6 +89,8 @@ export function combineNoticesByProperty(notices: ReadonlyArray<RunNotice>, opts
       months,
       amount,
       fields: { ...lead.fields, claimAmount: money(amount) },
+      // A paper for several jobs is held when any job's stored paper has parted from its bills (v2.7517), not the lead's alone.
+      parted: partedOf(sorted),
       extras: { ...lead.extras, refItems: [`Jobs #${jobNumber.replace(/ \+ /g, ', #')}`, ...(lead.extras.refItems ?? []).filter((r) => !/^Job #/.test(r))] },
       parts,
     })
