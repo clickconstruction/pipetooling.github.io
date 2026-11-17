@@ -2,18 +2,18 @@
 name: "Signed contracts: filed in the job's Drive folder and found by Find a file"
 number: 377
 group: ready
-status: asked 2026-11-17 as call 7 of #376 · looked at, drawn and rendered the same day · seven calls put to the owner · nothing built, and nothing is built before he says build
+status: asked 2026-11-17 as call 7 of #376 · looked at, drawn and rendered the same day · seven calls put to the owner · he settled call 1 the same day, the job's folder · six calls open · nothing built, and nothing is built before he says build
 summary: >
   A signed job contract lives in the app's own storage and nowhere in Google Drive, so Find a file cannot
   find it. This card files each signed paper in its job's Drive folder, under Team only › Contracts, and
   hands it to the file index the same minute. A paper the office already keeps in the jobs drive is
   adopted where it sits, never copied or moved. The signing itself is not touched: a sweep files the paper
-  within ten minutes, and a paper it cannot file waits with its reason and its door. One fact for the
-  owner before anything else: the jobs drive and Find a file are open to estimators, who cannot read a
-  contract in the app today, so filing there lets an estimator read it. That is call 1.
-next: The owner's seven calls, call 1 first. Then PR 1, the rules, alone.
+  within ten minutes, and a paper it cannot file waits with its reason and its door. The jobs drive and
+  Find a file are open to estimators, who cannot read a contract in the app today, so filing there lets
+  an estimator read it. The owner was told that first and chose the job's folder.
+next: The owner's six open calls, 2 to 7, and his word to build. Then PR 1, the rules, alone.
 size: M as a train of six (S · M · S · M · S · S)
-blocker: The owner's calls. Call 1, who reads it, decides where the file lands, so nothing is built before it.
+blocker: The owner's word to build, and calls 2 to 7. Call 1, which drive the file lands in, is settled. Calls 2 to 5 set rules PR 1 writes, the papers, the name, a voided copy and a paper over several jobs, so they come before it.
 opinion: build — the folders, the upload, the index and the holds all exist for photos; a contract is one more thing the same sweep pattern files, and most of today's papers are already in the drive waiting to be tied to their record
 ---
 
@@ -23,7 +23,7 @@ The mock-up is [mockup.html](mockup.html). Every screen on it is drawn by one sc
 made-up contracts, so the counts on the Where files go card are counted from the lines drawn. It was
 rendered with Playwright at desktop and phone width, in light and dark, before it was shown.
 
-This is call 7 of #376, the Agreements tab (`to-dos/documents-agreements-tab/`). That card lists the
+This is call 7 of [#376](../documents-agreements-tab/README.md), the Agreements tab. That card lists the
 papers. This one puts the signed file where the office looks for files.
 
 ## The ask, in the owner's words
@@ -36,6 +36,10 @@ papers. This one puts the signed file where the office looks for files.
 The look for #376 found that a signed job contract is not in Google Drive or the file index. Shown that as
 call 7, with the pick *a card of its own after this one*, he answered **Take the picks**. This is that
 card. It is a design. No app code ships from it until he says build.
+
+Shown the card, the mock-up and the seven calls the same day, with call 1 put first, he answered **Yes,
+job's folder**. That settles call 1: a signed contract is filed in its job's folder, and estimators can
+read it there. It is not the word to build, and calls 2 to 7 are still his.
 
 ## What the look found
 
@@ -218,10 +222,9 @@ One guard is added, since a signed contract is a legal paper: **the app does not
 is open to anyone with its link.** It reads the job folder's sharing first, as `gc-drive-access` already
 does for a plan set, and holds with *This job's folder is open to anyone with its link*.
 
-This is call 1. The pick is to file in the job's folder and accept that estimators read it. The ask is
-for the paper in the job's folder, the estimator is on the office team and prices the job, and six of
-the eight papers are already there. The other way is a drive of its own, as the People folder has: see
-the calls.
+This was call 1, and the owner settled it on 2026-11-17: **file in the job's folder, and estimators read
+it there.** The estimator is on the office team and prices the job, and six of the eight papers are
+already there. The way not taken was a drive of its own for contracts, as the People folder has.
 
 ### The link field
 
@@ -349,16 +352,19 @@ Each step is one PR, with its release note and fragment. Nothing is built until 
 - **A Drive mark on the Agreements tab's lines.** One line, after both are built.
 - **Reading the key terms out of the PDF.** #173 left that as its own follow-up.
 
-## The owner's open calls
+## The owner's calls
+
+### Settled 2026-11-17
+
+1. **Who reads it.** The paper is filed in its job's folder, and estimators can read a signed contract
+   there, in Find a file and in Drive. His words: **Yes, job's folder**. Not taken: a Shared Drive of its
+   own for contracts, as the People folder has, with the office's four roles as members and Find a file
+   answering those hits to the four only.
+
+### Open
 
 Each has a pick. The mock-up draws the picks.
 
-1. **Who reads it.** Filing in the job's folder lets estimators read a signed contract, in Find a file
-   and in Drive. **Pick: file it in the job's folder and accept that.** Six of the eight are already
-   there. Or: a Shared Drive of its own for contracts, as the People folder has, with the office's four
-   roles as members and Find a file answering those hits to the four only. That keeps estimators out. It
-   also means the paper is not in the job's folder, and the six already there would have to be moved by
-   a person.
 2. **Which papers.** **Pick: every signed paper with a file, of all four kinds, and a paper already in
    the drive is adopted where it sits.** Or: only papers signed through the link, leaving the office's
    scans and a GC's paper where they are.
@@ -385,7 +391,7 @@ Each has a pick. The mock-up draws the picks.
   signature and the emailed copy are as they were, and it files itself once the link is fixed.
 - Open the Contract sweep on a ZZ sister job of the same customer. The filed copy is not offered as a
   find.
-- As an estimator's sample account: Find a file finds the paper, as call 1 says it will, with no **Open
+- As an estimator's sample account: Find a file finds the paper, as call 1 settled, with no **Open
   the contract** press. Where files go shows no Signed contracts card.
 - After the sweep's first run on prod: six papers read *In Drive, where the office put it*, and two are
   held with their reasons.

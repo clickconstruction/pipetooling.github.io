@@ -200,7 +200,8 @@
   .call .pick { font-size: 13px; padding: 7px 9px; border-radius: 7px; background: var(--bg-green-tint); color: var(--text-strong); }
   .call .pick b { color: var(--text-green-800); }
   .call .or { font-size: 13px; color: var(--text-700); }
-  .call.first { border: 2px solid var(--copper); }
+  .call.done { border: 2px solid var(--text-green-700); }
+  .call.done .num { color: var(--text-green-700); }
 
   @media (max-width: 720px) {
     h1 { font-size: 23px; }
@@ -232,7 +233,7 @@
     <a href="#wfg">Where files go</a>
     <a href="#find">Find a file</a>
     <a href="#pass">The Drive pass</a>
-    <a href="#calls">Your seven calls</a>
+    <a href="#calls">Your calls</a>
   </nav>
 </header>
 
@@ -246,8 +247,8 @@
 </div>
 <p class="note"><b>On day one this uploads nothing.</b> No contract on the live site has a file in the app’s storage yet. Most of the signed ones are links to a file the office already put in the jobs drive. The first run ties those to their records and names why the rest cannot be filed. The uploads start with the first contract signed through the link.</p>
 
-<h2 id="who">Who can read a signed contract <span class="tag">call 1</span></h2>
-<p class="lede">This is the call that matters most, so it comes first. <b>Filing in the job’s folder lets the estimator role read a signed contract.</b> Nobody else gains anything.</p>
+<h2 id="who">Who can read a signed contract <span class="tag">call 1 · settled</span></h2>
+<p class="lede">This was the call that mattered most, so it came first. <b>Filing in the job’s folder lets the estimator role read a signed contract.</b> Nobody else gains anything. You chose the job’s folder on 2026-11-17.</p>
 <div class="scroll">
 <table class="who">
   <thead><tr><th>Who</th><th>Today, in the app</th><th>After it is filed in the job’s folder</th></tr></thead>
@@ -260,7 +261,7 @@
   </tbody>
 </table>
 </div>
-<p class="note">The jobs drive has five people’s addresses on it today and the app’s own account. One of the five is an estimator. Several signed contracts already sit in that drive, where the office put them, so an estimator can already read those. <b>The pick is to file in the job’s folder and accept this.</b> The other way is a drive of its own for contracts, as the People folder has. It is drawn under your calls.</p>
+<p class="note">The jobs drive has five people’s addresses on it today and the app’s own account. One of the five is an estimator. Several signed contracts already sit in that drive, where the office put them, so an estimator can already read those. <b>Settled: the paper is filed in the job’s folder, and estimators read it there.</b> The way not taken was a drive of its own for contracts, as the People folder has.</p>
 
 <h2 id="folder">The folder and the name</h2>
 <p class="lede">One new folder, <b>Contracts</b>, inside Team only. The name starts with the signed day, as a photo’s name does, then says what the paper is.</p>
@@ -293,7 +294,7 @@
 <p class="lede">A filed paper is a Drive file like any other, so the index reads it and Find a file finds it by its words. The hit says what it is.</p>
 <div class="grid">
   <div class="col"><span class="cap">As the office</span><div class="frame" id="findoffice"></div><p class="say"><b>Open the contract</b> opens the Contract window on that record. It shows to the four office roles.</p></div>
-  <div class="col"><span class="cap">As an estimator</span><div class="frame" id="findest"></div><p class="say">An estimator finds the same paper and opens it in Drive. This is call 1, drawn. There is no Open the contract, since an estimator cannot read the record.</p></div>
+  <div class="col"><span class="cap">As an estimator</span><div class="frame" id="findest"></div><p class="say">An estimator finds the same paper and opens it in Drive. This is call 1, as you settled it. There is no Open the contract, since an estimator cannot read the record.</p></div>
 </div>
 
 <h2 id="pass">The Contract sweep’s Drive pass</h2>
@@ -303,8 +304,8 @@
   <div class="col"><span class="cap">With it</span><div class="frame" id="passafter"></div><p class="say">The scan drops every file that is already a paper on file, by its Drive id and never by its name. The row offers nothing, and the office sends a contract.</p></div>
 </div>
 
-<h2 id="calls">Your seven calls</h2>
-<p class="lede">Each has a pick, and the screens above draw the picks. Call 1 decides where the file lands, so it comes before anything is built.</p>
+<h2 id="calls">Your calls: one settled, six open</h2>
+<p class="lede">Call 1 is settled. Calls 2 to 7 each have a pick, and the screens above draw the picks. Nothing is built before you say build.</p>
 <div class="calls" id="callgrid"></div>
 
 </div>
@@ -492,7 +493,7 @@ document.getElementById('findest').innerHTML = findFrame(false)
 
 // ── the calls ───────────────────────────────────────────────────────────────────────────────────────────────────
 const CALLS = [
-  ['Who reads it', 'File it in the job’s folder, and accept that estimators can read it there and in Find a file.', 'A drive of its own for contracts, with the office’s four roles as members, as the People folder has. Estimators stay out. The paper is then not in the job’s folder, and the ones already there would be moved by a person.'],
+  ['Who reads it', 'The paper is filed in its job’s folder, and estimators can read it there and in Find a file. Your words: Yes, job’s folder.', 'A drive of its own for contracts, with the office’s four roles as members, as the People folder has.', true],
   ['Which papers', 'Every signed paper with a file: a contract, a warranty, a scan the office uploaded, a GC’s own paper. A paper already in the drive is tied where it sits.', 'Only papers signed through the link.'],
   ['The folder and the name', 'Team only › Contracts, made on first use. Named by the signed day, what it is, the job’s number and who signed.', 'Team only › Sent by us, with no new folder, beside the signed hours statements.'],
   ['A voided paper', 'The app’s copy is renamed VOIDED and kept.', 'Moved to Drive’s trash. Or left as it is.'],
@@ -500,7 +501,7 @@ const CALLS = [
   ['When, and the old ones', 'The sweep files it within ten minutes and never runs inside the signing. One press files one at once. The old ones are filed by the same sweep.', 'The old ones wait for a press on Where files go.'],
   ['The link field', 'The link the office typed stays as it is. The Drive copy gets its own Open in Drive door.', 'The app fills the link with the Drive file.'],
 ]
-document.getElementById('callgrid').innerHTML = CALLS.map(([t, pick, or], i) => `<div class="call${i === 0 ? ' first' : ''}"><span class="num">Call ${i + 1}</span><h3>${esc(t)}</h3><div class="pick"><b>Pick:</b> ${esc(pick)}</div><div class="or"><b>Or:</b> ${esc(or)}</div></div>`).join('')
+document.getElementById('callgrid').innerHTML = CALLS.map(([t, pick, or, done], i) => `<div class="call${done ? ' done' : ''}"><span class="num">Call ${i + 1}${done ? ' · settled Nov 17' : ''}</span><h3>${esc(t)}</h3><div class="pick"><b>${done ? 'Settled' : 'Pick'}:</b> ${esc(pick)}</div><div class="or"><b>${done ? 'Not taken' : 'Or'}:</b> ${esc(or)}</div></div>`).join('')
 </script>
 </body>
 </html>
