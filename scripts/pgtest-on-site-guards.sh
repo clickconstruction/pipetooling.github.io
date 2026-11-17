@@ -13,7 +13,8 @@
 # another box or another job, the phone's own changes and the sweep's still land, and a box's job cannot be changed by
 # a direct update while the office's own path still can. It raises on its first failed assertion and ends with
 # "on_site_guards PASSED". A second scenario, 30_pin_remembers.sql (punch list #372), plays the same people through a
-# box's pin: who set it, when and how sure, stamped by job_containers_stamp_pin. The move and the combine through the same tables are held by scripts/pgtest-on-site-move.sh
+# box's pin: who set it, when and how sure, stamped by job_containers_stamp_pin. A third, 40_place_way.sql, plays a place's
+# way: the one column a direct caller may change on a place, and which map it may be. The move and the combine through the same tables are held by scripts/pgtest-on-site-move.sh
 # and scripts/pgtest-combine-rows.sh, which run over these triggers too. PGTEST_KEEP=1 leaves the container up. Needs
 # docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches
 # prod.
@@ -27,6 +28,7 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 PRESSES=(
   supabase/migrations/*_on_site_teammate_guards.sql
   supabase/migrations/*_box_pin_remembers.sql
+  supabase/migrations/*_place_painted_way.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
