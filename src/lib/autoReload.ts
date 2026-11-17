@@ -7,6 +7,9 @@
  * an hour — with no unsaved-work hold and no write in flight (src/lib/unsavedWork.ts).
  * Anything it cannot tell is "no" — the pill is the fallback. Drafts come with PR 3.
  * v2.4214: a move is a change of page OR of tab (`?tab=`) — `routeMoveKey` names it.
+ * The decision and the reload are two moments: the new worker takes a beat to take over, and
+ * a press can land in between. `decideReloadLanding` is the second look, taken when the
+ * reload would fire.
  */
 export type AutoReloadMoment = 'first-paint' | 'route-change' | 'idle'
 
@@ -75,6 +78,74 @@ export function decideAutoReload(s: AutoReloadSnapshot): AutoReloadDecision {
       if ((s.idleForMs ?? 0) >= IDLE_VISIBLE_MIN_MS) return { reload: true, reason: 'untouched long enough, nothing open' }
       return { reload: false, reason: 'not idle long enough' }
   }
+}
+
+/**
+ * The second look. `decideAutoReload` says a moment is quiet, the component posts SKIP_WAITING,
+ * and the reload itself lands later: when the new worker takes control, or after
+ * `RELOAD_FALLBACK_MS` for a tab whose worker had already switched. A press in that gap used
+ * to be cut off, its write sent and its answer never heard. This is asked every time the reload
+ * would fire, and again whenever something it reads changes.
+ *
+ * - `reload`: fire now.
+ * - `wait`: not yet, look again in `lookAgainInMs` or on the next change, whichever is first.
+ * - `stand-down`: the moment is no longer quiet. The pill takes over, and the next quiet
+ *   moment starts again from `decideAutoReload`.
+ *
+ * SKIP_WAITING cannot be taken back, so a stood-down page may run the old build under the new
+ * worker. That is safe to sit in (a missing chunk has its own recovery) and the next quiet
+ * moment reloads with no gap at all, because the worker has already taken over.
+ */
+export type ReloadLandingSnapshot = {
+  /** The pill's own Reload press. The person asked, so nothing below holds it. */
+  asked: boolean
+  /** The new worker controls the page: `controllerchange` was heard. */
+  workerTookOver: boolean
+  /** Time since the decision (or the press). */
+  msSinceDecision: number
+  /** A pointerdown / keydown / touchstart / wheel after the decision. */
+  touchedSinceDecision: boolean
+  editableFocused: boolean
+  dialogOpen: boolean
+  unsavedHolds: number
+  inFlightWrites: number
+  /** Time since the last write seen after the decision came back, null when none was seen. */
+  msSinceWriteSettled: number | null
+}
+
+export type ReloadLanding =
+  | { act: 'reload'; reason: string }
+  | { act: 'wait'; reason: string; lookAgainInMs: number }
+  | { act: 'stand-down'; reason: string }
+
+/** With no `controllerchange` by now, the worker had already switched: a plain reload gets the new build. */
+export const RELOAD_FALLBACK_MS = 4_000
+/** A write that came back is often the first of a chain (a row, then its files): the page must stay quiet this long after it. */
+export const LANDING_SETTLE_MS = 1_500
+/** A write still in flight this long after the decision is not one to wait out: the pill takes over. */
+export const LANDING_WAIT_MAX_MS = 30_000
+
+export function decideReloadLanding(s: ReloadLandingSnapshot): ReloadLanding {
+  const untilFallback = RELOAD_FALLBACK_MS - s.msSinceDecision
+  const workerReady = s.workerTookOver || untilFallback <= 0
+  if (s.asked) {
+    if (workerReady) return { act: 'reload', reason: 'they pressed Reload' }
+    return { act: 'wait', reason: 'the new worker has not taken over yet', lookAgainInMs: untilFallback }
+  }
+  if (s.touchedSinceDecision) return { act: 'stand-down', reason: 'they touched the page after the decision' }
+  if (s.unsavedHolds > 0) return { act: 'stand-down', reason: `${s.unsavedHolds} component(s) hold unsaved work` }
+  if (s.editableFocused) return { act: 'stand-down', reason: 'a field is focused' }
+  if (s.dialogOpen) return { act: 'stand-down', reason: 'a dialog is open' }
+  if (s.inFlightWrites > 0) {
+    const untilGiveUp = LANDING_WAIT_MAX_MS - s.msSinceDecision
+    if (untilGiveUp <= 0) return { act: 'stand-down', reason: `${s.inFlightWrites} write(s) still in flight` }
+    return { act: 'wait', reason: `${s.inFlightWrites} write(s) in flight`, lookAgainInMs: untilGiveUp }
+  }
+  if (s.msSinceWriteSettled != null && s.msSinceWriteSettled < LANDING_SETTLE_MS) {
+    return { act: 'wait', reason: 'a write just came back, another may follow', lookAgainInMs: LANDING_SETTLE_MS - s.msSinceWriteSettled }
+  }
+  if (!workerReady) return { act: 'wait', reason: 'the new worker has not taken over yet', lookAgainInMs: untilFallback }
+  return { act: 'reload', reason: 'still quiet' }
 }
 
 /**

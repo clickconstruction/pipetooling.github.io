@@ -13,7 +13,7 @@ A quiet moment is one of these. You first open a page and have not touched anyth
 Updating to the newest version…
 :::
 
-Nothing you were doing is lost. The app never reloads on its own while a window is open. It waits while a field has the cursor in it. It waits while something is still saving. On the settings blocks and the Form Studio, unsaved edits are kept in the tab while you work. If the app updates under them, they come straight back after the reload. A note says so. Save when ready. When it cannot find a quiet moment, it asks instead:
+Nothing you were doing is lost. The app never reloads on its own while a window is open. It waits while a field has the cursor in it. It waits while something is still saving. It checks all of this again at the moment it reloads. If you touched the page in between, it does not reload. Your other open tabs are not reloaded with it. Each tab takes its own quiet moment. On the settings blocks and the Form Studio, unsaved edits are kept in the tab while you work. If the app updates under them, they come straight back after the reload. A note says so. Save when ready. When it cannot find a quiet moment, it asks instead:
 
 :::example The update pill
 A new version is ready. {{button:blue|Reload}} Not now

@@ -4,6 +4,7 @@ import { shouldResurfaceUpdatePill } from '../lib/updatePillResurface'
 import {
   IDLE_HIDDEN_MIN_MS,
   decideAutoReload,
+  decideReloadLanding,
   isDialogOpen,
   isEditableFocused,
   msSinceLastAutoReload,
@@ -11,7 +12,7 @@ import {
   routeMoveKey,
   type AutoReloadMoment,
 } from '../lib/autoReload'
-import { inFlightWriteCount, unsavedHoldCount } from '../lib/unsavedWork'
+import { inFlightWriteCount, subscribeUnsavedWork, unsavedHoldCount } from '../lib/unsavedWork'
 import { registerSW } from 'virtual:pwa-register'
 
 /** Long-lived tabs poll for a new deploy this often. */
@@ -32,15 +33,51 @@ function sessionStorageOrNull(): Storage | null {
 }
 
 /**
+ * A reload that has been started and has not landed: the pill's press or a quiet moment's
+ * decision. `land` reads it for the second look (`decideReloadLanding`).
+ */
+type PendingReload = {
+  asked: boolean
+  decidedAt: number
+  touched: boolean
+  lastWriteCount: number
+  writeSettledAt: number | null
+}
+
+/**
+ * One `controllerchange` listener for the page's life, added before `registerSW` adds
+ * workbox-window's. The plugin's prompt mode reloads on every worker change once an update has
+ * been announced (`controlling` with `isUpdate`, true for any page that loaded under a worker),
+ * with no look at what the page is doing, in this tab and in every other open tab. While this
+ * component knows of an update it takes the event and stops it there, so the second look owns
+ * every reload. A page with no update known (a first install claiming it) is left to workbox.
+ */
+let workerChangeTaker: (() => boolean) | null = null
+let workerChangeOwned = false
+function ownWorkerChanges(): void {
+  if (workerChangeOwned) return
+  try {
+    navigator.serviceWorker.addEventListener('controllerchange', (event) => {
+      if (workerChangeTaker?.()) event.stopImmediatePropagation()
+    })
+    workerChangeOwned = true
+  } catch {
+    // serviceWorker API unavailable: nothing changes workers, the fallback timer still reloads
+  }
+}
+
+/**
  * Owns the service-worker registration (prompt mode). When a new build's SW reaches
  * the waiting state, the app reloads itself at a quiet moment (v2.3740: first paint
  * before any interaction; a route change — a new page or a new `?tab=` (v2.4214) — with no
  * modal open and no field focused; idle —
  * hidden five minutes or untouched half an hour (v2.3741) — with nothing unsaved and no write
  * in flight; the decision lives in src/lib/autoReload.ts) and otherwise shows the persistent "new
- * version" pill; Reload posts SKIP_WAITING (listener in src/sw.ts) and vite-plugin-pwa
- * reloads the page once the new SW takes control. Also polls registration.update() so
- * tabs left open discover deploys.
+ * version" pill; Reload posts SKIP_WAITING (listener in src/sw.ts) and this component reloads
+ * the page once the new SW takes control. An automatic reload looks a second time at that
+ * moment (`decideReloadLanding`): a write in flight is waited out, and a touch, a dialog, a
+ * focused field or an unsaved hold hands it back to the pill. Also polls registration.update()
+ * so tabs left open discover deploys.
  */
 export function UpdatePrompt() {
   const [needRefresh, setNeedRefresh] = useState(false)
@@ -56,30 +93,86 @@ export function UpdatePrompt() {
   const lastInteractionAtRef = useRef(Date.now())
   const hiddenAtRef = useRef<number | null>(null)
   const reloadingRef = useRef(false)
+  const pendingRef = useRef<PendingReload | null>(null)
+  const landTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  /** The new worker controls this page: a reload from here on needs no wait. */
+  const workerTookOverRef = useRef(false)
   const { pathname, search } = useLocation()
   /** v2.4214: a move is a new page or a new `?tab=` — a tab switch is a quiet moment too. */
   const moveKey = routeMoveKey(pathname, search)
 
-  const applyUpdate = useCallback(() => {
-    if (reloadingRef.current) return
-    reloadingRef.current = true
-    // Reload ourselves on controllerchange: the plugin's own reload only fires
-    // when workbox-window flags the controlling event isUpdate, which it does
-    // not for updates discovered after registration (our registration.update()
-    // polling). Fallback timer covers tabs whose SW already switched (no
-    // controllerchange coming) — a plain reload gets the new build either way.
-    try {
-      navigator.serviceWorker.addEventListener(
-        'controllerchange',
-        () => window.location.reload(),
-        { once: true },
-      )
-    } catch {
-      // serviceWorker API unavailable — fallback timer still reloads
+  /**
+   * The second look, asked whenever the pending reload could fire or something it reads
+   * changed: the worker took over, the fallback ran out, a write began or came back, a touch.
+   */
+  const land = useCallback(() => {
+    const pending = pendingRef.current
+    if (!pending) return
+    if (landTimerRef.current !== undefined) clearTimeout(landTimerRef.current)
+    landTimerRef.current = undefined
+    const now = Date.now()
+    const landing = decideReloadLanding({
+      asked: pending.asked,
+      workerTookOver: workerTookOverRef.current,
+      msSinceDecision: now - pending.decidedAt,
+      touchedSinceDecision: pending.touched,
+      editableFocused: isEditableFocused(document),
+      dialogOpen: isDialogOpen(document),
+      unsavedHolds: unsavedHoldCount(),
+      inFlightWrites: inFlightWriteCount(),
+      msSinceWriteSettled: pending.writeSettledAt == null ? null : now - pending.writeSettledAt,
+    })
+    if (landing.act === 'reload') {
+      pendingRef.current = null
+      // The loop guard's stamp lands with the reload, so a stood-down decision leaves none.
+      if (!pending.asked) recordAutoReload(now, sessionStorageOrNull())
+      window.location.reload()
+      return
     }
-    setTimeout(() => window.location.reload(), 4000)
-    void updateSWRef.current?.()
+    if (landing.act === 'stand-down') {
+      pendingRef.current = null
+      reloadingRef.current = false
+      setAutoUpdating(false)
+      setNeedRefresh(true)
+      return
+    }
+    landTimerRef.current = setTimeout(land, landing.lookAgainInMs)
   }, [])
+
+  /** Start a reload: post SKIP_WAITING and let `land` fire it. `asked` is the pill's own press. */
+  const applyUpdate = useCallback(
+    (asked: boolean) => {
+      if (reloadingRef.current) return
+      reloadingRef.current = true
+      pendingRef.current = {
+        asked,
+        decidedAt: Date.now(),
+        touched: false,
+        lastWriteCount: inFlightWriteCount(),
+        writeSettledAt: null,
+      }
+      void updateSWRef.current?.()
+      land()
+    },
+    [land],
+  )
+
+  // What the second look reads can change under it: a write begins or comes back, a hold is
+  // taken or released. Each change asks again.
+  useEffect(() => {
+    const unsubscribe = subscribeUnsavedWork(() => {
+      const pending = pendingRef.current
+      if (!pending) return
+      const writes = inFlightWriteCount()
+      if (writes === 0 && pending.lastWriteCount > 0) pending.writeSettledAt = Date.now()
+      pending.lastWriteCount = writes
+      land()
+    })
+    return () => {
+      unsubscribe()
+      if (landTimerRef.current !== undefined) clearTimeout(landTimerRef.current)
+    }
+  }, [land])
 
   /** Reload now if this moment is quiet; true when a reload was started. */
   const tryAutoReload = useCallback(
@@ -103,26 +196,31 @@ export function UpdatePrompt() {
         idleForMs: idle?.idleForMs,
       })
       if (!decision.reload) return false
-      recordAutoReload(now, storage)
       setAutoUpdating(true)
       setNeedRefresh(true)
-      applyUpdate()
+      applyUpdate(false)
       return true
     },
     [applyUpdate],
   )
 
-  // Any touch on the page ends the first-paint window.
+  // Any touch on the page ends the first-paint window, and stands down an automatic reload
+  // that was decided and has not landed (capture phase: before the press's own handler runs).
   useEffect(() => {
     const mark = () => {
       interactedRef.current = true
       lastInteractionAtRef.current = Date.now()
+      const pending = pendingRef.current
+      if (pending && !pending.asked && !pending.touched) {
+        pending.touched = true
+        land()
+      }
     }
     for (const ev of INTERACTION_EVENTS) window.addEventListener(ev, mark, { capture: true, passive: true })
     return () => {
       for (const ev of INTERACTION_EVENTS) window.removeEventListener(ev, mark, { capture: true })
     }
-  }, [])
+  }, [land])
 
   // v2.3741, the idle moment: a tab hidden five minutes reloads while hidden (timers are
   // throttled there, so the check is generous) or the instant it comes back; a visible tab
@@ -184,10 +282,24 @@ export function UpdatePrompt() {
     let onVisible: (() => void) | undefined
     let lastCheck = Date.now()
 
+    // A worker change while an update is known here is this component's to act on. With a
+    // reload pending it is the moment to look again. With none (another tab took the update,
+    // or this one stood down) nothing reloads: the pill and the next quiet moment have it.
+    ownWorkerChanges()
+    const takeWorkerChange = () => {
+      if (!updateWaitingRef.current && !pendingRef.current) return false
+      workerTookOverRef.current = true
+      land()
+      return true
+    }
+    workerChangeTaker = takeWorkerChange
+
     updateSWRef.current = registerSW({
       immediate: true,
       onNeedRefresh() {
         updateWaitingRef.current = true
+        // A newer worker is waiting: the one that took over before is not the build to land on.
+        workerTookOverRef.current = false
         if (tryAutoReload('first-paint')) return
         setNeedRefresh(true)
       },
@@ -210,10 +322,11 @@ export function UpdatePrompt() {
     })
 
     return () => {
+      if (workerChangeTaker === takeWorkerChange) workerChangeTaker = null
       if (intervalId !== undefined) clearInterval(intervalId)
       if (onVisible) document.removeEventListener('visibilitychange', onVisible)
     }
-    // registerSW runs once per mount; tryAutoReload is stable.
+    // registerSW runs once per mount; tryAutoReload and land are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -251,7 +364,7 @@ export function UpdatePrompt() {
             disabled={updating}
             onClick={() => {
               setUpdating(true)
-              applyUpdate()
+              applyUpdate(true)
             }}
             style={{
               padding: '0.375rem 1rem',
