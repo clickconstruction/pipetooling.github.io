@@ -4197,19 +4197,26 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         return ok({ ...planReply(name, dry.reply, fresh), ...(upload ? { upload } : {}) }, { target })
       }
       if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target })
-      const prior = await hooks.priorApply(name, fresh)
-      if (prior) return refused(alreadyApplied(name, prior), { target })
+      // No look in the call log (stateGuarded): a task that has a photo refuses another, a replace commits to the picture
+      // it replaces, and a remove needs one to take off. The log would only turn away a real second act.
       const setPath = async (path: string | null): Promise<string | null> => {
-        const wrote = await restRows(session, 'PATCH', world.table, `id=eq.${world.owner.id}&select=id`, { spot_photo_path: path }, 'return=representation')
+        let wrote
+        try {
+          wrote = await restRows(session, 'PATCH', world.table, `id=eq.${world.owner.id}&select=id`, { spot_photo_path: path }, 'return=representation')
+        } catch (e) {
+          // A dropped connection after the picture is in the bucket must still take the picture back out.
+          return `the write did not reach the database: ${e instanceof Error ? e.message : String(e)}`
+        }
         if (!wrote.ok) return restError(wrote.status, wrote.body)
         return Array.isArray(wrote.body) && wrote.body.length > 0 ? null : `RLS let no row through: this account cannot write the photo of this ${world.on}`
       }
       if (p.action === 'remove') {
         const why = await setPath(null)
         if (why) return errored(`The photo was not taken off: ${why}.`, target)
-        // Best effort, as in the window: a file left behind is only a file, the task no longer points at it.
-        if (world.before) await storageRemove(session, TASK_SPOT_PHOTOS_BUCKET, world.before)
-        return ok(taskPhotoAppliedWords(p, world, dry.reply, { path: null, oldRemoved: world.before, stagedRemoved: null }), { target })
+        // Best effort, as in the window: a file left behind is only a file, the task no longer points at it. The reply
+        // says what the bucket answered, never that a file is gone unasked.
+        const old = world.before ? { path: world.before, removed: await stagedRemove(session, world.before, TASK_SPOT_PHOTOS_BUCKET) } : null
+        return ok(taskPhotoAppliedWords(p, world, dry.reply, { path: null, old, stagedRemoved: null }), { target })
       }
       // 1 · the staged copy, read back and checked before anything is written: its size, its header, its sha256.
       const staged = await stagedDownload(session, stagePath!, TASK_PHOTO_STAGING_BUCKET, 'plan_task_photo')
@@ -4224,13 +4231,13 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (put) return errored(put, target)
       const why = await setPath(path)
       if (why) {
-        await storageRemove(session, TASK_SPOT_PHOTOS_BUCKET, path)
-        return errored(`The photo did not save: ${why}. The picture was taken back out of the bucket; the staged copy is still there, so the same plan can be applied again once this is put right.`, target)
+        const back = await stagedRemove(session, path, TASK_SPOT_PHOTOS_BUCKET)
+        return errored(`The photo did not save: ${why}. ${back ? 'The picture was taken back out of the bucket' : `The picture could not be taken back out of the bucket and sits at ${path}, pointed at by nothing`}; the staged copy is still there, so the same plan can be applied again once this is put right.`, target)
       }
       // 3 · the old picture out of the bucket, as the Edit window takes it, and the staged copy gone.
-      if (world.before) await storageRemove(session, TASK_SPOT_PHOTOS_BUCKET, world.before)
+      const old = world.before ? { path: world.before, removed: await stagedRemove(session, world.before, TASK_SPOT_PHOTOS_BUCKET) } : null
       const stagedRemoved = await stagedRemove(session, stagePath!, TASK_PHOTO_STAGING_BUCKET)
-      return ok(taskPhotoAppliedWords(p, world, dry.reply, { path, oldRemoved: world.before, stagedRemoved }), { target })
+      return ok(taskPhotoAppliedWords(p, world, dry.reply, { path, old, stagedRemoved }), { target })
     }
     case 'plan_activity_note':
     case 'apply_activity_note': {

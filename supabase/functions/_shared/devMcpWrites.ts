@@ -1483,10 +1483,12 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
  * already reads that way, no typed part carries the old name, the rename was already undone — and a name fixed,
  * undone and fixed again is a second act. The task verbs (v2.7589) are refused by their own state too: a task given is
  * found by its words, its day and its person, and a place set is the place the task already has; a place set, taken
- * off and set again, or a task given, deleted in the app and given again, is a second act the log would turn away.
+ * off and set again, or a task given, deleted in the app and given again, is a second act the log would turn away. So
+ * is a photo put on, taken off and put on again (v2.7592): a task that has one refuses another, and a replace commits
+ * to the picture it replaces.
  */
 export function stateGuarded(verb: string): boolean {
-  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename' || verb === 'apply_task' || verb === 'apply_task_place'
+  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename' || verb === 'apply_task' || verb === 'apply_task_place' || verb === 'apply_task_photo'
 }
 
 /**

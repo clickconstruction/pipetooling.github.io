@@ -13,7 +13,7 @@ import {
   taskPhotoStagePath,
   type TaskPhotoWorld,
 } from '../../../supabase/functions/_shared/devMcpTaskPhoto'
-import { WRITE_VERBS, alreadyApplied, isWriteVerb, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { WRITE_VERBS, isWriteVerb, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { TASK_SPOT_PHOTOS_BUCKET, isTaskSpotPhotoPath, taskSpotPhotoPath } from '../tasks/taskSpotPhoto'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -48,7 +48,9 @@ describe('the photo verbs are on the allowlist with no wrapper RPC', () => {
     expect(SERVER).toContain("const SERVER_VERSION = '0.98.0'")
     expect(SERVER).toContain('plan_task_photo → apply_task_photo')
     expect(README).toContain('`plan_task_photo(photo)`')
-    expect(alreadyApplied('apply_task_photo', { target: TASK, at: null })).toContain('plan that picture with replace: true')
+    // A photo put on, taken off and put on again is a second act: the task's own state refuses a replay, not the call log.
+    expect(stateGuarded('apply_task_photo')).toBe(true)
+    expect(SERVER.slice(SERVER.indexOf("    case 'plan_task_photo':"), SERVER.indexOf("    case 'plan_activity_note':"))).not.toContain('hooks.priorApply')
   })
 
   it('writes what the giver\'s press writes: the picture as a JPEG that is never written over, then the path', () => {
@@ -61,7 +63,9 @@ describe('the photo verbs are on the allowlist with no wrapper RPC', () => {
     expect(SERVER).toContain("'Content-Type': mime, 'x-upsert': 'false' }")
     // A path that does not save takes the new picture back out, as putTaskSpotPhoto does.
     expect(PHOTO_IO).toContain('void removeTaskSpotPhotoFile(up.path)')
-    expect(SERVER).toContain('await storageRemove(session, TASK_SPOT_PHOTOS_BUCKET, path)')
+    expect(SERVER).toContain('const back = await stagedRemove(session, path, TASK_SPOT_PHOTOS_BUCKET)')
+    // Every removal in the branch is one whose answer is read: the reply never says a file is gone unasked.
+    expect(SERVER.slice(SERVER.indexOf("    case 'plan_task_photo':"), SERVER.indexOf("    case 'plan_activity_note':"))).not.toContain('storageRemove(')
     // No verb writes a photo on a day's card: that is the doer's proof of work.
     expect(SERVER).not.toMatch(/restRows\(session, 'POST', 'task_photos'/)
   })

@@ -46,6 +46,8 @@ const world = {
   storage: [] as string[],
   /** The next put into the photo bucket is refused. */
   refusePut: false,
+  /** The photo bucket refuses every removal. */
+  refuseRemove: false,
 }
 
 function matches(row: Row, key: string, expr: string): boolean {
@@ -94,6 +96,7 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
       return prefer.includes('return=representation') ? json(rows.map((r) => ({ id: r.id }))) : new Response(null, { status: 201 })
     }
     if (method === 'PATCH') {
+      if (world.drop === table) throw new TypeError('fetch failed')
       if (world.refuse[table]) return json([])
       const hit = filtered(table, query)
       for (const r of hit) Object.assign(r, body as Row)
@@ -120,6 +123,7 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     const at = path.slice(`${OBJECT}${name}/`.length)
     if (method === 'DELETE') {
       world.storage.push(`remove ${name}/${at}`)
+      if (world.refuseRemove && name === 'task-spot-photos') return json({ message: 'new row violates row-level security policy' }, 403)
       delete store[at]
       return json({})
     }
@@ -237,6 +241,7 @@ beforeEach(() => {
   world.bucket = { [`item/${OLD_TASK}/p1.jpg`]: JPG }
   world.storage = []
   world.refusePut = false
+  world.refuseRemove = false
   world.writes = []
   world.log = []
   world.refuse = {}
@@ -630,6 +635,8 @@ describe('what an independent review found (v2.7589)', () => {
     // Three live people hold "ZZ"; the archived twenty-five never crowd them out of the read.
     expect(out.text).toContain('matches 3 people')
     expect((await call('plan_task', { task: { for: 'ZZ Gone Away', text: 'ZZ a task' } })).text).toContain('is archived')
+  })
+})
 
 describe('plan_task_photo → apply_task_photo', () => {
   const fileOf = async (bytes: Uint8Array, name = 'spot.jpg') => ({ name, size_bytes: bytes.length, sha256: await sha256(bytes) })
@@ -759,5 +766,59 @@ describe('plan_task_photo → apply_task_photo', () => {
     expect(out.isError).toBe(false)
     expect(pathOn(ROADMAP_TASK)).toMatch(new RegExp(`^roadmap/${ROADMAP_TASK}/[0-9a-f-]{36}\\.jpg$`))
     expect(world.writes.map((w) => w.table)).toEqual(['checklist_tech_tree_group_tasks'])
+  })
+})
+
+describe('what an independent review found, on the photo (v2.7592)', () => {
+  const fileOf = async (bytes: Uint8Array) => ({ name: 'spot.jpg', size_bytes: bytes.length, sha256: await sha256(bytes) })
+  const stageOf = async (bytes: Uint8Array) => `${DEV}/task-spot-photos/${(await sha256(bytes)).slice(0, 32)}.jpg`
+
+  it('a photo put on, taken off and put on again is a second act, and the call log does not turn it away', async () => {
+    const photo = { task: BARE_TASK, file: await fileOf(JPG) }
+    const first = await call('plan_task_photo', { photo })
+    world.staged[await stageOf(JPG)] = JPG
+    expect((await call('apply_task_photo', { photo, plan_hash: first.body!.plan_hash })).isError).toBe(false)
+    const off = await call('plan_task_photo', { photo: { task: BARE_TASK, remove: true } })
+    expect((await call('apply_task_photo', { photo: { task: BARE_TASK, remove: true }, plan_hash: off.body!.plan_hash })).isError).toBe(false)
+    const second = await call('plan_task_photo', { photo })
+    expect(second.body!.plan_hash).toBe(first.body!.plan_hash)
+    world.staged[await stageOf(JPG)] = JPG
+    const again = await call('apply_task_photo', { photo, plan_hash: second.body!.plan_hash })
+    expect(again.isError).toBe(false)
+    expect(Object.keys(world.bucket).filter((k) => k.startsWith(`item/${BARE_TASK}/`))).toHaveLength(1)
+  })
+
+  it('a removal the bucket refuses is said, never reported as done', async () => {
+    const photo = { task: OLD_TASK, file: await fileOf(JPG), replace: true }
+    const plan = await call('plan_task_photo', { photo })
+    world.staged[await stageOf(JPG)] = JPG
+    world.refuseRemove = true
+    const out = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(String(out.body!.old_picture)).toContain(`item/${OLD_TASK}/p1.jpg is still in the bucket`)
+    expect(world.bucket[`item/${OLD_TASK}/p1.jpg`]).toEqual(JPG)
+  })
+
+  it('a path whose write never reaches the database takes the picture back out', async () => {
+    const photo = { task: BARE_TASK, file: await fileOf(JPG) }
+    const plan = await call('plan_task_photo', { photo })
+    world.staged[await stageOf(JPG)] = JPG
+    world.drop = 'checklist_items'
+    const out = await call('apply_task_photo', { photo, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(true)
+    expect(out.text).toContain('the write did not reach the database')
+    expect(out.text).toContain('The picture was taken back out of the bucket')
+    expect(Object.keys(world.bucket)).toEqual([`item/${OLD_TASK}/p1.jpg`])
+  })
+
+  it('a roadmap task whose own row points at a photo has that one replaced: it is the one the card reads', async () => {
+    const own = (world.tables.checklist_items as Row[]).find((r) => r.id === ROADMAP_ITEM)!
+    own.spot_photo_path = `item/${ROADMAP_ITEM}/own.jpg`
+    world.bucket[`item/${ROADMAP_ITEM}/own.jpg`] = JPG
+    const plan = await call('plan_task_photo', { photo: { task: ROADMAP_ITEM, remove: true } })
+    expect(plan.body).toMatchObject({ on: 'task', removes: `item/${ROADMAP_ITEM}/own.jpg` })
+    await call('apply_task_photo', { photo: { task: ROADMAP_ITEM, remove: true }, plan_hash: plan.body!.plan_hash })
+    expect(world.writes.map((w) => `${w.table} ${w.query}`)).toEqual([`checklist_items id=eq.${ROADMAP_ITEM}&select=id`])
+    expect(own.spot_photo_path).toBeNull()
   })
 })

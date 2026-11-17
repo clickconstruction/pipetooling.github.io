@@ -110,8 +110,10 @@ export async function readTaskPhotoWorld(reader: Reader, p: TaskPhotoPayload, ve
   let owner: TaskSpotPhotoOwner = { kind: 'item', id: ref.id }
   let row: Row = item
   const roadmapTaskId = strOrNull(item.roadmap_group_task_id)
-  if (roadmapTaskId) {
-    // A task made from a roadmap comes and goes as stages unlock; its photo stays on the roadmap task, as its place does.
+  // A task made from a roadmap comes and goes as stages unlock, so its photo stays on the roadmap task, as its place
+  // does. But the card reads the task's own photo first (`loadTaskSpotPhotoPathsForItems`): where the task's own row
+  // already points at one, that is the picture the person sees, and the one this verb replaces or takes off.
+  if (roadmapTaskId && !isTaskSpotPhotoPath(strOrNull(item.spot_photo_path))) {
     const task = (await reader.rows('checklist_tech_tree_group_tasks', { select: 'id,spot_photo_path', filters: by('id', roadmapTaskId), limit: 1 }))[0]
     if (!task) return { refused: `This task came from a roadmap, and its roadmap task ${roadmapTaskId} cannot be read, so its photo cannot be set from here.` }
     owner = { kind: 'roadmap', id: roadmapTaskId }
@@ -172,7 +174,8 @@ export function taskPhotoDryRun(p: TaskPhotoPayload, world: TaskPhotoWorld): Tas
   }
 }
 
-export type TaskPhotoOutcome = { path: string | null; oldRemoved: string | null; stagedRemoved: boolean | null }
+/** `old` is the picture the task pointed at before, and whether the bucket took it out: a removal is never said without the bucket's answer. */
+export type TaskPhotoOutcome = { path: string | null; old: { path: string; removed: boolean } | null; stagedRemoved: boolean | null }
 
 /** What apply_task_photo answers with. */
 export function taskPhotoAppliedWords(p: TaskPhotoPayload, world: TaskPhotoWorld, reply: Json, out: TaskPhotoOutcome): Json {
@@ -181,7 +184,7 @@ export function taskPhotoAppliedWords(p: TaskPhotoPayload, world: TaskPhotoWorld
     done: reply.reads,
     on: world.on,
     photo: out.path,
-    ...(out.oldRemoved ? { old_picture: `${out.oldRemoved} was taken out of the bucket.` } : {}),
+    ...(out.old ? { old_picture: out.old.removed ? `${out.old.path} was taken out of the bucket.` : `${out.old.path} is still in the bucket: the bucket did not take it out. It is only a file; the task no longer points at it.` } : {}),
     ...(p.action === 'put' ? { staged_copy: out.stagedRemoved ? 'removed' : 'still in your staging folder; it is only a file, and the next plan for the same picture writes over it' } : {}),
     shows: 'On the task\'s card, beside its place, for whoever the task is for.',
     next: `get_task with task: "${world.task.id}" says whether the task carries a photo of the spot.`,
