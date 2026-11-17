@@ -113,6 +113,27 @@ describe('BidPlanSetsField', () => {
     await waitFor(() => expect(screen.getAllByTestId('bid-plan-set-row')).toHaveLength(2))
   })
 
+  it('a set kept from a mail wears From a mail, with the door back to the mail in its thread (punch list #368)', async () => {
+    state.rows = START_ROWS.map((r) => ({ ...r }))
+    const asked: string[][] = []
+    const mailIo = {
+      mailOfSets: async (ids: ReadonlyArray<string>) => {
+        asked.push([...ids])
+        return new Map([['r2', { messageId: 'm-add1', contactId: 'c-dana', contactKind: 'customer' }]])
+      },
+    }
+    renderWithProviders(<BidPlanSetsField bidId="b1" plansLink="https://drive.google.com/drive/folders/issued" onRobotSetChange={() => {}} pricedOnIo={fakePricedOnIo()} mailIo={mailIo} />)
+    await waitFor(() => expect(screen.getAllByTestId('bid-plan-set-row')).toHaveLength(2))
+    expect([...asked[0]!].sort()).toEqual(['r1', 'r2'])
+    const rows = screen.getAllByTestId('bid-plan-set-row')
+    const fromMail = rows.find((r) => r.textContent?.includes('Addendum 1'))!
+    const byHand = rows.find((r) => r.textContent?.includes('Issued set'))!
+    expect(fromMail.querySelector('[data-testid="bid-plan-set-from-mail"]')!.textContent).toBe('From a mail')
+    expect(fromMail.querySelector('[data-testid="bid-plan-set-mail-door"]')!.getAttribute('href')).toBe('/messages?thread=c-dana&at=m-add1')
+    expect(byHand.querySelector('[data-testid="bid-plan-set-from-mail"]')).toBeNull()
+    expect(byHand.querySelector('[data-testid="bid-plan-set-mail-door"]')).toBeNull()
+  })
+
   it('priced on: with no pin the robot’s set wears the chip and the line says so; Priced on this set pins a row through the io and moves the chip', async () => {
     state.rows = START_ROWS.map((r) => ({ ...r }))
     const io = fakePricedOnIo()
