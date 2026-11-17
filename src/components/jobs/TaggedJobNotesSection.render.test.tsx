@@ -225,10 +225,13 @@ describe('TaggedJobNotesSection', () => {
       fireEvent.keyDown(box, { key: 'Enter' })
       await vi.waitFor(() => expect(io.postTaggedTaskNote).toHaveBeenCalledWith('inst-1', 'Bay 2 first.', []))
       expect(io.postTaggedNote).not.toHaveBeenCalled()
+      // The notice for the asker goes out for the task note that was posted.
+      await vi.waitFor(() => expect(io.notifyNoteTag).toHaveBeenCalledWith({ taskEventId: 'ev-9' }))
       // The post is over once the box is empty and the press is live again.
       await vi.waitFor(() => expect((screen.getByRole('button', { name: 'No reply needed' }) as HTMLButtonElement).disabled).toBe(false))
       fireEvent.click(screen.getByRole('button', { name: 'No reply needed' }))
       await vi.waitFor(() => expect(io.markTagDone).toHaveBeenCalledWith('tw', 'task'))
+      await vi.waitFor(() => expect(io.notifyNoteTag).toHaveBeenCalledWith({ taskTagId: 'tw' }))
     })
 
     it('opens a task that is on the page from its title, and leaves one that is not as plain words', async () => {

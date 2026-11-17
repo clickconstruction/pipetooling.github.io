@@ -4007,11 +4007,11 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ### notify-note-tag
 
-**Purpose** (v2.7410, punch list #363 PR 5): the phone notice for a teammate tagged in a job note, and for the person who asked when the answer lands. The client calls it right after a typed note posts on the Pipeline or from the Tagged job notes section (`notifyNoteTag` in `src/lib/jobs/noteTagsIo.ts`), and after a **No reply needed** press. A call that fails is dropped: the tag is already on the job and in the count above Jobs.
+**Purpose** (v2.7410, punch list #363 PR 5; task notes since v2.7577, punch list #375 PR 4): the phone notice for a teammate tagged in a job note or a task note, and for the person who asked when the answer lands. The client calls it right after a typed note posts on the Pipeline, from a task's note box or from a tagged notes section (`notifyNoteTag` in `src/lib/jobs/noteTagsIo.ts`), and after a **No reply needed** press. A call that fails is dropped: the tag is already on the job or the task and in its count.
 
 **Endpoint**: `POST /functions/v1/notify-note-tag`
 
-**Required Role**: any signed-in user, but only the note's **writer** for `note_id` and only the **tagged person** for `tag_id`; anyone else gets 403. A note or a press more than fifteen minutes old returns 200 with `push_sent: 0`, so an old note cannot be replayed. An archived caller is refused (`refuseArchivedCaller`).
+**Required Role**: any signed-in user, but only the note's **writer** for `note_id` and `task_event_id`, and only the **tagged person** for `tag_id` and `task_tag_id`; anyone else gets 403. A note or a press more than fifteen minutes old returns 200 with `push_sent: 0`, so an old note cannot be replayed. An archived caller is refused (`refuseArchivedCaller`).
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (missing VAPID keys send nothing and return 200).
 
@@ -4029,13 +4029,24 @@ or, for a No reply needed press:
 { "tag_id": "<jobs_ledger_note_tags.id>" }
 ```
 
+or, for a task note (a `checklist_instance_events` row of kind `comment`) and a No reply needed press on a task tag:
+
+```json
+{ "task_event_id": "<checklist_instance_events.id>" }
+```
+
+```json
+{ "task_tag_id": "<task_note_tags.id>" }
+```
+
 The caller sends no text. The words come from `words.ts` beside the function (pure, tested from `src/lib/jobs/noteTagPush.test.ts`):
 
 - The people the note tags, still waiting: *Marcus tagged you on Cedar Bluff Lofts*, with the note cut to 140 characters. Template `note_tag`.
 - The people whose tags on that job the note answered: *Dana answered on Cedar Bluff Lofts*. Template `note_tag_answer`. A person the answer tags back gets the tag alone.
 - The asker of a tag cleared with no note: *Chris: no reply needed*, with the job and the note.
+- For a task note the same three, naming the task: *Luis tagged you on Sweep the shop bays* (template `task_note_tag`), *Dana answered on Sweep the shop bays* and *Chris: no reply needed* (both `note_tag_answer`). The task's title is read as plain words by `taskTitleWords`, which keeps the words of a job token such as `{{1:1466 · Cedar Bluff Lofts}}` and drops its braces, and is cut to 60 characters. The function cannot import `src/lib`, so that reader is its own, and the test holds it to `taskTitlePlain`.
 
-The tap opens `/jobs?tab=stages` for the office, whose section is at the top of the Pipeline, and `/dashboard` for everyone else, whose door is the Needs you line. Every push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts), so a person outside their **Push me** hours is held with a row and no push, and **While you were off** names it a *tagged job note* or an *answer to your tag* (`heldKind`).
+The tap opens `/jobs?tab=stages` for the office, whose section is at the top of the Pipeline, and `/dashboard` for everyone else, whose door is the Needs you line. Every push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts), so a person outside their **Push me** hours is held with a row and no push, and **While you were off** names it a *tagged job note*, a *tagged task note* or an *answer to your tag* (`heldKind`). A task note's tap opens `/checklist?tab=today` for every role, where the Tagged task notes section is.
 
 #### Response
 
@@ -4043,7 +4054,7 @@ The tap opens `/jobs?tab=stages` for the office, whose section is at the top of 
 { "success": true, "push_sent": 1, "held": 0 }
 ```
 
-**Deploy**: `supabase functions deploy notify-note-tag`. It reads `jobs_ledger_note_tags`, on prod since v2.7385. Until it is deployed the client's call answers 404 and is dropped.
+**Deploy**: `supabase functions deploy notify-note-tag`. It reads `jobs_ledger_note_tags`, on prod since v2.7385, and `task_note_tags`, on prod since v2.7570. A client ahead of the deploy sends `task_event_id` to a function that answers 400 for it, and the call is dropped.
 
 ---
 

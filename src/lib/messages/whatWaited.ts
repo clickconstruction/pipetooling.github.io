@@ -70,6 +70,7 @@ const HELD_KINDS: Readonly<Record<string, string>> = {
   estimator_request: 'estimator request',
   bid_mark: 'marked bid',
   note_tag: 'tagged job note',
+  task_note_tag: 'tagged task note',
   note_tag_answer: 'answer to your tag',
   help_feedback: 'help note',
   lien_approval_ask: 'lien notice',

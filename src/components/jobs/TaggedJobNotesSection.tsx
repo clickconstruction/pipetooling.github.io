@@ -132,7 +132,7 @@ function TagCard({ tag, today, onOpenJob, onOpenTask, taskOpens }: { tag: MyTag;
     try {
       if (task) {
         // The answer is a note on the task's thread, on the day row the tagged note is on.
-        await postTaggedTaskNote(tag.instanceId ?? '', body, tagBox.taggedIds(body))
+        notifyNoteTag({ taskEventId: await postTaggedTaskNote(tag.instanceId ?? '', body, tagBox.taggedIds(body)) })
       } else {
         const noteId = await postTaggedNote(tag.jobId, body, tagBox.taggedIds(body))
         notifyNoteTag({ noteId })
@@ -151,8 +151,7 @@ function TagCard({ tag, today, onOpenJob, onOpenTask, taskOpens }: { tag: MyTag;
     if (busy) return
     setBusy('done')
     try {
-      const cleared = await markTagDone(tag.tagId, task ? 'task' : 'job')
-      if (cleared && !task) notifyNoteTag({ tagId: tag.tagId })
+      if (await markTagDone(tag.tagId, task ? 'task' : 'job')) notifyNoteTag(task ? { taskTagId: tag.tagId } : { tagId: tag.tagId })
       noteTagsChanged()
     } catch (e: unknown) {
       showToast(formatErrorMessage(e, 'The tag was not cleared'), 'error')
