@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tag a teammate in a task note</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@700&display=swap">
+<style>
+  /* Layout: one column of numbered-by-topic sections; each mock screen is a framed card in the app's own look, and
+     everything that would be new wears the violet outline and a "new" tag. Drawn 2026-11-16. Nothing here is built.
+     Every person, task, job and count on a mock screen is made up: Dana Whitlock, Marcus Hale, Luis Ortega, Priya
+     Nair, Cedar Bluff Lofts, Lakeside Rental. No live row and no live count is on this page: the card holds the counts. */
+  :root {
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --red: #b91c1c; --green: #15803d; --amber: #92400e; --blue-800: #1e40af;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-blue: #bfdbfe;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --press: #2563eb; --press-words: #ffffff; --task-green: #166534; --task-green-bg: #dcfce7;
+    --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --display: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+      --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+      --border: #374151; --border-strong: #4b5563;
+      --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+      --red: #f87171; --green: #4ade80; --amber: #fcd34d; --blue-800: #93c5fd;
+      --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+      --border-amber: #92400e; --border-blue: #1e3a8a;
+      --new: #c4b5fd; --new-tint: #2a2350;
+      --press: #2563eb; --press-words: #ffffff; --task-green: #86efac; --task-green-bg: #14532d;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --red: #f87171; --green: #4ade80; --amber: #fcd34d; --blue-800: #93c5fd;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-blue: #1e3a8a;
+    --new: #c4b5fd; --new-tint: #2a2350;
+    --press: #2563eb; --press-words: #ffffff; --task-green: #86efac; --task-green-bg: #14532d;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 80px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font: 700 28px/1.15 var(--display); color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; max-width: 78ch; }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  nav.jump a:focus-visible, button:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+  h2 { font: 700 20px/1.2 var(--display); margin: 46px 0 4px; color: var(--text-strong); text-wrap: balance; }
+  h3 { font-size: 14px; margin: 0 0 4px; color: var(--text-strong); }
+  p { margin: 0; }
+  .lede { max-width: 78ch; margin: 0 0 6px; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 86ch; border-radius: 0 8px 8px 0; }
+  .note b, .lede b, li b, td b { color: var(--text-strong); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .grid.three { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 18px; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { font-size: 13px; max-width: 64ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); background: var(--bg-page); color: var(--text-base); min-width: 0; overflow: hidden; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 12px; display: grid; gap: 10px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+
+  /* the short of it */
+  .short { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 0; margin-top: 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .short > div { padding: 12px 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 0 -1px -1px 0; }
+  .short b { display: block; color: var(--text-strong); font: 700 14px/1.3 var(--display); margin-bottom: 2px; }
+  .short span { font-size: 13px; }
+
+  /* the app's own pieces */
+  .bar { display: flex; align-items: center; gap: 14px; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-700); flex-wrap: wrap; }
+  .bar .on { color: var(--text-link); }
+  .bar span { position: relative; }
+  .pill { position: absolute; top: -8px; right: -14px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #b91c1c; color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
+  .pill.newring { box-shadow: 0 0 0 2px var(--new); }
+  .strip { background: var(--task-green-bg); color: var(--task-green); font-size: 12px; font-weight: 700; padding: 5px 12px; display: flex; justify-content: space-between; }
+  .tcard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+  .trow { display: flex; gap: 10px; align-items: flex-start; }
+  .box { flex: 0 0 22px; width: 22px; height: 22px; border: 2px solid var(--border-strong); border-radius: 6px; margin-top: 1px; }
+  .box.done { background: #16a34a; border-color: #16a34a; position: relative; }
+  .box.done::after { content: "✓"; color: #fff; font-size: 14px; font-weight: 800; position: absolute; inset: -2px 0 0 4px; }
+  .ttl { font-weight: 600; color: var(--text-strong); min-width: 0; }
+  .meta { font-size: 12px; color: var(--text-muted); }
+  .thread { display: grid; gap: 6px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .ev { font-size: 12px; color: var(--text-muted); }
+  .n { font-size: 13px; color: var(--text-base); }
+  .n .who { font-weight: 600; color: var(--text-strong); }
+  .n .at { color: var(--text-muted); font-size: 12px; }
+  .chip { display: inline-block; padding: 0 6px; border-radius: 6px; background: var(--bg-blue-tint); color: var(--blue-800); border: 1px solid var(--border-blue); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  .chip.me { background: var(--bg-amber-tint); color: var(--amber); border-color: var(--border-amber); }
+  .wait { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .wait.late { color: var(--amber); font-weight: 600; }
+  .wait.ok { color: var(--green); font-weight: 600; }
+  .compose { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 8px; display: grid; gap: 6px; position: relative; }
+  .compose .will { font-size: 12px; color: var(--text-muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .compose .txt { font-size: 13px; min-height: 20px; color: var(--text-base); }
+  .compose .txt.ph { color: var(--text-muted); }
+  .caret { display: inline-block; width: 1.5px; height: 14px; background: var(--text-link); vertical-align: -2px; }
+  .btns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .btn { font: 600 12.5px/1 var(--font); padding: 7px 11px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); }
+  .btn.blue { background: var(--press); color: var(--press-words); border-color: var(--press); }
+  .btn.green { background: #16a34a; color: #fff; border-color: #16a34a; }
+  .btn.at { font-size: 14px; padding: 5px 9px; color: var(--text-link); }
+  .btn.newring { box-shadow: 0 0 0 2px var(--new); }
+  .push { margin-left: auto; }
+  .names { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); box-shadow: 0 8px 20px rgba(0,0,0,.18); font-size: 13px; overflow: hidden; }
+  .names .g { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); padding: 6px 10px 2px; background: var(--bg-subtle); }
+  .names .p { padding: 6px 10px; display: flex; justify-content: space-between; gap: 8px; }
+  .names .p.hi { background: var(--bg-blue-tint); }
+  .names .p small { color: var(--text-muted); white-space: nowrap; }
+  .sec { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .sec > .h { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; font-weight: 700; color: var(--text-strong); border-bottom: 1px solid var(--border); }
+  .sec > .h small { font-weight: 600; color: var(--text-link); }
+  .tg { padding: 10px 12px; display: grid; gap: 6px; border-bottom: 1px solid var(--border); }
+  .tg:last-child { border-bottom: 0; }
+  .tg .door { color: var(--text-link); font-weight: 600; }
+  .tg .kind { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; margin-right: 6px; }
+  .asked { padding: 8px 12px; font-size: 12.5px; display: grid; gap: 4px; background: var(--bg-subtle); }
+  .asked b { color: var(--text-strong); }
+  .needs { background: var(--bg-amber-tint); border: 1px solid var(--border-amber); border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 13px; }
+  .needs b { color: var(--text-strong); }
+  .phone { width: min(100%, 330px); border: 8px solid var(--text-strong); border-radius: 30px; background: var(--bg-page); overflow: hidden; box-shadow: 0 8px 26px rgba(0,0,0,.2); justify-self: center; }
+  .phone.sugp { outline: 2px solid var(--new); outline-offset: 3px; }
+  .lock { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 9px 11px; font-size: 12.5px; display: grid; gap: 1px; }
+  .lock b { color: var(--text-strong); }
+  .lock .app { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .kb { background: var(--bg-muted); color: var(--text-muted); font-size: 11px; text-align: center; padding: 16px 0; letter-spacing: .3em; }
+
+  /* tables */
+  .tbl { overflow-x: auto; margin-top: 14px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 13px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  th { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  tr:last-child td { border-bottom: 0; }
+  td.pick { color: var(--text-strong); font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  ol.walk { margin: 12px 0 0; padding-left: 20px; max-width: 80ch; display: grid; gap: 5px; }
+  ul.plain { margin: 10px 0 0; padding-left: 18px; max-width: 80ch; display: grid; gap: 5px; }
+  .train { display: grid; gap: 8px; margin-top: 14px; }
+  .pr { display: grid; grid-template-columns: 54px 1fr auto; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .pr .k { font: 700 13px/1.4 var(--display); color: var(--copper); }
+  .pr .sz { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text-muted); border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+  .pr b { color: var(--text-strong); }
+  .pr p { font-size: 13px; }
+  @media (max-width: 520px) { .pr { grid-template-columns: 1fr auto; } .pr .k { grid-column: 1 / -1; } }
+
+  /* the working box */
+  .trywrap { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 26px; margin-top: 16px; align-items: start; }
+  @media (max-width: 760px) { .trywrap { grid-template-columns: minmax(0, 1fr); } }
+  .phone.live { width: 100%; max-width: 360px; outline: 2px solid var(--new); outline-offset: 3px; }
+  .sugs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 1px 4px; align-items: center; -webkit-overflow-scrolling: touch; }
+  .sugs .lbl { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .sugbtn { flex: 0 0 auto; min-height: 44px; padding: 4px 14px; border-radius: 999px; border: 1px solid var(--border-blue); background: var(--bg-blue-tint); color: var(--blue-800); font: 600 14px/1.15 var(--font); white-space: nowrap; cursor: pointer; display: grid; text-align: left; touch-action: manipulation; }
+  .sugbtn small { font-weight: 400; font-size: 11px; color: var(--text-muted); }
+  .sugbtn:active { filter: brightness(.94); }
+  .tawrap { position: relative; background: var(--surface); border-radius: 8px; }
+  .tawrap .mirror, .tawrap textarea { font: 400 16px/1.45 var(--font); padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; width: 100%; margin: 0; letter-spacing: normal; }
+  .tawrap .mirror { position: absolute; inset: 0; color: transparent; border-color: transparent; pointer-events: none; overflow: hidden; }
+  .tawrap .mirror mark { background: var(--bg-blue-tint); color: transparent; border-radius: 4px; box-shadow: 0 0 0 1px var(--border-blue); }
+  .tawrap .mirror mark.pending { background: transparent; box-shadow: 0 2px 0 0 var(--text-link); border-radius: 0; }
+  .tawrap textarea { position: relative; display: block; background: transparent; color: var(--text-base); resize: none; min-height: 64px; overflow: hidden; }
+  .tawrap textarea:focus-visible { outline: 2px solid var(--text-link); outline-offset: 1px; }
+  .livebtns { display: flex; gap: 8px; align-items: center; }
+  .livebtns button { font: 600 14px/1 var(--font); min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .livebtns button.blue { background: var(--press); color: var(--press-words); border-color: var(--press); margin-left: auto; }
+  .livebtns button.at { color: var(--text-link); font-size: 16px; }
+  .gets { display: grid; gap: 8px; }
+  .tryside { display: grid; gap: 14px; min-width: 0; }
+  .tryside ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 62ch; }
+  .tryside code { font: 600 13px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg-muted); color: var(--text-strong); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #375 · drawn 16 November 2026 · nothing here is built</p>
+    <h1>Tag a teammate in a task note</h1>
+    <p>Tagging a teammate went live on job notes yesterday. This page shows how it works there, how task notes work today, and how the same tag would work on a task. Every name and task on a drawn screen is made up. A violet outline marks what would be new.</p>
+    <nav class="jump" aria-label="Sections">
+      <a href="#short">The short of it</a>
+      <a href="#try">Try the box</a>
+      <a href="#today-job">On a job today</a>
+      <a href="#today-task">Task notes today</a>
+      <a href="#design">The design</a>
+      <a href="#phone">On a phone</a>
+      <a href="#cases">The hard cases</a>
+      <a href="#shared">Shared and new</a>
+      <a href="#plan">The plan</a>
+      <a href="#calls">Your calls</a>
+    </nav>
+  </header>
+
+  <section id="short">
+    <div class="short">
+      <div><b>Same tag, same rules</b><span>Press @, pick a name, post. The note waits on that person until they answer or press No reply needed.</span></div>
+      <div><b>The list is the task's own people</b><span>Who has the task, who gave it, and the office. A tag never opens a task to someone new.</span></div>
+      <div><b>It lands on the Checklist</b><span>A count above Checklist, a Tagged task notes section on Today, the same Needs you line, and a notice on the phone.</span></div>
+      <div><b>One database piece, six small PRs</b><span>A sister table to the job one. The list, the chips, the rules and the notice are reused.</span></div>
+    </div>
+  </section>
+
+  <section id="try">
+    <h2>Try it: names as you type, a tap to tag <span class="tag">new · 16 Nov, after your note</span></h2>
+    <p class="lede">This box works. Type in it. The names show above the box as you type, as big presses for a thumb. A tap or Enter writes the name into your words and tags that person. Your call of 16 November is in it: a name you only typed never tags.</p>
+    <div class="trywrap">
+      <div class="col">
+        <div class="phone live">
+          <div class="strip"><span>☑ Task Mode</span><span>Exit</span></div>
+          <div class="pad">
+            <div class="tcard">
+              <div class="trow"><div class="box"></div><div><div class="ttl">Sweep the shop bays</div><div class="meta">Luis Ortega · today · Dana gave you this</div></div></div>
+              <div class="thread" id="try-thread">
+                <div class="ev">Dana created this task · Nov 14</div>
+              </div>
+              <div class="sugs" id="try-sugs" aria-label="People you can tag"></div>
+              <div class="tawrap">
+                <div class="mirror" id="try-mirror" aria-hidden="true"></div>
+                <textarea id="try-note" rows="2" placeholder="Add a note… type @ to tag someone" aria-label="Add a note" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>
+              </div>
+              <div class="livebtns">
+                <button type="button" class="at" id="try-at" aria-label="Tag a teammate">@</button>
+                <button type="button" id="try-reset">Start over</button>
+                <button type="button" class="blue" id="try-post">Post</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="say">You are Luis. The people are made up: Dana gave the task, Marcus, Priya and two people named Chris are the office.</p>
+      </div>
+      <div class="tryside">
+        <div>
+          <h3>Things to try</h3>
+          <ol>
+            <li>Tap <b>@Dana Whitlock</b> above the box. The task's own people are offered before you type a letter.</li>
+            <li>Type <code>@pr</code>. Only Priya is left in the row. Tap her, or press Enter.</li>
+            <li>Type <code>@chris</code>. Two people fit. Tap the one you mean.</li>
+            <li>Type <code>@dana</code> and keep writing without a tap. It stays plain words and nobody is tagged.</li>
+            <li>Type <code>arrive @ 8:45</code> or <code>@home</code>. Nobody fits, so the row offers nobody.</li>
+            <li>Press Backspace right after a tagged name. The whole tag comes off in one press.</li>
+            <li>Press <b>Post</b>. The name becomes a chip and the note says who it waits on.</li>
+          </ol>
+        </div>
+        <div class="gets" id="try-gets" hidden>
+          <div class="cap">What their phones get</div>
+        </div>
+        <div class="tbl" style="margin-top:0"><table style="min-width:0">
+          <thead><tr><th style="width:50%">Already live on job notes</th><th>New in this box</th></tr></thead>
+          <tbody>
+            <tr><td>The list opens when you type @ and narrows with each letter.</td><td>The names are big presses in a row above the box, clear of the keyboard, where today they are a small list.</td></tr>
+            <tr><td>A tap, or Enter, writes the full name into your words where the @ was.</td><td>The same, with nothing changed. A name you only typed still never tags.</td></tr>
+            <tr><td>The picked names show on a <i>Will tag</i> line above the box.</td><td>The tag is marked in the words themselves as you type.</td></tr>
+            <tr><td>The × on that line takes a tag off.</td><td>One Backspace takes it off. The task's people are offered before you type.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note" style="margin-top:0"><b>The rule stays: a tag is a tap or Enter.</b> You settled this on 16 November. A typed name never tags by itself, so a word that is also a name, such as <code>@will call</code>, can never tag someone by accident. The row of names stays up while you type a name, so the tap is always under your thumb.</div>
+        <p class="say"><b>One box for both.</b> The box is shared code. Job notes would get the same behaviour the day it merges, and task notes would be born with it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="today-job">
+    <h2>How a tag works on a job today</h2>
+    <p class="lede">Punch list #363, live since 15 November. It is on <b>job notes</b>: the Pipeline row's box, the job window, Job Mode and Quickfill. It is <b>not on bid or estimate notes yet</b>. Those were left for later on the card.</p>
+    <ol class="walk">
+      <li><b>Type @ or press the @ button.</b> A list opens. The job's crew is on top, then the office.</li>
+      <li><b>Pick a name.</b> A tag is the name you picked. A name you only typed is plain words, so "arrive @ 8:45" tags nobody.</li>
+      <li><b>Post.</b> The name becomes a chip and the note reads <i>waiting on Dana</i>. It turns amber after two working days.</li>
+      <li><b>The tagged person hears.</b> A phone notice, held outside their Push me hours. A red count above Jobs. A Tagged job notes section at the top of the Pipeline. A Needs you line on the Dashboard for people with no Pipeline.</li>
+      <li><b>They answer.</b> Any note they type on that job clears the tag. Or they press No reply needed. Opening or reading clears nothing.</li>
+      <li><b>The asker hears back.</b> A notice, and the answer counts above Jobs until it has been on their screen under You asked.</li>
+    </ol>
+    <div class="grid three">
+      <div class="col">
+        <div class="cap">Who the list offers</div>
+        <p class="say">The office, and that job's crew. Never a sub, an estimator, a person who has left, a digital twin or an account in training mode.</p>
+      </div>
+      <div class="col">
+        <div class="cap">How it is kept</div>
+        <p class="say">A tag is a row of its own beside the note: who, by whom, when, how it ended, and when the asker saw that. Only the database's own functions write it.</p>
+      </div>
+      <div class="col">
+        <div class="cap">Walked so far</div>
+        <p class="say">From the sender's side, on 15 and 16 November. The tagged person's screens have not been walked yet.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="today-task">
+    <h2>How task notes work today</h2>
+    <p class="lede">A task card keeps one thread: who made it, each done, reopen and sign-off, and every note. Anyone who can open the task can add a note. That is the people who have the task, the person who gave it, and the office. A task has no job of its own. A job rides on it only as a link.</p>
+    <div class="grid">
+      <div class="col">
+        <div class="cap">A task card today</div>
+        <div class="frame"><div class="pad">
+          <div class="tcard">
+            <div class="trow"><div class="box"></div><div><div class="ttl">Pick up the trencher from Lakeside Rental</div><div class="meta">Luis Ortega · due today · tells Dana when done</div></div></div>
+            <div class="thread">
+              <div class="ev">Dana created this task · Nov 14</div>
+              <div class="n"><span class="who">Luis</span> <span class="at">9:12 AM</span> · They say it is not ready until noon. Do I wait or come back?</div>
+              <div class="compose"><div class="txt ph">Add a note…</div><div class="btns"><span class="btn blue">Post</span><span class="btn green">✓ Complete</span></div></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="say"><b>The gap:</b> Luis's question reaches nobody. Dana reads it only if she happens to open this card. A note sends no notice and adds to no count.</p>
+      </div>
+      <div class="col">
+        <div class="cap">What the numbers say</div>
+        <p class="say">People tick tasks and almost never write on them. The card has the counts. A note that reaches nobody gives no reason to write one. So the tag is less an add-on here than the thing that makes a task note worth typing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="design">
+    <h2>The design for task notes</h2>
+    <p class="lede">One sentence: the note box on a task gets the same @ button, and the tag lands on the Checklist the way a job tag lands on Jobs.</p>
+
+    <div class="grid">
+      <div class="col sug">
+        <div class="cap">1 · The @ list in a task's note box <span class="tag">new</span></div>
+        <div class="frame"><div class="pad">
+          <div class="tcard">
+            <div class="trow"><div class="box"></div><div><div class="ttl">Pick up the trencher from Lakeside Rental</div><div class="meta">Luis Ortega · due today · tells Dana when done</div></div></div>
+            <div class="thread">
+              <div class="ev">Dana created this task · Nov 14</div>
+              <div class="names">
+                <div class="g">On this task</div>
+                <div class="p hi"><span>Dana Whitlock</span><small>gave you this</small></div>
+                <div class="g">The office</div>
+                <div class="p"><span>Marcus Hale</span><small>master</small></div>
+                <div class="p"><span>Priya Nair</span><small>office</small></div>
+              </div>
+              <div class="compose">
+                <div class="txt">Not ready until noon. Do I wait or come back? @<span class="caret"></span></div>
+                <div class="btns"><span class="btn at newring">@</span><span class="btn blue push">Post</span><span class="btn green">✓ Complete</span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <p class="say">Typing @ or pressing the button opens the list. <b>The task's own people are on top</b>: who gave it and who else has it. Then the office. Luis is one tap from Dana.</p>
+      </div>
+
+      <div class="col sug">
+        <div class="cap">2 · After the post <span class="tag">new</span></div>
+        <div class="frame"><div class="pad">
+          <div class="tcard">
+            <div class="trow"><div class="box"></div><div><div class="ttl">Pick up the trencher from Lakeside Rental</div><div class="meta">Luis Ortega · due today · tells Dana when done</div></div></div>
+            <div class="thread">
+              <div class="ev">Dana created this task · Nov 14</div>
+              <div class="n"><span class="who">Luis</span> <span class="at">9:12 AM</span> · Not ready until noon. Do I wait or come back? <span class="chip">@Dana Whitlock</span> <span class="wait">waiting on Dana</span></div>
+              <div class="compose"><div class="txt ph">Add a note…</div><div class="btns"><span class="btn at">@</span><span class="btn blue push">Post</span><span class="btn green">✓ Complete</span></div></div>
+            </div>
+          </div>
+          <div class="tcard">
+            <div class="trow"><div class="box"></div><div><div class="ttl">Order the backflow test kit</div><div class="meta">Priya Nair · due Nov 12</div></div></div>
+            <div class="thread">
+              <div class="n"><span class="who">Priya</span> <span class="at">Nov 12</span> · Two brands, $40 apart. Which one? <span class="chip">@Marcus Hale</span> <span class="wait late">waiting on Marcus · 4d</span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="say">The name is a chip and the note says who it waits on. Amber after two working days, as on a job. Anyone who opens the card sees a question is open, the giver and the reviewer included.</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="col sug">
+        <div class="cap">3 · Where it lands for Dana <span class="tag">new</span></div>
+        <div class="frame">
+          <div class="bar"><span>Dashboard</span><span>Jobs</span><span class="on">Checklist<i class="pill newring">1</i></span><span>Messages</span></div>
+          <div class="pad">
+            <div class="sec">
+              <div class="h"><span>Tagged task notes · 1</span><small>Fold</small></div>
+              <div class="tg">
+                <div><span class="door">Pick up the trencher from Lakeside Rental</span> <span class="meta">· Luis Ortega's task · 9:12 AM</span></div>
+                <div class="n"><span class="who">Luis</span> · Not ready until noon. Do I wait or come back? <span class="chip me">@Dana Whitlock</span></div>
+                <div class="compose"><div class="txt ph">Answer Luis…</div><div class="btns"><span class="btn at">@</span><span class="btn blue push">Post</span><span class="btn">No reply needed</span></div></div>
+              </div>
+              <div class="asked"><div><b>You asked</b></div><div>Order the backflow test kit · <span class="wait late">Marcus · no answer yet · 4d</span></div></div>
+            </div>
+            <div class="meta">Today's own tasks follow below, as they do now.</div>
+          </div>
+        </div>
+        <p class="say">A red count above <b>Checklist</b>, and a <b>Tagged task notes</b> section at the top of Today. It is the Pipeline's section, drawn on the Checklist. The task's name is the door to its card. The section draws nothing while nothing waits.</p>
+      </div>
+
+      <div class="col sug">
+        <div class="cap">4 · One line on the Dashboard for both kinds <span class="tag">changed</span></div>
+        <div class="frame"><div class="pad">
+          <div class="needs"><span><b>Tagged notes · 2</b><br>1 on a job, 1 on a task. The oldest is from Thursday.</span><span class="btn blue">Open</span></div>
+          <div class="sec">
+            <div class="h"><span>Tagged notes</span><small>×</small></div>
+            <div class="tg">
+              <div><span class="kind">Job</span><span class="door">Cedar Bluff Lofts</span> <span class="meta">· Thu 3:40 PM · 2d</span></div>
+              <div class="n"><span class="who">Marcus</span> · Did the change order check come in? <span class="chip me">@Dana Whitlock</span></div>
+            </div>
+            <div class="tg">
+              <div><span class="kind">Task</span><span class="door">Pick up the trencher from Lakeside Rental</span> <span class="meta">· 9:12 AM</span></div>
+              <div class="n"><span class="who">Luis</span> · Not ready until noon. Do I wait or come back? <span class="chip me">@Dana Whitlock</span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="say">The Needs you line that exists for job tags counts task tags too, and its window lists both, oldest first. <b>One list of notes that tag me</b>, wherever they were written. Jobs and Checklist each keep a section for their own kind.</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="col sug">
+        <div class="cap">5 · The answer <span class="tag">new</span></div>
+        <div class="frame"><div class="pad">
+          <div class="tcard">
+            <div class="trow"><div class="box"></div><div><div class="ttl">Pick up the trencher from Lakeside Rental</div><div class="meta">Luis Ortega · due today</div></div></div>
+            <div class="thread">
+              <div class="n"><span class="who">Luis</span> <span class="at">9:12 AM</span> · Not ready until noon. Do I wait or come back? <span class="chip">@Dana Whitlock</span> <span class="wait ok">answered by Dana</span></div>
+              <div class="n"><span class="who">Dana</span> <span class="at">9:20 AM</span> · Come back. Go set the cleanouts on Ash Street first.</div>
+            </div>
+          </div>
+        </div></div>
+        <p class="say">Dana's answer is a note on the same task, so the thread reads whole. Any note she types on that task clears her tag. <b>No reply needed</b> clears it with no note. Luis gets a notice and sees it under You asked. A tick is not an answer.</p>
+      </div>
+
+      <div class="col sug">
+        <div class="cap">6 · The reviewer's board <span class="tag">new, small</span></div>
+        <div class="frame"><div class="pad">
+          <div class="sec">
+            <div class="h"><span>Luis Ortega · 3 open</span><small>💬 2</small></div>
+            <div class="tg"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="ttl">Pick up the trencher from Lakeside Rental</span><span><span class="chip">💬 1</span> <span class="wait">waiting on Dana</span></span></div></div>
+            <div class="tg"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="ttl">Camera the main at Ridgeway</span><span class="meta">3d</span></div></div>
+          </div>
+        </div></div>
+        <p class="say">On Review → Outstanding by person, a row with an open tag says who it waits on, beside its note count. A reviewer sees a stuck question without opening every card. The row opens the same note box, so the reviewer can tag from here too.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="phone">
+    <h2>On a phone, and in Task Mode</h2>
+    <p class="lede">Most task notes are typed on a phone by someone in the field. The @ button matters more than typing @, and the list opens above the box so the keyboard does not cover it.</p>
+    <div class="grid three">
+      <div class="col sug">
+        <div class="cap">The notice <span class="tag">new</span></div>
+        <div class="phone sugp"><div class="pad" style="padding-top:38px;padding-bottom:38px">
+          <div class="lock"><span class="app">ClickTooling · now</span><b>Luis tagged you on Pick up the trencher from Lakeside Rental</b><span>Not ready until noon. Do I wait or come back?</span></div>
+          <div class="lock"><span class="app">ClickTooling · 9:20 AM</span><b>Dana answered on Pick up the trencher from Lakeside Rental</b><span>Come back. Go set the cleanouts on Ash Street first.</span></div>
+        </div></div>
+        <p class="say">The same notices as a job tag, with the task's name. Held outside the person's Push me hours. A tap opens the Checklist.</p>
+      </div>
+      <div class="col sug">
+        <div class="cap">Tagged, in Task Mode <span class="tag">new</span></div>
+        <div class="phone sugp">
+          <div class="strip"><span>☑ Task Mode</span><span>Exit</span></div>
+          <div class="bar"><span class="on">Checklist<i class="pill newring">1</i></span></div>
+          <div class="pad">
+            <div class="sec">
+              <div class="h"><span>Tagged task notes · 1</span><small>Fold</small></div>
+              <div class="tg">
+                <div class="door">Sweep the shop bays</div>
+                <div class="n"><span class="who">Dana</span> · Bay 3 has the new lift parts. Leave that pallet. <span class="chip me">@Luis Ortega</span></div>
+                <div class="btns"><span class="btn blue">Answer</span><span class="btn">No reply needed</span></div>
+              </div>
+            </div>
+            <div class="tcard"><div class="trow"><div class="box done"></div><div><div class="ttl">Check the truck fluids</div><div class="meta">done 7:58 AM</div></div></div></div>
+            <div class="tcard"><div class="trow"><div class="box"></div><div><div class="ttl">Sweep the shop bays</div><div class="meta">today</div></div></div></div>
+          </div>
+        </div>
+        <p class="say">Task Mode shows only the Checklist, so the section sits above Today's list and the count rides on the one link. Here it shows every tag that waits on the person, job tags too, since no other page is open to them.</p>
+      </div>
+      <div class="col sug">
+        <div class="cap">Writing one <span class="tag">new</span></div>
+        <div class="phone sugp">
+          <div class="pad">
+            <div class="tcard">
+              <div class="trow"><div class="box"></div><div><div class="ttl">Sweep the shop bays</div><div class="meta">today</div></div></div>
+              <div class="names">
+                <div class="g">On this task</div>
+                <div class="p hi"><span>Dana Whitlock</span><small>gave you this</small></div>
+                <div class="g">The office</div>
+                <div class="p"><span>Marcus Hale</span><small>master</small></div>
+              </div>
+              <div class="compose">
+                <div class="will">Will tag: <span class="chip">@Dana Whitlock ×</span></div>
+                <div class="txt">Out of floor dry. <span class="caret"></span></div>
+                <div class="btns"><span class="btn at newring">@</span><span class="btn blue push">Post</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="kb">Q W E R T Y</div>
+        </div>
+        <p class="say">One press on @, one on the name, then the words. The picked name shows above the box with an × to take it off.</p>
+      </div>
+    </div>
+    <div class="note"><b>Where this meets the Task Mode refresh (#369).</b> Task Mode is the Checklist's own Today page and its own card. #369 redraws both, and its first step leaves room for two pieces of this card: one @ button and the line of picked names in the note box, and one block above Today's list. Both move with whatever the card and the page become. This design does not redraw the task card.</div>
+  </section>
+
+  <section id="cases">
+    <h2>The hard cases, with a pick for each</h2>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:30%">The case</th><th style="width:28%">Pick</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Tagging someone who cannot open the task or its job</td><td class="pick">The list does not offer them.</td><td>A task is open to its own people and the office. The same rule as a job: nobody is tagged on something they cannot open. A task has no job column, so a job's crew cannot be offered by rule. To bring a teammate in, give them the task.</td></tr>
+        <tr><td>A private or HR-flavoured task</td><td class="pick">A tag never widens who can read.</td><td>The list is only people who can already open that task. The office can open every task today, tagged or not. Nothing about a tag changes that.</td></tr>
+        <tr><td>A task that repeats</td><td class="pick">The tag stays with the task, not the day.</td><td>The note stays on the day it was written. The question still waits when Thursday's card comes up, and an answer on any day clears it.</td></tr>
+        <tr><td>A task already done, or waiting on review</td><td class="pick">Tagging still works. Nothing reopens.</td><td>Notes can be added to a done task today. A tag is a question about the task, not a change to it. A sign-off does not clear a tag either.</td></tr>
+        <tr><td>Ticking the task done while a tag waits on you</td><td class="pick">The tick clears nothing.</td><td>One rule everywhere: words or No reply needed. ✓ Post &amp; complete with a typed note does clear it, since a note was typed.</td></tr>
+        <tr><td>The reviewer's Reopen with comment</td><td class="pick">Left as it is.</td><td>It already tells the person, with the reason. It needs no @. The comment counts as a typed note, so it answers a tag that waited on the reviewer.</td></tr>
+        <tr><td>A task that is handed on or forwarded</td><td class="pick">Its tags go with it.</td><td>#369's <i>Hand it on</i> swaps who the task is for and keeps its notes, and the Checklist page's Forward becomes the same press. My Inbox still has an older Forward that copies the task and deletes it. Until that one moves too, its window says a question is open before it goes.</td></tr>
+        <tr><td>The person told when the task is done</td><td class="pick">Offered when they can open the task.</td><td>Found on this look: a person outside the office who is only <i>told when done</i> cannot open that task today. That gap is older than tags and wants its own fix.</td></tr>
+        <tr><td>A task the person has muted</td><td class="pick">The tag's notice still goes.</td><td>Mute quiets a task's reminders. A tag is a teammate asking a question.</td></tr>
+        <tr><td>A tagged person who is away</td><td class="pick">Offered. The notice is held to their hours.</td><td>As on a job. The asker sees amber after two working days and can ask someone else.</td></tr>
+        <tr><td>A person who has left</td><td class="pick">Not offered. An old tag on them reads <i>has left</i>.</td><td>Today a tag on someone who then leaves would wait forever. The fix is a few words in the shared rule, so job tags get it too.</td></tr>
+        <tr><td>Training mode and digital twins</td><td class="pick">Not offered, and cannot tag.</td><td>As on a job. They could neither answer nor press No reply needed.</td></tr>
+        <tr><td>Tagged on a job note and a task note about the same thing</td><td class="pick">Two tags, side by side in one list.</td><td>The app cannot know they are the same question. Each clears on its own answer, and No reply needed is one press.</td></tr>
+        <tr><td>A sub, or an estimator</td><td class="pick">Not offered, as on a job.</td><td>Tagging a sub needs its own design. It waits on both surfaces together.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="shared">
+    <h2>What is shared with job tags, and what is new</h2>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:24%">Piece</th><th style="width:34%">Shared with #363</th><th>New for tasks</th></tr></thead>
+      <tbody>
+        <tr><td>The rules of a tag</td><td>All of it: a pick and never a typed word, the chip, waiting on, amber after two working days, You asked, the seen rule.</td><td>One more group name in the list, <i>On this task</i>.</td></tr>
+        <tr><td>The @ box</td><td>The same list, keys, picked names and @ button.</td><td>It learns to ask a task for its people, where today it asks a job. One note box sits behind Today, Task Mode, Review, Manage, the Dashboard's My Inbox and vehicle tasks.</td></tr>
+        <tr><td>The database</td><td>The job table and its functions are not touched.</td><td>One migration: a sister table for task tags with the same columns, and its own post, list, done and seen functions. A typed note clears a tag by a rule in the database, so every note box answers a tag from the first day.</td></tr>
+        <tr><td>The notice</td><td>One function, <i>notify-note-tag</i>, with the same checks and the same held-outside-hours path.</td><td>It learns a task note. The words name the task where they name the job.</td></tr>
+        <tr><td>The inbox</td><td>One Needs you line and one window for both kinds. One read behind every count.</td><td>The section on Checklist → Today and the count above Checklist.</td></tr>
+        <tr><td>The guide</td><td>The job guide stays.</td><td>A short guide for tasks that links to it.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><b>Why a sister table and not one table for both.</b> A job tag hangs off a job and a job note. A task tag hangs off a task and a task note, and who may read it follows the task. Two small tables keep each one's rules plain, and the live job table is never altered while crews use the app. The app reads both as one list.</div>
+  </section>
+
+  <section id="plan">
+    <h2>The plan, as a short train</h2>
+    <div class="train">
+      <div class="pr"><div class="k">PR A</div><div><p><b>The easier box.</b> The names as big presses above the keyboard, the mark in your words, the task's people before you type, and one Backspace to take a tag off. Client only, no database. It changes the shared box, so job notes get it the day it merges. It can go first or beside PR 1.</p></div><div class="sz">M</div></div>
+      <div class="pr"><div class="k">PR 1</div><div><p><b>The ground, alone.</b> The task-tag table, its functions, the rule that a typed note answers, and one read for both kinds, with a test bed. No screen calls it. Pushed right after it merges, then the types PR.</p></div><div class="sz">M</div></div>
+      <div class="pr"><div class="k">PR 2</div><div><p><b>The @ in the task note boxes.</b> The list, the picked names, the chip and <i>waiting on</i> on a posted note. Today, Task Mode, Review, Manage, the Dashboard's My Inbox and vehicle tasks share one box, so one change reaches them all.</p></div><div class="sz">M</div></div>
+      <div class="pr"><div class="k">PR 3</div><div><p><b>Where it lands.</b> The count above Checklist, the section on Today, the Needs you line and window holding both kinds, the Review row's mark, and the guide. The list opens to the team in this PR, not before.</p></div><div class="sz">M</div></div>
+      <div class="pr"><div class="k">PR 4</div><div><p><b>The notice.</b> <i>notify-note-tag</i> learns task notes. Deployed after it merges, on your word.</p></div><div class="sz">S</div></div>
+      <div class="pr"><div class="k">PR 5</div><div><p><b>The two other boxes.</b> History's note box and the Roadmap task card's get the @ button. Both already answer a tag from PR 1. My Inbox's older Forward says a question is open, unless it has moved to Hand it on by then.</p></div><div class="sz">S</div></div>
+      <div class="pr"><div class="k">Then</div><div><p><b>A walk on a phone</b> as two people: tag, notice, answer, No reply needed, a repeating task, Task Mode. The job side's tagged-person screens have not been walked either, so one walk covers both.</p></div><div class="sz">walk</div></div>
+    </div>
+  </section>
+
+  <section id="calls">
+    <h2>The calls, settled</h2>
+    <p class="lede">On 16 November the owner answered call 0 himself and said he liked the picks for the rest.</p>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:36%">Call</th><th style="width:30%">Settled</th><th>Not taken</th></tr></thead>
+      <tbody>
+        <tr><td><b>0 · A typed name tags by itself</b></td><td class="pick">Settled 16 Nov: no. Only a tap or Enter tags.</td><td>Not taken: a typed name that tags when exactly one person fits.</td></tr>
+        <tr><td><b>1 · Who can be tagged on a task</b></td><td class="pick">Only people who can already open it: its own people and the office.</td><td>Any teammate, and the tag shows them that one task. More reach, but a tag then opens tasks, and a private task is one pick away from a wider audience.</td></tr>
+        <tr><td><b>2 · Where it lands</b></td><td class="pick">A count above Checklist and a section on Today, plus the shared Needs you line.</td><td>Everything in the one existing Jobs section. Less to build, but a Task Mode phone has no Jobs page.</td></tr>
+        <tr><td><b>3 · A plain note with no tag</b></td><td class="pick">Still tells nobody. The task's people are the first names in the list, one tap away.</td><td>A note from the giver always tells the person who has the task. Fewer taps, but every "thanks" becomes a notice.</td></tr>
+        <tr><td><b>4 · Bid and estimate notes</b></td><td class="pick">After tasks, as its own small train.</td><td>Fold bids into this train. They are not tagged today, though the ask reads as if they were.</td></tr>
+        <tr><td><b>5 · The notice on a lock screen</b></td><td class="pick">The note's first words, as on a job.</td><td>The task's name only, if some task notes should not show on a locked phone.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var PEOPLE = [
+    { id: 'dana', name: 'Dana Whitlock', role: 'gave you this', group: 'task' },
+    { id: 'marcus', name: 'Marcus Hale', role: 'master', group: 'office' },
+    { id: 'priya', name: 'Priya Nair', role: 'office', group: 'office' },
+    { id: 'chrisb', name: 'Chris Bell', role: 'office', group: 'office' },
+    { id: 'chrisy', name: 'Chris Bellamy', role: 'office', group: 'office' }
+  ];
+  var TASK = 'Sweep the shop bays';
+  var ta = document.getElementById('try-note');
+  var mirror = document.getElementById('try-mirror');
+  var sugs = document.getElementById('try-sugs');
+  var thread = document.getElementById('try-thread');
+  var gets = document.getElementById('try-gets');
+  if (!ta || !mirror || !sugs || !thread || !gets) return;
+  var picked = [];
+  var dismissed = false;
+  var NAME_CHAR = /[\p{L}\p{N}]/u;
+  var CAND = /^[\p{L}'’-]*(?: [\p{L}'’-]*)*$/u;
+
+  function fold(s) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function mentionIndex(text, name, from) {
+    var m = '@' + name, i = text.indexOf(m, from || 0);
+    while (i >= 0) {
+      var prev = i === 0 ? '' : text[i - 1], next = text[i + m.length] || '';
+      if ((prev === '' || /\s/.test(prev)) && !(next && NAME_CHAR.test(next))) return i;
+      i = text.indexOf(m, i + 1);
+    }
+    return -1;
+  }
+  function live(text) { return picked.filter(function (p) { return mentionIndex(text, p.name) >= 0; }); }
+  function ranges(text) {
+    var out = [];
+    live(text).forEach(function (p) {
+      var i = mentionIndex(text, p.name, 0);
+      while (i >= 0) { out.push([i, i + p.name.length + 1, p]); i = mentionIndex(text, p.name, i + 1); }
+    });
+    return out.sort(function (a, b) { return a[0] - b[0]; });
+  }
+  /* The @ being typed at the caret and who fits it, or null. */
+  function queryAt(text, caret) {
+    var before = text.slice(0, caret), at = before.lastIndexOf('@');
+    if (at < 0 || (at > 0 && !/\s/.test(before[at - 1]))) return null;
+    var cand = before.slice(at + 1);
+    if (!CAND.test(cand)) return null;
+    var lv = live(text);
+    for (var i = 0; i < lv.length; i++) if (cand === lv[i].name || cand.indexOf(lv[i].name + ' ') === 0) return null;
+    var q = fold(cand), spaced = cand.indexOf(' ') >= 0;
+    var rows = PEOPLE.filter(function (p) {
+      if (lv.indexOf(p) >= 0) return false;
+      var n = fold(p.name);
+      if (spaced) return n.indexOf(q) === 0;
+      return q === '' || n.split(/[\s-]+/).some(function (w) { return w.indexOf(q) === 0; });
+    });
+    if (spaced && rows.length === 0) return null;
+    return { start: at, cand: cand, rows: rows };
+  }
+  function setText(text, caret) {
+    ta.value = text;
+    ta.focus();
+    ta.setSelectionRange(caret, caret);
+    render();
+  }
+  function complete(start, end, person) {
+    var text = ta.value, rest = text.slice(end);
+    if (!/^[\s,.?!]/.test(rest)) rest = ' ' + rest;
+    var head = text.slice(0, start) + '@' + person.name;
+    if (picked.indexOf(person) < 0) picked.push(person);
+    setText(head + rest, head.length + 1);
+  }
+  function pick(person) {
+    var caret = ta.selectionStart, text = ta.value, q = queryAt(text, caret);
+    if (q) { complete(q.start, caret, person); return; }
+    var before = text.slice(0, caret), pad = before && !/\s$/.test(before) ? ' ' : '';
+    var head = before + pad + '@' + person.name, rest = text.slice(caret);
+    if (!/^[\s,.?!]/.test(rest)) rest = ' ' + rest;
+    if (picked.indexOf(person) < 0) picked.push(person);
+    setText(head + rest, head.length + 1);
+  }
+  function render() {
+    var text = ta.value, caret = ta.selectionStart;
+    picked = live(text);
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 2 + 'px';
+    var q = dismissed ? null : queryAt(text, caret);
+    var rs = ranges(text);
+    if (q && q.rows.length) rs.push([q.start, caret, null]);
+    rs.sort(function (a, b) { return a[0] - b[0]; });
+    var html = '', at = 0;
+    rs.forEach(function (r) {
+      if (r[0] < at) return;
+      html += esc(text.slice(at, r[0])) + '<mark' + (r[2] ? '' : ' class="pending"') + '>' + esc(text.slice(r[0], r[1])) + '</mark>';
+      at = r[1];
+    });
+    mirror.innerHTML = html + esc(text.slice(at)) + '​';
+    var rows, label;
+    if (q && q.rows.length) { rows = q.rows.slice(0, 6); label = ''; }
+    else { rows = PEOPLE.filter(function (p) { return p.group === 'task' && picked.indexOf(p) < 0; }); label = 'Tag:'; }
+    sugs.innerHTML = '';
+    sugs.hidden = rows.length === 0;
+    if (label && rows.length) { var l = document.createElement('span'); l.className = 'lbl'; l.textContent = label; sugs.appendChild(l); }
+    rows.forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'sugbtn';
+      b.innerHTML = '@' + esc(p.name) + '<small>' + esc(p.role) + '</small>';
+      /* pointerdown, not click: the box keeps its focus and the keyboard stays up. */
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); pick(p); });
+      b.addEventListener('click', function (e) { if (e.detail === 0) pick(p); });
+      sugs.appendChild(b);
+    });
+  }
+  /* Owner's call, 16 Nov: typing never tags. Only a tap or Enter does. */
+  ta.addEventListener('input', function () {
+    dismissed = false;
+    render();
+  });
+  ta.addEventListener('keydown', function (e) {
+    var c = ta.selectionStart, t = ta.value;
+    if (e.key === 'Backspace' && c === ta.selectionEnd) {
+      var lv = live(t);
+      for (var i = 0; i < lv.length; i++) {
+        var m = '@' + lv[i].name, tails = [' ', ''];
+        for (var k = 0; k < tails.length; k++) {
+          var s0 = c - m.length - tails[k].length;
+          if (s0 >= 0 && t.slice(s0, c) === m + tails[k] && mentionIndex(t, lv[i].name, s0) === s0) {
+            e.preventDefault();
+            setText(t.slice(0, s0) + t.slice(c), s0);
+            return;
+          }
+        }
+      }
+    }
+    if (e.key === 'Escape') { dismissed = true; render(); return; }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      var q = dismissed ? null : queryAt(t, c);
+      if (q && q.cand && q.rows.length) pick(q.rows[0]); else post();
+    }
+  });
+  ['keyup', 'click', 'focus'].forEach(function (ev) { ta.addEventListener(ev, render); });
+  document.getElementById('try-at').addEventListener('click', function () {
+    var c = ta.selectionStart, t = ta.value, before = t.slice(0, c);
+    var head = before + (before && !/\s$/.test(before) ? ' ' : '') + '@';
+    dismissed = false;
+    setText(head + t.slice(c), head.length);
+  });
+  function first(name, all) {
+    var f = name.split(' ')[0];
+    return all.filter(function (n) { return n.split(' ')[0] === f; }).length > 1 ? name : f;
+  }
+  function post() {
+    var text = ta.value.replace(/\s+$/, '');
+    if (!text.trim()) return;
+    var rs = ranges(text), html = '', at = 0, who = [];
+    rs.forEach(function (r) {
+      html += esc(text.slice(at, r[0])) + '<span class="chip">' + esc(text.slice(r[0], r[1])) + '</span>';
+      at = r[1];
+      if (who.indexOf(r[2]) < 0) who.push(r[2]);
+    });
+    html += esc(text.slice(at));
+    var names = PEOPLE.map(function (p) { return p.name; });
+    var waiting = who.length ? ' <span class="wait">waiting on ' + esc(who.map(function (p) { return first(p.name, names); }).join(' and ')) + '</span>' : '';
+    var n = document.createElement('div');
+    n.className = 'n'; n.setAttribute('data-try', '1');
+    n.innerHTML = '<span class="who">Luis</span> <span class="at">now</span> · ' + html + waiting;
+    thread.appendChild(n);
+    who.forEach(function (p) {
+      var d = document.createElement('div');
+      d.className = 'lock'; d.setAttribute('data-try', '1');
+      d.innerHTML = '<span class="app">' + esc(p.name) + '’s phone · now</span><b>Luis tagged you on ' + esc(TASK) + '</b><span>' + esc(text.length > 110 ? text.slice(0, 109) + '…' : text) + '</span>';
+      gets.appendChild(d);
+      gets.hidden = false;
+    });
+    picked = [];
+    setText('', 0);
+  }
+  document.getElementById('try-post').addEventListener('click', post);
+  document.getElementById('try-reset').addEventListener('click', function () {
+    Array.prototype.slice.call(document.querySelectorAll('[data-try]')).forEach(function (el) { el.remove(); });
+    gets.hidden = true;
+    picked = [];
+    ta.value = '';
+    dismissed = false;
+    render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

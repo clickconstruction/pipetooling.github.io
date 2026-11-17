@@ -237,6 +237,8 @@ const AFFIDAVIT_ORDER: ReadonlyArray<{ key: string; words: string }> = [
   { key: 'waits:awaiting', words: 'awaiting approval' },
   { key: 'waits:to_draft', words: 'to send for approval' },
   { key: 'waits:needs_property', words: 'needing the property facts' },
+  // Named here (v2.7559) so that several read right: the Board's own words for the bin are *Waiting on its notice*, one paper's.
+  { key: 'waits:needs_notice', words: 'waiting on a notice' },
   { key: 'held', words: 'held' },
   { key: 'filed:served', words: 'filed and served' },
   { key: 'filed:due', words: 'filed, copy to serve' },

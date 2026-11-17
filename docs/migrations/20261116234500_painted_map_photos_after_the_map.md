@@ -53,7 +53,7 @@ The migration first, then the client. The app as it is today keeps working under
   - **While the map stands**: a crew member reads the three photos and removes none; a helper does not read a file under the map he cannot read, though his name is on it, and removes nothing under it, while the helper says that map stands; signed out, nothing is read or removed.
   - **Once the maker throws the map away**: another signed-in person who read the photos a moment before reads and removes none; the maker reads and removes her own upload and neither of her teammate's; nobody adds a file under the id; the uploader reads his two and removes one; the office reads and removes the one left behind, another person's upload; signed out, nothing. Only the photo of the map that stands is left.
 - **The migration is applied a second time** by the bed's script, which must change nothing.
-- **Not run on this Mac.** Docker is not running here and the Mac has no Postgres server, only the client tools. The bed's result is read from CI's `sql-beds` check before the merge.
+- **Not run on this Mac.** Docker refuses a session here, and the bed needs it. A stub run on the Mac's own Postgres 15 server was possible and was not done. The bed passed in CI's `sql-beds` check on #8352.
 
 ## Pushed
 
@@ -63,4 +63,5 @@ Proved on prod, read only:
 
 - **The ledger**: `supabase migration list` and the dev seat's `check_migration_ledger` both show the row.
 - **The helper**: a signed-out call to `painted_map_stands` answers `42501 permission denied for function painted_map_stands`, so the function is there and closed to `anon`.
-- **The two policies' definitions were not read.** This Mac has no door to `pg_policies`: Docker is down, so `supabase db dump` cannot run, and the dashboard's SQL is not a session's to use. What stands in for the read is the bed in CI on the same file, and the walk on the live app that the client's fragment (v2.7473) owes.
+- **The two policies and the helper**, read from prod's catalog on 2026-11-17 with one `SELECT` on `pg_policies` and `pg_proc`: each policy's text is the migration's, the insert policy is untouched, and `painted_map_stands` is `SECURITY DEFINER` with `search_path` pinned to `public`, returns `boolean`, and may be run by `authenticated` and not by `anon`.
+- **The walks** on the live app, in the v2.7473 fragment: as the office, and as a maker who is not office.

@@ -10,6 +10,8 @@
  */
 import type { ChangeAbout, ChangeLine, HistorySource } from './whatChanged'
 import type { MemberBid, MemberJob, Members } from './overview'
+import { samePlanLink } from '../bids/bidPlanSets'
+import { isInlinePicture } from '../bids/bidMailSet'
 
 export type { HistorySource } from './whatChanged'
 
@@ -210,6 +212,20 @@ export type TiedMailRow = {
 /** The columns the page reads for a tied mail. */
 export const TIED_MAIL_COLUMNS = 'id, contact_id, bid_id, jobs_ledger_id, direction, who_user_id, who_text, at, subject, body, gmail_id'
 
+/** A file on a tied mail's line, as the page reads it for the bid's press (punch list #368). The mark's column may be absent on a read. */
+export type TiedMailFileRow = { message_id: string; kind: string; bucket_path: string | null; name?: string | null; bid_plan_set_id?: string | null }
+
+/** The columns the page reads of a tied mail's files, without the kept mark and with it. */
+export const TIED_MAIL_FILE_COLUMNS = 'message_id, kind, bucket_path, name'
+export const TIED_MAIL_FILE_COLUMNS_WITH_MARK = `${TIED_MAIL_FILE_COLUMNS}, bid_plan_set_id`
+
+/** The press on a bid's mail line that carries files it could keep: *Keep its file…*, *Keep its 2 files…*. */
+export function keepFilesDoorWords(ready: number): string {
+  return ready === 1 ? 'Keep its file…' : `Keep its ${ready} files…`
+}
+/** What a bid's mail line says once every file we hold is in a set of plans. */
+export const MAIL_KEPT_MARK = 'kept on the bid'
+
 /** The person a tied mail is with, for the name when the row kept no words and for the door. */
 export type TiedMailContact = { id: string; kind: string; name: string | null; goes_by: string | null }
 
@@ -246,9 +262,22 @@ export function mailLines(
     contacts: readonly TiedMailContact[]
     names: ReadonlyMap<string, string>
     threadHref: ((contactKind: string | null, contactId: string, messageId: string) => string) | null
+    /** The files on the bids' mail, for the press that keeps them as a set of plans; absent on a reader with none. */
+    files?: ReadonlyArray<TiedMailFileRow>
+    /** A bid's short label for that press: *B482*. */
+    bidShort?: (id: string) => string | null
   },
 ): ChangeLine[] {
   const contactById = new Map(ctx.contacts.map((c) => [c.id, c]))
+  // A mail's files by its line: how many we hold that are in no set yet, and how many already are. A link is no file, and a signature's picture is not one to keep (v2.7556).
+  const filesByMail = new Map<string, { ready: number; kept: number }>()
+  for (const f of ctx.files ?? []) {
+    if (f.kind !== 'file') continue
+    const n = filesByMail.get(f.message_id) ?? { ready: 0, kept: 0 }
+    if (f.bid_plan_set_id) n.kept += 1
+    else if (f.bucket_path && !isInlinePicture({ name: f.name ?? '' })) n.ready += 1
+    filesByMail.set(f.message_id, n)
+  }
   const seenIds = new Set<string>()
   const seenGmail = new Set<string>()
   const out: ChangeLine[] = []
@@ -275,7 +304,40 @@ export function mailLines(
       waitingDays: null,
       withTime: true,
       ...(ctx.threadHref ? { threadHref: ctx.threadHref(contact?.kind ?? null, row.contact_id, row.id) } : {}),
+      ...(row.bid_id && fileCounts(filesByMail, row.id) ? { mail: { messageId: row.id, bidId: row.bid_id, bidLabel: ctx.bidShort?.(row.bid_id) ?? 'the bid', ...fileCounts(filesByMail, row.id)! } } : {}),
     })
+  }
+  return out
+}
+
+/** A mail's file counts when it has a file to keep or one kept; null for a mail with neither. */
+function fileCounts(byMail: ReadonlyMap<string, { ready: number; kept: number }>, messageId: string): { ready: number; kept: number } | null {
+  const n = byMail.get(messageId)
+  return n && n.ready + n.kept > 0 ? n : null
+}
+
+// ---- a set of plans added to a bid -----------------------------------------------------------
+
+/** A row of `bid_plan_sets` as the History line reads it. */
+export type BidSetLineRow = { id: string; bid_id: string; name: string; link: string; created_at: string; created_by: string | null; file_name?: string | null; file_count?: number | null }
+
+/**
+ * A line for each set of plans added to one of the site's bids (punch list #368): *New set · B482 · Addendum 2*, at
+ * the time it was added, by whoever added it, saying *from a mail* when its files came that way. The set the robot
+ * reads is left out: its filing already draws as *New plans* or *Plans again* from the bid's own ledger
+ * (`buildWhatChanged`), and one filing is one line. A set on a bid the page does not hold draws nothing.
+ */
+export function setLines(
+  rows: ReadonlyArray<BidSetLineRow>,
+  ctx: { bid: (id: string) => ChangeAbout | null; robotLink: (bidId: string) => string | null; fromMail: ReadonlySet<string>; names: ReadonlyMap<string, string> },
+): ChangeLine[] {
+  const out: ChangeLine[] = []
+  for (const row of rows) {
+    const about = ctx.bid(row.bid_id)
+    if (!about || samePlanLink(row.link, ctx.robotLink(row.bid_id))) continue
+    const files = row.file_count && row.file_count > 1 ? `${row.file_count} PDFs` : (row.file_name ?? '').trim()
+    const detail = [row.name.trim(), ctx.fromMail.has(row.id) ? 'from a mail' : null, files || null].filter((x): x is string => !!x).join(' · ')
+    out.push({ id: `set:${row.id}`, at: row.created_at, kind: 'plans', verb: 'New set', about, detail, by: row.created_by ? ctx.names.get(row.created_by) ?? null : null, waitingDays: null })
   }
   return out
 }

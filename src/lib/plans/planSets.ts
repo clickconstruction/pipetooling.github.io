@@ -49,6 +49,8 @@ export type PlanSetRow = {
   file_name: string | null
   file_size: number | null
   file_count: number | null
+  /** How many sheets the set has, typed by a person (punch list #367); not `file_count`, the files in its Drive folder. Absent on a read older than the column. */
+  sheet_count?: number | null
   checked_at: string | null
   check_note: string | null
   /** The papers train (migration 20261102010000): a paper we are waiting on, the lane and id of the question it raised. */
@@ -217,7 +219,7 @@ export function otherPlansNotice(args: { developmentName: string | null; myPartI
   return `${site} has plans on ${others.length === 1 ? 'another part' : `${others.length} other parts`} of the site: ${list}. A set on another part may touch this job.`
 }
 
-export type NewSetDraft = { name: string; kind: PlanSetKind; source: PlanSetSource; dated: string; memo: string; link: string; changes?: string }
+export type NewSetDraft = { name: string; kind: PlanSetKind; source: PlanSetSource; dated: string; memo: string; link: string; changes?: string; /** The sheet count as typed; empty or absent when nobody counted. */ sheets?: string }
 
 export function emptyNewSetDraft(kind: PlanSetKind = 'issued'): NewSetDraft {
   return { name: '', kind, source: kind === 'as_built' || kind === 'assembled' ? 'ours' : 'gc', dated: '', memo: '', link: '' }
@@ -228,7 +230,26 @@ export function newSetDraftProblem(d: NewSetDraft): string | null {
   if (!d.name.trim()) return 'Give the set a name.'
   if (d.link.trim() && !/^https?:\/\//i.test(d.link.trim())) return 'Paste the set’s link, starting with https://, or leave it empty for now.'
   if (d.dated && !/^\d{4}-\d{2}-\d{2}$/.test(d.dated)) return 'The date on the sheets reads as a day, like 2026-10-14.'
+  if ((d.sheets ?? '').trim() && sheetCountOf(d.sheets) == null) return SHEET_COUNT_PROBLEM
   return null
+}
+
+/** The most sheets a set can hold, as the database's check has it. */
+export const SHEET_COUNT_MAX = 100000
+export const SHEET_COUNT_PROBLEM = 'The sheet count is a whole number, like 64.'
+
+/** A typed sheet count as a number; null for nothing typed or for words that are not a whole number from 0 to 100,000. */
+export function sheetCountOf(typed: string | null | undefined): number | null {
+  const t = (typed ?? '').trim().replace(/,/g, '')
+  if (!/^\d{1,6}$/.test(t)) return null
+  const n = Number(t)
+  return n <= SHEET_COUNT_MAX ? n : null
+}
+
+/** *64 sheets*, *1 sheet*; empty when nobody counted. */
+export function sheetCountWords(n: number | null | undefined): string {
+  if (n == null) return ''
+  return `${n.toLocaleString('en-US')} ${n === 1 ? 'sheet' : 'sheets'}`
 }
 
 /** The name a new set starts with: *Addendum 2* for a numbered kind, else the kind, with a 2 when the name is taken. */

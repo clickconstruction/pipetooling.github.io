@@ -5,7 +5,10 @@
  * or the customers the sender may be, or a new customer made by the press), then `start_bid_from_message` and the Bid
  * Board on the bid. **Put it on a bid…** opens the window's job picker over the open bids alone; the pick ties the
  * line through the Tied to row's own writer and writes one line on the bid's log, so the bid's history says it came in
- * from here too. **Open the bid** opens the bid the line is on.
+ * from here too. **Open the bid** opens the bid the line is on. **Keep its files on the bid…** (punch list #368) is
+ * `BidMailSetDoor`, which reads the line's files itself: the press, its form under the tools, or the *kept* mark.
+ * **Keep this mail as a paper on JP…** (PR 4) is `MailPaperDoor` on a Pipeline job's line, on its own row under the
+ * tools, since its form needs the width.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
@@ -20,6 +23,8 @@ import type { JobTile } from '../../lib/messages/jobTiles'
 import type { ThreadMessage } from '../../lib/messages/thread'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { BidMailSetDoor } from '../bids/BidMailSetDoor'
+import { MailPaperDoor } from '../papers/MailPaperDoor'
 import { Btn, input } from '../gc/gcUi'
 import { JobPickerWindow } from '../gc/messages/JobPickerWindow'
 import { useOpenThread } from '../gc/messages/openThread'
@@ -106,6 +111,28 @@ export function EmailViewerActions({ message, invitation, presses, io, me, say, 
         <Btn title={VIEWER_PRESS_WORDS.open_bid.tip} onClick={() => openBid(bidRef.id)}>
           {VIEWER_PRESS_WORDS.open_bid.label}
         </Btn>
+      )}
+      {presses.includes('keep_on_bid') && bidRef && bidRef.kind === 'bid' && (
+        <BidMailSetDoor
+          bidId={bidRef.id}
+          bidLabel={(message.jobId ? thread?.tiles[message.jobId]?.num : null) || 'the bid'}
+          messageId={message.id}
+          mail={{ subject: message.subject, who: message.who, at: message.at }}
+          say={say}
+        />
+      )}
+      {presses.includes('keep_paper') && bidRef && bidRef.kind === 'pipeline' && (
+        <div data-keep-paper style={{ order: 1, flexBasis: '100%' }}>
+          <MailPaperDoor
+            jobId={bidRef.id}
+            jobLabel={(message.jobId ? thread?.tiles[message.jobId]?.num : null) || 'the job'}
+            subject={message.subject ?? ''}
+            senderAddress={message.direction === 'in' ? (contact?.channels.find((ch) => ch.kind === 'email')?.value ?? null) : null}
+            at={message.at}
+            messageId={message.id}
+            mailFileCount={(message.files ?? []).filter((f) => f.kept !== 'link').length}
+          />
+        </div>
       )}
       {(problem || (panel && contact)) && (
         // Its own row under the tools, after Copy, Print and Share, the change order panel's place.

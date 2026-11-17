@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunMailLink, lienRunNothingToClaim, lienRunPill, lienRunRowLine, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
+import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunMailLink, lienRunNothingToClaim, lienRunRowLine, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
 import type { LienNoticeSignature } from './lienNoticeSignature'
 
@@ -212,19 +212,6 @@ describe('the words around the checklist', () => {
     expect(lienRunRowLine(true, true, false)).toBe('signed · not mailed')
     expect(lienRunRowLine(true, 'not_needed', false)).toBe('printed · not mailed')
     expect(lienRunRowLine(true, true, true)).toBe('mailed · ready to record')
-  })
-
-  it('the desk’s pill reads as the press it is, with its count and a meter (v2.7448)', () => {
-    // Only printed ones are left: the press is the mail numbers, and the mailed count follows it.
-    expect(lienRunPill({ toPrint: 0, printed: 4, mailed: 3 })).toEqual({ words: 'Enter mail numbers · 4 · 3 of 7 mailed', mailedPct: 43, printedPct: 57, total: 7 })
-    expect(lienRunPill({ toPrint: 0, printed: 4, mailed: 0 }).words).toBe('Enter mail numbers · 4')
-    // Anything still to print: the press is Print and mail, with every notice not yet mailed in its count.
-    expect(lienRunPill({ toPrint: 7, printed: 0, mailed: 0 })).toEqual({ words: 'Print and mail 7', mailedPct: 0, printedPct: 0, total: 7 })
-    expect(lienRunPill({ toPrint: 2, printed: 5, mailed: 0 }).words).toBe('Print and mail 7')
-    expect(lienRunPill({ toPrint: 15, printed: 0, mailed: 3 }).words).toBe('Print and mail 15 · 3 of 18 mailed')
-    // All mailed: no press is left, and the count alone stands.
-    expect(lienRunPill({ toPrint: 0, printed: 0, mailed: 5 }).words).toBe('5 of 5 mailed')
-    expect(lienRunPill({ toPrint: 0, printed: 0, mailed: 0 })).toEqual({ words: '', mailedPct: 0, printedPct: 0, total: 0 })
   })
 
   it('a tick’s day is short', () => {

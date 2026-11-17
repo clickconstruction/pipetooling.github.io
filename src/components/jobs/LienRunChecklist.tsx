@@ -42,6 +42,11 @@ export type LienRunChecklistProps = {
    * row it leaves. Absent = the paid rows fold, with no press.
    */
   paid?: { readyIds: ReadonlyArray<string>; heldWhy: ReadonlyMap<string, string>; onClose: (itemIds: string[]) => void }
+  /**
+   * Un-print one notice (v2.7481): the Printed tick of these rows is a press that asks the host to put that notice
+   * back in Approved · to print. The host confirms first. Absent, a ticked Printed is words alone.
+   */
+  unprint?: { ids: ReadonlyArray<string>; onAsk: (row: LienRunRow) => void }
   /** The part each notice is in (`lienRunParts().partOf`). Absent, each row's own facts say. */
   partOf?: ReadonlyMap<string, LienRunPartKey>
   /** Who the waiting notices wait on, for that group's head. */
@@ -73,7 +78,7 @@ const tickBtn = (kind: 'open' | 'primary', dead: boolean) =>
 
 const field = { font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', width: '100%', minWidth: 0 } as const
 
-export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, onOpenSign, onTracking, paneFor, besideBox, focusMailItemId, paid, mailedCopies, partOf, leaderName, step = null }: LienRunChecklistProps) {
+export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, onOpenSign, onTracking, paneFor, besideBox, focusMailItemId, paid, mailedCopies, unprint, partOf, leaderName, step = null }: LienRunChecklistProps) {
   // A head pressed by hand: its group stays as the person left it, whatever step the run moves to.
   const [folds, setFolds] = useState<Partial<Record<LienRunPartKey, boolean>>>({})
   // While the cursor is in a number box the rows stay in the groups they were in: a row that moved to *Ready to record*
@@ -117,7 +122,11 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
     return (
       <div key={r.itemId} className="lienRunCheckRow" data-testid={`run-check-${r.itemId}`} data-waits={r.waitsOn ?? 'none'} data-held={r.held ? 'yes' : 'no'}>
         <div className="lienRunCheckHead">
-          <b>{r.label}</b>
+          <b>
+            {r.label}
+            {/* Two jobs at one address read as two at that address (v2.7489): the street, when the name does not say it. */}
+            {r.street ? <span className="lienRunStreet" data-testid={`run-check-street-${r.itemId}`}> · {r.street}</span> : null}
+          </b>
           <span className="lienRunCheckAmt">{formatUsdNoCents(r.amount)}</span>
           <span className="lienRunCheckWho">{who}</span>
           {r.held ? (
@@ -142,7 +151,24 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
         <div className="lienRunCheckTicks" role="group" aria-label={`${r.label} — the three ticks`}>
           <div className="lienRunCheckTick" data-tick="printed" data-on={printedOk ? 'yes' : 'no'}>
             <span className="lienRunCheckTickName">Printed</span>
-            {r.printed ? (
+            {r.printed && unprint?.ids.includes(r.itemId) ? (
+              // The tick is a press (v2.7481): a row marked printed by mistake goes back on its own, after a confirm.
+              <button
+                type="button"
+                className="lienRunCheckDone lienRunCheckUndo"
+                onClick={() => unprint.onAsk(r)}
+                disabled={busy}
+                aria-label={`${r.label}: printed ${lienRunTickDay(r.printed.at)}${r.printed.by ? ` by ${r.printed.by}` : ''}. Undo…`}
+                title={`Printed ${lienSignatureWhen(r.printed.at).day} at ${lienSignatureWhen(r.printed.at).clock} CT${r.printed.by ? ` by ${r.printed.by}` : ''}. Not printed, or not going out? Press to put this notice back in Approved · to print. It asks first.`}
+                data-testid={`run-check-unprint-${r.itemId}`}
+              >
+                <span data-testid={`run-check-printed-${r.itemId}`}>
+                  ✓ {lienRunTickDay(r.printed.at)}
+                  {r.printed.by ? ` · ${r.printed.by}` : ''}
+                </span>
+                <span className="lienRunCheckUndoWord"> · Undo…</span>
+              </button>
+            ) : r.printed ? (
               <span className="lienRunCheckDone" title={`Printed ${lienSignatureWhen(r.printed.at).day} at ${lienSignatureWhen(r.printed.at).clock} CT${r.printed.by ? ` by ${r.printed.by}` : ''}`} data-testid={`run-check-printed-${r.itemId}`}>
                 ✓ {lienRunTickDay(r.printed.at)}
                 {r.printed.by ? ` · ${r.printed.by}` : ''}

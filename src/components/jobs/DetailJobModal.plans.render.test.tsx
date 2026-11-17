@@ -49,6 +49,7 @@ vi.mock('../../lib/plans/planSetsIo', async () => {
     updateMemo: never,
     updateChanges: never,
     updateLink: never,
+    updateSheetCount: never,
   }
   return { ...actual, supabaseJobPlansIo: () => io }
 })
