@@ -44,7 +44,7 @@ vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: 
 // The job's stickers (punch list #329, PR 3): none, until a test hands the marks beside a box's name (PR 9).
 const NONE_RESERVED = vi.hoisted(() => ({ count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '' }))
 const stuck = vi.hoisted(() => ({ marks: new Map<string, Array<{ number: number; boxName?: string | null }>>(), blank: 0, reserved: { count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '' } }))
-vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map([...stuck.marks].map(([id, list]) => [id, list.map((m) => m.number)])), marksByBox: stuck.marks, blank: stuck.blank, reserved: stuck.reserved, loaded: true, refresh: () => {} }) }))
+vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map([...stuck.marks].map(([id, list]) => [id, list.map((m) => m.number)])), marksByBox: stuck.marks, blank: stuck.blank, reserved: stuck.reserved, toPrint: [], loaded: true, refresh: () => {} }) }))
 // These are on boxes (PR 10) reads the site's boxes and blank stickers when its sheet opens.
 vi.mock('../../lib/materials/stickerRunsIo', () => ({ fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: ['A3', 'A4'] })), fetchStickerRuns: vi.fn(async () => []) }))
 // Every job with a box (punch list #304): the tab asks for it only for Every job or an empty job.

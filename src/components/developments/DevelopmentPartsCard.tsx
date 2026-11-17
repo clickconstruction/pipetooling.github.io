@@ -10,7 +10,7 @@
  * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set". **Change the
  * link** on a set (v2.7464) moves it to another Drive link on its own row, through `PlanSetLinkEditor`.
  */
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { JobChip } from './JobChip'
 import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, linkPressWords, newSetDraftProblem, setLineWords, shortDayWords, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
@@ -49,6 +49,15 @@ const td: CSSProperties = { padding: '6px 8px', verticalAlign: 'top', borderBott
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
 const input: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.45rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', minWidth: '12rem' }
 
+/** The new-set form as it opens on a part: an issued set for a part with none, else an addendum, named after the sets it has. */
+function newSetFormFor(row: SitePartRow): { partId: string; draft: NewSetDraft } {
+  const kind = row.current ? 'addendum' : 'issued'
+  const draft = emptyNewSetDraft(kind)
+  const existing = [...row.older, ...(row.current ? [row.current] : []), ...row.asBuilts]
+  draft.name = defaultSetName(kind, existing)
+  return { partId: row.part.id, draft }
+}
+
 export function DevelopmentPartsCard({
   view,
   names,
@@ -59,6 +68,7 @@ export function DevelopmentPartsCard({
   openQuestions,
   writes,
   papers,
+  startSetOn,
 }: {
   /** Null while the parts read. */
   view: SitePlansView | null
@@ -71,6 +81,8 @@ export function DevelopmentPartsCard({
   askOnRecord?: PlansAsk | null
   openQuestions?: () => void
   writes?: SitePlansWrites
+  /** Open the new-set form on this part: the By date view's *+ New set* lands here (punch list #367). A new `nonce` asks again. */
+  startSetOn?: { partId: string; nonce: number } | null
 }) {
   const [openChip, setOpenChip] = useState<'noSet' | 'noPart' | null>(null)
   const [openOlder, setOpenOlder] = useState<Record<string, boolean>>({})
@@ -90,6 +102,16 @@ export function DevelopmentPartsCard({
   // The jobs ticked for a part and the part picked, under the *N jobs follow no plans yet* chip.
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
   const [partForJobs, setPartForJobs] = useState<string>('')
+  // A press elsewhere on the page asked for the form on a part: open it once the parts are in, once for each ask.
+  const startHandled = useRef<number | null>(null)
+  useEffect(() => {
+    if (!startSetOn || startHandled.current === startSetOn.nonce || !view || !canWrite || !writes) return
+    const row = view.parts.find((r) => r.part.id === startSetOn.partId)
+    if (!row) return
+    startHandled.current = startSetOn.nonce
+    setProblem(null)
+    setForm(newSetFormFor(row))
+  }, [startSetOn, view, canWrite, writes])
 
   if (!view) return <p style={{ ...muted, margin: 0 }}>Reading the plans…</p>
 
@@ -132,12 +154,8 @@ export function DevelopmentPartsCard({
   const linkEditor = (s: PlanSetRow, isCurrent: boolean, style?: CSSProperties) =>
     canWrite && writes && linkFor === s.id ? <PlanSetLinkEditor set={s} isCurrent={isCurrent} busy={busy} onSave={saveLink} onClose={() => setLinkFor(null)} style={{ marginTop: 4, ...style }} /> : null
   const openSetForm = (row: SitePartRow) => {
-    const kind = row.current ? 'addendum' : 'issued'
-    const draft = emptyNewSetDraft(kind)
-    const existing = [...row.older, ...(row.current ? [row.current] : []), ...row.asBuilts]
-    draft.name = defaultSetName(kind, existing)
     setProblem(null)
-    setForm({ partId: row.part.id, draft })
+    setForm(newSetFormFor(row))
   }
   const addSet = (row: SitePartRow, draft: NewSetDraft, makeCurrent: boolean) => {
     const p = newSetDraftProblem(draft)

@@ -549,6 +549,10 @@ verify_jwt = false
 [functions.send-lien-release-email]
 verify_jwt = false
 
+# Sub papers to a sub, PDFs attached (punch list #350): Resend email; JWT, the office roles and the roster's own address checked in the function.
+[functions.send-sub-paper-email]
+verify_jwt = false
+
 [functions.send-lien-filing-email]
 verify_jwt = false
 

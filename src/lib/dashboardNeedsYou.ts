@@ -164,6 +164,7 @@ export type NeedsYouItem = {
     | 'away-back-day'
     | 'job-account-missing'
     | 'job-account-window'
+    | 'supply-payments-how'
     | 'vehicle-records-missing'
     | 'customer-waiting'
     | 'price-matrix-ready'
@@ -309,6 +310,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-account-missing': 60,
   // Billing accuracy tier: a charge the house would still move onto the owner's account, and the window closes on a date.
   'job-account-window': 40,
+  // Hygiene tier: the bills already read paid; what is missing is how the money was sent (v2.7469).
+  'supply-payments-how': 60,
   // Hygiene tier: records to enter, though Review prices a company truck from them (v2.4700).
   'vehicle-records-missing': 60,
   'price-matrix-ready': 40,
@@ -720,6 +723,12 @@ export type NeedsYouInputs = {
    */
   supplyMoveWindowEnabled?: boolean
   supplyMoveWindow?: { count: number; dollars: number; asked: number; soonestDueYmd: string | null } | null
+  /**
+   * The finish-later list (v2.7469, the owner's call of 2026-11-16): supply house payments made by a Mark paid, or
+   * recorded with Say later, that still need how they were paid. Office set, both hosts; null at zero (no line).
+   */
+  supplyPaymentsToFinishEnabled?: boolean
+  supplyPaymentsToFinish?: { count: number } | null
   /** v2.4700 — dev, assistant and controller: active vehicles with no insurance, registration or service on file. */
   vehicleRecordGapsEnabled?: boolean
   /** `useVehicleRecordGapsNudge`: most missing first; null while loading or when none is missing. */
@@ -1966,6 +1975,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         (asked > 0 ? ` ${asked} asked, awaiting the house.` : ''),
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Work the list',
+    })
+  }
+
+  if (inputs.supplyPaymentsToFinishEnabled && (inputs.supplyPaymentsToFinish?.count ?? 0) > 0) {
+    const n = inputs.supplyPaymentsToFinish!.count
+    items.push({
+      key: 'supply-payments-how',
+      severity: 'gray',
+      kicker: 'Supply houses',
+      title: n === 1 ? 'One supply house payment needs how it was paid' : `${n} supply house payments need how they were paid`,
+      detail: 'Each was marked paid with the day and the amount. Say card, ACH or check, with its number.',
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: n === 1 ? 'Finish it' : 'Finish them',
     })
   }
 

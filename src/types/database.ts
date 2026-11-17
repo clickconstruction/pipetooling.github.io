@@ -21774,6 +21774,10 @@ export type Database = {
       job_lien_filings: {
         Row: {
           amount: number
+          applied_by_name: string
+          applied_from: string | null
+          applied_from_label: string
+          applied_reason: string
           by_hand: boolean
           county: string
           created_at: string
@@ -21797,6 +21801,10 @@ export type Database = {
         }
         Insert: {
           amount: number
+          applied_by_name?: string
+          applied_from?: string | null
+          applied_from_label?: string
+          applied_reason?: string
           by_hand?: boolean
           county?: string
           created_at?: string
@@ -21820,6 +21828,10 @@ export type Database = {
         }
         Update: {
           amount?: number
+          applied_by_name?: string
+          applied_from?: string | null
+          applied_from_label?: string
+          applied_reason?: string
           by_hand?: boolean
           county?: string
           created_at?: string
@@ -21842,6 +21854,13 @@ export type Database = {
           voided_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "job_lien_filings_applied_from_fkey"
+            columns: ["applied_from"]
+            isOneToOne: false
+            referencedRelation: "job_lien_filings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_lien_filings_created_by_fkey"
             columns: ["created_by"]
