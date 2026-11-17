@@ -39,9 +39,14 @@ vi.mock('../../lib/materials/stickerRunsIo', () => ({
   mintStickerRun: vi.fn(),
   fetchStickerRuns: vi.fn(async () => []),
   fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: [] })),
+  markStickersPrinted: vi.fn(async () => undefined),
 }))
 
 import PrintStickersModal from './PrintStickersModal'
+import { markStickersPrinted } from '../../lib/materials/stickerRunsIo'
+
+/** The printed mark's write (punch list #373), the io module's own, mocked above. */
+const mark = vi.mocked(markStickersPrinted)
 
 function mintedRun(request: StickerRunRequest): MintedRun {
   const stickers = Array.from({ length: request.count }, (_, i) => ({ id: `s-${101 + i}`, number: 101 + i, code: `4F2A9C${String(i).padStart(2, '0')}`, boxName: request.names?.[i] ?? null }))
@@ -62,6 +67,8 @@ beforeEach(() => {
   usb.refreshed = 0
   usb.refreshFails = false
   usb.print.mockImplementation(async (labels: unknown[], onLabel?: (n: number) => void) => { labels.forEach((_, i) => onLabel?.(i + 1)) })
+  mark.mockReset()
+  mark.mockResolvedValue(undefined)
 })
 afterEach(() => {
   cleanup()
@@ -233,5 +240,117 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     fireEvent.change(from, { target: { value: 's-102' } })
     fireEvent.change(screen.getByTestId('stickers-range-to'), { target: { value: 's-103' } })
     expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 stickers, G79 to G80')
+  })
+
+  describe('the printed mark (punch list #373)', () => {
+    const ids = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => `s-${from + i}`)
+
+    it('a run that prints whole marks every sticker, tells the page, and offers no take-back', async () => {
+      usb.granted = true
+      const onPrinted = vi.fn()
+      renderWithProviders(<PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role="dev" onClose={() => {}} mint={async (r) => mintedRun(r)} print={() => {}} onPrinted={onPrinted} />)
+      await waitFor(() => expect(screen.getByTestId('stickers-printer-line').textContent).toContain('ready'))
+      fireEvent.click(screen.getByRole('button', { name: '30' }))
+      fireEvent.click(screen.getByTestId('stickers-copies-more'))
+      fireEvent.click(screen.getByTestId('stickers-print'))
+      await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('30 stickers printed.'))
+      await waitFor(() => expect(onPrinted).toHaveBeenCalledTimes(1))
+      expect(mark).toHaveBeenCalledTimes(1)
+      expect(mark.mock.calls[0]![0]).toEqual(ids(101, 130))
+      expect(mark.mock.calls[0]![1]).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+      // over USB the app knows what went: no line asking whether they printed
+      expect(screen.queryByTestId('stickers-marked')).toBeNull()
+      expect(screen.queryByTestId('stickers-mark-slip')).toBeNull()
+    })
+
+    it('a run of 30 stopped after 2 marks 2: only the stickers whose every copy came out', async () => {
+      usb.granted = true
+      let go: () => void = () => {}
+      const held = new Promise<void>((r) => { go = r })
+      usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void, stopAsked?: () => boolean) => {
+        onLabel?.(1); onLabel?.(2); onLabel?.(3)
+        await held
+        if (stopAsked?.()) { onLabel?.(4); return }
+      })
+      setup()
+      await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: '30' }))
+      fireEvent.click(screen.getByTestId('stickers-copies-more'))
+      fireEvent.click(screen.getByTestId('stickers-print'))
+      await waitFor(() => expect(screen.getByTestId('stickers-stop')).toBeTruthy())
+      // nothing is marked while the run is still going
+      expect(mark).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByTestId('stickers-stop'))
+      go()
+      await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('2 of 30 stickers printed, then you stopped the run.'))
+      await waitFor(() => expect(mark).toHaveBeenCalledTimes(1))
+      expect(mark.mock.calls[0]![0]).toEqual(['s-101', 's-102'])
+    })
+
+    it('a printer that fails marks what went whole: three strips of two each is one sticker', async () => {
+      usb.granted = true
+      usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => { onLabel?.(1); onLabel?.(2); onLabel?.(3); throw new Error('The printer’s cover is open.') })
+      setup()
+      await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: '30' }))
+      fireEvent.click(screen.getByTestId('stickers-copies-more'))
+      fireEvent.click(screen.getByTestId('stickers-print'))
+      await waitFor(() => expect(screen.getByTestId('stickers-slip').textContent).toContain('1 of 30 stickers printed, then the printer stopped'))
+      await waitFor(() => expect(mark).toHaveBeenCalledTimes(1))
+      expect(mark.mock.calls[0]![0]).toEqual(['s-101'])
+    })
+
+    it('a printer that fails before a sticker is whole marks nothing', async () => {
+      usb.granted = true
+      usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => { onLabel?.(1); throw new Error('The printer’s cover is open.') })
+      setup()
+      await waitFor(() => expect(screen.getByTestId('stickers-print')).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: '30' }))
+      fireEvent.click(screen.getByTestId('stickers-copies-more'))
+      fireEvent.click(screen.getByTestId('stickers-print'))
+      await waitFor(() => expect(screen.getByTestId('stickers-slip').textContent).toContain('0 of 30 stickers printed'))
+      expect(mark).not.toHaveBeenCalled()
+    })
+
+    it('a mark the database refuses says why in a quiet line, and what printed still stands', async () => {
+      usb.granted = true
+      mark.mockRejectedValue({ message: 'Read-only (training) mode: changes are blocked.', code: 'P0001' })
+      const onPrinted = vi.fn()
+      renderWithProviders(<PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role="dev" onClose={() => {}} mint={async (r) => mintedRun(r)} print={() => {}} onPrinted={onPrinted} />)
+      await waitFor(() => expect(screen.getByTestId('stickers-printer-line').textContent).toContain('ready'))
+      fireEvent.click(screen.getByRole('button', { name: '30' }))
+      fireEvent.click(screen.getByTestId('stickers-print'))
+      await waitFor(() => expect(screen.getByTestId('stickers-mark-slip').textContent).toBe('The app did not record that these printed: Read-only (training) mode: changes are blocked.'))
+      expect(screen.getByTestId('stickers-sent').textContent).toBe('30 stickers printed.')
+      // a quiet line, never the red one: nothing went wrong with the print
+      expect(screen.getByTestId('stickers-mark-slip').getAttribute('role')).toBe('status')
+      expect(screen.queryByTestId('stickers-slip')).toBeNull()
+      expect(onPrinted).not.toHaveBeenCalled()
+    })
+
+    it('the test strip marks nothing', async () => {
+      usb.granted = true
+      setup()
+      await waitFor(() => expect(screen.getByTestId('stickers-test-strip')).toBeTruthy())
+      await waitFor(() => expect(screen.getByTestId('stickers-printer-line').textContent).toContain('ready'))
+      fireEvent.click(screen.getByTestId('stickers-test-strip'))
+      await waitFor(() => expect(usb.print).toHaveBeenCalledTimes(1))
+      await waitFor(() => expect(screen.queryByTestId('stickers-progress')).toBeNull())
+      expect(mark).not.toHaveBeenCalled()
+    })
+
+    it('a run opened on the stickers that have not printed yet marks those, and does not call the print “again”', async () => {
+      usb.granted = true
+      const minted = mintedRun({ jobId: 'job-juniper', count: 4, copies: 1, names: ['G93', 'G94', 'G95', 'G96'] })
+      const stickers = minted.stickers.map((s, i) => (i < 2 ? { ...s, printedAt: '2026-11-17T15:05:00Z' } : s))
+      renderWithProviders(<PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role="dev" run={{ run: minted.run, stickers, printing: stickers.slice(2), title: 'Not printed yet, G95 to G96', first: true }} onClose={() => {}} mint={vi.fn()} print={() => {}} />)
+      await waitFor(() => expect(screen.getByTestId('stickers-printer-line').textContent).toContain('ready'))
+      expect(screen.getByTestId('stickers-again-words').textContent).toBe('Printing them reserves nothing new. Each sticker keeps the link it has.')
+      expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 stickers, G95 to G96')
+      fireEvent.click(screen.getByTestId('stickers-print'))
+      await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('2 stickers printed.'))
+      await waitFor(() => expect(mark).toHaveBeenCalledTimes(1))
+      expect(mark.mock.calls[0]![0]).toEqual(['s-103', 's-104'])
+    })
   })
 })

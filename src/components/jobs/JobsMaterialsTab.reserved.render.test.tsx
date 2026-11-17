@@ -16,9 +16,9 @@ import { reservedRunsToPrint, type ReservedRunPrint } from '../../lib/materials/
 
 type Box = { id: string; jobId: string; label: string; kind: string; where: string; said?: string; locationId: null; lat: null; lng: null; retiredAt: string | null; createdAt: string }
 const box = (id: string, label: string, kind = 'cage'): Box => ({ id, jobId: 'ja', label, kind, where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z' })
-const NONE = { count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '' }
+const NONE = { count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '', mark: { printed: 0, waiting: 0, unknown: 0 } }
 const data = vi.hoisted(() => ({ boxes: [] as Box[], retired: [] as string[], unretired: [] as string[] }))
-const held = vi.hoisted(() => ({ reserved: { count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '' }, toPrint: [] as ReservedRunPrint[], mint: vi.fn() }))
+const held = vi.hoisted(() => ({ reserved: { count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '', mark: { printed: 0, waiting: 0, unknown: 0 } }, toPrint: [] as ReservedRunPrint[], mint: vi.fn() }))
 const movements: never[] = []
 
 vi.mock('../../lib/materials/onSiteStore', async (importOriginal) => ({
@@ -85,10 +85,10 @@ describe('The job’s reserved stickers', () => {
   it('one run is said by its names, who printed it and when, and These are on boxes opens on those names', async () => {
     data.boxes = [box('zz1', 'ZZ1'), box('un', 'Unsorted', 'unsorted')]
     const names = Array.from({ length: 9 }, (_, i) => `ZZ${2 + i}`)
-    held.reserved = { count: 9, runs: 1, span: 'ZZ2 to ZZ10', names, anyNamed: true, printedByName: 'Dana', printedAt: '2026-11-16T18:00:00Z' }
+    held.reserved = { count: 9, runs: 1, span: 'ZZ2 to ZZ10', names, anyNamed: true, printedByName: 'Dana', printedAt: '2026-11-16T18:00:00Z', mark: { printed: 0, waiting: 0, unknown: 9 } }
     open()
     const line = screen.getByTestId('materials-stickers-blank')
-    expect(line.querySelector('span')!.textContent).toBe('9 stickers reserved and not on a box yet, ZZ2 to ZZ10. Printed Nov 16 by Dana. Scan one on the phone to say which box it is on.')
+    expect(line.querySelector('span')!.textContent).toBe('9 stickers reserved and not on a box yet, ZZ2 to ZZ10. Reserved Nov 16 by Dana. Scan one on the phone to say which box it is on.')
     expect(line.textContent).not.toMatch(/blank/i)
     // the press that fills them in sits beside Runs, and opens the form on the reserved names
     expect([...line.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['These are on boxes', 'Runs'])
@@ -109,7 +109,7 @@ describe('The job’s reserved stickers', () => {
   it('the line carries the press that prints the reserved stickers, and it opens the stickers window on their run (v2.7523)', async () => {
     data.boxes = [box('zz1', 'ZZ1')]
     const names = Array.from({ length: 9 }, (_, i) => `ZZ${2 + i}`)
-    held.reserved = { count: 9, runs: 1, span: 'ZZ2 to ZZ10', names, anyNamed: true, printedByName: 'Dana', printedAt: '2026-11-16T18:00:00Z' }
+    held.reserved = { count: 9, runs: 1, span: 'ZZ2 to ZZ10', names, anyNamed: true, printedByName: 'Dana', printedAt: '2026-11-16T18:00:00Z', mark: { printed: 0, waiting: 0, unknown: 9 } }
     held.toPrint = reservedRunsToPrint([runOf('r1', 2, 9)])
     open('assistant')
     const line = screen.getByTestId('materials-stickers-blank')
@@ -130,7 +130,7 @@ describe('The job’s reserved stickers', () => {
     held.toPrint = reservedRunsToPrint([runOf('r2', 11, 3, 0, 'Marcus', '2026-11-15T18:00:00Z'), runOf('r1', 1, 6, 2)])
     open('assistant')
     expect(screen.getAllByTestId('materials-stickers-print-press').map((b) => b.textContent)).toEqual(['Print the 4 reserved stickers, ZZ3 to ZZ6', 'Print the 3 reserved stickers, ZZ11 to ZZ13'])
-    expect(screen.getAllByTestId('materials-stickers-print-by').map((b) => b.textContent)).toEqual(['Printed Nov 16 by Dana', 'Printed Nov 15 by Marcus'])
+    expect(screen.getAllByTestId('materials-stickers-print-by').map((b) => b.textContent)).toEqual(['Reserved Nov 16 by Dana', 'Reserved Nov 15 by Marcus'])
   })
 
   it('a role that may not print a run sees the press dead with its reason, never missing', () => {
@@ -150,5 +150,25 @@ describe('The job’s reserved stickers', () => {
     data.boxes = [box('zz1', 'ZZ1')]
     open()
     expect(screen.queryByTestId('materials-stickers-blank')).toBeNull()
+  })
+
+  it('the line says what printed, and a run stopped part way has a press for only what never came out (punch list #373)', async () => {
+    data.boxes = [box('zz1', 'ZZ1')]
+    const names = Array.from({ length: 3 }, (_, i) => `ZZ${2 + i}`)
+    /** A run of three made after the mark began, stopped after one: ZZ2 came out. */
+    const stopped = runOf('r1', 2, 3, 0, 'Dana', '2026-11-17T18:00:00Z')
+    const marked = { run: stopped.run, stickers: stopped.stickers.map((s, i) => (i === 0 ? { ...s, printedAt: '2026-11-17T18:05:00Z' } : s)) }
+    held.reserved = { count: 3, runs: 1, span: 'ZZ2 to ZZ4', names, anyNamed: true, printedByName: 'Dana', printedAt: '2026-11-17T18:00:00Z', mark: { printed: 1, waiting: 2, unknown: 0 } }
+    held.toPrint = reservedRunsToPrint([marked])
+    open('assistant')
+    const line = screen.getByTestId('materials-stickers-blank')
+    expect(line.querySelector('span')!.textContent).toBe('3 stickers reserved and not on a box yet, ZZ2 to ZZ4. 1 printed, 2 not printed yet. Reserved Nov 17 by Dana. Scan one on the phone to say which box it is on.')
+    // the press for what never came out sits before the one that prints every reserved sticker
+    expect([...screen.getByTestId('materials-stickers-print').querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Print the 2 not printed yet, ZZ3 to ZZ4', 'Print the 3 reserved stickers, ZZ2 to ZZ4'])
+    fireEvent.click(screen.getByTestId('materials-stickers-print-waiting'))
+    await screen.findByRole('dialog', { name: 'Not printed yet, ZZ3 to ZZ4' })
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 stickers, ZZ3 to ZZ4')
+    expect(screen.getByTestId('stickers-again-words').textContent).toBe('Printing them reserves nothing new. Each sticker keeps the link it has.')
+    expect(held.mint).not.toHaveBeenCalled()
   })
 })

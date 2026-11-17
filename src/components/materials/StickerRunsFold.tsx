@@ -7,12 +7,17 @@
  * `stickerRun.ts` and `stickers.ts`. Nothing here when the job has no run. A named run with stickers still blank has
  * a third press, **These are on boxes** (design section 10, PR 10, v2.7406): it hands the run's blank names up, and
  * the page opens the form that puts a range of them on their boxes with no scan (`StickersOnBoxes.tsx`).
+ *
+ * Since v2.7567 (punch list #373) a row says what printed of its reserved stickers, *40 printed, 18 not printed
+ * yet*, from each sticker's own mark (`stickerMark.ts`), and its by-line reads *Reserved Nov 16 by Dana*: the run's
+ * day is the day it was made.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { blankStickersOf, printRestLabel, reprintLabel, runCountsOf, runsFoldWords, stickerRunByLine, stickerRunTitle, type MintedSticker, type StickerRun } from '../../lib/materials/stickerRun'
 import { fetchStickerRuns, type StickerRunWithStickers } from '../../lib/materials/stickerRunsIo'
 import { ON_BOXES_LABEL } from '../../lib/materials/stickersOnBoxes'
+import { markCountsWords, reservedMarkOf } from '../../lib/materials/stickerMark'
 import { namesSpanWords } from '../../lib/materials/stickerNames'
 import { onBoxesWords, unusedStickersWords } from '../../lib/materials/stickers'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
@@ -75,6 +80,8 @@ export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, on
           /** *3 stickers not used yet, G79 to G81*: which, by name, when the run has names. A run with none says how many. */
           const unusedHead = unusedStickersWords(counts)
           const unused = unusedHead && blankNames.length > 0 && run.names ? `${unusedHead}, ${namesSpanWords(blankNames, run.names)}` : unusedHead
+          /** What printed of the reserved ones (punch list #373): empty for a run the app was not watching. */
+          const printed = markCountsWords(reservedMarkOf([{ run, stickers }]))
           return (
             <div key={run.id} style={row} data-testid="sticker-run-row">
               <div style={{ display: 'grid', gap: '0.15rem', minWidth: 0, flex: '1 1 260px' }}>
@@ -83,11 +90,12 @@ export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, on
                 <span style={muted} data-testid="sticker-run-counts">
                   {onBoxesWords(counts)}{unused ? ` · ${unused}` : ''}{counts.lost > 0 ? ` · ${counts.lost} marked lost` : ''}
                 </span>
+                {printed ? <span style={muted} data-testid="sticker-run-printed">{printed}</span> : null}
               </div>
               <span style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {onPlaceRange && blankNames.length > 0 ? <button type="button" style={press} title="Put a range of this run's stickers on their boxes in one press, with no scan" onClick={() => onPlaceRange(run, blankNames)} data-testid="sticker-run-on-boxes">{ON_BOXES_LABEL}</button> : null}
                 {restIsOwn ? <button type="button" style={press} onClick={() => onPrint(run, blank, printRestLabel(blank).replace(/^Print the rest, ?/, 'The rest, '))} data-testid="sticker-run-rest">{printRestLabel(blank)}</button> : null}
-                <button type="button" style={press} disabled={stickers.length === 0} onClick={() => onPrint(run, stickers.map(({ id, number, code, boxName }) => ({ id, number, code, boxName })), title)} data-testid="sticker-run-reprint">{reprintLabel(stickers.length)}</button>
+                <button type="button" style={press} disabled={stickers.length === 0} onClick={() => onPrint(run, stickers.map(({ id, number, code, boxName, printedAt }) => ({ id, number, code, boxName, ...(printedAt ? { printedAt } : {}) })), title)} data-testid="sticker-run-reprint">{reprintLabel(stickers.length)}</button>
               </span>
             </div>
           )

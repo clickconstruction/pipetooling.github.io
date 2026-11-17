@@ -16,6 +16,7 @@
 import { nameTakenBy, type SiteBox } from './boxName'
 import { compareLabels, type Container, type ContainerLine, type Place } from './onSite'
 import type { OnSiteFindJob } from './onSiteFind'
+import { markCountsWords, NO_MARK, reservedMarkOf, type ReservedMark } from './stickerMark'
 import { namesSpanWords, nextTwinName } from './stickerNames'
 import { placingVerdict, stickerFactsOf, stickerNameIs, type StickerCountRow, type StickerFacts } from './stickers'
 
@@ -254,7 +255,7 @@ export function blankCountOf(runs: ReadonlyArray<{ stickers: ReadonlyArray<Stick
 }
 
 /**
- * The job's reserved stickers as its screens say them (v2.7487): which, who printed them and when, so a reserved
+ * The job's reserved stickers as its screens say them (v2.7487): which, who reserved them and when, and since v2.7567 what printed of them, so a reserved
  * place is seen on the job and not only inside the Runs fold. One run holding them all is named, *G92 to G200*, with
  * its printer and day; more than one run is said by how many runs, and the fold has the rest.
  */
@@ -269,14 +270,16 @@ export type ReservedOfJob = {
   names: string[]
   /** Whether any reserved sticker has a name: These are on boxes can place it with no scan. */
   anyNamed: boolean
-  /** Who printed the one run, and when. Empty with more than one run. */
+  /** Who reserved the one run, and when. Empty with more than one run. */
   printedByName: string
   printedAt: string
+  /** The same stickers by the printed mark (punch list #373): seen to print, not printed yet, and those of a run the app was not watching. */
+  mark: ReservedMark
 }
 
-export const NO_RESERVED: ReservedOfJob = { count: 0, runs: 0, span: '', names: [], anyNamed: false, printedByName: '', printedAt: '' }
+export const NO_RESERVED: ReservedOfJob = { count: 0, runs: 0, span: '', names: [], anyNamed: false, printedByName: '', printedAt: '', mark: NO_MARK }
 
-type ReservedRun = { run: { names?: ReadonlyArray<string> | null; printedByName?: string; printedAt?: string }; stickers: ReadonlyArray<StickerCountRow & { boxName?: string | null }> }
+type ReservedRun = { run: { names?: ReadonlyArray<string> | null; printedByName?: string; printedAt?: string }; stickers: ReadonlyArray<StickerCountRow & { boxName?: string | null; printedAt?: string | null }> }
 
 export function reservedOfJob(runs: ReadonlyArray<ReservedRun>): ReservedOfJob {
   const holding = runs
@@ -285,11 +288,12 @@ export function reservedOfJob(runs: ReadonlyArray<ReservedRun>): ReservedOfJob {
   const count = holding.reduce((n, r) => n + r.left.length, 0)
   if (count === 0) return NO_RESERVED
   const anyNamed = holding.some((r) => r.left.some((s) => s.boxName))
-  if (holding.length > 1) return { ...NO_RESERVED, count, runs: holding.length, anyNamed }
+  const mark = reservedMarkOf(runs)
+  if (holding.length > 1) return { ...NO_RESERVED, count, runs: holding.length, anyNamed, mark }
   const one = holding[0]!
   const names = one.left.every((s) => s.boxName) ? one.left.map((s) => s.boxName as string) : []
   const span = names.length > 0 ? namesSpanWords(names, one.run.names ?? names) : ''
-  return { count, runs: 1, span, names, anyNamed, printedByName: (one.run.printedByName ?? '').trim(), printedAt: one.run.printedAt ?? '' }
+  return { count, runs: 1, span, names, anyNamed, printedByName: (one.run.printedByName ?? '').trim(), printedAt: one.run.printedAt ?? '', mark }
 }
 
 /**
@@ -303,16 +307,37 @@ export function notYetOnBoxWords(n: number, of?: Pick<ReservedOfJob, 'span' | 'r
   return of && of.runs > 1 ? `${head}, in ${of.runs} runs` : head
 }
 
-/** *Printed Nov 16 by Dana.*: who reserved the job's one run of them and when, after the count. Empty with more than one run or no day. `day` is the printed day as words. */
+/**
+ * *Reserved Nov 16 by Dana.*: who reserved the job's one run of them and when, after the count. Empty with more than
+ * one run or no day. `day` is the day the run was made, as words. It read *Printed* until v2.7567: the day is the
+ * reserving, and whether a strip came out is the mark's to say (`reservedMarkWords`).
+ */
 export function reservedByWords(of: Pick<ReservedOfJob, 'runs' | 'printedByName'>, day: string): string {
   if (of.runs !== 1 || !day) return ''
-  return of.printedByName ? `Printed ${day} by ${of.printedByName}.` : `Printed ${day}.`
+  return of.printedByName ? `Reserved ${day} by ${of.printedByName}.` : `Reserved ${day}.`
 }
 
-/** The Print future stickers window's line, before a new run: *This job has 12 stickers reserved and not on a box yet.* Empty at none. */
-export function jobBlankWords(n: number): string {
+/** After the count of a job's reserved stickers (punch list #373): *None printed yet.*, *40 printed, 18 not printed yet.* or *All printed.* Empty where the app was not watching. */
+export function reservedMarkWords(of: Pick<ReservedOfJob, 'mark'>): string {
+  return markCountsWords(of.mark)
+}
+
+/**
+ * A job's reserved stickers in one sentence run, as its line and its card say them: the count, what printed, then who
+ * reserved them and when. *58 stickers reserved and not on a box yet, G93 to G150. 40 printed, 18 not printed yet.
+ * Reserved Nov 17 by Dana.* Empty at none.
+ */
+export function reservedLineWords(of: ReservedOfJob, day: string): string {
+  const head = notYetOnBoxWords(of.count, of)
+  if (!head) return ''
+  return [`${head}.`, reservedMarkWords(of), reservedByWords(of, day)].filter(Boolean).join(' ')
+}
+
+/** The Print future stickers window's line, before a new run: *This job has 12 stickers reserved and not on a box yet. None printed yet.* Empty at none. */
+export function jobBlankWords(n: number, mark: ReservedMark = NO_MARK): string {
   const head = notYetOnBoxWords(n)
-  return head ? `This job has ${head}.` : ''
+  if (!head) return ''
+  return [`This job has ${head}.`, markCountsWords(mark)].filter(Boolean).join(' ')
 }
 
 /** The phone's line under the boxes, with what to do about it. */

@@ -12,7 +12,7 @@ import { fetchSiteStickerNames, type SiteStickerNames, type StickerRunWithSticke
 
 const db = supabase as unknown as SupabaseClient
 
-type StickerRow = { id: string; run_id: string; number: number; code: string | null; box_name: string | null; container_id: string | null; lost_at: string | null }
+type StickerRow = { id: string; run_id: string; number: number; code: string | null; box_name: string | null; container_id: string | null; lost_at: string | null; printed_at: string | null }
 
 /** Every listed job's runs with their stickers, by the job's id: two reads for the whole list, the stickers paged. A job with no run is left out. */
 export async function fetchStickerRunsOfJobs(jobIds: ReadonlyArray<string>): Promise<Map<string, StickerRunWithStickers[]>> {
@@ -23,7 +23,7 @@ export async function fetchStickerRunsOfJobs(jobIds: ReadonlyArray<string>): Pro
   if (runsRead.error) throw runsRead.error
   const runs = ((runsRead.data ?? []) as unknown[]).map(stickerRunOf).filter((r): r is StickerRun => r != null && r.jobId != null)
   if (runs.length === 0) return out
-  const rows = (await fetchAllRowsChunkedIn(runs.map((r) => r.id), (chunk, from, to) => db.from('box_stickers').select('id, run_id, number, code, box_name, container_id, lost_at').in('run_id', chunk).order('number').range(from, to), 'the listed jobs’ stickers', { parallel: 4 })) as unknown as StickerRow[]
+  const rows = (await fetchAllRowsChunkedIn(runs.map((r) => r.id), (chunk, from, to) => db.from('box_stickers').select('id, run_id, number, code, box_name, container_id, lost_at, printed_at').in('run_id', chunk).order('number').range(from, to), 'the listed jobs’ stickers', { parallel: 4 })) as unknown as StickerRow[]
   const byRun = new Map<string, StickerRowOfRun[]>()
   for (const raw of rows) {
     const minted = mintedStickerOf(raw)

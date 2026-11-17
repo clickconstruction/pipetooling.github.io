@@ -35,6 +35,14 @@
  * Since v2.7553 (the owner, 2026-11-16: *I need to be able to choose how many copies … for each of these I need to
  * print 5*) a run on the page has **Copies of each** too, under *From* and *to*. It opens on the count the run was
  * made with and changes only this print: the run's own count and the device's remembered count are left alone.
+ *
+ * Since v2.7567 (punch list #373; the owner, 2026-11-16: *add Recording that a run's strips came out*) the window
+ * writes each sticker's printed mark (`stickerMark.ts`, `markStickersPrinted`). Over USB it knows what went: after
+ * every print, a stop and a failure included, the stickers whose every copy came out are marked, and one part way
+ * through its copies is not. Through the print window it cannot know, so the stickers are marked when that window
+ * closes, and a line says so with the press that takes the mark back off. A test strip marks nothing. A mark that
+ * could not be written says why in a quiet line and never hides what printed. `onPrinted` tells the page, so the
+ * job's line and the Runs fold read again.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -81,9 +89,10 @@ import {
   type StickerRunRequest,
   type StickerStrip,
 } from '../../lib/materials/stickerRun'
-import { fetchSiteStickerNames, fetchStickerRuns, mintStickerRun, type SiteStickerNames, type StickerRunWithStickers } from '../../lib/materials/stickerRunsIo'
+import { fetchSiteStickerNames, fetchStickerRuns, markStickersPrinted, mintStickerRun, type SiteStickerNames, type StickerRunWithStickers } from '../../lib/materials/stickerRunsIo'
 import { blankCountOf, jobBlankWords } from '../../lib/materials/stickerPlace'
-import { PRINT_RUN_AGAIN_WORDS, reservedRunsToPrint, reservedRunToPrint, restKeptWords, type ReservedRunPrint } from '../../lib/materials/reservedPrint'
+import { MARK_NOT_KEPT, NO_MARK, didNotPrintAsk, markNotKeptWords, newlyMarkedStickerIds, reservedMarkOf, stickerPrinted, stickersMarkedWords, stickersUnmarkedWords, stickersWhoseStripsWent, takeStickerMarkOffLabel, type ReservedMark } from '../../lib/materials/stickerMark'
+import { PRINT_RUN_AGAIN_WORDS, PRINT_RUN_FIRST_WORDS, reservedRunsToPrint, restKeptWords, type ReservedRunPrint } from '../../lib/materials/reservedPrint'
 import { LABEL_RANGE_FROM, LABEL_RANGE_TO, leftAfterRangePick, rangeCountWords, tickedRange } from '../../lib/materials/labelPick'
 import { TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_NAME_SMALL_RATIO, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, longestNameChars, repeatEach, tapeLayout, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSetupSteps, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { tapeAddressLines, tapeStripLines } from '../../lib/materials/tapeStrip'
@@ -105,9 +114,10 @@ const amberNote: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderC
 /**
  * A run already minted, handed in by the fold or by a reserved line's press: the window prints it and mints nothing.
  * `printing` is the stickers the press starts on, when they are not the whole of `stickers` (the reserved ones of a
- * run that has some on boxes): *From* and *to* still reach every sticker handed in.
+ * run that has some on boxes): *From* and *to* still reach every sticker handed in. `first` says the press opens on
+ * stickers that have not printed yet (v2.7567), so the window does not call the print *again*.
  */
-export type StickerRunToPrint = { run: StickerRun; stickers: MintedSticker[]; title: string; printing?: MintedSticker[] }
+export type StickerRunToPrint = { run: StickerRun; stickers: MintedSticker[]; title: string; printing?: MintedSticker[]; first?: boolean }
 
 type Props = {
   jobId: string
@@ -117,8 +127,12 @@ type Props = {
   onClose: () => void
   /** Told once a run is minted, so the page's Runs fold reads again. */
   onMinted?: (minted: MintedRun) => void
+  /** Told once a printed mark is written or taken back off (v2.7567), so the job's line and the Runs fold read again. */
+  onPrinted?: () => void
   /** The mint and the print itself; a test hands spies. */
   mint?: (request: StickerRunRequest) => Promise<MintedRun>
+  /** The printed mark's write (`markStickersPrinted`): a time when the strips came out, null to take it back off. A test hands a spy. */
+  mark?: (ids: ReadonlyArray<string>, at: string | null) => Promise<void>
   /** The job's runs with their stickers, for the count of those not yet on a box (v2.7298) and the presses that print them (v2.7523); a test hands a spy. */
   jobRuns?: (jobId: string) => Promise<StickerRunWithStickers[]>
   /** The site's boxes and its blank named stickers, for the Names field (v2.7391); a test hands a spy. */
@@ -126,7 +140,7 @@ type Props = {
   print?: () => void
 }
 
-export default function PrintStickersModal({ jobId, jobLabel, role, run: given = null, onClose, onMinted, mint = mintStickerRun, jobRuns = fetchStickerRuns, siteNames = fetchSiteStickerNames, print = () => window.print() }: Props) {
+export default function PrintStickersModal({ jobId, jobLabel, role, run: given = null, onClose, onMinted, onPrinted, mint = mintStickerRun, mark, jobRuns = fetchStickerRuns, siteNames = fetchSiteStickerNames, print = () => window.print() }: Props) {
   /** The run the window was opened on, or turned to by a reserved line's press: its title is the window's. */
   const [opened, setOpened] = useState<StickerRunToPrint | null>(given)
   const [countText, setCountText] = useState<string>(String(STICKER_COUNT_PRESETS[3]))
@@ -149,10 +163,12 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const [blank, setBlank] = useState<number>(0)
   /** The same stickers by their runs (v2.7523): each run that still holds some has a press that prints them, minting nothing. */
   const [reservedRuns, setReservedRuns] = useState<ReservedRunPrint[]>([])
+  /** And by the printed mark (v2.7567): what of them the app has seen come out of the printer. */
+  const [reservedMark, setReservedMark] = useState<ReservedMark>(NO_MARK)
   useEffect(() => {
     if (given) return
     let live = true
-    jobRuns(jobId).then((runs) => { if (live) { setBlank(blankCountOf(runs)); setReservedRuns(reservedRunsToPrint(runs)) } }).catch(() => { if (live) { setBlank(0); setReservedRuns([]) } })
+    jobRuns(jobId).then((runs) => { if (live) { setBlank(blankCountOf(runs)); setReservedRuns(reservedRunsToPrint(runs)); setReservedMark(reservedMarkOf(runs)) } }).catch(() => { if (live) { setBlank(0); setReservedRuns([]); setReservedMark(NO_MARK) } })
     return () => { live = false }
   }, [given, jobId, jobRuns])
   /**
@@ -291,6 +307,54 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const strips: StickerStrip[] = useMemo(() => printing.map(stickerStrip), [printing])
   const dots = ptouchTapeDots(width) ?? 128
 
+  /**
+   * The printed mark (v2.7567). `markedRef` is the stickers known to carry one: those handed in with it, and those
+   * this window marked. The line under a print-window run counts the stickers that had no mark before, and its press
+   * takes those back off for a print that did not come out. Over USB the app knows what went, so there is no such
+   * press. A mark that could not be written leaves a quiet line with its reason.
+   */
+  const markedRef = useRef(new Set<string>((given?.stickers ?? []).filter(stickerPrinted).map((s) => s.id)))
+  const [markNote, setMarkNote] = useState<{ ids: string[]; off: boolean } | null>(null)
+  const [markSlip, setMarkSlip] = useState<string | null>(null)
+  /** The write, read when a mark is made and not at every render. */
+  const writeMark = (ids: ReadonlyArray<string>, at: string | null) => (mark ?? markStickersPrinted)(ids, at)
+  const markPrinted = async (ids: ReadonlyArray<string>, offerTakeBack: boolean) => {
+    if (ids.length === 0) return
+    const fresh = newlyMarkedStickerIds(ids, markedRef.current)
+    try {
+      await writeMark(ids, new Date().toISOString())
+      for (const id of ids) markedRef.current.add(id)
+      setMarkSlip(null)
+      setMarkNote(offerTakeBack && fresh.length > 0 ? { ids: fresh, off: false } : null)
+      onPrinted?.()
+    } catch (e) {
+      setMarkNote(null)
+      setMarkSlip(markNotKeptWords(formatErrorMessage(e, MARK_NOT_KEPT)))
+    }
+  }
+  const takeMarkOff = async () => {
+    if (!markNote || markNote.off) return
+    const ids = markNote.ids
+    try {
+      await writeMark(ids, null)
+      for (const id of ids) markedRef.current.delete(id)
+      setMarkSlip(null)
+      setMarkNote({ ids, off: true })
+      onPrinted?.()
+    } catch (e) {
+      setMarkSlip(markNotKeptWords(formatErrorMessage(e, MARK_NOT_KEPT)))
+    }
+  }
+  /** The stickers the print window was opened on: marked once that window closes, since the app cannot see the tape. */
+  const windowRun = useRef<string[] | null>(null)
+  const markPrintedRef = useRef(markPrinted)
+  markPrintedRef.current = markPrinted
+  useEffect(() => {
+    const done = () => { const ids = windowRun.current; windowRun.current = null; if (ids) void markPrintedRef.current(ids, true) }
+    window.addEventListener('afterprint', done)
+    return () => window.removeEventListener('afterprint', done)
+  }, [])
+
   /** The strips, or the test strip alone, sent to the printer one at a time. A stop keeps the rest for the next press. */
   const printDirect = async (toPrint: StickerStrip[], test: boolean) => {
     if (!link) return
@@ -303,6 +367,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     setProgress({ done: 0, total: labels.length, test })
     stopRef.current = false
     setStopping(false)
+    setMarkNote(null)
+    setMarkSlip(null)
     let done = 0
     try {
       await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length, test }) }, () => stopRef.current)
@@ -332,6 +398,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
       setUsbBusy(null)
       setProgress(null)
       setStopping(false)
+      // The mark, whatever ended the run: only the stickers whose every copy came out. A test strip marks nothing.
+      if (!test) void markPrinted(stickersWhoseStripsWent(toPrint, done, copies), false)
     }
   }
   /**
@@ -354,6 +422,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     const today = todayYmdInAppTz()
     writeTapePrintedDay(today)
     setTapeDay(today)
+    windowRun.current = printing.map((s) => s.id)
     print()
     // The strips are what is printed; `drawnVersion` is the tick that says another is ready, `pendingTick` that a run was minted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,6 +437,9 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     setIsRest(false)
     setSlip(null)
     setSentWords(null)
+    markedRef.current = new Set(r.stickers.filter(stickerPrinted).map((s) => s.id))
+    setMarkNote(null)
+    setMarkSlip(null)
   }
   const runMint = async (anyway = false) => {
     if (!verdict.ok || rangeRefused || site === undefined || minting || printerHolds) return
@@ -378,6 +450,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     setSentWords(null)
     try {
       const got = await mint(verdict.request)
+      markedRef.current = new Set()
       setMinted(got)
       setPrinting(got.stickers)
       pendingRef.current = true
@@ -396,6 +469,9 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     writeTapePrintedDay(today)
     setTapeDay(today)
     setSentWords(null)
+    setMarkNote(null)
+    setMarkSlip(null)
+    windowRun.current = printing.map((s) => s.id)
     print()
   }
   const runTest = () => {
@@ -480,7 +556,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
               {/* A run that is made is reserved (the owner, 2026-11-16): said over the strips, which carry each sticker's own link. */}
               {stage === 'run' ? <span style={{ ...muted, display: 'block' }} data-testid="stickers-reserved-words">{STICKERS_RESERVED_WORDS}</span> : null}
               {/* A run already made, opened to print (v2.7523): said plainly, so nobody reads the press as a new reservation. */}
-              {stage === 'run' && opened ? <span style={{ ...muted, display: 'block' }} data-testid="stickers-again-words">{PRINT_RUN_AGAIN_WORDS}</span> : null}
+              {stage === 'run' && opened ? <span style={{ ...muted, display: 'block' }} data-testid="stickers-again-words">{opened.first ? PRINT_RUN_FIRST_WORDS : PRINT_RUN_AGAIN_WORDS}</span> : null}
             </div>
             <button type="button" style={{ ...btn, flex: '0 0 auto' }} onClick={onClose}>Close</button>
           </div>
@@ -568,10 +644,10 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
               {/* What the press holds (the owner, 2026-11-16): the window never prints a sticker with no link, and says so before the press. */}
               <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-strong)' }} data-testid="stickers-reserve-words">{stickerReserveWords(askNames != null)}</p>
               <p style={{ ...muted, margin: 0 }} data-testid="stickers-goes-on">
-                New boxes made from these stickers go on {jobLabel}.{blank > 0 ? <> <span data-testid="stickers-blank-count">{jobBlankWords(blank)}</span></> : null}
+                New boxes made from these stickers go on {jobLabel}.{blank > 0 ? <> <span data-testid="stickers-blank-count">{jobBlankWords(blank, reservedMark)}</span></> : null}
               </p>
               {/* The reserved stickers print from here too (v2.7523): one press a run, which turns this window to that run and mints nothing. */}
-              <ReservedPrintPresses runs={reservedRuns} role={role} busy={minting || usbBusy != null} onPrint={(r) => openRun(reservedRunToPrint(r))} tid="stickers-print-reserved" pressStyle={btn} />
+              <ReservedPrintPresses runs={reservedRuns} role={role} busy={minting || usbBusy != null} onPrint={openRun} tid="stickers-print-reserved" pressStyle={btn} />
               {!verdict.ok && !rangeRefused ? <p role="note" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-red-700)', fontWeight: 600 }} data-testid="stickers-refusal">{verdict.words}</p> : null}
             </div>
           ) : null}
@@ -608,6 +684,15 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
             </div>
           ) : null}
           {sentWords && !progress ? <div role="status" style={{ color: 'var(--text-green-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-sent">{sentWords}</div> : null}
+          {markNote && !progress ? (
+            /* The printed mark after a print window (v2.7567): what was just marked, and the way back for a print that did not come out. */
+            <div role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', color: 'var(--text-700)', fontSize: '0.85rem' }} data-testid="stickers-marked">
+              <span>{markNote.off ? stickersUnmarkedWords(markNote.ids.length) : `${stickersMarkedWords(markNote.ids.length)} ${didNotPrintAsk(markNote.ids.length)}`}</span>
+              {markNote.off ? null : <button type="button" style={quietLink} onClick={() => void takeMarkOff()} data-testid="stickers-mark-off">{takeStickerMarkOffLabel(markNote.ids.length)}</button>}
+            </div>
+          ) : null}
+          {/* A mark that could not be written: said quietly with its reason, under what printed, which it never hides. */}
+          {markSlip && !progress ? <div role="status" style={muted} data-testid="stickers-mark-slip">{markSlip}</div> : null}
           {/* A run that stopped part way (v2.7523): the rest is not lost with this window, and the line says where it prints later. */}
           {stage === 'run' && isRest && printing.length > 0 && !progress ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem' }} data-testid="stickers-rest-kept">{restKeptWords(printing.length)}</div> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>

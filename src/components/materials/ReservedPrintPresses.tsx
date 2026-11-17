@@ -7,21 +7,25 @@
  *
  * Under the presses one line says so, since **Print future stickers** beside them reserves new ones. A role the
  * database does not let print a run (`canMintStickers`) sees the presses dead with the reason in its place, never
- * missing. With more than one run each press says who printed its run and when. The words are `reservedPrint.ts`.
+ * missing. With more than one run each press says who reserved its run and when. The words are `reservedPrint.ts`.
+ *
+ * Since v2.7567 (punch list #373) a run whose reserved stickers are part printed has a second press before the first,
+ * *Print the 18 not printed yet, G133 to G150*: the ones the app has not seen come out of the printer.
  */
 import type { CSSProperties } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { PRINT_RESERVED_SAME_WORDS, reservedRunByLine, type ReservedRunPrint } from '../../lib/materials/reservedPrint'
+import { PRINT_RESERVED_SAME_WORDS, notPrintedRunToPrint, reservedRunByLine, reservedRunToPrint, type ReservedRunPrint, type ReservedRunToOpen } from '../../lib/materials/reservedPrint'
 import { canMintStickers, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 
 type Props = {
   runs: ReadonlyArray<ReservedRunPrint>
   role: string | null | undefined
-  onPrint: (run: ReservedRunPrint) => void
+  /** Handed the run as the stickers window opens it: on its reserved stickers, or on those that have not printed yet. */
+  onPrint: (run: ReservedRunToOpen) => void
   /** The window the presses sit in is minting or printing: they rest until it is done. */
   busy?: boolean
-  /** The test ids' stem: `<tid>` on the group, `<tid>-press` on each press and `<tid>-note` on the line under them. */
+  /** The test ids' stem: `<tid>` on the group, `<tid>-press` on each press, `<tid>-waiting` on a not-printed-yet press and `<tid>-note` on the line under them. */
   tid: string
   pressStyle?: CSSProperties
   noteStyle?: CSSProperties
@@ -43,6 +47,21 @@ export default function ReservedPrintPresses({ runs, role, onPrint, busy = false
         const by = reservedRunByLine(r, runs, dayWords)
         return (
           <div key={r.run.id} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem 0.6rem', flexWrap: 'wrap', minWidth: 0 }}>
+            {/* Only what never came out (punch list #373): before the press that prints every reserved sticker of the run. */}
+            {r.waiting.length > 0 ? (
+              <button
+                type="button"
+                disabled={dead}
+                aria-disabled={dead}
+                aria-label={may ? undefined : `${r.waitingLabel}. ${STICKER_MINT_WHO}`}
+                title={may ? PRINT_RESERVED_SAME_WORDS : STICKER_MINT_WHO}
+                style={{ ...basePress, ...pressStyle, ...(dead ? deadPress : {}) }}
+                onClick={() => onPrint(notPrintedRunToPrint(r))}
+                data-testid={`${tid}-waiting`}
+              >
+                {r.waitingLabel}
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={dead}
@@ -50,7 +69,7 @@ export default function ReservedPrintPresses({ runs, role, onPrint, busy = false
               aria-label={may ? undefined : `${r.label}. ${STICKER_MINT_WHO}`}
               title={may ? PRINT_RESERVED_SAME_WORDS : STICKER_MINT_WHO}
               style={{ ...basePress, ...pressStyle, ...(dead ? deadPress : {}) }}
-              onClick={() => onPrint(r)}
+              onClick={() => onPrint(reservedRunToPrint(r))}
               data-testid={`${tid}-press`}
             >
               {r.label}
