@@ -1,4 +1,4 @@
-import { openAmount } from '../lib/materials/payments/supplyPayment'
+import { sumOpenSupplyBills } from '../lib/materials/supplyHousePhone'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -29,7 +29,7 @@ export function useSupplyHousesAPTotal(enabled: boolean, refreshKey?: number): {
           return
         }
         // What is left on each unpaid bill: a bill paid in part counts for the rest, not for its whole amount.
-        const sum = (data ?? []).reduce((s, r) => s + openAmount(r), 0)
+        const sum = sumOpenSupplyBills(data ?? [])
         setTotal(sum)
       } catch {
         if (!cancelled) setTotal(null)
