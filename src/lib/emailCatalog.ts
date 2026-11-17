@@ -186,6 +186,17 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Your collections portal from Click Plumbing and Electrical',
   },
   {
+    id: 'sub_paper',
+    name: 'Sub papers — a work statement, a payment record or a statement of account',
+    group: 'billing',
+    audience: 'customer',
+    attachment: 'the papers as PDFs',
+    builtWhere: 'client',
+    sender: 'send-sub-paper-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Your statement of account from Click Plumbing and Electrical',
+  },
+  {
     id: 'gc_trade_email',
     name: 'GC mode — an email to a trade partner (every kind, one sender)',
     group: 'bids',

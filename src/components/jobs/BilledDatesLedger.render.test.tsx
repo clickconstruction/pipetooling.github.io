@@ -104,7 +104,7 @@ describe('BilledDatesLedger (v2.4205)', () => {
     expect(sub.getAttribute('title')).toBe('August’s § 53.056 notice · Waiting on Robert · since Oct 7')
     expect(sub.style.color).toBe('var(--text-red-700)')
     document.body.innerHTML = ''
-    const blue = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway, inCollections: false, lienState: { words: 'In the mail · tracking owed', tone: 'blue' } })
+    const blue = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway, inCollections: false, lienState: { words: 'Approved · to mail', tone: 'blue' } })
     render(<BilledDatesLedger ledger={blue} />)
     expect(screen.getByTestId('ledger-sub-notice').style.color).toBe('var(--text-blue-800)')
   })

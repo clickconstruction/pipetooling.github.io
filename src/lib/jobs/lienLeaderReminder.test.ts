@@ -17,7 +17,7 @@ describe('lienReminderPlan', () => {
   })
 
   it('nothing waiting is nothing to send', () => {
-    expect(lienReminderPlan([])).toEqual({ notices: [], affidavits: [], held: [], ready: 0 })
+    expect(lienReminderPlan([])).toEqual({ notices: [], affidavits: [], signatures: [], held: [], ready: 0 })
   })
 })
 
