@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_MAIL, LIEN_RUN_NOW_TO_PRINT, LIEN_RUN_STEP, LIEN_RUN_THEN_TO_MAIL, LIEN_RUN_THEN_TO_PRINT, lienRunActFor, lienRunActLabel, lienRunWhatWords, lienRunWindowTitle } from './lienRunWords'
 import { LIEN_DESK_PILES } from './lienDesk'
 import { runDoorWords } from './lienDeskRun'
-import { lienRunPill } from './lienRunChecklist'
 import { plainWordsFailures } from '../plainWords'
 
 describe('one name for each step between a notice’s approval and its mailing (v2.7448)', () => {
@@ -83,17 +82,7 @@ describe('the kernels agree on the words (v2.7448): a step or a press reads one 
     expect(pileLabel('printed')).toBe(LIEN_RUN_STEP.toMail)
   })
 
-  it('the title bar’s door starts with the press, with its count as the press writes it', () => {
-    expect(lienRunPill({ toPrint: 15, printed: 0, mailed: 0 }).words).toBe(`${LIEN_RUN_ACT.print} 15`)
-    expect(lienRunPill({ toPrint: 15, printed: 0, mailed: 0 }).words).toBe(lienRunActLabel('print', 15))
-    expect(lienRunPill({ toPrint: 0, printed: 4, mailed: 0 }).words).toBe(`${LIEN_RUN_ACT.record} · 4`)
-    expect(lienRunPill({ toPrint: 0, printed: 4, mailed: 0 }).words).toBe(lienRunActLabel('record', 4))
-    // Some mailed: the press still comes first, then how far the mailing is.
-    expect(lienRunPill({ toPrint: 15, printed: 0, mailed: 3 }).words).toBe(`${LIEN_RUN_ACT.print} 15 · 3 of 18 mailed`)
-    expect(lienRunPill({ toPrint: 0, printed: 4, mailed: 3 }).words).toBe(`${LIEN_RUN_ACT.record} · 4 · 3 of 7 mailed`)
-  })
-
-  it('the door’s words are the act’s, and the door and the title bar pick the same act from the same counts', () => {
+  it('the door’s words are the act’s, picked by the act rule from the same counts', () => {
     expect(runDoorWords({ ready: 15, printed: 0, retReady: 0 })).toEqual({ act: 'print', label: LIEN_RUN_ACT.print, count: 15 })
     expect(runDoorWords({ ready: 0, printed: 4, retReady: 0 })).toEqual({ act: 'record', label: LIEN_RUN_ACT.record, count: 4 })
     // A retainage notice approved is still to print, so the door stays on the first press.
@@ -102,8 +91,6 @@ describe('the kernels agree on the words (v2.7448): a step or a press reads one 
       const door = runDoorWords({ ready: toPrint, printed, retReady: 0 })
       expect(door.act).toBe(lienRunActFor({ toPrint, printed }))
       expect(door.label).toBe(LIEN_RUN_ACT[door.act])
-      const pill = lienRunPill({ toPrint, printed, mailed: 0 }).words
-      expect(pill).toBe(toPrint + printed === 0 ? '' : lienRunActLabel(door.act, door.count))
     }
   })
 })

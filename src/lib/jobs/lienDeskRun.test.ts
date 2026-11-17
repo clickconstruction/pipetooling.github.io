@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_COVER_LETTER_CLASS, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, stepRunPreview, trackingShape } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_COVER_LETTER_CLASS, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, stepRunPreview, trackingShape } from './lienDeskRun'
 import type { LienMailPieceRow } from '../mail/lienMailPieces'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
@@ -684,19 +684,6 @@ describe('the run and an unsigned notice (v2.5086)', () => {
   })
 })
 
-describe('the door on the desk as a pill (Run-5)', () => {
-  it('a bar of what is to mail, to print and for the leader to sign, with the count of each', () => {
-    expect(runDoorPill({ ready: 2, printed: 1, retReady: 0, waits: 1 }, 'Robert')).toEqual({ sealedPct: 33, waitPct: 33, words: '1 to mail · 1 to print · 1 for Robert to sign' })
-    expect(runDoorPill({ ready: 3, printed: 0, retReady: 1, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '4 to print' })
-    expect(runDoorPill({ ready: 0, printed: 2, retReady: 0, waits: 0 })).toEqual({ sealedPct: 100, waitPct: 0, words: '2 to mail' })
-    expect(runDoorPill({ ready: 0, printed: 0, retReady: 0, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '' })
-    // waits never exceeds what is ready
-    expect(runDoorPill({ ready: 1, printed: 0, retReady: 0, waits: 5 }).words).toBe('1 for the leader to sign')
-    // Fifteen approved, seven of them unsigned, and four printed: each part says its own count.
-    expect(runDoorPill({ ready: 15, printed: 4, retReady: 0, waits: 7 }, 'Sam').words).toBe('4 to mail · 8 to print · 7 for Sam to sign')
-  })
-})
-
 describe('the window envelope on the cover letter (the Docsmit train, PR 4)', () => {
   it('a copy that mails through a provider puts the window block and the code right after the letterhead; a plain copy has neither', async () => {
     const { coverWindowBlocks, runCoverNoteBlocks } = await import('./lienDeskRun')
@@ -710,18 +697,6 @@ describe('the window envelope on the cover letter (the Docsmit train, PR 4)', ()
     expect(kinds.slice(0, 4)).toEqual(['letterhead', 'windowAddress', 'qrLink', 'title'])
     expect(runCoverNoteBlocks(base).map((b) => b.kind)).not.toContain('windowAddress')
     expect(runCoverNoteBlocks({ ...base, coverLetter: null, coverNote: 'A note.', window }).map((b) => b.kind).slice(0, 3)).toEqual(['letterhead', 'windowAddress', 'qrLink'])
-  })
-})
-
-describe('runDoorTail — the pill’s words after the door’s count (v2.6569)', () => {
-  it('drops the words when they are only the door’s own count, and keeps words that say more', () => {
-    expect(runDoorTail(7, '7 to mail')).toBe('')
-    expect(runDoorTail(3, '3 to print')).toBe('')
-    expect(runDoorTail(9, '7 to mail · 2 to print')).toBe('7 to mail · 2 to print')
-    expect(runDoorTail(8, '1 to print · 7 for Sam to sign')).toBe('1 to print · 7 for Sam to sign')
-    // A count that is not the door’s own stays: the door says 9 and the words say 7 of them.
-    expect(runDoorTail(9, '7 to mail')).toBe('7 to mail')
-    expect(runDoorTail(0, '')).toBe('')
   })
 })
 

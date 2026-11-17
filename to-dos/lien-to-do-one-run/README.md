@@ -193,8 +193,8 @@ Two things he agreed to in direction the same day, both built since:
 
 - ~~**Retire the title bar's run door.**~~ **Done, v2.7490**, on the owner's *"Retire it everywhere"* after he was
   told what else it did: the only way to print the run from By date and By job, and the only sign of the run's
-  progress on those views. By job now has no door to the run; a phone's More sheet keeps its row. Left: delete
-  `runDoorPill`, `runDoorTail` and `lienRunPill`, which have no caller, once the run window's redraw has landed.
+  progress on those views. By job now has no door to the run; a phone's More sheet keeps its row.
+  `runDoorPill`, `runDoorTail` and `lienRunPill`, left with no caller, are deleted with their tests.
 - **Redraw the run window with D**: drawn, shown to him, approved for notices and built, v2.7477 (*The
   run window* below). His screenshot counted one batch several ways on one screen (15 notices, 16
   built, *of 10*, 9 envelopes, 8 ready and 7 waiting, 10 to print and 5 held). It wanted one total with
