@@ -48,18 +48,14 @@ import {
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
 import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, kindFieldsPayload, kindFromUrlKey, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
-import { addGcCompany, askGcCompanies, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
-import { boardStateFromRows } from '../lib/gc/boardRows'
-import { tradeBenches } from '../lib/gc/bench'
+import { addGcCompany, askGcCompanies } from '../lib/gc/gcIo'
 import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '../lib/prospects/laneLoad'
-import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubleRow } from '../lib/prospects/companyDouble'
-import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
-import { stripReads, type StripRead } from '../lib/prospects/stripState'
+import { companyDouble, doubleLaneParams, type CompanyDouble } from '../lib/prospects/companyDouble'
+import { stripReads } from '../lib/prospects/stripState'
 import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
 import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
 import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
-import { plansChoices, type PlansChoice } from '../lib/prospects/subsStages'
-import { gcBenchInput, gcNeeds, type GcBenchIn } from '../lib/prospects/gcNeeds'
+import { gcNeeds } from '../lib/prospects/gcNeeds'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
@@ -69,8 +65,8 @@ import { anyTyped, editDirty, editSnapshotOf } from '../lib/prospects/windowLeav
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
-import { SOONEST_BID_NOTE, gcBiddingLines, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type BiddingLine, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
-import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
+import { SOONEST_BID_NOTE, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid } from '../lib/prospects/gcLeadLane'
+import { setProspectJobStatus } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchTab'
@@ -80,6 +76,9 @@ import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackM
 import { ProspectsActivityTab } from '../components/prospects/ProspectsActivityTab'
 import { ProspectsConvertTab } from '../components/prospects/ProspectsConvertTab'
 import { useProspectConvert } from '../components/prospects/useProspectConvert'
+import { useProspectDoubles } from '../components/prospects/useProspectDoubles'
+import { useProspectJobs } from '../components/prospects/useProspectJobs'
+import { useSubsBench } from '../components/prospects/useSubsBench'
 import { ProspectMyTimeModal } from '../components/prospects/ProspectMyTimeModal'
 import { ProspectTimerHistoryModal } from '../components/prospects/ProspectTimerHistoryModal'
 import { SubsBoard } from '../components/prospects/SubsBoard'
@@ -263,11 +262,11 @@ export default function Prospects() {
   // The Subs lane (v2.5560): the bench's trades and how many each can count on (null: not read, or
   // refused), the bench's companies for the double check, the lane's whole queue for the counts,
   // and the call script's window.
-  // The strips' reads (v2.5585): undefined until the first answer, null when the read failed, the rows once read.
-  const [benchTrades, setBenchTrades] = useState<StripRead<{ trade: string; dependable: number }[]>>(undefined)
-  // What GC mode needs (v2.5782, punch list #148): the bench with its open asks, and the trades we do ourselves.
-  const [gcBench, setGcBench] = useState<{ benches: GcBenchIn[]; ownTrades: string[] }>({ benches: [], ownTrades: [] })
-  const [benchCompanies, setBenchCompanies] = useState<{ id: string; name: string; phone: string | null; trades: string[]; vetted?: boolean }[]>([])
+  // New Prospect's open flag and its kind sit here, above the lane reads that follow them.
+  const [newProspectModalOpen, setNewProspectModalOpen] = useState(false)
+  const [newKind, setNewKind] = useState<ProspectKind>('customer')
+  // The bench (v2.5560), read by `useSubsBench` when the lane or New Prospect's kind is Subs.
+  const { benchTrades, gcBench, benchCompanies, benchQuoted, gcPlans } = useSubsBench(kind, newKind, authUser?.id ?? null)
   const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
   const [scriptOpen, setScriptOpen] = useState(false)
   const tradeFilter = searchParams.get('trade')
@@ -276,8 +275,6 @@ export default function Prospects() {
   // which of the list's groups are open.
   const [laneAllRows, setLaneAllRows] = useState<Prospect[]>([])
   const [answeredProspectIds, setAnsweredProspectIds] = useState<Set<string>>(() => new Set())
-  const [benchQuoted, setBenchQuoted] = useState<Set<string>>(() => new Set())
-  const [gcPlans, setGcPlans] = useState<PlansChoice[]>([])
   const [subsSectionOpen, setSubsSectionOpen] = useState<Record<string, boolean>>({})
   const plansFor = searchParams.get('for')
   const plansPick = kind === 'sub' && plansFor ? gcPlans.find((c) => c.id === plansFor) ?? null : null
@@ -305,12 +302,7 @@ export default function Prospects() {
   }, [runKey])
   // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
   // refused), the customers for the double check, and the customer a new lead is linked to.
-  const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
-  const [gcWork, setGcWork] = useState<StripRead<GcWorkCounts>>(undefined)
-  // The projects bidding now (v2.5785, punch list #148, PR 2): named under the counts, soonest due first.
-  const [gcBidding, setGcBidding] = useState<BiddingLine[]>([])
-  const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null; since: string | null }[]>([])
-  const [prospectDoubles, setProspectDoubles] = useState<ProspectDoubleRow[]>([])
+  const { gcWork, gcBidding, customerDoubles, prospectDoubles } = useProspectDoubles({ kind, newKind, newProspectModalOpen, userId: authUser?.id ?? null })
   const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
 
   // Follow Up state
@@ -388,9 +380,7 @@ export default function Prospects() {
   const [prospectLedgerSecondsMap, setProspectLedgerSecondsMap] = useState<Record<string, number>>({})
 
   // New Prospect modal state
-  const [newProspectModalOpen, setNewProspectModalOpen] = useState(false)
   const [newProspectError, setNewProspectError] = useState<string | null>(null)
-  const [newKind, setNewKind] = useState<ProspectKind>('customer')
   const [newSource, setNewSource] = useState('')
   const [newTrades, setNewTrades] = useState('')
   const [newMaxMiles, setNewMaxMiles] = useState('')
@@ -560,33 +550,6 @@ export default function Prospects() {
     setNewProspectError(null)
   }
 
-  // The bench (v2.5560): read the way GC projects reads it, so the strip says what the bench's own
-  // rule says. Fail-soft: a role the GC tables refuse sees the lane without the strip.
-  useEffect(() => {
-    if (kind !== 'sub' && newKind !== 'sub') return
-    if (!authUser?.id) return
-    let live = true
-    ;(async () => {
-      try {
-        const projects = await loadGcProjects()
-        const rows = await loadGcBoardRows(projects, todayYmdInAppTz(), { money: false })
-        if (!live) return
-        const state = boardStateFromRows(rows)
-        const benches = tradeBenches(state)
-        setBenchTrades(benches.map((b) => ({ trade: b.trade, dependable: b.dependable })))
-        setBenchQuoted(new Set(state.partners.filter((p) => p.bids > 0).map((p) => p.id)))
-        setGcPlans(plansChoices(projects.map((p) => ({ id: p.id, name: p.name, stage: p.stage, bidDue: p.bidDue, lostOn: p.lostOn, packages: p.trades.map((k) => ({ id: k.id, trade: k.trade, ours: k.ours })) })), todayYmdInAppTz()))
-        setGcBench({ benches: gcBenchInput(benches), ownTrades: state.projects.flatMap((p) => p.packages.filter((k) => k.selfPerform).map((k) => k.trade)) })
-        setBenchCompanies(rows.companies.map((c) => ({ id: c.id, name: c.name, phone: c.phone || null, trades: c.trades, vetted: c.vetting_status === 'approved' ? true : c.vetting_status === 'new' ? false : undefined })))
-      } catch {
-        if (live) setBenchTrades(null)
-      }
-    })()
-    return () => {
-      live = false
-    }
-  }, [kind, newKind, authUser?.id])
-
   // The strip counts the lane as it stands: a sub the deck took off (an outcome, a delete) leaves the count with it.
   const deckIds = new Set(followUpProspects.map((p) => p.id))
   const laneQueueNow = kind === 'sub' ? stillQueued(laneQueueAll, deckIds, tradeFilter) : []
@@ -618,29 +581,6 @@ export default function Prospects() {
     setNewProspectModalOpen(true)
   }
 
-  // One lookup for every double (v2.5579): the prospects of every lane and the customers load when New Prospect
-  // opens, whatever its kind; both fail-soft, and the bench rides along from the Subs effect above.
-  useEffect(() => {
-    if (!newProspectModalOpen || !authUser?.id) return
-    let live = true
-    loadProspectDoubles()
-      .then((rows) => {
-        if (live) setProspectDoubles(rows)
-      })
-      .catch(() => {
-        if (live) setProspectDoubles([])
-      })
-    loadCustomerDoubles()
-      .then((rows) => {
-        if (live) setCustomerDoubles(rows)
-      })
-      .catch(() => {
-        if (live) setCustomerDoubles([])
-      })
-    return () => {
-      live = false
-    }
-  }, [newProspectModalOpen, authUser?.id])
   const newProspectTwin = newProspectModalOpen
     ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles }, Date.now(), newCompany.mapsUrl)
     : null
@@ -661,47 +601,6 @@ export default function Prospects() {
       next.delete('trade')
       return next
     })
-  }
-
-  // The Jobs to GC lane (v2.5561): the Project Board's counts and the customers, both fail-soft.
-  useEffect(() => {
-    if (kind !== 'gc_lead' && newKind !== 'gc_lead') return
-    if (!authUser?.id) return
-    let live = true
-    loadGcProjects()
-      .then((projects) => {
-        if (!live) return
-        setGcWork(gcWorkCounts(projects))
-        setGcBidding(gcBiddingLines(projects, todayYmdInAppTz()))
-      })
-      .catch(() => {
-        if (live) setGcWork(null)
-      })
-    loadCustomerDoubles()
-      .then((rows) => {
-        if (live) setCustomerDoubles(rows)
-      })
-      .catch(() => {
-        if (live) setCustomerDoubles([])
-      })
-    return () => {
-      live = false
-    }
-  }, [kind, newKind, authUser?.id])
-
-  async function mergeJobs(ids: string[]) {
-    if (ids.length === 0) return {}
-    try {
-      const jobs = await loadProspectJobs(ids)
-      setJobsByProspect((prev) => {
-        const next = { ...prev }
-        for (const id of ids) next[id] = jobs[id] ?? []
-        return next
-      })
-      return jobs
-    } catch {
-      return {}
-    }
   }
 
   const setTradeFilter = (trade: string | null) => {
@@ -1157,6 +1056,8 @@ export default function Prospects() {
 
   const currentProspect = followUpProspects[currentProspectIndex] ?? null
   const currentProspectId = currentProspect?.id ?? null
+  // A lead's jobs and the Jobs box's writes. The loaders above call `mergeJobs`; it is theirs by the time they run.
+  const { jobsByProspect, mergeJobs, addJobFor, editJobFor, changeJob, markJobLost, removeJob } = useProspectJobs({ userId: authUser?.id ?? null, currentProspectId })
   useEffect(() => {
     setTextAskOpen(false)
   }, [currentProspectId])
@@ -2007,54 +1908,6 @@ export default function Prospects() {
         void landed({ id: customer.id, name: customer.name })
       },
     })
-  }
-
-  /** + Add a job on a lead's card (v2.5561): the box shows a refusal's words, so this throws. */
-  async function addJobFor(prospectId: string, job: NewProspectJob) {
-    if (!authUser?.id) throw new Error('Sign in first.')
-    const made = await addProspectJob(prospectId, job, authUser.id)
-    setJobsByProspect((prev) => ({ ...prev, [prospectId]: [...(prev[prospectId] ?? []), made] }))
-  }
-
-  /** Edit in place (v2.5580): the row's changes saved, the box re-sorts on the new bid day. */
-  async function editJobFor(job: ProspectJob, changes: NewProspectJob) {
-    const saved = await updateProspectJob(job.id, changes)
-    setJobsByProspect((prev) => ({ ...prev, [job.prospect_id]: (prev[job.prospect_id] ?? []).map((j) => (j.id === job.id ? saved : j)) }))
-  }
-
-  async function changeJob(job: ProspectJob, status: 'open' | 'dropped', wonBy: string | null = null) {
-    if (!currentProspect) return
-    const pid = currentProspect.id
-    try {
-      await setProspectJobStatus(job.id, status, wonBy)
-      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status, won_by: wonBy } : j)) }))
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
-    }
-  }
-
-  async function markJobLost(job: ProspectJob) {
-    if (!currentProspect) return
-    const who = await promptDialog({ title: 'Who got it?', message: `${job.name}: the builder that won, if you know.`, placeholder: 'Another builder', confirmLabel: 'Mark lost' })
-    if (who === null) return
-    const pid = currentProspect.id
-    try {
-      await setProspectJobStatus(job.id, 'lost', who.trim() || null)
-      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status: 'lost', won_by: who.trim() || null } : j)) }))
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
-    }
-  }
-
-  async function removeJob(job: ProspectJob) {
-    if (!currentProspect) return
-    const pid = currentProspect.id
-    try {
-      await deleteProspectJob(job.id)
-      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).filter((j) => j.id !== job.id) }))
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
-    }
   }
 
   async function handleSendBack(p: Prospect) {

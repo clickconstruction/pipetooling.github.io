@@ -68,6 +68,16 @@ vi.mock('../lib/supabase', () => {
         return list([row])
       }
       if (table === 'customers' && m === 'insert') return list([{ id: 'cust-new', ...(payload as Row) }])
+      if (table === 'prospect_jobs' && m === 'insert') {
+        const row = { id: `j-${world.nextId++}`, won_by: null, created_at: '2026-10-16T12:00:00Z', ...(payload as Row) }
+        world.jobs = [...world.jobs, row]
+        return list([row])
+      }
+      if (table === 'prospect_jobs' && m === 'update') {
+        world.jobs = world.jobs.map((j) => (j.id === filters.id ? { ...j, ...(payload as Row) } : j))
+        return list(world.jobs.filter((j) => j.id === filters.id))
+      }
+      if (table === 'prospect_jobs' && m === 'delete') world.jobs = world.jobs.filter((j) => j.id !== filters.id)
       return { data: null, error: null }
     }
     switch (table) {
@@ -711,6 +721,65 @@ describe('the Jobs to GC lane', () => {
     expect(screen.getByRole('group', { name: 'GC work in flight' })).toBeTruthy()
     expect(await screen.findByText(/Test Office Shell/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Soonest bid' })).toBeTruthy()
+  })
+})
+
+describe('a lead’s jobs', () => {
+  const job = (extra: Row = {}): Row => ({ id: 'j-1', prospect_id: 'gc-1', name: 'Test Office Shell', status: 'open', bid_due: '2026-12-01', won_by: null, created_at: '2026-10-01T12:00:00Z', created_by: 'smoke-auth-user-1', location: null, notes: null, plans: null, ...extra })
+  const box = () => document.querySelector('[data-prospect-jobs]') as HTMLElement
+
+  it('Add a job writes it under the lead and shows it in the box', async () => {
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    fireEvent.click(within(box()).getByRole('button', { name: /Add a job/ }))
+    fireEvent.change(within(box()).getByPlaceholderText('Retail shell'), { target: { value: 'Test Clinic' } })
+    fireEvent.click(within(box()).getByRole('button', { name: /^(Add|Save)/ }))
+    await waitFor(() => expect(writesTo('prospect_jobs', 'insert')).toHaveLength(1))
+    expect(writesTo('prospect_jobs', 'insert')[0]?.payload).toMatchObject({ prospect_id: 'gc-1', name: 'Test Clinic', status: 'open', created_by: 'smoke-auth-user-1' })
+    expect(await within(box()).findByText(/Test Clinic/)).toBeTruthy()
+  })
+
+  it('Drop and Remove write the job and the box follows', async () => {
+    world.jobs = [job()]
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    await within(box()).findByText(/Test Office Shell/)
+    fireEvent.click(within(box()).getByRole('button', { name: /Drop/ }))
+    await waitFor(() => expect(writesTo('prospect_jobs', 'update')).toHaveLength(1))
+    expect(writesTo('prospect_jobs', 'update')[0]).toMatchObject({ payload: { status: 'dropped' }, filters: { id: 'j-1' } })
+    fireEvent.click(await within(box()).findByRole('button', { name: /Remove/ }))
+    await waitFor(() => expect(writesTo('prospect_jobs', 'delete')).toHaveLength(1))
+    await waitFor(() => expect(within(box()).queryByText(/Test Office Shell/)).toBeNull())
+  })
+
+  it('Lost asks who got it and saves the answer', async () => {
+    world.jobs = [job()]
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    await within(box()).findByText(/Test Office Shell/)
+    fireEvent.click(within(box()).getByRole('button', { name: /Lost/ }))
+    const ask = await screen.findByRole('dialog')
+    expect(within(ask).getByText('Who got it?')).toBeTruthy()
+    fireEvent.change(within(ask).getByPlaceholderText('Another builder'), { target: { value: ' Other Builder ' } })
+    fireEvent.click(within(ask).getByRole('button', { name: 'Mark lost' }))
+    await waitFor(() => expect(writesTo('prospect_jobs', 'update')).toHaveLength(1))
+    expect(writesTo('prospect_jobs', 'update')[0]).toMatchObject({ payload: { status: 'lost', won_by: 'Other Builder' }, filters: { id: 'j-1' } })
+  })
+})
+
+describe('New Prospect’s double line', () => {
+  it('a company already on a lane is named, Save reads Save anyway, and Open it opens its card', async () => {
+    await deck('/prospects?tab=follow-up&kind=subs')
+    press('New Prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Bravo Homes' } })
+    const line = await waitFor(() => {
+      const el = dialog.querySelector('[data-company-double]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    expect(within(dialog).getByRole('button', { name: 'Save anyway' })).toBeTruthy()
+    fireEvent.click(within(line).getByRole('button', { name: 'Open it' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
+    expect(where()).toBe('/prospects?tab=follow-up&prospect_id=cu-2')
   })
 })
 
