@@ -266,6 +266,28 @@ export async function pullBackLienDeskItem(itemId: string, userId: string | null
 }
 
 /**
+ * Rewrite the stored paper of a notice past a draft (v2.7520): the fields `fieldsRedrawn` built, with the signature
+ * cleared, because the mark belongs to the paper as it was signed. The status stands: an approved notice stays approved
+ * and reads unsigned until the leader signs the new paper. Only a live row still awaiting approval, approved or held,
+ * and not printed, is written; false when the row had moved on (printed, sent or closed meanwhile), and nothing changed.
+ */
+export async function redrawLienDeskItem(itemId: string, fields: Record<string, unknown>): Promise<boolean> {
+  const rows = await withSupabaseRetry(
+    () =>
+      supabase
+        .from('job_lien_desk_items')
+        .update({ fields: JSON.parse(JSON.stringify(fields)) as Json, ...LIEN_DESK_SIGNATURE_CLEAR } as never)
+        .eq('id', itemId)
+        .in('status', ['awaiting_approval', 'approved', 'held'])
+        .is('printed_at', null)
+        .is('voided_at', null)
+        .select('id'),
+    'lien desk: redraw from the bills',
+  )
+  return ((rows ?? []) as Array<{ id: string }>).length > 0
+}
+
+/**
  * Undo a run's approval (v2.4541): every notice the click approved, or sent to the leader, goes
  * back to the office's draft, and the printed stamp goes with it. Only rows still approved or
  * awaiting approval move, so a notice already recorded as sent is never touched. Returns how many moved.
