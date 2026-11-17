@@ -107,7 +107,7 @@ One small PR per line, each with its guide, release note and fragment.
 | C4 | Tool 3: No longer applies, drawn in History and Review. Not offered on a roadmap or a vehicle task, whose close would say work was done | uses C1 | M | live, v2.7545 |
 | C5 | Tool 4: Go through the old ones. Built after C6 | none | S | live, v2.7547 |
 | C6 | Tool 2: Can't do it, with the stuck list on Review. Built ahead of C5 | uses C1 | M | live, v2.7546 |
-| C7 | Tool 7: Hand it on. Both of the page's Forward windows call the same function and keep the task whole. Dashboard's My Inbox has a third Forward, not touched | uses C1 | M | live, v2.7548 |
+| C7 | Tool 7: Hand it on. Both of the page's Forward windows call the same function and keep the task whole. Dashboard's My Inbox had a third Forward, moved onto the same function in v2.7563 | uses C1 | M | live, v2.7548 |
 | D1 | Do first: a press under More that lifts one task into Next on this device | none | S | live, v2.7549 |
 | D2 | Mark N done: one press for a round of daily tasks | none | S | live, v2.7550 |
 | D3 | Yesterday: a missed repeating task asks once, did it or skipped (`20261117130000_task_skipped_line.sql`) | a small migration | S | live, v2.7551; pushed 2026-11-17 |

@@ -29,7 +29,7 @@ Order the water heater for 813 · Relwyn Health {{chip:gray|(T+17)}}
 
 1. Start at **Overdue**. Those are blocking someone.
 2. Check off what's done. {{icon:help|gear}} The item disappears on the next refresh.
-3. Can't action it yourself? Forward it with the arrow button. It lands in that person's inbox.
+3. Can't action it yourself? The office sees **fwd** at the end of a task. Press it and pick who takes it. The same task moves to that person's inbox. It keeps its notes, its place and its photos.
 4. **View all →** opens the full Checklist page when you need history or scheduling.
 
 The **My Inbox** chip on the bottom section bar jumps straight to the card.

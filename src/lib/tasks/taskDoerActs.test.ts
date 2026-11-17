@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { droppedReason, stuckReason, stuckSaidBy } from '../checklistCardEvents'
-import { handBackLabel, handPeople, handPressLabel, handPushToGiver, handPushToTaker, handSentence, PASS_MIN_TASKS, PASS_PRESS_LABEL, passAnswers, passCountWords, passSummary, STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
+import { FORWARD_KEEPS_WORDS, forwardPressLabel, forwardTakers, handBackLabel, handPeople, handPressLabel, handPushToGiver, handPushToTaker, handSentence, PASS_MIN_TASKS, PASS_PRESS_LABEL, passAnswers, passCountWords, passSummary, STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
 
 describe('a map from the person doing the task', () => {
   it('offers a line by hand, a walked line and a point, in that order', () => {
@@ -266,5 +266,23 @@ describe('Do first', () => {
   })
   it('is not an answer of the pass', () => {
     expect(passAnswers({ once: true, done: false }).map((r) => r.key)).toEqual(['done', 'move', 'stuck', 'drop', 'skip'])
+  })
+})
+
+describe('the Forward window (v2.7563)', () => {
+  const people = [{ id: 'u-me', name: 'Theo' }, { id: 'u-2', name: 'Hal' }, { id: 'u-3', name: 'Ava' }, { id: 'u-4', name: ' ' }]
+
+  it('offers everyone with a name but the person forwarding, by name', () => {
+    expect(forwardTakers(people, 'u-me').map((p) => p.name)).toEqual(['Ava', 'Hal'])
+  })
+
+  it('names who takes it on the press, and says it is busy', () => {
+    expect(forwardPressLabel(null, false)).toBe('Forward')
+    expect(forwardPressLabel('Hal', false)).toBe('Forward to Hal')
+    expect(forwardPressLabel('Hal', true)).toBe('Forwarding…')
+  })
+
+  it('says the task goes as it is', () => {
+    expect(FORWARD_KEEPS_WORDS).toBe('The task goes as it is, with its notes, place and photos.')
   })
 })

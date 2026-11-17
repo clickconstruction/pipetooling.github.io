@@ -14,7 +14,10 @@ import VehicleTaskContextModal from '../checklist/VehicleTaskContextModal'
 import { isVehicleTaskTitle, stripVehicleTaskMarker } from '../../lib/vehicleFleet'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import ChecklistItemMuteModal from '../ChecklistItemMuteModal'
-import { getNextDisplayOrders } from '../../utils/checklistOrder'
+import { TaskForwardWindow } from '../checklist/TaskForwardWindow'
+import { forwardTakers } from '../../lib/tasks/taskDoerActs'
+import { handOnTask } from '../../lib/tasks/taskDoerActsIo'
+import { taskTitlePlain } from '../../lib/tasks/taskPlace'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { formatTDays, getDaysUntilDue } from '../../lib/dashboardMyInbox'
@@ -112,9 +115,9 @@ export function DashboardMyInboxCard({
   const outstandingToggleInFlightRef = useRef(new Set<string>())
   const [sendTaskUsers, setSendTaskUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
-  const [fwdTitle, setFwdTitle] = useState('')
-  const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
+  /** Why the last Forward did not take, shown in the window (v2.7563). */
+  const [fwdRefusal, setFwdRefusal] = useState<string | null>(null)
   const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
   const [muteModalTitle, setMuteModalTitle] = useState('')
   const [completedItemsOpen, setCompletedItemsOpen] = useState(false)
@@ -497,61 +500,30 @@ export function DashboardMyInboxCard({
   }
 
   function openFwd(inst: ChecklistInstance) {
-    const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+    setFwdRefusal(null)
     setFwdInstance(inst)
-    setFwdTitle(title)
-    setFwdAssigneeId('')
   }
 
-  async function saveFwd() {
-    if (!fwdInstance || !authUserId || !fwdTitle.trim() || !fwdAssigneeId) return
+  /**
+   * Forward is the Checklist's hand-on (v2.7563): one person for another on the same task, through `task_hand_on`,
+   * so its notes, place, lines and photos stay. It made a copy and deleted the first day row until then. Every task
+   * in this card is the viewer's own, so no one is named as who it comes from.
+   */
+  async function saveFwd(toUserId: string) {
+    if (!fwdInstance || !authUserId || !toUserId || fwdSaving) return
     setFwdSaving(true)
-    setUserError(null)
+    setFwdRefusal(null)
     try {
-      const { data: sourceItem } = await supabase
-        .from('checklist_items')
-        .select('notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, show_until_completed')
-        .eq('id', fwdInstance.checklist_item_id)
-        .single()
-      const src = sourceItem as { notify_on_complete_user_id: string | null; notify_creator_on_complete: boolean; reminder_time: string | null; reminder_scope: string | null; show_until_completed?: boolean } | null
-      const { data: newItem, error: itemErr } = await supabase
-        .from('checklist_items')
-        .insert({
-          title: fwdTitle.trim(),
-          created_by_user_id: authUserId,
-          repeat_type: 'once',
-          start_date: fwdInstance.scheduled_date,
-          show_until_completed: src?.show_until_completed ?? true,
-          notify_on_complete_user_id: src?.notify_on_complete_user_id ?? null,
-          notify_creator_on_complete: src?.notify_creator_on_complete ?? false,
-          reminder_time: src?.reminder_time ?? null,
-          reminder_scope: src?.reminder_scope ?? null,
-        })
-        .select('id')
-        .single()
-      if (itemErr) throw itemErr
-      if (newItem?.id && fwdAssigneeId) {
-        const nextOrders = await getNextDisplayOrders([fwdAssigneeId])
-        await supabase.from('checklist_item_assignees').insert({
-          checklist_item_id: newItem.id,
-          user_id: fwdAssigneeId,
-          display_order: nextOrders.get(fwdAssigneeId) ?? 1,
-        })
-        const { data: newInst } = await supabase
-          .from('checklist_instances')
-          .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
-          .select('id')
-          .single()
-        if (newInst?.id) {
-          await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: fwdAssigneeId })
-        }
-        await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
+      const refused = await handOnTask(fwdInstance.id, toUserId, null, null)
+      if (refused) {
+        setFwdRefusal(refused)
+        return
       }
       setFwdInstance(null)
       await loadTodayChecklist()
       await loadOutstanding()
     } catch (err: unknown) {
-      setUserError(formatErrorMessage(err, 'Failed to forward'))
+      setFwdRefusal(formatErrorMessage(err, 'The task was not forwarded.'))
     } finally {
       setFwdSaving(false)
     }
@@ -1200,82 +1172,14 @@ export function DashboardMyInboxCard({
         </DashboardGroupCard>
       )}
       {fwdInstance && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
-          }}
-          onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              minWidth: 320,
-              maxWidth: 400,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Forward task</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
-                <input
-                  type="text"
-                  value={fwdTitle}
-                  onChange={(e) => setFwdTitle(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
-                <select
-                  value={fwdAssigneeId}
-                  onChange={(e) => setFwdAssigneeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                >
-                  {sendTaskUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.email || u.id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
-              <button
-                type="button"
-                onClick={saveFwd}
-                disabled={fwdSaving || !fwdTitle.trim() || !fwdAssigneeId}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: fwdSaving ? 'not-allowed' : 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                {fwdSaving ? 'Saving…' : 'Forward'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setFwdInstance(null)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+        <TaskForwardWindow
+          title={taskTitlePlain((fwdInstance.checklist_items as { title?: string } | null)?.title)}
+          people={forwardTakers(sendTaskUsers.map((u) => ({ id: u.id, name: u.name || u.email || '' })), authUserId ?? null)}
+          saving={fwdSaving}
+          refusal={fwdRefusal}
+          onForward={(toUserId) => void saveFwd(toUserId)}
+          onClose={() => setFwdInstance(null)}
+        />
       )}
       <ChecklistItemMuteModal
         open={!!muteModalItemId}

@@ -89,6 +89,7 @@ import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
 import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
 import { handOnTask } from '../lib/tasks/taskDoerActsIo'
+import { FORWARD_KEEPS_WORDS } from '../lib/tasks/taskDoerActs'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
@@ -257,8 +258,8 @@ function vehicleTaskChip(instanceId: string, onOpen: (instanceId: string) => voi
 
 const tabStyle = pageTabStyle
 
-/** Under the task's words in the office's Forward window (punch list #369, step C7): the task itself goes, not a copy. */
-const FWD_KEEPS_WORDS = 'The task goes as it is, with its notes, place and photos.'
+/** Under the task's words in the office's Forward window: one sentence, shared with My Inbox's window (v2.7563). */
+const FWD_KEEPS_WORDS = FORWARD_KEEPS_WORDS
 
 /** The small-caps label over a part of the day, the New task window's row label. */
 const TODAY_PART_LABEL: CSSProperties = { margin: '0.9rem 2px 0.4rem', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
