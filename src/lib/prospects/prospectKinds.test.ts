@@ -16,6 +16,7 @@ import {
   prospectLandedToast,
   tradesText,
   urlKeyForKind,
+  kindFieldsPayload,
 } from './prospectKinds'
 
 describe('prospectKinds: the kind and its URL key', () => {
@@ -150,5 +151,32 @@ describe('benchDraftFromProspect carries the person and the profile (v2.5603)', 
     expect(bare.phone).toBe('(830) 555-0100')
     expect('license' in bare).toBe(false)
     expect('mapsUrl' in bare).toBe(false)
+  })
+})
+
+describe('kindFieldsPayload', () => {
+  const boxes = { source: '  A referral  ', trades: 'Concrete, Fire sprinkler', maxMiles: '40.4', role: 'developer' }
+
+  it('a sub keeps its trades and its range in whole miles, and no role', () => {
+    expect(kindFieldsPayload('sub', boxes)).toEqual({ source: 'A referral', trades: ['Concrete', 'Fire sprinkler'], max_miles: 40, company_role: null })
+  })
+  it('a GC lead keeps its role, and no trades or range', () => {
+    expect(kindFieldsPayload('gc_lead', boxes)).toEqual({ source: 'A referral', trades: [], max_miles: null, company_role: 'developer' })
+  })
+  it('a customer keeps only where we found them', () => {
+    expect(kindFieldsPayload('customer', boxes)).toEqual({ source: 'A referral', trades: [], max_miles: null, company_role: null })
+  })
+  it('a blank source is none', () => {
+    expect(kindFieldsPayload('customer', { ...boxes, source: '   ' }).source).toBeNull()
+  })
+  it('a blank, zero, negative or worded range is no range', () => {
+    for (const maxMiles of ['', '0', '-5', 'far', 'Infinity']) expect(kindFieldsPayload('sub', { ...boxes, maxMiles }).max_miles).toBeNull()
+  })
+  it('a range rounds to the nearest mile', () => {
+    expect(kindFieldsPayload('sub', { ...boxes, maxMiles: '12.5' }).max_miles).toBe(13)
+  })
+  it('a role nobody knows is no role', () => {
+    expect(kindFieldsPayload('gc_lead', { ...boxes, role: 'landlord' }).company_role).toBeNull()
+    expect(kindFieldsPayload('gc_lead', { ...boxes, role: '' }).company_role).toBeNull()
   })
 })

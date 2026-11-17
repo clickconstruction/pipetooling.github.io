@@ -6,6 +6,8 @@ import { isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectTeamActivity'
+import { getOrderedDateKeysLast30Days } from '../lib/prospectTeamActivityChartData'
+import { myTimeWindows, sumTimerSeconds, sumTimerSecondsByProspect } from '../lib/prospects/prospectTimerSums'
 import {
   CALL_INTERACTION_TYPES,
   CALLING_ORDER_STORAGE_KEY,
@@ -40,7 +42,7 @@ import {
   type ListSectionKey,
   type ProspectLastCall,
 } from '../lib/prospects/prospectListGrouping'
-import { findRetaggableNote, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
+import { findRetaggableNote, lastCallByProspect, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
 import { callingLockCutoffIso, callingLockDecision, type CallingLockRow, type CallingLockTrigger } from '../lib/prospects/callingLock'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { useAuth } from '../hooks/useAuth'
@@ -52,13 +54,16 @@ import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewC
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import {
   canAccessProspectPipeline,
+  convertBidRows,
+  convertContactRows,
   customerDraftFromProspect,
   markProspectConverted,
   recordProspectConverted,
   markProspectOnBench,
+  sourceProspectOf,
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
-import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, isProspectCompanyRole, kindFromUrlKey, parseTradesText, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
+import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, kindFieldsPayload, kindFromUrlKey, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
 import { addGcCompany, askGcCompanies, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import { tradeBenches } from '../lib/gc/bench'
@@ -77,7 +82,7 @@ import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
 import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
-import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
+import { anyTyped, editDirty, editSnapshotOf } from '../lib/prospects/windowLeave'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
@@ -89,11 +94,11 @@ import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchT
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { SubsBoard } from '../components/prospects/SubsBoard'
-import { subRecords } from '../lib/prospects/subRecord'
+import { inboundProspects, subRecords } from '../lib/prospects/subRecord'
 import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
 import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow } from '../lib/prospects/subsRanks'
 import { tradeKey } from '../lib/prospects/subsLane'
-import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_CHANNEL, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextNote, runTextPlan, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
+import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_CHANNEL, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, firstCallbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextNote, runTextPlan, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
 import { loadProspectThread, startProspectThread } from '../lib/prospects/prospectThreadIo'
 import { textRefusal } from '../lib/prospects/textingRule'
 import { benchAskFor, benchAskedToast, type BenchAsk } from '../lib/prospects/benchAsk'
@@ -965,14 +970,8 @@ export default function Prospects() {
   async function loadMyTimeStats() {
     if (!authUser?.id) return
     setMyTimeStatsLoading(true)
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-    const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0)
-    const sevenDaysAgo = new Date(now)
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
-    const sum = (rows: { timer_seconds: number }[]) => rows.reduce((a, r) => a + r.timer_seconds, 0)
+    const { startOfToday, endOfToday, startOfYesterday, sevenDaysAgo } = myTimeWindows(new Date())
+    const sum = sumTimerSeconds
 
     const [todayRes, yesterdayRes, last7Res, lifetimeRes] = await Promise.all([
       (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id).gte('created_at', startOfToday.toISOString()).lte('created_at', endOfToday.toISOString()),
@@ -992,17 +991,14 @@ export default function Prospects() {
 
   async function loadMyTimeToday() {
     if (!authUser?.id) return
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+    const { startOfToday, endOfToday } = myTimeWindows(new Date())
     const { data } = await (supabase as any)
       .from('prospect_timer_events')
       .select('timer_seconds')
       .eq('user_id', authUser.id)
       .gte('created_at', startOfToday.toISOString())
       .lte('created_at', endOfToday.toISOString())
-    const sum = ((data ?? []) as { timer_seconds: number }[]).reduce((a, r) => a + r.timer_seconds, 0)
-    setMyTimeTodaySeconds(sum)
+    setMyTimeTodaySeconds(sumTimerSeconds((data ?? []) as { timer_seconds: number }[]))
   }
 
   async function loadProspectListProspects() {
@@ -1025,11 +1021,7 @@ export default function Prospects() {
       return
     }
     // Rows arrive newest-first, so the first row per prospect is its latest call.
-    const lastCalls: Record<string, ProspectLastCall> = {}
-    for (const r of (callRows ?? []) as { prospect_id: string; interaction_type: string; created_at: string | null }[]) {
-      if (!(r.prospect_id in lastCalls)) lastCalls[r.prospect_id] = { interaction_type: r.interaction_type, created_at: r.created_at }
-    }
-    setProspectLastCallMap(lastCalls)
+    setProspectLastCallMap(lastCallByProspect((callRows ?? []) as { prospect_id: string; interaction_type: string; created_at: string | null }[]))
     const callList = (callRows ?? []) as { prospect_id: string; interaction_type: string }[]
     setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
     setLaneCallRows(callList)
@@ -1113,14 +1105,10 @@ export default function Prospects() {
     try {
       const { data: contacts } = await supabase.from('contacts').select('id, prospect_id').in('prospect_id', ids)
       const contactRows = (contacts ?? []) as { id: string; prospect_id: string | null }[]
-      const inbound = new Set<string>()
+      let inbound = new Set<string>()
       if (contactRows.length > 0) {
         const { data: lines } = await supabase.from('messages').select('contact_id').eq('direction', 'in').in('contact_id', contactRows.map((c) => c.id))
-        const byContact = new Map(contactRows.map((c) => [c.id, c.prospect_id]))
-        for (const l of (lines ?? []) as { contact_id: string }[]) {
-          const pid = byContact.get(l.contact_id)
-          if (pid) inbound.add(pid)
-        }
+        inbound = inboundProspects(contactRows, (lines ?? []) as { contact_id: string }[])
       }
       setInboundProspectIds(inbound)
     } catch {
@@ -1129,10 +1117,7 @@ export default function Prospects() {
     void loadLaneRanks()
     try {
       const { data: cbs } = await supabase.from('prospect_callbacks').select('prospect_id, callback_date').gte('callback_date', new Date().toISOString()).in('prospect_id', ids).order('callback_date', { ascending: true })
-      const words: Record<string, string> = {}
-      const now = new Date()
-      for (const r of (cbs ?? []) as { prospect_id: string; callback_date: string }[]) if (!(r.prospect_id in words)) words[r.prospect_id] = callbackWords(new Date(r.callback_date), now)
-      setLaneCallbacks(words)
+      setLaneCallbacks(firstCallbackWords((cbs ?? []) as { prospect_id: string; callback_date: string }[], new Date()))
     } catch {
       setLaneCallbacks({})
     }
@@ -1487,9 +1472,7 @@ export default function Prospects() {
       .select('timer_seconds')
       .eq('user_id', authUser.id)
       .eq('prospect_id', prospectId)
-    const rows = (data ?? []) as Array<{ timer_seconds: number }>
-    const sum = rows.reduce((acc, r) => acc + (r.timer_seconds ?? 0), 0)
-    setProspectLedgerSeconds(sum)
+    setProspectLedgerSeconds(sumTimerSeconds((data ?? []) as Array<{ timer_seconds: number }>))
   }
 
   useEffect(() => {
@@ -1506,14 +1489,7 @@ export default function Prospects() {
       .from('prospect_timer_events')
       .select('prospect_id, timer_seconds')
       .eq('user_id', authUser.id)
-    const rows = (data ?? []) as Array<{ prospect_id: string | null; timer_seconds: number }>
-    const map: Record<string, number> = {}
-    for (const r of rows) {
-      if (r.prospect_id) {
-        map[r.prospect_id] = (map[r.prospect_id] ?? 0) + (r.timer_seconds ?? 0)
-      }
-    }
-    setProspectLedgerSecondsMap(map)
+    setProspectLedgerSecondsMap(sumTimerSecondsByProspect((data ?? []) as Array<{ prospect_id: string | null; timer_seconds: number }>))
   }
 
   useEffect(() => {
@@ -1899,35 +1875,11 @@ export default function Prospects() {
     setEditModalOpen(true)
   }
 
-  /** The Edit window's boxes as a prospect fills them (v2.5582): what the window opened with, for the leave guard. */
-  function editSnapshotOf(p: Prospect): Record<string, string> {
-    const blocks = blocksFromRow(p)
-    return {
-      ...blocks.person,
-      ...blocks.company,
-      source: p.source ?? '',
-      trades: tradesText(p.trades),
-      miles: p.max_miles == null ? '' : String(p.max_miles),
-      role: p.company_role ?? '',
-    }
-  }
-
   function setEditKindFields(p: Prospect) {
     setEditSource(p.source ?? '')
     setEditTrades(tradesText(p.trades))
     setEditMaxMiles(p.max_miles == null ? '' : String(p.max_miles))
     setEditRole(p.company_role ?? '')
-  }
-
-  /** The kind's facts as the row holds them (v2.5559), from the Edit and New windows' boxes. */
-  function kindFieldsPayload(k: ProspectKind, f: { source: string; trades: string; maxMiles: string; role: string }) {
-    const miles = Number(f.maxMiles)
-    return {
-      source: f.source.trim() || null,
-      trades: k === 'sub' ? parseTradesText(f.trades) : [],
-      max_miles: k === 'sub' && Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
-      company_role: k === 'gc_lead' && isProspectCompanyRole(f.role) ? f.role : null,
-    }
   }
 
   function openEditModalForProspect(p: Prospect) {
@@ -2011,7 +1963,7 @@ export default function Prospects() {
   async function saveCallback() {
     if (!currentProspect || !authUser?.id || saving) return
     const dateTime = new Date(`${callbackDate}T${callbackTime}`).toISOString()
-    const title = `Call back: ${(currentProspect.company_name || 'Unknown').trim()} - ${(currentProspect.contact_name || 'Unknown').trim()}`
+    const title = runCallbackTitle(currentProspect.company_name, currentProspect.contact_name)
     setSaving(true)
     const { error } = await supabase.from('prospect_callbacks').insert({
       prospect_id: currentProspect.id,
@@ -2106,19 +2058,7 @@ export default function Prospects() {
     const prospect = currentProspect
     newCustomerModal.openNewCustomerModal({
       initialValues: customerDraftFromProspect(prospect),
-      sourceProspect: {
-        id: prospect.id,
-        company_name: prospect.company_name,
-        contact_name: prospect.contact_name,
-        phone_number: prospect.phone_number,
-        email: prospect.email,
-        address: prospect.address,
-        prospect_fit_status: prospect.prospect_fit_status,
-        is_person: prospect.is_person,
-        contact_title: prospect.contact_title,
-        contact_phone: prospect.contact_phone,
-        lang: prospect.lang,
-      },
+      sourceProspect: sourceProspectOf(prospect),
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
         const convertedId = meta?.convertedProspectId ?? null
@@ -2274,19 +2214,7 @@ export default function Prospects() {
     if (!newCustomerModal) return
     newCustomerModal.openNewCustomerModal({
       initialValues: customerDraftFromProspect(prospect),
-      sourceProspect: {
-        id: prospect.id,
-        company_name: prospect.company_name,
-        contact_name: prospect.contact_name,
-        phone_number: prospect.phone_number,
-        email: prospect.email,
-        address: prospect.address,
-        prospect_fit_status: prospect.prospect_fit_status,
-        is_person: prospect.is_person,
-        contact_title: prospect.contact_title,
-        contact_phone: prospect.contact_phone,
-        lang: prospect.lang,
-      },
+      sourceProspect: sourceProspectOf(prospect),
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
         if ((meta?.convertedProspectId ?? null) !== prospect.id) {
@@ -2720,28 +2648,13 @@ export default function Prospects() {
       if (!customer) throw new Error('Failed to create customer')
       const customerId = (customer as { id: string }).id
 
-      for (const cp of convertContactPersons) {
-        if (!cp.name.trim()) continue
-        const phoneVal = cp.phone.trim() || null
-        const { error: cpErr } = await supabase.from('customer_contact_persons').insert({
-          customer_id: customerId,
-          name: cp.name.trim(),
-          phone: phoneVal,
-          email: cp.email.trim() || null,
-          note: cp.note.trim() || null,
-        })
+      for (const row of convertContactRows(convertContactPersons, customerId)) {
+        const { error: cpErr } = await supabase.from('customer_contact_persons').insert(row)
         if (cpErr) throw new Error(`Failed to add contact: ${cpErr.message}`)
       }
 
-      for (const b of convertBids) {
-        if (!b.project_name.trim() || !b.service_type_id) continue
-        const { error: bidErr } = await supabase.from('bids').insert({
-          customer_id: customerId,
-          created_by: authUser.id,
-          service_type_id: b.service_type_id,
-          project_name: b.project_name.trim(),
-          materials_model: 'rough',
-        })
+      for (const row of convertBidRows(convertBids, customerId, authUser.id)) {
+        const { error: bidErr } = await supabase.from('bids').insert(row)
         if (bidErr) throw new Error(`Failed to add bid: ${bidErr.message}`)
       }
 
@@ -4660,14 +4573,8 @@ export default function Prospects() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {(() => {
-                const today = new Date()
-                today.setHours(0, 0, 0, 0)
-                const dates: string[] = []
-                for (let i = 0; i < 30; i++) {
-                  const d = new Date(today)
-                  d.setDate(d.getDate() - i)
-                  dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
-                }
+                // Newest day first; the chart's helper reads the same 30 days oldest first.
+                const dates = [...getOrderedDateKeysLast30Days()].reverse()
                 return dates
                   .map((dk) => {
                     const rows = teamDataByDate[dk] ?? []
