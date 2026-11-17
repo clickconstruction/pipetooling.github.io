@@ -118,7 +118,7 @@ const EN: GuideContent = {
   statements: {
     title: 'Your statements',
     sub: 'Papers for your records',
-    body: 'Tap Statements at the top of the page. It shows your statement of account, a work statement for each job and each payment as one record, paid ones too. Each one saves as a PDF, the same paper our office prints. A number shows where our office has made the paper. The PDFs are in English.',
+    body: 'Tap Statements at the top of the page. It shows your statement of account, a work statement for each job and each payment as one record, paid ones too. Each one saves as a PDF, the same paper our office prints. A number shows where our office has made the paper. The PDFs are in English. Tap Got it on a payment once it reaches you. If a figure looks wrong, tap Something is wrong and tell us. Neither one changes what you are paid.',
   },
   comingSoon: {
     title: 'Coming soon',
@@ -214,7 +214,7 @@ const ES: GuideContent = {
   statements: {
     title: 'Sus estados de cuenta',
     sub: 'Papeles para sus registros',
-    body: 'Toque Estados en la parte de arriba de la página. Ahí aparece su estado de cuenta, una constancia por cada trabajo y cada pago como un solo registro, también los ya pagados. Cada uno se guarda como PDF, el mismo papel que imprime nuestra oficina. Un número aparece cuando nuestra oficina ya hizo el papel. Los PDF están en inglés.',
+    body: 'Toque Estados en la parte de arriba de la página. Ahí aparece su estado de cuenta, una constancia por cada trabajo y cada pago como un solo registro, también los ya pagados. Cada uno se guarda como PDF, el mismo papel que imprime nuestra oficina. Un número aparece cuando nuestra oficina ya hizo el papel. Los PDF están en inglés. Toque Ya lo recibí en un pago cuando le llegue. Si una cifra se ve mal, toque Algo está mal y díganos. Ninguna de las dos cambia lo que se le paga.',
   },
   comingSoon: {
     title: 'Próximamente',

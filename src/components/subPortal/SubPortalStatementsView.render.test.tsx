@@ -10,9 +10,9 @@ import type { StatementRange } from '../../../supabase/functions/_shared/subPape
 import { buildSubPortalPapers } from '../../../supabase/functions/_shared/subPortalPapers'
 import { subPortalT, type SubPortalLang, type SubPortalStringKey } from '../../lib/subPortal/subPortalI18n'
 import { parseSubPortalPapers, type SubPortalPapers } from '../../lib/subPortal/subPortalPapersPayload'
-import { SENDING_226, harlanRows } from '../../lib/subPortal/subPortalPapersFixture'
+import { SENDING_226, SENDING_231, harlanRows } from '../../lib/subPortal/subPortalPapersFixture'
 import type { SubPaper } from '../../lib/subWorkOrders/subPaperSend'
-import { SubPortalStatementsView } from './SubPortalStatementsView'
+import { SubPortalStatementsView, type SubPortalAnswer, type SubPortalAnswerResult } from './SubPortalStatementsView'
 
 const WHO = { subName: 'Harlan Mechanical', company: { name: 'Your Company Name', lines: ['100 Example Way, Suite 4'] }, officePhone: '(555) 010-0100', now: new Date('2026-11-16T15:30:00Z') }
 const PAPERS = parseSubPortalPapers(JSON.parse(JSON.stringify(buildSubPortalPapers(harlanRows({ acks: [{ kind: 'received', paper_id: null, labor_job_id: null, sending_id: SENDING_226, payment_id: null, note: null, created_at: '2026-11-02T18:00:00Z' }] }), WHO))))!
@@ -132,5 +132,113 @@ describe('SubPortalStatementsView', () => {
     expect(screen.getByTestId('statements-soa').textContent).toContain('To date, live · Nothing is open with you.')
     expect(screen.getByText('A statement shows here for each piece of work the office writes up for you.')).toBeTruthy()
     expect(screen.getByText('Each payment shows here the day the office records it.')).toBeTruthy()
+  })
+
+  it('draws neither press where the page hands in no way to answer', () => {
+    draw()
+    expect(screen.queryByRole('button', { name: 'Got it' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Something is wrong' })).toBeNull()
+  })
+})
+
+describe('SubPortalStatementsView: Got it and Something is wrong (v2.7609)', () => {
+  const t = (key: SubPortalStringKey, vars?: Record<string, string>) => subPortalT('en', key, vars)
+  function drawWith(onAnswer: (a: SubPortalAnswer) => Promise<SubPortalAnswerResult>, lang: SubPortalLang = 'en') {
+    const tt = (key: SubPortalStringKey, vars?: Record<string, string>) => subPortalT(lang, key, vars)
+    const saved: SubPaper[] = []
+    render(<SubPortalStatementsView papers={PAPERS} subName="Harlan Mechanical" lang={lang} t={lang === 'en' ? t : tt} switcher={null} savePaper={async (paper) => void saved.push(paper)} onAnswer={onAnswer} />)
+    return { saved }
+  }
+
+  it('Got it: one tap, then one question, and the payment reads Received on the list and on its record', async () => {
+    const sent: SubPortalAnswer[] = []
+    const { saved } = drawWith(async (a) => {
+      sent.push(a)
+      return { ok: true, received: { [SENDING_231]: 'Nov 13, 2026' } }
+    })
+    const first = screen.getAllByTestId('statements-payment-row')[0]!
+    // A payment already marked received offers no press.
+    expect(within(screen.getAllByTestId('statements-payment-row')[1]!).queryByRole('button', { name: 'Got it' })).toBeNull()
+    fireEvent.click(within(first).getByRole('button', { name: 'Got it' }))
+    const panel = screen.getByTestId('statements-got-it-panel')
+    expect(panel.textContent).toContain('Did this payment reach you?$2,200.00 by Zelle 8841, sent Nov 12, 2026.This tells the office the money arrived. It is not a release or a waiver of any lien right.')
+    expect(sent).toEqual([])
+    fireEvent.click(within(panel).getByRole('button', { name: 'Yes, I got it' }))
+    await waitFor(() => expect(within(screen.getAllByTestId('statements-payment-row')[0]!).getByText('Received Nov 13, 2026')).toBeTruthy())
+    expect(sent).toEqual([{ action: 'got_it', key: SENDING_231 }])
+    expect(screen.queryByTestId('statements-got-it-panel')).toBeNull()
+    expect(within(screen.getAllByTestId('statements-payment-row')[0]!).queryByRole('button', { name: 'Got it' })).toBeNull()
+    // The record's own Received box is filled.
+    fireEvent.click(within(screen.getAllByTestId('statements-payment-row')[0]!).getByRole('button', { name: 'PDF' }))
+    await waitFor(() => expect(saved).toHaveLength(1))
+    expect(saved[0]).toMatchObject({ kind: 'payment_record', received: 'Harlan Mechanical marked this received on Nov 13, 2026.' })
+  })
+
+  it('Not yet sends nothing', () => {
+    const onAnswer = vi.fn(async () => ({ ok: true as const }))
+    drawWith(onAnswer)
+    fireEvent.click(within(screen.getAllByTestId('statements-payment-row')[0]!).getByRole('button', { name: 'Got it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Not yet' }))
+    expect(screen.queryByTestId('statements-got-it-panel')).toBeNull()
+    expect(onAnswer).not.toHaveBeenCalled()
+  })
+
+  it('Something is wrong on a statement: a note to the office, dead until there are words, and the row says it was sent', async () => {
+    const sent: SubPortalAnswer[] = []
+    drawWith(async (a) => {
+      sent.push(a)
+      return a.action === 'something_wrong' ? { ok: true, wrong: { about: a.about, key: a.key, day: 'Nov 16, 2026', note: a.note } } : { ok: true }
+    })
+    const row = screen.getAllByTestId('statements-work-row')[0]!
+    fireEvent.click(within(row).getByRole('button', { name: 'Something is wrong' }))
+    const panel = screen.getByTestId('statements-wrong-panel')
+    expect(panel.textContent).toContain('Tell the office what looks wrongAbout WS-2041-1 · #2041 Cedar Hollow Clinic.')
+    expect(within(panel).getByRole('link', { name: '(555) 010-0100' })).toBeTruthy()
+    const press = within(panel).getByRole('button', { name: 'Send to the office' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    fireEvent.change(within(panel).getByRole('textbox'), { target: { value: '  The back-charge was never talked about with me.  ' } })
+    expect(press.disabled).toBe(false)
+    fireEvent.click(press)
+    await waitFor(() => expect(screen.queryByTestId('statements-wrong-panel')).toBeNull())
+    expect(sent).toEqual([{ action: 'something_wrong', about: 'statement', key: PAPERS.ok ? PAPERS.sheets.find((s) => s.number === 'WS-2041-1')!.id : '', note: 'The back-charge was never talked about with me.' }])
+    expect(within(screen.getAllByTestId('statements-work-row')[0]!).getByText('Sent to the office. Nothing on the statement changes. The office reads the note and answers you.')).toBeTruthy()
+    // Nothing on the statement changed.
+    expect(screen.getByTestId('statements-still-open').textContent).toBe('$1,500.00')
+  })
+
+  it('Something is wrong on a payment names the payment, and Cancel sends nothing', () => {
+    const onAnswer = vi.fn(async () => ({ ok: true as const }))
+    drawWith(onAnswer)
+    fireEvent.click(within(screen.getAllByTestId('statements-payment-row')[2]!).getByRole('button', { name: 'Something is wrong' }))
+    expect(screen.getByTestId('statements-wrong-panel').textContent).toContain('About the payment of Sep 20, 2026.')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByTestId('statements-wrong-panel')).toBeNull()
+    expect(onAnswer).not.toHaveBeenCalled()
+  })
+
+  it('a note the sub sent before reads on its row, with the day', () => {
+    const told = parseSubPortalPapers({ ...(JSON.parse(JSON.stringify(PAPERS)) as Record<string, unknown>), wrong: [{ about: 'payment', key: SENDING_226, day: 'Nov 1, 2026', note: 'The check was short.' }] })!
+    const tt = (key: SubPortalStringKey, vars?: Record<string, string>) => subPortalT('es', key, vars)
+    render(<SubPortalStatementsView papers={told} subName="Harlan Mechanical" lang="es" t={tt} switcher={null} onAnswer={async () => ({ ok: true })} />)
+    expect(within(screen.getAllByTestId('statements-payment-row')[1]!).getByText('Le avisó a la oficina el 1 nov 2026.')).toBeTruthy()
+  })
+
+  it('an answer that does not go through says so and keeps the question open', async () => {
+    drawWith(async () => ({ ok: false, failure: 'refused', say: 'answerOfficeLooking' }))
+    fireEvent.click(within(screen.getAllByTestId('statements-payment-row')[0]!).getByRole('button', { name: 'Got it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, I got it' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('This is the office looking at the page. Only the sub can answer, from their own link.')
+    expect(screen.getByTestId('statements-got-it-panel')).toBeTruthy()
+    expect(screen.queryByText(/Received Nov 1[0-9]/)).toBeNull()
+  })
+
+  it('reads in Spanish', () => {
+    drawWith(async () => ({ ok: true }), 'es')
+    fireEvent.click(within(screen.getAllByTestId('statements-payment-row')[0]!).getByRole('button', { name: 'Ya lo recibí' }))
+    expect(screen.getByTestId('statements-got-it-panel').textContent).toContain('¿Le llegó este pago?$2,200.00 por Zelle 8841, enviado el 12 nov 2026.')
+    expect(screen.getByRole('button', { name: 'Sí, lo recibí' })).toBeTruthy()
+    fireEvent.click(within(screen.getAllByTestId('statements-work-row')[0]!).getByRole('button', { name: 'Algo está mal' }))
+    expect(screen.getByTestId('statements-wrong-panel').textContent).toContain('Dígale a la oficina qué se ve malSobre WS-2041-1 · #2041 Cedar Hollow Clinic.')
+    expect(screen.getByRole('button', { name: 'Enviar a la oficina' })).toBeTruthy()
   })
 })
