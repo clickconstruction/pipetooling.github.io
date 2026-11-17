@@ -90,9 +90,9 @@ beforeEach(() => {
 })
 
 async function openForward(): Promise<HTMLElement> {
-  renderWithProviders(<Checklist />)
-  // the office lands on Review
-  fireEvent.click(await screen.findByRole('button', { name: 'Today' }))
+  // Opened on Today by its address. With no tab named, the office is sent to Review once its role is read, and a
+  // press on Today could land before that redirect and lose to it (the first case timed out in a queue build).
+  renderWithProviders(<Checklist />, { route: '/checklist?tab=today' })
   await screen.findByText('Check the truck fluids')
   fireEvent.click(await screen.findByRole('button', { name: 'Forward' }))
   return screen.findByRole('dialog', { name: 'Forward task' })
