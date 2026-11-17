@@ -6,8 +6,8 @@
  * Pure: it reads the thrown error's own words, which the Drive helpers write in a few fixed shapes
  * (`Upload failed (403): …`, `Folder create failed (500): …`, `Google token exchange failed (400): …`,
  * `Drive answered 503`), and says who refused, in whose words, and whether sending the same file again can help.
- * `retry` is true for a busy or broken Drive (408, 429, 5xx, a rate limit) and for a Drive the app could not reach,
- * and false for a refusal the same file would meet again.
+ * `retry` is true for a busy or broken Drive (408, 429, 5xx, a rate limit, a web page where an answer should be) and
+ * for a Drive the app could not reach, and false for a refusal the same file would meet again.
  */
 export type DriveFailureWhy = 'drive' | 'google' | 'unreachable' | 'unknown'
 
@@ -57,6 +57,19 @@ function unreachable(e: unknown, message: string): boolean {
   return /error sending request|connection (?:reset|refused|closed)|network (?:error|is unreachable)|timed out|ECONNRESET|ENOTFOUND|ETIMEDOUT/i.test(message)
 }
 
+/** What the screen reads when Drive answered with a web page where its JSON should be. */
+export const DRIVE_SENT_A_PAGE_WORDS = 'Drive sent a web page where its answer should be. It does that when it is busy.'
+
+/**
+ * A helper read Drive's answer as JSON and met a web page (`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`).
+ * Google's front door sends one when it is busy or a gateway failed, whatever the status. This is the failure the
+ * owner met on 2026-11-17: `uploadBytes` threw it, and the door said `failed`.
+ */
+function unreadableAnswer(e: unknown, message: string): boolean {
+  const name = e instanceof Error ? e.name : ''
+  return /is not valid JSON|<!DOCTYPE|<html/i.test(message) || (name === 'SyntaxError' && /JSON|Unexpected (?:token|end)/i.test(message))
+}
+
 /** The sentence, the kind and the retry answer for one thrown error. Never throws, never returns the bare word `failed`. */
 export function driveFailureOf(e: unknown): DriveFailure {
   const message = messageOf(e).trim()
@@ -70,6 +83,7 @@ export function driveFailureOf(e: unknown): DriveFailure {
     return { error, why: shape.why, retry: driveStatusRetries(status) || /rate limit/i.test(reason), status: 502 }
   }
   if (unreachable(e, message)) return { error: 'The app could not reach Drive.', why: 'unreachable', retry: true, status: 502 }
+  if (unreadableAnswer(e, message)) return { error: DRIVE_SENT_A_PAGE_WORDS, why: 'drive', retry: true, status: 502 }
   if (!message || message === 'failed') return { error: 'The app hit a problem of its own and has no reason to give.', why: 'unknown', retry: true, status: 500 }
   return { error: `The app hit a problem of its own: ${clip(message)}`, why: 'unknown', retry: false, status: 500 }
 }

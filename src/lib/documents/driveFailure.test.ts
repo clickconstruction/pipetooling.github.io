@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DRIVE_FAILURE_REASON_MAX, driveFailureOf, driveStatusRetries } from '../../../supabase/functions/_shared/driveFailure'
+import { DRIVE_FAILURE_REASON_MAX, DRIVE_SENT_A_PAGE_WORDS, driveFailureOf, driveStatusRetries } from '../../../supabase/functions/_shared/driveFailure'
 
 describe('driveFailureOf (v2.7635): a Drive door names who refused and whether the same ask can go again', () => {
   it('reads a refused upload in Drive’s own words, and does not offer a second try for a refusal', () => {
@@ -41,6 +41,15 @@ describe('driveFailureOf (v2.7635): a Drive door names who refused and whether t
     const lost = new TypeError('error sending request for url (https://www.googleapis.com/upload/drive/v3/files): connection reset')
     expect(driveFailureOf(lost)).toEqual({ error: 'The app could not reach Drive.', why: 'unreachable', retry: true, status: 502 })
     expect(driveFailureOf(new Error('ECONNRESET')).why).toBe('unreachable')
+  })
+
+  it('reads a web page where Drive’s answer should be as a busy Drive, with the second try (the failure of 2026-11-17)', () => {
+    // What `uploadBytes` threw on prod: Drive answered the upload with an HTML page and `res.json()` could not read it.
+    const page = new SyntaxError('Unexpected token \'<\', "<!DOCTYPE "... is not valid JSON')
+    expect(driveFailureOf(page)).toEqual({ error: DRIVE_SENT_A_PAGE_WORDS, why: 'drive', retry: true, status: 502 })
+    expect(driveFailureOf(new SyntaxError('Unexpected end of JSON input')).retry).toBe(true)
+    expect(driveFailureOf(new SyntaxError('Unexpected token < in JSON at position 0')).error).toBe(DRIVE_SENT_A_PAGE_WORDS)
+    expect(driveFailureOf(new Error('<html><head><title>502 Bad Gateway</title>')).error).toBe(DRIVE_SENT_A_PAGE_WORDS)
   })
 
   it('passes the app’s own error on with its words, cut to a line, and never answers the bare word', () => {
