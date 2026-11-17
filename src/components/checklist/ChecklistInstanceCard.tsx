@@ -24,6 +24,8 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { MAP_PRESS_LABEL, MAP_PRESS_TITLE, PHOTO_PRESS_LABEL, beforeStartWords, doneLineWords, justDoneWords, notePressLabel, taskMapIdOf } from '../../lib/tasks/todayPage'
 import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
+import { doerLineWords } from '../../lib/tasks/taskDoerActs'
+import { dayLabel } from '../../lib/checklistDueDates'
 
 export type ChecklistInstanceCardInstance = {
   id: string
@@ -870,6 +872,14 @@ export function ChecklistInstanceCard({
                       <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span> ·{' '}
                       {typeof e.percent === 'number' ? `${e.percent}%` : 'moved it'} · {stripStamp(e.created_at)}
                       {e.body ? <> · “{e.body}”</> : null}
+                    </div>
+                  )
+                }
+                const doerWords = doerLineWords(e.event_type, e.event_type === 'moved' && /^\d{4}-\d{2}-\d{2}$/.test(e.body) ? dayLabel(e.body) : e.body)
+                if (doerWords) {
+                  return (
+                    <div key={e.id} data-doer-line={e.event_type} style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span> {doerWords} · {stripStamp(e.created_at)}
                     </div>
                   )
                 }

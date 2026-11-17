@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { type LedgerInstance } from '../../lib/checklistHistoryLedger'
+import { movedTimesWords } from '../../lib/tasks/taskDoerActs'
 import { showMoreLabel, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, type StillOpenTone } from '../../lib/tasks/todayPage'
 import type { LineState } from '../../lib/taskCriteria'
 import { useTaskCardSheets } from '../../hooks/useTaskCardSheets'
@@ -60,6 +61,7 @@ export function ChecklistOutstandingSection({
   openInstance,
   spotPhotoUrlFor,
   onPlaceAdded,
+  extrasFor,
 }: {
   instances: LedgerInstance[]
   eventsByInstance: Map<string, ChecklistCardEvent[]>
@@ -95,6 +97,8 @@ export function ChecklistOutstandingSection({
   spotPhotoUrlFor?: (inst: LedgerInstance) => string | null
   /** The person doing a task may add its missing place from where they stand (PR 8). Called once it has landed. */
   onPlaceAdded?: () => void
+  /** Quiet presses for one row, drawn at the top of its open panel: the doer's More (punch list #369, step C3). */
+  extrasFor?: (inst: LedgerInstance) => ReactNode
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
@@ -163,6 +167,7 @@ export function ChecklistOutstandingSection({
             placeFar={placeFarFor?.(inst) ?? null}
             spotPhotoUrl={spotPhotoUrlFor?.(inst) ?? null}
             onPlaceAdded={onPlaceAdded}
+            extras={extrasFor ? extrasFor(inst) : null}
             placedByName={(() => {
               const by = placeFor?.(inst)?.setBy
               return by && nameById?.[by] ? nameById[by]! : null
@@ -224,6 +229,7 @@ function OutstandingRow({
   placedByName,
   spotPhotoUrl,
   onPlaceAdded,
+  extras = null,
 }: {
   inst: LedgerInstance
   events: ChecklistCardEvent[]
@@ -254,8 +260,10 @@ function OutstandingRow({
   placedByName: string | null
   spotPhotoUrl: string | null
   onPlaceAdded?: () => void
+  extras?: ReactNode
 }) {
   const notes = events.filter((e) => e.event_type === 'comment').length
+  const moved = movedTimesWords(events.filter((e) => e.event_type === 'moved').length)
   const age = stillOpenAge(inst.scheduled_date, inst.checklist_items?.due_date ?? null, todayStr)
   const late = stillOpenIsLate(inst.checklist_items?.due_date ?? null, todayStr)
   // A map by itself is read for the row that has no place. With a place, the place's block reads its own way in.
@@ -318,6 +326,7 @@ function OutstandingRow({
             {lines.length > 0 ? <span> · {lines.filter((l) => l.checked).length} of {lines.length} done when…</span> : null}
             {photos.length > 0 ? <span> · 📷 {photos.length}</span> : null}
             {notes > 0 ? <span> · {notes} {notes === 1 ? 'note' : 'notes'}</span> : null}
+            {moved ? <span data-still-open-moved> · {moved}</span> : null}
           </span>
         </button>
         {age.pill ? (
@@ -331,6 +340,11 @@ function OutstandingRow({
       </div>
       {expanded ? (
         <div style={{ padding: '0 0.75rem 0.7rem 3.1rem' }}>
+          {extras ? (
+            <div data-still-open-extras style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', marginBottom: '0.6rem' }}>
+              {extras}
+            </div>
+          ) : null}
           {lines.length > 0 ? (
             <div style={{ marginBottom: '0.6rem' }}>
               <TaskLinesList lines={lines} onTick={onTickLine ? sheets.tickLine : undefined} readOnly={Boolean(inst.completed_at)} nameOf={nameOf} />

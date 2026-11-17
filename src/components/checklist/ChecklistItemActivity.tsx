@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { doerLineWords } from '../../lib/tasks/taskDoerActs'
 import { buildManageTimeline, commentTargetInstance, type ManageInstanceLite } from '../../lib/checklistManageActivity'
 import type { DueChangeRow } from '../../lib/checklistDuePushes'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -311,6 +312,18 @@ export function ChecklistItemActivity({
                   <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span> · {typeof entry.percent === 'number' ? `${entry.percent}%` : 'moved it'} · {stripStamp(entry.at)}
                   {dayChip}
                   {entry.body ? <> — “{entry.body}”</> : null}
+                </div>
+              )
+            }
+            // The doer's tools (punch list #369) write their own lines. A moved line is left out here: the due-day change
+            // above already says it, with both days.
+            if (entry.eventType === 'moved') return null
+            const doerWords = doerLineWords(entry.eventType, entry.body ?? '')
+            if (doerWords) {
+              return (
+                <div key={entry.id} data-doer-line={entry.eventType} style={{ fontSize: '0.875rem', color: entry.eventType === 'stuck' ? 'var(--text-amber-800)' : 'var(--text-700)' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span> {doerWords} · {stripStamp(entry.at)}
+                  {dayChip}
                 </div>
               )
             }

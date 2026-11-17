@@ -83,6 +83,7 @@ import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, la
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
+import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
@@ -490,6 +491,9 @@ export default function Checklist() {
 
 function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAddTask = false, setError, modeBar = null }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; /** May this person write a task? The roles the header's Task press shows for. */ canAddTask?: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
   const addTaskModal = useChecklistAddModal()
+  // Step C3: the doer's tools. One More press per task and one set of sheets for the tab. Up here with the tab's other
+  // hooks, above the early return a loading day takes.
+  const doer = useTaskDoerActs({ authUserId, todayYmd: todayYmdInAppTz(), onChanged: () => loadDay() })
   /** Tasks finished in this visit (punch list #369, step B2): each one's done line offers the photo and the note once. */
   const [doneHere, setDoneHere] = useState<ReadonlySet<string>>(new Set())
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
@@ -550,7 +554,9 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   // Punch list #369: a done task says who hears. Their names are read beside the names of the people in the threads.
   useEffect(() => {
-    const ids = [...new Set([...todayInstances, ...outstandingInstances].map((i) => taskHearsId(i.checklist_items, authUserId)).filter((v): v is string => !!v))].filter((id) => !(id in eventActorNameById))
+    const rows = [...todayInstances, ...outstandingInstances]
+    // The givers too (step C3): a tool's sheet says who is told.
+    const ids = [...new Set([...rows.map((i) => taskHearsId(i.checklist_items, authUserId)), ...rows.map((i) => i.checklist_items?.created_by_user_id ?? null)].filter((v): v is string => !!v))].filter((id) => !(id in eventActorNameById))
     if (ids.length === 0) return
     let off = false
     void supabase
@@ -959,6 +965,21 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       onSaved: () => void loadDay(),
     })
   }
+  const doerTargetOf = (inst: ChecklistInstance): TaskDoerActsTarget => {
+    const it = inst.checklist_items
+    const giverId = it?.created_by_user_id ?? null
+    return {
+      instanceId: inst.id,
+      title: taskTitlePlain(isVehicleTaskTitle(it?.title ?? '') ? stripVehicleTaskMarker(it?.title ?? '') : it?.title),
+      once: (it?.repeat_type ?? 'once') === 'once',
+      roadmap: !!it?.roadmap_group_task_id,
+      vehicle: isVehicleTaskTitle(it?.title ?? ''),
+      done: !!inst.completed_at,
+      giverId,
+      giverName: giverId ? (eventActorNameById[giverId] ?? null) : null,
+      dueYmd: it?.due_date ?? null,
+    }
+  }
   const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
     // Next can be an older task once today is finished: its dot is the map's colour for it, red only when late.
     const todayYmd = toLocalDateString(new Date())
@@ -1046,6 +1067,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
                   {FOLLOW_UP_LABEL}
                 </button>
               ) : null}
+              {doer.morePress(doerTargetOf(inst))}
             </>
           }
         />
@@ -1108,6 +1130,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
 
       <ChecklistOutstandingSection
         instances={olderRows}
+        extrasFor={(inst) => doer.morePress(doerTargetOf(inst as ChecklistInstance))}
         eventsByInstance={eventsByInstance}
         currentUserId={authUserId}
         nameById={eventActorNameById}
@@ -1359,6 +1382,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         </div>
       )}
 
+      {doer.sheets}
       <ChecklistItemMuteModal
         open={!!muteModalItemId}
         checklistItemId={muteModalItemId}

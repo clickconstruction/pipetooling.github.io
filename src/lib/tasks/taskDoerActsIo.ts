@@ -19,3 +19,29 @@ export async function addTaskMap(instanceId: string, mapId: string): Promise<str
     return formatErrorMessage(e, 'The map did not go on the task.')
   }
 }
+
+/** The person doing a one-time task moves its due day. `ymd` is YYYY-MM-DD. */
+export async function moveTaskDay(instanceId: string, ymd: string): Promise<string | null> {
+  try {
+    const { error } = await supabase.rpc('task_move_day' as never, { p_instance_id: instanceId, p_day: ymd } as never)
+    return error ? formatErrorMessage(error, 'The task did not move.') : null
+  } catch (e) {
+    return formatErrorMessage(e, 'The task did not move.')
+  }
+}
+
+/**
+ * Tell whoever gave a task what the person doing it just did: one push through the function the completion push uses,
+ * so their hours and their devices are honoured the same way. Never throws and never holds the act: the act has
+ * landed by the time this is called, and its line is in the thread either way.
+ */
+export async function tellTaskGiver(a: { giverId: string | null; instanceId: string; title: string; body: string }): Promise<void> {
+  if (!a.giverId) return
+  try {
+    await supabase.functions.invoke('send-checklist-notification', {
+      body: { recipient_user_id: a.giverId, push_title: a.title, push_body: a.body, push_url: '/checklist', tag: `checklist-${a.instanceId}` },
+    })
+  } catch {
+    // the thread carries the line; a lost push is not the act's failure
+  }
+}

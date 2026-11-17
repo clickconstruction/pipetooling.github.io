@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -175,11 +175,19 @@ Finished a task and it turned up more work? Press **Follow-up** on the finished 
 
 [Give someone a task](/help/give-someone-a-task) covers the rest of the window.
 
+## Move a task to another day
+
+Cannot do a one-time task today? Press **⋯ More** on the task, then **Not today**. Pick **Tomorrow**, **Monday**, or **Pick a day**. A green line says what will happen, like *It moves to Fri, Nov 20. Imani is told.* Then press the blue press, which names the day.
+
+The task keeps its place in your list, with its notes and photos. Its row then reads the new due day and stops reading late. The person who gave you the task gets a message. A row that was moved says so, like *moved twice*.
+
+A task that repeats has no **Not today**. A missed day of a repeating task drops off by itself.
+
 ## Still open: older work that still needs doing
 
 Below your Today list you may see a **Still open** list. It holds one-off tasks whose day came and went without getting done. Each row says when the task was given, like *given Thu, Jul 30*. A pill at the end of the row shows its age, like *20 days*. The pill turns {{chip:yellow|amber}} after a week. A task with a due day that has passed shows a {{chip:red|red}} pill, like *3 days late*.
 
-Check a task off right there when you knock it out. Or tap the row to read its notes first. The list shows three rows and folds the rest. Press **Show 5 more** to see them all. Daily and weekly tasks never pile up here. Only work that's still genuinely waiting does.
+Check a task off right there when you knock it out. Or tap the row to read its notes first. The open row also holds **⋯ More**. The list shows three rows and folds the rest. Press **Show 5 more** to see them all. Daily and weekly tasks never pile up here. Only work that's still genuinely waiting does.
 
 Nothing escalates on its own. An overdue one-off doesn't page anyone or move up someone else's list. What the office does see is its age. On Checklist → Manage the open one-offs sort oldest first. A chip turns {{chip:yellow|amber}} after a week and {{chip:red|red}} after a month. A **🔔 Remind** from whoever assigned it is a person deciding to nudge you, not a timer.
 
