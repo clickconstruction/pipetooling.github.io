@@ -2,7 +2,7 @@
 title: see what a sub sees on their portal
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: sub portal, subcontractor portal, work and pay, what the sub sees, how do i get paid, backcharge memo, pay run, paperwork, plans, stage, inspection, work done, waiting on customer, queued, window, pick a start day, days off, progress, percent
+keywords: sub portal, subcontractor portal, statements, statement of account, work statement, payment record, still open, work and pay, what the sub sees, how do i get paid, backcharge memo, pay run, paperwork, plans, stage, inspection, work done, waiting on customer, queued, window, pick a start day, days off, progress, percent
 ---
 A sub's portal shows their jobs, their pay and their paperwork. Each job card says in one sentence what stands between them and the money.
 
@@ -57,6 +57,32 @@ Subs mark days off on the portal's **Your days**. Those days show as stripes on 
 ## How far along they say they are
 
 A sub can report 25, 50 or 75 percent from the job card, with a note. Each report is a **Sub progress** line on the job's Activity feed. A note also lands in the dispatch inbox. A bare percent never does. You see the percent beside their name on **Jobs → Subs → Work** and on the sheet story's Work row. A 100% report is the same "my work here is done" as before, and moves the sheet to Pre-inspection.
+
+## Their statements
+
+A switch sits under the head of the sub's page. It reads ***Today*** and ***Statements***.
+
+***Today*** is the page as it always was. ***Statements*** holds the sub's own papers:
+
+- **Statement of account.** It is live to date, with *Still open* at the top. A sub can pick dates and save it as a PDF.
+- **Work statements.** One for every sheet that is theirs alone. Open ones come first, then paid ones.
+- **Payments.** One line for each check or transfer, newest first. Each line says what went to each statement.
+
+Each row saves the same PDF you print from **Statement of account…** and **Work statement…**. The PDFs are in English.
+
+**The sub's page never gives out a number.** A work statement shows its number only after you have made that paper. A statement of account a sub saves has no number. Its foot reads *Saved from your page*, with the day and time.
+
+A sheet can change after you made its paper. The row then says it changed since your copy. Its PDF keeps the number and says the same.
+
+A sheet two people share stays on ***Today***. It is not on ***Statements***.
+
+A memo you hid stays hidden. The amount always shows.
+
+Sometimes the papers do not add up. The sub then sees no figure. The page says the office is checking, with your phone number. You see the reason on your own **Statement of account…** window.
+
+Print still prints the ***Today*** page.
+
+How you make these papers is in [make a statement of account for a sub](/help/make-a-statement-of-account-for-a-sub).
 
 ## More on the portal
 

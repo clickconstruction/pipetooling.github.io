@@ -4494,6 +4494,9 @@ Taunya kept the papers' names on 2026-11-16.
 The register is `sub_papers` (v2.7474), which registers each paper with its number, its revision and the paper as issued, written only by `mint_sub_paper` (`WS-<job>-<n>` per job, `PR-<n>` from the sending, `SA-<n>` across the company, never given out twice;
 a change is a revision, a reprint makes nothing) and voided only by `void_sub_paper`.
 Guide: `make-a-statement-of-account-for-a-sub`.
+Since v2.7597 (punch list #371) a sub reads the same papers on their own page: a switch under the head, **Today** and **Statements**, opens `SubPortalStatementsView` over the `papers` block of `sub-portal` (`src/lib/subPortal/subPortalStatements.ts`).
+The sub's page never gives out a number: a statement of account saved there reads *Saved from your page*, and a work statement that changed since the office's copy says so and drops its revision.
+Print on the sub's page still prints the Today paper, whichever view shows.
 
 ### Sub payment trace (move / remove / undo)
 
