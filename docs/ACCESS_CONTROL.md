@@ -1821,6 +1821,23 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
 
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`)
+
+No screen calls it yet, and it locks nothing: the prompt and the lock in the database are later steps.
+`job_required_papers` holds the papers a job requires of everyone who opens it.
+The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
+It has no write policy and no write grant: rows are written only by `job_papers_require` and `job_paper_remove`, both office only.
+Everyone must sign, the office too: `job_closed_to_me(job)` is true for any signed-in user who has not signed every live paper on the job, and false for the service role.
+The signer is the roster person tied to the login (`people.account_user_id`), never a name match.
+A login tied to no roster person reads as owing and cannot start a paper.
+`job_papers_mine(job)` hands any signed-in user the job's number and its papers' names, and nothing else of the job.
+`job_paper_start` makes the caller's own copy.
+Only the office or the service role makes one for someone else.
+`job_papers_roster(job)` is office only.
+`job_papers_for_person` and `job_paper_job_number` run for the service role alone.
+The policies on `person_contract_documents` are unchanged: a person never reads their own paper's row, only the functions' answers and the signing page.
+A training-mode account cannot sign, since starting a paper is a write.
+
 ### Contract documents: type/expiry/identity columns (v2.1213, `20260801200000_contract_doc_types_expiry.sql`)
 - `person_contract_documents` gains `doc_type` (agreement|coi|w9|license|other, default agreement), `expires_at`, and `person_id` (FK `people`, resolver backfill + `contract_docs_set_person_id` trigger).
   **No RLS changes** — column-additive;
