@@ -67,13 +67,14 @@ describe('what the sweep owes a row', () => {
     expect(contractDriveDue(row({ status: 'sent' }), now)).toBeNull()
     expect(contractDriveDue(row({ drive_file_id: FILE_A, drive_file_origin: 'filed' }), now)).toBeNull()
   })
-  it('takes a hold that clears by itself every run, and one that needs a person’s file hourly', () => {
+  it('takes a held paper again an hour on, and a paper left with no reason on the next run', () => {
     const tenAgo = new Date(now - 10 * 60_000).toISOString()
-    expect(contractDriveDue(row({ drive_file_hold: 'job_folder', drive_file_tried_at: tenAgo }), now)).toBe('file')
-    expect(contractDriveDue(row({ drive_file_hold: 'no_file', drive_file_tried_at: tenAgo }), now)).toBeNull()
+    expect(contractDriveDue(row({ drive_file_hold: 'job_folder', drive_file_tried_at: tenAgo }), now)).toBeNull()
+    expect(contractDriveDue(row({ drive_file_hold: 'job_folder', drive_file_tried_at: new Date(now - 61 * 60_000).toISOString() }), now)).toBe('file')
     expect(contractDriveDue(row({ drive_file_hold: 'no_file', drive_file_tried_at: new Date(now - 61 * 60_000).toISOString() }), now)).toBe('file')
-    expect(holdRetryMinutes('drive_refused')).toBe(0)
-    expect(holdRetryMinutes('link_outside')).toBe(60)
+    expect(contractDriveDue(row({ drive_file_tried_at: tenAgo }), now)).toBe('file')
+    expect(holdRetryMinutes('drive_refused')).toBe(60)
+    expect(holdRetryMinutes(null)).toBe(0)
   })
   it('marks the app’s own copy of a voided paper once, and never a file the office placed', () => {
     const voided = { status: 'voided', voided_at: '2026-11-16T12:00:00Z', drive_file_id: FILE_A }

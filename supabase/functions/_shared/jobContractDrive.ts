@@ -121,12 +121,14 @@ export function contractFileSource(row: Pick<ContractDriveRow, 'paper_upload_pat
 // ── the queue ────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * How long a hold waits before the sweep tries the paper again. A hold whose cause clears by itself (Drive back, a root
- * set, the job's folder fixed, a refusal that was a blip) is taken every run; one that needs a person's file first is
- * taken hourly, which costs one read.
+ * How long a held paper waits before the sweep tries it again: an hour, whatever the hold, so a job whose folder stays
+ * held costs Drive a few reads an hour and not a few every ten minutes. A paper never tried, or tried and left with no
+ * reason (a run that died), is taken on the next run. *Try again* on the Contract window does not wait.
  */
+export const CONTRACT_HOLD_RETRY_MINUTES = 60
+
 export function holdRetryMinutes(kind: string | null | undefined): number {
-  return kind === 'no_file' || kind === 'link_outside' || kind === 'open_link' || kind === 'too_big' ? 60 : 0
+  return str(kind) ? CONTRACT_HOLD_RETRY_MINUTES : 0
 }
 
 /** What the sweep owes a row now: a filing, the VOIDED mark on its own copy, or nothing. */
