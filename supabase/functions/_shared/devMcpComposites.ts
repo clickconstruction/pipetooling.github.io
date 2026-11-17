@@ -150,7 +150,28 @@ export async function findPerson(reader: Reader, text: string) {
     order: [{ column: 'name' }],
     limit: FIND_LIMIT,
   })
-  return { matches: rows }
+  if (rows.length > 0) return { matches: rows }
+  // v2.7651: a roster row can hold a first name alone, so "First Last" matched no one and the search read as "no such
+  // person". When the whole name finds nothing, each word is tried and the reply says that is what it did.
+  const words = [...new Set(text.trim().split(/\s+/).filter((w) => w.replace(/[*,()]/g, '').length >= 2))]
+  if (words.length < 2) return { matches: rows }
+  const byId = new Map<string, Row>()
+  for (const w of words) {
+    const some = await reader.rows('users', {
+      select: 'id,name,email,role',
+      filters: [
+        { column: 'name', op: 'ilike', value: likeTerm(w) },
+        { column: 'archived_at', op: 'is', value: null },
+        { column: 'is_digital_twin', op: 'eq', value: false },
+        { column: 'is_sample', op: 'eq', value: false },
+      ],
+      order: [{ column: 'name' }],
+      limit: FIND_LIMIT,
+    })
+    for (const r of some) byId.set(str(r.id), r)
+  }
+  const matches = [...byId.values()]
+  return matches.length > 0 ? { matches, note: `No one matches "${text.trim()}" whole. These match one of its words; a roster row can hold a first name alone, so check which one is meant.` } : { matches }
 }
 
 export type Resolved = { id: string } | { refused: string }
