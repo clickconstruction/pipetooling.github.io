@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { supabase } from '../lib/supabase'
 import { useAuth, type UserRole } from '../hooks/useAuth'
+import { rereadJobsClosedToMe, useJobsClosedToMe, useJobsLockedInLists } from '../hooks/useJobsClosedToMe'
+import { maskLockedPick } from '../lib/jobs/jobPapers'
+import { JobPapersGateModal } from './jobs/JobPapersGateModal'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useToastContext } from '../contexts/ToastContext'
@@ -141,6 +144,8 @@ function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extrac
 
 /** Above DetailJobModal backdrop (1004) when opened from Job Detail after Leaving stamp. */
 const UPDATE_FOCUS_OVERLAY_Z_INDEX = 1020
+/** The papers prompt opens over the clock-in window it was pressed in. */
+const PAPERS_PROMPT_Z_INDEX = 1150
 
 const clockInSelectionOutlineSelected: CSSProperties = {
   border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
@@ -281,7 +286,23 @@ export default function ClockInOutButton({
   /** Whether the person picked a job or bid, or pressed Clear, since the clock-out window opened (punch list #228). */
   const clockOutPickTouchedRef = useRef(false)
   /** The person's own hand on the pick: a job or bid picked, or Clear. Typing in the search box is not a touch. */
+  // Papers before a job opens (step 3): no clock starts on a job this person still owes a paper on. A press on one
+  // opens its prompt instead, and the picker shows it by its number alone.
+  const { closed: closedJobs } = useJobsClosedToMe()
+  const closedJobsRef = useRef(closedJobs)
+  closedJobsRef.current = closedJobs
+  const [papersJob, setPapersJob] = useState<string | null>(null)
+  // The office's picker keeps the names: for the office the prompt is the lock (call 8). The press is turned aside for everyone.
+  const maskedJobs = useJobsLockedInLists(role)
+  const shownPick = <T extends UnifiedSearchResult>(r: T): T => maskLockedPick(r, maskedJobs)
+  /** True when the job is closed to this person: its prompt opens and the caller stops. */
+  const turnedAsideForPapers = (jobId: string | null | undefined): boolean => {
+    if (!jobId || !closedJobsRef.current.has(jobId)) return false
+    setPapersJob(jobId)
+    return true
+  }
   const pickByHand = (next: UnifiedSearchResult | null) => {
+    if (next?.source === 'job' && turnedAsideForPapers(next.id)) return
     clockOutPickTouchedRef.current = true
     setSelectedAssociation(next)
   }
@@ -1068,6 +1089,7 @@ export default function ClockInOutButton({
   }
 
   async function handleCompleteClockIn() {
+    if (selectedAssociation?.source === 'job' && turnedAsideForPapers(selectedAssociation.id)) return
     if (!userId || !userName?.trim() || !clockInNotes.trim()) {
       if (!clockInNotes.trim()) {
         showToast('Please describe what you intend to accomplish today', 'error')
@@ -1336,6 +1358,7 @@ export default function ClockInOutButton({
       if (!userId || !userName?.trim()) {
         return { ok: false, error: 'Missing user identity' }
       }
+      if (turnedAsideForPapers(opts.jobLedgerId)) return { ok: false, error: 'Sign this job’s papers first. Its prompt is open.' }
       const trimmedNotes = opts.notes.trim()
       try {
         const now = new Date()
@@ -1463,6 +1486,7 @@ export default function ClockInOutButton({
 
   async function handleUpdateFocus() {
     if (!openSession || !userId || !userName?.trim()) return
+    if (selectedAssociation?.source === 'job' && selectedAssociation.id !== openSession.job_ledger_id && turnedAsideForPapers(selectedAssociation.id)) return
     if (!salaryUiActive && !updateFocusNotes.trim()) return
     setUpdateFocusLoading(true)
     setUpdateFocusError(null)
@@ -1570,7 +1594,7 @@ export default function ClockInOutButton({
         }}
       >
         {orderScheduledPicksCurrentFirst(scheduledDispatchJobs, currentJobId).map(({ pick: d, isCurrent }) => {
-          const u = dispatchScheduledJobToUnified(d)
+          const u = shownPick(dispatchScheduledJobToUnified(d))
           const win = d.windowsLabel?.trim()
           const { title, address } = formatUnifiedJobSchedulePrimaryLine(u, prefixMap)
           const isSelected = selectedAssociation?.source === 'job' && selectedAssociation.id === d.jobId
@@ -1772,7 +1796,7 @@ export default function ClockInOutButton({
           disabled={opts.disabled}
           style={{ ...useLastBtnStyle, alignSelf: 'flex-start' }}
         >
-          Use last: {formatUnifiedResult(lastSelectedJobBid, prefixMap)}
+          Use last: {formatUnifiedResult(shownPick(lastSelectedJobBid), prefixMap)}
         </button>
       </div>
     )
@@ -2165,7 +2189,7 @@ export default function ClockInOutButton({
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation, prefixMap, { plainTradePrefixes: true })}
+                    {formatUnifiedResult(shownPick(selectedAssociation), prefixMap, { plainTradePrefixes: true })}
                   </span>
                   <button
                     type="button"
@@ -2228,7 +2252,7 @@ export default function ClockInOutButton({
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}
+                        {formatUnifiedResult(shownPick(r), prefixMap, { plainTradePrefixes: true })}
                       </button>
                     ))
                   )}
@@ -2343,7 +2367,7 @@ export default function ClockInOutButton({
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation, prefixMap, { plainTradePrefixes: true })}
+                    {formatUnifiedResult(shownPick(selectedAssociation), prefixMap, { plainTradePrefixes: true })}
                   </span>
                   <button
                     type="button"
@@ -2387,7 +2411,7 @@ export default function ClockInOutButton({
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}
+                        {formatUnifiedResult(shownPick(r), prefixMap, { plainTradePrefixes: true })}
                       </button>
                     ))
                   )}
@@ -2493,7 +2517,7 @@ export default function ClockInOutButton({
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation, prefixMap, { plainTradePrefixes: true })}
+                    {formatUnifiedResult(shownPick(selectedAssociation), prefixMap, { plainTradePrefixes: true })}
                   </span>
                   <button
                     type="button"
@@ -2547,7 +2571,7 @@ export default function ClockInOutButton({
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}
+                        {formatUnifiedResult(shownPick(r), prefixMap, { plainTradePrefixes: true })}
                       </button>
                     ))
                   )}
@@ -2575,7 +2599,7 @@ export default function ClockInOutButton({
                   ) : scheduledJobsMissingReport.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {scheduledJobsMissingReport.map((d) => {
-                          const u = dispatchScheduledJobToUnified(d)
+                          const u = shownPick(dispatchScheduledJobToUnified(d))
                           const win = d.windowsLabel?.trim()
                           const { title, address } = formatUnifiedJobSchedulePrimaryLine(u, prefixMap)
                           const line1 = win ? `${win} | ${title}` : title
@@ -2716,6 +2740,17 @@ export default function ClockInOutButton({
       source="clock_out_prompt"
     />
     {weekSheet && userId ? <YourWeekSheet open userId={userId} clockedOutIso={weekSheet.clockedOutIso} onClose={() => setWeekSheet(null)} /> : null}
+    {papersJob ? (
+      <JobPapersGateModal
+        jobId={papersJob}
+        role={role}
+        zIndex={PAPERS_PROMPT_Z_INDEX}
+        onClose={() => setPapersJob(null)}
+        onOpenJob={() => {
+          void rereadJobsClosedToMe().then(() => setPapersJob(null))
+        }}
+      />
+    ) : null}
     </>
   )
 }

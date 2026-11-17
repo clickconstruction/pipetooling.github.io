@@ -21,6 +21,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { contractLinkErrorWords } from '../lib/contractAcceptLink'
 import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
 import { PortalFailureNote } from '../components/portal/PortalFailureNote'
+import { armJobPapersBack, readJobPapersReturn } from '../lib/jobs/jobPapersReturnIo'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -94,6 +95,8 @@ export default function ContractAccept() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [thankYouCta, setThankYouCta] = useState<ContractThankYouCtaState>({ status: 'waiting_auth' })
+  // Papers before a job opens: this tab left a job's prompt to sign here, so the thank-you leads back to that job.
+  const [jobReturn] = useState(() => readJobPapersReturn())
   /** Two-party forms (v2.2803): the just-signed document still needs its office section — offered to a signed-in staff member on this device. */
   const [officePendingDocId, setOfficePendingDocId] = useState<string | null>(null)
   const [formValues, setFormValues] = useState<FormValues>({})
@@ -325,7 +328,11 @@ export default function ContractAccept() {
               footerImageSrc={`${import.meta.env.BASE_URL}pup.jpg`}
             />
             <div style={{ textAlign: 'center', padding: '0 1rem 1.5rem' }}>
-              {thankYouCta.status === 'waiting_auth' || thankYouCta.status === 'fetching' ? (
+              {jobReturn ? (
+                <Link to={jobReturn.path} onClick={() => armJobPapersBack(jobReturn.jobId)} style={contractThankYouPrimaryLinkStyle} data-testid="contract-thank-you-back-to-job">
+                  Back to the job
+                </Link>
+              ) : thankYouCta.status === 'waiting_auth' || thankYouCta.status === 'fetching' ? (
                 <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                   Checking for more contracts…
                 </p>

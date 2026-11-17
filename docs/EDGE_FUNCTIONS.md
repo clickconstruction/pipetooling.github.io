@@ -3451,6 +3451,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Identity**: Caller must match roster + auth the same way as **`list_my_contract_dashboard_prompts`** ( **`users.name`** equals **`person_name`**, or a non-archived **`people`** row with the same **`person_name`** and **`email`** as **`users.email`**).
 
+**A job's required paper** (v2.7652, papers before a job opens): a row with **`job_required_paper_id`** is signed from the job's prompt, so it does not need **`dashboard_prompt_after_clock_in`**. Its signer is the roster person it was made for, and that person is the caller only by **`people.account_user_id`**: never by a name or an email match. Anyone else gets **403** in words.
+
 **Success** (**200** JSON): `{ "ok": true, "accept_url": string }`
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`

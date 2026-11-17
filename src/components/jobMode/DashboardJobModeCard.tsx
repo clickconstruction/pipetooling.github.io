@@ -15,6 +15,9 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { companyWeekStartSundayContaining, denverCalendarDayKey, getDefaultWeekRange } from '../../utils/dateUtils'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { rereadJobsClosedToMe, useJobsClosedToMe, useJobsLockedInLists } from '../../hooks/useJobsClosedToMe'
+import { JobPapersGate, LockedJobLine } from '../jobs/JobPapersGate'
+import { JobPapersGateModal } from '../jobs/JobPapersGateModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { useMySubPortalAddress } from '../../hooks/useMySubPortalAddress'
 import { JobCalendarModal } from '../jobs/JobCalendarModal'
@@ -370,7 +373,17 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
   const [scheduleBlocks, setScheduleBlocks] = useState<JobModeScheduleBlock[]>([])
   const [openSession, setOpenSession] = useState<OpenSessionState>(null)
-  const [currentJobInfo, setCurrentJobInfo] = useState<CurrentClockJobInfo | null>(null)
+  const [currentJobInfoRead, setCurrentJobInfo] = useState<CurrentClockJobInfo | null>(null)
+  // Papers before a job opens (step 3): a job this person still owes a paper on shows its number and a lock here,
+  // never its name or address, and its details give way to the prompt. `papersJob` is the job whose prompt is open.
+  const { closed: closedJobs } = useJobsClosedToMe()
+  // The names stay for the office, whose lock is the prompt alone (call 8).
+  const maskedJobs = useJobsLockedInLists(role)
+  const [papersJob, setPapersJob] = useState<string | null>(null)
+  const currentJobInfo = useMemo(
+    () => (currentJobInfoRead && maskedJobs.has(currentJobInfoRead.id) ? { ...currentJobInfoRead, job_name: null, job_address: null } : currentJobInfoRead),
+    [currentJobInfoRead, maskedJobs],
+  )
   const [currentBidInfo, setCurrentBidInfo] = useState<CurrentClockBidInfo | null>(null)
   /** Jobs with a closed clock session today — drives the rail's ✓s and the unvisited-aware picker. */
   const [visitedJobIds, setVisitedJobIds] = useState<ReadonlySet<string>>(new Set())
@@ -647,7 +660,10 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   /** The header and the rail draw: the live read landed, or the kept day stands in for it. */
   const dayOnScreen = !loading || held
   const keptBlocks = useMemo(() => (keptDay ? fillScheduledJobLabels(keptDay.blocks, knownJobs) : null), [keptDay, knownJobs])
-  const dayBlocks = keptBlocks ?? labeledBlocks
+  const dayBlocks = useMemo(() => {
+    const blocks = keptBlocks ?? labeledBlocks
+    return blocks.some((b) => maskedJobs.has(b.job_id)) ? blocks.map((b) => (maskedJobs.has(b.job_id) ? { ...b, job_name: null, job_address: null } : b)) : blocks
+  }, [keptBlocks, labeledBlocks, maskedJobs])
   const dayVisited = keptDay ? keptDay.visitedJobIds : visitedJobIds
   const daySession = useMemo(
     () =>
@@ -713,9 +729,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <div style={headerNum}>
             {num}
             <span style={headerNumNameSep}>|</span>
-            <span style={headerName}>{safeTrim(cb.job_name) || '—'}</span>
+            <span style={headerName}>{maskedJobs.has(cb.job_id) ? 'Papers to sign' : safeTrim(cb.job_name) || '—'}</span>
           </div>
-          <div style={headerAddr}>{safeTrim(cb.job_address) || '—'}</div>
+          <div style={headerAddr}>{maskedJobs.has(cb.job_id) ? 'Sign them below and the job opens.' : safeTrim(cb.job_address) || '—'}</div>
           {legLine}
         </div>
       )
@@ -728,9 +744,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <div style={headerNum}>
             {num}
             <span style={headerNumNameSep}>|</span>
-            <span style={headerName}>{safeTrim(currentJobInfo.job_name) || '—'}</span>
+            <span style={headerName}>{maskedJobs.has(currentJobInfo.id) ? 'Papers to sign' : safeTrim(currentJobInfo.job_name) || '—'}</span>
           </div>
-          <div style={headerAddr}>{safeTrim(currentJobInfo.job_address) || '—'}</div>
+          <div style={headerAddr}>{maskedJobs.has(currentJobInfo.id) ? 'Sign them below and the job opens.' : safeTrim(currentJobInfo.job_address) || '—'}</div>
           {legLine}
           <div style={headerStatusLine}>Not on today&rsquo;s schedule</div>
         </div>
@@ -774,9 +790,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <div style={headerNum}>
             {num}
             <span style={headerNumNameSep}>|</span>
-            <span style={headerName}>{safeTrim(nb.job_name) || '—'}</span>
+            <span style={headerName}>{maskedJobs.has(nb.job_id) ? 'Papers to sign' : safeTrim(nb.job_name) || '—'}</span>
           </div>
-          <div style={headerAddr}>{safeTrim(nb.job_address) || '—'}</div>
+          <div style={headerAddr}>{maskedJobs.has(nb.job_id) ? 'Sign them below and the job opens.' : safeTrim(nb.job_address) || '—'}</div>
         </div>
       )
     }
@@ -915,6 +931,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
 
   /** Rail rows a tech can jump to: unvisited, not the current focus. */
   function handleRailRowTap(row: JobModeDayRailRow) {
+    // A job that waits on this person's signature leads to its prompt, and no clock moves.
+    if (closedJobs.has(row.block.job_id)) {
+      setPapersJob(row.block.job_id)
+      return
+    }
     if (row.status === 'current' || row.status === 'done') return
     openAdvanceModal(openSession ? 'next-job' : 'start-first', row.block.job_id)
   }
@@ -929,7 +950,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
 
   // Where the advance modal can send the tech: today's still-open jobs.
   const advanceDestinations: OnMyWayDestination[] = dayRail.rows
-    .filter((r) => r.status === 'still-open' || r.status === 'upcoming')
+    .filter((r) => (r.status === 'still-open' || r.status === 'upcoming') && !closedJobs.has(r.block.job_id))
     .map((r) => ({
       jobId: r.block.job_id,
       label: `${jobNumberLabel(r.block.service_type_id, r.block.hcp_number, r.block.click_number)} · ${safeTrim(r.block.job_name) || '—'}`,
@@ -1101,7 +1122,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             Today · {dayRail.doneCount} of {dayRail.totalCount} done
           </div>
           {dayRail.rows.map((row) => {
-            const tappable = row.status === 'still-open' || row.status === 'upcoming'
+            const closedRow = closedJobs.has(row.block.job_id)
+            const locked = maskedJobs.has(row.block.job_id)
+            const tappable = closedRow || row.status === 'still-open' || row.status === 'upcoming'
             const dot =
               row.status === 'done' ? (
                 <span style={{ ...railDotBase, background: '#16a34a', color: 'white' }} aria-hidden="true">✓</span>
@@ -1122,7 +1145,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                 className={held && tappable ? 'keptPress' : undefined}
                 title={held && tappable ? READING_AGAIN_WORDS : undefined}
                 aria-label={
-                  tappable
+                  locked
+                    ? `Sign the papers for ${num}`
+                    : tappable
                     ? `Go to ${num} ${name}`
                     : `${num} ${name} — ${row.status === 'current' ? 'current job' : 'done'}`
                 }
@@ -1148,7 +1173,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {num} · {name}
+                  {locked ? <LockedJobLine jobId={row.block.job_id} /> : `${num} · ${name}`}
                 </span>
                 {row.status === 'current' ? (
                   <span style={{ ...railFlagStyle, color: '#16a34a' }}>NOW</span>
@@ -1157,7 +1182,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                 ) : null}
               </button>
               {/* Equipment pre-use check (punch list #270, SPIKE): the machine stops under the job's row */}
-              <RailMachineStops jobId={row.block.job_id} jobWords={`${num} · ${name}`} day={workDateYmd} userId={authUser?.id ?? null} byName={profileName} />
+              {locked ? null : <RailMachineStops jobId={row.block.job_id} jobWords={`${num} · ${name}`} day={workDateYmd} userId={authUser?.id ?? null} byName={profileName} />}
               </Fragment>
             )
           })}
@@ -1318,7 +1343,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                 jobAddress: safeTrim(picked.nextBlock.job_address),
               }
             : null)
-        return detailsTarget ? (
+        return detailsTarget && closedJobs.has(detailsTarget.id) ? (
+          <div style={{ margin: '0.5rem 0' }}>
+            <JobPapersGate key={`papers-${detailsTarget.id}`} jobId={detailsTarget.id} onOpenJob={() => void rereadJobsClosedToMe()} />
+          </div>
+        ) : detailsTarget ? (
           <>
             {/* The superintendent's line (punch list #242, PR 4): his project's pace from the same kernel as the office's Projects board. */}
             {role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} /> : null}
@@ -1334,6 +1363,16 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           </>
         ) : null
       })()}
+      {papersJob ? (
+        <JobPapersGateModal
+          jobId={papersJob}
+          role={role}
+          onClose={() => setPapersJob(null)}
+          onOpenJob={() => {
+            void rereadJobsClosedToMe().then(() => setPapersJob(null))
+          }}
+        />
+      ) : null}
       {onMyWay ? (
         <OnMyWaySheet
           userId={userId}
