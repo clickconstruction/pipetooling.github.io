@@ -9,24 +9,28 @@
  * *1 waiting*), so the tail's fact sits on its subject. Pinned while the page scrolls, a press jumps
  * to the look; the Pipeline's bar classes still size it, overridden by `.developmentReviewStrip`.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { lookFigure } from '../../lib/developments/lookFigure'
 import { useJumpStrip } from '../gc/useJumpStrip'
 
 export type DevelopmentJumpKey = 'changed' | 'pieces' | 'money' | 'plans' | 'questions' | 'photos'
 
-export const DEVELOPMENT_JUMP_ANCHOR: Record<DevelopmentJumpKey, string> = {
+/** The seventh look (punch list #379): Trips, drawn only on a site that has a trip or is far from the shop. */
+export type DevelopmentStripKey = DevelopmentJumpKey | 'trips'
+
+export const DEVELOPMENT_JUMP_ANCHOR: Record<DevelopmentStripKey, string> = {
   changed: 'development-what-changed',
   pieces: 'development-pieces',
   money: 'development-money',
   plans: 'development-plans',
   questions: 'development-questions',
   photos: 'development-photos',
+  trips: 'development-trips',
 }
 
-const ORDER: DevelopmentJumpKey[] = ['changed', 'pieces', 'money', 'plans', 'questions', 'photos']
-const LABEL: Record<DevelopmentJumpKey, string> = { changed: 'History', pieces: 'Jobs & bids', money: 'Money', plans: 'Plans', questions: 'Questions', photos: 'Photos' }
+const SIX: DevelopmentJumpKey[] = ['changed', 'pieces', 'money', 'plans', 'questions', 'photos']
+const LABEL: Record<DevelopmentStripKey, string> = { changed: 'History', pieces: 'Jobs & bids', money: 'Money', plans: 'Plans', questions: 'Questions', photos: 'Photos', trips: 'Trips' }
 
 export const DEVELOPMENT_PHONE_QUERY = '(max-width: 760px)'
 
@@ -36,9 +40,11 @@ const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'
  * The strip's name, counted from its own list: *Six looks*. The phone's nav kept *Five looks* by hand after
  * Photos joined as the sixth (v2.6371), so the cap and both navs read this one name.
  */
-const LOOKS_NAME = `${COUNT_WORDS[ORDER.length] ?? ORDER.length} looks`
+const looksName = (n: number): string => `${COUNT_WORDS[n] ?? n} looks`
 
 export const REVIEW_TELL = 'Six looks at the site, top to bottom: the history, the jobs and bids, the money, the plans, the questions, the photos. The filled number is where you are.'
+/** The tell on a site that has the Trips look too. */
+export const REVIEW_TELL_WITH_TRIPS = 'Seven looks at the site, top to bottom: the history, the jobs and bids, the money, the plans, the questions, the photos, the trips. The filled number is where you are.'
 
 /**
  * What a look says of itself: `count` the plain count with its noun (*0 new*, *23*, *1 set*), `need`
@@ -47,9 +53,14 @@ export const REVIEW_TELL = 'Six looks at the site, top to bottom: the history, t
  */
 export type DevelopmentLook = { n: number; count: string; need: string | null }
 
-export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpKey, DevelopmentLook> }) {
+export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpKey, DevelopmentLook> & { trips?: DevelopmentLook } }) {
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
-  const { active, jumpTo } = useJumpStrip(true, ORDER, (k) => DEVELOPMENT_JUMP_ANCHOR[k as DevelopmentJumpKey])
+  // The six, and Trips after them on a site that has the look.
+  const hasTrips = !!looks.trips
+  const ORDER = useMemo<DevelopmentStripKey[]>(() => (hasTrips ? [...SIX, 'trips'] : SIX), [hasTrips])
+  const LOOKS_NAME = looksName(ORDER.length)
+  const lookOf = (key: DevelopmentStripKey): DevelopmentLook => (key === 'trips' ? (looks.trips ?? { n: 0, count: '', need: null }) : looks[key])
+  const { active, jumpTo } = useJumpStrip(true, ORDER, (k) => DEVELOPMENT_JUMP_ANCHOR[k as DevelopmentStripKey])
   const barRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const bar = barRef.current
@@ -73,7 +84,7 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
       <nav ref={barRef as React.RefObject<HTMLDivElement>} aria-label={`${LOOKS_NAME} at the site`} className="developmentPhoneStrip" data-development-jump-strip data-testid="development-phone-strip">
         {ORDER.map((key, index) => {
           const on = key === active
-          const look = looks[key]
+          const look = lookOf(key)
           const need = look.need && look.need.trim() ? look.need : null
           const whole = `${look.count}${need && need !== look.count ? `, ${need}` : ''}`
           return (
@@ -99,13 +110,13 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
 
   return (
     <div ref={barRef} className="stagesStageBar messagesJumpStrip developmentReviewStrip" data-development-jump-strip style={{ top: 0, marginBottom: 12 }}>
-      <div className="stagesStageBarEnd reviewCap" title={REVIEW_TELL} data-testid="review-cap">
+      <div className="stagesStageBarEnd reviewCap" title={hasTrips ? REVIEW_TELL_WITH_TRIPS : REVIEW_TELL} data-testid="review-cap">
         <strong>{LOOKS_NAME}</strong>
       </div>
       <nav aria-label={`${LOOKS_NAME} at the site`} className="stagesStageSegs">
         {ORDER.map((key, index) => {
           const on = key === active
-          const look = looks[key]
+          const look = lookOf(key)
           const need = look.need && look.need.trim() ? look.need : null
           const meta = need ? (need === look.count ? <span className="reviewNeed">{need}</span> : <>{look.count} · <span className="reviewNeed">{need}</span></>) : look.count
           return (
