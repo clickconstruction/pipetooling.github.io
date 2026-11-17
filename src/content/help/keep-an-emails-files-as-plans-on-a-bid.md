@@ -2,7 +2,7 @@
 title: keep an email's files as a set of plans on a bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: addendum, revised specs, spec book, bid plans, plan set, plan sets, email attachment, attachment, file from an email, keep its files on the bid, kept, from a mail, the mail, drive, plans folder, messages, my email, put them in
+keywords: addendum, revised specs, from a mail on this bid, development history, spec book, bid plans, plan set, plan sets, email attachment, attachment, file from an email, keep its files on the bid, kept, from a mail, the mail, drive, plans folder, messages, my email, put them in
 where: /messages
 order: 125
 ---
@@ -63,6 +63,27 @@ An email whose files are kept shows {{chip:green|Kept as Addendum 2 on B482}} in
 On the bid, open Plans and look under Plan sets. A set that came this way shows {{chip:blue|From a mail}}. Press **The mail** on that row to open the email in its thread.
 
 Remove the set on the bid and the email offers the press again.
+
+## From the bid
+
+You can start from the bid when you do not know whose thread holds the email.
+
+1. Open the bid and open Plans.
+2. Under Plan sets, press {{button:outline|+ From a mail on this bid}}.
+3. Find the email in the list. The list shows only email that carries a file.
+4. Press {{button:outline|Keep its files on the bid…}} on that row.
+
+An email whose files are kept shows its green chip in the list.
+
+## From the Development page
+
+A bid in a development shows its email on the site's History.
+
+1. Open the development and look at History.
+2. Find the email's line. A line with files to keep shows **Keep its 2 files…**.
+3. Press it. The line opens in a window with the press under the words.
+
+The line says *kept on the bid* once the files are in a set. The new set draws a line of its own, under {{chip:blue|Plans}}.
 
 ## From My email
 

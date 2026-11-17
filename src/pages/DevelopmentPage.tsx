@@ -86,7 +86,7 @@ import { markWonConfirm, markedWonBack, pairAllConfirm, pairConfirm, pairedAllBa
 import { markBidsWon, pairJobToBid, pairMany, unmarkBidsWon, unpairJob, unpairMany } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
-import { aboutIsPiece, entryBodyIsHead, entryLine, mailLines, narrowLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
+import { aboutIsPiece, entryBodyIsHead, entryLine, mailLines, narrowLines, setLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
 import { keepHistoryEntry } from '../lib/developments/historyWrites'
 import { DevelopmentHistoryChips, DevelopmentHistoryComposer } from '../components/developments/DevelopmentHistoryTools'
 import { aboutGroups, aboutKeyOfPiece, aboutRows, type AboutGroup } from '../lib/developments/aboutPicker'
@@ -100,6 +100,7 @@ import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { canOpenMessages } from '../lib/gc/access'
+import { useBidPlanSetsByBid } from '../hooks/useBidPlanSetsByBid'
 import { threadHrefByKind } from '../lib/messages/customerThread'
 import type { ContactKind } from '../lib/contacts/kernel'
 import type { Database } from '../types/database'
@@ -171,6 +172,9 @@ export default function DevelopmentPage() {
   const door = developmentDoorFor(role)
   // Who reads the mail tied to the site's bids and jobs, and gets its door: the roles that open Messages (v2.7479).
   const readsMail = canOpenMessages(role)
+  // A set kept from a History line's window (punch list #368): the page reads again when the window closes, not under it.
+  const [setsGen, setSetsGen] = useState(0)
+  const keptFilesInWindow = useRef(false)
   const moneyShown = door === 'office'
   const { showToast, showActionToast } = useToastContext()
 
@@ -258,6 +262,15 @@ export default function DevelopmentPage() {
   }, [developmentId, includeAddress, authLoading, door, readsMail])
 
   useEffect(() => {
+    void load()
+  }, [load])
+
+  // The line's window closes; when a mail's files were kept as a set from it, the page reads again now, not under the window.
+  const closeLineWindow = useCallback(() => {
+    setLineOpen(null)
+    if (!keptFilesInWindow.current) return
+    keptFilesInWindow.current = false
+    setSetsGen((g) => g + 1)
     void load()
   }, [load])
 
@@ -518,9 +531,32 @@ export default function DevelopmentPage() {
             names: data.names,
             // Job activity's own door for a tied line: the Messages page, or GC projects' Messages for a trade partner or an architect.
             threadHref: readsMail ? (kind, contactId, messageId) => threadHrefByKind((kind ?? 'customer') as ContactKind, contactId, messageId) : null,
+            // The files on a bid's mail, for the press that keeps them as a set of plans (punch list #368).
+            files: data.tiedMailFiles ?? [],
+            bidShort: (id) => {
+              const b = shown.bids.find((x) => x.id === id)
+              return b ? bidLabel(b) : null
+            },
           })
         : [],
     [shown, data, jobLabel, bidLabel, readsMail],
+  )
+  // A set of plans added to one of the site's bids draws its own line (punch list #368), however it was added.
+  const bidSetsByBid = useBidPlanSetsByBid(shownBidIds, !!data, setsGen)
+  const newSetLines = useMemo<ChangeLine[]>(
+    () =>
+      shown && data
+        ? setLines([...bidSetsByBid.values()].flat(), {
+            bid: (id) => {
+              const b = shown.bids.find((x) => x.id === id)
+              return b ? { kind: 'bid', id, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim() } : null
+            },
+            robotLink: (bidId) => shown.bids.find((x) => x.id === bidId)?.plans_link ?? null,
+            fromMail: new Set((data.tiedMailFiles ?? []).map((f) => f.bid_plan_set_id).filter((id): id is string => !!id)),
+            names: data.names,
+          })
+        : [],
+    [shown, data, bidSetsByBid, bidLabel],
   )
   const feed = useMemo<ChangeLine[]>(
     () =>
@@ -550,7 +586,7 @@ export default function DevelopmentPage() {
               }),
             ),
             photoLines,
-            mailLines: tiedMailLines,
+            mailLines: [...tiedMailLines, ...newSetLines],
             customerContacts: data.customerContacts,
             customerNames: new Map(data.customers.map((c) => [c.id, c.name])),
             names: data.names,
@@ -563,7 +599,7 @@ export default function DevelopmentPage() {
             nowMs,
           })
         : [],
-    [shown, data, entries, photoLines, tiedMailLines, bidLabel, jobLabel, nowMs],
+    [shown, data, entries, photoLines, tiedMailLines, newSetLines, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
   // The runs fold (the Gray Fox spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
@@ -1273,7 +1309,7 @@ export default function DevelopmentPage() {
     <JobCardsProvider cardFor={jobCardFor}>
     <div data-testid="development-page">
       {/* The whole of a long History line (the owner, 2026-10-29: the rest in a modal). */}
-      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} onOpenThread={(href) => navigate(href)} />
+      <DevelopmentLineWindow line={lineOpen} onClose={closeLineWindow} onKeptFiles={readsMail ? () => { keptFilesInWindow.current = true } : undefined} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} onOpenThread={(href) => navigate(href)} />
       <DevelopmentAskSheet open={ask !== null} preset={ask} options={askOptions} siteName={dev.name} busy={asking} onSend={sendAskDraft} onClose={() => setAsk(null)} />
       <div style={{ marginBottom: '0.4rem', display: 'flex', gap: 12, fontSize: '0.8rem' }}>
         <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(moneyShown ? '/jobs?tab=stages' : '/bids'))}>← Back</LinkButton>

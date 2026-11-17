@@ -76,6 +76,10 @@ Mail tied to a job or a bid draws lines too. Each email reads at its own time, a
 
 You see these lines when you can open Messages. The lines hold the same mail Messages shows you. The guide [save an email to a job from your own mail](/help/save-an-email-to-a-job-from-your-own-mail) shows how to tie a mail.
 
+A bid's mail that carries files shows **Keep its 2 files…** on its line. Press it to file them with the bid's plans. The guide [keep an email's files as a set of plans on a bid](/help/keep-an-emails-files-as-plans-on-a-bid) has the steps.
+
+A set of plans added to a bid draws a line too. Press {{chip:blue|Plans}} to see those lines with the plan filings.
+
 1. Press a chip under the search box to narrow the list. Press {{chip:blue|Plans}} to see every plan set filed, newest first. On a phone the chips sit in one row. Slide the row sideways to reach the rest.
 2. Type a name, a number or a word into the search box, marked with a spyglass, to find a line.
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.

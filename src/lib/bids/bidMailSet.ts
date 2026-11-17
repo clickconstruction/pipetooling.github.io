@@ -182,6 +182,29 @@ export function mailBySet(rows: ReadonlyArray<SetMailRow>): Map<string, SetMail>
   return out
 }
 
+/** On the bid's Plan sets: the press that lists the bid's mail that carries files. */
+export const FROM_A_MAIL_PRESS = '+ From a mail on this bid'
+export const FROM_A_MAIL_HEAD = 'From a mail on this bid'
+
+/** A mail on the bid as the read embeds its files. */
+export type BidMailLineRow = { id: string; at: string; subject: string | null; who_text: string | null; message_attachments: Array<{ kind: string }> | null }
+
+/** A mail on the bid that carries at least one file, for the list under Plan sets. */
+export type BidMailLine = { id: string; at: string; subject: string; who: string; files: number }
+
+/** The bid's mail that carries a file, newest first as read; a mail whose only attachment is a link is left out. */
+export function bidMailLines(rows: ReadonlyArray<BidMailLineRow>): BidMailLine[] {
+  return rows
+    .map((r) => ({ id: r.id, at: r.at, subject: (r.subject ?? '').trim() || '(no subject)', who: r.who_text ?? '', files: (r.message_attachments ?? []).filter((a) => a.kind === 'file').length }))
+    .filter((m) => m.files > 0)
+}
+
+/** Under a mail's subject in that list: *Dana Whitfield · Nov 16 · 3 files*. */
+export function bidMailLineWords(m: Pick<BidMailLine, 'who' | 'at' | 'files'>): string {
+  const day = formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(m.at))
+  return [mailSender(m.who) || null, day, m.files === 1 ? '1 file' : `${m.files} files`].filter((x): x is string => !!x).join(' · ')
+}
+
 /** A mail whose files all stayed in Gmail: why there is no press. */
 export function nothingToKeepWords(left: number): string {
   return left === 1 ? 'This mail’s file stayed in Gmail, so there is no copy here to keep on the bid.' : `This mail’s ${left} files stayed in Gmail, so there is no copy here to keep on the bid.`

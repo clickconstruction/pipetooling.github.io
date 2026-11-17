@@ -54,6 +54,11 @@ export type ChangeLine = {
   subject?: string | null
   /** Where a `mail` line's mail lives: its thread in Messages, open at the mail. Absent for a reader who cannot open Messages. */
   threadHref?: string
+  /**
+   * A bid's mail that carries files (punch list #368): its line in Messages, the bid, and how many of its files are
+   * ready to keep as a set of plans and how many already are. The feed draws the press or the kept mark from it.
+   */
+  mail?: { messageId: string; bidId: string; bidLabel: string; ready: number; kept: number }
 }
 
 export type ChangeInputs = {

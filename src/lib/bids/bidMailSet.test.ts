@@ -7,6 +7,8 @@ import {
   bidMailDraft,
   bidMailDraftProblem,
   bidMailFiles,
+  bidMailLineWords,
+  bidMailLines,
   bidMailState,
   cameByMailMemo,
   fileSizeWords,
@@ -165,6 +167,23 @@ describe('mailBySet: the mail a set came from', () => {
       ['set-1', { messageId: 'm1', contactId: 'c-dana', contactKind: 'customer' }],
       ['set-2', { messageId: 'm3', contactId: 'c-arch', contactKind: null }],
     ])
+  })
+})
+
+describe('the list under the bid’s Plan sets', () => {
+  it('keeps the mail that carries a file, a link not counted, and names each one', () => {
+    const lines = bidMailLines([
+      { id: 'm1', at: '2026-11-16T15:04:00.000Z', subject: ' Re: Addendum 2 ', who_text: 'Dana Whitfield to the bids box', message_attachments: [{ kind: 'file' }, { kind: 'file' }, { kind: 'link' }] },
+      { id: 'm2', at: '2026-11-15T15:04:00.000Z', subject: null, who_text: null, message_attachments: [{ kind: 'file' }] },
+      { id: 'm3', at: '2026-11-14T15:04:00.000Z', subject: 'A link only', who_text: 'x', message_attachments: [{ kind: 'link' }] },
+      { id: 'm4', at: '2026-11-13T15:04:00.000Z', subject: 'No file', who_text: 'x', message_attachments: null },
+    ])
+    expect(lines).toEqual([
+      { id: 'm1', at: '2026-11-16T15:04:00.000Z', subject: 'Re: Addendum 2', who: 'Dana Whitfield to the bids box', files: 2 },
+      { id: 'm2', at: '2026-11-15T15:04:00.000Z', subject: '(no subject)', who: '', files: 1 },
+    ])
+    expect(bidMailLineWords(lines[0]!)).toBe('Dana Whitfield · Nov 16 · 2 files')
+    expect(bidMailLineWords(lines[1]!)).toBe('Nov 15 · 1 file')
   })
 })
 
