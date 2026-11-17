@@ -76,6 +76,7 @@ export function RecordSupplyPaymentModal({
   todayYmd,
   parts = false,
   zIndex = 1003,
+  start,
   onClose,
   onRecorded,
 }: {
@@ -87,6 +88,8 @@ export function RecordSupplyPaymentModal({
   /** Part payments, credit memos and money on account. */
   parts?: boolean
   zIndex?: number
+  /** Opened from a bank line: its amount, its day and its method are filled, and only the bills are left to tick. */
+  start?: { amount: number; paidOn: string; chip: SupplyPayChip; words: string }
   onClose: () => void
   onRecorded: (result: RecordSupplyPaymentResult, words: string) => void
 }) {
@@ -96,9 +99,10 @@ export function RecordSupplyPaymentModal({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [state, setState] = useState<PayWindowState>(EMPTY_PAY_WINDOW)
-  const [paidOn, setPaidOn] = useState(todayYmd)
+  const [paidOn, setPaidOn] = useState(start?.paidOn || todayYmd)
   const [receiptLink, setReceiptLink] = useState('')
-  const [chip, setChip] = useState<SupplyPayChip | null>(null)
+  const [chip, setChip] = useState<SupplyPayChip | null>(start?.chip ?? null)
+  const [startApplied, setStartApplied] = useState(false)
   const [methodRef, setMethodRef] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -137,6 +141,13 @@ export function RecordSupplyPaymentModal({
       parts,
     }
   }, [bills, loaded, parts])
+
+  // From a bank line: once what is open is read, its amount is typed in and fills the oldest bills first.
+  useEffect(() => {
+    if (!start || startApplied || !loaded) return
+    setStartApplied(true)
+    setState((s) => typeAmount(s, start.amount.toFixed(2), ctx))
+  }, [start, startApplied, loaded, ctx])
 
   const lastMethod = loaded ? lastMethodUsed(loaded.payments) : null
   const plan = planSupplyPayment(state, ctx, { chip, paidOn, dayWords: billDateWords(paidOn, todayYmd), house: houseName })
@@ -200,6 +211,11 @@ export function RecordSupplyPaymentModal({
           {loaded ? payWindowSummaryWords(ctx, house.monthlyPaymentDay ? `pays on the ${ordinalDay(house.monthlyPaymentDay)}` : '') : loadError ? '' : 'Reading what is open…'}
         </p>
 
+        {start ? (
+          <p style={{ ...quiet, margin: '0 0 0.75rem', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-muted)' }} data-testid="record-supply-payment-from-bank">
+            From the bank: {start.words}. Tick the bills it paid.
+          </p>
+        ) : null}
         {loadError ? (
           <div role="alert" style={{ marginBottom: '1rem', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
             {loadError}{' '}

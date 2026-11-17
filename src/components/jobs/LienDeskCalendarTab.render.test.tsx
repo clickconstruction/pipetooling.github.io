@@ -595,15 +595,15 @@ describe('the In the mail mark (v2.5522)', () => {
     render(<LienDeskCalendarTab rows={mailedRows} todayYmd={TODAY} onOpenJob={() => {}} onDraft={onDraft} onRecord={onRecord} canWrite />)
     const mark = screen.getByTestId('lien-cal-mailed')
     expect(mark.textContent).toBe('✉')
-    expect(mark.getAttribute('aria-label')).toContain('printed and in the mail — record its tracking number by Oct 15')
+    expect(mark.getAttribute('aria-label')).toContain('printed and waits to mail — record its tracking number by Oct 15')
     const key = screen.getByTestId('lien-cal-key')
     const shorts = within(key).getAllByRole('button').map((b) => b.textContent?.trim())
-    expect(shorts.indexOf('✉In the mail')).toBe(shorts.indexOf('✓Notice on file') + 1)
+    expect(shorts.indexOf('✉Approved · to mail')).toBe(shorts.indexOf('✓Notice on file') + 1)
     // Today is Sep 28, so Oct 15 is next month's bar.
     const bar = screen.getByTestId('lien-cal-bucket-next_month')
-    expect(bar.textContent).toContain('2 notices across 2 GCs · 1 in the mail')
+    expect(bar.textContent).toContain('2 notices across 2 GCs · 1 to mail')
     expect(bar.textContent).toContain('1 notice owed')
-    expect(bar.textContent).toContain('1 in the mail')
+    expect(bar.textContent).toContain('1 to mail')
     // One printed notice: the bar's press is the bare act, with no count (v2.7448; Record the mailing until then).
     expect(within(bar).getByTestId('lien-cal-record').textContent).toBe('Enter mail numbers ›')
     fireEvent.click(within(bar).getByTestId('lien-cal-record'))
@@ -612,7 +612,7 @@ describe('the In the mail mark (v2.5522)', () => {
     expect(onRecord).toHaveBeenCalledTimes(2)
     expect(within(bar).getByRole('button', { name: 'Draft the one ›' })).toBeTruthy()
     // The key's own door for the mark.
-    fireEvent.click(within(key).getByRole('button', { name: /In the mail/ }))
+    fireEvent.click(within(key).getByRole('button', { name: /Approved · to mail/ }))
     fireEvent.click(within(screen.getByTestId('lien-cal-key-panel')).getByRole('button', { name: 'Enter mail numbers ›' }))
     expect(onRecord).toHaveBeenCalledTimes(3)
   })
@@ -628,12 +628,12 @@ describe('a notice in the mail whose date has passed (v2.5529)', () => {
     render(<LienDeskCalendarTab rows={rows} todayYmd={TODAY} onOpenJob={() => {}} onRecord={onRecord} canWrite />)
     const mark = screen.getByTestId('lien-cal-mailed')
     // v2.5531: the marks carry aria-labels, the hover card the words
-    expect(mark.getAttribute('aria-label')).toBe('The June 2026 notice is printed and in the mail; its date, Aug 17, has passed — record its tracking number and the day it went out, and it is on file')
+    expect(mark.getAttribute('aria-label')).toBe('The June 2026 notice is printed and waits to mail; its date, Aug 17, has passed — record its tracking number and the day it went out, and it is on file')
     fireEvent.click(mark)
     expect(onRecord).toHaveBeenCalledWith(['p'])
     // No mark says "by" a day gone by. The GC's line has no envelope of its own since v2.7254: the job's row carries the mark.
-    expect(screen.queryByLabelText(/in the mail by Aug 17/)).toBeNull()
-    expect(within(screen.getByTestId('lien-cal-group-gc:gc7')).queryByLabelText(/in the mail/)).toBeNull()
+    expect(screen.queryByLabelText(/record its tracking number by Aug 17/)).toBeNull()
+    expect(within(screen.getByTestId('lien-cal-group-gc:gc7')).queryByLabelText(/waits to mail/)).toBeNull()
   })
 })
 

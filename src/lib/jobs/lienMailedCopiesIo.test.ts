@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addLienMailedCopy, type LienMailedCopiesIo } from './lienMailedCopiesIo'
+import { addLienMailedCopy, removeLienMailedCopy, type LienMailedCopiesIo } from './lienMailedCopiesIo'
 import type { LienMailedCopy } from './lienMailedCopies'
 
 function fakeIo(start: LienMailedCopy[] = [], opts: { putFails?: string; meanwhile?: LienMailedCopy } = {}) {
@@ -54,5 +54,39 @@ describe('addLienMailedCopy', () => {
     const f = fakeIo([], { putFails: 'This job has no Drive folder yet.' })
     await expect(addLienMailedCopy({ ...args, file: file() }, f.io)).rejects.toThrow('This job has no Drive folder yet.')
     expect(f.writes).toEqual([])
+  })
+})
+
+describe('a retainage notice’s file (v2.7525)', () => {
+  it('goes up under a name that says it is the retainage notice', async () => {
+    const { io, puts } = fakeIo()
+    const list = await addLienMailedCopy({ ...args, file: file(), paper: 'retainage' }, io)
+    expect(puts.map((p) => p.name)).toEqual(['Retainage notice as mailed · 650 · 2026-11-16.pdf'])
+    expect(list.map((c) => c.name)).toEqual(['Retainage notice as mailed · 650 · 2026-11-16.pdf'])
+  })
+})
+
+describe('removeLienMailedCopy (v2.7525)', () => {
+  const kept = (n: number): LienMailedCopy => ({ url: `https://drive.google.com/file/d/f${n}/view`, driveFileId: `f${n}`, name: `scan ${n}.pdf`, at: '2026-11-16T18:00:00.000Z', by: 'u1' })
+
+  it('writes the list without the one file, and puts nothing in Drive', async () => {
+    const { io, puts, writes } = fakeIo([kept(1), kept(2), kept(3)])
+    const list = await removeLienMailedCopy({ itemId: 'it1', copy: kept(2) }, io)
+    expect(list.map((c) => c.driveFileId)).toEqual(['f1', 'f3'])
+    expect(writes).toEqual([[kept(1), kept(3)]])
+    expect(puts).toEqual([])
+  })
+
+  it('reads the list fresh, so a file someone else added since the row drew stays', async () => {
+    // The row on screen showed one file; the notice has two by now.
+    const { io, writes } = fakeIo([kept(1), kept(2)])
+    await removeLienMailedCopy({ itemId: 'it1', copy: kept(1) }, io)
+    expect(writes).toEqual([[kept(2)]])
+  })
+
+  it('a write that fails hands the reason on', async () => {
+    const { io } = fakeIo([kept(1)])
+    const failing = { ...io, write: async () => { throw new Error('new row violates row-level security policy') } }
+    await expect(removeLienMailedCopy({ itemId: 'it1', copy: kept(1) }, failing)).rejects.toThrow('row-level security')
   })
 })
