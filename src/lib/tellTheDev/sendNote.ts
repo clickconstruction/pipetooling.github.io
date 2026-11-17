@@ -44,15 +44,14 @@ export async function sendDevNote(args: {
     context: args.context as unknown as Json,
   }
   try {
-    await withSupabaseRetry(
-      async () =>
-        // `kind`, `page_key`, `page_path` and `context` came with 20261117235000; the generated types name them
-        // from the next types refresh, so the row is typed here until then.
-        supabase.from('help_feedback').insert(row as never),
-      'send a note to the dev',
-    )
+    await withSupabaseRetry(async () => supabase.from('help_feedback').insert(row), 'send a note to the dev')
   } catch (error) {
     if (!(error instanceof DatabaseError && error.code === '23505')) throw error
+  }
+  // A fault pushes each dev at once, through their hours. The other two starts wait for the day's read of the
+  // inbox, so they call nothing. Fire and forget: the note is saved whether or not the push goes.
+  if (args.kind === 'broken') {
+    void supabase.functions.invoke('notify-help-feedback', { body: { help_feedback_id: id } })
   }
   notifyHelpFeedbackChanged()
   return { id }

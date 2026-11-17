@@ -1587,6 +1587,8 @@ the phone dock's More sheet lists it with the other modes.
 **Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
 Each note there shows its kind, page and state, with **Open that page** and **Copy as a brief** (`noteBrief`: the note by role, never by name).
 Opens and sends are counted in `ui_nav_clicks` as `tell_the_dev_open` (target the door) and `tell_the_dev_sent` (target the kind).
+A *went wrong* note pushes each dev at once through `notify-help-feedback`, held outside their Push me hours (v2.7668, the function's half v2.7679);
+the other two starts push nobody and wait for the day's read of the inbox.
 Kernels in **[`src/lib/tellTheDev/`](../src/lib/tellTheDev/)**;
 the wrench and its box in **[`TellTheDevRoot.tsx`](../src/components/tellTheDev/TellTheDevRoot.tsx)**.
 
