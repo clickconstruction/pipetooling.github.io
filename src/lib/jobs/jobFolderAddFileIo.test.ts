@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ADD_FILE_WORDS } from './jobFolderAddFile'
+import { ADD_FILE_FAILURE_WORDS as ADD_FILE_WORDS } from './addFileFailure'
 
 vi.mock('../supabase', () => ({ supabase: { functions: { invoke: vi.fn() } } }))
 

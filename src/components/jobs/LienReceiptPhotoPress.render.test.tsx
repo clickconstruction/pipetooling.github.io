@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { AddFileFailure } from '../../lib/jobs/jobFolderAddFile'
+import { AddFileFailure } from '../../lib/jobs/addFileFailure'
 import LienReceiptPhotoPress from './LienReceiptPhotoPress'
 
 vi.mock('../../lib/materials/photoShrink', () => ({

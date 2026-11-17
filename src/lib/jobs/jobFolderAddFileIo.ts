@@ -7,7 +7,8 @@
 import { supabase } from '../supabase'
 import type { FnResult } from '../gc/gcIo'
 import { base64OfBytes } from '../../../supabase/functions/_shared/messagesEmailFiles'
-import { ADD_FILE_WORDS, addFileFailureOf, type AddFileAnswer, type AddFileFailure, type AddFileWhere } from './jobFolderAddFile'
+import type { AddFileWhere } from './jobFolderAddFile'
+import { addFileFailureOf, type AddFileAnswer, type AddFileFailure } from './addFileFailure'
 
 export type AddedFile = { driveFileId: string; url: string }
 
@@ -40,7 +41,7 @@ export async function addFileFailureFrom(r: FnResult): Promise<AddFileFailure | 
   if (typeof context?.json !== 'function') return addFileFailureOf(null)
   const body = (await context.json().catch(() => null)) as AddFileAnswer | null
   const status = typeof context.status === 'number' ? context.status : null
-  return addFileFailureOf({ error: body?.error, retry: body?.retry, status }, ADD_FILE_WORDS.failed)
+  return addFileFailureOf({ error: body?.error, retry: body?.retry, status })
 }
 
 export const supabaseJobFolderAddFileIo: JobFolderAddFileIo = { put: putJobFolderFile }

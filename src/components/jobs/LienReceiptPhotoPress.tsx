@@ -1,7 +1,8 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import { shrinkPhoto } from '../../lib/materials/photoShrink'
 import { putJobFolderFile } from '../../lib/jobs/jobFolderAddFileIo'
-import { ADD_FILE_WORDS, addFileCanRetry, addFileTooBig } from '../../lib/jobs/jobFolderAddFile'
+import { addFileTooBig } from '../../lib/jobs/jobFolderAddFile'
+import { ADD_FILE_FAILURE_WORDS, addFileCanRetry } from '../../lib/jobs/addFileFailure'
 import { LIEN_SERVICE_PROOF_WORDS, lienReceiptPhotoName, receiptReadWords, type LienReceiptPaper, type LienReceiptPhotoOf } from '../../lib/jobs/lienServiceProof'
 import { readTrackingFromPhoto } from '../../lib/jobs/lienReceiptReadIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -122,7 +123,7 @@ export function LienReceiptPhotoPress({
           {failed.words}
           {failed.retry ? (
             <button type="button" data-lien-receipt-retry onClick={() => void take(failed.file)} style={{ ...press, color: 'var(--text-strong)' }}>
-              {ADD_FILE_WORDS.tryAgain}
+              {ADD_FILE_FAILURE_WORDS.tryAgain}
             </button>
           ) : null}
         </span>

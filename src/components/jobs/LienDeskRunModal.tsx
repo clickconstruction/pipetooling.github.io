@@ -54,7 +54,7 @@ import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem, lienMailedCopyTakenOffWords, type LienMailedCopy } from '../../lib/jobs/lienMailedCopies'
 import { addLienMailedCopy, removeLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
-import { addFileCanRetry } from '../../lib/jobs/jobFolderAddFile'
+import { addFileCanRetry } from '../../lib/jobs/addFileFailure'
 import { LIEN_RUN_ACT, lienRunWhatWords, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 import { lienRunEnvelopePropertyLine, type LienRunProperty } from '../../lib/jobs/lienRunEnvelopeProperty'
 
