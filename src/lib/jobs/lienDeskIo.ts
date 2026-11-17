@@ -6,6 +6,7 @@ import type { LienWordChannel } from './lienWord'
 import { canTakeBackItem, fieldsWithTakeBack } from './lienRunTakeBack'
 import { canClosePaidItem, fieldsWithClosedPaid, paperClaimOf } from './lienRunClosePaid'
 import { LIEN_DESK_SIGNATURE_CLEAR } from './lienNoticeSignature'
+import { fieldsWithSignatureCleared, signatureClearedRecord } from './lienSignAgain'
 import { withPromiseRecord, type CourtesyPromise } from './lienCourtesyNotice'
 import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -347,7 +348,7 @@ export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, u
   )
 }
 
-/** Back to Approved · to print (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands. */
+/** Back to Approved · to print (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands; a signature comes off (v2.7503). */
 export async function clearLienDeskItemPrinted(itemId: string, by: { userId: string | null; userName: string | null } = { userId: null, userName: null }): Promise<void> {
   await takeBackLienDeskItems([itemId], by)
 }
@@ -356,22 +357,31 @@ export async function clearLienDeskItemPrinted(itemId: string, by: { userId: str
  * Take back a printed run (punch list #101): every listed item still printed and not sent goes
  * back to Approved · to print, keeping its approval and a line saying who took it back
  * (`fields.runTakenBack`). Returns how many were taken back; a row sent or cleared meanwhile is left alone.
+ *
+ * A signature comes off with it (v2.7503, the owner's call): the ten signature columns clear in the same
+ * write, and a signed row keeps a second line naming the signature that came off (`fields.signatureCleared`).
+ * Until then the write left the columns alone while changing `fields`, so the signature read as gone by its
+ * hash and the row still carried it. A drawing in storage is kept.
  */
 export async function takeBackLienDeskItems(itemIds: ReadonlyArray<string>, by: { userId: string | null; userName: string | null }): Promise<number> {
   if (itemIds.length === 0) return 0
   const rows = await withSupabaseRetry(
-    () => supabase.from('job_lien_desk_items').select('id, fields, printed_at, status, voided_at').in('id', [...itemIds]),
+    () => supabase.from('job_lien_desk_items').select('id, fields, printed_at, status, voided_at, signed_at, signed_by, signer_printed_name, signer_signature_mode, signer_signature_storage_path').in('id', [...itemIds]),
     'lien desk: read printed',
   )
   const at = new Date().toISOString()
-  const live = ((rows ?? []) as Array<{ id: string; fields: unknown; printed_at: string | null; status: string | null; voided_at: string | null }>).filter(canTakeBackItem)
+  const live = ((rows ?? []) as Array<{ id: string; fields: unknown; printed_at: string | null; status: string | null; voided_at: string | null; signed_at?: string | null }>).filter(canTakeBackItem)
+  const fieldsAfter = (r: (typeof live)[number]) => {
+    const taken = fieldsWithTakeBack(r.fields, { at, by: by.userId, byName: by.userName, printedAt: r.printed_at })
+    return r.signed_at ? fieldsWithSignatureCleared(taken, signatureClearedRecord(r, by, at)) : taken
+  }
   await Promise.all(
     live.map((r) =>
       withSupabaseRetry(
         () =>
           supabase
             .from('job_lien_desk_items')
-            .update({ printed_at: null, printed_by: null, fields: fieldsWithTakeBack(r.fields, { at, by: by.userId, byName: by.userName, printedAt: r.printed_at }) } as never)
+            .update({ printed_at: null, printed_by: null, ...LIEN_DESK_SIGNATURE_CLEAR, fields: fieldsAfter(r) } as never)
             .eq('id', r.id)
             .not('printed_at', 'is', null)
             .neq('status', 'sent'),

@@ -419,7 +419,7 @@ function affidavitNextWords(a: NonNullable<LienTimelineInput['affidavit']> | nul
       return { words: `Held — the affidavit ${a?.holdUntil ? `re-asks ${lienDateWords(a.holdUntil, todayYmd)}` : 'waits on its hold'}; file by ${lastDayWords}.`, dated: true }
     case 'needs_property': {
       const keys = a?.missingKeys ?? []
-      const act = lienActFor({ paper: 'affidavit', action: 'fix_property', missing: keys })
+      const act = lienActFor({ paper: 'affidavit', action: 'fix_property', missing: keys, noticeStanding: a?.noticeStanding ?? null })
       if (!act) break
       // No lien attaches to public property: the fact, and who to ask.
       if (!act.dated) return { words: `${act.words} — ${act.under.charAt(0).toLowerCase()}${act.under.slice(1)}.`, dated: false }

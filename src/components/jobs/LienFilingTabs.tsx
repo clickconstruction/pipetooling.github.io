@@ -11,6 +11,8 @@ import LienNoticeByHandPane from './LienNoticeByHandPane'
 import LienRecordSheet from './LienRecordSheet'
 import { LienFiledScanPress } from './LienFiledScanPress'
 import { LIEN_CLERK_SCAN_NOTE } from '../../lib/jobs/lienScanFile'
+import { LIEN_SCANS_DOOR_FROM_FILING } from '../../lib/jobs/lienScanBatch'
+import { lienDeskHref } from '../../lib/lien/lienDeskRoute'
 import { recordSheetField, recordSheetLabel } from './lienRecordSheetStyles'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
@@ -988,6 +990,10 @@ export default function LienFilingTabs({
           setDocNote(LIEN_CLERK_SCAN_NOTE)
         }}
       />
+      {/* Several liens scanned at once go in on the Lien desk (punch list #366). A new tab, so this form keeps what is typed. */}
+      <a href={lienDeskHref({ scans: true })} target="_blank" rel="noreferrer" data-lien-scans-door style={{ flexBasis: '100%', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)' }}>
+        {LIEN_SCANS_DOOR_FROM_FILING}
+      </a>
     </span>
   )
   const sheetSavedCopy = (

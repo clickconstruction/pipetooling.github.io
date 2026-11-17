@@ -10,7 +10,7 @@ This guide is the whole path, start to finish. The guide covers moving a job to 
 
 ## 1. Move the job to Collections
 
-On **Jobs → Pipeline → Billed Awaiting Payment**, you press the row's **Collections** button. On phone cards, the row's menu has {{chip:yellow|Flag for collections}}. Call mode has the same door, called **Move to Collections…**. The confirm step takes an optional note on why the office thinks this one will not pay on its own. The attorney reads that note first. Any office role can do this. The job moves to the **Collections** section, below Billed Awaiting Payment, and keeps its balance.
+On **Jobs → Pipeline → Billed Awaiting Payment**, you press the row's **Collections** button. On phone cards, the row's menu has {{chip:yellow|Flag for collections}}. Call mode has the same door, called **Move to Collections…**. The confirm step takes an optional note on why the office thinks this one will not pay on its own. The attorney reads that note first. The confirm step also shows the money. It says what the job's sent bills still owe. When part of the job is on no bill, an amber note says how much. It gives the job's percent complete beside its percent billed. Collections chases what is billed. If the rest of the work will not be done, correct the job total on the job. Any office role can do this. The job moves to the **Collections** section, below Billed Awaiting Payment, and keeps its balance.
 
 Nothing reaches an attorney yet. Collections is the office's holding pen. The firm only ever sees what a dev releases.
 
