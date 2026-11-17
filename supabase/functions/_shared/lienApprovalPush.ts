@@ -521,3 +521,38 @@ export function lienSignatureAskable(
   if (!row || row.kind !== 'notice_53_056' || row.status !== 'approved' || row.voided_at || row.printed_at) return false
   return lienRowUnsigned(row, row.fields)
 }
+
+// ---------- the reminder as a text (v2.7495) ----------
+
+/** Why a reminder's text did not go, as the desk reads it after *No text went:*. Keyed by `sendText`'s refusal. */
+export const LIEN_REMINDER_TEXT_MISS: Readonly<Record<string, string>> = {
+  noCell: 'there is no mobile number on the account',
+  textsOff: 'Send texts is off in Settings',
+  'not-set-up': 'texts are not set up yet',
+  stopped: 'that number sent STOP',
+  paused: 'texts are paused',
+  'not-registered': 'the company number is not registered for texts yet',
+  'daily-cap': 'the company number reached its limit of texts for today',
+}
+
+/** The reason for a refusal the list does not name: the text line said no, and the office reads that it did. */
+export const LIEN_REMINDER_TEXT_MISS_OTHER = 'the text line did not take it'
+
+export function lienReminderTextMiss(refused: string | null | undefined): string {
+  return LIEN_REMINDER_TEXT_MISS[String(refused ?? '')] ?? LIEN_REMINDER_TEXT_MISS_OTHER
+}
+
+/**
+ * The reminder as a text message (v2.7495): who is reminding, what waits, and the link that opens it. The push needs
+ * the app set up on his phone and the email needs him to read his inbox; a text reaches a leader who opens neither.
+ * The words are the push's own (`title` and `body`), so the three channels cannot disagree.
+ *
+ * Plain characters only: the push's middle dot and a curly quote would make the carrier send the text in the wide
+ * alphabet, which more than halves what one segment holds. The link is last, so a phone that cuts the text short cuts
+ * the words and never the address. `origin` is the app's own address with no trailing slash.
+ */
+export function lienReminderText(words: Pick<LienApprovalPush, 'title' | 'body' | 'url'>, senderName: string | null, origin: string): string {
+  const who = (senderName ?? '').trim().split(/\s+/)[0] || 'The office'
+  const plain = (s: string) => s.replace(/\s*·\s*/g, ', ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[.\s]+$/, '')
+  return `${plain(who)} is reminding you: ${plain(words.title)}. ${plain(words.body)}. ${origin.replace(/\/$/, '')}${words.url}`
+}
