@@ -111,8 +111,10 @@ describe('JobsStagesActivityBox, tagging a teammate', () => {
     type(input, 'meter date? @')
     const list = await screen.findByRole('listbox', { name: 'Teammates' })
     await vi.waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(3))
-    expect(list.textContent).toContain('On this job')
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Chris Alvarezcrew · on this job', 'Chris Belloffice', 'Dana Whitlockoffice'])
+    // Each name is a press with what the person does under it (punch list #375), the crew first.
+    expect(list.textContent).toContain('on this job')
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['@Chris Alvarezcrew · on this job', '@Chris Belloffice', '@Dana Whitlockoffice'])
+    expect(screen.getAllByRole('option').every((o) => o.tagName === 'BUTTON' && o.style.minHeight === '44px')).toBe(true)
     type(input, 'meter date? @da')
     await vi.waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(1))
   })
@@ -150,6 +152,68 @@ describe('JobsStagesActivityBox, tagging a teammate', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
     fireEvent.keyDown(input, { key: 'Enter' })
     await vi.waitFor(() => expect(submitNoteWithBody).toHaveBeenCalledWith(job.id, 'arrive @ 8:45', 'draft', { tagged: [] }))
+  })
+
+  it('keeps the names up through a space while the words still start a name, and shuts on nobody (punch list #375)', async () => {
+    mount()
+    await settle()
+    fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
+    const input = screen.getByLabelText('Note text')
+    type(input, 'ask @chris')
+    await vi.waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(2))
+    type(input, 'ask @chris ')
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['@Chris Alvarezcrew · on this job', '@Chris Belloffice'])
+    type(input, 'ask @chris b')
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['@Chris Belloffice'])
+    // The @ being typed is underlined in the words while names fit it.
+    expect(document.querySelector('[data-note-tag-mark] [data-mark="typing"]')?.textContent).toBe('@chris b')
+    type(input, 'ask @chris bx')
+    expect(screen.queryByRole('listbox')).toBeNull()
+    // Letters that are nobody's name show no row, and no mark.
+    type(input, 'gone @home')
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(document.querySelector('[data-note-tag-mark]')).toBeNull()
+  })
+
+  it('tags on a tap that keeps the box in focus, marks the name in the words, and one Backspace takes it off (punch list #375)', async () => {
+    const { job, submitNoteWithBody } = mount()
+    await settle()
+    fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
+    const input = screen.getByLabelText('Note text') as HTMLInputElement
+    type(input, 'ask @chris b')
+    await vi.waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(1))
+    // pointerdown, with its default prevented: the box keeps its focus and a phone's keyboard stays up.
+    const down = fireEvent.pointerDown(screen.getByRole('option'))
+    expect(down).toBe(false)
+    await vi.waitFor(() => expect(input.value).toBe('ask @Chris Bell '))
+    expect(document.querySelector('[data-note-tag-mark] [data-mark="tag"]')?.textContent).toBe('@Chris Bell')
+    expect(screen.getByLabelText('Take Chris Bell off')).toBeTruthy()
+    input.setSelectionRange(16, 16)
+    const key = fireEvent.keyDown(input, { key: 'Backspace' })
+    expect(key).toBe(false)
+    await vi.waitFor(() => expect(input.value).toBe('ask '))
+    expect(document.querySelector('[data-note-tag-mark]')).toBeNull()
+    expect(screen.queryByLabelText('Take Chris Bell off')).toBeNull()
+    // Typing the same name back by hand makes no tag: a tag is a tap or Enter.
+    type(input, 'ask @Chris Bell now')
+    expect(screen.queryByLabelText('Take Chris Bell off')).toBeNull()
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await vi.waitFor(() => expect(submitNoteWithBody).toHaveBeenCalledWith(job.id, 'ask @Chris Bell now', 'draft', { tagged: [] }))
+  })
+
+  it('takes the whole tag off when a phone keyboard that names no key deletes one letter (punch list #375)', async () => {
+    mount()
+    await settle()
+    fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
+    const input = screen.getByLabelText('Note text') as HTMLInputElement
+    type(input, 'ask @da')
+    await vi.waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(1))
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await vi.waitFor(() => expect(input.value).toBe('ask @Dana Whitlock '))
+    fireEvent.keyDown(input, { key: 'Unidentified' })
+    type(input, 'ask @Dana Whitlock')
+    await vi.waitFor(() => expect(input.value).toBe('ask '))
+    expect(screen.queryByLabelText('Take Dana Whitlock off')).toBeNull()
   })
 
   it('shuts the list on Escape and keeps the box open', async () => {

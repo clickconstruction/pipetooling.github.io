@@ -42,6 +42,9 @@ export const TAG_SECTION_SHOWN = 3
 /** Letters, an apostrophe or a hyphen: what a name being typed after `@` may hold. */
 const QUERY_AT_END = /(^|\s)@([\p{L}'’-]*)$/u
 
+/** What may follow `@` while it could still be a name: a word, then more words one space apart. */
+const NAME_SO_FAR = /^[\p{L}'’-]+(?: [\p{L}'’-]*)*$/u
+
 /** A letter or a digit: a mention may not run straight into one. */
 const NAME_CHAR = /[\p{L}\p{N}]/u
 
@@ -70,11 +73,56 @@ export function tagQueryAtCaret(text: string, caret: number): { query: string; s
   return { query, start: before.length - query.length - 1 }
 }
 
-/** True when any word of the name starts with what was typed. Nothing typed matches everyone. */
+/**
+ * The `@` being typed at the caret, read by its shape alone (punch list #375): where it sits and
+ * the words after it. Unlike `tagQueryAtCaret` the words may run through a space, so `@chris b`
+ * is still one. Null once anything but a name's letters follows, as in `@ 8:45` and `@$300`.
+ */
+export function tagTypingAtCaret(text: string, caret: number): { query: string; start: number } | null {
+  const before = text.slice(0, clampCaret(text, caret))
+  const start = before.lastIndexOf('@')
+  if (start < 0 || (start > 0 && !/\s/.test(before[start - 1]!))) return null
+  const query = before.slice(start + 1)
+  return query === '' || NAME_SO_FAR.test(query) ? { query, start } : null
+}
+
+/**
+ * The `@` being typed at the caret, read with the names the row can offer (punch list #375).
+ *
+ * One word after the `@` is always a query, as before. Past a space it stays one only while the
+ * words still start somebody's full name, so `@chris b` keeps Chris Bell and Chris Bellamy
+ * offered and `@will call` offers nobody. An `@` that already holds a made tag (`liveNames`) is
+ * done and opens nothing. This only says what the row shows: a name is tagged by a tap or
+ * Enter, never by being typed.
+ */
+export function tagNameQueryAtCaret(
+  text: string,
+  caret: number,
+  names: readonly string[],
+  liveNames: readonly string[] = [],
+): { query: string; start: number } | null {
+  const typing = tagTypingAtCaret(text, caret)
+  if (!typing) return null
+  if (liveNames.some((n) => mentionIndex(text, n, typing.start) === typing.start)) return null
+  if (!typing.query.includes(' ')) return typing
+  const q = fold(typing.query)
+  return names.some((n) => foldName(n).startsWith(q)) ? typing : null
+}
+
+/** A name folded, with one space between its words. */
+function foldName(name: string): string {
+  return fold(name.trim().replace(/\s+/g, ' '))
+}
+
+/**
+ * True when the name fits what was typed. One word fits the start of any word of the name. Words
+ * with a space between them fit only the start of the whole name. Nothing typed matches everyone.
+ */
 export function nameMatchesQuery(name: string, query: string): boolean {
-  const q = fold(query.trim())
-  if (!q) return true
-  return fold(name)
+  const q = fold(query.replace(/^\s+/, ''))
+  if (!q.trim()) return true
+  if (q.includes(' ')) return foldName(name).startsWith(q)
+  return foldName(name)
     .split(/[\s-]+/)
     .some((word) => word.startsWith(q))
 }
@@ -109,12 +157,15 @@ export function rankTaggable(
 
 /**
  * The box after a pick: the `@` being typed becomes `@Full Name ` and the caret sits after it.
- * With no `@` at the caret (the @ button, pressed cold) the name goes in at the caret.
+ * With no `@` at the caret (a name pressed cold) the name goes in at the caret.
+ *
+ * `queryStart` is where the open row's `@` sits, or null for a cold press. Left out, the `@` is
+ * found as `tagQueryAtCaret` finds it, which stops at a space.
  */
-export function insertPick(text: string, caret: number, name: string): { text: string; caret: number } {
+export function insertPick(text: string, caret: number, name: string, queryStart?: number | null): { text: string; caret: number } {
   const at = clampCaret(text, caret)
   const mention = `@${name.trim()} `
-  const q = tagQueryAtCaret(text, at)
+  const q = queryStart === undefined ? tagQueryAtCaret(text, at) : queryStart == null || queryStart < 0 || queryStart > at ? null : { start: queryStart }
   const before = q ? text.slice(0, q.start) : text.slice(0, at)
   const pad = !q && before && !/\s$/.test(before) ? ' ' : ''
   const head = before + pad + mention
@@ -157,6 +208,70 @@ export function removePick(text: string, name: string): string {
     i = mentionIndex(out, name, Math.max(0, i - 1))
   }
   return out
+}
+
+/**
+ * One Backspace right after a tag takes the whole `@Full Name` off (punch list #375). `caret` is
+ * where the caret sits before the key. Null when the caret is not right after a live tag, with
+ * or without the space a pick leaves, and the key is then an ordinary Backspace.
+ */
+export function backspaceTag(text: string, caret: number, liveNames: readonly string[]): { text: string; caret: number } | null {
+  const at = clampCaret(text, caret)
+  for (const name of liveNames) {
+    const mention = `@${name.trim()}`
+    if (mention === '@') continue
+    for (const tail of [' ', '']) {
+      const start = at - mention.length - tail.length
+      if (start >= 0 && text.slice(start, at) === mention + tail && mentionIndex(text, name, start) === start) {
+        return { text: text.slice(0, start) + text.slice(at), caret: start }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * The same rule read after the fact, for a phone keyboard that names no key: `before` and `after`
+ * are the words around one change and `caret` is where the caret now sits. When the change took
+ * one character off right after a live tag, the answer is the words with the whole tag off.
+ */
+export function backspacedTag(before: string, after: string, caret: number, liveNames: readonly string[]): { text: string; caret: number } | null {
+  if (after.length !== before.length - 1) return null
+  const at = clampCaret(after, caret)
+  if (before.slice(0, at) + before.slice(at + 1) !== after) return null
+  return backspaceTag(before, at + 1, liveNames)
+}
+
+/** A run of the words being written: plain, a made tag, or the `@` the row is offering names for. */
+export type DraftPart = { text: string; mark: 'tag' | 'typing' | null }
+
+/**
+ * The words in the box cut into runs, so a layer under the box can tint each live `@Full Name`
+ * and underline the `@` being typed (punch list #375). The runs joined are the words unchanged.
+ */
+export function draftMarkParts(text: string, liveNames: readonly string[], typing?: { start: number; end: number } | null): DraftPart[] {
+  const ranges: { start: number; end: number; mark: 'tag' | 'typing' }[] = []
+  for (const name of new Set(liveNames.map((n) => n.trim()).filter(Boolean))) {
+    let i = mentionIndex(text, name)
+    while (i >= 0) {
+      ranges.push({ start: i, end: i + name.length + 1, mark: 'tag' })
+      i = mentionIndex(text, name, i + 1)
+    }
+  }
+  if (typing && typing.end > typing.start) {
+    ranges.push({ start: Math.max(0, typing.start), end: Math.min(text.length, typing.end), mark: 'typing' })
+  }
+  ranges.sort((a, b) => a.start - b.start || (a.mark === 'tag' ? -1 : 1))
+  const parts: DraftPart[] = []
+  let at = 0
+  for (const r of ranges) {
+    if (r.start < at || r.end <= r.start) continue
+    if (r.start > at) parts.push({ text: text.slice(at, r.start), mark: null })
+    parts.push({ text: text.slice(r.start, r.end), mark: r.mark })
+    at = r.end
+  }
+  if (at < text.length) parts.push({ text: text.slice(at), mark: null })
+  return parts
 }
 
 export type NoteBodyPart = { kind: 'text'; text: string } | { kind: 'tag'; name: string }

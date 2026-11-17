@@ -5,6 +5,8 @@ import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { DEFAULT_BID_LEDGER_PREFIX } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
+import { useDashboardView } from '../hooks/useDashboardView'
+import { canHaveShortDashboard } from '../lib/dashboard/shortDashboard'
 import { useIsDigitalTwin } from '../hooks/useIsDigitalTwin'
 import type { UserRole } from '../hooks/useAuth'
 import { EasterEggHost } from './FloatingEasterEgg'
@@ -280,6 +282,8 @@ export default function Layout() {
   }, [authUser?.id])
   const phoneDockSlots = useMemo(() => resolveDockSlots(role, phoneDockRaw), [role, phoneDockRaw])
   const phoneDockActive = dispatchModeActive && isMobile && phoneDockSlots != null
+  // A person on Short (punch list #365, PR 4): the bar's Dashboard tab opens the short page, whichever mode is on.
+  const shortDashboardHome = useDashboardView(authUser?.id ?? null, role) === 'short' && canHaveShortDashboard(role)
   const [phoneDockSheet, setPhoneDockSheet] = useState<{ open: boolean; swapIndex: number | null }>({ open: false, swapIndex: null })
   const closePhoneDockSheet = useCallback(() => setPhoneDockSheet({ open: false, swapIndex: null }), [])
   useEffect(() => {
@@ -2265,6 +2269,7 @@ export default function Layout() {
           showPoTab={dispatchModePoTabActive}
           slots={phoneDockActive ? phoneDockSlots : null}
           onOpenMore={phoneDockActive ? (swapIndex) => setPhoneDockSheet({ open: true, swapIndex }) : undefined}
+          shortHome={shortDashboardHome}
         />
       ) : null}
       {phoneDockActive && phoneDockSlots ? (

@@ -867,6 +867,9 @@ export function JobThreadNotesPanel({
                 {tagBox.list}
                 {tagBox.chips}
               </div>
+              {/* The mark in the words (punch list #375) is drawn under the box, so the box is see-through and this holds its background. */}
+              <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 8 }}>
+              {tagBox.mark}
               <textarea
                 ref={noteBodyRef}
                 id="job-thread-note-body"
@@ -896,14 +899,17 @@ export function JobThreadNotesPanel({
                   lineHeight: 1.4,
                   border: '1px solid var(--border-strong)',
                   borderRadius: 8,
-                  background: 'var(--surface)',
+                  background: 'transparent',
                   color: 'var(--text-strong)',
                   boxSizing: 'border-box',
                   resize: 'none',
                   maxHeight: '10rem',
                   overflowY: 'auto',
+                  position: 'relative',
+                  display: 'block',
                 }}
               />
+              </div>
               {/* Flat, wrapping action row: stamps / % complete on the left,
                   Post note pushed right. "Set % complete" opens the editor above (replacing this composer). */}
               <div

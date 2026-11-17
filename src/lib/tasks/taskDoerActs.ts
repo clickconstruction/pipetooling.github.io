@@ -355,3 +355,22 @@ export function handPushToTaker(who: string, title: string, reason: string): { t
 export function handPushToGiver(who: string, title: string, takerName: string): { title: string; body: string } {
   return { title: 'A task was handed on', body: `${who} handed "${title}" to ${takerName}.` }
 }
+
+// --- Forward: the office's window for the same act (handOnTask), on the Checklist and on My Inbox ---
+
+export const FORWARD_TITLE = 'Forward task'
+export const FORWARD_PICK_LABEL = 'Pick a person'
+/** Under the task's words in the Forward window (punch list #369, step C7): the task itself goes, not a copy, and since v2.7563 the taker is told (`tellForwardTaker`). */
+export const FORWARD_KEEPS_WORDS = 'The task goes as it is, with its notes, place and photos. Whoever takes it gets a message.'
+
+/** Who the Forward window offers for the viewer's own task: everyone it was handed but the viewer, by name. */
+export function forwardTakers(people: ReadonlyArray<HandPerson>, selfId: string | null): HandPerson[] {
+  return handPeople(people, selfId, '')
+}
+
+/** The Forward window's press names who takes the task once someone is picked. */
+export function forwardPressLabel(takerName: string | null, saving: boolean): string {
+  if (saving) return 'Forwarding…'
+  const name = (takerName ?? '').trim()
+  return name ? `Forward to ${name}` : 'Forward'
+}

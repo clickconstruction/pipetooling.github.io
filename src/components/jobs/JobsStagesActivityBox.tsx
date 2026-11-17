@@ -483,6 +483,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
             padding: '0 4px 0 12px',
           }}
         >
+          {tagBox.mark}
           <input
             ref={inputRef}
             value={draft}
@@ -497,7 +498,8 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
             placeholder={`Add a note to ${(job.job_name ?? '').trim() || 'this job'}…`}
             aria-label="Note text"
             disabled={submitting}
-            style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-strong)', fontSize: '0.75rem' }}
+            // Over the mark in the words (punch list #375), which is drawn under a see-through box.
+            style={{ position: 'relative', flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-strong)', fontSize: '0.75rem' }}
           />
           {tagBox.atButton}
           <button

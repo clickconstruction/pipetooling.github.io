@@ -6,7 +6,8 @@ import { lienFieldsHash as deskHash, lienItemUnsigned } from './lienNoticeSignat
 /**
  * One rule for *unsigned* (v2.7491): `notify-lien-approval` reminds the leader of a notice only when the desk would
  * count it as waiting on his signature. The function cannot import the desk's kernel, so the hash and the rule live in
- * `_shared/lienFieldsHash.ts` and this holds the two to one answer, row by row.
+ * `_shared/lienFieldsHash.ts` and this holds the two to one answer, row by row. The desk's own records on a notice are
+ * left out of the hash since v2.7565; `lienFieldsHash.records.test.ts` holds that side of the rule.
  */
 const fields = { notice: { claimAmount: 27_199, months: ['2026-07'] } }
 const signed = { signed_at: '2026-11-10T15:00:00Z', signer_printed_name: 'Sam Leader', signed_fields_hash: lienFieldsHash(fields) }
@@ -17,6 +18,8 @@ const rows: Array<{ name: string; row: Record<string, unknown>; unsigned: boolea
   { name: 'signed with no name', row: { fields, ...signed, signer_printed_name: '  ' }, unsigned: true },
   { name: 'signed before the hash was kept', row: { fields, ...signed, signed_fields_hash: null }, unsigned: false },
   { name: 'the same draft with its keys in another order', row: { fields: { notice: { months: ['2026-07'], claimAmount: 27_199 } }, ...signed }, unsigned: false },
+  { name: 'signed, then the desk wrote a record on it', row: { fields: { ...fields, promise: { at: '2026-11-20T15:00:00Z', by: 'Dana', ymd: '2026-12-01', amount: 9_000, note: '' } }, ...signed }, unsigned: false },
+  { name: 'signed, then the draft changed under a record', row: { fields: { notice: { claimAmount: 30_000 }, ownerCall: { at: '2026-11-20T15:00:00Z' } }, ...signed }, unsigned: true },
 ]
 
 describe('the shared rule for a notice with no signature', () => {

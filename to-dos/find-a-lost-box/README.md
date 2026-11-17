@@ -2,11 +2,11 @@
 name: "Find a lost box: show where a cage or box was last put, and draw the way to it"
 number: 372
 group: gated
-status: asked 2026-11-16 · the card the same day · nothing built, no mock-up drawn · every choice below is a call the owner has not answered
+status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17, steps 1 and 2 at phone width first · the nine calls put to the owner the same day, call 1 first and alone · call 1 answered the same day (*Yes, cage or box*) · calls 2 to 11 open · nothing built
 summary: >
   The owner wants the app to show someone where their crate is when it is lost, and to draw a path
   to where they can find it. The app has no crate: this card takes it to mean a cage or a box from
-  Materials on site, and asks him to confirm. Read against what is live, the path has nowhere to
+  Materials on site, and he confirmed that on 2026-11-17. Read against what is live, the path has nowhere to
   end today. A box can carry a pin on the site map, and of the 96 live cages and boxes read on
   2026-11-16 none has one. So the first job is the spot, not the line. The card proposes a sheet on
   the box, Where is it?, that says everything the app knows (the place, the where note, the newest
@@ -14,9 +14,9 @@ summary: >
   honest distance, and ends with I found it, which pins the box where the finder stands. A way
   painted once to each place where boxes stand (#345) is the path that knows about gates and
   fences, and a task carries it to someone who is not on the crew.
-next: The owner reads the nine calls and answers call 1 first (what a crate is, and who is looking for it), since the rest hang on it. No session should build any of it before that. A try that costs nothing can run now, on presses that are live. Pin five boxes on the test job with Use my location, some outdoors and some inside, and look at where the dots land.
+next: The owner says whether to build step 1 (the pin remembers), now that call 1 is answered, and answers calls 2 to 11 with the mock-up in front of him. No session should build any of it before he says build. A try that costs nothing can run now, on presses that are live. Pin five boxes on the test job with Use my location, some outdoors and some inside, and look at where the dots land.
 size: L as a train of five (S · M · S · M · S), on the card's picks; the first two are the smallest version worth building
-blocker: The owner's answers. He gave one sentence and has answered no design question. Nothing in Paint a map (#345) has been tried on a real phone, and this stands on it.
+blocker: The owner's word to build, and his answers to calls 2 to 11. He has answered call 1 and no other. Nothing in Paint a map (#345) has been tried on a real phone, and this stands on it.
 opinion: your call — worth building as far as step 2, and only if crews will pin boxes. A path to a box nobody pinned is a line to nowhere, so step 3 is what decides whether it is used.
 ---
 
@@ -30,9 +30,9 @@ The owner, 2026-11-16:
 > they can find it
 
 He said no more than that. He asked for it on the punch list and not built now. This card is the
-reading, the smallest thing worth building, what it would cost, and his calls. **Nothing is built
-and no mock-up is drawn.** The board reads *waiting on a mock-up* for this card, which is true: a
-drawing is worth making once call 1 is answered.
+reading, the smallest thing worth building, what it would cost, and his calls. **Nothing is
+built.** [mockup.html](mockup.html) draws the smallest version worth building on made-up data. It
+was drawn on 2026-11-17, while the calls were put to him.
 
 ## What I took it to mean
 
@@ -45,7 +45,7 @@ drawing is worth making once call 1 is answered.
   last put, by whom and on what day.
 - **A path is a line on the view from above,** from where the person stands to the box.
 
-Each is a guess. Call 1 puts the other readings to him.
+The first was confirmed by the owner on 2026-11-17 (call 1). The other three are still guesses.
 
 ## What the app knows about where a box is, today
 
@@ -133,8 +133,9 @@ Steps 1 and 2 of the train. One press on a box, **Where is it?**, opening one sh
 - **The view from above,** with the pin, the job's painted maps under it as today, and the other
   boxes of the same place faint around it.
 - **Show where I am.** A press, then the reader's own dot, a dashed straight line to the pin and
-  the distance, said as #345 says a length: *about*, with its give or take. The dot moves while
-  the sheet is open and the screen is on. It never leaves the phone.
+  the distance, said as a task's place answers *How far am I?* with *about* in front: *About 240
+  ft north-east of you. Your phone is sure within 25 ft.* The dot moves while the sheet is open
+  and the screen is on. It never leaves the phone.
 - **Directions.** Opens the phone's maps app at the pin, for the drive to the site.
 - **I found it.** The press that makes the feature pay for itself. It reads the phone once and
   pins the box where the finder stands, with their name and the day. A reading worse than 150 ft
@@ -142,6 +143,38 @@ Steps 1 and 2 of the train. One press on a box, **Where is it?**, opening one sh
 - **With no pin and no place,** the sheet says so and offers the two presses that fix it.
 
 Every search ends by correcting the record. That is the only way the next search is shorter.
+
+## The mock-up
+
+[mockup.html](mockup.html), drawn 2026-11-17 for steps 1 and 2 only. Every name, place, day and
+distance in it is made up, and its view from above is a drawing of no real place. It was rendered
+at 375 and 1,240 wide, in light and in dark, and its *Try the search* section was pressed through
+before it was shown. Nothing ran off the side of the phone.
+
+What it draws, in order:
+
+- **Where the press sits.** The phone's box screen today and as suggested.
+- **The sheet in three states.** Opened on a pinned box. After **Show where I am**. On a box
+  nobody has pinned, which is every box today.
+- **I found it.** A good reading, with *Is A7 still in the Laydown yard?* under it, and a reading
+  too wide to keep.
+- **Try the search.** A helper is walked from the street to a pin five days old. The box is not
+  there. She finds it 60 ft away and presses **I found it**, and the sheet's sentences change.
+- **When the phone is unsure, and when the pin is old.** Indoors, and a pin from six weeks ago.
+- **The office.** The same sheet in the office's box window, at desk width.
+- **The pin remembers.** Step 1 as a table of what the sheet wants to say and what is kept.
+
+Three things the drawing settled that the card had left loose. Each is mine and easy to change.
+
+- **The press takes the place of the Pin on map chip.** The phone's box screen has three chips in
+  one row at 375 wide: **Move box**, **Pin on map** and **Photo**. A fourth does not fit. So the
+  middle chip reads **Where is it?**, pinned or not, and today's map to drag stays inside the
+  sheet as **Move the pin by hand**.
+- **A pin older than 30 days turns amber and fades,** with one sentence: *That pin is six weeks
+  old. Boxes get moved.*
+- **The distance borrows a task place's words, not a painted line's.** A painted line's *give or
+  take* is about a length that was walked. This is one point to another, which
+  `taskPlaceHowFarWords` already says, with a direction and the phone's own margin.
 
 ## The train
 
@@ -151,7 +184,7 @@ Each ships alone with its tests, the guide's section, a release note and a fragm
 |---|---|---|---|---|
 | 0 | **A try with no code.** Pin five boxes on the test job with **Use my location**, outdoors and inside. Look at where the dots land on **Map**. | none | none | none |
 | 1 | **The pin remembers.** Who pinned a box, when, and how sure the phone was. | One migration on `job_containers`: three columns, and a trigger that stamps the person and the day when the pin changes, so a phone cannot claim another name. No new table and no new policy. | none | S |
-| 2 | **Where is it?** The sheet above. | none | The phone's box screen and the office's box window. A kernel for the sentences and the distance words (`src/lib/materials/`). It reuses `OnSiteMap`, `requestMyFix`, `haversineMeters`, `directionsUrl.ts` and the painted line's length words. | M |
+| 2 | **Where is it?** The sheet above. | none | The phone's box screen and the office's box window. A kernel for the sentences and the distance words (`src/lib/materials/`). It reuses `OnSiteMap`, `requestMyFix`, `haversineMeters`, `directionsUrl.ts` and a task place's distance words (`taskPlaceHowFarWords` in `src/lib/tasks/taskPlace.ts`). | M |
 | 3 | **Pins as a side effect.** After **Count this box**, after a photo, after a signed-in scan of the label and when a box is added: one line, *Pin A7 where you stand?*, one press. Never twice in a day for one box. | none | The phone's count, photo and scan sheets | S |
 | 4 | **The way to a place.** On a place's row, **＋ Paint the way here**. The painting window opens on the job with the name *The way to Level 2*, and the saved map comes back onto the place. The sheet of step 2 draws that way under the pin. | One migration: `painted_map_id` on `job_places`, a guard that a place points only at a map on its own job or its development, and a way to set it. `job_places` has a select and an insert policy today and no update, so this adds an update policy or one function. No new table. | The place's row on the phone and on the office page, and the sheet | M |
 | 5 | **Send someone to it.** On the sheet, a press that opens the New task window with *Find A7*, the pin as the task's place and the place's map. The person given the task reads the map through the task. | none: the column and its guard are live | The sheet, and the New task window as it is | S |
@@ -236,12 +269,17 @@ with words and a photo, and why step 0 is a try on a real phone before any code.
 
 ## The owner's calls
 
-Each has my pick first.
+Each has my pick first. All nine were put to the owner in the session on 2026-11-17, call 1 first
+and alone, then the other eight in one message, each as one sentence with its pick. Call 1 is
+answered and the rest are open. His answers go here, on the call's own line, as they come.
 
 1. **What is a crate, and who is looking for it?** My pick: a cage or a box from Materials on
    site, looked for by the job's crew or the office. Or: a box that has left the site, where the
    app can show only where it was last seen. Or: something the app does not hold yet, such as a
    supplier's or a customer's crate, which is a different card.
+   **Answered 2026-11-17: *Yes, cage or box*.** A crate is a cage or a box from Materials on
+   site. The call as put to him named the job's crew or the office as the ones looking, and he
+   raised no other reading.
 2. **What should the path be?** My pick: a straight line with a distance first (step 2), then a
    way painted once to each place (step 4). Or the painted way only. Or a route the app works
    out, which is much larger and waits.
@@ -263,6 +301,10 @@ Each has my pick first.
 9. **Did you mean a tag on the crate?** My pick: no, not now. A tag that phones find is read only
    in its maker's own app. A tracker with its own signal costs a fee for each crate each month.
    Either is hardware to buy and a different card. Say so if that is what you meant.
+10. **Should the press take the place of the Pin on map chip?** My pick: yes, as the mock-up
+    draws it. Or a fourth press on a line of its own, under the three chips.
+11. **When does a pin read as old?** My pick: after 30 days. It is a guess with nothing measured
+    behind it.
 
 ## What it would cost, in short
 
@@ -294,3 +336,14 @@ Each has my pick first.
 2026-11-16: the card, on the owner's word that it goes on the punch list and is not built now. No
 code, no migration, no mock-up, no write to the live app. Two things were read from it: the count
 of live cages and boxes with a pin and a place, through the dev seat, and the code named above.
+
+2026-11-17: the mock-up, and the calls put to the owner in a session. Still no code, no migration
+and no write to the live app. Step 0 was described to him as his to do, since it needs a person
+standing at the boxes: on the test job, stand at five boxes, some outdoors and some inside, press
+**Pin on map**, **Use my location** and **Put A1 here** on each, then open **Map** on the On site
+tab and look at where the dots land. Nobody has done it yet. Step 1 is built only on his answer to
+call 1 and his word to build.
+
+2026-11-17, later: the owner answered call 1, *Yes, cage or box*. He has not said build, and
+calls 2 to 11 are open. Step 1 hangs on none of them: a pin that keeps its day, its person and its
+margin is wanted under every answer but a tag on the box (call 9).

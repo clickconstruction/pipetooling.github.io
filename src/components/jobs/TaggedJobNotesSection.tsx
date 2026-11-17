@@ -77,7 +77,9 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
   const inputRef = useRef<HTMLInputElement | null>(null)
   const { showToast } = useToastContext()
   const narrow = typeof window !== 'undefined' && window.innerWidth <= 700
-  const tagBox = useNoteTagBox({ jobId: tag.jobId, draft, setDraft, inputRef, enabled: true, askerId: tag.taggerUserId, place: narrow ? 'above' : 'below' })
+  // The person who asked is offered before a letter is typed (punch list #375): one tap tags them back.
+  const offer = useMemo(() => [{ userId: tag.taggerUserId, name: tag.taggerName, says: 'asked you' }], [tag.taggerUserId, tag.taggerName])
+  const tagBox = useNoteTagBox({ jobId: tag.jobId, draft, setDraft, inputRef, enabled: true, askerId: tag.taggerUserId, offer, place: narrow ? 'above' : 'below' })
   const posted = calendarYmdInAppTzFromIso(tag.noteCreatedAt)
   const late = tagIsLate(posted, today)
   const age = tagAgeWords(posted, today)
@@ -141,6 +143,7 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
           {tagBox.chips}
           {tagBox.list}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '5px 7px 5px 14px', border: '1px solid #3b82f6', borderRadius: 999, background: 'var(--surface)' }}>
+            {tagBox.mark}
             <input
               ref={inputRef}
               value={draft}
@@ -154,7 +157,7 @@ function TagCard({ tag, today, onOpenJob }: { tag: MyTag; today: string; onOpenJ
               aria-label={`Answer ${asker} on ${tag.jobName.trim() || 'the job'}`}
               disabled={busy != null}
               maxLength={2000}
-              style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-strong)', fontSize: '0.8125rem' }}
+              style={{ position: 'relative', flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-strong)', fontSize: '0.8125rem' }}
             />
             {tagBox.atButton}
             <button
