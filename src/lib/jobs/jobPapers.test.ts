@@ -157,6 +157,13 @@ describe('pickablePapers', () => {
     expect(byName.get('Site rules and photo policy')).toBe('From the Contract Book')
     expect(byName.get('Blank paper')).toBe('No words yet. Write it in the Contract Book first.')
   })
+  it('a paper with two copies is offered by the copy that has words', () => {
+    const two: BookPaperRow[] = [
+      { id: 'w9-shell', document_name: 'W-9', book_body_html: null, book_body_format: 'html', audience: 'sub', updated_at: '2026-11-10T00:00:00Z' },
+      { id: 'w9-form', document_name: 'W-9', book_body_html: null, book_body_format: 'html', form_template_id: 'form-w9', audience: 'staff', updated_at: '2026-09-01T00:00:00Z' },
+    ]
+    expect(pickablePapers(two, [])).toEqual([{ bookDocumentId: 'w9-form', paperName: 'W-9', isForm: true, hasWords: true, from: 'A form from the Contract Book' }])
+  })
   it('leaves out what the job already requires and what is already picked', () => {
     expect(pickablePapers(book, roster.papers).map((p) => p.paperName)).toEqual(['Blank paper'])
     expect(pickablePapers(book, [], ['book-nda']).map((p) => p.paperName)).toEqual(['Blank paper', 'Site rules and photo policy'])

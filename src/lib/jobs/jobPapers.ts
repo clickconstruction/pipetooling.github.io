@@ -245,7 +245,11 @@ export interface PickablePaper {
 export function pickablePapers(book: readonly BookPaperRow[], live: readonly JobRequiredPaper[], pending: readonly string[] = []): PickablePaper[] {
   const taken = new Set<string>([...live.map((p) => p.bookDocumentId ?? ''), ...pending])
   const takenNames = new Set(live.map((p) => p.paperName.trim().toLowerCase()))
-  const offered = book.filter((d) => d.audience !== 'customer' && !d.flow_kind)
+  const hasWordsRow = (d: BookPaperRow) => Boolean(d.form_template_id) || Boolean(d.book_body_html?.trim()) || Boolean(d.canonical_document_url?.trim())
+  const all = book.filter((d) => d.audience !== 'customer' && !d.flow_kind)
+  // A paper can sit in two packets, one copy a form and the other an empty shell. The copy with words is the one to offer.
+  const namesWithWords = new Set(all.filter(hasWordsRow).map((d) => d.document_name))
+  const offered = all.filter((d) => hasWordsRow(d) || !namesWithWords.has(d.document_name))
   return listQuickAddBookDocuments(offered)
     .filter(({ row, documentName }) => !taken.has(row.id) && !takenNames.has(documentName.trim().toLowerCase()))
     .map(({ row, documentName }) => {

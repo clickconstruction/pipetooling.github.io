@@ -350,7 +350,7 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
                     return (
                       <tr key={person.key} data-job-papers-person={person.key}>
                         <td style={documentsTd}>
-                          <b style={{ display: 'block', color: 'var(--text-strong)', fontWeight: 600 }}>{person.name}</b>
+                          <b style={{ display: 'block', color: 'var(--text-strong)', fontWeight: 600, whiteSpace: 'nowrap' }}>{person.name}</b>
                           <small style={{ color: 'var(--text-muted)' }}>{personRoleLabel(person)}</small>
                         </td>
                         {papers.map((p) => {
