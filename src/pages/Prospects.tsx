@@ -5,8 +5,6 @@ import { pageTabStyle } from '../lib/pageTabStyle'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectTeamActivity'
-import { getOrderedDateKeysLast30Days } from '../lib/prospectTeamActivityChartData'
 import { myTimeWindows, sumTimerSeconds, sumTimerSecondsByProspect } from '../lib/prospects/prospectTimerSums'
 import {
   CALL_INTERACTION_TYPES,
@@ -22,15 +20,6 @@ import {
 } from '../lib/prospects/callingOrder'
 import { ageChipStyle } from '../lib/ageState'
 import { searchConvertProspects, suggestRecentlyAnswered } from '../lib/prospects/convertProspectSearch'
-import {
-  buildProspectWeekReport,
-  formatWeekHours,
-  weekRange,
-  type WeekCallRow,
-  type WeekCallbackRow,
-  type WeekReport,
-  type WeekTimerRow,
-} from '../lib/prospects/prospectWeekReport'
 import {
   filterProspectsForList,
   groupProspectsForList,
@@ -73,10 +62,10 @@ import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
 import { stripReads, type StripRead } from '../lib/prospects/stripState'
 import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
 import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
-import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
+import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
 import { plansChoices, type PlansChoice } from '../lib/prospects/subsStages'
 import { gcBenchInput, gcNeeds, type GcBenchIn } from '../lib/prospects/gcNeeds'
-import { callingWeekEmptyWords, cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
+import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
@@ -93,6 +82,7 @@ import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchT
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
+import { ProspectsActivityTab } from '../components/prospects/ProspectsActivityTab'
 import { ProspectMyTimeModal } from '../components/prospects/ProspectMyTimeModal'
 import { ProspectTimerHistoryModal } from '../components/prospects/ProspectTimerHistoryModal'
 import { SubsBoard } from '../components/prospects/SubsBoard'
@@ -456,11 +446,8 @@ export default function Prospects() {
   const copyTemplateTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Activity tab state (dev and assistant) - last 30 days
-  const [teamDataByDate, setTeamDataByDate] = useState<Record<string, ProspectTeamRow[]>>({})
-  const [teamLoading, setTeamLoading] = useState(false)
+  /** The week the Activity tab's pager is on. It stays here so it survives a visit to another tab. */
   const [weekOffset, setWeekOffset] = useState(0)
-  const [weekReport, setWeekReport] = useState<WeekReport | null>(null)
-  const [weekLoading, setWeekLoading] = useState(false)
   const canAccessActivityTab = authRole === 'dev' || isAssistantLike(authRole)
 
   useEffect(() => {
@@ -1439,85 +1426,6 @@ export default function Prospects() {
       setProspectLedgerSecondsMap({})
     }
   }, [activeTab, authUser?.id])
-
-  const loadTeamActivity = useCallback(async () => {
-    if (!canAccessActivityTab) return
-    setTeamLoading(true)
-    try {
-      // The lane's own 30 days (v2.5563); Quickfill's team chart keeps every kind.
-      const result = await loadProspectTeamActivity(supabase, kind, { hideZz })
-      setTeamDataByDate(result)
-    } catch {
-      setTeamDataByDate({})
-    } finally {
-      setTeamLoading(false)
-    }
-  }, [canAccessActivityTab, kind, hideZz])
-
-  useEffect(() => {
-    if (activeTab === 'activity' && canAccessActivityTab) {
-      loadTeamActivity()
-    }
-  }, [activeTab, canAccessActivityTab, loadTeamActivity])
-
-  const loadWeekReport = useCallback(async (offset: number) => {
-    if (!canAccessActivityTab) return
-    setWeekLoading(true)
-    try {
-      const range = weekRange(Date.now(), offset)
-      const startIso = new Date(range.startMs).toISOString()
-      const endIso = new Date(range.endMs).toISOString()
-      const [usersRes, callsRes, timersRes, callbacksRes] = await Promise.all([
-        supabase
-          .from('users')
-          .select('id, name, email, role')
-          // Same audience as loadProspectTeamActivity: office roles + estimators with Prospects access.
-          .or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)'),
-        // Each read joins the prospect for its kind (v2.5559), so the report is one kind's week.
-        supabase
-          .from('prospect_comments')
-          .select('created_by, interaction_type, created_at, prospect:prospects!inner(kind)')
-          .in('interaction_type', ['didnt_answer', 'answered', 'converted'])
-          .eq('prospect.kind', kind)
-          .gte('created_at', startIso)
-          .lt('created_at', endIso),
-        (supabase as any)
-          .from('prospect_timer_events')
-          .select('user_id, timer_seconds, created_at, prospect:prospects!inner(kind)')
-          .eq('prospect.kind', kind)
-          .gte('created_at', startIso)
-          .lt('created_at', endIso),
-        supabase
-          .from('prospect_callbacks')
-          .select('user_id, created_at, prospect:prospects!inner(kind)')
-          .eq('prospect.kind', kind)
-          .gte('created_at', startIso)
-          .lt('created_at', endIso),
-      ])
-      const users = ((usersRes.data ?? []) as { id: string; name: string | null; email: string | null }[]).map((u) => ({
-        id: u.id,
-        name: (u.name || u.email || 'Unknown').trim(),
-      }))
-      setWeekReport(
-        buildProspectWeekReport(
-          (callsRes.data ?? []) as WeekCallRow[],
-          (timersRes.data ?? []) as WeekTimerRow[],
-          (callbacksRes.data ?? []) as WeekCallbackRow[],
-          users,
-        ),
-      )
-    } catch {
-      setWeekReport(null)
-    } finally {
-      setWeekLoading(false)
-    }
-  }, [canAccessActivityTab, kind])
-
-  useEffect(() => {
-    if (activeTab === 'activity' && canAccessActivityTab) {
-      void loadWeekReport(weekOffset)
-    }
-  }, [activeTab, canAccessActivityTab, weekOffset, loadWeekReport])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -4084,158 +3992,7 @@ export default function Prospects() {
       )}
 
       {topTab === 'customers' && activeTab === 'activity' && canAccessActivityTab && (
-        <div style={{ padding: '1rem 0' }}>
-          <section style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700 }}>
-                {kind === 'customer' ? '' : `${kindWords.activity} · `}
-                {weekOffset === 0 ? 'This week' : 'Week of'} — {weekRange(Date.now(), weekOffset).label}
-              </h2>
-              <div style={{ display: 'flex', gap: '0.375rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setWeekOffset((o) => o + 1)}
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'inherit' }}
-                >
-                  ‹ previous week
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWeekOffset((o) => Math.max(0, o - 1))}
-                  disabled={weekOffset === 0}
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: weekOffset === 0 ? 'default' : 'pointer', opacity: weekOffset === 0 ? 0.5 : 1, color: 'inherit' }}
-                >
-                  next week ›
-                </button>
-              </div>
-            </div>
-            {weekLoading ? (
-              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-            ) : !weekReport || weekReport.perUser.length === 0 ? (
-              <EmptyState compact {...callingWeekEmptyWords(weekOffset, () => setWeekOffset((o) => o + 1))} />
-            ) : (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
-                  {[...weekReport.perUser, ...(weekReport.perUser.length > 1 ? [weekReport.team] : [])].map((s) => (
-                    <div key={s.userId} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 0.875rem', background: 'var(--surface)' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>{s.name}</div>
-                      <div style={{ fontSize: '1.375rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.calls} {s.calls === 1 ? 'call' : 'calls'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {s.answered} answered{s.answerRate != null ? ` · ${Math.round(s.answerRate * 100)}%` : ''}
-                      </div>
-                      <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-subtle)', overflow: 'hidden', marginTop: '0.375rem' }}>
-                        <div style={{ height: '100%', width: `${Math.round((s.answerRate ?? 0) * 100)}%`, background: '#3b82f6' }} />
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
-                        {formatWeekHours(s.timerSeconds)} on calls · {s.callbacks} {s.callbacks === 1 ? 'callback' : 'callbacks'} set ·{' '}
-                        <span style={{ color: s.conversions > 0 ? 'var(--text-violet-700)' : undefined, fontWeight: s.conversions > 0 ? 700 : undefined }}>
-                          {s.conversions} {kindWords.landedCount}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>Daily detail</div>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Day</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>User</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Calls</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Answered</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Time</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Callbacks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {weekReport.daily.map((d) => (
-                          <tr key={`${d.dateKey}|${d.userId}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                              {new Date(d.dateKey + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{d.name}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.calls}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.answered}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.timerSeconds > 0 ? formatWeekHours(d.timerSeconds) : '—'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.callbacks}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
-          </section>
-          {kind !== 'customer' && (
-            <section style={{ marginBottom: '2rem' }}>
-              <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Source success — {kindWords.tab}, every row of the lane</h3>
-              {sourceSuccess(prospectListProspects).length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing added yet.</p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, 12rem) minmax(0, 1fr) 5rem', gap: '0.375rem 0.75rem', alignItems: 'center', fontSize: '0.875rem', maxWidth: 560 }}>
-                  {sourceSuccess(prospectListProspects).map((s) => (
-                    <Fragment key={s.source}>
-                      <span>{s.source}</span>
-                      <span style={{ height: 8, borderRadius: 999, background: 'var(--bg-muted)', position: 'relative', overflow: 'hidden' }}>
-                        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${s.total ? Math.round((s.landed / s.total) * 100) : 0}%`, background: '#16a34a', borderRadius: 999 }} />
-                      </span>
-                      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{s.landed} of {s.total}</span>
-                    </Fragment>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-          <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Marked / Updated by day — last 30 days</h3>
-          {teamLoading ? (
-            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {(() => {
-                // Newest day first; the chart's helper reads the same 30 days oldest first.
-                const dates = [...getOrderedDateKeysLast30Days()].reverse()
-                return dates
-                  .map((dk) => {
-                    const rows = teamDataByDate[dk] ?? []
-                    const visibleRows = rows.filter((r) => r.cards_marked > 0 || r.cards_updated > 0)
-                    if (rows.length === 0 || visibleRows.length === 0) return null
-                    const d = new Date(dk + 'T12:00:00')
-                    const dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-                    return (
-                      <section key={dk} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.9375rem' }}>
-                          {dateLabel}
-                        </div>
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead>
-                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>User</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Marked</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Updated</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {visibleRows.map((r) => (
-                                <tr key={r.user_id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.cards_marked}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.cards_updated}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </section>
-                  )
-                })
-              })()}
-            </div>
-          )}
-        </div>
+        <ProspectsActivityTab kind={kind} kindWords={kindWords} hideZz={hideZz} laneRows={prospectListProspects} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
       )}
 
       {/* Edit modal */}

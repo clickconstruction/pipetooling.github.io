@@ -775,6 +775,45 @@ describe('Activity', () => {
     press(/previous week/)
     expect(await screen.findByText(/^Week of —/)).toBeTruthy()
   })
+
+  it('the week it is paged to survives a visit to another tab', async () => {
+    open('/prospects?tab=activity')
+    await screen.findByText('Marked / Updated by day — last 30 days')
+    press(/previous week/)
+    await screen.findByText(/^Week of —/)
+    press('Follow Up')
+    await screen.findByText('How did the call end?')
+    press('Activity')
+    expect(await screen.findByText(/^Week of —/)).toBeTruthy()
+  })
+
+  it('draws a caller’s week from the calls on record, and counts landings in the lane’s words', async () => {
+    open('/prospects?tab=activity')
+    expect(await screen.findByText('1 call')).toBeTruthy()
+    expect(screen.getByText(/1 answered · 100%/)).toBeTruthy()
+    expect(screen.getByText(/0 converted/)).toBeTruthy()
+    expect(screen.getByText('Daily detail')).toBeTruthy()
+    expect(screen.queryByText(/^Source success/)).toBeNull()
+  })
+
+  it('a week with no calls says so and offers the week before', async () => {
+    world.comments = []
+    open('/prospects?tab=activity')
+    expect(await screen.findByText('No calling activity this week yet.')).toBeTruthy()
+    press('Previous week')
+    expect(await screen.findByText('No calling activity that week.')).toBeTruthy()
+  })
+
+  it('on a lane, heads the week with the lane and adds Source success from the lane’s rows', async () => {
+    world.prospects = world.prospects.map((p) => (p.kind === 'sub' ? { ...p, source: p.id === 'su-3' ? 'A referral' : 'Google Maps', prospect_fit_status: p.id === 'su-1' ? 'converted' : null } : p))
+    open('/prospects?tab=activity&kind=subs')
+    expect(await screen.findByText('Source success — Subs, every row of the lane')).toBeTruthy()
+    expect(await screen.findByText('Google Maps')).toBeTruthy()
+    expect(screen.getByText('1 of 2')).toBeTruthy()
+    expect(screen.getByText('A referral')).toBeTruthy()
+    expect(screen.getByText(/^Subs · This week —/)).toBeTruthy()
+    expect(screen.getByText(/0 to the bench/)).toBeTruthy()
+  })
 })
 
 describe('the windows', () => {
