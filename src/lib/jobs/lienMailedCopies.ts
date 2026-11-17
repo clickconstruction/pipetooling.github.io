@@ -49,6 +49,17 @@ export function lienMailedCopiesWith(list: ReadonlyArray<LienMailedCopy>, copy: 
   return [...rest, copy]
 }
 
+/** How the list tells one file from another: its Drive file, or its link on a row that has no id. */
+export function lienMailedCopyKey(copy: Pick<LienMailedCopy, 'driveFileId' | 'url'>): string {
+  return copy.driveFileId || copy.url
+}
+
+/** The list with one file taken off (v2.7525). Every other file keeps its place. */
+export function lienMailedCopiesWithout(list: ReadonlyArray<LienMailedCopy>, copy: Pick<LienMailedCopy, 'driveFileId' | 'url'>): LienMailedCopy[] {
+  const key = lienMailedCopyKey(copy)
+  return list.filter((c) => lienMailedCopyKey(c) !== key)
+}
+
 /** The kinds of file the press takes: a scan or a photo. One rule with a filed affidavit's scan (`lienScanFile.ts`). */
 export const LIEN_MAILED_COPY_ACCEPT = LIEN_SCAN_ACCEPT
 
@@ -57,13 +68,17 @@ export function lienMailedCopyProblem(file: { size: number; type: string; name: 
   return lienScanProblem(file, 'notice')
 }
 
+/** Which paper the envelope holds: the monthly § 53.056 notice, or the § 53.057 retainage notice (v2.7525). */
+export type LienMailedCopyPaper = 'notice' | 'retainage'
+
 /**
  * The file's name in the job's Drive folder: *Lien notice as mailed · 1042 · 2026-11-16.pdf*, and *· 2* for a
- * second file the same day. A name that says what it is can be found from the folder with no app open.
+ * second file the same day. A retainage notice's reads *Retainage notice as mailed*. A name that says what it is
+ * can be found from the folder with no app open.
  */
-export function lienMailedCopyName(input: { jobNumber: string; ymd: string; already: number; file: { type: string; name: string } }): string {
+export function lienMailedCopyName(input: { jobNumber: string; ymd: string; already: number; file: { type: string; name: string }; paper?: LienMailedCopyPaper }): string {
   const job = input.jobNumber.trim()
-  const parts = ['Lien notice as mailed', job, input.ymd, input.already > 0 ? String(input.already + 1) : ''].filter(Boolean)
+  const parts = [input.paper === 'retainage' ? 'Retainage notice as mailed' : 'Lien notice as mailed', job, input.ymd, input.already > 0 ? String(input.already + 1) : ''].filter(Boolean)
   return `${parts.join(' · ')}.${lienScanExtension(input.file)}`
 }
 
@@ -93,7 +108,24 @@ export const LIEN_MAILED_COPY_WORDS = {
   /** Under a row that is not printed yet. */
   printFirst: 'Print it first.',
   failed: 'The file could not be added. Nothing was saved.',
+  /** Beside a listed file (v2.7525): the press that takes it off this notice. */
+  takeOff: 'Take off',
+  /** The two answers to the ask. The first names the act. */
+  takeOffConfirm: 'Take it off',
+  keep: 'Keep it',
+  takingOff: 'Taking it off…',
+  takeOffFailed: 'The file could not be taken off. Nothing changed.',
 } as const
+
+/** The ask under the row before a file is taken off. It says what stays. */
+export function lienMailedCopyTakeOffAsk(name: string): string {
+  return `Take ${name} off this notice? The file stays in the job’s Drive folder.`
+}
+
+/** After the press: what changed, and what did not. */
+export function lienMailedCopyTakenOffWords(name: string): string {
+  return `Took ${name} off this notice. The file is still in the job’s Drive folder.`
+}
 
 /** After the press: where the file went. */
 export function lienMailedCopyAddedWords(name: string): string {

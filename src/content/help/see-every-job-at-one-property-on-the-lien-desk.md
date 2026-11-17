@@ -2,7 +2,7 @@
 title: see every job at one property on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: property, property card, six liens, liens on a property, how many liens, ready to file, one property, address, every job at an address, jobs here, same owner, owner of record, envelope shows one job, why only one job, notice sent, already sent, notices sent, at the affidavit, by job, lien desk, homeowner, six invoices, other jobs, second record, no property record, set the property
+keywords: property, property card, six liens, liens on a property, how many liens, ready to file, one property, address, every job at an address, group, group by property, by property, what a contractor has at each property, jobs here, same owner, owner of record, envelope shows one job, why only one job, notice sent, already sent, notices sent, at the affidavit, by job, lien desk, homeowner, six invoices, other jobs, second record, no property record, set the property
 where: /lien-desk?tab=timeline
 ---
 One property can hold many jobs. The Lien desk lists papers and jobs one by one, so a property with seven jobs is seven rows. The property card shows them together. Open it when an envelope or a list shows fewer jobs than you expected at an address.
@@ -70,6 +70,20 @@ Press a job's notice words to open that notice. Press its affidavit words to ope
 A line at the foot can read *Same owner also at 88 Fenwick Ln, Hollow Creek · 1 job ›*. It shows when the same owner, at the same mailing address, owns another property on the desk. Press it to see that property.
 
 The line can also read *a second record for this address*. That means two property records hold the same address. The jobs are split between them. Tell the office lead, so the two records can be made one.
+
+## Group By job by property
+
+By job has a picker named **Group**, beside **GC** and **Show**. Pick *By property*.
+
+The rows now stand under a head for each property with more than one job. A head names the address and the owner. Then it counts the whole property, the same way the card does. Press the address to open the card.
+
+The properties with one job come next, under **One job each**. Jobs with no property record come last, under **No property record**.
+
+A head always counts the whole property. If **GC** or **Show** hides some of its jobs, the head ends with how many are shown.
+
+To see what one GC has at each property, pick the GC first, then group.
+
+Pick *None* to go back to the plain list.
 
 ## A job with no property record
 

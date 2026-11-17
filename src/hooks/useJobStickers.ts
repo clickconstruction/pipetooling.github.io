@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { blankCountOf, NO_RESERVED, reservedOfJob, stickerMarksByBoxOf, stickersByBoxOf, type ReservedOfJob, type StickerMark } from '../lib/materials/stickerPlace'
 import { fetchStickersOnBoxes } from '../lib/materials/stickerPlaceIo'
+import { reservedRunsToPrint, type ReservedRunPrint } from '../lib/materials/reservedPrint'
 import { fetchStickerRuns } from '../lib/materials/stickerRunsIo'
 
 export type JobStickers = {
@@ -12,6 +13,8 @@ export type JobStickers = {
   blank: number
   /** The same stickers as the job's line says them (v2.7487): which names, who printed them and when. */
   reserved: ReservedOfJob
+  /** The presses that print them (v2.7523): one for each run that still holds reserved stickers, minting nothing. */
+  toPrint: ReservedRunPrint[]
   loaded: boolean
   /** Reads again: after a sticker is placed here. */
   refresh: () => void
@@ -24,7 +27,7 @@ export type JobStickers = {
  * job and set of boxes, and again on `refresh`.
  */
 export function useJobStickers(jobId: string | null, containerIds: ReadonlyArray<string>, reads: { onBoxes?: typeof fetchStickersOnBoxes; runs?: typeof fetchStickerRuns } = {}): JobStickers {
-  const [state, setState] = useState<{ forJob: string | null; byBox: Map<string, number[]>; marksByBox: Map<string, StickerMark[]>; blank: number; reserved: ReservedOfJob; loaded: boolean }>({ forJob: null, byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: NO_RESERVED, loaded: false })
+  const [state, setState] = useState<{ forJob: string | null; byBox: Map<string, number[]>; marksByBox: Map<string, StickerMark[]>; blank: number; reserved: ReservedOfJob; toPrint: ReservedRunPrint[]; loaded: boolean }>({ forJob: null, byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: NO_RESERVED, toPrint: [], loaded: false })
   const [tick, setTick] = useState(0)
   const idsKey = [...containerIds].sort().join('|')
   const onBoxes = reads.onBoxes ?? fetchStickersOnBoxes
@@ -43,7 +46,8 @@ export function useJobStickers(jobId: string | null, containerIds: ReadonlyArray
         const marksByBox = boxesRead.status === 'fulfilled' ? stickerMarksByBoxOf(boxesRead.value) : same ? prev.marksByBox : new Map<string, StickerMark[]>()
         const blank = runsRead.status === 'fulfilled' ? blankCountOf(runsRead.value) : same ? prev.blank : 0
         const reserved = runsRead.status === 'fulfilled' ? reservedOfJob(runsRead.value) : same ? prev.reserved : NO_RESERVED
-        return { forJob: jobId, byBox, marksByBox, blank, reserved, loaded: true }
+        const toPrint = runsRead.status === 'fulfilled' ? reservedRunsToPrint(runsRead.value) : same ? prev.toPrint : []
+        return { forJob: jobId, byBox, marksByBox, blank, reserved, toPrint, loaded: true }
       })
     })()
     return () => {
@@ -52,5 +56,5 @@ export function useJobStickers(jobId: string | null, containerIds: ReadonlyArray
   }, [jobId, idsKey, tick, onBoxes, runs])
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
-  return useMemo(() => (state.forJob === jobId ? { byBox: state.byBox, marksByBox: state.marksByBox, blank: state.blank, reserved: state.reserved, loaded: state.loaded, refresh } : { byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: NO_RESERVED, loaded: false, refresh }), [state, jobId, refresh])
+  return useMemo(() => (state.forJob === jobId ? { byBox: state.byBox, marksByBox: state.marksByBox, blank: state.blank, reserved: state.reserved, toPrint: state.toPrint, loaded: state.loaded, refresh } : { byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: NO_RESERVED, toPrint: [], loaded: false, refresh }), [state, jobId, refresh])
 }

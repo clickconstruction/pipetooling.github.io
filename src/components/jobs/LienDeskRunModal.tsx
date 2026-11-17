@@ -11,7 +11,7 @@ import { lienRunGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runEnvelopeHold, runMailing, type RunMailing } from '../../lib/jobs/lienRunPaper'
 import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
-import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticePrintRefusal, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
@@ -23,7 +23,7 @@ import { runCourtesyEmails, runCourtesyPreviewHtml, type RunCourtesyAttachment }
 import { COMPANY_EMAIL_FROM_LABEL } from '../../lib/customerEmailFrom'
 import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
-import { runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
+import { runNoticesTakenBack, runPrintedItemIds, runSignedCount, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
 import { RUN_CLOSE_PAID_CAUTION, runClosePaidConfirm, runClosedPaidWords, runNoticesClosed, runPaidNotices } from '../../lib/jobs/lienRunClosePaid'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPreviewOverlay'
@@ -52,8 +52,8 @@ import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem } from '../../lib/jobs/lienMailedCopies'
-import { addLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
+import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem, lienMailedCopyTakenOffWords, type LienMailedCopy } from '../../lib/jobs/lienMailedCopies'
+import { addLienMailedCopy, removeLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
 import { LIEN_RUN_ACT, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 
 /** Which of the window's three stacks a notice's envelopes sit in, by its part (`lienRunParts`): what prints now, what printed, what is stopped. */
@@ -92,6 +92,7 @@ export default function LienDeskRunModal({
   viewer = null,
   focusMailItemId = null,
   addMailedCopy = addLienMailedCopy,
+  removeMailedCopy = removeLienMailedCopy,
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -127,6 +128,8 @@ export default function LienDeskRunModal({
   focusMailItemId?: string | null
   /** The upload behind *Add what was mailed*; a test hands its own. */
   addMailedCopy?: typeof addLienMailedCopy
+  /** Take a file off a notice's list (v2.7525); a test hands its own. */
+  removeMailedCopy?: typeof removeLienMailedCopy
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
@@ -163,7 +166,7 @@ export default function LienDeskRunModal({
   // handed in is already printed (v2.4823: the run then opens on recording, not on printing again) — and the day the envelopes went out.
   const opening = useMemo(() => runOpening(initial), [initial])
   // Taken back in this sitting (punch list #101): the window goes back to printing, whatever the opening said.
-  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null } | null>(null)
+  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null; signed: number } | null>(null)
   const [takeBackOpen, setTakeBackOpen] = useState(openOnTakeBack)
   // Close paid notices (v2.7353): the items the confirm is asking about, then what the close did.
   const [closePaidIds, setClosePaidIds] = useState<string[] | null>(null)
@@ -585,7 +588,9 @@ export default function LienDeskRunModal({
     }
     setAddingCopy(row.itemId)
     try {
-      const list = await addMailedCopy({ itemId: row.itemId, jobId: row.jobId, jobNumber: row.jobNumber, file, todayYmd, userId })
+      // The file's name says which paper it is: a retainage notice rides in this run beside the monthly ones (v2.7525).
+      const paper = notices.find((n) => n.itemId === row.itemId)?.kind === 'retainage_53_057' ? 'retainage' : 'notice'
+      const list = await addMailedCopy({ itemId: row.itemId, jobId: row.jobId, jobNumber: row.jobNumber, file, todayYmd, userId, paper })
       setNotices((prev) => prev.map((n) => (n.itemId === row.itemId ? { ...n, mailedCopies: list } : n)))
       const last = list[list.length - 1]
       if (last) showToast(lienMailedCopyAddedWords(last.name), 'success')
@@ -594,6 +599,21 @@ export default function LienDeskRunModal({
       showToast(formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.failed), 'error')
     } finally {
       setAddingCopy(null)
+    }
+  }
+  // Take off (v2.7525): the notice forgets one file. The file stays in the job's Drive folder, and the words say so.
+  const [removingCopy, setRemovingCopy] = useState<string | null>(null)
+  const removeCopy = async (row: LienRunRow, copy: LienMailedCopy) => {
+    setRemovingCopy(row.itemId)
+    try {
+      const list = await removeMailedCopy({ itemId: row.itemId, copy })
+      setNotices((prev) => prev.map((n) => (n.itemId === row.itemId ? { ...n, mailedCopies: list } : n)))
+      showToast(lienMailedCopyTakenOffWords(copy.name), 'success')
+      onRecorded()
+    } catch (e) {
+      showToast(formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.takeOffFailed), 'error')
+    } finally {
+      setRemovingCopy(null)
     }
   }
   const markPrintedByHand = (row: LienRunRow) => {
@@ -675,6 +695,12 @@ export default function LienDeskRunModal({
     notePrinted(runMailing(runEnvelopes(ns)).mailed.flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key)))))
   }
   const printCopy = (n: CombinedRunNotice, r: RunRecipient) => {
+    // v2.7517: a notice whose paper and bills have parted prints by no route, this one included.
+    const refused = runNoticePrintRefusal(n)
+    if (refused) {
+      showToast(refused, 'error')
+      return
+    }
     const filing = { kind: 'lien_notice', title: `${n.label} · copy for ${r.label.toLowerCase()}`, jobIds: partsIds(n).map((p) => p.jobId), recipientName: r.name || null }
     if (!printAndFile(runCopyHtml(n, r, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the copy.', 'error')
@@ -684,6 +710,11 @@ export default function LienDeskRunModal({
   }
   const printEnvelope = (env: RunEnvelope) => {
     const inside = env.contents.map((c) => c.notice as CombinedRunNotice)
+    const refused = inside.map((n) => runNoticePrintRefusal(n)).find(Boolean)
+    if (refused) {
+      showToast(refused, 'error')
+      return
+    }
     const filing = { kind: 'lien_notice', title: `Envelope ${env.n} · ${env.label} ${env.name}`.trim(), jobIds: inside.flatMap((n) => partsIds(n).map((p) => p.jobId)), recipientName: env.name || null }
     if (!printAndFile(runEnvelopeHtml(env, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the envelope.', 'error')
@@ -716,12 +747,15 @@ export default function LienDeskRunModal({
   // Take back (punch list #101): every notice that printed — before this sitting or in it — and is still here, unrecorded.
   const printedIds = useMemo(() => runPrintedItemIds(notices, printedNow), [notices, printedNow])
   const lastPrintedAt = printedAt ?? notices.reduce<string | null>((m, n) => (n.printedAt && (!m || n.printedAt > m) ? n.printedAt : m), null)
-  const takeBackWords = runTakeBackConfirm({ count: printedIds.length, printedAt: lastPrintedAt, typed: runTypedTrackingCount(notices, printedIds), all: printedIds.length === notices.length })
+  // v2.7503: a take-back clears the signature, so the confirm counts the signed ones and the strip says who is next.
+  const takeBackSigned = runSignedCount(notices, printedIds)
+  const takeBackWords = runTakeBackConfirm({ count: printedIds.length, printedAt: lastPrintedAt, typed: runTypedTrackingCount(notices, printedIds), all: printedIds.length === notices.length, signed: takeBackSigned })
   const takeBack = async () => {
     if (!onTakeBack || busy || printedIds.length === 0) return
     setBusy(true)
     try {
       const ids = printedIds
+      const signed = takeBackSigned
       const count = await onTakeBack(ids)
       setNotices((prev) => runNoticesTakenBack(prev, ids))
       setPrintedCopies(new Set())
@@ -729,7 +763,7 @@ export default function LienDeskRunModal({
       setPrintedAt(null)
       setPrintedNowAt(new Map())
       setTakeBackOpen(false)
-      setTakenBack({ count, printedAt: lastPrintedAt })
+      setTakenBack({ count, printedAt: lastPrintedAt, signed })
     } catch (e) {
       showToast(`Not taken back: ${formatErrorMessage(e, 'try again')}`, 'error')
     } finally {
@@ -952,7 +986,7 @@ export default function LienDeskRunModal({
         ) : null}
         {takenBack ? (
           <div data-testid="run-taken-back" role="status" style={{ margin: '0.6rem 1.25rem 0', padding: '0.5rem 0.8rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.8125rem' }}>
-            {runTakenBackWords(takenBack.count, takenBack.printedAt)}
+            {runTakenBackWords(takenBack.count, takenBack.printedAt, takenBack.signed)}
           </div>
         ) : null}
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
@@ -970,7 +1004,7 @@ export default function LienDeskRunModal({
             focusMailItemId={focusMailItemId}
             // Close… (v2.7353): a paid row's own press and the fold's ask for the confirm above; nothing is written until it is pressed.
             paid={onClosePaid ? { readyIds: paidSplit.ready, heldWhy: paidHeldWhy, onClose: (ids) => { setClosedPaid(null); setTakeBackOpen(false); setClosePaidIds(ids) } } : undefined}
-            mailedCopies={{ onAdd: (row, file) => void addCopy(row, file), addingItemId: addingCopy }}
+            mailedCopies={{ onAdd: (row, file) => void addCopy(row, file), addingItemId: addingCopy, onRemove: (row, copy) => void removeCopy(row, copy), removingItemId: removingCopy }}
             // The groups (v2.7477): each row under its part's head, what is stopped first.
             partOf={parts.partOf}
             leaderName={waitLeader}

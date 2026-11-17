@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskPile } from './lienDesk'
-import { lienAffidavitNoticePile, lienAffidavitNoticeStanding, lienAffidavitNoticeWaits, lienAffidavitNoticeWords, type LienAffidavitNoticeStanding, type LienAffidavitNoticeWaiting } from './lienAffidavitNoticeStanding'
+import { lienAffidavitNoticePile, lienAffidavitNoticeStanding, lienAffidavitNoticeStandingOnDesk, lienAffidavitNoticeWaits, lienAffidavitNoticeWords, type LienAffidavitNoticeStanding, type LienAffidavitNoticeWaiting } from './lienAffidavitNoticeStanding'
 
 const gates = (noticeOk: boolean) => [
   { key: 'owner' as const, ok: true },
@@ -103,6 +103,20 @@ describe('lienAffidavitNoticeWords', () => {
     expect(lienAffidavitNoticeWords('awaiting', { leader: ' Sam ' }).detail).toBe('Its § 53.056 notice waits on Sam’s approval.')
     expect(lienAffidavitNoticeWords('awaiting').detail).toBe('Its § 53.056 notice waits on the leader’s approval.')
     expect(lienAffidavitNoticeWords('awaiting', { leader: 'Sam' }).foot).toBe('The § 53.056 notice waits on Sam’s approval. It must be mailed and recorded first.')
+  })
+})
+
+describe('lienAffidavitNoticeStandingOnDesk', () => {
+  it('reads the standing from the notice’s pile alone, and gives null to a reader that cannot know', () => {
+    expect(lienAffidavitNoticeStandingOnDesk('ready')).toBe('approved')
+    expect(lienAffidavitNoticeStandingOnDesk('printed')).toBe('printed')
+    expect(lienAffidavitNoticeStandingOnDesk('awaiting')).toBe('awaiting')
+    expect(lienAffidavitNoticeStandingOnDesk('to_draft')).toBe('to_send')
+    expect(lienAffidavitNoticeStandingOnDesk('held')).toBe('held')
+    expect(lienAffidavitNoticeStandingOnDesk('needs_owner')).toBe('needs_owner')
+    expect(lienAffidavitNoticeStandingOnDesk('sent')).toBe('unrecorded')
+    expect(lienAffidavitNoticeStandingOnDesk('missed')).toBe('late')
+    for (const none of ['', null, undefined] as const) expect(lienAffidavitNoticeStandingOnDesk(none)).toBeNull()
   })
 })
 

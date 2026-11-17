@@ -42,6 +42,26 @@ Each bill is marked by itself. The card has no tick boxes. To pay several bills 
 
 Mark paid keeps the day and the amount. It does not say how the bill was paid. Use **Record a payment** when you know the method and its number.
 
+## Say how a payment was sent, later
+
+A bill you marked paid still needs how it was paid. Its row says *how it was paid is missing*, with **Finish…** beside it.
+
+1. Press **Finish…** on the row.
+2. Pick how it was sent: **Card**, **ACH**, **Check**, **Cash** or **Other**.
+3. Type the method's number in the box under the chips.
+4. Check **Date sent**. You may paste the **Receipt link**.
+5. Press {{button:green|Save how it was sent}}.
+
+The amount stays as it is. The row then names the payment, and its press becomes **See the payment**.
+
+Every payment that still waits is counted in one place. Accounts payable shows a line over the aging table, like **3 payments need how they were paid**. Press it to open the list, then press **Finish…** on a row. The longest wait is first.
+
+Needs you counts them too, under **Supply houses**. Its **Finish them** press opens the same list.
+
+A payment recorded with **Say later** waits on that list as well. A bill paid before payments were recorded never does.
+
+To change how a recorded payment was sent, press **See the payment** on a bill it paid. Then press **Edit how it was sent**.
+
 ## Record a payment
 
 Pay the house in its portal first, as you always have. The app never moves money. It writes down what you sent.

@@ -85,6 +85,15 @@ describe('buildLienNextUp — notices', () => {
     expect(lienRunEntriesFor(ready, printed, 'gc2').map((e) => e.jobId)).toEqual(['b'])
     expect(lienRunEntriesFor(ready, printed, null).map((e) => e.jobId)).toEqual(['a', 'b', 'c', 'p'])
 
+    // Just this one (v2.7512): the run holds one notice by its desk item, found in either pile, whatever GC is passed.
+    const item = (id: string) => ({ id }) as NonNullable<LienDeskEntry['item']>
+    const readyItems = [notice('a', 'ready', { item: item('ia') }), notice('b', 'ready', { item: item('ib') })]
+    const printedItems = [notice('p', 'printed', { item: item('ip') })]
+    expect(lienRunEntriesFor(readyItems, printedItems, null, 'ib').map((e) => e.jobId)).toEqual(['b'])
+    expect(lienRunEntriesFor(readyItems, printedItems, 'gc1', 'ip').map((e) => e.jobId)).toEqual(['p'])
+    expect(lienRunEntriesFor(readyItems, printedItems, null, 'gone')).toEqual([])
+    expect(lienRunEntriesFor(readyItems, printedItems, null, null).map((e) => e.jobId)).toEqual(['a', 'b', 'p'])
+
     // Two GCs with one each are two single rows, not a run.
     expect(build({ notices: [notice('j1', 'ready'), notice('j2', 'ready', { gcCustomerId: 'gc2' })] }).map((r) => r.action)).toEqual(['send', 'send'])
   })

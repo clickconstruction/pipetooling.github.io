@@ -25,7 +25,7 @@ describe('the footer chip (v2.4855)', () => {
   it('awaiting, printed and held say the day and the why', () => {
     expect(awaitingChip({ submitted_at: '2026-10-07T14:12:00Z' })).toEqual({ tone: 'blue', words: 'Waiting on the leader · since Oct 7', title: 'Waiting on the leader since October 7, 2026.' })
     expect(awaitingChip(null).words).toBe('Waiting on the leader')
-    expect(printedChip({ printed_at: '2026-09-14T16:00:00Z' })).toEqual({ tone: 'blue', words: 'Printed Sep 14 · in the mail', title: 'Printed September 14, 2026 · in the mail. Press Enter mail numbers to record it.' })
+    expect(printedChip({ printed_at: '2026-09-14T16:00:00Z' })).toEqual({ tone: 'blue', words: 'Printed Sep 14 · to mail', title: 'Printed September 14, 2026. It now waits to mail. Press Enter mail numbers to record it.' })
     expect(heldChip({ hold_reason: 'promised', hold_until: '2026-10-20' }, null)).toEqual({ tone: 'amber', words: 'Held · they promised · asks again Oct 20', title: 'Held — they promised · asks again October 20, 2026.' })
     expect(heldChip({ hold_reason: 'rule', hold_until: '2026-10-20' }, 'RLC').words).toBe('Held · RLC’s standing rule · asks again Oct 20')
     expect(heldChip({ hold_reason: 'call_first' }, null).words).toBe('Held · the leader will call first')

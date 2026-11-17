@@ -54,6 +54,7 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'dispatch-requests-aged': 'assistant',
   'job-account-missing': 'assistant',
   'job-account-window': 'assistant',
+  'supply-payments-how': 'assistant',
   // Materials on site (punch list #209, v2.6728): the office opens the desk; the crew counts, the office corrects.
   'materials-count-due': 'assistant',
   'materials-missing-week': 'assistant',

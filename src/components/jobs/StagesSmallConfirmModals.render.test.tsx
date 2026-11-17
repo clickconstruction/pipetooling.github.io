@@ -9,6 +9,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
+import { StagesUncollectibleConfirmModal } from './StagesUncollectibleConfirmModal'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 describe('StagesReadyForBillingConfirmModal', () => {
@@ -74,3 +75,39 @@ describe('StagesCollectionsConfirmModal', () => {
     expect((screen.getByText('…') as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('the money before a job is moved or written off (v2.7532)', () => {
+  // One stage of three billed: a $42,300 price, a $16,800 bill paid 90%, a $350 bill unpaid, the job 30% complete.
+  const staged = {
+    id: 'j1', hcp_number: '1204', click_number: '', job_name: 'Harlow Dental', collections_note: '', status: 'billed', revenue: 42_300, payments_made: 15_120, pct_complete: 30,
+    invoices: [{ id: 'i1', job_id: 'j1', amount: 16_800, status: 'billed', sequence_order: 0, billed_at: '2026-07-01T12:00:00Z' }, { id: 'i2', job_id: 'j1', amount: 350, status: 'billed', sequence_order: 1, billed_at: '2026-08-01T12:00:00Z' }],
+    payments: [{ invoice_id: 'i1', amount: 15_120 }],
+  } as unknown as JobWithDetails
+  const whole = { ...staged, revenue: 17_150, pct_complete: 100 } as unknown as JobWithDetails
+
+  it('Move to Collections says what is billed and open, and warns when part of the job is on no bill', () => {
+    render(<StagesCollectionsConfirmModal confirm={{ job: staged, direction: 'to' }} noteDraft="" onNoteDraftChange={vi.fn()} saving={false} onCancel={vi.fn()} onConfirm={vi.fn()} />)
+    const owed = document.querySelector('[data-stages-collections-owed]') as HTMLElement
+    expect(owed.getAttribute('data-stages-collections-owed')).toBe('unbilled')
+    expect(owed.textContent).toContain('$2,030 billed and still open.')
+    expect(screen.getByRole('note').textContent).toBe('$25,150 of the job’s $42,300 is not billed. The job is 30% complete and 41% billed. Collections chases what is billed. If the rest will not be done, correct the job total on the job.')
+  })
+
+  it('a job whose bills carry its whole price shows the one figure and no warning; Send back to Billed shows no money', () => {
+    const { rerender } = render(<StagesCollectionsConfirmModal confirm={{ job: whole, direction: 'to' }} noteDraft="" onNoteDraftChange={vi.fn()} saving={false} onCancel={vi.fn()} onConfirm={vi.fn()} />)
+    const owed = document.querySelector('[data-stages-collections-owed]') as HTMLElement
+    expect(owed.getAttribute('data-stages-collections-owed')).toBe('billed')
+    expect(owed.textContent).toBe('$2,030 billed and still open.')
+    expect(screen.queryByRole('note')).toBeNull()
+    rerender(<StagesCollectionsConfirmModal confirm={{ job: staged, direction: 'from' }} noteDraft="" onNoteDraftChange={vi.fn()} saving={false} onCancel={vi.fn()} onConfirm={vi.fn()} />)
+    expect(document.querySelector('[data-stages-collections-owed]')).toBeNull()
+  })
+
+  it('Mark Uncollectible names what the bills owe, not the job’s price less payments', () => {
+    render(<StagesUncollectibleConfirmModal confirm={{ job: staged, direction: 'mark' }} reasonDraft="" onReasonDraftChange={vi.fn()} saving={false} onCancel={vi.fn()} onConfirm={vi.fn()} />)
+    const dialog = screen.getByRole('dialog', { name: 'Mark the job Uncollectible' })
+    expect(dialog.textContent).toContain('$2,030 billed and still open. $25,150 of the job’s $42,300 is not billed. The job stays in Collections under Uncollectible')
+    expect(dialog.textContent).not.toContain('$27,180')
+  })
+})
+

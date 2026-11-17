@@ -115,4 +115,33 @@ describe('LienDeskTimelineTab', () => {
     expect(onSetProperty).toHaveBeenCalledWith('j900')
     expect(onOpenRow).not.toHaveBeenCalled()
   })
+
+  it('Group by property gathers the rows under a head per property, and the head opens the card (v2.7493)', () => {
+    const shared = buildLienTimelineBook({
+      rows: [row('j891', '2026-07', '2026-10-15'), row('j892', '2026-07', '2026-10-15'), row('j895', '2026-07', '2026-10-15'), row('j900', '2026-07', '2026-10-15')],
+      affidavitRows: [],
+      items: [],
+      filingsByJob: {},
+      jobs: { j891: { ...job('j891'), addressId: 'p1', propertyAddress: '412 Ridgeline Dr' }, j892: { ...job('j892'), addressId: 'p1', propertyAddress: '412 Ridgeline Dr' }, j895: { ...job('j895'), addressId: 'p2', propertyAddress: '30 Quarry Rd' }, j900: { ...job('j900'), addressId: null } },
+      policyByCustomer: { gc1: 'ask' },
+      todayYmd: TODAY,
+    })
+    const onGroup = vi.fn()
+    const onOpenProperty = vi.fn()
+    const props = { book: shared, loading: false, error: '', gcId: null, onGcId: () => {}, show: 'all' as const, onShow: () => {}, onOpenRow: () => {}, onPrint: () => {}, properties: buildLienProperties(shared.rows), onOpenProperty, onGroup }
+    const { rerender } = render(<LienDeskTimelineTab {...props} />)
+    expect(document.querySelectorAll('[data-lien-book-section]')).toHaveLength(0)
+    fireEvent.change(document.querySelector('select[aria-label="Group"]') as HTMLSelectElement, { target: { value: 'property' } })
+    expect(onGroup).toHaveBeenCalledWith('property')
+    rerender(<LienDeskTimelineTab {...props} group="property" />)
+    const sections = [...document.querySelectorAll('[data-lien-book-section]')] as HTMLElement[]
+    expect(sections.map((s) => `${s.getAttribute('data-lien-book-section')}:${s.querySelectorAll('[data-lien-book-row]').length}`)).toEqual(['property:2', 'singles:1', 'no_record:1'])
+    expect(sections[0]!.textContent).toContain('Elwick Holdings LLC · 2 jobs · $20,000 open')
+    // Under its own head a row does not repeat the property's press.
+    expect(sections[0]!.querySelector('[data-lien-book-property]')).toBeNull()
+    fireEvent.click(within(sections[0]!).getByRole('button', { name: '412 Ridgeline Dr ›' }))
+    expect(onOpenProperty).toHaveBeenCalledWith('p1', null)
+    expect(sections[1]!.textContent).toContain('One job each')
+    expect(sections[2]!.textContent).toContain('No property record')
+  })
 })
