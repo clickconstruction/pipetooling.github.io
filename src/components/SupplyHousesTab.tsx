@@ -14,7 +14,7 @@ import { billRowRead, field as billField, type BillFieldKey, type BillFields, ty
 import { billCountsByHouse, billsForHouse, type BillCandidate } from '../lib/materials/bills/billsToRecord'
 import { fileToUpload, supabaseBillsIo, type BillReadAnswer, type BillsIo } from '../lib/materials/bills/billsToRecordIo'
 import { supabasePaperIo, type PaperIo } from '../lib/materials/lines/paperIo'
-import { paperSaveFromBillRead, rowLinesWords, type PaperRow } from '../lib/materials/lines/paperRows'
+import { paperSaveFromBillRead, type PaperRow } from '../lib/materials/lines/paperRows'
 import { PaperLookModal } from './materials/PaperLookModal'
 import { BillLinesHeld } from './materials/BillLinesHeld'
 import { supabaseHeldBillsIo, type HeldBillsIo } from '../lib/materials/lines/heldBillsIo'
@@ -27,7 +27,6 @@ import { useAuth } from '../hooks/useAuth'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatCurrency } from '../lib/format'
-import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
 import { STATED_NEED_COLUMN } from '../lib/materials/poCodeStatedNeed'
 import { DEFAULT_JOB_LEDGER_PREFIX, effectiveJobLedgerNumber, formatJobLedgerNumberLabel } from '../lib/ledgerDisplayPrefixes'
 import { stripTrailingZip } from '../lib/displayAddress'
@@ -96,8 +95,8 @@ import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
 import { billDateWords, dueGroupKey } from '../lib/materials/supplyBillGroups'
-import { billMoveTrace, removedLately } from '../lib/materials/payments/supplyPaymentMove'
-import { interestByHouse, interestTitle } from '../lib/materials/payments/supplyInterest'
+import { removedLately } from '../lib/materials/payments/supplyPaymentMove'
+import { interestByHouse } from '../lib/materials/payments/supplyInterest'
 import { supabaseSupplyFinishIo } from '../lib/materials/payments/supplyPaymentsFinishIo'
 import { SupplyPaymentsToFinish } from './materials/SupplyPaymentsToFinish'
 import { SupplyPaymentHowEditor } from './materials/SupplyPaymentHowEditor'
@@ -106,10 +105,11 @@ import { useSupplyHouseBank } from '../hooks/useSupplyHouseBank'
 import { supabaseSupplyBankIo } from '../lib/materials/payments/supplyPaymentBankIo'
 import { bankCandidatesFor, supplyBankLineWords } from '../lib/materials/payments/supplyPaymentBank'
 import type { SupplyPayChip } from '../lib/materials/payments/supplyPayment'
-import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
+import { SupplyHouseBillsCard } from './materials/SupplyHouseBillsCard'
+import { houseOnAccountTotal, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds } from '../lib/materials/supplyHouseBillRows'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
-import { billPaidBy, houseOnAccount, lastMethodUsed, openAmount, paidByBill, partPaidWords, supplyBillOpen } from '../lib/materials/payments/supplyPayment'
+import { billPaidBy, lastMethodUsed, openAmount } from '../lib/materials/payments/supplyPayment'
 import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
 import { EmptyState } from './EmptyState'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
@@ -2174,46 +2174,14 @@ export function SupplyHousesTab({
                                     {(() => {
                                       // A bill marked paid on this visit stays listed, so the rows under it do not move.
                                       const billToday = todayYmdInAppTz()
-                                      const paidOnBills = paidByBill(housePayments.payments, housePayments.lines)
-                                      const invoicesToShow = showPaidInvoices
-                                        ? supplyHouseInvoices
-                                        : supplyHouseInvoices.filter((inv) => !inv.is_paid || paidThisVisit.has(inv.id))
-                                      const rows: SupplyBillCardRow[] = invoicesToShow.map((inv) => {
-                                        const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
-                                        // Supply house bill lines (punch list #298 PR 1b): what was read off the PDF, and Look when there is a paper.
-                                        const paper = papersByInvoice.get(inv.id) ?? null
-                                        // What paid it: the payment's method and number, and how many bills it covered.
-                                        const paidBy = billPaidBy(inv.id, housePayments.payments, housePayments.lines, { sayMissing: true })
-                                        // A bill paid in part lists for what is left on it, and says what was paid.
-                                        const paidOnIt = paidOnBills.get(inv.id) ?? 0
-                                        return {
-                                          id: inv.id,
-                                          invoice_number: inv.invoice_number,
-                                          purchase_order_number: inv.purchase_order_number,
-                                          invoice_date: inv.invoice_date,
-                                          due_date: inv.due_date,
-                                          amount: inv.is_paid ? inv.amount : supplyBillOpen(inv, paidOnIt),
-                                          partPaid: partPaidWords(inv, paidOnIt),
-                                          is_paid: inv.is_paid,
-                                          paidYmd: inv.paid_at ? calendarYmdInAppTzFromIso(inv.paid_at) : null,
-                                          paidBy: inv.is_paid ? paidBy.words : '',
-                                          seePayment: inv.is_paid && paidBy.typed.length > 0,
-                                          needsHow: inv.is_paid && paidBy.needsHowId != null,
-                                          link: inv.link,
-                                          payment_link: inv.payment_link ?? paidBy.receiptLink,
-                                          on_job_account: inv.on_job_account,
-                                          jobs: (inv.job_allocations ?? []).map((a) => {
-                                            const d = supplyHouseJobDetailsMap[a.job_id]
-                                            return { label: d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8), pct: a.pct }
-                                          }),
-                                          poMismatch: poGenCode != null && poGeneratorCodesForSelectedHouse != null && !poGeneratorCodesForSelectedHouse.has(poGenCode),
-                                          // v2.5035 · a credit and the invoice it credits name each other; read against every row, paid ones too.
-                                          pairLine: creditPairingLine(inv, supplyHouseInvoices),
-                                          interest: interestTitle(inv, supplyHouseInvoices),
-                                          // Where a payment's money moved to or from this bill, and who moved it.
-                                          trace: billMoveTrace(inv.id, housePayments.events ?? []),
-                                          lines: rowLinesWords(paper, { link: inv.link, hasFile: !!inv.bill_read }, paper?.acceptedBy ? paperNames.get(paper.acceptedBy) : null),
-                                        }
+                                      const rows = supplyBillCardRows({
+                                        shown: supplyBillsToList(supplyHouseInvoices, showPaidInvoices, paidThisVisit),
+                                        all: supplyHouseInvoices,
+                                        payments: housePayments,
+                                        jobs: supplyHouseJobDetailsMap,
+                                        ledgerCodes: poGeneratorCodesForSelectedHouse,
+                                        papers: papersByInvoice,
+                                        paperNames,
                                       })
                                       const byId = (id: string) => supplyHouseInvoices.find((x) => x.id === id) ?? null
                                       return (
@@ -2223,7 +2191,7 @@ export function SupplyHousesTab({
                                           jobAccountsInUse={!!selectedSupplyHouseForDetail.job_accounts?.trim() || supplyHouseInvoices.some((inv) => inv.on_job_account === true)}
                                           paidThisVisit={paidThisVisit}
                                           payingId={payingInvoiceId}
-                                          onAccount={houseOnAccount(housePayments.payments, housePayments.lines).reduce((sum, x) => sum + x.amount, 0)}
+                                          onAccount={houseOnAccountTotal(housePayments)}
                                           empty={
                                             <EmptyState
                                               compact
@@ -2375,14 +2343,7 @@ export function SupplyHousesTab({
           house={selectedSupplyHouseForDetail}
           money={supplyHouseCardMoney(supplyHouseSummary, agingMatrix.rows)[selectedSupplyHouseForDetail.id] ?? null}
           loading={supplyHouseDetailLoading}
-          invoices={(() => {
-            // An unpaid bill lists for what is left on it, and says what was paid.
-            const paidOnBills = paidByBill(housePayments.payments, housePayments.lines)
-            return supplyHouseInvoices.map((inv) => {
-              const paidOnIt = paidOnBills.get(inv.id) ?? 0
-              return inv.is_paid || paidOnIt === 0 ? inv : { ...inv, amount: supplyBillOpen(inv, paidOnIt), partPaid: partPaidWords(inv, paidOnIt) }
-            })
-          })()}
+          invoices={supplyPhoneBills(supplyHouseInvoices, housePayments)}
           jobLabel={(jobId) => {
             const d = supplyHouseJobDetailsMap[jobId]
             return d ? effectiveJobLedgerNumber(d.hcp_number, d.click_number) : jobId.slice(0, 8)
@@ -2396,7 +2357,7 @@ export function SupplyHousesTab({
           onEditHouse={() => houseEditor.openEdit(selectedSupplyHouseForDetail)}
           onAddInvoice={openAddInvoice}
           onMakePayment={openRecordPayment}
-          typedPaidIds={new Set(supplyHouseInvoices.filter((inv) => inv.is_paid && billPaidBy(inv.id, housePayments.payments, housePayments.lines).typed.length > 0).map((inv) => inv.id))}
+          typedPaidIds={typedPaidBillIds(supplyHouseInvoices, housePayments)}
           onTogglePaid={(id) => {
             const inv = supplyHouseInvoices.find((x) => x.id === id)
             if (inv) void toggleInvoicePaid(inv)
@@ -3550,13 +3511,7 @@ export function SupplyHousesTab({
             name: selectedSupplyHouseForDetail.name,
             monthlyPaymentDay: selectedSupplyHouseForDetail.monthly_payment_day ?? null,
           }}
-          bills={supplyHouseInvoices.map((inv) => {
-            const jobs = (inv.job_allocations ?? []).map((a) => {
-              const d = supplyHouseJobDetailsMap[a.job_id]
-              return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
-            })
-            return { id: inv.id, invoice_number: inv.invoice_number, due_date: inv.due_date, amount: inv.amount, is_paid: inv.is_paid, is_interest: inv.is_interest, title: interestTitle(inv, supplyHouseInvoices) ?? (jobs.join(', ') || inv.purchase_order_number?.trim() || 'No job on this bill') }
-          })}
+          bills={recordPaymentBills(supplyHouseInvoices, supplyHouseJobDetailsMap)}
           io={supabaseSupplyPaymentsIo}
           todayYmd={todayYmdInAppTz()}
           parts
@@ -3590,13 +3545,7 @@ export function SupplyHousesTab({
             payment={viewed}
             payments={housePayments.payments}
             lines={housePayments.lines}
-            bills={supplyHouseInvoices.map((inv) => {
-              const jobs = (inv.job_allocations ?? []).map((a) => {
-                const d = supplyHouseJobDetailsMap[a.job_id]
-                return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
-              })
-              return { id: inv.id, invoice_number: inv.invoice_number, title: interestTitle(inv, supplyHouseInvoices) ?? jobs.join(', '), amount: inv.amount, is_paid: inv.is_paid, due_date: inv.due_date }
-            })}
+            bills={paymentWindowBills(supplyHouseInvoices, supplyHouseJobDetailsMap)}
             events={housePayments.events}
             houseName={house.name.trim() || 'this house'}
             todayYmd={todayYmdInAppTz()}
