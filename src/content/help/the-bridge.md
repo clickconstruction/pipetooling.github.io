@@ -331,7 +331,7 @@ Press **Where each number comes from** to see each source and what can make it w
 
 ## Net position — last 8 weeks
 
-The solid line is **cash + owed to you − owed by you**. The line ends at today's real number. The last 8 weeks are rebuilt from dated flows. The flows are bank transactions, invoices sent, payments received, and supply invoices dated and paid. The readout says where the line is today. The readout also says how much the line moved since the start of the window. You hover any day for the split.
+The solid line is **cash + owed to you − owed by you**. The line ends at today's real number. The last 8 weeks are rebuilt from dated flows. The flows are bank transactions, invoices sent, payments received, and supply invoices dated and paid. A supply bill paid in parts counts each part on the day it was paid. The readout says where the line is today. The readout also says how much the line moved since the start of the window. You hover any day for the split.
 
 ## Truth check — does the paper agree with the bank?
 

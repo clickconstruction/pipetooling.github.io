@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  apBillPartPaidWords,
   buildApBucket,
   buildApBucketFromAggregates,
   buildArBucket,
@@ -151,6 +152,51 @@ describe('buildApBucket', () => {
     expect(credit).toBeDefined()
     expect(credit!.sublabel).toBe('Supply credit')
     expect(credit!.amount).toBeCloseTo(-888.1)
+  })
+
+  it('counts what is left on a bill paid in part, not its whole amount (punch list #374)', () => {
+    const bucket = buildApBucket(
+      [
+        { id: 's1', amount: 812.4, amount_paid: 300, is_paid: false, invoice_date: '2026-11-02', supply_houses: { name: 'Ferguson' } },
+        { id: 's2', amount: 250, amount_paid: 0, is_paid: false, invoice_date: '2026-11-03', supply_houses: { name: 'Reece' } },
+      ],
+      [],
+    )
+    expect(bucket.supplyTotal).toBeCloseTo(762.4)
+    expect(bucket.total).toBeCloseTo(762.4)
+    expect(bucket.items.find((i) => i.key === 'supply:s1')!.amount).toBeCloseTo(512.4)
+    expect(bucket.items.find((i) => i.key === 'supply:s2')!.amount).toBeCloseTo(250)
+  })
+
+  it('counts what is left of a credit memo used in part, and skips a bill with nothing left', () => {
+    const bucket = buildApBucket(
+      [
+        { id: 'c1', amount: -90, amount_paid: -40, is_paid: false, invoice_date: '2026-11-02', supply_houses: { name: 'Reece' } },
+        // Its payments cover it to the cent: nothing is owed, whatever the paid flag says in the moment.
+        { id: 's1', amount: 120, amount_paid: 120, is_paid: false, invoice_date: '2026-11-03', supply_houses: { name: 'Reece' } },
+        // A row the database reads paid has nothing open.
+        { id: 's2', amount: 75, amount_paid: 0, is_paid: true, invoice_date: '2026-11-04', supply_houses: { name: 'Reece' } },
+      ],
+      [],
+    )
+    expect(bucket.count).toBe(1)
+    expect(bucket.supplyTotal).toBeCloseTo(-50)
+    expect(bucket.items[0]!.sublabel).toBe('Supply credit')
+  })
+
+  it('says what was paid and what is left on a bill paid in part, and nothing on a bill with no payment', () => {
+    expect(apBillPartPaidWords({ amount: 812.4, amountPaid: 300 })).toBe('$300.00 paid · $512.40 left of $812.40')
+    expect(apBillPartPaidWords({ amount: -90, amountPaid: -40 })).toBe('$40.00 used · $50.00 left of $90.00')
+    expect(apBillPartPaidWords({ amount: 250, amountPaid: 0 })).toBe('')
+    expect(apBillPartPaidWords(null)).toBe('')
+  })
+
+  it('follows through the assistant path, which builds on the same bucket', () => {
+    const bucket = buildApBucketFromAggregates(
+      [{ id: 's1', amount: 812.4, amount_paid: 300, is_paid: false, invoice_date: '2026-11-02', supply_houses: { name: 'Ferguson' } }],
+      { dueTotal: 0, dueCount: 0 },
+    )
+    expect(bucket.supplyTotal).toBeCloseTo(512.4)
   })
 
   it('includes outstanding sub-labor balances in items, total, count, and oldest', () => {

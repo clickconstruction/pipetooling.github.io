@@ -2497,6 +2497,14 @@ Never a subcontractor, an estimator, an archived person, a digital twin or an ac
 Sample and walk-tester accounts are offered only to a dev or to another such account.
 The client's gate is `canTagInJobNotes` (`src/lib/jobs/noteTags.ts`): the same seven roles see the @ button, the count above Jobs and the Needs you line.
 
+**Tagged task notes** (v2.7570, `20261117160000_task_note_tags.sql`;
+no screen calls it yet): `task_note_tags` has one read policy and no write policy.
+The tagged person and the tagger read their own rows, and anyone else reads a tag when they can read its note in the task's thread.
+Rows are written only by `task_note_post_tagged` (the note under the writer's own policies, the tags through the definer `task_note_tags_write`), the answering trigger on `checklist_instance_events`, `task_note_tag_done` and `task_note_tags_seen`.
+**Who can be tagged on a task, and who can tag** (`task_note_people`, read for one day row): whoever gave the task and whoever has that day row, whatever their role but subcontractor or estimator, then dev, master technician, assistant and controller.
+A primary, a helper or a superintendent is on the list only when the task is theirs, so a tag never opens a task to someone new.
+Never an archived person, a digital twin or an account in training mode, and a sample or walk-tester account only for a dev or another such account.
+
 **Job thread notes** (v2.5526, `20261014220000_helper_on_job_thread_notes.sql`): a helper or a subcontractor on a job's crew (`jobs_ledger_team_members`) reads and posts its `jobs_ledger_thread_notes`, Job Mode's **Something else** note among them, and so does one with a schedule block on it this week or last.
 The field branch of both policies asks the SECURITY DEFINER `helper_on_job(job)`, since `jobs_ledger_team_members`' SELECT policy hides a helper's own crew row and the old in-policy check never saw it.
 The branch's own dispatch check (a block on any day) stays as it was.

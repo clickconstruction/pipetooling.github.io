@@ -23,6 +23,7 @@ import { listPayer } from './jobs/billToParty'
 import type { UpcomingPayrollLine } from './upcomingPayrollSummary'
 import { effectivePctComplete } from './jobs/effectivePctComplete'
 import { computeBillTruth, type BillTruth, type BillTruthOpenRow } from './billing/billTruth'
+import { openAmount, partPaidWords } from './materials/payments/supplyPayment'
 
 export type FinancialItem = {
   key: string
@@ -102,6 +103,9 @@ export type FinancialInvoicePaymentRow = { invoice_id: string | null; amount: nu
 export type FinancialSupplyInvoiceRow = {
   id: string
   amount: number | null
+  /** What the bill's live payments have put on it. A row read without it counts whole, as it always did. */
+  amount_paid?: number | null
+  is_paid?: boolean | null
   invoice_date: string | null
   supply_houses: { name: string | null } | null
 }
@@ -217,7 +221,7 @@ export function buildArBucket(
   return finishBucket([...ar.items, ...collections.items])
 }
 
-/** AP: unpaid supply-house invoices + open payroll balances. */
+/** AP: what is left on the unpaid supply-house invoices + open payroll balances. */
 /** One outstanding sub-labor job balance (Jobs → Sub Labor); mirrors SubLaborDueJobRow. */
 export type FinancialSubLaborJobRow = {
   id: string
@@ -236,7 +240,9 @@ export function buildApBucket(
   const items: FinancialItem[] = []
   let supplyTotal = 0
   for (const inv of supplyInvoices) {
-    const amount = Number(inv.amount ?? 0)
+    // What is left on the bill, not its whole amount: a bill paid in part is owed for the rest (`openAmount`, the
+    // one reading Materials uses). A credit memo used in part counts what is left of it, below zero.
+    const amount = openAmount(inv)
     // v2.3500: a credit memo is stored negative. Before this the test was `amount <= EPSILON`,
     // which dropped a credit out of payables entirely — it never reduced the total and no
     // excluded count said so. Take the magnitude test instead so only true zeroes are skipped.
@@ -282,6 +288,14 @@ export function buildApBucket(
     })
   }
   return { ...finishBucket(items), supplyTotal, payrollTotal, subLaborTotal }
+}
+
+/**
+ * `$300.00 paid · $512.40 left of $812.40` for an unpaid supply bill paid in part, the words Materials shows on its
+ * row (`partPaidWords`). Empty for a bill with nothing on it yet, so the payables window draws no line for it.
+ */
+export function apBillPartPaidWords(bill: { amount: number; amountPaid: number } | null | undefined): string {
+  return bill ? partPaidWords({ amount: bill.amount, is_paid: false }, bill.amountPaid) : ''
 }
 
 /** m/d without year, from a YYYY-MM-DD string (no Date/ICU involvement). */
