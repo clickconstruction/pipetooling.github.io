@@ -18,48 +18,30 @@ import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
 import {
   AGING_BUCKETS,
-  agingCellModalDoors,
-  agingCellRowDoors,
   agingCellTitle,
   buildSupplyHouseAgingMatrix,
   countSupplyHousesPastDue60,
   supplyHouseAgingPhoneNote,
   daysPastDue,
-  invoicesForAgingCell,
-  isMovableAgingInvoice,
-  movableCandidates,
   movableWindowRows,
   moveStripSummary,
-  notNeededInvoiceIds,
-  singleJobPairs,
-  withEmailedAsks,
-  type MoveAsk,
   type AgingBucketKey,
   type AgingCellKey,
 } from '../lib/supplyHouseAging'
-import { AgingInvoiceDoor, AgingMakePaymentDoor, AgingRowDoors } from './materials/AgingCellDoors'
-import { SUPPLY_MOVE_ASK_AGE, ageState } from '../lib/ageState'
 import { SupplyHouseDirectory } from './materials/SupplyHouseDirectory'
 import { useSupplyHouseEditor } from './materials/useSupplyHouseEditor'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
-import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import {
-  groupAllocationsByInvoice,
-  creditPairingLine,
 } from '../lib/materials/supplyHouseInvoiceForm'
 import { ariaSortFor, nextSupplyHouseSummarySort, parseSupplyHouseSummarySort, serializeSupplyHouseSummarySort, sortSupplyHouseSummary, type SupplyHouseSummarySort, type SupplyHouseSummarySortKey } from '../lib/materials/supplyHouseSummarySort'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
-import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
-import { accountsByPair, openedViaPhrase, repsByHouse, type JobAccountRep, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
-import { agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, groupAgingCellByJob, type AgingCellJobGroup } from '../lib/materials/agingCellByJob'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
-import { isSupplyCredit } from '../lib/supplyHouseDocument'
 import { billDateWords } from '../lib/materials/supplyBillGroups'
 import { removedLately } from '../lib/materials/payments/supplyPaymentMove'
 import { supabaseSupplyFinishIo } from '../lib/materials/payments/supplyPaymentsFinishIo'
@@ -71,21 +53,21 @@ import { supabaseSupplyBankIo } from '../lib/materials/payments/supplyPaymentBan
 import { bankCandidatesFor, supplyBankLineWords } from '../lib/materials/payments/supplyPaymentBank'
 import type { SupplyPayChip } from '../lib/materials/payments/supplyPayment'
 import { SupplyHouseBillsCard } from './materials/SupplyHouseBillsCard'
-import { houseOnAccountTotal, jobsLedgerNames, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds, type JobsLedgerNameRow } from '../lib/materials/supplyHouseBillRows'
+import { houseOnAccountTotal, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds } from '../lib/materials/supplyHouseBillRows'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo } from '../lib/materials/payments/supplyPaymentsIo'
 import { billPaidBy, lastMethodUsed } from '../lib/materials/payments/supplyPayment'
 import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
 import { EmptyState } from './EmptyState'
 import { SupplyHouseInvoiceFormModal } from './materials/SupplyHouseInvoiceFormModal'
-import { useSupplyHouseAccountsPayable, type AgingInvoiceRow, type InvoiceJobAllocation } from './materials/useSupplyHouseAccountsPayable'
+import { useSupplyHouseAgingWindows } from './materials/useSupplyHouseAgingWindows'
+import { AgingCellWindow, JOB_ACCOUNT_LINE_TITLE } from './materials/AgingCellWindow'
+import { useSupplyHouseAccountsPayable, type AgingInvoiceRow } from './materials/useSupplyHouseAccountsPayable'
 import { useSupplyHouseInvoiceForm, type SupplyHouse, type SupplyHouseInvoice, type SupplyHousesTabRole } from './materials/useSupplyHouseInvoiceForm'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
 
 type UserRole = SupplyHousesTabRole
 
-/** An open (unconfirmed) job-account move ask (PR 3) — the follow-up the office owes. */
-type MoveAskRow = MoveAsk
 
 /**
  * Format a DATE-only column (YYYY-MM-DD) in the user's locale. `new Date('2026-07-10')` parses
@@ -116,7 +98,6 @@ function writeRememberedToggle(key: string, value: boolean): void {
 
 /** The teal "of which on a job account" line under an aging cell (B). Saturated status colour, kept literal like the Job acct chip. */
 const JOB_ACCOUNT_LINE_STYLE = { display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#0f766e', whiteSpace: 'nowrap' } as const
-const JOB_ACCOUNT_LINE_TITLE = "Of this, on the house's job account — the owner's debt to collect on, not Click's. The cell keeps the house's total."
 
 const AGING_CELL_STYLES: Record<AgingBucketKey, { background: string; color: string }> = {
   current: { background: 'var(--bg-emerald-tint)', color: 'var(--text-emerald-800)' },
@@ -197,27 +178,9 @@ export function SupplyHousesTab({
     loadSupplyHouseDetail,
     loadHousePayments,
   } = useSupplyHouseAccountsPayable({ supplyHousesProp, onSupplyHousesChange, autoOpenHouseId, onAutoOpenHouseHandled, setError, loadPapersFor })
-  /** The open aging-cell drill-down (v2.5673): which cell's invoices the modal lists.
-   *  'movable' (PR 3) is the worked list — every still-current charge not on a job account. */
-  const [agingCellModal, setAgingCellModal] = useState<{ houseId: string | null; cell: AgingCellKey | 'movable' } | null>(null)
-  /** The open cell's job allocations and job names, fetched once per modal open. */
-  const [agingCellJobs, setAgingCellJobs] = useState<{
-    allocations: Record<string, InvoiceJobAllocation[]>
-    jobs: Record<string, { hcp_number: string; click_number?: string; job_name: string }>
-  }>({ allocations: {}, jobs: {} })
-  /**
-   * PR 2 (punch list #132): the (job, house) account rows behind the modal's job headings, keyed
-   * `${jobId}:${houseId}` (an entry of null = checked, none on record), the job-accounts reps
-   * per house for the Mark opened sheet, which invoice's Mark opened sheet is up — from a job
-   * heading (v2.5694) it only records the account; from the move modal, saved open also flags the
-   * invoice — and which job (`${jobId}:${houseId}`) has Flag anyway unfolded. All cleared when the
-   * modal closes.
-   */
-  const [agingCellAccounts, setAgingCellAccounts] = useState<Record<string, JobSupplyHouseAccountRow | null>>({})
-  const [agingCellAccountsLoaded, setAgingCellAccountsLoaded] = useState(false)
-  const [agingCellReps, setAgingCellReps] = useState<Record<string, JobAccountRep[]>>({})
-  const [agingCellMarkOpenedFor, setAgingCellMarkOpenedFor] = useState<{ inv: AgingInvoiceRow; flagOnOpen: boolean } | null>(null)
-  const [agingCellFlagAnywayFor, setAgingCellFlagAnywayFor] = useState<string | null>(null)
+  // The aging windows: the cell window and the move window, their state, reads and writes.
+  const agingWindows = useSupplyHouseAgingWindows({ agingUnpaidInvoices, setAgingUnpaidInvoices, agingBookLoaded, selectedSupplyHouseForDetail, loadSupplyHouseDetail, setError, openList, onOpenListHandled })
+  const { agingCellModal, setAgingCellModal, setAgingCellJobsRefresh, agingMoveData } = agingWindows
   /**
    * PR 4 (the doors): the one row or house whose detail is loading behind a press, so a second
    * press cannot open two forms; the field the form opens on (Add a due date › / Pick a job ›);
@@ -226,25 +189,6 @@ export function SupplyHousesTab({
    */
   const [agingCellDoorBusy, setAgingCellDoorBusy] = useState<string | null>(null)
   const agingCellFormFocusRef = useRef<'invoice-due' | 'invoice-job-search' | null>(null)
-  const [agingCellJobsRefresh, setAgingCellJobsRefresh] = useState(0)
-  /**
-   * PR 3 (the move window): the allocations and open asks behind the strip — read once per
-   * summary load for the still-current unflagged invoices — plus the move modal's state.
-   * The asks read tolerates the table not existing yet (the client can deploy first).
-   */
-  const [agingMoveData, setAgingMoveData] = useState<{
-    allocations: Record<string, InvoiceJobAllocation[]>
-    asks: Record<string, MoveAskRow>
-    /** Candidates whose one job's account at the house is on record as not needed (v2.6086, punch list #178): out of the window. */
-    notNeeded: ReadonlySet<string>
-    loaded: boolean
-  }>({ allocations: {}, asks: {}, notNeeded: new Set(), loaded: false })
-  /** Which unpaid book (by identity) the move data above was read for, and whether the book itself has loaded once — the worked-list door waits on both. */
-  const [agingMoveDataBook, setAgingMoveDataBook] = useState<AgingInvoiceRow[] | null>(null)
-  const [agingMoveModalFor, setAgingMoveModalFor] = useState<string | null>(null)
-  const [agingMoveAttest, setAgingMoveAttest] = useState(false)
-  const [agingMoveBusy, setAgingMoveBusy] = useState<null | 'send' | 'move' | string>(null)
-  const [agingMoveError, setAgingMoveError] = useState<string | null>(null)
   /**
    * Supply house bill lines (punch list #298 PR 1b, v2.6819): the paper read from each bill's PDF, by invoice id, for
    * the row's Lines cell; the Look window beside its paper. A bill saved from a fill writes its paper at Save.
@@ -389,137 +333,6 @@ export function SupplyHousesTab({
   const { billsIo, billFillOn, billCounts, billSwitchBusy, invoiceFormOpen, openAddInvoice, openEditInvoice, openHouseOnBill, toggleBillSwitch } = invoiceForm
 
 
-  // The aging-cell modal's Jobs column (v2.5673): one allocations read for just the listed
-  // invoices, then the job names — fetched once per open, never for the whole book.
-  useEffect(() => {
-    if (!agingCellModal) {
-      setAgingCellJobs({ allocations: {}, jobs: {} })
-      setAgingCellAccounts({})
-      setAgingCellAccountsLoaded(false)
-      setAgingCellReps({})
-      setAgingCellMarkOpenedFor(null)
-      setAgingCellFlagAnywayFor(null)
-      return
-    }
-    const cellRows =
-      agingCellModal.cell === 'movable'
-        ? movableWindowRows(agingUnpaidInvoices, todayYmdInAppTz(), agingMoveData)
-        : invoicesForAgingCell(agingUnpaidInvoices, agingCellModal.houseId, agingCellModal.cell, todayYmdInAppTz())
-    const ids = cellRows.map((r) => r.id)
-    if (ids.length === 0) {
-      setAgingCellAccountsLoaded(true)
-      return
-    }
-    const houseByInvoice = new Map(cellRows.map((r) => [r.id, r.supply_house_id]))
-    let cancelled = false
-    void (async () => {
-      const { data } = await supabase
-        .from('supply_house_invoice_job_allocations')
-        .select('invoice_id, job_id, pct')
-        .in('invoice_id', ids)
-      if (cancelled) return
-      const allocations = groupAllocationsByInvoice((data ?? []) as { invoice_id: string; job_id: string; pct: number }[])
-      const jobIds = [...new Set(Object.values(allocations).flat().map((a) => a.job_id))]
-      // PR 2: the chips need the (job, house) account rows — only the single-job pairs can
-      // carry the flag — and each involved house's job-accounts reps for the Mark opened sheet.
-      const pairs = singleJobPairs(allocations, houseByInvoice).filter((p) => p.houseId)
-      const pairJobIds = [...new Set(pairs.map((p) => p.jobId))]
-      const pairHouseIds = [...new Set(pairs.map((p) => p.houseId))]
-      const [jobRes, accRes, repRes] = await Promise.all([
-        jobIds.length > 0 ? supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
-        pairs.length > 0
-          ? supabase
-              .from('job_supply_house_accounts')
-              .select('id, job_id, supply_house_id, status, account_ref, opened_via, rep_contact_id, requested_by, requested_at, requested_from_counter, opened_by, opened_at, note')
-              .in('job_id', pairJobIds)
-              .in('supply_house_id', pairHouseIds)
-          : Promise.resolve({ data: [] }),
-        pairHouseIds.length > 0
-          ? supabase
-              .from('supply_house_contacts')
-              .select('id, supply_house_id, name, email, phone')
-              .in('supply_house_id', pairHouseIds)
-              .eq('role', 'job_accounts')
-              .is('archived_at', null)
-          : Promise.resolve({ data: [] }),
-      ])
-      if (cancelled) return
-      const jobs = jobsLedgerNames((jobRes.data ?? []) as JobsLedgerNameRow[])
-      const accounts = accountsByPair(pairs, (accRes.data ?? []) as JobSupplyHouseAccountRow[])
-      const reps: Record<string, JobAccountRep[]> = repsByHouse((repRes.data ?? []) as Array<JobAccountRep & { supply_house_id: string }>)
-      setAgingCellJobs({ allocations, jobs })
-      setAgingCellAccounts(accounts)
-      setAgingCellReps(reps)
-      setAgingCellAccountsLoaded(true)
-    })()
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agingCellModal, agingCellJobsRefresh])
-
-
-  /**
-   * PR 2's one write: the flag flips, every reader re-derives from the same state (the
-   * matrix, the teal lines, the open modal's footer), and an expanded house showing the
-   * same invoice reloads so its table agrees.
-   */
-  // PR 3: the strip's data — allocations and open asks for the still-current unflagged
-  // invoices, re-read whenever the book reloads. Small sets; one query each.
-  useEffect(() => {
-    const candidates = movableCandidates(agingUnpaidInvoices, todayYmdInAppTz())
-    const ids = candidates.map((r) => r.id)
-    if (ids.length === 0) {
-      setAgingMoveData({ allocations: {}, asks: {}, notNeeded: new Set(), loaded: true })
-      setAgingMoveDataBook(agingUnpaidInvoices)
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      const [allocRes, askRes] = await Promise.all([
-        supabase.from('supply_house_invoice_job_allocations').select('invoice_id, job_id, pct').in('invoice_id', ids),
-        supabase
-          .from('supply_house_invoice_move_requests')
-          .select('id, invoice_id, requested_at, via, sent_to')
-          .in('invoice_id', ids)
-          .is('confirmed_at', null),
-      ])
-      if (cancelled) return
-      const allocations = groupAllocationsByInvoice((allocRes.data ?? []) as { invoice_id: string; job_id: string; pct: number }[])
-      const asks: Record<string, MoveAskRow> = {}
-      // askRes.error: the table may not be pushed yet — the strip still works, with no asks.
-      for (const r of (askRes.error ? [] : askRes.data ?? []) as MoveAskRow[]) asks[r.invoice_id] = r
-      // v2.6086: a single-job candidate whose job's account at the house is marked not needed leaves the window.
-      const houseOf = new Map(candidates.map((r) => [r.id, r.supply_house_id]))
-      const pairs = singleJobPairs(allocations, houseOf)
-      let notNeeded = new Set<string>()
-      if (pairs.length > 0) {
-        const accRes = await supabase
-          .from('job_supply_house_accounts')
-          .select('job_id, supply_house_id')
-          .in('job_id', [...new Set(pairs.map((p) => p.jobId))])
-          .in('supply_house_id', [...new Set(pairs.map((p) => p.houseId))])
-          .eq('status', 'not_needed')
-        if (cancelled) return
-        notNeeded = notNeededInvoiceIds(pairs, (accRes.data ?? []) as { job_id: string; supply_house_id: string }[])
-      }
-      setAgingMoveData({ allocations, asks, notNeeded, loaded: true })
-      setAgingMoveDataBook(agingUnpaidInvoices)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [agingUnpaidInvoices])
-
-  // The Needs You line's door (v2.5723): `?list=movable` opens the worked list — the same modal
-  // the strip's Work the list opens — once the move data is for the book on screen, so the
-  // modal's one-time jobs fetch sees the rows. Handled once; the parent drops the param.
-  useEffect(() => {
-    if (openList !== 'movable' || !agingBookLoaded || agingMoveDataBook !== agingUnpaidInvoices) return
-    setAgingCellModal({ houseId: null, cell: 'movable' })
-    onOpenListHandled?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openList, agingBookLoaded, agingMoveDataBook, agingUnpaidInvoices])
 
   // The other Needs You door (v2.7469): `?list=finish` lands with the finish-later list open.
   useEffect(() => {
@@ -529,65 +342,6 @@ export function SupplyHousesTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openList])
 
-  /** PR 3: email the house's job-accounts rep the move request for these invoices (one house per call). */
-  async function sendMoveRequest(invoiceIds: string[], busyKey: string, includeAsked: boolean): Promise<void> {
-    if (invoiceIds.length === 0) return
-    setAgingMoveBusy(busyKey)
-    setAgingMoveError(null)
-    const { data, error } = await supabase.functions.invoke('request-job-account-move', {
-      body: { invoice_ids: invoiceIds, include_asked: includeAsked },
-    })
-    setAgingMoveBusy(null)
-    const payload = (data ?? {}) as { error?: string; asked?: string[]; sent_to?: string }
-    if (error || payload.error) {
-      setAgingMoveError(payload.error ?? error?.message ?? 'The email did not send.')
-      return
-    }
-    const now = new Date().toISOString()
-    setAgingMoveData((prev) => ({ ...prev, asks: withEmailedAsks(prev.asks, payload.asked ?? invoiceIds, now, payload.sent_to ?? '') }))
-  }
-
-  /** PR 3: the attested call — the flag flips, and the ask (or a fresh phone row) is confirmed. */
-  async function markMovedConfirmed(inv: AgingInvoiceRow, jobId: string): Promise<void> {
-    setAgingMoveBusy('move')
-    setAgingMoveError(null)
-    await setInvoiceJobAcct(inv, true)
-    const now = new Date().toISOString()
-    // Confirm the open ask if one exists; a pure phone move writes its own confirmed record.
-    const { data: updated, error: updErr } = await supabase
-      .from('supply_house_invoice_move_requests')
-      .update({ confirmed_at: now })
-      .eq('invoice_id', inv.id)
-      .is('confirmed_at', null)
-      .select('id')
-    if (!updErr && (updated ?? []).length === 0) {
-      await supabase.from('supply_house_invoice_move_requests').insert({
-        invoice_id: inv.id,
-        job_id: jobId,
-        supply_house_id: inv.supply_house_id,
-        via: 'phone',
-        confirmed_at: now,
-      })
-    }
-    setAgingMoveData((prev) => {
-      const asks = { ...prev.asks }
-      delete asks[inv.id]
-      return { ...prev, asks }
-    })
-    setAgingMoveModalFor(null)
-    setAgingMoveAttest(false)
-    setAgingMoveBusy(null)
-  }
-
-  async function setInvoiceJobAcct(inv: AgingInvoiceRow, on: boolean) {
-    const { error } = await supabase.from('supply_house_invoices').update({ on_job_account: on }).eq('id', inv.id)
-    if (error) {
-      setError(`Could not ${on ? 'flag' : 'unflag'} ${inv.invoice_number}: ${error.message}`)
-      return
-    }
-    setAgingUnpaidInvoices((prev) => prev.map((r) => (r.id === inv.id ? { ...r, on_job_account: on } : r)))
-    if (selectedSupplyHouseForDetail?.id === inv.supply_house_id) void loadSupplyHouseDetail(selectedSupplyHouseForDetail)
-  }
 
 
   const canAccess = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
@@ -1513,495 +1267,7 @@ export function SupplyHousesTab({
       <SupplyHouseJobAccountsSection />
 
       {/* The aging-cell drill-down (v2.5673): exactly the invoices the cell sums, grouped by job (v2.5694). */}
-      {agingCellModal && (() => {
-        const { houseId, cell } = agingCellModal
-        const isMovableList = cell === 'movable'
-        const cellRows = isMovableList
-          ? agingMovable.slice().sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
-          : invoicesForAgingCell(agingUnpaidInvoices, houseId, cell, agingTodayYmd)
-        const houseNameOf = (id: string) =>
-          supplyHouseSummary.find((r) => r.supply_house_id === id)?.name ??
-          supplyHousesList.find((s: SupplyHouse) => s.id === id)?.name ??
-          'this house'
-        const houseName = houseId ? houseNameOf(houseId) : 'Every house'
-        const total = cellRows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
-        const isCredits = cell === 'credits'
-        const movableToAsk = isMovableList ? cellRows.filter((r) => !agingMoveData.asks[r.id]).length : 0
-        const noun = isCredits
-          ? cellRows.length === 1 ? 'credit memo' : 'credit memos'
-          : cellRows.length === 1 ? 'invoice' : 'invoices'
-        // The footer row's modal groups by house, in the matrix's own order (owed desc).
-        const groups = houseId && !isMovableList
-          ? [{ key: houseId, name: null as string | null, rows: cellRows }]
-          : agingMatrix.rows
-              .map((r) => ({ key: r.supplyHouseId, name: r.name as string | null, rows: cellRows.filter((inv) => inv.supply_house_id === r.supplyHouseId) }))
-              .filter((g) => g.rows.length > 0)
-        // v2.5694: the window by job. The strip answers the cell's question first: how much is on a job account. Then
-        // each house's rows sit under their job, whose heading says its job-account state in words and holds its press.
-        const allocationsOf = (id: string) => agingCellJobs.allocations[id] ?? []
-        const accountOf = (jobId: string, hId: string) => (agingCellAccountsLoaded ? agingCellAccounts[`${jobId}:${hId}`] ?? null : undefined)
-        const byHouse = groups.map((g) => ({ ...g, byJob: groupAgingCellByJob(g.rows, allocationsOf, accountOf) }))
-        const accountSplit = agingCellAccountSplit(cellRows)
-        const showSplit = !isMovableList && !isCredits && cellRows.length > 0
-        const onPct = accountSplit.onAmount + accountSplit.offAmount > 0 ? (accountSplit.onAmount / (accountSplit.onAmount + accountSplit.offAmount)) * 100 : 0
-        const jobsLine = agingCellAccountsLoaded ? agingCellJobsLine(byHouse.flatMap((g) => g.byJob.jobs), houseId ? houseName : null) : ''
-        const money = (n: number) => (n < 0 ? `−$${formatCurrency(Math.abs(n))}` : `$${formatCurrency(n)}`)
-        const jobLabelOf = (jobId: string) => {
-          const d = agingCellJobs.jobs[jobId]
-          return d ? { num: effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '', name: d.job_name || '—' } : { num: '', name: jobId.slice(0, 8) }
-        }
-        const jobsText = (invoiceId: string) =>
-          allocationsOf(invoiceId)
-            .map((a) => {
-              const j = jobLabelOf(a.job_id)
-              return `${j.num ? `${j.num} · ` : ''}${j.name} (${a.pct}%)`
-            })
-            .join(', ')
-        // markOnTitle: the row offers Mark it on (with these words on hover) when not flagged and past its window.
-        const renderRow = (inv: AgingInvoiceRow, markOnTitle: string | null, note: string | null) => {
-          const credit = isSupplyCredit(inv.amount)
-          const isOn = inv.on_job_account === true
-          // PR 3: a still-current single-job row moves through the move modal, never a bare flag.
-          const movableRow = !isOn && isMovableAgingInvoice(inv, allocationsOf(inv.id).length, agingTodayYmd, agingMoveData.notNeeded.has(inv.id) ? 'not_needed' : null)
-          const moveAsk = movableRow ? agingMoveData.asks[inv.id] ?? null : null
-          const openMoveModal = () => {
-            setAgingMoveModalFor(inv.id)
-            setAgingMoveAttest(false)
-            setAgingMoveError(null)
-          }
-          const days = inv.due_date && !credit ? daysPastDue(inv.due_date, agingTodayYmd) : null
-          const po = inv.purchase_order_number?.trim()
-          const poDate = `${po ? `PO ${po} · ` : ''}${formatYmdLocal(inv.invoice_date)}`
-          const pair = creditPairingLine(inv, agingUnpaidInvoices)
-          // A bill paid in part sits in the cell for what is left on it, and says what it was billed for.
-          const partNote = inv.billed != null && Math.abs(inv.billed - inv.amount) > 0.005 ? `left of $${formatCurrency(Math.abs(inv.billed))}` : null
-          const rowNote = [inv.is_interest ? 'interest, not a job cost' : null, partNote, pair, note].filter(Boolean).join(' · ')
-          return (
-            <div key={inv.id} className="aging-win-row">
-              <AgingInvoiceDoor invoiceNumber={inv.invoice_number} busy={agingCellDoorBusy === inv.id} onOpen={() => void openInvoiceFromAgingCell(inv, null)} />
-              <span className="aging-win-po" title={poDate}>{poDate}</span>
-              {/* A credit never wears an age chip — it has a size, not an age (v2.3500). */}
-              {credit ? (
-                <span className="aging-win-age" />
-              ) : !inv.due_date ? (
-                <span className="aging-win-age">no due date</span>
-              ) : days != null && days > 0 ? (
-                <span className={`aging-win-age ${days >= 60 ? 'aging-win-age--old' : 'aging-win-age--late'}`} title={`${days} days past due · due ${formatYmdLocal(inv.due_date)}`}>
-                  {days} d
-                </span>
-              ) : (
-                <span className="aging-win-age" title={`Due ${formatYmdLocal(inv.due_date)}`}>
-                  due {Number(inv.due_date.slice(5, 7))}/{Number(inv.due_date.slice(8, 10))}
-                </span>
-              )}
-              <span className={`aging-win-amt${credit ? ' aging-win-amt--credit' : ''}`}>{money(Number(inv.amount ?? 0))}</span>
-              <span className="aging-win-rowstate">
-                <AgingRowDoors
-                  doors={agingCellRowDoors(inv, agingCellAccountsLoaded ? allocationsOf(inv.id).length : null)}
-                  busy={agingCellDoorBusy === inv.id}
-                  onAddDueDate={() => void openInvoiceFromAgingCell(inv, 'invoice-due')}
-                  onPickJob={() => void openInvoiceFromAgingCell(inv, 'invoice-job-search')}
-                />
-                {credit ? null : isOn ? (
-                  <button type="button" className="aging-win-state aging-win-state--on" onClick={() => void setInvoiceJobAcct(inv, false)} title={`${JOB_ACCOUNT_LINE_TITLE} Press to take it off.`}>
-                    On it ✓
-                  </button>
-                ) : movableRow ? (
-                  moveAsk ? (
-                    (() => {
-                      const age = ageState(moveAsk.requested_at, undefined, SUPPLY_MOVE_ASK_AGE)
-                      return (
-                        <button
-                          type="button"
-                          onClick={openMoveModal}
-                          title={`The move was asked for by ${moveAsk.via}${moveAsk.sent_to ? ` (${moveAsk.sent_to})` : ''} — follow up with a call, then mark it moved`}
-                          style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', font: 'inherit', background: age === 'red' ? 'var(--bg-red-100)' : 'var(--bg-amber-tint)', color: age === 'red' ? 'var(--text-red-800)' : 'var(--text-amber-800)' }}
-                        >
-                          asked {formatYmdLocal(calendarYmdInAppTzFromIso(moveAsk.requested_at))} · follow up ☎
-                        </button>
-                      )
-                    })()
-                  ) : (
-                    <button
-                      type="button"
-                      className="aging-win-btn"
-                      onClick={openMoveModal}
-                      title={`Movable${inv.due_date ? ` until ${formatYmdLocal(inv.due_date)}` : ''}. A house moves a charge onto the job account only while it is current. Start the move with a call or an emailed request.`}
-                    >
-                      Move it…
-                    </button>
-                  )
-                ) : markOnTitle ? (
-                  <button type="button" className="aging-win-link" onClick={() => void setInvoiceJobAcct(inv, true)} title={markOnTitle}>
-                    Mark it on
-                  </button>
-                ) : null}
-              </span>
-              {inv.link ? (
-                <a className="aging-win-ext" href={inv.link} target="_blank" rel="noreferrer" title="The invoice" aria-label={`Open invoice ${inv.invoice_number}`}>
-                  ↗
-                </a>
-              ) : (
-                <span className="aging-win-ext" />
-              )}
-              {rowNote ? <span className="aging-win-note">{rowNote}</span> : null}
-            </div>
-          )
-        }
-        const renderJob = (job: AgingCellJobGroup<AgingInvoiceRow>) => {
-          const j = jobLabelOf(job.jobId)
-          const words = agingCellJobStateWords(job.state, houseNameOf(job.houseId))
-          // A past-due bill is marked on with one press per row. With an open account every such row offers it. With
-          // none on record, Flag anyway unfolds the same press for this job (the to-do #132 call: never a block).
-          const jobKey = `${job.jobId}:${job.houseId}`
-          const noAccount = job.state.kind === 'none' || job.state.kind === 'requested' || job.state.kind === 'not_needed'
-          const pastWindowOff = job.rows.filter((r) => r.on_job_account !== true && !isMovableAgingInvoice(r, 1, agingTodayYmd)).length
-          const anywayOpen = noAccount && agingCellFlagAnywayFor === jobKey
-          const markOnTitle =
-            job.state.kind === 'open'
-              ? 'The job account is open at this house. One press marks this invoice on it.'
-              : anywayOpen
-                ? 'No job account on record. This only records that the house carries this bill on one. The house roster keeps its bought, no account line.'
-                : null
-          const n = job.rows.length
-          return (
-            <div key={`${job.jobId}:${job.houseId}`} className="aging-win-job">
-              <div className="aging-win-job-head">
-                <div className="aging-win-job-name">
-                  {j.num ? <span className="aging-win-job-num">{j.num}</span> : null}
-                  {j.name}
-                </div>
-                <div className="aging-win-job-act">
-                  <span className={`aging-win-state aging-win-state--${words.tone}`}>{words.label}</span>
-                  {job.state.kind === 'none' || job.state.kind === 'requested' ? (
-                    <button type="button" className="aging-win-btn" onClick={() => setAgingCellMarkOpenedFor({ inv: job.rows[0]!, flagOnOpen: false })}>
-                      Mark opened…
-                    </button>
-                  ) : null}
-                  {noAccount && pastWindowOff > 0 ? (
-                    <button
-                      type="button"
-                      className="aging-win-link"
-                      aria-pressed={anywayOpen}
-                      onClick={() => setAgingCellFlagAnywayFor(anywayOpen ? null : jobKey)}
-                      title="Flag a bill as on the job account with no account on record"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      {anywayOpen ? 'Done' : 'Flag anyway…'}
-                    </button>
-                  ) : null}
-                </div>
-                <div className="aging-win-job-meta">
-                  {n} {n === 1 ? 'invoice' : 'invoices'} · {money(job.total)}
-                  {job.onCount > 0 && job.offCount > 0 ? ` · ${job.onCount} of ${n} on it` : ''}
-                </div>
-              </div>
-              <div className="aging-win-rows">{job.rows.map((r) => renderRow(r, markOnTitle, null))}</div>
-            </div>
-          )
-        }
-        return (
-          <div
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setAgingCellModal(null)
-            }}
-            style={{ position: 'fixed', inset: 0, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}
-          >
-            <div role="dialog" aria-modal="true" aria-label={isMovableList ? 'Still movable: current charges not on a job account' : `${houseName}, ${agingCellTitle(cell)}`} style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(800) }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
-                <div>
-                  {/* v2.5766: the house is the title and the bucket a chip beside it; the subtitle says one thing. */}
-                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {isMovableList ? 'Still movable' : houseName}
-                    <span style={{ fontSize: '0.74rem', fontWeight: 600, padding: '1px 9px', borderRadius: 999, border: '1px solid var(--border-strong)', color: isMovableList || cell === 'current' || cell === 'noDueDate' || cell === 'owed' || cell === 'credits' ? 'var(--text-muted)' : '#b42318', whiteSpace: 'nowrap' }}>
-                      {isMovableList ? 'current charges not on a job account' : agingCellTitle(cell)}
-                    </span>
-                  </h3>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    {isMovableList
-                      ? 'A house moves a charge onto the job account only while it is current. Call the rep, or email the request and follow up, then mark each one moved.'
-                      : `${cellRows.length} unpaid ${noun}, the cell's sum`}
-                  </p>
-                </div>
-                <button type="button" onClick={() => setAgingCellModal(null)} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
-              </div>
-              {showSplit ? (
-                <div className="aging-win-split">
-                  <div className="aging-win-split-row">
-                    <div className="aging-win-fig aging-win-fig--on">
-                      <b>{money(accountSplit.onAmount)}</b>
-                      <span>on job accounts · {accountSplit.onCount} of {accountSplit.onCount + accountSplit.offCount} · the owners' debt</span>
-                    </div>
-                    <div className="aging-win-fig aging-win-fig--off">
-                      <b>{money(accountSplit.offAmount)}</b>
-                      <span>not on one · {accountSplit.offCount} of {accountSplit.onCount + accountSplit.offCount} · Click's debt</span>
-                    </div>
-                  </div>
-                  <div className="aging-win-bar" role="img" aria-label={`${money(accountSplit.onAmount)} on job accounts, ${money(accountSplit.offAmount)} not on one`}>
-                    {accountSplit.onAmount > 0 ? <i className="aging-win-bar-on" style={{ width: `${onPct}%` }} /> : null}
-                    {accountSplit.offAmount > 0 ? <i className="aging-win-bar-off" style={{ width: `${100 - onPct}%` }} /> : null}
-                  </div>
-                  {jobsLine ? <p className="aging-win-why">{jobsLine}</p> : null}
-                </div>
-              ) : null}
-              {cellRows.length === 0 ? (
-                <EmptyState compact main={isMovableList ? 'Nothing left to move. Every current charge that belongs on a job account is on one. ✓' : 'Nothing is left in this cell.'} />
-              ) : !agingCellAccountsLoaded ? (
-                <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>Reading the jobs…</p>
-              ) : (
-                byHouse.map((g) => (
-                  <Fragment key={g.key}>
-                    {g.name ? (
-                      <div className="aging-win-house">
-                        {g.name} · {money(g.rows.reduce((acc, r) => acc + Number(r.amount ?? 0), 0))}
-                        {isMovableList ? (() => {
-                          const rep = (agingCellReps[g.key] ?? []).find((r) => typeof r.email === 'string' && r.email.includes('@')) ?? (agingCellReps[g.key] ?? [])[0]
-                          const unasked = g.rows.filter((r) => !agingMoveData.asks[r.id])
-                          const busyKey = `house:${g.key}`
-                          return (
-                            <>
-                              {rep ? (
-                                <span style={{ marginLeft: '0.6rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#0f766e' }}>
-                                  ☎ {(rep.name ?? '').trim() || rep.email}{'phone' in rep && rep.phone ? ` · ${rep.phone}` : ''}
-                                </span>
-                              ) : (
-                                <span style={{ marginLeft: '0.6rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-amber-800)' }}>no job-accounts rep on file — add one on the house</span>
-                              )}
-                              {rep && typeof rep.email === 'string' && rep.email.includes('@') && unasked.length > 0 ? (
-                                <button
-                                  type="button"
-                                  onClick={() => void sendMoveRequest(unasked.map((r) => r.id), busyKey, false)}
-                                  disabled={agingMoveBusy === busyKey}
-                                  style={{ marginLeft: '0.6rem', padding: '0.1rem 0.55rem', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none', letterSpacing: 0, background: 'transparent', color: '#0f766e', border: '1px solid #0f766e', borderRadius: 4, cursor: 'pointer', font: 'inherit', opacity: agingMoveBusy === busyKey ? 0.6 : 1 }}
-                                >
-                                  {agingMoveBusy === busyKey ? 'Sending…' : `✉ Email ${(rep.name ?? '').trim().split(' ')[0] || 'the rep'} the list ›`}
-                                </button>
-                              ) : null}
-                            </>
-                          )
-                        })() : null}
-                      </div>
-                    ) : null}
-                    {g.byJob.jobs.map(renderJob)}
-                    {g.byJob.split.length > 0 ? (
-                      <div className="aging-win-job">
-                        <div className="aging-win-job-head">
-                          <div className="aging-win-job-name">Split across jobs</div>
-                          <div className="aging-win-job-meta">A job account belongs to one property. A split invoice cannot sit on one.</div>
-                        </div>
-                        <div className="aging-win-rows">{g.byJob.split.map((r) => renderRow(r, null, jobsText(r.id)))}</div>
-                      </div>
-                    ) : null}
-                    {g.byJob.noJob.length > 0 ? (
-                      <div className="aging-win-job">
-                        <div className="aging-win-job-head">
-                          <div className="aging-win-job-name">No job yet</div>
-                          <div className="aging-win-job-meta">Press Pick a job › on the row to choose its job.</div>
-                        </div>
-                        <div className="aging-win-rows">{g.byJob.noJob.map((r) => renderRow(r, null, null))}</div>
-                      </div>
-                    ) : null}
-                    {g.byJob.credits.length > 0 ? (
-                      <div className="aging-win-job">
-                        {isCredits ? null : (
-                          <div className="aging-win-job-head">
-                            <div className="aging-win-job-name">Credit memos</div>
-                          </div>
-                        )}
-                        <div className="aging-win-rows" style={isCredits ? { paddingTop: '0.4rem' } : undefined}>
-                          {g.byJob.credits.map((r) => renderRow(r, null, allocationsOf(r.id).length > 0 ? jobsText(r.id) : null))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </Fragment>
-                ))
-              )}
-              {/* Sticky pins to the panel's content box: the negative bottom and margin cover its bottom padding, so no
-                  row shows through under the pinned footer. */}
-              <div style={{ position: 'sticky', bottom: '-1.5rem', zIndex: 2, background: 'var(--surface)', borderTop: '1px solid var(--border)', margin: '0 -1.5rem -1.5rem', padding: '0.6rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <div style={{ fontWeight: 600 }}>
-                  {isMovableList ? (
-                    <>
-                      {cellRows.length === 0 ? 'All moved or marked.' : `${movableToAsk} to ask · ${cellRows.length - movableToAsk} asked, awaiting the house · $${formatCurrency(total)}`}
-                      {agingMoveError ? <span style={{ display: 'block', fontWeight: 500, color: 'var(--text-red-700)' }}>{agingMoveError}</span> : null}
-                    </>
-                  ) : (
-                    <>
-                  {isCredits ? 'Open credits' : 'Cell total'}: {money(total)}
-                    </>
-                  )}
-                </div>
-                {houseId && agingCellModalDoors(houseId, cell).openHouse ? (
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <AgingMakePaymentDoor doors={agingCellModalDoors(houseId, cell)} busy={agingCellDoorBusy === `house:${houseId}`} onMakePayment={() => void openPaymentFromAgingCell(houseId)} />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAgingCellModal(null)
-                        openHouseFromAging(houseId)
-                      }}
-                      style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Open {houseName} ›
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-              {/* PR 3: the move modal — the attested call, or the emailed request with a follow-up. */}
-              {agingMoveModalFor && (() => {
-                const inv = agingUnpaidInvoices.find((r) => r.id === agingMoveModalFor)
-                if (!inv) return null
-                const allocations = agingCellJobs.allocations[inv.id] ?? agingMoveData.allocations[inv.id] ?? []
-                const jobId = allocations.length === 1 ? allocations[0]!.job_id : null
-                if (!jobId) return null
-                const d = agingCellJobs.jobs[jobId]
-                const jobLabel = d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '—'} · ${d.job_name || '—'}` : 'its job'
-                const key = `${jobId}:${inv.supply_house_id}`
-                const account = agingCellAccounts[key] ?? null
-                const reps = agingCellReps[inv.supply_house_id] ?? []
-                const rep = reps.find((r) => typeof r.email === 'string' && r.email.includes('@')) ?? reps[0] ?? null
-                const repHasEmail = rep != null && typeof rep.email === 'string' && rep.email.includes('@')
-                const moveAsk = agingMoveData.asks[inv.id] ?? null
-                const daysLeft = inv.due_date ? -daysPastDue(inv.due_date, agingTodayYmd) : 0
-                const thisHouse = houseNameOf(inv.supply_house_id)
-                const closeMove = () => {
-                  setAgingMoveModalFor(null)
-                  setAgingMoveAttest(false)
-                  setAgingMoveError(null)
-                }
-                return (
-                  <div
-                    onClick={(e) => {
-                      if (e.target === e.currentTarget) closeMove()
-                    }}
-                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem 1rem' }}
-                  >
-                    <div role="dialog" aria-modal="true" aria-label={`Move ${inv.invoice_number} onto the job account`} style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(560px, 100%)', maxHeight: 'min(88vh, 100%)', overflow: 'auto', padding: '1rem 1.1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                        <div>
-                          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Move {inv.invoice_number} onto the job account</h3>
-                          <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                            {thisHouse} · {jobLabel} · ${formatCurrency(inv.amount)}{inv.due_date ? <> · due {formatYmdLocal(inv.due_date)} — <strong style={{ color: 'var(--text-amber-800)' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'} left in the window</strong></> : null}
-                          </p>
-                        </div>
-                        <button type="button" onClick={closeMove} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
-                      </div>
-                      {account?.status === 'open' ? (
-                        <div style={{ margin: '0.7rem 0 0', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.8125rem' }}>
-                          Job account open{account.account_ref ? ` · ref ${account.account_ref}` : ''}{account.opened_at ? ` · ${openedViaPhrase(account.opened_via)} ${new Date(account.opened_at).toLocaleDateString()}` : ''}.
-                        </div>
-                      ) : (
-                        <div style={{ margin: '0.7rem 0 0', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ flex: '1 1 14rem' }}>No job account on record for this job — ask {rep?.name?.trim() || 'the house'} to open one on the same call.</span>
-                          <button
-                            type="button"
-                            onClick={() => setAgingCellMarkOpenedFor({ inv, flagOnOpen: true })}
-                            style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
-                          >
-                            Mark opened…
-                          </button>
-                        </div>
-                      )}
-                      {moveAsk ? (
-                        <div style={{ margin: '0.5rem 0 0', padding: '0.45rem 0.6rem', borderRadius: 6, background: ageState(moveAsk.requested_at, undefined, SUPPLY_MOVE_ASK_AGE) === 'red' ? 'var(--bg-red-100)' : 'var(--bg-amber-tint)', color: ageState(moveAsk.requested_at, undefined, SUPPLY_MOVE_ASK_AGE) === 'red' ? 'var(--text-red-800)' : 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
-                          Asked by {moveAsk.via} {formatYmdLocal(calendarYmdInAppTzFromIso(moveAsk.requested_at))}{moveAsk.sent_to ? ` (${moveAsk.sent_to})` : ''} — follow up with a call{rep ? `: ☎ ${(rep.name ?? '').trim() || rep.email}${'phone' in rep && rep.phone ? ` · ${rep.phone}` : ''}` : ''}.
-                        </div>
-                      ) : null}
-                      <div style={{ margin: '0.9rem 0 0.25rem', fontSize: '0.6875rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
-                        The call{rep ? ` — ☎ ${(rep.name ?? '').trim() || rep.email}${'phone' in rep && rep.phone ? ` · ${rep.phone}` : ''}` : ''}
-                      </div>
-                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={agingMoveAttest}
-                          onChange={(e) => setAgingMoveAttest(e.target.checked)}
-                          style={{ marginTop: 2, accentColor: '#0f766e' }}
-                        />
-                        <span>I called {thisHouse}{rep?.name?.trim() ? ` (${rep.name.trim()})` : ''} — this charge was moved onto the job account.</span>
-                      </label>
-                      <button
-                        type="button"
-                        disabled={!agingMoveAttest || agingMoveBusy === 'move'}
-                        onClick={() => void markMovedConfirmed(inv, jobId)}
-                        style={{ marginTop: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.875rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 5, cursor: !agingMoveAttest || agingMoveBusy === 'move' ? 'not-allowed' : 'pointer', opacity: !agingMoveAttest || agingMoveBusy === 'move' ? 0.5 : 1 }}
-                      >
-                        {agingMoveBusy === 'move' ? 'Marking…' : 'Mark it moved ✓'}
-                      </button>
-                      {!moveAsk ? (
-                        <>
-                          <div style={{ margin: '1rem 0 0.25rem', fontSize: '0.6875rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
-                            Or ask by email — we follow up with a call
-                          </div>
-                          {repHasEmail ? (
-                            <>
-                              <div style={{ padding: '0.5rem 0.65rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                                <div><strong style={{ color: 'var(--text-base)' }}>To:</strong> {(rep!.name ?? '').trim() || 'Job accounts'} · {rep!.email}</div>
-                                <div><strong style={{ color: 'var(--text-base)' }}>Subject:</strong> Move invoice {inv.invoice_number} to the {jobLabel.split(' ·')[0]} job account</div>
-                                <div style={{ marginTop: '0.3rem', borderTop: '1px dashed var(--border)', paddingTop: '0.3rem' }}>
-                                  Please move this charge onto the job account for {jobLabel}: {inv.invoice_number} · {formatYmdLocal(inv.invoice_date)} · ${formatCurrency(inv.amount)}{inv.purchase_order_number?.trim() ? ` · PO ${inv.purchase_order_number}` : ''}.{' '}
-                                  {account?.status === 'open' && account.account_ref ? `Account ref ${account.account_ref}.` : 'No account on this job yet — please open one with it.'} We'll call to confirm. Replies come to you.
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                disabled={agingMoveBusy === 'send'}
-                                onClick={() => void sendMoveRequest([inv.id], 'send', false)}
-                                style={{ marginTop: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.875rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 5, cursor: agingMoveBusy === 'send' ? 'not-allowed' : 'pointer', opacity: agingMoveBusy === 'send' ? 0.6 : 1 }}
-                              >
-                                {agingMoveBusy === 'send' ? 'Sending…' : 'Send the request ›'}
-                              </button>
-                            </>
-                          ) : (
-                            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
-                              No job-accounts rep with an email on file for {thisHouse} — add one on the house, or call.
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={agingMoveBusy === 'send' || !repHasEmail}
-                          onClick={() => void sendMoveRequest([inv.id], 'send', true)}
-                          style={{ marginTop: '0.75rem', padding: '0.25rem 0.6rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer', font: 'inherit' }}
-                        >
-                          {agingMoveBusy === 'send' ? 'Sending…' : 'Send the email again ›'}
-                        </button>
-                      )}
-                      {agingMoveError ? <p style={{ margin: '0.6rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{agingMoveError}</p> : null}
-                    </div>
-                  </div>
-                )
-              })()}
-              {/* A job heading's or the move modal's Mark opened… — the shared v2.3423 sheet, stacked above (z 1100). */}
-              {agingCellMarkOpenedFor && (() => {
-                const { inv, flagOnOpen } = agingCellMarkOpenedFor
-                const alloc = agingCellJobs.allocations[inv.id] ?? []
-                const jobId = alloc.length === 1 ? alloc[0]!.job_id : null
-                if (!jobId) return null
-                const d = agingCellJobs.jobs[jobId]
-                const key = `${jobId}:${inv.supply_house_id}`
-                return (
-                  <MarkJobAccountOpenedModal
-                    jobId={jobId}
-                    jobLabel={d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '—'} · ${d.job_name || '—'}` : 'this job'}
-                    house={{ id: inv.supply_house_id, name: houseNameOf(inv.supply_house_id) }}
-                    existing={agingCellAccounts[key] ?? null}
-                    reps={agingCellReps[inv.supply_house_id] ?? []}
-                    onClose={() => setAgingCellMarkOpenedFor(null)}
-                    onSaved={(row) => {
-                      setAgingCellMarkOpenedFor(null)
-                      setAgingCellAccounts((prev) => ({ ...prev, [key]: row }))
-                      // From the move modal, saved as open flags the invoice the press was about. From a job
-                      // heading it only records the account; each invoice then wears its own Mark it on.
-                      if (flagOnOpen && row.status === 'open') void setInvoiceJobAcct(inv, true)
-                    }}
-                  />
-                )
-              })()}
-            </div>
-          </div>
-        )
-      })()}
+      <AgingCellWindow aging={agingWindows} agingUnpaidInvoices={agingUnpaidInvoices} supplyHouseSummary={supplyHouseSummary} supplyHousesList={supplyHousesList} agingMatrix={agingMatrix} agingMovable={agingMovable} agingTodayYmd={agingTodayYmd} agingCellDoorBusy={agingCellDoorBusy} openInvoiceFromAgingCell={openInvoiceFromAgingCell} openPaymentFromAgingCell={openPaymentFromAgingCell} openHouseFromAging={openHouseFromAging} />
 
       {houseEditor.modal}
 

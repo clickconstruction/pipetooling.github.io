@@ -188,3 +188,22 @@ export function agingCellJobsLine(jobs: ReadonlyArray<{ state: AgingCellJobState
   add(count('not_needed'), 'marked not needed')
   return `${jobsWord}: ${parts.join(', ')}.`
 }
+
+/**
+ * The aging cell window's standing words: a heading and three status lines. None is an empty list, so they are
+ * named here, beside the window's other words, and not drawn as empty states.
+ */
+export const AGING_CELL_NO_JOB_HEADING = 'No job yet'
+
+/** The move modal, when the job has no account on record at the house. */
+export function agingMoveNoAccountLine(repName: string | null | undefined): string {
+  return `No job account on record for this job — ask ${repName?.trim() || 'the house'} to open one on the same call.`
+}
+
+/** The move request's preview: what the email says about the account when none is open. */
+export const AGING_MOVE_EMAIL_NO_ACCOUNT = 'No account on this job yet — please open one with it.'
+
+/** The move modal, when the house has no job-accounts rep the request could be emailed to. */
+export function agingMoveNoRepLine(houseName: string): string {
+  return `No job-accounts rep with an email on file for ${houseName} — add one on the house, or call.`
+}
