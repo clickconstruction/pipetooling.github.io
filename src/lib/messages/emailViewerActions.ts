@@ -12,7 +12,9 @@
  * so the bid's history says it came in from another source). **Start a change order** shows only on a line tied to a
  * GC project that is not an invitation. An email on a bid that carries a file also offers **Keep its files on the
  * bid…** (punch list #368), which files them in the bid's Drive folder under Plans and adds a set to the bid; the
- * press itself reads the files and turns into a *kept* mark once they are in a set (`BidMailSetDoor`). Copy, Print and
+ * press itself reads the files and turns into a *kept* mark once they are in a set (`BidMailSetDoor`). An email on a
+ * Pipeline job that carries a file offers **Keep this mail as a paper** (`MailPaperDoor`), which until now drew only in
+ * My email, on a mail in the reader's own box: a mail someone else tagged had no such press for anyone. Copy, Print and
  * Share are the window's own and stay on every line. Pure: the
  * hook (`useEmailViewerThreadSlots`) and cut 4b's hook both ask here, so one place decides the row.
  */
@@ -26,7 +28,7 @@ import { jobRefOf } from './jobKeys'
 import type { MessageChannel, MessageDirection } from './thread'
 
 /** A press the row may offer, in the row's order. */
-export type ViewerPress = 'change_order' | 'start_bid' | 'put_on_bid' | 'open_bid' | 'keep_on_bid'
+export type ViewerPress = 'change_order' | 'start_bid' | 'put_on_bid' | 'open_bid' | 'keep_on_bid' | 'keep_paper'
 
 export interface ViewerFacts {
   /** The line's tie as the window keys it: `bid:<id>`, `project:<id>`, `pipeline:<id>`, or null on the person. */
@@ -48,6 +50,8 @@ export function viewerPresses(f: ViewerFacts): ViewerPress[] {
   if (ref?.kind === 'bid') return f.channel === 'email' && (f.files ?? 0) > 0 ? ['open_bid', 'keep_on_bid'] : ['open_bid']
   const emailIn = f.channel === 'email' && f.direction === 'in'
   if (emailIn && (f.invitation || ref === null)) return ['start_bid', 'put_on_bid']
+  // An email on a Pipeline job that carries a file can be kept as a paper beside the job's plans (punch list #368, PR 4).
+  if (ref?.kind === 'pipeline') return f.channel === 'email' && (f.files ?? 0) > 0 ? ['keep_paper'] : []
   // A line on a GC project takes a change order (cut 4b); a line on a Pipeline job goes on its estimate (R8 · 8).
   if (ref?.kind === 'project' && !f.invitation && whoMayDraft(f.role)) return ['change_order']
   return []
@@ -60,6 +64,7 @@ export const VIEWER_PRESS_WORDS: Readonly<Record<ViewerPress, { label: string; t
   put_on_bid: { label: 'Put it on a bid…', tip: 'Ties this email to a bid you already have and writes it on the bid’s history, so the bid says it came in from here too.' },
   open_bid: { label: 'Open the bid', tip: 'Opens the bid this email is tied to.' },
   keep_on_bid: { label: KEEP_ON_BID_LABEL, tip: KEEP_ON_BID_TIP },
+  keep_paper: { label: 'Keep this mail as a paper', tip: 'Keeps this email as a paper beside the job’s plans, with its files in the job’s Plans folder in Drive.' },
 }
 
 /** The bid's name as the Start a bid field starts: what the reader read from the subject, else the subject itself. */
