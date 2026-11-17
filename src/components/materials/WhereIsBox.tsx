@@ -102,12 +102,15 @@ export default function WhereIsBox({ container, containers, places, moves, movem
     }
     setNoFix(null)
     watchId.current = navigator.geolocation.watchPosition(
-      (pos) => setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null }),
+      (pos) => {
+        setNoFix(null)
+        setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null })
+      },
       (err) => {
         if (err.code === 1) {
           setNoFix(taskPlaceNoFixWords('refused'))
           setShowMe(false)
-        } else if (err.code === 2) setNoFix(taskPlaceNoFixWords('failed'))
+        } else setNoFix(taskPlaceNoFixWords('failed')) // No position, or none in time: the watch goes on, and a later reading clears the words.
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20_000 },
     )
@@ -168,7 +171,7 @@ export default function WhereIsBox({ container, containers, places, moves, movem
   const removePin = () => {
     pinContainer(container.id, null)
     setPlacing(false)
-    setFound(null)
+    setFound(`${label}’s pin is removed.`)
     setAsked(false)
   }
 

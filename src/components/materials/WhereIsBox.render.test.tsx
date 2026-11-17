@@ -135,5 +135,6 @@ describe('WhereIsBox', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move the pin by hand' }))
     fireEvent.click(screen.getByRole('button', { name: 'Remove the pin' }))
     expect(pinContainer).toHaveBeenLastCalledWith('a7', null)
+    expect(screen.getByRole('status').textContent).toBe('A7’s pin is removed.')
   })
 })
