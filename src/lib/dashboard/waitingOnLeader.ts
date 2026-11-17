@@ -62,6 +62,8 @@ export type WaitingOnLeaderInput = {
   lineBudgets: { lines: number; projects: number } | null
   /** Job notes that tagged a leader and still wait; null while not read. */
   tags: ReadonlyArray<WaitingOnLeaderAsk> | null
+  /** Today in the app's time zone. With it, a window that has passed reads *closed*, never *closes*. */
+  todayYmd?: string | null
 }
 
 export type WaitingOnLeaderRow = {
@@ -100,6 +102,14 @@ const asked = (days: ReadonlyArray<string | null>): string => {
   return day ? `Asked ${formatYmdMonthDay(day)}.` : ''
 }
 
+/** The earliest window's sentence: *closed* once its day has passed, *closes today* on the day, *closes* before it. */
+const windowWords = (due: string | null, todayYmd: string | null | undefined): string => {
+  if (!due) return ''
+  if (todayYmd && due < todayYmd) return `First window closed ${formatYmdMonthDay(due)}.`
+  if (todayYmd && due === todayYmd) return 'First window closes today.'
+  return `First window closes ${formatYmdMonthDay(due)}.`
+}
+
 const jobHref = (jobId: string): string => `/jobs?edit=${encodeURIComponent(jobId)}`
 
 export const WAITING_ON_LEADER_WORDS = {
@@ -132,7 +142,7 @@ export function buildWaitingOnLeader(input: WaitingOnLeaderInput): WaitingOnLead
     rows.push({
       key: 'approve',
       title: n(approve.length, 'lien notice to approve', 'lien notices to approve'),
-      detail: [asked(approve.map((p) => p.askedYmd)), due ? `First window closes ${formatYmdMonthDay(due)}.` : '', run].filter(Boolean).join(' '),
+      detail: [asked(approve.map((p) => p.askedYmd)), windowWords(due, input.todayYmd), run].filter(Boolean).join(' '),
       remind: lienReminderPlan(approve.map((p) => ({ kind: 'notice' as const, label: p.label, itemId: p.itemId, dueYmd: p.dueYmd }))),
       open: { label: 'Open', href: lienDeskHref({ kind: 'notice', pile: 'awaiting' }) },
     })
@@ -145,7 +155,7 @@ export function buildWaitingOnLeader(input: WaitingOnLeaderInput): WaitingOnLead
     rows.push({
       key: 'sign',
       title: n(sign.length, 'lien notice to sign', 'lien notices to sign'),
-      detail: [`Approved. The run holds ${sign.length === 1 ? 'it' : 'them'} until ${they} signs.`, due ? `First window closes ${formatYmdMonthDay(due)}.` : ''].filter(Boolean).join(' '),
+      detail: [`Approved. The run holds ${sign.length === 1 ? 'it' : 'them'} until ${they} signs.`, windowWords(due, input.todayYmd)].filter(Boolean).join(' '),
       remind: lienReminderPlan(sign.map((p) => ({ kind: 'signature' as const, label: p.label, itemId: p.itemId, dueYmd: p.dueYmd }))),
       open: { label: 'Open', href: lienDeskHref({ kind: 'notice', pile: 'ready' }) },
     })

@@ -14,7 +14,7 @@ The rows are the same lines the leader's short Dashboard lists. Read [see only w
 
 The card is named for the leader, like **Waiting on Marcus**. The number beside the name counts everything that waits.
 
-- Lien notices to approve. The row says when the leader was asked and when the first window closes.
+- Lien notices to approve. The row says when the leader was asked and when the first window closes. A window that has passed reads closed.
 - Lien notices to sign. These notices are approved, and the run holds them until the leader signs.
 - Lien waivers to sign. Each waiver goes out when the leader signs.
 - Tagged job notes to answer. A teammate is waiting on the answer.
