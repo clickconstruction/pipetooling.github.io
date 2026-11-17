@@ -13,7 +13,7 @@ A person who owes a paper meets a prompt when they open the job. The prompt show
 
 The prompt is the only lock for now. The lock in the database arrives with the next update. The section says so in a yellow note until then.
 
-The crew and subs see a locked job by its number alone in their lists. Your own lists keep showing the job. For the office the prompt at the job is the lock.
+The crew and subs see a locked job by its number alone in their lists. Your own lists keep showing the job. So do a primary's. For the office and a primary the prompt at the job is the lock.
 
 ## Put a paper on a job
 

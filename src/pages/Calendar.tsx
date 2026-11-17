@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useJobsLockedInLists } from '../hooks/useJobsClosedToMe'
 import { LOCKED_ROW_NAME } from '../lib/jobs/jobPapers'
+import { LockedJobText } from '../components/jobs/JobPapersGate'
 import { Link } from 'react-router-dom'
 import './Calendar.css'
 import { supabase } from '../lib/supabase'
@@ -906,7 +907,7 @@ export default function Calendar() {
           } as const
           const chipBody = (
             <>
-              <strong>{label}</strong>
+              <strong>{jobsLockedInLists.has(p.job_id) ? <LockedJobText jobId={p.job_id} /> : label}</strong>
               <div style={{ marginTop: 4 }}>{scheduleFormatWindow(p.time_start, p.time_end)} Central</div>
               {noteText ? (
                 <div
@@ -1514,7 +1515,7 @@ export default function Calendar() {
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  {label}
+                                  {jobsLockedInLists.has(p.job_id) ? <LockedJobText jobId={p.job_id} /> : label}
                                 </span>
                                 <span style={{ display: 'block', color: '#4f46e5' }}>
                                   {timeWindow}

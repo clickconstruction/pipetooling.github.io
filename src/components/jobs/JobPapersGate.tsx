@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useMyJobPapers } from '../../hooks/useJobsClosedToMe'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { JOB_PAPERS_RETURN_KEY, jobPapersGateView, lockedJobWords } from '../../lib/jobs/jobPapers'
+import { JOB_PAPERS_RETURN_KEY, LOCKED_ROW_NAME, jobPapersGateView, lockedJobWords } from '../../lib/jobs/jobPapers'
 import { supabaseJobPapersIo, type JobPapersIo } from '../../lib/jobs/jobPapersIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -142,6 +142,12 @@ export function LockedJobLine({ jobId, where = 'list', action = 'Sign ›' }: { 
       {action ? <span style={{ color: 'var(--text-link)', fontWeight: 700, whiteSpace: 'nowrap' }}>{action}</span> : null}
     </span>
   )
+}
+
+/** A locked job on one line of text, for a row with no room for the lock's own line: its number and that papers wait. */
+export function LockedJobText({ jobId }: { jobId: string }) {
+  const read = useMyJobPapers(jobId)
+  return <>{`${read.mine?.jobNumber || 'A job'} · ${LOCKED_ROW_NAME}`}</>
 }
 
 export default JobPapersGate

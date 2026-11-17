@@ -391,3 +391,12 @@ export function maskLockedPick<T extends { source: string; id: string }>(pick: T
 
 /** What a locked job reads as in a schedule or calendar row, in place of its name. */
 export const LOCKED_ROW_NAME = '🔒 Papers to sign first'
+
+/**
+ * The roles the database lock leaves alone: for them the prompt at the job is the lock (the owner's call 8), since
+ * hiding the job would take it out of their Pipeline and money totals. The same set as `job_papers_prompt_only()`:
+ * dev, master technician, assistant, controller and primary. Their lists keep a closed job's name.
+ */
+export function jobPapersPromptOnlyRole(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'primary'
+}

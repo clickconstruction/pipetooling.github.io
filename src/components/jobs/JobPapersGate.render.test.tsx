@@ -141,7 +141,7 @@ describe('a locked job in a list', () => {
     expect(screen.getByText('2 papers to sign before this job opens')).toBeTruthy()
     expect(screen.queryByText(/Cedar/)).toBeNull()
   })
-  it('the closed set is one read for every follower, and the office’s lists keep their names', async () => {
+  it('the closed set is one read for every follower, and the office’s and a primary’s lists keep their names', async () => {
     const io = fakeIo()
     resetJobsClosedToMeForTest(io)
     function Probe({ role }: { role: string }) {
@@ -153,10 +153,14 @@ describe('a locked job in a list', () => {
       <>
         <Probe role="helpers" />
         <Probe role="assistant" />
+        <Probe role="primary" />
+        <Probe role="estimator" />
       </>,
     )
     await waitFor(() => expect(screen.getByTestId('probe-helpers').textContent).toBe('true|job-1|job-1'))
     expect(screen.getByTestId('probe-assistant').textContent).toBe('true|job-1|')
+    expect(screen.getByTestId('probe-primary').textContent).toBe('true|job-1|')
+    expect(screen.getByTestId('probe-estimator').textContent).toBe('true|job-1|job-1')
     expect(io.readClosed).toHaveBeenCalledTimes(1)
   })
   it('a read that fails closes no job', async () => {

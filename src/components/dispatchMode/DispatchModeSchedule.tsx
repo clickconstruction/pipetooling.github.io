@@ -14,6 +14,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobsLockedInLists } from '../../hooks/useJobsClosedToMe'
 import { LOCKED_ROW_NAME } from '../../lib/jobs/jobPapers'
+import { LockedJobText } from '../jobs/JobPapersGate'
 import { useToastContext } from '../../contexts/ToastContext'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
@@ -663,7 +664,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {num} · {b.jobName}
+                    {closedJobs.has(b.jobId) ? <LockedJobText jobId={b.jobId} /> : `${num} · ${b.jobName}`}
                   </span>
                 </span>
                 {b.customerName ? (

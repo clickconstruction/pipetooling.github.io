@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { isOfficeRole } from '../lib/doorRoles'
-import { JOB_PAPERS_CHANGED_EVENT, type JobNeedingMe, type MyJobPapers } from '../lib/jobs/jobPapers'
+import { JOB_PAPERS_CHANGED_EVENT, type JobNeedingMe, type MyJobPapers, jobPapersPromptOnlyRole } from '../lib/jobs/jobPapers'
 import { supabaseJobPapersIo, type JobPapersIo } from '../lib/jobs/jobPapersIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 
@@ -119,12 +118,12 @@ export function useJobsClosedToMe(enabled = true): ClosedJobsSnapshot {
 
 /**
  * The jobs whose name, address and customer a list hides from this person. The crew and subs see a closed job by its
- * number alone. The office's lists keep showing the job (the owner's call 8: for the office the prompt at the job is
- * the lock), so for an office role this is always empty.
+ * number alone. The office's and a primary's lists keep showing the job (the owner's call 8: for them the prompt at
+ * the job is the lock), so for those roles this is always empty.
  */
 export function useJobsLockedInLists(role: string | null | undefined): ReadonlySet<string> {
   const { closed } = useJobsClosedToMe()
-  return isOfficeRole(role) ? NONE : closed
+  return jobPapersPromptOnlyRole(role) ? NONE : closed
 }
 
 export type MyJobPapersRead = { mine: MyJobPapers | null; failure: OfflineRecoveryLastError | null; loading: boolean; reload: () => void }
