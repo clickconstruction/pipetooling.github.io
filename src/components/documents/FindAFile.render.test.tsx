@@ -173,4 +173,33 @@ describe('FindAFile', () => {
     await waitFor(() => expect(screen.getByText(/The jobs root is not set yet/)).toBeTruthy())
     expect(search).toHaveBeenCalledTimes(2)
   })
+
+  it('chips a hit that is a signed contract’s Drive copy, and opens its record where the record was sent (punch list #377)', async () => {
+    const opened: [string, string][] = []
+    const io = fakeIo({
+      hits: [
+        hit({ name: '2026-11-14 Signed contract · 1042 · Dana Whitfield.pdf', paper: 'signed', contract: { id: 'c1', jobId: 'job-1' } }),
+        hit({ id: '2BcDeFgHiJkLmNoPqRsTu', name: 'VOIDED · 2026-10-02 Signed contract · 1008 · Jo Larkin.pdf', paper: 'voided' }),
+        hit({ id: '3CdEfGhIjKlMnOpQrStUv', name: 'Rock clause letter.pdf' }),
+      ],
+    })
+    renderWithProviders(<FindAFile io={io} debounceMs={0} onOpenContract={(jobId, id) => opened.push([jobId, id])} />)
+    type('balance due')
+    await screen.findByText('Signed contract')
+    expect(screen.getByText('Voided contract')).toBeTruthy()
+    // A plain file wears no chip, and a paper whose record was not sent offers Drive alone.
+    expect(document.querySelectorAll('[data-found-paper]').length).toBe(2)
+    expect(screen.getAllByText('Open the contract').length).toBe(1)
+    fireEvent.click(screen.getByText('Open the contract'))
+    expect(opened).toEqual([['job-1', 'c1']])
+  })
+
+  it('offers no Open the contract when the page gives it no door', async () => {
+    const io = fakeIo({ hits: [hit({ paper: 'signed', contract: { id: 'c1', jobId: 'job-1' } })] })
+    renderWithProviders(<FindAFile io={io} debounceMs={0} />)
+    type('balance due')
+    await screen.findByText('Signed contract')
+    expect(screen.queryByText('Open the contract')).toBeNull()
+  })
 })
+

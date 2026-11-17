@@ -383,3 +383,39 @@ export function knownContractFileIds(rows: readonly Pick<ContractDriveRow, 'stat
 export function withoutKnownContracts<T extends { id: string }>(files: readonly T[], known: ReadonlySet<string>): T[] {
   return known.size === 0 ? [...files] : files.filter((f) => !known.has(f.id))
 }
+
+// ── Find a file: a hit that is a paper on file ───────────────────────────────────────────────────────────────────
+
+/** What a found file is, when it is a signed job contract's Drive copy. */
+export type ContractPaperMark = 'signed' | 'voided'
+
+export interface ContractPaperOnFile {
+  paper: ContractPaperMark
+  contractId: string
+  jobId: string
+}
+
+/**
+ * The Drive files that are a contract's copy, by id, for the hits Find a file answers. A signed paper in force marks its
+ * file *signed*, filed or adopted. A voided paper marks only a copy the app made, *voided*: a file the office linked on
+ * a record that was later voided is nobody's paper again. When one file stands for several records (a hand-linked paper
+ * over several jobs), a signed one wins.
+ */
+export function contractPapersOnFile(rows: readonly Pick<ContractDriveRow, 'id' | 'job_id' | 'status' | 'voided_at' | 'drive_file_id' | 'drive_file_origin'>[]): Map<string, ContractPaperOnFile> {
+  const out = new Map<string, ContractPaperOnFile>()
+  for (const r of rows) {
+    const fileId = str(r.drive_file_id)
+    if (!fileId) continue
+    const paper: ContractPaperMark | null = isSignedLive(r) ? 'signed' : isVoided(r) && r.drive_file_origin === 'filed' ? 'voided' : null
+    if (!paper) continue
+    const had = out.get(fileId)
+    if (!had || (had.paper === 'voided' && paper === 'signed')) out.set(fileId, { paper, contractId: r.id, jobId: r.job_id })
+  }
+  return out
+}
+
+/** The chip a hit wears. */
+export function contractPaperChipWords(paper: ContractPaperMark): string {
+  return paper === 'voided' ? 'Voided contract' : 'Signed contract'
+}
+
