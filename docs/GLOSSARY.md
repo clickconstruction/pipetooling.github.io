@@ -217,7 +217,8 @@ The chip *2 papers to sign* in the job window's head counts them.
 **The prompt** (v2.7652, `JobPapersGate.tsx`): opening a job you owe a paper on draws **Before you open J…** in place of the job, with **Read and sign** on the first paper not signed and **Open the job** when nothing is left.
 A locked job in a list shows its number and a lock, never its name, for everyone but the office.
 The Needs you line **Papers to sign** leads to the prompt.
-Until the database lock lands the prompt is the only lock, and the section says so.
+The database holds the lock too (v2.7659) for helpers, subs, superintendents and estimators: `job_shut_to_me`.
+For the office and a primary the prompt at the job is the lock.
 
 ### E chip (the estimate's author on a job)
 A small red square with a white **E** beside a person's name wherever a job's people are listed — the people line over Job activity, the Assigned Team on the Job window, **Everyone on the job** from the Pipeline's crew line (v2.6694, punch list #129, the owner's call of 2026-11-08).

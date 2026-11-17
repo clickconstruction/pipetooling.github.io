@@ -1847,9 +1847,14 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
 
-### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646; the prompt v2.7652)
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646; the prompt v2.7652; the database lock v2.7659, `20261118010000_job_papers_lock.sql`)
 
-The prompt is the only lock until the database lock lands: a direct request still reads the job's rows.
+**The database lock** closes a job to a helper, a subcontractor, a superintendent or an estimator who still owes it a paper.
+`job_shut_to_me(job)` is true for them and false for the prompt-only roles (`job_papers_prompt_only()`: dev, master technician, assistant, controller, primary), who meet the prompt alone.
+The restrictive policy `job_papers_fence` (`TO authenticated`, every command) sits on `jobs_ledger`, `jobs_ledger_thread_notes`, `jobs_tally_parts`, `job_stage_windows`, `file_index`, `messages`, `painted_maps` and `step_commitments`.
+`helper_on_job`, `subcontractor_can_read_jobs_ledger_row`, `can_report_stage_progress`, `on_site_can_touch_job`, `superintendent_report_job_anchor_allowed` and `superintendent_can_touch_job_thread` answer false for a job shut to the caller.
+`job_schedule_blocks` and `jobs_ledger_team_members` stay readable, so a locked person's list can show the job's number and a lock.
+The list functions that skip row security and the edge functions that read with the service key are closed in the step after this one.
 **The prompt** (`JobPapersGateModal` over `useJobsClosedToMe`) is drawn in place of the job window for anyone who owes a paper, every role, the office too.
 It shows the job's number and the papers' names and nothing else of the job.
 No clock starts on a job the caller owes a paper on: the picker, Job Mode's On my way and the job change all open the prompt instead.
