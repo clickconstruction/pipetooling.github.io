@@ -202,6 +202,7 @@ Two account-level mechanisms ride
 on top of the normal role permissions:
 
 - **Training mode** (`users.read_only`) — the tester rung: full role visibility, zero writes.
+  Two writes are let through, each its own open row and nothing else: a clock punch (`clock_sessions`) and, since v2.7666, a note to the dev (`help_feedback`, punch list #380), each by a row guard in place of the statement trigger.
 - **The twin write-fence** (v2.2428, `apply_digital_twin_write_blocks()`): restrictive
   policies on every RLS-enabled table, `(NOT is_digital_twin()) OR (<allowance>)` — a no-op
   for every real user.
