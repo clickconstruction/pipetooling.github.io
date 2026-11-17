@@ -5578,6 +5578,7 @@ export type Database = {
           placed_at: string | null
           placed_by: string | null
           placed_by_name: string
+          printed_at: string | null
           run_id: string
         }
         Insert: {
@@ -5591,6 +5592,7 @@ export type Database = {
           placed_at?: string | null
           placed_by?: string | null
           placed_by_name?: string
+          printed_at?: string | null
           run_id: string
         }
         Update: {
@@ -5604,6 +5606,7 @@ export type Database = {
           placed_at?: string | null
           placed_by?: string | null
           placed_by_name?: string
+          printed_at?: string | null
           run_id?: string
         }
         Relationships: [
