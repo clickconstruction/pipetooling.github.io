@@ -103,7 +103,7 @@ The boxes sit grouped by their place on the site. **All**, **Due a count** and *
 
 Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. On a line, **Correct…** sets the count the crew should have found. It writes a count row in your name.
 
-Beside **Edit** on a box, press {{button:outline|Where is it?}}. The box's window opens on its **Where is it?** tab. It says the place, the note, and who pinned the box and on what day. Under the words is the site from above with the box's pin. It is the same sheet the crew has on the phone. [Find a box on the site](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#find-a-box-on-the-site) says what each press does.
+Beside **Edit** on a box, press {{button:outline|Where is it?}}. The box's window opens on its **Where is it?** tab. The tab says the place, the note, and who pinned the box and on what day. Under the words is the site from above with the box's pin. The tab is the same sheet the crew has on the phone. [Find a box on the site](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#find-a-box-on-the-site) says what each press does.
 
 ## Move everything on site to another job
 

@@ -92,9 +92,9 @@ Search finds a box by your words too. Type toilets and the box that says Kohler 
 
 ## Find a box on the site
 
-On a box, tap {{button:outline|Where is it?}}. The sheet says what the app knows. It names the place and the note. It says who pinned the box and on what day. Under the words is the newest photo, then the site from above with the box's pin.
+On a box, tap {{button:outline|Where is it?}}. The sheet says what the app knows. The words name the place and the note. The words say who pinned the box and on what day. Under the words is the newest photo, then the site from above with the box's pin.
 
-Tap {{button:blue|Show where I am}} to see your own dot and a dashed line to the pin. The sheet says about how far the pin is and which way. The line is straight. It knows no fence, wall or gate. Indoors the phone is unsure, so go by the place, the note and the photo. Your dot stays on your phone. It moves while the sheet is open and the screen is on.
+Tap {{button:blue|Show where I am}} to see your own dot and a dashed line to the pin. The sheet says about how far the pin is and which way. The line is straight. The line knows no fence, wall or gate. Indoors the phone is unsure, so go by the place, the note and the photo. Your dot stays on your phone. The dot moves while the sheet is open and the screen is on.
 
 When you find the box, tap {{button:blue|I found it}}. The app pins the box where you stand, with your name and the day. The next person who looks starts from your pin. Then the sheet asks if the box is still in the same place. Tap **Move box** when it is not.
 
