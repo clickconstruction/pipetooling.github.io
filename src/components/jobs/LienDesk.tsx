@@ -43,16 +43,15 @@ import { wordRecordPreview, type LienWordChannel } from '../../lib/jobs/lienWord
 import { type LienSignWay } from '../../lib/jobs/lienFooterMenu'
 import { penWordApproval } from '../../lib/jobs/lienPenRecord'
 import { shortDay as footShortDay } from '../../lib/jobs/lienFootChip'
-import { clearLienSignatureToSignAgain, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
+import { clearLienSignatureToSignAgain, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
 import { signAgainConfirmWords, signAgainDoneWords, signAgainHow, signAgainJobWords, signatureClearedOf, signatureClearedWords } from '../../lib/jobs/lienSignAgain'
-import { lienCodeRefusalWords, lienCodeSignerFrom, lienCodeStatusStale, lienOtherScreen, type LienCodeStatusRead } from '../../lib/jobs/lienCodeSigner'
+import { lienCodeRefusalWords, lienCodeStatusStale, lienOtherScreen } from '../../lib/jobs/lienCodeSigner'
 import { lienChipSigned, lienFieldsHash, lienItemUnsigned, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
-import { LienNoticeSignLine, type LienNoticeSignLineCodeSigner, type LienNoticeSignLineFrame, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
+import { LienNoticeSignLine, type LienNoticeSignLineFrame, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienOriginalContractor, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
-import { useNoticePayPage } from '../../hooks/useNoticePayPage'
-import { changedPayLines, payLineField, payLineInvoiceId, payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
+import { payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
 import { closePaidLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -148,6 +147,8 @@ import { LienDeskPaperTabs, LienDeskViewTabs } from './LienDeskViewTabs'
 import { LienDeskDraftFooter, type LienDraftFooterContext } from './LienDeskDraftFooter'
 import { LienDeskAwaitingFooter, LienDeskHeldFooter, LienDeskPrintedFooter, LienDeskReadyFooter, type LienNoticeFooterContext } from './LienDeskLeaderFooters'
 import { LienDeskSentFooter } from './LienDeskSentFooter'
+import { useLienCodeSigner } from './useLienCodeSigner'
+import { useLienDeskPayPage } from './useLienDeskPayPage'
 import { useLienDeskRunner } from './useLienDeskRunner'
 import { useLienSentFooterForms } from './useLienSentFooterForms'
 import { lienSentPacketFacts } from '../../lib/jobs/lienSentPacket'
@@ -196,10 +197,8 @@ import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCounty
 import PropertyKindSwitch from './PropertyKindSwitch'
 import LienClaimBox from './LienClaimBox'
 import LienClaimBills from './LienClaimBills'
-import { lienBillsCountWords, lienNothingBilledWords, lienUnbilled } from '../../lib/jobs/lienClaimBills'
+import { lienBillsCountWords, lienNothingBilledWords } from '../../lib/jobs/lienClaimBills'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
-import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
-import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctionNeedsLook, correctionSendGate, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
@@ -1205,30 +1204,8 @@ export default function LienDesk({
   // signature line is then his — his name in cursive, his signing code or his hand — never the signed-in user's name.
   const masterId = job?.master_user_id ?? null
   const otherScreen = lienOtherScreen(masterId, authUserId)
-  const [codeStatus, setCodeStatus] = useState<LienCodeStatusRead>(null)
-  const [codeStatusTick, setCodeStatusTick] = useState(0)
-  const [codeProblem, setCodeProblem] = useState<string | null>(null)
-  useEffect(() => {
-    setCodeProblem(null)
-    if (!otherScreen || !masterId) {
-      setCodeStatus(null)
-      return
-    }
-    let live = true
-    setCodeStatus('loading')
-    lienSignCodeStatus(masterId)
-      .then((s) => {
-        if (live) setCodeStatus(s ?? 'not_live')
-      })
-      .catch(() => {
-        if (live) setCodeStatus('not_live')
-      })
-    return () => {
-      live = false
-    }
-  }, [otherScreen, masterId, codeStatusTick, selected?.jobId])
-  const codeSigner: LienNoticeSignLineCodeSigner | null = otherScreen ? lienCodeSignerFrom(leaderName, codeStatus) : null
-  const codeReady = codeSigner?.status === 'ready'
+  // His signing code on someone else's screen (`useLienCodeSigner`, v2.7611).
+  const { codeSigner, codeReady, codeProblem, setCodeProblem, refreshCodeStatus } = useLienCodeSigner({ otherScreen, masterId, leaderName, jobId: selected?.jobId })
   // On someone else's screen the typed name is never a way; until the line reports its own pick, his code or his hand stands.
   const draftSignWay: LienSignWay = otherScreen && signWay === 'type' ? (codeReady ? 'code' : 'draw') : signWay
   const wordPreview = selected
@@ -1429,89 +1406,8 @@ export default function LienDesk({
   }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph, noticeRelease, paneSignature])
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
   // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
-  const payPage = useNoticePayPage(selected?.jobId ?? null, true)
-  // The bills behind the claim (v2.4969): the desk's money is what the sent bills still owe (`lien_billed_open()`), so the
-  // claim and the pay page cannot disagree; the Months card lists the bills, and the part of the job no sent bill carries.
-  const claimBills = payPage.bills
-  const unbilled = job ? lienUnbilled(job, openBalance) : 0
-  const billFromHere = () => {
-    const j = payPage.job
-    if (!billCustomer || !j || !selected) return
-    if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
-      showToast('Link this job to a customer before billing.', 'error')
-      return
-    }
-    const reread = async () => {
-      payPage.refresh()
-      onChanged()
-    }
-    billCustomer.openBillCustomer({ payload: { kind: 'job', job: jobBillingContextFromJob(j) }, onSuccess: reread, onAfterEnsureSuccess: reread })
-  }
-  const billWhy = !billCustomer ? 'Billing opens from the Pipeline on this screen' : !payPage.job ? (payPage.loading ? 'Reading the job’s bills…' : 'The job’s bills could not be read') : ''
-  const payLinesNow = useMemo(() => ({ ...(storedDraft?.payLines ?? {}), ...payLineEdits }), [storedDraft?.payLines, payLineEdits])
-  const payChanged = useMemo(() => changedPayLines(payPage.rows, payLinesNow), [payPage.rows, payLinesNow])
-  const payChangedCount = Object.keys(payChanged).length
-  const payBlocks = useMemo(
-    () =>
-      selected && payPage.rows.length
-        ? payPageBlocks({
-            rows: payPage.rows,
-            assets: payPage.assets,
-            copy: 'owner',
-            copyLabel: '',
-            gcName: noticeFields.originalContractorName,
-            claimantName: noticeFields.claimantName,
-            contactPerson: noticeFields.contactPerson,
-            phone: (issuer?.phone ?? '').trim(),
-            extras: docExtras,
-            coverLetter: coverBlocks.length > 0,
-            offer,
-            lines: payLinesNow,
-          })
-        : [],
-    [selected, payPage, noticeFields, issuer, docExtras, offer, payLinesNow, coverBlocks.length],
-  )
-  const payMarks = useMemo(() => {
-    const m: Record<string, FilingFieldMark> = {}
-    for (const r of payPage.rows) m[payLineField(r.invoiceId)] = { kind: wordingLocked ? 'locked' : 'typed', changed: r.invoiceId in payChanged, title: wordingLocked ? 'Sent for approval — pull it back to a draft to change it' : 'Click to change — on this page only, the bill keeps its own line' }
-    return m
-  }, [payPage.rows, payChanged, wordingLocked])
-  const payHtml = useMemo(() => (payBlocks.length ? filingDocHtml(payBlocks, { marks: payMarks }) : ''), [payBlocks, payMarks])
-  const onPayPaperClick = (ev: React.MouseEvent<HTMLDivElement>) => {
-    const t = ev.target as HTMLElement
-    const reset = payLineInvoiceId(t.closest<HTMLElement>('[data-reset]')?.getAttribute('data-reset') ?? '')
-    if (reset) {
-      if (!wordingLocked) {
-        setPayLineEdits((e) => ({ ...e, [reset]: payPage.rows.find((r) => r.invoiceId === reset)?.description ?? '' }))
-        touchDraft()
-      }
-      return
-    }
-    const el = t.closest<HTMLElement>('[data-field]')
-    const id = payLineInvoiceId(el?.getAttribute('data-field') ?? '')
-    const wrap = payPaperRef.current
-    if (!el || !id || !wrap) return
-    if (wordingLocked) {
-      showToast('Sent for approval — pull it back to a draft to change the wording.', 'info')
-      return
-    }
-    const r = el.getBoundingClientRect()
-    const w = wrap.getBoundingClientRect()
-    const cs = typeof window !== 'undefined' && typeof window.getComputedStyle === 'function' ? window.getComputedStyle(el) : null
-    setPayEditing({ invoiceId: id, value: payLinesNow[id] ?? payPage.rows.find((x) => x.invoiceId === id)?.description ?? '', rect: { top: r.top - w.top, left: r.left - w.left, width: r.width, height: r.height }, font: cs?.font ?? '' })
-  }
-  const commitPayEdit = () => {
-    setPayEditing((e) => {
-      if (e) {
-        setPayLineEdits((x) => ({ ...x, [e.invoiceId]: e.value.trim() }))
-        touchDraft()
-      }
-      return null
-    })
-  }
-  useEffect(() => {
-    if (payEditing) payInputRef.current?.focus()
-  }, [payEditing?.invoiceId])
+  // The pay page behind the notice and its lines typed in place (`useLienDeskPayPage`, v2.7611).
+  const { payPage, claimBills, unbilled, billFromHere, billWhy, payChanged, payChangedCount, payBlocks, payHtml, onPayPaperClick, commitPayEdit } = useLienDeskPayPage({ selected, job, openBalance, issuer, onChanged, billCustomer, noticeFields, docExtras, storedDraft, coverBlocks, offer, wordingLocked, payLineEdits, setPayLineEdits, payEditing, setPayEditing, payPaperRef, payInputRef, touchDraft })
   const pageTotal = (coverHtml ? 1 : 0) + (releaseHtml ? 1 : 0) + 1 + (payHtml ? 1 : 0)
   const noticePageNumber = (coverHtml ? 1 : 0) + (releaseHtml ? 1 : 0) + 1
 
@@ -1689,7 +1585,7 @@ export default function LienDesk({
       if (!r.ok) {
         const words = lienCodeRefusalWords(r)
         setCodeProblem(words)
-        if (lienCodeStatusStale(r.reason)) setCodeStatusTick((t) => t + 1)
+        if (lienCodeStatusStale(r.reason)) refreshCodeStatus()
         throw new Error(words)
       }
       setCodeProblem(null)
