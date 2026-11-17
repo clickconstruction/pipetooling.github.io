@@ -1,7 +1,8 @@
 /**
- * dev-mcp's own handler, run here for find_task / get_task and plan_task → apply_task (v2.7584): the function's
- * index.ts with its three URL imports stood in for, and one `fetch` behind which sits a recording fake database.
- * Nothing reaches a network. The proof that matters most is the first: a plan writes nothing.
+ * dev-mcp's own handler, run here for find_task / get_task, plan_task → apply_task (v2.7584) and plan_task_place →
+ * apply_task_place (v2.7589): the function's index.ts with its three URL imports stood in for, and one `fetch` behind
+ * which sit a recording fake database and a fake Census geocoder. Nothing reaches a network. The proof that matters
+ * most is the first of each: a plan writes nothing.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { newTaskSend } from '../tasks/newTaskSend'
@@ -18,6 +19,11 @@ const NO_LOGIN = 'dddddddd-1111-4111-8111-111111111111'
 const TWIN = 'eeeeeeee-1111-4111-8111-111111111111'
 const OLD_TASK = '99999999-1111-4111-8111-111111111111'
 const OLD_DAY = '99999999-2222-4222-8222-222222222222'
+const BARE_TASK = '99999999-3333-4333-8333-333333333333'
+const ROADMAP_ITEM = '99999999-4444-4444-8444-444444444444'
+const ROADMAP_TASK = '99999999-5555-4555-8555-555555555555'
+const JOB = '77777777-1111-4111-8111-111111111111'
+const MAP = '66666666-1111-4111-8111-111111111111'
 const BASE = 'http://127.0.0.1:9'
 // The fake clock: 2026-11-17 12:00 in Chicago, a Tuesday.
 const TODAY = '2026-11-17'
@@ -29,6 +35,9 @@ const world = {
   /** A table whose next POST is refused, with the words PostgREST would answer. */
   refuse: {} as Record<string, string>,
   made: 0,
+  /** What the fake Census geocoder knows, by the address asked, and every address it was asked. */
+  census: {} as Record<string, { x: number; y: number }>,
+  censusAsked: [] as string[],
 }
 
 function matches(row: Row, key: string, expr: string): boolean {
@@ -36,6 +45,7 @@ function matches(row: Row, key: string, expr: string): boolean {
   if (expr === 'is.null') return v === null || v === undefined
   if (expr === 'is.false') return v === false
   if (expr.startsWith('eq.')) return String(v ?? '') === expr.slice(3)
+  if (expr.startsWith('gte.')) return typeof v === 'number' && v >= Number(expr.slice(4))
   if (expr.startsWith('in.(')) return expr.slice(4, -1).split(',').map((s) => s.replace(/^"|"$/g, '')).includes(String(v ?? ''))
   if (expr.startsWith('ilike.')) return new RegExp(`^${expr.slice(6).split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`, 'i').test(String(v ?? ''))
   throw new Error(`fake REST: no filter "${expr}"`)
@@ -72,11 +82,23 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
       world.tables[table] = [...(world.tables[table] ?? []), ...rows]
       return prefer.includes('return=representation') ? json(rows.map((r) => ({ id: r.id }))) : new Response(null, { status: 201 })
     }
+    if (method === 'PATCH') {
+      if (world.refuse[table]) return json([])
+      const hit = filtered(table, query)
+      for (const r of hit) Object.assign(r, body as Row)
+      return json(hit.map((r) => ({ id: r.id })))
+    }
     if (method === 'DELETE') {
       const hit = filtered(table, query)
       world.tables[table] = (world.tables[table] ?? []).filter((r) => !hit.includes(r))
       return json(hit.map((r) => ({ id: r.id })))
     }
+  }
+  if (url.hostname === 'geocoding.geo.census.gov') {
+    const asked = url.searchParams.get('address') ?? ''
+    world.censusAsked.push(asked)
+    const hit = world.census[asked]
+    return json({ result: { addressMatches: hit ? [{ coordinates: hit }] : [] } })
   }
   throw new Error(`fake fetch: no route for ${method} ${path}`)
 }
@@ -152,15 +174,23 @@ beforeEach(() => {
       { checklist_item_id: 'older', user_id: ANA, display_order: 3 },
     ],
     checklist_items: [
-      { id: OLD_TASK, title: 'ZZ walk the yard', links: [], start_date: '2026-11-10', due_date: null, repeat_type: 'once', repeat_days_of_week: null, repeat_days_after: null, repeat_end_date: null, show_until_completed: true, asks_for_photo: true, reminder_time: null, created_at: '2026-11-10T15:00:00Z', created_by_user_id: DEV, place_name: 'ZZ gate', place_lat: 30.2, place_lng: -97.7, place_accuracy_m: null, place_set_by: DEV, place_set_at: '2026-11-10T15:00:00Z', spot_photo_path: `item/${OLD_TASK}/p1.jpg`, notify_creator_on_complete: true },
+      { id: OLD_TASK, title: 'ZZ walk the yard', links: [], start_date: '2026-11-10', due_date: null, repeat_type: 'once', repeat_days_of_week: null, repeat_days_after: null, repeat_end_date: null, show_until_completed: true, asks_for_photo: true, reminder_time: null, created_at: '2026-11-10T15:00:00Z', created_by_user_id: DEV, place_name: 'ZZ gate', place_lat: 30.2, place_lng: -97.7, place_accuracy_m: null, place_set_by: DEV, place_set_at: '2026-11-10T15:00:00Z', spot_photo_path: `item/${OLD_TASK}/p1.jpg`, notify_creator_on_complete: true, roadmap_group_task_id: null, painted_map_id: MAP },
     ],
+    address_geocodes: [{ address_normalized: '14 maple ct, marlow, tx 78000', lat: 30.31, lng: -97.61, geocode_error: null }],
+    jobs_ledger: [{ id: JOB, job_name: 'ZZ Test Maple Court', job_address: '14 Maple Ct,  Marlow, TX 78000' }],
     checklist_instances: [{ id: OLD_DAY, checklist_item_id: OLD_TASK, scheduled_date: '2026-11-10', completed_at: null, completed_by_user_id: null, percent_complete: 50, notes: null }],
     checklist_instance_events: [{ instance_id: OLD_DAY, event_type: 'comment', actor_user_id: ANA, body: 'ZZ half done', percent: null, created_at: '2026-11-10T19:00:00Z' }],
     task_criteria: [{ id: 'l1', checklist_item_id: OLD_TASK, body: 'ZZ the gate is shut', sort_index: 0, retired_at: null }],
     task_photos: [],
     checklist_instance_assignees: [],
-    checklist_tech_tree_group_tasks: [],
+    checklist_tech_tree_group_tasks: [{ id: ROADMAP_TASK, place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null, painted_map_id: null }],
   }
+  ;(world.tables.checklist_items as Row[]).push(
+    { id: BARE_TASK, title: 'ZZ bare task', start_date: '2026-11-12', created_at: '2026-11-12T15:00:00Z', created_by_user_id: DEV, roadmap_group_task_id: null, place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null, painted_map_id: MAP },
+    { id: ROADMAP_ITEM, title: 'ZZ roadmap step', start_date: '2026-11-12', created_at: '2026-11-12T16:00:00Z', created_by_user_id: DEV, roadmap_group_task_id: ROADMAP_TASK, place_name: null, place_lat: null, place_lng: null },
+  )
+  world.census = { '9 Elm St, Marlow, TX 78000': { x: -97.52, y: 30.44 } }
+  world.censusAsked = []
   world.writes = []
   world.log = []
   world.refuse = {}
@@ -326,7 +356,7 @@ describe('plan_task → apply_task', () => {
     expect(out.isError).toBe(true)
     expect(out.text).toContain('Nothing was given')
     expect(world.writes.map((w) => `${w.method} ${w.table}`)).toEqual(['POST checklist_items', 'POST checklist_item_assignees', 'DELETE checklist_items'])
-    expect((world.tables.checklist_items as Row[]).map((r) => r.id)).toEqual([OLD_TASK])
+    expect((world.tables.checklist_items as Row[]).map((r) => r.id)).toEqual([OLD_TASK, BARE_TASK, ROADMAP_ITEM])
   })
 
   it('names a later step that did not land and leaves the task standing', async () => {
@@ -348,5 +378,123 @@ describe('plan_task → apply_task', () => {
     const logged = world.log[world.log.length - 1]!.args as Row
     expect(logged.plan_hash).toBe(plan.body!.plan_hash)
     expect(JSON.stringify(logged).length).toBeLessThan(4000)
+  })
+})
+
+describe('plan_task with a place said in words', () => {
+  it('an address is the app\'s saved point, read and never filled, and the row carries it', async () => {
+    const task = { for: ANA, text: 'ZZ meet the inspector', place: { address: '14 Maple Ct, Marlow, TX 78000' } }
+    const plan = await call('plan_task', { task })
+    expect(plan.isError).toBe(false)
+    expect(plan.body!.place).toEqual({ name: '14 Maple Ct', lat: 30.31, lng: -97.61, found_by: 'the app\'s saved point for "14 Maple Ct, Marlow, TX 78000"', check_it_here: 'https://www.google.com/maps?q=30.31,-97.61' })
+    expect(world.censusAsked).toEqual([])
+    expect(world.writes).toEqual([])
+    const out = await call('apply_task', { task, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(written('checklist_items')[0]!.body).toMatchObject({ place_name: '14 Maple Ct', place_lat: 30.31, place_lng: -97.61, place_accuracy_m: null, place_set_by: DEV, place_set_at: '2026-11-17T18:00:00.000Z' })
+    expect(written('address_geocodes')).toEqual([])
+  })
+
+  it('an address the app has not seen goes to the Census, and one nobody knows turns the plan away', async () => {
+    const known = await call('plan_task', { task: { for: ANA, text: 'ZZ a task', place: { address: '9 Elm St, Marlow, TX 78000', name: 'ZZ back lot' } } })
+    expect(known.body!.place).toMatchObject({ name: 'ZZ back lot', lat: 30.44, lng: -97.52, found_by: 'the Census geocoder, for "9 Elm St, Marlow, TX 78000"' })
+    const lost = await call('plan_task', { task: { for: ANA, text: 'ZZ a task', place: { address: '1 Nowhere Rd, Marlow, TX' } } })
+    expect(lost.isError).toBe(true)
+    expect(lost.text).toContain('place: No point was found for "1 Nowhere Rd, Marlow, TX"')
+    expect(world.writes).toEqual([])
+  })
+})
+
+describe('plan_task_place → apply_task_place', () => {
+  const placeOf = (id: string) => {
+    const r = [...(world.tables.checklist_items as Row[]), ...(world.tables.checklist_tech_tree_group_tasks as Row[])].find((x) => x.id === id)!
+    return { name: r.place_name, lat: r.place_lat, lng: r.place_lng, by: r.place_set_by, at: r.place_set_at, map: r.painted_map_id }
+  }
+
+  it('a plan writes nothing, and shows the place before, the place after and how far it moves', async () => {
+    const out = await call('plan_task_place', { place: { task: OLD_TASK, lat: 30.21, lng: -97.7, name: 'ZZ north gate' } })
+    expect(out.isError).toBe(false)
+    expect(world.writes).toEqual([])
+    expect(out.body).toMatchObject({
+      action: 'set',
+      task: { id: OLD_TASK, words: 'ZZ walk the yard' },
+      on: 'task',
+      before: { name: 'ZZ gate', lat: 30.2, lng: -97.7, painted_map: MAP },
+      after: { name: 'ZZ north gate', lat: 30.21, lng: -97.7, check_it_here: 'https://www.google.com/maps?q=30.21,-97.7' },
+      found_by: 'the point you gave',
+      stamped_at_apply: ['place_set_at', 'updated_at'],
+    })
+    expect(String(out.body!.reads)).toMatch(/^The place of "ZZ walk the yard" moves 0\.7 mi from "ZZ gate" to "ZZ north gate"\.$/)
+    expect(String(out.body!.painted_map)).toContain('comes off')
+    expect(out.body!.patch).toEqual({ place_name: 'ZZ north gate', place_lat: 30.21, place_lng: -97.7, place_accuracy_m: null, place_set_by: DEV, painted_map_id: null })
+    expect((await call('plan_task_place', { place: { task: OLD_TASK, lat: 30.21, lng: -97.7, name: 'ZZ north gate' } })).body!.plan_hash).toBe(out.body!.plan_hash)
+  })
+
+  it('an apply is one update of the task\'s own row, stamped with the writer and the moment', async () => {
+    const place = { task: 'walk the yard', lat: 30.21, lng: -97.7, name: 'ZZ north gate' }
+    const plan = await call('plan_task_place', { place })
+    const out = await call('apply_task_place', { place, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(world.writes).toEqual([
+      { method: 'PATCH', table: 'checklist_items', query: `id=eq.${OLD_TASK}&select=id`, prefer: 'return=representation', body: { place_name: 'ZZ north gate', place_lat: 30.21, place_lng: -97.7, place_accuracy_m: null, place_set_by: DEV, painted_map_id: null, place_set_at: '2026-11-17T18:00:00.000Z', updated_at: '2026-11-17T18:00:00.000Z' } },
+    ])
+    expect(placeOf(OLD_TASK)).toEqual({ name: 'ZZ north gate', lat: 30.21, lng: -97.7, by: DEV, at: '2026-11-17T18:00:00.000Z', map: null })
+    expect(out.body).toMatchObject({ task_id: OLD_TASK, on: 'task', place: { name: 'ZZ north gate' } })
+    // The same plan again finds the place already there, and writes nothing.
+    const again = await call('apply_task_place', { place, plan_hash: plan.body!.plan_hash })
+    expect(again.isError).toBe(true)
+    expect(again.text).toContain('already has this place')
+    expect(world.writes).toHaveLength(1)
+  })
+
+  it('a job, an address and the name of a place in use each end as a point', async () => {
+    const byJob = await call('plan_task_place', { place: { task: BARE_TASK, job: JOB } })
+    expect(byJob.body).toMatchObject({ before: null, after: { name: 'ZZ Test Maple Court', lat: 30.31, lng: -97.61 }, painted_map: 'The task\'s painted map stays.' })
+    expect(String(byJob.body!.found_by)).toContain('the job "ZZ Test Maple Court": the app\'s saved point for "14 Maple Ct, Marlow, TX 78000"')
+    expect((byJob.body!.patch as Row).painted_map_id).toBe(MAP)
+    const byAddress = await call('plan_task_place', { place: { task: BARE_TASK, address: '9 Elm St, Marlow, TX 78000' } })
+    expect(byAddress.body!.after).toMatchObject({ name: '9 Elm St', lat: 30.44, lng: -97.52 })
+    const like = await call('plan_task_place', { place: { task: BARE_TASK, like: 'zz gate' } })
+    expect(like.body).toMatchObject({ after: { name: 'ZZ gate', lat: 30.2, lng: -97.7 }, found_by: 'the place "ZZ gate" another task already carries' })
+    const none = await call('plan_task_place', { place: { task: BARE_TASK, like: 'ZZ no such place' } })
+    expect(none.isError).toBe(true)
+    expect(none.text).toContain('The names in use: ZZ gate.')
+    expect(world.writes).toEqual([])
+  })
+
+  it('a task from a roadmap keeps its place on the roadmap task', async () => {
+    const place = { task: ROADMAP_ITEM, lat: 30.5, lng: -97.5, name: 'ZZ slab' }
+    const plan = await call('plan_task_place', { place })
+    expect(plan.body).toMatchObject({ on: 'roadmap task', stamped_at_apply: ['place_set_at'] })
+    const out = await call('apply_task_place', { place, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(world.writes.map((w) => `${w.method} ${w.table} ${w.query}`)).toEqual([`PATCH checklist_tech_tree_group_tasks id=eq.${ROADMAP_TASK}&select=id`])
+    expect('updated_at' in (world.writes[0]!.body as Row)).toBe(false)
+    expect(placeOf(ROADMAP_TASK)).toMatchObject({ name: 'ZZ slab', lat: 30.5, lng: -97.5, by: DEV })
+    expect(placeOf(ROADMAP_ITEM).lat).toBeNull()
+  })
+
+  it('clear takes the place off with its map, and is refused where there is none', async () => {
+    const plan = await call('plan_task_place', { place: { task: OLD_TASK, clear: true } })
+    expect(plan.body).toMatchObject({ action: 'clear', reads: 'The place "ZZ gate" comes off "ZZ walk the yard".', after: null, stamped_at_apply: ['updated_at'] })
+    const out = await call('apply_task_place', { place: { task: OLD_TASK, clear: true }, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(placeOf(OLD_TASK)).toEqual({ name: null, lat: null, lng: null, by: null, at: null, map: null })
+    const none = await call('plan_task_place', { place: { task: BARE_TASK, clear: true } })
+    expect(none.isError).toBe(true)
+    expect(none.text).toContain('has no place to take off')
+  })
+
+  it('refuses the place it already has, a changed call, a missing hash, and says so when RLS keeps the row', async () => {
+    expect((await call('plan_task_place', { place: { task: OLD_TASK, lat: 30.2, lng: -97.7, name: 'ZZ gate' } })).text).toContain('already has this place')
+    const place = { task: OLD_TASK, lat: 30.21, lng: -97.7, name: 'ZZ north gate' }
+    const plan = await call('plan_task_place', { place })
+    expect((await call('apply_task_place', { place: { ...place, name: 'ZZ south gate' }, plan_hash: plan.body!.plan_hash })).text).toContain('Nothing written')
+    expect((await call('apply_task_place', { place })).isError).toBe(true)
+    expect(world.writes).toEqual([])
+    world.refuse = { checklist_items: 'kept' }
+    const kept = await call('apply_task_place', { place, plan_hash: plan.body!.plan_hash })
+    expect(kept.isError).toBe(true)
+    expect(kept.text).toContain('RLS let no row through')
   })
 })

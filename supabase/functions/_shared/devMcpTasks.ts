@@ -19,9 +19,11 @@ import type { RowFilter } from './devMcpDoor.ts'
 import { newTaskAssigneeRows, newTaskSend, nextDisplayOrders, type NewTaskDraft } from './gcKernels/lib/tasks/newTaskSend.ts'
 import { LINE_CHARS, LINE_MAX, criteriaRows, parseLines } from './gcKernels/lib/taskCriteria.ts'
 import { asksForPhotoDefault } from './gcKernels/lib/taskProgress.ts'
-import { TASK_PLACE_NAME_MAX, cleanTaskPlaceName, isTaskPlacePoint, taskPlaceFromRow, taskTitlePlain, type TaskPlace } from './gcKernels/lib/tasks/taskPlace.ts'
+import { cleanTaskPlaceName, taskPlaceFromRow, taskTitlePlain, type TaskPlace } from './gcKernels/lib/tasks/taskPlace.ts'
 import { isTaskSpotPhotoPath } from './gcKernels/lib/tasks/taskSpotPhoto.ts'
 import { isActiveRosterPerson } from './gcKernels/lib/people/activeRoster.ts'
+import { resolveTaskRef, taskLikeTerm } from './devMcpTaskRef.ts'
+import { PLACE_ASK_SHAPE, findPlace, mapLink, placeAskInput, placeDraft, type CensusGeocode, type PlaceAsk, type PlaceFound } from './devMcpTaskPlace.ts'
 
 export const TASK_VERBS = ['plan_task', 'apply_task'] as const
 export type TaskVerb = (typeof TASK_VERBS)[number]
@@ -54,7 +56,7 @@ const obj = (v: unknown): Json | null => (v && typeof v === 'object' && !Array.i
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
 const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
 const by = (column: string, value: unknown): RowFilter[] => [{ column, op: 'eq', value }]
-const likeTerm = (text: string): string => `*${text.trim().replace(/[*,()]/g, ' ').replace(/\s+/g, '*')}*`
+const likeTerm = taskLikeTerm
 
 /** A real calendar day, YYYY-MM-DD. */
 function realDay(ymd: string): boolean {
@@ -86,7 +88,8 @@ export type TaskPayload = {
   escalate_after_days?: number
   tell_when_done?: string
   tell_me_when_done?: boolean
-  place?: { name?: string; lat: number; lng: number }
+  /** Where the work is, said one of four ways (devMcpTaskPlace.ts): a point, an address, a job, or the name of a place in use. */
+  place?: PlaceAsk
   allow_duplicate?: boolean
 }
 
@@ -96,7 +99,7 @@ const SHAPE =
   `needs task — { for (a users id from find_person, or a name that finds one person; or a list of them), text (the words), on? (YYYY-MM-DD; left out, today), ` +
   `repeat? ({ weekdays: [mon, wed] or [1, 3] with 0 = Sunday, until? } or { days_after_done: 7 }), due? (YYYY-MM-DD, a one-off only), done_when? (lines, ${LINE_MAX} at most), ` +
   `asks_for_photo?, links?, keep_until_done? (a one-off stays on the list until done; left out, yes), remind_at? (HH:MM), remind_daily?, remind_day_before?, escalate_after_days?, ` +
-  `tell_when_done? (a person), tell_me_when_done? (left out, yes), place? ({ name?, lat, lng }), allow_duplicate? }.`
+  `tell_when_done? (a person), tell_me_when_done? (left out, yes), place? (${PLACE_ASK_SHAPE}), allow_duplicate? }.`
 
 /** A weekday as the row holds it, 0 = Sunday: a number, or a name by its first three letters. */
 function weekdayOf(v: unknown): number | null {
@@ -215,12 +218,10 @@ export function taskInput(verb: TaskVerb, input: Json): TaskInput {
 
   if (src.place != null) {
     const pl = obj(src.place)
-    if (!pl) return fail('place is { name?, lat, lng }.')
-    if (!isTaskPlacePoint(pl.lat, pl.lng)) return fail('place needs lat and lng as numbers on the globe (a place is a point on the map, not an address).')
-    const name = typeof pl.name === 'string' ? pl.name.replace(/\s+/g, ' ').trim() : ''
-    if (pl.name != null && typeof pl.name !== 'string') return fail('place.name is the place in words: "Pump house".')
-    if (name.length > TASK_PLACE_NAME_MAX) return fail(`place.name is ${name.length} characters; the most is ${TASK_PLACE_NAME_MAX}.`)
-    p.place = { ...(name ? { name: cleanTaskPlaceName(name) } : {}), lat: pl.lat as number, lng: pl.lng as number }
+    if (!pl) return fail(`place is ${PLACE_ASK_SHAPE}.`)
+    const ask = placeAskInput(pl)
+    if (!ask.ok) return fail(`place: ${ask.why}`)
+    p.place = ask.ask
   }
 
   let planHash: string | null = null
@@ -248,6 +249,8 @@ export type TaskWorld = {
   held: Array<{ user_id: string; display_order: number | null }>
   /** Tasks you already gave with these exact words for the same day. */
   already: Array<{ id: string; start_date: string; created_at: string | null; for: string[] }>
+  /** The point the call's place stands for; null when the call names no place. */
+  place: PlaceFound | null
 }
 
 /**
@@ -290,7 +293,7 @@ async function findOne(reader: Reader, ref: string): Promise<PersonFound> {
  * What the plan reads, as the dev: each person the task is for, the person told when it is done, each assignee's
  * highest place in their own list, and the tasks you already gave with these exact words for the same day.
  */
-export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId: string }, today: string): Promise<TaskWorld> {
+export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId: string }, today: string, census: CensusGeocode): Promise<TaskWorld> {
   const people: PersonFound[] = []
   for (const ref of p.for) people.push(await findOne(reader, ref))
   const tell = p.tell_when_done ? await findOne(reader, p.tell_when_done) : null
@@ -313,7 +316,7 @@ export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId
     const who = await reader.rows('checklist_item_assignees', { select: 'checklist_item_id,user_id', filters: [{ column: 'checklist_item_id', op: 'in', value: same.map((r) => str(r.id)) }], limit: 200 })
     for (const r of same) already.push({ id: str(r.id), start_date: str(r.start_date), created_at: strOrNull(r.created_at), for: who.filter((w) => str(w.checklist_item_id) === str(r.id)).map((w) => str(w.user_id)) })
   }
-  return { people, tell, held, already }
+  return { people, tell, held, already, place: p.place ? await findPlace(reader, census, p.place) : null }
 }
 
 // ── the draft, the dry run and its words ─────────────────────────────────────────────────────────────────────────
@@ -322,7 +325,7 @@ export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId
 const NOW_AT_APPLY = 'stamped when apply writes it'
 
 /** The call as the New task window's draft: what the window would hold at Send, its own defaults where the call says nothing. */
-export function taskDraft(p: TaskPayload, people: TaskPerson[], tell: TaskPerson | null, today: string): NewTaskDraft {
+export function taskDraft(p: TaskPayload, people: TaskPerson[], tell: TaskPerson | null, today: string, place: Extract<PlaceFound, { ok: true }> | null = null): NewTaskDraft {
   const lines = p.done_when ?? []
   const weekly = p.repeat && 'weekdays' in p.repeat ? p.repeat : null
   const afterDone = p.repeat && 'days_after_done' in p.repeat ? p.repeat : null
@@ -348,13 +351,10 @@ export function taskDraft(p: TaskPayload, people: TaskPerson[], tell: TaskPerson
     escalateDays: p.escalate_after_days ?? 3,
     // The window's switch: on by itself once a line is written, off on a plain task, until the writer says.
     asksForPhoto: p.asks_for_photo ?? asksForPhotoDefault(lines.length),
-    place: p.place ? { lat: p.place.lat, lng: p.place.lng, name: p.place.name ?? '', accuracyM: null } : null,
+    place: place ? placeDraft(place) : null,
     map: null,
   }
 }
-
-/** A map link for a point, for the person reading the plan to check before anything lands. */
-export const mapLink = (lat: number, lng: number): string => `https://www.google.com/maps?q=${lat},${lng}`
 
 /** When the task is for, in words. */
 function whenWords(p: TaskPayload, startDate: string, today: string): string {
@@ -363,7 +363,7 @@ function whenWords(p: TaskPayload, startDate: string, today: string): string {
   return startDate === today ? `today (${today})` : `on ${startDate}`
 }
 
-export type TaskDryRun = { ok: true; reply: Json; people: TaskPerson[]; tell: TaskPerson | null } | { ok: false; refused: string }
+export type TaskDryRun = { ok: true; reply: Json; people: TaskPerson[]; tell: TaskPerson | null; place: Extract<PlaceFound, { ok: true }> | null } | { ok: false; refused: string }
 
 /**
  * The dry run: the people found, the window's own send run on the draft, and what would land. Refused in words for a
@@ -383,7 +383,9 @@ export function taskDryRun(p: TaskPayload, world: TaskWorld, me: { userId: strin
   if (startDate < today) return { ok: false, refused: `on is ${startDate}, behind today (${today}). The window gives a task for today or a day ahead.` }
   if (p.repeat && 'weekdays' in p.repeat && p.repeat.until && p.repeat.until < startDate) return { ok: false, refused: `repeat.until (${p.repeat.until}) is before the task starts (${startDate}).` }
 
-  const draft = taskDraft(p, people, tell, today)
+  if (world.place && !world.place.ok) return { ok: false, refused: `place: ${world.place.refused}` }
+  const place = world.place && world.place.ok ? world.place : null
+  const draft = taskDraft(p, people, tell, today, place)
   const send = newTaskSend(draft, { userId: me.userId }, { today, now: NOW_AT_APPLY })
   if (!send.ok) return { ok: false, refused: `The New task window refuses this: ${send.error}` }
   if (send.instanceDates.length === 0) return { ok: false, refused: 'This repeat puts no day in the next five weeks, so nobody would see the task. Check the weekdays against the start and the end.' }
@@ -407,7 +409,7 @@ export function taskDryRun(p: TaskPayload, world: TaskWorld, me: { userId: strin
     days: { count: send.instanceDates.length, first: send.instanceDates[0], last: send.instanceDates[send.instanceDates.length - 1], dates: send.instanceDates.slice(0, 8) },
     done_when: lines,
     asks_for_photo: send.row.asks_for_photo,
-    place: p.place ? { name: cleanTaskPlaceName(p.place.name) || null, lat: p.place.lat, lng: p.place.lng, check_it_here: mapLink(p.place.lat, p.place.lng) } : null,
+    place: place ? { name: cleanTaskPlaceName(place.name) || null, lat: place.lat, lng: place.lng, found_by: place.found_by, check_it_here: mapLink(place.lat, place.lng) } : null,
     tells: [
       'Nobody is told when the task is given: the New task window sends no push either. It shows on their Checklist and their Dashboard at once.',
       ...(p.remind_at ? [`A reminder goes at ${p.remind_at} on the day${send.row.remind_day_before ? ' and the day before' : ''}${send.row.reminder_scope === 'today_and_overdue' ? ', and every day after until it is done' : ''}, to whoever has push on.`] : []),
@@ -415,10 +417,11 @@ export function taskDryRun(p: TaskPayload, world: TaskWorld, me: { userId: strin
       ...(draft.notifyCreatorOnComplete ? ['You are told when it is done.'] : []),
     ],
     does_not: ['put a photo of the spot on the task', 'tie the task to a job (the window\'s job bar)', 'put a painted map on the task'],
-    ...(p.place ? { stamped_at_apply: ['place_set_at'] } : {}),
+    after: 'plan_task_place moves or takes off the place of a task already given.',
+    ...(place ? { stamped_at_apply: ['place_set_at'] } : {}),
     ...(clash.length ? { already_given: clash.map((a) => ({ id: a.id, given_at: a.created_at })) } : {}),
   }
-  return { ok: true, reply, people, tell }
+  return { ok: true, reply, people, tell, place }
 }
 
 /** The rows an apply writes after the task itself, from the window's own kernels. */
@@ -542,15 +545,9 @@ const placeOut = (place: TaskPlace | null, names: Map<string, string>, from: 'ta
  * with each one's percent, and the newest lines of their thread and their photos. Read as you, under RLS.
  */
 export async function getTask(reader: Reader, ref: string): Promise<Json> {
-  const want = ref.trim()
-  if (!want) return { refused: 'get_task needs task — a task id (find_task gives one), or words that find one task.' }
-  let id = UUID_RE.test(want) ? want.toLowerCase() : ''
-  if (!id) {
-    const found = await reader.rows('checklist_items', { select: 'id,title,start_date', filters: [{ column: 'title', op: 'ilike', value: likeTerm(want) }], order: [{ column: 'created_at', ascending: false }], limit: FIND_LIMIT })
-    if (found.length === 0) return { refused: `No task matches "${want}".` }
-    if (found.length > 1) return { refused: `"${want}" matches ${found.length === FIND_LIMIT ? 'twenty or more' : found.length} tasks — pass the id of one (find_task lists them): ${found.slice(0, 6).map((r) => `${taskTitlePlain(str(r.title)).slice(0, 50)}, ${str(r.start_date)} (${str(r.id)})`).join('; ')}` }
-    id = str(found[0]!.id)
-  }
+  const found = await resolveTaskRef(reader, ref, 'get_task')
+  if ('refused' in found) return found
+  const id = found.id
   const item = (await reader.rows('checklist_items', { select: ITEM_SELECT, filters: by('id', id), limit: 1 }))[0]
   if (!item) return { refused: `No task ${id} — it does not exist, or RLS hides it from you.` }
   const [assignees, lines, days] = await Promise.all([
