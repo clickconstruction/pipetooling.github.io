@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
-import { openSupplyBook, summarizeSupplyHouseBalances, supplyBookTotal, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
+import { supplyBookTotal, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
 import { SupplyHousePhoneScreen } from './materials/SupplyHousePhoneScreen'
 import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
@@ -9,12 +9,12 @@ import type { PaperRow } from '../lib/materials/lines/paperRows'
 import { PaperLookModal } from './materials/PaperLookModal'
 import { BillLinesHeld } from './materials/BillLinesHeld'
 import { supabaseHeldBillsIo, type HeldBillsIo } from '../lib/materials/lines/heldBillsIo'
-import { billsToRecordWords} from '../lib/materials/bills/billWords'
+import { billsToRecordWords } from '../lib/materials/bills/billWords'
 import { useAuth } from '../hooks/useAuth'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatCurrency } from '../lib/format'
-import { effectiveJobLedgerNumber} from '../lib/ledgerDisplayPrefixes'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
 import {
   AGING_BUCKETS,
@@ -42,16 +42,11 @@ import { SUPPLY_MOVE_ASK_AGE, ageState } from '../lib/ageState'
 import { SupplyHouseDirectory } from './materials/SupplyHouseDirectory'
 import { useSupplyHouseEditor } from './materials/useSupplyHouseEditor'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
-import type { Database } from '../types/database'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import {
   groupAllocationsByInvoice,
-  poLedgerCodes,
-  poLedgerEntriesFromRows,
   creditPairingLine,
-  type PoGeneratorLedgerRow,
-  type PoLedgerEntriesByCode,
 } from '../lib/materials/supplyHouseInvoiceForm'
 import { ariaSortFor, nextSupplyHouseSummarySort, parseSupplyHouseSummarySort, serializeSupplyHouseSummarySort, sortSupplyHouseSummary, type SupplyHouseSummarySort, type SupplyHouseSummarySortKey } from '../lib/materials/supplyHouseSummarySort'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
@@ -65,9 +60,8 @@ import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMet
 import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
-import { billDateWords, dueGroupKey } from '../lib/materials/supplyBillGroups'
+import { billDateWords } from '../lib/materials/supplyBillGroups'
 import { removedLately } from '../lib/materials/payments/supplyPaymentMove'
-import { interestByHouse } from '../lib/materials/payments/supplyInterest'
 import { supabaseSupplyFinishIo } from '../lib/materials/payments/supplyPaymentsFinishIo'
 import { SupplyPaymentsToFinish } from './materials/SupplyPaymentsToFinish'
 import { SupplyPaymentHowEditor } from './materials/SupplyPaymentHowEditor'
@@ -79,56 +73,16 @@ import type { SupplyPayChip } from '../lib/materials/payments/supplyPayment'
 import { SupplyHouseBillsCard } from './materials/SupplyHouseBillsCard'
 import { houseOnAccountTotal, jobsLedgerNames, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds, type JobsLedgerNameRow } from '../lib/materials/supplyHouseBillRows'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
-import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
+import { supabaseSupplyPaymentsIo } from '../lib/materials/payments/supplyPaymentsIo'
 import { billPaidBy, lastMethodUsed } from '../lib/materials/payments/supplyPayment'
 import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
 import { EmptyState } from './EmptyState'
 import { SupplyHouseInvoiceFormModal } from './materials/SupplyHouseInvoiceFormModal'
-import { useSupplyHouseInvoiceForm, type SupplyHouse, type SupplyHouseInvoice, type SupplyHouseInvoiceWithAllocations, type SupplyHousesTabRole } from './materials/useSupplyHouseInvoiceForm'
+import { useSupplyHouseAccountsPayable, type AgingInvoiceRow, type InvoiceJobAllocation } from './materials/useSupplyHouseAccountsPayable'
+import { useSupplyHouseInvoiceForm, type SupplyHouse, type SupplyHouseInvoice, type SupplyHousesTabRole } from './materials/useSupplyHouseInvoiceForm'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
 
-type InvoiceJobAllocation = { job_id: string; pct: number }
-type MaterialPart = Database['public']['Tables']['material_parts']['Row']
-type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
-type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
 type UserRole = SupplyHousesTabRole
-
-type POItemWithDetails = PurchaseOrderItem & {
-  part: MaterialPart
-  supply_house?: SupplyHouse
-  source_template?: { id: string; name: string } | null
-}
-type PurchaseOrderWithItems = PurchaseOrder & { items: POItemWithDetails[] }
-
-type SupplyHouseSummaryRow = {
-  supply_house_id: string
-  name: string
-  outstanding: number
-  monthlyPaymentDay: number | null
-  lastInvoiceUpdatedAt: string | null
-  lastInvoicePaidAt: string | null
-}
-
-/**
- * The aging fetch's rows (v2.5673): enough to draw the matrix AND to list a cell's invoices
- * in the drill-down modal, still one slim select — never the whole table row.
- */
-type AgingInvoiceRow = {
-  id: string
-  supply_house_id: string
-  invoice_number: string
-  purchase_order_number: string | null
-  invoice_date: string
-  amount: number
-  /** The bill's own amount, when a payment has taken part of it and `amount` is what is left. */
-  billed?: number
-  /** Interest or a late fee: it is on no job by rule, so the row offers no Pick a job. */
-  is_interest?: boolean | null
-  due_date: string | null
-  on_job_account: boolean | null
-  link: string | null
-  credits_invoice_id: string | null
-}
 
 /** An open (unconfirmed) job-account move ask (PR 3) — the follow-up the office owes. */
 type MoveAskRow = MoveAsk
@@ -210,16 +164,39 @@ export function SupplyHousesTab({
   const { showToast } = useToastContext()
   const myRole = myRoleProp ?? (authRole as UserRole | null) ?? null
 
-  const [supplyHousesInternal, setSupplyHousesState] = useState<SupplyHouse[]>(supplyHousesProp ?? [])
-  const supplyHousesList = supplyHousesProp ?? supplyHousesInternal
 
   const [error, setError] = useState<string | null>(null)
   /** Bumped after every house save so the Directory pane refetches reps and request history. */
   const [directoryReloadKey, setDirectoryReloadKey] = useState(0)
 
-  const [supplyHouseSummary, setSupplyHouseSummary] = useState<SupplyHouseSummaryRow[]>([])
-  const [supplyHouseSummaryLoading, setSupplyHouseSummaryLoading] = useState(false)
-  const [agingUnpaidInvoices, setAgingUnpaidInvoices] = useState<AgingInvoiceRow[]>([])
+  // The data: the house list, the book and the open house, with their loaders. One engine for both mounts.
+  const {
+    supplyHousesList,
+    supplyHouseSummary,
+    supplyHouseSummaryLoading,
+    agingUnpaidInvoices,
+    setAgingUnpaidInvoices,
+    agingBookLoaded,
+    selectedSupplyHouseForDetail,
+    setSelectedSupplyHouseForDetail,
+    supplyHouseInvoices,
+    setSupplyHouseInvoices,
+    supplyHousePOs,
+    poGeneratorEntriesForSelectedHouse,
+    setPoGeneratorEntriesForSelectedHouse,
+    poGeneratorCodesForSelectedHouse,
+    supplyHouseDetailLoading,
+    supplyHouseJobDetailsMap,
+    housePayments,
+    setHousePayments,
+    interestYearWords,
+    paidThisVisit,
+    setPaidThisVisit,
+    loadSupplyHouses,
+    loadSupplyHouseSummary,
+    loadSupplyHouseDetail,
+    loadHousePayments,
+  } = useSupplyHouseAccountsPayable({ supplyHousesProp, onSupplyHousesChange, autoOpenHouseId, onAutoOpenHouseHandled, setError, loadPapersFor })
   /** The open aging-cell drill-down (v2.5673): which cell's invoices the modal lists.
    *  'movable' (PR 3) is the worked list — every still-current charge not on a job account. */
   const [agingCellModal, setAgingCellModal] = useState<{ houseId: string | null; cell: AgingCellKey | 'movable' } | null>(null)
@@ -264,18 +241,10 @@ export function SupplyHousesTab({
   }>({ allocations: {}, asks: {}, notNeeded: new Set(), loaded: false })
   /** Which unpaid book (by identity) the move data above was read for, and whether the book itself has loaded once — the worked-list door waits on both. */
   const [agingMoveDataBook, setAgingMoveDataBook] = useState<AgingInvoiceRow[] | null>(null)
-  const [agingBookLoaded, setAgingBookLoaded] = useState(false)
   const [agingMoveModalFor, setAgingMoveModalFor] = useState<string | null>(null)
   const [agingMoveAttest, setAgingMoveAttest] = useState(false)
   const [agingMoveBusy, setAgingMoveBusy] = useState<null | 'send' | 'move' | string>(null)
   const [agingMoveError, setAgingMoveError] = useState<string | null>(null)
-  const [selectedSupplyHouseForDetail, setSelectedSupplyHouseForDetail] = useState<SupplyHouse | null>(null)
-  const [supplyHouseInvoices, setSupplyHouseInvoices] = useState<SupplyHouseInvoiceWithAllocations[]>([])
-  const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrderWithItems[]>([])
-  /** Ledger po_code values visible for this supply house (rows for this house + rows with no supply house); null if fetch failed (no warning icons). */
-  /** This house's PO Generator rows by code (plus the house-less ones), for the invoice form's PO check and its card (v2.3599). */
-  const [poGeneratorEntriesForSelectedHouse, setPoGeneratorEntriesForSelectedHouse] = useState<PoLedgerEntriesByCode | null>(null)
-  const poGeneratorCodesForSelectedHouse = useMemo(() => poLedgerCodes(poGeneratorEntriesForSelectedHouse), [poGeneratorEntriesForSelectedHouse])
   /**
    * Supply house bill lines (punch list #298 PR 1b, v2.6819): the paper read from each bill's PDF, by invoice id, for
    * the row's Lines cell; the Look window beside its paper. A bill saved from a fill writes its paper at Save.
@@ -313,17 +282,10 @@ export function SupplyHousesTab({
     if (!paper) return
     setPaperLook({ paper, invoice: inv, bytes: paper.filePath ? await paperBytesOf(paper.filePath) : null })
   }
-  /** `&due=<YYYY-MM-DD>` beside `house`: the Bridge's press names the day its bills fall due, and the card lands on that group. */
-  const pendingDueRef = useRef<string | null>(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('due'))
-  const [supplyHouseDetailLoading, setSupplyHouseDetailLoading] = useState(false)
-  const [supplyHouseJobDetailsMap, setSupplyHouseJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string }>>({})
   /** Record a payment (2026-11-16): the window that took Apply Payment's place, and the open house's payments. */
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false)
-  const [housePayments, setHousePayments] = useState<HousePayments>({ payments: [], lines: [] })
   /** The payment a paid row opened, by id. */
   const [paymentViewId, setPaymentViewId] = useState<string | null>(null)
-  /** `Interest and late fees in 2026: $61.20 · …`, under the Accounts payable total; empty in a year with none. */
-  const [interestYearWords, setInterestYearWords] = useState('')
   /** The finish-later list under Accounts payable: opened by the Needs You door, and read again when a payment changes. */
   const [finishListOpen, setFinishListOpen] = useState(false)
   const [finishReloadKey, setFinishReloadKey] = useState(0)
@@ -348,7 +310,6 @@ export function SupplyHousesTab({
   useEffect(() => writeRememberedToggle('job-accounts-open', jobAccountsOpen), [jobAccountsOpen])
   /** The bill whose Mark paid is saving, and the bills marked paid on this visit, which stay where they were. */
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null)
-  const [paidThisVisit, setPaidThisVisit] = useState<ReadonlySet<string>>(() => new Set())
   const [showLastPayment, setShowLastPayment] = useState(() => readRememberedToggle('show-last-payment', false))
   // v2.3604: the summary table's sort — every header a button, the pick remembered on the device.
   const [summarySort, setSummarySort] = useState<SupplyHouseSummarySort>(() => {
@@ -410,24 +371,6 @@ export function SupplyHousesTab({
 
   const serviceTypeId = selectedServiceTypeIdProp ?? firstServiceTypeId
 
-  async function loadSupplyHousesInternal() {
-    const { data, error: err } = await supabase.from('supply_houses').select('*').order('name')
-    if (err) {
-      const fallback = await supabase.from('supply_houses').select('id, name, phone, address, notes, website_url, created_at, updated_at').order('name')
-      if (fallback.error) setError(`Failed to load supply houses: ${err.message}`)
-      else setSupplyHousesState((fallback.data ?? []).map((h) => ({ ...h, monthly_payment_day: null })) as SupplyHouse[])
-    } else {
-      setSupplyHousesState((data as SupplyHouse[]) ?? [])
-    }
-  }
-
-  async function loadSupplyHouses() {
-    if (supplyHousesProp) {
-      await onSupplyHousesChange?.()
-    } else {
-      await loadSupplyHousesInternal()
-    }
-  }
 
   async function loadFirstServiceType() {
     const { data } = await supabase.from('service_types').select('id').eq('billing_only', false).order('sequence_order', { ascending: true }).limit(1)
@@ -435,143 +378,11 @@ export function SupplyHousesTab({
     setFirstServiceTypeId(first?.id ?? null)
   }
 
-  async function loadSupplyHouseSummary() {
-    setSupplyHouseSummaryLoading(true)
-    let housesList: { id: string; name: string; monthly_payment_day: number | null }[]
-    const housesRes = await supabase.from('supply_houses').select('id, name, monthly_payment_day').order('name')
-    if (housesRes.error) {
-      const fallbackRes = await supabase.from('supply_houses').select('id, name').order('name')
-      const fallback = (fallbackRes.data ?? []) as { id: string; name: string }[]
-      housesList = fallback.map((h) => ({ ...h, monthly_payment_day: null }))
-    } else {
-      housesList = (housesRes.data ?? []) as { id: string; name: string; monthly_payment_day: number | null }[]
-    }
-    type SummaryInvoice = AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null; amount_paid: number | null; is_interest?: boolean | null }
-    const summaryColumns = 'id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, amount_paid, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id'
-    // is_interest comes with its own migration (20261117020000). Until that is pushed the read is refused for the
-    // column, so it is made again without it: the summary must never go empty over a column that only adds a line.
-    let invoicesRes = await supabase.from('supply_house_invoices').select(`${summaryColumns}, is_interest` as '*')
-    if (invoicesRes.error) invoicesRes = await supabase.from('supply_house_invoices').select(summaryColumns as '*')
-    const invoices = (invoicesRes.data ?? []) as unknown as SummaryInvoice[]
-    // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole, here
-    // or in the aging table. `billed` keeps the bill's own amount for the row that says so.
-    const { book: invoicesList, unpaid } = openSupplyBook(invoices)
-    // What paying late cost this year, by house: every interest bill billed in it, paid or not.
-    setInterestYearWords(interestByHouse(invoices, housesList, todayYmdInAppTz().slice(0, 4)).words)
-    setAgingUnpaidInvoices(unpaid)
-    setAgingBookLoaded(true)
-    // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
-    const rows: SupplyHouseSummaryRow[] = summarizeSupplyHouseBalances(housesList, invoicesList)
-    setSupplyHouseSummary(rows)
-    setSupplyHouseSummaryLoading(false)
-  }
-
-  async function loadSupplyHouseDetail(sh: SupplyHouse): Promise<SupplyHouseInvoiceWithAllocations[]> {
-    setSupplyHouseDetailLoading(true)
-    setPaidThisVisit(new Set())
-    setHousePayments({ payments: [], lines: [] })
-    setPoGeneratorEntriesForSelectedHouse(null)
-    const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
-    const shData = shRes.error
-      ? (await supabase.from('supply_houses').select('id, name, phone, address, notes, website_url, created_at, updated_at').eq('id', sh.id).single()).data
-      : shRes.data
-    setSelectedSupplyHouseForDetail((shData as SupplyHouse) ?? sh)
-    const [invRes, poRes, allocRes, genRes] = await Promise.all([
-      supabase.from('supply_house_invoices').select('*').eq('supply_house_id', sh.id).order('invoice_date', { ascending: false }),
-      supabase.from('purchase_orders').select('*').eq('supply_house_id', sh.id).order('created_at', { ascending: false }),
-      supabase.from('supply_house_invoice_job_allocations').select('invoice_id, job_id, pct'),
-      supabase
-        .from('material_po_generator_entries')
-        .select(
-          `po_code, notes, created_at, job_ledger_id,
-          jobs_ledger(hcp_number, click_number, job_name),
-          for_user:users!material_po_generator_entries_for_user_id_fkey(name, email),
-          created_by_user:users!material_po_generator_entries_created_by_fkey(name, email)`,
-        )
-        .or(`supply_house_id.eq.${sh.id},supply_house_id.is.null`),
-    ])
-    const invoices = (invRes.data as SupplyHouseInvoice[]) ?? []
-    const allocations = (allocRes.data as { invoice_id: string; job_id: string; pct: number }[]) ?? []
-    const byInvoice = groupAllocationsByInvoice(allocations)
-    const invoicesWithAllocations: SupplyHouseInvoiceWithAllocations[] = invoices.map((inv) => ({
-      ...inv,
-      job_allocations: byInvoice[inv.id] ?? [],
-    }))
-    setSupplyHouseInvoices(invoicesWithAllocations)
-    void loadPapersFor(invoicesWithAllocations)
-    loadHousePayments(sh.id)
-    const jobIds = [...new Set(allocations.map((a) => a.job_id))]
-    if (jobIds.length > 0) {
-      supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
-        setSupplyHouseJobDetailsMap(jobsLedgerNames((data ?? []) as JobsLedgerNameRow[]))
-      })
-    } else {
-      setSupplyHouseJobDetailsMap({})
-    }
-    const pos = (poRes.data as PurchaseOrder[]) ?? []
-    const posWithItems: PurchaseOrderWithItems[] = await Promise.all(
-      pos.map(async (po) => {
-        const { data: itemsData } = await supabase
-          .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-          .eq('purchase_order_id', po.id)
-          .order('sequence_order', { ascending: true })
-        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-        const itemsWithDetails: POItemWithDetails[] = items.map((item) => ({
-          ...item,
-          part: item.material_parts,
-          supply_house: item.supply_houses ?? undefined,
-          source_template: item.source_template ?? null,
-        }))
-        return { ...po, items: itemsWithDetails }
-      })
-    )
-    setSupplyHousePOs(posWithItems)
-    if (genRes.error) {
-      setPoGeneratorEntriesForSelectedHouse(null)
-    } else {
-      setPoGeneratorEntriesForSelectedHouse(poLedgerEntriesFromRows((genRes.data ?? []) as unknown as PoGeneratorLedgerRow[]))
-    }
-    setSupplyHouseDetailLoading(false)
-    return invoicesWithAllocations
-  }
 
   useEffect(() => {
     if (!selectedServiceTypeIdProp) loadFirstServiceType()
   }, [selectedServiceTypeIdProp])
 
-  useEffect(() => {
-    loadSupplyHouseSummary()
-    if (!supplyHousesProp) loadSupplyHousesInternal()
-  }, [])
-
-  useEffect(() => {
-    if (supplyHousesProp) setSupplyHousesState(supplyHousesProp)
-  }, [supplyHousesProp])
-
-  // Held for suppliers → "Open house": open the requested house's detail once the list has it.
-  useEffect(() => {
-    if (!autoOpenHouseId) return
-    const sh = supplyHousesList.find((s: SupplyHouse) => s.id === autoOpenHouseId)
-    if (!sh) return
-    // The house's card opens in the list under the aging table, below the fold on most screens. A link that names a
-    // house should land on it, so the row is brought up once its card has read.
-    const houseId = sh.id
-    void loadSupplyHouseDetail(sh).then(() => {
-      const due = pendingDueRef.current
-      pendingDueRef.current = null
-      const target = (): Element | null => (due ? document.querySelector(`[data-due-group="${dueGroupKey(due, todayYmdInAppTz())}"]`) : null) ?? document.querySelector(`[data-supply-house-row="${houseId}"]`)
-      requestAnimationFrame(() => target()?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
-      // The rows under the card settle a moment after it reads (the bills' line counts arrive), which moves the
-      // place. One more look, and a second scroll only when the target has drifted well off the top.
-      window.setTimeout(() => {
-        const el = target()
-        if (el && Math.abs(el.getBoundingClientRect().top) > 160) el.scrollIntoView({ block: 'start', behavior: 'smooth' })
-      }, 1200)
-    })
-    onAutoOpenHouseHandled?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoOpenHouseId, supplyHousesList])
 
   // The Add / Edit invoice form's engine: its fields, the bill reader, and open, close, save and delete.
   const invoiceForm = useSupplyHouseInvoiceForm({ myRole, selectedSupplyHouseForDetail, supplyHouseInvoices, poGeneratorEntriesForSelectedHouse, housePayments, supplyHouseSummary, supplyHousesList, autoOpenHouseId, openBill, onOpenBillHandled, agingCellFormFocusRef, paperIo, loadSupplyHouseDetail, loadSupplyHouseSummary, setError, setLinesRefresh, agingCellModal, setAgingCellJobsRefresh })
@@ -867,13 +678,6 @@ export function SupplyHousesTab({
     setRecordPaymentOpen(true)
   }
 
-  /** The open house's payments, for what each paid row names. A read that fails leaves the rows as they always read. */
-  function loadHousePayments(houseId: string) {
-    supabaseSupplyPaymentsIo
-      .loadHouse(houseId)
-      .then(setHousePayments)
-      .catch(() => setHousePayments({ payments: [], lines: [] }))
-  }
 
   /**
    * After a payment is recorded, moved, removed or put back: the house's bills and payments are read again where
