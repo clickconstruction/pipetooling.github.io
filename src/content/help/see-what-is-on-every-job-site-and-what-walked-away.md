@@ -91,6 +91,8 @@ Press **Print the material location report** at the top to print the site. The [
 
 ## Read the row
 
+The job's number sits at the top of the page, before its name. Press the number to open the job window.
+
 Under the job's name one row reads the material's path left to right. It reads {{chip:blue|1,250 came in}} → {{chip:green|1,105 on site}} → {{chip:gray|120 used}} → {{chip:yellow|25 missing}}. Each figure is in its own colour. An amber badge counts what waits for a hand. A red badge is the money that walked away this week. Press a figure to open its section.
 
 The page reads the boxes again by itself. That happens when you come back to it, and every few minutes while it stays open. A crew's press shows without a reload.

@@ -38,7 +38,7 @@ import { deliveryAgainWords, deliveryOutcomeWords, deliveryPartWords, notReadHea
 import { countedLabel } from '../../lib/batchWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
-import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
+import { onSiteJobHead, onSiteJobWords } from '../../lib/materials/onSiteJobWords'
 import { DESK_PICK_PLACEHOLDER, deskPickOptions } from '../../lib/materials/deskJobPick'
 import { SearchableSelect } from '../SearchableSelect'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
@@ -95,6 +95,8 @@ const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
 /** A quiet press (v2.7305): a line of words under a list, for a rare act — the whole-job move. Dead, it keeps the muted colour and loses its underline. */
+/** The job's number in the page's head, the press that opens the job window: the head's own type, with the dotted line a box's name wears. */
+const headPress: CSSProperties = { font: 'inherit', color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }
 const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '0.2em', textAlign: 'left' }
 const quietPressDead: CSSProperties = { ...quietPress, color: 'var(--text-muted)', cursor: 'default', textDecoration: 'none' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
@@ -701,18 +703,22 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const missingRows = diffs.filter((d) => d.at >= since && d.diff !== 0)
   const cannotRows = movements.filter((m) => m.reason === 'cannot_find' && m.at >= since)
 
+  const head = onSiteJobHead(job, jobLabel(job, jobId))
+
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
-      {/* One line that flows: the back chevron, the job with its address (which drops under the name when there is no room), Open the job pinned right. */}
+      {/* One line that flows: the back chevron, then the job with its address (which drops under the name when there is no room). The job's number is the press that opens the job window (the owner's ask of 2026-11-17), where a button stood at the far end of the line. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
         <button type="button" aria-label="Back to the Materials desk" title="Materials desk" style={{ ...btn, width: 36, height: 36, minHeight: 36, padding: 0, justifyContent: 'center', flex: '0 0 auto', lineHeight: 1 }} onClick={onBack}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ display: 'block' }}><path d="M8 1.5 3.5 6 8 10.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
         <div style={{ flex: '1 1 auto', minWidth: 0, display: 'grid', gap: 1 }}>
-          <h2 style={{ margin: 0, fontSize: '1.1rem', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{jobLabel(job, jobId)}</h2>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+            <button type="button" data-testid="materials-job-open" title="Open the job" aria-label={head.openLabel} style={headPress} onClick={() => onOpenJobDetail(jobId)}>{head.press}</button>
+            {head.rest ? ` · ${head.rest}` : null}
+          </h2>
           {job?.job_address ? <span style={{ ...muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{job.job_address}</span> : null}
         </div>
-        <button type="button" style={{ ...btn, minHeight: 32, fontSize: '0.8rem', fontWeight: 500, flex: '0 0 auto', whiteSpace: 'nowrap' }} onClick={() => onOpenJobDetail(jobId)}>Open the job</button>
       </div>
       {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
       <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-office" idempotent />
