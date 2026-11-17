@@ -107,6 +107,16 @@ A tap on the picture opens the map too. You can add a place you find to it.
 
 A task that has a painted map wears a lit **🗺 Map** press. Press it and the map opens. Press **Draw a line** to trace a line with your finger. Press **＋ Place** to leave a point with a name, words and a photo. What you add is saved on the map for everyone who can open the task.
 
+## Draw a map for a task that has none
+
+A task with no map shows a plain **🗺 Map** press. Press it and pick how to start.
+
+- **Draw it by hand** lets you trace a line with your finger.
+- **Walk or drive it** paints the line as you go. It shows on a phone that can say where it is.
+- **Leave a point** lets you tap one spot and give it a name, words and a photo.
+
+Save in the map window. When you close it, the map goes on the task and the press lights up. The person who gave you the task can open the map. A map closed with nothing saved changes nothing.
+
 ## Add a place to a task that has none
 
 Some tasks come with no place. If you are standing at the task, you can add its place yourself.

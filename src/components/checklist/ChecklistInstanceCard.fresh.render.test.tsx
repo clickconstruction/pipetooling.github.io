@@ -12,7 +12,7 @@ import { settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 const openPaintedMap = vi.fn().mockReturnValue(true)
-vi.mock('../../lib/paintedMap/paintedMapDoor', () => ({ openPaintedMap: (...a: unknown[]) => openPaintedMap(...a) }))
+vi.mock('../../lib/paintedMap/paintedMapDoor', () => ({ openPaintedMap: (...a: unknown[]) => openPaintedMap(...a), paintPaintedMap: () => false }))
 vi.mock('../../hooks/useTaskMapWhole', () => ({ useTaskMapWhole: () => ({ kind: 'none' }) }))
 
 function ev(partial: Partial<ChecklistCardEvent> & { event_type: string; created_at: string }): ChecklistCardEvent {
@@ -200,5 +200,24 @@ describe('ChecklistInstanceCard, the fresh look', () => {
     renderFresh()
     await settle()
     expect(screen.queryByRole('button', { name: '🗺 Map' })).toBeNull()
+  })
+
+  it('a task with no map offers an unlit 🗺 Map press once the person may add one, done or not', async () => {
+    const { unmount } = renderFresh({ onMapAdded: vi.fn() })
+    await settle()
+    const map = screen.getByRole('button', { name: '🗺 Map' })
+    expect(map.hasAttribute('data-doer-map')).toBe(true)
+    expect(map.style.fontWeight).not.toBe('700')
+    unmount()
+    renderFresh({ onMapAdded: vi.fn(), instance: { id: 'inst-1', completed_at: new Date().toISOString(), reviewed_at: null } })
+    await settle()
+    expect(screen.getByRole('button', { name: '🗺 Map' })).toBeTruthy()
+  })
+
+  it('a task that has a map keeps its lit press, which opens the map and offers no new one', async () => {
+    renderFresh({ onMapAdded: vi.fn(), mapId: 'map-9' })
+    await settle()
+    const map = screen.getByRole('button', { name: '🗺 Map' })
+    expect(map.hasAttribute('data-fresh-map')).toBe(true)
   })
 })

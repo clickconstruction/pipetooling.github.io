@@ -1002,6 +1002,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
           openSignal={shownTask?.id === inst.id ? shownTask.n : 0}
           spotPhotoUrl={spotPhotos.urlFor(inst.checklist_item_id)}
           onPlaceAdded={() => void taskPlaces.reload()}
+          onMapAdded={() => void taskPlaces.reload()}
           onSetPercent={async (percent, words) => {
             if (!authUserId) return false
             const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })

@@ -17,6 +17,7 @@ import { ChecklistItemActivity, type ChecklistItemActivityItem } from './Checkli
 import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
 import { TaskPlaceAddHere } from './TaskPlaceAddHere'
 import { TaskMapBlock, TaskMapLine } from './TaskMapBlock'
+import { TaskDoerMapPress } from './TaskDoerMapPress'
 import { useTaskMapWhole } from '../../hooks/useTaskMapWhole'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -125,6 +126,11 @@ type ChecklistInstanceCardProps = {
    * an open card with no place then offers one quiet line. Called once the place has landed.
    */
   onPlaceAdded?: () => void
+  /**
+   * The fresh look, on a task with no map (punch list #369, step C2): the person doing the task may draw one or leave a
+   * point, and it goes on the task. Passed only where that is true. Called once the map is on the task.
+   */
+  onMapAdded?: () => void
 }
 
 /**
@@ -167,6 +173,7 @@ export function ChecklistInstanceCard({
   openSignal = 0,
   spotPhotoUrl = null,
   onPlaceAdded,
+  onMapAdded,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   useEffect(() => {
@@ -518,6 +525,8 @@ export function ChecklistInstanceCard({
     <button type="button" data-fresh-map onClick={() => void openPaintedMap(freshMapId)} style={{ ...TASK_PILL_STYLE, ...TASK_PILL_LIT_STYLE }} title={MAP_PRESS_TITLE}>
       {MAP_PRESS_LABEL}
     </button>
+  ) : onMapAdded ? (
+    <TaskDoerMapPress instanceId={instance.id} taskWords={titleText} place={place} onAdded={onMapAdded} />
   ) : null
   const freshBefore = !isCompleted && status.kind !== 'reopened' ? beforeStartWords(hearsName, asksForPhoto) : null
   const freshStatus =
