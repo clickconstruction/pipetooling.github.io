@@ -113,7 +113,8 @@ import {
   substituteCopyPlaceholders,
   type CopyTemplateKey,
 } from '../lib/prospects/prospectCopyTemplates'
-import { formatDateTime } from '../lib/prospects/prospectFormat'
+import { formatDateTime, formatInteractionType, formatTimerButtonName, formatTimerSeconds, formatWebsiteDisplay, getWebsiteHref } from '../lib/prospects/prospectFormat'
+import { PROSPECT_COLUMNS, type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
 
 const EnvelopeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
@@ -137,58 +138,6 @@ type ProspectsTopTab = 'customers' | 'team' | 'research'
 
 type ProspectsTab = 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity'
 
-type Prospect = {
-  id: string
-  master_user_id: string
-  created_by: string
-  warmth_count: number
-  prospect_fit_status: string | null
-  company_name: string | null
-  contact_name: string | null
-  phone_number: string | null
-  email: string | null
-  address: string | null
-  links_to_website: string | null
-  notes: string | null
-  last_contact: string | null
-  created_at: string | null
-  updated_at: string | null
-  /** v2.5559: customer · gc_lead · sub, and each kind's facts. */
-  kind: ProspectKind
-  source: string | null
-  trades: string[] | null
-  max_miles: number | null
-  lang: string | null
-  company_role: string | null
-  customer_id: string | null
-  converted_customer_id: string | null
-  converted_gc_company_id: string | null
-  /** v2.5601: the person we call, and whether we may text them. */
-  is_person: boolean
-  contact_title: string | null
-  contact_phone: string | null
-  ok_to_text: string | null
-  maps_url: string | null
-  license: string | null
-  also_reach: string | null
-  /** v2.5809: the office's priority on the Subs board, 1 Call first, null Normal, 3 Later. */
-  priority: number | null
-}
-
-/** Every column the deck reads (v2.5559 added the kind and its facts, v2.5809 the priority). */
-const PROSPECT_COLUMNS =
-  'id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at, kind, source, trades, max_miles, lang, company_role, customer_id, converted_customer_id, converted_gc_company_id, is_person, contact_title, contact_phone, ok_to_text, maps_url, license, also_reach, priority'
-
-type ProspectComment = {
-  id: string
-  prospect_id: string
-  created_by: string
-  created_at: string
-  comment_text: string
-  interaction_type: string
-  created_by_user?: { name: string | null; email: string | null } | null
-}
-
 const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'board', 'prospect-list', 'convert', 'activity']
 
 /** The needs panel's tones (v2.5782): the theme's text tokens, so dark mode lightens them. */
@@ -210,47 +159,6 @@ const tabStyle = (active: boolean) => ({
   padding: '0.5rem 0.6rem',
   fontSize: '0.9375rem',
 })
-
-function formatInteractionType(type: string): string {
-  switch (type) {
-    case 'answered': return 'Answered'
-    case 'didnt_answer': return "Didn't answer"
-    case 'no_longer_fit': return 'No longer a fit'
-    case 'user_comment': return 'Comment'
-    case 'converted': return 'Converted'
-    default: return type
-  }
-}
-
-function formatTimerButtonName(buttonName: string): string {
-  switch (buttonName) {
-    case 'no_longer_fit': return 'No Longer a Fit'
-    case 'next_prospect': return 'Next Prospect'
-    case 'cant_reach': return "Can't reach"
-    case 'converted': return 'Converted'
-    default: return buttonName
-  }
-}
-
-function formatTimerSeconds(seconds: number): string {
-  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
-}
-
-function formatWebsiteDisplay(url: string | null): string {
-  if (!url || !url.trim()) return '—'
-  let s = url.trim()
-  s = s.replace(/^https?:\/\//i, '')
-  s = s.replace(/^www\./i, '')
-  s = s.replace(/\/+$/, '')
-  return s || '—'
-}
-
-function getWebsiteHref(url: string | null): string {
-  if (!url || !url.trim()) return '#'
-  const s = url.trim()
-  if (/^https?:\/\//i.test(s)) return s
-  return 'https://' + s
-}
 
 
 /** The boxes a kind adds to New Prospect and Edit prospect (v2.5559): where we found them for every kind; a sub's trades, range and language; a GC lead's role. */
