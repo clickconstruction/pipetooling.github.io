@@ -1551,6 +1551,26 @@ Display-only — RLS and role permissions are unchanged.
 
 **See also** — **`RECENT_FEATURES.md`** **v2.1837**, fragment `v2.7050`, help guide `task-mode.md` (its old address `farm-mode` still opens it, `helpGuideFormerSlugs.ts`).
 
+### Tell the dev and Fix Mode (app-wide)
+**Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
+It is the guides' feedback box moved to every page: the same `help_feedback` table, the same row security and the same inbox.
+At a desk the wrench floats bottom left;
+on a phone it sits in the header beside Search, because Job Mode's bars own the bottom of a phone and toasts the top right.
+The box opens three **starts**, *I want…*, *This page is confusing because…* and *Something went wrong when I…*;
+the start is the note's `kind` (`want`, `confusing`, `broken`), and the last two may be sent with no words.
+**Goes with your note** lists everything a note carries before the press: the page, the open window, the role, the screen, the modes on, the version, the last error line shown and the calls the server refused.
+A note never carries a picture of the screen.
+A lost signal is never part of a note: the outbox keeps that press, so the no-connection line and a call with no answer are left out (`isLostSignalLine`).
+**Fix Mode** is the gear menu's switch for the wrench, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
+the phone dock's More sheet lists it with the other modes.
+**Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
+Each note there shows its kind, page and state, with **Open that page** and **Copy as a brief** (`noteBrief`: the note by role, never by name).
+Opens and sends are counted in `ui_nav_clicks` as `tell_the_dev_open` (target the door) and `tell_the_dev_sent` (target the kind).
+Kernels in **[`src/lib/tellTheDev/`](../src/lib/tellTheDev/)**;
+the wrench and its box in **[`TellTheDevRoot.tsx`](../src/components/tellTheDev/TellTheDevRoot.tsx)**.
+
+**See also** — fragments `v2.7650` and `v2.7658`, help guide `tell-the-dev-about-a-page.md`, `to-dos/tell-the-dev/`.
+
 ### User Review modal
 A global, full-screen modal (**[`UserReviewModal`](../src/components/UserReviewModal.tsx)** + **[`UserReviewModalContext`](../src/contexts/UserReviewModalContext.tsx)**) opened by clicking a person's **name** on the Dashboard's **`DashboardTeamActiveClockStrip`** (the "Currently In" / "Clocked in today" strip).
 It pairs a read-only **schedule view** with an optional **Mercury transaction summary** for the same date window, all keyed to one subject user.
