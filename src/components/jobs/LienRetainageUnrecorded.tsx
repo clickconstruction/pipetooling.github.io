@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
-import { loadRetainageUnrecorded, recordRetainageHeld } from '../../lib/ar/retainageHeldIo'
-import { retainageUnrecordedWords, type RetainageUnrecordedRow } from '../../lib/ar/retainageSuggested'
-import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { recordRetainageHeld } from '../../lib/ar/retainageHeldIo'
+import { retainageUnrecordedWhy, type RetainageUnrecordedRow } from '../../lib/ar/retainageSuggested'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -16,35 +15,42 @@ import { formatErrorMessage } from '../../utils/errorHandling'
  * answers that there is none. Each press writes the one column the lien details write, then the
  * desk reads again and the job takes its place under *Clock not started*. Nothing is drawn when
  * no job is in this state.
+ *
+ * The rows are the desk's own read (`useLienDeskData`, PR 2), the same ones To do's rows and the
+ * Board's count stand on; `focusJobId` is the job a To do row was pressed for.
  */
 
 const money = (n: number): string => `$${formatCurrency(n)}`
 
 const press: CSSProperties = { padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, border: '1px solid currentColor', background: 'none', color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
 
-export function LienRetainageUnrecorded({ office, onOpenLienContract, onRecorded }: { office: boolean; onOpenLienContract: (jobId: string) => void; onRecorded: () => void }) {
+export function LienRetainageUnrecorded({
+  rows,
+  failure,
+  office,
+  focusJobId,
+  onOpenLienContract,
+  onRecorded,
+}: {
+  rows: ReadonlyArray<RetainageUnrecordedRow>
+  /** Why the desk could not read them, in words; null when it could. */
+  failure?: string | null
+  office: boolean
+  /** The job a To do row opened the list for: its row is brought into view and ringed. */
+  focusJobId?: string | null
+  onOpenLienContract: (jobId: string) => void
+  onRecorded: () => void
+}) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
-  const [rows, setRows] = useState<RetainageUnrecordedRow[]>([])
-  const [failure, setFailure] = useState<string | null>(null)
   const [busyJobId, setBusyJobId] = useState<string | null>(null)
-  const [tick, setTick] = useState(0)
-  const seqRef = useRef(0)
+  // A job just answered leaves the list at once; the desk's next read drops it for good.
+  const [answered, setAnswered] = useState<ReadonlySet<string>>(() => new Set())
+  const focusRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    const seq = ++seqRef.current
-    void (async () => {
-      try {
-        const read = await loadRetainageUnrecorded()
-        if (seq !== seqRef.current) return
-        setRows(read)
-        setFailure(null)
-      } catch (e) {
-        if (seq !== seqRef.current) return
-        setFailure(formatErrorMessage(e, 'The check for retainage nobody recorded could not be read.'))
-      }
-    })()
-  }, [tick])
+    if (focusJobId && focusRef.current?.scrollIntoView) focusRef.current.scrollIntoView({ block: 'nearest' })
+  }, [focusJobId, rows])
 
   const record = useCallback(
     async (row: RetainageUnrecordedRow, amount: number) => {
@@ -68,8 +74,7 @@ export function LienRetainageUnrecorded({ office, onOpenLienContract, onRecorded
       try {
         await recordRetainageHeld(row.jobId, amount)
         showToast(amount > 0 ? `${money(amount)} of retainage recorded on job ${row.label}. Set the day our contract ended when the work is done.` : `Job ${row.label} recorded with no retainage.`, 'success')
-        setRows((prev) => prev.filter((r) => r.jobId !== row.jobId))
-        setTick((t) => t + 1)
+        setAnswered((prev) => new Set(prev).add(row.jobId))
         onRecorded()
       } catch (e) {
         showToast(formatErrorMessage(e, 'The retainage could not be recorded.'), 'error')
@@ -80,34 +85,43 @@ export function LienRetainageUnrecorded({ office, onOpenLienContract, onRecorded
     [confirmDialog, onRecorded, showToast],
   )
 
-  if (failure && rows.length === 0) {
+  const shown = rows.filter((r) => !answered.has(r.jobId))
+  if (failure && shown.length === 0) {
     return (
       <p data-testid="lien-retainage-unrecorded-failure" style={{ margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
         {failure}
       </p>
     )
   }
-  if (rows.length === 0) return null
+  if (shown.length === 0) return null
 
   return (
     <section data-testid="lien-retainage-unrecorded" aria-label="Retainage that looks held and is not on the job" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', padding: '0.55rem 0.75rem', display: 'grid', gap: '0.5rem' }}>
       <div style={{ fontSize: '0.8125rem' }}>
-        <strong>Looks held · not on the job · {rows.length}</strong>
+        <strong>Looks held · not on the job · {shown.length}</strong>
         <div style={{ fontSize: '0.75rem', marginTop: 2 }}>
-          The money or the notes on {rows.length === 1 ? 'this job say' : 'these jobs say'} the GC holds retainage. Nothing is recorded, so there is no § 53.057 clock and no monthly notice names it.
+          The money or the notes on {shown.length === 1 ? 'this job say' : 'these jobs say'} the GC holds retainage. Nothing is recorded, so there is no § 53.057 clock and no monthly notice names it.
         </div>
       </div>
-      {rows.map((row) => {
+      {shown.map((row) => {
         const busy = busyJobId === row.jobId
+        const focused = focusJobId === row.jobId
         return (
-          <div key={row.jobId} data-testid="lien-retainage-unrecorded-row" data-job-id={row.jobId} style={{ display: 'grid', gap: 4, padding: '0.4rem 0.5rem', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border)' }}>
+          <div
+            key={row.jobId}
+            ref={focused ? focusRef : undefined}
+            data-testid="lien-retainage-unrecorded-row"
+            data-job-id={row.jobId}
+            data-focused={focused ? 'yes' : 'no'}
+            style={{ display: 'grid', gap: 4, padding: '0.4rem 0.5rem', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border)', boxShadow: focused ? '0 0 0 2px var(--surface), 0 0 0 4px var(--text-link)' : 'none' }}
+          >
             <div style={{ fontSize: '0.8125rem', fontWeight: 600, overflowWrap: 'anywhere' }}>
               {row.label}
               {row.name ? ` · ${row.name}` : ''}
               {row.heldBy ? <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {row.heldBy}</span> : null}
             </div>
             <div data-testid="lien-retainage-unrecorded-why" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {retainageUnrecordedWords(row, { money, day: formatYmdMonthDay })}
+              {retainageUnrecordedWhy(row)}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', color: 'var(--text-link)' }}>
               {office && row.suggestion ? (

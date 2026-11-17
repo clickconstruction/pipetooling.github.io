@@ -43,8 +43,8 @@ describe('lienGateMarks', () => {
   it('three open gates read in slot order, the same words the row showed before', () => {
     const marks = lienGateMarks(affidavitGates(row({ job_id: 'c', has_owner: false, has_legal: false, noticed: false })), true)
     expect(marks.map((m) => m.state)).toEqual(['open', 'open', 'ok', 'open', 'ok'])
-    expect(lienGateMarksMissingWords(marks)).toBe('missing owner, legal, notice')
-    expect(marks[3]!.title).toBe('Missing notice')
+    expect(lienGateMarksMissingWords(marks)).toBe('missing owner, legal, a mailed notice')
+    expect(marks[3]!.title).toBe('Missing a mailed notice')
   })
 
   it("the GC's address and the homestead answer carry their own words", () => {
