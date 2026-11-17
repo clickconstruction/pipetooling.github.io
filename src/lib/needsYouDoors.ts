@@ -148,6 +148,8 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'> & Partial<Pick<Need
       return href('/materials?tab=job-accounts&filter=no_account')
     case 'job-account-window':
       return href('/materials?tab=supply-houses&list=movable')
+    case 'supply-payments-how':
+      return href('/materials?tab=supply-houses&list=finish')
     case 'vehicle-records-missing':
       return href('/people?tab=vehicles')
     case 'submittal-lead-time':

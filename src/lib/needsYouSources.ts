@@ -58,6 +58,8 @@ export type NeedsYouSource =
   | 'capacityUnder'
   | 'jobAccountGaps'
   | 'supplyMoveWindow'
+  // Supply house payments that still need how they were paid (v2.7469): the office's.
+  | 'supplyPaymentsToFinish'
   | 'vehicleRecordGaps'
   | 'priceMatrix'
   // The Permits skim (punch list #302): permits waiting on a keep or a pass, the researchers'.
@@ -122,6 +124,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'capacityUnder',
   'jobAccountGaps',
   'supplyMoveWindow',
+  'supplyPaymentsToFinish',
   'vehicleRecordGaps',
   'priceMatrix',
   'permitSkim',
@@ -205,6 +208,7 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'capacityUnder':
     case 'jobAccountGaps':
     case 'supplyMoveWindow':
+    case 'supplyPaymentsToFinish':
     case 'legalFirmActivity':
     case 'testReports':
     case 'bankReturned':
