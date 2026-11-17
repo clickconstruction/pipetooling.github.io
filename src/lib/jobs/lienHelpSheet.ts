@@ -86,7 +86,8 @@ export const LIEN_HELP_HOMESTEAD_ROW = 'The property record says this is a homes
 
 /** One thing the app checked on a paper: `ok` it stands, `ask` it wants a person's answer before the paper is signed. */
 export type LienHelpCheck = {
-  state: 'ok' | 'ask'
+  /** `ink`: nothing to ask, a thing for the pen (a notice whose signature did not print). */
+  state: 'ok' | 'ask' | 'ink'
   lead: string
   words: string
   /** An `ask` in one sentence, for the batch sheet's row, which has no room for `words`; absent, the row reads `words`. */
@@ -345,6 +346,23 @@ export const LIEN_HELP_STYLES = `
   .lien-help-flag { font-weight: 800; }
   .lien-help-guide { display: grid; grid-template-columns: 62% 1fr; gap: 10pt; align-items: start; }
   .lien-help-guide-paper { border: 1pt solid #111418; padding: 10pt; font-family: Georgia, 'Times New Roman', serif; font-size: 9pt; line-height: 1.4; }
+  .lien-help-facts-notice { grid-template-columns: 1.1fr 1.5fr 1.1fr 1.6fr; }
+  .lien-help-big { font-weight: 800; font-size: 15pt; line-height: 1.1; }
+  .lien-help-big small { font-size: 9pt; font-weight: 700; vertical-align: 4.5pt; margin-left: 0.5pt; }
+  .lien-help-left { margin-top: 2pt; font-weight: 700; font-size: 9.5pt; }
+  .lien-help-left-words { font-weight: 800; letter-spacing: 0.03em; }
+  .lien-help-urgent { background: #111418; color: #fff; padding: 1pt 4pt; }
+  .lien-help-ask-line { display: block; text-align: right; margin-top: 2pt; }
+  .lien-help-one { grid-template-columns: 1fr; }
+  .lien-help-envelope { border: 2pt solid #111418; padding: 5pt 8pt; break-inside: avoid; page-break-inside: avoid; }
+  .lien-help-envelope-name { font-size: 12.5pt; font-weight: 800; line-height: 1.2; }
+  .lien-help-envelope-address { font-size: 11.5pt; line-height: 1.25; }
+  .lien-help-envelope-match { margin-top: 4pt; font-size: 8.5pt; border-top: 1pt dashed #111418; padding-top: 3pt; }
+  .lien-help-steps ol { padding-left: 0; list-style: none; counter-reset: lien-help-step; }
+  .lien-help-steps li { counter-increment: lien-help-step; display: grid; grid-template-columns: 16pt 12pt 1fr; gap: 3pt; margin: 0 0 4pt; align-items: start; }
+  .lien-help-steps li::before { content: counter(lien-help-step); font-weight: 800; font-size: 11pt; text-align: right; }
+  .lien-help-steps .lien-help-tick { margin-top: 2pt; }
+  .lien-help-sub { display: block; font-size: 9pt; color: #333; margin-top: 1pt; }
   @media print { .lien-help { margin: 0 -0.35in; } }
 `
 
@@ -418,13 +436,14 @@ export function lienHelpPictureHtml(printedCounty: string): string {
   )
 }
 
-const MARK: Record<LienHelpCheck['state'], string> = { ok: '✓', ask: '!' }
+const MARK: Record<LienHelpCheck['state'], string> = { ok: '✓', ask: '!', ink: '✎' }
 
 /** The block of checks the app answered, then what is left to the reader; an *ask first* band between them when any check wants an answer. */
-const checksBlock = (title: string, checks: ReadonlyArray<LienHelpCheck>, ask = '', askFirst: string = LIEN_HELP_ASK_FIRST): string =>
+const checksBlock = (title: string, checks: ReadonlyArray<LienHelpCheck>, ask = '', askFirst: string = LIEN_HELP_ASK_FIRST, askOwnLine = false): string =>
   `<div class="lien-help-checks" data-lien-help-checks><h3>${esc(title)}</h3><ul>${checks.map((c) => `<li data-state="${c.state}"><span class="lien-help-mark">${MARK[c.state]}</span><span><strong>${esc(c.lead)}</strong> ${esc(c.words)}</span></li>`).join('')}</ul></div>` +
   (checks.some((c) => c.state === 'ask') ? `<div class="lien-help-ask" data-lien-help-ask><strong class="lien-help-ask-tag">ASK FIRST</strong> ${esc(askFirst)}</div>` : '') +
-  `<div class="lien-help-ask lien-help-yours"><strong class="lien-help-ask-tag">YOUR CHECK</strong> ${esc(LIEN_HELP_YOUR_CHECK)}${ask ? ` <strong data-lien-help-ask-who>${esc(ask)}</strong>` : ''}</div>`
+  // The notice's sheet puts who to ask on a line of its own, set to the right (the owner, 2026-11-16).
+  `<div class="lien-help-ask lien-help-yours"><strong class="lien-help-ask-tag">YOUR CHECK</strong> ${esc(LIEN_HELP_YOUR_CHECK)}${ask ? (askOwnLine ? `<strong class="lien-help-ask-line" data-lien-help-ask-who>${esc(ask)}</strong>` : ` <strong data-lien-help-ask-who>${esc(ask)}</strong>`) : ''}</div>`
 
 const party = (name: string, address: string): string => [name.trim(), address.trim()].filter(Boolean).map(esc).join('<br/>')
 
@@ -460,14 +479,26 @@ export function lienHelpCoverSheetHtml(p: LienHelpPaper, printedOn: string, extr
   )
 }
 
-/** The facts a notice's help sheet reads off the notice's own fields, so the sheet and the notice cannot disagree. */
+/** One envelope the notice's print puts behind its own divider, in print order: its number, whose copy it is, and where it goes. */
+export type LienHelpEnvelope = { n: number; who: string; name: string; address: string }
+
+/** An envelope the print holds back (no mailing address, nothing to claim), with the run's own reason. */
+export type LienHelpHeldEnvelope = { who: string; name: string; why: string }
+
+/** The facts a notice's help sheet reads off the notice's own fields and the print behind it, so the sheet and the pages cannot disagree. */
 export type LienHelpNotice = {
   jobLabel: string
+  /** `4127`, for the sheet's head. */
+  jobNumber: string
   propertyAddress: string
-  /** `$2,650.00`. */
+  /** `$2,650.00`, the claim the notice behind the sheet prints. */
   claim: string
   /** The last day to mail, in words; '' when the app has none for this job. */
   mailBy: string
+  /** The same day as `YYYY-MM-DD`, for the words under it; '' with none. */
+  mailByYmd: string
+  /** The day it printed, in the company's time zone, which the words under the day count from. */
+  printedYmd: string
   /** The mail-by day has gone by. */
   mailByPassed: boolean
   /** Who signs, as the notice names them. */
@@ -478,16 +509,72 @@ export type LienHelpNotice = {
   contractorAddress: string
   /** How many invoices print behind the notice. */
   invoices: number
+  /** The signature printed on the notice. False when it did not, and the sheet asks for ink. */
+  signed: boolean
+  /** The envelopes that print, each behind its divider, in print order. */
+  envelopes: ReadonlyArray<LienHelpEnvelope>
+  /** The envelopes held back, each with its reason. */
+  held: ReadonlyArray<LienHelpHeldEnvelope>
   /** Who to ask (`lienHelpAskWords`); '' when the app has neither. */
   ask?: string
 }
 
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const
+
+/** The mail-by day on the sheet: the day large, then its weekday beside how far off it is. */
+export type LienHelpMailByWords = {
+  /** `November 20`. */
+  monthDay: string
+  /** `Friday`. */
+  weekday: string
+  /** `4 days from now`, `MUST MAIL TOMORROW`, `MAIL BY END OF DAY`, `PASSED 2 DAYS AGO. ASK BEFORE YOU MAIL.` */
+  left: string
+  /** Today, tomorrow or gone by: the words print white on black. */
+  urgent: boolean
+}
+
+const ymdUtc = (ymd: string): number | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null
+}
+
+/**
+ * How far the last day to mail is from the day the sheet printed (the owner, 2026-11-16: *4 days from now*, *MUST MAIL
+ * TOMORROW*, *MAIL BY END OF DAY*). Both days are calendar days in the company's time zone, so the count is whole days.
+ * Null when either day is missing. Pure.
+ */
+export function lienHelpMailByWords(mailByYmd: string, printedYmd: string): LienHelpMailByWords | null {
+  const at = ymdUtc(mailByYmd)
+  const from = ymdUtc(printedYmd)
+  if (at === null || from === null) return null
+  const day = new Date(at)
+  const days = Math.round((at - from) / 86_400_000)
+  const left =
+    days < 0
+      ? `PASSED ${-days} ${days === -1 ? 'DAY' : 'DAYS'} AGO. ASK BEFORE YOU MAIL.`
+      : days === 0
+        ? 'MAIL BY END OF DAY'
+        : days === 1
+          ? 'MUST MAIL TOMORROW'
+          : `${days} days from now`
+  return { monthDay: `${MONTHS[day.getUTCMonth()]} ${day.getUTCDate()}`, weekday: WEEKDAYS[day.getUTCDay()]!, left, urgent: days <= 1 }
+}
+
+/** `$27,198.65` with the cents a size down (the owner, 2026-11-16), so the dollars read first. Any other shape prints as it came. */
+export function lienHelpMoneyHtml(money: string): string {
+  const m = /^(.*\d)(\.\d{2})$/.exec(money.trim())
+  return m ? `${esc(m[1]!)}<small>${esc(m[2]!)}</small>` : esc(money)
+}
+
 /**
  * What the app checked on one notice. A notice has no notary and no blank, so the things that go wrong are the ones the
- * app can see: an owner with no mailing address, a day to mail that has gone by, and whether an invoice rides behind it.
+ * app can see: an owner with no mailing address, a day to mail that is missing or has gone by, the claim the pages
+ * state, whether the signature printed, and the invoices behind it. A day that is fine lives in its own box, not here.
  */
-export function lienHelpNoticeChecks(n: Pick<LienHelpNotice, 'ownerName' | 'ownerAddress' | 'contractorName' | 'contractorAddress' | 'mailBy' | 'mailByPassed' | 'invoices'>): LienHelpCheck[] {
+export function lienHelpNoticeChecks(n: Pick<LienHelpNotice, 'ownerName' | 'ownerAddress' | 'contractorName' | 'contractorAddress' | 'mailBy' | 'mailByPassed' | 'invoices' | 'claim' | 'signed' | 'signer' | 'envelopes'>): LienHelpCheck[] {
   const checks: LienHelpCheck[] = []
+  const behind = n.envelopes.length > 1 ? 'behind each divider' : 'behind the divider'
   const owner = n.ownerName.trim()
   if (owner && n.ownerAddress.trim()) checks.push({ state: 'ok', lead: 'Owner.', words: `${owner}, with a mailing address.` })
   else checks.push({ state: 'ask', lead: 'Owner.', words: owner ? `${owner} has no mailing address in the app.` : 'The app has no owner for this property.' })
@@ -497,8 +584,15 @@ export function lienHelpNoticeChecks(n: Pick<LienHelpNotice, 'ownerName' | 'owne
   const day = n.mailBy.trim()
   if (!day) checks.push({ state: 'ask', lead: 'Mail by.', words: 'The app has no last day to mail for this job.' })
   else if (n.mailByPassed) checks.push({ state: 'ask', lead: 'Mail by.', words: `The last day to mail was ${day}. It has passed.` })
-  else checks.push({ state: 'ok', lead: 'Mail by.', words: `The last day to mail is ${day}.` })
-  checks.push({ state: 'ok', lead: 'Invoices.', words: n.invoices === 0 ? 'No invoice prints behind this notice.' : n.invoices === 1 ? '1 invoice prints behind this notice.' : `${n.invoices} invoices print behind this notice.` })
+  if (n.claim.trim()) checks.push({ state: 'ok', lead: 'Claim.', words: `The notice ${behind} claims ${n.claim.trim()}.` })
+  const signer = n.signer.trim()
+  checks.push(
+    n.signed
+      ? { state: 'ok', lead: 'Signature.', words: `${signer ? `${signer}’s signature` : 'The signature'} printed on the notice.` }
+      : { state: 'ink', lead: 'Signature.', words: `Not printed. The notice needs ${signer ? `${signer}’s` : 'the signer’s'} signature in ink.` },
+  )
+  const each = n.envelopes.length > 1 ? 'each notice' : 'the notice'
+  checks.push({ state: 'ok', lead: 'Invoices.', words: n.invoices === 0 ? `No invoice prints behind ${each}.` : n.invoices === 1 ? `1 invoice prints behind ${each}.` : `${n.invoices} invoices print behind ${each}.` })
   return checks
 }
 
@@ -518,50 +612,94 @@ export function lienHelpNoticeMailBy(months: ReadonlyArray<string>, propertyKind
 /** Above the reader's check when the app has a question about this notice. */
 export const LIEN_HELP_NOTICE_ASK_FIRST = 'Do not mail this one yet. Ask about the line marked with an exclamation mark.'
 
+/** Under each envelope's box: where its divider is and what to match. */
+export const LIEN_HELP_ENVELOPE_MATCH = 'Its divider is in front of its pages. The divider’s face must match this box.'
+
+/** One step on the sheet: a bold line, and the line under it that says how or why ('' for none). HTML, escaped. */
+export type LienHelpStep = { lead: string; sub: string }
+
 /**
- * The steps from the printer to the mail and back to the app. The Lien window prints one notice, so the sheet says to
- * make the second set. The numbers from the two certified labels have a line each, since the app asks for both.
+ * The steps from the printer to the mail, about the pages behind the sheet (the owner, 2026-11-16): each envelope's
+ * pages come off the printer behind their own divider, so the first step matches each divider to its box, the ink step
+ * shows only when the signature did not print, and the recording step is the photo of each certified receipt.
  */
-export function lienHelpNoticeSteps(n: Pick<LienHelpNotice, 'signer' | 'mailBy' | 'mailByPassed'>, hasCode = false): string[] {
+export function lienHelpNoticeSteps(n: Pick<LienHelpNotice, 'signer' | 'mailBy' | 'mailByYmd' | 'printedYmd' | 'mailByPassed' | 'signed' | 'envelopes'>, hasCode = false): LienHelpStep[] {
+  const many = n.envelopes.length > 1
   const signer = n.signer.trim()
-  const day = n.mailBy.trim()
-  return [
-    'Copy every page behind this sheet. One set is for the owner. One set is for the original contractor.',
-    `${signer ? esc(signer) : 'The signer'} signs the notice in each set, in ink.`,
-    'Put each set in its own envelope. The two addresses are on this sheet.',
-    `Send both by certified mail with a return receipt. ${day && !n.mailByPassed ? `Mail by <strong>${esc(day)}</strong>.` : 'The app shows the last day to mail.'}`,
-    `Write the number from each certified label. Owner ${WRITE} Contractor ${WRITE}`,
-    hasCode
-      ? 'The same day, scan the code with a phone. On a computer, open the job’s Lien window on the <strong style="white-space:nowrap">§ 53.056 notice</strong> tab.'
-      : 'The same day, open the job’s Lien window on the <strong style="white-space:nowrap">§ 53.056 notice</strong> tab.',
-    'Press <strong>Save &amp; record sends…</strong> and type both numbers. Then press <strong>Record both sends</strong>.',
-    'Keep the certified labels and the return receipts with the job.',
+  const words = lienHelpMailByWords(n.mailByYmd, n.printedYmd)
+  const day = words ? `${words.weekday}, ${words.monthDay}` : n.mailBy.trim()
+  const steps: LienHelpStep[] = [
+    { lead: many ? 'Match each divider to its box above.' : 'Match the divider to its box above.', sub: 'Same name, same address. If one differs, stop and ask.' },
   ]
+  if (!n.signed) steps.push({ lead: `${signer ? esc(signer) : 'The signer'} signs the notice behind ${many ? 'each divider' : 'the divider'}, in ink.`, sub: 'The app could not print a signature on this notice.' })
+  steps.push(
+    { lead: many ? 'Put the pages behind each divider in their own envelope.' : 'Put the pages behind the divider in the envelope.', sub: 'Pull the divider out before you seal. It stays on the desk.' },
+    { lead: `Send ${many ? 'both' : 'it'} by certified mail with a return receipt. ${day && !n.mailByPassed ? `Mail by <strong>${esc(day)}</strong>.` : 'The app shows the last day to mail.'}`, sub: '' },
+    {
+      lead: hasCode ? `Record ${many ? 'both' : 'it'} the same day. Scan the code with a phone.` : `Record ${many ? 'both' : 'it'} the same day. Open the job’s Lien window on the <strong style="white-space:nowrap">§ 53.056 notice</strong> tab.`,
+      sub: `Take a photo of ${many ? 'each' : 'the'} certified receipt. The app reads its number and keeps the photo.`,
+    },
+    {
+      lead: many ? 'Keep the receipts, the green return cards and both dividers with the job.' : 'Keep the receipt, the green return card and the divider with the job.',
+      sub: 'They prove the notice was mailed on time. A lien and a lawsuit to collect both need that proof.',
+    },
+  )
+  return steps
+}
+
+/** `Owner of record` → `The owner`; the box names whose envelope it is as the help sheet always has. */
+const envelopeWho = (who: string): string => (/owner/i.test(who) ? 'The owner' : /contractor/i.test(who) ? 'The original contractor' : who)
+
+const addressLines = (address: string): string[] => {
+  const parts = address.split(/\s*,\s*|\n/).map((p) => p.trim()).filter(Boolean)
+  if (parts.length < 3) return parts
+  // The street lines, then the city with its state and ZIP on one line, as the envelope's face reads.
+  return [...parts.slice(0, -2), `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`]
+}
+
+/** The mail-by box: the day large, its weekday beside how far off it is, white on black when it is today, tomorrow or gone. */
+function mailByCell(n: Pick<LienHelpNotice, 'mailBy' | 'mailByYmd' | 'printedYmd'>): string {
+  const w = lienHelpMailByWords(n.mailByYmd, n.printedYmd)
+  if (!w) return `<div><div class="lien-help-k">Mail by</div><div class="lien-help-v">${esc(n.mailBy.trim() || 'see the Lien desk')}</div></div>`
+  return (
+    `<div data-lien-help-mail-by><div class="lien-help-k">Mail by</div><div class="lien-help-big">${esc(w.monthDay)}</div>` +
+    `<div class="lien-help-left"><span>${esc(w.weekday)}</span>${w.urgent ? ' ' : ' · '}<span class="lien-help-left-words${w.urgent ? ' lien-help-urgent' : ''}" data-urgent="${w.urgent}">${esc(w.left)}</span></div></div>`
+  )
 }
 
 /**
- * One page in front of a § 53.056 notice printed from the Lien window: the job's facts, what the app checked, the two
- * envelopes, and the steps. The record code hangs in the steps box's corner, where the batch sheet's does.
+ * One page in front of a § 53.056 notice printed from the Lien window: the job's facts, what the app checked, a box for
+ * each envelope that matches its divider, and the steps. Behind it come each envelope's divider and pages, in the order
+ * the boxes name them. The record code hangs in the steps box's corner, where the batch sheet's does.
  */
 export function lienHelpNoticeSheetHtml(n: LienHelpNotice, printedOn: string, extras?: LienHelpExtras): string {
   const recordCode = extras?.recordCode
   const ask = (n.ask ?? '').trim()
   const steps = lienHelpNoticeSteps(n, Boolean(recordCode))
-  const envelope = (who: string, name: string, address: string): string => `<div class="lien-help-box" style="margin-bottom:0"><h3>${esc(who)}</h3><p>${party(name, address) || 'not in the app'}</p></div>`
+  const total = n.envelopes.length
+  const box = (e: LienHelpEnvelope): string =>
+    `<div class="lien-help-envelope" data-lien-help-envelope="${e.n}"><h3>${esc(`Envelope ${e.n} of ${total} · ${envelopeWho(e.who)}`)}</h3>` +
+    `<div class="lien-help-envelope-name">${esc(e.name.trim() || '—')}</div><div class="lien-help-envelope-address">${addressLines(e.address).map(esc).join('<br/>') || 'no mailing address'}</div>` +
+    `<div class="lien-help-envelope-match">${esc(LIEN_HELP_ENVELOPE_MATCH)}</div></div>`
+  const heldBox = (h: LienHelpHeldEnvelope): string =>
+    `<div class="lien-help-box lien-help-stop" style="margin-bottom:0" data-lien-help-held><h3>${esc(`Held · ${envelopeWho(h.who)}`)}</h3><p>${esc(h.name.trim() || '—')}</p><p class="lien-help-small">${esc(h.why)}</p></div>`
+  const boxes = [...n.envelopes.map(box), ...n.held.map(heldBox)]
   return (
     `<section class="lien-help" data-lien-help="notice">` +
     STRIPE +
-    band('Help sheet · do not mail this page', '§ 53.056 notice: before you mail', [printedOn ? `Printed ${printedOn}` : '', 'Stays with the job'], extras) +
-    `<div class="lien-help-facts">` +
+    band('Help sheet · do not mail this page', `§ 53.056 notice · Job ${n.jobNumber.trim() || n.jobLabel}`, [printedOn ? `Printed ${printedOn}` : '', 'Stays with the job'], extras) +
+    `<div class="lien-help-facts lien-help-facts-notice">` +
     `<div><div class="lien-help-k">Job</div><div class="lien-help-v">${esc(n.jobLabel)}</div></div>` +
     `<div><div class="lien-help-k">Property</div><div class="lien-help-v">${esc(n.propertyAddress)}</div></div>` +
-    `<div><div class="lien-help-k">Claim</div><div class="lien-help-v">${esc(n.claim)}</div></div>` +
-    `<div><div class="lien-help-k">Mail by</div><div class="lien-help-v">${esc(n.mailBy.trim() || 'see the Lien desk')}</div></div>` +
+    `<div data-lien-help-claim><div class="lien-help-k">Claim</div><div class="lien-help-big">${lienHelpMoneyHtml(n.claim)}</div></div>` +
+    mailByCell(n) +
     `</div>` +
-    checksBlock('What the app checked on this notice', lienHelpNoticeChecks(n), ask, LIEN_HELP_NOTICE_ASK_FIRST) +
-    `<div class="lien-help-two" style="margin-bottom:5pt" data-lien-help-envelopes>${envelope('Envelope 1 · the owner', n.ownerName, n.ownerAddress)}${envelope('Envelope 2 · the original contractor', n.contractorName, n.contractorAddress)}</div>` +
-    `<div class="lien-help-box" style="overflow:hidden">${recordCodeBlock(recordCode, LIEN_HELP_RECORD_CODE_WORDS.notice)}<h3>From the printer to the mail</h3><ol>${steps.map((s) => `<li><span class="lien-help-tick"></span> ${s}</li>`).join('')}</ol></div>` +
-    foot(`Help sheet for ${n.jobLabel}`, 'The notice is the next page') +
+    checksBlock('What the app checked on this notice', lienHelpNoticeChecks(n), ask, LIEN_HELP_NOTICE_ASK_FIRST, true) +
+    (boxes.length ? `<div class="lien-help-two${boxes.length === 1 ? ' lien-help-one' : ''}" style="margin-bottom:5pt" data-lien-help-envelopes>${boxes.join('')}</div>` : '') +
+    `<div class="lien-help-box lien-help-steps" style="overflow:hidden">${recordCodeBlock(recordCode, LIEN_HELP_RECORD_CODE_WORDS.notice)}<h3>From the printer to the mail</h3><ol>${steps
+      .map((s) => `<li><span class="lien-help-tick"></span><span><strong>${s.lead}</strong>${s.sub ? `<span class="lien-help-sub">${esc(s.sub)}</span>` : ''}</span></li>`)
+      .join('')}</ol></div>` +
+    foot(`Help sheet for ${n.jobLabel}`, total > 0 ? 'The divider for envelope 1 is the next page' : 'Nothing prints behind this sheet') +
     `</section>`
   )
 }
