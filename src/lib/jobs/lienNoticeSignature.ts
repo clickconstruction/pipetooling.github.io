@@ -13,7 +13,8 @@ import { lienFieldsHash } from '../../../supabase/functions/_shared/lienFieldsHa
  * which the row says), bound to this notice as drafted (`signed_fields_hash`), kept with the
  * packet as sent. The cursive face is only how the name looks.
  *
- * - `lienFieldsHash`: the hash of the draft's `fields` — stable across key order.
+ * - `lienFieldsHash`: the hash of the draft's `fields` — stable across key order, and blind to the desk's own
+ *   records on a mailed notice (a promise, the owner's call, the GC's okay, a courtesy notice: punch list #370).
  * - `lienNoticeSignatureFromRow`: the row's signature, or null when unsigned or when the draft
  *   changed after signing (the hash no longer matches): the run then holds the notice.
  * - `lienSignatureAuditLine`: the record's sentence — how, who, when, whose screen. The desk reads it under the

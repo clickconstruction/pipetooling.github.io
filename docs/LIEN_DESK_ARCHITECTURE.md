@@ -28,7 +28,11 @@ last_updated: 2026-11-17
 > `runNoticesTakenBack` nulls `signature` in the window;
 > the desk's *Back to Approved · to print* asks first on a signed notice (`takeBackNoticeConfirm`).
 > The hash rule is unchanged.
-> Still open: the four records written into a sent notice's `fields` (promise, owner's call, GC's okay, courtesy) change the hash the same way (punch list #370).
+> The four records written into a sent notice's `fields` (promise, owner's call, GC's okay, courtesy) changed the hash the same way until v2.7565.
+> **v2.7565 (a record on a mailed notice leaves its signature standing, punch list #370):** `lienFieldsHash` leaves the desk's four record keys out at the top level of `fields` (`LIEN_FIELDS_RECORD_KEYS` in [`_shared/lienFieldsHash.ts`](../supabase/functions/_shared/lienFieldsHash.ts)), so a promise, the owner's call, the GC's okay or a courtesy record written after the mailing is no change to the paper.
+> It is a list of record keys, never of printed keys, so a key it does not name still voids a signature.
+> `runTakenBack`, `signatureCleared` and `redrawn` stay inside the hash, since each is written with the clear.
+> `lienFieldsHash.records.test.ts` holds the list to the four writers' own output.
 
 > **v2.7517 / v2.7520 (a notice whose stored paper and bills have parted, the owner's report of 2026-11-16 of a packet that stated two amounts):** a desk item keeps the paper as drafted in `fields.notice` and the run prints it whole, while the pay page, the divider and the invoices read the bills as they stand.
 > [`lienNoticeParted.ts`](../src/lib/jobs/lienNoticeParted.ts) is the one rule: `lienNoticeParted(paper, now, source)` sets the stored money beside what the desk would draw today (the claim, the retainage inside it, the split by month), with `lienNoticePartedWords`, `lienNoticePartedHold` and `runNoticePrintRefusal`, the answer every print route asks.
