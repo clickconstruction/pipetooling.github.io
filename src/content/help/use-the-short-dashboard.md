@@ -40,7 +40,7 @@ Some of your own lines may sit behind the door. When they do, the door says how 
 
 ## The Dashboard tab at the bottom
 
-On a phone, the **Dashboard** tab in the bottom bar opens the short page. This is true with Dispatch Mode on too.
+On a phone, the **Dashboard** tab in the bottom bar opens the short page. The tab does so with Dispatch Mode on too.
 
 The tab is also the way home. After **Everything else**, press **Dashboard** once to return to the short page.
 
