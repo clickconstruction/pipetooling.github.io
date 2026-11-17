@@ -160,9 +160,11 @@ export function useNoteTagBox(opts: {
     setPeople(null)
     setLoadError(null)
     let alive = true
+    let answered = false
     if (taskInstanceId) {
       void supabase.rpc('task_note_taggable', { p_instance_id: taskInstanceId }).then(({ data, error }) => {
         if (!alive) return
+        answered = true
         if (error) {
           // 42501 is the list saying this caller is not one of the task's people. That is no failure to show.
           if (error.code === '42501') setRefusedFor(target)
@@ -174,6 +176,7 @@ export function useNoteTagBox(opts: {
     } else {
       void supabase.rpc('job_note_taggable', { p_job_id: jobId }).then(({ data, error }) => {
         if (!alive) return
+        answered = true
         if (error) {
           setLoadError(formatErrorMessage(error, 'The names could not be read'))
           return
@@ -183,6 +186,9 @@ export function useNoteTagBox(opts: {
     }
     return () => {
       alive = false
+      // A read dropped before it answered (the @ was typed and taken back at once) is asked again the next time
+      // the names are wanted. Before, the box said Reading the names… from then on.
+      if (!answered) askedFor.current = null
     }
   }, [wanted, target, taskInstanceId, jobId])
 
