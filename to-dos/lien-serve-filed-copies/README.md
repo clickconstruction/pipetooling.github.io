@@ -1,8 +1,8 @@
 ---
 name: "Lien desk: serve a filed lien — the letter and the copies printed for certified mail, in a batch, the mail numbers in one place"
 number: 366
-group: ready
-status: asked and drawn 2026-11-16, the owner picked the same day (the app's own COPY page, the letter live and marked unread, a filing with no recording number held, all four steps) · step 1 is built (v2.7472) · steps 3 and 4 are built as one window (v2.7476), branch claude/lien-serve-copies-3-batch · step 2 follows · counsel has not read the letter or said the COPY page counts
+group: close
+status: asked and drawn 2026-11-16, the owner picked the same day (the app's own COPY page, the letter live and marked unread, a filing with no recording number held, all four steps) · all four steps are built (v2.7472, v2.7476, v2.7497) and the scanned PDF upload beside them (v2.7480) · several scans at once is built, one file a lien (v2.7524) and one scan of a whole stack (v2.7528), branch claude/lien-scans-2-stack · left: counsel's read of the letter and of the COPY page, and the office's first real run
 summary: >
   After an affidavit is filed, § 53.055 has the claimant send a copy of it to the owner, and to the
   original contractor when there is one, by the fifth day. The desk recorded that service one job at
@@ -12,10 +12,10 @@ summary: >
   four steps: a cover letter and a COPY page printed from the job's Lien window, the To do row's
   clock and the Board's last bin split in two, one press that prints every filed lien's envelopes
   with a mail sheet, and one window for every mail number.
-next: Step 2, the To do row's clock and the Board's two bins (S to M), once #8361, #8363 and #8368 are on main. Counsel's read of the letter and of the COPY page stays open through it.
-size: L as a train of four (M · S · M · M); left: step 2 (S)
+next: Counsel reads the letter and says whether the COPY page counts as the copy; the two flags in lienServedCopy.ts turn with the answer. Then the office's first real run is watched: a batch filed, its scans added, its copies printed and mailed, its numbers entered.
+size: L as a train of four (M · S · M · M) and M for the scans (S · M), all built; left: S (the flags and the guides once counsel answers)
 blocker: Counsel's read of the letter's words, and whether a copy drawn from the record counts as the copy. The presses do not wait on it.
-ver: v2.7472 · v2.7476
+ver: v2.7472 · v2.7476 · v2.7480 · v2.7497 · v2.7524 · v2.7528
 ---
 
 # Serve a filed lien from the Lien desk (#366)
@@ -107,27 +107,16 @@ When counsel answers, turn `LIEN_SERVE_LETTER_READ_BY_COUNSEL` and `LIEN_SERVED_
    `lienServedCopy.ts` and `lienServeFacts.ts`; the press `LienServeCopiesPress.tsx` beside *Record service…*
    in the Lien window; the print filed on the job as `lien_affidavit_copy`; a recording number typed on the
    held press.
-2. **The clock and the two bins** (S to M). **Not started**; it waits for #8356, #8361, #8363 and #8368, which
-   all change the stage lists in `lienBoard.ts`. The To do row reads *Filed · copies to mail · by <day>*, counts
-   the days, and says so when late (`lienServeClock` already has the words); `LIEN_BOARD_WORDS.filed` becomes
-   two bins, *Filed · copies to mail* and *Served*. What the #362 session said to build on (2026-11-16):
-   - **The press goes on the new bin, not at the column's foot.** #8368 puts one primary press at the foot of
-     each Board column (*Print N for notarization* under the affidavits'), and the owner approved one press a
-     column. A second blue press there needs his yes first.
-   - **The row's bin is one function.** `lienBoardRowBin` in `lienBoard.ts` (added by #8363): give keys that
-     start with `serve:` the new bin, as `run:` keys get the notices' mail bin. `lienBoardRowStage` reads the
-     same function, and the by-bin list takes the bin's label from the Board.
-   - **Folding the serve rows into one row** under the batch press is one rule in `lienBinFolds`
-     (`lienNextUpByBin.ts`): bin, action `record_service`, title, sub, button, target. A new press target is one
-     more member of `LienNextUpTarget`, one branch in `actOnNextUp`, and a case in `doorFor` in `lienArChip.ts`,
-     which switches on it exhaustively.
-   - **A new affidavit stage** needs its entry in `AFFIDAVIT_STAGES_LEFT`, in `AFFIDAVIT_GATE_HELD_LEFT` (#8356)
-     and in `affidavitStage`.
-   - **The run window.** The owner sees serving the copies as the liens' fourth step in the run (his words,
-     2026-11-16: "the liens have one extra step where after they are filed we have to send them off"). The #362
-     card draws it (`to-dos/lien-to-do-one-run/run-window.html`, *The liens · four steps*, not approved yet):
-     that step calls `lienServePlan`, `lienServeHolds`, `lienServePapers` and the numbers kernel. Nothing of
-     this train goes in `LienDeskRunModal.tsx`.
+2. **The clock and the two bins** (S to M). **Built, v2.7497.** The To do row reads *Lien filed · mail its copies
+   by <day>*, turns red the day before its day, and says the day a late copy was due (`lienServeClock.ts`). Its
+   press is *Mail the copies*. `LIEN_BOARD_WORDS.filed` is *Filed · copies to mail*, and *Served* is a bin of its
+   own after it. The bin carries its own press, *Mail N liens' copies ›*, an outline under its chips, because each
+   column keeps the one filled print press the owner approved (#8368, under the tiles since v2.7483). Two or more serve rows fold into one row
+   with the same press (`lienBinFolds`). Both open `LienServeWindow`. A filed lien with no affidavit on the desk
+   still gets a chip, so the bin, the list and the window count the same liens.
+   Still to come from the #362 train, not this one: the run window's fourth step for the liens (*Send the
+   copies*), which calls `lienServePlan`, `lienServeHolds`, `lienServePapers` and the numbers kernel. Nothing of
+   this train is in `LienDeskRunModal.tsx`.
 3. **The batch print** (M). **Built, v2.7476, with step 4 as one window.** `src/lib/jobs/lienServePackets.ts`: every
    filed lien that owes its copies (`lienServeJobsFromDesk`), what is held and why (`lienServePlan`), the press
    worded through `batchWords`, the five-day clock in words (`lienServeClock`), and one stack in envelope order
@@ -173,9 +162,25 @@ Built for one file and one lien: **Upload the scanned PDF** beside the photo pre
 rule and the words in `src/lib/jobs/lienScanFile.ts`). The scan goes up as it is into the job's Drive folder under
 Sent by us and becomes the filing's saved copy; a filing already recorded takes it from *link the saved copy*.
 
-Open, asked of the owner the same day and not built until he answers: *the scanned filings* is plural and the
-office files in batches. Does a batch come back as one PDF per lien, or as one scan of the whole stack that must
-be split or attached to several jobs? And should *Filed liens: copies to mail* take the files too?
+The owner's answer on a batch (2026-11-16): "we should aim towards one PDF per lien, but if they are all for one
+person a user may scan a whole stack". So one window, **Add the stamped scans**, takes either and always ends
+with one PDF a lien on that lien's own job: no job's folder holds another job's affidavit.
 
-The same rule holds a notice's mailed copy on `claude/lien-mailed-copy-press` (`lienMailedCopies.ts`). Once both
-are on main, one of the two points at the other; `lienScanProblem(file, 'notice')` is written for that.
+1. **Several files, one a lien** (S). **Built, v2.7524.** `LienScanBatchWindow.tsx` over `lienScanBatch.ts` and
+   `lienScanBatchIo.ts`. Each picked file is matched by the recording number or the job number in its name, else
+   by its place, and the line under it says which. The office checks each against the clerk's stamp. Doors: the
+   window that mails the copies, and `?scans=1` from the line under the single upload on Record filing.
+2. **One stack** (M). **Built, v2.7528.** A picked PDF of several pages is one file for one lien until the office
+   presses *It holds several liens: split it*; the app never decides that, since one lien's affidavit can run to
+   two sheets. Then every page is shown (`PdfPageCanvas`) with the lien it goes to and that lien's recording
+   number, to read against the stamp. A page starts in order and is changed three ways: a lien by hand, *Same
+   lien as the page before*, *Not an affidavit*; the pages after it follow (`lienScanStack.ts`). `pdf-lib` cuts
+   each lien's pages in the browser when the press saves (`lienScanStackIo.ts`), so the stack is never uploaded
+   and the 10 MB limit is each lien's piece. The pieces go through the plan step 1 built. After a save where one
+   lien fails, the stack is frozen as it stood: saved pages read *Saved* and the rest keep their liens by hand.
+
+A lien is listed once its filing is recorded. Recording twelve filings is still twelve windows; one table for
+that belongs with the run window's *Notarize and file* step on card #362.
+
+The same rule holds a notice's mailed copy: `lienMailedCopyProblem` in `lienMailedCopies.ts` is
+`lienScanProblem(file, 'notice')` since v2.7461.

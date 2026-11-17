@@ -8,7 +8,7 @@
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { UNCOLLECTIBLE_REASON_MIN } from '../../lib/setJobUncollectible'
-import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { jobOwedLines, jobOwedSplit } from '../../lib/jobs/jobOwedSplit'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type StagesUncollectibleConfirmTarget = { job: JobWithDetails; direction: 'mark' | 'unmark' }
@@ -35,7 +35,9 @@ export function StagesUncollectibleConfirmModal({
   onCancel: () => void
   onConfirm: () => void | Promise<void>
 }) {
-  const open = Math.max(0, Number(confirm.job.revenue ?? 0) - Number(confirm.job.payments_made ?? 0))
+  // What is written off is what the sent bills still owe (v2.7532), with the part of the job on no bill said beside it.
+  // Until then this read the job's price less payments, and counted work never billed as open.
+  const owed = jobOwedLines(jobOwedSplit(confirm.job))
   const marking = confirm.direction === 'mark'
   const reasonShort = reasonDraft.trim().length < UNCOLLECTIBLE_REASON_MIN
   const disabled = saving || (marking && reasonShort)
@@ -47,7 +49,7 @@ export function StagesUncollectibleConfirmModal({
         </h2>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           {marking
-            ? `${formatUsdNoCents(open)} open. The job stays in Collections under Uncollectible, stamped with your reason, and leaves every total and the Lien desk. Nothing is deleted. Stripe's invoice is marked uncollectible too. If the money ever comes, Mark Paid clears the stamp.`
+            ? `${[owed.billed, owed.unbilled].filter(Boolean).join(' ')} The job stays in Collections under Uncollectible, stamped with your reason, and leaves every total and the Lien desk. Nothing is deleted. Stripe's invoice is marked uncollectible too. If the money ever comes, Mark Paid clears the stamp.`
             : 'The stamp comes off, the job counts in Collections again and goes back on its lien clock.'}
         </p>
         {marking ? (

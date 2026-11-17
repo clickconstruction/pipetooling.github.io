@@ -14,7 +14,7 @@ summary: >
   above, and drawing by hand is the better way for a drive and for a length. One link with no
   sign-in shows it to a customer or a driver, with a dot for where they are. Location is read
   only while a red bar says Painting, and nothing leaves the phone until the person saves.
-next: #8343 makes the Share sheet say the day a link was made on the company's calendar; it was the UTC day, so a link made in the evening read as the next day. Once it is live, look at a link made in the evening. Throwing a map away leaves its places' photos in the bucket, with nothing pointing at them; removing one place takes its photo, the map's delete should too. The types and the dev seat's catalog do not know `painted_map_link_visits` yet, and the app casts its one read. Two small things are left on purpose: lift the painted map's window over the roadmap's windows so the Roadmap can paint and open a map, and draw each task's line on Today's map of a person's tasks. A walk of the Roadmap's saves wants a roadmap made for testing, since the company's are real. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
+next: #8343 makes the Share sheet say the day a link was made on the company's calendar; it was the UTC day, so a link made in the evening read as the next day. Once it is live, look at a link made in the evening. Throwing a map away takes its places' photos since v2.7473 (the bucket's rule is v2.7454, pushed), walked on the live app on 2026-11-16 as an office account: a made-up map on no job with one place and a photo, one file under its id before *Throw the map away* and none after, the map and the place gone with it. Walked again the same evening as a maker who is not office, the sample helper through **View as**: the helper painted a map on no job with a photo, the dev account added a second photo to it, and the helper threw the map away. The helper's own photo went, the other account's stayed, the helper was shown no file under the id, and the dev account then listed and removed the one left. Seen on that walk and not chased: a helper who types *paint* in the search is not offered **Paint a map**, though its door is open to everyone, so the helper's map was started from the door's own address. The types and the dev seat's catalog do not know `painted_map_link_visits` yet, and the app casts its one read. Two small things are left on purpose: lift the painted map's window over the roadmap's windows so the Roadmap can paint and open a map, and draw each task's line on Today's map of a person's tasks. A walk of the Roadmap's saves wants a roadmap made for testing, since the company's are real. Three things are left to do, each under *Left to do* below: a teammate's photo left behind by a thrown-away map, the sign-in script, and the owner's try on a real phone.
 size: L as a train of eight after a one-day try (S · S · M · M · M · M · S · S · S)
 blocker: None for what is built. The walk, the screen held on, the pause on lock and the phone's share sheet have only been walked in a headless browser, so the first real walk is the proof.
 opinion: built as carded. Strong for the way in and what is where, weak for measuring. Count the maps painted and the links opened for two weeks before step 5.
@@ -64,11 +64,14 @@ below was taken at the card's pick. The guide is `/help/paint-a-map`.
 | A link that asks, C | #8306 | v2.7414 | The page asks a signed-out reader's name first and says what is kept |
 | A link that asks, D | #8330 | v2.7415 | **Who opened it** on the Share sheet, and **Share** on each Documents row |
 | A link that asks, E | #8331 | v2.7416 | The function opens a map and its photos only for a reader who gave a name |
+| A map's photos, the rule | #8352 | v2.7454 | Once a map is gone, a photo's uploader and the office may list and remove it, and nobody else reads it |
+| A map's photos, the delete | #8371 | v2.7473 | Throwing a map away removes the photo files under its id, after the row is gone |
 
 The first two migrations are pushed and `painted-map-link` is deployed, each on the owner's yes.
 The third, `20261115063000_task_painted_maps.sql`, was pushed on 2026-11-15 after #8204 merged. The fourth,
 `20261116173000_painted_map_link_visits.sql`, was pushed after #8299 merged, and `painted-map-link` was deployed
 after #8301 and again after #8331, on Taunya's go of 2026-11-15.
+The fifth, `20261116234500_painted_map_photos_after_the_map.sql`, was on prod by 16:52 UTC on 2026-11-16, after #8352 merged.
 Each version's fragment says what changed from this card and why.
 
 Not built, each on purpose:
@@ -83,6 +86,32 @@ Not built, each on purpose:
 Not tried anywhere: a real phone. The walk, the screen held on, the pause on lock and the share
 sheet were walked in a headless browser with a made-up location. A real print and a `.kml` opened
 in another app are untried too.
+
+## Left to do
+
+Three things, set down on 2026-11-17 after the photo walks. Each can be picked up cold.
+
+1. **A teammate's photo on a thrown-away map.** When a maker who is not office throws a map away,
+   their own photos go with it. A teammate's photo stays in the `painted-map-photos` bucket, with
+   nothing pointing at it, until the office removes it. Both halves were walked on the live app on
+   2026-11-16 (the `next:` line). No screen shows the office such a file: a Storage list of the
+   bucket finds it, as a file whose first folder is no map. The fix offered and not taken is a small
+   table that records who threw each map away, so that person can take every photo under the map's
+   id. It is a migration, a bed scenario and the owner's yes. Card #372 weighs whether it matters,
+   since finding a lost box would make many short-lived maps (*Photos left in the bucket when a map
+   is thrown away* there). What the bucket allows now is in
+   `docs/migrations/20261116234500_painted_map_photos_after_the_map.md`.
+2. **The sign-in script.** `scripts/dev-pane-login.mjs` reads only `.env.local`. On the office Mac
+   the app's address and key live in the main checkout's `.env`, so the script stops with
+   *VITE_SUPABASE_URL is not in .env.local*. The fix is to read `.env` as well, beside the repo and
+   in the main checkout, with `.env.local` winning: a small fix PR with its release note and
+   fragment. Until then, join the main checkout's `.env` and `.env.local` into a `.env.local` in the
+   worktree for one run, then delete it. This is not about painted maps. It was found on this
+   card's walk and has no other home yet.
+3. **A real phone.** Nothing on this card has been tried on one (the `blocker:` line). The owner's
+   try: walk a short line on his own job card with the screen on, lock the phone mid-walk, save,
+   share the link to a second phone and end it. On the same phone, take a place's photo with the
+   camera, and throw a map away.
 
 ## My thoughts, in short
 

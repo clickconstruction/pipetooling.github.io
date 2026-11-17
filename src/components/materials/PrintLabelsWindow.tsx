@@ -13,7 +13,7 @@
  * and the foot points at Print blank stickers and Scan a label. The words and the order are
  * `lib/materials/printLabelsJobs.ts`; the two small reads `printLabelsIo.ts`.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { EmptyState } from '../EmptyState'
@@ -27,13 +27,13 @@ import { labelBoxes, type OnSiteFindJob } from '../../lib/materials/onSiteFind'
 import { deskRowNotLoadedWords } from '../../lib/materials/onSiteReadFailed'
 import { fetchJobSiteNames, fetchStickeredBoxIds } from '../../lib/materials/printLabelsIo'
 import { LABEL_JOBS_SEARCH_PAST, PRINT_LABELS_NOT_YET, PRINT_LABELS_WHAT, findLabelJobs, labelJobChips, labelJobsCountWords, labelJobsInOrder, resumeWords, type LabelJobDoor, type LabelJobFacts } from '../../lib/materials/printLabelsJobs'
-import { PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, ptouchReadyLine, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
+import { ptouchReadyLine, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
 import { connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
 import { PRINT_STICKERS_LABEL } from '../../lib/materials/stickerRun'
-import { LABEL_OUTPUTS, isTapeWidth, tapeLayout, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
-import { tapeAddressLines } from '../../lib/materials/tapeStrip'
+import { LABEL_OUTPUTS, isTapeWidth, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import LabelsPrintModal, { type LabelsStart } from './LabelsPrintModal'
+import { NoUsbNote, TapeStripSample, WJ_CHIP_TONES as CHIP_TONES, WJ_ONE_COLUMN as ONE_COLUMN, WhichJobHead, useQuietPtouch, wjAmberBox as amberBox, wjBtn as btn, wjBtnPrimary as btnPrimary, wjCard as card, wjCardFirst, wjChip, wjMuted as muted, wjQuietLink as quietLink } from './WhichJobParts'
 
 type Props = {
   jobs: ReadonlyArray<OnSiteFindJob>
@@ -49,13 +49,12 @@ type Props = {
   onScan?: () => void
   /** Reads one job's boxes again, for a card that says it did not load. */
   onReadAgain?: (jobId: string) => void
-  /** The cards' small reads, the printer and the clock; a test hands spies. */
+  /** The cards' small reads and the printer; a test hands spies. */
   reads?: {
     sites?: (jobIds: ReadonlyArray<string>) => Promise<Map<string, string>>
     stickered?: (containerIds: ReadonlyArray<string>) => Promise<Set<string>>
     connect?: (options: { ask: boolean }) => Promise<PtouchLink | null>
     usbHere?: boolean
-    now?: () => number
   }
 }
 
@@ -69,20 +68,6 @@ export const PRINT_LABELS_WINDOW_WIDTH = 640
 /** The guide the foot opens, and its heading. */
 const LABELS_GUIDE = 'see-what-is-on-every-job-site-and-what-walked-away'
 const LABELS_GUIDE_HEADING = 'Print a label'
-
-const BLUE = '#2563eb'
-const ONE_COLUMN = 'minmax(0, 1fr)'
-const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }
-const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
-const quietLink: CSSProperties = { background: 'none', border: 'none', padding: 0, minHeight: 28, color: 'var(--text-link)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
-const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
-const card: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 12, padding: '0.75rem 0.9rem', display: 'grid', gridTemplateColumns: ONE_COLUMN, gap: '0.5rem', background: 'var(--surface)' }
-const CHIP_TONES: Record<'green' | 'blue' | 'gray', CSSProperties> = {
-  green: { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' },
-  blue: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
-  gray: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
-}
-const amberBox: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
 
 /** One label as it prints, for the band: a strip of tape at its printed size, or a small Letter page. Always light, as paper is. */
 function LabelSample({ format, width, box }: { format: LabelFormat; width: TapeWidthMm; box: { id: string; name: string } }) {
@@ -100,21 +85,7 @@ function LabelSample({ format, width, box }: { format: LabelFormat; width: TapeW
       </div>
     )
   }
-  const layout = tapeLayout(width, box.name.length)
-  return (
-    <div style={{ display: 'grid', gap: 3, justifyItems: 'center', maxWidth: '100%' }} data-testid="print-labels-sample-tape">
-      <div data-theme="light" aria-hidden style={{ width: `${layout.lengthMm}mm`, maxWidth: '100%', height: `${layout.widthMm}mm`, boxSizing: 'border-box', padding: `${layout.padMm}mm`, display: 'grid', gridTemplateColumns: `${layout.qrMm}mm 1fr`, alignItems: 'center', gap: `${layout.padMm}mm`, background: 'var(--surface)', color: '#000', border: '1px solid var(--border-strong)', borderRadius: 3, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.18)' }}>
-        <QRCodeSVG value={boxUrl(box.id)} size={96} level="M" bgColor="#ffffff" fgColor="#000000" marginSize={4} style={{ width: `${layout.qrMm}mm`, height: `${layout.qrMm}mm`, display: 'block' }} />
-        <div style={{ minWidth: 0, display: 'grid', alignContent: 'center' }}>
-          <div style={{ fontSize: `${layout.stencilMm}mm`, lineHeight: 1, fontWeight: 900, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{box.name}</div>
-          {tapeAddressLines(boxAddressWords(box.id).toUpperCase()).map((line, i) => (
-            <div key={line} style={{ fontSize: `${layout.codeMm}mm`, lineHeight: 1.1, fontFamily: 'ui-monospace, Menlo, monospace', whiteSpace: 'nowrap', ...(i === 0 ? { marginTop: `${layout.padMm}mm` } : {}) }}>{line}</div>
-          ))}
-        </div>
-      </div>
-      <span style={muted}>One strip, about {layout.lengthMm} mm</span>
-    </div>
-  )
+  return <TapeStripSample stencil={box.name} address={boxAddressWords(box.id).toUpperCase()} value={boxUrl(box.id)} width={width} testid="print-labels-sample-tape" />
 }
 
 export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null, onAddFirst, onClose, onStickers, onScan, onReadAgain, reads }: Props) {
@@ -126,7 +97,6 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
   const [tapeDay] = useState<string | null>(() => readTapePrintedDay())
   /** A run this computer stopped part way, as it was when the window opened. */
   const [kept] = useState(() => readStoppedRun())
-  const [nowMs] = useState(() => (reads?.now ?? Date.now)())
   const [query, setQuery] = useState('')
   const usbHere = useMemo(() => reads?.usbHere ?? ptouchUsbAvailable(), [reads?.usbHere])
   const tape = format === 'tape'
@@ -155,52 +125,24 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
   useEffect(() => {
     if (!asking || !boxIdsKey) return
     let live = true
-    readStickered(boxIdsKey.split('|')).then((got) => { if (live) setStickeredIds(got) }).catch(() => { /* the chip is left out */ })
+    readStickered(boxIdsKey.split('|')).then((got) => { if (live) setStickeredIds(got) }).catch(() => { /* Unread stickers count as none: the chip is left out, and what waits for a label stands on the printed mark alone. */ if (live) setStickeredIds(new Set()) })
     return () => { live = false }
   }, [asking, boxIdsKey, readStickered])
 
   // The printer's own line, where the browser already has leave to use it: a wrong tape is seen before a job is picked.
-  const connect = reads?.connect ?? connectPtouch
-  const [link, setLink] = useState<PtouchLink | null>(null)
-  const linkRef = useRef<PtouchLink | null>(null)
-  linkRef.current = link
   const wantsLink = asking && tape && usbHere
-  useEffect(() => {
-    if (!wantsLink) return
-    let live = true
-    void connect({ ask: false }).then((l) => { if (!l) return; if (live) setLink(l); else void l.close() }).catch(() => { /* the labels window's own press says why */ })
-    return () => { live = false }
-  }, [wantsLink, connect])
-  useEffect(() => () => { void linkRef.current?.close() }, [])
-  /** The labels window opens its own link to the printer, so this one is let go first: two cannot hold it. */
-  const letGoOfPrinter = useCallback(async () => {
-    const l = linkRef.current
-    if (!l) return
-    linkRef.current = null
-    setLink(null)
-    try { await l.close() } catch { /* nothing to close */ }
-  }, [])
+  const { link, held, letGo: letGoOfPrinter } = useQuietPtouch(wantsLink, reads?.connect ?? connectPtouch)
   const open = (id: string, start?: LabelsStart) => {
     // With no printer held the window opens at once; with one, as soon as it is let go.
-    if (!linkRef.current) { setPicked({ jobId: id, start }); return }
+    if (!held()) { setPicked({ jobId: id, start }); return }
     void letGoOfPrinter().then(() => setPicked({ jobId: id, start }))
   }
   const changeFormat = () => { const next: LabelFormat = tape ? 'sheet' : 'tape'; if (next === 'sheet') void letGoOfPrinter(); setFormat(next) }
   const width: TapeWidthMm = link && isTapeWidth(link.status.tapeMm) ? link.status.tapeMm : prefWidth
 
-  const [linkWords, setLinkWords] = useState<string | null>(null)
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setLinkWords(PTOUCH_LINK_COPIED)
-    } catch {
-      setLinkWords(PTOUCH_LINK_NOT_COPIED)
-    }
-  }
-
   const facts = useMemo(
-    () => labelJobsInOrder(withBoxes, { nowMs, today: todayYmdInAppTz(), kept, format, widthMm: width, copies, stickeredIds, siteOf: (id) => sites?.get(id) }),
-    [withBoxes, nowMs, kept, format, width, copies, stickeredIds, sites],
+    () => labelJobsInOrder(withBoxes, { today: todayYmdInAppTz(), kept, format, widthMm: width, copies, stickeredIds, siteOf: (id) => sites?.get(id) }),
+    [withBoxes, kept, format, width, copies, stickeredIds, sites],
   )
   const shown = findLabelJobs(facts, query)
 
@@ -233,15 +175,7 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
         {facts.length > 0 && sample ? (
           tape && !usbHere ? (
             /* A browser with no USB reach is told here, before a job is picked, with both ways out. */
-            <div role="note" style={{ ...amberBox, borderRadius: 10, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', fontSize: '0.85rem' }} data-testid="print-labels-band" data-band="no-usb">
-              <strong>{PTOUCH_NO_USB}</strong>
-              <span>{PTOUCH_NO_USB_WHY}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <button type="button" style={btn} onClick={() => void copyLink()} data-testid="print-labels-copy-link">{PTOUCH_COPY_LINK_LABEL}</button>
-                <button type="button" style={btn} onClick={changeFormat} data-testid="print-labels-change">{changeLabel}</button>
-                {linkWords ? <span role="status" style={{ fontWeight: 600 }}>{linkWords}</span> : null}
-              </span>
-            </div>
+            <NoUsbNote tid="print-labels"><button type="button" style={btn} onClick={changeFormat} data-testid="print-labels-change">{changeLabel}</button></NoUsbNote>
           ) : (
             <div style={{ borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, background: 'var(--bg-subtle)', padding: '0.6rem 0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem 0.9rem', alignItems: 'center' }} data-testid="print-labels-band" data-band={format}>
               <div style={{ flex: '1 1 240px', minWidth: 0, display: 'grid', gap: 3, fontSize: '0.85rem' }}>
@@ -272,21 +206,9 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
             {facts.length > 0 && shown.length === 0 ? <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query }), { onPress: () => setQuery('') })} /> : null}
             <div style={{ display: 'grid', gridTemplateColumns: ONE_COLUMN, gap: '0.6rem' }}>
               {shown.map((f) => (
-                <div key={f.jobId} style={{ ...card, ...(f.resume ? { borderColor: BLUE, boxShadow: `inset 0 0 0 1px ${BLUE}` } : {}) }} data-testid="print-labels-card">
+                <div key={f.jobId} style={{ ...card, ...(f.resume ? wjCardFirst : {}) }} data-testid="print-labels-card">
                   {/* The head opens the job as the row always did: on a run stopped today, else on every box. */}
-                  <button type="button" onClick={() => open(f.jobId)} aria-label={`Open the labels of ${f.label}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' }} data-testid="print-labels-job">
-                    <span style={{ flex: '1 1 auto', minWidth: 0, display: 'grid', gap: 1 }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.97rem', lineHeight: 1.25, overflowWrap: 'anywhere' }} data-testid="print-labels-job-name">
-                        {f.number ? <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.78rem', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 6, padding: '1px 6px', marginRight: 6, verticalAlign: 1 }}>{f.number}</span> : null}
-                        {f.name}
-                      </span>
-                      {f.where ? <span style={{ ...muted, overflowWrap: 'anywhere' }} data-testid="print-labels-job-where">{f.where}</span> : null}
-                    </span>
-                    <span style={{ flex: '0 0 auto', display: 'grid', textAlign: 'right', lineHeight: 1.05, whiteSpace: 'nowrap' }} data-testid="print-labels-job-count">
-                      <strong style={{ fontSize: '1.6rem', fontVariantNumeric: 'tabular-nums' }}>{f.labels}</strong>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{f.labels === 1 ? 'label' : 'labels'}</span>
-                    </span>
-                  </button>
+                  <WhichJobHead tid="print-labels" number={f.number} name={f.name} where={f.where} count={{ n: f.labels, word: f.labels === 1 ? 'label' : 'labels' }} ariaLabel={`Open the labels of ${f.label}`} onOpen={() => open(f.jobId)} />
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }} data-testid="print-labels-job-facts">
                     {f.kinds}
                     {f.names ? <> · {'listed' in f.names ? f.names.listed.map((n, i) => <span key={n}>{i > 0 ? ' · ' : ''}<strong>{n}</strong></span>) : <><strong>{f.names.first}</strong> to <strong>{f.names.last}</strong></>}</> : null}
@@ -296,7 +218,7 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
                   </div>
                   {labelJobChips(f).length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }} data-testid="print-labels-job-chips">
-                      {labelJobChips(f).map((c) => <span key={c.words} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 24, padding: '0 0.55rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', ...CHIP_TONES[c.tone] }}>{c.words}</span>)}
+                      {labelJobChips(f).map((c) => <span key={c.words} style={{ ...wjChip, ...CHIP_TONES[c.tone] }}>{c.words}</span>)}
                     </div>
                   ) : null}
                   {f.resume ? <div role="note" style={{ ...amberBox, borderRadius: 8, padding: '0.35rem 0.6rem', fontSize: '0.82rem', fontWeight: 600 }} data-testid="print-labels-job-resume">{resumeWords(f.resume)}</div> : null}

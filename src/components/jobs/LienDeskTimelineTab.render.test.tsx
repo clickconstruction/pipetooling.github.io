@@ -8,6 +8,7 @@ import { cleanup, fireEvent, render, within } from '@testing-library/react'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { buildLienTimelineBook, type LienBookJob } from '../../lib/jobs/lienTimelineBook'
 import type { LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
+import { buildLienProperties } from '../../lib/jobs/lienPropertyPapers'
 
 afterEach(cleanup)
 
@@ -89,5 +90,58 @@ describe('LienDeskTimelineTab', () => {
     expect([phone.print.style.minHeight, phone.print.style.fontSize]).toEqual(['44px', '0.875rem'])
     // The taller bar scrolls away with the list in place of staying pinned over it.
     expect(phone.bar.style.position).toBe('static')
+  })
+
+  it('a row on a property with more jobs says so, and the press opens the property card and not the row (v2.7488)', () => {
+    const shared = buildLienTimelineBook({
+      rows: [row('j891', '2026-07', '2026-10-15'), row('j892', '2026-07', '2026-10-15'), row('j900', '2026-07', '2026-10-15')],
+      affidavitRows: [],
+      items: [],
+      filingsByJob: {},
+      jobs: { j891: { ...job('j891'), addressId: 'p1', propertyAddress: '412 Ridgeline Dr' }, j892: { ...job('j892'), addressId: 'p1', propertyAddress: '412 Ridgeline Dr' }, j900: { ...job('j900'), addressId: null } },
+      policyByCustomer: { gc1: 'ask' },
+      todayYmd: TODAY,
+    })
+    const onOpenRow = vi.fn()
+    const onOpenProperty = vi.fn()
+    const onSetProperty = vi.fn()
+    render(<LienDeskTimelineTab book={shared} loading={false} error="" gcId={null} onGcId={() => {}} show="all" onShow={() => {}} onOpenRow={onOpenRow} onPrint={() => {}} properties={buildLienProperties(shared.rows)} onOpenProperty={onOpenProperty} onSetProperty={onSetProperty} />)
+    const door = within(document.querySelector('[data-lien-book-row="j892"]') as HTMLElement).getByRole('button', { name: '412 Ridgeline Dr · 2 jobs here ›' })
+    fireEvent.click(door)
+    expect(onOpenProperty).toHaveBeenCalledWith('p1', 'j892')
+    const bare = document.querySelector('[data-lien-book-row="j900"] [data-lien-book-no-property]') as HTMLElement
+    expect(bare.textContent).toContain('No property record')
+    fireEvent.click(within(bare).getByRole('button', { name: 'Set the property ›' }))
+    expect(onSetProperty).toHaveBeenCalledWith('j900')
+    expect(onOpenRow).not.toHaveBeenCalled()
+  })
+
+  it('Group by property gathers the rows under a head per property, and the head opens the card (v2.7493)', () => {
+    const shared = buildLienTimelineBook({
+      rows: [row('j891', '2026-07', '2026-10-15'), row('j892', '2026-07', '2026-10-15'), row('j895', '2026-07', '2026-10-15'), row('j900', '2026-07', '2026-10-15')],
+      affidavitRows: [],
+      items: [],
+      filingsByJob: {},
+      jobs: { j891: { ...job('j891'), addressId: 'p1', propertyAddress: '412 Ridgeline Dr' }, j892: { ...job('j892'), addressId: 'p1', propertyAddress: '412 Ridgeline Dr' }, j895: { ...job('j895'), addressId: 'p2', propertyAddress: '30 Quarry Rd' }, j900: { ...job('j900'), addressId: null } },
+      policyByCustomer: { gc1: 'ask' },
+      todayYmd: TODAY,
+    })
+    const onGroup = vi.fn()
+    const onOpenProperty = vi.fn()
+    const props = { book: shared, loading: false, error: '', gcId: null, onGcId: () => {}, show: 'all' as const, onShow: () => {}, onOpenRow: () => {}, onPrint: () => {}, properties: buildLienProperties(shared.rows), onOpenProperty, onGroup }
+    const { rerender } = render(<LienDeskTimelineTab {...props} />)
+    expect(document.querySelectorAll('[data-lien-book-section]')).toHaveLength(0)
+    fireEvent.change(document.querySelector('select[aria-label="Group"]') as HTMLSelectElement, { target: { value: 'property' } })
+    expect(onGroup).toHaveBeenCalledWith('property')
+    rerender(<LienDeskTimelineTab {...props} group="property" />)
+    const sections = [...document.querySelectorAll('[data-lien-book-section]')] as HTMLElement[]
+    expect(sections.map((s) => `${s.getAttribute('data-lien-book-section')}:${s.querySelectorAll('[data-lien-book-row]').length}`)).toEqual(['property:2', 'singles:1', 'no_record:1'])
+    expect(sections[0]!.textContent).toContain('Elwick Holdings LLC · 2 jobs · $20,000 open')
+    // Under its own head a row does not repeat the property's press.
+    expect(sections[0]!.querySelector('[data-lien-book-property]')).toBeNull()
+    fireEvent.click(within(sections[0]!).getByRole('button', { name: '412 Ridgeline Dr ›' }))
+    expect(onOpenProperty).toHaveBeenCalledWith('p1', null)
+    expect(sections[1]!.textContent).toContain('One job each')
+    expect(sections[2]!.textContent).toContain('No property record')
   })
 })

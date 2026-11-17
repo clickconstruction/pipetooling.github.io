@@ -24,7 +24,7 @@ vi.mock('../supabase', () => ({
   },
 }))
 
-import { tellLeaderOfLienAffidavits, tellLeaderOfLienApproval } from './lienDeskIo'
+import { tellLeaderOfLienAffidavits, tellLeaderOfLienApproval, tellLeaderOfLienSignatures } from './lienDeskIo'
 
 const refusal = (status: number, error: string) => new FunctionsHttpError(new Response(JSON.stringify({ error }), { status, headers: { 'content-type': 'application/json' } }))
 
@@ -78,5 +78,32 @@ describe('telling the leader of affidavits', () => {
     net.answer = { data: null, error: refusal(400, 'Missing item_id') }
     expect(await tellLeaderOfLienAffidavits([{ itemId: 'a1', dueYmd: null }])).toEqual({ ok: false, reason: 'Missing item_id' })
     expect(net.bodies[0]).not.toHaveProperty('remind')
+  })
+})
+
+describe('reminding the leader of notices that wait on his signature (v2.7491)', () => {
+  it('one call names every notice of the press and its mail-by day, as a reminder, and reads how many he was told of', async () => {
+    net.answer = { data: { success: true, push_sent: 1, email_sent: false, held: 0, told: 2, leader_name: 'Malachi Whites' }, error: null }
+    expect(await tellLeaderOfLienSignatures([{ itemId: 's1', dueYmd: '2026-12-15' }, { itemId: 's2', dueYmd: null }])).toEqual({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites', held: 0, said: null, told: 2 } })
+    expect(net.bodies).toEqual([{ fn: 'notify-lien-approval', kind: 'signature', items: [{ item_id: 's1', due_ymd: '2026-12-15' }, { item_id: 's2' }], remind: true }])
+  })
+
+  it('no notice is no call, and the function as it was comes back as a reason, never thrown', async () => {
+    expect(await tellLeaderOfLienSignatures([])).toBeNull()
+    expect(net.bodies).toEqual([])
+    net.answer = { data: null, error: refusal(400, 'Missing item_id') }
+    expect(await tellLeaderOfLienSignatures([{ itemId: 's1', dueYmd: null }])).toEqual({ ok: false, reason: 'Missing item_id' })
+  })
+})
+
+describe('the reminder’s text (v2.7495)', () => {
+  it('the text’s two answers ride when the function gives them, and are absent when it does not', async () => {
+    net.answer = { data: { success: true, push_sent: 1, email_sent: false, held: 0, text_sent: 0, text_said: 'Send texts is off in Settings', leader_name: 'Malachi Whites' }, error: null }
+    expect(await tellLeaderOfLienApproval('it1', null, { remind: true })).toEqual({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites', held: 0, said: null, told: null, textSent: 0, textSaid: 'Send texts is off in Settings' } })
+    net.answer = { data: { success: true, push_sent: 0, email_sent: false, held: 0, text_sent: 1, text_said: null, told: 2, leader_name: 'Malachi Whites' }, error: null }
+    expect(await tellLeaderOfLienSignatures([{ itemId: 's1', dueYmd: null }])).toMatchObject({ ok: true, told: { textSent: 1, textSaid: null, told: 2 } })
+    net.answer = { data: { success: true, push_sent: 1, email_sent: false, held: 0, leader_name: 'Malachi Whites' }, error: null }
+    const before = await tellLeaderOfLienApproval('it1', null)
+    expect(before.ok && 'textSent' in before.told).toBe(false)
   })
 })

@@ -16,7 +16,7 @@ import {
 } from '../../lib/materials/jobAccountsFlow'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { buildHeldLienLines, type HeldLienAffidavitRow, type HeldLienLine, type HeldLienNoticeRow } from '../../lib/materials/heldLienLine'
-import { lienInKindJobIds, withLienInKindColumn } from '../../lib/jobs/lienInKind'
+import { lienOffDeskJobIds, withLienOffDeskColumns } from '../../lib/jobs/lienInKind'
 import { heldNoticeRisk, type HeldNoticeRisk } from '../../lib/materials/heldHouseNotice'
 import { buildHouseAsks, unpaidInvoiceNumbers } from '../../lib/materials/houseAsk'
 import { SupplyHouseAskSheet } from './SupplyHouseAskSheet'
@@ -263,7 +263,9 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 () =>
                   supabase
                     .from('supply_house_invoices')
-                    .select('id, supply_house_id, amount, amount_paid, is_paid, due_date, invoice_date, invoice_number, on_job_account')
+                    // is_interest comes with 20261117020000 and is read as written here: the generated types learn it
+                    // after the push, and until then this read is refused and the one below stands in.
+                    .select('id, supply_house_id, amount, amount_paid, is_paid, is_interest, due_date, invoice_date, invoice_number, on_job_account' as 'id, supply_house_id, amount, amount_paid, is_paid, due_date, invoice_date, invoice_number, on_job_account')
                     .order('id')
                     .range(from, to),
                 'load supply house invoices',
@@ -365,7 +367,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
             () =>
               supabase
                 .from('jobs_ledger')
-                .select(withLienInKindColumn('id, hcp_number, click_number, job_name, job_address, revenue, payments_made, customer_address_id'))
+                .select(withLienOffDeskColumns('id, hcp_number, click_number, job_name, job_address, revenue, payments_made, customer_address_id'))
                 .in('id', chunk)
                 .order('id')
                 .range(from, to),
@@ -417,7 +419,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
             supabase.rpc('list_lien_affidavit_windows', { p_within_days: 400 } as never),
           ])
           // A job an open in-kind deal pays is off the Lien desk (v2.7253), so it gets no "On the Lien desk" line (v2.7257).
-          setLienLines(buildHeldLienLines(((notices.data ?? []) as unknown) as HeldLienNoticeRow[], ((affidavits.data ?? []) as unknown) as HeldLienAffidavitRow[], today, lienInKindJobIds(jobs)))
+          setLienLines(buildHeldLienLines(((notices.data ?? []) as unknown) as HeldLienNoticeRow[], ((affidavits.data ?? []) as unknown) as HeldLienAffidavitRow[], today, lienOffDeskJobIds(jobs)))
         } catch {
           setLienLines(new Map())
         }

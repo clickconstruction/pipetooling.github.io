@@ -874,3 +874,38 @@ describe('ChecklistAddModal photo of the spot (punch list #328, PR 6)', () => {
     cleanup()
   })
 })
+
+function OpenWithFollowUpOnMount() {
+  const modal = useChecklistAddModal()
+  const opened = useRef(false)
+  useEffect(() => {
+    if (modal && !opened.current) {
+      opened.current = true
+      modal.openAddModal({ preset: { title: 'After Check the truck fluids: ', links: [], place: { lat: 29.5512, lng: -98.2874, name: 'Shop yard', accuracyM: null }, tellUserId: 'u-giver' } })
+    }
+  }, [modal])
+  return null
+}
+
+describe('ChecklistAddModal, a follow-up from a finished task (punch list #369)', () => {
+  it('opens on the first task’s words and place, and Send keeps the place and who hears', async () => {
+    inserted.length = 0
+    updated.length = 0
+    renderWithProviders(
+      <ChecklistAddModalProvider>
+        <OpenWithFollowUpOnMount />
+        <ChecklistAddModal />
+      </ChecklistAddModalProvider>,
+    )
+    await screen.findByText('Robert')
+    const title = screen.getByDisplayValue(/^After Check the truck fluids:/) as HTMLTextAreaElement
+    expect(title.value).toBe('After Check the truck fluids: ')
+    fireEvent.change(title, { target: { value: 'After Check the truck fluids: top up the coolant' } })
+    await screen.findByRole('button', { name: 'Send to Robert' }, { timeout: 4000 })
+    fireEvent.click(sendPress())
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
+    expect(row).toMatchObject({ place_name: 'Shop yard', place_lat: 29.5512, place_lng: -98.2874, notify_on_complete_user_id: 'u-giver' })
+    cleanup()
+  })
+})

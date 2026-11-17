@@ -534,8 +534,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
               ))
             )}
             {containers.length > 0 ? <button type="button" style={{ ...btn, ...btnBlock, borderStyle: 'dashed', background: 'transparent', color: 'var(--text-700)' }} onClick={() => setSheet({ kind: 'add-container', moveAfter: null })}><span aria-hidden style={{ fontSize: '1.2rem', lineHeight: 1 }}>+</span> Add a container</button> : null}
-            {/* Stickers not yet on a box (punch list #329, PR 3): the job's blank stickers, from its runs. */}
-            {jobStickers.blank > 0 ? <p style={{ ...muted, margin: 0, textAlign: 'center' }} data-testid="on-site-stickers-blank">{notYetOnBoxLine(jobStickers.blank)}</p> : null}
+            {/* The job's reserved stickers (punch list #329, PR 3; by name since v2.7487): printed, on no box yet, from its runs. */}
+            {jobStickers.blank > 0 ? <p style={{ ...muted, margin: 0, textAlign: 'center' }} data-testid="on-site-stickers-blank">{notYetOnBoxLine(jobStickers.blank, jobStickers.reserved)}</p> : null}
             {/* These are on boxes (section 10, PR 10): for whoever stuck a roll of named stickers, a range of them in one press. */}
             {jobStickers.blank > 0 ? <button type="button" style={{ ...btn, ...btnBlock, background: 'transparent', color: 'var(--text-700)' }} onClick={() => setOnBoxesOpen(true)} data-testid="on-site-on-boxes">{ON_BOXES_LABEL}</button> : null}
           </>

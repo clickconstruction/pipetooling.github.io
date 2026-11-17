@@ -64,6 +64,30 @@ function onPhone(body: () => void) {
 const sheet = () => document.querySelector('[data-lien-record-sheet]') as HTMLElement | null
 
 describe('LienFilingTabs · record steps', () => {
+  it('says when the Lien desk holds the job’s approved notice, and offers the desk (v2.7516); a job with none there says nothing', () => {
+    const onOpenDeskNotice = vi.fn()
+    const note = () => document.querySelector('[data-lien-window-desk-note]') as HTMLElement | null
+    let tab = renderWithProviders(<LienFilingTabs {...props({})} />)
+    expect(note()).toBeNull()
+    tab.unmount()
+    tab = renderWithProviders(<LienFilingTabs {...props({ deskNoticeState: 'awaiting' })} />)
+    expect(note()).toBeNull()
+    tab.unmount()
+    // Approved and waiting to print: the note sits over the tab's own presses, which stay.
+    tab = renderWithProviders(<LienFilingTabs {...props({ deskNoticeState: 'ready', onOpenDeskNotice })} />)
+    expect(note()!.getAttribute('data-lien-window-desk-note')).toBe('ready')
+    expect(note()!.textContent).toContain('The Lien desk holds this job’s approved notice.')
+    expect(note()!.textContent).toContain('A print from this tab is a new copy with no signature.')
+    expect(screen.getByTestId('notice-print-envelopes').textContent).toMatch(/^Print /)
+    fireEvent.click(screen.getByRole('button', { name: 'Open it on the Lien desk ›' }))
+    expect(onOpenDeskNotice).toHaveBeenCalledTimes(1)
+    tab.unmount()
+    // Printed, its numbers owed. An opener with no door to the desk still gets the words, with no press.
+    renderWithProviders(<LienFilingTabs {...props({ deskNoticeState: 'printed' })} />)
+    expect(note()!.textContent).toContain('The Lien desk has printed this job’s notice.')
+    expect(document.querySelector('[data-lien-window-desk-note-press]')).toBeNull()
+  })
+
   it('a computer records the notice’s sends in a box inside the tab, never a sheet', () => {
     renderWithProviders(<LienFilingTabs {...props({})} />)
     fireEvent.click(screen.getByRole('button', { name: 'Save & record sends…' }))

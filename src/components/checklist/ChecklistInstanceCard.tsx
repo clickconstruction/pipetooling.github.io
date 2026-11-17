@@ -20,6 +20,8 @@ import { TaskMapBlock, TaskMapLine } from './TaskMapBlock'
 import { useTaskMapWhole } from '../../hooks/useTaskMapWhole'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { doneLineWords, notePressLabel } from '../../lib/tasks/todayPage'
+import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
 
 export type ChecklistInstanceCardInstance = {
   id: string
@@ -47,7 +49,14 @@ type ChecklistInstanceCardProps = {
    * 'row' is the desktop ledger — one compact line per item, statuses as chips,
    * quiet actions that brighten on hover. Same state, handlers, and thread.
    */
-  variant?: 'card' | 'row'
+  variant?: 'card' | 'row' | 'fresh'
+  /**
+   * Punch list #369: on the `fresh` look, this is the day's Next card. It is drawn larger, a task with a tick box
+   * trades the box for a **Mark done** press, and the note press sits in a row above it.
+   */
+  lead?: boolean
+  /** Who hears when this task is done, for the `fresh` look's done line. Left out, the line says only when. */
+  hearsName?: string | null
   /**
    * v2.2017: when set, tapping the title toggles the thread, and the open
    * thread renders the task's FULL history (the shared ChecklistItemActivity
@@ -96,6 +105,8 @@ type ChecklistInstanceCardProps = {
   /** The dot's number, once the list has a map over it (PR 4). */
   placeNumber?: number | null
   placeOverdue?: boolean
+  /** The dot is amber: an older task that is not late (punch list #369). */
+  placeOld?: boolean
   /** How far the place is, once the person asked where they are on the map above: `250 ft north-east`. */
   placeFar?: string | null
   /** Bumped by Show the task on the map (PR 4): the card opens. Zero or absent does nothing. */
@@ -129,6 +140,8 @@ export function ChecklistInstanceCard({
   onPostComment,
   actions,
   variant = 'card',
+  lead = false,
+  hearsName = null,
   fullHistory,
   lines,
   onTickLine,
@@ -141,6 +154,7 @@ export function ChecklistInstanceCard({
   mapId = null,
   placeNumber = null,
   placeOverdue = false,
+  placeOld = false,
   placeFar = null,
   openSignal = 0,
   spotPhotoUrl = null,
@@ -456,6 +470,155 @@ export function ChecklistInstanceCard({
     </div>
   )
 
+  /**
+   * The `fresh` look (punch list #369): Checklist → Today in the New task window's language. Quiet pills carry the
+   * note and the parent's extras, a done task is one struck line that says who hears, and the only solid blue is the
+   * Next card's Mark done. The tick, the ring and Mark done keep their thick dark edges from the sunlight pass, since
+   * glare takes a tint before it takes a border.
+   */
+  const freshNotePress = (
+    <button
+      type="button"
+      data-fresh-note
+      onClick={() => {
+        if (threadOpen) {
+          setThreadOpen(false)
+          return
+        }
+        setThreadOpen(true)
+        if (comments === 0) setFocusComposerPending(true)
+      }}
+      aria-expanded={threadOpen}
+      style={{
+        ...TASK_PILL_STYLE,
+        ...(comments > 0 ? { fontWeight: 700 } : {}),
+        ...(threadOpen ? TASK_PILL_LIT_STYLE : {}),
+      }}
+    >
+      {notePressLabel(comments)}
+    </button>
+  )
+  const freshStatus =
+    status.kind === 'waiting_review' ? (
+      <div data-fresh-done style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+        {doneLineWords(stripStamp(status.at), hearsName)}
+      </div>
+    ) : status.kind === 'signed_off' ? (
+      <div data-fresh-done style={{ fontSize: '0.78rem', color: 'var(--text-green-700)', marginTop: 2 }}>
+        Signed off by {name(status.byUserId)} {stripStamp(status.at)}
+      </div>
+    ) : null
+  const freshLeadPress = lead && !isCompleted
+  const freshBody = (
+    <>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.7rem' }}>
+        {ring ? (
+          <TaskRing state={ringSt} size={lead ? 44 : 34} onPress={ringPress} title={titleText} />
+        ) : freshLeadPress ? null : (
+          <button
+            type="button"
+            onClick={onToggleComplete}
+            aria-pressed={isCompleted}
+            aria-label={isCompleted ? 'Mark not done' : 'Mark done'}
+            style={{
+              width: 30,
+              height: 30,
+              flexShrink: 0,
+              borderRadius: 8,
+              border: isCompleted ? 'none' : '2.5px solid var(--text-600)',
+              background: isCompleted ? '#16a34a' : 'var(--surface)',
+              color: 'white',
+              fontSize: '0.95rem',
+              lineHeight: 1,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {isCompleted ? '✓' : ''}
+          </button>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            {...(fullHistory
+              ? {
+                  role: 'button' as const,
+                  tabIndex: 0,
+                  'aria-expanded': threadOpen,
+                  'aria-label': `${threadOpen ? 'Hide' : 'Show'} activity for ${fullHistory.item.title}`,
+                  onClick: (e: MouseEvent<HTMLDivElement>) => {
+                    if ((e.target as HTMLElement).closest('a')) return
+                    setThreadOpen((o) => !o)
+                  },
+                  onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setThreadOpen((o) => !o)
+                    }
+                  },
+                }
+              : {})}
+            style={{
+              fontWeight: lead ? 600 : 500,
+              fontSize: lead ? '1.0625rem' : '0.9375rem',
+              lineHeight: 1.3,
+              marginTop: lead ? 0 : 4,
+              ...(fullHistory ? { cursor: 'pointer' } : {}),
+              ...(isCompleted ? { color: 'var(--text-muted)', textDecoration: 'line-through' } : {}),
+            }}
+          >
+            {title}
+          </div>
+          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} old={placeOld} far={placeFar} /> : null}
+          {!place ? <TaskMapLine map={taskMap} /> : null}
+          {freshStatus}
+          {reopenedCallout}
+          {linesBlock}
+          {photoStrip}
+        </div>
+        {lead ? null : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', maxWidth: '55%', flexShrink: 0 }}>
+            {freshNotePress}
+            {actions}
+          </div>
+        )}
+      </div>
+      {lead ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', marginTop: '0.6rem' }}>
+          {freshNotePress}
+          {actions}
+        </div>
+      ) : null}
+      {freshLeadPress ? (
+        <button
+          type="button"
+          data-fresh-done-press
+          onClick={() => {
+            if (ring) void cardSheets.donePress()
+            else onToggleComplete()
+          }}
+          style={{
+            display: 'block',
+            width: '100%',
+            marginTop: '0.65rem',
+            minHeight: 46,
+            font: 'inherit',
+            fontSize: 15,
+            fontWeight: 700,
+            borderRadius: 10,
+            border: 'none',
+            background: '#2563eb',
+            color: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          Mark done
+        </button>
+      ) : null}
+    </>
+  )
+
   return (
     <li
       data-task-instance={instance.id}
@@ -463,11 +626,18 @@ export function ChecklistInstanceCard({
       style={
         variant === 'row'
           ? { borderBottom: '1px solid var(--border-rule)', padding: '0.35rem 0.25rem', listStyle: 'none' }
-          : { border: '1.5px solid var(--border-strong)', borderRadius: 12, padding: '0.75rem', marginBottom: '0.7rem', listStyle: 'none' }
+          : variant === 'fresh'
+            ? lead
+              ? { border: '2px solid var(--text-600)', borderRadius: 14, padding: '0.8rem', marginBottom: '0.5rem', listStyle: 'none', background: 'var(--surface)' }
+              : { border: '1px solid var(--border)', borderRadius: 12, padding: '0.55rem 0.7rem', marginBottom: '0.45rem', listStyle: 'none', background: 'var(--surface)' }
+            : { border: '1.5px solid var(--border-strong)', borderRadius: 12, padding: '0.75rem', marginBottom: '0.7rem', listStyle: 'none' }
       }
+      {...(variant === 'fresh' && lead ? { 'data-fresh-lead': '' } : {})}
     >
       {variant === 'row' ? (
         rowBody
+      ) : variant === 'fresh' ? (
+        freshBody
       ) : (
       <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -530,7 +700,7 @@ export function ChecklistInstanceCard({
           >
             {title}
           </div>
-          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} far={placeFar} /> : null}
+          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} old={placeOld} far={placeFar} /> : null}
           {!place ? <TaskMapLine map={taskMap} /> : null}
           {statusStrip}
           {reopenedCallout}
@@ -600,16 +770,16 @@ export function ChecklistInstanceCard({
       )}
       {variant === 'row' && linesOpen ? <div style={{ padding: '0.1rem 0 0.4rem 2.2rem' }}>{linesBlock}{photoStrip}</div> : null}
       {ringSheet}
-      {threadOpen && place && variant === 'card' ? <TaskPlaceBlock place={place} placedByName={place.setBy ? (nameById[place.setBy] ?? null) : null} photoUrl={spotPhotoUrl} /> : null}
-      {threadOpen && !place && taskMap.kind === 'read' && variant === 'card' ? (
+      {threadOpen && place && variant !== 'row' ? <TaskPlaceBlock place={place} placedByName={place.setBy ? (nameById[place.setBy] ?? null) : null} photoUrl={spotPhotoUrl} /> : null}
+      {threadOpen && !place && taskMap.kind === 'read' && variant !== 'row' ? (
         <TaskMapBlock whole={taskMap.whole} paintedByName={taskMap.whole.map.createdBy ? (nameById[taskMap.whole.map.createdBy] ?? null) : null} photoUrl={spotPhotoUrl} />
       ) : null}
-      {threadOpen && !place && taskMap.kind !== 'read' && spotPhotoUrl && variant === 'card' ? (
+      {threadOpen && !place && taskMap.kind !== 'read' && spotPhotoUrl && variant !== 'row' ? (
         <div style={{ marginTop: '0.6rem' }}>
           <TaskSpotPhotoView url={spotPhotoUrl} />
         </div>
       ) : null}
-      {threadOpen && !place && !isCompleted && onPlaceAdded && variant === 'card' ? <TaskPlaceAddHere instanceId={instance.id} onAdded={onPlaceAdded} /> : null}
+      {threadOpen && !place && !isCompleted && onPlaceAdded && variant !== 'row' ? <TaskPlaceAddHere instanceId={instance.id} onAdded={onPlaceAdded} /> : null}
       {threadOpen && fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>
           <ChecklistItemActivity

@@ -49,6 +49,16 @@ vi.mock('../utils/errorHandling', () => ({
     if (r.error) throw r.error
     return r.data
   },
+  formatErrorMessage: (e: unknown, fallback: string) => (e instanceof Error && e.message ? `${fallback} ${e.message}` : fallback),
+}))
+// Retainage nobody recorded (fix A of the retainage clock check, PR 2): the desk's own read, set per test.
+const unrecorded = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>>, fail: null as Error | null, reads: 0 }))
+vi.mock('../lib/ar/retainageHeldIo', () => ({
+  loadRetainageUnrecorded: async () => {
+    unrecorded.reads += 1
+    if (unrecorded.fail) throw unrecorded.fail
+    return unrecorded.rows
+  },
 }))
 
 const { useLienDeskData } = await import('./useLienDeskData')
@@ -183,6 +193,38 @@ describe('useLienDeskData · ZZ test jobs', () => {
       delete TABLES.mail_pieces
     }
   })
+
+  it('reads retainage nobody recorded on the open desk alone, without a ZZ job when they are hidden, and stands when that read is refused', async () => {
+    const row = (jobId: string, name: string) => ({ jobId, label: jobId, name, heldBy: 'Kestrin Builders', status: 'billed', suggestion: { held: 250, percent: 10, billCount: 1, billIds: ['b'] }, noteDay: null })
+    unrecorded.rows = [row('H', 'Cedar Hollow Clinic'), row('T', 'ZZ TEST sink')]
+    unrecorded.reads = 0
+    try {
+      // The Dashboard's light read makes no such request.
+      const light = await read(false)
+      expect(light.retainageUnrecorded).toBeUndefined()
+      expect(unrecorded.reads).toBe(0)
+
+      const open = renderHook(() => useLienDeskData(true, '2026-10-09', { light: false, hideZzTestJobs: false }))
+      await waitFor(() => expect(open.result.current.data).not.toBeNull())
+      expect(open.result.current.data!.retainageUnrecorded?.map((r) => r.jobId)).toEqual(['H', 'T'])
+      expect(open.result.current.data!.retainageUnrecordedFailure).toBeNull()
+
+      const hidden = renderHook(() => useLienDeskData(true, '2026-10-09', { light: false, hideZzTestJobs: true }))
+      await waitFor(() => expect(hidden.result.current.data).not.toBeNull())
+      expect(hidden.result.current.data!.retainageUnrecorded?.map((r) => r.jobId)).toEqual(['H'])
+
+      unrecorded.fail = new Error('permission denied for table jobs_ledger_thread_notes')
+      const refused = renderHook(() => useLienDeskData(true, '2026-10-09', { light: false, hideZzTestJobs: false }))
+      await waitFor(() => expect(refused.result.current.data).not.toBeNull())
+      expect(refused.result.current.data!.retainageUnrecorded).toEqual([])
+      expect(refused.result.current.data!.retainageUnrecordedFailure).toBe('The check for retainage nobody recorded could not be read. permission denied for table jobs_ledger_thread_notes')
+      // The rest of the desk is read as before.
+      expect(refused.result.current.data!.queue.entries.map((e) => e.jobId)).toContain('A')
+    } finally {
+      unrecorded.rows = []
+      unrecorded.fail = null
+    }
+  })
 })
 
 describe('useLienDeskData · a public property’s jobs leave the lien path at the source (v2.7439)', () => {
@@ -303,3 +345,78 @@ describe('useLienDeskData · a public property’s jobs leave the lien path at t
     }
   })
 })
+
+describe('useLienDeskData · a job a person took off the lien path leaves at the source (v2.7521)', () => {
+  const OFF = { lien_path_answer: 'off_path', lien_path_reason: 'The bill is for trips to pick up checks.', lien_path_answered_at: '2026-10-08T15:00:00Z', lien_path_answered_by: 'u1' }
+  /** Job A carries the answer handed in; P is a job no reader and no paper names, off the path by its own answer. */
+  const withAnswer = async (answer: Record<string, unknown>, opts: { light?: boolean; hideZzTestJobs?: boolean; more?: unknown[] } = {}) => {
+    const jobsLedger = TABLES.jobs_ledger!
+    TABLES.users = [{ id: 'u1', name: ' Dana ' }]
+    TABLES.jobs_ledger = [...jobsLedger.map((j) => ((j as { id: string }).id === 'A' ? { ...(j as object), status: 'billed', collections_at: '2026-10-08T16:00:00Z', ...answer } : j)), ...(opts.more ?? [])]
+    try {
+      const { result } = renderHook(() => useLienDeskData(true, '2026-10-09', { light: opts.light ?? false, hideZzTestJobs: opts.hideZzTestJobs ?? false }))
+      await waitFor(() => expect(result.current.data).not.toBeNull())
+      return result.current.data!
+    } finally {
+      TABLES.jobs_ledger = jobsLedger
+      delete TABLES.users
+    }
+  }
+
+  it('off the path: the job leaves every list the desk builds and the Dashboard’s counts, and is handed on with why, who and the day', async () => {
+    const data = await withAnswer(OFF)
+    expect(data.rows.map((r) => r.job_id)).toEqual(['Z'])
+    expect(data.items.map((i) => i.job_id)).toEqual(['Z'])
+    expect(Object.keys(data.jobsById).sort()).toEqual(['Y', 'Z'])
+    expect(data.queue.entries.map((e) => e.jobId)).toEqual(['Z'])
+    expect(data.queue.counts.held).toBe(1)
+    expect(data.summary.held).toBe(1)
+    expect(data.offPathJobs).toEqual([
+      {
+        jobId: 'A',
+        number: 'A',
+        name: '101 Hill Street',
+        gcName: 'Kestrin Builders',
+        unpaid: 500,
+        reason: 'The bill is for trips to pick up checks.',
+        since: '2026-10-08T15:00:00Z',
+        byUserId: 'u1',
+        byName: 'Dana',
+        attorneySince: '2026-10-08T16:00:00Z',
+        status: 'billed',
+        papers: [{ kind: 'notice_53_056', status: 'held', months: ['2026-08'], sent_at: undefined, approved_at: undefined, voided_at: null }],
+      },
+    ])
+    // Its paper is not voided or deleted: it is only out of the lists, so it is there when the job comes back.
+    expect(data.publicJobs).toEqual([])
+  })
+
+  it('put back: the job carries no answer and is on every list again, with nothing in the bin', async () => {
+    const data = await withAnswer({ lien_path_answer: null, lien_path_reason: 'Counsel says the claim stands.', lien_path_answered_at: '2026-10-09T15:00:00Z' })
+    expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
+    expect(data.queue.entries.map((e) => e.jobId).sort()).toEqual(['A', 'Z'])
+    expect(data.queue.counts.held).toBe(2)
+    expect(data.offPathJobs).toEqual([])
+  })
+
+  it('a job no reader and no paper names is still in the bin while it owes money, and never on a list', async () => {
+    const data = await withAnswer(OFF, { more: [{ ...job('P', 'Parrow Court', 'Ann Lee'), status: 'billed', ...OFF, lien_path_reason: 'No lien right here.' }] })
+    expect(data.offPathJobs!.map((j) => j.jobId).sort()).toEqual(['A', 'P'])
+    expect(data.offPathJobs!.find((j) => j.jobId === 'P')).toMatchObject({ name: 'Parrow Court', reason: 'No lien right here.', unpaid: 500, papers: [] })
+    expect(Object.keys(data.jobsById).sort()).toEqual(['Y', 'Z'])
+    expect(data.queue.entries.map((e) => e.jobId)).toEqual(['Z'])
+  })
+
+  it('in light mode the Dashboard’s counts drop the job and no bin is read', async () => {
+    const data = await withAnswer(OFF, { light: true })
+    expect(data.queue.entries.map((e) => e.jobId)).toEqual(['Z'])
+    expect(data.summary.held).toBe(1)
+    expect(data.offPathJobs).toEqual([])
+  })
+
+  it('a ZZ job hidden from the desk is not listed in the bin either', async () => {
+    const data = await withAnswer(OFF, { hideZzTestJobs: true, more: [{ ...job('Q', 'ZZ TEST off path', 'Ann Lee'), status: 'billed', ...OFF }] })
+    expect(data.offPathJobs!.map((j) => j.jobId)).toEqual(['A'])
+  })
+})
+

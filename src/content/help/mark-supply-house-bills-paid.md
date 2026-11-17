@@ -42,6 +42,26 @@ Each bill is marked by itself. The card has no tick boxes. To pay several bills 
 
 Mark paid keeps the day and the amount. It does not say how the bill was paid. Use **Record a payment** when you know the method and its number.
 
+## Say how a payment was sent, later
+
+A bill you marked paid still needs how it was paid. Its row says *how it was paid is missing*, with **Finish…** beside it.
+
+1. Press **Finish…** on the row.
+2. Pick how it was sent: **Card**, **ACH**, **Check**, **Cash** or **Other**.
+3. Type the method's number in the box under the chips.
+4. Check **Date sent**. You may paste the **Receipt link**.
+5. Press {{button:green|Save how it was sent}}.
+
+The amount stays as it is. The row then names the payment, and its press becomes **See the payment**.
+
+Every payment that still waits is counted in one place. Accounts payable shows a line over the aging table, like **3 payments need how they were paid**. Press it to open the list, then press **Finish…** on a row. The longest wait is first.
+
+Needs you counts them too, under **Supply houses**. Its **Finish them** press opens the same list.
+
+A payment recorded with **Say later** waits on that list as well. A bill paid before payments were recorded never does.
+
+To change how a recorded payment was sent, press **See the payment** on a bill it paid. Then press **Edit how it was sent**.
+
 ## Record a payment
 
 Pay the house in its portal first, as you always have. The app never moves money. It writes down what you sent.
@@ -94,6 +114,48 @@ Sometimes you send more than the bills you ticked. The line at the bottom says h
 
 The house's card then shows **On account** beside its other numbers. The next payment to that house offers the money first, like **Use $187.40 on account first**. Tick it and that money goes on the oldest bills you tick.
 
+## The house added interest or a late fee
+
+A house may add interest when a bill runs past 30 days. You record it with the payment that paid it.
+
+1. In **Record a payment**, press **+ The house added interest or a late fee** under the bills.
+2. Type the amount in the box on that line.
+3. Pick the bill that ran late under **Which bill was late**. Leave **Not tied to a bill** when you do not know.
+4. Tick the other bills the payment covered, and press the green button.
+
+**Amount sent** adds the interest in. The button's words end in *and interest*.
+
+The app keeps the interest as a bill of its own. It is marked {{chip:yellow|Interest}} and reads paid by this payment. Its row is named for the late bill, like **Interest on S4398120**, and says *not a job cost*.
+
+Interest is never put on a job. It stays off every job's cost, so the house's late charge does not look like materials.
+
+The house billed interest you have not paid yet? Press {{button:blue|Add Invoice}} and tick **This is interest or a late fee**. It then waits with the other bills until a payment covers it.
+
+Accounts payable adds the year up under its total, like *Interest and late fees in 2026: $61.20*, with each house's share.
+
+## Let the bank agree
+
+The app reads the company's bank lines. A card or ACH payment to a supply house shows there with its day and its amount. The app holds your payments against those lines, so a wrong digit shows up.
+
+Press {{button:outline|See the payment}} on a bill. When the bank holds a line for the same money within three days, the window offers it.
+
+1. Read the line. It shows the day, the payee and the amount.
+2. Press **Match** beside the line that is this payment.
+
+The window then reads **Bank agrees ✓** with that line. Press **Take it off** to undo the match.
+
+:::example A payment the bank agrees with
+**$5,000.00 to Pecan Supply** · 11/12 · ACH 88213. {{chip:green|Bank agrees ✓}} 11/12 · PECAN SUPPLY ACH · $5,000.00.
+:::
+
+The finish-later list uses the bank too. A payment that waits there may read *The bank has it*, with **Use this line**. One press fills the day and how it was sent, and the payment leaves the list.
+
+The bank also shows money that went to a house with no payment recorded. Accounts payable counts those in a line, like **2 bank lines to supply houses have no payment recorded**. Press it to open the list. Then press **Say what it paid** on a line. **Record a payment** opens with the amount, the day and the method filled. Tick the bills it paid and press the green button.
+
+A purchase at the counter that the Tally already sorted is not listed there. Neither is a line from before payments were recorded.
+
+Some houses are paid in a way the bank feed does not show. Their payments get no offer. Type how each was sent, as before.
+
 ## See a payment, or remove one
 
 A bill paid by a recorded payment names it on its row. The row reads the paid day, the method with its number, and how many bills the payment covered.
@@ -104,9 +166,39 @@ A bill paid by a recorded payment names it on its row. The row reads the paid da
 
 Press {{button:outline|See the payment}} on that row. The window lists every bill the payment paid, with the amount on each. The line at the bottom says what the lines add up to.
 
-Recorded the wrong payment? Press **Remove this payment…** in that window. The app asks first and says what will change. Press {{button:outline|Remove payment}} and every bill it paid reads unpaid again. Then record it again with the right bills.
+A bill paid by a recorded payment has no **Mark unpaid**. The money was sent, so you move it or remove the payment instead.
 
-A bill paid by a recorded payment has no **Mark unpaid**. The money was sent, so the payment is removed instead.
+## The house applied the money to another bill
+
+A supply house sometimes puts your money on a different bill than you recorded. Move it here so both sides agree.
+
+1. Press {{button:outline|See the payment}} on a bill that payment paid.
+2. Press **Move…** beside the bill the money should leave.
+3. Check **How much to move**. It opens on everything the payment has on that bill. Type less to move part of it.
+4. Pick the bill it goes to. The house's open bills are listed oldest first. **On account, no bill** is last.
+5. Say why with a chip: **The house applied it differently**, **I picked the wrong bill** or **Something else**.
+6. Read **What changes**. It shows both bills before and after.
+7. Press the blue button. It names the move, like **Move $1,000.00 to S4398120**.
+
+:::example What changes
+S4393015 · paid $1,000.00 → $0.00 · open $0.00 → $1,000.00 · reads unpaid again. S4398120 · paid $0.00 → $1,000.00 · open $1,240.00 → $240.00. The payment still totals $5,000.00.
+:::
+
+The payment keeps its day, its amount and how it was sent. Only the bill changes.
+
+Each bill then says where the money went on its own row. The bill it left reads like *$1,000.00 moved to S4398120*, with who moved it and why. The bill it reached reads like *$1,000.00 moved here from S4393015*.
+
+Money on account moves the same way. Press **Put on a bill…** beside **On account** in the payment's window.
+
+Moved it by mistake? Open the payment again. **What happened to it** lists each move. Press **Take it back** beside the move.
+
+## Remove a payment, or put it back
+
+Recorded a payment that was never sent? Press **Remove this payment…** in the payment's window. The app says what will change and asks why. Type the reason and press {{button:outline|Remove payment}}. Every bill it paid reads unpaid again.
+
+A removed payment waits under the house's bills for 30 days, in **Removed in the last 30 days**. Press **Put it back** there and its bills read as they did.
+
+The app refuses to put a payment back when one of its bills was paid another way since. It names the bill. Record the payment again with the right bills.
 
 Tick **Show paid invoices** at the top of Accounts payable to list the paid bills too. Paid bills sit in a **Paid** group at the bottom of the card. A bill paid before payments were recorded reads its paid day alone.
 

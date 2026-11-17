@@ -6,6 +6,7 @@ import type { LienWordChannel } from './lienWord'
 import { canTakeBackItem, fieldsWithTakeBack } from './lienRunTakeBack'
 import { canClosePaidItem, fieldsWithClosedPaid, paperClaimOf } from './lienRunClosePaid'
 import { LIEN_DESK_SIGNATURE_CLEAR } from './lienNoticeSignature'
+import { fieldsWithSignatureCleared, signatureClearedRecord } from './lienSignAgain'
 import { withPromiseRecord, type CourtesyPromise } from './lienCourtesyNotice'
 import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -81,8 +82,10 @@ async function askLeaderTell(body: Record<string, unknown>): Promise<LienLeaderT
   try {
     const { data, error } = await supabase.functions.invoke('notify-lien-approval', { body })
     if (error) return { ok: false, reason: (await readEdgeFunctionErrorBody(error)) ?? formatErrorMessage(error, 'The message could not be sent.') }
-    const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null; held?: number; message?: string | null; told?: number | null }
-    return { ok: true, told: { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null, held: d.held ?? 0, said: d.message ?? null, told: d.told ?? null } }
+    const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null; held?: number; message?: string | null; told?: number | null; text_sent?: number; text_said?: string | null }
+    // The text's two answers ride only when the function gave them (v2.7495): a reminder, from the function that texts.
+    const text = typeof d.text_sent === 'number' ? { textSent: d.text_sent, textSaid: d.text_said ?? null } : {}
+    return { ok: true, told: { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null, held: d.held ?? 0, said: d.message ?? null, told: d.told ?? null, ...text } }
   } catch (e) {
     return { ok: false, reason: formatErrorMessage(e, 'The message could not be sent.') }
   }
@@ -110,6 +113,17 @@ export async function tellLeaderOfLienApproval(itemId: string, dueYmd: string | 
 export async function tellLeaderOfLienAffidavits(papers: ReadonlyArray<{ itemId: string; dueYmd: string | null }>, opts?: { remind?: boolean }): Promise<LienLeaderTellResult | null> {
   if (papers.length === 0) return null
   return askLeaderTell({ kind: 'affidavit', items: papers.map((p) => ({ item_id: p.itemId, due_ymd: p.dueYmd ?? undefined })), ...(opts?.remind ? { remind: true } : {}) })
+}
+
+/**
+ * Remind the leader of approved notices that wait on his signature (v2.7491): one call for every notice of the press,
+ * so eight buzz him once with the count. Until now no press told him of these: Remind covered a paper awaiting
+ * approval alone. Best effort and never thrown. The function as it was refuses a body with no `item_id`, and the
+ * office reads that as the part that tells the leader waiting for its update.
+ */
+export async function tellLeaderOfLienSignatures(papers: ReadonlyArray<{ itemId: string; dueYmd: string | null }>): Promise<LienLeaderTellResult | null> {
+  if (papers.length === 0) return null
+  return askLeaderTell({ kind: 'signature', items: papers.map((p) => ({ item_id: p.itemId, due_ymd: p.dueYmd ?? undefined })), remind: true })
 }
 
 /** "Robert said to send it" — approved on the leader's spoken word, with who / when / how (or, v2.3813, that he is standing here / typing it in). */
@@ -252,6 +266,28 @@ export async function pullBackLienDeskItem(itemId: string, userId: string | null
 }
 
 /**
+ * Rewrite the stored paper of a notice past a draft (v2.7520): the fields `fieldsRedrawn` built, with the signature
+ * cleared, because the mark belongs to the paper as it was signed. The status stands: an approved notice stays approved
+ * and reads unsigned until the leader signs the new paper. Only a live row still awaiting approval, approved or held,
+ * and not printed, is written; false when the row had moved on (printed, sent or closed meanwhile), and nothing changed.
+ */
+export async function redrawLienDeskItem(itemId: string, fields: Record<string, unknown>): Promise<boolean> {
+  const rows = await withSupabaseRetry(
+    () =>
+      supabase
+        .from('job_lien_desk_items')
+        .update({ fields: JSON.parse(JSON.stringify(fields)) as Json, ...LIEN_DESK_SIGNATURE_CLEAR } as never)
+        .eq('id', itemId)
+        .in('status', ['awaiting_approval', 'approved', 'held'])
+        .is('printed_at', null)
+        .is('voided_at', null)
+        .select('id'),
+    'lien desk: redraw from the bills',
+  )
+  return ((rows ?? []) as Array<{ id: string }>).length > 0
+}
+
+/**
  * Undo a run's approval (v2.4541): every notice the click approved, or sent to the leader, goes
  * back to the office's draft, and the printed stamp goes with it. Only rows still approved or
  * awaiting approval move, so a notice already recorded as sent is never touched. Returns how many moved.
@@ -336,7 +372,7 @@ export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, u
   )
 }
 
-/** Back to Approved · to print (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands. */
+/** Back to Approved · to print (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands; a signature comes off (v2.7503). */
 export async function clearLienDeskItemPrinted(itemId: string, by: { userId: string | null; userName: string | null } = { userId: null, userName: null }): Promise<void> {
   await takeBackLienDeskItems([itemId], by)
 }
@@ -345,22 +381,31 @@ export async function clearLienDeskItemPrinted(itemId: string, by: { userId: str
  * Take back a printed run (punch list #101): every listed item still printed and not sent goes
  * back to Approved · to print, keeping its approval and a line saying who took it back
  * (`fields.runTakenBack`). Returns how many were taken back; a row sent or cleared meanwhile is left alone.
+ *
+ * A signature comes off with it (v2.7503, the owner's call): the ten signature columns clear in the same
+ * write, and a signed row keeps a second line naming the signature that came off (`fields.signatureCleared`).
+ * Until then the write left the columns alone while changing `fields`, so the signature read as gone by its
+ * hash and the row still carried it. A drawing in storage is kept.
  */
 export async function takeBackLienDeskItems(itemIds: ReadonlyArray<string>, by: { userId: string | null; userName: string | null }): Promise<number> {
   if (itemIds.length === 0) return 0
   const rows = await withSupabaseRetry(
-    () => supabase.from('job_lien_desk_items').select('id, fields, printed_at, status, voided_at').in('id', [...itemIds]),
+    () => supabase.from('job_lien_desk_items').select('id, fields, printed_at, status, voided_at, signed_at, signed_by, signer_printed_name, signer_signature_mode, signer_signature_storage_path').in('id', [...itemIds]),
     'lien desk: read printed',
   )
   const at = new Date().toISOString()
-  const live = ((rows ?? []) as Array<{ id: string; fields: unknown; printed_at: string | null; status: string | null; voided_at: string | null }>).filter(canTakeBackItem)
+  const live = ((rows ?? []) as Array<{ id: string; fields: unknown; printed_at: string | null; status: string | null; voided_at: string | null; signed_at?: string | null }>).filter(canTakeBackItem)
+  const fieldsAfter = (r: (typeof live)[number]) => {
+    const taken = fieldsWithTakeBack(r.fields, { at, by: by.userId, byName: by.userName, printedAt: r.printed_at })
+    return r.signed_at ? fieldsWithSignatureCleared(taken, signatureClearedRecord(r, by, at)) : taken
+  }
   await Promise.all(
     live.map((r) =>
       withSupabaseRetry(
         () =>
           supabase
             .from('job_lien_desk_items')
-            .update({ printed_at: null, printed_by: null, fields: fieldsWithTakeBack(r.fields, { at, by: by.userId, byName: by.userName, printedAt: r.printed_at }) } as never)
+            .update({ printed_at: null, printed_by: null, ...LIEN_DESK_SIGNATURE_CLEAR, fields: fieldsAfter(r) } as never)
             .eq('id', r.id)
             .not('printed_at', 'is', null)
             .neq('status', 'sent'),

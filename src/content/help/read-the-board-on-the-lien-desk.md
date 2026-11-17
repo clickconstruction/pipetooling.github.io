@@ -2,10 +2,10 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, off the lien path, not lienable, put it back, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
-The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
+The Lien desk opens on its To do view. The Board sits across the top of that view. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
 
 ## The four tiles
 
@@ -21,7 +21,7 @@ The fourth tile is the money still unpaid on the desk. Each job counts once.
 
 The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send for Master approval**, **Awaiting Master approval**, *Approved · to print*, *Approved · to mail* and **Sent**. An approved notice stands in *Approved · to print* until its packet prints. Then it stands in *Approved · to mail* until its mail numbers are typed in. The Monthly notices list uses the same two names. A thin grey arrow joins each bin to the next.
 
-The right column is the lien affidavits. Its first two bins are **Needs the property facts** and **Waiting on its notice**. Then come **To send for Master approval**, **Awaiting Master approval**, **Ready to file** and *Filed · Served*.
+The right column is the lien affidavits. Its first two bins are **Needs the property facts** and **Waiting on its notice**. Then come **To send for Master approval**, **Awaiting Master approval** and **Ready to file**. Its last two are *Filed · copies to mail* and *Served*. A filed lien owes a copy of its affidavit to the owner within five days. It stands in *Filed · copies to mail* until the copies are mailed and the day is recorded. Then it stands in *Served*. Its chip there is coloured by the day the copies must be mailed by. That bin has a press of its own, like **Mail 12 liens’ copies ›**. The press opens one window that prints the copies and takes their mail numbers.
 
 **Needs the property facts** holds an affidavit that still needs a fact. The fact is on the property record or on the GC's customer record. **Waiting on its notice** holds an affidavit that needs nothing but its notice. A job with a GC needs a notice mailed and on record before its affidavit can go. An affidavit that needs both a fact and a notice stays in **Needs the property facts**.
 
@@ -65,7 +65,7 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 - A chip in **To send for Master approval** or **Awaiting Master approval** opens that job's paper on **By paper**.
 - A chip in *Approved · to print* or *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
-- A chip in *Filed · Served* opens the job's Lien window.
+- A chip in *Filed · copies to mail* or *Served* opens the job's Lien window.
 
 A paper opened from a chip is a step of its own in the browser. Press Back and the desk returns to To do with the Board in view. The property record and the run open over the Board. Close them and the Board is where it was.
 
@@ -75,7 +75,7 @@ The same press sits on the job number of every To do row. It also sits on the nu
 
 Two presses stand between the tiles and the columns. Each stands over its own column, so they show as soon as the desk opens. Only the lien office sees them.
 
-Over the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
+Over the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Press {{button:outline|Remind Malachi of 7 papers ›}} beside it to tell the leader they wait. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
 
 Over the affidavits the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under it says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
 
@@ -109,7 +109,7 @@ Each heading says how many papers the bin holds and what their jobs still owe. I
 
 Papers that share one act are one row. Twelve affidavits ready to file read as one row, *12 affidavits approved and ready to file*. Its press is {{button:blue|Print 10 for notarization ›}}. It opens the affidavits list at **Ready to file**. The button of the same name there prints the batch. Press **The 12 jobs** on the row to see each job, its notice and what it owes. Affidavits not yet sent for approval fold the same way, under {{button:blue|Send 3 for approval ›}}.
 
-A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. When only a retainage notice waits, the press is on the **Other lien papers** heading. The desk asks first. Then the leader gets the message again, on the phone or by email. Anyone in the office can send it, whoever sent the paper. A notice is one message each. A retainage notice is one message too. The affidavits share one message. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. After a send the button says when, like *Reminded at 2:14 PM*.
+A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. When only a retainage notice waits, the press is on the **Other lien papers** heading. The desk asks first. Then the leader gets the message again, on the phone or by email. A text with the link goes too, from the company number. Anyone in the office can send it, whoever sent the paper. A notice is one message each. A retainage notice is one message too. The affidavits share one message. An approved notice the leader has yet to sign is in the same press. The notices to sign share one message too. On a day with nothing to approve, the press is on the Board, beside the line that counts them. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. The desk also says whether the text went. When no text went, it says why, like no mobile number on the leader's account. **Send texts** must be on for the text to go. Read [turn on texts from the company number](/help/turn-on-texts-from-the-company-number). After a send the button says when, like *Reminded at 2:14 PM*.
 
 The leader's own rows stay on top, under **Only you can sign** and **Only you can approve**. **Reminders** keep their own heading. A paper with no bin, like a retainage notice, sits under **Other lien papers**.
 
@@ -135,7 +135,7 @@ A heading carries the day when every row under it shares that day. Then no row r
 
 A **Held** bin and a **Missed** bin stand beside a column only while a job is in one. A dashed border marks them. When they are empty they are not drawn.
 
-Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. The retainage list on **By paper** has the rows.
+Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows.
 
 ## Public property
 
@@ -149,6 +149,16 @@ A property answered public leaves the bins. The property's jobs sit in their own
 
 **Put a job back on the lien path…** at the foot of the bin puts a property back. Say why, and its jobs return to the bins. [A public property](/help/file-a-lien-and-never-miss-its-deadlines#a-public-property) has the window's steps.
 
+## A job that is off the lien path
+
+Some money has no lien behind it. A trip charge to pick up a check is one case. The lien office can take that one job off the lien path, with a reason.
+
+Such a job leaves the bins. It sits in its own bin under the affidavits, {{chip:gray|Off the lien path}}. Each row gives the job, its money, the GC, who took it off and the day. The reason sits on its own line.
+
+{{button:outline|Put it back…}} on a row puts that job back. Say why, and the job returns to the bins with its papers.
+
+A lien affidavit that a fact holds has a quiet {{button:outline|Not lienable…}} under its row. [Take a job off the lien path](/help/take-a-job-off-the-lien-path) has the steps.
+
 ## The leader's Board
 
 A master opens the desk on his own Board. Only the two **Awaiting Master approval** bins stand under the tiles. They hold the jobs he leads. One press under them acts on the lot. The press reads like *Approve 2 affidavits*. It approves every affidavit that waits inside its window, one by one. Each moves to **Ready to file**. The desk asks once before it starts, with the count.
@@ -161,9 +171,9 @@ Press {{button:outline|Every bin}} to see the whole Board. Press {{button:outlin
 
 The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 to print and mail · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
 
-## The title is a door
+## The first tab is the way back
 
-Press **Lien desk** at the top of the page from any view. The To do tab opens with the Board in view.
+On a computer the first tab carries the desk's name and its count. The tab reads like *⏱ Lien desk · 32 to do*. The number counts the To do rows you can move. Press the tab from any view. To do opens with the Board in view. Press it on To do and the Board comes back up. The tab is blue while To do is the view. On the other views the tab still shows the desk's name. On a phone the title **Lien desk** is the way back, and the first tab reads *To do · 32*.
 
 ## Where the old strips went
 

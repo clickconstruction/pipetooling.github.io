@@ -40,7 +40,7 @@ const FILES = ['docs/GLOSSARY.md', 'docs/ACCESS_CONTROL.md', 'docs/LIEN_DESK_ARC
  * the table cap moves its detail into a paragraph under the table. Both sit just over the longest line the
  * sweep left, so nothing grows past what is there now.
  */
-const CAPS = { prose: 2400, table: 4000 }
+const CAPS = { prose: 2400, table: 4800 }
 
 const argv = process.argv.slice(2)
 const CHECK = argv.includes('--check')

@@ -113,6 +113,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'gc-architect-email', audience: 'owner', steps: [G('submittal-email'), G('rfi-email')] },
   // GC mode (P3-a): every email to a trade partner company, from one sender.
   { kind: 'sender', ref: 'gc-trade-email', audience: 'sub', steps: [S('gc-trade-email')] },
+  { kind: 'sender', ref: 'send-sub-paper-email', audience: 'sub', steps: [S('sub-papers-email')] },
   // GC mode (O4b): our emails to a GC project's customer and its architect, from one sender.
   { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email'), G('gc-certified-email'), G('gc-change-order-email'), G('gc-reminder-email'), G('gc-interest-bill-email'), G('gc-weekly-report-email'), G('gc-schedule-email'), G('gc-contract-email')] },
   // Messages (cut 3): an email from the reply box in a person's thread, to a customer, an architect or a trade partner.
@@ -132,7 +133,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'ct-roster-audit', audience: 'staff', exempt: 'Weekly roster drift audit to every dev.' },
   { kind: 'sender', ref: 'invite-user', audience: 'staff', exempt: 'Staff account invites.' },
   { kind: 'sender', ref: 'money-waiting-email-dispatch', audience: 'staff', exempt: 'The office\'s Money waiting list.' },
-  { kind: 'sender', ref: 'notify-lien-approval', audience: 'staff', exempt: 'Tells the leader a lien notice or affidavit awaits his approval, by push or else email.' },
+  { kind: 'sender', ref: 'notify-lien-approval', audience: 'staff', exempt: 'Tells the leader a lien notice or affidavit awaits his approval or his signature, by push or else email; a reminder texts him the link too, from the company number. No customer sees it.' },
   { kind: 'sender', ref: 'messages-notify', audience: 'staff', exempt: 'Tells the approvers a contract clause change waits on them, by push and email, and the editor how it was decided.' },
   { kind: 'sender', ref: 'payment-forecast-email-dispatch', audience: 'staff', exempt: 'The office\'s Payment forecast.' },
   { kind: 'sender', ref: 'schedule-share-dispatch', audience: 'staff', exempt: 'Schedule shares go to app users.' },

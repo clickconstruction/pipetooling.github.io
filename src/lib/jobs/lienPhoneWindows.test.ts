@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { lienRunJourneyFoldWords, lienRunJourneyLine, lienWindowHeadFoldWords, lienWindowHeadFolded, lienWindowHeadStartsFolded, lienWindowScrollIsPaper } from './lienPhoneWindows'
-import type { RunJourneyNode } from './runJourney'
+import type { LienRunNode } from './lienRunParts'
 
-const node = (key: RunJourneyNode['key'], label: string, over: Partial<RunJourneyNode> = {}): RunJourneyNode => ({ key, label, count: '0 of 7', done: false, state: 'todo', note: null, ...over })
+const node = (step: LienRunNode['step'], label: string, over: Partial<LienRunNode> = {}): LienRunNode => ({ step, label, count: '0 of 7', state: 'todo', ...over })
 
 describe('lienWindowHeadFolded', () => {
   const paper = { scrollHeight: 4203, clientHeight: 168, foldable: 275 }
@@ -58,22 +58,21 @@ describe('lienWindowScrollIsPaper', () => {
 })
 
 describe('lienRunJourneyLine', () => {
-  it('says the step the run stands on, the first not done, with its count and what blocks it', () => {
-    const nodes = [node('built', 'Built', { done: true, state: 'done', count: '7 of 7' }), node('signed', 'Signed', { state: 'blocked', note: '7 wait on Sam' }), node('sent', 'Sent', { done: true, state: 'done', count: '7 of 7' }), node('mailed', 'In the mail'), node('recorded', 'Recorded'), node('delivered', 'Delivered')]
-    expect(lienRunJourneyLine({ nodes })).toEqual({ head: 'Step 2 of 6 · Signed', count: '0 of 7 · 7 wait on Sam', warn: true, done: false })
+  it('says the step the run is on with its count, amber while it stands on what stops a notice', () => {
+    const nodes = [node(1, 'Get them right', { state: 'now', count: '8 of 15 are ready' }), node(2, 'Print'), node(3, 'Mail and record')]
+    expect(lienRunJourneyLine(nodes)).toEqual({ head: 'Step 1 of 3 · Get them right', count: '8 of 15 are ready', warn: true, done: false })
   })
 
-  it('a step with nothing in its way is not a warning', () => {
-    const nodes = [node('built', 'Built', { done: true, state: 'done', count: '3 of 3' }), node('signed', 'Signed', { done: true, state: 'done', count: '3 of 3' }), node('sent', 'Sent', { state: 'now', count: '1 of 3' })]
-    expect(lienRunJourneyLine({ nodes })).toEqual({ head: 'Step 3 of 3 · Sent', count: '1 of 3', warn: false, done: false })
+  it('a later step is not a warning', () => {
+    const nodes = [node(1, 'Get them right', { state: 'done' }), node(2, 'Print', { state: 'done' }), node(3, 'Mail and record', { state: 'now', count: '7 of 9 numbers typed' })]
+    expect(lienRunJourneyLine(nodes)).toEqual({ head: 'Step 3 of 3 · Mail and record', count: '7 of 9 numbers typed', warn: false, done: false })
   })
 
-  it('says so when every step is done', () => {
-    const nodes = [node('built', 'Built', { done: true, state: 'done', count: '3 of 3' }), node('delivered', 'Delivered', { done: true, state: 'done', count: '3 of 3' })]
-    expect(lienRunJourneyLine({ nodes })).toEqual({ head: 'All 2 steps done', count: '3 of 3', warn: false, done: true })
+  it('says so when nothing is in the run', () => {
+    expect(lienRunJourneyLine([node(1, 'Get them right'), node(2, 'Print'), node(3, 'Mail and record')])).toEqual({ head: 'Nothing is in this run', count: '', warn: false, done: true })
   })
 
   it('the fold says what a press does', () => {
-    expect([false, true].map(lienRunJourneyFoldWords)).toEqual(['Show the six steps', 'Hide the six steps'])
+    expect([false, true].map(lienRunJourneyFoldWords)).toEqual(['Show the three steps', 'Hide the three steps'])
   })
 })

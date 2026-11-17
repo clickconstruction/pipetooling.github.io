@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
+keywords: development, site, subdivision, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, sheet count, sheets in hand, how many sheets, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -75,6 +75,10 @@ The crews' photos draw lines too, at the time they were taken. Photos on one job
 Mail tied to a job or a bid draws lines too. Each email reads at its own time, as *Email in* or *Email out*. The line shows the subject, the first words and who it was from and to. Press **Open in Messages** on the line to read the mail in its thread. Press {{chip:blue|What happened}} to see the mail with the calls and visits you kept.
 
 You see these lines when you can open Messages. The lines hold the same mail Messages shows you. The guide [save an email to a job from your own mail](/help/save-an-email-to-a-job-from-your-own-mail) shows how to tie a mail.
+
+A bid's mail that carries files shows **Keep its 2 files…** on its line. Press it to file them with the bid's plans. The guide [keep an email's files as a set of plans on a bid](/help/keep-an-emails-files-as-plans-on-a-bid) has the steps.
+
+A set of plans added to a bid draws a line too. Press {{chip:blue|Plans}} to see those lines with the plan filings.
 
 1. Press a chip under the search box to narrow the list. Press {{chip:blue|Plans}} to see every plan set filed, newest first. On a phone the chips sit in one row. Slide the row sideways to reach the rest.
 2. Type a name, a number or a word into the search box, marked with a spyglass, to find a line.
@@ -190,11 +194,51 @@ The reads start when you open the view. On a big site the icons mark the biggest
 
 Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part. A **Papers** column counts the specs, schedules and lists kept with each part's sets. Press the count to read them. An amber chip counts the questions still waiting and the papers we are owed. On a phone each part is a card with the same facts. See [keep the papers with the plans](/help/keep-the-papers-with-the-plans).
 
-Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Change the link}} on a set to point it at our own copy in Drive. See [change the link of a set](/help/keep-the-plans-on-a-job#change-the-link-of-a-set). Press {{button:outline|Build from this set}} on an older set to go back to it.
+Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. The form has a Sheets box for how many sheets the set has. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Change the link}} on a set to point it at our own copy in Drive. See [change the link of a set](/help/keep-the-plans-on-a-job#change-the-link-of-a-set). Press {{button:outline|Build from this set}} on an older set to go back to it.
 
 Two chips sit under the table. One counts the parts with no set. One counts the jobs that follow no plans yet. Press a chip to see them. Under that chip, each job is a row with its number and its name. Tick the jobs that belong on one part. Pick the part in the box. Press {{button:blue|Put 3 jobs on Lodge}}. The button counts the ticked jobs and names the part. A job can also name its part on its Documents tab, under Plans. A job that only carries bills needs no plans. A service call needs no plans either. The look leaves both out of the count. A quiet line under the chips says how many it left out and why. Ask the estimators about the rest from the card. The card keeps the question in view while it waits, and shows the answer when it comes. Bids keep their own set and are listed under the table.
 
 Questions starts with two presses, {{button:outline|Ask the estimators}} and {{button:outline|Ask Dispatch}}. Under them sits one table for each lane with questions. Open questions come first, oldest first. Each shows how long it has waited, what it is about, the words and the answer so far. The answered ones fold under a count. With no question at all, the look says nothing is waiting.
+
+## Read the plans by date
+
+Press {{button:outline|By date}} at the top of Plans. The look turns into a chart of the site's drawings over time. Press {{button:outline|By part}} to go back to the table.
+
+Time runs from left to right. A dashed line marks today. Each row of the chart is a lane with its name at the left. On a phone, press {{button:outline|What the marks mean}} to see the key.
+
+The Bids lane shows a diamond on the day each bid was sent. A small open diamond marks the date of the plans it was priced from.
+
+Each part of the site has its own lane. A dot is a set of drawings, placed on the date printed on its sheets. The set the part builds from wears a ring and its name in bold. A long name is drawn short beside its mark. The date comes off, since the axis shows it. The card and the list keep the whole name. An open dot is a set with no date on its sheets. That dot sits on the day the set came. A square is one of our as-builts. Papers are left out. Sets too close to tell apart draw as one bar with their count. A dotted line between two lanes marks the day one design became two parts.
+
+The Crews on site lane shows a bar for the days the clock has on the site's jobs. A week with nobody on site ends a bar. A dashed open bar stands for a job with no clock days. The open bar runs from the job's first work day to its last.
+
+The History lane shows a tick for every line kept on History. A letter gets a flag.
+
+A bid with a promised schedule gets its own Schedule lane under Bids. The bar runs from the day the schedule starts to the day it ends. A schedule with no end date runs off the right edge as an arrow. Once today is past the end, a red stretch runs from the end to today.
+
+To set a schedule, press a bid's mark on the chart. Press {{button:outline|Set the schedule}} on its card. Type the day the schedule starts and the day it ends. Tick **No end date** for a schedule that runs on. Press {{button:blue|Save the schedule}}. On a bid that has one, the press reads {{button:outline|Change the schedule}}. Press {{button:outline|Remove the schedule}} in that window to clear it. A person types both dates. Nothing is counted from the day the bid was sent. The same Schedule row is on Edit Bid, under Bid Date Sent.
+
+Four figures sit above the chart. The figures are the first drawings, the sets since the bid, the newest set and the days on site. When a bid has a schedule, the first figure says when it ends and how many days are left. Past the end, that figure turns red and counts the days over. The bid is the first one won. With none won, it is the first one sent.
+
+Rest the pointer on anything in the view. A card opens beside it with its details. The marks, the bars, the lane names, the four figures and the lines of the list all answer. Press the item to keep its card open. Press Escape to close it. On a phone, press the item. The card opens as a sheet from the bottom.
+
+A set's card shows the date on its sheets, the day it came, its memo and what changed. Press {{button:outline|Open ↗}} to open its link. Press {{button:outline|Build from this set}} to make the part build from it. A window asks first and names the set. Press {{button:outline|See it in By part}} to go to its row in the table. Press {{button:outline|Ask the estimators}} to ask about it.
+
+A bid's card shows when it was sent and how it ended. The card lists the sets that came since. Press {{button:outline|Open the bid}} to open it. A crew bar's card lists the jobs on it with their days. Press a job to see its card. Then press {{button:outline|Open the job}}. A History line's card shows its words. Press {{button:outline|Read the whole line}} for all of it.
+
+A part's name opens its sets, newest first. Press {{button:outline|+ New set}} there to add a set to that part. A figure's card lists what the number counts. Press a line in any card to go to that item's card. Press {{button:outline|‹ Back}} to return. Today's card offers {{button:outline|Write a line}}, which opens a History line.
+
+A set's card also shows how many sheets the set has. Press {{button:outline|Set the sheet count}} to type the number. On a set that has one, the press reads {{button:outline|Change the sheet count}}. Leave the box empty to clear it. You can also type the count in the Sheets box when you add a set.
+
+Once a set has a count, a fifth figure appears, Sheets in hand. The figure adds the sheets of the sets each part builds from. Under the number is what was in hand the day the bid was sent. The same line says how many sets nobody has counted yet.
+
+The item with an open card stands out on the chart and in the list at once.
+
+Under the chart, the drawings and the bids read again as dated lines, oldest first. A bid's line is tinted. Press {{button:outline|Also show the 287 crew and History lines}} to list those too. A long list opens on its newest lines. Press {{button:outline|Show the 12 older lines}} to read the rest.
+
+Press {{button:outline|Print or save as PDF}} above the list. One landscape page opens with the figures, the chart and the list. The page lists what the screen lists. A copy of the printed page is kept in Documents.
+
+A bid with no sent day has no place on the chart. A quiet line under the chart names it. The page remembers the view you were in.
 
 ## The photos
 
@@ -214,6 +258,8 @@ The row reads the same photos as Documents → Photos. The guide [find every pho
 ## What an estimator sees
 
 An estimator opens the same page with the jobs and bids, the history, the plans and the questions. The page shows no money. The Money look is one line that says the office reads it.
+
+An estimator sees the plans by date too. The clock's days read only to the office. An estimator's Crews on site lane shows each job's last work day. A job's card says that a job opens for the office and Dispatch.
 
 The crews' photos on the jobs read only to the office. An estimator's Photos look shows just the pictures sent by text or email. The look's heading says the crews' photos are for the office.
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_COVER_LETTER_CLASS, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, runRecordSplit, runRecordWords, stepRunPreview, trackingShape } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_COVER_LETTER_CLASS, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, stepRunPreview, trackingShape } from './lienDeskRun'
 import type { LienMailPieceRow } from '../mail/lienMailPieces'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
@@ -81,6 +81,22 @@ describe('buildLienDeskRun', () => {
     n.recipients[0]!.method = 'certified_mail'
     n.recipients[0]!.address = ''
     expect(runNoticeProblems(n)).toEqual(['Owner of record: no mailing address'])
+  })
+
+  it('a notice carries the property record it points at, and the record’s street when the job’s name does not say it (v2.7489)', () => {
+    const d = data([approved])
+    d.addressesById.addr1 = { ...(d.addressesById.addr1 as unknown as Record<string, unknown>), address: '1204 Elwick Rd, Schertz, TX 78154' } as unknown as LienDeskData['addressesById'][string]
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(n.propertyId).toBe('addr1')
+    expect(n.street).toBe('1204 Elwick Rd')
+    // A name that already says the street shows none beside it.
+    d.jobsById.j650 = { ...d.jobsById.j650!, job_name: 'AXO Schertz, 1204 Elwick Rd' }
+    expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!.street).toBe('')
+    // A job that points at no property record has neither.
+    d.jobsById.j650 = { ...d.jobsById.j650!, customer_address_id: null }
+    const none = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(none.propertyId).toBeNull()
+    expect(none.street).toBe('')
   })
 
   it('an owner the nightly run saved from the roll blocks Record the run until a person confirms it (v2.3450)', () => {
@@ -243,6 +259,10 @@ describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
     expect(run).toHaveLength(1)
     const n = run[0]!
     expect(n.kind).toBe('retainage_53_057')
+    // What was mailed (v2.7525): the retainage notice carries its scans as the monthly notice does, so its row has the press.
+    expect(n.mailedCopies).toEqual([])
+    const scan = { url: 'https://drive.google.com/file/d/f1/view', driveFileId: 'f1', name: 'Retainage notice as mailed · 650 · 2026-09-14.pdf', at: '2026-09-14T18:00:00.000Z', by: 'u1' }
+    expect(buildLienRetainageRun([{ ...entry, item: { ...retItem, mailed_copies: [scan] } as LienDeskItemRow }], d, null, () => 'Robert', TODAY)[0]!.mailedCopies).toEqual([scan])
     // The last day to mail rides on the notice, for Today's mail (punch list #314).
     expect(n.mailBy).toBe('2026-10-05')
     expect(runPacketHtml([n], TODAY, null)).toContain('<b>Mail every envelope by October 5, 2026.</b>')
@@ -295,6 +315,10 @@ describe('the pay page in the packet (v2.3758)', () => {
     expect(owner.find((b) => b.kind === 'callout')).toMatchObject({ text: expect.stringContaining('only if Lowbeck Contracting has told you in writing') })
     expect(owner.filter((b) => b.kind === 'payRow')).toHaveLength(1)
     expect(runPayPageBlocks(n, n.recipients[1]!, rows, assets, '')).toEqual([])
+    // The page names the cover letter only when this notice prints one (v2.7514).
+    const calloutOf = (x: typeof n) => (runPayPageBlocks(x, x.recipients[0]!, rows, assets, '').find((b) => b.kind === 'callout') as { text: string }).text
+    expect(calloutOf({ ...n, coverLetter: 'Dear owner,\n\nPlease hold this back.', coverNote: null })).toMatch(/, as the cover letter asks\.$/)
+    expect(calloutOf({ ...n, coverLetter: null, coverNote: null })).toMatch(/hold the amount back from Lowbeck Contracting\.$/)
   })
 
   it('carries the pay offer (v2.4713) from the approved item to the page', () => {
@@ -332,56 +356,11 @@ describe('the mailing (v2.4119): the number\u2019s shape, what records, the enve
     expect(trackingShape('hand', '')).toEqual({ ok: true, hint: '', digits: 0 })
   })
   const r = (method: 'certified_mail' | 'traceable_courier' | 'email' | 'hand', tracking = '') => ({ key: 'owner' as const, label: 'Owner of record', name: 'A', address: 'B', email: 'a@b.test', method, tracking })
-  const n = (itemId: string, recipients: ReturnType<typeof r>[]) => ({ itemId, jobId: itemId, kind: 'notice_53_056', label: itemId, jobNumber: itemId, months: [], amount: 1, fields: {} as never, extras: {} as never, coverLetter: null, coverNote: '', ownerUnconfirmed: false, recipients }) as unknown as Parameters<typeof runRecordSplit>[0][number]
   it('an envelope is mailed once it carries a number, or goes by email or hand', () => {
     expect(recipientMailed(r('certified_mail'))).toBe(false)
     expect(recipientMailed(r('certified_mail', '9407'))).toBe(true)
     expect(recipientMailed(r('email'))).toBe(true)
     expect(recipientMailed(r('hand'))).toBe(true)
-  })
-  it('runRecordSplit: numbered notices record now, the rest wait; with no number anywhere the run records whole', () => {
-    const a = n('a', [r('certified_mail', '9407 1118 9876 5432 1098'), r('certified_mail')])
-    const b = n('b', [r('certified_mail'), r('certified_mail')])
-    const split = runRecordSplit([a, b])
-    expect(split.partial).toBe(true)
-    expect(split.mailed.map((x) => x.itemId)).toEqual(['a'])
-    expect(split.waiting.map((x) => x.itemId)).toEqual(['b'])
-    const whole = runRecordSplit([b, n('c', [r('certified_mail')])])
-    expect(whole.partial).toBe(false)
-    expect(whole.mailed).toHaveLength(2)
-    expect(whole.waiting).toEqual([])
-    const all = runRecordSplit([a])
-    expect(all.partial).toBe(false)
-    expect(all.mailed).toHaveLength(1)
-  })
-  it('runRecordSplit with problems (v2.5533): a held notice waits whatever its numbers say, the ready ones record; nothing ready when every one is held', () => {
-    const a = n('a', [r('certified_mail', '9407 1118 9876 5432 1098'), r('certified_mail', '9407 1118 9876 5432 1099')])
-    const b = n('b', [r('certified_mail', '9407 1118 9876 5432 1100'), r('certified_mail')])
-    const c = n('c', [r('certified_mail'), r('certified_mail')])
-    const split = runRecordSplit([a, b, c], [[], [RUN_UNSIGNED_PROBLEM], []])
-    expect(split.mailed.map((x) => x.itemId)).toEqual(['a'])
-    expect(split.unnumbered.map((x) => x.itemId)).toEqual(['c'])
-    expect(split.held.map((x) => x.itemId)).toEqual(['b'])
-    expect(split.waiting.map((x) => x.itemId)).toEqual(['c', 'b'])
-    expect(split.partial).toBe(true)
-    expect(runRecordWords(split)).toEqual({ line1: '1 held · 1 with no number yet', line2: 'They stay in the pile with the reason in red. The 1 ready one records now.', button: 'Record 1 mailed · 2 stay in the pile ▸' })
-    // held only: no number split, so the button counts the held
-    const heldOnly = runRecordSplit([a, b], [[], [RUN_UNSIGNED_PROBLEM]])
-    expect(heldOnly.mailed.map((x) => x.itemId)).toEqual(['a'])
-    expect(runRecordWords(heldOnly)).toEqual({ line1: '1 notice is held', line2: 'It stays in the pile with the reason in red. The 1 ready one records now.', button: 'Record 1 · 1 held stays in the pile ▸' })
-    // with no number anywhere the clean ones still record whole, the held one waits
-    const whole = runRecordSplit([c, b], [[], ['Owner of record: no mailing address']])
-    expect(whole.mailed.map((x) => x.itemId)).toEqual(['c'])
-    expect(whole.waiting.map((x) => x.itemId)).toEqual(['b'])
-    // every one held: nothing is ready
-    const none = runRecordSplit([b], [[RUN_UNSIGNED_PROBLEM]])
-    expect(none.mailed).toEqual([])
-    expect(none.partial).toBe(false)
-    expect(runRecordWords(none)).toEqual({ line1: 'Nothing is ready to record', line2: 'Sign or fix what is marked in red, then record.', button: 'Record the run ▸' })
-    // nothing waits: no words of its own
-    expect(runRecordWords(runRecordSplit([a], [[]]))).toBeNull()
-    // the numbers' own split reads as before
-    expect(runRecordWords(runRecordSplit([a, c]))).toEqual({ line1: '1 envelope has no number yet', line2: 'It stays in the mail pile; the numbered ones record now.', button: 'Record 1 mailed · 1 stays in the pile ▸' })
   })
   it('envelope faces: one page per envelope, the certified line only when certified, no page for an email', () => {
     const html = runEnvelopeFacesHtml(
@@ -635,7 +614,6 @@ describe('a copy already mailed through Docsmit is built as mailed (v2.5532)', (
     expect(n.recipients[1]!.via).toBeUndefined()
     // So the next run's Docsmit door and packet skip it, and the record writes its piece.
     expect(recipientMailed(n.recipients[0]!)).toBe(true)
-    expect(runRecordSplit([n]).mailed).toHaveLength(1)
   })
 
   it('a piece still prepared, one Docsmit refused, a plain copy or another recipient’s leaves the copy on paper', () => {
@@ -706,19 +684,6 @@ describe('the run and an unsigned notice (v2.5086)', () => {
   })
 })
 
-describe('the door on the desk as a pill (Run-5)', () => {
-  it('a bar of what is to mail, to print and for the leader to sign, with the count of each', () => {
-    expect(runDoorPill({ ready: 2, printed: 1, retReady: 0, waits: 1 }, 'Robert')).toEqual({ sealedPct: 33, waitPct: 33, words: '1 to mail · 1 to print · 1 for Robert to sign' })
-    expect(runDoorPill({ ready: 3, printed: 0, retReady: 1, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '4 to print' })
-    expect(runDoorPill({ ready: 0, printed: 2, retReady: 0, waits: 0 })).toEqual({ sealedPct: 100, waitPct: 0, words: '2 to mail' })
-    expect(runDoorPill({ ready: 0, printed: 0, retReady: 0, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '' })
-    // waits never exceeds what is ready
-    expect(runDoorPill({ ready: 1, printed: 0, retReady: 0, waits: 5 }).words).toBe('1 for the leader to sign')
-    // Fifteen approved, seven of them unsigned, and four printed: each part says its own count.
-    expect(runDoorPill({ ready: 15, printed: 4, retReady: 0, waits: 7 }, 'Sam').words).toBe('4 to mail · 8 to print · 7 for Sam to sign')
-  })
-})
-
 describe('the window envelope on the cover letter (the Docsmit train, PR 4)', () => {
   it('a copy that mails through a provider puts the window block and the code right after the letterhead; a plain copy has neither', async () => {
     const { coverWindowBlocks, runCoverNoteBlocks } = await import('./lienDeskRun')
@@ -735,14 +700,61 @@ describe('the window envelope on the cover letter (the Docsmit train, PR 4)', ()
   })
 })
 
-describe('runDoorTail — the pill’s words after the door’s count (v2.6569)', () => {
-  it('drops the words when they are only the door’s own count, and keeps words that say more', () => {
-    expect(runDoorTail(7, '7 to mail')).toBe('')
-    expect(runDoorTail(3, '3 to print')).toBe('')
-    expect(runDoorTail(9, '7 to mail · 2 to print')).toBe('7 to mail · 2 to print')
-    expect(runDoorTail(8, '1 to print · 7 for Sam to sign')).toBe('1 to print · 7 for Sam to sign')
-    // A count that is not the door’s own stays: the door says 9 and the words say 7 of them.
-    expect(runDoorTail(9, '7 to mail')).toBe('7 to mail')
-    expect(runDoorTail(0, '')).toBe('')
+describe('a notice whose stored paper and bills have parted is held (v2.7517)', () => {
+  // The draft as it was made when the desk claimed the whole job: $51,000.00. The bills now owe $33,500.00.
+  const storedNotice = { noticeDate: '2026-08-01', projectDescription: 'AXO Schertz — 1204 Elwick Rd, Schertz, TX', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Lowbeck Contracting', contractedWithIfDifferent: '', claimAmount: '51000.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '' }
+  const stale = { ...approved, fields: { notice: storedNotice, gcEmail: '' } } as unknown as LienDeskItemRow
+  const HOLD = 'The paper claims $51,000.00. The bills now come to $33,500.00, $17,500.00 less. It prints once the notice is redrawn from the bills.'
+
+  it('the builder sets the stored paper beside the bills, and the paper still carries what was stored', () => {
+    const d = data([stale])
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas, Master Plumber', TODAY)[0]!
+    expect(n.fields.claimAmount).toBe('51000.00')
+    expect(n.amount).toBe(33_500)
+    expect(n.parted?.parts).toEqual(['claim'])
+    expect(n.parted?.paperClaim).toBe(51_000)
+    expect(n.parted?.nowClaim).toBe(33_500)
+  })
+
+  it('a stored paper that agrees with the bills, and an item with no stored paper, are not parted', () => {
+    const agrees = data([{ ...approved, fields: { notice: { ...storedNotice, claimAmount: '33500.00' }, gcEmail: '' } } as unknown as LienDeskItemRow])
+    expect(buildLienDeskRun(agrees.queue.piles.ready, agrees, null, () => '', TODAY)[0]!.parted).toBeNull()
+    const none = data([approved])
+    expect(buildLienDeskRun(none.queue.piles.ready, none, null, () => '', TODAY)[0]!.parted).toBeNull()
+  })
+
+  it('a claim set by hand is what the stored paper is measured against', () => {
+    const d = data([{ ...approved, fields: { notice: { ...storedNotice, claimAmount: '33500.00' }, gcEmail: '' } } as unknown as LienDeskItemRow])
+    d.claimCorrectionsByJob = { j650: { jobId: 'j650', amountOff: 1500, perMonth: null, reason: 'GC disputes a line', carry: true, setByName: 'Dana', setAt: '2026-09-13T15:00:00Z', lookedAt: null, lookedByName: '' } }
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(n.parted?.source).toBe('hand')
+    expect(n.parted?.nowClaim).toBe(32_000)
+    expect(runNoticeProblems(n)[0]).toBe('The paper claims $33,500.00. The claim set by hand is now $32,000.00, $1,500.00 less. It prints once the notice is redrawn from the bills.')
+  })
+
+  it('retainage typed on the job after the draft parts the paper', () => {
+    const d = data([{ ...approved, fields: { notice: { ...storedNotice, claimAmount: '33500.00' }, gcEmail: '' } } as unknown as LienDeskItemRow])
+    d.jobsById = { ...d.jobsById, j650: { ...d.jobsById.j650!, lien_retainage_held: 3350 } as (typeof d.jobsById)[string] }
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(n.parted?.parts).toEqual(['retainage'])
+  })
+
+  it('the hold is the first problem, and the packet prints no page of it', () => {
+    const d = data([stale])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas, Master Plumber', TODAY)
+    // The row's own hold, which the print and the record both leave, is this problem (`lienRunChecklist.test.ts`).
+    expect(runNoticeProblems(run[0]!)[0]).toBe(HOLD)
+    const html = runPacketHtml(run, TODAY, null)
+    expect(html).toContain('650: The paper claims $51,000.00.')
+    expect(html).not.toContain('Claim amount')
+    expect(html).not.toContain('$51,000.00</')
+  })
+
+  it('a parted notice already printed is not held: the paper is out, and the record is not stopped', () => {
+    const d = data([{ ...stale, printed_at: '2026-09-14T15:00:00Z' } as unknown as LienDeskItemRow])
+    const entries = [...d.queue.piles.ready, ...d.queue.entries].filter((e, i, all) => all.findIndex((x) => x.jobId === e.jobId) === i)
+    const n = buildLienDeskRun(entries, d, null, () => '', TODAY)[0]!
+    expect(n.parted).not.toBeNull()
+    expect(runNoticeProblems(n).some((p) => p.startsWith('The paper claims'))).toBe(false)
   })
 })

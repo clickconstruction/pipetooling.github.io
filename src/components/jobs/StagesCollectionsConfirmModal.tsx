@@ -8,6 +8,7 @@
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { jobHasUnbilled, jobOwedLines, jobOwedSplit } from '../../lib/jobs/jobOwedSplit'
 
 export type StagesCollectionsConfirmTarget = { job: JobWithDetails; direction: 'to' | 'from' }
 
@@ -30,6 +31,11 @@ export function StagesCollectionsConfirmModal({
   onCancel: () => void
   onConfirm: () => void | Promise<void>
 }) {
+  // The money before the press (v2.7532): what the sent bills still owe, and, when part of the job is on no bill, how much,
+  // percent complete beside percent billed, and what to do. The window showed no money at all, so a job billed one stage of
+  // three went to Collections with the stages never done read as owed.
+  const split = jobOwedSplit(confirm.job)
+  const owed = jobOwedLines(split)
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
@@ -41,6 +47,16 @@ export function StagesCollectionsConfirmModal({
             ? `Flag ${jobLabel(confirm.job)} as difficult to collect? It stays Billed — this only moves it to the Collections section.`
             : `Return ${jobLabel(confirm.job)} to Billed Awaiting Payment?`}
         </p>
+        {confirm.direction === 'to' ? (
+          <div data-stages-collections-owed={jobHasUnbilled(split) ? 'unbilled' : 'billed'} style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
+            <div style={{ color: 'var(--text-700)', fontWeight: 600 }}>{owed.billed}</div>
+            {jobHasUnbilled(split) ? (
+              <div role="note" style={{ marginTop: '0.35rem', padding: '0.5rem 0.6rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
+                {[owed.unbilled, owed.percent, owed.check].filter(Boolean).join(' ')}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {confirm.direction === 'to' ? (
           <label style={{ display: 'block', margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
             Note (optional)

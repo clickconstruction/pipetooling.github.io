@@ -25,6 +25,9 @@ function fakeIo(loaded: HousePayments = { payments: [], lines: [] }) {
       return { payment_id: 'p-new', lines: input.lines.length, placed: input.amount, on_account: 0, placed_from_account: 0 }
     }),
     remove: vi.fn(async () => {}),
+    restore: vi.fn(async () => {}),
+    move: vi.fn(async () => {}),
+    undoMove: vi.fn(async () => {}),
   }
   return { io, recorded }
 }
@@ -75,6 +78,7 @@ describe('RecordSupplyPaymentModal', () => {
       lines: [{ invoice_id: 'b1', amount: 1240 }, { invoice_id: 'b2', amount: 812.4 }],
       fromAccount: [],
       keepOnAccount: false,
+      interest: null,
       method: 'ach',
       methodRef: '88213',
       receiptLink: null,
@@ -129,6 +133,34 @@ describe('RecordSupplyPaymentModal', () => {
     expect(recorded[0]?.lines).toEqual([{ invoice_id: 'b2', amount: 489.15 }, { invoice_id: 'c1', amount: -212.4 }])
   })
 
+  it('adds interest or a late fee as a line, tied to the bill that ran late', async () => {
+    const { io, recorded } = fakeIo()
+    const { onRecorded } = await open(io, { parts: true })
+    expect(screen.queryByTestId('record-supply-payment-interest')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Pay 77120'))
+    fireEvent.click(screen.getByRole('button', { name: '+ The house added interest or a late fee' }))
+    const line = screen.getByTestId('record-supply-payment-interest')
+    expect(line.textContent).toContain('Kept as a bill of its own, marked Interest, and paid by this payment. It is not put on a job.')
+    // The open bills lead the list; a credit memo and a paid bill of the house follow or are left out.
+    const options = within(line).getAllByRole('option').map((o) => o.textContent)
+    expect(options.slice(0, 2)).toEqual(['Not tied to a bill', '77502 · No job yet'])
+    expect(options).not.toContain('CM-2291 · A return')
+    fireEvent.change(within(line).getByLabelText('Interest or late fee amount'), { target: { value: '18.60' } })
+    fireEvent.change(within(line).getByRole('combobox'), { target: { value: 'b1' } })
+    expect((screen.getByLabelText('Amount sent') as HTMLInputElement).value).toBe('1258.60')
+    expect(press().textContent).toBe('Record $1,258.60 on 1 bill and interest, details later')
+    fireEvent.click(press())
+    await waitFor(() => expect(onRecorded).toHaveBeenCalledTimes(1))
+    expect(recorded[0]?.interest).toEqual({ amount: 18.6, lateInvoiceId: 'b1' })
+    expect(recorded[0]?.lines).toEqual([{ invoice_id: 'b1', amount: 1240 }])
+  })
+
+  it('offers no interest line while a bill is paid whole or not at all', async () => {
+    const { io } = fakeIo()
+    await open(io)
+    expect(screen.queryByRole('button', { name: '+ The house added interest or a late fee' })).toBeNull()
+  })
+
   it('says why when the payment is refused, and stays open', async () => {
     const { io } = fakeIo()
     io.record = vi.fn(async () => {
@@ -145,7 +177,7 @@ describe('RecordSupplyPaymentModal', () => {
     const { io } = fakeIo()
     renderWithProviders(<RecordSupplyPaymentModal house={house} bills={bills.filter((b) => b.is_paid)} io={io} todayYmd={today} onClose={() => {}} onRecorded={() => {}} />)
     expect(await screen.findByText('Nothing waiting on a payment at Cedar Fork Supply.')).toBeTruthy()
-    const failing: SupplyPaymentsIo = { loadHouse: vi.fn(async () => Promise.reject({ message: 'permission denied for table supply_house_payments' })), record: vi.fn(), remove: vi.fn() }
+    const failing: SupplyPaymentsIo = { loadHouse: vi.fn(async () => Promise.reject({ message: 'permission denied for table supply_house_payments' })), record: vi.fn(), remove: vi.fn(), restore: vi.fn(), move: vi.fn(), undoMove: vi.fn() }
     renderWithProviders(<RecordSupplyPaymentModal house={{ ...house, name: 'Pecan Supply' }} bills={bills} io={failing} todayYmd={today} onClose={() => {}} onRecorded={() => {}} />)
     expect((await screen.findByRole('alert')).textContent).toContain('permission denied')
   })

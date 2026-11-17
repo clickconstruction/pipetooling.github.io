@@ -29,6 +29,10 @@ export type MemberBid = {
   estimated_job_start_date: string | null
   plans_link: string | null
   design_drawing_plan_date: string | null
+  /** The bid's promised schedule (punch list #367, `lib/bids/bidSchedule.ts`); absent on a read older than the columns. */
+  schedule_start?: string | null
+  schedule_end?: string | null
+  schedule_open_ended?: boolean | null
   gc_contact_name: string | null
   gc_contact_phone: string | null
   gc_contact_email: string | null
@@ -61,6 +65,8 @@ export type MemberJob = {
   payments_made: number | null
   /** jobs_ledger.pct_complete, 0–100, for the Money look's bars. */
   pct_complete?: number | null
+  /** The job's first day of work, for the Plans look's By date view; absent on the overview door's read, which does not carry it. */
+  first_work_date?: string | null
   last_work_date: string | null
   last_bill_date: string | null
   job_plans_link: string | null

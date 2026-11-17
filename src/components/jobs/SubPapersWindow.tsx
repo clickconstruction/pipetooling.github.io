@@ -8,7 +8,7 @@
  * with pdf-lib and files a sent copy.
  *
  * The train lands a step at a time, and the view draws only what its caller has: the payment record's pick shows
- * with `paymentRecords`, the send step with `canSend` and an `onSend`, and *Since the last statement* once a
+ * with `paymentRecords` (on since the payment record's own press landed), the send step with `canSend` and an `onSend`, and *Since the last statement* once a
  * `lastStatement` is handed in (null for a sub with none yet, absent while nothing records one).
  *
  * The set is checked before any paper is drawn (`subPapersAddUp`). A set that does not add up shows what is off in
@@ -49,7 +49,7 @@ export type SubPapersWindowViewProps = {
   contact: SubPaperContact
   /** The last statement of account sent to this person, from the register; null before one has gone. Absent while no register records one: the period offers no *Since the last statement* then. */
   lastStatement?: { number: string; endedOn: string } | null
-  /** Offer a payment record beside the other two papers. Off until the payment record's own press lands. */
+  /** Offer a payment record beside the other two papers. */
   paymentRecords?: boolean
   canSend: boolean
   /** Start on the send step (the window after Record payment does). */
@@ -144,7 +144,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
                   .reverse()
                   .map((p) => (
                     <option key={p.key} value={p.key}>
-                      {p.number || 'No number'} · {p.sentOn} · {paperMoney(p.amountSent)}
+                      {[p.number, p.sentOn, paperMoney(p.amountSent)].filter(Boolean).join(' · ')}
                     </option>
                   ))}
               </select>
@@ -203,7 +203,13 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
               <div style={k}>What it will show</div>
               <div data-testid="sub-papers-will-show" style={{ fontSize: '0.8125rem', padding: '0.45rem 0.65rem', background: 'var(--bg-page)', borderRadius: 6 }}>
                 {statement.rows.length} work {statement.rows.length === 1 ? 'statement' : 'statements'} · {statement.lastPayments.length} {statement.lastPayments.length === 1 ? 'payment' : 'payments'} · {backcharges} {backcharges === 1 ? 'back-charge' : 'back-charges'} · <b>{paperMoney(statement.stillOpen)} still open</b>
-                {unnumbered > 0 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{unnumbered === sheets.length ? 'No paper carries a number yet. Each one says the day and time it was prepared.' : `${unnumbered} ${unnumbered === 1 ? 'sheet has' : 'sheets have'} no work statement number yet.`}</div> : null}
+                {lastStatement === undefined ? (
+                  unnumbered > 0 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{unnumbered === sheets.length ? 'No work statement carries a number yet. Each paper says the day and time it was prepared.' : `${unnumbered} ${unnumbered === 1 ? 'sheet has' : 'sheets have'} no work statement number yet.`}</div> : null
+                ) : (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    This statement takes its number when you print, download or send it.{unnumbered > 0 ? ` ${unnumbered} ${unnumbered === 1 ? 'sheet has' : 'sheets have'} no work statement yet, and each takes its number the first time its paper is made.` : ''}
+                  </div>
+                )}
               </div>
             </div>
 {canSend ? (
@@ -318,7 +324,12 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
             </>
           )}
         </div>
-        {paper && step === 'paper' ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, textAlign: 'right' }}>The file is {subPaperAttachmentName(paper)}</div> : null}
+        {paper && step === 'paper' ? (
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, textAlign: 'right' }}>
+            {/* Where the register is live, a paper with no number yet takes one as it is made, and its file is named for it. */}
+            {lastStatement !== undefined && !paper.number && paper.kind !== 'payment_record' ? 'The file is named for the paper’s number, given as it is made.' : `The file is ${subPaperAttachmentName(paper)}`}
+          </div>
+        ) : null}
       </div>
     </div>
   )

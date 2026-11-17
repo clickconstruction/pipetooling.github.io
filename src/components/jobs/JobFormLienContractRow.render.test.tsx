@@ -201,3 +201,33 @@ describe('JobFormLienContractRow · the pay application’s figure (punch list #
     expect(writes.filter((w) => 'lien_retainage_held' in w)).toHaveLength(0)
   })
 })
+
+describe('JobFormLienContractRow · the figure the bills show (fix A of the retainage clock check)', () => {
+  afterEach(() => {
+    retainageState.retainage = null
+  })
+
+  const suggested = { held: 2460, percent: 10, billCount: 3, billIds: ['a', 'b', 'c'] }
+  const base = { line: null, figure: null, facts: null, jobStatus: 'billed', releaseBillLabel: null }
+
+  it('on a job with no answer the bills paid at 90% offer their figure, and the press writes it once', async () => {
+    retainageState.retainage = { ...base, suggested }
+    await mount({})
+    const offer = await screen.findByTestId('lien-retainage-suggested')
+    expect(offer.textContent).toContain('Acme GC holds back $2,460.00: 3 bills paid at 90%.')
+    fireEvent.click(screen.getByRole('button', { name: 'Use $2,460.00' }))
+    await waitFor(() => expect(writes.filter((w) => 'lien_retainage_held' in w)).toEqual([{ lien_retainage_held: 2460 }]))
+    await settle()
+    // The answer is on the job now: the offer leaves and the box reads the figure.
+    expect(screen.queryByTestId('lien-retainage-suggested')).toBeNull()
+    expect((screen.getByLabelText('Retainage the GC holds') as HTMLInputElement).value).toBe('2460')
+  })
+
+  it('a job that already has an answer, a typed figure or a typed zero, is offered nothing', async () => {
+    retainageState.retainage = { ...base, suggested }
+    await mount({ lien_retainage_held: 0 })
+    await settle()
+    expect(screen.queryByTestId('lien-retainage-suggested')).toBeNull()
+    expect(writes).toHaveLength(0)
+  })
+})

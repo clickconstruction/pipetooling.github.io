@@ -20,6 +20,7 @@ import {
 } from '../../lib/materials/payments/supplyPayment'
 import {
   EMPTY_PAY_WINDOW,
+  NO_INTEREST,
   amountBoxText,
   dueByCount,
   fillOldestFirst,
@@ -28,6 +29,7 @@ import {
   payWindowSummaryWords,
   planSupplyPayment,
   setBillBox,
+  setInterest,
   setUseAccount,
   tickBill,
   tickCredit,
@@ -59,6 +61,8 @@ export type RecordSupplyPaymentBill = {
   is_paid: boolean
   /** What the bill is for, as the card names it: the job, or the PO's words. */
   title: string
+  /** It is interest or a late fee itself, so it is never the bill that ran late. */
+  is_interest?: boolean | null
 }
 
 const quiet: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.4 }
@@ -72,6 +76,7 @@ export function RecordSupplyPaymentModal({
   todayYmd,
   parts = false,
   zIndex = 1003,
+  start,
   onClose,
   onRecorded,
 }: {
@@ -83,6 +88,8 @@ export function RecordSupplyPaymentModal({
   /** Part payments, credit memos and money on account. */
   parts?: boolean
   zIndex?: number
+  /** Opened from a bank line: its amount, its day and its method are filled, and only the bills are left to tick. */
+  start?: { amount: number; paidOn: string; chip: SupplyPayChip; words: string }
   onClose: () => void
   onRecorded: (result: RecordSupplyPaymentResult, words: string) => void
 }) {
@@ -92,9 +99,10 @@ export function RecordSupplyPaymentModal({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [state, setState] = useState<PayWindowState>(EMPTY_PAY_WINDOW)
-  const [paidOn, setPaidOn] = useState(todayYmd)
+  const [paidOn, setPaidOn] = useState(start?.paidOn || todayYmd)
   const [receiptLink, setReceiptLink] = useState('')
-  const [chip, setChip] = useState<SupplyPayChip | null>(null)
+  const [chip, setChip] = useState<SupplyPayChip | null>(start?.chip ?? null)
+  const [startApplied, setStartApplied] = useState(false)
   const [methodRef, setMethodRef] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -134,6 +142,13 @@ export function RecordSupplyPaymentModal({
     }
   }, [bills, loaded, parts])
 
+  // From a bank line: once what is open is read, its amount is typed in and fills the oldest bills first.
+  useEffect(() => {
+    if (!start || startApplied || !loaded) return
+    setStartApplied(true)
+    setState((s) => typeAmount(s, start.amount.toFixed(2), ctx))
+  }, [start, startApplied, loaded, ctx])
+
   const lastMethod = loaded ? lastMethodUsed(loaded.payments) : null
   const plan = planSupplyPayment(state, ctx, { chip, paidOn, dayWords: billDateWords(paidOn, todayYmd), house: houseName })
   const payDay = nextPayDay(house.monthlyPaymentDay, todayYmd)
@@ -141,6 +156,16 @@ export function RecordSupplyPaymentModal({
   const dueByN = dueByCount(ctx, dueBy)
   const accountTotal = ctx.account.reduce((s, a) => s + a.amount, 0)
   const refField = supplyPayMethodRefField(chip)
+  const interest = state.interest ?? NO_INTEREST
+  // The bills interest can be tied to: this house's bills that are not credits or interest themselves, the open ones first.
+  const lateBills = useMemo(() => {
+    const open = new Set(ctx.bills.map((b) => b.id))
+    return bills
+      .filter((b) => b.amount > 0 && !b.is_interest)
+      .sort((a, b) => Number(open.has(b.id)) - Number(open.has(a.id)) || (b.due_date ?? '').localeCompare(a.due_date ?? ''))
+      .slice(0, 40)
+      .map((b) => ({ id: b.id, label: [b.invoice_number, b.title].filter(Boolean).join(' · ') }))
+  }, [bills, ctx.bills])
 
   async function record() {
     if (!plan.record || saving) return
@@ -155,6 +180,7 @@ export function RecordSupplyPaymentModal({
         lines: plan.record.lines,
         fromAccount: plan.record.fromAccount,
         keepOnAccount: plan.record.keepOnAccount,
+        interest: plan.record.interest,
         method,
         methodRef: method_ref,
         receiptLink: receiptLink.trim() || null,
@@ -185,6 +211,11 @@ export function RecordSupplyPaymentModal({
           {loaded ? payWindowSummaryWords(ctx, house.monthlyPaymentDay ? `pays on the ${ordinalDay(house.monthlyPaymentDay)}` : '') : loadError ? '' : 'Reading what is open…'}
         </p>
 
+        {start ? (
+          <p style={{ ...quiet, margin: '0 0 0.75rem', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-muted)' }} data-testid="record-supply-payment-from-bank">
+            From the bank: {start.words}. Tick the bills it paid.
+          </p>
+        ) : null}
         {loadError ? (
           <div role="alert" style={{ marginBottom: '1rem', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
             {loadError}{' '}
@@ -305,6 +336,46 @@ export function RecordSupplyPaymentModal({
                   </div>
                 )
               })}
+              {/* Interest or a late fee: a bill of its own, tied to the bill that ran late, and paid by this payment. */}
+              {parts && interest.on ? (
+                <div data-testid="record-supply-payment-interest" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '4px 10px', padding: '0.5rem 0.75rem', borderTop: '1px solid var(--border)' }}>
+                  <input id="pay-interest-on" type="checkbox" checked disabled={saving} aria-label="The house added interest or a late fee" onChange={() => setState((s) => setInterest(s, { on: false }, ctx))} style={{ marginTop: 4 }} />
+                  <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                    <label htmlFor="pay-interest-on" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)', cursor: 'pointer' }}>
+                      Interest or a late fee
+                    </label>
+                    <label style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem' }}>
+                      <span style={{ display: 'block', marginBottom: 2, color: 'var(--text-muted)' }}>Which bill was late (optional)</span>
+                      <select value={interest.lateBillId ?? ''} disabled={saving} onChange={(e) => setState((s) => setInterest(s, { lateBillId: e.target.value || null }, ctx))} style={{ maxWidth: '100%', padding: '0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }}>
+                        <option value="">Not tied to a bill</option>
+                        {lateBills.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <span style={{ ...quiet, display: 'block', marginTop: 4 }}>Kept as a bill of its own, marked Interest, and paid by this payment. It is not put on a job.</span>
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={interest.amountText}
+                    disabled={saving}
+                    placeholder="0.00"
+                    aria-label="Interest or late fee amount"
+                    onChange={(e) => setState((s) => setInterest(s, { amountText: e.target.value }, ctx))}
+                    style={{ width: 110, padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                  />
+                </div>
+              ) : null}
+              {parts && !interest.on ? (
+                <div style={{ padding: '0.45rem 0.75rem', borderTop: '1px solid var(--border)' }}>
+                  <button type="button" style={linkPress} disabled={saving} onClick={() => setState((s) => setInterest(s, { on: true }, ctx))}>
+                    + The house added interest or a late fee
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <p style={{ margin: '0 0 0.25rem', fontSize: '0.875rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }} data-testid="record-supply-payment-placed">

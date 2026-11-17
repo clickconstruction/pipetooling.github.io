@@ -10,12 +10,19 @@
  * A retainage notice is a notice here (v2.7478): one message each, through the same call. Until then it had no
  * message at all, and the press left it out with that as its reason.
  *
+ * A notice that waits on his signature is in the press too (v2.7491): approved, and held from the print until he
+ * signs. Nothing told him of these, and on a day with no paper to approve they were all that waited on him, with no
+ * press at all. They are one message for the lot, as the affidavits are, and the Board carries the press beside the
+ * line that counts them, so it stands when no row waits on an approval.
+ *
  * Pure: which papers the press acts on and which it leaves with a reason, and every word a person reads before
- * and after. The sending is the desk's, through `tellLeaderOfLienApproval` and `tellLeaderOfLienAffidavits`.
+ * and after. The sending is the desk's, through `tellLeaderOfLienApproval`, `tellLeaderOfLienAffidavits` and
+ * `tellLeaderOfLienSignatures`.
  */
 
 export type LienReminderPaper = {
-  kind: 'notice' | 'affidavit' | 'retainage'
+  /** `signature` (v2.7491): an approved notice that waits on the leader's signature. The others wait on his approval. */
+  kind: 'notice' | 'affidavit' | 'retainage' | 'signature'
   /** The job as the row names it. */
   label: string
   /** The paper's desk item; null when the desk has none to point at. */
@@ -31,6 +38,8 @@ export type LienReminderPlan = {
   notices: LienReminderSend[]
   /** One message for the lot. */
   affidavits: LienReminderSend[]
+  /** Approved notices to sign: one message for the lot. */
+  signatures: LienReminderSend[]
   /** What the press leaves where it is, each with its reason. */
   held: Array<{ label: string; reason: string }>
   /** Papers the press acts on. */
@@ -44,12 +53,13 @@ export const LIEN_REMINDER_HOLDS = {
 export function lienReminderPlan(papers: ReadonlyArray<LienReminderPaper>): LienReminderPlan {
   const notices: LienReminderSend[] = []
   const affidavits: LienReminderSend[] = []
+  const signatures: LienReminderSend[] = []
   const held: LienReminderPlan['held'] = []
   for (const p of papers) {
     if (!p.itemId) held.push({ label: p.label, reason: LIEN_REMINDER_HOLDS.noItem })
-    else (p.kind === 'affidavit' ? affidavits : notices).push({ itemId: p.itemId, dueYmd: p.dueYmd, label: p.label })
+    else (p.kind === 'affidavit' ? affidavits : p.kind === 'signature' ? signatures : notices).push({ itemId: p.itemId, dueYmd: p.dueYmd, label: p.label })
   }
-  return { notices, affidavits, held, ready: notices.length + affidavits.length }
+  return { notices, affidavits, signatures, held, ready: notices.length + affidavits.length + signatures.length }
 }
 
 /** The leader by first name as a sentence starts with it, or *The leader*. */
@@ -81,26 +91,32 @@ export function lienReminderWords(plan: LienReminderPlan, leader: string | null 
   const n = plan.ready
   const said = reminded?.trim()
   const button = said ? `Reminded at ${said}` : n > 0 ? `Remind ${w.name} of ${papers(n)}` : `Remind ${w.name}`
-  const list = [...plan.notices, ...plan.affidavits].map((p) => p.label).join(', ')
+  const list = [...plan.notices, ...plan.affidavits, ...plan.signatures].map((p) => p.label).join(', ')
   const messages = [
     plan.notices.length ? `${w.start} gets one message for ${plan.notices.length === 1 ? 'the notice' : `each of the ${plan.notices.length} notices`}.` : '',
     plan.affidavits.length ? `${w.start} gets one message for the ${plan.affidavits.length === 1 ? 'affidavit' : `${plan.affidavits.length} affidavits`}.` : '',
+    plan.signatures.length ? `${w.start} gets one message for the ${plan.signatures.length === 1 ? 'notice to sign' : `${plan.signatures.length} notices to sign`}.` : '',
   ].filter(Boolean)
   const heldLine = plan.held.length ? `${plan.held.length} ${plan.held.length === 1 ? 'stays' : 'stay'} out: ${plan.held.map((h) => `${h.label} ${h.reason}`).join(', ')}.` : ''
   return {
     button,
     dead: n === 0 || Boolean(said),
     title: `Remind ${w.name} of ${papers(n)}?`,
-    message: [list ? `${list}.` : '', ...messages, `It goes to ${w.name}’s phone, or by email. Nothing on the papers changes.`, heldLine].filter(Boolean).join(' '),
+    message: [list ? `${list}.` : '', ...messages, `It goes to ${w.name}’s phone, or by email. A text with the link goes too. Nothing on the papers changes.`, heldLine].filter(Boolean).join(' '),
     confirmLabel: `Remind ${w.name}`,
   }
 }
 
-/** After the press: what reached him and what did not, each failure with its reason. The press keeps going past one that fails. */
-export function lienReminderOutcome(result: { done: number; failed: ReadonlyArray<{ label: string; reason: string }> }, leader: string | null | undefined): { line: string; tone: 'success' | 'warning' | 'error' } {
+/**
+ * After the press: what reached him and what did not, each failure with its reason. The press keeps going past one
+ * that fails. `text` (v2.7495) is the reminder's text over the press (`lienReminderTextOf`): *A text went too.*, or
+ * *No text went:* with the reason, which turns a clean outcome amber so the office sees it. Absent, nothing is said.
+ */
+export function lienReminderOutcome(result: { done: number; failed: ReadonlyArray<{ label: string; reason: string }> }, leader: string | null | undefined, text?: { sent: boolean; why: string | null } | null): { line: string; tone: 'success' | 'warning' | 'error' } {
   const w = who(leader)
   const took = result.done > 0 ? `${w.start} was reminded of ${papers(result.done)}.` : `${w.start} was not reminded.`
-  if (result.failed.length === 0) return { line: took, tone: 'success' }
+  const texted = text?.sent ? ' A text went too.' : text?.why && result.done > 0 ? ` No text went: ${text.why}.` : ''
+  if (result.failed.length === 0) return { line: `${took}${texted}`, tone: texted.startsWith(' No text') ? 'warning' : 'success' }
   const n = result.failed.length
-  return { line: `${took} ${n} ${n === 1 ? 'reminder' : 'reminders'} did not send: ${result.failed.map((f) => `${f.label} (${f.reason})`).join(', ')}.`, tone: result.done > 0 ? 'warning' : 'error' }
+  return { line: `${took}${texted} ${n} ${n === 1 ? 'reminder' : 'reminders'} did not send: ${result.failed.map((f) => `${f.label} (${f.reason})`).join(', ')}.`, tone: result.done > 0 ? 'warning' : 'error' }
 }

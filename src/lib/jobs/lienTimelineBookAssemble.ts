@@ -33,6 +33,8 @@ export type LienBookRawJob = {
   customer_name?: string | null
   /** The open in-kind deal that pays the job; set, the job is off the book (v2.7253, `lienInKind.ts`). Optional so the portal's rows stand. */
   in_kind_arrangement_id?: string | null
+  /** The job's own answer; `'off_path'`, a person took it off the lien path and it is off the book (v2.7521, `lienJobPath.ts`). Optional so the portal's rows stand. */
+  lien_path_answer?: string | null
 }
 
 export type LienBookRawGc = { id: string; name: string | null; lien_notice_policy: string | null }
@@ -52,7 +54,7 @@ export type LienBookRaw = {
 }
 
 /** The select the book needs from jobs_ledger — the hook and the function read the same columns. */
-export const LIEN_BOOK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on, customer_name, in_kind_arrangement_id'
+export const LIEN_BOOK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on, customer_name, in_kind_arrangement_id, lien_path_answer'
 
 export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienTimelineBookInput {
   const rows = raw.rows.map((r) => ({ ...r, approved_hours: Number(r.approved_hours) || 0, open_balance: Number(r.open_balance) || 0 }))
@@ -77,6 +79,13 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
   const demandLettersByJob: Record<string, JobDemandLetterRow[]> = {}
   for (const l of raw.demandLetters ?? []) (demandLettersByJob[l.job_id] ??= []).push(l)
 
+  // What each job's sent bills still owe, as the desk's own rows carry it (`lien_billed_open()`, v2.4969). Until v2.7530 the
+  // book counted the job's whole price less payments here, so a job billed one stage of three read as owing the stages
+  // never billed, on the office's Timeline and on counsel's grid, where the desk beside it read the bills.
+  const billedOpenByJob: Record<string, number> = {}
+  for (const r of affidavitRows) billedOpenByJob[r.job_id] = r.open_balance
+  for (const r of rows) billedOpenByJob[r.job_id] = r.open_balance
+
   const jobs: Record<string, LienBookJob> = {}
   for (const j of raw.jobs) {
     const address = j.customer_address_id ? addressById[j.customer_address_id] ?? null : null
@@ -95,7 +104,8 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
       precinct: ((address as { jp_precinct?: string | null } | null)?.jp_precinct ?? '').trim(),
       precinctNote: ((address as { jp_precinct_note?: string | null } | null)?.jp_precinct_note ?? '').trim(),
       ownerName: lienPropertyOwnerDisplayName(property.owner),
-      openBalance: Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)),
+      // A job on no row of either queue (its paper already filed or released) has no bills read here, and keeps the job's balance.
+      openBalance: billedOpenByJob[j.id] ?? Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)),
       lastWorkDate: j.last_work_date,
       isSub: isSubByJob[j.id] ?? Boolean(j.gc_customer_id),
       paymentBond: j.lien_payment_bond ?? null,

@@ -5,6 +5,21 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 const io = vi.hoisted(() => ({ fileSentCopy: vi.fn(), printPdfAndFile: vi.fn(), saveBlobAs: vi.fn() }))
 vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: io.fileSentCopy, printPdfAndFile: io.printPdfAndFile }))
 vi.mock('../../lib/storageSave', () => ({ saveBlobAs: io.saveBlobAs }))
+// The register. `rows: null` is a database the migration has not reached: the read is refused and the mint is not found.
+const db = vi.hoisted(() => ({ rows: null as unknown[] | null, reads: 0, mint: vi.fn() }))
+vi.mock('../../lib/supabase', () => ({
+  supabase: {
+    from: () => ({
+      select: () => ({
+        eq: async () => {
+          db.reads += 1
+          return db.rows === null ? { data: null, error: { code: '42P01', message: 'relation "sub_papers" does not exist' } } : { data: db.rows, error: null }
+        },
+      }),
+    }),
+    rpc: (...args: unknown[]) => db.mint(...args),
+  },
+}))
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
   fetchPhysicalInvoiceIssuerFromAppSettings: () => Promise.resolve({ rowExists: true }),
   getPhysicalInvoiceIssuerForDocument: () => ({ companyName: 'Made-up Plumbing Co.', addressText: '1 Made-up Way\nAustin, TX', phone: '555-0100', email: 'office@example.com' }),
@@ -23,6 +38,10 @@ import { paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
 import type { LaborJob, LaborJobPayment } from '../../types/laborJob'
 import { SubPapersWindowView, type SubPapersWindowViewProps } from './SubPapersWindow'
 import { SubPapersWindow } from './SubPapersWindowConnected'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+
+/** The connected window reads today from the clock; a month's statement closes on it. */
+const todayYmdForTest = () => todayYmdInAppTz()
 
 // Made-up people, jobs and money.
 const ROSTER: NeedsWorkOrderRosterPerson[] = [{ id: 'harlan', name: 'Harlan Mechanical', kind: 'sub', accountRole: 'subcontractor' }]
@@ -64,19 +83,23 @@ function mountView(over: Partial<SubPapersWindowViewProps> = {}) {
 
 beforeEach(() => {
   check.refuse = false
+  db.rows = null
+  db.reads = 0
+  db.mint.mockReset()
+  db.mint.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.mint_sub_paper' } })
   io.fileSentCopy.mockReset()
   io.printPdfAndFile.mockReset()
   io.saveBlobAs.mockReset()
 })
 afterEach(cleanup)
 
-describe('SubPapersWindowView, as the first step ships it', () => {
+describe('SubPapersWindowView, with what its caller has not handed in left out', () => {
   it('opens on the statement of account: the period, what it will show, and the paper itself as the preview', () => {
     mountView()
     const dialog = screen.getByRole('dialog', { name: 'Papers for Harlan Mechanical' })
     expect(within(dialog).getAllByRole('heading')[0]!.textContent).toBe('Statement of account · Harlan Mechanical')
     expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('2 work statements · 1 payment · 1 back-charge · $5,100.00 still open')
-    expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('No paper carries a number yet. Each one says the day and time it was prepared.')
+    expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('No work statement carries a number yet. Each paper says the day and time it was prepared.')
     const paper = screen.getByTestId('sub-paper-preview')
     expect(paper.getAttribute('data-theme')).toBe('light')
     expect(paper.textContent).toContain('Statement of account')
@@ -163,9 +186,9 @@ describe('SubPapersWindowView, as the first step ships it', () => {
 })
 
 describe('SubPapersWindow, on real rows', () => {
-  const mount = (open: 'statement' | 'work' = 'statement') => {
+  const mount = (open: 'statement' | 'work' | 'payment' = 'statement') => {
     const onClose = vi.fn()
-    render(<SubPapersWindow open={open === 'statement' ? { kind: 'statement' } : { kind: 'work', sheetId: 'ridge-1' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={onClose} />)
+    render(<SubPapersWindow open={open === 'statement' ? { kind: 'statement' } : open === 'work' ? { kind: 'work', sheetId: 'ridge-1' } : { kind: 'payment', sendingKey: 'snd226' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={onClose} />)
     return { onClose }
   }
 
@@ -187,6 +210,29 @@ describe('SubPapersWindow, on real rows', () => {
     expect(io.fileSentCopy).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sub_work_statement', how: 'download', recipientName: 'Harlan Mechanical', personId: 'harlan', jobIds: ['ridge'], source: { table: 'people_labor_jobs', id: 'ridge-1' } }), expect.objectContaining({ contentType: 'application/pdf' }))
   })
 
+  it('a payment record shows the sending under its own number: how it went, what it was applied to and what stays open', async () => {
+    io.fileSentCopy.mockResolvedValue(true)
+    mount('payment')
+    const paper = (await screen.findByTestId('sub-paper-preview')).textContent ?? ''
+    expect(paper).toContain('Payment record')
+    // The sending's own number, never reused (card #347). The names were settled on 2026-11-16, so it prints.
+    expect(paper).toContain('No. PR-0226')
+    expect(paper).toContain('Applied to')
+    expect(paper).toContain('$1,500.00')
+    expect(paper.replace(/It is not an invoice from [^.]+\./g, '')).not.toMatch(/\binvoice\b|\breceipt\b|\bowed\b/i)
+    expect((screen.getByRole('combobox', { name: 'A payment record' }) as HTMLSelectElement).options[1]!.textContent).toBe('PR-0226 · Oct 31, 2026 · $1,500.00')
+    fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
+    await waitFor(() => expect(io.fileSentCopy).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sub_payment_record', how: 'download', personId: 'harlan', jobIds: ['cedar'] }), expect.anything()))
+  })
+
+  it('a work statement names the payment record each payment is on', async () => {
+    render(<SubPapersWindow open={{ kind: 'work', sheetId: 'cedar-1' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
+    const paper = (await screen.findByTestId('sub-paper-preview')).textContent ?? ''
+    expect(paper).toContain('Paid on this statement')
+    expect(paper).toContain('PR-0226')
+    expect(paper).toContain('Not numbered yet')
+  })
+
   it('says so when the copy could not be filed', async () => {
     io.fileSentCopy.mockResolvedValue(false)
     mount()
@@ -200,5 +246,96 @@ describe('SubPapersWindow, on real rows', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Print' }))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('The browser blocked the print tab.'))
     expect(io.printPdfAndFile.mock.calls[0]![1]).toEqual(expect.objectContaining({ kind: 'sub_statement_of_account', personId: 'harlan' }))
+  })
+})
+
+describe('SubPapersWindow, with the register on the database', () => {
+  const NUMBERED = { kind: 'work_statement', number: 'WS-2041-1', revision: 1, labor_job_id: 'cedar-1', period_to: null, issued_at: '2026-10-29T15:00:00Z', replaced_by: null, voided_at: null }
+  const open = (o: 'statement' | { sheet: string }) =>
+    render(<SubPapersWindow open={o === 'statement' ? { kind: 'statement' } : { kind: 'work', sheetId: o.sheet }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
+
+  it('a sheet’s first work statement is registered as it is made, and the file and the copy carry its number', async () => {
+    db.rows = []
+    db.mint.mockResolvedValue({ data: [{ id: 'paper-1', number: 'WS-2057-1', revision: 1, reused: false }], error: null })
+    io.fileSentCopy.mockResolvedValue(true)
+    open({ sheet: 'ridge-1' })
+    expect((await screen.findByTestId('sub-paper-preview')).textContent).toContain('Not numbered yet')
+    expect(screen.getByRole('dialog').textContent).toContain('The file is named for the paper’s number, given as it is made.')
+    fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('WS-2057-1.pdf is downloaded, and a copy is filed under Documents → Sent copies.'))
+    expect(db.mint).toHaveBeenCalledTimes(1)
+    expect(db.mint).toHaveBeenCalledWith('mint_sub_paper', expect.objectContaining({ p_kind: 'work_statement', p_person_id: 'harlan', p_labor_job_id: 'ridge-1', p_comes_to: 2500, p_still_open: 2500, p_snapshot: expect.objectContaining({ kind: 'work_statement', sheetId: 'ridge-1' }) }))
+    expect(io.saveBlobAs.mock.calls[0]![1]).toBe('WS-2057-1.pdf')
+    expect(io.fileSentCopy.mock.calls[0]![0]).toMatchObject({ kind: 'sub_work_statement', title: 'Work statement WS-2057-1 · Harlan Mechanical · #2057 Ridgeway Builders, Lot 12' })
+    // The register is read again, so the next preview carries the number.
+    await waitFor(() => expect(db.reads).toBe(2))
+  })
+
+  it('a statement of account takes the next number, with its period, and says so before the press', async () => {
+    db.rows = []
+    db.mint.mockResolvedValue({ data: [{ id: 'paper-2', number: 'SA-0007', revision: 1, reused: false }], error: null })
+    io.fileSentCopy.mockResolvedValue(true)
+    open('statement')
+    await screen.findByTestId('sub-paper-preview')
+    expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('This statement takes its number when you print, download or send it. 2 sheets have no work statement yet, and each takes its number the first time its paper is made.')
+    // Nothing has been made for them yet, so the period cannot start from a last statement.
+    expect((screen.getByRole('button', { name: 'Since the last statement' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'This month' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
+    await waitFor(() => expect(io.saveBlobAs).toHaveBeenCalledTimes(1))
+    expect(io.saveBlobAs.mock.calls[0]![1]).toBe('SA-0007 Statement of account.pdf')
+    expect(db.mint).toHaveBeenCalledWith('mint_sub_paper', expect.objectContaining({ p_kind: 'statement_of_account', p_period_from: '2026-11-01', p_period_to: todayYmdForTest(), p_still_open: 5100 }))
+  })
+
+  it('a paper the register refuses is not made, and the window says why', async () => {
+    db.rows = []
+    db.mint.mockResolvedValue({ data: null, error: { code: '42501', message: 'A training account cannot make a sub paper.' } })
+    open('statement')
+    fireEvent.click(await screen.findByRole('button', { name: 'Download the PDF' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('The PDF could not be made: A training account cannot make a sub paper.'))
+    expect(io.saveBlobAs).not.toHaveBeenCalled()
+    expect(io.fileSentCopy).not.toHaveBeenCalled()
+  })
+
+  it('a sheet already numbered previews under its number, and the period opens on Since the last statement', async () => {
+    db.rows = [NUMBERED, { kind: 'statement_of_account', number: 'SA-0003', revision: 1, labor_job_id: null, period_to: '2026-11-10', issued_at: '2026-11-10T15:00:00Z', replaced_by: null, voided_at: null }]
+    open('statement')
+    await waitFor(() => expect(screen.getByRole('dialog').textContent).toContain('The last statement, SA-0003, ended Nov 10, 2026.'))
+    // The card's call 5: a statement covers what happened since the last one, and to date the first time.
+    expect(screen.getByRole('button', { name: 'Since the last statement' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('dialog').textContent).toContain('Nov 11, 2026 to ')
+    fireEvent.change(screen.getByRole('combobox', { name: 'A work statement' }), { target: { value: 'cedar-1' } })
+    expect(screen.getByTestId('sub-paper-preview').textContent).toContain('No. WS-2041-1')
+    expect(screen.getByRole('dialog').textContent).toContain('The file is WS-2041-1.pdf')
+  })
+
+  it('Print registers the paper while its tab waits, and files it under its number', async () => {
+    db.rows = []
+    db.mint.mockResolvedValue({ data: [{ id: 'paper-3', number: 'WS-2057-1', revision: 1, reused: false }], error: null })
+    const seen: { fileName: string; title: string }[] = []
+    io.printPdfAndFile.mockImplementation(async (build: () => Promise<{ fileName: string }>, filing: { title: string }) => {
+      const built = await build()
+      seen.push({ fileName: built.fileName, title: filing.title })
+      return 'opened'
+    })
+    open({ sheet: 'ridge-1' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Print' }))
+    await waitFor(() => expect(seen).toEqual([{ fileName: 'WS-2057-1.pdf', title: 'Work statement WS-2057-1 · Harlan Mechanical · #2057 Ridgeway Builders, Lot 12' }]))
+  })
+
+  it('a refused print says the register’s reason', async () => {
+    db.rows = []
+    db.mint.mockResolvedValue({ data: null, error: { code: '42501', message: 'Only the office roles who see sub pay can make a sub paper.' } })
+    io.printPdfAndFile.mockImplementation(async (build: () => Promise<unknown>) => {
+      try {
+        await build()
+        return 'opened'
+      } catch {
+        return 'failed'
+      }
+    })
+    open('statement')
+    fireEvent.click(await screen.findByRole('button', { name: 'Print' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('The PDF could not be made: Only the office roles who see sub pay can make a sub paper.'))
   })
 })

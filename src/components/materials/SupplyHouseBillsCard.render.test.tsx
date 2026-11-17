@@ -113,6 +113,35 @@ describe('SupplyHouseBillsCard', () => {
     expect(screen.getByTestId('supply-bills-stat-account').textContent).toBe('On account$187.40sent past the bills, offered on the next payment')
   })
 
+  it('a bill says where a payment’s money moved, and a removed payment is one press to put back', () => {
+    const onPutBack = vi.fn()
+    renderWithProviders(
+      card({
+        bills: [bill('11', { trace: ['$1,000.00 moved to S4398120 · Dana · the house applied it differently'] }), bill('12', {})],
+        removedPayments: [{ id: 'p9', words: '$5,000.00 ACH 88213 payment of 11/12 · removed 11/16 · Dana · typed twice' }],
+        onPutBack,
+      }),
+    )
+    const rows = screen.getAllByTestId('supply-bill-row')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-trace').textContent).toBe('$1,000.00 moved to S4398120 · Dana · the house applied it differently')
+    expect(within(rows[1] as HTMLElement).queryByTestId('supply-bill-trace')).toBeNull()
+    const removed = screen.getByTestId('supply-bills-removed')
+    expect(removed.textContent).toContain('$5,000.00 ACH 88213 payment of 11/12 · removed 11/16 · Dana · typed twice')
+    fireEvent.click(within(removed).getByRole('button', { name: 'Put it back' }))
+    expect(onPutBack).toHaveBeenCalledWith('p9')
+  })
+
+  it('an interest bill leads with what it is, wears its chip, and says it is not a job cost', () => {
+    renderWithProviders(card({ bills: [bill('13', { amount: 18.6, jobs: [], on_job_account: null, interest: 'Interest on S4398120' }), bill('14', {})] }))
+    const rows = screen.getAllByTestId('supply-bill-row')
+    const interestRow = rows.find((r) => r.textContent?.includes('Interest on S4398120')) as HTMLElement
+    expect(within(interestRow).getByTestId('supply-bill-title').textContent).toContain('Interest on S4398120')
+    expect(within(interestRow).getByTestId('supply-bill-interest').textContent).toBe('Interest')
+    expect(interestRow.textContent).toContain('not a job cost')
+    expect(interestRow.textContent).not.toContain('No job on this bill')
+    expect(screen.getAllByTestId('supply-bill-interest')).toHaveLength(1)
+  })
+
   it('shows no On account number when nothing waits there', () => {
     renderWithProviders(card())
     expect(screen.queryByTestId('supply-bills-stat-account')).toBeNull()

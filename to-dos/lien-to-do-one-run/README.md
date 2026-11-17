@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -16,7 +16,7 @@ summary: >
 next: Step 5, the Get it right checklist with Leave out (M), the first step of the run. Ask where a left-out paper is remembered and whether the next run takes it by itself, before it is built.
 size: L for D as five steps (M · M · M · S · M); B, the first three, and step 4, the list by bin, are built; left: steps 5 to 8 (M · M · S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7483
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559
 ---
 
 # Lien desk To do: one run (#362)
@@ -189,17 +189,18 @@ The same day he asked whether the batches were now easy to reach. At 1,024 by 76
 the first screen, so to *move them up beside the tiles?* he said *"Yes, move them up"*. Since v2.7483
 they stand between the tiles and the columns, each over its own column, and the third tile only reads.
 
-Two things he agreed to in direction the same day, not yet drawn or built:
+Two things he agreed to in direction the same day, both built since:
 
-- **Retire the title bar's run door** once the foot's print is live. It is a third door to one place
-  and the widest thing on the title line (`lienDeskTitleBar.ts` measures it). By date and By job have
-  no other door to the run, so they get one first, and a phone's More sheet keeps its row. It goes
-  after the PR that folds the title into the first tab.
-- **Redraw the run window with D**, shown to him before it is built. His screenshot counted one batch
-  several ways on one screen (15 notices, 16 built, *of 10*, 9 envelopes, 8 ready and 7 waiting, 10 to
-  print and 5 held). It wants one total with its parts in the same words, or the unit beside each
-  number; three steps on the journey where there are six; the *Combine the jobs at one property* box
-  out of the lead; and one primary press for the step the run is on.
+- ~~**Retire the title bar's run door.**~~ **Done, v2.7490**, on the owner's *"Retire it everywhere"* after he was
+  told what else it did: the only way to print the run from By date and By job, and the only sign of the run's
+  progress on those views. By job now has no door to the run; a phone's More sheet keeps its row.
+  `runDoorPill`, `runDoorTail` and `lienRunPill`, left with no caller, are deleted with their tests.
+- **Redraw the run window with D**: drawn, shown to him, approved for notices and built, v2.7477 (*The
+  run window* below). His screenshot counted one batch several ways on one screen (15 notices, 16
+  built, *of 10*, 9 envelopes, 8 ready and 7 waiting, 10 to print and 5 held). It wanted one total with
+  its parts in the same words, or the unit beside each number; three steps on the journey where there
+  were six; the *Combine the jobs at one property* box out of the lead; and one primary press for the
+  step the run is on. The liens' lane, a fourth step, is drawn and not approved.
 
 ## Open questions
 
@@ -222,6 +223,45 @@ Two things he agreed to in direction the same day, not yet drawn or built:
   built 2026-11-16). Step 5's checklist reads the same gates.
 - #356: the affidavit's months line on a job whose notice names other months. One of D's step 1
   questions.
+
+## The run window (the notices' window built, v2.7477)
+
+Drawing: [`run-window.html`](./run-window.html), served at `/to-dos/lien-to-do-one-run/run-window.html`.
+Tabs **Today**, **1 Get them right**, **2 Print**, **3 Mail and record** and **The liens**.
+
+- **What was built**, for notices, v2.7477. The owner's screenshot of 2026-11-16
+  counted one batch several ways on one screen. He approved the redraw for notices the same day: "I
+  think this run window is great for the notices … I like the run window and think we can build it."
+  The window now has one total in notices with its parts in the same words everywhere (ready, wait on
+  the signature, held; after the print, ready to record and owe a number), the run's three steps on
+  the journey, the rows in groups by part, *Combine the jobs at one property* under More, and one
+  primary press for the step the run is on. The count kernel is `src/lib/jobs/lienRunParts.ts`.
+- **The presses follow the count.** *Print N notices* prints the ready notices, each whole. A notice
+  that waits on a signature no longer keeps the original contractor's envelope out of the packet: its
+  copy goes in the next packet's envelope. What each number counts is in
+  `docs/recent-features/v2.7477.md`.
+- **The liens' lane is drawn and not approved.** He said the liens have one more step, sending the
+  copies after filing. The last tab draws it as a fourth step. It answers his question and is not
+  built. What goes in that envelope is punch list #366.
+- **Left open by the drawing.** Its step 3 lists envelopes; the build keeps one row a notice with a
+  box an envelope. Two packets to one contractor printed before either is recorded share one number
+  box, as two prints to one address always have.
+- **Un-print one notice, built, v2.7481.** Taunya, 2026-11-16: "I clicked printed by accident. Can
+  you un-print it?" The owner said to pass it on. A row's Printed tick is a press that asks first and
+  puts that notice alone back in *Approved · to print*, and a mark by hand has a one-press undo right
+  after. The run's own *Take back…* is still every printed notice.
+- **The window says which paper it holds, built, v2.7489.** Taunya counted a property's invoices,
+  then its lien affidavits, against an envelope of the notices' run. Both times the envelope was
+  right and nothing on screen said why. The head now reads *Monthly notices (§ 53.056), approved and
+  not yet mailed*, and says a job whose notice already went and the lien affidavits are not here. A
+  row shows the property's street after a job's name that does not say it.
+- **The envelope says where the property's other jobs stand, built, v2.7559.** An envelope's card
+  ends with one line (*At this property: 1 notice in this envelope · 4 notices sent Oct 14 · 6 lien
+  affidavits ready to file*) and a press that opens the property card over the run. Its words are
+  the whole-property view's own (`lienPropertyPapers.ts`). The owner picked the shape on 2026-11-16:
+  **one line for the envelope**. A contractor's envelope that spans properties gets a single line
+  that totals them, with a press a property, not one line a property.
+- **Not checked on the live desk.** It was looked at with sample ZZ rows at 1,280, 1,024 and 375 px.
 
 ## How to verify
 

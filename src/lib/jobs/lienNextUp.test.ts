@@ -85,6 +85,15 @@ describe('buildLienNextUp — notices', () => {
     expect(lienRunEntriesFor(ready, printed, 'gc2').map((e) => e.jobId)).toEqual(['b'])
     expect(lienRunEntriesFor(ready, printed, null).map((e) => e.jobId)).toEqual(['a', 'b', 'c', 'p'])
 
+    // Just this one (v2.7512): the run holds one notice by its desk item, found in either pile, whatever GC is passed.
+    const item = (id: string) => ({ id }) as NonNullable<LienDeskEntry['item']>
+    const readyItems = [notice('a', 'ready', { item: item('ia') }), notice('b', 'ready', { item: item('ib') })]
+    const printedItems = [notice('p', 'printed', { item: item('ip') })]
+    expect(lienRunEntriesFor(readyItems, printedItems, null, 'ib').map((e) => e.jobId)).toEqual(['b'])
+    expect(lienRunEntriesFor(readyItems, printedItems, 'gc1', 'ip').map((e) => e.jobId)).toEqual(['p'])
+    expect(lienRunEntriesFor(readyItems, printedItems, null, 'gone')).toEqual([])
+    expect(lienRunEntriesFor(readyItems, printedItems, null, null).map((e) => e.jobId)).toEqual(['a', 'b', 'p'])
+
     // Two GCs with one each are two single rows, not a run.
     expect(build({ notices: [notice('j1', 'ready'), notice('j2', 'ready', { gcCustomerId: 'gc2' })] }).map((r) => r.action)).toEqual(['send', 'send'])
   })
@@ -132,8 +141,17 @@ describe('buildLienNextUp — affidavits and retainage', () => {
 
   it('a lien filed and not served opens the job’s Lien window on the Lien affidavit tab', () => {
     const r = one({ serveDue: [{ jobId: 'j9', serveDue: '2026-10-07' }] })
-    expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Record service', '2026-10-07', 2, 'now'])
+    expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Mail the copies', '2026-10-07', 2, 'now'])
     expect(r.target).toEqual({ open: 'lien_window', jobId: 'j9', tab: 'affidavit' })
+  })
+
+  it('a filed lien’s row says what is owed and by when, and turns red the day before its day (punch list #366)', () => {
+    const row = (serveDue: string) => one({ serveDue: [{ jobId: 'j9', serveDue }] })
+    // Today is 2026-10-05 in this file's rows.
+    expect([row('2026-10-07').sub, row('2026-10-07').severity]).toEqual(['Lien filed · mail its copies by Oct 7', 'amber'])
+    expect([row('2026-10-06').sub, row('2026-10-06').severity, row('2026-10-06').daysLeft]).toEqual(['Lien filed · mail its copies by Oct 6', 'red', 1])
+    expect([row('2026-10-05').sub, row('2026-10-05').severity]).toEqual(['Lien filed · mail its copies today', 'red'])
+    expect([row('2026-10-01').sub, row('2026-10-01').severity, row('2026-10-01').daysLeft]).toEqual(['Lien filed · its copies were due Oct 1. Mail them today.', 'red', -4])
   })
 
   it('retainage piles: find the owner, draft, approve, send, review; the rest ask nothing', () => {
@@ -149,6 +167,36 @@ describe('buildLienNextUp — affidavits and retainage', () => {
     expect(one({ retainage: [retainage('j1', 'ready')] }).target).toEqual({ open: 'retainage', jobId: 'j1' })
     // A retainage notice has no print pile of its own (v2.7448): approved, it waits to mail with the monthly notices.
     expect(one({ retainage: [retainage('j1', 'ready')] }).sub).toBe('Retainage notice approved · to mail')
+  })
+
+  it('retainage nobody recorded is a row under Needs you now with no day, the office’s press, opening the list at that job', () => {
+    const unrecorded = [{ jobId: 'j7', title: 'C2041 · Cedar Hollow Clinic', why: '$2,460.00 looks held · 3 bills paid at 90%' }]
+    const row = one({ retainageUnrecorded: unrecorded })
+    expect(row).toMatchObject({
+      key: 'retainage-unrecorded:j7',
+      kind: 'retainage',
+      jobId: 'j7',
+      title: 'C2041 · Cedar Hollow Clinic',
+      sub: 'Retainage not on the job · $2,460.00 looks held · 3 bills paid at 90%',
+      detail: '$2,460.00 looks held · 3 bills paid at 90%',
+      dueOn: null,
+      daysLeft: null,
+      severity: 'amber',
+      group: 'now',
+      action: 'record_retainage',
+      button: 'Record the retainage',
+      target: { open: 'retainage_unrecorded', jobId: 'j7' },
+    })
+    // The answer is the office's to record, and a master is office too; any other role reads the row.
+    expect(one({ role: 'master_technician', retainageUnrecorded: unrecorded }).button).toBe('Record the retainage')
+    expect(one({ role: 'estimator', retainageUnrecorded: unrecorded }).button).toBeNull()
+    // It stands with the dated rows of Needs you now, after them: it has no day of its own.
+    const both = build({ retainageUnrecorded: unrecorded, retainage: [retainage('j1', 'to_draft', { daysLeft: 3, deadline: '2026-10-08', severity: 'red' })] })
+    expect(both.map((r) => [r.key, r.group])).toEqual([
+      ['retainage:j1', 'now'],
+      ['retainage-unrecorded:j7', 'now'],
+    ])
+    expect(build({})).toEqual([])
   })
 })
 
@@ -563,6 +611,23 @@ describe('a row’s one thing to know, once its kind and stage are said beside i
     expect([owner.button, owner.detail]).toEqual(['Find the owner', 'The affidavit needs the owner of record with a mailing address.'])
     // A viewer with no move still reads the fact, and has no button.
     expect(one({ role: 'estimator', affidavits: [affidavit('j1', 'needs_property', { gates: [gate('homestead_answer', false)] })] }).button).toBeNull()
+  })
+
+  it('a held affidavit’s row offers the office Not lienable…, the door that takes the one job off the lien path (v2.7526)', () => {
+    const door = [{ words: 'Not lienable…', target: { open: 'job_path', jobId: 'j1' } }]
+    // A homestead, the fact that started this: the row keeps its own press and gains the quiet door.
+    const homestead = one({ affidavits: [affidavit('j1', 'needs_property', { gates: [...whole().slice(0, 4), gate('homestead', false)] })] })
+    expect(homestead.button).toBe('Open the property record')
+    expect(homestead.doors).toEqual(door)
+    // Held by its notice alone, and held for the GC's address: the same door.
+    expect(one({ affidavits: [affidavit('j1', 'needs_notice', { gates: [gate('owner', true), gate('legal', true), gate('notice', false)] })] }).doors).toEqual(door)
+    expect(one({ affidavits: [affidavit('j1', 'needs_property', { gates: [gate('owner', true), gate('legal', true), gate('contractor', false)] })] }).doors).toEqual(door)
+    // The leader is the lien office too. A reader with no move has no door.
+    expect(one({ role: 'master_technician', affidavits: [affidavit('j1', 'needs_property', { gates: [gate('homestead', false)] })] }).doors).toEqual(door)
+    expect(one({ role: 'estimator', affidavits: [affidavit('j1', 'needs_property', { gates: [gate('homestead', false)] })] }).doors).toBeUndefined()
+    // Public property is the property's answer, with its own window: no door on that row. A paper nothing holds has none.
+    expect(one({ affidavits: [affidavit('j1', 'needs_property', { gates: [{ key: 'public_owner' as const, ok: false, label: '' }] })] }).doors).toBeUndefined()
+    expect(one({ affidavits: [affidavit('j1', 'ready')] }).doors).toBeUndefined()
   })
 
   it('several facts missing are each named, and the press opens the record', () => {

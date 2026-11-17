@@ -8,9 +8,13 @@ import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRo
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
 import { FilingSheetNote } from './FilingSheetNote'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
+import { isLienAppliedRow, lienAppliedRowWords, type LienAppliedRow } from '../../lib/jobs/lienNoticeApply'
+import { undoLienNoticeApply } from '../../lib/jobs/lienNoticeApplyIo'
 import LienRecordSheet from './LienRecordSheet'
 import { LienFiledScanPress } from './LienFiledScanPress'
 import { LIEN_CLERK_SCAN_NOTE } from '../../lib/jobs/lienScanFile'
+import { LIEN_SCANS_DOOR_FROM_FILING } from '../../lib/jobs/lienScanBatch'
+import { lienDeskHref } from '../../lib/lien/lienDeskRoute'
 import { recordSheetField, recordSheetLabel } from './lienRecordSheetStyles'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
@@ -22,6 +26,8 @@ import {
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { lienWindowPrintNote } from '../../lib/jobs/lienWindowPrintNote'
+import type { LienTimelineNoticeState } from '../../lib/jobs/lienTimeline'
 import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpNoticeMailBy, lienHelpNoticeSheetHtml, lienHelpPaperFromFields, lienHelpPrintHtml, type LienHelpNotice } from '../../lib/jobs/lienHelpSheet'
 import { LIEN_HELP_SHEET_BOX, LIEN_NOTICE_RECORD_BOX, useLienHelpSheetChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
 import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
@@ -36,10 +42,13 @@ import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { noticeEnclosureRefItem, noticeInvoiceExhibitInputs, noticeInvoicePrintSections, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
+import { runPayPageBlocks, type RunNotice, type RunPayPages, type RunRecipient } from '../../lib/jobs/lienDeskRun'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { LIEN_ONE_OFF_INK_WORDS, lienNoticeOneOffPlan, lienOneOffFiledHtml, lienOneOffPrintHtml } from '../../lib/jobs/lienNoticeOneOff'
 import { supabase } from '../../lib/supabase'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { EMPTY_SERVICE_COPY, LIEN_CLERK_PAGE_NOTE, LIEN_SERVICE_PROOF_WORDS, heldServiceWords, serviceCopyDraft, serviceProofLines, serviceSavedWords, serviceSends, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
+import { EMPTY_SERVICE_COPY, LIEN_CLERK_PAGE_NOTE, LIEN_SERVICE_PROOF_WORDS, heldServiceWords, noticeSendsWithReceipts, serviceCopyDraft, serviceProofLines, serviceSavedWords, serviceSends, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
 import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
 import { LienServeCopiesPress } from './LienServeCopiesPress'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
@@ -83,7 +92,9 @@ const SEND_METHOD_LABELS: Record<string, string> = {
   hand: 'hand delivery',
 }
 
-type SendDraft = { method: string; tracking: string; sentOn: string }
+/** One copy's send while it is filled in. `receiptUrl` is the certified receipt's photo (v2.7557), '' until one is taken. */
+type SendDraft = { method: string; tracking: string; sentOn: string; receiptUrl: string }
+type SendSetter = (update: (d: SendDraft) => SendDraft) => void
 
 /** One empty list for a caller that passes no bills: a fresh `[]` each render re-ran the pay-page effect, whose `setPayAssets({})` rendered again, without end. */
 const NO_INVOICE_DOCS: NoticeInvoiceDoc[] = []
@@ -118,6 +129,8 @@ export default function LienFilingTabs({
   monthsByHand = null,
   affidavitForm = 'short',
   affidavitFormUnread = false,
+  deskNoticeState = '',
+  onOpenDeskNotice,
   onClose,
 }: {
   job: JobWithDetails
@@ -158,6 +171,10 @@ export default function LienFilingTabs({
   affidavitForm?: LienAffidavitForm
   /** That read failed: the tab draws the earlier form and says to check the desk first. */
   affidavitFormUnread?: boolean
+  /** Where this job's notice stands on the Lien desk, when the opener holds the desk's queue (v2.7516): an approved or printed one draws a note over the tab's presses. */
+  deskNoticeState?: LienTimelineNoticeState
+  /** Opens the desk on this job's notice; absent, the note has no press. */
+  onOpenDeskNotice?: () => void
   /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
   onClose?: () => void
 }) {
@@ -170,8 +187,8 @@ export default function LienFilingTabs({
   const enclosedDocs = useMemo(() => (encloseInvoice ? invoiceDocs : []), [encloseInvoice, invoiceDocs])
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
   const [recordStep, setRecordStep] = useState<'notice_sends' | 'notice_by_hand' | 'affidavit_filing' | 'affidavit_service' | null>(null)
-  const [ownerSend, setOwnerSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
-  const [ocSend, setOcSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
+  const [ownerSend, setOwnerSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd(), receiptUrl: '' })
+  const [ocSend, setOcSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd(), receiptUrl: '' })
   const [filingCounty, setFilingCounty] = useState('')
   // The saved copy (v2.3763): a link to the paper as sent or filed, typed with the record or added to a row later.
   const [docUrl, setDocUrl] = useState('')
@@ -219,6 +236,9 @@ export default function LienFilingTabs({
     setVoidPendingId(null)
     setFilingCounty(property.county)
   }, [activeTab, job.id, property.county])
+
+  // The desk holds this job's approved notice (v2.7516): this tab's print is a new, unsigned copy, and the tab says which paper to print.
+  const deskPrintNote = useMemo(() => lienWindowPrintNote(deskNoticeState), [deskNoticeState])
 
   // ---------- documents ----------
 
@@ -347,6 +367,8 @@ export default function LienFilingTabs({
         contactPerson: noticeFields.contactPerson,
         phone: (issuer?.phone ?? '').trim(),
         extras: docExtras,
+        // This window prints no cover letter, so its pay page never names one (v2.7514).
+        coverLetter: false,
       }),
     [payRows, payAssets, originalContractorName, noticeFields.claimantName, noticeFields.contactPerson, issuer, docExtras],
   )
@@ -466,16 +488,61 @@ export default function LienFilingTabs({
     [jobNumber, job.job_name, job.master_user_id, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines, monthStandIn, monthCheck, issuer?.countyClerksText, askFor],
   )
 
+  // The notice as the run builds one (the owner, 2026-11-16): a set for each envelope, each behind the run's own divider.
+  // The pages, the holds and the dividers come from the run's builders, so one notice printed here and the same
+  // notice printed in the run are the same pages. The notice here is drawn fresh from the job, so no signature prints:
+  // the desk's signature is bound to its own approved draft, not to this paper. `signature` is left out, never null,
+  // which the run reads as unsigned and holds.
+  const oneOffNotice = useMemo((): RunNotice => {
+    const recipients: RunRecipient[] = [{ key: 'owner', label: 'Owner of record', name: ownerName.trim(), address: (property.owner.mailingAddress ?? '').trim(), email: '', method: 'certified_mail', tracking: '' }]
+    if (originalContractorName.trim()) recipients.push({ key: 'original_contractor', label: 'Original contractor', name: originalContractorName.trim(), address: affidavitFields.originalContractorAddress.trim(), email: '', method: 'certified_mail', tracking: '' })
+    return {
+      itemId: `window:${job.id}`,
+      jobId: job.id,
+      kind: 'notice_53_056',
+      label: [jobNumber, job.job_name?.trim()].filter(Boolean).join(' · '),
+      jobNumber,
+      months: noticeMonthKeys,
+      amount: Number(noticeFields.claimAmount) || 0,
+      fields: noticeFields,
+      extras: docExtras,
+      coverNote: null,
+      coverLetter: null,
+      recipients,
+      ownerUnconfirmed: false,
+    }
+  }, [ownerName, property.owner.mailingAddress, originalContractorName, affidavitFields.originalContractorAddress, job.id, job.job_name, jobNumber, noticeMonthKeys, noticeFields, docExtras])
+  const oneOffPlan = useMemo(() => {
+    const invoiceSections = enclosedDocs.length > 0 ? { [job.id]: noticeInvoicePrintSections(enclosedDocs) } : undefined
+    // Each copy's pay page by the run's own rule: the owner's copy carries it, the contractor's as the run decides.
+    const pay: Partial<Record<RunRecipient['key'], string>> = {}
+    if (enclosedDocs.length > 0) {
+      for (const r of oneOffNotice.recipients) {
+        const blocks = runPayPageBlocks(oneOffNotice, r, payRows, payAssets, (issuer?.phone ?? '').trim())
+        if (blocks.length) pay[r.key] = filingDocHtml(blocks)
+      }
+    }
+    const payPages: RunPayPages | undefined = Object.keys(pay).length ? { [job.id]: pay } : undefined
+    return lienNoticeOneOffPlan(oneOffNotice, invoiceSections, payPages)
+  }, [oneOffNotice, enclosedDocs, job.id, payRows, payAssets, issuer?.phone])
+
   // The notice's help sheet (punch list #314): the notice's own facts, the two addresses its copies go to, and the last day to mail.
   const helpNotice = useMemo((): LienHelpNotice => {
     const mailBy = lienHelpNoticeMailBy(noticeMonthKeys, property.propertyKind, todayYmd())
     return {
       jobLabel: [jobNumber, job.job_name?.trim()].filter(Boolean).join(' · '),
+      jobNumber,
+      mailByYmd: mailBy.ymd,
+      printedYmd: todayYmd(),
+      signed: false,
+      envelopes: oneOffPlan.bundles.map((b) => ({ n: b.env.n, who: b.env.label, name: b.env.name, address: b.env.address })),
+      held: oneOffPlan.held.map((h) => ({ who: h.env.label, name: h.env.name, why: h.why })),
       propertyAddress: affidavitFields.propertyAddress.trim(),
       claim: demandMoney(noticeFields.claimAmount),
       mailBy: mailBy.ymd ? demandDate(mailBy.ymd) : '',
       mailByPassed: mailBy.passed,
-      signer: noticeFields.contactPerson.trim(),
+      // The name alone: the paper's contact line can carry a title after a comma (*Sam Rivera, Master Plumber*).
+      signer: noticeFields.contactPerson.split(',')[0]!.trim(),
       ownerName: ownerName.trim(),
       ownerAddress: (property.owner.mailingAddress ?? '').trim(),
       contractorName: originalContractorName.trim(),
@@ -483,7 +550,7 @@ export default function LienFilingTabs({
       invoices: enclosedDocs.length,
       ask: askFor(job.master_user_id ?? null),
     }
-  }, [noticeMonthKeys, property.propertyKind, property.owner.mailingAddress, jobNumber, job.job_name, job.master_user_id, affidavitFields.propertyAddress, affidavitFields.originalContractorAddress, noticeFields.claimAmount, noticeFields.contactPerson, ownerName, originalContractorName, enclosedDocs.length, askFor])
+  }, [noticeMonthKeys, property.propertyKind, property.owner.mailingAddress, jobNumber, job.job_name, job.master_user_id, affidavitFields.propertyAddress, affidavitFields.originalContractorAddress, noticeFields.claimAmount, noticeFields.contactPerson, ownerName, originalContractorName, enclosedDocs.length, askFor, oneOffPlan])
 
   // The notice record (punch list #322): what was mailed before this paper, read off every filing on the job (the voided ones are counted, never shown).
   // Null on a job contracted with the owner, which owes no monthly notice.
@@ -491,6 +558,25 @@ export default function LienFilingTabs({
   const noticeRecord = useMemo(
     () => lienNoticeRecord({ isSub, propertyKind: property.propertyKind, swornMonths, filings, paperMonthsWords: affidavitFields.workMonthsWords ?? '', paperNoticesWords: affidavitFields.noticesSentWords ?? '', workStart: affidavitFields.workStart, workEnd: affidavitFields.workEnd, monthStandIn, monthCheck }),
     [isSub, property.propertyKind, swornMonths, filings, affidavitFields.workMonthsWords, affidavitFields.noticesSentWords, affidavitFields.workStart, affidavitFields.workEnd, monthStandIn, monthCheck],
+  )
+
+  /** The notice's print: every envelope that can go, or with `only` one envelope's divider and pages again. */
+  const printNoticeEnvelopes = useCallback(
+    (only?: number) => {
+      if (oneOffPlan.press.dead) {
+        showToast(oneOffPlan.held[0]?.why ?? 'Nothing here can be printed yet.', 'error')
+        return
+      }
+      const title = `§ 53.056 Notice — Job ${jobNumber}`
+      const sheetHtml = helpSheetOn ? `<style>${LIEN_HELP_STYLES}</style>${lienHelpNoticeSheetHtml(helpNotice, demandDate(todayYmd()), { guideCode: lienHelpGuideCode(), recordCode: lienHelpNoticeRecordCode(job.id) })}` : undefined
+      if (!openHtmlPrintWindow(lienOneOffPrintHtml(oneOffPlan, { issuer, title, ...(sheetHtml ? { sheetHtml } : {}), ...(only ? { only } : {}) }))) {
+        showToast('Popup blocked — allow popups to print.', 'error')
+        return
+      }
+      // A print counts as a send (docs/SENT_COPIES.md): what went in the envelopes, once.
+      void fileSentCopy({ kind: 'lien_notice_53_056', title, jobIds: [job.id], how: 'print' }, { html: lienOneOffFiledHtml(oneOffPlan, title, only) })
+    },
+    [oneOffPlan, jobNumber, helpSheetOn, helpNotice, job.id, issuer, showToast],
   )
 
   const printDoc = useCallback(() => {
@@ -513,19 +599,16 @@ export default function LienFilingTabs({
       void fileSentCopy({ ...filing, how: 'print' }, { html: paperHtml })
       return
     }
-    // A § 53.056 notice prints behind its own help sheet, by the same rule: the copy filed on the job is the notice and what is enclosed, never the sheet.
-    if (currentDoc.kind === 'notice_53_056' && helpSheetOn) {
-      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, lienHelpNoticeSheetHtml(helpNotice, demandDate(todayYmd()), { guideCode: lienHelpGuideCode(), recordCode: lienHelpNoticeRecordCode(job.id) }), LIEN_HELP_STYLES))) {
-        showToast('Popup blocked — allow popups to print.', 'error')
-        return
-      }
-      void fileSentCopy({ ...filing, how: 'print' }, { html: paperHtml })
+    // A § 53.056 notice prints a set for each envelope, each behind its divider, behind one help sheet when its box is
+    // ticked (the owner, 2026-11-16). The copy filed on the job is the sets alone, filed once: never the sheet, never a divider.
+    if (currentDoc.kind === 'notice_53_056') {
+      printNoticeEnvelopes()
       return
     }
     // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
     const ok = printAndFile(paperHtml, filing)
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, jobNumber, docExtras.letterhead, printOptions, affidavitFields.form, helpSheetOn, helpPaper, helpNotice, noticeRecordOn, noticeRecord])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, jobNumber, docExtras.letterhead, printOptions, affidavitFields.form, helpSheetOn, helpPaper, noticeRecordOn, noticeRecord, printNoticeEnvelopes])
 
   // A guide copy (punch list #314): the paper with a mark beside each blank and the notes down the side. It is a copy to learn from, never signed or filed, so nothing is filed on the job.
   const printGuideCopy = useCallback(() => {
@@ -614,7 +697,7 @@ export default function LienFilingTabs({
     if (busy) return
     setBusy(true)
     try {
-      const finalSends: Array<Record<string, string>> = []
+      const finalSends: Array<{ recipient: string; method: string; tracking: string; sent_on: string }> = []
       for (const [recipient, draft, toEmail] of [
         ['owner', ownerSend, ownerEmail],
         ['original_contractor', ocSend, originalContractorEmail],
@@ -627,6 +710,8 @@ export default function LienFilingTabs({
         }
         finalSends.push({ recipient, method: draft.method, tracking, sent_on: draft.sentOn })
       }
+      // Each copy's receipt photo rides on its send, the key a filed affidavit's copies already use.
+      const sends = noticeSendsWithReceipts(finalSends, { owner: ownerSend.method === 'email' ? '' : ownerSend.receiptUrl, original_contractor: ocSend.method === 'email' ? '' : ocSend.receiptUrl })
       await withSupabaseRetry<{ id: string }>(
         () =>
           supabase
@@ -638,7 +723,7 @@ export default function LienFilingTabs({
               amount: claimedAmount,
               months_covered: noticeMonthKeys,
               fields: JSON.parse(JSON.stringify(noticeFields)),
-              sends: finalSends,
+              sends,
               ...filingDocumentPayload({ url: docUrl, note: docNote }),
             } as never)
             .select('id')
@@ -784,6 +869,14 @@ export default function LienFilingTabs({
 
   const voidFiling = async (f: JobLienFilingRow) => {
     try {
+      // v2.7508: a row that applies a paper already on record is undone, and the notice it set aside goes back on the desk.
+      if (isLienAppliedRow(f as unknown as LienAppliedRow)) {
+        const { restored } = await undoLienNoticeApply({ id: f.id, job_id: f.job_id })
+        showToast(restored ? 'Undone. The notice it set aside is back on the desk.' : 'Undone. The record is voided.', 'success')
+        setVoidPendingId(null)
+        onChanged()
+        return
+      }
       await withSupabaseRetry(
         () => supabase.from('job_lien_filings').update({ voided_at: new Date().toISOString() }).eq('id', f.id),
         'void lien filing',
@@ -801,7 +894,27 @@ export default function LienFilingTabs({
   const kindLabel = (k: string) =>
     k === 'notice_53_056' ? '§ 53.056 notice' : k === 'retainage_53_057' ? '§ 53.057 retainage notice' : k === 'affidavit' ? 'Lien affidavit' : 'Release of record'
 
-  const sendRow = (label: string, draft: SendDraft, set: (d: SendDraft) => void, knownEmail?: string) => (
+  /**
+   * A photo of the copy's certified receipt (v2.7557), what the notice's help sheet asks for: saved to the job's folder
+   * the moment it is taken, and the number read off its barcode fills the box. A copy sent by email has no receipt.
+   */
+  const noticeReceiptPhoto = (of: 'owner' | 'original_contractor', draft: SendDraft, update: SendSetter, compact: boolean) =>
+    draft.method === 'email' ? null : (
+      <LienReceiptPhotoPress
+        jobId={job.id}
+        jobNumber={jobNumber}
+        of={of}
+        paper="notice"
+        day={draft.sentOn}
+        url={draft.receiptUrl}
+        compact={compact}
+        onSaved={(url) => update((d) => ({ ...d, receiptUrl: url }))}
+        onRead={(tracking) => update((d) => ({ ...d, tracking }))}
+      />
+    )
+  const sendRow = (label: string, of: 'owner' | 'original_contractor', draft: SendDraft, update: SendSetter, knownEmail?: string) => {
+    const set = (d: SendDraft) => update(() => d)
+    return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
       <span style={{ fontSize: '0.75rem', fontWeight: 700, minWidth: '9.5rem' }}>{label}</span>
       <select value={draft.method} onChange={(e) => set({ ...draft, method: e.target.value })} aria-label={`${label} send method`} style={{ padding: '0.3rem 0.35rem', fontSize: '0.78rem' }}>
@@ -813,6 +926,7 @@ export default function LienFilingTabs({
       </select>
       <input type="text" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder="tracking #" aria-label={`${label} tracking number`} style={{ flex: '1 1 8rem', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
       <input type="date" value={draft.sentOn} onChange={(e) => set({ ...draft, sentOn: e.target.value })} aria-label={`${label} sent on`} style={{ padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+      {noticeReceiptPhoto(of, draft, update, true)}
       {draft.method === 'email' ? (
         <span style={{ fontSize: '0.7rem', color: knownEmail ? 'var(--text-muted)' : 'var(--text-red-700)', flexBasis: '100%' }}>
           {knownEmail ? `sends the notice PDF to ${knownEmail} on Record` : 'no email on file for this recipient'}
@@ -820,6 +934,7 @@ export default function LienFilingTabs({
       ) : null}
     </div>
   )
+  }
 
   const historyBox = live.length > 0 && (
     <div style={{ margin: '0 0 0.9rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)' }}>
@@ -833,6 +948,12 @@ export default function LienFilingTabs({
               {f.kind === 'affidavit' && f.filed_at ? `filed ${demandDate(f.filed_at)} · #${f.recording_number || '—'} · ${f.served_at ? `served ${demandDate(f.served_at)}` : `serve by ${demandDate(f.serve_due ?? '')}`}` : ''}
               {f.kind === 'notice_53_056' || f.kind === 'retainage_53_057' ? demandMoney(String(f.amount ?? '')) : ''}
             </span>
+            {isLienAppliedRow(f as unknown as LienAppliedRow) ? (
+              <span style={{ color: 'var(--text-muted)' }} data-lien-applied-row title={(f as unknown as LienAppliedRow).applied_reason || undefined}>
+                {lienAppliedRowWords(f as unknown as LienAppliedRow, calendarYmdInAppTzFromIso(f.created_at ?? ''))}
+                {(f as unknown as LienAppliedRow).applied_reason ? ` · “${(f as unknown as LienAppliedRow).applied_reason}”` : ''}
+              </span>
+            ) : null}
             {(() => {
               const doc = f as unknown as LienFilingDocument
               const url = normalizeDocumentUrl(doc.document_url)
@@ -863,6 +984,19 @@ export default function LienFilingTabs({
               )
             })()}
             {(f.kind === 'notice_53_056' || f.kind === 'retainage_53_057') && sendsTrackingOwed(f.sends).length ? <LienTrackingOwedEditor filing={f} onSaved={onChanged} compact /> : null}
+            {/* A recorded notice's receipt photos (v2.7557), each beside whose copy it is. */}
+            {f.kind === 'notice_53_056' && serviceProofLines(f.sends).some((l) => l.receiptUrl) ? (
+              <span data-lien-notice-receipts style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.6rem', alignItems: 'center', color: 'var(--text-muted)' }}>
+                {serviceProofLines(f.sends)
+                  .filter((l) => l.receiptUrl)
+                  .map((l) => (
+                    <span key={l.recipient}>
+                      {l.who}{' '}
+                      <a href={l.receiptUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>receipt ›</a>
+                    </span>
+                  ))}
+              </span>
+            ) : null}
             {/* The mail receipts of a filed affidavit's copies (punch list #314), and the door to add them once the day is recorded. */}
             {f.kind === 'affidavit' && f.filed_at ? (
               <span data-lien-service-proof style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.6rem', alignItems: 'center', color: 'var(--text-muted)' }}>
@@ -891,11 +1025,11 @@ export default function LienFilingTabs({
               </button>
               {voidPendingId === f.id ? (
                 <button type="button" onClick={() => void voidFiling(f)} style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
-                  Confirm void
+                  {isLienAppliedRow(f as unknown as LienAppliedRow) ? 'Confirm undo' : 'Confirm void'}
                 </button>
               ) : (
                 <button type="button" onClick={() => setVoidPendingId(f.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
-                  Void
+                  {isLienAppliedRow(f as unknown as LienAppliedRow) ? 'Undo' : 'Void'}
                 </button>
               )}
             </span>
@@ -920,7 +1054,9 @@ export default function LienFilingTabs({
   // ---------- a phone's record sheets (v2.4422) ----------
   // The same state and the same writes as the boxes a computer draws; only the layout differs.
   const jobLine = `${(job.job_name ?? '').trim() || 'Job'} · ${jobNumber}`
-  const sheetSend = (label: string, draft: SendDraft, set: (d: SendDraft) => void, knownEmail?: string) => (
+  const sheetSend = (label: string, of: 'owner' | 'original_contractor', draft: SendDraft, update: SendSetter, knownEmail?: string) => {
+    const set = (d: SendDraft) => update(() => d)
+    return (
     <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem 0.75rem', margin: 0, minWidth: 0, display: 'grid', gap: '0.6rem' }}>
       <legend style={{ fontSize: '0.8125rem', fontWeight: 700, padding: '0 0.3rem' }}>{label}</legend>
       <label style={{ display: 'block' }}>
@@ -941,6 +1077,7 @@ export default function LienFilingTabs({
         <span style={recordSheetLabel}>Sent on</span>
         <input type="date" value={draft.sentOn} onChange={(e) => set({ ...draft, sentOn: e.target.value })} aria-label={`${label} sent on`} style={recordSheetField} />
       </label>
+      {noticeReceiptPhoto(of, draft, update, false)}
       {draft.method === 'email' ? (
         <span style={{ fontSize: '0.75rem', color: knownEmail ? 'var(--text-muted)' : 'var(--text-red-700)' }}>
           {knownEmail ? `sends the notice PDF to ${knownEmail} on Record` : 'no email on file for this recipient'}
@@ -948,6 +1085,7 @@ export default function LienFilingTabs({
       ) : null}
     </fieldset>
   )
+  }
   /** A photo of the clerk's stamped page fills the filing's saved copy (punch list #314): the link, and a note that says what it is. */
   const clerkPagePhoto = (compact: boolean) => (
     <span data-lien-clerk-copy style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem', alignItems: 'center' }}>
@@ -975,6 +1113,10 @@ export default function LienFilingTabs({
           setDocNote(LIEN_CLERK_SCAN_NOTE)
         }}
       />
+      {/* Several liens scanned at once go in on the Lien desk (punch list #366). A new tab, so this form keeps what is typed. */}
+      <a href={lienDeskHref({ scans: true })} target="_blank" rel="noreferrer" data-lien-scans-door style={{ flexBasis: '100%', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)' }}>
+        {LIEN_SCANS_DOOR_FROM_FILING}
+      </a>
     </span>
   )
   const sheetSavedCopy = (
@@ -1009,8 +1151,8 @@ export default function LienFilingTabs({
       onBack={() => setRecordStep(null)}
       onClose={onClose}
     >
-      {sheetSend('Owner', ownerSend, setOwnerSend, ownerEmail)}
-      {sheetSend('Original contractor', ocSend, setOcSend, originalContractorEmail)}
+      {sheetSend('Owner', 'owner', ownerSend, setOwnerSend, ownerEmail)}
+      {sheetSend('Original contractor', 'original_contractor', ocSend, setOcSend, originalContractorEmail)}
       {sheetSavedCopy}
     </LienRecordSheet>
   ) : activeTab === 'affidavit' && recordStep === 'affidavit_filing' ? (
@@ -1097,11 +1239,24 @@ export default function LienFilingTabs({
                   </span>
                 </label>
               ) : null}
+              {deskPrintNote ? (
+                <div data-lien-window-desk-note={deskNoticeState} role="note" style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
+                  <b>{deskPrintNote.lead}</b> {deskPrintNote.words}
+                  {onOpenDeskNotice ? (
+                    <>
+                      {' '}
+                      <button type="button" onClick={onOpenDeskNotice} data-lien-window-desk-note-press style={{ font: 'inherit', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {deskPrintNote.press}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
               {recordStep === 'notice_sends' && !isMobile ? (
                 <div data-lien-record-box="notice_sends" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the sends — the statute names both recipients</div>
-                  {sendRow('Owner', ownerSend, setOwnerSend, ownerEmail)}
-                  {sendRow('Original contractor', ocSend, setOcSend, originalContractorEmail)}
+                  {sendRow('Owner', 'owner', ownerSend, setOwnerSend, ownerEmail)}
+                  {sendRow('Original contractor', 'original_contractor', ocSend, setOcSend, originalContractorEmail)}
                   {savedCopyRow}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
                     <button type="button" onClick={() => setRecordStep(null)} style={{ padding: '0.35rem 0.8rem', fontSize: '0.78rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
@@ -1131,8 +1286,15 @@ export default function LienFilingTabs({
                 />
               ) : (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}>
-                    Print
+                  {/* The notice prints a set for each envelope behind its divider (the owner, 2026-11-16): the press says how many. */}
+                  <button
+                    type="button"
+                    onClick={() => printNoticeEnvelopes()}
+                    disabled={oneOffPlan.press.dead}
+                    data-testid="notice-print-envelopes"
+                    style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: oneOffPlan.press.dead ? DEAD_PRESS_FILL : 'var(--surface)', border: oneOffPlan.press.dead ? '1px solid var(--border-strong)' : '1px solid #2563eb', color: oneOffPlan.press.dead ? DEAD_PRESS_TEXT : 'var(--text-link)', borderRadius: 4, cursor: oneOffPlan.press.dead ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                  >
+                    {oneOffPlan.press.button}
                   </button>
                   <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer' }}>
                     {pdfBusy ? 'Building…' : 'Download PDF'}
@@ -1143,6 +1305,24 @@ export default function LienFilingTabs({
                   <button type="button" onClick={() => setRecordStep('notice_by_hand')} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer' }} title="The paper was printed here and already went out by hand — record when, how, what it claimed, and which jobs at the property it covered" data-testid="notice-by-hand-door">
                     Already sent — record it…
                   </button>
+                  <div data-lien-notice-print-words style={{ flexBasis: '100%', display: 'grid', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {oneOffPlan.press.foot ? <span>{oneOffPlan.press.foot}</span> : null}
+                    {oneOffPlan.held.map((h) => (
+                      <span key={h.env.key} style={{ color: 'var(--text-red-700)' }}>
+                        {h.env.label}: {h.why}
+                      </span>
+                    ))}
+                    {oneOffPlan.bundles.length > 0 ? <span>{LIEN_ONE_OFF_INK_WORDS}</span> : null}
+                    {oneOffPlan.reprints.length > 0 ? (
+                      <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem' }}>
+                        {oneOffPlan.reprints.map((r) => (
+                          <button key={r.n} type="button" onClick={() => printNoticeEnvelopes(r.n)} data-testid={`notice-reprint-${r.n}`} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
+                            {r.label} ›
+                          </button>
+                        ))}
+                      </span>
+                    ) : null}
+                  </div>
                   {/* The help sheet (punch list #314): the same choice as the affidavit's, kept on this computer. */}
                   <label data-lien-window-help-sheet="notice" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexBasis: '100%', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
                     <input type="checkbox" checked={helpSheetOn} onChange={(e) => setHelpSheetOn(e.target.checked)} />

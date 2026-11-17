@@ -243,7 +243,9 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and nine verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and nine since v2.7247, whose affidavit draft is the Lien desk pane's own `job_lien_desk_items` row under the dev's RLS, no new role and no new policy;
+The one write path (v2.3722) is one hundred and thirteen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and thirteen since v2.7515, whose served copies are the Lien window's own `served_at` and `sends` on the filing's row under the dev's RLS, no new role and no new policy;
+one hundred and eleven since v2.7511, whose recorded lien filing is the Lien window's own `job_lien_filings` row and the desk item's mark under the dev's RLS, with its scan staged in the private `dev-seat-staging` bucket a dev reaches only inside their own folder, `docs/migrations/20261117100000_dev_seat_staging_bucket.md`, no new role;
+one hundred and nine since v2.7247, whose affidavit draft is the Lien desk pane's own `job_lien_desk_items` row under the dev's RLS, no new role and no new policy;
 one hundred and seven since v2.7241, whose box edit and part rename go through `dev_on_site_rename`, the second `SECURITY INVOKER` wrapper, under the dev's own RLS, `docs/migrations/20261114050000_dev_on_site_rename.md`;
 one hundred and three since v2.7229, whose notice recorded by hand is the Lien desk form's own `job_lien_filings` rows and its desk items marked sent under the dev's RLS;
 one hundred and one since v2.7206, whose last day of work is the Lien window's own PATCH on `jobs_ledger` under the dev's RLS;
@@ -870,6 +872,9 @@ the per-statement form template and the person copy are written as the service r
 **Is this public property?**
 (v2.7436, `20261116221500_property_lien_public_answer.sql`): the answer on a property record (`customer_addresses.lien_public_answer`) is written only by `set_property_lien_public_answer`, for **dev · master · assistant · controller** (the lien office, `isLienOffice`);
 a `'public'` answer puts the ticked jobs on the attorney's list through `set_job_collections_flag`, under that function's own rules.
+**Is this job on the lien path?**
+(v2.7504, `20261117080000_job_lien_path_answer.sql`): the answer on a job (`jobs_ledger.lien_path_answer`) is written only by `set_job_lien_path_answer`, for the same four roles;
+it asks a reason to take a job off the path and to put it back, and can put the job on the attorney's list through the same flag.
 The approval guard trigger decides who may approve: `approval_mode = 'leader'` requires the caller to be a **master or dev** (an assistant's update is refused with 42501) — and since v2.5082 (migration `20261010020000`) the same guard decides who may **sign**: a newly set `signed_at` needs `signed_by` with role master or dev, and unless the write is under that signer's own sign-in it must say `signed_on_device_of = auth.uid()` with mode `draw`, so the office can never place his name (`signLienDeskItem`) — or, since v2.5788 (migration `20261023150000`), mode `code`: the leader's own **signing code** (four to six digits, set by himself under Settings → Your account through `set_lien_sign_code`, master / dev only;
 `user_sign_codes` has no policies and no grants, only its five SECURITY DEFINER functions reach it — since v2.5924 `check_lien_sign_code`, the shared checker that owns the counter writes, EXECUTE revoked from clients, which `sign_lien_release_with_code` goes through) typed on the signed-in user's screen and checked by `sign_lien_desk_item_with_code` (callable by the office set, not in training mode;
 five wrong codes lock it fifteen minutes;
@@ -1044,8 +1049,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Anyone else is refused in words and loses nothing: the database marks each photo due and the cron's sweep moves the files.
   The strip on a job's screens reads `job_box_photos` under `on_site_can_touch_job`, so whoever sees the job's boxes sees its count;
   only the four roles get the Try again press.
-- **Stickers before boxes** (v2.7072, punch list #329, `docs/migrations/20261113020000_box_stickers.md`): **`box_stickers`** is **read** on a box by whoever may touch the box's job, the gate above, and blank by whoever may touch the job its run was printed for;
-  nobody else lists a blank sticker, so nobody collects codes ahead of their boxes, and an orphaned run's stickers are the office's (`is_office_staff()`).
+- **Stickers before boxes** (v2.7072, punch list #329, `docs/migrations/20261113020000_box_stickers.md`): **`box_stickers`** is **read** on a box by whoever may touch the box's job, the gate above, and while reserved (on no box yet, `blank` in the code) by whoever may touch the job its run was printed for;
+  nobody else lists a reserved sticker, so nobody collects codes ahead of their boxes, and an orphaned run's stickers are the office's (`is_office_staff()`).
   **No client inserts, updates or deletes a sticker.**
   **`sticker_runs`** is read with its job;
   **insert** by the office, a primary or a superintendent (`sticker_can_mint()`;
@@ -1080,10 +1085,10 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   from v2.6797 it answered the place, the newest photo's bytes, the lines with their counts and the day of the last count to anyone with the code).
   Never the job, the customer, a price or a person's name;
   nothing signed-out can write (**Ask for a bid**, the call and the two sheets' **Send a text** and **Send an email** are links that open the phone's own Mail, Messages or dialler, v2.7405), and what is inside and the presses that write are the On site tab's, behind the sign-in and the gate above.
-  A code no box carries counts a miss through the estimate link's guard (`estimate_link_miss`, 20 an hour per source), and since v2.7240 a source past the limit is refused on a right code too (`readEstimateLinkLock`, a read that counts nothing and fails open), since v2.7264 before a sticker is read, so a locked source hears nothing of a blank or lost sticker either;
+  A code no box carries counts a miss through the estimate link's guard (`estimate_link_miss`, 20 an hour per source), and since v2.7240 a source past the limit is refused on a right code too (`readEstimateLinkLock`, a read that counts nothing and fails open), since v2.7264 before a sticker is read, so a locked source hears nothing of a reserved or lost sticker either;
   a view lands in `public_page_views` as the portals' do.
   Since v2.7072 the code may be a sticker's: one on a box answers that box and no more than a label does;
-  a blank one answers its number and nothing else, never the run, the job or a person;
+  a reserved one, on no box yet, answers its number and nothing else, never the run, the job or a person;
   a lost one answers its number and the day.
 
 ### Painted maps — lines and places on a job or a development (v2.7202, `20261113220000_painted_maps.sql`, punch list #345)
@@ -1301,6 +1306,11 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The screens over them show to the office alone (`isOfficeRole`): the customer page's card, the chip (v2.6845), the Job window's strip and Bill Customer's question (v2.6848).
   Any other role, or a failed read, gets no chip and no question (`useInKindStandings`).
 
+- **`sub_papers` · `sub_paper_acks` · `sub_paper_job_counters`** (punch list #350, `docs/migrations/20261117040000_sub_papers.md`, v2.7474): the register of a sub's papers, what a sub said back, and the per-job counter behind `WS-<job>-<n>`.
+  **Read** `sub_papers` and `sub_paper_acks` by the office (`is_office_staff()`), nothing else by policy, and every write privilege is revoked from `anon` and `authenticated`.
+  The counters have no policy and no grant.
+  A row is written only by `mint_sub_paper` and voided only by `void_sub_paper`, both definer functions that refuse a caller outside the office, a training account, a digital twin and an archived account.
+  A sub reads their own papers through the portal's function, which holds the service key.
 - **`sub_payment_sendings` · `sub_credit_entries`** (punch list #347, `docs/migrations/20261114020000_sub_credit_and_sendings.md`, v2.7235): one money movement to a sub, and the credit kept past what their sheets needed.
   **Read / insert** by the office (`is_office_staff()`), nothing else by policy: a credit entry goes with its payment row (`ON DELETE CASCADE`), and the functions do the rest.
   `record_sub_sending` and `apply_sub_credit` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the policies decide;
@@ -1318,6 +1328,9 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   `record_supply_house_payment` is `SECURITY INVOKER`, checks `is_office_staff()` itself, is granted to `authenticated` and revoked from `anon`.
   The trigger functions that keep a bill's `is_paid` true to its lines are `SECURITY DEFINER` and revoked from every API role, so the books are kept whoever marks a bill paid.
   The four fences apply.
+  **`supply_house_payment_events`** (`docs/migrations/20261117010000_supply_house_payment_moves.md`, v2.7462) is read, inserted and updated by the same four roles and deleted by none;
+  `move_supply_house_payment`, `undo_supply_house_payment_move`, `remove_supply_house_payment` and `restore_supply_house_payment` are `SECURITY INVOKER`, each checks `is_office_staff()` itself, granted to `authenticated` and revoked from `anon`.
+  So are `match_supply_house_payment` and `unmatch_supply_house_payment` (`docs/migrations/20261117060000_supply_house_payment_bank.md`, v2.7471), and a match needs a login that can read the bank line: `mercury_transactions`' own policies decide that.
 
 ### Bid basis exports — the Cover Letter's marked-up plans record (v2.3219, `20260910120000_bid_plan_basis_exports.sql`)
 

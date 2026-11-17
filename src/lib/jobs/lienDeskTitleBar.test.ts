@@ -1,42 +1,83 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { LIEN_DESK_PILE_LINE_PARTS, LIEN_DESK_TITLE_LINE_PARTS, lienDeskPileLineFit, lienDeskPileLineNeeds, lienDeskTitleBarLayout, lienDeskTitleLineFit, lienDeskTitleLineNeeds, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineParts, type LienDeskTitleLineParts } from './lienDeskTitleBar'
+import { LIEN_DESK_NAME, LIEN_DESK_PILE_LINE_PARTS, LIEN_DESK_TITLE_LINE_PARTS, lienDeskFirstTab, lienDeskPileLineFit, lienDeskPileLineNeeds, lienDeskTitleBarLayout, lienDeskTitleLineFit, lienDeskTitleLineNeeds, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineParts, type LienDeskTitleLineParts } from './lienDeskTitleBar'
 
-/** The owner's screenshot of 2026-11-14: To do · 21, Record the mailing · 7 sealed, the office's door and four presses. In a window: chrome counts. */
-const today: LienDeskTitleLineParts = { ...LIEN_DESK_TITLE_LINE_PARTS, views: 278, run: 270 }
+/**
+ * The office's line with the title in the first tab (v2.7465): the views with a two-figure count (372 px, measured
+ * 2026-11-16 as *⏱ Lien desk · 32 to do*), the office's door and four presses. In a window: chrome counts. The run's
+ * door was a part too, 270 px that day, until v2.7490.
+ */
+const today: LienDeskTitleLineParts = { ...LIEN_DESK_TITLE_LINE_PARTS, views: 372 }
+/** The same stretch of the line as it was until v2.7465: the title (100) with its gap (14.4), and the views as *To do · 21* (278). */
+const beforeTheTitleWasTheTab = 100 + 14.4 + 278
 
-describe('which tools the title line holds (v2.7277)', () => {
-  it('a 2,000 px window holds all five, a 1,300 one the four presses with the door under them, and an 1,100 one none', () => {
-    expect(lienDeskTitleLineFit(2000, today)).toBe('all')
-    expect(lienDeskTitleLineFit(1300, today)).toBe('presses')
-    expect(lienDeskTitleLineFit(1100, today)).toBe('none')
+describe('the first tab’s words (v2.7465, the owner’s pick: the title is the tab)', () => {
+  it('on a computer the tab carries the page’s name and the count, and is the title', () => {
+    expect(lienDeskFirstTab({ isMobile: false, count: 32 })).toEqual({ words: 'Lien desk · 32 to do', titled: true })
+    expect(lienDeskFirstTab({ isMobile: false, count: 1 })).toEqual({ words: 'Lien desk · 1 to do', titled: true })
+    expect(lienDeskFirstTab({ isMobile: false, count: 188 }).words).toBe('Lien desk · 188 to do')
+    expect(lienDeskFirstTab({ isMobile: false, count: 32 }).words.startsWith(LIEN_DESK_NAME)).toBe(true)
   })
 
-  it('the lines are the parts, a gap between each pair and the chrome: 1,323.2 with everything today, 1,114.6 with the presses alone', () => {
-    expect(lienDeskTitleLineNeeds({ ...today, tools: today.door + today.toolsGap + today.presses })).toBeCloseTo(1323.2, 1)
-    expect(lienDeskTitleLineFit(1324, today)).toBe('all')
-    expect(lienDeskTitleLineFit(1323, today)).toBe('presses')
-    expect(lienDeskTitleLineFit(1115, today)).toBe('presses')
-    expect(lienDeskTitleLineFit(1114, today)).toBe('none')
+  it('while the count is not in yet a computer’s tab reads the name alone, so the page is never without it', () => {
+    expect(lienDeskFirstTab({ isMobile: false, count: null })).toEqual({ words: 'Lien desk', titled: true })
   })
 
-  it('the longest line the desk can draw needs 1,529 px for everything and 1,320 for the presses, which is why the bar measures the line it drew', () => {
-    expect(lienDeskTitleLineNeeds(LIEN_DESK_TITLE_LINE_PARTS)).toBeCloseTo(1528.6, 1)
-    // A rule sized for it would have left the owner's 1,290 px window as it was: with today's run, the presses fit there.
-    expect(lienDeskTitleLineFit(1290, LIEN_DESK_TITLE_LINE_PARTS)).toBe('none')
-    expect(lienDeskTitleLineFit(1290, today)).toBe('presses')
-    expect(lienDeskTitleLineFit(1319, LIEN_DESK_TITLE_LINE_PARTS)).toBe('none')
-    expect(lienDeskTitleLineFit(1320, LIEN_DESK_TITLE_LINE_PARTS)).toBe('presses')
+  it('nothing waiting reads 0 to do: the figure keeps its place, and a count that is no whole number of rows is floored and never under 0', () => {
+    expect(lienDeskFirstTab({ isMobile: false, count: 0 }).words).toBe('Lien desk · 0 to do')
+    expect(lienDeskFirstTab({ isMobile: true, count: 0 }).words).toBe('To do · 0')
+    expect(lienDeskFirstTab({ isMobile: false, count: -3 }).words).toBe('Lien desk · 0 to do')
+    expect(lienDeskFirstTab({ isMobile: false, count: 4.9 }).words).toBe('Lien desk · 4 to do')
+    expect(lienDeskFirstTab({ isMobile: false, count: Number.NaN }).words).toBe('Lien desk')
   })
 
-  it('with no door there is nothing to slide under the presses: the leader’s line is all or none, and a line with no run counts no gap for it', () => {
+  it('a phone keeps its title on a row of its own, so its first tab reads To do and the count as before and is no title', () => {
+    expect(lienDeskFirstTab({ isMobile: true, count: 32 })).toEqual({ words: 'To do · 32', titled: false })
+    expect(lienDeskFirstTab({ isMobile: true, count: null })).toEqual({ words: 'To do', titled: false })
+  })
+})
+
+describe('which tools the title line holds (v2.7277; no title part since v2.7465, without the run\'s door since v2.7490)', () => {
+  it('a 1,300 px window now holds all five, a 900 one the four presses with the door under them, and an 800 one none', () => {
+    // With the run's door on the line a 1,300 px window held the presses alone and an 1,100 one held none.
+    expect(lienDeskTitleLineFit(1300, today)).toBe('all')
+    expect(lienDeskTitleLineFit(1100, today)).toBe('all')
+    expect(lienDeskTitleLineFit(900, today)).toBe('presses')
+    expect(lienDeskTitleLineFit(800, today)).toBe('none')
+  })
+
+  it('the lines are the parts, a gap between each pair and the chrome: 1,026.4 with everything today, 817.8 with the presses alone', () => {
+    expect(lienDeskTitleLineNeeds({ ...today, tools: today.door + today.toolsGap + today.presses })).toBeCloseTo(1026.4, 1)
+    expect(lienDeskTitleLineFit(1027, today)).toBe('all')
+    expect(lienDeskTitleLineFit(1026, today)).toBe('presses')
+    expect(lienDeskTitleLineFit(818, today)).toBe('presses')
+    expect(lienDeskTitleLineFit(817, today)).toBe('none')
+  })
+
+  it('the title in the first tab made the line 20 px shorter with a two-figure count: the title and its gap went (114.4) and the views grew by 94', () => {
+    expect(beforeTheTitleWasTheTab - today.views).toBeCloseTo(20.4, 1)
+    // So the presses come up to the title line in a window 20 px narrower: 839 px with the title on the line, 818 with it in the first tab.
+    expect(lienDeskTitleLineFit(825, today)).toBe('presses')
+  })
+
+  it('the longest line the desk can draw needs 1,038 px for everything and 829 for the presses: 477 less than with the run\'s door on it', () => {
+    expect(lienDeskTitleLineNeeds(LIEN_DESK_TITLE_LINE_PARTS)).toBeCloseTo(1037.8, 1)
+    // The fit adds the door, its gap and the presses as drawn (439.6), a hair under the table's round 440.
+    expect(lienDeskTitleLineFit(1038, LIEN_DESK_TITLE_LINE_PARTS)).toBe('all')
+    expect(lienDeskTitleLineFit(1037, LIEN_DESK_TITLE_LINE_PARTS)).toBe('presses')
+    expect(lienDeskTitleLineFit(829, LIEN_DESK_TITLE_LINE_PARTS)).toBe('presses')
+    expect(lienDeskTitleLineFit(828, LIEN_DESK_TITLE_LINE_PARTS)).toBe('none')
+    // The owner's 1,290 px window, which held the presses alone with the run's door on the line, holds all five.
+    expect(lienDeskTitleLineFit(1290, LIEN_DESK_TITLE_LINE_PARTS)).toBe('all')
+  })
+
+  it('with no door there is nothing to slide under the presses: the leader’s line is all or none', () => {
     const leader = { ...today, door: 0, presses: 189 }
-    expect(lienDeskTitleLineFit(1100, leader)).toBe('all')
-    // 90 + 100 + 278 + 270 + 189, four gaps, the chrome.
-    expect(lienDeskTitleLineFit(1073, leader)).toBe('all')
-    expect(lienDeskTitleLineFit(1072, leader)).toBe('none')
-    // Affidavits has no run: four parts, three gaps.
-    expect(lienDeskTitleLineNeeds({ back: 90, title: 100, views: 251, run: 0, tools: 200, gap: 10, chrome: 88 })).toBe(90 + 100 + 251 + 200 + 30 + 88)
+    // 98 + 372 + 189, two gaps, the chrome.
+    expect(lienDeskTitleLineFit(776, leader)).toBe('all')
+    expect(lienDeskTitleLineFit(775, leader)).toBe('none')
+    // Three parts, two gaps.
+    expect(lienDeskTitleLineNeeds({ back: 90, views: 251, tools: 200, gap: 10, chrome: 88 })).toBe(90 + 251 + 200 + 20 + 88)
   })
 })
 
@@ -51,22 +92,30 @@ describe('the title line read off the bar (v2.7277)', () => {
     }
     return el
   }
-  const line = '<button data-part="back">← Back</button><h2 data-part="title">⏱ Lien desk</h2><div data-lien-desk-kinds data-part="views"></div><button data-lien-desk-run data-part="run"></button><span data-lien-desk-tools><button data-testid="lien-owner-records-door" data-part="door"></button><span data-lien-desk-presses data-part="presses"></span></span>'
+  // A computer's bar since v2.7465: the heading is out of the line (1 px, clipped) and the first of the views carries the name.
+  const line = '<button data-part="back">← Back</button><h2 data-lien-desk-heading="outline" data-part="heading">Lien desk</h2><div data-lien-desk-kinds data-part="views"></div><span data-lien-desk-tools><button data-testid="lien-owner-records-door" data-part="door"></button><span data-lien-desk-presses data-part="presses"></span></span>'
 
   it('reads the width inside the padding and every part where it sits, a missing one as 0', () => {
-    const office = bar({ bar: 1252, back: 90, title: 100, views: 278, run: 270, door: 199, presses: 231 }, line)
+    const office = bar({ bar: 1252, back: 90, heading: 1, views: 372, door: 199, presses: 231 }, line)
     office.style.padding = '1px 20px 3px' // the bar's padding since v2.7322; the reader counts the sides alone, so the width is the same as under the old 11.2 and 9.6
     office.style.columnGap = '14.4px'
+    // The way back keeps 8 px clear of the views by its own margin, over the bar's gap: the line needs that room, so it is read with the button.
+    ;(office.firstElementChild as HTMLElement).style.marginRight = '8px'
     document.body.append(office)
     const read = readLienDeskTitleLine(office)!
     expect(read.width).toBe(1212)
-    expect(read.parts).toEqual({ back: 90, title: 100, views: 278, run: 270, door: 199, presses: 231, toolsGap: 9.6, gap: 14.4, chrome: 0 })
-    expect(lienDeskTitleLineFit(read.width, read.parts)).toBe('presses')
+    // The heading is no part of the line: its clipped pixel is not counted, and it takes no gap.
+    expect(read.parts).toEqual({ back: 98, views: 372, door: 199, presses: 231, toolsGap: 9.6, gap: 14.4, chrome: 0 })
+    // 938.4 px of parts and gaps in 1,212: all five. With the run's 270 px door on the line it held the presses alone.
+    expect(lienDeskTitleLineFit(read.width, read.parts)).toBe('all')
+    // The margin decides it at the edge: 98 + 372 + 231 and two gaps is 729.8, so a 725 px line holds no tools, and read without the margin it would have.
+    expect(lienDeskTitleLineFit(725, read.parts)).toBe('none')
+    expect(lienDeskTitleLineFit(725, { ...read.parts, back: 90 })).toBe('presses')
     office.remove()
-    // The leader on Affidavits: no way back given, no run, no door. The title is the first child, not the way back.
-    const leader = bar({ bar: 1252, title: 100, views: 278, presses: 189 }, line.replace('<button data-part="back">← Back</button>', ''))
+    // The leader: no way back given, no door. The heading is the first child, and it is not the way back.
+    const leader = bar({ bar: 1252, heading: 1, views: 372, presses: 189 }, line.replace('<button data-part="back">← Back</button>', ''))
     document.body.append(leader)
-    expect(readLienDeskTitleLine(leader)!.parts).toMatchObject({ back: 0, title: 100, run: 0, door: 0, presses: 189 })
+    expect(readLienDeskTitleLine(leader)!.parts).toMatchObject({ back: 0, views: 372, door: 0, presses: 189 })
     leader.remove()
   })
 

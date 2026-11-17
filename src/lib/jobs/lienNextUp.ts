@@ -8,6 +8,7 @@
  * The office and the leader see different buttons on the same row, as the panes' footers do
  * (`isLienOffice` / `isLienLeader`); a role that is neither sees the list and no buttons.
  */
+import { lienServeClock, lienServeRowWords } from './lienServeClock'
 import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type LienDeskSeverity } from './lienDesk'
 import { lienOtherScreen } from './lienCodeSigner'
 import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
@@ -24,6 +25,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_NOTICE_OWED_DOORS, lienNoticeOwedMonths, lienNoticeOwedWords } from './lienNoticeOwed'
 import { describeNoticeMonths } from './lienNoticeMonthWords'
 import { lienActFor } from './lienActWords'
+import { LIEN_JOB_PATH_DOOR } from './lienJobPathWindow'
 import { lienAffidavitNoticePile, lienAffidavitNoticeStanding, lienAffidavitNoticeWaits, lienAffidavitNoticeWords } from './lienAffidavitNoticeStanding'
 
 export type LienNextUpKind = 'notice' | 'affidavit' | 'retainage'
@@ -54,6 +56,8 @@ export type LienNextUpAction =
   | 'record_service'
   /** An envelope mailed through the provider came back, went unclaimed, was refused, or reads a status the fold had not seen (the Docsmit train, 6b). */
   | 'mail_needs_you'
+  /** Retainage the job's own bills or notes show and nobody recorded (fix A of the retainage clock check, PR 2): the office answers with the figure, or with none. */
+  | 'record_retainage'
 
 /** Where a row's button goes — always a screen that exists today. */
 export type LienNextUpTarget =
@@ -62,15 +66,21 @@ export type LienNextUpTarget =
   /** The Affidavits list at one pile (punch list #362, step 4): a folded row's press, where the pile's own batch press stands. */
   | { open: 'affidavit_pile'; pile: 'ready' | 'to_draft' }
   | { open: 'retainage'; jobId: string }
+  /** The Retainage list at *Looks held · not on the job*, on this job's row: where the figure is recorded or answered as none. */
+  | { open: 'retainage_unrecorded'; jobId: string }
   /** The run window: a GC's ready notices, or (punch list #101) every printed notice, `takeBack` opening on its confirm. */
   | { open: 'run'; gcId: string | null; takeBack?: boolean }
   /** The Lien window on a paper's tab; `openLastWork` (punch list #353) opens it with the last day of work ready to change. */
   | { open: 'lien_window'; jobId: string; tab: 'affidavit' | 'notice'; openLastWork?: true }
   /** The recorded notice's months, corrected (punch list #353): the paper as mailed named these months too, so they join its record. */
   | { open: 'notice_record_months'; jobId: string; months: string[] }
+  /** The window that takes one job off the lien path, with a reason (v2.7526, `lienJobPathWindow.ts`). */
+  | { open: 'job_path'; jobId: string }
+  /** The window that mails every filed lien's copies together (punch list #366): a folded row's press, and the Board's own. */
+  | { open: 'serve_copies' }
 
 /** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. Since v2.7371 (punch list #362, step 2) `risk` holds the `now` rows that will not make their day as they stand, first, and `waiting` (on the leader) stands right after it, above the rest of `now`. */
-export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting' | 'step_on' | 'step_other'
+export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting'
 
 export type LienNextUpRow = {
   key: string
@@ -130,16 +140,26 @@ const BUTTON: Record<LienNextUpAction, string> = {
   send_notice: 'Send the notice first',
   draft_late: 'Draft it late',
   file_affidavit: 'File the affidavit',
-  record_service: 'Record service',
+  // The copies of a filed lien (punch list #366): the press opens where they are printed, mailed and recorded. *Record service* until v2.7497.
+  record_service: 'Mail the copies',
   mail_needs_you: 'Open the notice',
+  record_retainage: 'Record the retainage',
 }
+
+/** The To do row's first words for retainage the bills or notes show and nobody recorded; the reason follows them. */
+export const LIEN_RETAINAGE_UNRECORDED_SUB = 'Retainage not on the job'
 
 /**
  * The notices a run holds (v2.7442). Opened from a GC's To do row, or from its one notice, the run holds that GC's
  * approved notices alone, so *Print and mail 3* opens on three. The desk's own doors pass no GC and get every approved
  * and printed notice, as before.
+ *
+ * Opened from a ready notice's *Just this one* (v2.7512, `lienRunOne.ts`), the run holds that one notice, by its desk
+ * item. It is looked for in both piles, since the notice moves to the printed pile the moment its packet prints and
+ * the open window must still find it.
  */
-export function lienRunEntriesFor<E extends { gcCustomerId?: string | null }>(ready: ReadonlyArray<E>, printed: ReadonlyArray<E>, gcId: string | null): E[] {
+export function lienRunEntriesFor<E extends { gcCustomerId?: string | null; item?: { id: string } | null }>(ready: ReadonlyArray<E>, printed: ReadonlyArray<E>, gcId: string | null, onlyItemId?: string | null): E[] {
+  if (onlyItemId) return [...ready, ...printed].filter((e) => e.item?.id === onlyItemId)
   return gcId ? ready.filter((e) => e.gcCustomerId === gcId) : [...ready, ...printed]
 }
 
@@ -168,6 +188,8 @@ export type LienNextUpInput = {
   mailNeedsYou?: ReadonlyArray<{ jobId: string; pieceId: string; who: string; words: string }>
   /** The months the live § 53.056 notices name, by job (punch list #353): a To draft row with a notice on record names the owed month beside them. Absent, the row keeps its plain words. */
   noticeMonthsByJob?: Readonly<Record<string, ReadonlyArray<string>>>
+  /** The open jobs under a GC whose bills or notes say retainage is held with none recorded (`retainageSuggested.ts`), each with its row's words. Absent, no such row. */
+  retainageUnrecorded?: ReadonlyArray<{ jobId: string; title: string; why: string }>
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
@@ -397,6 +419,10 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     // a gate closed on after its approval: it sits in Held, the row still asks the one question, and says the approval stands.
     const pushHold = (approved: boolean) => {
       const stands = approved ? ' The approval stands.' : ''
+      // Not lienable… (v2.7526, the owner's pick of 2026-11-16): a paper a fact holds is where a job with no lien behind
+      // it shows up, so the office's row offers the door that takes the one job off the lien path, with a reason. A
+      // public owner's row has none: that answer is the property's, and its own window takes every job there.
+      const offPath = office ? { doors: [{ words: LIEN_JOB_PATH_DOOR, target: { open: 'job_path' as const, jobId: e.jobId } }] } : {}
       const lead = approved ? 'Affidavit approved, held · ' : 'Affidavit · '
       // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
       const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
@@ -416,17 +442,17 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
               : standing === 'late'
                 ? { button: office ? BUTTON.send_notice : null, target: pane }
                 : { button: canAct ? 'Open the notice' : null, target: pane }
-        push({ ...base, key, sub: `${lead}${words.sub}`, detail: `${words.detail}${stands}`, action: 'send_notice', ...press })
+        push({ ...base, key, sub: `${lead}${words.sub}`, detail: `${words.detail}${stands}`, action: 'send_notice', ...press, ...offPath })
       }
       // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
       // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
       else if (failing.includes('public_owner')) push({ ...base, key, sub: `${lead}public property, no lien attaches. Ask the attorney about the bond`, detail: 'Public property, no lien attaches. Ask the attorney about the bond.', action: 'fix_property', button: null })
-      else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: `${lead}the general contractor has no address on file`, detail: `The general contractor has no address on file.${stands}`, action: 'fix_property', button: canAct ? 'Add the address' : null })
+      else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: `${lead}the general contractor has no address on file`, detail: `The general contractor has no address on file.${stands}`, action: 'fix_property', button: canAct ? 'Add the address' : null, ...offPath })
       else {
         // The hold by name (v2.7372, punch list #362 step 3): the one fact the affidavit waits on, in `gateAct`'s words, on
         // the row and on its button. Until then every hold read *the property record is not complete*, whatever the gate.
         const hold = lienGateHoldWords(failing)
-        push({ ...base, key, sub: `${lead}${hold.sub}`, detail: `${hold.detail}${stands}`, action: 'fix_property', button: canAct ? hold.button : null })
+        push({ ...base, key, sub: `${lead}${hold.sub}`, detail: `${hold.detail}${stands}`, action: 'fix_property', button: canAct ? hold.button : null, ...offPath })
       }
     }
     switch (e.pile) {
@@ -455,9 +481,11 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
     }
   }
+  // A filed lien's copies (punch list #366): the row says what is owed and by when, and turns red the day before its day.
   for (const s of input.serveDue ?? []) {
-    const daysLeft = daysBetween(input.todayYmd, s.serveDue)
-    push({ kind: 'affidavit', key: `serve:${s.jobId}`, jobId: s.jobId, gcId: null, title: input.jobTitle(s.jobId), sub: 'Lien filed · not yet served', dueOn: s.serveDue, daysLeft, severity: 'red', action: 'record_service', button: office ? BUTTON.record_service : null, target: { open: 'lien_window', jobId: s.jobId, tab: 'affidavit' } })
+    const clock = lienServeClock(s.serveDue, input.todayYmd)
+    const daysLeft = clock.serveDue ? clock.daysLeft : daysBetween(input.todayYmd, s.serveDue)
+    push({ kind: 'affidavit', key: `serve:${s.jobId}`, jobId: s.jobId, gcId: null, title: input.jobTitle(s.jobId), sub: lienServeRowWords(clock), dueOn: s.serveDue, daysLeft, severity: clock.late || daysLeft <= 1 ? 'red' : 'amber', action: 'record_service', button: office ? BUTTON.record_service : null, target: { open: 'lien_window', jobId: s.jobId, tab: 'affidavit' } })
   }
 
   // ---- § 53.057 retainage ----
@@ -487,6 +515,13 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'missed':
         break
     }
+  }
+
+  // Retainage nobody recorded: no clock runs and no notice names it until the office answers, so the row stands under
+  // Needs you now with no day of its own. The office's press (a master is office too); any other role reads the row.
+  // A retainage row has no bin on the Board, so its reason rides in the row's own words as well as its detail.
+  for (const u of input.retainageUnrecorded ?? []) {
+    rows.push({ key: `retainage-unrecorded:${u.jobId}`, kind: 'retainage', jobId: u.jobId, gcId: null, title: u.title, sub: u.why ? `${LIEN_RETAINAGE_UNRECORDED_SUB} · ${u.why}` : LIEN_RETAINAGE_UNRECORDED_SUB, detail: u.why, dueOn: null, daysLeft: null, severity: 'amber', group: 'now', action: 'record_retainage', button: office ? BUTTON.record_retainage : null, target: { open: 'retainage_unrecorded', jobId: u.jobId } })
   }
 
   // An envelope the provider mailed that came back or went unclaimed (the Docsmit train, 6b): the office's row, under Needs you now, opening the notice under Sent whose footer has the doors.

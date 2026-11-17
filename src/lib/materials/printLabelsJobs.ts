@@ -1,12 +1,13 @@
 /**
  * Print labels' *Which job?* window (punch list #304; the owner's ask of 2026-11-16, v2.7482): what each job's card
  * says before a job is picked. The window used to be a list of names with a count; a card now says what the labels
- * are (cages and boxes apart, the names from first to last, each place with its count), what changed (boxes added in
- * the last seven days, boxes that already wear a sticker, empty boxes), a run this computer left half done today, the
- * tape or the pages the job takes, and the doors into the labels window. Pure: the jobs, the device's memory and the
- * clock in, the words out. The window is `PrintLabelsWindow.tsx`.
+ * are (cages and boxes apart, the names from first to last, each place with its count), what waits (since v2.7519 the
+ * boxes whose label the app has not seen print, `labelMark.ts`, where it said the boxes added in the last seven days;
+ * boxes that already wear a sticker, empty boxes), a run this computer left half done today, the tape or the pages
+ * the job takes, and the doors into the labels window. Pure: the jobs and the device's memory in, the words out. The window is `PrintLabelsWindow.tsx`.
  */
 import { boxKindWords } from './editBox'
+import { ALL_LABELLED_WORDS, everyBoxLabelled, notPrintedChipWords, notPrintedDoorLabel, notPrintedIds } from './labelMark'
 import { stoppedRunToResume, type StoppedRun } from './labelPick'
 import { labelPrintName, labelPrintNames } from './labels'
 import { compareLabels, type Container, type ContainerKind, type ContainerLine } from './onSite'
@@ -15,8 +16,6 @@ import { clampTapeCopies, tapeLayout, type LabelFormat, type TapeWidthMm } from 
 
 /** A job with this many boxes or fewer names each one; past it the card says the first and the last. */
 export const LABEL_NAMES_LISTED = 6
-/** A box is new for this many days after it was added. */
-export const LABEL_NEW_DAYS = 7
 /** The search shows past this many jobs. */
 export const LABEL_JOBS_SEARCH_PAST = 6
 /** What a full TZe cassette holds, in millimetres: 8 m. */
@@ -58,12 +57,6 @@ export function placeCounts(boxes: ReadonlyArray<Pick<Container, 'locationId'>>,
   }
   const named = [...byName.entries()].map(([name, n]) => ({ name, n })).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
   return none > 0 ? [...named, { name: NO_PLACE_WORDS, n: none }] : named
-}
-
-/** The boxes added in the last `LABEL_NEW_DAYS` days, by their ids. A box with no readable day is not new. */
-export function addedLatelyIds(boxes: ReadonlyArray<Pick<Container, 'id' | 'createdAt'>>, nowMs: number): string[] {
-  const since = nowMs - LABEL_NEW_DAYS * 24 * 60 * 60 * 1000
-  return boxes.filter((b) => { const at = Date.parse(b.createdAt); return Number.isFinite(at) && at >= since && at <= nowMs + 60_000 }).map((b) => b.id)
 }
 
 /** How many of the boxes hold nothing: no line with a part on hand. */
@@ -113,8 +106,8 @@ export function resumeWords(r: LabelJobResume): string {
   return r.boxes === 1 ? `A run stopped here today. 1 box is left, ${r.from}.` : `A run stopped here today. ${r.boxes} boxes are left, from ${r.from}.`
 }
 
-/** A way into the labels window from a card: the rest of a stopped run, the new boxes, or every box. */
-export type LabelJobDoor = { kind: 'rest' | 'new' | 'all'; label: string; ids: string[] }
+/** A way into the labels window from a card: the rest of a stopped run, the boxes not printed yet, or every box. */
+export type LabelJobDoor = { kind: 'rest' | 'unprinted' | 'all'; label: string; ids: string[] }
 
 export type LabelJobFacts = {
   jobId: string
@@ -129,8 +122,14 @@ export type LabelJobFacts = {
   kinds: string
   names: ReturnType<typeof nameSpan>
   places: Array<{ name: string; n: number }>
-  addedIds: string[]
-  /** Boxes that already wear a sticker; null while unread or when the read failed, and the chip is left out. */
+  /**
+   * The boxes that wait for a label: made since the mark began, no label seen and no sticker on them. Null while the
+   * stickers are unread, since a box with a sticker waits for nothing.
+   */
+  notPrintedIds: string[] | null
+  /** Every box is known to carry a code, by a label seen to print or a sticker. False while the stickers are unread. */
+  allLabelled: boolean
+  /** Boxes that already wear a sticker; null while unread, and the chip is left out. */
   stickered: number | null
   empty: number
   resume: LabelJobResume | null
@@ -146,7 +145,6 @@ export function allDoorLabel(n: number): string {
 }
 
 export type LabelJobsInput = {
-  nowMs: number
   /** Today in the app's time zone, as the stopped run is kept. */
   today: string
   kept: StoppedRun | null
@@ -166,15 +164,15 @@ export function labelJobFacts(job: OnSiteFindJob, input: LabelJobsInput): LabelJ
   const printNames = labelPrintNames(job.containers)
   const nameOf = (b: Container) => labelPrintName(printNames, b)
   const ids = boxes.map((b) => b.id)
-  const addedIds = addedLatelyIds(boxes, input.nowMs)
+  const waiting = input.stickeredIds ? notPrintedIds(boxes, input.stickeredIds) : null
   const kept = stoppedRunToResume(input.kept, job.jobId, input.today, ids)
   const restIds = kept ? ids.filter((id) => !kept.left.has(id)) : []
   const first = restIds.length > 0 ? boxes.find((b) => b.id === restIds[0]) : undefined
   const resume = kept && first ? { boxes: restIds.length, from: nameOf(first) } : null
   const doors: LabelJobDoor[] = []
   if (resume) doors.push({ kind: 'rest', label: `The rest, ${count(resume.boxes, 'box', 'boxes')}`, ids: restIds })
-  // Every box new is the same pick as every box, so it is one door.
-  if (addedIds.length > 0 && addedIds.length < boxes.length) doors.push({ kind: 'new', label: `The ${addedIds.length} new`, ids: addedIds })
+  // Every box waiting is the same pick as every box, so it is one door.
+  if (waiting && waiting.length > 0 && waiting.length < boxes.length) doors.push({ kind: 'unprinted', label: notPrintedDoorLabel(waiting.length), ids: waiting })
   doors.push({ kind: 'all', label: allDoorLabel(boxes.length), ids })
   const site = input.siteOf?.(job.jobId)?.trim() ?? ''
   const street = job.address?.trim() ?? ''
@@ -188,7 +186,8 @@ export function labelJobFacts(job: OnSiteFindJob, input: LabelJobsInput): LabelJ
     kinds: kindCountsWords(boxes),
     names: nameSpan(boxes.map(nameOf)),
     places: placeCounts(boxes, job.places),
-    addedIds,
+    notPrintedIds: waiting,
+    allLabelled: input.stickeredIds ? everyBoxLabelled(boxes, input.stickeredIds) : false,
     stickered: input.stickeredIds ? boxes.filter((b) => input.stickeredIds!.has(b.id)).length : null,
     empty: emptyBoxCount(boxes, job.lines),
     resume,
@@ -198,9 +197,9 @@ export function labelJobFacts(job: OnSiteFindJob, input: LabelJobsInput): LabelJ
   }
 }
 
-/** Every job with a box, in order of need: a run to finish, then new boxes, then the job's number and name. */
+/** Every job with a box, in order of need: a run to finish, then boxes not printed yet, then the job's number and name. */
 export function labelJobsInOrder(jobs: ReadonlyArray<OnSiteFindJob>, input: LabelJobsInput): LabelJobFacts[] {
-  const rank = (f: LabelJobFacts) => (f.resume ? 0 : f.addedIds.length > 0 ? 1 : 2)
+  const rank = (f: LabelJobFacts) => (f.resume ? 0 : f.notPrintedIds && f.notPrintedIds.length > 0 ? 1 : 2)
   return jobs
     .map((j) => labelJobFacts(j, input))
     .filter((f): f is LabelJobFacts => f != null)
@@ -219,10 +218,13 @@ export function labelJobsCountWords(n: number): string {
   return n === 1 ? '1 job holds a cage or a box.' : `${n} jobs hold a cage or a box.`
 }
 
-/** The chips of a card, in order: what is new, what already carries a code, what is empty. */
-export function labelJobChips(f: Pick<LabelJobFacts, 'addedIds' | 'stickered' | 'empty'>): Array<{ tone: 'green' | 'blue' | 'gray'; words: string }> {
-  const chips: Array<{ tone: 'green' | 'blue' | 'gray'; words: string }> = []
-  if (f.addedIds.length > 0) chips.push({ tone: 'green', words: `${f.addedIds.length} added this week` })
+export type LabelJobChip = { tone: 'green' | 'amber' | 'blue' | 'gray'; words: string }
+
+/** The chips of a card, in order: what waits for a label or that nothing does, what wears a sticker, what is empty. */
+export function labelJobChips(f: Pick<LabelJobFacts, 'notPrintedIds' | 'allLabelled' | 'stickered' | 'empty'>): LabelJobChip[] {
+  const chips: LabelJobChip[] = []
+  if (f.notPrintedIds && f.notPrintedIds.length > 0) chips.push({ tone: 'amber', words: notPrintedChipWords(f.notPrintedIds.length) })
+  else if (f.allLabelled) chips.push({ tone: 'green', words: ALL_LABELLED_WORDS })
   if (f.stickered != null && f.stickered > 0) chips.push({ tone: 'blue', words: f.stickered === 1 ? '1 already wears a sticker' : `${f.stickered} already wear a sticker` })
   if (f.empty > 0) chips.push({ tone: 'gray', words: `${f.empty} empty` })
   return chips

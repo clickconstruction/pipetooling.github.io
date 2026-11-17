@@ -32,6 +32,7 @@ import { workMonthLabel } from './forecastWorkMonths'
 import { filingMailTail, type LienMailPieceRow } from '../mail/lienMailPieces'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { lienActFor, type LienAct } from './lienActWords'
+import { lienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import { LIEN_RUN_STEP } from './lienRunWords'
 
@@ -101,8 +102,9 @@ const MOVE_WORDS: Record<LienNextUpAction, string> = {
   confirm_pen: 'Signed by pen · confirm it',
   send: LIEN_RUN_STEP.toPrint,
   send_run: LIEN_RUN_STEP.toPrint,
-  add_tracking: 'In the mail · tracking owed',
-  record_mailing: 'In the mail · tracking owed',
+  // The desk's own name for a printed notice (v2.7522; *In the mail · tracking owed* until then).
+  add_tracking: LIEN_RUN_STEP.toMail,
+  record_mailing: LIEN_RUN_STEP.toMail,
   mail_needs_you: 'Envelope came back',
   review_hold: 'Held',
   letter_two: 'Attorney’s letter',
@@ -113,6 +115,7 @@ const MOVE_WORDS: Record<LienNextUpAction, string> = {
   send_notice: 'Affidavit · notice first',
   file_affidavit: 'File the affidavit',
   record_service: 'Lien filed · serve it',
+  record_retainage: 'Retainage not on the job',
 }
 
 const SENT_BY: Record<string, string> = {
@@ -179,6 +182,7 @@ function doorFor(row: LienNextUpRow, jobId: string): LienArDoor {
     case 'affidavit_pile':
       return { to: 'desk', jobId, kind: 'affidavit', pile: null }
     case 'retainage':
+    case 'retainage_unrecorded':
       return { to: 'desk', jobId, kind: 'retainage', pile: null }
     case 'run':
       return { to: 'desk', jobId, kind: 'notice', pile: row.action === 'record_mailing' || row.action === 'add_tracking' ? 'printed' : 'ready' }
@@ -187,6 +191,12 @@ function doorFor(row: LienNextUpRow, jobId: string): LienArDoor {
     // The *paper named it too* door (punch list #353) is a press on the desk's To draft row; the chip's door is that row.
     case 'notice_record_months':
       return { to: 'desk', jobId, kind: 'notice', pile: 'to_draft' }
+    // The folded row that mails every filed lien's copies (punch list #366) never reaches a job's chip either; a job's own row opens its Lien window.
+    case 'serve_copies':
+      return { to: 'window', jobId, tab: 'affidavit' }
+    // *Not lienable…* (v2.7526) is a quiet door beside a held affidavit's row, never the row's own target; the job's Lien window holds the same press.
+    case 'job_path':
+      return { to: 'window', jobId, tab: 'affidavit' }
   }
 }
 
@@ -261,7 +271,7 @@ function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string
     case 'add_tracking':
     case 'record_mailing': {
       const printed = dayOf(entry?.item?.printed_at)
-      return { tone: 'blue', state: 'out', paper, words: `${prefix}In the mail · tracking owed`, sentence: `${paperWords(row, entry)} · printed${printed ? ` ${fmt(printed)}` : ''} · press Enter mail numbers on the Lien desk to record it`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
+      return { tone: 'blue', state: 'out', paper, words: `${prefix}${LIEN_RUN_STEP.toMail}`, sentence: `${paperWords(row, entry)} · printed${printed ? ` ${fmt(printed)}` : ''} · press Enter mail numbers on the Lien desk to record it`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
     }
     case 'mail_needs_you': {
       // An envelope Docsmit mailed that came back or went unclaimed (the Docsmit train, 6b). The desk's row reads
@@ -441,7 +451,9 @@ function actOf(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string) => 
   // With no affidavit entry in hand the desk's row still says which of two holds it is.
   const missing: LienAffidavitGateKey[] = gates.length > 0 ? gates : /public property/i.test(row.sub) ? ['public_owner'] : /general contractor has no address/i.test(row.sub) ? ['contractor'] : []
   const yours = /your approval/i.test(row.sub)
-  const act = lienActFor({ paper: row.kind, action: row.action, yours, waitingOn: row.action === 'approve' && !yours ? waitingOnOf(row.sub) : null, missing })
+  // An affidavit that waits on its notice (v2.7527): the act is the notice's own next step, from where the notice stands on the desk.
+  const noticeStanding = row.kind === 'affidavit' && input.affidavit ? lienAffidavitNoticeStanding(input.affidavit, input.entry ?? null) : null
+  const act = lienActFor({ paper: row.kind, action: row.action, yours, waitingOn: row.action === 'approve' && !yours ? waitingOnOf(row.sub) : null, missing, noticeStanding })
   if (act && row.action === 'review_hold') {
     const until = dayOf(input.entry?.item?.hold_until)
     return { ...act, under: `Held · ${heldWhy(input.entry)}${until ? ` · asks again ${fmt(until)}` : ''}` }

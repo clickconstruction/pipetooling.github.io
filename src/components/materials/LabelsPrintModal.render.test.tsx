@@ -93,6 +93,39 @@ describe('LabelsPrintModal', () => {
     expect(screen.queryByTestId('labels-short-note')).toBeNull()
   })
 
+  it('through the print window a box is marked once that window closes, and the line takes the mark back (v2.7519)', () => {
+    const mark = vi.fn()
+    renderWithProviders(<LabelsPrintModal jobLabel="Oak Hollow Apartments Building C" containers={containers} lines={lines} places={places} only={null} onClose={() => {}} print={vi.fn()} mark={mark} />)
+    fireEvent.click(screen.getByTestId('labels-print'))
+    // The app cannot see the paper: the mark waits for the print window to close.
+    expect(mark).not.toHaveBeenCalled()
+    fireEvent(window, new Event('afterprint'))
+    expect(mark).toHaveBeenCalledTimes(1)
+    expect(mark.mock.calls[0]![0]).toEqual([A1, B3])
+    expect(screen.getByTestId('labels-marked').textContent).toBe('2 boxes are now marked as labelled. Did they not print?Take the mark off 2 boxes')
+    // A print window that closes again with no press before it marks nothing more.
+    fireEvent(window, new Event('afterprint'))
+    expect(mark).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByTestId('labels-mark-off'))
+    expect(mark).toHaveBeenLastCalledWith([A1, B3], null)
+    expect(screen.getByTestId('labels-marked').textContent).toBe('The mark is off 2 boxes.')
+  })
+
+  it('a box that wears a label the app did not print is marked by a press, which counts the ticked boxes with no mark (v2.7519)', () => {
+    const mark = vi.fn()
+    const some = [container(A1, 'A1', 'cage', { labelPrintedAt: '2026-11-17T15:00:00Z' }), container(B3, 'B3', 'cage')]
+    renderWithProviders(<LabelsPrintModal jobLabel="Oak Hollow Apartments Building C" containers={some} lines={lines} places={places} only={null} onClose={() => {}} print={vi.fn()} mark={mark} />)
+    expect(screen.getByTestId('labels-mark-said').textContent).toBe('Mark 1 box as labelled')
+    fireEvent.click(screen.getByTestId('labels-mark-said'))
+    expect(mark.mock.calls[0]![0]).toEqual([B3])
+    expect(screen.getByTestId('labels-marked').textContent).toContain('1 box is now marked as labelled.')
+    cleanup()
+    // Every ticked box marked already: there is nothing to say.
+    const all = some.map((c) => ({ ...c, labelPrintedAt: '2026-11-17T15:00:00Z' }))
+    renderWithProviders(<LabelsPrintModal jobLabel="Oak Hollow Apartments Building C" containers={all} lines={lines} places={places} only={null} onClose={() => {}} print={vi.fn()} mark={mark} />)
+    expect(screen.queryByTestId('labels-mark-said')).toBeNull()
+  })
+
   it('a chip leaves a box out and the press counts what is left; none left makes it dead', () => {
     const { print } = setup()
     const picks = screen.getAllByTestId('labels-pick')

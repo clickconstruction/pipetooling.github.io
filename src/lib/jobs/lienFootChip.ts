@@ -6,7 +6,7 @@
 import { wordRecordWords } from './lienWord'
 import { demandDate } from '../jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_PRINT } from './lienRunWords'
+import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_MAIL, LIEN_RUN_NOW_TO_PRINT } from './lienRunWords'
 
 export type LienFootChipTone = 'green' | 'blue' | 'amber'
 
@@ -104,11 +104,11 @@ function approvedChip(item: LienFootChipItem | null | undefined, gcName: string 
   return { tone: 'green', words: `Approved${day ? ` · ${day}` : ''}${offer}`, title: `Approved${long ? ` ${long}` : ''}${offer}. ${LIEN_RUN_NOW_TO_PRINT}` }
 }
 
-/** The printed footer: the day the packet printed; the run is where its number is typed. */
+/** The printed footer: the day the packet printed; the run is where its number is typed. *· to mail* since v2.7522, the pile's own word (*· in the mail* until then, which said the envelope had left). */
 export function printedChip(item: LienFootChipItem | null | undefined): LienFootChip {
   const day = shortDay(item?.printed_at)
   const long = longDay(item?.printed_at)
-  return { tone: 'blue', words: `Printed${day ? ` ${day}` : ''} · in the mail`, title: `Printed${long ? ` ${long}` : ''} · in the mail. Press ${LIEN_RUN_ACT.record} to record it.` }
+  return { tone: 'blue', words: `Printed${day ? ` ${day}` : ''} · to mail`, title: `Printed${long ? ` ${long}` : ''}. ${LIEN_RUN_NOW_TO_MAIL} Press ${LIEN_RUN_ACT.record} to record it.` }
 }
 
 /** The held footer: why, and the day it asks again. */

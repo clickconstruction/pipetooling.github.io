@@ -3,7 +3,7 @@ import { recipientMailed, recipientViaDocsmit, RUN_UNSIGNED_PROBLEM, runNoticePr
 import { shortDay } from './lienFootChip'
 import { APP_ORIGIN } from '../appOrigin'
 import { LIEN_DESK_PATH } from '../lien/lienDeskRoute'
-import { lienRunActFor, lienRunActLabel } from './lienRunWords'
+import type { LienMailedCopy } from './lienMailedCopies'
 
 /**
  * The run as a checklist (v2.7328, the owner's ask of 2026-11-15): one row per envelope's notice
@@ -41,6 +41,8 @@ export type LienRunRow = {
   jobNumber: string
   /** "650 · AXO Schertz" */
   label: string
+  /** The property's street, when the job's name does not say it (v2.7489); '' = none. */
+  street: string
   recipients: LienRunRecipientCell[]
   amount: number
   printed: LienRunTickPrinted | null
@@ -59,6 +61,8 @@ export type LienRunRow = {
   leader: { userId: string | null; name: string } | null
   /** Every recipient goes by email or through Docsmit: nothing prints here. */
   paperless: boolean
+  /** The scans or photos of what went in the envelope, oldest first (`lienMailedCopies.ts`); empty when none was added. */
+  mailedCopies: LienMailedCopy[]
 }
 
 export type LienRunChecklistInput = {
@@ -128,6 +132,7 @@ export function lienRunChecklistRows(input: LienRunChecklistInput): LienRunRow[]
       jobId: n.jobId,
       jobNumber: n.jobNumber,
       label: n.label,
+      street: (n.street ?? '').trim(),
       recipients,
       amount: n.amount,
       printed,
@@ -139,6 +144,7 @@ export function lienRunChecklistRows(input: LienRunChecklistInput): LienRunRow[]
       nothingToClaim: nothing != null,
       leader: n.leader ?? null,
       paperless,
+      mailedCopies: n.mailedCopies ?? [],
     }
   })
 }
@@ -196,52 +202,13 @@ export function lienRunBatchPlans(rows: ReadonlyArray<LienRunRow>): LienRunBatch
   }
 }
 
-/** `batchWords`, and with nothing ready and nothing held the dead button keeps its noun (*Mark printed*), as `countedLabel` reads at zero. */
+/**
+ * `batchWords`, and with nothing ready the dead button keeps its noun (*Mark printed*), as `countedLabel` reads at zero.
+ * Since v2.7477 that holds with rows held too: the two Mark presses sit side by side under More, and both read *Mark ▸*.
+ */
 function words(verb: string, ready: number, held: number, heldWhy: BatchHeldWhy, noun: BatchNoun): BatchWords {
   const w = batchWords({ verb, ready, held, heldWhy, noun })
-  return ready === 0 && held === 0 ? { ...w, button: countedLabel(verb, 0, noun) } : w
-}
-
-/** "3 printed · 2 signed · 1 mailed of 7" — the checklist's own heading line; '' with no rows. */
-export function lienRunChecklistWords(rows: ReadonlyArray<Pick<LienRunRow, 'printed' | 'signed' | 'mailed' | 'paperless'>>): string {
-  if (rows.length === 0) return ''
-  const printed = rows.filter((r) => r.printed || r.paperless).length
-  const signed = rows.filter((r) => r.signed && r.signed !== 'not_needed').length
-  const mailed = rows.filter((r) => r.mailed).length
-  return `${printed} printed · ${signed} signed · ${mailed} mailed of ${rows.length}`
-}
-
-/** The foot's status line: what the run waits on most, in a few words. */
-export function lienRunFootWords(rows: ReadonlyArray<Pick<LienRunRow, 'waitsOn' | 'held'> & { nothingToClaim?: boolean }>): { line1: string; line2: string } {
-  if (rows.length === 0) return { line1: 'Nothing is in this run.', line2: 'Approve a notice, or put one back in.' }
-  const held = rows.filter((r) => r.held).length
-  const print = rows.filter((r) => !r.held && r.waitsOn === 'print').length
-  const sign = rows.filter((r) => !r.held && r.waitsOn === 'sign').length
-  const mail = rows.filter((r) => !r.held && r.waitsOn === 'mail').length
-  const done = rows.filter((r) => !r.held && r.waitsOn === null).length
-  const parts = [print ? `${print} to print` : '', sign ? `${sign} to sign` : '', mail ? `${mail} ${mail === 1 ? 'owes' : 'owe'} a number` : '', done ? `${done} ready to record` : '', held ? `${held} held` : ''].filter(Boolean)
-  const line1 = parts.join(' · ')
-  const line2 = print ? 'Print the packet, or tick Printed on a paper printed elsewhere.' : sign ? 'Tick Signed when the leader has signed the paper, and say how you know.' : mail ? 'Type each envelope’s number from the slip. Record takes the rows that have theirs.' : done ? 'Record the mailings. Each notice goes to its job with how it went.' : rows.every((r) => r.nothingToClaim) ? 'Nothing is owed on these jobs now, so nothing here goes out.' : 'Fix what is marked in red, then print.'
-  return { line1, line2 }
-}
-
-/**
- * The desk's pill (v2.7328), with a meter — mailed, printed, still to print. Since v2.7448 it reads as the
- * press it is: *Print and mail 15* while anything is to print, *Enter mail numbers · 4* once all are printed,
- * and *· 3 of 18 mailed* after either once some are (*The run · 15 to print* and *The run · 3 of 7 mailed*
- * until then). `mailed` is what the desk recorded as sent from this run; `printed` what sits in Approved · to
- * mail; `toPrint` what is approved and not yet printed. '' with nothing to print or mail.
- */
-export type LienRunPill = { words: string; mailedPct: number; printedPct: number; total: number }
-
-export function lienRunPill(counts: { toPrint: number; printed: number; mailed: number }): LienRunPill {
-  const total = counts.toPrint + counts.printed + counts.mailed
-  if (total === 0) return { words: '', mailedPct: 0, printedPct: 0, total: 0 }
-  const pct = (n: number) => Math.round((n / total) * 100)
-  const left = counts.toPrint + counts.printed
-  const act = left > 0 ? lienRunActLabel(lienRunActFor({ toPrint: counts.toPrint, printed: counts.printed }), left) : ''
-  const words = [act, counts.mailed > 0 ? `${counts.mailed} of ${total} mailed` : ''].filter(Boolean).join(' · ')
-  return { words, mailedPct: pct(counts.mailed), printedPct: pct(counts.printed), total }
+  return ready === 0 ? { ...w, button: countedLabel(verb, 0, noun) } : w
 }
 
 /** The address a sheet's code opens: the desk with the run open on this envelope's Mailed box. */

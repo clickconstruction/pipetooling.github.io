@@ -1540,7 +1540,7 @@ Backed by the append-only **`checklist_instance_events`** card history (v2.1842)
 
 ### Task Mode (app-wide)
 Called **Farm Mode** until v2.7050, so an older note, fragment or guide link that says Farm Mode means this.
-The checklist-only lens: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, any role) that trims the nav to a single **Checklist** link, redirects every other route to `/checklist` (`taskModeBounceTarget`), shows a **"☑ Task Mode · Exit" strip** above the page content (**[`TaskModeChip`](../src/components/TaskModeChip.tsx)**, v2.2916 — Exit records `farm_mode_exit` in `ui_nav_clicks`), gates the `/` Person quick sheet (`canOpenPersonQuickSheet`), and limits **[`Checklist.tsx`](../src/pages/Checklist.tsx)** to the **Today + History** tabs.
+The checklist-only lens: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, any role) that trims the nav to a single **Checklist** link, redirects every other route to `/checklist` (`taskModeBounceTarget`), shows a **"☑ Task Mode · Exit" strip** above the page content (**[`TaskModeChip`](../src/components/TaskModeChip.tsx)**, v2.2916 — Exit records `farm_mode_exit` in `ui_nav_clicks`), gates the `/` Person quick sheet (`canOpenPersonQuickSheet`), and limits **[`Checklist.tsx`](../src/pages/Checklist.tsx)** to the **Today + History** tabs, drawn since v2.7533 as one joined bar (**[`TaskDayBar`](../src/components/checklist/TaskDayBar.tsx)**) in place of the tab strip and the page's title.
 Wins over Job Mode and Dispatch Mode while on;
 their stored toggles are untouched.
 Toggle lib **[`taskModeToggle.ts`](../src/lib/taskModeToggle.ts)** + hook **[`useTaskModeEnabled`](../src/hooks/useTaskModeEnabled.ts)** mirror the Job Mode pair;
@@ -3563,7 +3563,8 @@ since v2.6534 **Print cost summary** under the board, for a dev or a controller,
 and since v2.6493 (punch list #257) the **Timeline**, for a dev or a controller alone (`DevelopmentTimeline.tsx` over `lib/developments/siteTimeline.ts`): the Job Summary's Charges & Value chart over the whole site, every job's charge events merged in date order on one red line with the source icons on the biggest steps, the cash position in green, since v2.6498 the overhead day share as the amber band stacked on cost with true cost on top (from `useSiteOverhead`'s day lines, the ledger read when either view opens), since v2.6499 value created on the opt-in right axis (every job's newest percent times its price, summed, from the reports and hand-set percents `useSiteValueEvents` reads by job id, `siteValueSeries`) and a *Print or save as PDF* press that opens the chart's own SVG in a print window (`siteTimelinePrintHtml`), a tooltip line per job and source on a day (*JP603 · 3 card charges*), chips above the chart narrowing it to one or more jobs in the Money look's order, the jobs with no dated event counted and, since v2.6711 (PR 4), listed under the chart in a grey ledger strip with their cost and why they are off it, its sum line the chart's end plus the strip, the Scoreboard's cost before overhead (`siteTimelineLeftOutJobs`, `siteTimelineStripSum`;
 the strip rides into the print), the events built from the very rows the Costs column totals (`useSiteCosts` keeps them) and the clock's days (`siteLabor.ts`), the fuel split read once for the site (`useSiteTimeline`), every read starting when the view opens;
 Plans carries a **Memo** column on every set, edited in place (`PlanSetMemo`, estimator and up;
-a robot writes the same line through twin-mcp's `put_plan_memo`, v2.6207);
+a robot writes the same line through twin-mcp's `put_plan_memo`, v2.6207), and since v2.7494 (punch list #367) a second view, **By date**, beside the parts table (*By part*): every drawing set on the date on its sheets in one lane per part, with the bids' sent days, the clock's days on site as bars and the kept History lines on the same axis, four figures, the drawings and the bids again as a dated list (the crews' days and the History lines one press away, since v2.7560) and a one-page landscape print, no money on it so the overview door draws it too (`DevelopmentPlansByDate` over `lib/plans/plansByDate.ts`), every item answering a pointer with a card of its details and its presses since v2.7499 (`PlansByDateItemCard` over `lib/plans/plansByDateCards.ts`;
+a sheet on a phone), and since v2.7500 a bid's promised schedule as its own lane, a start and an end a person types on Edit Bid or from the bid's card, or a start with no end date (`lib/bids/bidSchedule.ts`, `bids.schedule_start` / `schedule_end` / `schedule_open_ended`), and since v2.7501 a set's sheet count (`plan_sets.sheet_count`, typed in the set's form or from its card) with a fifth figure, *Sheets in hand*, against the sheets held at the bid;
 Questions is two presses, **Ask the estimators** and **Ask Dispatch**, then one table per lane with any question (`DevelopmentQuestionsLook.tsx` over `lib/developments/questionsLook.ts`, open oldest first, the answered folded under *Show the N answered*, v2.6214).
 **History entries** (`development_history_entries`, v2.6042): the lines people and robots keep in History about what happened on the site, at the time it happened, with a source;
 never updated;
@@ -4453,13 +4454,17 @@ The dev seat's `sheetSentTo` and Banking's `bankSideSheets` read the same rule s
 ### Sub papers
 
 The papers the office hands a sub (punch list #350): a **Statement of account** for a period (what each sheet comes to, what was paid, what is *Still open*, the last payments and one line of how it adds up) and a **Work statement** for one sheet (its lines, back-charges, payments, *Paid so far* and *Still open on this statement*);
-a **Payment record** for one sending is built by the same kernel and has no press yet.
+and a **Payment record** for one sending (who was paid, how, what it was applied to with open before and after, and what stays open), under the sending's own number `PR-<n>` since v2.7475.
 No paper says invoice, receipt or owed, and six sentences that wait on counsel print boxed as draft wording (`SUB_PAPER_COUNSEL_PENDING`).
-The window is `SubPapersWindow` (`SubPapersWindowConnected.tsx` over the view in `SubPapersWindow.tsx`): *Statement of account…* on a person's group in **Jobs → Subs → Pay** and on their block in **People → Subs**, *Work statement…* in Print's place on the ⋯ menu of a sheet that is one person's (a shared sheet and a crew sheet keep Print) and under an open sheet in the block.
-It picks the person's sheets by `sheetOwedTo` (`paperSheetsFor`), checks the whole set with `subPapersAddUp` and draws none when it fails, previews the paper as the print page (`subPapersHtml.ts`), and Print and Download draw the PDF in the browser (`_shared/subPapersPdf.ts`) and file a sent copy (`sub_statement_of_account`, `sub_work_statement`) on the person and each job.
+The window is `SubPapersWindow` (`SubPapersWindowConnected.tsx` over the view in `SubPapersWindow.tsx`): *Statement of account…* on a person's group in **Jobs → Subs → Pay** and on their block in **People → Subs**, *Work statement…* in Print's place on the ⋯ menu of a sheet that is one person's (a shared sheet and a crew sheet keep Print) and under an open sheet in the block, *Payment record…* beside a payment in a sheet's opened row, and the window after Record payment (`AfterRecordPaymentWindow`), which says the sub has been given nothing and offers the record.
+It picks the person's sheets by `sheetOwedTo` (`paperSheetsFor`), checks the whole set with `subPapersAddUp` and draws none when it fails, previews the paper as the print page (`subPapersHtml.ts`), and Print and Download draw the PDF in the browser (`_shared/subPapersPdf.ts`) and file a sent copy (`sub_statement_of_account`, `sub_work_statement`, `sub_payment_record`) on the person and each job.
 The letterhead is the bill's issuer block from Settings.
 A month or a year closes on today, never on a day that has not come.
-No paper carries a number yet (its foot says when it was prepared), and the window sends nothing.
+Since v2.7552 a paper is numbered the moment it is made: Print and Download first register it through `mint_sub_paper` (`subPaperRegister.ts` builds the call and the fingerprint that tells a change from a reprint), then draw it under the number that came back, and a paper the register refuses is not made.
+The window sends nothing yet.
+Taunya kept the papers' names on 2026-11-16.
+The register is `sub_papers` (v2.7474), which registers each paper with its number, its revision and the paper as issued, written only by `mint_sub_paper` (`WS-<job>-<n>` per job, `PR-<n>` from the sending, `SA-<n>` across the company, never given out twice;
+a change is a revision, a reprint makes nothing) and voided only by `void_sub_paper`.
 Guide: `make-a-statement-of-account-for-a-sub`.
 
 ### Sub payment trace (move / remove / undo)
@@ -4552,6 +4557,14 @@ A payment **from before** is the one the backfill gave each bill that was alread
 A paid row names its payment, and **See the payment** opens it with every bill it paid and **Remove this payment…**.
 Since v2.7459 a box per bill takes a **part payment**, an open credit memo is a line to tick, and money past the bills is kept on account when the person says so and offered first on the next payment.
 A bill paid in part is unpaid for **what is left on it**: `supply_house_invoices.amount_paid` is what its payments have put on it, and every total of unpaid bills reads `amount − amount_paid` through `openAmount` (the house list, the aging table, Held for suppliers, the pinned Accounts payable total, the Lien desk's supplier read, the move window).
+Since v2.7462 **Move…** in a payment's window puts an amount on another bill of the same house when the house applied the money differently (or on account, or from the account onto a bill with **Put on a bill…**): the payment keeps its day, amount and method, a **What changes** panel reads both bills before the press, each bill then carries a trace line, and the move is taken back from **What happened to it**.
+**Remove this payment…** asks why, and a removed payment waits 30 days in **Removed in the last 30 days** with **Put it back**.
+**Interest** (v2.7467) is a late charge the house added, kept as a bill of its own (`is_interest`, tied to the late bill by `late_invoice_id`): entered with **+ The house added interest or a late fee** in the window, where the same payment makes and pays it, or with **This is interest or a late fee** in Add Invoice;
+it is paid like any bill, never put on a job, and the year's total reads under the Accounts payable total.
+The **finish-later list** (v2.7469) is every live payment with no method that sent money and is not from before: a paid row says *how it was paid is missing* with **Finish…**, Accounts payable counts them in a line over the aging table (*3 payments need how they were paid*), and Needs you carries the same count under **Supply houses**.
+The **bank match** (v2.7471) ties a payment to the Mercury line it left on (card and ACH payments to a house are both in the feed): a payment's window offers the line for the same money within three days and reads **Bank agrees ✓** once **Match** is pressed;
+**Use this line** on the finish-later list fills the day and the method from the line;
+and bank lines to a supply house that no payment claims are listed under Accounts payable, each with **Say what it paid**.
 Guide *record a payment to a supply house*.
 
 ### Held for suppliers (Materials tab)
@@ -4574,7 +4587,7 @@ The third group of the Materials page's strip (v2.6851, punch list #304;
 the strip's groups are **Plan**, **Purchase** and **Track**): **Materials → On site** is the cages and boxes on every job, searched across jobs.
 For the office it is the Materials desk, the component Jobs → Materials mounts ([`MATERIALS_ON_SITE_ARCHITECTURE.md`](./MATERIALS_ON_SITE_ARCHITECTURE.md));
 for an estimator, a primary and a superintendent it lists their jobs with boxes as doors to the Tally's On site tab.
-**Scan a label**, **Print labels** and, since v2.7272 for the office, a primary and a superintendent, **Print blank stickers** are presses at the right end of the tab's row.
+**Scan a label**, **Print labels** and, since v2.7272 for the office, a primary and a superintendent, **Print future stickers** are presses at the right end of the tab's row.
 
 ### Supply house bill lines — every line on a bill as a row, counted only when it adds up (punch list #298, v2.6817 · v2.6819 · v2.6882 · v2.6897)
 A bill was its total, its job and a link to its PDF;
@@ -5023,8 +5036,8 @@ The MCP server a **dev's** coding agent reads the app through, at `https://mcp.c
 A **Dev MCP key** (`ptd_…`, Settings → Your account, one per machine) resolves to a person;
 the server reads **as that person**, GET-only, so RLS applies and the database refuses writes;
 secrets are redacted and every call lands in `dev_mcp_calls`.
-Writes are a second path, one hundred and nine plan → apply verbs since v2.7247 — fifty-one over twenty-one dev-gated RPCs, four over the Plans section's own rows (a plan set, a paper), four over a surface's own RPC (a waiting field report, a matter opened on a person), ten over the job's own doors (a job, v2.6790, its update, v2.6793, an activity note, v2.6822, and a payment and a combine, v2.6940), ten over a bid's own rows (a bid changed, v2.6945, its count rows, v2.6967, its takeoff, v2.6968, its labor, v2.6976, and its prices, v2.6992), two over a bid's sent paper (filed from Drive into Team only › Sent by us and linked, v2.7154;
-the link is the Sent by us folder once it holds several papers, v2.7186), two over a property record's lien facts (v2.6950), six over the Lien desk's own rows (a job's last day of work, v2.7206, a notice already mailed, v2.7229, an affidavit drafted, v2.7247), four over the Sub Labor screens' own rows (a sheet and what was paid against it, v2.6944), six over the People page's own doors (an account, a login, a password reset, v2.6792), four over the submittal log's own rows (the rows and a log line, v2.6804), two over a bill (v2.6794) and four over a job's marks (the Collections flag and the contract's end, v2.6795): a cost batch, an HR entry, a legal matter's narrative, planned steps, statements, documents and gap answers, a development's History line, a bid and its plan set, and since v2.6367 Materials on site's presses — a cage or box, a delivery, a movement, a count — through the one `SECURITY INVOKER` wrapper, so the screens' own RLS and fences hold, and since v2.6808 a whole job's on-site rows moved to another job through a definer of its own, since the ledger takes no update under anyone's RLS, and since v2.7241 a box's name, kind and where line and a typed part's name through a second invoker wrapper, `dev_on_site_rename` (`docs/dev-mcp/README.md`).
+Writes are a second path, one hundred and thirteen plan → apply verbs since v2.7515 — fifty-one over twenty-one dev-gated RPCs, four over the Plans section's own rows (a plan set, a paper), four over a surface's own RPC (a waiting field report, a matter opened on a person), ten over the job's own doors (a job, v2.6790, its update, v2.6793, an activity note, v2.6822, and a payment and a combine, v2.6940), ten over a bid's own rows (a bid changed, v2.6945, its count rows, v2.6967, its takeoff, v2.6968, its labor, v2.6976, and its prices, v2.6992), two over a bid's sent paper (filed from Drive into Team only › Sent by us and linked, v2.7154;
+the link is the Sent by us folder once it holds several papers, v2.7186), two over a property record's lien facts (v2.6950), ten over the Lien desk's own rows (a job's last day of work, v2.7206, a notice already mailed, v2.7229, an affidavit drafted, v2.7247, a filed affidavit recorded with its scan, v2.7511, its copies recorded as mailed, v2.7515), four over the Sub Labor screens' own rows (a sheet and what was paid against it, v2.6944), six over the People page's own doors (an account, a login, a password reset, v2.6792), four over the submittal log's own rows (the rows and a log line, v2.6804), two over a bill (v2.6794) and four over a job's marks (the Collections flag and the contract's end, v2.6795): a cost batch, an HR entry, a legal matter's narrative, planned steps, statements, documents and gap answers, a development's History line, a bid and its plan set, and since v2.6367 Materials on site's presses — a cage or box, a delivery, a movement, a count — through the one `SECURITY INVOKER` wrapper, so the screens' own RLS and fences hold, and since v2.6808 a whole job's on-site rows moved to another job through a definer of its own, since the ledger takes no update under anyone's RLS, and since v2.7241 a box's name, kind and where line and a typed part's name through a second invoker wrapper, `dev_on_site_rename` (`docs/dev-mcp/README.md`).
 Since v2.6565 the seat also searches **the company's own Gmail** (`search_mail` / `read_mail`): every login of the Workspace read as that person under the service account's domain-wide delegation with the read-only scope alone, so the token cannot label, move or delete;
 and since v2.6568 it files what it finds — a file off a mail onto a job's folder, a person's HR file or a matter (`plan_mail_file` / `apply_mail_file`), and a whole conversation onto a job's Activity and notes through gmail-mine's own tag as that login, or since v2.6715 onto a person's HR file as one dated entry a mail, written as the dev (`plan_mail_tag` / `apply_mail_tag`), and since v2.7022 back off its job again when the seat's own tag put it there (`plan_mail_untag` / `apply_mail_untag`), each plan first, then apply quoting the hash.
 Since v2.7154 it also reads **a Drive folder** or one file's facts through the intake service account on a read-only token (`read_drive_folder`, a dev's own key alone, never through View as).
@@ -5058,6 +5071,10 @@ On the Bid Board the plans icon opens the one set directly and, with two or more
 the sets ride in with one chunked read per page (`useBidPlanSetsByBid`).
 A dev's agent files a set through dev-mcp's `plan_file_plans` / `apply_file_plans` into the PipeTooling Jobs Shared Drive and onto the bid (v2.6185, v2.6241;
 `EDGE_FUNCTIONS.md` → dev-mcp).
+A mail tied to the bid that carries a file adds a set too (v2.7531 the function, v2.7534 the press, punch list #368): **Keep its files on the bid…** on the mail's window in Messages and in My email (`BidMailSetDoor.tsx` over `src/lib/bids/bidMailSet.ts`) files the ticked files into *the bid's project folder › Plans › the set's name* through `bid-plan-set-files` and adds the row, or adds them to a set already there whose link is a Drive folder;
+a file is marked on its own row once it is in the folder (`message_attachments.bid_plan_set_id`), so the mail then reads *Kept as … on B482*, and the set wears **From a mail** on Plan sets with **The mail ›** back to its thread (guide `keep-an-emails-files-as-plans-on-a-bid`);
+since v2.7538 **+ From a mail on this bid** under Plan sets lists the bid's mail that carries a file with the same press on each row (`mailsOf`), and the Development page's History reaches it from the mail's own line: a bid's mail that carries files shows **Keep its 2 files…**, which opens the line's window with `BidMailSetDoor` under the words, and reads *kept on the bid* once every file we hold is in a set (`readTiedMail`'s third read, the files on the bids' mail;
+`mail` on the line), and a set of plans added to one of the site's bids draws a *New set* line under the Plans chip (`setLines`, from `bid_plan_sets` through `useBidPlanSetsByBid`), the set the robot reads left out since the bid's own ledger already draws its filing.
 **Priced on** (v2.6342, punch list #239 PR 4): `bids.priced_on_set_id` pins the row the price stands on (**Priced on this set** on the form, the green *Priced on* chip, a line under the list;
 null means the robot's set, so no backfill), a job opened from the bid starts its part building from that set by trigger (`jobs_ledger_seed_part_from_bid`: it joins the development part already on that set, else a part named after the job is seeded;
 the mirror then writes `job_plans_link`), and the form reads what the bid's jobs build from today (`list_bid_jobs_plan_state`) for the amber note when a part moved on, with *Open the set ↗* and a door to the job's Documents tab (`src/lib/bids/bidPricedOn.ts`).
@@ -5082,7 +5099,8 @@ A bid's own rows (*Plan sets (Bids)*) are untouched: a bid pins what it was pric
 `src/lib/papers/papers.ts`) live in the same register: a `plan_sets` row whose kind is a paper kind (spec · submittal · schedule · scope · change order · meeting notes · task list · report · sheet · other) and whose `marks_up_set_id` is the set it *goes with*;
 `owed` marks one we wait on, `ask_lane` + `ask_request_id` hand the question it raised to the estimators' or Dispatch's inbox and read the answer back;
 a trigger refuses a paper as a part's current set and writes one `development_history_entries` line the day a paper is kept.
-Doors: the job's **Papers with the plans** block (`JobPapersSection.tsx`: *Keep a paper*, *We are owed a paper*, *It came*), **Keep this mail as a paper on JP…** on a tagged mail in My Mail (`MailPaperDoor.tsx`), and the Plans look's *Papers* column.
+Doors: the job's **Papers with the plans** block (`JobPapersSection.tsx`: *Keep a paper*, *We are owed a paper*, *It came*), **Keep this mail as a paper on JP…** on a tagged mail in My Mail and, since v2.7540 (punch list #368, PR 4), on the mail's window in Messages for an email on a Pipeline job that carries a file, where the whole office reads it (`MailPaperDoor.tsx`;
+`keep_paper` in `emailViewerActions.ts`), and the Plans look's *Papers* column.
 Guides: *keep the plans on a job*, *keep the papers with the plans*, *see everything on a development*.
 The mirror `plan_part_mirror_job_links(part)` is `SECURITY DEFINER`, since an estimator may switch a part's set without the right to update job rows;
 who may see and write a part is `ACCESS_CONTROL.md` → *Plan sets by part*.
@@ -5808,7 +5826,8 @@ no fade, *Every step* puts the list back;
 on every rail since v2.6577;
 since v2.6594 six parts written for a first-week employee — *In plain words · What to do now · Why a notice is here · If that is not right · This step ends on its own when · If nobody acts* — the other moves the panes' own presses with their meaning), the REMINDERS brief drawing the schedule strip (`lienReminderSchedule.ts`, every day from the clock that enforces it;
 the same strip under **Our schedule after a notice** in § Rules) and since v2.6596 the picked notice's dated **timeline** in its place — mailed, the courtesy window, the attorney's letter's window, a green row per payment since the notice with what is still owed, today's band with the one press, the affidavit's week, the law's day;
-*Show another* (`lienNoticeTimeline.ts`, `LienNoticeTimeline.tsx`, `paymentsByJob` on `useLienDeskData`);
+*Show another* (`lienNoticeTimeline.ts`, `LienNoticeTimeline.tsx`);
+the rails, the brief and the timeline gave their place to **The Board** in v2.7332 and their code left in v2.7451, the row's four dots and its card staying;
 guide *read the Board on the Lien desk*, named *read the reminders ladder on the Lien desk* until v2.7332.
 Since v2.4588 its top row is three views, **To do · By date · By paper** (the owner's names since **v2.7207**: the first is the work, the other two the same jobs sorted two ways;
 **Do now · Calendar · All filings** at first, and Do now, Deadlines and All filings until v2.7207;
@@ -5842,7 +5861,7 @@ a notice already printed is not held for its signature (`CLAUDE.md` → *Do what
  **Retainage** (**v2.3753**, punch list #33 PR 1): the desk's third switch — the § 53.057 notice of claim for unpaid retainage, one per job, due 30 days after *our* contract on the job is complete, terminated or abandoned (`lien_retainage_deadline`;
  the reader is `list_lien_retainage_windows()`).
  The facts come from Edit Job → *Our contract on this job* (`jobs_ledger.lien_contract_ended_on / _how`, `lien_retainage_held`, `lien_payment_bond`);
- a job with retainage and no end date sits in *Clock not started*.
+ a job with retainage and no end date sits in *Clock not started*, and an open job with no answer whose bills were paid at exactly 90% or 95%, or whose notes say retainage, is listed above the piles as *Looks held · not on the job* (`retainageSuggested.ts`, v2.7509), with a To do row under Needs you now and a count on the Board's retainage line (v2.7535).
  Same piles and verbs as notices;
  approved ones go out in the same run as a `retainage_53_057` filing.
  Once recorded, the retainage is also named inside every § 53.056 claim (*Of which, unpaid retainage*, `LienNoticeFields.retainageIncluded`) — counsel's belt and suspenders, since an owner may withhold on a retainage-only notice only once they receive the filed affidavit (§ 53.081(c)).
@@ -5904,7 +5923,7 @@ a pen record *✓ pen* with who wrote it;
 ticked once every one has its number);
 the batch presses *Mark N printed*, *Mark N signed ▸*, *Record N mailings ▸* in `batchWords` shape with the held rows listed under the foot;
 **Print the sheet** under More (one page per batch, three boxes per row, a code per row opening `/lien-desk?run=<item id>&mail=1`, that notice's Mailed box, consumed once by the page);
-the pill reads as the press it is, *Print and mail 15* or *Enter mail numbers · 4*, then *· 3 of 18 mailed*, with a meter (`lienRunPill`;
+the pill reads as the press it is, *Print and mail 15* or *Enter mail numbers · 4*, then *· 3 of 18 mailed*, with a meter (`lienRunPill`, until the title bar's door was retired in v2.7490;
 *The run · 3 of 7 mailed* until v2.7448;
 mailed = recorded sent in the last week with a print stamp).
 **One name per step** (v2.7448, `src/lib/jobs/lienRunWords.ts`): the two piles' names are the Board's two bins too, and every door to the run reads **Print and mail N** while a notice is to print and **Enter mail numbers · N** once all are printed (*Send the run* and *Record the mailing* until then).
@@ -5913,13 +5932,18 @@ Kernel `src/lib/jobs/lienRunChecklist.ts`, component `LienRunChecklist.tsx`.
 On a phone each Mailed box has **Scan ›** (v2.7331): the camera reads the USPS receipt's barcode and the number lands in the box, typing the fallback (`lienRunScan.ts`, `LienRunScanPress.tsx`;
 `@zxing/browser` fetched on the press where the browser has no reader of its own).
 A notice whose job owes $0 now is held from all three presses, *Nothing to claim: the job owes $0 now.*
-(v2.7337, `lienRunNothingToClaim`), and sits under the list in a fold, *5 paid notices · nothing to send*, whose **Close N paid notices…** asks first and then sets each aside with nothing mailed (v2.7353: `voided_at` and `fields.runClosedPaid` on the item, never a retainage notice or one with a copy out through Docsmit, a failed row named and the rest closed;
+(v2.7337, `lienRunNothingToClaim`), and sits in a fold, *5 paid notices · nothing to send* (under the list until v2.7477, at the foot of the Held group since), whose **Close N paid notices…** asks first and then sets each aside with nothing mailed (v2.7353: `voided_at` and `fields.runClosedPaid` on the item, never a retainage notice or one with a copy out through Docsmit, a failed row named and the rest closed;
 `lienRunClosePaid.ts`, `closePaidLienDeskItems`);
 the job's History then carries a grey *Lien notice* line for the close (v2.7359, `lien_notice_closed_paid`, written by a trigger).
 Nothing moves to Sent without its tracking number.
-The run shown, not told (v2.5369–v2.5374): a six-node journey across the top (`runJourney.ts`), one card per envelope with its own steps, chip and glyph (`runEnvelopeStage.ts`, `LienRunEnvelopeGlyph`), one button at the foot with the rest under **More ▾** (`runFootAction.ts`), the printed checklist live once the packet printed (`runChecklist.ts`;
-gone from the window in v2.7328, when the checklist of ticks above took its place), lanes when the envelopes travel more than one way, and the desk's door carrying the run's bar (`runDoorPill`).
-The three steps — print, mail, record the mailing — are the journey's Sent, In the mail and Recorded;
+**What was mailed** (v2.7461, the owner's ask of 2026-11-16): a printed row's **Add what was mailed** takes a scan or a photo of the papers in the envelope, up to 10 MB;
+the file goes into the job's Drive folder under Sent by us (`drive-link` `put`), the notice remembers it in `job_lien_desk_items.mailed_copies` (`lienMailedCopies.ts`, `lienMailedCopiesIo.ts`) and the mailing's record takes the first link as its saved copy;
+since v2.7525 a retainage notice's row has the press too (its file reads *Retainage notice as mailed*), and **Take off** beside a listed file asks first and then drops it from the notice's list, the file staying in Drive (`LienRunMailedCopies.tsx`).
+The run shown, not told (v2.5369–v2.5374, redrawn v2.7477): a journey across the top of the run's three steps, each counting notices (`lienRunParts.ts`;
+six envelope stages from `runJourney.ts` until v2.7477), one count line under it with the total and its parts (ready, wait on the signature, held), the rows in groups by part, one card per envelope with its own steps, chip and glyph (`runEnvelopeStage.ts`, `LienRunEnvelopeGlyph`) behind **Envelopes and copies**, one press at the foot for the step the run is on with the rest under **More ▾** (`lienRunParts().press`;
+`runFootAction.ts` until v2.7477), the printed checklist live once the packet printed (`runChecklist.ts`;
+gone from the window in v2.7328, when the checklist of ticks above took its place), lanes when the envelopes travel more than one way (gone in v2.7477), and the desk's door carrying the run's bar (`runDoorPill`, until the title bar's door was retired in v2.7490).
+The three steps are Get them right, Print, and Mail and record;
 **Addresses for the labels** under More (v2.4977: one row per paper envelope in a certified mail label service's columns, saved as `certified-labels_<day>.csv` from `lib/jobs/lienRunLabels.ts`;
 nothing is filed, the labels the service prints are the record), **Take back…** under More while anything printed (v2.4983: the printed notices back to *Approved · to print* (then *Ready to send*), approvals standing, a `fields.runTakenBack` line on each;
 `lib/jobs/lienRunTakeBack.ts`), and *add the number* on a sent notice whose certified send has no tracking number (`lib/jobs/lienSendTracking.ts`, `LienTrackingOwedEditor`).
@@ -5934,6 +5958,10 @@ the guard holds the recorder to the signed-in user).
 The frame reads **Signed by pen**, the chip *signed by pen · recorded by <who>*;
 the leader's phone gets one line, his desk lists it under **Signed by pen, as recorded** with *Yes, I signed it ▸* (nothing waits on it) and *Not what I signed* (the signature clears, the approval stands).
 
+**Sign it again** (v2.7502): the link on a signed, approved, unprinted notice's footer, for the lien office and the leader.
+After a confirm (*Clear the signature*) the signature columns clear, the approval stands, `fields.signatureCleared` keeps who cleared which signature, and the notice reads unsigned until the leader signs again (`lienSignAgain.ts`, `clearLienSignatureToSignAgain`).
+Since **v2.7503** a take-back (*Back to Approved · to print*, the run's *Take back…*) clears the signature the same way and says so first.
+
 **Mail through Docsmit** (the Docsmit train, v2.5454;
 the plan is `docs/DOCSMIT_LIEN_RUN_PLAN.md`): the run's second button beside Print the packet once a dev saved the mail service's connection on Settings → Developer.
 It makes the PDF of each certified envelope that goes out (the owner's letter with the address in the window and a code that opens the bills;
@@ -5947,11 +5975,12 @@ each marks the piece `resolved_at` so the desk stops asking).
 The poll also keeps the account's prepaid balance (`app_settings` `docsmit_credit_balance`), and Needs you shows a *Docsmit credit is low* card under the warn line in Developer settings (v2.5521).
 
 **The Board** (**v2.7330** · 7332, the owner's ask of 2026-11-15): the top of the Lien desk's To do since v2.7332, in the place of The lien month strip and the Steps of each paper rails (v2.4631, with the step briefs of v2.6574 and the REMINDERS rail of punch list #262): four tiles (due by the next day with *N will not make Monday as they stand*, waiting on the leader, in the run, unpaid on the desk) over two columns of bins, the monthly notices (Needs the owner · To send for Master approval · Awaiting Master approval · *Approved · to mail* · Sent;
-the two middle names since v2.7434) and the lien affidavits (Needs the property facts · Waiting on its notice · To send for Master approval · Awaiting Master approval · Ready to file · Filed · Served;
+the two middle names since v2.7434) and the lien affidavits (Needs the property facts · Waiting on its notice · To send for Master approval · Awaiting Master approval · Ready to file · Filed · copies to mail · Served;
+the last two were one bin, *Filed · Served*, until v2.7497, punch list #366, when a filed lien's copies got a bin of their own with the press that mails them together;
 **Waiting on its notice** since v2.7457, the owner's pick of 2026-11-16, holds an affidavit whose one closed gate is its § 53.056 notice, the pile of the same name on By paper, paired with its notice chip, its row saying where that notice stands from `lienAffidavitNoticeStanding.ts`), every job a chip in the bin of its stage coloured by how soon its day is (red within a day or past, amber this week, purple waiting on the leader, grey later;
 a mark when its stages left outrun the working days), thin grey arrows down each column and one from Sent across to Waiting on its notice, the busiest bin lit, Held and Missed beside a column only while a job is in one, retainage one line under the notices;
 a bin's head narrows the list under it;
-the **⏱ Lien desk** title opens To do at the Board from any view;
+the page's title opens To do at the Board from any view, and since v2.7465 on a computer the title is the first tab, *⏱ Lien desk · N to do* (a phone keeps the title on its own row and its first tab reads *To do · N*);
 since v2.7333 every chip is a press to the desk's door for its stage (the property record at the missing line, the paper on By paper as a history entry of its own so Back returns to the Board, the run on that envelope, the affidavit, the Lien window) and the same press sits on every job number on To do, By date and By paper's notice and affidavit lists (a retainage row, By job's number and a pane's heading still open the job);
 since v2.7334 the Dashboard's Needs you card carries the four tiles as dots on one line for the office, a press that opens the desk at the Board, and a master opens on **his own Board** — the two Awaiting Master approval bins holding the jobs he leads, one counted press that approves the affidavits in their window one by one (`approveLienDeskItem`, asks first, `batchOutcomeWords` after) and holds each notice *needs your signature* and each late paper *is past its day*, every held paper still a chip to its door, with **Every bin** / **Only my bins** to switch (`lienBoardForLeader`).
 Since v2.7367 (punch list #362) To do scrolls as one page wherever the Board leaves the list under 320 px, the find box pinned at the top with the Board's counts beside it, the waiting, run and at-risk ones presses, and **↑ The Board** (`lienDoNowFrame.ts`, `LienDoNowBar.tsx`);
@@ -5970,6 +5999,25 @@ guide *read the Board on the Lien desk*.
 the Dashboard's lien month card still draws the zones through `useLienMonth`), each zone sized by its days with its count left, its count done and what slipped (red, the first job named, carried into Catch-up), today marked, one press per zone that narrows the list to that zone's work;
 the rule is `LIEN_MONTH_RULE` in `lib/jobs/lienMonthRhythm.ts` and reads under § Rules.
 A policy, not an app rule: the bar sends, files and moves nothing.
+
+### Property card (Lien desk)
+Every job at one property record on one window (**v2.7488**): the address, the owner of record, two lines that count the property, each kind of paper apart (*4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*, then *6 lien affidavits ready to file*) and a row per job with where its notice and its affidavit stand.
+Opened from a By job row's *N jobs here ›* line, from a property's head when By job is grouped (**Group** → *By property*, **v2.7493**) and from `/lien-desk?property=<property record id>`.
+A property is the record a job points at (`jobs_ledger.customer_address_id`), never a typed address.
+No verbs.
+Words: `lienPropertyPapers.ts`;
+window: `LienPropertyCard.tsx`;
+guide `see-every-job-at-one-property-on-the-lien-desk`.
+
+### Off the lien path (a job's own answer)
+A job a person took off the lien path for a reason of its own (`jobs_ledger.lien_path_answer = 'off_path'`, migration `20261117080000`, **v2.7504–v2.7526**, the owner's pick of 2026-11-16 on a job whose one bill was trips to pick up checks).
+The money is not for labor or materials on the property, say, so no lien stands behind it and it is collected another way.
+The app judges nothing: the window **Take this job off the lien path?**
+(`LienJobPathWindow`, opened by **Not lienable…** on a held affidavit's To do row and in the job's own Lien window) shows the bill's own lines and asks the reason, which stays on the job with who and the day, and on the job's activity.
+The job leaves every lien screen by the door a job paid in kind leaves by (`jobOffLienDesk`), sits in the Board's bin **Off the lien path** with its reason, and comes back with **Put it back…**, which asks why.
+Nothing is filed, voided or deleted either way, and the lien dates run while the job is off.
+Not the same as *Uncollectible* (the money is written off) or the property's own answer below (every job at the address).
+Guide *take a job off the lien path*.
 
 ### Off the lien path (public property)
 A job whose property record answers *Is this public property?* with **public** (`customer_addresses.lien_public_answer`, migration `20261116221500`, v2.7436–v2.7443, Taunya's ask of 2026-11-16 on job 883).
@@ -6203,6 +6251,22 @@ Since v2.4702 a portal signing puts a line on the Dashboard's **Needs you** card
 its button opens the desk with this window on that property (`/lien-desk?records=<job id>`, `lienDeskHref`;
 `?ownerrecords=` redirects there).
 
+### A notice applied from the record (Lien desk)
+A § 53.056 notice that already went, applied to a job the desk did not record it on (**v2.7508**, the owner's ask of 2026-11-16;
+the columns since **v2.7505**).
+One paper can go out for several jobs at a property and be recorded on some of them, or with the months it printed and not the month the desk later asks about.
+On a notice's footer, *Already mailed?
+Record it* first asks *Which paper went?* when the job's property holds a notice on record under the same original contractor (`LienNoticeAlreadyWent.tsx`, `LienNoticeApplyPane.tsx`);
+with none on record, or on *It is not on this list.
+Record it now ›*, it is the by-hand record.
+Applying writes one more `job_lien_filings` row on this job that points at the paper's row (`applied_from`, with `applied_from_label`, `applied_reason` and `applied_by_name`): the months this job stands on, and the paper's own sends, packet, total and saved copy.
+The paper's own row is never changed.
+**Same property only**: the same saved property record, the same parcel in the same county, or the same street and owner's name (`sameLienProperty`).
+Refused: a paper with no dated send to the owner, a month the job already has a notice for, a paper that went before the month began.
+Warned and let through with a typed reason: a month the paper does not print, no copy to the original contractor on record, a day after the month's deadline, a day before the job's last day of work (`lienApplyChecks` in `src/lib/jobs/lienNoticeApply.ts`).
+The notice waiting on the desk is **set aside**, not sent: `voided_at` with `fields.setAsideNoticed`, so it keeps its approval and signature.
+*Undo* sits on the applied row in the Lien window's *Filings on this job*, which reads *as part of the notice on job N*.
+
 ### A stop's paper (Lien desk)
 
 On the desk's notice pane (v2.4793), every stop title on the job's lien timeline is a door.
@@ -6373,11 +6437,12 @@ Since v2.7072 (punch list #329) a **sticker** is a label printed before its box:
 its company-wide number orders a run and since v2.7438 is printed on no strip and shown on no screen.
 A **run** is the stickers printed at once, *G78 to G300*, for the job their new boxes go on;
 a **set** is the copies of one sticker, for a box with more than one side, every copy carrying the same code;
-a **blank** sticker is on no box yet, and scanned with no sign-in it reads *This sticker is not on a box yet.
-Sign in to say what it is.*
+a **reserved** sticker is printed and on no box yet, its code and its name held for a box someone says later (*blank* until v2.7484, and still `blank` in the code), and scanned with no sign-in it reads *This sticker is reserved for a box.
+It is not on a box yet.
+Sign in to say which box it is on.*
 A box may carry several stickers and its own label, and each opens it.
-Since v2.7272 the office, a primary or a superintendent prints a run from **Print blank stickers** beside Print labels, on a job's page and the Materials strip, on Brother tape with **Copies of each** and **Print 1 test strip**, since v2.7391 a **named run** by typing its **Names** (`G78`, or a range such as `G78-300`), each sticker printing its box's name large over its link, and the job's **Runs** fold lists each run with its unused count and offers **Reprint** and **Print the rest**;
-since v2.7298 a scan of a blank sticker opens the phone's **Sticker is new** sheet, **It is on a box I know** (the site's boxes, this job's and the ones with no sticker first, two digits and two presses, *Put this sticker on R76*) or **It is a new box** (made in the same call, named by the site's next free name with the number beside it, never the number), and since v2.7396 a sticker printed with the box's own name adds nothing beside the box's name, one printed with another name reads *sticker reads G78*, and the scan of a named sticker opens the sheet on its name (a new box of that name, or the site's box of it, with **It is a different box** for the next letter, G78B);
+Since v2.7272 the office, a primary or a superintendent prints a run from **Print future stickers** (*Print blank stickers* until v2.7484) beside Print labels, on a job's page and the Materials strip, on Brother tape with **Copies of each** and **Print 1 test strip**, since v2.7391 a **named run** by typing its **Names** (`G78`, or a range such as `G78-300`), each sticker printing its box's name large over its link, and the job's **Runs** fold lists each run with its unused count and offers **Reprint** and **Print the rest**;
+since v2.7298 a scan of a reserved sticker opens the phone's **Sticker is new** sheet, **It is on a box I know** (the site's boxes, this job's and the ones with no sticker first, two digits and two presses, *Put this sticker on R76*) or **It is a new box** (made in the same call, named by the site's next free name with the number beside it, never the number), and since v2.7396 a sticker printed with the box's own name adds nothing beside the box's name, one printed with another name reads *sticker reads G78*, and the scan of a named sticker opens the sheet on its name (a new box of that name, or the site's box of it, with **It is a different box** for the next letter, G78B);
 since v2.7312 a run may **name** its boxes, G78 to G300, each sticker carrying the name the tape reads beside its number, from a typed range read by `stickerNames.ts` (G78-300, A1-D50, G78B-D, G1-100C), the window for it since v2.7391, the scan since v2.7396, and since v2.7406 **These are on boxes**, one press that puts a typed range of named stickers on their boxes with no scan (`lib/materials/stickers.ts`, `stickerRun.ts`, `stickerPlace.ts`, card `to-dos/stickers-before-boxes/README.md`).
 The map is [`MATERIALS_ON_SITE_ARCHITECTURE.md`](./MATERIALS_ON_SITE_ARCHITECTURE.md).
 Across a whole development, the **material location report** (v2.6533, punch list #268) prints every cage and box of the site's jobs on one Letter paper from the Development page's Jobs & bids look, by job, by location or by part (`lib/materials/siteMaterialsReport.ts`), the jobs with nothing on site in one closing block (guide `print-the-material-location-report`).

@@ -251,6 +251,12 @@ export const ENTRIES = {
   'lib/jobs/lienClaimCorrection.ts': { values: [], types: [] },
   'lib/jobs/lienProperty.ts': { values: [], types: [] },
   'lib/jobs/lienAffidavitForm.ts': { values: [], types: [] },
+  // The dev seat's plan_lien_filing (v2.7510's next PR): the desk's own recipe for the affidavit's fields a recorded
+  // filing keeps, and the scan's rule and its name in Drive.
+  'lib/jobs/lienDeskAffidavitFields.ts': { values: [], types: [] },
+  'lib/jobs/lienScanFile.ts': { values: [], types: [] },
+  // The dev seat's plan_lien_service and read_lien_filings: the proof a served copy keeps, the form's own sends and the receipt's name in Drive.
+  'lib/jobs/lienServiceProof.ts': { values: [], types: [] },
   // The firm's lien grid (legal-portal, through _shared/legalLienBookShape.ts): a job paid in kind is off the book, by
   // the Lien desk's own rule and its own column helper.
   'lib/jobs/lienInKind.ts': { values: [], types: [] },

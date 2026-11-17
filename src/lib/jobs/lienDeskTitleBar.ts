@@ -16,20 +16,30 @@
  * span falls under the piles as one piece, right-aligned, never a press at a time.
  *
  * Until v2.7277 the width was a viewport rule (1,540 px, the longest line the desk can draw) so the tools never moved
- * between views. The bar now measures the line it drew — `readLienDeskTitleLine` — because the longest line is 210 px
- * longer than today's (the run's *12 sealed · 8 ready · 4 wait on Grace* against *7 sealed*), and a rule sized for it
- * left the owner's own window as it was. The parts are the same on every view, so the tools still never change lines
- * between To do, By date, By paper and By job; they move only when the run's words or the window do.
+ * between views. The bar now measures the line it drew — `readLienDeskTitleLine` — because a rule sized for the longest
+ * line left the owner's own window as it was. The parts are the same on every view, so the tools still never change
+ * lines between To do, By date, By paper and By job; they move only when the window does. Until v2.7490 the run's door
+ * was a part of this line, its widest at up to 463 px; it left the title bar on the owner's call of 2026-11-16, and
+ * the line is that much shorter on every view.
+ *
+ * Since v2.7465 (the owner's pick of 2026-11-16: "A, title is the tab") the line has no title of its own on a computer:
+ * the first tab carries the page's name and the count (`lienDeskFirstTab`), so the line is the way back, the views and
+ * the tools. It lost the title's 100 px and one 14.4 px gap and the first tab grew by 93, 21 px shorter in all.
  */
 
 /**
  * What the title line holds at its widest, in px, measured on the live desk on 2026-11-13: the way back as
- * *← Pipeline*, the title, the four views with a three-figure To do count (290 px since By job, v2.7219, measured 2026-11-14; 259 with three), the run as *Send the run · 24* with
- * *12 sealed · 8 ready · 4 wait on* and a long first name (today's *Record the mailing · 7 sealed* is 270), and the
+ * *← Pipeline* (98 with its own 8 px margin toward the views, counted since v2.7465; 90 without), the four views, and the
  * five tools: the door (199, measured 2026-11-14) and the four presses (231) with the tools span's 0.6rem gap between.
  * `gap` is `.lienDeskTitleBar`'s column gap; `chrome` is the page's 24 px margins and the bar's 20 px padding.
+ *
+ * The views were measured again on 2026-11-16 (v2.7465), on the dev server over the live desk at 1,440 px, by writing
+ * each count into the first tab and reading the tab row: 383 px as *⏱ Lien desk · 888 to do* (383.3; the tab itself
+ * 182.8), 372.4 with that day's *32 to do* and 302.6 with the name alone. Until then the line held the title (100) and
+ * the views with *To do · 888* (290, 289.6 measured the same way that day): 404 px with the gap between them, so the
+ * line is 21 px shorter.
  */
-export const LIEN_DESK_TITLE_LINE_PARTS = { back: 90, title: 100, views: 290, run: 463, door: 199, presses: 231, toolsGap: 9.6, tools: 440, gap: 14.4, chrome: 88 } as const
+export const LIEN_DESK_TITLE_LINE_PARTS = { back: 98, views: 383, door: 199, presses: 231, toolsGap: 9.6, tools: 440, gap: 14.4, chrome: 88 } as const
 
 /**
  * The room between the bar's lines on a computer, in px (v2.7322, the owner's three boxes of 2026-11-15: the band under
@@ -44,24 +54,49 @@ export const LIEN_DESK_TITLE_LINE_PARTS = { back: 90, title: 100, views: 290, ru
 export const LIEN_DESK_TITLE_BAR_ROW_GAP_PX = 6
 
 /** The window width the title line needs to hold these parts on one line. */
-export function lienDeskTitleLineNeeds(parts: { back: number; title: number; views: number; run: number; tools: number; gap: number; chrome: number }): number {
-  const pieces = [parts.back, parts.title, parts.views, parts.run, parts.tools].filter((w) => w > 0)
+export function lienDeskTitleLineNeeds(parts: { back: number; views: number; tools: number; gap: number; chrome: number }): number {
+  const pieces = [parts.back, parts.views, parts.tools].filter((w) => w > 0)
   return pieces.reduce((sum, w) => sum + w, 0) + parts.gap * Math.max(0, pieces.length - 1) + parts.chrome
 }
 
-/** The parts of one title line as drawn, in px: a part that is not there is 0 (the leader has no door; Affidavits has no run). */
-export type LienDeskTitleLineParts = { back: number; title: number; views: number; run: number; door: number; presses: number; toolsGap: number; gap: number; chrome: number }
+/** The page's name: the heading's words, and on a computer the first tab's too (v2.7465). */
+export const LIEN_DESK_NAME = 'Lien desk'
+
+/** The first tab as drawn: its words, and whether it carries the page's name. */
+export type LienDeskFirstTab = {
+  /** The tab's whole words, which are its accessible name. The clock mark is drawn beside them and is no part of the name. */
+  words: string
+  /** Whether the tab is the page's title: drawn with the clock mark, larger and heavier than the other tabs, and its press brings the Board into view. */
+  titled: boolean
+}
+
+/**
+ * The first tab's words (v2.7465, the owner's pick of 2026-11-16: "A, title is the tab"). The title and To do opened the
+ * same page, so on a computer the separate title goes and the first tab carries the page's name, the count and the way
+ * home: *Lien desk · 32 to do*, and the name alone while the count is not in yet. Nothing waiting reads *0 to do*: the
+ * figure keeps its place and the phone's tab says the same number. A phone keeps its title on a row of its own, since
+ * four tabs across 375 px cannot hold the long segment, and its first tab reads *To do · 32* as before. `count` is null
+ * until the desk's book is in.
+ */
+export function lienDeskFirstTab(o: { isMobile: boolean; count: number | null }): LienDeskFirstTab {
+  const n = o.count != null && Number.isFinite(o.count) ? Math.max(0, Math.floor(o.count)) : null
+  if (o.isMobile) return { words: n == null ? 'To do' : `To do · ${n}`, titled: false }
+  return { words: n == null ? LIEN_DESK_NAME : `${LIEN_DESK_NAME} · ${n} to do`, titled: true }
+}
+
+/** The parts of one title line as drawn, in px: a part that is not there is 0 (the leader has no door). The line has no title part since v2.7465: the first of the views carries the page's name. The run's door was a part until v2.7490, when it left the title bar. */
+export type LienDeskTitleLineParts = { back: number; views: number; door: number; presses: number; toolsGap: number; gap: number; chrome: number }
 
 /** Which tools the title line holds at its end: all five; the four presses, with the door under them; or none, the tools on the second line. */
 export type LienDeskTitleLineFit = 'all' | 'presses' | 'none'
 
 /**
  * Which tools fit at the end of a title line `width` px wide (v2.7277). `all` when the door and the presses fit after the
- * run; `presses` when only the four do, and there is a door to slide under them; `none` otherwise. A line with no door
+ * views; `presses` when only the four do, and there is a door to slide under them; `none` otherwise. A line with no door
  * is `all` or `none`: there is nothing to slide.
  */
 export function lienDeskTitleLineFit(width: number, p: LienDeskTitleLineParts): LienDeskTitleLineFit {
-  const needs = (tools: number) => lienDeskTitleLineNeeds({ back: p.back, title: p.title, views: p.views, run: p.run, tools, gap: p.gap, chrome: p.chrome })
+  const needs = (tools: number) => lienDeskTitleLineNeeds({ back: p.back, views: p.views, tools, gap: p.gap, chrome: p.chrome })
   const tools = p.door > 0 ? p.door + p.toolsGap + p.presses : p.presses
   if (needs(tools) <= width) return 'all'
   if (p.door > 0 && needs(p.presses) <= width) return 'presses'
@@ -70,22 +105,25 @@ export function lienDeskTitleLineFit(width: number, p: LienDeskTitleLineParts): 
 
 /**
  * The title line as the bar drew it: its content width and its parts, read off the DOM (v2.7277). Null while the bar
- * has no width (not laid out yet, or jsdom), so the caller keeps the two steady lines. The parts are read wherever they
+ * has no width (not laid out yet, or jsdom), so the caller keeps the two steady lines. The bar reads a computer's line alone: a phone has its own rows. The parts are read wherever they
  * sit — the door and the presses move between the title line and the second — since their widths are the same in both.
  */
 export function readLienDeskTitleLine(bar: HTMLElement): { width: number; parts: LienDeskTitleLineParts } | null {
   const line = readLienDeskBarLine(bar)
   if (!line) return null
   const { rect, px, cs } = line
-  const title = bar.querySelector(':scope > h2')
+  // Since v2.7465 a computer's heading is out of the line (the first tab carries the name): it takes no width and no gap, so it is no part.
+  // It still sits before the views, so a bar with no way back has it as its first child.
+  const heading = bar.querySelector(':scope > h2')
   const first = bar.firstElementChild
+  // The way back keeps 8 px clear of the views by a margin of its own (`BACK_DOOR`), over the bar's gap. It is room the line needs, so it is
+  // read with the button (v2.7465): read without it, the line came up 8 px short, and in an 8 px band of windows the presses fell to a line by themselves.
+  const outer = (el: Element) => rect(el) + px(getComputedStyle(el).marginLeft, 0) + px(getComputedStyle(el).marginRight, 0)
   return {
     width: line.width,
     parts: {
-      back: first && first !== title ? rect(first) : 0,
-      title: rect(title),
+      back: first && first !== heading ? outer(first) : 0,
       views: rect(bar.querySelector('[data-lien-desk-kinds]')),
-      run: rect(bar.querySelector('[data-lien-desk-run]')),
       door: rect(bar.querySelector('[data-testid="lien-owner-records-door"]')),
       presses: rect(bar.querySelector('[data-lien-desk-presses]')),
       toolsGap: LIEN_DESK_TITLE_LINE_PARTS.toolsGap,
