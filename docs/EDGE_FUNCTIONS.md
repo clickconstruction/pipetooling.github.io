@@ -5102,7 +5102,7 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 
 ### send-sub-paper-email
 
-**Purpose** (punch list #350, the sub papers train): email a sub their papers with the PDFs attached. One message carries a Work statement, a Payment record, a Statement of account, or several. **Deployed only on Taunya's go that names it.** Until the Send press lands in the papers window (`SubPapersWindow`), nothing in the app calls it.
+**Purpose** (punch list #350, the sub papers train): email a sub their papers with the PDFs attached. One message carries a Work statement, a Payment record, a Statement of account, or several. **Live since 2026-11-17** (version 1): it was deployed ahead of Taunya's go, by a deploy outside the build session, and the owner kept it live the same day. Until the Send press lands in the papers window (`SubPapersWindow`), nothing in the app calls it.
 
 **Endpoint**: `POST /functions/v1/send-sub-paper-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, `verify_jwt = false` on the gateway (the send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`.
 
