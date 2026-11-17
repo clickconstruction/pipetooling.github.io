@@ -79,7 +79,7 @@ import { useTaskPlaces } from '../hooks/useTaskPlaces'
 import { useTaskSpotPhotos } from '../hooks/useTaskSpotPhotos'
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from '../components/checklist/TaskPlacesMapCard'
 import { taskPlaceDots, taskPlaceFarShort, taskTitlePlain } from '../lib/tasks/taskPlace'
-import { nextTaskId, splitToday, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
+import { lateFirst, nextTaskId, splitToday, stillOpenIsLate, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
@@ -521,7 +521,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
     const titleOf = (i: ChecklistInstance) => taskTitlePlain((i.checklist_items as { title?: string } | null)?.title)
     return [
       ...todayInstances.filter((i) => !i.completed_at).map((i) => ({ id: i.id, title: titleOf(i), place: taskPlaces.placeFor(i.checklist_item_id), overdue: false })),
-      ...outstandingInstances.map((i) => ({ id: i.id, title: titleOf(i), place: taskPlaces.placeFor(i.checklist_item_id), overdue: true })),
+      // Red is for a due day that has passed. An older task with none is amber (punch list #369, step A2).
+      ...outstandingInstances.map((i) => {
+        const late = stillOpenIsLate(i.checklist_items?.due_date ?? null, toLocalDateString(new Date()))
+        return { id: i.id, title: titleOf(i), place: taskPlaces.placeFor(i.checklist_item_id), overdue: late, old: !late }
+      }),
     ]
   }, [todayInstances, outstandingInstances, taskPlaces])
   const placeNumbers = useMemo(() => taskPlaceDots(mapTasks).numberById, [mapTasks])
@@ -647,7 +651,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
       reopenedOnes = rest.filter((i) => lastTransitionIsReopen(grouped.get(i.id) ?? []))
     }
     const overdueData = [...qualifying, ...reopenedOnes]
-    setOutstandingInstances(sortOutstanding(overdueData))
+    // Punch list #369: a task whose due day has passed leads the list, so the one red row is never behind the fold.
+    setOutstandingInstances(lateFirst(sortOutstanding(overdueData), today))
     const merged = [...(todayData ?? [])] as unknown as ChecklistInstance[]
     const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
     const orderMap = new Map<string, number>()
@@ -933,6 +938,9 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
     return id ? (eventActorNameById[id] ?? null) : null
   }
   const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
+    // Next can be an older task once today is finished: its dot is the map's colour for it, red only when late.
+    const todayYmd = toLocalDateString(new Date())
+    const older = inst.scheduled_date < todayYmd
       const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
       const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
       return (
@@ -942,7 +950,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
           variant="fresh"
           lead={lead}
           hearsName={hearsNameFor(inst)}
-          title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items)}</div> : null}{dueCardChip(inst.checklist_items?.due_date)}</>}
+          title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items, undefined, { wrap: true })}</div> : null}{dueCardChip(inst.checklist_items?.due_date)}</>}
           events={eventsByInstance.get(inst.id) ?? []}
           nameById={eventActorNameById}
           currentUserId={authUserId}
@@ -962,6 +970,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
           place={taskPlaces.placeFor(inst.checklist_item_id)}
           mapId={taskPlaces.mapFor(inst.checklist_item_id)}
           placeNumber={placeNumbers.get(inst.id) ?? null}
+          placeOverdue={older && stillOpenIsLate(inst.checklist_items?.due_date ?? null, todayYmd)}
+          placeOld={older && !stillOpenIsLate(inst.checklist_items?.due_date ?? null, todayYmd)}
           placeFar={placeFarFor(inst)}
           openSignal={shownTask?.id === inst.id ? shownTask.n : 0}
           spotPhotoUrl={spotPhotos.urlFor(inst.checklist_item_id)}
@@ -1101,7 +1111,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
             <>
               <ChecklistTitleWithLinks title={isVehicleTaskTitle(rawTitle) ? stripVehicleTaskMarker(rawTitle) : rawTitle} links={item?.links} />
               {isVehicleTaskTitle(rawTitle) ? <> {vehicleTaskChip((inst as ChecklistInstance).id, setVehicleCtxInstanceId)}</> : null}
-              {item?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(item)}</div> : null}
+              {item?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(item, undefined, { wrap: true })}</div> : null}
             </>
           )
         }}

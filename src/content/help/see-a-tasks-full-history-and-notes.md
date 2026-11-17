@@ -39,7 +39,7 @@ It works exactly like checking the box on Today. Whoever the task notifies on do
 
 ## On the Today tab
 
-Tap a task's **title** on your Today list, or a row in the Outstanding section below it. The same record opens right on the card. Notes you add there attach to the day you are looking at. So "waiting on parts" lands next to the occurrence it explains.
+Tap a task's **title** on your Today list, or a row in the Still open list below it. The same record opens right on the card. Notes you add there attach to the day you are looking at. So "waiting on parts" lands next to the occurrence it explains.
 
 ## On the Review tab
 
