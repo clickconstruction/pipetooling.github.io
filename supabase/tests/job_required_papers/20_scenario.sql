@@ -169,7 +169,7 @@ SELECT jp.same('the table has one read policy of its own', (SELECT count(*) FROM
 SELECT jp.same('the table has no write policy of its own', (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'job_required_papers' AND permissive = 'PERMISSIVE' AND cmd <> 'SELECT')::text, '0');
 SELECT jp.same('the table has its training-mode trigger', (SELECT (count(*) > 0)::text FROM pg_trigger WHERE tgrelid = 'public.job_required_papers'::regclass AND NOT tgisinternal), 'true');
 SELECT jp.same('a job that goes takes its required papers and leaves a signed copy on file',
-  (SELECT string_agg(c.conrelid::regclass::text || '.' || a.attname || '=' || c.confdeltype, ', ' ORDER BY c.conrelid::regclass::text, a.attname)
+  (SELECT string_agg(c.conrelid::regclass::text || '.' || a.attname || '=' || c.confdeltype::text, ', ' ORDER BY c.conrelid::regclass::text, a.attname)
    FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
    WHERE c.contype = 'f' AND (
      (c.conrelid = 'public.job_required_papers'::regclass AND a.attname = 'job_id')
