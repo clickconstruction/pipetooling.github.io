@@ -52,7 +52,7 @@ If the job has a GC, unpaid work months need a **notice of claim**. GC means the
 Jobs where you contracted directly with the owner skip this step. The tab says so.
 
 :::example Which months need a notice?
-The **Payment forecast** on Jobs → Pipeline shows it per month: open a row's chevron and every month the crew worked lists with its own notice date and state — {{chip:red|due tomorrow}}, {{chip:yellow|closes in 12d}}, {{chip:green|notice sent}} — with {{button:outline|Send notice…}} opening the **Lien desk**, where the office drafts the notice, the master approves it (or the office records his spoken word), and it goes out in the desk's run, or on its own from this tab through *Just this one, from the Lien window ›*. See *send lien notices from the Lien desk*.
+The **Payment forecast** on Jobs → Pipeline shows it per month: open a row's chevron and every month the crew worked lists with its own notice date and state — {{chip:red|due tomorrow}}, {{chip:yellow|closes in 12d}}, {{chip:green|notice sent}} — with {{button:outline|Send notice…}} opening the **Lien desk**, where the office drafts the notice, the master approves it (or the office records his spoken word), and it goes out in the desk's run, or alone through *Just this one* on its footer, which opens the run on that one notice. See *send lien notices from the Lien desk*.
 :::
 
 ## The app finds the owner; you confirm it

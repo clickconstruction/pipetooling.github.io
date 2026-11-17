@@ -4500,6 +4500,41 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
   })
 
+  it('Just this one opens the run on that one notice, and counts its envelopes (v2.7512): the Lien window is not opened, an unsigned notice reads held', async () => {
+    const onOpenLienInstruments = vi.fn()
+    const approved = { cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z', status: 'approved', approved_by: 'u-sam', approved_at: '2026-09-12T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '' }
+    const signed = { signed_by: 'u-sam', signed_at: '2026-09-12T15:00:00Z', signer_printed_name: 'Sam', signer_signature_mode: 'type', signed_fields_hash: lienFieldsHash({}) }
+    const item = (id: string, job: string, over: Record<string, unknown>) => ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-07'], fields: {}, ...over }) as unknown as LienDeskItemRow
+    // Two approved notices wait to print. One is signed; the other was approved on the leader's word and is not.
+    const d = data([row('j650', '2026-07', '2026-10-15'), row('j651', '2026-07', '2026-10-15')], [item('it1', 'j650', { ...approved, ...signed }), item('it2', 'j651', { ...approved, approved_by: 'u-taunya', approval_mode: 'word', word_note: 'Sam said send it', word_channel: 'phone' })], true)
+    d.jobsById.j650 = { ...d.jobsById.j650!, master_user_id: 'u-sam' } as NonNullable<typeof d.jobsById.j650>
+    d.jobsById.j651 = { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'Palomino Trail' }
+    const link = () => document.querySelector('[data-lien-desk-just-this-one]') as HTMLButtonElement
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" authName="Wendi" leaderNameFor={() => 'Sam'} data={d} initialPile="ready" initialJobId="j650" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    // The owner and the original contractor each have a mailing address, so the press prints two envelopes and says so.
+    expect(link().textContent).toBe('Just this one · 2 envelopes ›')
+    expect([link().getAttribute('data-envelopes'), link().getAttribute('data-held')]).toEqual(['2', '0'])
+    expect(link().title).toContain('Both envelopes print in one press.')
+    // The whole run still counts both approved notices.
+    expect(within(document.querySelector('[data-lien-desk-foot="ready"]') as HTMLElement).getByRole('button', { name: /Print and mail 2/ })).toBeTruthy()
+    fireEvent.click(link())
+    const run = await screen.findByRole('dialog', { name: 'Print and mail' })
+    // The run window holds this one notice, not the two the desk has approved.
+    expect(within(run).getByRole('heading', { level: 2 }).textContent).toBe('Print and mail · 1 notice')
+    expect(run.textContent).toContain('AXO Schertz')
+    expect(run.textContent).not.toContain('Palomino Trail')
+    expect(onOpenLienInstruments).not.toHaveBeenCalled()
+    desk.unmount()
+
+    // The unsigned one: nothing would print, as in the run, and the link says so before the press.
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" authName="Wendi" leaderNameFor={() => 'Sam'} data={d} initialPile="ready" initialJobId="j651" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    expect(link().textContent).toBe('Just this one · held ›')
+    expect(link().title).toMatch(/^Nothing prints yet\. Unsigned: /)
+    expect(link().disabled).toBe(false)
+  })
+
   it('the office’s Ready footer carries his line and its own Sign ▸ (v2.6733): the code goes to the RPC as the master with no approval, and He signed the paper stays', async () => {
     codeState.signs = []
     codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
@@ -4618,6 +4653,26 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
       expect(await screen.findByText('Sign it again: Nothing was cleared. The notice changed since this screen read it. It may have printed, or its signature is already off.')).toBeTruthy()
       expect(onChanged).toHaveBeenCalled()
       expect(screen.queryByText(/^Cleared\./)).toBeNull()
+    })
+
+    it('Back to Approved · to print on a signed notice asks first (v2.7503): the signature comes off, Cancel writes nothing, the button takes it back', async () => {
+      clearPrintedMock.mockReset()
+      clearPrintedMock.mockResolvedValue(undefined)
+      renderWithProviders(<LienDesk {...office} data={deskData(signedItem({ printed_at: '2026-09-14T16:00:00Z' }))} initialPile="printed" />)
+      await settle()
+      const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
+      const back = within(footer).getByRole('button', { name: 'Back to Approved · to print' })
+      expect(back.title).toBe('It was not mailed: put it back in Approved · to print. The approval stands, and a signature on it comes off')
+      fireEvent.click(back)
+      const ask = await screen.findByRole('alertdialog', { name: 'Take back the notice for AXO Schertz, job 650?' })
+      expect(ask.textContent).toContain('The notice goes back to Approved · to print. The approval stands. Avery Stone’s signature comes off, so the notice can be signed again. The run holds the notice until then.')
+      fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+      await settle()
+      expect(clearPrintedMock).not.toHaveBeenCalled()
+      fireEvent.click(back)
+      fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Take back the notice' }))
+      await waitFor(() => expect(clearPrintedMock).toHaveBeenCalledWith('it1'))
+      expect(await screen.findByText('Back in Approved · to print. It waits to be signed again.')).toBeTruthy()
     })
 
     it('no press on a printed notice, on an unsigned one, or beside the leader’s own Not me', async () => {

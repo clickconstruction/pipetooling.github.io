@@ -72,6 +72,7 @@ import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorWords } from '../../lib/jobs/lienDeskRun'
+import { lienRunOnePlan } from '../../lib/jobs/lienRunOne'
 import { lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_RUN_NOW_TO_PRINT, lienRunActLabel } from '../../lib/jobs/lienRunWords'
 import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
@@ -94,7 +95,7 @@ import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPiece
 import LienMailPieceDoors from './LienMailPieceDoors'
 import { approveLienDeskItem, clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits, tellLeaderOfLienSignatures } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitBatchToldWords, lienAffidavitTellPapers } from '../../lib/jobs/lienAffidavitApprovalTell'
-import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
+import { runTakenBackOf, takeBackNoticeConfirm, takeBackNoticeDoneWords, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
@@ -593,6 +594,8 @@ export default function LienDesk({
   const [runTakeBack, setRunTakeBack] = useState(false)
   // A To do row's Print and mail (v2.7442) opens the run on its GC's approved notices alone; null is every notice.
   const [runGcId, setRunGcId] = useState<string | null>(null)
+  // A ready notice's Just this one (v2.7512) opens the run on that one notice, by its desk item; null is the run's own list.
+  const [runOnlyItemId, setRunOnlyItemId] = useState<string | null>(null)
   // The sheet's code (v2.7328): the run opens on the notice the phone scanned, its Mailed box under the cursor.
   const [runFocus, setRunFocus] = useState<string | null>(null)
   useEffect(() => {
@@ -2071,7 +2074,17 @@ export default function LienDesk({
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
-  const backToReady = () => run('Back to Approved · to print', async () => void (item && (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null }))), 'Back in Approved · to print.')
+  // v2.7503 (the owner's call): taking a notice back clears its signature, so a signed one asks first; an unsigned one goes back as it always has.
+  const backToReady = async () => {
+    if (!item) return
+    const sig = signatureColumnsOf(item)
+    const wasSigned = lienChipSigned(sig, lienFieldsHash(item.fields)) !== 'unsigned'
+    if (wasSigned) {
+      const words = takeBackNoticeConfirm({ jobWords: signAgainJobWords(job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : null, job?.job_name), signerName: sig.signer_printed_name, ownSignature: Boolean(authUserId && sig.signed_by === authUserId) })
+      if (!(await confirmDialog({ title: words.title, message: words.message, confirmLabel: words.confirmLabel }))) return
+    }
+    await run('Back to Approved · to print', async () => void (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null })), takeBackNoticeDoneWords(wasSigned))
+  }
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
   /**
    * Sign it again (v2.7502): the signature comes off an approved notice after a confirm, and the approval stands. The
@@ -2363,6 +2376,19 @@ export default function LienDesk({
   const openWholeRun = () => {
     setRunTakeBack(false)
     setRunGcId(null)
+    setRunOnlyItemId(null)
+    setRunOpen(true)
+  }
+  // The monthly notices a run holds, built one way for the window and for Just this one's count (v2.7512): a GC's, one notice's, or every one.
+  const runSignOpts = { inks, onDeviceNameFor: (id: string | null) => leaderNameFor?.(id) ?? '', leaderFor: (id: string | null) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }
+  const monthlyRunNotices = (gcId: string | null, onlyItemId: string | null) =>
+    data ? buildLienDeskRun(lienRunEntriesFor(data.queue.piles.ready, data.queue.piles.printed, gcId, onlyItemId), data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, ...runSignOpts }) : []
+  // Just this one (v2.7512): the run window on one notice, so it prints as the run prints it. The Lien window's own print was one unsigned set to photocopy.
+  const openRunOnOne = (itemId: string) => {
+    setRunTakeBack(false)
+    setRunGcId(null)
+    setRunFocus(null)
+    setRunOnlyItemId(itemId)
     setRunOpen(true)
   }
   const onBoardPrint = (side: LienBoardPrintSide) => (side.act === 'print_affidavits' ? printReadyAffidavits() : openWholeRun())
@@ -4418,6 +4444,9 @@ export default function LienDesk({
       const codeAwaits = Boolean(penAwaits && readySigned && typeof readySigned === 'object' && readySigned.mode === 'code')
       // v2.7386: an unsigned ready notice's line is the footer's box; Sign ▸ sits beside the code and the row is the box's strip.
       const readyBoxed = (leader || (office && otherScreen)) && readySigned === 'unsigned'
+      // Just this one (v2.7512): what the run would print for this notice alone, counted by the run's own envelopes.
+      const readyItemId = selected.item?.id ?? null
+      const onePlan = lienRunOnePlan(readyItemId ? monthlyRunNotices(null, readyItemId)[0] : null)
       const readyRow = (
         <div className="lienFootRow" data-lien-desk-foot="ready">
           <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)), readySigned)} data-lien-desk-ready-words />
@@ -4439,8 +4468,8 @@ export default function LienDesk({
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand. Record it here instead of printing and mailing it again">
             Already mailed? Record it ›
           </button>
-          <button type="button" className="lienFootLink" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} title="One notice on its own: print or email it and record the sends in the Lien window">
-            Just this one ›
+          <button type="button" className="lienFootLink" onClick={() => (readyItemId ? openRunOnOne(readyItemId) : undefined)} disabled={!office || !readyItemId} title={onePlan.title} data-lien-desk-just-this-one data-envelopes={onePlan.sets.length} data-held={onePlan.held.length}>
+            {onePlan.label}
           </button>
           <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="Every approved notice as one packet and one tracking form">
             {lienRunActLabel('print', runCount)} ▸
@@ -4495,7 +4524,7 @@ export default function LienDesk({
         <div data-lien-desk-printed-footer className="lienFootRow" data-lien-desk-foot="printed">
           <FootChip chip={printedChip({ printed_at: printedAt })} />
           <span className="lienFootSpacer" />
-          <button type="button" className="lienFootLink" onClick={backToReady} disabled={!office || busy} title="It was not mailed: put it back in Approved · to print. The approval stands">
+          <button type="button" className="lienFootLink" onClick={() => void backToReady()} disabled={!office || busy} title="It was not mailed: put it back in Approved · to print. The approval stands, and a signature on it comes off">
             Back to Approved · to print
           </button>
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper already went out by hand. Record it here instead of entering mail numbers">
@@ -5196,7 +5225,7 @@ export default function LienDesk({
             onChanged()
             return out
           }}
-          notices={[...buildLienDeskRun(lienRunEntriesFor(data.queue.piles.ready, data.queue.piles.printed, runGcId), data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }), ...buildLienRetainageRun(runGcId ? [] : data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) })]}
+          notices={[...monthlyRunNotices(runGcId, runOnlyItemId), ...buildLienRetainageRun(runGcId || runOnlyItemId ? [] : data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, runSignOpts)]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
@@ -5205,6 +5234,7 @@ export default function LienDesk({
             setRunOpen(false)
             setRunTakeBack(false)
             setRunGcId(null)
+            setRunOnlyItemId(null)
             setRunFocus(null)
           }}
           openOnTakeBack={runTakeBack}
