@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import {
+  blankShutShareBlocks,
   buildShareEmail,
   computeShareDates,
   isShareConfigValid,
@@ -17,6 +18,7 @@ import {
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { jobsShutToUser } from '../_shared/jobPapersLock.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,6 +71,15 @@ async function fetchBoardBlocks(
     set.has(String(b.work_date).slice(0, 10)),
   )
   return { blocks }
+}
+
+/**
+ * Papers before a job opens: the jobs any of these people is locked out of. One board goes to all of them, so a job
+ * shut to one of them is blanked for all (`blankShutShareBlocks`). Empty while no job requires a paper.
+ */
+async function jobsShutToAny(admin: Admin, userIds: readonly string[]): Promise<Set<string>> {
+  const sets = await Promise.all([...new Set(userIds)].map((id) => jobsShutToUser(admin, id)))
+  return new Set(sets.flatMap((s) => [...s]))
 }
 
 async function recipientEmail(
@@ -156,7 +167,9 @@ async function runRecurring(admin: Admin, resendApiKey: string): Promise<Respons
       continue
     }
 
-    const { html, text, subject } = buildShareEmail({ dates, blocks })
+    // Papers before a job opens: the board is read as the sharer, so a job the recipient is locked out of is blanked here.
+    const shut = await jobsShutToUser(admin, raw.recipient_user_id)
+    const { html, text, subject } = buildShareEmail({ dates, blocks: blankShutShareBlocks(blocks, shut) })
     const mail = await sendEmailViaResend(email, subject, text, html, resendApiKey)
 
     await admin.from('schedule_share_recurring_log').insert({
@@ -242,7 +255,9 @@ async function runInstant(req: Request, admin: Admin, resendApiKey: string): Pro
   if (blockErr) {
     return jsonResponse({ error: `Could not load schedule: ${blockErr}` }, 500)
   }
-  const { html, text, subject } = buildShareEmail({ dates, blocks })
+  // Papers before a job opens: a job any recipient is locked out of keeps its number and times and nothing else.
+  const shut = await jobsShutToAny(admin, recipientIds)
+  const { html, text, subject } = buildShareEmail({ dates, blocks: blankShutShareBlocks(blocks, shut) })
 
   const results: { recipientUserId: string; ok: boolean; error?: string }[] = []
   for (const rid of [...new Set(recipientIds)]) {

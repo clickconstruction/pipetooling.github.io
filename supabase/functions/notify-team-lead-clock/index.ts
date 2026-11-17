@@ -19,6 +19,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
+import { recipientsNotShut } from '../_shared/jobPapersLock.ts'
 import { trialVerdictPush } from '../_shared/trialVerdictPush.ts'
 import { vapidReady, webPushSender } from '../_shared/webPushSend.ts'
 
@@ -91,10 +92,15 @@ async function notifyTrialHelperLeads(adminClient: AdminClient, record: ClockRec
   }
   const words = trialVerdictPush((helper as { name?: string | null } | null)?.name ?? null, jobName)
 
+  // Papers before a job opens: the push names the job, so a leader who still owes that job a paper is left out of it
+  // (the app's Papers to sign line tells them instead). The verdict card on their Dashboard still counts them.
+  const toPush = await recipientsNotShut(adminClient, record.job_ledger_id, toAsk)
+  if (toPush.length === 0) return { leads: toAsk.length, pushed: 0 }
+
   // Through each leader's hours (#141 PR 5): the leaders on are pushed, one off is held with a row and no push.
   const result = await sendPushHonouringHours(
     adminClient,
-    { userIds: toAsk, title: words.title, body: words.body, url: words.url, tag: `trial-verdict-${prospectId}-${record.work_date}`, templateType: 'trial_helper_verdict' },
+    { userIds: toPush, title: words.title, body: words.body, url: words.url, tag: `trial-verdict-${prospectId}-${record.work_date}`, templateType: 'trial_helper_verdict' },
     webPushSender(adminClient, 'notify-team-lead-clock'),
   )
   return { leads: toAsk.length, pushed: result.devices }
