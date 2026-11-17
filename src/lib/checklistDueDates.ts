@@ -12,13 +12,15 @@ export function effectiveDueDate(dueDate: string | null | undefined, scheduledDa
   return dueDate || scheduledDate
 }
 
-function dayLabel(ymd: string): string {
+/** A day as a card says it: *Fri, Sep 4*. */
+export function dayLabel(ymd: string): string {
   const d = new Date(ymd + 'T12:00:00')
   if (isNaN(d.getTime())) return ymd
   return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-function daysBetween(fromYmd: string, toYmd: string): number | null {
+/** Whole days from one calendar day to another, or null when either is not a day. */
+export function daysBetween(fromYmd: string, toYmd: string): number | null {
   const a = new Date(fromYmd + 'T00:00:00')
   const b = new Date(toYmd + 'T00:00:00')
   if (isNaN(a.getTime()) || isNaN(b.getTime())) return null
