@@ -9,8 +9,8 @@
  */
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 
@@ -23,6 +23,8 @@ const world = vi.hoisted(() => ({
   writes: [] as Array<{ table: string; method: string; payload: unknown; filters: Array<[string, unknown]> }>,
   rpcs: [] as Array<{ name: string; args: unknown }>,
   sends: [] as Array<Record<string, unknown>>,
+  /** How many times the detail page read its row. */
+  rowReads: 0,
 }))
 
 vi.mock('../lib/supabase', () => {
@@ -48,6 +50,7 @@ vi.mock('../lib/supabase', () => {
       case 'estimates': {
         const id = eqValue(steps, 'id')
         const number = eqValue(steps, 'estimate_number')
+        if (id !== undefined || number !== undefined) world.rowReads += 1
         if (id !== undefined) return list(world.estimates.filter((e) => e.id === id))
         if (number !== undefined) return list(world.estimates.filter((e) => e.estimate_number === number))
         return list(world.estimates)
@@ -117,6 +120,8 @@ vi.mock('../lib/estimates/sendEstimateIo', async (orig) => {
     ...real,
     postSendEstimate: async (request: Record<string, unknown>) => {
       world.sends.push(request)
+      // A first send leaves the estimate sent, as the function does.
+      if (request.mode === 'send') world.estimates = world.estimates.map((e) => (e.id === request.estimateId ? { ...e, status: 'sent', sent_at: new Date().toISOString(), customer_email: request.customerEmail } : e))
       return { kind: 'reply', httpOk: true, json: { ok: true, emailed: true, sent_to: 'owner@customer.test', accept_url: 'https://app.example/estimate/accept?t=fresh-token' } }
     },
   }
@@ -183,12 +188,19 @@ const sentRow = (over: Row = {}) => estimate({ id: 'e-2', estimate_number: 102, 
 const acceptedRow = (over: Row = {}) =>
   estimate({ id: 'e-3', estimate_number: 103, status: 'customer_accepted', title: 'ZZ Slab leak', sent_at: '2026-11-02T15:00:00Z', accepted_at: '2026-11-03T15:00:00Z', acceptor_name: 'ZZ Signer', customer_email: 'owner@customer.test', ...over })
 
-function renderAt(route: string, rows: Row[]) {
+/** Where the router is, so a redirect can be read. */
+function Where() {
+  const location = useLocation()
+  return <span data-testid="where">{location.pathname}</span>
+}
+
+function renderAt(route: string | { pathname: string; state: unknown }, rows: Row[]) {
   world.estimates = rows
   world.customers = [CUSTOMER]
   world.writes = []
   world.rpcs = []
   world.sends = []
+  world.rowReads = 0
   installDomShims()
   return render(
     <Routes>
@@ -201,6 +213,7 @@ function renderAt(route: string, rows: Row[]) {
         <ToastProvider>
           <ConfirmDialogProvider>
             <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <Where />
               {children}
             </MemoryRouter>
           </ConfirmDialogProvider>
@@ -211,6 +224,7 @@ function renderAt(route: string, rows: Row[]) {
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   cleanup()
   window.sessionStorage.clear()
 })
@@ -269,6 +283,114 @@ describe('Estimates — a draft', () => {
       ['id', 'e-1'],
       ['status', 'draft'],
     ])
+  })
+})
+
+describe('Estimates — the draft’s engine', () => {
+  const updates = () => world.writes.filter((w) => w.table === 'estimates' && w.method === 'update')
+
+  it('saves by itself a moment after a change, without reloading the page', async () => {
+    renderAt('/estimates/101', [estimate()])
+    await screen.findByRole('button', { name: 'Save draft' })
+    await settle()
+    const readsBefore = world.rowReads
+    vi.useFakeTimers()
+    fireEvent.change(screen.getByDisplayValue('ZZ terms'), { target: { value: 'ZZ new terms' } })
+    // Nothing yet: the save waits for the typing to stop.
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    expect(updates()).toHaveLength(0)
+    await act(() => vi.advanceTimersByTimeAsync(700))
+    vi.useRealTimers()
+    await waitFor(() => expect(updates()).toHaveLength(1))
+    expect((updates()[0]!.payload as { terms_snapshot: string }).terms_snapshot).toBe('ZZ new terms')
+    expect(updates()[0]!.filters).toEqual([
+      ['id', 'e-1'],
+      ['status', 'draft'],
+    ])
+    // The autosave skips the reload, so what is typed is never clobbered.
+    expect(world.rowReads).toBe(readsBefore)
+    expect(screen.getByDisplayValue('ZZ new terms')).toBeTruthy()
+  })
+
+  it('Save draft writes the form and reads the row again', async () => {
+    renderAt('/estimates/101', [estimate()])
+    const save = await screen.findByRole('button', { name: 'Save draft' })
+    await settle()
+    const readsBefore = world.rowReads
+    fireEvent.change(screen.getByDisplayValue('ZZ terms'), { target: { value: 'ZZ saved terms' } })
+    fireEvent.click(save)
+    await waitFor(() => expect(updates().length).toBeGreaterThan(0))
+    const payload = updates()[0]!.payload as { terms_snapshot: string; total_cents: number; customer_id: string; customer_email: string }
+    expect(payload.terms_snapshot).toBe('ZZ saved terms')
+    expect(payload.total_cents).toBe(90_000)
+    expect(payload.customer_id).toBe('c1')
+    // The customer's own email, since nothing is typed under Send to.
+    expect(payload.customer_email).toBe('owner@customer.test')
+    await waitFor(() => expect(world.rowReads).toBeGreaterThan(readsBefore))
+    // The reload shows what was saved.
+    expect(await screen.findByDisplayValue('ZZ saved terms')).toBeTruthy()
+  })
+
+  it('deletes a draft this visit made and never touched, on the way out', async () => {
+    const fresh = estimate({ title: '', customer_id: null, customers: null, line_items_snapshot: [], terms_snapshot: '', total_cents: 0 })
+    const view = renderAt({ pathname: '/estimates/101', state: { freshEstimateDraft: true } }, [fresh])
+    await screen.findByRole('button', { name: 'Save draft' })
+    await settle()
+    view.unmount()
+    const deletes = world.writes.filter((w) => w.table === 'estimates' && w.method === 'delete')
+    expect(deletes).toHaveLength(1)
+    expect(deletes[0]!.filters).toEqual([
+      ['id', 'e-1'],
+      ['status', 'draft'],
+    ])
+  })
+
+  it('keeps an empty draft that this visit did not make', async () => {
+    const empty = estimate({ title: '', customer_id: null, customers: null, line_items_snapshot: [], terms_snapshot: '', total_cents: 0 })
+    const view = renderAt('/estimates/101', [empty])
+    await screen.findByRole('button', { name: 'Save draft' })
+    await settle()
+    view.unmount()
+    expect(world.writes.filter((w) => w.method === 'delete')).toHaveLength(0)
+  })
+
+  it('keeps a fresh draft that has something in it', async () => {
+    const view = renderAt({ pathname: '/estimates/101', state: { freshEstimateDraft: true } }, [estimate()])
+    await screen.findByRole('button', { name: 'Save draft' })
+    await settle()
+    view.unmount()
+    expect(world.writes.filter((w) => w.method === 'delete')).toHaveLength(0)
+  })
+
+  it('opens an estimate by its id and moves the address to its number', async () => {
+    const id = '11111111-2222-4333-8444-555555555555'
+    renderAt(`/estimates/${id}`, [estimate({ id })])
+    expect(await screen.findByRole('button', { name: 'Save draft' })).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/estimates/101'))
+  })
+
+  it('goes back to the list for a number no estimate has', async () => {
+    renderAt('/estimates/999', [estimate()])
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/estimates'))
+    expect(await screen.findByRole('heading', { name: 'Estimates' })).toBeTruthy()
+  })
+
+  it('sends a change order after one confirm: the draft is saved, then the one send call goes, then the page shows it sent', async () => {
+    renderAt('/estimates/101', [estimate({ doc_kind: 'change_order', change_order_fields: { description_of_change: 'ZZ add a hose bibb' }, title: 'ZZ change order' })])
+    const send = await screen.findByRole('button', { name: 'Send to customer' })
+    await settle()
+    fireEvent.click(send)
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByText('Send to owner@customer.test?')).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(world.sends).toHaveLength(1))
+    expect(world.sends[0]).toMatchObject({ estimateId: 'e-1', mode: 'send', customerEmail: 'owner@customer.test' })
+    // The save went before the send.
+    expect(updates().length).toBeGreaterThan(0)
+    // The page reads the row again and draws the sent side, with the link kept for this tab.
+    expect(await screen.findByText('Acceptance notify recipients')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Save draft' })).toBeNull()
+    expect(window.sessionStorage.getItem('estimate_accept_url:e-1')).toBe('https://app.example/estimate/accept?t=fresh-token')
   })
 })
 
