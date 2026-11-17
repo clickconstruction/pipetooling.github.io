@@ -81,7 +81,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
 
   const loadRegister = useCallback(async () => {
     if (personId) {
-      const { data, error } = await supabase.from('sub_papers' as never).select(SUB_PAPER_ROW_COLUMNS).eq('person_id', personId)
+      const { data, error } = await supabase.from('sub_papers').select(SUB_PAPER_ROW_COLUMNS).eq('person_id', personId)
       setRows(error ? null : ((data ?? []) as unknown as SubPaperRow[]))
     }
     setRegisterRead(true)
@@ -103,7 +103,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
   /** Register the paper, then hand back the paper as it reads under its number. Throws the register's reason when it refuses. */
   const make = async (paper: SubPaper, range: StatementRange): Promise<SubPaper> => {
     if (!personId) return paper
-    const { data, error } = await supabase.rpc('mint_sub_paper' as never, mintSubPaperArgs(paper, personId, range) as never)
+    const { data, error } = await supabase.rpc('mint_sub_paper', mintSubPaperArgs(paper, personId, range) as never)
     if (error) {
       const refusal = mintRefusal(error)
       // A database the migration has not reached: the paper goes out as it did before numbers, with no number.
