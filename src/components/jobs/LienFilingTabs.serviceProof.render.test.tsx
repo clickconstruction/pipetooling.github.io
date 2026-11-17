@@ -91,8 +91,8 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
     fireEvent.change(within(box()).getByLabelText('Copy to the original contractor, certified mail number'), { target: { value: '0000 0000 0002' } })
     const ownerCopy = box().querySelector('[data-lien-service-copy="owner"]') as HTMLElement
     const shot = new File(['not really a picture'], 'IMG_0001.jpg', { type: 'image/jpeg' })
-    fireEvent.change(within(ownerCopy).getByLabelText('Take a photo of the receipt'), { target: { files: [shot] } })
-    expect(await within(ownerCopy).findByRole('link', { name: 'Photo saved ›' })).toBeTruthy()
+    fireEvent.change(within(ownerCopy).getByLabelText('Add the receipt'), { target: { files: [shot] } })
+    expect(await within(ownerCopy).findByRole('link', { name: 'Open the receipt' })).toBeTruthy()
     expect(puts).toEqual([{ jobId: 'job-77', where: 'sent', name: 'Lien affidavit, Job 77, mail receipt, owner, 2026-11-18.jpg' }])
     fireEvent.click(within(box()).getByRole('button', { name: 'Record service' }))
     await waitFor(() => expect(updates.length).toBe(1))

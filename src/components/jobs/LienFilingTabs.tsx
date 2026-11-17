@@ -909,6 +909,7 @@ export default function LienFilingTabs({
         url={draft.receiptUrl}
         compact={compact}
         onSaved={(url) => update((d) => ({ ...d, receiptUrl: url }))}
+        onTakeOff={() => update((d) => ({ ...d, receiptUrl: '' }))}
         onRead={(tracking) => update((d) => ({ ...d, tracking }))}
       />
     )
@@ -1138,7 +1139,7 @@ export default function LienFilingTabs({
         <span style={recordSheetLabel}>{LIEN_SERVICE_PROOF_WORDS.number}</span>
         <input type="text" inputMode="numeric" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder={LIEN_SERVICE_PROOF_WORDS.numberPlaceholder} aria-label={`${label}, certified mail number`} autoComplete="off" style={recordSheetField} />
       </label>
-      <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} onSaved={(url) => set({ ...draft, receiptUrl: url })} />
+      <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} onSaved={(url) => set({ ...draft, receiptUrl: url })} onTakeOff={() => set({ ...draft, receiptUrl: '' })} />
     </fieldset>
   )
   const recordSheet = !isMobile ? null : activeTab === 'notice' && isSub && recordStep === 'notice_sends' ? (
@@ -1378,7 +1379,7 @@ export default function LienFilingTabs({
       <div data-lien-service-copy={of} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', margin: '0.35rem 0' }}>
         <span style={{ fontWeight: 700, minWidth: '11.5rem' }}>{label}</span>
         <input type="text" inputMode="numeric" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder={LIEN_SERVICE_PROOF_WORDS.number.toLowerCase()} aria-label={`${label}, certified mail number`} autoComplete="off" style={{ flex: '1 1 11rem', minWidth: 0, padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
-        <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} compact onSaved={(url) => set({ ...draft, receiptUrl: url })} />
+        <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} compact onSaved={(url) => set({ ...draft, receiptUrl: url })} onTakeOff={() => set({ ...draft, receiptUrl: '' })} />
       </div>
     )
     const serviceRecordBox = filedAffidavit ? (
