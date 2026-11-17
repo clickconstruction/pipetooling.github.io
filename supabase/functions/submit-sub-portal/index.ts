@@ -6,6 +6,7 @@ import { canChangePick, evaluatePick, pickProblemMessage, pickWindowFor } from '
 import { notifyJobWatchers } from '../_shared/jobWatchers.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { internalFunctionCall } from '../_shared/internalFunctionCall.ts'
+import { JOB_PAPER_GONE_WORDS, JOB_PAPER_NOT_YOURS_WORDS, jobShutToPerson, readSubPortalJobIds, shutJobRefusal, type JobPapersAdmin } from '../_shared/subPortalJobPapers.ts'
 
 /**
  * Sub portal intake (sub-portal train): everything a sub can DO from the
@@ -30,6 +31,16 @@ import { internalFunctionCall } from '../_shared/internalFunctionCall.ts'
  *                     stage working → walkthrough (source = portal, optional
  *                     note), the stage trigger posts to the job's Activity
  *                     feed, and a dispatch note tells the office to walk it
+ *  - sign_job_paper → papers before a job opens (step 6): the sub's own copy
+ *                     of one paper a job requires (`job_paper_start`, made if
+ *                     missing) and a fresh signing link for it, minted as
+ *                     sign_link mints one. Only for a job the sub has work on.
+ *
+ * Papers before a job opens (step 6): a sub with no login has no row security
+ * behind them, so every press on a job's sheet or work order (mark_work_done,
+ * progress, accept_offer, decline_offer, pick_dates, cant_do_dates) is refused
+ * while the sub still owes that job a paper: `Sign this job’s papers first.`
+ * A job whose papers cannot be read is refused too (`_shared/subPortalJobPapers.ts`).
  */
 
 const corsHeaders = {
@@ -112,6 +123,48 @@ async function writePick(admin: SupabaseClient, c: { id: string; labor_job_id: s
   if (c.labor_job_id) await admin.from('people_labor_jobs').update({ job_date: start }).eq('id', c.labor_job_id)
   if (c.step_id) await admin.from('project_workflow_steps').update({ scheduled_start_date: start, scheduled_end_date: end }).eq('id', c.step_id)
   return true
+}
+
+/**
+ * A fresh signing link for one of the sub's own unsigned papers: the send-contract-for-signature mint pattern with no
+ * email. A new token replaces any prior one, so the newest signing link wins.
+ */
+async function mintSignPath(admin: SupabaseClient, doc: { id: string; status: string }): Promise<string | null> {
+  const rawToken = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '')
+  const tokenHash = await sha256Hex(rawToken)
+  const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString()
+  const { error: updErr } = await admin
+    .from('person_contract_documents')
+    .update({
+      status: 'sent',
+      sent_at: doc.status === 'unsent' ? new Date().toISOString() : undefined,
+      public_token_hash: tokenHash,
+      public_token_expires_at: expiresAt,
+    })
+    .eq('id', doc.id)
+  if (updErr) {
+    console.error('sub portal signing link mint failed', updErr)
+    return null
+  }
+  return `/contract/accept?t=${rawToken}`
+}
+
+/** The Pipeline job a work order belongs to: its own, else its sheet's. */
+async function orderJobId(admin: SupabaseClient, c: { job_id: string | null; labor_job_id: string | null }): Promise<string | null> {
+  if (c.job_id) return c.job_id
+  if (!c.labor_job_id) return null
+  const { data, error } = await admin.from('people_labor_jobs').select('job_ledger_id').eq('id', c.labor_job_id).maybeSingle()
+  if (error) throw error
+  return (data as { job_ledger_id: string | null } | null)?.job_ledger_id ?? null
+}
+
+/** The service client as the papers' kernel reads it: one function call and plain reads. The client's own types run too deep to compare. */
+const papersAdmin = (admin: SupabaseClient): JobPapersAdmin => admin as unknown as JobPapersAdmin
+
+/** Papers before a job opens: the refusal for a press on a job the sub still owes a paper on, or null to carry on. */
+async function refuseWhileShut(admin: SupabaseClient, jobId: string | null, personId: string): Promise<Response | null> {
+  const refusal = shutJobRefusal(await jobShutToPerson(papersAdmin(admin), jobId, personId))
+  return refusal ? jsonResponse({ error: refusal.error }, refusal.status) : null
 }
 
 const ymdField = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)
@@ -301,25 +354,35 @@ serve(async (req) => {
       if (docRow.status !== 'unsent' && docRow.status !== 'sent') {
         return jsonResponse({ error: 'This document is already signed.' }, 400)
       }
-      // send-contract-for-signature mint pattern (no email): a fresh token
-      // replaces any prior one — the newest signing link wins.
-      const rawToken = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '')
-      const tokenHash = await sha256Hex(rawToken)
-      const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString()
-      const { error: updErr } = await admin
-        .from('person_contract_documents')
-        .update({
-          status: 'sent',
-          sent_at: docRow.status === 'unsent' ? new Date().toISOString() : undefined,
-          public_token_hash: tokenHash,
-          public_token_expires_at: expiresAt,
-        })
-        .eq('id', docRow.id)
-      if (updErr) {
-        console.error('sub portal sign_link mint failed', updErr)
+      const signPath = await mintSignPath(admin, docRow)
+      if (!signPath) return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+      return jsonResponse({ ok: true, signPath })
+    }
+
+    // ── sign_job_paper: the sub's own copy of a paper a job requires, and its signing link ─
+    if (kind === 'sign_job_paper') {
+      const asked = typeof body.required_paper_id === 'string' ? body.required_paper_id : typeof body.requiredPaperId === 'string' ? body.requiredPaperId : ''
+      const paperId = /^[0-9a-f-]{36}$/.test(asked) ? asked : null
+      if (!paperId) return jsonResponse({ error: 'Bad request' }, 400)
+      const { data: required, error: requiredErr } = await admin.from('job_required_papers').select('id, job_id, removed_at').eq('id', paperId).maybeSingle()
+      if (requiredErr) throw requiredErr
+      const paper = required as { id: string; job_id: string; removed_at: string | null } | null
+      // The paper must be on a job the sub has work on: the same jobs their page shows something of.
+      if (!paper || !(await readSubPortalJobIds(papersAdmin(admin), link.person_id)).includes(paper.job_id)) return jsonResponse({ error: JOB_PAPER_NOT_YOURS_WORDS }, 404)
+      if (paper.removed_at) return jsonResponse({ error: JOB_PAPER_GONE_WORDS }, 409)
+      const { data: started, error: startErr } = await admin.rpc('job_paper_start', { p_required_paper_id: paper.id, p_person_id: link.person_id })
+      const docId = typeof started === 'string' ? started : null
+      if (startErr || !docId) {
+        console.error('sub portal job_paper_start failed', startErr)
         return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
       }
-      return jsonResponse({ ok: true, signPath: `/contract/accept?t=${rawToken}` })
+      const { data: doc } = await admin.from('person_contract_documents').select('id, status, person_id').eq('id', docId).maybeSingle()
+      const docRow = doc as { id: string; status: string; person_id: string | null } | null
+      if (!docRow || docRow.person_id !== link.person_id) return jsonResponse({ error: 'Not found' }, 404)
+      if (docRow.status !== 'unsent' && docRow.status !== 'sent') return jsonResponse({ error: 'This document is already signed.' }, 400)
+      const signPath = await mintSignPath(admin, docRow)
+      if (!signPath) return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+      return jsonResponse({ ok: true, signPath })
     }
 
     // ── mark_work_done: the sub's one button on a job card ────────────────
@@ -343,6 +406,8 @@ serve(async (req) => {
         .maybeSingle()
       const sheetRow = sheet as { id: string; stage: string | null; job_number: string | null; job_ledger_id: string | null; address: string | null } | null
       if (!sheetRow) return jsonResponse({ error: 'Not found' }, 404)
+      const shutDone = await refuseWhileShut(admin, sheetRow.job_ledger_id, link.person_id)
+      if (shutDone) return shutDone
       if ((sheetRow.stage ?? 'working') !== 'working') {
         return jsonResponse({ error: 'This job is already past the work stage — call the office if something changed.' }, 409)
       }
@@ -398,6 +463,8 @@ serve(async (req) => {
       const { data: sheet } = await admin.from('people_labor_jobs').select('id, stage, job_number, job_ledger_id, address, step_id, progress_pct').eq('id', laborJobId).maybeSingle()
       const sheetRow = sheet as { id: string; stage: string | null; job_number: string | null; job_ledger_id: string | null; address: string | null; step_id: string | null; progress_pct: number | null } | null
       if (!sheetRow) return jsonResponse({ error: 'Not found' }, 404)
+      const shutProgress = await refuseWhileShut(admin, sheetRow.job_ledger_id, link.person_id)
+      if (shutProgress) return shutProgress
       if ((sheetRow.stage ?? 'working') !== 'working') return jsonResponse({ error: 'This job is already past the work stage — call the office if something changed.' }, 409)
       const nowIso = new Date().toISOString()
       const effectivePct = pct ?? sheetRow.progress_pct ?? 0
@@ -457,6 +524,8 @@ serve(async (req) => {
         | { id: string; person_id: string; status: string; amount: number | null; offer_expires_at: string | null; offer_scope_snapshot: unknown; labor_job_id: string | null; step_id: string | null; job_id: string | null; proposed_start: string | null; proposed_end: string | null; stage_window_id: string | null; work_days: number | null }
         | null
       if (!c || c.person_id !== link.person_id) return jsonResponse({ error: 'Not found' }, 404)
+      const shutOffer = await refuseWhileShut(admin, await orderJobId(admin, c), link.person_id)
+      if (shutOffer) return shutOffer
       if (c.status !== 'offered') {
         return jsonResponse({ error: 'This work order is no longer open.' }, 409)
       }
@@ -629,6 +698,8 @@ serve(async (req) => {
         | { id: string; person_id: string; status: string; labor_job_id: string | null; step_id: string | null; job_id: string | null; proposed_start: string | null; proposed_end: string | null; picked_start: string | null; picked_end: string | null; stage_window_id: string | null; work_days: number | null; offer_scope_snapshot: unknown; change_requested_at: string | null }
         | null
       if (!c || c.person_id !== link.person_id) return jsonResponse({ error: 'Not found' }, 404)
+      const shutDates = await refuseWhileShut(admin, await orderJobId(admin, c), link.person_id)
+      if (shutDates) return shutDates
       const todayYmd = todayYmdInAppTz()
       const sheetLabel = parseScopeExtras(c.offer_scope_snapshot).sheetLabel
       const pickWindow = await pickWindowForOrder(admin, c)
