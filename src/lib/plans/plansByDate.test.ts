@@ -237,6 +237,76 @@ describe('buildPlansByDate', () => {
   })
 })
 
+describe('a bid’s schedule', () => {
+  const withSchedule = (over: Partial<PlansByDateInput['bids'][number]>, today = '2026-11-16') =>
+    buildPlansByDate(site({ today, bids: [{ id: 'bid1', label: 'B9001', sent: '2025-06-12', plansDated: null, outcome: 'won', outcomeAt: null, scheduleStart: '2025-07-01', scheduleEnd: '2026-12-31', scheduleNoEnd: false, ...over }] }))
+
+  it('draws no Schedule lane for a bid with no start', () => {
+    expect(buildPlansByDate(site()).lanes.some((l) => l.kind === 'schedule')).toBe(false)
+    expect(at(buildPlansByDate(site()).figures, 0).key).toBe('first')
+  })
+
+  it('draws a lane from the typed start to the typed end, under the bids, and counts the days left', () => {
+    const model = withSchedule({})
+    expect(model.lanes.map((l) => l.kind).slice(0, 2)).toEqual(['bids', 'schedule'])
+    const lane = at(model.lanes, 1)
+    expect([lane.label, lane.sub]).toEqual(['Schedule', 'B9001 · 45 days left'])
+    expect(lane.spans).toHaveLength(1)
+    expect(at(lane.spans, 0)).toMatchObject({ glyph: 'schedule', tip: 'B9001’s schedule · Jul 1, 2025 to Dec 31, 2026 · 45 days left', startWords: 'starts Jul 1, 2025', endWords: 'ends Dec 31, 2026' })
+    expect(ymdOfDay(at(lane.spans, 0).from)).toBe('2025-07-01')
+    expect(ymdOfDay(at(lane.spans, 0).to)).toBe('2026-12-31')
+    expect(at(model.figures, 0)).toEqual({ key: 'schedule', label: 'Schedule ends', value: 'Dec 31, 2026', sub: '45 days left · 18 months · B9001', over: false, bidId: 'bid1' })
+    expect(model.rows.find((r) => r.key === 'schedstart-bid1')).toMatchObject({ ymd: '2025-07-01', lane: 'Schedule', text: 'B9001’s schedule starts', soft: 'ends Dec 31, 2026' })
+    expect(model.rows.find((r) => r.key === 'schedend-bid1')).toMatchObject({ ymd: '2026-12-31', text: 'B9001’s schedule ends' })
+    // The chart reaches past today to the schedule's end.
+    expect(ymdOfDay(model.end)).toBe('2027-02-01')
+    expect(model.legend.map((l) => l.glyph)).toContain('schedule')
+  })
+
+  it('runs a schedule with no end date off the chart and says so', () => {
+    const model = withSchedule({ scheduleEnd: null, scheduleNoEnd: true })
+    const span = at(at(model.lanes, 1).spans, 0)
+    expect(span).toMatchObject({ open: true, endWords: 'no end date', tip: 'B9001’s schedule · Jul 1, 2025 to no end date' })
+    expect(at(model.figures, 0)).toEqual({ key: 'schedule', label: 'Schedule', value: 'No end date', sub: 'started Jul 1, 2025 · B9001', bidId: 'bid1' })
+    expect(model.rows.some((r) => r.key === 'schedend-bid1')).toBe(false)
+    const layout = layoutPlansByDate(model, 'desktop')
+    const bar = layout.marks.find((m) => m.key === 'sched-bid1')
+    expect(bar?.prims[0]?.t).toBe('path')
+  })
+
+  it('keeps the bar’s end and adds a red stretch to today once the schedule is over', () => {
+    const model = withSchedule({ scheduleEnd: '2026-10-13' })
+    const lane = at(model.lanes, 1)
+    expect(lane.sub).toBe('B9001 · 34 days over')
+    expect(lane.spans.map((s) => [s.glyph, ymdOfDay(s.from), ymdOfDay(s.to)])).toEqual([
+      ['schedule', '2025-07-01', '2026-10-13'],
+      ['scheduleOver', '2026-10-13', '2026-11-16'],
+    ])
+    expect(at(model.figures, 0)).toMatchObject({ value: 'Oct 13, 2026', over: true })
+    expect(at(model.figures, 0).sub).toContain('34 days over')
+    expect(model.legend.map((l) => l.glyph)).toContain('scheduleOver')
+    expect(plansByDatePrintHtml({ siteName: 'ZZ', customerName: null, model, notes: [], printedAt: 'now', printedBy: null })).toContain('<div class="v" style="color:#b91c1c">Oct 13, 2026</div>')
+  })
+
+  it('names the bar’s two ends inside it where it has room, and not on a phone', () => {
+    const model = withSchedule({})
+    const words = (variant: 'desktop' | 'phone') => layoutPlansByDate(model, variant).labels.flatMap((p) => (p.t === 'text' && p.cls === 'barWord' ? [p.text] : []))
+    expect(words('desktop')).toEqual(['ends Dec 31, 2026', 'starts Jul 1, 2025'])
+    expect(words('phone')).toEqual([])
+    const short = layoutPlansByDate(withSchedule({ scheduleStart: '2026-10-01', scheduleEnd: '2026-10-20' }), 'desktop').labels.filter((p) => p.cls === 'barWord')
+    expect(short).toEqual([])
+  })
+
+  it('treats an end before the start as no end, and a start that is not a day as no schedule', () => {
+    expect(at(at(withSchedule({ scheduleEnd: '2025-01-01' }).lanes, 1).spans, 0).open).toBe(true)
+    expect(withSchedule({ scheduleStart: 'soon' }).lanes.some((l) => l.kind === 'schedule')).toBe(false)
+  })
+
+  it('says a schedule has not started yet', () => {
+    expect(at(withSchedule({ scheduleStart: '2026-11-28', scheduleEnd: '2027-06-01' }).lanes, 1).sub).toBe('B9001 · starts in 12 days')
+  })
+})
+
 describe('plansByDateTicks', () => {
   const start = dayOfYmd('2025-05-01') as number
   const end = dayOfYmd('2026-12-01') as number
@@ -291,6 +361,21 @@ describe('layoutPlansByDate', () => {
         expect(m.cx).toBeLessThanOrEqual(layout.width)
       }
       for (const p of layout.labels) if (p.t === 'text') expect(p.x).toBeLessThanOrEqual(layout.width)
+    }
+  })
+
+  it('draws every word whole inside the chart, at every width, with a schedule on it', () => {
+    const scheduled = buildPlansByDate(site({ bids: [{ id: 'bid1', label: 'B9001', sent: '2025-06-12', plansDated: '2025-05-20', outcome: 'won', outcomeAt: null, scheduleStart: '2025-07-01', scheduleEnd: '2026-12-31' }] }))
+    for (const [variant, measured] of [['phone', 300], ['phone', 358], ['desktop', 640], ['desktop', 980], ['desktop', 1202], ['desktop', 1600], ['paper', undefined]] as const) {
+      const layout = layoutPlansByDate(scheduled, variant, measured)
+      for (const p of [...layout.back, ...layout.labels]) {
+        if (p.t !== 'text') continue
+        // A generous width for a word at this size: no glyph here is wider.
+        const w = (p.text.length + (p.tail ? p.tail.length + 1 : 0)) * 6.4
+        const left = p.anchor === 'start' ? p.x : p.anchor === 'end' ? p.x - w : p.x - w / 2
+        expect(left, `${variant} ${measured}: ${p.text}`).toBeGreaterThanOrEqual(-1)
+        if (p.cls !== 'laneWord' && p.cls !== 'subWord') expect(left + w, `${variant} ${measured}: ${p.text}`).toBeLessThanOrEqual(layout.width + 1)
+      }
     }
   })
 

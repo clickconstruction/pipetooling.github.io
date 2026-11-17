@@ -15,6 +15,7 @@ import {
   countDashboardRtbDraftsForJob,
   dashboardBilledInvoiceAmounts,
   dashboardInvoiceToPaymentModal,
+  dashboardJobCardMoney,
   dashboardJobHasCustomerForBilling,
   type BilledWaitingDashboardUnit,
   type InvoiceForDashboard,
@@ -517,7 +518,8 @@ export function DashboardBillingPipelineSection({
                       )
                     }
                     const j = unit.job
-                    const remaining = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
+                    // v2.7532: what the job's billed bills still owe, not its price less payments (`dashboardJobCardMoney`).
+                    const money = dashboardJobCardMoney(j, billedWaitingDashboardUnits)
                     return (
                       <div key={j.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -530,7 +532,7 @@ export function DashboardBillingPipelineSection({
                                 '—'
                               )}
                             </div>
-                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }} data-dashboard-job-card-money={money.bills > 0 ? 'bills' : 'shell'}>{money.words}</div>
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (

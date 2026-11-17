@@ -101,6 +101,11 @@ import { interestByHouse, interestTitle } from '../lib/materials/payments/supply
 import { supabaseSupplyFinishIo } from '../lib/materials/payments/supplyPaymentsFinishIo'
 import { SupplyPaymentsToFinish } from './materials/SupplyPaymentsToFinish'
 import { SupplyPaymentHowEditor } from './materials/SupplyPaymentHowEditor'
+import { SupplyBankUnclaimed } from './materials/SupplyBankUnclaimed'
+import { useSupplyHouseBank } from '../hooks/useSupplyHouseBank'
+import { supabaseSupplyBankIo } from '../lib/materials/payments/supplyPaymentBankIo'
+import { bankCandidatesFor, supplyBankLineWords } from '../lib/materials/payments/supplyPaymentBank'
+import type { SupplyPayChip } from '../lib/materials/payments/supplyPayment'
 import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
@@ -487,6 +492,11 @@ export function SupplyHousesTab({
   const [puttingBackPaymentId, setPuttingBackPaymentId] = useState<string | null>(null)
   /** The bill in the Edit window is paid by a typed payment: its status follows that payment. */
   const editingTypedPaid = !!editingInvoice?.is_paid && billPaidBy(editingInvoice.id, housePayments.payments, housePayments.lines).typed.length > 0
+  /** The bank side (v2.7471): the feed's money out, the matches that stand, and the lines to a house nobody recorded. Supply houses only: a line to an insurer or a rental yard is not a bill's payment. */
+  const bankHouses = useMemo(() => supplyHousesList.filter((h: SupplyHouse) => (h.vendor_kind ?? 'supply_house') === 'supply_house').map((h: SupplyHouse) => ({ id: h.id, name: h.name })), [supplyHousesList])
+  const bankSide = useSupplyHouseBank(agingBookLoaded, supabaseSupplyBankIo, bankHouses)
+  /** Record a payment opened from a bank line: what to fill, and the line the recorded payment is matched to. */
+  const [recordStart, setRecordStart] = useState<{ lineId: string; amount: number; paidOn: string; chip: SupplyPayChip; words: string } | null>(null)
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
   // The three Accounts-payable toggles survive a refresh (v2.3568 — a May follow-up;
@@ -1798,7 +1808,23 @@ export function SupplyHousesTab({
               reloadKey={finishReloadKey}
               openAtStart={finishListOpen}
               onChanged={() => {
+                bankSide.reload()
                 if (selectedSupplyHouseForDetail) void refreshHouseMoney(selectedSupplyHouseForDetail.id)
+              }}
+              bankFor={(p) => {
+                // Only a line whose payee reads like the house is offered here: this press fills the day and the method unasked.
+                const line = bankCandidatesFor(p, p.houseName, bankSide.lines, bankSide.taken).find((c) => c.isHouse)
+                return line ? { id: line.id, words: supplyBankLineWords(line, (ymd) => billDateWords(ymd, todayYmdInAppTz())) } : null
+              }}
+              onUseLine={(paymentId, bankLineId) => supabaseSupplyBankIo.match(paymentId, bankLineId, true)}
+            />
+            {/* The other direction: money the bank shows going to a house that no payment claims. */}
+            <SupplyBankUnclaimed
+              lines={bankSide.unclaimed}
+              todayYmd={todayYmdInAppTz()}
+              onSay={(u) => {
+                setRecordStart({ lineId: u.line.id, amount: u.line.amount, paidOn: u.line.ymd, chip: u.line.method, words: supplyBankLineWords(u.line, (ymd) => billDateWords(ymd, todayYmdInAppTz())) })
+                void openPaymentFromAgingCell(u.houseId)
               }}
             />
             <div style={{ marginBottom: '1.5rem' }}>
@@ -3534,11 +3560,23 @@ export function SupplyHousesTab({
           io={supabaseSupplyPaymentsIo}
           todayYmd={todayYmdInAppTz()}
           parts
-          onClose={() => setRecordPaymentOpen(false)}
-          onRecorded={(_result, words) => {
+          start={recordStart ?? undefined}
+          onClose={() => {
             setRecordPaymentOpen(false)
+            setRecordStart(null)
+          }}
+          onRecorded={(result, words) => {
+            const houseId = selectedSupplyHouseForDetail.id
+            const fromBank = recordStart
+            setRecordPaymentOpen(false)
+            setRecordStart(null)
             showToast(words, 'success')
-            void refreshHouseMoney(selectedSupplyHouseForDetail.id)
+            // Opened from a bank line: the payment it recorded is the one that line is.
+            const matched = fromBank && result.payment_id ? supabaseSupplyBankIo.match(result.payment_id, fromBank.lineId, false).catch((e: unknown) => showToast(formatErrorMessage(e, 'The payment is recorded. It was not matched to its bank line.'), 'error', 6000)) : Promise.resolve()
+            void matched.then(() => {
+              bankSide.reload()
+              return refreshHouseMoney(houseId)
+            })
           }}
         />
       )}
@@ -3580,6 +3618,21 @@ export function SupplyHousesTab({
               await refreshHouseMoney(house.id)
             }}
             onEditHow={() => setHowEditId(viewed.id)}
+            bank={{
+              matched: bankSide.lines.find((b) => b.id === bankSide.matchedByPayment.get(viewed.id)) ?? null,
+              hasMatch: bankSide.matchedByPayment.has(viewed.id),
+              candidates: bankSide.matchedByPayment.has(viewed.id) ? [] : bankCandidatesFor(viewed, house.name, bankSide.lines, bankSide.taken),
+              onMatch: async (bankLineId) => {
+                await supabaseSupplyBankIo.match(viewed.id, bankLineId, false)
+                showToast('The bank agrees with this payment.', 'success')
+                bankSide.reload()
+              },
+              onUnmatch: async () => {
+                await supabaseSupplyBankIo.unmatch(viewed.id)
+                showToast('The payment is off its bank line.', 'success')
+                bankSide.reload()
+              },
+            }}
           />
         )
       })()}

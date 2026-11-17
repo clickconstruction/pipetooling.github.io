@@ -168,6 +168,36 @@ describe('buildLienNextUp — affidavits and retainage', () => {
     // A retainage notice has no print pile of its own (v2.7448): approved, it waits to mail with the monthly notices.
     expect(one({ retainage: [retainage('j1', 'ready')] }).sub).toBe('Retainage notice approved · to mail')
   })
+
+  it('retainage nobody recorded is a row under Needs you now with no day, the office’s press, opening the list at that job', () => {
+    const unrecorded = [{ jobId: 'j7', title: 'C2041 · Cedar Hollow Clinic', why: '$2,460.00 looks held · 3 bills paid at 90%' }]
+    const row = one({ retainageUnrecorded: unrecorded })
+    expect(row).toMatchObject({
+      key: 'retainage-unrecorded:j7',
+      kind: 'retainage',
+      jobId: 'j7',
+      title: 'C2041 · Cedar Hollow Clinic',
+      sub: 'Retainage not on the job · $2,460.00 looks held · 3 bills paid at 90%',
+      detail: '$2,460.00 looks held · 3 bills paid at 90%',
+      dueOn: null,
+      daysLeft: null,
+      severity: 'amber',
+      group: 'now',
+      action: 'record_retainage',
+      button: 'Record the retainage',
+      target: { open: 'retainage_unrecorded', jobId: 'j7' },
+    })
+    // The answer is the office's to record, and a master is office too; any other role reads the row.
+    expect(one({ role: 'master_technician', retainageUnrecorded: unrecorded }).button).toBe('Record the retainage')
+    expect(one({ role: 'estimator', retainageUnrecorded: unrecorded }).button).toBeNull()
+    // It stands with the dated rows of Needs you now, after them: it has no day of its own.
+    const both = build({ retainageUnrecorded: unrecorded, retainage: [retainage('j1', 'to_draft', { daysLeft: 3, deadline: '2026-10-08', severity: 'red' })] })
+    expect(both.map((r) => [r.key, r.group])).toEqual([
+      ['retainage:j1', 'now'],
+      ['retainage-unrecorded:j7', 'now'],
+    ])
+    expect(build({})).toEqual([])
+  })
 })
 
 describe('buildLienNextUp — who may act, and the order', () => {

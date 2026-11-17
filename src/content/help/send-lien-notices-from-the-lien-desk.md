@@ -172,7 +172,7 @@ The last work was in August. July's notice window closed on Sep 15, and nobody n
 
 ## The By job tab
 
-The **By job** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first.
+The **By job** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first. The amount on a row is what the job's sent bills still owe. Work not billed yet is not in it.
 
 - **GC** turns the list into one GC's book.
 - A blue line like *412 Ridgeline Dr · 7 jobs here ›* opens [every job at that property](/help/see-every-job-at-one-property-on-the-lien-desk).
@@ -214,6 +214,20 @@ Some notices are printed here and mailed by hand. One paper may even cover sever
 Type when it went out, how and to whom. The day you type is the day the notice went out. Attorney’s letter, the courtesy notice and the day count all run from that day. Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
 
 The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}.
+
+## A notice already on record
+
+Sometimes the paper that went is already on record. One paper went for several jobs at a property. The paper was recorded on some of those jobs and not on this one. Or the desk moved this job's money to a later month after the paper went. The desk then keeps asking this job for a notice. Do not print and mail a second one. Press **Already mailed? Record it…** on the notice.
+
+When the property has a notice on record, the step first asks **Which paper went?** The list shows each paper on record at this property under the same contractor. Each line gives the day, how it went and its total. Under that it names the jobs, the months and who received it. Pick the paper. Then tick the month it stands for on this job.
+
+The desk checks the paper against the job. A green line says the owner of record and the contractor match. A red line stops the record and says why. A paper that went before the month began is one. An amber line is a warning. The month may not be printed on the paper. The copy to the contractor may not be on record. With a warning, type why the paper stands for the month. The reason stays on the record with your name and the day.
+
+Press the button, which reads like {{button:amber|Apply the Sep 22 notice to job 4107 ▸}}. One record is written on this job. The record points at the paper and keeps the paper's day and mail number. The paper's own record does not change. The month reads as noticed, and the affidavit's notice line gives the paper's day. The notice that was waiting is set aside and not mailed. The waiting notice keeps its approval and signature.
+
+To take it back, open the job's Lien window. Under **Filings on this job** the record reads *as part of the notice on job 4101*. Press **Undo**, then **Confirm undo**. The record is voided, and the waiting notice returns to the desk as it was.
+
+Is the paper not on the list? Press **It is not on this list. Record it now ›**. The link opens the step for a notice sent by hand. A paper that went to another property is never on the list. A notice goes to one owner about one property. Whether one paper can stand for several jobs is a question for the attorney.
 
 ## A month nobody sends
 
@@ -315,7 +329,7 @@ Press a box and type in place. Enter keeps the change, and Esc puts it back. A c
 
 **Change a line on the pay page.** Each bill on the pay page has a bold line under its code. It is read from the bill, and it sits in a shaded box too. Press it and type what the owner should read. Enter keeps it, and Esc puts it back. An empty line prints nothing. The change is on this page only. The bill behind it keeps its own line, and so does its payment page. A changed line says so beneath it, with {{button:outline|Back to the bill’s line}}. A line that is only a note about mailing checks is left off on its own.
 
-Every other value is the statute's form or is filled from somewhere else. Hover over a value to see where it comes from, and press it to go there. The original contractor, for example, opens Edit Job on its GC row. Save there, and the paper reads the job again. The date has no door, because it is the day the notice is drafted or sent.
+Every other value is the statute's form or is filled from somewhere else. Hover over a value to see where it comes from, and press it to go there. The original contractor, for example, opens Edit Job on its GC row. Save there, and the paper reads the job again. The date has no door, because it is the day the notice is signed. A notice not yet signed shows today.
 
 ## The master's decisions
 
@@ -414,7 +428,11 @@ The rows sit in groups, and what is stopped comes first. The groups are **Held**
 
 **A job paid after its notice printed.** The row's amount is what the job owes today. When that is $0, the row is held. Paid rows sit under one line at the foot of the **Held** group, like *5 paid notices · nothing to send*. Press the line to open them. A paid row's line reads *Nothing to claim: the job owes $0 now*. It also says what the paper says. Its Signed tick reads *nothing to sign*, and its Mailed boxes are closed. No press at the foot takes it. The count line counts it as held.
 
-**A bill changed after the notice was drafted.** A notice keeps the claim it was drafted with. The pay codes page and the invoices read the bills as they are today. When the two differ, the run holds the notice. Its line says what the paper claims and what the bills now come to. The run prints no page of it, in the packet or one copy at a time. The other notices print as usual. Retainage typed on the job after the draft holds the notice the same way. To send that notice today, open it on the desk and press **Just this one ›**. That window builds the paper from the bills. A notice that already printed is not held. Check its claim against the pay codes page before it is mailed.
+**A bill changed after the notice was drafted.** A notice keeps the claim it was drafted with. The pay codes page and the invoices read the bills as they are today. When the two differ, the run holds the notice. Its line says what the paper claims and what the bills now come to. The run prints no page of it, in the packet or one copy at a time. The other notices print as usual. Retainage typed on the job after the draft holds the notice the same way. Open the held notice on the desk. A band over the paper says the same two figures. Press {{button:outline|Redraw from the bills ▸}} on the band. The app asks first. Press {{button:blue|Redraw the notice}} to go on. The claim, its retainage and the date on the form are redrawn from the bills. The wording typed on the notice stays. A signature on the notice comes off, and the leader signs it again. Then it prints with the rest. A line under the band says who redrew it and what it claimed before.
+
+A notice not yet signed needs no press. The pane shows today's figures and today's date. When the leader presses {{button:green|Sign and approve ▸}}, the app saves that paper first and he signs what he read.
+
+A notice that already printed is not held, and its band has no Redraw. Check its claim against the pay codes page before it is mailed. To redraw it, press {{button:outline|Back to Approved · to print}} first.
 
 **Close a paid notice.** Press {{button:outline|Close 5 paid notices…}} on that line. The run asks first and names each notice. Press {{button:blue|Close 5 paid notices}} to close them. Nothing is mailed. Each notice leaves the run and the desk. The copy that printed stays in the job's Documents. To close one notice, open the line and press {{button:outline|Close…}} on its row. A job that owes again comes back to the desk by itself. Closing does not record a mailing, so leave a notice that went out. **Take back…** is not the way out for a paid notice. It only puts a printed notice back in *Approved · to print*.
 
@@ -492,7 +510,7 @@ The monthly notice claims what is unpaid for a month's work. The **§ 53.057 ret
 2. The **Retainage notices** tab lists every job with retainage recorded. {{chip:gray|Clock not started}} means there is no end date yet. The footer's {{button:blue|Set the day our contract ended ›}} lands on the row. From there it works like a monthly notice. {{button:blue|Ask Malachi to approve ▸}} tells the leader, on the phone or by email. The message names the job, the retainage and the day to mail by. The desk says in amber when the message did not go. It rides in the same run and is recorded as a § 53.057 filing.
 
 3. **Where the figure comes from.** On a job with a saved pay application, the retainage is the latest application's figure. Edit Job shows it read only and says which application it reads. Change it in the AIA window. On a job with no pay application, type the figure in Edit Job. The row on the Retainage notices tab says which one it reads.
-4. **Retainage nobody typed.** Some GCs pay each bill 5% or 10% short and hold the rest. The top of the Retainage notices tab lists those jobs under *Looks held · not on the job*. A job is listed when a bill was paid at exactly 90% or 95%. A job is also listed when a note on it says retainage. Press {{button:outline|Record $2,460.00 on the job}} to save the figure the bills show. Press {{button:outline|Type another figure ›}} to open Edit Job and type your own. Press {{button:outline|No retainage on this job}} when the GC holds none. The job then joins the list under {{chip:gray|Clock not started}}. Edit Job offers the same figure with {{button:outline|Use $2,460.00}}.
+4. **Retainage nobody typed.** Some GCs pay each bill 5% or 10% short and hold the rest. The top of the Retainage notices tab lists those jobs under *Looks held · not on the job*. A job is listed when a bill was paid at exactly 90% or 95%. A job is also listed when a note on it says retainage. Press {{button:outline|Record $2,460.00 on the job}} to save the figure the bills show. Press {{button:outline|Type another figure ›}} to open Edit Job and type your own. Press {{button:outline|No retainage on this job}} when the GC holds none. The job then joins the list under {{chip:gray|Clock not started}}. Edit Job offers the same figure with {{button:outline|Use $2,460.00}}. To do shows each of these jobs under **Needs you now**. Its row starts *Retainage not on the job* and then says why. Press {{button:blue|Record the retainage}} on that row to open this list at the job. The Board counts them on its Retainage line.
 5. **The release.** Once the retainage is released, the row says so under the figure. It reads *Release: release billed · awaiting payment · bill #4*. Press {{button:outline|Open the job ›}} to see the bill. The release is the final pay application, or a release bill on a job with none. See [Retainage a GC holds](/help/match-bank-deposits-to-bills#retainage-a-gc-holds).
 
 The owner's copy opens with counsel's cover letter for retainage. It says the GC holds back our retainage and has not paid it. It asks the owner to keep both the reserved 10% and our retainage. It gives three ways to settle before they pay the GC, and none is a joint check. It ends with the signer's number to call. A homestead's letter adds the § 53.254 statement.

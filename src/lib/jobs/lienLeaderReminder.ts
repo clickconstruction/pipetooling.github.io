@@ -102,16 +102,21 @@ export function lienReminderWords(plan: LienReminderPlan, leader: string | null 
     button,
     dead: n === 0 || Boolean(said),
     title: `Remind ${w.name} of ${papers(n)}?`,
-    message: [list ? `${list}.` : '', ...messages, `It goes to ${w.name}’s phone, or by email. Nothing on the papers changes.`, heldLine].filter(Boolean).join(' '),
+    message: [list ? `${list}.` : '', ...messages, `It goes to ${w.name}’s phone, or by email. A text with the link goes too. Nothing on the papers changes.`, heldLine].filter(Boolean).join(' '),
     confirmLabel: `Remind ${w.name}`,
   }
 }
 
-/** After the press: what reached him and what did not, each failure with its reason. The press keeps going past one that fails. */
-export function lienReminderOutcome(result: { done: number; failed: ReadonlyArray<{ label: string; reason: string }> }, leader: string | null | undefined): { line: string; tone: 'success' | 'warning' | 'error' } {
+/**
+ * After the press: what reached him and what did not, each failure with its reason. The press keeps going past one
+ * that fails. `text` (v2.7495) is the reminder's text over the press (`lienReminderTextOf`): *A text went too.*, or
+ * *No text went:* with the reason, which turns a clean outcome amber so the office sees it. Absent, nothing is said.
+ */
+export function lienReminderOutcome(result: { done: number; failed: ReadonlyArray<{ label: string; reason: string }> }, leader: string | null | undefined, text?: { sent: boolean; why: string | null } | null): { line: string; tone: 'success' | 'warning' | 'error' } {
   const w = who(leader)
   const took = result.done > 0 ? `${w.start} was reminded of ${papers(result.done)}.` : `${w.start} was not reminded.`
-  if (result.failed.length === 0) return { line: took, tone: 'success' }
+  const texted = text?.sent ? ' A text went too.' : text?.why && result.done > 0 ? ` No text went: ${text.why}.` : ''
+  if (result.failed.length === 0) return { line: `${took}${texted}`, tone: texted.startsWith(' No text') ? 'warning' : 'success' }
   const n = result.failed.length
-  return { line: `${took} ${n} ${n === 1 ? 'reminder' : 'reminders'} did not send: ${result.failed.map((f) => `${f.label} (${f.reason})`).join(', ')}.`, tone: result.done > 0 ? 'warning' : 'error' }
+  return { line: `${took}${texted} ${n} ${n === 1 ? 'reminder' : 'reminders'} did not send: ${result.failed.map((f) => `${f.label} (${f.reason})`).join(', ')}.`, tone: result.done > 0 ? 'warning' : 'error' }
 }

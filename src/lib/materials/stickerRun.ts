@@ -397,6 +397,18 @@ export function printRunLabel(stickers: ReadonlyArray<Pick<MintedSticker, 'numbe
   return span ? `${stickerRunPressLabel(n, copies)}, ${span}` : stickerRunPressLabel(n, copies)
 }
 
+/**
+ * Beside **Copies of each** on a run already made (v2.7553, the owner's ask of 2026-11-16: five of each for a run
+ * opened to print). The window opens on the count the run was made with, and any other count says what that was, so
+ * a change is seen as one. Every count says the one thing that matters: each copy opens the same box.
+ */
+export function runCopiesWords(made: number, now: number): string {
+  const was = clampTapeCopies(made)
+  const is = clampTapeCopies(now)
+  if (was !== is) return `The run was made with ${was} of each. Every copy opens the same box.`
+  return is > 1 ? 'Every copy opens the same box.' : 'For a box with more than one side, print each sticker more than once.'
+}
+
 /** The fallback when the database's refusal has no words of its own: nothing was minted and nothing printed. */
 export const STICKER_MINT_FAILED = 'The run was not made. No sticker was reserved or printed.'
 
