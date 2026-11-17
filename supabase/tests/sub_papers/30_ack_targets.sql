@@ -51,8 +51,9 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
-GRANT USAGE ON SCHEMA sab TO authenticated, anon;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sab TO authenticated, anon;
+-- The service role calls the helpers too: it is who the sub-portal function writes as.
+GRANT USAGE ON SCHEMA sab TO authenticated, anon, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sab TO authenticated, anon, service_role;
 
 -- 1 · The columns are there, and an answer needs no paper.
 SELECT sab.same('an answer names its person, sheet, sending or payment',
