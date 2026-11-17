@@ -12,7 +12,7 @@ import { ownerCallByJobFrom } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
-import { lienJobIdsOffDesk, withLienInKindColumn } from '../lib/jobs/lienInKind'
+import { lienJobIdsOffDesk, withLienOffDeskColumns } from '../lib/jobs/lienInKind'
 import { isZzTestName } from '../lib/jobs/zzTestJobSweep'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
@@ -139,7 +139,7 @@ export function useGcOnNoticeData(
               () =>
                 supabase
                   .from('jobs_ledger')
-                  .select(withLienInKindColumn(`${LIEN_DESK_JOB_COLUMNS}, status, pct_complete`))
+                  .select(withLienOffDeskColumns(`${LIEN_DESK_JOB_COLUMNS}, status, pct_complete`))
                   .in('id', chunk),
               'GC on notice: jobs',
             ),
