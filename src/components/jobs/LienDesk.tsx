@@ -3679,6 +3679,7 @@ export default function LienDesk({
     )
 
   // ---------- retainage: the list and the pane (v2.3753; the list is `LienDeskRetainageList` since v2.7583) ----------
+  const retHeads = useLienPileHeads(retPilesShown.map((x) => x.p), isMobile)
   const retList = (
     <LienDeskRetainageList
       data={data}
@@ -3686,6 +3687,7 @@ export default function LienDesk({
       isMobile={isMobile}
       office={office}
       pilesShown={retPilesShown}
+      heads={retHeads}
       rowCount={retVisible.length}
       selectedJobId={retSelected?.jobId ?? null}
       pile={retPile}

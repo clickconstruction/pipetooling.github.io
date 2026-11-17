@@ -10,7 +10,7 @@ import type { LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { EmptyState } from '../EmptyState'
 import { lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
 import { LienSupplierMarkLine } from './LienJobSuppliers'
-import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
+import { LienPileHead, lienPileHeadCount, type LienPileHeads } from './LienPileHeads'
 import { LienRetainageUnrecorded } from './LienRetainageUnrecorded'
 
 /** One empty list for every render with no such job, so the list's effect stays put. */
@@ -19,8 +19,9 @@ const NO_RETAINAGE_UNRECORDED: ReadonlyArray<RetainageUnrecordedRow> = []
 /**
  * By paper → Retainage notices, the list (v2.3753; its own file since v2.7583, out of `LienDesk.tsx` as it
  * stood): the retainage nobody recorded above the piles, then each pile under its sticky title with one row a
- * job. What it lists comes from `lienRetainageListView`; the desk keeps the pick, the pressed pile and the
- * find box, and hands them in.
+ * job. What it lists comes from `lienRetainageListView`; the desk keeps the pick, the pressed pile, the find
+ * box and the lit title (`useLienPileHeads`, so the title stays lit while the list is off screen), and hands
+ * them in.
  */
 export function LienDeskRetainageList({
   data,
@@ -28,6 +29,7 @@ export function LienDeskRetainageList({
   isMobile,
   office,
   pilesShown,
+  heads: retHeads,
   rowCount,
   selectedJobId,
   pile,
@@ -48,6 +50,8 @@ export function LienDeskRetainageList({
   office: boolean
   /** The piles to draw and the rows under each, and how many rows that is in all (`lienRetainageListView`). */
   pilesShown: ReadonlyArray<LienRetainagePileShown>
+  /** The piles' sticky titles: the desk's `useLienPileHeads` over the same piles. */
+  heads: LienPileHeads<LienRetainagePile>
   rowCount: number
   /** The row that is open, ringed in the list. */
   selectedJobId: string | null
@@ -67,7 +71,6 @@ export function LienDeskRetainageList({
   onOpenLienContract: (jobId: string) => void
   onChanged: () => void
 }) {
-  const retHeads = useLienPileHeads(pilesShown.map((x) => x.p), isMobile)
   return (
     <div ref={retHeads.listRef} onScroll={retHeads.onScroll} style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
       {pileChips}
