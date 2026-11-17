@@ -68,7 +68,7 @@ describe('lienMarkCard', () => {
     expect(done.facts[0]).toBe('July’s § 53.056 notice is recorded.')
     const mailed = lienMarkCard(mark(j, 'notice', (m) => m.kind === 'notice' && m.mailed), j, TODAY, ALL)
     expect(mailed.glyph).toBe('mailed')
-    expect(mailed.title).toBe('In the mail · August')
+    expect(mailed.title).toBe('Approved · to mail · August')
     expect(mailed.when).toBe('Record the number by Oct 15 · in 17 days')
     expect(mailed.door).toEqual({ kind: 'record', label: 'Enter mail numbers ›', jobIds: ['j'] })
     expect(lienMarkCard(mark(j, 'notice', (m) => m.kind === 'notice' && m.mailed), j, TODAY, NO_DOORS).door?.kind).toBe('lien_window')
@@ -201,7 +201,7 @@ describe('lienGroupFlagCards / lienGroupWordCard', () => {
     const flags = lienCalendarGroupFlags({ jobs: rows }, axis)
     const oct = flags.find((f) => f.ymd === '2026-10-15')!
     const cards = lienGroupFlagCards(oct, { jobs: rows, kind: 'gc' }, axis, TODAY, ALL)
-    expect(cards.map((c) => c.title)).toEqual(['2 notices owed', '1 in the mail'])
+    expect(cards.map((c) => c.title)).toEqual(['2 notices owed', '1 to mail'])
     expect(cards[0]!.when).toBe('Send by Oct 15 · in 17 days')
     expect(cards[0]!.jobs).toEqual([
       { jobId: 'a', number: '890', name: 'Rilvo', month: 'August', money: 9800 },
