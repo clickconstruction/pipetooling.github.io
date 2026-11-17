@@ -2,18 +2,19 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466) and PR 2 (v2.7568, the office's Waiting on card) are built · the short page was walked live as the leader's sample account on 2026-11-17 · nobody is on Short yet · the seven calls were put to the owner on 2026-11-17
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
   squares on his page, none of them folded, and found that only seven are his alone. The owner picked a
   short Dashboard: one list of what waits on him alone with one press a row, his day, and one door to
   everything else, set per person so a leader who wants everything keeps it. PR 1 builds that page and its
-  setting. PR 2 gives the office the same list with a Remind press. A text that reaches him and his bottom bar
-  are what is left.
-next: Set the leader to Short on his People desk, then walk his page with him on his phone. Then PR 3, the text when a paper is ready, once the owner names the hour.
-size: M as a train of four (M · S · M · S); left: PRs 3 and 4 (M · S)
-blocker: The owner's answers to seven short calls, listed below. PR 1 took a default for each.
+  setting. PR 2 gives the office the same list with a Remind press. The owner kept every default on
+  2026-11-17, so no text goes to him and his bar keeps its five tabs. What is left is the press that sets him
+  to Short.
+next: Set the leader to Short on his People desk, then walk his page with him on his phone. Nothing else is owed until the owner asks for the text or the four tabs.
+size: M as a train of four (M · S · M · S); built: PRs 1 and 2 and the first half of 4; set aside by the owner's answers: PR 3 (M) and the four tabs (S)
+blocker: None in the code. Setting the leader to Short is the owner's or the office's press.
 ver: v2.7568
 opinion: build — the first PR changes nobody's page until the office presses Short, so the risk is in what the short page hides, and that is the owner's call to make with the leader beside him
 ---
@@ -103,17 +104,18 @@ Built in PR 1 (v2.7466):
    function was needed: the office already reads the waivers, the line budgets and the tagged notes under its
    own row-level security. A waiver, a tagged note and the line budgets have no reminder yet, and the row says
    so. Step 3 is where a send for them belongs.
-3. **A text when a paper is ready (M).** Direction C, on top of the short page: one text at an hour the owner
-   picks, with a link that opens the signing screen. A daily send, a schedule and a per-person switch.
+3. **A text when a paper is ready (M).** Set aside, 2026-11-17: the owner kept call 6's default, no text
+   yet. If he asks later, it is direction C on top of the short page: one text at an hour he picks, with a
+   link that opens the signing screen. A daily send, a schedule and a per-person switch.
 4. **His bottom bar (S).** The first half is built, v2.7572: on Short, the Dashboard tab opens the short page
-   whichever mode is on, and one press on it leaves Everything else. Left: the bar holds the four tabs the
-   owner picks (call 5). The phone dock's four slots and its More sheet, the assistant's today, are where
-   they would go.
+   whichever mode is on, and one press on it leaves Everything else. The four tabs are set aside,
+   2026-11-17: the owner kept call 5's default, so the bar keeps its five tabs. If he asks later, the phone
+   dock's four slots and its More sheet, the assistant's today, are where they would go.
 
 ## The owner's calls
 
 PR 1 took the default in brackets for each. All seven were put to the owner on 2026-11-17, in the session
-that built PR 2. Until an answer is written under a call, its default stands.
+that built PR 2. **He answered the same day: the defaults stand, all seven.** Nothing built changed for it.
 
 1. Are the five leader-only lines the whole of what stays his alone? [The five, plus a job note that tagged him.]
 2. May he sign several notices with one press after reading the list, or one paper at a time? [One at a time.]
@@ -124,6 +126,17 @@ that built PR 2. Until an answer is written under a call, its default stands.
 6. Should a text reach him when a paper is ready, and at what hour? [No text yet.]
 7. Is Short the default for every leader, or set person by person? [Person by person. Everyone is on Full
    until someone presses Short.]
+
+What the answer settles:
+
+- **Call 5** keeps the bar's five tabs, so the four tabs half of step 4 is not built.
+- **Call 6** sends him no text, so step 3 is not built. The office's **Remind** on the Waiting on card is how
+  word reaches him.
+- **Call 7** leaves every leader on Full until someone presses Short on that person's desk.
+
+One thing was built on the bar before the answer came: v2.7572 changes where the Dashboard tab leads for a
+person on Short, and nothing else about the bar. Nobody is on Short, so nobody's bar changed. If *untouched*
+was meant to cover that too, v2.7572 is the one to take back.
 
 ## How to verify
 
@@ -167,5 +180,6 @@ that day), and any press that signs.
 ## Where it stands
 
 PR 1 is on `main` (v2.7466) and its migration is pushed (2026-11-16). PR 2 (v2.7568) is the office's
-Waiting on card, client only. The leader has not been set to Short: every leader's and dev's row reads
-Full. That press is the owner's or the office's. The seven calls wait on the owner's answers.
+Waiting on card, client only. The first half of PR 4 (v2.7572) is on `main`. The owner answered the seven
+calls on 2026-11-17 and every default stands, so the text and the four tabs are not built. The leader has
+not been set to Short: every leader's and dev's row reads Full. That press is the owner's or the office's.
