@@ -107,7 +107,7 @@ A document can hold more than one letter. A large heading starts each one. Each 
 
 A paper filed as a PDF or a picture has no {{button:outline|Read}}. A PDF or a picture is not text.
 
-An older .md or .txt file can lack {{button:outline|Read}} too. It was put on the matter before the desk kept text. Open the row's {{button:outline|⋯}} menu. Press **Keep its words as text**. The row now shows {{button:outline|Read}} and the copy presses. The stored file stays as the original.
+An older .md or .txt file can lack {{button:outline|Read}} too. The older file was put on the matter before the desk kept text. Open the row's {{button:outline|⋯}} menu. Press **Keep its words as text**. The row now shows {{button:outline|Read}} and the copy presses. The stored file stays as the original.
 
 Several older text files can wait on one matter. Then one press sits beside the filters and says its count, such as {{button:outline|Keep 3 as text}}. That press takes them one by one. A file that cannot be kept does not stop the rest. The desk lists that file with its reason. That file stays as it was.
 
