@@ -14,6 +14,7 @@ import {
   groupByHome,
   hitMetaWords,
   homeWords,
+  paperChip,
   type FindAFileRead,
 } from '../../lib/documents/findAFile'
 import { supabaseFindAFileIo, type FindAFileIo } from '../../lib/documents/findAFileIo'
@@ -33,6 +34,18 @@ const inputStyle: CSSProperties = { font: 'inherit', padding: '0.5rem 0.7rem', b
 const quiet: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
 const linkStyle: CSSProperties = { color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }
 /** The searched words inside the excerpt (v2.6306): bold on the amber token, the text's own colour. */
+/** A hit that is a signed job contract's Drive copy (punch list #377): the chip beside its name. */
+const paperChipStyle = (tone: 'green' | 'red'): CSSProperties => ({
+  display: 'inline-block',
+  marginLeft: '0.45rem',
+  fontSize: '0.7rem',
+  fontWeight: 600,
+  padding: '1px 8px',
+  borderRadius: 999,
+  whiteSpace: 'nowrap',
+  background: tone === 'red' ? 'var(--bg-red-100)' : 'var(--bg-green-tint)',
+  color: tone === 'red' ? 'var(--text-red-700)' : 'var(--text-green-700)',
+})
 const markStyle: CSSProperties = { background: 'var(--bg-amber-100)', color: 'inherit', fontWeight: 700, borderRadius: 3, padding: '0 0.1em' }
 
 /**
@@ -42,8 +55,19 @@ const markStyle: CSSProperties = { background: 'var(--bg-amber-100)', color: 'in
  * to the jobs Shared Drive) at once, shows the index's hits the moment they come and adds Drive's behind them when Drive
  * answers (v2.6369), and lists the hits under the job or bid whose folder holds each, with the folder, the day and the size under the name. A hit opens in Drive; a job's
  * group offers Open the job. Nothing found says so in the empty state; a refusal shows its reason with Try again.
+ * Since v2.7649 (punch list #377) a hit that is a signed job contract's Drive copy wears *Signed contract* or *Voided
+ * contract*, and offers Open the contract to a role the function sent the record to.
  */
-export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE_MS }: { io?: FindAFileIo; debounceMs?: number }) {
+export function FindAFile({
+  io = supabaseFindAFileIo,
+  debounceMs = FIND_DEBOUNCE_MS,
+  onOpenContract,
+}: {
+  io?: FindAFileIo
+  debounceMs?: number
+  /** Opens the Contract window on a hit's record (#377). Left out, a hit offers Drive alone. */
+  onOpenContract?: (jobId: string, contractId: string) => void
+}) {
   const jobModal = useJobDetailModal()
   const [words, setWords] = useState('')
   const [state, setState] = useState<State>({ kind: 'idle' })
@@ -130,9 +154,16 @@ export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE
               <ul style={{ margin: 0, padding: '0 0 0 0.85rem', listStyle: 'none', display: 'grid', gap: '0.35rem', borderLeft: '2px solid var(--border)' }}>
                 {g.files.map((f) => (
                   <li key={f.id} data-found-file={f.id} style={{ display: 'grid', gap: '0.1rem' }}>
-                    <a href={f.url} target="_blank" rel="noopener noreferrer" title={FIND_WORDS.openInDrive} style={{ ...linkStyle, fontSize: '0.875rem', fontWeight: 500, overflowWrap: 'anywhere' }}>
-                      {f.name}
-                    </a>
+                    <span style={{ overflowWrap: 'anywhere' }}>
+                      <a href={f.url} target="_blank" rel="noopener noreferrer" title={FIND_WORDS.openInDrive} style={{ ...linkStyle, fontSize: '0.875rem', fontWeight: 500, overflowWrap: 'anywhere' }}>
+                        {f.name}
+                      </a>
+                      {paperChip(f.paper) ? (
+                        <span data-found-paper={f.paper} style={paperChipStyle(paperChip(f.paper)!.tone)}>
+                          {paperChip(f.paper)!.words}
+                        </span>
+                      ) : null}
+                    </span>
                     {hitMetaWords(f) ? <span style={{ ...small, ...muted }}>{hitMetaWords(f)}</span> : null}
                     {foundByWords(f.by) ? (
                       <span data-found-by={f.by} style={{ ...small, ...muted, fontStyle: 'italic' }}>
@@ -153,6 +184,16 @@ export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE
                       </span>
                     ) : excerptNote(f.excerptWhy) ? (
                       <span style={{ ...small, ...muted, fontStyle: 'italic' }}>{excerptNote(f.excerptWhy)}</span>
+                    ) : null}
+                    {f.contract && onOpenContract ? (
+                      <button
+                        type="button"
+                        data-open-contract={f.contract.id}
+                        style={{ ...linkStyle, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'inherit', ...small, justifySelf: 'start' }}
+                        onClick={() => onOpenContract(f.contract!.jobId, f.contract!.id)}
+                      >
+                        {FIND_WORDS.openContract}
+                      </button>
                     ) : null}
                   </li>
                 ))}

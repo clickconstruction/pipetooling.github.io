@@ -14,6 +14,8 @@ import {
   contractHoldDoor,
   contractHoldRetries,
   contractLinkFileId,
+  contractPaperChipWords,
+  contractPapersOnFile,
   contractSignedDay,
   contractsHeldLine,
   fileContractsOutcome,
@@ -238,3 +240,34 @@ describe('the Contract sweep’s Drive pass', () => {
     expect(withoutKnownContracts(files, new Set())).toEqual(files)
   })
 })
+
+describe('Find a file: a hit that is a paper on file', () => {
+  const base = { job_id: 'j1', status: 'signed', voided_at: null }
+  it('marks a signed paper’s Drive copy signed, filed or adopted, with its record', () => {
+    const marks = contractPapersOnFile([
+      { ...base, id: 'c1', drive_file_id: FILE_A, drive_file_origin: 'filed' },
+      { ...base, id: 'c2', job_id: 'j2', drive_file_id: FILE_B, drive_file_origin: 'adopted' },
+      { ...base, id: 'c3', drive_file_id: null, drive_file_origin: null },
+    ])
+    expect(marks.get(FILE_A)).toEqual({ paper: 'signed', contractId: 'c1', jobId: 'j1' })
+    expect(marks.get(FILE_B)).toEqual({ paper: 'signed', contractId: 'c2', jobId: 'j2' })
+    expect(marks.size).toBe(2)
+  })
+  it('marks the app’s own copy of a voided paper voided, and leaves a hand-linked file of a voided record unmarked', () => {
+    const voided = { job_id: 'j1', status: 'voided', voided_at: '2026-11-16T12:00:00Z' }
+    expect(contractPapersOnFile([{ ...voided, id: 'c1', drive_file_id: FILE_A, drive_file_origin: 'filed' }]).get(FILE_A)?.paper).toBe('voided')
+    expect(contractPapersOnFile([{ ...voided, id: 'c1', drive_file_id: FILE_A, drive_file_origin: 'adopted' }]).size).toBe(0)
+  })
+  it('lets a signed record win when one file stands for a voided record too', () => {
+    const marks = contractPapersOnFile([
+      { job_id: 'j1', status: 'voided', voided_at: '2026-11-16T12:00:00Z', id: 'old', drive_file_id: FILE_A, drive_file_origin: 'filed' },
+      { ...base, id: 'new', job_id: 'j9', drive_file_id: FILE_A, drive_file_origin: 'adopted' },
+    ])
+    expect(marks.get(FILE_A)).toEqual({ paper: 'signed', contractId: 'new', jobId: 'j9' })
+  })
+  it('words the chip', () => {
+    expect(contractPaperChipWords('signed')).toBe('Signed contract')
+    expect(contractPaperChipWords('voided')).toBe('Voided contract')
+  })
+})
+

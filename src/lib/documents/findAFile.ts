@@ -8,6 +8,7 @@
 import type { Excerpt } from '../../../supabase/functions/_shared/excerpt'
 import { driveViewUrl } from '../../../supabase/functions/_shared/driveLink'
 import { headlineToExcerpt } from '../../../supabase/functions/_shared/fileIndexKernel'
+import { contractPaperChipWords, type ContractPaperMark } from '../../../supabase/functions/_shared/jobContractDrive'
 import { fileDayWords, fileSizeWords } from '../jobs/jobFolderFiles'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
@@ -37,6 +38,10 @@ export type FoundFile = {
   excerptWhy: ExcerptWhy | null
   /** How the index found it (PR 4); absent on a hit from Drive, or from the index by the words alone before meaning is set up. */
   by?: FoundBy
+  /** A signed job contract's Drive copy (punch list #377): in force, or voided. Absent on any other file. */
+  paper?: ContractPaperMark
+  /** The record behind the paper, sent only to a role that reads it, so the hit can open the Contract window. */
+  contract?: { id: string; jobId: string }
 }
 
 /** Who answered (punch list #240, PR 1): our own index first, Drive's own search as the floor when the index has nothing. */
@@ -90,6 +95,15 @@ function whyOf(v: unknown): ExcerptWhy | null {
   return WHYS.find((w) => w === v) ?? null
 }
 
+/** A hit's paper mark and its record, as either search sends them (#377); nothing for a file that is no contract's copy. */
+function paperOf(h: Record<string, unknown>): Pick<FoundFile, 'paper' | 'contract'> {
+  const paper = h.paper === 'signed' || h.paper === 'voided' ? h.paper : null
+  if (!paper) return {}
+  const id = str(h.contract_id)
+  const jobId = str(h.contract_job_id)
+  return id && jobId ? { paper, contract: { id, jobId } } : { paper }
+}
+
 /** The function's answer as the box reads it; a shape it does not know reads as no hits. */
 export function findAFileFromAnswer(d: unknown): FindAFileRead {
   const o = (d ?? {}) as Record<string, unknown>
@@ -108,6 +122,7 @@ export function findAFileFromAnswer(d: unknown): FindAFileRead {
       path: str(h.path) ?? '',
       excerpt: excerptOfAnswer(h.excerpt),
       excerptWhy: whyOf(h.excerptWhy),
+      ...paperOf(h),
     })
   }
   return { hits, more: o.more === true, noRoot: o.noRoot === true, source: 'drive' }
@@ -171,6 +186,7 @@ export function findAFileFromIndexRows(d: unknown): FindAFileRead {
       excerpt,
       excerptWhy: excerpt ? null : indexWhyOf(r.text_why),
       ...(by ? { by } : {}),
+      ...paperOf(raw as Record<string, unknown>),
     })
   }
   return { hits, more: false, noRoot: false, source: 'index' }
@@ -263,6 +279,7 @@ export const FIND_WORDS = {
   filling: 'Drive’s search is still looking…',
   openInDrive: 'Open in Drive',
   openJob: 'Open the job',
+  openContract: 'Open the contract',
   tryAgain: 'Try again',
   failed: 'The search did not run.',
   noRoot: 'The jobs root is not set yet. Set it on Where files go and the search has a place to look.',
@@ -312,3 +329,10 @@ export function excerptNote(why: ExcerptWhy | null): string | null {
 export function findFailedWords(reason: string): string {
   return `${FIND_WORDS.failed} ${reason}`
 }
+
+/** The chip a hit wears when it is a signed job contract's Drive copy (punch list #377); null for any other file. */
+export function paperChip(paper: ContractPaperMark | undefined): { words: string; tone: 'green' | 'red' } | null {
+  if (!paper) return null
+  return { words: contractPaperChipWords(paper), tone: paper === 'voided' ? 'red' : 'green' }
+}
+
