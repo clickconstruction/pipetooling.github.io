@@ -203,7 +203,13 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
               <div style={k}>What it will show</div>
               <div data-testid="sub-papers-will-show" style={{ fontSize: '0.8125rem', padding: '0.45rem 0.65rem', background: 'var(--bg-page)', borderRadius: 6 }}>
                 {statement.rows.length} work {statement.rows.length === 1 ? 'statement' : 'statements'} · {statement.lastPayments.length} {statement.lastPayments.length === 1 ? 'payment' : 'payments'} · {backcharges} {backcharges === 1 ? 'back-charge' : 'back-charges'} · <b>{paperMoney(statement.stillOpen)} still open</b>
-                {unnumbered > 0 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{unnumbered === sheets.length ? 'No work statement carries a number yet. Each paper says the day and time it was prepared.' : `${unnumbered} ${unnumbered === 1 ? 'sheet has' : 'sheets have'} no work statement number yet.`}</div> : null}
+                {lastStatement === undefined ? (
+                  unnumbered > 0 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{unnumbered === sheets.length ? 'No work statement carries a number yet. Each paper says the day and time it was prepared.' : `${unnumbered} ${unnumbered === 1 ? 'sheet has' : 'sheets have'} no work statement number yet.`}</div> : null
+                ) : (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    This statement takes its number when you print, download or send it.{unnumbered > 0 ? ` ${unnumbered} ${unnumbered === 1 ? 'sheet has' : 'sheets have'} no work statement yet, and each takes its number the first time its paper is made.` : ''}
+                  </div>
+                )}
               </div>
             </div>
 {canSend ? (
@@ -318,7 +324,12 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
             </>
           )}
         </div>
-        {paper && step === 'paper' ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, textAlign: 'right' }}>The file is {subPaperAttachmentName(paper)}</div> : null}
+        {paper && step === 'paper' ? (
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, textAlign: 'right' }}>
+            {/* Where the register is live, a paper with no number yet takes one as it is made, and its file is named for it. */}
+            {lastStatement !== undefined && !paper.number && paper.kind !== 'payment_record' ? 'The file is named for the paper’s number, given as it is made.' : `The file is ${subPaperAttachmentName(paper)}`}
+          </div>
+        ) : null}
       </div>
     </div>
   )

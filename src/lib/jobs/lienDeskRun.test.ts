@@ -243,6 +243,10 @@ describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
     expect(run).toHaveLength(1)
     const n = run[0]!
     expect(n.kind).toBe('retainage_53_057')
+    // What was mailed (v2.7525): the retainage notice carries its scans as the monthly notice does, so its row has the press.
+    expect(n.mailedCopies).toEqual([])
+    const scan = { url: 'https://drive.google.com/file/d/f1/view', driveFileId: 'f1', name: 'Retainage notice as mailed · 650 · 2026-09-14.pdf', at: '2026-09-14T18:00:00.000Z', by: 'u1' }
+    expect(buildLienRetainageRun([{ ...entry, item: { ...retItem, mailed_copies: [scan] } as LienDeskItemRow }], d, null, () => 'Robert', TODAY)[0]!.mailedCopies).toEqual([scan])
     // The last day to mail rides on the notice, for Today's mail (punch list #314).
     expect(n.mailBy).toBe('2026-10-05')
     expect(runPacketHtml([n], TODAY, null)).toContain('<b>Mail every envelope by October 5, 2026.</b>')
@@ -295,6 +299,10 @@ describe('the pay page in the packet (v2.3758)', () => {
     expect(owner.find((b) => b.kind === 'callout')).toMatchObject({ text: expect.stringContaining('only if Lowbeck Contracting has told you in writing') })
     expect(owner.filter((b) => b.kind === 'payRow')).toHaveLength(1)
     expect(runPayPageBlocks(n, n.recipients[1]!, rows, assets, '')).toEqual([])
+    // The page names the cover letter only when this notice prints one (v2.7514).
+    const calloutOf = (x: typeof n) => (runPayPageBlocks(x, x.recipients[0]!, rows, assets, '').find((b) => b.kind === 'callout') as { text: string }).text
+    expect(calloutOf({ ...n, coverLetter: 'Dear owner,\n\nPlease hold this back.', coverNote: null })).toMatch(/, as the cover letter asks\.$/)
+    expect(calloutOf({ ...n, coverLetter: null, coverNote: null })).toMatch(/hold the amount back from Lowbeck Contracting\.$/)
   })
 
   it('carries the pay offer (v2.4713) from the approved item to the page', () => {
@@ -698,5 +706,64 @@ describe('runDoorTail — the pill’s words after the door’s count (v2.6569)'
     // A count that is not the door’s own stays: the door says 9 and the words say 7 of them.
     expect(runDoorTail(9, '7 to mail')).toBe('7 to mail')
     expect(runDoorTail(0, '')).toBe('')
+  })
+})
+
+describe('a notice whose stored paper and bills have parted is held (v2.7517)', () => {
+  // The draft as it was made when the desk claimed the whole job: $51,000.00. The bills now owe $33,500.00.
+  const storedNotice = { noticeDate: '2026-08-01', projectDescription: 'AXO Schertz — 1204 Elwick Rd, Schertz, TX', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Lowbeck Contracting', contractedWithIfDifferent: '', claimAmount: '51000.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '' }
+  const stale = { ...approved, fields: { notice: storedNotice, gcEmail: '' } } as unknown as LienDeskItemRow
+  const HOLD = 'The paper claims $51,000.00. The bills now come to $33,500.00, $17,500.00 less. It prints once the notice is redrawn from the bills.'
+
+  it('the builder sets the stored paper beside the bills, and the paper still carries what was stored', () => {
+    const d = data([stale])
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas, Master Plumber', TODAY)[0]!
+    expect(n.fields.claimAmount).toBe('51000.00')
+    expect(n.amount).toBe(33_500)
+    expect(n.parted?.parts).toEqual(['claim'])
+    expect(n.parted?.paperClaim).toBe(51_000)
+    expect(n.parted?.nowClaim).toBe(33_500)
+  })
+
+  it('a stored paper that agrees with the bills, and an item with no stored paper, are not parted', () => {
+    const agrees = data([{ ...approved, fields: { notice: { ...storedNotice, claimAmount: '33500.00' }, gcEmail: '' } } as unknown as LienDeskItemRow])
+    expect(buildLienDeskRun(agrees.queue.piles.ready, agrees, null, () => '', TODAY)[0]!.parted).toBeNull()
+    const none = data([approved])
+    expect(buildLienDeskRun(none.queue.piles.ready, none, null, () => '', TODAY)[0]!.parted).toBeNull()
+  })
+
+  it('a claim set by hand is what the stored paper is measured against', () => {
+    const d = data([{ ...approved, fields: { notice: { ...storedNotice, claimAmount: '33500.00' }, gcEmail: '' } } as unknown as LienDeskItemRow])
+    d.claimCorrectionsByJob = { j650: { jobId: 'j650', amountOff: 1500, perMonth: null, reason: 'GC disputes a line', carry: true, setByName: 'Dana', setAt: '2026-09-13T15:00:00Z', lookedAt: null, lookedByName: '' } }
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(n.parted?.source).toBe('hand')
+    expect(n.parted?.nowClaim).toBe(32_000)
+    expect(runNoticeProblems(n)[0]).toBe('The paper claims $33,500.00. The claim set by hand is now $32,000.00, $1,500.00 less. It prints once the notice is redrawn from the bills.')
+  })
+
+  it('retainage typed on the job after the draft parts the paper', () => {
+    const d = data([{ ...approved, fields: { notice: { ...storedNotice, claimAmount: '33500.00' }, gcEmail: '' } } as unknown as LienDeskItemRow])
+    d.jobsById = { ...d.jobsById, j650: { ...d.jobsById.j650!, lien_retainage_held: 3350 } as (typeof d.jobsById)[string] }
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(n.parted?.parts).toEqual(['retainage'])
+  })
+
+  it('the hold is the first problem, and the packet prints no page of it', () => {
+    const d = data([stale])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas, Master Plumber', TODAY)
+    // The row's own hold, which the print and the record both leave, is this problem (`lienRunChecklist.test.ts`).
+    expect(runNoticeProblems(run[0]!)[0]).toBe(HOLD)
+    const html = runPacketHtml(run, TODAY, null)
+    expect(html).toContain('650: The paper claims $51,000.00.')
+    expect(html).not.toContain('Claim amount')
+    expect(html).not.toContain('$51,000.00</')
+  })
+
+  it('a parted notice already printed is not held: the paper is out, and the record is not stopped', () => {
+    const d = data([{ ...stale, printed_at: '2026-09-14T15:00:00Z' } as unknown as LienDeskItemRow])
+    const entries = [...d.queue.piles.ready, ...d.queue.entries].filter((e, i, all) => all.findIndex((x) => x.jobId === e.jobId) === i)
+    const n = buildLienDeskRun(entries, d, null, () => '', TODAY)[0]!
+    expect(n.parted).not.toBeNull()
+    expect(runNoticeProblems(n).some((p) => p.startsWith('The paper claims'))).toBe(false)
   })
 })

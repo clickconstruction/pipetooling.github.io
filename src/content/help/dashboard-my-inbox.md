@@ -13,7 +13,7 @@ On a **desktop screen** each item is a compact one-line row. It shows a checkbox
 
 ## What's inside
 
-- **Due Today** holds checklist items scheduled for today. They show as full conversation cards, the same cards as Checklist → Today. They have since v2.2193. The big **✓** completes the item. {{button:outline|＋ Add a note}} or {{button:outline|💬 Notes N}} drops the thread down right there. Tapping the **title** opens the task's whole history with a composer. The composer can {{button:outline|✓ Post & complete}}. Write "posts are in the trailer" and close the card in one motion. Status chips like {{chip:yellow|Reopened by …}} and {{chip:blue|Waiting on review}} show on the card itself. The arrow still forwards it to someone else.
+- **Due Today** holds checklist items scheduled for today. They show as full conversation cards. They have since v2.2193. Checklist → Today draws the same tasks in its own newer card. The big **✓** completes the item. {{button:outline|＋ Add a note}} or {{button:outline|💬 Notes N}} drops the thread down right there. Tapping the **title** opens the task's whole history with a composer. The composer can {{button:outline|✓ Post & complete}}. Write "posts are in the trailer" and close the card in one motion. Status chips like {{chip:yellow|Reopened by …}} and {{chip:blue|Waiting on review}} show on the card itself. The arrow still forwards it to someone else.
 - **Overdue** holds items past their scheduled date. Each has a day counter:
 
 :::example an overdue item

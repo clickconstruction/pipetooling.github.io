@@ -29,6 +29,7 @@ import {
 import { customerBillingEmail, effectiveInvoiceParty, type EffectiveBillParty } from '../../lib/jobs/billToParty'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { lienInKindWindowNote } from '../../lib/jobs/lienInKind'
+import { lienOffPathWindowNote } from '../../lib/jobs/lienOffPathBin'
 import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../../lib/physicalInvoiceDocumentForBilledInvoice'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { fetchStripeInvoiceFacts, type StripeInvoiceFacts } from '../../lib/stripeInvoiceFacts'
@@ -67,6 +68,7 @@ import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { lienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
+import { lienWindowClaim } from '../../lib/jobs/lienWindowAffidavit'
 import { readJobPropertyRecord, type JobPropertyRead } from '../../lib/jobs/jobPropertyRecordIo'
 import LienFilingTabs from './LienFilingTabs'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -498,6 +500,8 @@ export default function LienInstrumentsModal({
   const effJob = fullJob && job && fullJob.id === job.id ? fullJob : job
   // v2.7253: a job an open in-kind deal pays is off the Lien desk (`lienInKind.ts`); its own window stays whole and says so.
   const inKindNote = lienInKindWindowNote(effJob)
+  // v2.7521: so is a job a person took off the lien path (`lienJobPath.ts`); the window says so, with the reason, and stays whole.
+  const offPathNote = lienOffPathWindowNote(effJob)
   const demandable = useMemo(() => (effJob ? demandableInvoices(effJob) : []), [effJob])
 
   // What Stripe rendered for each hosted bill: the number the customer saw, the day it was due and the lines as they saw them —
@@ -801,6 +805,9 @@ export default function LienInstrumentsModal({
     const money = effJob && effJob !== job ? { status: effJob.status, revenue: effJob.revenue, payments_made: effJob.payments_made, invoices: effJob.invoices, payments: effJob.payments } : {}
     return { ...job, ...money, serviceType, ...(property ? { customer_address_id: property.link } : {}) }
   }, [job, property, effJob])
+  // What the job's sent bills still owe (v2.7530): the timeline and the supply houses' card read it, as the papers' claim does.
+  // Until then they read the job's whole price less payments, so a job billed in stages showed the stages never billed as owed.
+  const billedOpen = useMemo(() => (linkedJob ? lienWindowClaim(linkedJob, null).openBalance : 0), [linkedJob])
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
   // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
   const isMobile = useIsMobile()
@@ -858,7 +865,7 @@ export default function LienInstrumentsModal({
             job: { id: job.id, created_at: job.created_at ?? null, last_work_date: lastWorkJob?.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null, lien_last_work_on: lastWorkJob?.lien_last_work_on ?? null, invoices: job.invoices ?? null },
             isSub,
             propertyKind,
-            openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
+            openBalance: billedOpen,
             todayYmd: todayYmdLocal(),
             demandLetters: historyRows,
             courtesy: courtesyRows,
@@ -866,7 +873,7 @@ export default function LienInstrumentsModal({
             deskAffidavit: deskAffidavitState ? { state: deskAffidavitState, missing: (deskAffidavitMissing ? deskAffidavitMissing.split('|') : []) as LienAffidavitGateKey[], holdUntil: deskAffidavitHoldUntil } : null,
           })
         : null,
-    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil, deskAffidavitState, deskAffidavitMissing, deskAffidavitHoldUntil],
+    [job, property, billedOpen, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil, deskAffidavitState, deskAffidavitMissing, deskAffidavitHoldUntil],
   )
   // The period the affidavit tab swears (v2.6061): the tab gets the fresh last-day read (a day set by hand reaches the paper the moment it is
   // saved) and the window's months, and fills the paper by the desk's own recipe (v2.6809); a job with no sessions swears its creation month.
@@ -1298,6 +1305,12 @@ export default function LienInstrumentsModal({
               <div style={{ fontSize: '0.8125rem', marginTop: 2 }}>{inKindNote.line}</div>
             </div>
           ) : null}
+          {offPathNote ? (
+            <div data-lien-window-off-path role="note" style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', border: '1px solid var(--border-strong)', borderRadius: 9, padding: '0.55rem 0.8rem', background: 'var(--bg-amber-tint)' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{offPathNote.head}</div>
+              <div style={{ fontSize: '0.8125rem', marginTop: 2 }}>{offPathNote.line}</div>
+            </div>
+          ) : null}
           {nextStep && (isMobile || !timeline) ? (
             <div data-lien-window-next-step data-tone={nextStep.tone} style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', border: `1px solid ${nextStep.tone === 'red' ? 'var(--text-red-600)' : 'var(--border-strong)'}`, borderRadius: 9, padding: '0.55rem 0.8rem', background: nextStep.tone === 'red' ? 'var(--bg-red-tint)' : nextStep.tone === 'amber' ? 'var(--bg-amber-tint)' : nextStep.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
@@ -1347,7 +1360,7 @@ export default function LienInstrumentsModal({
                 job={supplierJob}
                 propertyKind={propertyKind}
                 todayYmd={todayYmdLocal()}
-                openBalance={Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))}
+                openBalance={billedOpen}
                 payerName={(job.gcCustomer?.name ?? '').trim() || (job.customer_name ?? '').trim()}
                 jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`}
                 isMobile={isMobile}
@@ -1848,6 +1861,9 @@ export default function LienInstrumentsModal({
             affidavitForm={affidavitFormRead.form}
             affidavitFormUnread={affidavitFormRead.failed}
             noticeMonths={noticeMonths ?? null}
+            // v2.7516: an approved notice on the desk is the paper to print; the tab says so and offers the door.
+            deskNoticeState={deskNoticeState}
+            onOpenDeskNotice={onOpenLienDesk && job ? () => onOpenLienDesk(job.id, 'notice') : undefined}
             job={linkedJob ?? job}
             workDays={lastWorkJob}
             workMonths={affidavitWorkMonths}

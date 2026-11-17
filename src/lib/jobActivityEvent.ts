@@ -44,6 +44,7 @@ export type JobActivityEventType =
   | 'lien_notice_sent'
   | 'lien_courtesy_sent'
   | 'lien_notice_closed_paid'
+  | 'lien_path_change'
   | 'invoice_resent'
   | 'job_auto_created_from_estimate'
   | 'job_renamed_from_work'
@@ -149,6 +150,9 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   // A lien notice closed because the job was paid (v2.7359): the run's Close paid notices press sets the desk item aside,
   // and the trigger of 20261115233000 writes the line. Ours, so not a customer event; grey, since nothing went out.
   lien_notice_closed_paid: { tag: 'Lien notice', ...EDIT_GRAY, bucket: 'billing' },
+  // A job taken off the lien path, or put back (v2.7504, migration 20261117080000): written by set_job_lien_path_answer
+  // with the reason in its words. Ours, so not a customer event; amber, since it changes how the money is collected.
+  lien_path_change: { tag: 'Lien path', ...STATUS_AMBER, bucket: 'billing' },
   invoice_resent: { tag: 'Resent', ...BILLING_BLUE, bucket: 'billing' },
   // Auto-create-job guard (v2.2838) — written by auto_create_job_from_signed_estimate on a real create.
   job_auto_created_from_estimate: { tag: 'Opened', ...MONEY_GREEN, bucket: 'status' },

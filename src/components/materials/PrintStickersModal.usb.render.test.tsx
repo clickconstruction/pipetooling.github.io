@@ -81,6 +81,23 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(mint).not.toHaveBeenCalled()
   })
 
+  it('a run already made prints as many of each as Copies of each says, and mints nothing (v2.7553)', async () => {
+    usb.granted = true
+    const minted = mintedRun({ jobId: 'job-juniper', count: 4, copies: 1, names: ['G93', 'G94', 'G95', 'G96'] })
+    const mint = vi.fn()
+    renderWithProviders(<PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role="dev" run={{ ...minted, title: 'Reserved stickers, G93 to G96' }} onClose={() => {}} mint={mint} print={() => {}} />)
+    await waitFor(() => expect(screen.getByTestId('stickers-printer-line').textContent).toContain('PT-D610BT · 24 mm tape · ready'))
+    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByTestId('stickers-copies-more'))
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G96, 5 strips each. 20 strips.')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 4 sets, G93 to G96')
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('4 stickers printed.'))
+    // five strips a sticker went to the printer, a sticker's copies together
+    expect(usb.print).toHaveBeenCalledTimes(1)
+    expect((usb.print.mock.calls[0]![0] as unknown[]).length).toBe(20)
+    expect(mint).not.toHaveBeenCalled()
+  })
+
   it('connected, the press mints the run and the strips go as soon as they are drawn, a set together', async () => {
     usb.granted = true
     const { print, mint } = setup()
@@ -140,6 +157,8 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(screen.getByTestId('stickers-progress').textContent).toBe('Stopping. One more strip prints, so the printer can cut the tape.')
     go()
     await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('2 of 30 stickers printed, then you stopped the run.'))
+    // the rest is not lost with the window (v2.7523): it is still reserved, and the line says where it prints later
+    expect(screen.getByTestId('stickers-rest-kept').textContent).toBe('The 28 stickers left are still reserved. Print them now, or later from the job’s reserved line.')
     // nothing went wrong: the printer stays connected, no red line, and the press is the rest
     expect(usb.close).not.toHaveBeenCalled()
     expect(screen.queryByTestId('stickers-slip')).toBeNull()

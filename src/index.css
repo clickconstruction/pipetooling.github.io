@@ -4694,12 +4694,23 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunCheckCopies a { color: var(--text-link); font-weight: 600; overflow-wrap: anywhere; }
 .lienRunCheckCopyAdd { padding: 2px 9px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .lienRunCheckCopyAdd:disabled { cursor: default; opacity: 0.55; }
+.lienRunCheckCopy { display: inline-flex; flex-wrap: wrap; gap: 2px 6px; align-items: baseline; min-width: 0; }
+.lienRunCheckCopyOff { padding: 0 2px; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 0.7rem; font-weight: 600; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.lienRunCheckCopyOff:disabled { cursor: default; opacity: 0.55; }
+.lienRunCheckCopyAsk { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; flex-basis: 100%; padding: 4px 8px; border: 1px solid var(--border-amber); border-radius: 7px; background: var(--bg-amber-tint); color: var(--text-amber-800); }
+.lienRunCheckCopyBusy { color: var(--text-muted); }
+/* A thumb's height on a phone for the presses beside a file and under the ask (v2.7525). */
+@media (max-width: 700px) { .lienRunCheckCopyOff { padding: 9px 6px; font-size: 0.78rem; } .lienRunCheckCopyAsk .lienRunCheckCopyAdd { padding: 9px 14px; font-size: 0.8rem; } }
 .lienRunCheckTicks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-items: start; min-width: 0; }
 .lienRunCheckTick { display: grid; gap: 3px; min-width: 0; padding: 0.3rem 0.45rem; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border); }
 .lienRunCheckTick[data-on='yes'] { border-color: var(--text-green-700); background: var(--bg-green-tint); }
 .lienRunCheckTickName { font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
 .lienRunCheckDone { color: var(--text-green-800); font-weight: 600; font-size: 0.78rem; overflow-wrap: anywhere; }
 .lienRunCheckWait { color: var(--text-muted); font-size: 0.75rem; }
+/* A ticked Printed that can be undone (v2.7481): the tick's own words as a press, with the word that says so in the link colour. */
+.lienRunCheckUndo { border: 0; background: none; padding: 0; font: inherit; font-size: 0.78rem; font-weight: 600; text-align: left; cursor: pointer; }
+.lienRunCheckUndo:disabled { cursor: default; opacity: 0.6; }
+.lienRunCheckUndoWord { color: var(--text-link); white-space: nowrap; }
 .lienRunCheckBoxes { display: grid; gap: 0.3rem; }
 .lienRunCheckBox { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.2rem 0.35rem; align-items: center; }
 .lienRunCheckBox .lienRunCheckShape { grid-column: 2 / -1; }

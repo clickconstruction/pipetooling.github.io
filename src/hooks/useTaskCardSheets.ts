@@ -62,6 +62,8 @@ export type TaskCardSheetsInput = {
 
 export type TaskCardSheets = {
   ringPress: () => void
+  /** A press that says *done* outright, such as the Next card's Mark done: the finishing sheet first on a card that asks for a photo. */
+  donePress: () => Promise<void>
   tickLine: (criterionId: string, ticked: boolean) => Promise<void>
   ring: RingState
   sheets: ReactNode
@@ -197,6 +199,12 @@ export function useTaskCardSheets(a: TaskCardSheetsInput): TaskCardSheets {
     [a, pending, send],
   )
 
+  const donePress = useCallback(async () => {
+    if (a.isCompleted) return
+    setError(null)
+    await onPercentDone()
+  }, [a.isCompleted, onPercentDone])
+
   const sheets = createElement(
     'span',
     { 'data-task-card-sheets': a.instanceId },
@@ -221,5 +229,5 @@ export function useTaskCardSheets(a: TaskCardSheetsInput): TaskCardSheets {
     }),
   )
 
-  return { ringPress, tickLine, ring, sheets, error }
+  return { ringPress, donePress, tickLine, ring, sheets, error }
 }

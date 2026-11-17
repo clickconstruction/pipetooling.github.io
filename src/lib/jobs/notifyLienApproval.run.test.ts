@@ -8,6 +8,7 @@
  * the leader nothing. The other kinds keep the checks that prove whose record or screen it is.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { lienFieldsHash } from '../../../supabase/functions/_shared/lienFieldsHash'
 
 type Handler = (req: Request) => Promise<Response>
 type Row = Record<string, unknown>
@@ -75,6 +76,28 @@ vi.mock('../../../supabase/functions/_shared/pushHoursSend.ts', () => ({
   },
 }))
 vi.mock('../../../supabase/functions/_shared/webPushSend.ts', () => ({ webPushSender: () => null }))
+// The text line (v2.7495), as a recorder: a real one would text a phone. `refusal` is what the line answers, when it refuses.
+const sms = vi.hoisted(() => ({
+  texts: [] as Array<{ to: string; body: string; purpose: string; box: string; contactId: string }>,
+  refusal: null as string | null,
+  stopped: new Set<string>(),
+  throws: false,
+}))
+vi.mock('../../../supabase/functions/_shared/quoLines.ts', () => ({
+  quoCompany: () => ({ name: 'Test Plumbing', phone: '', mailbox: '' }),
+  loadBoxes: async () => ({ team: { numberId: 'PN-team' } }),
+  lastOurTextAt: async () => null,
+  placeNumber: async (_admin: unknown, raw: string, box: string) => {
+    if (sms.throws) throw new Error('quo_place_number: down')
+    return { contactId: `c${raw}`, channelId: `ch${raw}`, number: raw, optedOut: sms.stopped.has(raw), box }
+  },
+  sendText: async (_admin: unknown, input: { to: string; body: string; purpose: string; contactId: string; optedOut: boolean }, _tie: unknown, box: string) => {
+    if (input.optedOut) return { ok: false, refused: 'stopped', words: '', status: 422 }
+    if (sms.refusal) return { ok: false, refused: sms.refusal, words: '', status: 503 }
+    sms.texts.push({ to: input.to, body: input.body, purpose: input.purpose, box, contactId: input.contactId })
+    return { ok: true, messageId: 'm1', quoId: 'q1', segments: 1 }
+  },
+}))
 vi.mock('../../../supabase/functions/_shared/resendSendEmail.ts', () => ({
   sendEmailViaResend: async (to: string, subject: string, text: string) => {
     world.emails.push({ to, subject, text })
@@ -114,6 +137,10 @@ beforeEach(() => {
   world.pushes = []
   world.emails = []
   world.devices = new Set(['u-malachi'])
+  sms.texts = []
+  sms.refusal = null
+  sms.stopped = new Set()
+  sms.throws = false
 })
 
 async function post(body: Row, auth = true) {
@@ -314,5 +341,159 @@ describe('an affidavit: the fifteen minutes stand for the send, and a reminder i
     world.items = [affidavit('a1', { submitted_at: fresh })]
     expect(await post({ kind: 'affidavit', remind: true, items: [{ item_id: 'a1' }] })).toEqual({ status: 403, body: { error: 'Not the office' } })
     expect(nothingSent()).toBe(true)
+  })
+})
+
+describe('a notice that waits on his signature: the office reminds him, one message for the lot (v2.7491)', () => {
+  const approved = (id: string, jobId: string, over: Row = {}): Row => notice({ id, job_id: jobId, status: 'approved', printed_at: null, signer_printed_name: null, signed_fields_hash: null, ...over })
+  const signedFor = (fields: unknown): Row => ({ signed_at: '2026-11-10T15:00:00Z', signed_by: 'u-malachi', signer_printed_name: 'Malachi Whites', signed_fields_hash: lienFieldsHash(fields) })
+  beforeEach(() => {
+    world.jobs = [
+      { id: 'j650', job_name: 'Tune 5 Liberty Hill', hcp_number: '650', click_number: null, master_user_id: 'u-malachi', gc_customer_id: 'gc1' },
+      { id: 'j651', job_name: 'Elm Street Lofts', hcp_number: '651', click_number: null, master_user_id: 'u-malachi', gc_customer_id: 'gc1' },
+      { id: 'j652', job_name: 'Oak Court', hcp_number: '652', click_number: null, master_user_id: 'u-malachi', gc_customer_id: 'gc1' },
+    ]
+    world.items = [approved('s1', 'j650'), approved('s2', 'j651'), approved('s3', 'j652')]
+  })
+
+  it('three unsigned approved notices are one push that names the count and opens the approved notices', async () => {
+    const res = await post({ kind: 'signature', remind: true, items: [{ item_id: 's1', due_ymd: '2026-12-15' }, { item_id: 's2', due_ymd: '2026-12-01' }, { item_id: 's3' }] })
+    // No mobile number on his account here, so the text says why it did not go (v2.7495); the push went.
+    expect(res).toEqual({ status: 200, body: { success: true, push_sent: 1, email_sent: false, held: 0, text_sent: 0, text_said: 'there is no mobile number on the account', told: 3, leader_name: 'Malachi Whites' } })
+    expect(world.pushes).toHaveLength(1)
+    expect(world.pushes[0]).toMatchObject({ userIds: ['u-malachi'], title: 'Sign 3 lien notices', templateType: 'lien_signature_ask', url: '/lien-desk?tab=notices&pile=ready' })
+    expect(String(world.pushes[0]!.body)).toContain('3 jobs · first to mail by Dec 1')
+    expect(world.history).toEqual([expect.objectContaining({ recipient_user_id: 'u-malachi', template_type: 'lien_signature_ask', channel: 'push' })])
+  })
+
+  it('one notice opens on its own job, and with no phone the same words go by email and name who pressed', async () => {
+    world.devices = new Set()
+    const res = await post({ kind: 'signature', remind: true, items: [{ item_id: 's1', due_ymd: '2026-12-15' }] })
+    expect(res.body).toMatchObject({ success: true, push_sent: 0, email_sent: true, told: 1 })
+    expect(world.pushes[0]).toMatchObject({ title: 'Sign a lien notice', url: '/lien-desk?tab=notices&job=j650&pile=ready' })
+    expect(world.emails).toHaveLength(1)
+    expect(world.emails[0]!.subject).toBe('Sign a lien notice · 650 · Tune 5 Liberty Hill')
+    expect(world.emails[0]!.text.split('\n')[0]).toBe('Wendi is reminding you of a lien notice that waits for your signature.')
+    expect(world.emails[0]!.text).toContain('It cannot be printed or mailed until you sign it.')
+    expect(world.emails[0]!.text).toContain('http://app.test/lien-desk?tab=notices&job=j650&pile=ready')
+  })
+
+  it('a notice signed, printed, still awaiting approval or voided since the list was drawn is left out, and the count says so', async () => {
+    const fields = { notice: { claimAmount: 27_199 } }
+    world.items = [approved('s1', 'j650'), approved('s2', 'j651', { fields, ...signedFor(fields) }), approved('s3', 'j652', { printed_at: '2026-11-12T15:00:00Z' }), notice({ id: 's4', job_id: 'j650' }), approved('s5', 'j651', { voided_at: '2026-11-12T15:00:00Z' })]
+    const res = await post({ kind: 'signature', remind: true, items: ['s1', 's2', 's3', 's4', 's5'].map((item_id) => ({ item_id })) })
+    expect(res.body).toMatchObject({ success: true, push_sent: 1, told: 1 })
+    expect(world.pushes[0]).toMatchObject({ title: 'Sign a lien notice', url: '/lien-desk?tab=notices&job=j650&pile=ready' })
+  })
+
+  it('a notice changed after he signed waits on his signature again', async () => {
+    world.items = [approved('s1', 'j650', { fields: { notice: { claimAmount: 30_000 } }, ...signedFor({ notice: { claimAmount: 27_199 } }) })]
+    expect((await post({ kind: 'signature', remind: true, items: [{ item_id: 's1' }] })).body).toMatchObject({ success: true, push_sent: 1, told: 1 })
+  })
+
+  it('with nothing left to sign the function answers 200 and sends nothing', async () => {
+    const fields = { notice: { claimAmount: 27_199 } }
+    world.items = [approved('s1', 'j650', { fields, ...signedFor(fields) })]
+    expect((await post({ kind: 'signature', remind: true, items: [{ item_id: 's1' }] })).body).toMatchObject({ success: true, push_sent: 0, told: 0, message: 'Not waiting on a signature' })
+    expect(nothingSent()).toBe(true)
+  })
+
+  it('an affidavit or a retainage notice is never worded as a notice to sign', async () => {
+    world.items = [affidavit('a1', { status: 'approved' }), approved('r1', 'j650', { kind: 'retainage_53_057' })]
+    expect((await post({ kind: 'signature', remind: true, items: [{ item_id: 'a1' }, { item_id: 'r1' }] })).body).toMatchObject({ push_sent: 0, told: 0, message: 'Not waiting on a signature' })
+    expect(nothingSent()).toBe(true)
+  })
+
+  it('each leader gets his own jobs in one message, and a job with no leader asks every leader but the caller', async () => {
+    const OTTO = person('u-otto', 'Otto Hale', 'master_technician')
+    world.users = [...world.users, OTTO]
+    world.devices = new Set(['u-malachi', 'u-otto'])
+    world.jobs = world.jobs.map((j) => (j.id === 'j651' ? { ...j, master_user_id: 'u-otto' } : j.id === 'j652' ? { ...j, master_user_id: null } : j))
+    const res = await post({ kind: 'signature', remind: true, items: [{ item_id: 's1' }, { item_id: 's2' }, { item_id: 's3' }] })
+    expect(res.body).toMatchObject({ success: true, push_sent: 2, told: 3, leader_name: null })
+    const byLeader = Object.fromEntries(world.pushes.map((p) => [(p.userIds as string[])[0], p.title]))
+    expect(byLeader).toEqual({ 'u-malachi': 'Sign 2 lien notices', 'u-otto': 'Sign 2 lien notices' })
+  })
+
+  it('the gate is the office: a helper is refused before a paper is read, and a call with no papers is refused', async () => {
+    world.callerId = 'u-hank'
+    expect(await post({ kind: 'signature', remind: true, items: [{ item_id: 's1' }] })).toEqual({ status: 403, body: { error: 'Not the office' } })
+    expect(world.calls).not.toContain('select job_lien_desk_items')
+    world.callerId = 'u-wendi'
+    expect(await post({ kind: 'signature', remind: true, items: [] })).toEqual({ status: 400, body: { error: 'Missing items' } })
+    expect(nothingSent()).toBe(true)
+  })
+})
+
+describe('a reminder goes as a text too, with the link (v2.7495)', () => {
+  const approved = (id: string, jobId: string, over: Row = {}): Row => notice({ id, job_id: jobId, status: 'approved', printed_at: null, signer_printed_name: null, signed_fields_hash: null, ...over })
+  const withCell = () => (world.users = world.users.map((u) => (u.id === 'u-malachi' ? { ...u, phone: '(512) 555-0142' } : u)))
+  beforeEach(() => {
+    withCell()
+  })
+
+  it('a reminder of a notice texts the leader the push’s own words and the link, from the team number, beside the push', async () => {
+    const res = await post({ item_id: 'it1', due_ymd: '2026-12-15', remind: true })
+    expect(res.body).toMatchObject({ success: true, push_sent: 1, text_sent: 1, text_said: null })
+    expect(world.pushes).toHaveLength(1)
+    expect(sms.texts).toHaveLength(1)
+    expect(sms.texts[0]).toMatchObject({ to: '+15125550142', purpose: 'nudge', box: 'team' })
+    expect(sms.texts[0]!.body).toMatch(/^Wendi is reminding you: Approve a lien notice\. 650, Tune 5 Liberty Hill, \$27,199 owed by Brund & Assoc\., mail by Dec 15, \d+ days\. http:\/\/app\.test\/lien-desk\?tab=notices&job=j650&pile=awaiting$/)
+    // Plain characters only, so the carrier keeps the short alphabet.
+    expect(sms.texts[0]!.body).toMatch(/^[\x20-\x7e]+$/)
+  })
+
+  it('the send for approval is not texted, and its answer carries no text fields', async () => {
+    const res = await post({ item_id: 'it1', due_ymd: '2026-12-15' })
+    expect(res.body).toEqual({ success: true, push_sent: 1, email_sent: false, held: 0, leader_name: 'Malachi Whites' })
+    expect(sms.texts).toEqual([])
+  })
+
+  it('eight notices to sign are one text, as they are one push; an affidavit reminder is texted and its send is not', async () => {
+    world.items = [approved('s1', 'j650'), approved('s2', 'j650'), affidavit('a1', { submitted_at: new Date().toISOString() })]
+    const sign = await post({ kind: 'signature', remind: true, items: [{ item_id: 's1', due_ymd: '2026-12-01' }, { item_id: 's2' }] })
+    expect(sign.body).toMatchObject({ push_sent: 1, text_sent: 1, text_said: null, told: 2 })
+    expect(sms.texts).toHaveLength(1)
+    expect(sms.texts[0]!.body).toMatch(/^Wendi is reminding you: Sign 2 lien notices\. 2 jobs, first to mail by Dec 1.* http:\/\/app\.test\/lien-desk\?tab=notices&pile=ready$/)
+    sms.texts = []
+    expect((await post({ kind: 'affidavit', items: [{ item_id: 'a1' }] })).body).not.toHaveProperty('text_sent')
+    expect(sms.texts).toEqual([])
+    expect((await post({ kind: 'affidavit', remind: true, items: [{ item_id: 'a1' }] })).body).toMatchObject({ text_sent: 1 })
+    expect(sms.texts[0]!.body).toContain('Approve a lien affidavit')
+  })
+
+  it('a text that cannot go is a reason, never a failed call: the push has gone', async () => {
+    const said = async () => (await post({ item_id: 'it1', remind: true })).body
+    world.users = world.users.map((u) => (u.id === 'u-malachi' ? { ...u, phone: null } : u))
+    expect(await said()).toMatchObject({ success: true, push_sent: 1, text_sent: 0, text_said: 'there is no mobile number on the account' })
+    world.users = world.users.map((u) => (u.id === 'u-malachi' ? { ...u, phone: '555-0142' } : u))
+    expect(await said()).toMatchObject({ text_sent: 0, text_said: 'there is no mobile number on the account' })
+    withCell()
+    sms.refusal = 'textsOff'
+    expect(await said()).toMatchObject({ push_sent: 1, text_sent: 0, text_said: 'Send texts is off in Settings' })
+    sms.refusal = 'paused'
+    expect(await said()).toMatchObject({ text_said: 'texts are paused' })
+    sms.refusal = 'quo'
+    expect(await said()).toMatchObject({ text_said: 'the text line did not take it' })
+    sms.refusal = null
+    sms.stopped = new Set(['+15125550142'])
+    expect(await said()).toMatchObject({ push_sent: 1, text_sent: 0, text_said: 'that number sent STOP' })
+    sms.stopped = new Set()
+    sms.throws = true
+    expect(await said()).toMatchObject({ success: true, push_sent: 1, text_sent: 0, text_said: 'the text line did not take it' })
+    expect(sms.texts).toEqual([])
+  })
+
+  it('with no phone set up for the app, the text still reaches him and the email goes as before', async () => {
+    world.devices = new Set()
+    const res = await post({ item_id: 'it1', remind: true })
+    expect(res.body).toMatchObject({ success: true, push_sent: 0, email_sent: true, text_sent: 1 })
+    expect(sms.texts).toHaveLength(1)
+  })
+
+  it('the pen record and the signing code are never texted', async () => {
+    world.items = [notice({ status: 'approved', signed_by: 'u-malachi', signed_at: '2026-11-10T15:00:00Z', signer_signature_mode: 'pen', signed_recorded_by: 'u-wendi', signed_witness_how: 'watched' })]
+    expect((await post({ item_id: 'it1', kind: 'pen_recorded', remind: true })).body).not.toHaveProperty('text_sent')
+    expect(sms.texts).toEqual([])
   })
 })

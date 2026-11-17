@@ -25,6 +25,16 @@
  * anyway**. The mint sends the names, and each strip prints its name large over the address. Cleared, the field
  * prints a run with no names. Since v2.7438 (Taunya's call of 2026-11-16) no strip and no line of this window
  * carries a sticker's running number: a sticker with no name prints its code larger in the name's place.
+ *
+ * Since v2.7523 (the owner, 2026-11-16: *I can see stickers that were reserved, but I don't see any tools to print
+ * them*) the ask offers the job's reserved stickers a press of their own under the line that counts them, one a run
+ * (`reservedPrint.ts`, `ReservedPrintPresses.tsx`): it turns this window to that run, which mints nothing. A run handed
+ * in may say which of its stickers the press starts on (`printing`), so the reserved ones print and *From* and *to*
+ * still reach the whole run. A run that stops part way says its rest is still reserved and where it prints later.
+ *
+ * Since v2.7553 (the owner, 2026-11-16: *I need to be able to choose how many copies … for each of these I need to
+ * print 5*) a run on the page has **Copies of each** too, under *From* and *to*. It opens on the count the run was
+ * made with and changes only this print: the run's own count and the device's remembered count are left alone.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -40,6 +50,7 @@ import {
   PRINT_STICKERS_LABEL,
   printRestLabel,
   printRunLabel,
+  runCopiesWords,
   futureRunPressLabel,
   restAfterStop,
   runStripsWords,
@@ -70,14 +81,16 @@ import {
   type StickerRunRequest,
   type StickerStrip,
 } from '../../lib/materials/stickerRun'
-import { fetchSiteStickerNames, fetchStickerRuns, mintStickerRun, type SiteStickerNames } from '../../lib/materials/stickerRunsIo'
+import { fetchSiteStickerNames, fetchStickerRuns, mintStickerRun, type SiteStickerNames, type StickerRunWithStickers } from '../../lib/materials/stickerRunsIo'
 import { blankCountOf, jobBlankWords } from '../../lib/materials/stickerPlace'
+import { PRINT_RUN_AGAIN_WORDS, reservedRunsToPrint, reservedRunToPrint, restKeptWords, type ReservedRunPrint } from '../../lib/materials/reservedPrint'
 import { LABEL_RANGE_FROM, LABEL_RANGE_TO, leftAfterRangePick, rangeCountWords, tickedRange } from '../../lib/materials/labelPick'
 import { TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_NAME_SMALL_RATIO, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, longestNameChars, repeatEach, tapeLayout, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSetupSteps, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { tapeAddressLines, tapeStripLines } from '../../lib/materials/tapeStrip'
 import { printRootCss } from '../../lib/printRoot'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
+import ReservedPrintPresses from './ReservedPrintPresses'
 import StickerPreviewFold from './StickerPreviewFold'
 import TapeStripBitmap from './TapeStripBitmap'
 
@@ -89,8 +102,12 @@ const quietLink: CSSProperties = { background: 'none', border: 'none', padding: 
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
 const amberNote: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderRadius: 10, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', fontSize: '0.85rem' }
 
-/** A run already minted, handed in by the fold: the window prints it and mints nothing. */
-export type StickerRunToPrint = { run: StickerRun; stickers: MintedSticker[]; title: string }
+/**
+ * A run already minted, handed in by the fold or by a reserved line's press: the window prints it and mints nothing.
+ * `printing` is the stickers the press starts on, when they are not the whole of `stickers` (the reserved ones of a
+ * run that has some on boxes): *From* and *to* still reach every sticker handed in.
+ */
+export type StickerRunToPrint = { run: StickerRun; stickers: MintedSticker[]; title: string; printing?: MintedSticker[] }
 
 type Props = {
   jobId: string
@@ -102,14 +119,16 @@ type Props = {
   onMinted?: (minted: MintedRun) => void
   /** The mint and the print itself; a test hands spies. */
   mint?: (request: StickerRunRequest) => Promise<MintedRun>
-  /** How many of the job's stickers are not yet on a box (v2.7298); a test hands a spy. */
-  blankCount?: (jobId: string) => Promise<number>
+  /** The job's runs with their stickers, for the count of those not yet on a box (v2.7298) and the presses that print them (v2.7523); a test hands a spy. */
+  jobRuns?: (jobId: string) => Promise<StickerRunWithStickers[]>
   /** The site's boxes and its blank named stickers, for the Names field (v2.7391); a test hands a spy. */
   siteNames?: (jobId: string) => Promise<SiteStickerNames>
   print?: () => void
 }
 
-export default function PrintStickersModal({ jobId, jobLabel, role, run: given = null, onClose, onMinted, mint = mintStickerRun, blankCount = (id) => fetchStickerRuns(id).then(blankCountOf), siteNames = fetchSiteStickerNames, print = () => window.print() }: Props) {
+export default function PrintStickersModal({ jobId, jobLabel, role, run: given = null, onClose, onMinted, mint = mintStickerRun, jobRuns = fetchStickerRuns, siteNames = fetchSiteStickerNames, print = () => window.print() }: Props) {
+  /** The run the window was opened on, or turned to by a reserved line's press: its title is the window's. */
+  const [opened, setOpened] = useState<StickerRunToPrint | null>(given)
   const [countText, setCountText] = useState<string>(String(STICKER_COUNT_PRESETS[3]))
   const [copiesState, setCopiesState] = useState<number>(() => (given ? given.run.copies : readTapeCopies()))
   const copies = clampTapeCopies(copiesState)
@@ -123,17 +142,19 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   /** The run on the screen: the one handed in, or the one just minted. */
   const [minted, setMinted] = useState<MintedRun | null>(given ? { run: given.run, stickers: given.stickers } : null)
   /** The stickers the press prints now: the whole run, or the rest after a stop. */
-  const [printing, setPrinting] = useState<MintedSticker[]>(given ? given.stickers : [])
+  const [printing, setPrinting] = useState<MintedSticker[]>(given ? given.printing ?? given.stickers : [])
   const stage: 'ask' | 'run' = minted ? 'run' : 'ask'
   const [minting, setMinting] = useState(false)
   /** The job's stickers still on no box (v2.7298): said before a new run is minted, so nobody prints 200 more over 96 unused. */
   const [blank, setBlank] = useState<number>(0)
+  /** The same stickers by their runs (v2.7523): each run that still holds some has a press that prints them, minting nothing. */
+  const [reservedRuns, setReservedRuns] = useState<ReservedRunPrint[]>([])
   useEffect(() => {
     if (given) return
     let live = true
-    blankCount(jobId).then((n) => { if (live) setBlank(n) }).catch(() => { if (live) setBlank(0) })
+    jobRuns(jobId).then((runs) => { if (live) { setBlank(blankCountOf(runs)); setReservedRuns(reservedRunsToPrint(runs)) } }).catch(() => { if (live) { setBlank(0); setReservedRuns([]) } })
     return () => { live = false }
-  }, [given, jobId, blankCount])
+  }, [given, jobId, jobRuns])
   /**
    * The site's boxes and its blank named stickers (section 10): undefined while they are read, null when the read
    * failed. The Names field opens on the site's next free name once they land, unless someone typed first: one past
@@ -338,6 +359,16 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTick, stage, direct, link, usbBusy, drawnVersion, strips])
 
+  /** A reserved line's press (v2.7523): the window turns to a run already made. Nothing is minted, and nothing prints until the press. */
+  const openRun = (r: StickerRunToPrint) => {
+    setOpened(r)
+    setMinted({ run: r.run, stickers: r.stickers })
+    setPrinting(r.printing ?? r.stickers)
+    setCopiesState(r.run.copies)
+    setIsRest(false)
+    setSlip(null)
+    setSentWords(null)
+  }
   const runMint = async (anyway = false) => {
     if (!verdict.ok || rangeRefused || site === undefined || minting || printerHolds) return
     if (held && !anyway) return
@@ -387,10 +418,22 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const showSetup = tapeDay == null || setupOpen
   const routeSwitch = usbHere ? <button type="button" style={quietLink} onClick={() => { setViaWindow((v) => !v); setSlip(null); setSentWords(null) }}>{viaWindow ? TAPE_VIA_USB_LABEL : TAPE_VIA_WINDOW_LABEL}</button> : null
   const stepBtn = (off: boolean): CSSProperties => ({ ...btn, minHeight: 32, width: 32, padding: 0, justifyContent: 'center', borderRadius: 999, fontSize: '1rem', ...(off ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}) })
-  const title = given ? `${given.title} · ${jobLabel}` : minted ? `${stickerSpanWords(minted.stickers) ? `Stickers ${stickerSpanWords(minted.stickers)}` : `${minted.stickers.length} ${minted.stickers.length === 1 ? 'sticker' : 'stickers'}`} · ${jobLabel}` : `${PRINT_STICKERS_LABEL} · ${jobLabel}`
+  const title = opened ? `${opened.title} · ${jobLabel}` : minted ? `${stickerSpanWords(minted.stickers) ? `Stickers ${stickerSpanWords(minted.stickers)}` : `${minted.stickers.length} ${minted.stickers.length === 1 ? 'sticker' : 'stickers'}`} · ${jobLabel}` : `${PRINT_STICKERS_LABEL} · ${jobLabel}`
   /** The run as its words read it: the names off the stickers when the run's own row came back without them. */
   const runForWords = minted ? { ...minted.run, names: minted.run.names ?? (minted.stickers.length > 0 && minted.stickers.every((s) => s.boxName) ? minted.stickers.map((s) => s.boxName!) : null) } : null
-  const countWords = runForWords ? runStripsWords(runForWords, printing.length) : stickerRunCountWords(count, copies)
+  const countWords = runForWords ? runStripsWords({ ...runForWords, copies }, printing.length) : stickerRunCountWords(count, copies)
+  /** Copies of each on a run already made (v2.7553): this print alone, so the device's remembered count is not written. */
+  const setRunCopies = (n: number) => { setCopiesState(clampTapeCopies(n)); setSentWords(null); setSlip(null) }
+  /** The stepper, the same in the ask and on a run: `set` is what a press does, `held` rests it while the printer runs. */
+  const copiesRow = (set: (n: number) => void, held: boolean, note: string) => (
+    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }} role="group" aria-label={TAPE_COPIES_LABEL} data-testid="stickers-copies-row">
+      <span style={{ fontWeight: 600 }}>{TAPE_COPIES_LABEL}</span>
+      <button type="button" aria-label="One fewer copy" disabled={held || copies <= 1} aria-disabled={held || copies <= 1} style={stepBtn(held || copies <= 1)} onClick={() => set(copies - 1)} data-testid="stickers-copies-less">−</button>
+      <span aria-live="polite" style={{ minWidth: '1.25rem', textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} data-testid="stickers-copies">{copies}</span>
+      <button type="button" aria-label="One more copy" disabled={held || copies >= TAPE_COPIES_MAX} aria-disabled={held || copies >= TAPE_COPIES_MAX} style={stepBtn(held || copies >= TAPE_COPIES_MAX)} onClick={() => set(copies + 1)} data-testid="stickers-copies-more">+</button>
+      <span style={muted} data-testid="stickers-copies-note">{note}</span>
+    </div>
+  )
   /** The strips on the page: the run's, or the test strip alone while it prints. */
   const shownStrips: StickerStrip[] = testOnly ? [STICKER_TEST_STRIP] : strips
   /** A range of the run on the page by its two ends (Taunya, 2026-11-15): the same rule as Print labels, over the run's stickers. */
@@ -428,7 +471,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     <div className="on-site-stickers" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
       {/* Printed alone at full size, as the labels window is (lib/printRoot.ts, v2.6432); the tape's @page rule comes last so it wins. */}
       <style>{`${printRootCss('on-site-stickers')} @media print { .on-site-stickers-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-stickers-chrome { display: none !important; } .on-site-stickers-list { display: block !important; } .on-site-tape-copy { display: grid !important; } } ${tapePrintCss(width, 'on-site-tape', nameChars)}`}</style>
-      <div role="dialog" aria-modal="true" aria-label={given ? given.title : PRINT_STICKERS_LABEL} className="on-site-stickers-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label={opened ? opened.title : PRINT_STICKERS_LABEL} className="on-site-stickers-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="on-site-stickers-chrome" style={{ display: 'grid', gap: '0.6rem', marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
             <div style={{ flex: '1 1 auto', minWidth: 0 }}>
@@ -436,6 +479,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
               <span style={muted} data-testid="stickers-count-words">{countWords}</span>
               {/* A run that is made is reserved (the owner, 2026-11-16): said over the strips, which carry each sticker's own link. */}
               {stage === 'run' ? <span style={{ ...muted, display: 'block' }} data-testid="stickers-reserved-words">{STICKERS_RESERVED_WORDS}</span> : null}
+              {/* A run already made, opened to print (v2.7523): said plainly, so nobody reads the press as a new reservation. */}
+              {stage === 'run' && opened ? <span style={{ ...muted, display: 'block' }} data-testid="stickers-again-words">{PRINT_RUN_AGAIN_WORDS}</span> : null}
             </div>
             <button type="button" style={{ ...btn, flex: '0 0 auto' }} onClick={onClose}>Close</button>
           </div>
@@ -495,6 +540,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
               <span style={muted} data-testid="stickers-range-count">{rangeCountWords(runIds, runLeft, ['sticker', 'stickers'])}</span>
             </div>
           ) : null}
+          {/* A run on the page prints as many of each as is picked here (v2.7553): it opens on the count the run was made with. */}
+          {stage === 'run' && minted ? copiesRow(setRunCopies, usbBusy != null, runCopiesWords(minted.run.copies, copies)) : null}
           {stage === 'ask' ? (
             <div style={{ display: 'grid', gap: '0.6rem' }} data-testid="stickers-ask">
               {/* A run names its boxes (section 10): one typed field, open on the site's next free name. What it reads is said under it, and so is a refusal. */}
@@ -517,18 +564,14 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
                 {STICKER_COUNT_PRESETS.map((n) => <button key={n} type="button" disabled={ask.countFollows} aria-disabled={ask.countFollows} aria-pressed={!ask.countFollows && countText === String(n)} style={{ ...chip(!ask.countFollows && countText === String(n)), ...(ask.countFollows ? { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}) }} onClick={() => setCountText(String(n))} data-testid="stickers-count-preset">{n}</button>)}
                 <input type="number" inputMode="numeric" min={1} max={STICKER_RUN_MAX} value={ask.countFollows ? String(ask.count) : countText} readOnly={ask.countFollows} onChange={(e) => { if (!ask.countFollows) setCountText(e.target.value) }} aria-label="How many, typed" title={ask.countFollows ? 'The typed range sets how many' : undefined} style={{ minHeight: 32, width: 84, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', fontWeight: 700, background: 'var(--surface)', color: ask.countFollows ? 'var(--text-muted)' : 'var(--text-strong)' }} data-testid="stickers-count-input" />
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }} role="group" aria-label={TAPE_COPIES_LABEL}>
-                <span style={{ fontWeight: 600 }}>{TAPE_COPIES_LABEL}</span>
-                <button type="button" aria-label="One fewer copy" disabled={copies <= 1} aria-disabled={copies <= 1} style={stepBtn(copies <= 1)} onClick={() => setCopies(copies - 1)} data-testid="stickers-copies-less">−</button>
-                <span aria-live="polite" style={{ minWidth: '1.25rem', textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} data-testid="stickers-copies">{copies}</span>
-                <button type="button" aria-label="One more copy" disabled={copies >= TAPE_COPIES_MAX} aria-disabled={copies >= TAPE_COPIES_MAX} style={stepBtn(copies >= TAPE_COPIES_MAX)} onClick={() => setCopies(copies + 1)} data-testid="stickers-copies-more">+</button>
-                <span style={muted}>{copies > 1 ? 'A set is one sticker printed more than once, for a box with more than one side. Every copy opens the same box.' : 'For a box with more than one side, print each sticker more than once.'}</span>
-              </div>
+              {copiesRow(setCopies, false, copies > 1 ? 'A set is one sticker printed more than once, for a box with more than one side. Every copy opens the same box.' : 'For a box with more than one side, print each sticker more than once.')}
               {/* What the press holds (the owner, 2026-11-16): the window never prints a sticker with no link, and says so before the press. */}
               <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-strong)' }} data-testid="stickers-reserve-words">{stickerReserveWords(askNames != null)}</p>
               <p style={{ ...muted, margin: 0 }} data-testid="stickers-goes-on">
                 New boxes made from these stickers go on {jobLabel}.{blank > 0 ? <> <span data-testid="stickers-blank-count">{jobBlankWords(blank)}</span></> : null}
               </p>
+              {/* The reserved stickers print from here too (v2.7523): one press a run, which turns this window to that run and mints nothing. */}
+              <ReservedPrintPresses runs={reservedRuns} role={role} busy={minting || usbBusy != null} onPrint={(r) => openRun(reservedRunToPrint(r))} tid="stickers-print-reserved" pressStyle={btn} />
               {!verdict.ok && !rangeRefused ? <p role="note" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-red-700)', fontWeight: 600 }} data-testid="stickers-refusal">{verdict.words}</p> : null}
             </div>
           ) : null}
@@ -565,6 +608,8 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
             </div>
           ) : null}
           {sentWords && !progress ? <div role="status" style={{ color: 'var(--text-green-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="stickers-sent">{sentWords}</div> : null}
+          {/* A run that stopped part way (v2.7523): the rest is not lost with this window, and the line says where it prints later. */}
+          {stage === 'run' && isRest && printing.length > 0 && !progress ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem' }} data-testid="stickers-rest-kept">{restKeptWords(printing.length)}</div> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {direct && !link ? (
               <button type="button" disabled={usbBusy != null} style={btnPrimary} onClick={() => void connect()} data-testid="stickers-connect">{usbBusy === 'connecting' ? 'Connecting…' : PTOUCH_CONNECT_LABEL}</button>

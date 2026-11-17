@@ -25,6 +25,19 @@
 // A retainage notice (v2.7478): the plain body on a `retainage_53_057` item. It told nobody on a send and the Remind
 // press left it out, so the paper waited until the leader opened the desk. The same gate and the same answer as a
 // notice, its own words (`lienRetainageApprovalPush`) and its own door, the Retainage list on that job.
+//
+// A notice that waits on his signature (v2.7491): `{ kind: 'signature', items: [{ item_id, due_ymd }] }`. An approved
+// notice with no signature cannot print, and no press told him of it: Remind covered a paper awaiting approval alone.
+// The office's gate, the affidavit's batch rule (one message for each leader, whatever the count), and its own row
+// rule (`lienSignatureAskable`): a monthly notice, approved, not printed, unsigned as the desk counts it.
+//
+// A reminder goes as a text too (v2.7495): the office's Remind press, on any paper, texts the leader the same words
+// with the link, from the company number, beside the push or the email. The push needs the app on his phone and the
+// email needs his inbox read; a leader who opens neither had no message that reached him. The text is the receipt
+// sweep's kind (`receipt-request`): his `users.phone` placed on his team contact, purpose `nudge`, so Settings' Send
+// texts switch, a STOP and the pause all hold, and the line lands on Messages. A leader outside his Push me hours is
+// not texted either. A first send for approval is not texted. The text never fails the call: the answer says how many
+// went (`text_sent`) and, when none did, why (`text_said`).
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
@@ -32,6 +45,8 @@ import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { toE164 } from '../_shared/gcKernels/lib/quo/events.ts'
+import { lastOurTextAt, loadBoxes, placeNumber, quoCompany, sendText } from '../_shared/quoLines.ts'
 import {
   lienAffidavitApprovalPush,
   lienAffidavitAskable,
@@ -40,7 +55,11 @@ import {
   lienApprovalPush,
   lienCodeUsedPush,
   lienPenRecordedPush,
+  lienReminderText,
+  lienReminderTextMiss,
   lienRetainageApprovalPush,
+  lienSignatureAskable,
+  lienSignatureReminderPush,
   lienWaiverCodeUsedPush,
   signedYmdOf,
   type LienAffidavitApprovalPaper,
@@ -70,7 +89,9 @@ const LEADER_ROLES = ['dev', 'master_technician']
 // The office: who may send a paper for approval. Mirrors isLienOffice (src/lib/jobs/lienDesk.ts).
 const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
 
-type Leader = { id: string; name: string | null; email: string | null }
+type Leader = { id: string; name: string | null; email: string | null; phone?: string | null }
+/** What one tell did. `textSaid` is why no text went, when one was meant to (`lienReminderTextMiss`); null when one went or none was meant. */
+type Told = { pushSent: number; emailSent: number; held: number; textSent: number; textSaid: string | null }
 // The service-role client, as the shared senders take it (`_shared/pushHoursSend.ts`).
 // deno-lint-ignore no-explicit-any
 type Admin = any
@@ -79,7 +100,7 @@ type Admin = any
  * Tell these leaders these words: a push through each one's hours, the same words by email to a leader on with no
  * device, and a row in notification_history for each one reached. Shared by every kind the function tells.
  */
-async function tellLeaders(admin: Admin, leaders: Leader[], words: LienApprovalPush, templateType: string, linkLabel: string): Promise<{ pushSent: number; emailSent: number; held: number }> {
+async function tellLeaders(admin: Admin, leaders: Leader[], words: LienApprovalPush, templateType: string, linkLabel: string, text?: { senderName: string | null } | null): Promise<Told> {
   const resendApiKey = Deno.env.get('RESEND_API_KEY')
   const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
 
@@ -118,7 +139,37 @@ async function tellLeaders(admin: Admin, leaders: Leader[], words: LienApprovalP
       })
     }
   }
-  return { pushSent: pushed.devices, emailSent, held: heldIds.size }
+  // The reminder as a text (v2.7495), to each leader on: beside the push or the email, never in place of it. A text
+  // that cannot go is a reason for the office to read, never a failed call: the push and the email have gone.
+  let textSent = 0
+  let textSaid: string | null = null
+  if (text) {
+    const body = lienReminderText(words, text.senderName, appOrigin)
+    for (const leader of leaders) {
+      if (heldIds.has(leader.id)) continue
+      try {
+        const cell = toE164(leader.phone ?? '')
+        const placed = cell ? await placeNumber(admin, cell, 'team') : null
+        if (!placed) {
+          textSaid = textSaid ?? lienReminderTextMiss('noCell')
+          continue
+        }
+        const out = await sendText(
+          admin,
+          { purpose: 'nudge', contactId: placed.contactId, channelId: placed.channelId, to: placed.number, optedOut: placed.optedOut, body, lastOurTextAt: await lastOurTextAt(admin, placed.channelId, 'team'), now: Date.now(), company: quoCompany(), sender: null, jobId: null },
+          null,
+          'team',
+          await loadBoxes(admin),
+        )
+        if (out.ok) textSent++
+        else textSaid = textSaid ?? lienReminderTextMiss(out.refused)
+      } catch (e) {
+        console.error('notify-lien-approval text error', e)
+        textSaid = textSaid ?? lienReminderTextMiss(null)
+      }
+    }
+  }
+  return { pushSent: pushed.devices, emailSent, held: heldIds.size, textSent, textSaid: textSent > 0 ? null : textSaid }
 }
 
 serve(async (req) => {
@@ -145,34 +196,39 @@ serve(async (req) => {
     // Punch list #305 (v2.7180): `kind: 'affidavit'` + items tells the leader of one affidavit, or of every affidavit of one press.
     const affidavitAsk = kind === 'affidavit'
     // v2.7445: the plain body, `item_id` and no kind, is a notice sent for approval, the monthly one or (v2.7478) the retainage one. `remind: true` is the To do view's Remind press.
-    const noticeAsk = !penRecorded && !codeUsed && !waiverCodeUsed && !affidavitAsk
+    // v2.7491: `kind: 'signature'` + items reminds the leader of approved notices that wait on his signature, one message for the lot.
+    const signatureAsk = kind === 'signature'
+    // The two asks that name many papers in one call, and tell each leader once.
+    const batchAsk = affidavitAsk || signatureAsk
+    const noticeAsk = !penRecorded && !codeUsed && !waiverCodeUsed && !batchAsk
     const reminder = remind === true
-    const asked = affidavitAsk ? lienAffidavitAskItems(items) : []
-    if (affidavitAsk && asked.length === 0) return json({ error: 'Missing items' }, 400)
-    if (!affidavitAsk && (waiverCodeUsed ? !release_id : !item_id)) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
+    const asked = batchAsk ? lienAffidavitAskItems(items) : []
+    if (batchAsk && asked.length === 0) return json({ error: 'Missing items' }, 400)
+    if (!batchAsk && (waiverCodeUsed ? !release_id : !item_id)) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
     const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
     if (archivedRefusal) return archivedRefusal
 
-    // The office's two asks, a notice and an affidavit: whoever in the office presses, never the drafter alone (v2.7445).
-    const { data: caller } = affidavitAsk || noticeAsk
+    // The office's asks, a notice, an affidavit and a signature: whoever in the office presses, never the drafter alone (v2.7445).
+    const { data: caller } = batchAsk || noticeAsk
       ? await admin.from('users').select('name, role, archived_at').eq('id', user.id).maybeSingle()
       : { data: null }
-    if ((affidavitAsk || noticeAsk) && (!caller || caller.archived_at || !OFFICE_ROLES.includes(String(caller.role)))) return json({ error: 'Not the office' }, 403)
+    if ((batchAsk || noticeAsk) && (!caller || caller.archived_at || !OFFICE_ROLES.includes(String(caller.role)))) return json({ error: 'Not the office' }, 403)
 
-    if (affidavitAsk) {
+    if (batchAsk) {
       const { data: rows } = await admin
         .from('job_lien_desk_items')
-        .select('id, job_id, kind, status, submitted_at, voided_at')
+        .select(signatureAsk ? 'id, job_id, kind, status, voided_at, printed_at, fields, signed_at, signer_printed_name, signed_fields_hash' : 'id, job_id, kind, status, submitted_at, voided_at')
         .in('id', asked.map((a) => a.itemId))
       const nowMs = Date.now()
-      const waiting = (rows ?? []).filter((r) => r.job_id && lienAffidavitAskable(r, nowMs, { reminder }))
+      // deno-lint-ignore no-explicit-any
+      const waiting = ((rows ?? []) as any[]).filter((r) => r.job_id && (signatureAsk ? lienSignatureAskable(r) : lienAffidavitAskable(r, nowMs, { reminder })))
       const nothing = { success: true, push_sent: 0, email_sent: false, held: 0, told: 0, leader_name: null }
-      if (waiting.length === 0) return json({ ...nothing, message: 'Not awaiting approval' })
+      if (waiting.length === 0) return json({ ...nothing, message: signatureAsk ? 'Not waiting on a signature' : 'Not awaiting approval' })
       const [{ data: jobs }, { data: roster }] = await Promise.all([
         admin.from('jobs_ledger').select('id, job_name, hcp_number, click_number, master_user_id').in('id', [...new Set(waiting.map((r) => r.job_id as string))]),
-        admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null),
+        admin.from('users').select('id, name, email, phone, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null),
       ])
       const leaderById = new Map((roster ?? []).map((u) => [u.id as string, u as Leader]))
       const jobById = new Map((jobs ?? []).map((j) => [j.id as string, j]))
@@ -193,15 +249,24 @@ serve(async (req) => {
       let pushSent = 0
       let emailSent = 0
       let held = 0
+      let textSent = 0
+      let textSaid: string | null = null
+      // A reminder is texted too (v2.7495); a notice to sign is always a reminder. The send's own call is not.
+      const textAs = signatureAsk || reminder ? { senderName: caller?.name ?? null } : null
       for (const t of tells) {
         const leader = leaderById.get(t.leaderId)
         if (!leader) continue
-        const sent = await tellLeaders(admin, [leader], lienAffidavitApprovalPush({ papers: t.papers, todayYmd, senderName: caller?.name ?? null, reminder }), 'lien_affidavit_approval_ask', 'Open the Lien desk')
+        const words = signatureAsk
+          ? lienSignatureReminderPush({ papers: t.papers.map((p) => ({ jobLabel: p.jobLabel, jobId: p.jobId, mailByYmd: p.fileByYmd })), todayYmd, senderName: caller?.name ?? null })
+          : lienAffidavitApprovalPush({ papers: t.papers, todayYmd, senderName: caller?.name ?? null, reminder })
+        const sent = await tellLeaders(admin, [leader], words, signatureAsk ? 'lien_signature_ask' : 'lien_affidavit_approval_ask', 'Open the Lien desk', textAs)
         pushSent += sent.pushSent
         emailSent += sent.emailSent
         held += sent.held
+        textSent += sent.textSent
+        textSaid = textSaid ?? sent.textSaid
       }
-      return json({ success: true, push_sent: pushSent, email_sent: emailSent > 0, held, told: papers.length, leader_name: tells.length === 1 ? (leaderById.get(tells[0]!.leaderId)?.name ?? null) : null })
+      return json({ success: true, push_sent: pushSent, email_sent: emailSent > 0, held, ...(textAs ? { text_sent: textSent, text_said: textSent > 0 ? null : textSaid } : {}), told: papers.length, leader_name: tells.length === 1 ? (leaderById.get(tells[0]!.leaderId)?.name ?? null) : null })
     }
 
     let item: { job_id: string | null; fields?: unknown; signed_by?: string | null; signed_at?: string | null; signed_witness_how?: string | null }
@@ -257,14 +322,14 @@ serve(async (req) => {
     // The leader: the job's master when he is one, else every leader on the roster. A pen record goes to its signer only.
     const leaderId = penRecorded || codeUsed || waiverCodeUsed ? (item.signed_by as string | null) : (job?.master_user_id ?? null)
     const [{ data: master }, { data: sender }, { data: gc }] = await Promise.all([
-      leaderId ? admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).eq('id', leaderId).maybeSingle() : Promise.resolve({ data: null }),
+      leaderId ? admin.from('users').select('id, name, email, phone, role, archived_at').match(REAL_ACCOUNT).eq('id', leaderId).maybeSingle() : Promise.resolve({ data: null }),
       admin.from('users').select('name').eq('id', user.id).maybeSingle(),
       job?.gc_customer_id ? admin.from('customers').select('name').eq('id', job.gc_customer_id).maybeSingle() : Promise.resolve({ data: null }),
     ])
     let leaders: Leader[] = []
     if (master && !master.archived_at && LEADER_ROLES.includes(String(master.role))) leaders = [master]
     else if (!penRecorded && !codeUsed && !waiverCodeUsed) {
-      const { data: all } = await admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null)
+      const { data: all } = await admin.from('users').select('id, name, email, phone, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null)
       leaders = (all ?? []).filter((u) => u.id !== user.id)
     }
     if (leaders.length === 0) return json({ success: true, push_sent: 0, email_sent: false, message: 'No leader to tell' })
@@ -328,9 +393,11 @@ serve(async (req) => {
         })
 
     const templateType = waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : retainageAsk ? 'lien_retainage_approval_ask' : 'lien_approval_ask'
-    const sent = await tellLeaders(admin, leaders, words, templateType, waiverBid ? 'Open the bid' : waiverCodeUsed ? 'Open the Pipeline' : 'Open the Lien desk')
+    // A reminder of a notice is texted too (v2.7495). The send for approval, the pen record and the two codes are not.
+    const textAs = noticeAsk && reminder ? { senderName: sender?.name ?? null } : null
+    const sent = await tellLeaders(admin, leaders, words, templateType, waiverBid ? 'Open the bid' : waiverCodeUsed ? 'Open the Pipeline' : 'Open the Lien desk', textAs)
 
-    return json({ success: true, push_sent: sent.pushSent, email_sent: sent.emailSent > 0, held: sent.held, leader_name: leaders.length === 1 ? leaders[0]!.name : null })
+    return json({ success: true, push_sent: sent.pushSent, email_sent: sent.emailSent > 0, held: sent.held, ...(textAs ? { text_sent: sent.textSent, text_said: sent.textSaid } : {}), leader_name: leaders.length === 1 ? leaders[0]!.name : null })
   } catch (error) {
     console.error('Error in notify-lien-approval:', error)
     return json({ error: (error as Error)?.message || 'Internal server error' }, 500)

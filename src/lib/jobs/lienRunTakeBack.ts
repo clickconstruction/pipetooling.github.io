@@ -4,11 +4,16 @@
  * needs a fix, the run waits a day — the office takes the run back: the printed stamps clear, the
  * approvals stand, and each notice keeps one line saying who took it back and when. Pure: the
  * run window and the desk draw what this says; `takeBackLienDeskItems` writes it.
+ *
+ * A signature comes off with it (v2.7503, the owner's call of 2026-11-16: *"I like the idea of wiping the
+ * signature when it is sent back"*). The office sends a notice back to have it signed another way, so the
+ * take-back clears the signature, says so before anything changes, and the leader signs again.
  */
 import { demandDate } from '../jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { recipientViaDocsmit, type RunNotice } from './lienDeskRun'
 import { shortDay } from './lienFootChip'
+import { LIEN_RUN_STEP } from './lienRunWords'
 
 /** Kept on the item's `fields` as `runTakenBack`: the latest take-back only. */
 export type LienRunTakenBack = {
@@ -63,10 +68,16 @@ export function runTypedTrackingCount(notices: ReadonlyArray<Pick<RunNotice, 'it
   return n
 }
 
-/** The notices with their printed day and typed numbers cleared, as the window shows them after a take-back. */
+/** The notices with their printed day, typed numbers and signature cleared (v2.7503), as the window shows them after a take-back. */
 export function runNoticesTakenBack<T extends Pick<RunNotice, 'itemId' | 'printedAt' | 'recipients'>>(notices: ReadonlyArray<T>, itemIds: ReadonlyArray<string>): T[] {
   const ids = new Set(itemIds)
-  return notices.map((n) => (ids.has(n.itemId) ? { ...n, printedAt: null, recipients: n.recipients.map((r) => ({ ...r, tracking: '' })) } : n))
+  return notices.map((n) => (ids.has(n.itemId) ? { ...n, printedAt: null, ...('signature' in n ? { signature: null } : {}), recipients: n.recipients.map((r) => ({ ...r, tracking: '' })) } : n))
+}
+
+/** How many of these notices carry a signature that a take-back would clear. */
+export function runSignedCount(notices: ReadonlyArray<Pick<RunNotice, 'itemId'> & { signature?: unknown }>, itemIds: ReadonlyArray<string>): number {
+  const ids = new Set(itemIds)
+  return notices.filter((n) => ids.has(n.itemId) && n.signature != null).length
 }
 
 function notices(n: number): string {
@@ -78,11 +89,21 @@ function dayOf(iso: string | null | undefined): string {
   return iso ? shortDay(iso) : ''
 }
 
-/** The confirm's words, in plain sentences. */
-export function runTakeBackConfirm(input: { count: number; printedAt: string | null; typed: number; all: boolean }): { title: string; lines: string[]; button: string } {
+/** What happens to the signatures, for the confirm: one sentence pair, or none when nothing taken back is signed. */
+function signedLine(count: number, signed: number): string | null {
+  if (signed <= 0) return null
+  if (count === 1) return 'Its signature comes off. The leader signs it again before it prints.'
+  if (signed >= count) return 'Their signatures come off. The leader signs them again before they print.'
+  return `${signed} of them ${signed === 1 ? 'is' : 'are'} signed. ${signed === 1 ? 'That signature comes' : 'Those signatures come'} off, and the leader signs again before the packet prints.`
+}
+
+/** The confirm's words, in plain sentences. `signed` is how many of the notices carry a signature: it comes off (v2.7503). */
+export function runTakeBackConfirm(input: { count: number; printedAt: string | null; typed: number; all: boolean; signed?: number }): { title: string; lines: string[]; button: string } {
   const day = dayOf(input.printedAt)
+  const signed = signedLine(input.count, input.signed ?? 0)
   const lines = [
     `${input.count === 1 ? 'The notice goes' : `The ${notices(input.count)} go`} back to Approved · to print. The approvals stand.`,
+    ...(signed ? [signed] : []),
     'Then print the packet again. It prints the way the app draws it today.',
     `The ${input.count === 1 ? 'copy' : 'copies'} printed${day ? ` ${day}` : ''} ${input.count === 1 ? 'stays' : 'stay'} in ${input.count === 1 ? 'the job’s' : 'each job’s'} Documents, filed as printed.`,
   ]
@@ -91,10 +112,84 @@ export function runTakeBackConfirm(input: { count: number; printedAt: string | n
   return { title: input.all ? 'Take back the run?' : `Take back the ${notices(input.count)} that printed?`, lines, button: `Take back ${notices(input.count)}` }
 }
 
-/** The strip after a take-back: "Taken back. 19 notices are in Approved · to print again. Print the packet when it is ready." */
-export function runTakenBackWords(count: number, printedAt: string | null): string {
+/**
+ * The confirm for ONE notice, asked from its own row (v2.7481, the office's ask of 2026-11-16: *"I clicked printed by
+ * accident. Can you un-print it?"*). The run's own take-back is every printed notice at once; her run had four printed,
+ * so it would have undone three real ones. The button names the act with the job. `typed` is the tracking numbers typed
+ * on this row and not recorded, which the take-back drops. `signed` is whether the notice carries a signature: a
+ * take-back takes it off (the owner's call of 2026-11-16, *"I like the idea of wiping the signature when it is sent
+ * back"*), and the confirm says so before anything changes, in the words the run's own take-back uses.
+ */
+export function runTakeBackOneConfirm(input: { jobNumber: string; printedAt: string | null; typed: number; signed?: boolean }): { title: string; lines: string[]; button: string } {
+  const job = input.jobNumber.trim() || 'this notice'
+  const day = dayOf(input.printedAt)
+  const lines = [
+    `The notice goes back to ${LIEN_RUN_STEP.toPrint}. The approval stands.`,
+    ...(input.signed ? ['Its signature comes off. The leader signs it again before it prints.'] : []),
+    `A copy that printed here${day ? ` ${day}` : ''} stays in the job’s Documents, filed as printed.`,
+  ]
+  if (input.typed > 0) lines.push(`The ${input.typed === 1 ? 'tracking number' : `${input.typed} tracking numbers`} typed on this row ${input.typed === 1 ? 'is' : 'are'} not saved.`)
+  lines.push('The other notices in this run stay as they are.')
+  return { title: `Put ${job} back in ${LIEN_RUN_STEP.toPrint}?`, lines, button: `Put ${job} back in ${LIEN_RUN_STEP.toPrint}` }
+}
+
+/**
+ * The strip after one notice is taken back: "Taken back. 372 is in Approved · to print again. Its approval stands."
+ * When its signature came off, the last sentence says who is next: "The leader signs it again. Then print the packet."
+ */
+export function runTakenBackOneWords(jobNumber: string, signed = false): string {
+  return `Taken back. ${jobNumber.trim() || 'The notice'} is in ${LIEN_RUN_STEP.toPrint} again. ${signed ? 'The leader signs it again. Then print the packet.' : 'Its approval stands.'}`
+}
+
+/**
+ * The strip right after a row is marked printed by hand (v2.7481): that press is the one pressed by accident, so its
+ * undo is one press away while nothing was typed on the row. `jobNumber` names the row when it is one. `asks` is true
+ * when that row is signed: the undo takes the signature off, so the press opens the confirm and its words end in a
+ * mark that says it asks first.
+ */
+export function runMarkedPrintedWords(count: number, jobNumber?: string | null, opts: { asks?: boolean } = {}): { words: string; button: string } {
+  const job = (jobNumber ?? '').trim()
+  if (count === 1) return { words: `${job || 'The notice'} is marked printed. Pressed it by mistake?`, button: opts.asks ? 'Undo the Printed mark…' : 'Undo the Printed mark' }
+  return { words: `${notices(count)} are marked printed. Pressed it by mistake?`, button: `Undo ${count} Printed marks` }
+}
+
+/** The local facts of a sitting with these notices' prints dropped: the copies printed, the ids stamped, the stamps. */
+export function runSittingWithout(sitting: { copies: ReadonlySet<string>; ids: ReadonlyArray<string>; stamps: ReadonlyMap<string, { at: string; by: string | null }> }, itemIds: ReadonlyArray<string>): { copies: Set<string>; ids: string[]; stamps: Map<string, { at: string; by: string | null }> } {
+  const gone = new Set(itemIds)
+  return {
+    copies: new Set([...sitting.copies].filter((key) => !gone.has(key.split(':')[0]!))),
+    ids: sitting.ids.filter((id) => !gone.has(id)),
+    stamps: new Map([...sitting.stamps].filter(([id]) => !gone.has(id))),
+  }
+}
+
+/**
+ * The strip after a take-back: "Taken back. 19 notices are in Approved · to print again. Print the packet when it is ready."
+ * With signatures cleared (v2.7503) the last sentence says who is next: "The leader signs them again. Then print the packet."
+ */
+export function runTakenBackWords(count: number, printedAt: string | null, signed = 0): string {
   const day = printedAt ? demandDate(calendarYmdInAppTzFromIso(printedAt)) : ''
-  return `Taken back. ${count === 1 ? 'The notice' : `The ${notices(count)}`}${day ? ` printed ${day}` : ''} ${count === 1 ? 'is' : 'are'} in Approved · to print again. Print the packet when it is ready.`
+  const next = signed <= 0 ? 'Print the packet when it is ready.' : `The leader signs ${count === 1 ? 'it' : signed >= count ? 'them' : `${signed} of them`} again. Then print the packet.`
+  return `Taken back. ${count === 1 ? 'The notice' : `The ${notices(count)}`}${day ? ` printed ${day}` : ''} ${count === 1 ? 'is' : 'are'} in Approved · to print again. ${next}`
+}
+
+/**
+ * The desk's own *Back to Approved · to print* on one signed notice (v2.7503): it asks first, because the signature
+ * comes off. An unsigned notice goes back without a question, as it always has. `ownSignature` is true when the
+ * person pressing is the one who signed.
+ */
+export function takeBackNoticeConfirm(input: { jobWords: string; signerName: string | null; ownSignature: boolean }): { title: string; message: string; confirmLabel: string } {
+  const whose = input.ownSignature ? 'Your' : `${(input.signerName ?? '').trim() || 'The leader'}’s`
+  return {
+    title: `Take back the notice for ${input.jobWords}?`,
+    message: `The notice goes back to Approved · to print. The approval stands. ${whose} signature comes off, so the notice can be signed again. The run holds the notice until then.`,
+    confirmLabel: 'Take back the notice',
+  }
+}
+
+/** The words after the desk takes one notice back: signed before, or not. */
+export function takeBackNoticeDoneWords(wasSigned: boolean): string {
+  return wasSigned ? 'Back in Approved · to print. It waits to be signed again.' : 'Back in Approved · to print.'
 }
 
 /** The ready chip's tail and hover: "taken back Oct 8", "Printed Oct 7, taken back Oct 8 by Dana." */

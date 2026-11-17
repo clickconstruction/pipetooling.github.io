@@ -12,7 +12,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { SiteBox } from '../../lib/materials/boxName'
 import type { MintedRun, StickerRunRequest } from '../../lib/materials/stickerRun'
-import type { SiteStickerNames } from '../../lib/materials/stickerRunsIo'
+import type { SiteStickerNames, StickerRunWithStickers } from '../../lib/materials/stickerRunsIo'
 
 vi.mock('../../lib/materials/stickerRunsIo', () => ({
   mintStickerRun: vi.fn(),
@@ -37,12 +37,21 @@ async function ready() {
   await waitFor(() => expect(screen.queryByTestId('stickers-names-reading')).toBeNull())
 }
 
-function setup(over: { role?: string; mint?: (r: StickerRunRequest) => Promise<MintedRun>; blank?: () => Promise<number>; site?: () => Promise<SiteStickerNames>; run?: MintedRun & { title: string } } = {}) {
+/** A made-up run of the job as its page reads it: named from `first`, the first `onBoxes` of them on boxes already. */
+function jobRun(id: string, first: number, count: number, onBoxes = 0, over: Partial<StickerRunWithStickers['run']> = {}): StickerRunWithStickers {
+  const names = Array.from({ length: count }, (_, i) => `G${first + i}`)
+  return {
+    run: { id, jobId: 'job-juniper', count, firstNumber: first, lastNumber: first + count - 1, copies: 1, printedByName: 'Dana', printedAt: '2026-11-16T16:00:00Z', names, ...over },
+    stickers: names.map((boxName, i) => ({ id: `${id}-${i}`, number: first + i, code: `7B3D${String(first + i).padStart(4, '0')}`, boxName, containerId: i < onBoxes ? `box-${i}` : null, lostAt: null })),
+  }
+}
+
+function setup(over: { role?: string; mint?: (r: StickerRunRequest) => Promise<MintedRun>; runs?: () => Promise<StickerRunWithStickers[]>; site?: () => Promise<SiteStickerNames>; run?: MintedRun & { title: string; printing?: MintedRun['stickers'] } } = {}) {
   const print = vi.fn()
   const mint = vi.fn(over.mint ?? (async (r: StickerRunRequest) => mintedRun(r)))
   const onMinted = vi.fn()
   renderWithProviders(
-    <PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role={over.role ?? 'assistant'} run={over.run ? { run: over.run.run, stickers: over.run.stickers, title: over.run.title } : null} onClose={() => {}} onMinted={onMinted} mint={mint} blankCount={over.blank ?? (async () => 0)} siteNames={over.site ?? (async () => ({ boxes: [], blankNames: [] }))} print={print} />,
+    <PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role={over.role ?? 'assistant'} run={over.run ? { run: over.run.run, stickers: over.run.stickers, title: over.run.title, printing: over.run.printing } : null} onClose={() => {}} onMinted={onMinted} mint={mint} jobRuns={over.runs ?? (async () => [])} siteNames={over.site ?? (async () => ({ boxes: [], blankNames: [] }))} print={print} />,
   )
   return { print, mint, onMinted }
 }
@@ -79,8 +88,56 @@ describe('PrintStickersModal · the ask', () => {
   })
 
   it('says how many of the job’s stickers are not yet on a box, before 200 more are printed over them (v2.7298)', async () => {
-    setup({ blank: async () => 96 })
+    setup({ runs: async () => [jobRun('r1', 101, 96)] })
     await waitFor(() => expect(screen.getByTestId('stickers-blank-count').textContent).toBe('This job has 96 stickers reserved and not on a box yet.'))
+  })
+
+  it('offers the reserved stickers a press under that line, which turns the window to their run and mints nothing (v2.7523)', async () => {
+    const { print, mint } = setup({ runs: async () => [jobRun('r1', 1, 5, 1)] })
+    const press = await screen.findByTestId('stickers-print-reserved-press')
+    // it counts what it prints and names it: the four on no box yet, never the one that is on a box
+    expect(press.textContent).toBe('Print the 4 reserved stickers, G2 to G5')
+    expect(screen.getByTestId('stickers-print-reserved-note').textContent).toBe('This prints the same stickers with the same links. It reserves nothing new.')
+    // the other press still reserves new ones
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 200 future stickers')
+    fireEvent.click(press)
+    expect(screen.getByRole('dialog', { name: 'Reserved stickers, G2 to G5' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Reserved stickers, G2 to G5 · JP1204 · Juniper Ridge')
+    expect(screen.queryByTestId('stickers-ask')).toBeNull()
+    expect(screen.getByTestId('stickers-again-words').textContent).toBe('Printing them again reserves nothing new. Each sticker keeps the link it has.')
+    // the strips are the run's own, each with the link it was given
+    expect(screen.getAllByTestId('stickers-tape')).toHaveLength(4)
+    expect(screen.getAllByTestId('stickers-tape-name').map((n) => n.textContent)).toEqual(['G2', 'G3', 'G4', 'G5'])
+    expect(screen.getAllByTestId('stickers-tape')[0]!.textContent).toContain('7B3D-0002')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 4 stickers, G2 to G5')
+    // nothing prints until the press, and nothing is ever minted
+    expect(print).not.toHaveBeenCalled()
+    // the whole run is one pick away: From reaches the sticker that is on a box
+    expect(within(screen.getByTestId('stickers-range-from')).getAllByRole('option').map((o) => o.textContent)).toEqual(['G1', 'G2', 'G3', 'G4', 'G5'])
+    expect((screen.getByTestId('stickers-range-from') as HTMLSelectElement).value).toBe('r1-1')
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    expect(print).toHaveBeenCalledTimes(1)
+    fireEvent.change(screen.getByTestId('stickers-range-from'), { target: { value: 'r1-0' } })
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 5 stickers, G1 to G5')
+    expect(mint).not.toHaveBeenCalled()
+  })
+
+  it('more than one run with reserved stickers offers each its own press, with who printed it and when', async () => {
+    setup({ runs: async () => [jobRun('r2', 11, 3, 0, { printedByName: 'Marcus', printedAt: '2026-11-15T16:00:00Z' }), jobRun('r1', 1, 3)] })
+    await waitFor(() => expect(screen.getAllByTestId('stickers-print-reserved-press').map((b) => b.textContent)).toEqual(['Print the 3 reserved stickers, G1 to G3', 'Print the 3 reserved stickers, G11 to G13']))
+    expect(screen.getAllByTestId('stickers-print-reserved-by').map((b) => b.textContent)).toEqual(['Printed Nov 16 by Dana', 'Printed Nov 15 by Marcus'])
+    fireEvent.click(screen.getAllByTestId('stickers-print-reserved-press')[1]!)
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Reserved stickers, G11 to G13 · JP1204 · Juniper Ridge')
+  })
+
+  it('a role that may not print a run sees the reserved press dead with its reason, never missing', async () => {
+    setup({ role: 'subcontractor', runs: async () => [jobRun('r1', 1, 3)] })
+    const press = (await screen.findByTestId('stickers-print-reserved-press')) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(press.getAttribute('aria-label')).toBe('Print the 3 reserved stickers, G1 to G3. Only the office, a primary or a superintendent prints a run of stickers.')
+    expect(screen.getByTestId('stickers-print-reserved-note').textContent).toBe('Only the office, a primary or a superintendent prints a run of stickers.')
+    fireEvent.click(press)
+    expect(screen.queryByTestId('stickers-ask')).not.toBeNull()
   })
 
   it('a quick count and Copies of each change the press to sets, and the device remembers the copies', async () => {
@@ -184,6 +241,65 @@ describe('PrintStickersModal · the run', () => {
     await waitFor(() => expect(screen.getByTestId('stickers-slip').textContent).toContain('The run was not made. No sticker was reserved or printed.'))
     expect(screen.getByTestId('stickers-slip').textContent).toContain('access')
     expect(print).not.toHaveBeenCalled()
+  })
+
+  it('a run handed in with the stickers to start on prints those, and keeps the whole run within reach (v2.7523)', () => {
+    const minted = mintedRun({ jobId: 'job-juniper', count: 4, copies: 1, names: ['G1', 'G2', 'G3', 'G4'] })
+    const { print, mint } = setup({ run: { ...minted, title: 'Reserved stickers, G3 to G4', printing: minted.stickers.slice(2) } })
+    expect(screen.getByRole('dialog', { name: 'Reserved stickers, G3 to G4' })).toBeTruthy()
+    expect(screen.getAllByTestId('stickers-tape-name').map((n) => n.textContent)).toEqual(['G3', 'G4'])
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('2 of G1 to G4, one strip each.')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 stickers, G3 to G4')
+    expect(within(screen.getByTestId('stickers-range-from')).getAllByRole('option').map((o) => o.textContent)).toEqual(['G1', 'G2', 'G3', 'G4'])
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    expect(print).toHaveBeenCalledTimes(1)
+    expect(mint).not.toHaveBeenCalled()
+  })
+
+  it('a run on the page has Copies of each: it opens on the run’s own count and changes this print alone (v2.7553)', () => {
+    const minted = mintedRun({ jobId: 'job-juniper', count: 3, copies: 5, names: ['G93', 'G94', 'G95'] })
+    const { print, mint } = setup({ run: { ...minted, title: 'Reserved stickers, G93 to G95' } })
+    // it opens on the five the run was made with, and says each copy opens the same box
+    expect(screen.getByTestId('stickers-copies').textContent).toBe('5')
+    expect(screen.getByTestId('stickers-copies-note').textContent).toBe('Every copy opens the same box.')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G95, 5 strips each. 15 strips.')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 3 sets, G93 to G95')
+    expect(screen.getAllByTestId('stickers-tape')).toHaveLength(3)
+    expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(12)
+    // fewer: the head, the press and the strips on the page follow, and the note says what the run was made with
+    fireEvent.click(screen.getByTestId('stickers-copies-less'))
+    fireEvent.click(screen.getByTestId('stickers-copies-less'))
+    expect(screen.getByTestId('stickers-copies').textContent).toBe('3')
+    expect(screen.getByTestId('stickers-copies-note').textContent).toBe('The run was made with 5 of each. Every copy opens the same box.')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G95, 3 strips each. 9 strips.')
+    expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(6)
+    // down to one each: plain stickers, no copies on the page
+    fireEvent.click(screen.getByTestId('stickers-copies-less'))
+    fireEvent.click(screen.getByTestId('stickers-copies-less'))
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 3 stickers, G93 to G95')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G95, one strip each.')
+    expect(screen.queryAllByTestId('stickers-tape-copy')).toHaveLength(0)
+    expect((screen.getByTestId('stickers-copies-less') as HTMLButtonElement).disabled).toBe(true)
+    // the count is this print's alone: the device's remembered count is not written
+    expect(localStorage.getItem('pt.labels.tapeCopies')).toBeNull()
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    expect(print).toHaveBeenCalledTimes(1)
+    expect(mint).not.toHaveBeenCalled()
+  })
+
+  it('a run made with one of each can be printed five of each, and six is the most', () => {
+    const minted = mintedRun({ jobId: 'job-juniper', count: 2, copies: 1, names: ['G93', 'G94'] })
+    setup({ run: { ...minted, title: 'Run of 2 · G93 to G94' } })
+    expect(screen.getByTestId('stickers-copies').textContent).toBe('1')
+    expect(screen.getByTestId('stickers-copies-note').textContent).toBe('For a box with more than one side, print each sticker more than once.')
+    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByTestId('stickers-copies-more'))
+    expect(screen.getByTestId('stickers-copies').textContent).toBe('5')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 sets, G93 to G94')
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G94, 5 strips each. 10 strips.')
+    expect(screen.getByTestId('stickers-copies-note').textContent).toBe('The run was made with 1 of each. Every copy opens the same box.')
+    expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(8)
+    fireEvent.click(screen.getByTestId('stickers-copies-more'))
+    expect((screen.getByTestId('stickers-copies-more') as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('a run handed in opens on its strips, mints nothing, and the press prints it again', () => {

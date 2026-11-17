@@ -17,7 +17,7 @@ describe('lienReminderPlan', () => {
   })
 
   it('nothing waiting is nothing to send', () => {
-    expect(lienReminderPlan([])).toEqual({ notices: [], affidavits: [], held: [], ready: 0 })
+    expect(lienReminderPlan([])).toEqual({ notices: [], affidavits: [], signatures: [], held: [], ready: 0 })
   })
 })
 
@@ -30,14 +30,14 @@ describe('lienReminderWords', () => {
     expect(w.dead).toBe(false)
     expect(w.title).toBe('Remind Malachi of 3 papers?')
     expect(w.confirmLabel).toBe('Remind Malachi')
-    expect(w.message).toBe('891 · ZZ Marlow, 922 · ZZ Oak, 804 · ZZ Locks. Malachi gets one message for each of the 2 notices. Malachi gets one message for the affidavit. It goes to Malachi’s phone, or by email. Nothing on the papers changes.')
+    expect(w.message).toBe('891 · ZZ Marlow, 922 · ZZ Oak, 804 · ZZ Locks. Malachi gets one message for each of the 2 notices. Malachi gets one message for the affidavit. It goes to Malachi’s phone, or by email. A text with the link goes too. Nothing on the papers changes.')
   })
 
   it('one paper, and no name: it reads the leader', () => {
     const one = lienReminderWords(lienReminderPlan([paper('notice', '891')]), null)
     expect(one.button).toBe('Remind the leader of 1 paper')
     expect(one.title).toBe('Remind the leader of 1 paper?')
-    expect(one.message).toBe('891. The leader gets one message for the notice. It goes to the leader’s phone, or by email. Nothing on the papers changes.')
+    expect(one.message).toBe('891. The leader gets one message for the notice. It goes to the leader’s phone, or by email. A text with the link goes too. Nothing on the papers changes.')
     expect(lienReminderWords(lienReminderPlan([paper('affidavit', 'a'), paper('affidavit', 'b')]), 'sam').message).toContain('Sam gets one message for the 2 affidavits.')
   })
 
@@ -47,7 +47,7 @@ describe('lienReminderWords', () => {
     // A retainage notice on the desk is reminded of, one message as a notice's (v2.7478).
     const both = lienReminderWords(lienReminderPlan([paper('notice', '891'), paper('retainage', '700')]), 'Sam')
     expect(both.button).toBe('Remind Sam of 2 papers')
-    expect(both.message).toBe('891, 700. Sam gets one message for each of the 2 notices. It goes to Sam’s phone, or by email. Nothing on the papers changes.')
+    expect(both.message).toBe('891, 700. Sam gets one message for each of the 2 notices. It goes to Sam’s phone, or by email. A text with the link goes too. Nothing on the papers changes.')
     const none = lienReminderWords(lienReminderPlan([paper('retainage', '700', { itemId: null })]), 'Sam')
     expect(none.button).toBe('Remind Sam')
     expect(none.dead).toBe(true)

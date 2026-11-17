@@ -671,3 +671,24 @@ not held and is the owner's call: **Add a container** offers the site's next fre
 G92 to G200 reserved it still offers G92. A box made by hand as G92 takes sticker G92 when it is scanned, so the tape
 and the box agree as long as the stickers go on in order. The name of the press is the owner's pick
 of the same day: offered *Reserve stickers* and *Print future stickers*, he took the second, his own phrase.
+
+2026-11-16: **the reserved stickers can be printed where they are named**, built as v2.7523. The owner opened the
+*Which job?* window, read a card's amber line (58 stickers reserved and not on a box yet, with their names, who and
+when) and wrote: *I love that I can see stickers that were reserved, but I don't see any tools to print them?* The
+only way was four presses over three screens: **Open the job's boxes**, **Runs**, **Reprint 58 stickers** in the
+fold, then the window's own press. So the line now carries the press, *Print the 58 reserved stickers, G93 to G150*,
+one for each run that holds some, on the card, on the job's line over its boxes and in the window's ask. It opens the
+stickers window on the run and mints nothing; stickers already on boxes are left out, and **From** and **to** reach
+them. The words say *reserved* and never *again*, because a run is made at the press and the app keeps no record
+that a strip came out. A role that may not print a run sees the press dead with its reason. The line before **Print
+future stickers** on such a card says that press reserves new ones. The phone has no such press: it prints no
+stickers. One thing is left for its own PR and the owner's go, since it needs a column: recording that a run's
+strips went out, so a line can say *never printed* where today it says *Printed Nov 16*.
+`docs/recent-features/v2.7523.md` has the three answers.
+
+2026-11-16: **a run opened to print has Copies of each**, built as v2.7553. The owner pressed the new press on his
+card and the window opened on his run, whose head read *5 strips each*, with no way to see or change that count: the
+stepper was in the ask alone. His words: *I need to be able to choose how many copies to be able to print, for example
+for each of these I need to print 5.* The window on a run now has the same stepper under **From** and **to**. It
+opens on the count the run was made with, one to six, and changes that print only: the run's own count and the count
+the device remembers for the next new run are left as they were.

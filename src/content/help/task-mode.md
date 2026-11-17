@@ -15,7 +15,8 @@ While Task Mode is on:
 
 - A green strip at the very top says *☑ Task Mode · Exit*. A borrowed tablet never looks like a broken app. The way out is always on screen.
 - The header shows a single **Checklist** link. Every other page redirects back to the checklist. The Roadmap is included.
-- The checklist keeps just two tabs. **Today** is your assigned tasks for the day. **History** is what you have completed.
+- The checklist keeps two views on one joined bar. **Today** is your assigned tasks for the day. **History** is what you have completed.
+- The top of Today shows the date and one line that says where you stand. Your first open task waits in a card marked **Next**, with {{button:blue|Mark done}} on it.
 - When one of your open tasks has a place, Today opens on a map called **Where my tasks are**. [See all my tasks on a map](/help/check-off-my-daily-tasks#see-all-my-tasks-on-a-map) shows how to use it.
 - Everything else comes back the moment you turn the mode off. The office tabs like Review and Manage come back. So do the Roadmap page and the `/` people finder.
 
@@ -24,9 +25,9 @@ While Task Mode is on:
 
 {{button:blue|Today}} {{button:outline|History}}
 
+Feed and water the chickens {{chip:blue|Next}} {{button:blue|Mark done}}
 Sweep the shop bays {{chip:green|Done}}
 Check the truck fluids {{chip:green|Done}}
-Feed and water the chickens {{chip:gray|Open}}
 :::
 
 ## Turning Task Mode on

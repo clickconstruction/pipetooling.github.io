@@ -45,6 +45,18 @@ describe('lienCalendarRows (punch list #182: the By date rows, one kernel for th
     expect(rowsOf(released)).toEqual(['j1', 'j5'])
   })
 
+  it('a job a person took off the lien path is off the clocks and off By date, and back the read after it is put back (v2.7521)', () => {
+    const offPath = billedJob('j6', { lien_path_answer: 'off_path', lien_path_reason: 'Not for work on the property.' })
+    const jobs = [billedJob('j1'), offPath]
+    const clocks = { j1: clock(), j6: clock() }
+    const rowsOf = (list: typeof jobs) => buildLienCalendarRows(list, (job, inv) => lienRunwayForJob(job, inv, { clocks, paySpeeds: null, promisedPayDates: null, paceContext: null, todayYmd: TODAY })).map((r) => r.jobId)
+    expect(billedLienClockJobsOf(jobs).map((j) => j.id)).toEqual(['j1'])
+    expect(rowsOf(jobs)).toEqual(['j1'])
+    const back = [jobs[0]!, { ...offPath, lien_path_answer: null, lien_path_reason: 'Counsel says the claim stands.' }]
+    expect(billedLienClockJobsOf(back).map((j) => j.id)).toEqual(['j1', 'j6'])
+    expect(rowsOf(back)).toEqual(['j1', 'j6'])
+  })
+
   it('a job with no clock yet has no runway; with one, the runway counts from the work month', () => {
     const job = billedJob('j1')
     const deps = { clocks: null, paySpeeds: null, promisedPayDates: null, paceContext: null, todayYmd: TODAY }

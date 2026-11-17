@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties, type ReactNode } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { isOfficeRole, isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -79,6 +79,9 @@ import { useTaskPlaces } from '../hooks/useTaskPlaces'
 import { useTaskSpotPhotos } from '../hooks/useTaskSpotPhotos'
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from '../components/checklist/TaskPlacesMapCard'
 import { taskPlaceDots, taskPlaceFarShort, taskTitlePlain } from '../lib/tasks/taskPlace'
+import { lateFirst, nextTaskId, splitToday, stillOpenIsLate, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
+import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
+import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
@@ -247,6 +250,10 @@ function vehicleTaskChip(instanceId: string, onOpen: (instanceId: string) => voi
 
 const tabStyle = pageTabStyle
 
+/** The small-caps label over a part of the day, the New task window's row label. */
+const TODAY_PART_LABEL: CSSProperties = { margin: '0.9rem 2px 0.4rem', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+const TODAY_PART_LIST: CSSProperties = { listStyle: 'none', padding: 0, margin: 0 }
+
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -357,12 +364,29 @@ export default function Checklist() {
 
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
 
+  // Punch list #369: in Task Mode the two tabs are one joined bar, in the New task window's shape, and the page's
+  // title goes, since the header's link already says Checklist.
+  const taskDayBar = taskModeEnabled ? (
+    <TaskDayBar
+      tab={activeTab === 'history' ? 'history' : 'today'}
+      onPick={(tab) => {
+        setActiveTab(tab)
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', tab)
+          return next
+        })
+      }}
+    />
+  ) : null
+
   return (
     <div
       style={{
         padding: '0.25rem 1.5rem 1.5rem',
       }}
     >
+      {taskModeEnabled ? null : (
       <div className="checklist-tab-bar">
         <div className="checklist-tab-strip" ref={tabStripRef}>
         <button
@@ -432,10 +456,12 @@ export default function Checklist() {
         </div>
         <h1 className="checklist-tab-title">Checklist</h1>
       </div>
+      )}
+      {taskModeEnabled && activeTab === 'history' ? <div style={{ maxWidth: 720, margin: '0.6rem auto 1rem' }}>{taskDayBar}</div> : null}
 
       {/* Punch list #188 rows 35 and 65 (v2.6758): forwarding and Upcoming are office work; History's edit mode and Review's acts for others are the owner's with a dev. */}
       {activeTab === 'today' && (
-        <ChecklistTodayTab authUserId={authUser?.id ?? null} canForward={isOfficeRole(role)} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
+        <ChecklistTodayTab modeBar={taskDayBar} authUserId={authUser?.id ?? null} canForward={isOfficeRole(role)} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
       )}
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={isOwnerOrDev(role)} setError={setError} />
@@ -461,7 +487,7 @@ export default function Checklist() {
   )
 }
 
-function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setError }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; setError: (s: string | null) => void }) {
+function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setError, modeBar = null }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
   const [todayInstances, setTodayInstances] = useState<ChecklistInstance[]>([])
   const [upcomingInstances, setUpcomingInstances] = useState<ChecklistInstance[]>([])
@@ -495,7 +521,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
     const titleOf = (i: ChecklistInstance) => taskTitlePlain((i.checklist_items as { title?: string } | null)?.title)
     return [
       ...todayInstances.filter((i) => !i.completed_at).map((i) => ({ id: i.id, title: titleOf(i), place: taskPlaces.placeFor(i.checklist_item_id), overdue: false })),
-      ...outstandingInstances.map((i) => ({ id: i.id, title: titleOf(i), place: taskPlaces.placeFor(i.checklist_item_id), overdue: true })),
+      // Red is for a due day that has passed. An older task with none is amber (punch list #369, step A2).
+      ...outstandingInstances.map((i) => {
+        const late = stillOpenIsLate(i.checklist_items?.due_date ?? null, toLocalDateString(new Date()))
+        return { id: i.id, title: titleOf(i), place: taskPlaces.placeFor(i.checklist_item_id), overdue: late, old: !late }
+      }),
     ]
   }, [todayInstances, outstandingInstances, taskPlaces])
   const placeNumbers = useMemo(() => taskPlaceDots(mapTasks).numberById, [mapTasks])
@@ -514,6 +544,28 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
     }, 60)
   }
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
+  // Punch list #369: a done task says who hears. Their names are read beside the names of the people in the threads.
+  useEffect(() => {
+    const ids = [...new Set([...todayInstances, ...outstandingInstances].map((i) => taskHearsId(i.checklist_items, authUserId)).filter((v): v is string => !!v))].filter((id) => !(id in eventActorNameById))
+    if (ids.length === 0) return
+    let off = false
+    void supabase
+      .from('users')
+      .select('id, name')
+      .in('id', ids)
+      .then(({ data }) => {
+        if (off || !data) return
+        setEventActorNameById((prev) => {
+          const next = { ...prev }
+          for (const r of data as Array<{ id: string; name: string | null }>) next[r.id] = (r.name ?? '').trim() || 'Someone'
+          return next
+        })
+      })
+    return () => {
+      off = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the names read when the lists change, never when a name lands
+  }, [todayInstances, outstandingInstances, authUserId])
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
@@ -599,7 +651,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
       reopenedOnes = rest.filter((i) => lastTransitionIsReopen(grouped.get(i.id) ?? []))
     }
     const overdueData = [...qualifying, ...reopenedOnes]
-    setOutstandingInstances(sortOutstanding(overdueData))
+    // Punch list #369: a task whose due day has passed leads the list, so the one red row is never behind the fold.
+    setOutstandingInstances(lateFirst(sortOutstanding(overdueData), today))
     const merged = [...(todayData ?? [])] as unknown as ChecklistInstance[]
     const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
     const orderMap = new Map<string, number>()
@@ -871,126 +924,148 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
 
   if (loading) return <p>Loading…</p>
 
+  // Punch list #369: the day in three parts. Next is one task, drawn open; the rest of today's open tasks follow it;
+  // what is done folds to a line each. With today finished, Next is a task that was sent back, then the oldest.
+  const { open: todayOpen, done: todayDone } = splitToday(todayInstances)
+  const sentBackIds = new Set(outstandingInstances.filter((i) => lastTransitionIsReopen(eventsByInstance.get(i.id) ?? [])).map((i) => i.id))
+  const nextId = nextTaskId(todayOpen, outstandingInstances, sentBackIds)
+  const nextInst = nextId ? (todayOpen.find((i) => i.id === nextId) ?? outstandingInstances.find((i) => i.id === nextId) ?? null) : null
+  const thenRows = todayOpen.filter((i) => i.id !== nextId)
+  const olderRows = outstandingInstances.filter((i) => i.id !== nextId)
+  const showSentence = !loading && !dayFailure && (todayInstances.length > 0 || outstandingInstances.length > 0)
+  const hearsNameFor = (inst: ChecklistInstance): string | null => {
+    const id = taskHearsId(inst.checklist_items, authUserId)
+    return id ? (eventActorNameById[id] ?? null) : null
+  }
+  const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
+    // Next can be an older task once today is finished: its dot is the map's colour for it, red only when late.
+    const todayYmd = toLocalDateString(new Date())
+    const older = inst.scheduled_date < todayYmd
+      const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+      const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
+      return (
+        <ChecklistInstanceCard
+          key={inst.id}
+          instance={inst}
+          variant="fresh"
+          lead={lead}
+          hearsName={hearsNameFor(inst)}
+          title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items, undefined, { wrap: true })}</div> : null}{dueCardChip(inst.checklist_items?.due_date)}</>}
+          events={eventsByInstance.get(inst.id) ?? []}
+          nameById={eventActorNameById}
+          currentUserId={authUserId}
+          onToggleComplete={() => void toggleComplete(inst)}
+          onPostComment={(body) => postCardComment(inst, body)}
+          lines={taskLines.linesFor(inst.id)}
+          onTickLine={async (criterionId, ticked) => {
+            const r = await taskLines.tick(inst.id, criterionId, ticked)
+            if (!r.ok && r.error) setError(r.error)
+            // The last tick closes the card in the database; read the day again so the box and the queue agree.
+            if (r.allTicked) await loadToday()
+          }}
+          ring={takesRing({ repeatType: inst.checklist_items?.repeat_type ?? 'once', roadmapTaskId: inst.checklist_items?.roadmap_group_task_id ?? null })}
+          asksForPhoto={cardAsksForPhoto({ asksForPhoto: inst.checklist_items?.asks_for_photo }, { asksForPhoto: inst.checklist_items?.checklist_tech_tree_group_tasks?.asks_for_photo })}
+          photos={taskPhotos.photosFor(inst.id)}
+          onPhotoAdded={taskPhotos.add}
+          place={taskPlaces.placeFor(inst.checklist_item_id)}
+          mapId={taskPlaces.mapFor(inst.checklist_item_id)}
+          placeNumber={placeNumbers.get(inst.id) ?? null}
+          placeOverdue={older && stillOpenIsLate(inst.checklist_items?.due_date ?? null, todayYmd)}
+          placeOld={older && !stillOpenIsLate(inst.checklist_items?.due_date ?? null, todayYmd)}
+          placeFar={placeFarFor(inst)}
+          openSignal={shownTask?.id === inst.id ? shownTask.n : 0}
+          spotPhotoUrl={spotPhotos.urlFor(inst.checklist_item_id)}
+          onPlaceAdded={() => void taskPlaces.reload()}
+          onSetPercent={async (percent, words) => {
+            if (!authUserId) return false
+            const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
+            if (!r.ok) {
+              setError(r.error ?? null)
+              return false
+            }
+            await loadToday()
+            return true
+          }}
+          fullHistory={{
+            item: {
+              id: inst.checklist_item_id,
+              title,
+              created_at: inst.checklist_items?.created_at ?? null,
+              created_by_user_id: inst.checklist_items?.created_by_user_id ?? null,
+            },
+            showInstanceDays: (inst.checklist_items?.repeat_type ?? 'once') !== 'once',
+            setError,
+            onPosted: appendLocalCardComment,
+            // Today's own toggle keeps its optimistic updates + side effects.
+            onComplete: async () => {
+              await toggleComplete(inst)
+              return true
+            },
+          }}
+          actions={
+            <>
+              {isNotificationRecipient(inst) && (
+                <button type="button" onClick={() => openMuteModal(inst)} style={TASK_PILL_STYLE} title="Mute notifications for this task">
+                  Mute alerts
+                </button>
+              )}
+              {canForward && (
+                <button type="button" className="fwd-btn-desktop" onClick={() => openFwd(inst)} style={TASK_PILL_STYLE} title="Give this task to someone else">
+                  Forward
+                </button>
+              )}
+            </>
+          }
+        />
+      )
+  }
+
   return (
-    <div>
+    <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div data-today-head style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '0.6rem', margin: '0.6rem 0 0.9rem' }}>
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ margin: 0, fontSize: '1.3rem', lineHeight: 1.15 }}>{todayHeadDate(new Date())}</h2>
+          {showSentence ? (
+            <p role="status" data-today-sentence style={{ margin: '2px 0 0', fontSize: 13, lineHeight: 1.4, color: 'var(--text-green-700)' }}>
+              {todaySentence({ today: todayInstances.length, done: todayDone.length, stillOpen: outstandingInstances.length })}
+            </p>
+          ) : null}
+        </div>
+        {modeBar}
+      </div>
       <TaskPlacesMapCard tasks={mapTasks} onShowTask={showTask} onMe={setMe} />
-      <section style={{ marginBottom: '2rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Today</h2>
+      <section style={{ marginBottom: '1.5rem' }}>
         {dayFailure ? (
           // A read is safe to repeat: when the signal returns the day reads again by itself.
           <OfflineRetryPanel failure={dayFailure} onRetry={loadDay} surface="checklist-today" idempotent busy={loading} />
-        ) : todayInstances.length === 0 ? (
+        ) : !nextInst && todayInstances.length === 0 ? (
           <EmptyState {...checklistTodayEmptyWords(canForward ? () => setUpcomingExpanded(true) : null)} />
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {todayInstances.map((inst) => {
-              const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
-              const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
-              return (
-                <ChecklistInstanceCard
-                  key={inst.id}
-                  instance={inst}
-                  title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items)}</div> : null}{dueCardChip(inst.checklist_items?.due_date)}</>}
-                  events={eventsByInstance.get(inst.id) ?? []}
-                  nameById={eventActorNameById}
-                  currentUserId={authUserId}
-                  onToggleComplete={() => void toggleComplete(inst)}
-                  onPostComment={(body) => postCardComment(inst, body)}
-                  lines={taskLines.linesFor(inst.id)}
-                  onTickLine={async (criterionId, ticked) => {
-                    const r = await taskLines.tick(inst.id, criterionId, ticked)
-                    if (!r.ok && r.error) setError(r.error)
-                    // The last tick closes the card in the database; read the day again so the box and the queue agree.
-                    if (r.allTicked) await loadToday()
-                  }}
-                  ring={takesRing({ repeatType: inst.checklist_items?.repeat_type ?? 'once', roadmapTaskId: inst.checklist_items?.roadmap_group_task_id ?? null })}
-                  asksForPhoto={cardAsksForPhoto({ asksForPhoto: inst.checklist_items?.asks_for_photo }, { asksForPhoto: inst.checklist_items?.checklist_tech_tree_group_tasks?.asks_for_photo })}
-                  photos={taskPhotos.photosFor(inst.id)}
-                  onPhotoAdded={taskPhotos.add}
-                  place={taskPlaces.placeFor(inst.checklist_item_id)}
-                  mapId={taskPlaces.mapFor(inst.checklist_item_id)}
-                  placeNumber={placeNumbers.get(inst.id) ?? null}
-                  placeFar={placeFarFor(inst)}
-                  openSignal={shownTask?.id === inst.id ? shownTask.n : 0}
-                  spotPhotoUrl={spotPhotos.urlFor(inst.checklist_item_id)}
-                  onPlaceAdded={() => void taskPlaces.reload()}
-                  onSetPercent={async (percent, words) => {
-                    if (!authUserId) return false
-                    const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
-                    if (!r.ok) {
-                      setError(r.error ?? null)
-                      return false
-                    }
-                    await loadToday()
-                    return true
-                  }}
-                  fullHistory={{
-                    item: {
-                      id: inst.checklist_item_id,
-                      title,
-                      created_at: inst.checklist_items?.created_at ?? null,
-                      created_by_user_id: inst.checklist_items?.created_by_user_id ?? null,
-                    },
-                    showInstanceDays: (inst.checklist_items?.repeat_type ?? 'once') !== 'once',
-                    setError,
-                    onPosted: appendLocalCardComment,
-                    // Today's own toggle keeps its optimistic updates + side effects.
-                    onComplete: async () => {
-                      await toggleComplete(inst)
-                      return true
-                    },
-                  }}
-                  actions={
-                    <>
-                      {isNotificationRecipient(inst) && (
-                        <button
-                          type="button"
-                          onClick={() => openMuteModal(inst)}
-                          style={{
-                            padding: '0.35rem',
-                            border: '1px solid var(--border-strong)',
-                            borderRadius: 4,
-                            background: 'var(--surface)',
-                            cursor: 'pointer',
-                            fontSize: '1rem',
-                            lineHeight: 1,
-                          }}
-                          title="Mute notifications for this task"
-                          aria-label="Mute notifications for this task"
-                        >
-                          🔕
-                        </button>
-                      )}
-                      {canForward && (
-                        <button
-                          type="button"
-                          className="fwd-btn-desktop"
-                          onClick={() => openFwd(inst)}
-                          style={{
-                            padding: '0.35rem 0.6rem',
-                            fontSize: '0.8125rem',
-                            fontWeight: 500,
-                            border: '1px solid #2563eb',
-                            borderRadius: 4,
-                            background: '#2563eb',
-                            color: 'white',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          FWD
-                        </button>
-                      )}
-                    </>
-                  }
-                />
-              )
-            })}
-          </ul>
+          <>
+            {nextInst ? (
+              <>
+                <h3 style={TODAY_PART_LABEL}>{todayPartLabel('next', 1)}</h3>
+                <ul style={TODAY_PART_LIST}>{renderTodayCard(nextInst, true)}</ul>
+              </>
+            ) : null}
+            {thenRows.length > 0 ? (
+              <>
+                <h3 style={TODAY_PART_LABEL}>{todayPartLabel('then', thenRows.length)}</h3>
+                <ul style={TODAY_PART_LIST}>{thenRows.map((inst) => renderTodayCard(inst, false))}</ul>
+              </>
+            ) : null}
+            {todayDone.length > 0 ? (
+              <>
+                <h3 style={TODAY_PART_LABEL}>{todayPartLabel('done', todayDone.length)}</h3>
+                <ul style={TODAY_PART_LIST}>{todayDone.map((inst) => renderTodayCard(inst, false))}</ul>
+              </>
+            ) : null}
+          </>
         )}
       </section>
 
       <ChecklistOutstandingSection
-        instances={outstandingInstances}
+        instances={olderRows}
         eventsByInstance={eventsByInstance}
         currentUserId={authUserId}
         nameById={eventActorNameById}
@@ -1036,7 +1111,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
             <>
               <ChecklistTitleWithLinks title={isVehicleTaskTitle(rawTitle) ? stripVehicleTaskMarker(rawTitle) : rawTitle} links={item?.links} />
               {isVehicleTaskTitle(rawTitle) ? <> {vehicleTaskChip((inst as ChecklistInstance).id, setVehicleCtxInstanceId)}</> : null}
-              {item?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(item)}</div> : null}
+              {item?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(item, undefined, { wrap: true })}</div> : null}
             </>
           )
         }}
