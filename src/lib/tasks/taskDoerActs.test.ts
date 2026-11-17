@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { droppedReason, stuckReason, stuckSaidBy } from '../checklistCardEvents'
-import { STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
+import { PASS_MIN_TASKS, PASS_PRESS_LABEL, passAnswers, passCountWords, passSummary, STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
 
 describe('a map from the person doing the task', () => {
   it('offers a line by hand, a walked line and a point, in that order', () => {
@@ -186,5 +186,32 @@ describe('stuckReason', () => {
   it('knows who said it and when', () => {
     expect(stuckSaidBy([ev('stuck', '2026-11-16T12:00:00Z', 'a', 'u-theo')])).toEqual({ userId: 'u-theo', at: '2026-11-16T12:00:00Z' })
     expect(stuckSaidBy([ev('stuck', '2026-11-16T12:00:00Z', 'a'), ev('unstuck', '2026-11-16T13:00:00Z')])).toBeNull()
+  })
+})
+
+describe('Go through the old ones', () => {
+  it('says where the pass stands', () => {
+    expect(passCountWords(0, 8)).toBe('1 of 8')
+    expect(passCountWords(7, 8)).toBe('8 of 8')
+    expect(passCountWords(9, 8)).toBe('8 of 8')
+  })
+  it('offers each task the tools it allows, with Done first and Skip last', () => {
+    expect(passAnswers({ once: true, done: false, roadmap: false, vehicle: false }).map((r) => r.key)).toEqual(['done', 'move', 'stuck', 'drop', 'skip'])
+    expect(passAnswers({ once: true, done: false, roadmap: true }).map((r) => r.key)).toEqual(['done', 'move', 'stuck', 'skip'])
+    expect(passAnswers({ once: false, done: false }).map((r) => r.key)).toEqual(['done', 'stuck', 'skip'])
+    expect(passAnswers({ once: true, done: false, stuck: true }).map((r) => r.key)).toEqual(['done', 'move', 'drop', 'skip'])
+  })
+  it('ends by saying what it came to', () => {
+    expect(passSummary(3, 8)).toBe('You sorted 3. 5 are as they were.')
+    expect(passSummary(7, 8)).toBe('You sorted 7. 1 is as it was.')
+    expect(passSummary(8, 8)).toBe('You sorted all 8 tasks.')
+    expect(passSummary(1, 1)).toBe('You sorted the 1 task.')
+    expect(passSummary(0, 8)).toBe('Nothing changed. 8 tasks are as they were.')
+    expect(passSummary(0, 1)).toBe('Nothing changed. 1 task is as it was.')
+    for (const [s, t] of [[3, 8], [8, 8], [0, 8], [0, 1]] as const) expect(plainWordsFailures(passSummary(s, t))).toEqual([])
+  })
+  it('names its press and needs two tasks', () => {
+    expect(PASS_PRESS_LABEL).toBe('Go through them')
+    expect(PASS_MIN_TASKS).toBe(2)
   })
 })

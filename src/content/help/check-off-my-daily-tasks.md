@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -203,7 +203,9 @@ A task that repeats cannot be closed this way. Neither can a roadmap task or a v
 
 Below your Today list you may see a **Still open** list. It holds one-off tasks whose day came and went without getting done. Each row says when the task was given, like *given Thu, Jul 30*. A pill at the end of the row shows its age, like *20 days*. The pill turns {{chip:yellow|amber}} after a week. A task with a due day that has passed shows a {{chip:red|red}} pill, like *3 days late*.
 
-Check a task off right there when you knock it out. Or tap the row to read its notes first. The open row also holds **⋯ More**. The list shows three rows and folds the rest. Press **Show 5 more** to see them all. Daily and weekly tasks never pile up here. Only work that's still genuinely waiting does.
+Check a task off right there when you knock it out. Or tap the row to read its notes first. The open row also holds **⋯ More**.
+
+A long list is quicker to clear one task at a time. Press **Go through them** beside the list's name. Each task comes up by itself with its answers. Press **Done**, **Still on it**, **Can't do it**, **No longer applies** or **Skip**. A skipped task stays as it is. At the end a line says what changed, like *You sorted 3. 5 are as they were.* The list shows three rows and folds the rest. Press **Show 5 more** to see them all. Daily and weekly tasks never pile up here. Only work that's still genuinely waiting does.
 
 Nothing escalates on its own. An overdue one-off doesn't page anyone or move up someone else's list. What the office does see is its age. On Checklist → Manage the open one-offs sort oldest first. A chip turns {{chip:yellow|amber}} after a week and {{chip:red|red}} after a month. A **🔔 Remind** from whoever assigned it is a person deciding to nudge you, not a timer.
 

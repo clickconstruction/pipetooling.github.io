@@ -256,3 +256,39 @@ export function stuckRowWords(who: string, reason: string): string {
   const why = reason.trim()
   return why ? `${who}: ${why}` : `${who} is stuck`
 }
+
+// --- Go through the old ones: one task at a time, each answered with a tool above ---
+
+export const PASS_PRESS_LABEL = 'Go through them'
+export const PASS_TITLE = 'Go through the old ones'
+/** The list offers the pass once it holds this many tasks. One old task needs no pass. */
+export const PASS_MIN_TASKS = 2
+
+export type PassAnswer = 'done' | 'move' | 'stuck' | 'drop' | 'skip'
+
+/** Where the pass stands: *2 of 8*. */
+export function passCountWords(index: number, total: number): string {
+  return `${Math.min(index + 1, total)} of ${total}`
+}
+
+/**
+ * The answers for one task of the pass. Each is a tool that exists, so the pass adds no rule of its own: what a task
+ * cannot do under More it cannot do here. Skip is always last, and leaves the task as it is.
+ */
+export function passAnswers(t: Pick<TaskDoerTarget, 'once' | 'done'> & Partial<Pick<TaskDoerTarget, 'roadmap' | 'vehicle' | 'stuck'>>): TaskChoice<PassAnswer>[] {
+  const more = taskMoreChoices(t).map((r) => r.key)
+  const rows: TaskChoice<PassAnswer>[] = [{ key: 'done', label: 'Done', words: 'It is finished. Mark it done.' }]
+  if (more.includes('move')) rows.push({ key: 'move', label: 'Still on it', words: 'Pick the day you will do it.' })
+  if (more.includes('stuck')) rows.push({ key: 'stuck', label: STUCK_TITLE, words: 'Say what is in the way.' })
+  if (more.includes('drop')) rows.push({ key: 'drop', label: DROP_TITLE, words: 'Close it with a reason.' })
+  rows.push({ key: 'skip', label: 'Skip', words: 'Leave it as it is.' })
+  return rows
+}
+
+/** What the pass came to, said when its last task is answered or the person stops. */
+export function passSummary(sorted: number, total: number): string {
+  const left = Math.max(0, total - sorted)
+  if (sorted <= 0) return total === 1 ? 'Nothing changed. 1 task is as it was.' : `Nothing changed. ${total} tasks are as they were.`
+  if (left === 0) return sorted === 1 ? 'You sorted the 1 task.' : `You sorted all ${sorted} tasks.`
+  return `You sorted ${sorted}. ${left === 1 ? '1 is as it was.' : `${left} are as they were.`}`
+}

@@ -79,7 +79,7 @@ import { useTaskPlaces } from '../hooks/useTaskPlaces'
 import { useTaskSpotPhotos } from '../hooks/useTaskSpotPhotos'
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from '../components/checklist/TaskPlacesMapCard'
 import { taskPlaceDots, taskPlaceDraft, taskPlaceFarShort, taskTitlePlain } from '../lib/tasks/taskPlace'
-import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, lateFirst, nextTaskId, splitToday, stillOpenIsLate, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
+import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, lateFirst, nextTaskId, splitToday, stillOpenIsLate, stillOpenMeta, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
@@ -494,7 +494,17 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   const addTaskModal = useChecklistAddModal()
   // Step C3: the doer's tools. One More press per task and one set of sheets for the tab. Up here with the tab's other
   // hooks, above the early return a loading day takes.
-  const doer = useTaskDoerActs({ authUserId, todayYmd: todayYmdInAppTz(), onChanged: () => loadDay() })
+  const doer = useTaskDoerActs({
+    authUserId,
+    todayYmd: todayYmdInAppTz(),
+    onChanged: () => rereadDay(),
+    // The pass's Done answer is the tick's own path, by the day row's id.
+    markDone: async (instanceId) => {
+      const inst = [...todayInstances, ...outstandingInstances].find((i) => i.id === instanceId)
+      if (!inst || inst.completed_at) return
+      await toggleComplete(inst)
+    },
+  })
   /** Tasks finished in this visit (punch list #369, step B2): each one's done line offers the photo and the note once. */
   const [doneHere, setDoneHere] = useState<ReadonlySet<string>>(new Set())
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
@@ -589,6 +599,14 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   if (!fwdTitle.trim()) fwdMissingFields.push('Title')
   if (!fwdAssigneeId) fwdMissingFields.push('Assignee')
   const fwdCanSubmit = fwdMissingFields.length === 0
+
+  /**
+   * The day read again after something changed, without the page's loading line (punch list #369, step C5): a sheet
+   * that is open stays open, and the lists change under it.
+   */
+  async function rereadDay(): Promise<void> {
+    await Promise.all([loadToday(), loadUpcoming()])
+  }
 
   /** The day's read: today's items, the outstanding ones and (for a dev) what is coming. Retry runs it again. */
   async function loadDay(): Promise<void> {
@@ -954,7 +972,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   // Punch list #369, step B1: the person's own task, and a follow-up from a task they finished. Both open the New task
   // window that exists, so nothing new is saved here. The day reads again once the window has sent.
   const canWriteTask = canAddTask && !!addTaskModal && !!authUserId
-  const addOwnTask = () => addTaskModal?.openAddModal({ assigneeUserId: authUserId, onSaved: () => void loadDay() })
+  const addOwnTask = () => addTaskModal?.openAddModal({ assigneeUserId: authUserId, onSaved: () => void rereadDay() })
   const addFollowUp = (inst: ChecklistInstance) => {
     const place = taskPlaceDraft(taskPlaces.placeFor(inst.checklist_item_id))
     addTaskModal?.openAddModal({
@@ -966,7 +984,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         place: place ? { lat: place.lat, lng: place.lng, name: place.name, accuracyM: place.accuracyM } : null,
         tellUserId: followUpTellsId(inst.checklist_items?.created_by_user_id, authUserId),
       },
-      onSaved: () => void loadDay(),
+      onSaved: () => void rereadDay(),
     })
   }
   const doerTargetOf = (inst: ChecklistInstance): TaskDoerActsTarget => {
@@ -983,6 +1001,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       giverName: giverId ? (eventActorNameById[giverId] ?? null) : null,
       dueYmd: it?.due_date ?? null,
       stuck: isStuck(inst),
+      meta: inst.scheduled_date < todayYmdInAppTz() ? stillOpenMeta(inst.scheduled_date, it?.due_date ?? null, todayYmdInAppTz()) : null,
     }
   }
   const renderTodayCard = (inst: ChecklistInstance, lead: boolean) => {
@@ -1142,6 +1161,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       <ChecklistOutstandingSection
         instances={olderRows}
         extrasFor={(inst) => doer.morePress(doerTargetOf(inst as ChecklistInstance))}
+        onGoThrough={() => doer.startPass(olderRows.map(doerTargetOf))}
         eventsByInstance={eventsByInstance}
         currentUserId={authUserId}
         nameById={eventActorNameById}

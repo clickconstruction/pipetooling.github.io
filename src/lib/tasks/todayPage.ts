@@ -119,6 +119,12 @@ export function stillOpenAge(scheduledDate: string, dueDate: string | null | und
   return { words, pill: days === 1 ? '1 day' : `${days} days`, tone: days >= STILL_OPEN_OLD_DAYS ? 'old' : 'soft' }
 }
 
+/** A still-open task's age as one line, for a sheet that has no room for a pill: *given Thu, Aug 20 · 88 days*. */
+export function stillOpenMeta(scheduledDate: string, dueDate: string | null | undefined, todayStr: string): string {
+  const age = stillOpenAge(scheduledDate, dueDate, todayStr)
+  return age.pill ? `${age.words} · ${age.pill}` : age.words
+}
+
 /** True when the task has a due day and it has passed: the one case the list and the map draw in red. */
 export function stillOpenIsLate(dueDate: string | null | undefined, todayStr: string): boolean {
   if (!dueDate) return false

@@ -174,4 +174,70 @@ describe('useTaskDoerActs', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+
+  describe('the pass', () => {
+    const THREE: TaskDoerActsTarget[] = [
+      { ...TASK, instanceId: 'i1', title: 'Give every tool a home', meta: 'given Thu, Aug 20 · 88 days' },
+      { ...TASK, instanceId: 'i2', title: 'Set a marker at every mile' },
+      { ...TASK, instanceId: 'i3', title: 'Clear the back half of the floor' },
+    ]
+    function PassHost(p: { moveDay?: (id: string, ymd: string) => Promise<string | null>; drop?: (id: string, reason: string) => Promise<string | null>; markDone?: (id: string) => Promise<void>; onChanged?: () => void }) {
+      const doer = useTaskDoerActs({ authUserId: 'u-me', todayYmd: '2026-11-16', onChanged: p.onChanged ?? (() => {}), moveDay: p.moveDay ?? (async () => null), drop: p.drop ?? (async () => null), sayStuck: async () => null, markDone: p.markDone, tellGiver: async () => {}, nameOf: async () => 'Theo' })
+      return (
+        <div>
+          <button type="button" onClick={() => doer.startPass(THREE)}>
+            start
+          </button>
+          {doer.sheets}
+        </div>
+      )
+    }
+
+    it('asks about one task at a time, counts what an answer changed, and ends by saying what it came to', async () => {
+      const markDone = vi.fn(async (_id: string) => {})
+      const drop = vi.fn(async (_id: string, _reason: string) => null)
+      render(<PassHost markDone={markDone} drop={drop} />)
+      fireEvent.click(screen.getByRole('button', { name: 'start' }))
+      expect(screen.getByRole('dialog', { name: 'Go through the old ones' })).toBeTruthy()
+      expect(document.querySelector('[data-pass-count]')?.textContent).toBe('1 of 3')
+      expect(document.querySelector('[data-pass-task]')?.textContent).toBe('Give every tool a home')
+      expect(screen.getByText('given Thu, Aug 20 · 88 days')).toBeTruthy()
+      // Done marks it done by the tick's own path
+      fireEvent.click(document.querySelector('[data-pass-answer="done"]') as HTMLElement)
+      await waitFor(() => expect(markDone).toHaveBeenCalledWith('i1'))
+      await waitFor(() => expect(document.querySelector('[data-pass-count]')?.textContent).toBe('2 of 3'))
+      // No longer applies opens that tool's own sheet over the pass, and its close moves the pass on
+      fireEvent.click(document.querySelector('[data-pass-answer="drop"]') as HTMLElement)
+      expect(screen.getByRole('dialog', { name: 'No longer applies' }).textContent).toContain('Set a marker at every mile')
+      fireEvent.click(screen.getByRole('button', { name: 'Plans changed' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Close this task' }))
+      await waitFor(() => expect(drop).toHaveBeenCalledWith('i2', 'Plans changed'))
+      await waitFor(() => expect(document.querySelector('[data-pass-count]')?.textContent).toBe('3 of 3'))
+      // Skip leaves the last one as it is
+      fireEvent.click(document.querySelector('[data-pass-answer="skip"]') as HTMLElement)
+      await waitFor(() => expect(document.querySelector('[data-pass-summary]')?.textContent).toBe('You sorted 2. 1 is as it was.'))
+      fireEvent.click(screen.getByRole('button', { name: 'Back to my list' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+
+    it('a tool\'s sheet closed with nothing done brings the same question back', async () => {
+      const moveDay = vi.fn(async (_id: string, _ymd: string) => null)
+      render(<PassHost moveDay={moveDay} />)
+      fireEvent.click(screen.getByRole('button', { name: 'start' }))
+      fireEvent.click(document.querySelector('[data-pass-answer="move"]') as HTMLElement)
+      expect(screen.getByRole('dialog', { name: 'Not today' })).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+      expect(screen.getByRole('dialog', { name: 'Go through the old ones' })).toBeTruthy()
+      expect(document.querySelector('[data-pass-count]')?.textContent).toBe('1 of 3')
+      expect(moveDay).not.toHaveBeenCalled()
+    })
+
+    it('a Done that fails keeps the task in hand and says so', async () => {
+      render(<PassHost markDone={async () => Promise.reject(new Error('no'))} />)
+      fireEvent.click(screen.getByRole('button', { name: 'start' }))
+      fireEvent.click(document.querySelector('[data-pass-answer="done"]') as HTMLElement)
+      await screen.findByText('The task did not mark done. Try it from the list.')
+      expect(document.querySelector('[data-pass-count]')?.textContent).toBe('1 of 3')
+    })
+  })
 })
