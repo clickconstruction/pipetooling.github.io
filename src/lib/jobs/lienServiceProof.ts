@@ -85,11 +85,35 @@ const PHOTO_OF: Record<LienReceiptPhotoOf, string> = {
  * The name the photo takes in the job's Drive folder, under Team only, Sent by us. The day is the one on the form, so
  * the folder sorts the receipts by when the copies went. `ext` is the file's own, `jpg` once the phone has shrunk it.
  */
-export function lienReceiptPhotoName(of: LienReceiptPhotoOf, jobNumber: string, ymd: string, ext = 'jpg'): string {
+export function lienReceiptPhotoName(of: LienReceiptPhotoOf, jobNumber: string, ymd: string, ext = 'jpg', paper: LienReceiptPaper = 'affidavit'): string {
   const job = jobNumber.trim() ? `Job ${jobNumber.trim()}, ` : ''
   const day = ymd.trim() ? `, ${ymd.trim()}` : ''
   const clean = ext.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg'
-  return `Lien affidavit, ${job}${PHOTO_OF[of]}${day}.${clean}`
+  return `${PAPER_NAME[paper]}, ${job}${PHOTO_OF[of]}${day}.${clean}`
+}
+
+/**
+ * Which paper the receipt is for. A § 53.056 notice's copies take a receipt photo too (v2.7557), so the folder says
+ * which paper went in the envelope: two months of notices and one affidavit can sit beside each other.
+ */
+export type LienReceiptPaper = 'affidavit' | 'notice'
+
+const PAPER_NAME: Record<LienReceiptPaper, string> = { affidavit: 'Lien affidavit', notice: 'Lien notice' }
+
+/**
+ * A notice's sends with each copy's receipt photo on it: the photo's link rides as `receipt_url`, the key a filed
+ * affidavit's copies already use. A copy with no photo is left as it was. Pure.
+ */
+export function noticeSendsWithReceipts<T extends { recipient: string }>(sends: ReadonlyArray<T>, receipts: Readonly<Record<string, string>>): Array<T & { receipt_url?: string }> {
+  return sends.map((s) => {
+    const url = (receipts[s.recipient] ?? '').trim()
+    return url ? { ...s, receipt_url: url } : { ...s }
+  })
+}
+
+/** What the photo press says once it has tried to read the number off the receipt: what it read, or that it read none. */
+export function receiptReadWords(tracking: string): string {
+  return tracking.trim() ? `Read ${tracking.trim()} off the photo. Check it against the receipt.` : 'No number was read off the photo. Type it in the box.'
 }
 
 /** The note the filing's saved copy takes when it is a photo of the clerk's stamped page. */

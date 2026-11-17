@@ -1,7 +1,7 @@
 /**
  * Messages, the email viewer's action row (v2.6509): the message window's first slot (`threadSlots.tsx`'s
  * `messageWindowFirst`), after cut 4b's change order, with the presses the kernel offers for the line
- * (`emailViewerActions.ts`: Start a bid, Put it on a bid…, Open the bid). The change order itself stays cut 4b's;
+ * (`emailViewerActions.ts`: Start a bid, Put it on a bid…, Open the bid, and Keep its files on the bid…). The change order itself stays cut 4b's;
  * both hooks ask the same kernel, so one place decides the row. Each press writes through the New lane's *Bid it?* io or
  * the Tied to row's own writer, says what it did and asks the window to read the thread again (`useMessagesReread`).
  */
@@ -11,6 +11,7 @@ import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { lineInvitation } from '../../lib/followUp/newLaneRows'
 import { canOpenMessages } from '../../lib/gc/access'
+import { isInlinePicture } from '../../lib/bids/bidMailSet'
 import { viewerPresses, type ViewerPress } from '../../lib/messages/emailViewerActions'
 import { supabaseEmailViewerIo, type EmailViewerIo } from '../../lib/messages/emailViewerActionsIo'
 import type { ThreadSlots } from '../gc/messages/threadSlots'
@@ -47,7 +48,9 @@ export function useEmailViewerThreadSlots(io?: EmailViewerIo): Pick<ThreadSlots,
         ? {
             messageWindowFirst: (m) => {
               const inv = lineInvitation({ channel: m.channel, direction: m.direction, subject: m.subject, body: m.body, at: m.at, invitation: m.invitation })
-              const presses = viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role }).filter(
+              // A link is no file, and a signature's picture (image001.png) is not one to keep: most mail carries one (v2.7556).
+              const files = (m.files ?? []).filter((f) => f.kept !== 'link' && !isInlinePicture(f)).length
+              const presses = viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role, files }).filter(
                 (p): p is Exclude<ViewerPress, 'change_order'> => p !== 'change_order',
               )
               if (presses.length === 0) return null

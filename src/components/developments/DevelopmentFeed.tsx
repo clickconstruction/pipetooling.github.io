@@ -4,7 +4,7 @@
  * moving the line to now. The lines come from `lib/developments/whatChanged.ts`.
  */
 import { useState, type CSSProperties } from 'react'
-import { HISTORY_FOLD_AT, MAIL_DOOR_WORDS } from '../../lib/developments/history'
+import { HISTORY_FOLD_AT, MAIL_DOOR_WORDS, MAIL_KEPT_MARK, keepFilesDoorWords } from '../../lib/developments/history'
 import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } from '../../lib/developments/whatChanged'
 import { historyMark, type MarkTone } from '../../lib/developments/historyLegend'
 import { lineTiles } from '../../lib/developments/photoLines'
@@ -189,6 +189,20 @@ export function DevelopmentFeed({
             <span style={{ color: 'var(--text-amber-800)', fontWeight: 700 }}>
               {' '}
               · waiting {line.waitingDays === 0 ? 'since today' : `${line.waitingDays} ${line.waitingDays === 1 ? 'day' : 'days'}`}
+            </span>
+          ) : null}
+          {/* A bid's mail that carries files (punch list #368): the press that keeps them as a set of plans opens the line's window, where the form is; once they are kept the line says so. */}
+          {line.mail && line.mail.ready > 0 && onMore ? (
+            <>
+              {' · '}
+              <LinkButton onClick={() => onMore(line)} title={`Files what this mail carries with the plans of ${line.mail.bidLabel}, and adds a set to the bid`} nowrap>
+                {keepFilesDoorWords(line.mail.ready)} ›
+              </LinkButton>
+            </>
+          ) : line.mail && line.mail.kept > 0 ? (
+            <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }} data-testid="history-mail-kept">
+              {' · '}
+              {MAIL_KEPT_MARK}
             </span>
           ) : null}
           {/* A tied mail's door: its thread in Messages, open at the mail (v2.7479). */}

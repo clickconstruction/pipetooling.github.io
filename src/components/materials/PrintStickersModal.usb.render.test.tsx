@@ -81,6 +81,23 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(mint).not.toHaveBeenCalled()
   })
 
+  it('a run already made prints as many of each as Copies of each says, and mints nothing (v2.7553)', async () => {
+    usb.granted = true
+    const minted = mintedRun({ jobId: 'job-juniper', count: 4, copies: 1, names: ['G93', 'G94', 'G95', 'G96'] })
+    const mint = vi.fn()
+    renderWithProviders(<PrintStickersModal jobId="job-juniper" jobLabel="JP1204 · Juniper Ridge" role="dev" run={{ ...minted, title: 'Reserved stickers, G93 to G96' }} onClose={() => {}} mint={mint} print={() => {}} />)
+    await waitFor(() => expect(screen.getByTestId('stickers-printer-line').textContent).toContain('PT-D610BT · 24 mm tape · ready'))
+    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByTestId('stickers-copies-more'))
+    expect(screen.getByTestId('stickers-count-words').textContent).toBe('G93 to G96, 5 strips each. 20 strips.')
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 4 sets, G93 to G96')
+    fireEvent.click(screen.getByTestId('stickers-print'))
+    await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('4 stickers printed.'))
+    // five strips a sticker went to the printer, a sticker's copies together
+    expect(usb.print).toHaveBeenCalledTimes(1)
+    expect((usb.print.mock.calls[0]![0] as unknown[]).length).toBe(20)
+    expect(mint).not.toHaveBeenCalled()
+  })
+
   it('connected, the press mints the run and the strips go as soon as they are drawn, a set together', async () => {
     usb.granted = true
     const { print, mint } = setup()

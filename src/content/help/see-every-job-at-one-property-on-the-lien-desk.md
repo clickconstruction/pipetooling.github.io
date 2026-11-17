@@ -15,6 +15,8 @@ The card opens over the desk. It reads nothing new if By job was already open.
 
 A job on a property with one job has no blue line. Its row already says all there is.
 
+The notices' run opens the card too. In the run, press **Envelopes and copies**. An envelope's card ends with a line about its property when other jobs are there. Press **See the property ›** on that line. The card opens over the run.
+
 :::example The top of the card
 **412 Ridgeline Dr, Hollow Creek**
 

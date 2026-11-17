@@ -79,6 +79,7 @@ function fakeIo(read: Partial<JobPlansRead> = {}, over: Partial<JobPlansIo> = {}
     updateMemo: vi.fn(async () => undefined),
     updateChanges: vi.fn(async () => undefined),
     updateLink: vi.fn(async () => undefined),
+    updateSheetCount: vi.fn(async () => undefined),
     ...over,
   }
 }

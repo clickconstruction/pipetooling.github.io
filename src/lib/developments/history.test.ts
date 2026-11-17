@@ -15,6 +15,7 @@ import {
   entryLine,
   headRowToEntry,
   historyVerb,
+  keepFilesDoorWords,
   draftToRow,
   rowToEntry,
   lineIsAbout,
@@ -22,6 +23,7 @@ import {
   localInputValue,
   mailLines,
   narrowLines,
+  setLines,
   narrowedWords,
   onRecordNotes,
   withBodies,
@@ -395,6 +397,35 @@ describe('mailLines: the mail tied to a bid or a job in Messages', () => {
     expect(feed.map((l) => l.at)).toEqual(['2026-11-16T15:04:00.000Z', '2026-11-16T15:04:00.000Z', '2026-11-15T09:00:00.000Z'])
   })
 
+  it('a bid’s mail that carries files says how many it could keep and how many are kept; a job’s mail and a mail with no file say nothing (punch list #368)', () => {
+    const files = [
+      { message_id: 'm1', kind: 'file', bucket_path: 'gm/a.pdf', bid_plan_set_id: null },
+      { message_id: 'm1', kind: 'file', bucket_path: 'gm/b.pdf', bid_plan_set_id: 'set-1' },
+      { message_id: 'm1', kind: 'file', bucket_path: null, bid_plan_set_id: null },
+      { message_id: 'm1', kind: 'link', bucket_path: null },
+      { message_id: 'm2', kind: 'file', bucket_path: 'gm/c.pdf' },
+      { message_id: 'm4', kind: 'link', bucket_path: null },
+    ]
+    const lines = mailLines([mail({ id: 'm1' }), mail({ id: 'm2', bid_id: null, jobs_ledger_id: 'j1102' }), mail({ id: 'm3' }), mail({ id: 'm4' })], { ...ctx, files, bidShort: (id) => (id === 'b401' ? 'BP401' : null) })
+    expect(lines[0]!.mail).toEqual({ messageId: 'm1', bidId: 'b401', bidLabel: 'BP401', ready: 1, kept: 1 })
+    expect(lines[1]!.mail).toBeUndefined()
+    expect(lines[2]!.mail).toBeUndefined()
+    expect(lines[3]!.mail).toBeUndefined()
+    expect(keepFilesDoorWords(1)).toBe('Keep its file…')
+    expect(keepFilesDoorWords(3)).toBe('Keep its 3 files…')
+  })
+
+  it('a signature’s picture is not a file to keep: a mail that carries only one draws no press (v2.7556)', () => {
+    const files = [
+      { message_id: 'm1', kind: 'file', bucket_path: 'gm/image001.png', name: 'image001.png' },
+      { message_id: 'm2', kind: 'file', bucket_path: 'gm/image001.png', name: 'image001.png' },
+      { message_id: 'm2', kind: 'file', bucket_path: 'gm/specs.pdf', name: 'specs.pdf' },
+    ]
+    const lines = mailLines([mail({ id: 'm1' }), mail({ id: 'm2' })], { ...ctx, files })
+    expect(lines[0]!.mail).toBeUndefined()
+    expect(lines[1]!.mail).toMatchObject({ ready: 1, kept: 0 })
+  })
+
   it('reads only columns the messages table has', () => {
     const types = readFileSync(join(process.cwd(), 'src/types/database.ts'), 'utf8')
     const start = types.indexOf('      messages: {')
@@ -403,3 +434,23 @@ describe('mailLines: the mail tied to a bid or a job in Messages', () => {
     for (const column of TIED_MAIL_COLUMNS.split(', ')) expect(table, column).toContain(`          ${column}: `)
   })
 })
+
+describe('setLines: a set of plans added to a bid', () => {
+  const names = new Map([['u-sam', 'Sam']])
+  const row = (over: Partial<Parameters<typeof setLines>[0][number]> & { id: string }) => ({ bid_id: 'b401', name: 'Addendum 2', link: 'https://drive.google.com/drive/folders/add2', created_at: '2026-11-16T15:31:00.000Z', created_by: 'u-sam', file_name: null, file_count: null, ...over })
+  const ctx = { bid: labels.bid, robotLink: () => 'https://drive.google.com/drive/folders/issued', fromMail: new Set(['s1']), names }
+
+  it('draws a Plans line at the time the set was added, by who added it, saying when it came from a mail', () => {
+    expect(setLines([row({ id: 's1', file_count: 2 }), row({ id: 's2', name: 'Permit set', created_by: null, file_name: 'permit.pdf' })], ctx)).toEqual([
+      { id: 'set:s1', at: '2026-11-16T15:31:00.000Z', kind: 'plans', verb: 'New set', about: onBid, detail: 'Addendum 2 · from a mail · 2 PDFs', by: 'Sam', waitingDays: null },
+      { id: 'set:s2', at: '2026-11-16T15:31:00.000Z', kind: 'plans', verb: 'New set', about: onBid, detail: 'Permit set · permit.pdf', by: null, waitingDays: null },
+    ])
+  })
+  it('leaves out the set the robot reads, whose filing the bid’s own ledger already draws, and a set on a bid the page does not hold', () => {
+    expect(setLines([row({ id: 's3', link: 'https://drive.google.com/drive/folders/issued/' }), row({ id: 's4', bid_id: 'b-elsewhere' })], ctx)).toEqual([])
+  })
+  it('sits under the Plans chip', () => {
+    for (const l of setLines([row({ id: 's1' })], ctx)) expect(lineMatchesChip(l, 'plans')).toBe(true)
+  })
+})
+

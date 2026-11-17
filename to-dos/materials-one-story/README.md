@@ -19,7 +19,7 @@ summary: >
 next: The owner's pass with live users. The third word reads Track and Plan comes first, both the card's picks and each one line to change. Then the leftovers under Where it stands, one small PR each.
 size: L, shipped as two PRs (M · M); each leftover is S or M
 blocker: none. The owner's pass with live users.
-ver: v2.6851 · 6852 · 7482 · 7492
+ver: v2.6851 · 6852 · 7482 · 7492 · 7518 · 7519
 opinion: your call — the build is live on the card's picks; say the word on Track against Sort and on the order
 ---
 
@@ -104,8 +104,11 @@ Call 5, the same cards for **Print future stickers**' *Which job?* window, was b
 rename*) as v2.7492, on top of the rename of that press: a card says the job's runs so far, the stickers
 reserved and not on a box yet and the name a new run opens on (`docs/recent-features/v2.7492.md`).
 
-Left from the five calls: a true *not printed yet* mark on a box, which needs a column and waits on his
-word (call 3).
+Call 3, a true *not printed yet* mark on a box, was built on his word of the same day (*add a true "not
+printed yet" mark*) in two steps: the column as v2.7518 (`job_containers.label_printed_at`) and the screens
+as v2.7519. The labels window marks a box when its label goes out, a card counts the boxes that still
+wait and offers **The N not printed yet**, and a box made before the mark began is not counted
+(`docs/recent-features/v2.7519.md`). All five calls are built.
 
 ## What is there today (read on main at v2.6842, 2026-11-10)
 
