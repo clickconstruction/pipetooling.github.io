@@ -1386,6 +1386,8 @@ Done in v2.7608: the Monthly notices list is [`LienDeskNoticeList.tsx`](../src/c
 What the list shows is still computed in the desk, which is 3,821 lines.
 Done in v2.7611: his signing code on someone else's screen is [`useLienCodeSigner.ts`](../src/components/jobs/useLienCodeSigner.ts), and the pay page behind a notice is [`useLienDeskPayPage.ts`](../src/components/jobs/useLienDeskPayPage.ts).
 The rest of the selection context (the item, its months, the claim, `noticeFields` and the reset effect) stays in the desk as its substrate, and the desk is 3,717 lines.
+Done in v2.7614: the wording typed in place is [`useLienWordingEditor.ts`](../src/components/jobs/useLienWordingEditor.ts), and the preview window with its message listener is [`useLienNoticePreview.ts`](../src/components/jobs/useLienNoticePreview.ts), whose checks before a write are held by `useLienPaperEditors.render.test.tsx`.
+The paper's JSX stays in the pane, and the desk is 3,597 lines.
 
 1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
 2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines;
