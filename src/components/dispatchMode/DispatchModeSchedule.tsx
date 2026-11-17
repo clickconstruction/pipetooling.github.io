@@ -12,6 +12,8 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
+import { useJobsLockedInLists } from '../../hooks/useJobsClosedToMe'
+import { LOCKED_ROW_NAME } from '../../lib/jobs/jobPapers'
 import { useToastContext } from '../../contexts/ToastContext'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
@@ -104,7 +106,16 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
     }
   }, [gridStart, gridEnd, selfUserId, countsRefreshKey])
 
-  const [blocks, setBlocks] = useState<DispatchModeAgendaBlock[]>([])
+  const { role: lockRole } = useAuth()
+  const [blocksRead, setBlocks] = useState<DispatchModeAgendaBlock[]>([])
+  // Papers before a job opens (step 3): for the crew and subs, a job they still owe a paper on keeps its number here
+  // and loses its name, customer, address and note. A press still opens the job, which opens as its prompt. The
+  // office's schedule keeps showing the job (call 8).
+  const closedJobs = useJobsLockedInLists(lockRole)
+  const blocks = useMemo(
+    () => (blocksRead.some((b) => closedJobs.has(b.jobId)) ? blocksRead.map((b) => (closedJobs.has(b.jobId) ? { ...b, jobName: LOCKED_ROW_NAME, customerName: '', jobAddress: '', note: null } : b)) : blocksRead),
+    [blocksRead, closedJobs],
+  )
   /** Empty set = everyone. Person ids survive day switches; absent people just contribute nothing. */
   const [personFilter, setPersonFilter] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(true)
