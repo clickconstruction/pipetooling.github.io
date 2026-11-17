@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: ready
-status: asked 2026-11-17 · looked at, drawn and rendered the same day · seven calls put to the owner, who took all seven picks the same day · nothing built, and nothing is built before he says build
+status: asked 2026-11-17 · looked at, drawn and rendered the same day · the owner took all seven picks and said build the whole train the same day · PR 1, the rules, shipped (v2.7604) · PR 2, the view and the read, shipped (v2.7612), its migration to push after the merge · PR 3 to PR 5 built, each opened as the one before lands
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,9 +12,10 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: The owner's word to build. Then PR 1, the rules, alone. Call 7's card, signed contracts in Google Drive, is still to be written.
+next: Push `20261117200000_agreements_on_file.sql` after PR 2 merges. Then PR 3, the tab, armed only once the view is on prod. Call 7's card is #377.
 size: M as a train of five (S · M · M · S · S)
-blocker: The owner's word to build. The calls are settled, so nothing else holds PR 1.
+blocker: None. PR 3 reads the view PR 2 creates, so it waits on that push.
+ver: v2.7604 · v2.7612
 opinion: build — the papers exist and the office already reads them in four places; the tab is a read over what is there, with no new table and no change to who can see what
 ---
 
@@ -36,7 +37,9 @@ Shown what the look found, he answered **Yes, design it**. This card is the desi
 from it until he says build.
 
 Shown the mock-up and the seven calls the same day, and asked whether he takes the picks as drawn, he
-answered **Take the picks**. That settles the calls. It is not the word to build.
+answered **Take the picks**. That settles the calls.
+
+The same day he said **Build the entire PR train in order**.
 
 ## What the look found
 
@@ -246,7 +249,7 @@ He took all seven picks as the mock-up draws them.
 6. **Drafts and voided.** Drafts out, and voided, declined and cancelled behind their own chip. Not
    taken: a Drafts chip.
 7. **Signed contracts in Google Drive.** A card of its own after this one. Not taken: folding it into
-   this train. That card is not written yet.
+   this train. That card is #377, `to-dos/signed-contracts-in-drive/README.md`.
 
 ## How to verify, once built
 
