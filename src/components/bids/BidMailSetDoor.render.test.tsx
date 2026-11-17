@@ -37,6 +37,7 @@ function fakeIo(over: Partial<World> = {}): { io: BidMailSetIo; world: World } {
     },
     setsOf: async () => world.sets.map((s) => ({ ...s })),
     mailOfSets: async () => new Map(),
+    mailsOf: async () => [],
     keep: async (ask) => {
       world.keeps.push(ask)
       const made = set({ id: `set-${world.sets.length + 1}`, name: ask.name, link: `${FOLDER}-new` })
