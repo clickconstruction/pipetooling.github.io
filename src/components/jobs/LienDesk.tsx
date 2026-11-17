@@ -108,14 +108,9 @@ import { lienBoardAffidavitPrint, lienBoardNoticePrint, type LienBoardPrintSide 
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
 import LienBoard from './LienBoard'
-import LienPublicPropertyWindow from './LienPublicPropertyWindow'
-import LienServeWindow from './LienServeWindow'
-import LienScanBatchWindow from './LienScanBatchWindow'
 import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
 import { lienServeDoorWords, lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
-import LienPublicPutBackWindow from './LienPublicPutBackWindow'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
-import LienJobPathWindow from './LienJobPathWindow'
 import { LienOffPathBinView } from './LienOffPathBoardParts'
 import { lienDeskJobLabel as jobLabel, lienDeskJobNumber as jobNumberOf, splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
@@ -169,6 +164,8 @@ import { LIEN_HEAD_DOOR as headDoor, lienBtnStyle as btn } from './lienDeskButto
 import { LienDeskGcPicker } from './LienDeskGcPicker'
 import { LienDeskPaperTabs, LienDeskViewTabs } from './LienDeskViewTabs'
 import { useLienDeskTitleBarFit } from './useLienDeskTitleBarFit'
+import { useLienDeskWindows } from './useLienDeskWindows'
+import { LienDeskWindows } from './LienDeskWindows'
 import { useLienDeskAffidavits } from './useLienDeskAffidavits'
 import { lienBoxHeadStyle as boxHead, lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
 import { LIEN_RETAINAGE_PILES, lienRetainageListView, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
@@ -197,7 +194,6 @@ import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
 import { bringLienFooterUp } from './lienFooterFocus'
 import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
-import LienPropertyCard from './LienPropertyCard'
 import { buildLienProperties } from '../../lib/jobs/lienPropertyPapers'
 import type { LienBookGroup } from '../../lib/jobs/lienPropertyGroups'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
@@ -888,17 +884,9 @@ export default function LienDesk({
       setRunOpen(true)
     },
   })
-  const [jobPath, setJobPath] = useState<string | null>(null)
-  // The properties left to review, one window at a time; and the property being put back on the lien path.
-  const [publicReview, setPublicReview] = useState<string[] | null>(null)
-  // Serve the filed liens (punch list #366): one window prints every filed lien's copies and takes their mail numbers.
-  const [serveOpen, setServeOpen] = useState(false)
-  // Add the stamped scans (punch list #366): several filed liens' scans in one sitting, each saved to its own job.
-  const [scansOpen, setScansOpen] = useState(false)
-  useEffect(() => {
-    if (openScansDoor) setScansOpen(true)
-  }, [openScansDoor])
-  const [publicPutBack, setPublicPutBack] = useState<string | null>(null)
+  // The windows the Board raises (v2.7588): serve, scans, the public review and its put-back, and a job's lien path.
+  const windows = useLienDeskWindows(openScansDoor)
+  const { setJobPath, setPublicReview, setServeOpen, setPublicPutBack } = windows
   // The paper behind a To do chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
   const [paperOpen, setPaperOpen] = useState<number | null>(null)
   // A stop's paper (v2.4793): the index of the timeline stop whose window is open on the notice pane; null when closed.
@@ -4277,92 +4265,26 @@ export default function LienDesk({
               paused={paperFix != null}
             />
           ) : null}
-          {paneFix && data && data.jobsById[paneFix.jobId] ? (() => {
-            const fixJob = data.jobsById[paneFix.jobId]!
-            const fixAddress = fixJob.customer_address_id ? data.addressesById[fixJob.customer_address_id] ?? null : null
-            return (
-              <LienPaperPropertyWindow
-                job={fixJob}
-                address={fixAddress}
-                ownerOnJob={resolveLienProperty(fixAddress, data.ownerByJob[fixJob.id] ?? null).owner.source === 'job_override'}
-                focus={paneFix.focus}
-                onClose={(saved) => {
-                  setPaneFix(null)
-                  if (saved) onChanged()
-                }}
-              />
-            )
-          })() : null}
-          {serveOpen ? (
-            <LienServeWindow
-              jobs={serveJobs}
-              todayYmd={todayYmd}
-              issuer={issuer}
-              isMobile={isMobile}
-              zIndex={805}
-              onOpenJob={(jobId) => {
-                setServeOpen(false)
-                ;(onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)
-              }}
-              onChanged={onChanged}
-              onClose={() => setServeOpen(false)}
-              onAddScans={() => {
-                setServeOpen(false)
-                setScansOpen(true)
-              }}
-            />
-          ) : null}
-          {scansOpen && data ? <LienScanBatchWindow targets={scanTargets} isMobile={isMobile} zIndex={805} onChanged={onChanged} onClose={() => setScansOpen(false)} /> : null}
-          {publicReview?.[0] ? (
-            <LienPublicPropertyWindow
-              key={publicReview[0]}
-              addressId={publicReview[0]}
-              zIndex={805}
-              onClose={(answered) => {
-                const rest = publicReview.slice(1)
-                setPublicReview(rest.length ? rest : null)
-                if (answered) onChanged()
-              }}
-            />
-          ) : null}
-          {propertyCard ? (
-            <LienPropertyCard
-              property={bookProperties.find((p) => p.key === propertyCard.addressId) ?? null}
-              loading={bookLoading || !book}
-              error={bookError}
-              fromJobId={propertyCard.fromJobId}
-              phone={isMobile}
-              zIndex={805}
-              onClose={() => setPropertyCard(null)}
-              onOpenJob={onOpenJob}
-              onOpenProperty={(addressId) => setPropertyCard({ addressId, fromJobId: null })}
-              onOpenPaper={(jobId, paper) => {
-                setPropertyCard(null)
-                openJobPaper(jobId, paper)
-              }}
-            />
-          ) : null}
-          {publicPutBack ? (
-            <LienPublicPutBackWindow
-              addressId={publicPutBack}
-              zIndex={805}
-              onClose={(changed) => {
-                setPublicPutBack(null)
-                if (changed) onChanged()
-              }}
-            />
-          ) : null}
-          {jobPath ? (
-            <LienJobPathWindow
-              key={jobPath}
-              jobId={jobPath}
-              zIndex={805}
-              onClose={(changed) => {
-                setJobPath(null)
-                if (changed) onChanged()
-              }}
-            />
-          ) : null}
+          <LienDeskWindows
+            data={data}
+            isMobile={isMobile}
+            todayYmd={todayYmd}
+            issuer={issuer}
+            windows={windows}
+            serveJobs={serveJobs}
+            scanTargets={scanTargets}
+            paneFix={paneFix}
+            onClosePaneFix={() => setPaneFix(null)}
+            propertyCard={propertyCard}
+            setPropertyCard={setPropertyCard}
+            bookProperties={bookProperties}
+            bookLoading={bookLoading || !book}
+            bookError={bookError}
+            onChanged={onChanged}
+            onOpenJob={onOpenJob}
+            onOpenAffidavit={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
+            onOpenJobPaper={openJobPaper}
+          />
           {paperFix && data ? (() => {
             const entry = paperEntries[paperFix.index]
             const row = paperRows[paperFix.index]
