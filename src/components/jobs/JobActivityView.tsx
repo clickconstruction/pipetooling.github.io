@@ -513,6 +513,7 @@ export function JobActivityView({
               background: 'var(--surface)',
             }}
           >
+            {tagBox.mark}
             <input
               ref={inputRef}
               value={draft}
@@ -533,6 +534,8 @@ export function JobActivityView({
               aria-label="Note text"
               disabled={submitting}
               style={{
+                // Over the mark in the words (punch list #375), which is drawn under a see-through box.
+                position: 'relative',
                 flex: 1,
                 minWidth: 0,
                 background: 'transparent',

@@ -2,7 +2,7 @@
 name: "Tag a teammate in a task note"
 number: 375
 group: ready
-status: asked 2026-11-16 · looked at and drawn the same day · the owner settled call 0 and liked the picks for the rest, then put it here to build later ("I don't want to build it, I want it added to the punchlist") · nothing built
+status: asked 2026-11-16 · looked at and drawn the same day · the owner settled call 0 and liked the picks for the rest · building since 2026-11-17 · PR A, the easier box, shipped (v2.7566) · PR 1 to PR 5 not built
 summary: >
   Tagging a teammate went live on job notes as #363. The owner asked for the same in task notes, and for
   the box to be easier on a phone. A task note tells nobody today: no notice, no count, no Dashboard line.
@@ -11,11 +11,11 @@ summary: >
   the one Needs you line that both kinds share. It sends the same phone notice. The box gets easier for job
   and task notes alike: the names show as big presses above the keyboard while you type, the tag is marked
   in your words, and one Backspace takes it off. A tag is still only a tap or Enter, never a typed name.
-next: Build PR A, the easier box, which is client only and can go first. Build PR 1 after #369's train has landed, alone, and push it right after its merge.
-size: L as a train of six (M · M · M · M · S · S)
-blocker: None for PR A. PR 1 is best built after #369's train lands, since both touch the task thread and Today. PR 2 to PR 5 call PR 1's functions, so none of them is armed before PR 1 is pushed.
+next: Build PR 1, the ground, alone, and push its migration right after its merge. Then PR 2 to PR 5, none armed before PR 1 is pushed.
+size: L as a train of six (M · M · M · M · S · S), PR A done
+blocker: None for PR 1, since #369's train landed on 2026-11-17. PR 2 to PR 5 call PR 1's functions, so none of them is armed before PR 1 is pushed.
 opinion: build — a task note reaches nobody today, and #363 already proved the rules on jobs; one new table, the rest reused
-ver: builds on #363 (v2.7384 · v2.7385 · v2.7407 · v2.7410 · v2.7412)
+ver: v2.7566 · builds on #363 (v2.7384 · v2.7385 · v2.7407 · v2.7410 · v2.7412)
 ---
 
 # Tag a teammate in a task note (#375)
@@ -300,5 +300,11 @@ Then a walk as two people, on a phone, which covers #363's unwalked screens on t
 
 ## Where it stands
 
-Nothing built, no version claimed for the build. The design and the working box are in
-[mockup.html](mockup.html).
+- **PR A, the easier box, shipped as v2.7566** (2026-11-17), client only. Job notes have it. Checked in
+  headless Chromium at phone and desk width. Not yet walked in Safari on an iPhone or on an Android keyboard.
+  Two things it settled past the mock-up: letters that are nobody's name show no row, where the old list said
+  nobody by that name can be tagged, and a pick whose name is changed in the words is dropped, so typing it
+  back makes no tag.
+- PR 1 to PR 5: not built.
+
+The design and the working box are in [mockup.html](mockup.html).
