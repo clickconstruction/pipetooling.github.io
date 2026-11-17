@@ -12,7 +12,8 @@
 # kept, a box photo cannot be filed by the phone or pointed at a Drive file, another shot's place in the bucket,
 # another box or another job, the phone's own changes and the sweep's still land, and a box's job cannot be changed by
 # a direct update while the office's own path still can. It raises on its first failed assertion and ends with
-# "on_site_guards PASSED". The move and the combine through the same tables are held by scripts/pgtest-on-site-move.sh
+# "on_site_guards PASSED". A second scenario, 30_pin_remembers.sql (punch list #372), plays the same people through a
+# box's pin: who set it, when and how sure, stamped by job_containers_stamp_pin. The move and the combine through the same tables are held by scripts/pgtest-on-site-move.sh
 # and scripts/pgtest-combine-rows.sh, which run over these triggers too. PGTEST_KEEP=1 leaves the container up. Needs
 # docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches
 # prod.
@@ -22,9 +23,10 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55641}"
 NAME="pgtest-on-site-guards"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# The guards, applied a second time below.
+# The guards and the pin's stamp, applied a second time below.
 PRESSES=(
   supabase/migrations/*_on_site_teammate_guards.sql
+  supabase/migrations/*_box_pin_remembers.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
