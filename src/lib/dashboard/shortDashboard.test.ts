@@ -117,3 +117,16 @@ describe('shortDashboard · the leader’s Dashboard, distilled', () => {
     expect(dashboardViewStorageKey('abc')).toBe('dashboard_view_abc')
   })
 })
+
+describe('the bar\'s Dashboard tab on Short', () => {
+  it('opens the Dashboard page, where the short page is drawn', async () => {
+    const { SHORT_DASHBOARD_PATH, SHORT_DASHBOARD_HOME_STATE, isShortDashboardHomePress } = await import('./shortDashboard')
+    expect(SHORT_DASHBOARD_PATH).toBe('/dashboard')
+    expect(isShortDashboardHomePress(SHORT_DASHBOARD_HOME_STATE)).toBe(true)
+  })
+
+  it('reads only its own mark as the way home', async () => {
+    const { isShortDashboardHomePress } = await import('./shortDashboard')
+    for (const state of [null, undefined, 'x', {}, { shortHome: false }, { shortHome: 'true' }]) expect(isShortDashboardHomePress(state)).toBe(false)
+  })
+})

@@ -6,6 +6,7 @@ import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
 import { useAuth } from '../../hooks/useAuth'
 import { useLongPress } from '../../hooks/useLongPress'
 import { activeDockKey, phoneDockPage, type PhoneDockPageKey } from '../../lib/phoneDock'
+import { SHORT_DASHBOARD_HOME_STATE, SHORT_DASHBOARD_PATH } from '../../lib/dashboard/shortDashboard'
 import { PhoneDockGlyph } from './PhoneDockGlyph'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import {
@@ -102,8 +103,10 @@ const JOB_TABS: TabDef[] = [
 
 export type ModeFooterVariant = 'dispatch' | 'job'
 
-function activeTabForPath(pathname: string, variant: ModeFooterVariant): TabKey | null {
+function activeTabForPath(pathname: string, variant: ModeFooterVariant, shortHome = false): TabKey | null {
   if (variant === 'dispatch' && pathname.startsWith('/dispatch-mode/po')) return 'po'
+  // A person on Short (punch list #365, PR 4): the Dashboard tab is the short page, so that page lights it.
+  if (variant === 'dispatch' && shortHome && pathname === SHORT_DASHBOARD_PATH) return 'dashboard'
   if (variant === 'job') {
     if (pathname === '/dashboard') return 'dashboard'
     if (pathname.startsWith('/job-mode/schedule')) return 'schedule'
@@ -149,6 +152,7 @@ export function DispatchModeFooter({
   showPoTab = false,
   slots = null,
   onOpenMore,
+  shortHome = false,
 }: {
   inboxBadgeCount?: number
   /** Customers waiting (open high-priority requests, v2.3247): the badge pulses and says so. */
@@ -165,13 +169,18 @@ export function DispatchModeFooter({
   slots?: PhoneDockPageKey[] | null
   /** Opens the More sheet; a slot index means a long-press asked to swap that slot. */
   onOpenMore?: (swapIndex: number | null) => void
+  /**
+   * The viewer's Dashboard view is Short (punch list #365, PR 4): the fixed bar's Dashboard tab opens the short
+   * page, not the Dispatch home. Dispatch variant only; Job Mode's tab is `/dashboard` already.
+   */
+  shortHome?: boolean
 }) {
   const navigate = useNavigate()
   const location = useLocation()
   const keyboardOpen = useOnScreenKeyboardOpen()
   const { user: authUser, role } = useAuth()
   const roleDock = variant === 'dispatch' && slots && onOpenMore ? { slots, onOpenMore } : null
-  const active = roleDock ? null : activeTabForPath(location.pathname, variant)
+  const active = roleDock ? null : activeTabForPath(location.pathname, variant, shortHome)
   const activeSlot = roleDock ? activeDockKey(location.pathname, location.search, roleDock.slots) : null
   const TABS =
     variant === 'job'
@@ -247,8 +256,11 @@ export function DispatchModeFooter({
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
               onClick={() => {
-                recordNavClick(authUser?.id, role, 'bottom-tab', tab.to)
-                navigate(tab.to)
+                // On Short the Dashboard tab is the way home: the short page, and back out of Everything else.
+                const home = variant === 'dispatch' && shortHome && tab.key === 'dashboard'
+                const to = home ? SHORT_DASHBOARD_PATH : tab.to
+                recordNavClick(authUser?.id, role, 'bottom-tab', to)
+                navigate(to, home ? { state: SHORT_DASHBOARD_HOME_STATE } : undefined)
               }}
               style={{
                 ...tabBtnBase,
@@ -390,10 +402,12 @@ export function DispatchModeFooterLive({
   showPoTab = false,
   slots = null,
   onOpenMore,
+  shortHome = false,
 }: {
   showPoTab?: boolean
   slots?: PhoneDockPageKey[] | null
   onOpenMore?: (swapIndex: number | null) => void
+  shortHome?: boolean
 }) {
   const dispatchInbox = useDispatchInbox()
   const estimatorInbox = useEstimatorInbox()
@@ -424,6 +438,7 @@ export function DispatchModeFooterLive({
       showPoTab={showPoTab}
       slots={slots}
       onOpenMore={onOpenMore}
+      shortHome={shortHome}
     />
   )
 }

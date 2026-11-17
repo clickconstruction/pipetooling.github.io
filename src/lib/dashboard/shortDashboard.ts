@@ -134,6 +134,20 @@ export const DASHBOARD_VIEW_PICKER_WORDS = {
   notSaved: 'The view was not saved.',
 } as const
 
+/**
+ * The bottom bar's Dashboard tab for a person on Short (punch list #365, PR 4): the short page, whichever mode is
+ * on. With Dispatch Mode on the tab opened the Dispatch home, a second home that is not the page the app opens on.
+ * The press carries `SHORT_DASHBOARD_HOME_STATE`, so a person who went through **Everything else** is back on
+ * the short page: the tab is the way home.
+ */
+export const SHORT_DASHBOARD_PATH = '/dashboard'
+export const SHORT_DASHBOARD_HOME_STATE = { shortHome: true } as const
+
+/** Whether a navigation came from the bar's Dashboard tab of a person on Short. */
+export function isShortDashboardHomePress(state: unknown): boolean {
+  return typeof state === 'object' && state !== null && (state as { shortHome?: unknown }).shortHome === true
+}
+
 /** Where the view is remembered on this device, so the page does not draw Full and then swap to Short. */
 export function dashboardViewStorageKey(userId: string): string {
   return `dashboard_view_${userId}`

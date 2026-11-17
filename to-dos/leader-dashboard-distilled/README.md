@@ -98,8 +98,10 @@ Built in PR 1 (v2.7466):
    definer function that counts them for a named leader.
 3. **A text when a paper is ready (M).** Direction C, on top of the short page: one text at an hour the owner
    picks, with a link that opens the signing screen. A daily send, a schedule and a per-person switch.
-4. **His bottom bar (S).** On Short, the Dashboard tab opens the short page whichever mode is on, and the bar
-   holds the four tabs the owner picks.
+4. **His bottom bar (S).** The first half is built, v2.7572: on Short, the Dashboard tab opens the short page
+   whichever mode is on, and one press on it leaves Everything else. Left: the bar holds the four tabs the
+   owner picks (call 5). The phone dock's four slots and its More sheet, the assistant's today, are where
+   they would go.
 
 ## The owner's calls
 
