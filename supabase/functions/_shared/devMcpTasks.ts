@@ -19,9 +19,11 @@ import type { RowFilter } from './devMcpDoor.ts'
 import { newTaskAssigneeRows, newTaskSend, nextDisplayOrders, type NewTaskDraft } from './gcKernels/lib/tasks/newTaskSend.ts'
 import { LINE_CHARS, LINE_MAX, criteriaRows, parseLines } from './gcKernels/lib/taskCriteria.ts'
 import { asksForPhotoDefault } from './gcKernels/lib/taskProgress.ts'
-import { TASK_PLACE_NAME_MAX, cleanTaskPlaceName, isTaskPlacePoint, taskPlaceFromRow, taskTitlePlain, type TaskPlace } from './gcKernels/lib/tasks/taskPlace.ts'
+import { cleanTaskPlaceName, taskPlaceFromRow, taskTitlePlain, type TaskPlace } from './gcKernels/lib/tasks/taskPlace.ts'
 import { isTaskSpotPhotoPath } from './gcKernels/lib/tasks/taskSpotPhoto.ts'
 import { isActiveRosterPerson } from './gcKernels/lib/people/activeRoster.ts'
+import { resolveTaskRef, taskLikeTerm } from './devMcpTaskRef.ts'
+import { PLACE_ASK_SHAPE, findPlace, mapLink, placeAskInput, placeDraft, type CensusGeocode, type PlaceAsk, type PlaceFound } from './devMcpTaskPlace.ts'
 
 export const TASK_VERBS = ['plan_task', 'apply_task'] as const
 export type TaskVerb = (typeof TASK_VERBS)[number]
@@ -39,9 +41,16 @@ const LINK_MAX = 600
 const REF_MAX = 200
 /** A day row's worth of a get_task reply. */
 export const TASK_DAYS_SHOWN = 14
+/** Of those, the days ahead of today; the rest are today and the days before it. */
+export const TASK_DAYS_AHEAD = 4
+const DAY_SELECT = 'id,scheduled_date,completed_at,completed_by_user_id,percent_complete,notes'
 export const TASK_THREAD_SHOWN = 15
 export const TASK_PHOTOS_SHOWN = 20
 const FIND_LIMIT = 20
+/** Pages of a person's own list find_task reads, two hundred a page. */
+const PERSON_PAGES = 3
+/** Open days read for one task in find_task. A weekly task holds five weeks ahead. */
+const OPEN_DAYS_READ = 60
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -54,7 +63,7 @@ const obj = (v: unknown): Json | null => (v && typeof v === 'object' && !Array.i
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
 const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
 const by = (column: string, value: unknown): RowFilter[] => [{ column, op: 'eq', value }]
-const likeTerm = (text: string): string => `*${text.trim().replace(/[*,()]/g, ' ').replace(/\s+/g, '*')}*`
+const likeTerm = taskLikeTerm
 
 /** A real calendar day, YYYY-MM-DD. */
 function realDay(ymd: string): boolean {
@@ -86,7 +95,8 @@ export type TaskPayload = {
   escalate_after_days?: number
   tell_when_done?: string
   tell_me_when_done?: boolean
-  place?: { name?: string; lat: number; lng: number }
+  /** Where the work is, said one of four ways (devMcpTaskPlace.ts): a point, an address, a job, or the name of a place in use. */
+  place?: PlaceAsk
   allow_duplicate?: boolean
 }
 
@@ -96,7 +106,7 @@ const SHAPE =
   `needs task — { for (a users id from find_person, or a name that finds one person; or a list of them), text (the words), on? (YYYY-MM-DD; left out, today), ` +
   `repeat? ({ weekdays: [mon, wed] or [1, 3] with 0 = Sunday, until? } or { days_after_done: 7 }), due? (YYYY-MM-DD, a one-off only), done_when? (lines, ${LINE_MAX} at most), ` +
   `asks_for_photo?, links?, keep_until_done? (a one-off stays on the list until done; left out, yes), remind_at? (HH:MM), remind_daily?, remind_day_before?, escalate_after_days?, ` +
-  `tell_when_done? (a person), tell_me_when_done? (left out, yes), place? ({ name?, lat, lng }), allow_duplicate? }.`
+  `tell_when_done? (a person), tell_me_when_done? (left out, yes), place? (${PLACE_ASK_SHAPE}), allow_duplicate? }.`
 
 /** A weekday as the row holds it, 0 = Sunday: a number, or a name by its first three letters. */
 function weekdayOf(v: unknown): number | null {
@@ -215,12 +225,10 @@ export function taskInput(verb: TaskVerb, input: Json): TaskInput {
 
   if (src.place != null) {
     const pl = obj(src.place)
-    if (!pl) return fail('place is { name?, lat, lng }.')
-    if (!isTaskPlacePoint(pl.lat, pl.lng)) return fail('place needs lat and lng as numbers on the globe (a place is a point on the map, not an address).')
-    const name = typeof pl.name === 'string' ? pl.name.replace(/\s+/g, ' ').trim() : ''
-    if (pl.name != null && typeof pl.name !== 'string') return fail('place.name is the place in words: "Pump house".')
-    if (name.length > TASK_PLACE_NAME_MAX) return fail(`place.name is ${name.length} characters; the most is ${TASK_PLACE_NAME_MAX}.`)
-    p.place = { ...(name ? { name: cleanTaskPlaceName(name) } : {}), lat: pl.lat as number, lng: pl.lng as number }
+    if (!pl) return fail(`place is ${PLACE_ASK_SHAPE}.`)
+    const ask = placeAskInput(pl)
+    if (!ask.ok) return fail(`place: ${ask.why}`)
+    p.place = ask.ask
   }
 
   let planHash: string | null = null
@@ -235,6 +243,13 @@ export function taskInput(verb: TaskVerb, input: Json): TaskInput {
 // ── the world the plan reads ─────────────────────────────────────────────────────────────────────────────────────
 
 const PERSON_SELECT = 'id,name,role,archived_at,is_digital_twin,is_sample,is_walk_tester,login_attached_at'
+/** The roster's predicate as a read's filters (`activeUsersQuery`): never archived, a twin, a sample or the walk tester. */
+const ROSTER_FILTERS: RowFilter[] = [
+  { column: 'archived_at', op: 'is', value: null },
+  { column: 'is_digital_twin', op: 'eq', value: false },
+  { column: 'is_sample', op: 'eq', value: false },
+  { column: 'is_walk_tester', op: 'eq', value: false },
+]
 
 export type TaskPerson = { id: string; name: string; role: string | null }
 
@@ -248,6 +263,8 @@ export type TaskWorld = {
   held: Array<{ user_id: string; display_order: number | null }>
   /** Tasks you already gave with these exact words for the same day. */
   already: Array<{ id: string; start_date: string; created_at: string | null; for: string[] }>
+  /** The point the call's place stands for; null when the call names no place. */
+  place: PlaceFound | null
 }
 
 /**
@@ -274,14 +291,17 @@ async function findOne(reader: Reader, ref: string): Promise<PersonFound> {
     const why = notOfferedWhy(row)
     return why ? { ref, refused: why } : { ref, person: { id: str(row.id), name: str(row.name), role: strOrNull(row.role) } }
   }
-  const rows = await reader.rows('users', { select: PERSON_SELECT, filters: [{ column: 'name', op: 'ilike', value: likeTerm(ref) }], order: [{ column: 'name' }], limit: FIND_LIMIT })
+  // The roster's own filters ride in the read, so the twenty rows are all people the window could offer: a short name
+  // that also matches archived accounts and twins must not push the one real person past the cut.
+  const rows = await reader.rows('users', { select: PERSON_SELECT, filters: [{ column: 'name', op: 'ilike', value: likeTerm(ref) }, ...ROSTER_FILTERS], order: [{ column: 'name' }], limit: FIND_LIMIT })
   const offered = rows.filter((r) => notOfferedWhy(r) === null)
   const exact = offered.filter((r) => str(r.name).trim().toLowerCase() === ref.toLowerCase())
   const pick = exact.length === 1 ? exact[0]! : offered.length === 1 ? offered[0]! : null
   if (pick) return { ref, person: { id: str(pick.id), name: str(pick.name), role: strOrNull(pick.role) } }
   if (offered.length === 0) {
-    const first = rows[0]
-    return { ref, refused: first && rows.length === 1 ? (notOfferedWhy(first) as string) : `No one the New task window offers matches "${ref}" — find_person lists names.` }
+    // Nobody the window offers. One account by that name the window does not offer gets its own reason.
+    const any = rows.length ? rows : await reader.rows('users', { select: PERSON_SELECT, filters: [{ column: 'name', op: 'ilike', value: likeTerm(ref) }], order: [{ column: 'name' }], limit: 2 })
+    return { ref, refused: any.length === 1 ? (notOfferedWhy(any[0]!) ?? `No one the New task window offers matches "${ref}".`) : `No one the New task window offers matches "${ref}" — find_person lists names.` }
   }
   return { ref, refused: `"${ref}" matches ${offered.length} people — pass the id of one: ${offered.slice(0, 8).map((r) => `${str(r.name)} (${str(r.id)})`).join('; ')}` }
 }
@@ -290,7 +310,7 @@ async function findOne(reader: Reader, ref: string): Promise<PersonFound> {
  * What the plan reads, as the dev: each person the task is for, the person told when it is done, each assignee's
  * highest place in their own list, and the tasks you already gave with these exact words for the same day.
  */
-export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId: string }, today: string): Promise<TaskWorld> {
+export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId: string }, today: string, census: CensusGeocode): Promise<TaskWorld> {
   const people: PersonFound[] = []
   for (const ref of p.for) people.push(await findOne(reader, ref))
   const tell = p.tell_when_done ? await findOne(reader, p.tell_when_done) : null
@@ -313,7 +333,7 @@ export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId
     const who = await reader.rows('checklist_item_assignees', { select: 'checklist_item_id,user_id', filters: [{ column: 'checklist_item_id', op: 'in', value: same.map((r) => str(r.id)) }], limit: 200 })
     for (const r of same) already.push({ id: str(r.id), start_date: str(r.start_date), created_at: strOrNull(r.created_at), for: who.filter((w) => str(w.checklist_item_id) === str(r.id)).map((w) => str(w.user_id)) })
   }
-  return { people, tell, held, already }
+  return { people, tell, held, already, place: p.place ? await findPlace(reader, census, p.place) : null }
 }
 
 // ── the draft, the dry run and its words ─────────────────────────────────────────────────────────────────────────
@@ -322,7 +342,7 @@ export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId
 const NOW_AT_APPLY = 'stamped when apply writes it'
 
 /** The call as the New task window's draft: what the window would hold at Send, its own defaults where the call says nothing. */
-export function taskDraft(p: TaskPayload, people: TaskPerson[], tell: TaskPerson | null, today: string): NewTaskDraft {
+export function taskDraft(p: TaskPayload, people: TaskPerson[], tell: TaskPerson | null, today: string, place: Extract<PlaceFound, { ok: true }> | null = null): NewTaskDraft {
   const lines = p.done_when ?? []
   const weekly = p.repeat && 'weekdays' in p.repeat ? p.repeat : null
   const afterDone = p.repeat && 'days_after_done' in p.repeat ? p.repeat : null
@@ -348,13 +368,11 @@ export function taskDraft(p: TaskPayload, people: TaskPerson[], tell: TaskPerson
     escalateDays: p.escalate_after_days ?? 3,
     // The window's switch: on by itself once a line is written, off on a plain task, until the writer says.
     asksForPhoto: p.asks_for_photo ?? asksForPhotoDefault(lines.length),
-    place: p.place ? { lat: p.place.lat, lng: p.place.lng, name: p.place.name ?? '', accuracyM: null } : null,
-    map: null,
+    place: place ? placeDraft(place) : null,
+    // A place taken by its name brings its way in, as the window's chip sets the task's map with it.
+    map: place?.mapId ? { id: place.mapId } : null,
   }
 }
-
-/** A map link for a point, for the person reading the plan to check before anything lands. */
-export const mapLink = (lat: number, lng: number): string => `https://www.google.com/maps?q=${lat},${lng}`
 
 /** When the task is for, in words. */
 function whenWords(p: TaskPayload, startDate: string, today: string): string {
@@ -363,7 +381,7 @@ function whenWords(p: TaskPayload, startDate: string, today: string): string {
   return startDate === today ? `today (${today})` : `on ${startDate}`
 }
 
-export type TaskDryRun = { ok: true; reply: Json; people: TaskPerson[]; tell: TaskPerson | null } | { ok: false; refused: string }
+export type TaskDryRun = { ok: true; reply: Json; people: TaskPerson[]; tell: TaskPerson | null; place: Extract<PlaceFound, { ok: true }> | null } | { ok: false; refused: string }
 
 /**
  * The dry run: the people found, the window's own send run on the draft, and what would land. Refused in words for a
@@ -383,7 +401,9 @@ export function taskDryRun(p: TaskPayload, world: TaskWorld, me: { userId: strin
   if (startDate < today) return { ok: false, refused: `on is ${startDate}, behind today (${today}). The window gives a task for today or a day ahead.` }
   if (p.repeat && 'weekdays' in p.repeat && p.repeat.until && p.repeat.until < startDate) return { ok: false, refused: `repeat.until (${p.repeat.until}) is before the task starts (${startDate}).` }
 
-  const draft = taskDraft(p, people, tell, today)
+  if (world.place && !world.place.ok) return { ok: false, refused: `place: ${world.place.refused}` }
+  const place = world.place && world.place.ok ? world.place : null
+  const draft = taskDraft(p, people, tell, today, place)
   const send = newTaskSend(draft, { userId: me.userId }, { today, now: NOW_AT_APPLY })
   if (!send.ok) return { ok: false, refused: `The New task window refuses this: ${send.error}` }
   if (send.instanceDates.length === 0) return { ok: false, refused: 'This repeat puts no day in the next five weeks, so nobody would see the task. Check the weekdays against the start and the end.' }
@@ -407,7 +427,7 @@ export function taskDryRun(p: TaskPayload, world: TaskWorld, me: { userId: strin
     days: { count: send.instanceDates.length, first: send.instanceDates[0], last: send.instanceDates[send.instanceDates.length - 1], dates: send.instanceDates.slice(0, 8) },
     done_when: lines,
     asks_for_photo: send.row.asks_for_photo,
-    place: p.place ? { name: cleanTaskPlaceName(p.place.name) || null, lat: p.place.lat, lng: p.place.lng, check_it_here: mapLink(p.place.lat, p.place.lng) } : null,
+    place: place ? { name: cleanTaskPlaceName(place.name) || null, lat: place.lat, lng: place.lng, found_by: place.found_by, check_it_here: mapLink(place.lat, place.lng) } : null,
     tells: [
       'Nobody is told when the task is given: the New task window sends no push either. It shows on their Checklist and their Dashboard at once.',
       ...(p.remind_at ? [`A reminder goes at ${p.remind_at} on the day${send.row.remind_day_before ? ' and the day before' : ''}${send.row.reminder_scope === 'today_and_overdue' ? ', and every day after until it is done' : ''}, to whoever has push on.`] : []),
@@ -415,10 +435,11 @@ export function taskDryRun(p: TaskPayload, world: TaskWorld, me: { userId: strin
       ...(draft.notifyCreatorOnComplete ? ['You are told when it is done.'] : []),
     ],
     does_not: ['put a photo of the spot on the task', 'tie the task to a job (the window\'s job bar)', 'put a painted map on the task'],
-    ...(p.place ? { stamped_at_apply: ['place_set_at'] } : {}),
+    after: 'plan_task_place moves or takes off the place of a task already given.',
+    ...(place ? { stamped_at_apply: ['place_set_at'] } : {}),
     ...(clash.length ? { already_given: clash.map((a) => ({ id: a.id, given_at: a.created_at })) } : {}),
   }
-  return { ok: true, reply, people, tell }
+  return { ok: true, reply, people, tell, place }
 }
 
 /** The rows an apply writes after the task itself, from the window's own kernels. */
@@ -483,6 +504,7 @@ export async function findTask(reader: Reader, args: FindTaskArgs): Promise<Json
   if (!text && !who) return { refused: 'find_task needs text (words on the task), for (a person: a users id or a name), or both.' }
   let onlyIds: string[] | null = null
   let person: TaskPerson | null = null
+  let listCut = false
   if (who) {
     const found = UUID_RE.test(who)
       ? await reader.rows('users', { select: 'id,name,role', filters: by('id', who.toLowerCase()), limit: 1 })
@@ -491,25 +513,44 @@ export async function findTask(reader: Reader, args: FindTaskArgs): Promise<Json
     const pick = found.length === 1 ? found[0]! : exact.length === 1 ? exact[0]! : null
     if (!pick) return { refused: found.length === 0 ? `No person matches "${who}" — find_person lists names.` : `"${who}" matches ${found.length} people — pass the id of one: ${found.slice(0, 8).map((r) => `${str(r.name)} (${str(r.id)})`).join('; ')}` }
     person = { id: str(pick.id), name: str(pick.name), role: strOrNull(pick.role) }
-    // A person's list, newest place first: the tasks they were given last sit at the bottom of it.
-    const theirs = await reader.rows('checklist_item_assignees', { select: 'checklist_item_id,display_order', filters: by('user_id', person.id), order: [{ column: 'display_order', ascending: false }], limit: 100 })
-    onlyIds = theirs.map((r) => str(r.checklist_item_id))
+    // A person's list, newest place first: the tasks they were given last sit at the bottom of it. Read a page at a
+    // time below the last place seen, since the door has no offset.
+    onlyIds = []
+    let below: number | null = null
+    for (let page = 0; page < PERSON_PAGES; page += 1) {
+      const filters: RowFilter[] = [{ column: 'user_id', op: 'eq', value: person.id }, ...(below === null ? [] : [{ column: 'display_order', op: 'lte' as const, value: below }])]
+      const theirs = await reader.rows('checklist_item_assignees', { select: 'checklist_item_id,display_order', filters, order: [{ column: 'display_order', ascending: false }], limit: 200 })
+      const fresh = theirs.map((r) => str(r.checklist_item_id)).filter((id) => !onlyIds!.includes(id))
+      onlyIds.push(...fresh)
+      const last = theirs[theirs.length - 1]
+      if (theirs.length < 200 || fresh.length === 0 || typeof last?.display_order !== 'number') break
+      below = last.display_order
+      if (page === PERSON_PAGES - 1) listCut = true
+    }
     if (onlyIds.length === 0) return { for: person, matches: [], reading: `${person.name} has no task.` }
   }
-  const filters: RowFilter[] = []
-  if (text) filters.push({ column: 'title', op: 'ilike', value: likeTerm(text) })
-  if (onlyIds) filters.push({ column: 'id', op: 'in', value: onlyIds })
-  const items = await reader.rows('checklist_items', { select: ITEM_LIST_SELECT, filters, order: [{ column: 'created_at', ascending: false }], limit: FIND_LIMIT })
-  if (items.length === 0) return { ...(person ? { for: person } : {}), matches: [], reading: 'No task matches.' }
+  const words: RowFilter[] = text ? [{ column: 'title', op: 'ilike', value: likeTerm(text) }] : []
+  let items: Row[]
+  if (onlyIds) {
+    // A hundred ids a read: each is about forty characters of the URL, which the door holds to 6,000.
+    const found: Row[] = []
+    for (let i = 0; i < onlyIds.length; i += 100) found.push(...(await reader.rows('checklist_items', { select: ITEM_LIST_SELECT, filters: [...words, { column: 'id', op: 'in', value: onlyIds.slice(i, i + 100) }], order: [{ column: 'created_at', ascending: false }], limit: FIND_LIMIT })))
+    items = found.sort((x, y) => str(y.created_at).localeCompare(str(x.created_at))).slice(0, FIND_LIMIT)
+  } else {
+    items = await reader.rows('checklist_items', { select: ITEM_LIST_SELECT, filters: words, order: [{ column: 'created_at', ascending: false }], limit: FIND_LIMIT })
+  }
+  if (items.length === 0) return { ...(person ? { for: person } : {}), matches: [], reading: `No task matches.${listCut ? ` Only the ${onlyIds!.length} tasks lowest in ${person!.name}'s list were searched.` : ''}` }
   const ids = items.map((r) => str(r.id))
-  const [assignees, open] = await Promise.all([
+  // Each task's open days in a read of its own: one read for all twenty would stop at the door's 200 rows, and a few
+  // daily tasks would leave the rest reading as closed.
+  const [assignees, ...openByTask] = await Promise.all([
     reader.rows('checklist_item_assignees', { select: 'checklist_item_id,user_id', filters: [{ column: 'checklist_item_id', op: 'in', value: ids }], limit: 200 }),
-    reader.rows('checklist_instances', { select: 'checklist_item_id,scheduled_date', filters: [{ column: 'checklist_item_id', op: 'in', value: ids }, { column: 'completed_at', op: 'is', value: null }], order: [{ column: 'scheduled_date' }], limit: 200 }),
+    ...ids.map((id) => reader.rows('checklist_instances', { select: 'scheduled_date', filters: [{ column: 'checklist_item_id', op: 'eq', value: id }, { column: 'completed_at', op: 'is', value: null }], order: [{ column: 'scheduled_date' }], limit: OPEN_DAYS_READ })),
   ])
   const names = await namesOf(reader, [...assignees.map((a) => str(a.user_id)), ...items.map((r) => str(r.created_by_user_id))])
-  const matches = items.map((r) => {
+  const matches = items.map((r, at) => {
     const id = str(r.id)
-    const days = open.filter((o) => str(o.checklist_item_id) === id)
+    const days = openByTask[at] ?? []
     const place = taskPlaceFromRow(r as Parameters<typeof taskPlaceFromRow>[0])
     return {
       id,
@@ -520,13 +561,13 @@ export async function findTask(reader: Reader, args: FindTaskArgs): Promise<Json
       starts: str(r.start_date),
       due: strOrNull(r.due_date),
       repeats: repeatWords(r),
-      open_days: days.length,
+      open_days: days.length === OPEN_DAYS_READ ? `${OPEN_DAYS_READ} or more` : days.length,
       next_open_day: days[0] ? str(days[0].scheduled_date) : null,
       place: place ? place.name : null,
       photo_of_the_spot: isTaskSpotPhotoPath(strOrNull(r.spot_photo_path)),
     }
   })
-  return { ...(person ? { for: person } : {}), matches, reading: `${matches.length} task${matches.length === 1 ? '' : 's'}${matches.length === FIND_LIMIT ? ' (the newest twenty; narrow the words for more)' : ''}. get_task reads one whole by its id.` }
+  return { ...(person ? { for: person } : {}), matches, reading: `${matches.length} task${matches.length === 1 ? '' : 's'}${matches.length === FIND_LIMIT ? ' (the newest twenty; narrow the words for more)' : ''}${listCut ? `, searched among the ${onlyIds!.length} lowest in ${person!.name}'s list` : ''}. get_task reads one whole by its id; a task from a roadmap may keep its place and photo on the roadmap task, which get_task shows.` }
 }
 
 const ITEM_SELECT =
@@ -541,23 +582,21 @@ const placeOut = (place: TaskPlace | null, names: Map<string, string>, from: 'ta
  * the Done when… lines, the photo switch, its place, whether it carries a photo of the spot — then its newest days
  * with each one's percent, and the newest lines of their thread and their photos. Read as you, under RLS.
  */
-export async function getTask(reader: Reader, ref: string): Promise<Json> {
-  const want = ref.trim()
-  if (!want) return { refused: 'get_task needs task — a task id (find_task gives one), or words that find one task.' }
-  let id = UUID_RE.test(want) ? want.toLowerCase() : ''
-  if (!id) {
-    const found = await reader.rows('checklist_items', { select: 'id,title,start_date', filters: [{ column: 'title', op: 'ilike', value: likeTerm(want) }], order: [{ column: 'created_at', ascending: false }], limit: FIND_LIMIT })
-    if (found.length === 0) return { refused: `No task matches "${want}".` }
-    if (found.length > 1) return { refused: `"${want}" matches ${found.length === FIND_LIMIT ? 'twenty or more' : found.length} tasks — pass the id of one (find_task lists them): ${found.slice(0, 6).map((r) => `${taskTitlePlain(str(r.title)).slice(0, 50)}, ${str(r.start_date)} (${str(r.id)})`).join('; ')}` }
-    id = str(found[0]!.id)
-  }
+export async function getTask(reader: Reader, ref: string, today: string): Promise<Json> {
+  const found = await resolveTaskRef(reader, ref, 'get_task')
+  if ('refused' in found) return found
+  const id = found.id
   const item = (await reader.rows('checklist_items', { select: ITEM_SELECT, filters: by('id', id), limit: 1 }))[0]
   if (!item) return { refused: `No task ${id} — it does not exist, or RLS hides it from you.` }
-  const [assignees, lines, days] = await Promise.all([
+  // The days around today, never the newest by date: a weekly task holds five weeks ahead, and the newest fourteen of
+  // those would hide today's row, its thread and its photos.
+  const [assignees, lines, upTo, ahead] = await Promise.all([
     reader.rows('checklist_item_assignees', { select: 'user_id,display_order', filters: by('checklist_item_id', id), order: [{ column: 'display_order' }], limit: 50 }),
     reader.rows('task_criteria', { select: 'id,body,sort_index', filters: [{ column: 'checklist_item_id', op: 'eq', value: id }, { column: 'retired_at', op: 'is', value: null }], order: [{ column: 'sort_index' }], limit: 50 }),
-    reader.rows('checklist_instances', { select: 'id,scheduled_date,completed_at,completed_by_user_id,percent_complete,notes', filters: by('checklist_item_id', id), order: [{ column: 'scheduled_date', ascending: false }], limit: TASK_DAYS_SHOWN }),
+    reader.rows('checklist_instances', { select: DAY_SELECT, filters: [{ column: 'checklist_item_id', op: 'eq', value: id }, { column: 'scheduled_date', op: 'lte', value: today }], order: [{ column: 'scheduled_date', ascending: false }], limit: TASK_DAYS_SHOWN - TASK_DAYS_AHEAD }),
+    reader.rows('checklist_instances', { select: DAY_SELECT, filters: [{ column: 'checklist_item_id', op: 'eq', value: id }, { column: 'scheduled_date', op: 'gt', value: today }], order: [{ column: 'scheduled_date' }], limit: TASK_DAYS_AHEAD }),
   ])
+  const days = [...[...ahead].reverse(), ...upTo]
   const dayIds = days.map((d) => str(d.id))
   const [thread, photos, roadmap] = await Promise.all([
     dayIds.length ? reader.rows('checklist_instance_events', { select: 'instance_id,event_type,actor_user_id,body,percent,created_at', filters: [{ column: 'instance_id', op: 'in', value: dayIds }], order: [{ column: 'created_at', ascending: false }], limit: TASK_THREAD_SHOWN }) : Promise.resolve([] as Row[]),
@@ -577,7 +616,9 @@ export async function getTask(reader: Reader, ref: string): Promise<Json> {
   ])
   const dayOf = new Map(days.map((d) => [str(d.id), str(d.scheduled_date)]))
   const open = days.filter((d) => d.completed_at == null)
-  const ownPhoto = isTaskSpotPhotoPath(strOrNull(item.spot_photo_path))
+  const hasPhoto = isTaskSpotPhotoPath(strOrNull(item.spot_photo_path)) || isTaskSpotPhotoPath(strOrNull(roadmap[0]?.spot_photo_path))
+  const nextOpen = [...open].reverse().find((d) => str(d.scheduled_date) >= today)
+  const oldestOpen = open[open.length - 1]
   return {
     task: {
       id,
@@ -599,10 +640,11 @@ export async function getTask(reader: Reader, ref: string): Promise<Json> {
     done_when: lines.map((l) => str(l.body)),
     place: placeOut(own, names, 'task') ?? placeOut(theirs, names, 'roadmap task'),
     painted_map: strOrNull(item.painted_map_id) ?? strOrNull(roadmap[0]?.painted_map_id) ?? null,
-    photo_of_the_spot: ownPhoto || isTaskSpotPhotoPath(strOrNull(roadmap[0]?.spot_photo_path)),
+    photo_of_the_spot: hasPhoto,
+    days_shown: `today and the ${TASK_DAYS_SHOWN - TASK_DAYS_AHEAD - 1} days before it that have a row, and the next ${TASK_DAYS_AHEAD} ahead`,
     days: days.map((d) => ({ id: str(d.id), day: str(d.scheduled_date), done_at: strOrNull(d.completed_at), done_by: d.completed_by_user_id ? (names.get(str(d.completed_by_user_id)) ?? null) : null, percent: typeof d.percent_complete === 'number' ? d.percent_complete : 0, note: strOrNull(d.notes) })),
     thread: thread.map((t) => ({ at: str(t.created_at), day: dayOf.get(str(t.instance_id)) ?? null, by: t.actor_user_id ? (names.get(str(t.actor_user_id)) ?? null) : null, kind: str(t.event_type), text: str(t.body), ...(typeof t.percent === 'number' ? { percent: t.percent } : {}) })),
     photos_on_its_days: photos.map((ph) => ({ id: str(ph.id), day: dayOf.get(str(ph.instance_id)) ?? null, kind: str(ph.kind), caption: str(ph.caption), by: str(ph.by_name), taken_at: str(ph.taken_at), in_drive: ph.drive_file_id != null, ...(ph.fail_why ? { filing_failed: str(ph.fail_why) } : {}) })),
-    reading: `${days.length === 0 ? 'No day row yet' : `${open.length} of its newest ${days.length} day${days.length === 1 ? '' : 's'} open`}${open.length ? `, the next on ${str(open[open.length - 1]!.scheduled_date)}` : ''}; ${lines.length} Done when… line${lines.length === 1 ? '' : 's'}; ${own || theirs ? 'has a place' : 'no place'}; ${ownPhoto ? 'has a photo of the spot' : 'no photo of the spot'}.`,
+    reading: `${days.length === 0 ? 'No day row yet' : `${open.length} of the ${days.length} day${days.length === 1 ? '' : 's'} shown open`}${nextOpen ? `, the next on ${str(nextOpen.scheduled_date)}` : oldestOpen ? `, the oldest of them ${str(oldestOpen.scheduled_date)}` : ''}; ${lines.length} Done when… line${lines.length === 1 ? '' : 's'}; ${own || theirs ? 'has a place' : 'no place'}; ${hasPhoto ? 'has a photo of the spot' : 'no photo of the spot'}.`,
   }
 }
