@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import type { LienDeskKind } from '../../lib/lien/lienDeskRoute'
 import { EmptyState } from '../EmptyState'
-import { LIEN_SHOW_EVERY_PILE, lienAffidavitsEmptyWords, lienListFindEmptyWords, lienPileEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
+import { LIEN_SHOW_EVERY_PILE } from '../../lib/jobs/lienDeskEmptyWords'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
@@ -33,7 +33,7 @@ import {
   type LienDeskEntry,
   type LienDeskPile,
   type LienNoticePolicy, LIEN_DESK_LEAD_DAYS } from '../../lib/jobs/lienDesk'
-import { lienStandInSourceOf, lienStandInWords } from '../../lib/jobs/lienBillMonths'
+import { lienStandInWords } from '../../lib/jobs/lienBillMonths'
 import {
   holdLienDeskItem,
   pullBackLienDeskItem,
@@ -78,7 +78,7 @@ import { lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_RUN_NOW_TO_PRINT, lienRunActLabel } from '../../lib/jobs/lienRunWords'
 import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
-import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords } from '../../lib/jobs/lienOwnerCall'
+import { affidavitPileFor, ownerCallWords } from '../../lib/jobs/lienOwnerCall'
 import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import LienOwnerCallDialog from './LienOwnerCallDialog'
 import LienCourtesyWindow from './LienCourtesyWindow'
@@ -94,8 +94,7 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
 import LienMailPieceDoors from './LienMailPieceDoors'
-import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, redrawLienDeskItem, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
-import { lienAffidavitBatchToldWords, lienAffidavitTellPapers } from '../../lib/jobs/lienAffidavitApprovalTell'
+import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienDeskItem, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { runTakenBackOf, takeBackNoticeConfirm, takeBackNoticeDoneWords, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import { lienNoticeParted } from '../../lib/jobs/lienNoticeParted'
 import { canRedrawItem, fieldsRedrawn, lienNoticePartedBand, lienNoticeRedrawConfirm, lienNoticeRedrawnToast, lienNoticeRedrawnWords, lienNoticeSignFields, redrawnLine, redrawnOf } from '../../lib/jobs/lienNoticeRedraw'
@@ -128,7 +127,7 @@ import LienPaperPropertyWindow from './LienPaperPropertyWindow'
 import LienPaperGcWindow from './LienPaperGcWindow'
 import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
-import { affidavitStopPages, filingSnapshotPage, lienDeskAffidavitFieldsFor, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
+import { affidavitStopPages, filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
@@ -142,25 +141,12 @@ import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
-import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
-import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
+import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import { lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
-import { lienAffidavitMonthsByHandCheck } from '../../lib/jobs/lienAffidavitMonthsByHand'
-import { lienMonthCheckedFor, lienMonthCheckedSheetRow, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
 import { addMonthsToLienNotice } from '../../lib/jobs/lienNoticeOwedIo'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
-import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
-import { lienAffidavitClerkOrder, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintDoorWords, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, lienAffidavitShownEntries, type LienAffidavitShown, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet, lienAffidavitBatchNoticeCopies, lienAffidavitBatchNoticeCopyCount, lienAffidavitBatchNoticeRecords } from '../../lib/jobs/lienAffidavitBatch'
-import { useLienHelpSheetChoice, useLienNoticeCopiesBatchChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
-import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
-import { LienSigningCountyBox } from './LienSigningCountyBox'
-import { LIEN_PRINT_WITH_LABEL, lienAffidavitPrintBarStatus, lienPrintWithChips } from '../../lib/jobs/lienAffidavitPrintBar'
-import { useLienSigningCounty } from './lienSigningCountyChoice'
-import { useLienAskPeople } from './lienAskPeopleChoice'
-import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
-import { lienHelpBatchRecordCode, lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
-import { lienAffidavitNoticeCheck, lienNoticeCheckLines, lienNoticeCheckRowLine } from '../../lib/jobs/lienAffidavitNoticeCheck'
+import { lienAffidavitPrintDoorWords } from '../../lib/jobs/lienAffidavitBatch'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
@@ -174,12 +160,14 @@ import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseD
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
-import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, lienPhonePrintBoxFold } from '../../lib/jobs/lienPhonePane'
+import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from '../../lib/jobs/lienPhonePane'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
-import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
-import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
+import LienDeskAffidavitPane from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
+import { LienDeskAffidavitList } from './LienDeskAffidavitList'
 import { LienDeskRetainageList } from './LienDeskRetainageList'
+import { LIEN_FILL as FILL, lienBtnStyle as btn } from './lienDeskButtonStyles'
+import { useLienDeskAffidavits } from './useLienDeskAffidavits'
 import { lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
 import { LIEN_RETAINAGE_PILES, lienRetainageListView, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
@@ -213,8 +201,7 @@ import type { LienBookGroup } from '../../lib/jobs/lienPropertyGroups'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
-import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { lienStripChips, type LienStripChipAct, type LienStripChipTone } from '../../lib/jobs/lienStripChips'
 import { buildLienDeskGates, lienSentGatesFold, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence, lienGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
@@ -231,9 +218,7 @@ import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctio
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
-import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, lienOwnerIsPublic, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
-import { lienGateMarks, lienGateRowParts } from '../../lib/jobs/lienGateMarks'
-import { LienGateMarkStrip } from './LienGateMarkStrip'
+import { LIEN_AFFIDAVIT_PILES, lienOwnerIsPublic, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -348,8 +333,6 @@ function deadlineWords(e: LienDeskEntry): string {
   return `by ${formatYmdMonthDay(e.earliestDeadline)}`
 }
 
-/** Filled buttons carry a white label, so the fill is a literal that holds in both themes — the `--text-*` tokens go pale in dark mode and the label with them. */
-const FILL = { primary: '#2563eb', green: '#166534', amber: '#92400e' } as const
 /** The footer's state chip (v2.4855): a few words, the old sentence on hover. */
 function FootChip({ chip, ...rest }: { chip: LienFootChip } & Record<`data-${string}`, string | boolean | undefined>) {
   return (
@@ -360,18 +343,6 @@ function FootChip({ chip, ...rest }: { chip: LienFootChip } & Record<`data-${str
   )
 }
 
-const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled = false): React.CSSProperties => ({
-  padding: '5px 10px',
-  borderRadius: 7,
-  border: `1px solid ${kind === 'plain' ? 'var(--border-strong)' : 'transparent'}`,
-  background: kind === 'plain' ? 'var(--surface)' : FILL[kind],
-  color: kind === 'plain' ? 'var(--text-700)' : '#fff',
-  fontSize: '0.8125rem',
-  fontWeight: 600,
-  cursor: disabled ? 'default' : 'pointer',
-  opacity: disabled ? 0.55 : 1,
-  whiteSpace: 'nowrap',
-})
 /**
  * The title bar's doors share § Rules' height (v2.4746, the owner's ask): its 0.78rem line at the root's 1.5, 2px of
  * padding above and below, and the 1px border. Send the run, Put a GC on notice…, ☎ and Share (on a computer) take it.
@@ -512,8 +483,6 @@ export default function LienDesk({
   const [mobileListShown, setMobileListShown] = useState(true)
   // A phone's open paper: the footer folded to one bar so the paper has the screen (punch list #352, PR 6).
   const [footFolded, setFootFolded] = useState(false)
-  // The notary's print box over the Affidavits list opens folded on a phone (punch list #352, the leftovers).
-  const [affPrintFolded, setAffPrintFolded] = useState(true)
   // The pile titles stack as the Notices list scrolls (v2.4672): the list's scroller, and the pile the reader is in.
   // Wording (v2.3522): the four typed values the office may shape, layered over the draft; the paper-first pane's scroll state.
   const [wordingEdits, setWordingEdits] = useState<Partial<LienNoticeFields>>({})
@@ -653,12 +622,6 @@ export default function LienDesk({
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
   // The print bar's amber press (v2.7209): the list narrowed to the ready papers a gate holds out of the print.
   const [affHeldOnlyPicked, setAffHeldOnlyPicked] = useState(false)
-  // Redraw on the short form, for every ready paper at once (punch list #305): the press in flight, and the papers that did not take with their reasons.
-  const [redrawBusy, setRedrawBusy] = useState(false)
-  const [redrawFailed, setRedrawFailed] = useState<Array<{ jobId: string; reason: string }>>([])
-  // Send every drafted affidavit for approval, then print every ready one (punch list #305, v2.6918).
-  const [affSendBusy, setAffSendBusy] = useState(false)
-  const [affSendFailed, setAffSendFailed] = useState<Array<{ jobId: string; reason: string }>>([])
   const confirmDialog = useConfirmDialog()
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
@@ -2015,146 +1978,9 @@ export default function LienDesk({
   )
 
   const counts = data?.queue.counts
-  const affEntries = data?.affidavits.entries ?? []
-  // Print every ready affidavit on the short form for the notary (v2.6918): what the press takes, and what it leaves with the reason.
-  const affPrintPlanAll = lienAffidavitPrintPlan(affEntries)
-  // The held papers alone (v2.7209): only while a gate holds one, so the list never narrows to nothing when the last one clears.
-  const affHeldJobIds = new Set(affPrintPlanAll.gated.map((g) => g.entry.jobId))
-  const affHeldOnly = affHeldOnlyPicked && affHeldJobIds.size > 0
-  const affVisibleAll = LIEN_AFFIDAVIT_PILES.flatMap((p) => affEntries.filter((e) => e.pile === p.key && (affHeldOnly ? affHeldJobIds.has(e.jobId) : affPile == null || affPile === p.key)))
-  const affVisible = affVisibleAll.filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
-  const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!oneColumn ? affVisible[0] : undefined) ?? null
-  // While a find is typed (punch list #353, part 1) both batch presses take only the rows the list shows, and say so; with nothing typed they take every paper as before.
-  const affShownKey = finding ? affVisible.map((e) => e.jobId).join('\n') : null
-  const affShown = useMemo((): LienAffidavitShown | null => (affShownKey == null ? null : { jobIds: new Set(affShownKey.split('\n').filter(Boolean)) }), [affShownKey])
-  const affBatchEntries = lienAffidavitShownEntries(affEntries, affShown)
-  const affPrintPlan = affShown ? lienAffidavitPrintPlan(affBatchEntries) : affPrintPlanAll
-  const affCount = affEntries.filter((e) => e.pile !== 'filed').length
-  // Redraw every ready affidavit on the short form (punch list #305): the ready earlier-form papers, the ones left in other piles, and the words.
-  const redrawPlan = lienAffidavitRedrawPlan(affEntries)
-  const redrawWords = lienAffidavitRedrawWords(redrawPlan)
-  const redrawReady = async () => {
-    if (redrawBusy || redrawPlan.ready.length === 0) return
-    if (!(await confirmDialog({ title: redrawWords.title, message: redrawWords.message, confirmLabel: redrawWords.confirmLabel }))) return
-    setRedrawBusy(true)
-    try {
-      // Each paper is its own write and the batch keeps going past one that fails; what failed stays listed with its reason.
-      const result = await redrawLienAffidavitsShort(redrawPlan.ready.flatMap((e) => (e.item ? [{ jobId: e.jobId, item: e.item }] : [])), authUserId)
-      const outcome = lienAffidavitRedrawOutcome(result.done.length, result.failed.length)
-      setRedrawFailed(result.failed)
-      showToast(outcome.line, outcome.tone)
-      if (result.done.length > 0) onChanged()
-    } finally {
-      setRedrawBusy(false)
-    }
-  }
-  // Send every drafted affidavit for approval (v2.6918): each goes where its GC's rule takes it, as the pane's own press sends it.
-  const affSendContext = {
-    policyFor: (gcId: string | null) => (gcId ? data?.gcsById[gcId]?.policy : undefined) ?? 'ask',
-    promiseYmdFor: (jobId: string) => data?.promisesByJob[jobId]?.promisedYmd ?? null,
-    gcHasPriorNotice: (gcId: string) => Boolean(data?.gcsWithPriorNotice.has(gcId)),
-    gcHeldBefore: (gcId: string) => Boolean(data?.gcsHeldBefore.has(gcId)),
-    todayYmd,
-  }
-  const affSendPlanAll = lienAffidavitSendPlan(affEntries, affSendContext)
-  const affSendPlan = affShown ? lienAffidavitSendPlan(affBatchEntries, affSendContext) : affSendPlanAll
-  const affSendWords = lienAffidavitSendWords(affSendPlan, affShown ? { hiddenReady: affSendPlanAll.ready.length - affSendPlan.ready.length } : null)
-  const sendDraftedAffidavits = async () => {
-    if (affSendBusy || affSendWords.dead) return
-    if (!(await confirmDialog({ title: affSendWords.title, message: affSendWords.message, confirmLabel: affSendWords.confirmLabel }))) return
-    setAffSendBusy(true)
-    try {
-      const sent = affSendPlan.ready.flatMap((r) => (r.entry.item ? [{ jobId: r.entry.jobId, itemId: r.entry.item.id, outcome: r.outcome, dueYmd: r.entry.deadline }] : []))
-      const result = await submitLienAffidavits(sent)
-      const outcome = lienAffidavitSendOutcome(result.done.length, result.failed.length)
-      setAffSendFailed(result.failed)
-      // The leader is told once of every paper that now waits for him (punch list #305, v2.7180): one call, so twelve papers are one message. Best effort, after the writes.
-      const asked = lienAffidavitTellPapers(sent, result.done)
-      const told = asked.length > 0 ? await tellLeaderOfLienAffidavits(asked) : null
-      showToast([outcome.line, lienAffidavitBatchToldWords(told, asked.length)].filter(Boolean).join(' '), told && !told.ok && outcome.tone === 'success' ? 'warning' : outcome.tone)
-      if (result.done.length > 0) onChanged()
-    } finally {
-      setAffSendBusy(false)
-    }
-  }
-  // The print itself (v2.6918): one document, each paper on its own sheet, and each job keeps its own copy.
-  const [affHelpSheet, setAffHelpSheet] = useLienHelpSheetChoice()
-  // The notice records (punch list #322): what was mailed before each paper, in front of the stack with the help sheet.
-  const [affNoticeRecord, setAffNoticeRecord] = useLienNoticeRecordChoice()
-  // A copy of each notice behind the records: off until someone ticks it, since a batch has many notices behind it.
-  const [affNoticeCopies, setAffNoticeCopies] = useLienNoticeCopiesBatchChoice()
-  const affPrintWords = lienAffidavitPrintWords(affPrintPlan, affShown ? { hiddenReady: affPrintPlanAll.ready.length - affPrintPlan.ready.length } : null)
-  // The bar's status line and its amber press (v2.7209).
-  const affPrintStatus = lienAffidavitPrintBarStatus({ ready: affPrintPlan.ready.length, gated: affPrintPlan.gated.length })
-  const affHeldStrip = useRef<HTMLDivElement>(null)
-  const showHeldAffidavits = (on: boolean) => {
-    setAffHeldOnlyPicked(on)
-    // The held papers are in Ready to file: a pile picked in the header would hide them.
-    if (on) setAffPile(null)
-    // The rows sit under the bars: bring the narrowed list's first line into view once it is drawn.
-    if (on) window.setTimeout(() => affHeldStrip.current?.scrollIntoView?.({ block: 'nearest' }), 0)
-  }
-  // The county these are signed in (punch list #314): Settings' county, typed over for this print when the notary is somewhere else.
-  const affSigning = useLienSigningCounty(issuer)
-  // Who a help sheet says to ask (change 9): the job's lien leader, or the dev.
-  const askFor = useLienAskPeople()
-  const affPrintIssuer = affSigning.issuer
-  const affPrintPapers = useMemo((): LienAffidavitPrintPaper[] => {
-    if (!data) return []
-    // In clerk order (change 7): each county clerk's papers print together, and the help sheet's rows count them as they lie in the stack.
-    // The shown rows alone while a find is typed (punch list #353): a paper the find hides is not printed and not listed as held, since nobody held it.
-    return lienAffidavitClerkOrder(lienAffidavitPrintPlan(lienAffidavitShownEntries(data.affidavits.entries, affShown)).ready.flatMap((e): LienAffidavitPrintPaper[] => {
-      const fields = lienDeskAffidavitFieldsFor({ data, jobId: e.jobId, issuer: affPrintIssuer, signerNameFor, todayYmd })
-      const job = data.jobsById[e.jobId]
-      if (!fields) return []
-      // What the help sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
-      const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
-      const filings = data.filingsByJob[e.jobId] ?? []
-      // The months set by hand (v2.7270) stand in for the record's on the paper, the check and the sheet's row.
-      const byHand = data.affidavitMonthsByJob[e.jobId] ?? null
-      const swornFacts = { isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, monthsByHand: byHand?.months ?? null }
-      const swornMonths = lienAffidavitSwornMonths({ ...swornFacts, filings })
-      const noticeCheck = lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings, work: lienAffidavitWorkMonths(swornFacts) })
-      const noticeLines = lienNoticeCheckLines(noticeCheck)
-      // A month from a bill or the job's creation (v2.7224) is flagged on both sheets, never held: neither reads On record for it.
-      const monthStandIn = lienStandInSourceOf(e.lastMonthFromCreation, e.lastMonthFromBill)
-      // A stand-in month a person confirmed (v2.7280): the sheet's row reads ✓ and the record names the check where the flag was.
-      const monthChecked = lienMonthCheckedFor({ source: monthStandIn, month: e.lastMonth, check: parseLienMonthCheck(job) })
-      const monthCheck = monthChecked ? lienMonthCheckedSheetRow(monthChecked, formatYmdMonthDay) : null
-      // The notice record (punch list #322): the same months and the same rows, read against the paper's own two sentences.
-      const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd, monthStandIn, monthCheck })
-      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn, monthsByHand: byHand ? lienAffidavitMonthsByHandCheck(byHand, formatYmdMonthDay) : null, monthCheck }
-      return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
-    }))
-  }, [data, affShown, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
-  // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
-  const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
-  const affNoticeCopyCount = useMemo(() => lienAffidavitBatchNoticeCopyCount(affPrintPapers), [affPrintPapers])
-  const printReadyAffidavits = () => {
-    if (!data || affPrintWords.dead) return
-    // The help sheet prints first (punch list #314): the blanks, when to stop, and a row for each paper. It is in no job's filed copy.
-    const helpSheet = affHelpSheet
-      ? lienAffidavitBatchHelpSheet(
-          affPrintPapers,
-          [
-            ...affPrintPlan.held.map((e) => ({ jobLabel: jobLabel(data.jobsById[e.jobId], e.jobId), reason: LIEN_HELP_EARLIER_FORM_REASON })),
-            // A ready paper a gate has closed since it was approved is not printed; the sheet names it with the gate's own reason.
-            ...affPrintPlan.gated.map((g) => ({ jobLabel: jobLabel(data.jobsById[g.entry.jobId], g.entry.jobId), reason: g.reason })),
-          ],
-          demandDate(todayYmd),
-          { guideCode: lienHelpGuideCode(), recordCode: lienHelpBatchRecordCode(), recordFollows: affNoticeRecord },
-        )
-      : null
-    // The notice records, then a copy of each notice when its box is ticked, print behind the help sheet and in front of the stack, never between two papers (punch list #322).
-    const noticeCopies = affNoticeCopies ? lienAffidavitBatchNoticeCopies(affPrintPapers, filingLetterheadFromIssuer(issuer), todayYmd) : ''
-    const run = lienAffidavitPrintRun(affPrintPapers, helpSheet, affNoticeRecord ? lienAffidavitBatchNoticeRecords(affPrintPapers, demandDate(todayYmd), Boolean(noticeCopies)) : null, noticeCopies)
-    if (!openHtmlPrintWindow(run.html)) {
-      showToast('Popup blocked — allow popups to print.', 'error')
-      return
-    }
-    // A print counts as a send (docs/SENT_COPIES.md): each job keeps its own paper, as its Lien window's print files it.
-    for (const copy of run.copies) void fileSentCopy({ ...copy.filing, how: 'print' }, { html: copy.html })
-  }
+  // By paper → Lien affidavits (v2.7585): what the list shows and its three batch presses live in `useLienDeskAffidavits`.
+  const aff = useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, signerNameFor, onChanged, finding, findWords, findFactsFor, oneColumn, affPile, setAffPile, affHeldOnlyPicked, setAffHeldOnlyPicked, affSelectedJobId })
+  const { affPrintPlanAll, affHeldOnly, affVisible, affSelected, affShown, affPrintPlan, affCount, affPilesShown, affSendPlanAll, affHelpSheet, affNoticeRecord, affNoticeCopies, affNoticeCopyCount, showHeldAffidavits, printReadyAffidavits } = aff
   const retEntries = data?.retainage.entries ?? []
   // What the Retainage list shows and which row is open (`lienRetainageListView`, v2.7583).
   const { visible: retVisible, selected: retSelected, pilesShown: retPilesShown } = lienRetainageListView({ entries: retEntries, pile: retPile, finding, matches: (e, pileLabel) => lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [pileLabel]), findWords).ok, selectedJobId: retSelectedJobId, oneColumn })
@@ -3455,189 +3281,29 @@ export default function LienDesk({
   // On a phone the chips are one strip that slides sideways, the first thing in the list's own scroller.
   const pileStrip = (chips: ReactNode[]) => (isMobile && chips.length > 0 ? <div data-lien-desk-piles style={{ display: 'flex', gap: 8, padding: '8px 12px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>{chips}</div> : null)
 
-  // Every pile with rows gets a stacked title, as the Notices list draws them (the owner's ask of 2026-11-15); the held-only list keeps the title's count to the rows it shows.
-  const affPilesShown = LIEN_AFFIDAVIT_PILES.map((p) => ({ p: p.key, label: p.label, rows: affVisible.filter((e) => e.pile === p.key), total: affVisibleAll.filter((e) => e.pile === p.key).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
   const affHeads = useLienPileHeads(affPilesShown.map((x) => x.p), isMobile)
   const affList = (
-    <div ref={affHeads.listRef} onScroll={affHeads.onScroll} data-lien-affidavit-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
-      {pileStrip(affPileChips)}
-      {affVisible.length === 0 ? (
-        loading || data == null ? (
-          <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Looking at every unpaid job…</p>
-        ) : (
-          // Empty words (punch list #184, sweep C): a find clears, a pile lifts back to the list, and nothing close points at By date.
-          <div data-lien-affidavit-empty={finding ? 'find' : affPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
-            <EmptyState compact {...(finding ? lienListFindEmptyWords(find, () => setFind('')) : affPile ? lienPileEmptyWords(() => setAffPile(null)) : lienAffidavitsEmptyWords(() => setKind('calendar')))} />
-          </div>
-        )
-      ) : null}
-      {office && (redrawPlan.ready.length > 0 || redrawFailed.length > 0) ? (
-        <div data-lien-affidavit-redraw style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {redrawPlan.ready.length > 0 ? (
-            <>
-              <span>{redrawPlan.ready.length === 1 ? '1 ready affidavit is on the earlier form.' : `${redrawPlan.ready.length} ready affidavits are on the earlier form.`}</span>
-              <button type="button" onClick={() => void redrawReady()} disabled={redrawBusy} style={{ ...btn('plain', redrawBusy), justifySelf: 'start' }}>
-                {redrawBusy ? 'Redrawing…' : redrawWords.button}
-              </button>
-              {redrawWords.foot ? <span data-lien-affidavit-redraw-foot>{redrawWords.foot}</span> : null}
-            </>
-          ) : null}
-          {redrawFailed.length > 0 ? (
-            <div data-lien-affidavit-redraw-failed style={{ display: 'grid', gap: '0.2rem', color: 'var(--text-red-600)' }}>
-              <strong>{lienAffidavitRedrawOutcome(0, redrawFailed.length).head}</strong>
-              {redrawFailed.map((f) => (
-                <span key={f.jobId}>
-                  <button type="button" onClick={() => { setAffSelectedJobId(f.jobId); setMobileListShown(false) }} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
-                    {jobLabel(data?.jobsById[f.jobId], f.jobId)}
-                  </button>
-                  {' · '}
-                  {f.reason}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      {office && (affSendPlan.ready.length > 0 || affSendFailed.length > 0) ? (
-        <div data-lien-affidavit-send-all style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {affSendPlan.ready.length > 0 ? (
-            <>
-              <span>{affSendWords.lead}</span>
-              <button type="button" onClick={() => void sendDraftedAffidavits()} disabled={affSendBusy} style={{ ...btn('plain', affSendBusy), justifySelf: 'start' }}>
-                {affSendBusy ? 'Sending…' : affSendWords.button}
-              </button>
-              {affSendWords.foot ? <span data-lien-affidavit-send-all-foot>{affSendWords.foot}</span> : null}
-              {affSendWords.hidden ? <span data-lien-affidavit-send-all-hidden>{affSendWords.hidden}</span> : null}
-            </>
-          ) : null}
-          {affSendFailed.length > 0 ? (
-            <div data-lien-affidavit-send-all-failed style={{ display: 'grid', gap: '0.2rem', color: 'var(--text-red-600)' }}>
-              <strong>{lienAffidavitSendOutcome(0, affSendFailed.length).head}</strong>
-              {affSendFailed.map((f) => (
-                <span key={f.jobId}>
-                  <button type="button" onClick={() => { setAffSelectedJobId(f.jobId); setMobileListShown(false) }} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
-                    {jobLabel(data?.jobsById[f.jobId], f.jobId)}
-                  </button>
-                  {' · '}
-                  {f.reason}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      {office && affPrintPlan.ready.length > 0 ? (
-        <div data-lien-affidavit-print-all style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {/* The status line (v2.7209): what this press prints, and beside it the one warning as a press. On a phone the press sits under the words. */}
-          <div data-lien-affidavit-print-status style={{ display: 'flex', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '0.35rem 0.6rem' }}>
-            <span data-lien-affidavit-print-ready title={affPrintStatus.readyTip} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>{affPrintStatus.ready}</span>
-            {affPrintStatus.held ? (
-              <button
-                type="button"
-                data-lien-affidavit-print-held
-                aria-pressed={affHeldOnly}
-                title={affPrintStatus.held.tip}
-                onClick={() => showHeldAffidavits(!affHeldOnly)}
-                style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${affHeldOnly ? 'var(--text-amber-800)' : 'var(--border-amber)'}`, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                {affPrintStatus.held.press} <span aria-hidden>›</span>
-              </button>
-            ) : null}
-          </div>
-          {/* On a phone one bar folds the rest of the box away (punch list #352, the leftovers): the count and the held papers stay, and the print press, the chips and the county stay mounted under the bar, so a tick or a typed county is kept (`index.css`). */}
-          {isMobile ? (() => {
-            const fold = lienPhonePrintBoxFold(affPrintFolded)
-            return (
-              <button type="button" data-lien-affidavit-print-fold aria-expanded={fold.expanded} onClick={() => setAffPrintFolded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%', minHeight: 44, padding: '0 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
-                <span>{fold.words}</span>
-                <span aria-hidden="true">{fold.mark}</span>
-              </button>
-            )
-          })() : null}
-          <button type="button" onClick={printReadyAffidavits} style={{ ...btn('plain'), justifySelf: 'start' }}>
-            {affPrintWords.button}
-          </button>
-          {/* What prints in front of the stack, as three ticked chips under one label (v2.7209). Each is still a tick box, kept on this computer: the help sheet (punch list #314) and the notice records (punch list #322) are on until the office turns them off, and the copies of the notices are off until someone ticks them. */}
-          <div role="group" aria-labelledby="lien-affidavit-print-with" data-lien-affidavit-print-with style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem 0.4rem' }}>
-            <span id="lien-affidavit-print-with" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginRight: '0.1rem' }}>{LIEN_PRINT_WITH_LABEL}</span>
-            {lienPrintWithChips(affNoticeCopyCount).map((c) => {
-              const [on, set, hook] =
-                c.key === 'help_sheet'
-                  ? ([affHelpSheet, setAffHelpSheet, { 'data-lien-affidavit-help-sheet': true }] as const)
-                  : c.key === 'notice_record'
-                    ? ([affNoticeRecord, setAffNoticeRecord, { 'data-lien-affidavit-notice-record': true }] as const)
-                    : ([affNoticeCopies, setAffNoticeCopies, { 'data-lien-affidavit-notice-copies': true }] as const)
-              return (
-                <label key={c.key} {...hook} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', padding: '2px 9px 2px 6px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.75rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} style={{ margin: 0 }} />
-                  {c.label}
-                </label>
-              )
-            })}
-          </div>
-          <LienSigningCountyBox id="lien-affidavit-signing-county" county={affSigning.county} onChange={affSigning.setCounty} />
-          <LienAffidavitSheetFlags papers={affSheetPapers} labelFor={(jobId) => jobLabel(data?.jobsById[jobId], jobId)} onOpen={(jobId) => { setAffSelectedJobId(jobId); setMobileListShown(false) }} />
-          {affPrintWords.foot ? <span data-lien-affidavit-print-all-foot>{affPrintWords.foot}</span> : null}
-          {affPrintWords.hidden ? <span data-lien-affidavit-print-all-hidden>{affPrintWords.hidden}</span> : null}
-        </div>
-      ) : null}
-      {/* The list narrowed to the held papers (v2.7209): how many, that each row says why, and the way back. */}
-      {affHeldOnly && affPrintStatus.held ? (
-        <div ref={affHeldStrip} data-lien-affidavit-held-only style={{ padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem 0.6rem', fontSize: '0.78rem' }}>
-          <span>{affPrintStatus.held.showing}</span>
-          <button type="button" onClick={() => showHeldAffidavits(false)} style={{ ...btn('plain'), padding: '2px 10px', fontSize: '0.78rem' }}>
-            {affPrintStatus.held.back}
-          </button>
-        </div>
-      ) : null}
-      {affPilesShown.map(({ p, label, rows, total }, i) => (
-          <Fragment key={p}>
-            <LienPileHead pile={p} label={label} count={lienPileHeadCount(rows.length, total, affHeldOnly ? undefined : data?.affidavits.counts[p], finding)} i={i} n={affPilesShown.length} phone={isMobile} on={affHeads.lit === p} empty={finding && rows.length === 0} onPress={() => affHeads.scrollToPile(p, i)} onShowEvery={affPile && !affHeldOnly ? () => setAffPile(null) : null} />
-            <div data-lien-pile-rows={p}>
-            {rows.map((e) => {
-              const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
-              const sel = e.jobId === affSelected?.jobId
-              const missing = e.gates.filter((x) => !x.ok).map((x) => affidavitGateMissingWord(x.key))
-              // The pane's five gates as marks on the chip line (v2.7335): in the two early piles, after *last work*; the words stay where the strip is not drawn and on a phone, which has no hover.
-              const gateParts = lienGateRowParts(e.pile, isMobile)
-              return (
-                <button
-                  key={e.jobId}
-                  type="button"
-                  onClick={() => {
-                    setAffSelectedJobId(e.jobId)
-                    setMobileListShown(false)
-                  }}
-                  aria-current={sel ? 'true' : undefined}
-                  style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto', gap: '0.2rem 0.6rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: sel ? 'var(--bg-blue-tint)' : 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}
-                >
-                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
-                  <span style={{ minWidth: 0 }}>
-                    {listLabel(e.jobId, 'affidavit', false)}
-                    <span style={{ color: 'var(--text-muted)' }}> · {e.isSub ? `GC ${g?.name ?? ''}` : 'with the owner'}</span>
-                  </span>
-                  <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.openBalance)}</span>
-                  <span style={{ gridColumn: '2 / 4', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    <span style={chip(severityColors(e.severity).bg, severityColors(e.severity).fg)}>{affidavitDeadlineWords(e)}</span>
-                    {(() => {
-                      // Counsel's piles (v2.3767): from the owner's answers on the sent notice.
-                      const pile = affidavitPileFor(data?.ownerCallByJob[e.jobId])
-                      if (!pile) return null
-                      const tone = pile === 'A' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : pile === 'B' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : chip('var(--bg-red-tint)', 'var(--text-red-600)')
-                      return <span style={tone} data-lien-affidavit-pile={pile}>{pile} · {AFFIDAVIT_PILE_WORDS[pile].short}</span>
-                    })()}
-                    <span>last work {workMonthShort(e.lastMonth)}</span>
-                    {gateParts.strip ? <LienGateMarkStrip marks={lienGateMarks(e.gates, e.isSub)} /> : null}
-                    {gateParts.words && missing.length ? <span>· missing {missing.join(', ')}</span> : null}
-                    <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
-                  </span>
-                </button>
-              )
-            })}
-            </div>
-          </Fragment>
-      ))}
-    </div>
+    <LienDeskAffidavitList
+      aff={aff}
+      heads={affHeads}
+      data={data}
+      loading={loading}
+      isMobile={isMobile}
+      office={office}
+      finding={finding}
+      find={find}
+      onClearFind={() => setFind('')}
+      affPile={affPile}
+      onShowEveryPile={() => setAffPile(null)}
+      onShowCalendar={() => setKind('calendar')}
+      pileChips={pileStrip(affPileChips)}
+      supplierMarks={supplierMarks}
+      rowLabel={(jobId) => listLabel(jobId, 'affidavit', false)}
+      onPick={(jobId) => {
+        setAffSelectedJobId(jobId)
+        setMobileListShown(false)
+      }}
+    />
   )
   const affPane =
     affSelected && data ? (
