@@ -11,9 +11,15 @@ vi.mock('./useIsMobile', () => ({ useIsMobile: () => true }))
 
 const TASK: TaskDoerActsTarget = { instanceId: 'inst-1', title: 'Give every tool a home', once: true, roadmap: false, vehicle: false, done: false, giverId: 'u-imani', giverName: 'Imani', dueYmd: null }
 
+type HandOn = (instanceId: string, toUserId: string, reason?: string | null, fromUserId?: string | null) => Promise<string | null>
+const PEOPLE = [
+  { id: 'u-hal', name: 'Hal' },
+  { id: 'u-imani', name: 'Imani' },
+  { id: 'u-me', name: 'Theo' },
+]
 type SayStuck = (a: { instanceId: string; userId: string; kind: 'stuck' | 'unstuck'; words: string }) => Promise<string | null>
-function Host({ target, moveDay, drop = async () => null, sayStuck = async () => null, tellGiver, onChanged, authUserId = 'u-me' }: { target: TaskDoerActsTarget; moveDay: (id: string, ymd: string) => Promise<string | null>; drop?: (id: string, reason: string) => Promise<string | null>; sayStuck?: SayStuck; tellGiver: (a: { giverId: string | null; instanceId: string; title: string; body: string }) => Promise<void>; onChanged: () => void; authUserId?: string }) {
-  const doer = useTaskDoerActs({ authUserId, todayYmd: '2026-11-16', onChanged, moveDay, drop, sayStuck, tellGiver, nameOf: async () => 'Theo' })
+function Host({ target, moveDay, drop = async () => null, sayStuck = async () => null, handOn = async () => null, tellGiver, onChanged, authUserId = 'u-me' }: { handOn?: HandOn; target: TaskDoerActsTarget; moveDay: (id: string, ymd: string) => Promise<string | null>; drop?: (id: string, reason: string) => Promise<string | null>; sayStuck?: SayStuck; tellGiver: (a: { giverId: string | null; instanceId: string; title: string; body: string }) => Promise<void>; onChanged: () => void; authUserId?: string }) {
+  const doer = useTaskDoerActs({ authUserId, todayYmd: '2026-11-16', onChanged, moveDay, drop, sayStuck, handOn, loadPeople: async () => ({ people: PEOPLE, error: null }), tellGiver, nameOf: async () => 'Theo' })
   return (
     <div>
       {doer.morePress(target)}
@@ -173,6 +179,61 @@ describe('useTaskDoerActs', () => {
     await waitFor(() => expect(sayStuck).toHaveBeenCalledWith({ instanceId: 'inst-1', userId: 'u-me', kind: 'unstuck', words: '' }))
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('Hand it on: Back to the giver is one press, the press names who takes it, and the taker is told', async () => {
+    const handOn = vi.fn<HandOn>(async () => null)
+    const tellGiver = vi.fn(async (_a: { giverId: string | null; instanceId: string; title: string; body: string }) => {})
+    const onChanged = vi.fn()
+    render(<Host target={TASK} moveDay={vi.fn()} handOn={handOn} tellGiver={tellGiver} onChanged={onChanged} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /Hand it on/ }))
+    expect(screen.getByRole('dialog', { name: 'Hand it on' }).textContent).toContain('Who takes it?')
+    expect(document.querySelector('[data-hand-press]')?.textContent).toBe('Pick who takes it first')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Imani' }))
+    expect(document.querySelector('[data-hand-sentence]')?.textContent).toBe('Imani gets it with its notes and its place.')
+    fireEvent.click(screen.getByRole('button', { name: 'Hand it to Imani' }))
+    await waitFor(() => expect(handOn).toHaveBeenCalledWith('inst-1', 'u-imani', null))
+    // the giver took it back, so one push goes out, to them as the taker
+    await waitFor(() => expect(tellGiver).toHaveBeenCalledTimes(1))
+    expect(tellGiver.mock.calls[0]![0]).toMatchObject({ giverId: 'u-imani', title: 'A task was handed to you' })
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
+  })
+
+  it('Hand it on: someone else is found by name, a reason rides along, and the giver hears too', async () => {
+    const handOn = vi.fn<HandOn>(async () => null)
+    const tellGiver = vi.fn(async (_a: { giverId: string | null; instanceId: string; title: string; body: string }) => {})
+    render(<Host target={TASK} moveDay={vi.fn()} handOn={handOn} tellGiver={tellGiver} onChanged={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /Hand it on/ }))
+    // the person handing it on is never offered, and the giver has their own press
+    await waitFor(() => expect(document.querySelector('[data-hand-person="u-hal"]')).toBeTruthy())
+    expect(document.querySelector('[data-hand-person="u-me"]')).toBeNull()
+    expect(document.querySelector('[data-hand-person="u-imani"]')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Find a person'), { target: { value: 'ha' } })
+    fireEvent.click(document.querySelector('[data-hand-person="u-hal"]') as HTMLElement)
+    expect(document.querySelector('[data-hand-sentence]')?.textContent).toBe('Hal gets it with its notes and its place. Imani is told.')
+    fireEvent.change(screen.getByLabelText('Why'), { target: { value: ' Wrong  crew ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Hand it to Hal' }))
+    await waitFor(() => expect(handOn).toHaveBeenCalledWith('inst-1', 'u-hal', 'Wrong crew'))
+    await waitFor(() => expect(tellGiver).toHaveBeenCalledTimes(2))
+    expect(tellGiver.mock.calls.map((c) => c[0].giverId)).toEqual(['u-hal', 'u-imani'])
+    expect(tellGiver.mock.calls[1]![0].body).toBe('Theo handed "Give every tool a home" to Hal.')
+  })
+
+  it('Hand it on: a refusal stays on the sheet, and a roadmap task is not offered it', async () => {
+    const handOn = vi.fn<HandOn>(async () => 'That person cannot take a task in the app.')
+    const { unmount } = render(<Host target={TASK} moveDay={vi.fn()} handOn={handOn} tellGiver={vi.fn()} onChanged={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /Hand it on/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Imani' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hand it to Imani' }))
+    await screen.findByText('That person cannot take a task in the app.')
+    expect(screen.getByRole('dialog', { name: 'Hand it on' })).toBeTruthy()
+    unmount()
+    render(<Host target={{ ...TASK, roadmap: true }} moveDay={vi.fn()} tellGiver={vi.fn()} onChanged={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    expect(screen.queryByRole('button', { name: /Hand it on/ })).toBeNull()
   })
 
   describe('the pass', () => {

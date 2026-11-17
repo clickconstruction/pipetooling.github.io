@@ -16,7 +16,6 @@ import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { compactTimeAgo } from '../lib/subcontractorLastActivityCompact'
-import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -85,6 +84,7 @@ import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
 import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
+import { handOnTask } from '../lib/tasks/taskDoerActsIo'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
@@ -252,6 +252,9 @@ function vehicleTaskChip(instanceId: string, onOpen: (instanceId: string) => voi
 }
 
 const tabStyle = pageTabStyle
+
+/** Under the task's words in the office's Forward window (punch list #369, step C7): the task itself goes, not a copy. */
+const FWD_KEEPS_WORDS = 'The task goes as it is, with its notes, place and photos.'
 
 /** The small-caps label over a part of the day, the New task window's row label. */
 const TODAY_PART_LABEL: CSSProperties = { margin: '0.9rem 2px 0.4rem', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -903,44 +906,10 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     setFwdSaving(true)
     setError(null)
     try {
-      const { data: sourceItem } = await supabase
-        .from('checklist_items')
-        .select('notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope')
-        .eq('id', fwdInstance.checklist_item_id)
-        .single()
-      const src = sourceItem as { notify_on_complete_user_id: string | null; notify_creator_on_complete: boolean; reminder_time: string | null; reminder_scope: string | null } | null
-      const { data: newItem, error: itemErr } = await supabase
-        .from('checklist_items')
-        .insert({
-          title: fwdTitle.trim(),
-          created_by_user_id: authUserId,
-          repeat_type: 'once',
-          start_date: fwdInstance.scheduled_date,
-          notify_on_complete_user_id: src?.notify_on_complete_user_id ?? null,
-          notify_creator_on_complete: src?.notify_creator_on_complete ?? false,
-          reminder_time: src?.reminder_time ?? null,
-          reminder_scope: src?.reminder_scope ?? null,
-        })
-        .select('id')
-        .single()
-      if (itemErr) throw itemErr
-      if (newItem?.id && fwdAssigneeId) {
-        const nextOrders = await getNextDisplayOrders([fwdAssigneeId])
-        await supabase.from('checklist_item_assignees').insert({
-          checklist_item_id: newItem.id,
-          user_id: fwdAssigneeId,
-          display_order: nextOrders.get(fwdAssigneeId) ?? 1,
-        })
-        const { data: newInst } = await supabase
-          .from('checklist_instances')
-          .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
-          .select('id')
-          .single()
-        if (newInst?.id) {
-          await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: fwdAssigneeId })
-        }
-        await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
-      }
+      // Punch list #369, step C7: one person for another on the same task. The copy this made, and the delete of the
+      // first day row with its thread, are gone: the task keeps its notes, place, lines and photos.
+      const refused = await handOnTask(fwdInstance.id, fwdAssigneeId, null, null)
+      if (refused) throw new Error(refused)
       setFwdInstance(null)
       await loadToday()
       await loadUpcoming()
@@ -1353,12 +1322,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
-                <input
-                  type="text"
-                  value={fwdTitle}
-                  onChange={(e) => setFwdTitle(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                />
+                <div data-fwd-title style={{ fontSize: '0.9375rem', lineHeight: 1.35 }}>{taskTitlePlain(fwdTitle)}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{FWD_KEEPS_WORDS}</div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
@@ -2341,6 +2306,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
   const { showToast } = useToastContext()
   const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
+  const [fwdFromUserId, setFwdFromUserId] = useState('')
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
@@ -2398,6 +2364,8 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
     setFwdInstance(inst)
     setFwdTitle(title)
     setFwdAssigneeId(rowUserId)
+    // Whose task it is now: the function swaps this person for the one picked.
+    setFwdFromUserId(rowUserId)
   }
 
   function openOutstandingDeleteModal(inst: OutstandingInstance) {
@@ -2531,44 +2499,10 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
     setFwdSaving(true)
     setError(null)
     try {
-      const { data: sourceItem } = await supabase
-        .from('checklist_items')
-        .select('notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope')
-        .eq('id', fwdInstance.checklist_item_id)
-        .single()
-      const src = sourceItem as { notify_on_complete_user_id: string | null; notify_creator_on_complete: boolean; reminder_time: string | null; reminder_scope: string | null } | null
-      const { data: newItem, error: itemErr } = await supabase
-        .from('checklist_items')
-        .insert({
-          title: fwdTitle.trim(),
-          created_by_user_id: authUserId,
-          repeat_type: 'once',
-          start_date: fwdInstance.scheduled_date,
-          notify_on_complete_user_id: src?.notify_on_complete_user_id ?? null,
-          notify_creator_on_complete: src?.notify_creator_on_complete ?? false,
-          reminder_time: src?.reminder_time ?? null,
-          reminder_scope: src?.reminder_scope ?? null,
-        })
-        .select('id')
-        .single()
-      if (itemErr) throw itemErr
-      if (newItem?.id && fwdAssigneeId) {
-        const nextOrders = await getNextDisplayOrders([fwdAssigneeId])
-        await supabase.from('checklist_item_assignees').insert({
-          checklist_item_id: newItem.id,
-          user_id: fwdAssigneeId,
-          display_order: nextOrders.get(fwdAssigneeId) ?? 1,
-        })
-        const { data: newInst } = await supabase
-          .from('checklist_instances')
-          .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
-          .select('id')
-          .single()
-        if (newInst?.id) {
-          await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: fwdAssigneeId })
-        }
-        await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
-      }
+      // Punch list #369, step C7: one person for another on the same task. The copy this made, and the delete of the
+      // first day row with its thread, are gone: the task keeps its notes, place, lines and photos.
+      const refused = await handOnTask(fwdInstance.id, fwdAssigneeId, null, fwdFromUserId || null)
+      if (refused) throw new Error(refused)
       setFwdInstance(null)
       await loadOutstanding()
     } catch (err: unknown) {
@@ -3354,12 +3288,8 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
-                <input
-                  type="text"
-                  value={fwdTitle}
-                  onChange={(e) => setFwdTitle(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                />
+                <div data-fwd-title style={{ fontSize: '0.9375rem', lineHeight: 1.35 }}>{taskTitlePlain(fwdTitle)}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{FWD_KEEPS_WORDS}</div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>

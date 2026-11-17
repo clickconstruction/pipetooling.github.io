@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -190,6 +190,14 @@ Something in the way? Press **⋯ More** on the task, then **Can't do it**. Pres
 The task stays yours. It wears an amber line, like *Stuck: Waiting on a part*, and sits under a **Stuck** label below the tasks you can do. The person who gave you the task gets a message, and the office sees every stuck task in one list.
 
 When the way is clear, press **⋯ More**, then **No longer stuck**. The office can also press **Sorted**, and you get a message. Finishing the task takes the mark off too.
+
+## Hand a task to someone else
+
+Is the task for someone else? Press **⋯ More** on the task, then **Hand it on**. Press **Back to Imani** to give it back to the person who gave it. Or type a name in **Find a person** and press that person. You can say why in the box below. The press names who takes it, like {{button:blue|Hand it to Hal}}.
+
+The task goes as it is. Its notes, its place and its photos go with it. The person who takes it gets a message. So does the person who gave it, when someone else takes it.
+
+A task that repeats is handed on for that day alone, and stays yours after. A roadmap task is handed on from the Roadmap.
 
 ## Close a task that no longer applies
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { droppedReason, stuckReason, stuckSaidBy } from '../checklistCardEvents'
-import { PASS_MIN_TASKS, PASS_PRESS_LABEL, passAnswers, passCountWords, passSummary, STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
+import { handBackLabel, handPeople, handPressLabel, handPushToGiver, handPushToTaker, handSentence, PASS_MIN_TASKS, PASS_PRESS_LABEL, passAnswers, passCountWords, passSummary, STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
 
 describe('a map from the person doing the task', () => {
   it('offers a line by hand, a walked line and a point, in that order', () => {
@@ -142,9 +142,9 @@ describe('droppedReason', () => {
 
 describe("Can't do it", () => {
   it('is offered on any open task, and swaps to No longer stuck once the task is stuck', () => {
-    expect(taskMoreChoices({ once: false, done: false }).map((r) => r.key)).toEqual(['stuck'])
+    expect(taskMoreChoices({ once: false, done: false }).map((r) => r.key)).toEqual(['stuck', 'hand'])
     expect(taskMoreChoices({ once: true, done: false, roadmap: true }).map((r) => r.key)).toEqual(['move', 'stuck'])
-    expect(taskMoreChoices({ once: true, done: false, stuck: true }).map((r) => r.key)).toEqual(['move', 'unstuck', 'drop'])
+    expect(taskMoreChoices({ once: true, done: false, stuck: true }).map((r) => r.key)).toEqual(['move', 'unstuck', 'drop', 'hand'])
     expect(taskMoreChoices({ once: true, done: true })).toEqual([])
   })
   it('holds the press until something is said, and names who is told', () => {
@@ -213,5 +213,43 @@ describe('Go through the old ones', () => {
   it('names its press and needs two tasks', () => {
     expect(PASS_PRESS_LABEL).toBe('Go through them')
     expect(PASS_MIN_TASKS).toBe(2)
+  })
+})
+
+describe('Hand it on', () => {
+  const PEOPLE = [
+    { id: 'u-hal', name: 'Hal' },
+    { id: 'u-me', name: 'Theo' },
+    { id: 'u-imani', name: 'Imani' },
+    { id: 'u-blank', name: ' ' },
+    { id: 'u-ava', name: 'Ava' },
+  ]
+  it('is offered on any open task that is not a roadmap task', () => {
+    const has = (t: Parameters<typeof taskMoreChoices>[0]) => taskMoreChoices(t).some((r) => r.key === 'hand')
+    expect(has({ once: true, done: false })).toBe(true)
+    expect(has({ once: false, done: false })).toBe(true)
+    expect(has({ once: true, done: false, roadmap: true })).toBe(false)
+    expect(has({ once: true, done: true })).toBe(false)
+  })
+  it('lists everyone but the person handing it on, by name, narrowed by what is typed', () => {
+    expect(handPeople(PEOPLE, 'u-me', '').map((p) => p.name)).toEqual(['Ava', 'Hal', 'Imani'])
+    expect(handPeople(PEOPLE, 'u-me', 'ha').map((p) => p.name)).toEqual(['Hal'])
+    expect(handPeople(PEOPLE, 'u-me', 'zz')).toEqual([])
+  })
+  it('the press names who takes it', () => {
+    expect(handPressLabel('Hal')).toBe('Hand it to Hal')
+    expect(handPressLabel(null)).toBe('Pick who takes it first')
+    expect(handBackLabel('Imani')).toBe('Back to Imani')
+  })
+  it('the sentence says what goes with the task and who is told', () => {
+    expect(handSentence({ takerName: 'Hal', once: true, toldName: 'Imani' })).toBe('Hal gets it with its notes and its place. Imani is told.')
+    expect(handSentence({ takerName: 'Imani', once: true, toldName: null })).toBe('Imani gets it with its notes and its place.')
+    expect(handSentence({ takerName: 'Hal', once: false, toldName: null })).toBe('Hal gets it for this day. The task that repeats stays yours.')
+    for (const s of [handSentence({ takerName: 'Hal', once: true, toldName: 'Imani' }), handSentence({ takerName: 'Hal', once: false, toldName: 'Imani' })]) expect(plainWordsFailures(s)).toEqual([])
+  })
+  it('words the two pushes', () => {
+    expect(handPushToTaker('Theo', 'Sort the fittings wall', 'Wrong crew')).toEqual({ title: 'A task was handed to you', body: 'Theo handed you "Sort the fittings wall": Wrong crew' })
+    expect(handPushToTaker('Theo', 'Sort the fittings wall', '').body).toBe('Theo handed you "Sort the fittings wall".')
+    expect(handPushToGiver('Theo', 'Sort the fittings wall', 'Hal').body).toBe('Theo handed "Sort the fittings wall" to Hal.')
   })
 })

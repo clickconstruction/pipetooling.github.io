@@ -46,7 +46,7 @@ export type TaskDoerTarget = {
 }
 
 /** The acts behind the card's More. It grows a row with each tool. */
-export type TaskMoreKey = 'move' | 'stuck' | 'unstuck' | 'drop'
+export type TaskMoreKey = 'move' | 'stuck' | 'unstuck' | 'drop' | 'hand'
 
 export const TASK_MORE_LABEL = '⋯ More'
 export const TASK_MORE_TITLE = 'More for this task'
@@ -62,6 +62,8 @@ export function taskMoreChoices(t: Pick<TaskDoerTarget, 'once' | 'done'> & Parti
   if (!t.done) rows.push(t.stuck ? { key: 'unstuck', label: UNSTUCK_LABEL, words: 'Take the stuck mark off.' } : { key: 'stuck', label: STUCK_TITLE, words: 'Say what is in the way. Whoever gave it is told.' })
   // A close is a completion, and a roadmap task's or a vehicle task's completion says work was done. So neither is offered.
   if (t.once && !t.done && !t.roadmap && !t.vehicle) rows.push({ key: 'drop', label: DROP_TITLE, words: 'Close it with a reason.' })
+  // A roadmap task's people are the roadmap's, so it is handed on from the Roadmap.
+  if (!t.done && !t.roadmap) rows.push({ key: 'hand', label: HAND_TITLE, words: 'Give it to the right person, notes and all.' })
   return rows
 }
 
@@ -291,4 +293,52 @@ export function passSummary(sorted: number, total: number): string {
   if (sorted <= 0) return total === 1 ? 'Nothing changed. 1 task is as it was.' : `Nothing changed. ${total} tasks are as they were.`
   if (left === 0) return sorted === 1 ? 'You sorted the 1 task.' : `You sorted all ${sorted} tasks.`
   return `You sorted ${sorted}. ${left === 1 ? '1 is as it was.' : `${left} are as they were.`}`
+}
+
+// --- Hand it on: one person for another on the same task (task_hand_on) ---
+
+export const HAND_TITLE = 'Hand it on'
+export const HAND_ASK = 'Who takes it?'
+export const HAND_REASON_MAX = 200
+/** How many names the sheet lists under its search box before the person types. */
+export const HAND_LIST_MAX = 6
+
+export type HandPerson = { id: string; name: string }
+
+/** The people who can take the task: everyone who can sign in but the one handing it on, by name, narrowed by what is typed. */
+export function handPeople(people: ReadonlyArray<HandPerson>, selfId: string | null, query: string): HandPerson[] {
+  const q = query.trim().toLowerCase()
+  return people
+    .filter((p) => p.id !== selfId && p.name.trim() !== '')
+    .filter((p) => q === '' || p.name.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** The pill that gives a task back to whoever gave it. */
+export function handBackLabel(giverName: string): string {
+  return `Back to ${giverName}`
+}
+
+export function handPressLabel(takerName: string | null): string {
+  const name = (takerName ?? '').trim()
+  return name ? `Hand it to ${name}` : 'Pick who takes it first'
+}
+
+/**
+ * What the press will do. A one-time task moves whole, with its notes and its place. A task that repeats gives away
+ * this day alone. The giver is named when they are neither the taker nor the person handing it on.
+ */
+export function handSentence(a: { takerName: string; once: boolean; toldName: string | null }): string {
+  const first = a.once ? `${a.takerName} gets it with its notes and its place.` : `${a.takerName} gets it for this day. The task that repeats stays yours.`
+  const told = (a.toldName ?? '').trim()
+  return told ? `${first} ${told} is told.` : first
+}
+
+export function handPushToTaker(who: string, title: string, reason: string): { title: string; body: string } {
+  const why = reason.trim()
+  return { title: 'A task was handed to you', body: why ? `${who} handed you "${title}": ${why}` : `${who} handed you "${title}".` }
+}
+
+export function handPushToGiver(who: string, title: string, takerName: string): { title: string; body: string } {
+  return { title: 'A task was handed on', body: `${who} handed "${title}" to ${takerName}.` }
 }

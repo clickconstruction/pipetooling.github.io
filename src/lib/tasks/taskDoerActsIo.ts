@@ -68,3 +68,16 @@ export async function sayTaskStuck(a: { instanceId: string; userId: string; kind
     return formatErrorMessage(e, 'That did not save.')
   }
 }
+
+/**
+ * One person for another on the same task. The person doing it hands on their own; the office names whose with
+ * `fromUserId`. The task keeps its thread, place, lines and photos.
+ */
+export async function handOnTask(instanceId: string, toUserId: string, reason: string | null = null, fromUserId: string | null = null): Promise<string | null> {
+  try {
+    const { error } = await supabase.rpc('task_hand_on' as never, { p_instance_id: instanceId, p_to: toUserId, p_reason: reason, p_from: fromUserId } as never)
+    return error ? formatErrorMessage(error, 'The task was not handed on.') : null
+  } catch (e) {
+    return formatErrorMessage(e, 'The task was not handed on.')
+  }
+}

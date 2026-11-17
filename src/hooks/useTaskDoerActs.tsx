@@ -1,13 +1,16 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { TaskChoiceSheet } from '../components/checklist/TaskChoiceSheet'
 import { TaskDropSheet } from '../components/checklist/TaskDropSheet'
+import { TaskHandOnSheet } from '../components/checklist/TaskHandOnSheet'
 import { TaskMoveDaySheet } from '../components/checklist/TaskMoveDaySheet'
 import { TaskPassSheet } from '../components/checklist/TaskPassSheet'
 import { TaskStuckSheet } from '../components/checklist/TaskStuckSheet'
 import { dayLabel } from '../lib/checklistDueDates'
 import { getCurrentUserName } from '../lib/getCurrentUserName'
-import { TASK_MORE_LABEL, TASK_MORE_TITLE, dropPush, moveDayPush, stuckPush, taskMoreChoices, type PassAnswer, type TaskDoerTarget, type TaskMoreKey } from '../lib/tasks/taskDoerActs'
-import { dropTask, moveTaskDay, sayTaskStuck, tellTaskGiver } from '../lib/tasks/taskDoerActsIo'
+import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
+import { TASK_MORE_LABEL, TASK_MORE_TITLE, dropPush, handPushToGiver, handPushToTaker, moveDayPush, stuckPush, taskMoreChoices, type HandPerson, type PassAnswer, type TaskDoerTarget, type TaskMoreKey } from '../lib/tasks/taskDoerActs'
+import { dropTask, handOnTask, moveTaskDay, sayTaskStuck, tellTaskGiver } from '../lib/tasks/taskDoerActsIo'
+import { formatErrorMessage } from '../utils/errorHandling'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 
 export type TaskDoerActsTarget = TaskDoerTarget & {
@@ -26,10 +29,24 @@ type Input = {
   moveDay?: typeof moveTaskDay
   drop?: typeof dropTask
   sayStuck?: typeof sayTaskStuck
+  handOn?: typeof handOnTask
+  /** Everyone who can take a task in the app, read when Hand it on first opens. */
+  loadPeople?: () => Promise<{ people: HandPerson[]; error: string | null }>
   /** Mark a task done, the way its tick does. The pass's Done answer; left out, the pass offers no way to finish a task. */
   markDone?: (instanceId: string) => Promise<void>
   tellGiver?: typeof tellTaskGiver
   nameOf?: (userId: string) => Promise<string>
+}
+
+/** The people a task can be handed to: active, able to sign in, by name. */
+async function loadHandPeople(): Promise<{ people: HandPerson[]; error: string | null }> {
+  try {
+    const { data, error } = await activeUsersQuery<{ id: string; name: string | null }>('id, name', { includeDev: true, withLogin: true })
+    if (error) return { people: [], error: formatErrorMessage(error, 'The people did not load.') }
+    return { people: (data ?? []).map((u) => ({ id: u.id, name: (u.name ?? '').trim() })).filter((u) => u.name !== ''), error: null }
+  } catch (e) {
+    return { people: [], error: formatErrorMessage(e, 'The people did not load.') }
+  }
 }
 
 export type TaskDoerActs = {
@@ -47,7 +64,7 @@ export type TaskDoerActs = {
  * an act that lands tells whoever gave the task and has the page read its lists again. The card itself knows none of
  * it: the page hands the press in as one of the card's extras.
  */
-export function useTaskDoerActs({ authUserId, todayYmd, onChanged, moveDay = moveTaskDay, drop = dropTask, sayStuck = sayTaskStuck, markDone, tellGiver = tellTaskGiver, nameOf = getCurrentUserName }: Input): TaskDoerActs {
+export function useTaskDoerActs({ authUserId, todayYmd, onChanged, moveDay = moveTaskDay, drop = dropTask, sayStuck = sayTaskStuck, handOn = handOnTask, loadPeople = loadHandPeople, markDone, tellGiver = tellTaskGiver, nameOf = getCurrentUserName }: Input): TaskDoerActs {
   const [target, setTarget] = useState<TaskDoerActsTarget | null>(null)
   const [act, setAct] = useState<TaskMoreKey | 'more' | null>(null)
   // Step C5: the pass holds its own list, taken when it starts, so a re-read under it cannot reorder what is being asked.
@@ -161,6 +178,42 @@ export function useTaskDoerActs({ authUserId, todayYmd, onChanged, moveDay = mov
     [authUserId, close, onChanged, sayStuck, target],
   )
 
+  // Step C7: the people who can take a task, read once, the first time Hand it on opens.
+  const [people, setPeople] = useState<HandPerson[] | null>(null)
+  const [peopleError, setPeopleError] = useState<string | null>(null)
+  useEffect(() => {
+    if (act !== 'hand' || people !== null) return
+    let off = false
+    void loadPeople().then((res) => {
+      if (off) return
+      setPeople(res.people)
+      setPeopleError(res.error)
+    })
+    return () => {
+      off = true
+    }
+  }, [act, loadPeople, people])
+
+  const onHand = useCallback(
+    async (to: HandPerson, reason: string): Promise<string | null> => {
+      if (!target || !authUserId) return 'That task is gone.'
+      const refused = await handOn(target.instanceId, to.id, reason || null)
+      if (refused) return refused
+      const who = await nameOf(authUserId).catch(() => 'Someone')
+      const toTaker = handPushToTaker(who, target.title, reason)
+      void tellGiver({ giverId: to.id, instanceId: target.instanceId, title: toTaker.title, body: toTaker.body })
+      // The giver hears too, unless they are the one who took it or the one who handed it on.
+      if (target.giverId && target.giverId !== authUserId && target.giverId !== to.id) {
+        const toGiver = handPushToGiver(who, target.title, to.name)
+        void tellGiver({ giverId: target.giverId, instanceId: target.instanceId, title: toGiver.title, body: toGiver.body })
+      }
+      void onChanged()
+      passNext(true)
+      return null
+    },
+    [authUserId, handOn, nameOf, onChanged, passNext, target, tellGiver],
+  )
+
   const passTask = pass ? (pass.targets[pass.index] ?? null) : null
   const onPassAnswer = useCallback(
     (answer: PassAnswer) => {
@@ -198,6 +251,17 @@ export function useTaskDoerActs({ authUserId, todayYmd, onChanged, moveDay = mov
       <TaskChoiceSheet open={act === 'more' && !!target} title={TASK_MORE_TITLE} taskTitle={target?.title ?? ''} choices={target ? taskMoreChoices(target) : []} onPick={pick} onClose={close} labelId="task-more-sheet-title" />
       <TaskMoveDaySheet open={act === 'move' && !!target} taskTitle={target?.title ?? ''} todayYmd={todayYmd} dueYmd={target?.dueYmd ?? null} giverName={told} onMove={onMove} onClose={close} />
       <TaskStuckSheet open={act === 'stuck' && !!target} taskTitle={target?.title ?? ''} giverName={told} onSay={onStuck} onClose={close} />
+      <TaskHandOnSheet
+        open={act === 'hand' && !!target}
+        taskTitle={target?.title ?? ''}
+        once={target?.once ?? true}
+        selfId={authUserId}
+        giver={target && target.giverId && target.giverId !== authUserId ? { id: target.giverId, name: target.giverName ?? 'whoever gave it' } : null}
+        people={people ?? []}
+        peopleError={peopleError}
+        onHand={onHand}
+        onClose={close}
+      />
       <TaskDropSheet open={act === 'drop' && !!target} taskTitle={target?.title ?? ''} giverName={told} onDrop={onDrop} onClose={close} />
     </>
   )
