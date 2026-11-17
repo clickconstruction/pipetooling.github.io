@@ -11,6 +11,8 @@ import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskRunModal from './LienDeskRunModal'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
+import { lienPropertyAffidavitLine, lienPropertyNoticeLine } from '../../lib/jobs/lienPropertyPapers'
+import type { LienRunProperty } from '../../lib/jobs/lienRunEnvelopeProperty'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 
 vi.mock('../../hooks/useAuth', async () => {
@@ -2180,5 +2182,64 @@ describe('LienDeskRunModal · which paper the run holds, and the street beside a
     expect(screen.getByTestId('run-row-jk1-original_contractor').textContent).toContain('401 · ZZ Test Kettle shop · 212 Kettle Dr')
     expect(screen.getByTestId('run-row-jk2-original_contractor').textContent).toContain('402 · ZZ Test 212 Kettle Dr, phase 2')
     expect(screen.getByTestId('run-row-jk2-original_contractor').textContent).not.toContain('phase 2 · 212 Kettle Dr')
+  })
+})
+
+describe('LienDeskRunModal · the envelope says where the other jobs at its properties stand (v2.7559)', () => {
+  const gc = { key: 'original_contractor' as const, label: 'Original contractor', name: 'ZZ Test Builders', address: '100 Example Pkwy, Sampleton, TX 78000', email: '', method: 'certified_mail' as const, tracking: '' }
+  const ownerAt = (name: string, address: string) => ({ key: 'owner' as const, label: 'Owner of record', name, address, email: '', method: 'certified_mail' as const, tracking: '' })
+  const sent = (day: string) => lienPropertyNoticeLine({ isSub: true, pile: 'sent', noticed: true, sentOn: [day] })
+  const going = lienPropertyNoticeLine({ isSub: true, pile: 'ready', noticed: false, sentOn: [] })
+  const aff = (pile: 'ready' | 'needs_notice') => lienPropertyAffidavitLine({ pile, gateHeld: false, missing: [] })
+  const properties = new Map<string, LienRunProperty>([
+    ['p1', { addressId: 'p1', street: '212 Kettle Dr', jobs: [{ jobId: 'jk1', notice: going, affidavit: aff('needs_notice') }, { jobId: 'jk8', notice: sent('2026-10-14'), affidavit: aff('ready') }, { jobId: 'jk9', notice: sent('2026-10-14'), affidavit: aff('ready') }] }],
+    ['p2', { addressId: 'p2', street: '9 Example St', jobs: [{ jobId: 'jm1', notice: going, affidavit: aff('needs_notice') }, { jobId: 'jm7', notice: sent('2026-09-22'), affidavit: aff('ready') }] }],
+    ['p3', { addressId: 'p3', street: '5 Alone Ct', jobs: [{ jobId: 'js1', notice: going, affidavit: aff('needs_notice') }] }],
+  ])
+  const a = () => notice({ itemId: 'k1', jobId: 'jk1', label: '401 · ZZ Test Kettle shop', jobNumber: '401', propertyId: 'p1', recipients: [ownerAt('ZZ Test Kettle LLC', '9 Owner Way, Sampleton, TX 78000'), gc] })
+  const b = () => notice({ itemId: 'm1', jobId: 'jm1', label: '502 · ZZ Test Mill', jobNumber: '502', propertyId: 'p2', recipients: [ownerAt('ZZ Test Mill LLC', '4 Mill Rd, Sampleton, TX 78000'), gc] })
+  const c = () => notice({ itemId: 's1', jobId: 'js1', label: '603 · ZZ Test Solo', jobNumber: '603', propertyId: 'p3', recipients: [ownerAt('ZZ Test Solo LLC', '5 Alone Ct, Sampleton, TX 78000'), gc] })
+  const envelopeOf = (name: string) => screen.getAllByTestId(/^run-envelope-\d+$/).find((el) => el.textContent?.includes(name))!
+  const lineIn = (name: string) => envelopeOf(name).querySelector('[data-testid^="run-property-"]:not(button)') as HTMLElement | null
+
+  it('an owner’s envelope with one job says the other jobs’ notices went, and counts the property’s liens', async () => {
+    const onOpenProperty = vi.fn()
+    renderRun(<LienDeskRunModal notices={[a(), b(), c()]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} properties={properties} onOpenProperty={onOpenProperty} />)
+    await settle()
+    const line = lineIn('ZZ Test Kettle LLC')!
+    expect(line.firstElementChild!.textContent).toBe('At this property: 1 notice in this envelope · 2 notices sent Oct 14 · 2 lien affidavits ready to file')
+    expect([...line.querySelectorAll('button')].map((x) => x.textContent)).toEqual(['See the property ›'])
+    fireEvent.click(line.querySelector('button')!)
+    expect(onOpenProperty).toHaveBeenCalledWith('p1')
+  })
+
+  it('the contractor’s envelope spans the properties: one line that totals them, and a press a property', async () => {
+    const onOpenProperty = vi.fn()
+    renderRun(<LienDeskRunModal notices={[a(), b(), c()]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} properties={properties} onOpenProperty={onOpenProperty} />)
+    await settle()
+    const line = lineIn('ZZ Test Builders')!
+    expect(line.firstElementChild!.textContent).toBe('At these 3 properties: 3 notices in this envelope · 2 notices sent Oct 14 · 1 on Sep 22 · 3 lien affidavits ready to file')
+    expect([...line.querySelectorAll('button')].map((x) => x.textContent)).toEqual(['See 212 Kettle Dr ›', 'See 9 Example St ›', 'See 5 Alone Ct ›'])
+    fireEvent.click(screen.getByText('See 9 Example St ›'))
+    expect(onOpenProperty).toHaveBeenCalledWith('p2')
+  })
+
+  it('an envelope whose property has no other job says nothing more, and a host with no desk in hand draws no line at all', async () => {
+    const first = renderRun(<LienDeskRunModal notices={[a(), c()]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} properties={properties} onOpenProperty={() => {}} />)
+    await settle()
+    expect(lineIn('ZZ Test Solo LLC')).toBeNull()
+    expect(lineIn('ZZ Test Kettle LLC')).not.toBeNull()
+    first.unmount()
+    renderRun(<LienDeskRunModal notices={[a(), c()]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(lineIn('ZZ Test Kettle LLC')).toBeNull()
+  })
+
+  it('with no way to open a property the line is words alone', async () => {
+    renderRun(<LienDeskRunModal notices={[a()]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} properties={properties} />)
+    await settle()
+    const line = lineIn('ZZ Test Kettle LLC')!
+    expect(line.textContent).toBe('At this property: 1 notice in this envelope · 2 notices sent Oct 14 · 2 lien affidavits ready to file')
+    expect(line.querySelector('button')).toBeNull()
   })
 })
