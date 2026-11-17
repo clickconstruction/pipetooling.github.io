@@ -1979,6 +1979,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "away-note",
   "bid-basis-grant",
   "bid-photos",
+  "bid-plan-set-files",
   "bill-lines-sweep",
   "bill-read",
   "billed-report-email",
