@@ -9,8 +9,12 @@ import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectT
 import {
   CALL_INTERACTION_TYPES,
   CALLING_ORDER_STORAGE_KEY,
+  indexAfterOtherRowLeft,
+  insertColdest,
   orderFollowUpProspects,
+  queueAfterRemoval,
   queueAge,
+  queueWindowStart,
   readCallingOrderMode,
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
@@ -1795,7 +1799,7 @@ export default function Prospects() {
   }
 
   function renderQueueRows(limit: number, collapseOnJump: boolean) {
-    const start = Math.max(0, Math.min(currentProspectIndex - 2, followUpProspects.length - limit))
+    const start = queueWindowStart(currentProspectIndex, followUpProspects.length, limit)
     const nowMs = Date.now()
     return followUpProspects.slice(start, start + limit).map((p, i) => {
       const absIdx = start + i
@@ -1953,11 +1957,10 @@ export default function Prospects() {
       setFollowUpProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
       setProspectListProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
       if (currentProspect?.id === prospectToEdit.id) {
-        const nextList = followUpProspects.filter((p) => p.id !== prospectToEdit.id)
-        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-        setCurrentProspectIndex(nextIdx)
+        const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospectToEdit.id)
+        setCurrentProspectIndex(left.index)
         setFollowUpTimerSeconds(0)
-        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+        updateUrlProspectId(left.nextId)
       }
       setEditModalOpen(false)
       setEditingProspect(null)
@@ -2056,12 +2059,11 @@ export default function Prospects() {
       comment_text: 'Marked as not a fit',
       interaction_type: 'no_longer_fit',
     })
-    const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
-    setFollowUpProspects(nextList)
-    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-    setCurrentProspectIndex(nextIdx)
+    const left = queueAfterRemoval(followUpProspects, currentProspectIndex, currentProspect.id)
+    setFollowUpProspects(left.queue)
+    setCurrentProspectIndex(left.index)
     setFollowUpTimerSeconds(0)
-    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    updateUrlProspectId(left.nextId)
     setSaving(false)
   }
 
@@ -2083,12 +2085,11 @@ export default function Prospects() {
     noteRunOutcome(prospectId, 'cant_reach')
     const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
     setProspectListProspects((prev) => prev.map((p) => (p.id === currentProspect.id ? updated : p)))
-    const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
-    setFollowUpProspects(nextList)
-    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-    setCurrentProspectIndex(nextIdx)
+    const left = queueAfterRemoval(followUpProspects, currentProspectIndex, currentProspect.id)
+    setFollowUpProspects(left.queue)
+    setCurrentProspectIndex(left.index)
     setFollowUpTimerSeconds(0)
-    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    updateUrlProspectId(left.nextId)
     setSaving(false)
   }
 
@@ -2134,12 +2135,11 @@ export default function Prospects() {
         loadMyTimeToday()
         const updated = { ...prospect, prospect_fit_status: 'converted' as const }
         setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
-        const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
-        setFollowUpProspects(nextList)
-        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-        setCurrentProspectIndex(nextIdx)
+        const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospect.id)
+        setFollowUpProspects(left.queue)
+        setCurrentProspectIndex(left.index)
         setFollowUpTimerSeconds(0)
-        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+        updateUrlProspectId(left.nextId)
         showToast(prospectLandedToast(prospect.kind, prospect.company_name || '', customer.name || ''), 'success')
       },
     })
@@ -2205,16 +2205,15 @@ export default function Prospects() {
       const updated = { ...prospect, prospect_fit_status: 'converted' as const, converted_gc_company_id: companyId }
       setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
       setLaneAllRows((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
-      const wasAt = followUpProspects.findIndex((p) => p.id === prospect.id)
-      const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
-      setFollowUpProspects(nextList)
+      const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospect.id)
+      setFollowUpProspects(left.queue)
       if (onDeck) {
-        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-        setCurrentProspectIndex(nextIdx)
+        setCurrentProspectIndex(left.index)
         setFollowUpTimerSeconds(0)
-        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
-      } else if (wasAt >= 0 && wasAt < currentProspectIndex) {
-        setCurrentProspectIndex(currentProspectIndex - 1)
+        updateUrlProspectId(left.nextId)
+      } else {
+        const stays = indexAfterOtherRowLeft(followUpProspects, currentProspectIndex, prospect.id)
+        if (stays !== currentProspectIndex) setCurrentProspectIndex(stays)
       }
       setBenchDraft(null)
       noteRunOutcome(prospect.id, 'bench', { asked })
@@ -2234,12 +2233,11 @@ export default function Prospects() {
     loadMyTimeToday()
     const updated = { ...prospect, prospect_fit_status: 'converted' as const, ...patch }
     setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
-    const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
-    setFollowUpProspects(nextList)
-    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-    setCurrentProspectIndex(nextIdx)
+    const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospect.id)
+    setFollowUpProspects(left.queue)
+    setCurrentProspectIndex(left.index)
     setFollowUpTimerSeconds(0)
-    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    updateUrlProspectId(left.nextId)
   }
 
   /**
@@ -2357,17 +2355,7 @@ export default function Prospects() {
       .eq('id', p.id)
     if (!error) {
       setProspectListProspects((prev) => prev.map((x) => (x.id === p.id ? { ...x, prospect_fit_status: null } : x)))
-      setFollowUpProspects((prev) => {
-        const exists = prev.some((x) => x.id === p.id)
-        if (exists) return prev
-        const added = { ...p, prospect_fit_status: null }
-        return [...prev, added].sort((a, b) => {
-          const aLc = a.last_contact ? new Date(a.last_contact).getTime() : 0
-          const bLc = b.last_contact ? new Date(b.last_contact).getTime() : 0
-          if (aLc !== bLc) return aLc - bLc
-          return (a.company_name ?? '').localeCompare(b.company_name ?? '')
-        })
-      })
+      setFollowUpProspects((prev) => insertColdest(prev, { ...p, prospect_fit_status: null }))
     }
     setSaving(false)
   }
