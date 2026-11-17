@@ -256,3 +256,31 @@ export function retainageDeadlineWords(e: Pick<LienRetainageEntry, 'deadline' | 
   if (e.daysLeft <= 14) return `mail in ${e.daysLeft}d`
   return `mail by ${formatDay(e.deadline)}`
 }
+
+/** One pile of the Retainage list as it is drawn: its rows after the pile press and the find box, and how many it held before the find. */
+export type LienRetainagePileShown = { p: LienRetainagePile; label: string; rows: LienRetainageEntry[]; total: number }
+
+/**
+ * What By paper → Retainage notices lists (out of `LienDesk.tsx`): the entries in the piles' order, narrowed
+ * by a pressed pile and then by the find box, the row that is open, and the piles to draw.
+ *
+ * `matches` is the find box's test for one entry under its pile's label; it is asked only while `finding`.
+ * The open row is the picked job when the list still shows it, else the first row where the list and the
+ * pane stand side by side, else none (one column opens nothing by itself). While finding, a pile with rows
+ * before the find stays drawn with none, so its head can say so; otherwise an empty pile is not drawn.
+ */
+export function lienRetainageListView(input: {
+  entries: ReadonlyArray<LienRetainageEntry>
+  pile: LienRetainagePile | null
+  finding: boolean
+  matches: (entry: LienRetainageEntry, pileLabel: string) => boolean
+  selectedJobId: string | null
+  oneColumn: boolean
+}): { visibleAll: LienRetainageEntry[]; visible: LienRetainageEntry[]; selected: LienRetainageEntry | null; pilesShown: LienRetainagePileShown[] } {
+  const { entries, pile, finding, matches, selectedJobId, oneColumn } = input
+  const visibleAll = LIEN_RETAINAGE_PILES.flatMap((p) => entries.filter((e) => e.pile === p.key && (pile == null || pile === p.key)))
+  const visible = LIEN_RETAINAGE_PILES.flatMap((p) => visibleAll.filter((e) => e.pile === p.key && (!finding || matches(e, p.label))))
+  const selected = visible.find((e) => e.jobId === selectedJobId) ?? (!oneColumn ? visible[0] : undefined) ?? null
+  const pilesShown = LIEN_RETAINAGE_PILES.map((p) => ({ p: p.key, label: p.label, rows: visible.filter((e) => e.pile === p.key), total: visibleAll.filter((e) => e.pile === p.key).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
+  return { visibleAll, visible, selected, pilesShown }
+}

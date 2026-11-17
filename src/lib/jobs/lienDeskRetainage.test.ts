@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow } from './lienDesk'
-import { buildLienRetainageQueue, contractEndedWords, paymentBondWords, retainageDeadlineWords, retainageGates, type LienRetainageRow } from './lienDeskRetainage'
+import { buildLienRetainageQueue, contractEndedWords, lienRetainageListView, paymentBondWords, retainageDeadlineWords, retainageGates, type LienRetainageEntry, type LienRetainagePile, type LienRetainageRow } from './lienDeskRetainage'
 import { retainageDeadlineFor } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
 
@@ -100,5 +100,54 @@ describe('a retainage notice sent in the evening keeps its day (v2.4468)', () =>
     expect(buildLienRetainageQueue([], evening, '2026-11-02').entries).toEqual([])
     const noon = [item({ job_id: 'gone', status: 'sent', sent_at: '2026-10-03T12:00:00Z' })]
     expect(buildLienRetainageQueue([], noon, '2026-11-02').entries.map((e) => e.jobId)).toEqual(['gone'])
+  })
+})
+
+describe('lienRetainageListView (out of LienDesk.tsx, v2.7583)', () => {
+  const entry = (jobId: string, pile: LienRetainagePile): LienRetainageEntry => ({ jobId, pile }) as LienRetainageEntry
+  const entries = [entry('held-1', 'held'), entry('draft-1', 'to_draft'), entry('ready-1', 'ready'), entry('draft-2', 'to_draft')]
+  const view = (over: Partial<Parameters<typeof lienRetainageListView>[0]> = {}) => lienRetainageListView({ entries, pile: null, finding: false, matches: () => true, selectedJobId: null, oneColumn: false, ...over })
+
+  it('lists the entries in the piles’ order, each pile keeping its own order', () => {
+    expect(view().visible.map((e) => e.jobId)).toEqual(['draft-1', 'draft-2', 'ready-1', 'held-1'])
+    expect(view().pilesShown.map((x) => [x.p, x.rows.length, x.total])).toEqual([['to_draft', 2, 2], ['ready', 1, 1], ['held', 1, 1]])
+  })
+  it('a pressed pile narrows the list to that pile', () => {
+    const v = view({ pile: 'to_draft' })
+    expect(v.visibleAll.map((e) => e.jobId)).toEqual(['draft-1', 'draft-2'])
+    expect(v.pilesShown.map((x) => x.p)).toEqual(['to_draft'])
+  })
+  it('the find box narrows the rows, and is asked with the pile’s label', () => {
+    const asked: string[] = []
+    const v = view({ finding: true, matches: (e, label) => (asked.push(label), e.jobId === 'draft-2') })
+    expect(v.visible.map((e) => e.jobId)).toEqual(['draft-2'])
+    expect(v.visibleAll).toHaveLength(4)
+    expect(asked).toContain('To send for Master approval')
+  })
+  it('while finding, a pile that had rows stays drawn with none; otherwise an empty pile is not drawn', () => {
+    const v = view({ finding: true, matches: (e) => e.jobId === 'draft-2' })
+    expect(v.pilesShown.map((x) => [x.p, x.rows.length, x.total])).toEqual([['to_draft', 1, 2], ['ready', 0, 1], ['held', 0, 1]])
+    expect(view().pilesShown.some((x) => x.p === 'sent')).toBe(false)
+  })
+  it('never asks the find box when nothing is typed', () => {
+    let asks = 0
+    view({ matches: () => (asks++, false) })
+    expect(asks).toBe(0)
+  })
+  it('opens the picked job while the list shows it', () => {
+    expect(view({ selectedJobId: 'held-1' }).selected?.jobId).toBe('held-1')
+  })
+  it('side by side, the first row opens when nothing is picked or the pick is not shown', () => {
+    expect(view().selected?.jobId).toBe('draft-1')
+    expect(view({ selectedJobId: 'held-1', pile: 'ready' }).selected?.jobId).toBe('ready-1')
+  })
+  it('in one column nothing opens by itself', () => {
+    expect(view({ oneColumn: true }).selected).toBeNull()
+    expect(view({ oneColumn: true, selectedJobId: 'ready-1' }).selected?.jobId).toBe('ready-1')
+  })
+  it('an empty list opens nothing and draws no pile', () => {
+    const v = view({ entries: [] })
+    expect(v.selected).toBeNull()
+    expect(v.pilesShown).toEqual([])
   })
 })

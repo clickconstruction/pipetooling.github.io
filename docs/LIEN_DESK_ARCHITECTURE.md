@@ -1366,6 +1366,8 @@ Done in v2.7571, the first cut of the file itself: [`useLienDeskBoard.ts`](../sr
 The hook holds the To do rows, the Board, its picks, the leader's one press, the frame that pins the find box and the reminder to the leader, and the desk still draws `LienBoard`, `LienDoNowBar` and `LienDeskNextUp` from what it returns.
 The window flags the Board opens (`serveOpen`, `scansOpen`, `publicReview`, `publicPutBack`, `jobPath`) stay in the desk with their windows.
 The twelve steps below predate the Board, so this cut is not one of them, and none of the twelve is done.
+Done in v2.7583: the Retainage list is [`LienDeskRetainageList.tsx`](../src/components/jobs/LienDeskRetainageList.tsx), what it lists is `lienRetainageListView` in `lienDeskRetainage.ts`, and the lists' `chip` and `severityColors` are shared from `lienDeskRowStyles.ts`.
+The retainage pick, pile, lit title and footer slot stay in the desk, which is 5,052 lines.
 
 1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
 2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines;
