@@ -34,10 +34,21 @@ describe('viewerPresses: which presses the email viewer’s row offers (v2.6509)
     // No file, no press: the mail is already on the bid's history. A text's picture is not a set of plans.
     expect(viewerPresses(email({ jobId: 'bid:b-512', files: 0 }))).toEqual(['open_bid'])
     expect(viewerPresses(email({ jobId: 'bid:b-512', files: 3, channel: 'text' }))).toEqual(['open_bid'])
-    // A file on a mail that is on no bid offers nothing of the kind.
-    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 2 }))).toEqual([])
+    // A file on a job's mail keeps a paper, not a bid's set.
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 2 }))).not.toContain('keep_on_bid')
     expect(viewerPresses(email({ jobId: 'bid:b-512', files: 2, role: 'superintendent' }))).toEqual([])
     expect(VIEWER_PRESS_WORDS.keep_on_bid.label).toBe('Keep its files on the bid…')
+  })
+
+  it('an email on a Pipeline job that carries a file offers Keep this mail as a paper (punch list #368, PR 4)', () => {
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 1 }))).toEqual(['keep_paper'])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 2, direction: 'out' }))).toEqual(['keep_paper'])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 0 }))).toEqual([])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 2, channel: 'text' }))).toEqual([])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 2, role: 'helpers' }))).toEqual([])
+    // A GC project's line keeps its change order: a paper is a job's.
+    expect(viewerPresses(email({ jobId: 'project:p-church', files: 2 }))).toEqual(['change_order'])
+    expect(VIEWER_PRESS_WORDS.keep_paper.label).toBe('Keep this mail as a paper')
   })
 
   it('offers nothing to someone off the office team, nor on a note or an event', () => {

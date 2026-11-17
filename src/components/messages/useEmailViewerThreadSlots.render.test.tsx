@@ -41,6 +41,13 @@ vi.mock('../bids/BidMailSetDoor', () => ({
   ),
 }))
 
+// The job's paper press reads the job itself (its own render test); here it stands in as what it was handed.
+vi.mock('../papers/MailPaperDoor', () => ({
+  MailPaperDoor: (p: { jobId: string; jobLabel: string; subject: string; senderAddress: string | null; messageId: string | null; mailFileCount: number }) => (
+    <span data-paper-door>{`${p.jobLabel}|${p.jobId}|${p.messageId}|${p.subject}|${p.senderAddress}|${p.mailFileCount}`}</span>
+  ),
+}))
+
 const { useEmailViewerThreadSlots } = await import('./useEmailViewerThreadSlots')
 
 afterEach(cleanup)
@@ -211,6 +218,15 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     // A link is no file to keep, and a mail with no file is already on the bid's history.
     expect(document.querySelector('[data-line="m-link-only"] [data-bid-door]')).toBeNull()
     expect(document.querySelector('[data-line="m-no-file"] [data-bid-door]')).toBeNull()
+  })
+
+  it('an email on a Pipeline job that carries a file gets the job’s paper press on its own row, handed the job, the line and the sender (punch list #368, PR 4)', () => {
+    const pdf = { id: 'f1', name: 'spec-book.pdf', mime: 'application/pdf', size: 1000, kept: 'copy' as const, url: null, icon: 'pdf' as const, paper: null, paperAnswer: null, paperAnsweredBy: null, paperAnsweredAt: null }
+    draw(fakeIo(), [line('m-job-file', { jobId: 'pipeline:j-579', invitation: null, subject: 'Spec book', files: [pdf] }), line('m-job-bare', { jobId: 'pipeline:j-579', invitation: null })])
+    const door = document.querySelector('[data-line="m-job-file"] [data-keep-paper] [data-paper-door]')!
+    // The thread has no tile for this job, so the press names it the job; the sender is the thread's own address.
+    expect(door.textContent).toBe('the job|j-579|m-job-file|Spec book|glenn@marrexbuilders.example|1')
+    expect(document.querySelector('[data-line="m-job-bare"] [data-paper-door]')).toBeNull()
   })
 
   it('Open the bid closes the thread and opens the Bid Board on it', () => {

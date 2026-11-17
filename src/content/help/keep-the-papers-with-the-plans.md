@@ -69,7 +69,7 @@ The paper reads under **Owed to us** in amber. When the paper arrives, press {{b
 
 ## Keep a paper straight from the mail
 
-A paper often arrives as an attachment. Open the mail in **My Mail**. When the mail is tagged to a job, a press offers to keep it as a paper on that job.
+A paper often arrives as an attachment. Open the mail's thread in Messages and press the mail. A mail that is on a job and carries a file has a press. The press keeps the mail as a paper on that job. **My Mail** shows the same press on a mail in your own box.
 
 Press it. The form opens with the kind, the name, the sender and the day filled from the mail. Check them. Pick the set it **Goes with**. Press {{button:blue|Keep the paper}}.
 
