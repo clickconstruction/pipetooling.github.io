@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { dayLabel } from '../checklistDueDates'
-import { ADD_OWN_TASK_LABEL, ADD_PHOTO_PRESS, ADD_PHOTO_SHEET_TITLE, FOLLOW_UP_LABEL, PHOTO_PRESS_LABEL, beforeStartWords, justDoneWords, FOLLOW_UP_TITLE_MAX, doneLineWords, followUpTellsId, followUpTitle, lateFirst, nextTaskId, notePressLabel, showMoreLabel, splitToday, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from './todayPage'
+import { ADD_OWN_TASK_LABEL, MAP_PRESS_LABEL, MAP_PRESS_TITLE, taskMapIdOf, ADD_PHOTO_PRESS, ADD_PHOTO_SHEET_TITLE, FOLLOW_UP_LABEL, PHOTO_PRESS_LABEL, beforeStartWords, justDoneWords, FOLLOW_UP_TITLE_MAX, doneLineWords, followUpTellsId, followUpTitle, lateFirst, nextTaskId, notePressLabel, showMoreLabel, splitToday, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from './todayPage'
 
 describe('todayHeadDate', () => {
   it('reads the weekday, the short month and the day', () => {
@@ -199,5 +199,19 @@ describe('proof and who hears (step B2)', () => {
     expect(PHOTO_PRESS_LABEL).toBe('📷 Photo')
     expect(ADD_PHOTO_SHEET_TITLE).toBe('Add a photo')
     expect(ADD_PHOTO_PRESS).toBe('Add the photo')
+  })
+})
+
+describe('the map press (step B3)', () => {
+  it('reads the task\'s map from its place first, then from the task', () => {
+    expect(taskMapIdOf({ mapId: 'way-1' }, 'map-9')).toBe('way-1')
+    expect(taskMapIdOf({ mapId: null }, 'map-9')).toBe('map-9')
+    expect(taskMapIdOf(null, 'map-9')).toBe('map-9')
+    expect(taskMapIdOf(null, null)).toBeNull()
+    expect(taskMapIdOf({}, undefined)).toBeNull()
+  })
+  it('the press names itself', () => {
+    expect(MAP_PRESS_LABEL).toBe('🗺 Map')
+    expect(plainWordsFailures(MAP_PRESS_TITLE)).toEqual([])
   })
 })

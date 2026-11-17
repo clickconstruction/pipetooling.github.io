@@ -20,7 +20,8 @@ import { TaskMapBlock, TaskMapLine } from './TaskMapBlock'
 import { useTaskMapWhole } from '../../hooks/useTaskMapWhole'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { PHOTO_PRESS_LABEL, beforeStartWords, doneLineWords, justDoneWords, notePressLabel } from '../../lib/tasks/todayPage'
+import { MAP_PRESS_LABEL, MAP_PRESS_TITLE, PHOTO_PRESS_LABEL, beforeStartWords, doneLineWords, justDoneWords, notePressLabel, taskMapIdOf } from '../../lib/tasks/todayPage'
+import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
 
 export type ChecklistInstanceCardInstance = {
@@ -511,6 +512,13 @@ export function ChecklistInstanceCard({
       {PHOTO_PRESS_LABEL}
     </button>
   ) : null
+  // Step B3: a task that has a map opens it from the card. Whoever reads a task may add a line or a place to its map.
+  const freshMapId = taskMapIdOf(place, mapId)
+  const freshMapPress = freshMapId ? (
+    <button type="button" data-fresh-map onClick={() => void openPaintedMap(freshMapId)} style={{ ...TASK_PILL_STYLE, ...TASK_PILL_LIT_STYLE }} title={MAP_PRESS_TITLE}>
+      {MAP_PRESS_LABEL}
+    </button>
+  ) : null
   const freshBefore = !isCompleted && status.kind !== 'reopened' ? beforeStartWords(hearsName, asksForPhoto) : null
   const freshStatus =
     status.kind === 'waiting_review' ? (
@@ -601,6 +609,7 @@ export function ChecklistInstanceCard({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', maxWidth: '55%', flexShrink: 0 }}>
             {freshNotePress}
             {freshPhotoPress}
+            {freshMapPress}
             {actions}
           </div>
         )}
@@ -609,6 +618,7 @@ export function ChecklistInstanceCard({
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', marginTop: '0.6rem' }}>
           {freshNotePress}
           {freshPhotoPress}
+          {freshMapPress}
           {actions}
         </div>
       ) : null}
