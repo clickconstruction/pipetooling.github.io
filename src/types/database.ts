@@ -42748,6 +42748,29 @@ export type Database = {
       }
     }
     Views: {
+      agreements_on_file: {
+        Row: {
+          at: string | null
+          at_day: string | null
+          facts: Json | null
+          find_text: string | null
+          id: string | null
+          job_address: string | null
+          job_click_number: string | null
+          job_hcp_number: string | null
+          job_id: string | null
+          job_name: string | null
+          kind: string | null
+          more_jobs: number | null
+          paper_name: string | null
+          person_id: string | null
+          person_kind: string | null
+          source_id: string | null
+          state: string | null
+          with_name: string | null
+        }
+        Relationships: []
+      }
       cost_estimate_direct_costs: {
         Row: {
           cost_estimate_id: string | null
