@@ -163,6 +163,7 @@ import { LienDeskRetainageList } from './LienDeskRetainageList'
 import { LIEN_HEAD_DOOR as headDoor, lienBtnStyle as btn } from './lienDeskButtonStyles'
 import { LienDeskGcPicker } from './LienDeskGcPicker'
 import { LienDeskPaperTabs, LienDeskViewTabs } from './LienDeskViewTabs'
+import { useLienDeskRunner } from './useLienDeskRunner'
 import { useLienDeskTitleBarFit } from './useLienDeskTitleBarFit'
 import { useLienDeskWindows } from './useLienDeskWindows'
 import { LienDeskWindows } from './LienDeskWindows'
@@ -455,8 +456,6 @@ export default function LienDesk({
   // The leader's one-screen approve on a phone (v2.4881): the facts fold under Details; Not yet opens the hold reasons.
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [notYetOpen, setNotYetOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const busyRef = useRef(false)
   // Autosave (v2.7327): the draft row is written about 800 ms after a change to the months, the cover box, the wording,
   // the pay lines, the enclosed release or the claim — never on open, never when nothing changed. `draftTouch` counts
   // the changes; a forward press cancels the wait and saves first, after any save in flight, so no second row is made.
@@ -465,6 +464,17 @@ export default function LienDesk({
   const draftIdRef = useRef<string | null>(null)
   const autosaveRef = useRef<Promise<void> | null>(null)
   const autosaveTimerRef = useRef<number | null>(null)
+  // One press at a time (`useLienDeskRunner`, v2.7590): `busy` deadens every press while one is in flight.
+  const { busy, busyRef, run } = useLienDeskRunner({
+    onChanged,
+    // A press saves first (v2.7327): the wait for the autosave is dropped, and its save in flight is awaited inside ensureDraft.
+    beforeRun: () => {
+      if (autosaveTimerRef.current != null) {
+        window.clearTimeout(autosaveTimerRef.current)
+        autosaveTimerRef.current = null
+      }
+    },
+  })
   const touchDraft = () => setDraftTouch((n) => n + 1)
   const [mobileListShown, setMobileListShown] = useState(true)
   // A phone's open paper: the footer folded to one bar so the paper has the screen (punch list #352, PR 6).
@@ -1589,28 +1599,6 @@ export default function LienDesk({
     return entries.filter((e) => e.gcCustomerId === selected.gcCustomerId).reduce((s, e) => s + e.openBalance, 0)
   }, [entries, selected])
 
-  const run = async (label: string, fn: () => Promise<void>, done?: string): Promise<boolean> => {
-    if (busy) return false
-    setBusy(true)
-    busyRef.current = true
-    // A press saves first (v2.7327): the wait for the autosave is dropped, and its save in flight is awaited inside ensureDraft.
-    if (autosaveTimerRef.current != null) {
-      window.clearTimeout(autosaveTimerRef.current)
-      autosaveTimerRef.current = null
-    }
-    try {
-      await fn()
-      if (done) showToast(done, 'success')
-      onChanged()
-      return true
-    } catch (e) {
-      showToast(e instanceof Error && e.message ? `${label}: ${e.message}` : `${label} failed.`, 'error')
-      return false
-    } finally {
-      setBusy(false)
-      busyRef.current = false
-    }
-  }
 
   const ensureDraft = async (fromAutosave = false): Promise<string> => {
     if (!selected) throw new Error('nothing selected')
