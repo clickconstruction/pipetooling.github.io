@@ -66,8 +66,9 @@ own example for forwarding a domain that has no origin.
 Until v2.6799 `prts.co/` forwarded to `clicktooling.com/`, the sign-in page. The app now serves
 **Scan a label** at `/b` (type the code under a QR, or find a part on the site this phone last
 scanned), so a second redirect rule, **ahead of the first** in the same ruleset, sends the bare
-host there. Mirrored here first; the live rule is made in the dashboard (Rules → Overview →
-Redirect Rules) or through the API with the same four permissions as above.
+host there. Made 2026-11-17 in the dashboard (Rules → Redirect Rules → Create rule, *Custom filter
+expression* → *Edit expression*, *Place at* First); the API form below needs a token with the same
+four permissions as above.
 
 | | |
 |---|---|
@@ -75,6 +76,7 @@ Redirect Rules) or through the API with the same four permissions as above.
 | When incoming requests match | Custom filter expression: `((http.host eq "prts.co") or (http.host eq "www.prts.co")) and (http.request.uri.path eq "/")` |
 | Then | URL redirect, type **Static**, `https://clicktooling.com/b`, status 301, preserve query string off |
 | Order | First, above *Forward every path to clicktooling.com, lower-cased*; rules run in order and the first match wins |
+| Id | rule `5b13f3afb2204cc3a796875ae8f68e49`, in the same ruleset as the first |
 
 The API form is one `PUT` of the whole entrypoint with both rules, this one first:
 
@@ -92,9 +94,9 @@ PUT   /zones/<zone>/rulesets/phases/http_request_dynamic_redirect/entrypoint
 
 Verify: `curl -sI https://prts.co/` answers `301` with `location: https://clicktooling.com/b`, and
 `curl -sI https://prts.co/B/7D759246` still answers `location: https://clicktooling.com/b/7d759246`.
-**State**: mirrored 2026-11-09 with v2.6799; the live rule waits on the owner (or a session in his
-Chrome signed in to Cloudflare). Until it is live the bare host lands on the sign-in page as before,
-and nothing else in v2.6799 depends on it.
+**State**: live since 2026-11-17 (mirrored 2026-11-09 with v2.6799). Checked that day: `prts.co/`,
+`http://prts.co/`, `www.prts.co/` and `prts.co/?x=1` each answer `301` to `https://clicktooling.com/b`
+(the query string dropped, as set), and `/B/7D759246` and `/b/4f2a-9c18` forward as before.
 
 ## SSL/TLS
 

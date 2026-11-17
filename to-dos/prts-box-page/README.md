@@ -2,7 +2,7 @@
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
 group: close
-status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage; the page's number is the company's from Settings (v2.7390); the page redrawn as the company's card from her drawing the same evening (v2.7405), `box-read` redeployed and the card proved live signed out on 2026-11-16 · left: each press of the card on a real phone, the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · all five PRs merged 2026-11-09/10: v2.6796 #7469, v2.6797 #7473, v2.6799 #7474, v2.6800 #7475, v2.6801 #7476 · box-read deployed after PR 2 and again after PR 3, dev-mcp after PR 2, both probed live on a real cage · 2026-11-15, Taunya's call: what is inside a box needs a sign-in (v2.7379), so the public page says whose the box is and how to reach the office and nothing of its contents; `box-read` redeployed the same day and proved signed out on a ZZ Test cage; the page's number is the company's from Settings (v2.7390); the page redrawn as the company's card from her drawing the same evening (v2.7405), `box-read` redeployed and the card proved live signed out on 2026-11-16 · the second Cloudflare rule live 2026-11-17 (bare prts.co opens Scan a label) · left: each press of the card on a real phone, the ZZ walk of the public page, the tape walk on both printers
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -21,7 +21,7 @@ summary: >
   voice, while the bare code keeps working and the QR stays as small as it is.
 next: Taunya's walk of the company's card (v2.7405, the last section) on a phone with no session; press Ask for a bid, the call, and Send a text and Send an email in each sheet once on a real phone, and see the bid ask land in the app from bids@ (the texts go to the company's number from Settings, which is not one of the app's lines today, so they do not reach the Messages page). The owner makes the second Cloudflare rule for bare prts.co from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in v2.6797's fragment on a phone with no session; the tape walk on the PT-E720BT and on 18 mm tape, from Labels → Brother tape (the PT-D610BT printed 24 mm straight over USB from Chrome, v2.6865 and v2.6881). Retire the card once the walks pass.
 size: M as a train of five (XS · S · S · XS · S), all five shipped; left: the walks (S)
-blocker: None. The second Cloudflare rule is the owner's step and nothing waits on it; the tape walk needs the printers on the office Mac.
+blocker: None. The tape walk needs the printers on the office Mac.
 opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
 ---
 
@@ -187,13 +187,13 @@ Designed 2026-11-09 from the owner's ask of that morning; the tape labels and th
 |---|---|---|
 | 1 · #7469 · v2.6796 | `/b` on the three field allow-lists; the code reads `7D75-9246` on the sheet label and the manifest | 2026-11-09 |
 | 2 · #7473 · v2.6797 | `box-read` (the code, the lines from `on_site_job_summary`, the newest photo streamed from Drive, the guess guard, the view row) and the public page; `/b/:code` out of the Layout; Sign in to change a count | 2026-11-09, `box-read` and `dev-mcp` deployed |
-| 3 · #7474 · v2.6799 | `?find=` scoped to the scanned box's job; Find a part on this site; `/b` Scan a label; the second Cloudflare rule mirrored | 2026-11-09, `box-read` redeployed |
+| 3 · #7474 · v2.6799 | `?find=` scoped to the scanned box's job; Find a part on this site; `/b` Scan a label; the second Cloudflare rule mirrored | 2026-11-09, `box-read` redeployed; the rule made live 2026-11-17 (`scripts/cloudflare/prts-co-redirect.md`) |
 | 4 · #7475 · v2.6800 | Export the labels as a CSV; Copy the label code on the phone | 2026-11-09 |
 | 5 · #7476 · v2.6801 | `LabelsPrintModal.tsx`: Sheet · Tape, 18 or 24 mm, a chip per box, the counted press, the `@page` rule at the tape's size | 2026-11-10 |
 
 **Probed live** after each deploy, with `?preview=1` so no view counted: a real cage answers with its stencil, its lines, the last count's day and its newest photo (190 KB streamed from Drive); `?find=` lists the scanned cage first; an unknown code answers 404 and a non-code 400; the JSON names no job, customer, price or person.
 
-**Left**: the owner's walk of the redrawn page, Text the office pressed once on a real phone (the last section); the owner's second Cloudflare rule (bare `prts.co` → `/b`, in `scripts/cloudflare/prts-co-redirect.md`); the ZZ walk in v2.6797's fragment on a phone with no session, sign-in hand-off included; the tape walk on both printers and both widths. Then retire the card and let the release notes carry it.
+**Left**: the owner's walk of the redrawn page, Text the office pressed once on a real phone (the last section); the ZZ walk in v2.6797's fragment on a phone with no session, sign-in hand-off included; the tape walk on both printers and both widths. Then retire the card and let the release notes carry it.
 
 **Learned on the way** (for the next stacked train): after a replay onto main the SQL beds run can post only its `changes` job, so the required `sql-beds` check never appears and the queue will not take the PR; `gh run rerun` on that run posts it, then `enqueuePullRequest`. PR 3 sat four hours on this.
 
