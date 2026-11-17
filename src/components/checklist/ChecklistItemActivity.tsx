@@ -9,7 +9,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { useTaskNoteTags } from '../../hooks/useTaskNoteTags'
 import { canTagInTaskNotes } from '../../lib/jobs/noteTags'
-import { noteTagsChanged, postTaggedTaskNote } from '../../lib/jobs/noteTagsIo'
+import { noteTagsChanged, notifyNoteTag, postTaggedTaskNote } from '../../lib/jobs/noteTagsIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useNoteTagBox } from '../jobs/NoteTagBox'
 import { TaggedNoteBody } from '../jobs/TaggedNoteBody'
@@ -208,26 +208,32 @@ export function ChecklistItemActivity({
     setPosting(true)
     try {
       let noteId = `local-${Date.now()}`
+      // The note's own id, when the database handed one back: the phone notice is asked for by it.
+      let postedId: string | null = null
       if (tagged.length > 0) {
         // A note that tags someone posts with its tags in one transaction, or not at all.
         try {
           noteId = await postTaggedTaskNote(postTargetId, body, tagged)
+          postedId = noteId
         } catch (err: unknown) {
           setError(formatErrorMessage(err, 'The note was not posted'))
           return false
         }
       } else {
-        const { error: e } = await supabase.from('checklist_instance_events').insert({
-          instance_id: postTargetId,
-          event_type: 'comment',
-          actor_user_id: authUserId,
-          body,
-        })
+        const { data: row, error: e } = await supabase
+          .from('checklist_instance_events')
+          .insert({ instance_id: postTargetId, event_type: 'comment', actor_user_id: authUserId, body })
+          .select('id')
+          .maybeSingle()
         if (e) {
           setError(e.message)
           return false
         }
+        postedId = row?.id ?? null
       }
+      // The notice (punch list #375): the people this note tags, and anyone whose tag on this task it answered. The
+      // function sends nothing for a note that does neither, and a notice that fails changes nothing here.
+      if (postedId) notifyNoteTag({ taskEventId: postedId })
       setDraft('')
       tagBox.reset()
       setEvents((prev) => [
