@@ -5,7 +5,13 @@ import {
   dayOfYmd,
   dayWords,
   layoutPlansByDate,
+  PLANS_BY_DATE_NAME_MAX,
+  PLANS_BY_DATE_NAME_MAX_PHONE,
   placePlansByDateLabels,
+  PLANS_BY_DATE_PRINT_LIST_NOTE,
+  plansByDateChartName,
+  plansByDateListHead,
+  plansByDateListRows,
   plansByDateCrewNote,
   plansByDateGlyph,
   plansByDatePrintHtml,
@@ -307,6 +313,58 @@ describe('a bid’s schedule', () => {
   })
 })
 
+describe('plansByDateChartName', () => {
+  const name = (n: string, ymd = '2026-09-14', max = PLANS_BY_DATE_NAME_MAX) => plansByDateChartName(n, ymd, max)
+  it('takes off the date the mark stands on, in every way a name writes it', () => {
+    expect(name('ZZ Tower B - 44 Construction - 2026-09-14')).toBe('ZZ Tower B - 44 Construction')
+    expect(name('ZZ Phase 3 footprint 2026-09-14')).toBe('ZZ Phase 3 footprint')
+    expect(name('ZZ Site plan reply (2026-09-14)')).toBe('ZZ Site plan reply')
+    expect(name('ZZ Annex New Building (2026-09-14, ours)')).toBe('ZZ Annex New Building (ours)')
+    expect(name('ZZ Annex New Building (ours, 2026-09-14)')).toBe('ZZ Annex New Building (ours)')
+    expect(name('ZZ Lodge - 2026-09-14 [DRAFT]')).toBe('ZZ Lodge [DRAFT]')
+    expect(name('2026-09-14 ZZ Lodge')).toBe('ZZ Lodge')
+  })
+  it('keeps a date that is not the mark’s own, and a name that was only its date', () => {
+    expect(name('ZZ Reissue of the 2025-01-05 set')).toBe('ZZ Reissue of the 2025-01-05 set')
+    expect(name('2026-09-14')).toBe('2026-09-14')
+    expect(name('ZZ Lodge 2026-09-14', 'not a day')).toBe('ZZ Lodge 2026-09-14')
+  })
+  it('cuts a long name at the last whole word that fits, never on a separator, and never past its limit', () => {
+    expect(name('ZZ Tower B - 44 Construction Documentation - 2026-09-14')).toBe('ZZ Tower B - 44 Construction…')
+    expect(name('ZZ Basement - Plumbing - Revised fixtures and footings', '2026-03-13', PLANS_BY_DATE_NAME_MAX_PHONE)).toBe('ZZ Basement - Plumbing…')
+    expect(name('ZZ_one_very_long_file_name_with_no_spaces_at_all', '2026-03-13', PLANS_BY_DATE_NAME_MAX_PHONE)).toBe('ZZ_one_very_long_file_n…')
+    expect(name('ZZ 411 Lodge 2 Const. Preview and its notes', '2026-03-13', 24)).toBe('ZZ 411 Lodge 2 Const…')
+    for (const max of [PLANS_BY_DATE_NAME_MAX, PLANS_BY_DATE_NAME_MAX_PHONE]) {
+      for (const n of ['ZZ Tower B - 44.10 MEP - Sleeve Boxes - DRAFT - 2026-08-18', 'ZZ 45 Lodge 2 - Construction Preview w/ Stairtower', 'Short']) expect(name(n, '2026-08-18', max).length).toBeLessThanOrEqual(max)
+    }
+  })
+  it('leaves a short name as it is, its spaces tidied', () => {
+    expect(name('  ZZ   Basement well location ')).toBe('ZZ Basement well location')
+  })
+})
+
+describe('plansByDateListRows', () => {
+  const model = buildPlansByDate(site())
+  it('opens on the drawings and the bids, today kept, and counts what waits behind the press', () => {
+    const list = plansByDateListRows(model.rows, false)
+    expect(list.issuesOnly).toBe(true)
+    expect(list.rows.every((r) => r.today || !['crew', 'crewOpen', 'tick', 'letter'].includes(r.glyph))).toBe(true)
+    expect(list.rows.some((r) => r.today)).toBe(true)
+    expect(list.hidden).toBe(model.rows.length - list.rows.length)
+    expect(list.hidden).toBeGreaterThan(0)
+    expect(plansByDateListHead(list)).toEqual({ title: 'The drawings and the bids', count: `${list.rows.length - 1} lines` })
+  })
+  it('lists everything with the log, and on a site with no drawing or bid line', () => {
+    const all = plansByDateListRows(model.rows, true)
+    expect(all).toMatchObject({ issuesOnly: false, hidden: 0 })
+    expect(all.rows).toHaveLength(model.rows.length)
+    expect(plansByDateListHead(all).title).toBe('Every dated line on the chart')
+    const bare = plansByDateListRows(buildPlansByDate(site({ sets: [], bids: [] })).rows, false)
+    expect(bare.issuesOnly).toBe(false)
+    expect(bare.hidden).toBe(0)
+  })
+})
+
 describe('plansByDateTicks', () => {
   const start = dayOfYmd('2025-05-01') as number
   const end = dayOfYmd('2026-12-01') as number
@@ -330,6 +388,13 @@ describe('placePlansByDateLabels', () => {
     expect(spots.get(a)?.slot).toBe('above')
     expect(spots.get(b)?.slot).toBe('below')
     expect(spots.has(c)).toBe(false)
+  })
+  it('keeps an above name off the names drawn under the lane before it', () => {
+    const a = item(100, 'ZZ Annex septic plan', 2)
+    const spots = placePlansByDateLabels([a], 0, 800, [{ l: 60, r: 160 }])
+    expect(spots.get(a)?.slot).toBe('below')
+    const clear = placePlansByDateLabels([a], 0, 800, [{ l: 400, r: 500 }])
+    expect(clear.get(a)?.slot).toBe('above')
   })
   it('nudges a name inside the plot’s edges', () => {
     const edge = item(2, 'Issued set', 1)
@@ -456,6 +521,49 @@ describe('layoutPlansByDate', () => {
     expect(many.labels.filter((p) => p.t === 'text' && p.text === 'Letter')).toHaveLength(0)
   })
 
+  it('draws every set’s name short, so the set a part builds from keeps its name even on a phone', () => {
+    const long = buildPlansByDate(
+      site({
+        parts: [part('pA', 'ZZ Building A', 1, 'a2')],
+        sets: [
+          set('a1', 'pA', 'ZZ Building A - 40 Construction Documentation - 2026-04-13', 'construction', '2026-04-13', '2026-04-14'),
+          set('a2', 'pA', 'ZZ Building A - 44 Construction Documentation - 2026-09-14', 'construction', '2026-09-14', '2026-09-15'),
+        ],
+      }),
+    )
+    const words = (variant: 'desktop' | 'phone', measured?: number) => layoutPlansByDate(long, variant, measured).labels.flatMap((p) => (p.t === 'text' ? [p.text] : []))
+    expect(words('phone', 329)).toContain('ZZ Building A - 44…')
+    expect(words('desktop', 1100)).toContain('ZZ Building A - 44 Construction…')
+    for (const w of words('desktop', 1100)) expect(w.length).toBeLessThanOrEqual(PLANS_BY_DATE_NAME_MAX)
+    // The whole name stays in the mark's own line.
+    expect(layoutPlansByDate(long, 'phone', 329).marks.find((m) => m.key === 'set-a2')?.tip).toContain('ZZ Building A - 44 Construction Documentation - 2026-09-14')
+  })
+
+  it('never stacks two lanes’ names in the gap between them', () => {
+    const stacked = buildPlansByDate(
+      site({
+        parts: [part('pA', 'ZZ Site', 1, 'a2'), part('pB', 'ZZ Annex', 2, 'b1')],
+        sets: [
+          set('a1', 'pA', 'ZZ Site footprint', 'issued', '2025-11-02', '2025-11-02'),
+          set('a2', 'pA', 'ZZ Site septic plan (ours)', 'revised', '2025-11-11', '2025-11-11'),
+          set('b1', 'pB', 'ZZ Annex New Building', 'issued', '2025-11-03', '2025-11-03'),
+        ],
+        bids: [],
+        jobs: [],
+        history: [],
+      }),
+    )
+    const layout = layoutPlansByDate(stacked, 'desktop', 1100)
+    const words = layout.labels.flatMap((p) => (p.t === 'text' ? [{ text: p.text, x: p.x, y: p.y, w: p.text.length * 6.2 + 6 }] : []))
+    // Any two names in the same gap, or on the same row, must not cross.
+    for (const a of words) for (const b of words) {
+      // Names in one gap stand 16 px apart, under one lane and over the next.
+      if (a === b || Math.abs(a.y - b.y) > 18) continue
+      expect(Math.abs(a.x - b.x) >= (a.w + b.w) / 2 || a.text === b.text, `${a.text} / ${b.text}`).toBe(true)
+    }
+    expect(words.map((w) => w.text).sort()).toEqual(['ZZ Annex New Building', 'ZZ Site footprint', 'ZZ Site septic plan (ours)'])
+  })
+
   it('draws today’s line and the split between the two lanes', () => {
     const layout = layoutPlansByDate(model, 'desktop')
     expect(layout.back.some((p) => p.t === 'text' && p.text === 'Today · Nov 16')).toBe(true)
@@ -486,9 +594,17 @@ describe('plansByDatePrintHtml', () => {
     expect(html).toContain('Printed Nov 16, 2026, 9:14 AM by ZZ Test Person')
   })
 
-  it('lists every dated line and leaves today’s row off', () => {
+  it('lists the drawings and the bids, says the log is on the chart, and leaves today’s row off', () => {
     expect(html).toContain('<span class="d">May 20, 2025</span><span>ZZ Building A: Issued set <em>· the GC</em></span>')
-    expect((html.match(/<span class="d">/g) ?? []).length).toBe(model.rows.length - 1)
+    const issues = model.rows.filter((r) => !r.today && !['crew', 'crewOpen', 'tick', 'letter'].includes(r.glyph)).length
+    expect((html.match(/<span class="d">/g) ?? []).length).toBe(issues)
+    expect(html).toContain(PLANS_BY_DATE_PRINT_LIST_NOTE)
+  })
+
+  it('lists every dated line when the screen does', () => {
+    const all = plansByDatePrintHtml({ siteName: 'ZZ', customerName: null, model, notes: [], printedAt: 'now', printedBy: null, withLog: true })
+    expect((all.match(/<span class="d">/g) ?? []).length).toBe(model.rows.length - 1)
+    expect(all).not.toContain(PLANS_BY_DATE_PRINT_LIST_NOTE)
   })
 
   it('wears paper’s colours, never a theme token', () => {
