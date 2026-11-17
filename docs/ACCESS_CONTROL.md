@@ -999,13 +999,14 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Movements and moves are select + insert only: a wrong press gets a new row, never an edit, with one exception since v2.7212: a typed part's name is fixed by inserting a `job_part_renames` row (read and insert by the same gate, never updated or deleted, `docs/migrations/20261113230000_on_site_part_renames.md`), whose definer trigger sets `part_name` alone on the job's typed ledger rows after the caller's own RLS let the row in.
   Containers allow update (a move, a pin, a retirement, and since v2.7179 an edit of the name, the kind or the where line by the same gate, and since v2.7348 of the box's line, `description`, with no policy of its own;
   since v2.7276 a new or changed name is judged by the `job_containers_name_rule` trigger, `SECURITY DEFINER` so it reads every job of the site: a caller who cannot read the job next door is still held to its names, and the refusal names that job's number, `docs/migrations/20261114100000_box_name_rule.md`);
-  a place is insert only;
+  a place is insert only but for one column: since v2.7580 a place's `painted_map_id`, the way to it, may be updated by the same gate (`job_places_update`), and the `job_places_guard_way` trigger holds a direct caller to that column and holds the way, from anyone, to a painted map the writer can open on the place's own job or its development (`docs/migrations/20261117180000_place_painted_way.md`, punch list #372);
   a photo row may be updated by the one who took it.
   **The gate says which job;
   since v2.7240 triggers say which columns** (`docs/migrations/20261114013000_on_site_teammate_guards.md`, punch list #344 PR 5), for a direct caller alone (`current_user` is `authenticated` or `anon`;
   the service role and definer functions pass): a new ledger row and a new box move take the caller as `by_user_id`, the caller's own name as `by_name` (a dev's is kept, for the dev seat's agent label) and the server's time where the phone's is ahead, and a ledger row is stamped `recorded_at`, when it reached the office;
   a box photo's `drive_file_id`, `filed_at`, `refile_due_at`, `fail_why` and the status `filed` are the sweep's, its box, job and taker never change, and its `storage_path` is `<a job id>/<its own id>.jpg`;
   a box's `job_id` cannot be changed by a direct update.
+  Since v2.7573 a box's pin remembers who set it: `pinned_by` is the caller, never what the phone sent, and `pinned_by_name`, `pinned_at` and `pin_accuracy_m` change only with the pin and go when it goes (`job_containers_stamp_pin`, `docs/migrations/20261117170000_box_pin_remembers.md`, punch list #372).
   **The dev seat writes the same rows through `dev_on_site_write`** (v2.6367, `20261102100000`) **and, for a box's edit and a part's rename, `dev_on_site_rename`** (v2.7241, `20261114050000`): `SECURITY INVOKER`, so these policies, the CHECKs, training mode's blocks and the twin fence decide every insert as they do on the screen;
   gated `is_dev()` first, a training account and a digital twin refused in words;
   every row stamped `<agent_label> · MCP as <dev>` with the dev as `by_user_id`.
