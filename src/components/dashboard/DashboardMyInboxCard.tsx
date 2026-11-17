@@ -16,7 +16,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import ChecklistItemMuteModal from '../ChecklistItemMuteModal'
 import { TaskForwardWindow } from '../checklist/TaskForwardWindow'
 import { forwardTakers } from '../../lib/tasks/taskDoerActs'
-import { handOnTask } from '../../lib/tasks/taskDoerActsIo'
+import { handOnTask, tellForwardTaker } from '../../lib/tasks/taskDoerActsIo'
 import { taskTitlePlain } from '../../lib/tasks/taskPlace'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
@@ -519,6 +519,7 @@ export function DashboardMyInboxCard({
         setFwdRefusal(refused)
         return
       }
+      void tellForwardTaker({ byUserId: authUserId, toUserId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain((fwdInstance.checklist_items as { title?: string } | null)?.title) })
       setFwdInstance(null)
       await loadTodayChecklist()
       await loadOutstanding()

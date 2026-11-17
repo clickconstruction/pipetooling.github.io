@@ -88,7 +88,7 @@ import { ROUND_MIN, roundConfirmMessage, roundHeldCount, roundHeldWords, roundOu
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
 import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
-import { handOnTask } from '../lib/tasks/taskDoerActsIo'
+import { handOnTask, tellForwardTaker } from '../lib/tasks/taskDoerActsIo'
 import { FORWARD_KEEPS_WORDS } from '../lib/tasks/taskDoerActs'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
@@ -938,6 +938,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       // first day row with its thread, are gone: the task keeps its notes, place, lines and photos.
       const refused = await handOnTask(fwdInstance.id, fwdAssigneeId, null, null)
       if (refused) throw new Error(refused)
+      void tellForwardTaker({ byUserId: authUserId, toUserId: fwdAssigneeId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain(fwdTitle) })
       setFwdInstance(null)
       await loadToday()
       await loadUpcoming()
@@ -2630,6 +2631,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
       // first day row with its thread, are gone: the task keeps its notes, place, lines and photos.
       const refused = await handOnTask(fwdInstance.id, fwdAssigneeId, null, fwdFromUserId || null)
       if (refused) throw new Error(refused)
+      void tellForwardTaker({ byUserId: authUserId, toUserId: fwdAssigneeId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain(fwdTitle) })
       setFwdInstance(null)
       await loadOutstanding()
     } catch (err: unknown) {

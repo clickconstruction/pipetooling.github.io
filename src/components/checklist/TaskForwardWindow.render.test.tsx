@@ -20,7 +20,7 @@ describe('TaskForwardWindow', () => {
   it('shows the task as it is and takes no new title', () => {
     draw()
     expect(screen.getByText('Sort the fittings wall')).toBeTruthy()
-    expect(screen.getByText('The task goes as it is, with its notes, place and photos.')).toBeTruthy()
+    expect(screen.getByText('The task goes as it is, with its notes, place and photos. Whoever takes it gets a message.')).toBeTruthy()
     expect(screen.queryByRole('textbox')).toBeNull()
   })
 

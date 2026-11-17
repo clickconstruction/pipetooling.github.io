@@ -360,8 +360,8 @@ export function handPushToGiver(who: string, title: string, takerName: string): 
 
 export const FORWARD_TITLE = 'Forward task'
 export const FORWARD_PICK_LABEL = 'Pick a person'
-/** Under the task's words in the Forward window (punch list #369, step C7): the task itself goes, not a copy. */
-export const FORWARD_KEEPS_WORDS = 'The task goes as it is, with its notes, place and photos.'
+/** Under the task's words in the Forward window (punch list #369, step C7): the task itself goes, not a copy, and since v2.7563 the taker is told (`tellForwardTaker`). */
+export const FORWARD_KEEPS_WORDS = 'The task goes as it is, with its notes, place and photos. Whoever takes it gets a message.'
 
 /** Who the Forward window offers for the viewer's own task: everyone it was handed but the viewer, by name. */
 export function forwardTakers(people: ReadonlyArray<HandPerson>, selfId: string | null): HandPerson[] {

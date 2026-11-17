@@ -282,7 +282,7 @@ describe('the Forward window (v2.7563)', () => {
     expect(forwardPressLabel('Hal', true)).toBe('Forwarding…')
   })
 
-  it('says the task goes as it is', () => {
-    expect(FORWARD_KEEPS_WORDS).toBe('The task goes as it is, with its notes, place and photos.')
+  it('says the task goes as it is and that the taker is told', () => {
+    expect(FORWARD_KEEPS_WORDS).toBe('The task goes as it is, with its notes, place and photos. Whoever takes it gets a message.')
   })
 })

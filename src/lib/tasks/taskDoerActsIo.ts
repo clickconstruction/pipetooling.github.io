@@ -1,5 +1,7 @@
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { getCurrentUserName } from '../getCurrentUserName'
+import { handPushToTaker } from './taskDoerActs'
 
 /**
  * The calls behind the doer's tools (punch list #369). Each is one function of `20261117120000_task_doer_acts.sql`,
@@ -80,4 +82,19 @@ export async function handOnTask(instanceId: string, toUserId: string, reason: s
   } catch (e) {
     return formatErrorMessage(e, 'The task was not handed on.')
   }
+}
+
+/**
+ * The office's Forward tells whoever takes the task (v2.7563, as Hand it on does): the same words, sent
+ * the same way. Called once the hand-on has landed, so it never throws and never holds the window.
+ */
+export async function tellForwardTaker(
+  a: { byUserId: string; toUserId: string; instanceId: string; taskTitle: string },
+  deps: { tell?: typeof tellTaskGiver; nameOf?: (userId: string) => Promise<string> } = {},
+): Promise<void> {
+  const { tell = tellTaskGiver, nameOf = getCurrentUserName } = deps
+  if (!a.toUserId || a.toUserId === a.byUserId) return
+  const who = (await nameOf(a.byUserId).catch(() => '')).trim() || 'Someone'
+  const push = handPushToTaker(who, a.taskTitle, '')
+  await tell({ giverId: a.toUserId, instanceId: a.instanceId, title: push.title, body: push.body })
 }
