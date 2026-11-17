@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { groupEventsByInstance, stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { groupEventsByInstance, stripStamp, type ChecklistCardEvent, droppedReason } from '../../lib/checklistCardEvents'
+import { DROPPED_CHIP } from '../../lib/tasks/taskDoerActs'
 import {
   completedDayGroups,
   groupByDayDesc,
@@ -229,10 +230,17 @@ export function ChecklistHistoryLedger({
       case 'done': {
         // "done N days late" rider (v2.2351): only when the item carried a due date and the completion day passed it.
         const late = doneLateLabel(chip.completedAt, inst.checklist_items?.due_date)
+        // Punch list #369, step C4: closed without being done. The reason is the chip's tip and a line in the row's thread.
+        const dropped = droppedReason(eventsByInstance.get(inst.id) ?? [])
         return (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             <span style={{ ...base, background: '#16a34a', color: 'white' }}>✓ {stripStamp(chip.completedAt)}</span>
             {late ? <span style={{ ...base, fontWeight: 500, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>{late}</span> : null}
+            {dropped !== null ? (
+              <span data-ledger-dropped title={dropped || undefined} style={{ ...base, fontWeight: 500, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-700)' }}>
+                {DROPPED_CHIP}
+              </span>
+            ) : null}
           </span>
         )
       }

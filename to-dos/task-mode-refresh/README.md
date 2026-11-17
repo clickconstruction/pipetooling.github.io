@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1 to C3 built (v2.7533, v2.7536, v2.7537, v2.7539, v2.7541, v2.7542, v2.7543, v2.7544) · C1's migration to push right after its merge · steps C4 to D to build
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1 to C4 built (v2.7533, v2.7536, v2.7537, v2.7539, v2.7541, v2.7542, v2.7543, v2.7544, v2.7545) · C1's migration to push right after its merge · steps C5 to D to build
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -12,9 +12,9 @@ summary: >
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
 next: Push the C1 migration right after its merge. Then C2 to C7, the tools on it, each merged only after that push.
-size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: C4 to D (M · S · M · M · S · S · S)
+size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: C5 to D (S · M · M · S · S · S)
 blocker: none
-ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544
+ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
 
@@ -104,7 +104,7 @@ One small PR per line, each with its guide, release note and fragment.
 | C1 | The ground for the rest, no screen: the new thread marks and one narrow function per act (`20261117120000_task_doer_acts.sql`, bed `task-doer-acts`) | migration | M | built, v2.7542; push after merge |
 | C2 | Tool 8, second half: the doer paints a map or leaves a point on a task with none | uses C1 | S | built, v2.7543 |
 | C3 | Tool 1: Not today, with the card's ⋯ More and the thread's words for every tool's line | uses C1 | S | built, v2.7544 |
-| C4 | Tool 3: No longer applies, drawn in History and Review | uses C1 | M | |
+| C4 | Tool 3: No longer applies, drawn in History and Review. Not offered on a roadmap or a vehicle task, whose close would say work was done | uses C1 | M | built, v2.7545 |
 | C5 | Tool 4: Go through the old ones | none | S | |
 | C6 | Tool 2: Can't do it, with the stuck list on Review | uses C1 | M | |
 | C7 | Tool 7: Hand it on. FWD becomes the same press and keeps the task whole | uses C1 | M | |

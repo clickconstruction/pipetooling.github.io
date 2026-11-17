@@ -130,3 +130,20 @@ export function lastTransitionIsReopen(events: ChecklistCardEvent[]): boolean {
   }
   return false
 }
+
+/**
+ * Why a finished task was closed without being done (punch list #369, step C4), or null when it was done. The
+ * database closes such a task as a completion and writes a `dropped` line after the `completed` one
+ * (`task_no_longer_applies`), so the lists that hide finished work hide it too, and a screen that cares tells the two
+ * apart here: the last `dropped` line stands unless a `reopened` came after it. The empty string is a closed task
+ * whose reason was lost; callers treat it as closed.
+ */
+export function droppedReason(events: ReadonlyArray<ChecklistCardEvent>): string | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]
+    if (!e) continue
+    if (e.event_type === 'reopened') return null
+    if (e.event_type === 'dropped') return (e.body ?? '').trim()
+  }
+  return null
+}

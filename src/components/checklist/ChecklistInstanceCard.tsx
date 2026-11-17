@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type 
 import {
   cardStatus,
   commentCount,
+  droppedReason,
   stripStamp,
   type ChecklistCardEvent,
 } from '../../lib/checklistCardEvents'
@@ -24,7 +25,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { MAP_PRESS_LABEL, MAP_PRESS_TITLE, PHOTO_PRESS_LABEL, beforeStartWords, doneLineWords, justDoneWords, notePressLabel, taskMapIdOf } from '../../lib/tasks/todayPage'
 import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
-import { doerLineWords } from '../../lib/tasks/taskDoerActs'
+import { doerLineWords, droppedLineWords } from '../../lib/tasks/taskDoerActs'
 import { dayLabel } from '../../lib/checklistDueDates'
 
 export type ChecklistInstanceCardInstance = {
@@ -531,11 +532,13 @@ export function ChecklistInstanceCard({
     <TaskDoerMapPress instanceId={instance.id} taskWords={titleText} place={place} onAdded={onMapAdded} />
   ) : null
   const freshBefore = !isCompleted && status.kind !== 'reopened' ? beforeStartWords(hearsName, asksForPhoto) : null
+  // Step C4: a task closed as no longer applying is a finished task that says so, in place of *Done*.
+  const freshDropped = isCompleted ? droppedReason(events) : null
   const freshStatus =
     status.kind === 'waiting_review' ? (
-      <div data-fresh-done style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
-        {doneLineWords(stripStamp(status.at), hearsName)}
-        {justDone ? <span data-fresh-just-done style={{ display: 'block', color: 'var(--text-green-700)' }}>{justDoneWords(hearsName)}</span> : null}
+      <div data-fresh-done {...(freshDropped !== null ? { 'data-fresh-dropped': '' } : {})} style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+        {freshDropped !== null ? droppedLineWords(stripStamp(status.at), freshDropped) : doneLineWords(stripStamp(status.at), hearsName)}
+        {justDone && freshDropped === null ? <span data-fresh-just-done style={{ display: 'block', color: 'var(--text-green-700)' }}>{justDoneWords(hearsName)}</span> : null}
       </div>
     ) : status.kind === 'signed_off' ? (
       <div data-fresh-done style={{ fontSize: '0.78rem', color: 'var(--text-green-700)', marginTop: 2 }}>

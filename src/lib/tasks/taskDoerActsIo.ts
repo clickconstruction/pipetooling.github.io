@@ -30,6 +30,16 @@ export async function moveTaskDay(instanceId: string, ymd: string): Promise<stri
   }
 }
 
+/** The person doing a one-time task closes it without doing it, with a reason. */
+export async function dropTask(instanceId: string, reason: string): Promise<string | null> {
+  try {
+    const { error } = await supabase.rpc('task_no_longer_applies' as never, { p_instance_id: instanceId, p_reason: reason } as never)
+    return error ? formatErrorMessage(error, 'The task did not close.') : null
+  } catch (e) {
+    return formatErrorMessage(e, 'The task did not close.')
+  }
+}
+
 /**
  * Tell whoever gave a task what the person doing it just did: one push through the function the completion push uses,
  * so their hours and their devices are honoured the same way. Never throws and never holds the act: the act has

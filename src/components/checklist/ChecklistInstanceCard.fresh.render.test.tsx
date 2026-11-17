@@ -220,4 +220,19 @@ describe('ChecklistInstanceCard, the fresh look', () => {
     const map = screen.getByRole('button', { name: '🗺 Map' })
     expect(map.hasAttribute('data-fresh-map')).toBe(true)
   })
+
+  it('a task closed as no longer applying says so and why, in place of Done', async () => {
+    const at = new Date().toISOString()
+    renderFresh({
+      instance: { id: 'inst-1', completed_at: at, reviewed_at: null },
+      hearsName: 'Imani',
+      justDone: true,
+      events: [ev({ event_type: 'completed', created_at: at }), ev({ event_type: 'dropped', created_at: at, body: 'Plans changed' })],
+    })
+    await settle()
+    const line = document.querySelector('[data-fresh-dropped]')
+    expect(line?.textContent).toMatch(/^Closed .+ as no longer applying\. Plans changed\.$/)
+    expect(line?.textContent).not.toContain('hears it is done')
+    expect(document.querySelector('[data-fresh-just-done]')).toBeNull()
+  })
 })

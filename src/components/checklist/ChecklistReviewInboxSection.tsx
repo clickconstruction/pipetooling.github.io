@@ -5,7 +5,8 @@ import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
-import { groupEventsByInstance, stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { groupEventsByInstance, stripStamp, type ChecklistCardEvent, droppedReason } from '../../lib/checklistCardEvents'
+import { DROPPED_CHIP, doerLineWords } from '../../lib/tasks/taskDoerActs'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { EmptyState } from '../EmptyState'
 import { CHECKLIST_REVIEW_EMPTY } from '../../lib/checklistEmptyWords'
@@ -281,6 +282,8 @@ export function ChecklistReviewInboxSection({
           const expanded = expandedId === row.instanceId
           const events = eventsByInstance.get(row.instanceId) ?? []
           const busy = busyId === row.instanceId
+          // Punch list #369, step C4: closed as no longer applying. Reopen puts it back; Dismiss agrees.
+          const dropped = droppedReason(events)
           // Age chip on the done stamp (punch list #184 sweep B): CHECKLIST_REVIEW_AGE — two days
           // amber, five red, before the 7-day window ages it out. Opening an aging row records it.
           const waitAge = describeAge(row.completedAt, undefined, CHECKLIST_REVIEW_AGE)
@@ -341,7 +344,12 @@ export function ChecklistReviewInboxSection({
               >
                 <div style={{ fontWeight: 500 }}>{row.title}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                  {name(row.completedByUserId)} · done {stripStamp(row.completedAt)}
+                  {name(row.completedByUserId)} · {dropped !== null ? 'closed' : 'done'} {stripStamp(row.completedAt)}
+                  {dropped !== null ? (
+                    <span data-review-dropped style={{ marginLeft: '0.35rem', fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-700)' }}>
+                      {DROPPED_CHIP}
+                    </span>
+                  ) : null}
                   {waitAge ? (
                     <span
                       title={new Date(row.completedAt).toLocaleString()}
@@ -445,7 +453,7 @@ export function ChecklistReviewInboxSection({
                           <span style={{ fontWeight: e.event_type === 'comment' ? 600 : 400 }}>
                             {name(e.actor_user_id)}
                           </span>{' '}
-                          {e.event_type === 'comment' ? '—' : e.event_type === 'accepted' ? 'signed off ·' : `${e.event_type} ·`}{' '}
+                          {e.event_type === 'comment' ? '—' : e.event_type === 'accepted' ? 'signed off ·' : `${doerLineWords(e.event_type, e.body ?? '') ?? e.event_type} ·`}{' '}
                           {e.event_type === 'comment' ? e.body : stripStamp(e.created_at)}
                           {e.event_type === 'completed' && e.body ? <> — “{e.body}”</> : null}
                         </div>

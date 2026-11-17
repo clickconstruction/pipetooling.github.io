@@ -11,8 +11,8 @@ vi.mock('./useIsMobile', () => ({ useIsMobile: () => true }))
 
 const TASK: TaskDoerActsTarget = { instanceId: 'inst-1', title: 'Give every tool a home', once: true, roadmap: false, vehicle: false, done: false, giverId: 'u-imani', giverName: 'Imani', dueYmd: null }
 
-function Host({ target, moveDay, tellGiver, onChanged, authUserId = 'u-me' }: { target: TaskDoerActsTarget; moveDay: (id: string, ymd: string) => Promise<string | null>; tellGiver: (a: { giverId: string | null; instanceId: string; title: string; body: string }) => Promise<void>; onChanged: () => void; authUserId?: string }) {
-  const doer = useTaskDoerActs({ authUserId, todayYmd: '2026-11-16', onChanged, moveDay, tellGiver, nameOf: async () => 'Theo' })
+function Host({ target, moveDay, drop = async () => null, tellGiver, onChanged, authUserId = 'u-me' }: { target: TaskDoerActsTarget; moveDay: (id: string, ymd: string) => Promise<string | null>; drop?: (id: string, reason: string) => Promise<string | null>; tellGiver: (a: { giverId: string | null; instanceId: string; title: string; body: string }) => Promise<void>; onChanged: () => void; authUserId?: string }) {
+  const doer = useTaskDoerActs({ authUserId, todayYmd: '2026-11-16', onChanged, moveDay, drop, tellGiver, nameOf: async () => 'Theo' })
   return (
     <div>
       {doer.morePress(target)}
@@ -99,5 +99,45 @@ describe('useTaskDoerActs', () => {
     fireEvent.click(document.querySelector('[data-move-day-press]') as HTMLButtonElement)
     await waitFor(() => expect(moveDay).toHaveBeenCalledWith('inst-1', '2026-11-23'))
     expect(tellGiver).not.toHaveBeenCalled()
+  })
+
+  it('No longer applies: a ready-made reason frees the press, closes the task, tells the giver and re-reads the page', async () => {
+    const drop = vi.fn(async (_id: string, _reason: string) => null)
+    const tellGiver = vi.fn(async (_a: { giverId: string | null; instanceId: string; title: string; body: string }) => {})
+    const onChanged = vi.fn()
+    render(<Host target={TASK} moveDay={vi.fn()} drop={drop} tellGiver={tellGiver} onChanged={onChanged} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /No longer applies/ }))
+    expect(screen.getByRole('dialog', { name: 'No longer applies' })).toBeTruthy()
+    expect((document.querySelector('[data-drop-press]') as HTMLButtonElement).disabled).toBe(true)
+    expect(document.querySelector('[data-drop-press]')?.textContent).toBe('Say why first')
+    fireEvent.click(screen.getByRole('button', { name: 'Plans changed' }))
+    expect(document.querySelector('[data-drop-sentence]')?.textContent).toBe('It leaves your list. Imani is told and can put it back.')
+    fireEvent.click(screen.getByRole('button', { name: 'Close this task' }))
+    await waitFor(() => expect(drop).toHaveBeenCalledWith('inst-1', 'Plans changed'))
+    await waitFor(() => expect(tellGiver).toHaveBeenCalledTimes(1))
+    expect(tellGiver.mock.calls[0]![0].body).toBe('Theo closed "Give every tool a home" as no longer applying: Plans changed')
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('No longer applies: typed words are tidied, and a refusal stays on the sheet', async () => {
+    const drop = vi.fn(async (_id: string, _reason: string) => 'This task belongs to a roadmap, and its lead takes it off there. Say why in a note.')
+    const onChanged = vi.fn()
+    render(<Host target={TASK} moveDay={vi.fn()} drop={drop} tellGiver={vi.fn()} onChanged={onChanged} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /No longer applies/ }))
+    fireEvent.change(screen.getByLabelText('Why it no longer applies'), { target: { value: '  The shelf  came down ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Close this task' }))
+    await waitFor(() => expect(drop).toHaveBeenCalledWith('inst-1', 'The shelf came down'))
+    await screen.findByText(/belongs to a roadmap/)
+    expect(onChanged).not.toHaveBeenCalled()
+  })
+
+  it('a roadmap task is offered Not today and no close', () => {
+    render(<Host target={{ ...TASK, roadmap: true }} moveDay={vi.fn()} tellGiver={vi.fn()} onChanged={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    expect(screen.getByRole('button', { name: /Not today/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /No longer applies/ })).toBeNull()
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
+import { droppedReason } from '../checklistCardEvents'
+import { DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
 
 describe('a map from the person doing the task', () => {
   it('offers a line by hand, a walked line and a point, in that order', () => {
@@ -17,8 +18,8 @@ describe('a map from the person doing the task', () => {
 })
 
 describe('More', () => {
-  it('offers Not today on an open one-time task, and nothing on a repeating or a done one', () => {
-    expect(taskMoreChoices({ once: true, done: false }).map((r) => r.key)).toEqual(['move'])
+  it('offers Not today first on an open one-time task, and nothing on a repeating or a done one', () => {
+    expect(taskMoreChoices({ once: true, done: false }).map((r) => r.key)[0]).toBe('move')
     expect(taskMoreChoices({ once: false, done: false })).toEqual([])
     expect(taskMoreChoices({ once: true, done: true })).toEqual([])
   })
@@ -86,5 +87,54 @@ describe('the thread', () => {
   it('leaves the kinds it does not know to the thread', () => {
     expect(doerLineWords('completed', '')).toBeNull()
     expect(doerLineWords('comment', 'hello')).toBeNull()
+  })
+})
+
+describe('No longer applies', () => {
+  it('is offered on an open one-time task that is neither a roadmap nor a vehicle task', () => {
+    expect(taskMoreChoices({ once: true, done: false, roadmap: false, vehicle: false }).map((r) => r.key)).toEqual(['move', 'drop'])
+    expect(taskMoreChoices({ once: true, done: false, roadmap: true, vehicle: false }).map((r) => r.key)).toEqual(['move'])
+    expect(taskMoreChoices({ once: true, done: false, roadmap: false, vehicle: true }).map((r) => r.key)).toEqual(['move'])
+    expect(taskMoreChoices({ once: false, done: false, roadmap: false, vehicle: false })).toEqual([])
+  })
+  it('holds the press until there is a reason of three characters, tidied', () => {
+    expect(dropRule('')).toBe('Say why in a few words.')
+    expect(dropRule('  ok ')).toBe('Say why in a few words.')
+    expect(dropRule('Plans changed')).toBeNull()
+    expect(dropReasonTidy('  Plans   changed  ')).toBe('Plans changed')
+    expect(dropReasonTidy('x'.repeat(300)).length).toBe(DROP_REASON_MAX)
+    expect(dropPressLabel(false)).toBe('Say why first')
+    expect(dropPressLabel(true)).toBe('Close this task')
+  })
+  it('every ready-made reason is long enough to send', () => {
+    for (const r of DROP_REASONS) expect(dropRule(r)).toBeNull()
+  })
+  it('the sentence says what happens and who can put it back', () => {
+    expect(dropSentence('Imani')).toBe('It leaves your list. Imani is told and can put it back.')
+    expect(dropSentence(null)).toBe('It leaves your list. You can put it back from History.')
+    for (const s of [dropSentence('Imani'), dropSentence(null)]) expect(plainWordsFailures(s)).toEqual([])
+  })
+  it('a closed task reads when and why, with one full stop', () => {
+    expect(droppedLineWords('12:22 PM', 'Plans changed')).toBe('Closed 12:22 PM as no longer applying. Plans changed.')
+    expect(droppedLineWords('12:22 PM', 'Plans changed.')).toBe('Closed 12:22 PM as no longer applying. Plans changed.')
+    expect(droppedLineWords('12:22 PM', '')).toBe('Closed 12:22 PM as no longer applying.')
+  })
+  it('the giver\'s push says who closed what and why', () => {
+    expect(dropPush('Theo', 'Set a marker at every mile', ' Plans  changed ')).toEqual({ title: 'A task was closed', body: 'Theo closed "Set a marker at every mile" as no longer applying: Plans changed' })
+  })
+})
+
+describe('droppedReason', () => {
+  const ev = (event_type: string, created_at: string, body = '') => ({ id: `${event_type}-${created_at}`, instance_id: 'i', event_type, actor_user_id: 'u', body, created_at })
+  it('reads the reason of a task closed without being done', () => {
+    expect(droppedReason([ev('completed', '2026-11-16T12:00:00Z'), ev('dropped', '2026-11-16T12:00:00.1Z', 'Plans changed')])).toBe('Plans changed')
+  })
+  it('is nothing for a task that was done, and nothing once it is put back', () => {
+    expect(droppedReason([ev('completed', '2026-11-16T12:00:00Z')])).toBeNull()
+    expect(droppedReason([ev('completed', '2026-11-16T12:00:00Z'), ev('dropped', '2026-11-16T12:00:01Z', 'x'), ev('reopened', '2026-11-16T13:00:00Z')])).toBeNull()
+    expect(droppedReason([])).toBeNull()
+  })
+  it('a note after the close does not undo it', () => {
+    expect(droppedReason([ev('completed', '2026-11-16T12:00:00Z'), ev('dropped', '2026-11-16T12:00:01Z', 'A double'), ev('comment', '2026-11-16T12:05:00Z', 'ok')])).toBe('A double')
   })
 })

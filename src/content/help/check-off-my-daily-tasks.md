@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -182,6 +182,14 @@ Cannot do a one-time task today? Press **⋯ More** on the task, then **Not toda
 The task keeps its place in your list, with its notes and photos. Its row then reads the new due day and stops reading late. The person who gave you the task gets a message. A row that was moved says so, like *moved twice*.
 
 A task that repeats has no **Not today**. A missed day of a repeating task drops off by itself.
+
+## Close a task that no longer applies
+
+Some tasks stop mattering. The work got done another way, or the plans changed. Press **⋯ More** on the task, then **No longer applies**. Press a reason, or type your own. Then press {{button:blue|Close this task}}.
+
+The task leaves your list. Under **Done today** its line says it was closed, like *Closed 12:22 PM as no longer applying*, with your reason after it. The person who gave you the task gets a message. That person can put the task back. You can put it back yourself from **History**.
+
+A task that repeats cannot be closed this way. Neither can a roadmap task or a vehicle task. For those, say why in a note.
 
 ## Still open: older work that still needs doing
 
