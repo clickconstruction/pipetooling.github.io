@@ -2,7 +2,8 @@ import { useRef, useState, type CSSProperties } from 'react'
 import { shrinkPhoto } from '../../lib/materials/photoShrink'
 import { putJobFolderFile } from '../../lib/jobs/jobFolderAddFileIo'
 import { addFileTooBig } from '../../lib/jobs/jobFolderAddFile'
-import { LIEN_SERVICE_PROOF_WORDS, lienReceiptPhotoName, type LienReceiptPhotoOf } from '../../lib/jobs/lienServiceProof'
+import { LIEN_SERVICE_PROOF_WORDS, lienReceiptPhotoName, receiptReadWords, type LienReceiptPaper, type LienReceiptPhotoOf } from '../../lib/jobs/lienServiceProof'
+import { readTrackingFromPhoto } from '../../lib/jobs/lienReceiptReadIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 
@@ -13,6 +14,9 @@ import { useToastContext } from '../../contexts/ToastContext'
  * The shot is shrunk on the device, as a box photo is, and put in the job's Drive folder under Team only, Sent by us,
  * the moment it is taken, so a failure shows here and not after the record is saved. The link comes back through
  * `onSaved` and the form keeps it until its own press writes the record. A photo never holds that press.
+ *
+ * With `onRead` (a § 53.056 notice's sends, v2.7557) the press also reads the certified mail number off the photo's
+ * barcode and hands it to the form, and says under the press what it read or that it read none.
  */
 export function LienReceiptPhotoPress({
   jobId,
@@ -23,6 +27,9 @@ export function LienReceiptPhotoPress({
   onSaved,
   label,
   compact,
+  paper = 'affidavit',
+  onRead,
+  read = readTrackingFromPhoto,
   put = putJobFolderFile,
 }: {
   jobId: string
@@ -37,23 +44,36 @@ export function LienReceiptPhotoPress({
   label?: string
   /** The computer's record box draws small presses; the phone's sheet draws them 44 px tall. */
   compact?: boolean
+  /** Which paper the receipt is for, for the file's name. */
+  paper?: LienReceiptPaper
+  /** Read the number off the photo and hand it here; absent, the press only saves the photo. */
+  onRead?: (tracking: string) => void
+  read?: typeof readTrackingFromPhoto
   put?: typeof putJobFolderFile
 }) {
   const { showToast } = useToastContext()
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const [readSaid, setReadSaid] = useState('')
   const words = LIEN_SERVICE_PROOF_WORDS
 
   const take = async (file: File) => {
     setBusy(true)
+    setReadSaid('')
     try {
       const shot = await shrinkPhoto(file)
       // A shot the browser could not decode goes as it came, under its own extension.
       const ext = shot.shrunk ? 'jpg' : (file.name.split('.').pop() ?? 'jpg')
-      const named = new File([shot.blob], lienReceiptPhotoName(of, jobNumber, day, ext), { type: shot.shrunk ? 'image/jpeg' : file.type || 'application/octet-stream' })
+      const named = new File([shot.blob], lienReceiptPhotoName(of, jobNumber, day, ext, paper), { type: shot.shrunk ? 'image/jpeg' : file.type || 'application/octet-stream' })
       if (addFileTooBig(named.size)) throw new Error('That file is over 10 MB. Take the photo again, closer to the paper.')
       const added = await put(jobId, 'sent', named)
       onSaved(added.url)
+      // The number off the full-size shot, which keeps more of the barcode than the shrunk copy.
+      if (onRead) {
+        const tracking = await read(file)
+        if (tracking) onRead(tracking)
+        setReadSaid(receiptReadWords(tracking))
+      }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save the photo.'), 'error')
     } finally {
@@ -88,6 +108,11 @@ export function LienReceiptPhotoPress({
         <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: compact ? '0.75rem' : '0.8125rem', fontWeight: 600, color: 'var(--text-link)' }}>
           {words.saved} ›
         </a>
+      ) : null}
+      {readSaid && !busy ? (
+        <span role="status" data-lien-receipt-read style={{ flexBasis: '100%', fontSize: compact ? '0.72rem' : '0.8rem', color: 'var(--text-muted)' }}>
+          {readSaid}
+        </span>
       ) : null}
     </span>
   )
