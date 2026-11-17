@@ -7,7 +7,7 @@ import { LIEN_SHOW_EVERY_PILE } from '../../lib/jobs/lienDeskEmptyWords'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
-import { defaultSignoffAsk, signoffWords, type LegalSignoffState } from '../../lib/legal/legalAsks'
+import { signoffWords, type LegalSignoffState } from '../../lib/legal/legalAsks'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
 import { lienRulesJobFrom } from '../../lib/jobs/lienRulesDates'
@@ -43,12 +43,9 @@ import {
   setCustomerLienNoticePolicy,
   noteLienWindowMissed,
   submitLienDeskItem, tellLeaderOfLienApproval,
-  noteGcAuthorizedDirectPay,
   startLetterTwo,
   noteOwnerCall,
-  notePromiseOnNotice,
 } from '../../lib/jobs/lienDeskIo'
-import { addJobPaymentPromise } from '../../lib/jobs/paymentChaseIo'
 import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { lienFooter, type LienSignWay } from '../../lib/jobs/lienFooterMenu'
 import { LienFootMenu } from './LienFootMenu'
@@ -78,22 +75,18 @@ import { lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_RUN_NOW_TO_PRINT, lienRunActLabel } from '../../lib/jobs/lienRunWords'
 import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
-import { affidavitPileFor, ownerCallWords } from '../../lib/jobs/lienOwnerCall'
 import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import LienOwnerCallDialog from './LienOwnerCallDialog'
 import LienCourtesyWindow from './LienCourtesyWindow'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { COURTESY_BUTTON, COURTESY_FROM_DAY, COURTESY_RECORD_AGAIN_BUTTON, PROMISE_BUTTON, courtesyFooterSentence, courtesyMaySend, courtesyOutcomeWords, courtesyUnrecordedWords, type CourtesyFacts, type CourtesyPromise, type CourtesyRecord, type CourtesySent } from '../../lib/jobs/lienCourtesyNotice'
+import { COURTESY_BUTTON, COURTESY_RECORD_AGAIN_BUTTON, courtesyMaySend, courtesyOutcomeWords, courtesyUnrecordedWords, type CourtesyFacts, type CourtesyRecord, type CourtesySent } from '../../lib/jobs/lienCourtesyNotice'
 import { courtesyByJobFrom } from '../../lib/jobs/lienCourtesyDesk'
 import { loadCourtesyRecipients, sendCourtesyNotice, writeCourtesyRecord, type CourtesyRecipient } from '../../lib/jobs/lienCourtesyIo'
-import { payLinkDisplay } from '../../lib/billing/payLink'
 import type { LienDeskItemRow } from '../../lib/jobs/lienDesk'
 import { LienCallerDoor } from './LienCallerDoor'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
-import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
-import LienMailPieceDoors from './LienMailPieceDoors'
+import { filingMailTail, jobsWithMailPieces } from '../../lib/mail/lienMailPieces'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienDeskItem, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { runTakenBackOf, takeBackNoticeConfirm, takeBackNoticeDoneWords, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import { lienNoticeParted } from '../../lib/jobs/lienNoticeParted'
@@ -163,7 +156,10 @@ import { LienDeskRetainageList } from './LienDeskRetainageList'
 import { LIEN_HEAD_DOOR as headDoor, lienBtnStyle as btn } from './lienDeskButtonStyles'
 import { LienDeskGcPicker } from './LienDeskGcPicker'
 import { LienDeskPaperTabs, LienDeskViewTabs } from './LienDeskViewTabs'
+import { LienDeskSentFooter } from './LienDeskSentFooter'
 import { useLienDeskRunner } from './useLienDeskRunner'
+import { useLienSentFooterForms } from './useLienSentFooterForms'
+import { lienSentPacketFacts } from '../../lib/jobs/lienSentPacket'
 import { useLienDeskTitleBarFit } from './useLienDeskTitleBarFit'
 import { useLienDeskWindows } from './useLienDeskWindows'
 import { LienDeskWindows } from './LienDeskWindows'
@@ -448,9 +444,6 @@ export default function LienDesk({
   const [signWay, setSignWay] = useState<LienSignWay>('type')
   // The pen door on the draft footer (v2.7297): the draft just saved, so the pane has a row to bind the record to before the desk re-reads.
   const [penDraft, setPenDraft] = useState<{ id: string; fields: unknown } | null>(null)
-  /** Counsel's sign-off ask on a sent notice (#41 PR 3). */
-  const [signoffOpen, setSignoffOpen] = useState(false)
-  const [signoffText, setSignoffText] = useState('')
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
   // The leader's one-screen approve on a phone (v2.4881): the facts fold under Details; Not yet opens the hold reasons.
@@ -628,13 +621,9 @@ export default function LienDesk({
   const [retFooterEl, setRetFooterEl] = useState<HTMLDivElement | null>(null)
   // Letter two (v2.3760): the sent footer's two doors — the GC's written okay, and the second letter.
   const [letterTwoMenu, setLetterTwoMenu] = useState(false)
-  const [gcOkayOpen, setGcOkayOpen] = useState(false)
-  const [gcOkayNote, setGcOkayNote] = useState('')
-  // What they promised for the rest (punch list #274, PR 3): the footer's inline form while they are paying it down.
-  const [promiseOpen, setPromiseOpen] = useState(false)
-  const [promiseYmd, setPromiseYmd] = useState('')
-  const [promiseAmount, setPromiseAmount] = useState('')
-  const [promiseNote, setPromiseNote] = useState('')
+  // The sent footer's three inline forms (`useLienSentFooterForms`, v2.7591): the GC's okay, the ask to counsel, and what they promised for the rest.
+  const sentForms = useLienSentFooterForms()
+  const { setSignoffOpen, setSignoffText, setGcOkayOpen, setGcOkayNote, setPromiseOpen, setPromiseYmd, setPromiseAmount, setPromiseNote } = sentForms
   // The owner's call (v2.3767): the three questions, recorded on the first packet.
   const [ownerCallOpen, setOwnerCallOpen] = useState(false)
   // The courtesy notice (punch list #231): the window over the sent footer, with the facts it was opened on, and the addresses it finds.
@@ -3444,35 +3433,9 @@ export default function LienDesk({
     // The sent notice's facts (v2.3760), for any row whose job has one inside thirty days (v2.6624, punch list #248): the Sent
     // footer draws them all; a drafting row with new months due draws the courtesy's and the attorney's letter's doors.
     // Letter two (v2.3760): what has happened since the packet went out, and the two doors — the GC's written okay, or the second letter.
-    const lt = data?.letterTwoByJob[selected.jobId]
-    // The first packet's item carries the GC's okay and the owner's call; the entry's item may be a later letter two.
-    // The packet that went: letter two's first item, else the entry's sent notice — the Sent pile's `item`, or a drafting row's `sentItem` (v2.6624).
-    const first = (lt?.firstItemId ? data?.items.find((i) => i.id === lt.firstItemId) : null) ?? selected.sentItem ?? null
-    const call = data?.ownerCallByJob[selected.jobId] ?? null
-    // The courtesy notice (punch list #231): where it stands, the amount it names (what the enclosed bills still owe, else the notice's claim), and the facts the window sends with.
-    const courtesy = courtesyByJob[selected.jobId] ?? null
-    const courtesyDraft = first ? parseLienDeskDraftFields(first.fields) : null
-    const stillOwed = payPage.rows.reduce((s, r) => s + r.openAmount, 0)
-    const courtesyClaim = payPage.rows.length && stillOwed > 0 ? stillOwed : Math.max(0, Number(courtesyDraft?.notice.claimAmount ?? 0) || 0)
-    const courtesyFacts: CourtesyFacts | null =
-      first && courtesyDraft && courtesy?.lienDay
-        ? {
-            jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : '',
-            jobName: (job?.job_name ?? '').trim(),
-            propertyAddress: (job?.job_address ?? '').trim(),
-            county: (address?.county ?? '').trim(),
-            gcName: gc?.name || courtesyDraft.notice.originalContractorName,
-            claimantName: courtesyDraft.notice.claimantName,
-            claim: courtesyClaim,
-            monthsWords: describeNoticeMonths(first.months ?? []),
-            noticeSentOn: first.sent_at ? calendarYmdInAppTzFromIso(first.sent_at) : todayYmd,
-            lienDay: courtesy.lienDay,
-            payLinks: payPage.rows.filter((r) => r.payable && r.openAmount > 0).map((r) => ({ address: payLinkDisplay(r.invoiceId), amount: r.openAmount })),
-            contactPerson: courtesyDraft.notice.contactPerson,
-            phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(),
-            offer: lienOfferFromItem(first),
-          }
-        : null
+    // The sent notice's facts (v2.3760), for any row whose job has one inside thirty days (v2.6624, punch list #248): `lienSentPacketFacts` (v2.7591).
+    const sentFacts = lienSentPacketFacts({ data, jobId: selected.jobId, sentItem: selected.sentItem, entrySentFilingId: selected.item?.sent_filing_id, courtesyByJob, payRows: payPage.rows, job, address, gc, todayYmd, phone: () => (signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim()), openBalance })
+    const { lt, first, courtesy, courtesyDraft, courtesyFacts, jobBalance } = sentFacts
     const openCourtesy = () => {
       if (!first || !courtesyFacts || !courtesyDraft) return
       setCourtesyRecipients(null)
@@ -3483,11 +3446,6 @@ export default function LienDesk({
       })
     }
     // The recorded packet (v2.4119): a certified send with no number yet gets its "add the number" door here.
-    const sentFiling = (data?.filingsByJob[selected.jobId] ?? []).find((f) => f.id === (first?.sent_filing_id ?? selected.item?.sent_filing_id)) ?? null
-    const trackingOwed = sentFiling ? sendsTrackingOwed(sentFiling.sends) : []
-    // What the sent bills still owe (v2.7530): *GC paid*, the still-owed words and the two doors below read the bills, as the
-    // claim above them does. Until then they read the job's whole price less payments, and counted work never billed.
-    const jobBalance = Math.max(0, openBalance)
     // Counsel's sign-off (#41 PR 3, v2.3790): the memo's moment — an owner paying Click direct while the GC is silent needs
     // counsel's per-job okay. Read from the firm's matter through `legalSignoff`; no matter with the firm, no door.
     const signoff = legalSignoff?.stateFor(selected.jobId) ?? null
@@ -3975,104 +3933,8 @@ export default function LienDesk({
         </>
       )
     } else if (state === 'sent') {
-      const noteOkay = () => {
-        if (!first) return
-        void run('Note the GC’s okay', async () => noteGcAuthorizedDirectPay(first, { name: authName, note: gcOkayNote }), 'Noted — the attorney’s letter is off; the owner may pay us against a release.').then((ok) => {
-          if (ok) {
-            setGcOkayOpen(false)
-            setGcOkayNote('')
-          }
-        })
-      }
-      // Record what they promised (punch list #274, PR 3): the day goes on the job, as the Stages board's promise does, so every board reads one; the amount and their words stay on the notice.
-      const promiseDay = /^\d{4}-\d{2}-\d{2}$/.test(promiseYmd) ? promiseYmd : null
-      const promiseAmountN = promiseAmount.replace(/[$,\s]/g, '') === '' ? null : Number(promiseAmount.replace(/[$,\s]/g, ''))
-      const promiseAmountBad = promiseAmountN != null && (!Number.isFinite(promiseAmountN) || promiseAmountN <= 0)
-      const recordPromise = () => {
-        if (!first || promiseAmountBad) return
-        const record: CourtesyPromise = { at: new Date().toISOString(), by: authName, ymd: promiseDay, amount: promiseAmountN, note: promiseNote.trim() }
-        void run(
-          PROMISE_BUTTON,
-          async () => {
-            if (promiseDay) await addJobPaymentPromise({ jobId: selected.jobId, ymd: promiseDay, saidBy: null, channel: null, note: promiseNote.trim() || null })
-            await notePromiseOnNotice(first, record)
-          },
-          promiseDay ? `Recorded — the desk asks again ${formatYmdMonthDay(promiseDay)}.` : 'Recorded — the desk asks again a week after the payment.',
-        ).then((ok) => {
-          if (ok) {
-            setPromiseOpen(false)
-            setPromiseYmd('')
-            setPromiseAmount('')
-            setPromiseNote('')
-          }
-        })
-      }
       footer = (
-        <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-since-sent>
-            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(calendarYmdInAppTzFromIso(first.sent_at)) : ''}</strong> · in the job's Lien window</span>
-            {lt && lt.day != null ? <span>Day <strong style={{ color: 'var(--text-700)' }}>{lt.day}</strong></span> : null}
-            <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
-            <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(calendarYmdInAppTzFromIso(lt.gcAuthorized.at))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
-            {sentFiling && trackingOwed.length ? <LienTrackingOwedEditor filing={sentFiling} onSaved={onChanged} /> : null}
-            {sentFiling && (data?.mailPiecesByFiling?.[sentFiling.id]?.length ?? 0) > 0 ? (
-              <span data-lien-mail-status style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.3rem 0.8rem' }}>
-                {filingMailLines(data!.mailPiecesByFiling![sentFiling.id]!, formatYmdMonthDay).map((l) => (
-                  <span key={l.id}>Through Docsmit, {l.who.toLowerCase()}: <strong style={{ color: l.tone === 'green' ? 'var(--text-green-800)' : l.tone === 'red' ? 'var(--text-red-600)' : l.tone === 'amber' ? 'var(--text-amber-700, var(--text-amber-700))' : 'var(--text-700)' }}>{l.words}</strong>{l.tracking ? <span style={{ color: 'var(--text-muted)' }}> · {l.tracking}</span> : null}{l.cost ? <span style={{ color: 'var(--text-muted)' }}> · {l.cost}</span> : null}</span>
-                ))}
-                {filingMailCostWords(data!.mailPiecesByFiling![sentFiling.id]!) ? <span data-lien-mail-cost>{filingMailCostWords(data!.mailPiecesByFiling![sentFiling.id]!)}</span> : null}
-                {/* The doors (6b-3): under the lines, one set per envelope that came back, for the office. */}
-                {office ? mailPiecesNeedingYou(data!.mailPiecesByFiling![sentFiling.id]!).map((p) => (
-                  <LienMailPieceDoors key={p.id} piece={p} jobNumber={job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : null} onChanged={onChanged} />
-                )) : null}
-              </span>
-            ) : null}
-            {lt?.letterTwo ? <span>The attorney’s letter: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
-            {signoff ? <span data-lien-counsel-signoff style={signoff.state === 'signed_off' ? { color: 'var(--text-green-800)' } : signoff.state === 'declined' ? { color: 'var(--text-red-600)' } : undefined}>Counsel: <strong style={{ color: 'inherit' }}>{signoffLine || 'not asked'}</strong></span> : null}
-            <span data-lien-owner-called>Owner called: <strong style={{ color: 'var(--text-700)' }}>{call ? ownerCallWords(call, formatYmdMonthDay, formatUsdNoCents) : 'not yet'}</strong>{call && affidavitPileFor(call) ? <span style={{ ...chip('var(--bg-green-tint)', 'var(--text-green-800)'), marginLeft: 6 }}>Pile {affidavitPileFor(call)}</span> : null}</span>
-            {courtesy && courtesy.state !== 'none' ? <span data-lien-courtesy-state={courtesy.state}>Courtesy notice: <strong style={{ color: courtesy.state === 'held' ? 'var(--text-red-600)' : 'var(--text-700)' }}>{courtesy.state === 'due' ? (courtesy.lastSentAt ? courtesy.words : 'not yet') : courtesy.state === 'waiting' ? `from day ${COURTESY_FROM_DAY}` : courtesy.state === 'held' ? courtesy.reason : courtesy.words}</strong></span> : null}
-            {courtesy?.paying?.promise ? <span data-lien-promise>They promised: <strong style={{ color: 'var(--text-700)' }}>{[courtesy.paying.promise.amount ? formatUsdNoCents(courtesy.paying.promise.amount) : '', courtesy.paying.promise.ymd ? `by ${formatYmdMonthDay(courtesy.paying.promise.ymd)}` : '', courtesy.paying.promise.note ? `“${courtesy.paying.promise.note}”` : ''].filter(Boolean).join(' · ') || 'recorded'}{courtesy.paying.promise.by ? ` · ${courtesy.paying.promise.by}` : ''}</strong></span> : null}
-          </div>
-          {promiseOpen && courtesy?.state === 'paying' ? (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }} data-lien-promise-form>
-              <span>What they promised for the rest ({formatUsdNoCents(courtesy.paying?.stillOwed ?? jobBalance)} still owed):</span>
-              <input type="date" value={promiseYmd} onChange={(ev) => setPromiseYmd(ev.target.value)} aria-label="The day they promised" style={{ padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
-              <input value={promiseAmount} onChange={(ev) => setPromiseAmount(ev.target.value)} placeholder={formatUsdNoCents(courtesy.paying?.stillOwed ?? jobBalance)} aria-label="The amount they promised" inputMode="decimal" style={{ width: 110, padding: '4px 8px', border: `1px solid ${promiseAmountBad ? 'var(--text-red-600)' : 'var(--border-strong)'}`, borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
-              <input value={promiseNote} onChange={(ev) => setPromiseNote(ev.target.value)} placeholder="their words, who said it" aria-label="Their words" style={{ flex: '1 1 180px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
-              <button type="button" onClick={recordPromise} disabled={busy || promiseAmountBad || (!promiseDay && !promiseAmountN && !promiseNote.trim())} style={btn('green', busy || promiseAmountBad || (!promiseDay && !promiseAmountN && !promiseNote.trim()))} data-lien-promise-record>Record it ▸</button>
-              <button type="button" onClick={() => setPromiseOpen(false)} style={btn('plain')}>Cancel</button>
-              <span style={{ flexBasis: '100%', color: 'var(--text-muted)' }}>{promiseDay ? `The desk asks again ${formatYmdMonthDay(promiseDay)}. The Stages board reads the same day.` : `With no day the desk asks again ${courtesy.paying ? formatYmdMonthDay(courtesy.paying.until) : 'a week after the payment'}.`} The lien’s day does not move.</span>
-            </div>
-          ) : gcOkayOpen ? (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-              <span>The GC's written okay for the owner to pay us — where it is and when:</span>
-              <input value={gcOkayNote} onChange={(ev) => setGcOkayNote(ev.target.value)} placeholder="email from Harborline, Sep 15" aria-label="The GC's okay — where and when" style={{ flex: '1 1 200px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
-              <button type="button" onClick={noteOkay} disabled={busy || !gcOkayNote.trim()} style={btn('green', busy || !gcOkayNote.trim())} data-lien-gc-okay-record>Record it ▸</button>
-              <button type="button" onClick={() => setGcOkayOpen(false)} style={btn('plain')}>Cancel</button>
-            </div>
-          ) : signoffOpen ? (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }} data-lien-desk-signoff>
-              <span style={{ color: 'var(--text-muted)' }}>Ask counsel to sign off on {gc?.name ?? 'the GC'}'s job:</span>
-              <input value={signoffText} onChange={(ev) => setSignoffText(ev.target.value)} aria-label="The ask" style={{ flex: '1 1 260px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
-              <button type="button" disabled={busy || !signoffText.trim()} style={btn('primary', busy || !signoffText.trim())} onClick={() => void run('Ask counsel', async () => { const err = await legalSignoff!.ask(selected.jobId, signoffText.trim()); if (err) throw new Error(err) }, 'Asked — the firm sees it on their portal; their answer lands on your Needs You list.').then((ok) => { if (ok) setSignoffOpen(false) })}>Send to the firm</button>
-              <button type="button" onClick={() => setSignoffOpen(false)} style={btn('plain')}>Cancel</button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              <span>
-                {courtesy && (courtesy.state === 'due' || courtesy.state === 'sent' || courtesy.state === 'affidavit_week' || courtesy.state === 'paying') ? courtesyFooterSentence(courtesy, demandMoney(String(courtesyClaim))) : lt?.state === 'sent' ? 'The attorney’s letter went out. The next step is the affidavit, on its own date.' : lt?.state === 'gc_authorized' ? 'The GC said the owner may pay us — take the check against a release; no second letter.' : lt?.state === 'paid' || jobBalance <= 0.005 ? 'Paid — nothing more to send.' : lt && letterTwoIsDue(lt) ? `The attorney’s letter goes 10–14 days after the packet when the GC has neither paid nor authorized a direct payment — day ${lt.day}${lt.state === 'overdue' ? ', past the 14' : ''}. Same form, same two recipients, the GC copied by the same mail.` : `The attorney’s letter goes 10–14 days after the packet if the GC has neither paid nor authorized a direct payment${lt?.day != null ? ` — day ${lt.day} today` : ''}.`}
-              </span>
-              <span style={{ flex: 1 }} />
-              {office && first && signoff && signoff.state !== 'asked' && jobBalance > 0.005 ? <button type="button" onClick={() => { setSignoffText(defaultSignoffAsk({ gcName: gc?.name ?? '', amount: `$${Math.round(jobBalance).toLocaleString('en-US')}` })); setSignoffOpen(true) }} disabled={busy} style={btn('plain', busy)} data-lien-desk-ask-signoff title="The owner wants to pay Click direct while the GC is silent — counsel signs off per job before the office takes the check (counsel's memo)">Ask counsel to sign off…</button> : null}
-              {office && first ? <button type="button" onClick={() => setOwnerCallOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-owner-call-door>{call ? 'The owner called again…' : 'Record the owner’s call…'}</button> : null}
-              {office && first && courtesy?.state === 'paying' ? <button type="button" onClick={() => setPromiseOpen(true)} disabled={busy} style={btn(courtesy.paying?.promise ? 'plain' : 'amber', busy)} data-lien-promise-door title="They are paying it down. Record the day and the amount they gave for the rest; the desk asks again on that day. The day also reads on the Stages board.">{courtesy.paying?.promise ? 'They promised again…' : `${PROMISE_BUTTON}…`}</button> : null}
-              {office && first && !lt?.gcAuthorized && jobBalance > 0.005 && lt?.state !== 'sent' ? <button type="button" onClick={() => setGcOkayOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-gc-okay>The GC authorized direct pay…</button> : null}
-              {courtesyUnrecordedBand}
-              {courtesyDoor}
-              {letterTwoDoor}
-            </div>
-          )}
-        </>
+        <LienDeskSentFooter forms={sentForms} facts={sentFacts} signoff={signoff} signoffLine={signoffLine} legalSignoff={legalSignoff} data={data} jobId={selected.jobId} job={job} gc={gc} office={office} busy={busy} run={run} authName={authName} onChanged={onChanged} onOpenOwnerCall={() => setOwnerCallOpen(true)} doors={<>{courtesyUnrecordedBand}{courtesyDoor}{letterTwoDoor}</>} />
       )
     } else if (state === 'missed') {
       footer = (
