@@ -12,7 +12,10 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/job
 import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
+import { LienLastWorkDayWindow } from './LienLastWorkDayWindow'
 import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
+import { lienLastWorkDoorOffered } from '../../lib/jobs/lienLastWorkDoor'
+import { lienLastWorkAffidavitMonths } from '../../lib/jobs/lienLastWorkDayPreview'
 import { bringLienFooterUp } from './lienFooterFocus'
 import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import { useLienPaneHeads } from './useLienPaneHeads'
@@ -111,6 +114,7 @@ export default function LienDeskAffidavitPane({
   onShowNotices,
   onShowRetainage,
   onOpenLastWork,
+  onLastWorkChanged,
   footerEl,
   ownerCall = null,
   bond = 'unknown',
@@ -146,6 +150,8 @@ export default function LienDeskAffidavitPane({
   onShowRetainage?: (jobId: string) => void
   /** The stand-in month's second press (v2.7280): today's door, the last day of work set by hand, which moves every clock. Absent, the question keeps the words alone. */
   onOpenLastWork?: (jobId: string) => void
+  /** After the day is set from under the timeline's LAST WORK stop (v2.7684): the page re-reads the lien clocks and the desk. Absent, `onChanged`. */
+  onLastWorkChanged?: () => void
   /** The desk's footer strip — the pane portals its footer there, so the desk keeps one strip and never re-renders for it (v2.3753). */
   footerEl: HTMLElement | null
   /** The owner's answers on the sent notice (v2.3767) — counsel's pile comes from them. */
@@ -178,6 +184,8 @@ export default function LienDeskAffidavitPane({
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
   // A stop's paper (v2.4793): the timeline stop whose window is open; null when closed.
   const [stopOpen, setStopOpen] = useState<number | null>(null)
+  // The last day's window, opened from under the timeline's LAST WORK stop (v2.7684); the desk keys this pane by job, so it closes with the job.
+  const [lastWorkOpen, setLastWorkOpen] = useState(false)
   // Redraw on the short form (punch list #305): the press asks once before it takes the paper back to a draft.
   const [redrawOpen, setRedrawOpen] = useState(false)
   // The stand-in month's ask (v2.7280, punch list #358): who said the month is right, and when; open from Yes, August is right › and from Change ›.
@@ -650,7 +658,23 @@ export default function LienDeskAffidavitPane({
       {heads.head('path')}
       <div data-lien-pane-body="path">
       <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
-        <LienTimelineStrip timeline={timeline} switchOutside={!isMobile} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} onAct={onBandAct} act={bandAct} />
+        <LienTimelineStrip timeline={timeline} switchOutside={!isMobile} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} onChangeLastWork={lienLastWorkDoorOffered({ office, hasJob: Boolean(job) }) ? () => setLastWorkOpen(true) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} onAct={onBandAct} act={bandAct} />
+        {/* The press under LAST WORK (v2.7684): the window the notice pane's Change › line saves through, opened here on the job's day. */}
+        {lastWorkOpen && job ? (
+          <LienLastWorkDayWindow
+            jobId={entry.jobId}
+            job={job}
+            todayYmd={todayYmd}
+            userId={authUserId}
+            onSaved={onLastWorkChanged ?? onChanged}
+            onClose={() => setLastWorkOpen(false)}
+            jobLabel={label}
+            clockMonths={(workMonths?.months ?? []).map((m) => m.key)}
+            noticedMonths={namedMonthKeys}
+            affidavitMonths={lienLastWorkAffidavitMonths(entry)}
+            propertyKind={entry.propertyKind}
+          />
+        ) : null}
         {stopOpen != null ? (
           <LienStopPaperWindow
             steps={timeline.steps}
