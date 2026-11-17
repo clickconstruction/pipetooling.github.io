@@ -1377,6 +1377,8 @@ The paper preview, the owner's call, the courtesy notice, the call script and th
 Done in v2.7590 (step 7 of the twelve below): `run`, `busy` and `busyRef` are [`useLienDeskRunner.ts`](../src/components/jobs/useLienDeskRunner.ts), and the desk hands it the autosave timer's clear as `beforeRun`.
 Done in v2.7591 (steps 2 and 8 below): the sent packet's facts are `lienSentPacketFacts` in `lienSentPacket.ts`, the sent footer is [`LienDeskSentFooter.tsx`](../src/components/jobs/LienDeskSentFooter.tsx), and its three forms' state is [`useLienSentFooterForms.ts`](../src/components/jobs/useLienSentFooterForms.ts), called by the desk.
 The three doors a sent notice keeps stay in the desk, which is 4,394 lines.
+Done in v2.7593: the awaiting, ready, printed and held footers are [`LienDeskLeaderFooters.tsx`](../src/components/jobs/LienDeskLeaderFooters.tsx), reading the desk through one `LienNoticeFooterContext`.
+The approval paths and the signature ref stay in the desk, which is 4,133 lines.
 
 1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
 2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines;
