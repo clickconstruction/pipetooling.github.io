@@ -1,8 +1,8 @@
 ---
 name: "Bids: keep a mail's files as a set of plans on the bid, from the mail itself"
 number: 368
-group: ready
-status: asked, planned and drawn 2026-11-16; the owner said build it the same day · branch claude/bid-mail-set-card holds this card, the train follows
+group: close
+status: built 2026-11-16 as a train of four, the owner having said build it the same day · PR 1 the server leg (v2.7531), PR 2 the press (v2.7534), PR 3 the bid's and the site's doors (v2.7538), PR 4 the job's paper press on the mail's window (v2.7540)
 summary: >
   An addendum or a revised spec reaches a bid by mail. The mail can be tied to the bid, and since
   v2.7479 it reads on the site's History, but its files stay on the line in Messages while the
@@ -10,9 +10,10 @@ summary: >
   takes a job only, and it shows only in My email on a mail in your own box. The answer is one press
   on the mail itself, wherever the office reads it: it files the mail's files in the bid's own Drive
   folder under Plans and adds a set to the bid, which says it came from that mail.
-next: PR 1, the server leg (the column, the function, its rules and tests).
-size: L as a train of four (M · M · M · S)
-blocker: None. PR 1's migration and function are pushed and deployed before PR 2's press is of use.
+next: A person's look in the live app on a ZZ test bid with a mail that carries two files, by the five steps under How to verify. Then retire this card.
+size: L as a train of four (M · M · M · S); left: the live look (S)
+blocker: None.
+ver: v2.7531 · v2.7534 · v2.7538 · v2.7540
 ---
 
 # Keep a mail's files as a set on a bid (#368)
@@ -49,8 +50,12 @@ from the GUI. I never thought about that. But that's pretty important."
 A bid outside any development works the same as one inside. The fuller model (a kind, a source, a *goes with*
 link on a bid's set, or a part owned by a bid) waits until someone needs a spec told apart from a drawing on a bid.
 
-One column is added: `bid_plan_sets.source_message_id`, the mail a set came from. It is what lets a set say
-*from a mail* with a door back, and what lets the mail say *kept as Addendum 2* in place of offering the press twice.
+One column is added, and it sits on the file, not on the set: `message_attachments.bid_plan_set_id`, the set a
+mail's file was filed into. The function writes it as the service role once the file is in the folder. It is what
+lets a set say *from a mail* with a door back, and what lets the mail say *kept as Addendum 2* in place of
+offering the press twice. The first plan put the mark on the set (`bid_plan_sets.source_message_id`). That could
+not say that two of a mail's three files are kept, nor that a later mail added a sheet to a set an earlier mail
+made, so the mark moved to the file in PR 1.
 
 ## Is this the best we can do?
 
@@ -100,13 +105,13 @@ Exists:
 
 New:
 
-- Migration: `bid_plan_sets.source_message_id uuid REFERENCES messages(id) ON DELETE SET NULL`, with an index.
+- Migration: `message_attachments.bid_plan_set_id uuid REFERENCES bid_plan_sets(id) ON DELETE SET NULL`, with an index.
 - Edge function `bid-plan-set-files` over `_shared/bidPlanSetFilesRun.ts`:
   - `keep { bid_id, message_id, name, memo, plan_date }` checks the caller, the bid and the mail's tie, makes the
     folder, and inserts the row through the caller's own client, so the table's policies decide.
-  - `save_attachment { set_id, attachment_id }` files our copy of one file into the set's folder. The mail must be
-    tied to the set's bid.
-  - `into { set_id, message_id }` answers whether an existing set's folder can take files.
+  - `save_attachment { set_id, attachment_id }` files our copy of one file into the set's folder and marks the
+    file's row. The mail must be tied to the set's bid. It refuses in words a set whose folder cannot take files,
+    so no third ask was needed.
 - `src/lib/bids/bidMailSet.ts`: the draft from the mail, the press's counted words, what a kept mail says.
 - `BidMailSetDoor.tsx`, drawn by all four doors.
 
@@ -133,4 +138,10 @@ On a ZZ test bid with a mail tied to it that carries two files:
 
 ## Where it stands
 
-Planned and drawn 2026-11-16. Nothing is built.
+Built 2026-11-16, all four PRs. What was checked: each piece's tests, sweeps of some 600 test files around
+Messages, bids and the Development page, and a look at the press, its form, the result line and the kept mark with
+made-up rows at desktop and phone width.
+
+What was not: the function has not been watched filing into a real Drive folder from the app, and the History
+line's press, the list under Plan sets and the job's paper press on the mail's window were covered by render tests
+alone. The five steps above are that look.
