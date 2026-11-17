@@ -1601,7 +1601,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**; `DRIVE_JOBS_FOLDER_ID` (the root's fallback while the setting is empty). Helpers from `_shared/driveUpload.ts`, `_shared/driveLink.ts`, `_shared/driveJobFolder.ts`, `_shared/fileIndexKernel.ts`, `_shared/driveSettings.ts` and `_shared/bidFolder.ts` (`readBidForFolder`, `bidFolderNameFor`, `seeBidFolder`).
 
-**Doors**: none in the app until PR 2 of punch list #368 (the press on the mail's window in Messages and in My email).
+**Doors**: `src/lib/bids/bidMailSetIo.ts` (`keep`, `saveAttachment`) behind `BidMailSetDoor.tsx`, the press **Keep its files on the bid…**, drawn on the mail's window in Messages (`EmailViewerActions.tsx`), in My email (`MyMailReader.tsx`), in the Development page's History line window (`DevelopmentLineWindow.tsx`) and under Edit Bid → Plans → Plan sets → *+ From a mail on this bid* (`BidPlanSetsField.tsx`). Guide `keep-an-emails-files-as-plans-on-a-bid`.
 
 ### gc-plan-question-email
 
