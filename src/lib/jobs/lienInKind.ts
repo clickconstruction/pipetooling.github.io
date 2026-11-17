@@ -10,6 +10,8 @@
  * The trade-off, stated once: the law's lien days run whether or not a deal is honoured. Off the desk, nobody
  * is reminded of them. The job's own Lien window still opens, says so, and still drafts and holds every paper.
  *
+ * A job a person took off the lien path (v2.7521, `lienJobPath.ts`) leaves by the same door, `jobOffLienDesk`.
+ *
  * Every reader of the desk's jobs goes through here, so the views cannot disagree: the desk's read
  * (`useLienDeskData`), By job's book (`useLienTimelineBook`), By date and the Pipeline's marks
  * (`lienCalendarRows.ts`), Put a GC on notice (`useGcOnNoticeData`), the Dashboard's lien watch
@@ -18,6 +20,7 @@
  * `npm run gen:edge-kernels`). Pure.
  */
 import { jobIsScheduledInKind } from '../inKind/inKindLedger'
+import { LIEN_JOB_PATH_COLUMN, jobOffLienPath, type LienJobPathRow } from './lienJobPath'
 
 type InKindLinked = { in_kind_arrangement_id?: string | null }
 
@@ -33,24 +36,45 @@ export function lienInKindJobIds(jobs: ReadonlyArray<InKindLinked & { id: string
   return ids
 }
 
-/** The column the rule reads. A read of the desk's jobs names it through `withLienInKindColumn`, so no reader can forget it. */
+/** The column the in-kind rule reads. A read of the desk's jobs names it through `withLienOffDeskColumns`, so no reader can forget it. */
 export const LIEN_IN_KIND_COLUMN = 'in_kind_arrangement_id' as const
 
-/** A select list of `jobs_ledger` columns with the deal's link on the end. The list keeps its literal type, so the typed client still reads the row's shape from it. */
-export function withLienInKindColumn<C extends string>(columns: C): `${C}, ${typeof LIEN_IN_KIND_COLUMN}` {
-  return `${columns}, ${LIEN_IN_KIND_COLUMN}`
+/**
+ * A job the Lien desk leaves off by a mark of its own (v2.7521): an open in-kind deal pays it, or a person took it off
+ * the lien path for a reason (`lienJobPath.ts`, the owner's pick of 2026-11-16). Every reader of the desk's jobs asks
+ * this one question, so a job that is off one view is off them all.
+ */
+export type LienOffDeskMarks = InKindLinked & LienJobPathRow
+
+export function jobOffLienDesk(job: LienOffDeskMarks | null | undefined): boolean {
+  return jobOffLienDeskInKind(job) || jobOffLienPath(job)
+}
+
+/** The jobs the desk leaves off by a mark of their own, by id. */
+export function lienOffDeskJobIds(jobs: ReadonlyArray<LienOffDeskMarks & { id: string }>): Set<string> {
+  const ids = new Set<string>()
+  for (const j of jobs) if (jobOffLienDesk(j)) ids.add(j.id)
+  return ids
+}
+
+/**
+ * A select list of `jobs_ledger` columns with the two marks on the end: the deal's link and the job's own answer.
+ * The list keeps its literal type, so the typed client still reads the row's shape from it.
+ */
+export function withLienOffDeskColumns<C extends string>(columns: C): `${C}, ${typeof LIEN_IN_KIND_COLUMN}, ${typeof LIEN_JOB_PATH_COLUMN}` {
+  return `${columns}, ${LIEN_IN_KIND_COLUMN}, ${LIEN_JOB_PATH_COLUMN}`
 }
 
 /**
  * The jobs a desk read drops right after its jobs join, before any list is built: the ZZ test jobs when they
- * are hidden (the caller's set, null when shown) and every job an open in-kind deal pays. Null when there is
- * nothing to drop, so the read keeps its lists as they came.
+ * are hidden (the caller's set, null when shown), every job an open in-kind deal pays, and every job a person took
+ * off the lien path. Null when there is nothing to drop, so the read keeps its lists as they came.
  */
-export function lienJobIdsOffDesk(jobs: ReadonlyArray<InKindLinked & { id: string }>, zzJobIds: ReadonlySet<string> | null): Set<string> | null {
-  const inKind = lienInKindJobIds(jobs)
-  if (inKind.size === 0) return zzJobIds ? new Set(zzJobIds) : null
-  for (const id of zzJobIds ?? []) inKind.add(id)
-  return inKind
+export function lienJobIdsOffDesk(jobs: ReadonlyArray<LienOffDeskMarks & { id: string }>, zzJobIds: ReadonlySet<string> | null): Set<string> | null {
+  const off = lienOffDeskJobIds(jobs)
+  if (off.size === 0) return zzJobIds ? new Set(zzJobIds) : null
+  for (const id of zzJobIds ?? []) off.add(id)
+  return off
 }
 
 /** What the job's own Lien window says on a job the desk leaves off. The window stays whole under it. */

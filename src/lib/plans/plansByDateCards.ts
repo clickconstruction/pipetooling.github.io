@@ -11,6 +11,7 @@
  * Pure: `buildPlansByDateCards` reads the same rows `buildPlansByDate` read.
  */
 import { HISTORY_SOURCE, historyVerb } from '../developments/history'
+import { scheduleLengthWords, scheduleStanding } from '../bids/bidSchedule'
 import { isDrawingSet, kindLabel, sourceWords } from './planSets'
 import { agoWords, clip, crewRuns, dayOfYmd, dayWords, isOurs, isWon, jobsWords, plural, ymdOfDay, type PbdGlyph, type PlansByDateInput, type PlansByDateModel } from './plansByDate'
 
@@ -24,6 +25,7 @@ export type PbdCardAction =
   | { kind: 'open-job'; label: string; jobId: string }
   | { kind: 'read-line'; label: string; entryId: string }
   | { kind: 'keep'; label: string }
+  | { kind: 'set-schedule'; label: string; bidId: string }
 
 /** A line of a card; `to` is the card it leads to, null when it is only words. */
 export type PbdCardRow = { key: string; glyph: PbdGlyph; day: string; text: string; soft: string; to: string | null }
@@ -46,7 +48,7 @@ export type PbdCard = {
 }
 
 /** What this reader may do from a card. */
-export type PbdCaps = { canWritePlans: boolean; canOpenJobs: boolean; canKeep: boolean; canAsk: boolean }
+export type PbdCaps = { canWritePlans: boolean; canOpenJobs: boolean; canKeep: boolean; canAsk: boolean; /** May set a bid's schedule: whoever can edit a bid. Absent reads as no. */ canEditBids?: boolean }
 
 /** A card lists this many rows and counts the rest. */
 export const PBD_CARD_ROWS = 8
@@ -61,6 +63,8 @@ export const PBD_PRESS = {
   openJob: 'Open the job',
   readLine: 'Read the whole line',
   keep: 'Write a line',
+  setSchedule: 'Set the schedule',
+  changeSchedule: 'Change the schedule',
 } as const
 
 /** Why a job's number opens nothing for a reader with no job read. */
@@ -159,6 +163,35 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
     )
   }
 
+  const hasSchedule = (b: PlansByDateInput['bids'][number]) => dayOfYmd(input.toYmd(b.scheduleStart)) != null
+  const scheduleAction = (b: PlansByDateInput['bids'][number]): PbdCardAction[] => (caps.canEditBids ? [{ kind: 'set-schedule', label: hasSchedule(b) ? PBD_PRESS.changeSchedule : PBD_PRESS.setSchedule, bidId: b.id }] : [])
+
+  // A bid's schedule: the bar, its lane's name and its two lines of the list share one card.
+  for (const b of input.bids) {
+    const startYmd = input.toYmd(b.scheduleStart)
+    const startDay = dayOfYmd(startYmd)
+    if (!startYmd || startDay == null) continue
+    const endRaw = b.scheduleNoEnd ? null : input.toYmd(b.scheduleEnd)
+    const endDay = dayOfYmd(endRaw)
+    const endYmd = endRaw && endDay != null && endDay >= startDay ? endRaw : null
+    const standing = scheduleStanding({ start: startYmd, end: endYmd }, ymdOfDay(today))
+    const facts: PbdCard['facts'] = [
+      { label: 'Starts', value: dayWords(startYmd) },
+      { label: 'Ends', value: endYmd ? dayWords(endYmd) : 'no end date' },
+    ]
+    if (endYmd) facts.push({ label: 'Length', value: scheduleLengthWords(startYmd, endYmd) })
+    const c = card({
+      key: `sched-${b.id}`,
+      glyph: standing.over ? 'scheduleOver' : 'schedule',
+      title: `${b.label}’s schedule`,
+      kicker: standing.words,
+      facts,
+      actions: [...scheduleAction(b), { kind: 'open-bid', label: PBD_PRESS.openBid, bidId: b.id }],
+      quiet: 'A person typed these two dates on the bid. Nothing is counted from the day it was sent.',
+    })
+    for (const key of [`sched-${b.id}`, `schedover-${b.id}`, `schedstart-${b.id}`, `schedend-${b.id}`, `lane-sched-${b.id}`]) add({ ...c, key })
+  }
+
   for (const b of sent) {
     const plansYmd = input.toYmd(b.plansDated)
     const outcomeYmd = input.toYmd(b.outcomeAt)
@@ -176,7 +209,7 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
       facts,
       rowsTitle: since.length ? 'The sets since' : null,
       ...capRows([...since].reverse().flatMap((s) => rowTo(`set-${s.id}`))),
-      actions: [{ kind: 'open-bid', label: PBD_PRESS.openBid, bidId: b.id }],
+      actions: [{ kind: 'open-bid', label: PBD_PRESS.openBid, bidId: b.id }, ...scheduleAction(b)],
     })
     add(c)
     add({ ...c, key: `bidplans-${b.id}` })
@@ -252,6 +285,8 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
   for (const lane of model.lanes) {
     if (lane.kind === 'bids') {
       add(card({ key: 'lane-bids', title: 'Bids', kicker: [lane.sub, model.unsentBids.length ? `${model.unsentBids.length} with no sent day: ${jobsWords(model.unsentBids)}` : ''].filter(Boolean).join(' · '), rowsTitle: sent.length ? 'Each on the day it was sent' : null, ...capRows([...sent].reverse().flatMap((b) => rowTo(`bid-${b.id}`))) }))
+    } else if (lane.kind === 'schedule') {
+      continue
     } else if (lane.kind === 'part') {
       const p = partById.get(lane.key)
       if (!p) continue
@@ -286,6 +321,7 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
       rows = [...(crew?.spans ?? [])].reverse().flatMap((s) => rowTo(s.key))
       rowsTitle = rows.length ? 'Newest first' : null
     }
+    if (f.key === 'schedule' && f.bidId) rows = [...rowTo(`schedstart-${f.bidId}`), ...rowTo(`schedend-${f.bidId}`)]
     add(card({ key: `figure-${f.key}`, title: f.label, kicker: `${f.value} · ${f.sub}`, rowsTitle, ...capRows(rows), quiet: f.key === 'since' ? 'Our own as-builts are not counted. They were not issued to us.' : null }))
   }
 

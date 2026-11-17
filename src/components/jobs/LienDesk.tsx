@@ -93,9 +93,11 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailNeedsYouRows, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
 import LienMailPieceDoors from './LienMailPieceDoors'
-import { approveLienDeskItem, clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits, tellLeaderOfLienSignatures } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, redrawLienDeskItem, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits, tellLeaderOfLienSignatures } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitBatchToldWords, lienAffidavitTellPapers } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { runTakenBackOf, takeBackNoticeConfirm, takeBackNoticeDoneWords, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
+import { lienNoticeParted } from '../../lib/jobs/lienNoticeParted'
+import { canRedrawItem, fieldsRedrawn, lienNoticePartedBand, lienNoticeRedrawConfirm, lienNoticeRedrawnToast, lienNoticeRedrawnWords, lienNoticeSignFields, redrawnLine, redrawnOf } from '../../lib/jobs/lienNoticeRedraw'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
@@ -136,7 +138,7 @@ import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienReminderOutcome, lienReminderPlan, lienReminderWords } from '../../lib/jobs/lienLeaderReminder'
-import { lienNoticeToldWords, lienReminderAffidavitLabel, lienReminderSignatureLabel, lienReminderTally } from '../../lib/jobs/lienLeaderTold'
+import { lienNoticeToldWords, lienReminderAffidavitLabel, lienReminderSignatureLabel, lienReminderTally, lienReminderTextOf } from '../../lib/jobs/lienLeaderTold'
 import LienDoNowBar from './LienDoNowBar'
 import { useLienDoNowRoom } from './useLienDoNowRoom'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
@@ -183,6 +185,7 @@ import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidav
 import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LienRetainageUnrecorded } from './LienRetainageUnrecorded'
+import { retainageUnrecordedWhy, type RetainageUnrecordedRow } from '../../lib/ar/retainageSuggested'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
@@ -201,7 +204,7 @@ import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
 import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
-import LienNoticeByHandPane from './LienNoticeByHandPane'
+import LienNoticeAlreadyWent from './LienNoticeAlreadyWent'
 import LienPenSignaturePane from './LienPenSignaturePane'
 import { buildLienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
@@ -346,6 +349,9 @@ function jobNumberOf(j: LienDeskJob | undefined, jobId: string): string {
   if (!j) return jobId.slice(0, 8)
   return effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
 }
+
+/** One empty list for every render with no such job, so the list's effect stays put. */
+const NO_RETAINAGE_UNRECORDED: ReadonlyArray<RetainageUnrecordedRow> = []
 
 function jobLabel(j: LienDeskJob | undefined, jobId: string): string {
   if (!j) return jobId.slice(0, 8)
@@ -694,6 +700,8 @@ export default function LienDesk({
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
   // The address can name the retainage notice to open on (v2.7478), as it names an affidavit: `/lien-desk?tab=retainage&job=…`.
   const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(initialKind === 'retainage' ? (initialJobId ?? null) : null)
+  // The job a To do row opened *Looks held · not on the job* for: its row there is ringed.
+  const [retUnrecordedFocus, setRetUnrecordedFocus] = useState<string | null>(null)
   const [retFooterEl, setRetFooterEl] = useState<HTMLDivElement | null>(null)
   // Letter two (v2.3760): the sent footer's two doors — the GC's written okay, and the second letter.
   const [letterTwoMenu, setLetterTwoMenu] = useState(false)
@@ -926,6 +934,7 @@ export default function LienDesk({
       leaderName: (jobId) => leaderNameFor?.(data.jobsById[jobId]?.master_user_id ?? null)?.trim() || null,
       userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
       mailNeedsYou: mailNeedsYouRows(data.filingsByJob, data.mailPiecesByFiling ?? {}, formatYmdMonthDay),
+      retainageUnrecorded: (data.retainageUnrecorded ?? []).map((r) => ({ jobId: r.jobId, title: r.name ? r.label + ' · ' + r.name : r.label, why: retainageUnrecordedWhy(r) })),
       // The months the live notices name, by job (punch list #353, part 2): a To draft row with a notice on record names the owed month beside them.
       noticeMonthsByJob: Object.fromEntries(Object.entries(data.filingsByJob).map(([jobId, fs]) => [jobId, lienNoticeNamedMonths(fs)])),
       // v2.6734 (punch list #150): a leader's own rows are the jobs he is master of; another master's read as the office's.
@@ -956,6 +965,7 @@ export default function LienDesk({
             notices: data.queue.entries,
             affidavits: data.affidavits.entries,
             retainage: data.retainage.entries,
+            retainageUnrecorded: data.retainageUnrecorded?.length ?? 0,
             jobNumber: (jobId) => jobNumberOf(data.jobsById[jobId], jobId),
             jobName: (jobId) => (data.jobsById[jobId]?.job_name ?? '').trim(),
             gcName: (gcId) => data.gcsById[gcId]?.name ?? '',
@@ -1186,25 +1196,28 @@ export default function LienDesk({
     setReminding(true)
     let done = 0
     const failed: Array<{ label: string; reason: string }> = []
+    // Every call's answer, for the reminder's text (v2.7495): whether one went over the press, and when none did, why.
+    const answers: Array<Awaited<ReturnType<typeof tellLeaderOfLienSignatures>>> = []
+    const heard = <R extends (typeof answers)[number]>(r: R): R => (answers.push(r), r)
     try {
       // A reminder counts only when a message went (v2.7445): the function answers 200 when it sends nothing, and the tally reads why.
       for (const p of reminderPlan.notices) {
-        const t = lienReminderTally(await tellLeaderOfLienApproval(p.itemId, p.dueYmd, { remind: true }), 1)
+        const t = lienReminderTally(heard(await tellLeaderOfLienApproval(p.itemId, p.dueYmd, { remind: true })), 1)
         done += t.done
         if (t.reason) failed.push({ label: p.label, reason: t.reason })
       }
       if (reminderPlan.affidavits.length > 0) {
-        const t = lienReminderTally(await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })), { remind: true }), reminderPlan.affidavits.length)
+        const t = lienReminderTally(heard(await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })), { remind: true })), reminderPlan.affidavits.length)
         done += t.done
         if (t.reason) failed.push({ label: lienReminderAffidavitLabel(reminderPlan.affidavits.map((p) => p.label), t.missed), reason: t.reason })
       }
       // The notices to sign (v2.7491): one call and one message for the lot, counted by what the function told him of.
       if (reminderPlan.signatures.length > 0) {
-        const t = lienReminderTally(await tellLeaderOfLienSignatures(reminderPlan.signatures.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd }))), reminderPlan.signatures.length, 'signature')
+        const t = lienReminderTally(heard(await tellLeaderOfLienSignatures(reminderPlan.signatures.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })))), reminderPlan.signatures.length, 'signature')
         done += t.done
         if (t.reason) failed.push({ label: lienReminderSignatureLabel(reminderPlan.signatures.map((p) => p.label), t.missed), reason: t.reason })
       }
-      const said = lienReminderOutcome({ done, failed }, remindWho)
+      const said = lienReminderOutcome({ done, failed }, remindWho, lienReminderTextOf(answers))
       showToast(said.line, said.tone)
       if (done > 0) setReminded({ at: formatDenverTimeOnly(Date.now()), keys: waitingKeys })
     } finally {
@@ -1384,6 +1397,12 @@ export default function LienDesk({
       setKind('retainage')
       setRetPile(null)
       setRetSelectedJobId(t.jobId)
+    } else if (t.open === 'retainage_unrecorded') {
+      // Retainage nobody recorded: the Retainage list whole, with nothing typed in the find box, at this job's row above the piles.
+      setKind('retainage')
+      setRetPile(null)
+      setFind('')
+      setRetUnrecordedFocus(t.jobId)
     } else {
       // The pile narrows the list to the row's state; the selection effect keeps this pick.
       doorPickedJobId.current = t.jobId
@@ -1606,9 +1625,23 @@ export default function LienDesk({
   )
   // The stored draft wins when there is one (the leader approves those exact values); the office's typed wording layers on top.
   // The claim is re-read live (v2.3682): the balance and a hand-set correction are sources, and the paper follows its source.
+  // The date too, until the paper is signed (v2.7520): a notice not yet signed is dated the day it is read, so the form
+  // carries the day the leader signs it and never the day a draft was first made. A signed, printed or sent paper keeps its own.
+  const paperDateStands = useMemo(() => {
+    const it = selected?.item
+    if (!it || it.status === 'drafted') return false
+    if (it.status === 'sent' || it.status === 'missed' || (it as { printed_at?: string | null }).printed_at) return true
+    return lienChipSigned(signatureColumnsOf(it), lienFieldsHash(it.fields)) !== 'unsigned'
+  }, [selected?.item])
   const noticeFields = useMemo(
-    () => applyWordingEdits({ ...(storedDraft?.notice ?? jobDefaults), claimAmount: jobDefaults.claimAmount, ...(jobDefaults.claimSplit ? { claimSplit: jobDefaults.claimSplit } : { claimSplit: undefined }), ...(jobDefaults.retainageIncluded ? { retainageIncluded: jobDefaults.retainageIncluded } : { retainageIncluded: undefined }) }, wordingEdits),
-    [storedDraft, jobDefaults, wordingEdits],
+    () => applyWordingEdits({ ...(storedDraft?.notice ?? jobDefaults), ...(paperDateStands ? {} : { noticeDate: jobDefaults.noticeDate }), claimAmount: jobDefaults.claimAmount, ...(jobDefaults.claimSplit ? { claimSplit: jobDefaults.claimSplit } : { claimSplit: undefined }), ...(jobDefaults.retainageIncluded ? { retainageIncluded: jobDefaults.retainageIncluded } : { retainageIncluded: undefined }) }, wordingEdits),
+    [storedDraft, jobDefaults, wordingEdits, paperDateStands],
+  )
+  // The stored paper beside the bills (v2.7517's rule, read on the desk since v2.7520): past a draft, the row keeps the paper
+  // as it was sent for approval while this pane draws today's figures. When they differ the band over the paper says so.
+  const paneParted = useMemo(
+    () => (item && item.status !== 'drafted' && storedDraft ? lienNoticeParted(storedDraft.notice, jobDefaults, claimed.corrected ? 'hand' : 'bills') : null),
+    [item, storedDraft, jobDefaults, claimed.corrected],
   )
   const wordingDiff = useMemo(() => noticeWordingDiff(noticeFields, jobDefaults), [noticeFields, jobDefaults])
   const wordingTouched = Object.keys(wordingEdits).length > 0
@@ -1633,7 +1666,7 @@ export default function LienDesk({
           door === 'gc' ? 'Filled from the job · the GC — click to change it there'
           : door === 'company' ? 'Filled from Settings → Company — click to change it there'
           : door === 'claim' ? 'Set on the claim box above — click, and it opens there'
-          : g.key === 'noticeDate' ? 'The day it is drafted or sent — nothing to change'
+          : g.key === 'noticeDate' ? 'The day it is signed — nothing to change'
           : `Filled from ${g.source}`
         m[g.key] = { kind: 'derived', title, ...(door && (door !== 'company' || onOpenCompanySettings) ? { door } : {}), ring: ringField === g.key }
       }
@@ -2052,13 +2085,26 @@ export default function LienDesk({
       : await signLienDeskItem({ itemId, fields, signer: { userId: authUserId, printedName: signerName }, payload, onDevice: null, approve: approveToo })
     if (!r.ok) throw new Error(r.message)
   }
+  /**
+   * The paper a signing press signs (v2.7520): the one this pane shows, dated today. When the stored paper is not that
+   * (a bill changed since it was sent for approval, or it was drafted on an earlier day) the row is rewritten first, so
+   * the hash the signature binds is of the pages the leader read. A printed paper is signed as it printed.
+   */
+  const fieldsToSign = async (): Promise<unknown> => {
+    if (!item) return null
+    if (!canRedrawItem(item)) return item.fields
+    const fresh = lienNoticeSignFields(item.fields, noticeFields, paneParted, { at: new Date().toISOString(), by: authUserId, byName: authName })
+    if (lienFieldsHash(JSON.parse(JSON.stringify(fresh))) === lienFieldsHash(item.fields)) return item.fields
+    if (!(await redrawLienDeskItem(item.id, fresh))) throw new Error('This notice moved on since this screen read it. Nothing was signed. Open it again.')
+    return fresh
+  }
   const approve = () =>
     run(
       'Sign and approve',
       async () => {
         if (!item) return
         await setLienDeskItemOffer(item.id, offer)
-        await signItem(item.id, item.fields, true)
+        await signItem(item.id, await fieldsToSign(), true)
       },
       offer ? `Signed and approved with a ${offer.pct}% offer. ${LIEN_RUN_NOW_TO_PRINT}` : `Signed and approved. ${LIEN_RUN_NOW_TO_PRINT}`,
     )
@@ -2067,10 +2113,43 @@ export default function LienDesk({
       'Sign',
       async () => {
         if (!item) return
-        await signItem(item.id, item.fields, false)
+        await signItem(item.id, await fieldsToSign(), false)
       },
       `Signed. ${LIEN_RUN_NOW_TO_PRINT}`,
     )
+  // Redraw from the bills (v2.7520): the stored paper replaced by today's, dated today, the signature cleared. It asks first.
+  const redrawFromBills = async () => {
+    if (!item || !paneParted || !canRedrawItem(item)) return
+    const signed = paneSignature != null
+    const words = lienNoticeRedrawConfirm(paneParted, { signed, leaderName })
+    if (!(await confirmDialog({ title: words.title, message: words.message, confirmLabel: words.confirmLabel }))) return
+    await run(
+      'Redraw from the bills',
+      async () => {
+        const fresh = fieldsRedrawn(item.fields, { ...noticeFields, noticeDate: todayYmd }, redrawnLine(storedDraft?.notice, { at: new Date().toISOString(), by: authUserId, byName: authName }))
+        if (!(await redrawLienDeskItem(item.id, fresh))) throw new Error('This notice printed or moved on since this screen read it. Nothing was changed.')
+      },
+      lienNoticeRedrawnToast(signed, leaderName),
+    )
+  }
+  // The band over the paper (v2.7520): what parted with both figures, what happens next, and the press. A redrawn paper keeps a quiet line saying so.
+  const partedStanding = !item ? null : (item as { printed_at?: string | null }).printed_at ? ('printed' as const) : paneSignature != null ? ('signed' as const) : ('unsigned' as const)
+  const partedBand = paneParted && partedStanding ? lienNoticePartedBand(paneParted, partedStanding, leaderName) : null
+  const redrawnRecord = item && !paneParted ? redrawnOf(item.fields) : null
+  const partedBandNode = partedBand ? (
+    <div data-lien-desk-parted={partedStanding ?? undefined} role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', padding: '0.6rem 0.75rem', margin: '0 0 0.5rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
+      <span style={{ flex: '1 1 18rem' }}>
+        <strong>{partedBand.head}.</strong> {partedBand.words} {partedBand.next}
+      </span>
+      {(office || leader) && canRedrawItem(item) ? (
+        <button type="button" onClick={() => void redrawFromBills()} disabled={busy} style={btn('amber', busy)} data-lien-desk-redraw title="Replace the stored paper with today’s figures and date. A signature on it comes off and is asked for again">
+          Redraw from the bills ▸
+        </button>
+      ) : null}
+    </div>
+  ) : redrawnRecord ? (
+    <div data-lien-desk-redrawn style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{lienNoticeRedrawnWords(redrawnRecord, footShortDay)}</div>
+  ) : null
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
@@ -2352,7 +2431,7 @@ export default function LienDesk({
   const retVisibleAll = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key)))
   const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retVisibleAll.filter((e) => e.pile === p.key && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
   const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!oneColumn ? retVisible[0] : undefined) ?? null
-  const retCount = retEntries.filter((e) => e.pile !== 'sent').length
+  const retCount = retEntries.filter((e) => e.pile !== 'sent').length + (data?.retainageUnrecorded?.length ?? 0)
   const retReady = data?.retainage.counts.ready ?? 0
   /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
   const runCount = (counts?.ready ?? 0) + (counts?.printed ?? 0) + retReady
@@ -3532,6 +3611,7 @@ export default function LienDesk({
         `Page ${noticePageNumber} of ${pageTotal} · the notice`,
         { words: `· ${wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}`, amber: wordingDiff.length > 0 },
       )}
+      {partedBandNode}
       <div data-theme="light" data-lien-desk-paper ref={paperRef} onClick={onPaperClick} style={{ ...paperStyle, position: 'relative' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
         {editing ? (
@@ -3877,7 +3957,7 @@ export default function LienDesk({
   const retList = (
     <div ref={retHeads.listRef} onScroll={retHeads.onScroll} style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
       {pileStrip(retPileChips)}
-      {finding || retPile ? null : <LienRetainageUnrecorded office={office} onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')} onRecorded={onChanged} />}
+      {finding || retPile ? null : <LienRetainageUnrecorded rows={data?.retainageUnrecorded ?? NO_RETAINAGE_UNRECORDED} failure={data?.retainageUnrecordedFailure ?? null} office={office} focusJobId={retUnrecordedFocus} onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')} onRecorded={onChanged} />}
       {retVisible.length === 0 ? (
         !loading && data != null && (finding || retPile) ? (
           <div data-lien-retainage-empty={finding ? 'find' : retPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
@@ -3989,7 +4069,17 @@ export default function LienDesk({
     ) : null
   const byHandPane =
     selected && byHandOpen ? (
-      <LienNoticeByHandPane
+      <LienNoticeAlreadyWent
+        // v2.7508: when the property holds a notice on record, the door first asks which paper went and applies it to this job.
+        apply={{
+          gcCustomerId: job?.gc_customer_id ?? null,
+          jobNumber: effectiveJobLedgerNumber(job?.hcp_number, job?.click_number) || selected.jobId.slice(0, 8),
+          months: monthsList,
+          propertyKind: selected.propertyKind ?? '',
+          lastWorkYmd: job?.lien_last_work_on ?? null,
+          userName: authName,
+          item: selected.item && selected.item.status !== 'sent' && selected.item.status !== 'missed' ? { id: selected.item.id, fields: selected.item.fields, months: selected.item.months ?? [] } : null,
+        }}
         job={{
           id: selected.jobId,
           label: jobLabel(job, selected.jobId),

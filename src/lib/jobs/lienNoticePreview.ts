@@ -47,7 +47,7 @@ export const LIEN_NOTICE_FIELD_GUIDE: ReadonlyArray<LienNoticeFieldGuide> = [
   { key: 'projectDescription', label: 'Project description', kind: 'typed', source: 'the job name and address', door: null },
   { key: 'contractedWithIfDifferent', label: 'Party contracted with, if different from the GC', kind: 'typed', source: 'blank — we contracted with the GC directly', door: null },
   { key: 'contactPerson', label: 'Contact person (signs)', kind: 'typed', source: "the job's master, full name and title", door: null },
-  { key: 'noticeDate', label: 'Date', kind: 'derived', source: 'the day it is drafted or sent', door: null },
+  { key: 'noticeDate', label: 'Date', kind: 'derived', source: 'the day it is signed', door: null },
   { key: 'originalContractorName', label: 'Original contractor', kind: 'derived', source: 'the GC on the job', door: 'edit_job' },
   { key: 'claimAmount', label: 'Claim amount', kind: 'derived', source: 'open on the job', door: 'bill' },
   { key: 'claimantName', label: "Claimant's name", kind: 'derived', source: 'Settings → Company', door: 'company' },

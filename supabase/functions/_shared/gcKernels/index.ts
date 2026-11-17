@@ -231,6 +231,7 @@
 //   src/lib/jobs/lienDeskAffidavits.ts
 //   src/lib/jobs/lienFilingDocumentLink.ts
 //   src/lib/jobs/lienInKind.ts
+//   src/lib/jobs/lienJobPath.ts
 //   src/lib/jobs/lienLastWorkDay.ts
 //   src/lib/jobs/lienLastWorkDayPreview.ts
 //   src/lib/jobs/lienMonthCheck.ts

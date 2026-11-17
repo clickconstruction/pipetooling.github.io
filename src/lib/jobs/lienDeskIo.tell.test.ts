@@ -95,3 +95,15 @@ describe('reminding the leader of notices that wait on his signature (v2.7491)',
     expect(await tellLeaderOfLienSignatures([{ itemId: 's1', dueYmd: null }])).toEqual({ ok: false, reason: 'Missing item_id' })
   })
 })
+
+describe('the reminder’s text (v2.7495)', () => {
+  it('the text’s two answers ride when the function gives them, and are absent when it does not', async () => {
+    net.answer = { data: { success: true, push_sent: 1, email_sent: false, held: 0, text_sent: 0, text_said: 'Send texts is off in Settings', leader_name: 'Malachi Whites' }, error: null }
+    expect(await tellLeaderOfLienApproval('it1', null, { remind: true })).toEqual({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites', held: 0, said: null, told: null, textSent: 0, textSaid: 'Send texts is off in Settings' } })
+    net.answer = { data: { success: true, push_sent: 0, email_sent: false, held: 0, text_sent: 1, text_said: null, told: 2, leader_name: 'Malachi Whites' }, error: null }
+    expect(await tellLeaderOfLienSignatures([{ itemId: 's1', dueYmd: null }])).toMatchObject({ ok: true, told: { textSent: 1, textSaid: null, told: 2 } })
+    net.answer = { data: { success: true, push_sent: 1, email_sent: false, held: 0, leader_name: 'Malachi Whites' }, error: null }
+    const before = await tellLeaderOfLienApproval('it1', null)
+    expect(before.ok && 'textSent' in before.told).toBe(false)
+  })
+})
