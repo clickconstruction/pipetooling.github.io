@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MANAGE_ROW_MENU_Z, ManageRowMenu, type ManageRowMenuLine } from './ManageRowMenu'
+import { findBlockingOverlays } from '../../lib/blockingOverlay'
 
 const realInnerHeight = window.innerHeight
 const realInnerWidth = window.innerWidth
@@ -103,6 +104,18 @@ describe('ManageRowMenu', () => {
       window.dispatchEvent(new Event('resize'))
     })
     expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('does not freeze the page: the scroll lock would move a scrolled page, and that scroll shut the menu at once', () => {
+    render(<Row lines={lines} />)
+    fireEvent.click(placePress(200))
+    const backdrop = screen.getByTestId('manage-row-menu-backdrop')
+    // jsdom lays nothing out, so the backdrop is given the whole screen by hand, as `inset: 0` gives it
+    backdrop.getBoundingClientRect = () => ({ top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth, width: window.innerWidth, height: window.innerHeight, x: 0, y: 0, toJSON: () => ({}) })
+    expect(findBlockingOverlays(document, window)).toEqual([])
+    // the same layer without its opt-out is what the lock froze the page for
+    backdrop.removeAttribute('data-page-scroll')
+    expect(findBlockingOverlays(document, window)).toEqual([backdrop])
   })
 
   it('draws a roadmap task one line, Open in Roadmap', () => {
