@@ -67,6 +67,8 @@ function fixture() {
     legal_theme_marks: [
       { person_id: PERSON, theme_id: 't1', proposed: false, removed_at: null },
       { person_id: PERSON, theme_id: 't1', proposed: true, removed_at: null },
+      // v2.7651: proposed by the agent and kept by a dev: a kept mark, not one still waiting.
+      { person_id: PERSON, theme_id: 't1', proposed: true, kept_at: '2026-11-02T00:00:00Z', removed_at: null },
       { person_id: PERSON, theme_id: 't2', proposed: true, removed_at: '2026-11-01T00:00:00Z' },
     ],
     legal_themes: [{ id: 't1', name: 'Dishonesty', retired_at: null }, { id: 't2', name: 'Interference', retired_at: null }],
@@ -104,7 +106,7 @@ describe('get_case_brief (the seat reads a case the way an agent reads a folder,
     expect(out.matter).toMatchObject({ id: MATTER, stage: 'review', events: 1, narrative: { sections: [{ heading: 'The parties', line: 1 }, { heading: 'The claim', line: 5 }] } })
     expect(out.matter?.steps).toEqual([{ id: 'm2', on: '2026-11-03', body: 'Send the notice.', done: true }, { id: 'm1', on: '2026-11-10', body: 'Pull the subcontract.', done: false }])
     expect(out.matter?.documents).toEqual([{ id: 'md1', title: 'Scenario map', state: 'final', dated_on: '2026-10-14', text: true }])
-    expect(out.themes).toEqual([{ id: 't1', name: 'Dishonesty', marked: 1, proposed: 1 }])
+    expect(out.themes).toEqual([{ id: 't1', name: 'Dishonesty', marked: 2, proposed: 1 }])
     expect(out.developments).toEqual([{ id: 'dv1', name: 'Quail Ridge', jobs: [{ id: 'j1', name: 'Lodge rough-in' }, { id: 'j2', name: 'Clubhouse' }], headlines: [{ at: '2026-10-07T10:00:00Z', first_line: 'Lift stations in.' }, { at: '2026-09-20T10:00:00Z', first_line: 'The funeral weekend.' }] }])
     expect(r.asked).toContain('rpc:dev_history_read')
     expect(out.read_next).toContain('plan_person_doc')
@@ -135,7 +137,7 @@ describe('get_case_brief (the seat reads a case the way an agent reads a folder,
     ])
     expect(SERVER).toContain("name: 'get_case_brief'")
     expect(SERVER).toContain("case 'get_case_brief': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.96.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
     expect(README).toContain('`get_case_brief(person)`')
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.hr_doc_heading_index(md text)')

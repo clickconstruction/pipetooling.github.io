@@ -5,7 +5,7 @@ file: docs/HR_FILES.md
 type: Feature reference + agent writing convention
 purpose: The dev-only per-person HR files system — schema, access model, the People → HR tab, and (most importantly) the convention any agent or dev follows when writing to it.
 audience: Developers, AI Agents
-last_updated: 2026-11-13
+last_updated: 2026-11-17
 ---
 
 ## What this is
@@ -34,6 +34,10 @@ Shipped in the v2.2220–v2.2221 train: migration `20260824025109_person_hr_file
 - **RLS does not bind the agent**: an agent on service-role/MCP credentials bypasses RLS. The policies protect the app surface; the convention below is the agent-side guardrail. That asymmetry is by design — the agent is at dev trust level.
 - **Counsel-only** (v2.6554, migration `20261106020000`): `person_file_evidence.counsel_only`, set on insert from the Add evidence tick (or `counsel_only` on the seat's `plan_person_evidence`). What it binds: the Drive filer skips the record, so the bucket copy is the only copy in the app; the HR agent's key (`hr_agent`) cannot read the record's files; the dev seat, which sends `X-Dev-Seat` on every call, was refused the record and its files by restrictive policies and told the count (`person_counsel_only_count`) instead, until v2.6986: on the owner's word of 2026-11-11 ("for now") those policies also ask `counsel_only_held_from_seat()`, which answers false, so the seat reads the record marked counsel-only, and one migration that makes the switch answer true puts the fence back (`20261112090000`). **The limit, said plainly:** the seat identifies itself by a header. A dev signed in as themself on People → HR reads the record, and so would any client that runs the seat's code without the header. The flag binds the HR agent's key and Drive (and bound the seat until v2.6986); it is **not a second password**. Material that must not reach a dev at all stays with counsel. Since v2.6720 (punch list #288) a **matter document** carries the same mark (`legal_matter_documents.counsel_only`, the Evidence tab's tick): the firm reads it on its portal with a lock, the printed packet leaves it out, the seat reads the row and its words since v2.6986 through the same switch (refused them and told the count, `matter_counsel_only_count`, before) — so the one document written for counsel alone lives on the matter, where the attorney reads it, instead of here.
 - Read-only training mode users are blocked by the standard restrictive blocks (both applied in the migration).
+
+## Reading a file
+
+An agent that opens an HR file calls the dev seat's `get_case_brief` first ([`dev-mcp/README.md`](./dev-mcp/README.md)). Since v2.7651 its reply opens with `reading`, the rules for an HR file and the receipt that shows what was read, and `manifest`, every part of the file with its whole count and the call that opens it. A large file is never whole in one reply, so the manifest's counts are what a read is checked against. The rules and the parts are one kernel, `supabase/functions/_shared/devMcpPersonManifest.ts`, and are stated nowhere else: change them there, in the PR that changes an HR verb. A file's own rules and map stay in its *Agent notes* document, and the manifest says how many entries were written after those notes last changed.
 
 ## The writing convention (the load-bearing part)
 

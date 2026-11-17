@@ -448,6 +448,8 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const whole = {
     person: { id: person.id, name: person.name, kind: person.kind, start_date: person.start_date, end_date: person.end_date, archived_at: person.archived_at, user_id: userId, login: Boolean(userId) },
     read_as: { role: who.role, today: who.todayYmd },
+    // v2.7651: this reply is the Timeline, and a long file shortens it. The brief's manifest counts every part of the file whole.
+    read_first: 'get_case_brief { person } answers the manifest (every part of this file with its whole count and the call that opens it) and the reading rules. On a large file this reply is shortened: shortened says of what, and the manifest by how much.',
     // v2.6935: null when the reply is whole; else why it was shortened and each block with what it kept and the call that reads the rest.
     shortened: (filter.brief ? { why: filter.lineChars === PERSON_FILE_LINE_CHARS ? 'You asked for brief.' : `You asked for brief, ${filter.lineChars} characters a line.`, blocks: asked } : null) as Shortened | null,
     // The day to pass as until to read the lines this reply left out; null when every line asked for is here.
@@ -465,6 +467,27 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     hours_statements_note: 'The person\'s hours statements (hours_statements, punch list #212), newest first, each with its standing: draft · printed, not signed back · sent for signature · signed back. A signed one names its signed copy (signed_copy_id, a person_contract_documents row, also in signed_papers) and its door opens that record, where the signed PDF opens; an unsigned one\'s door opens the file in Drive when the office put it there, else the job window, whose Documents tab holds the sheet. A printed statement is not a signature.',
     // total and the two breakdowns count the whole file; shown counts the lines in this reply.
     counts: { ...countPersonTimeline(all), shown: lines.length },
+    // v2.7651: the files on the file and the rows behind the Timeline's other sources, counted whole — never shortened,
+    // since the lists below are cut on a long file. get_case_brief's manifest reads this (devMcpPersonManifest.ts).
+    tally: {
+      files: {
+        count: attachments.length,
+        staged: attachments.filter((a) => !!a.storage_path).length,
+        linked: attachments.filter((a) => !a.storage_path && !!a.drive_url).length,
+        before_records: attachments.filter((a) => !a.evidence_id).length,
+        bytes: attachments.reduce((n, a) => n + (a.size_bytes ?? 0), 0),
+      },
+      rows: {
+        papers: contracts.size,
+        papers_signed: [...contracts.values()].filter((c) => c.status === 'signed').length,
+        hours_statements: statementRowsRaw.length,
+        licenses: licenses.length,
+        write_ups: writeupRows.length,
+        attendance: ncns.length + excuseRows.length,
+        field_reports: reports.length,
+        field_reports_waiting: reports.filter((r) => r.status === 'pending').length,
+      },
+    },
     lanes: PERSON_TIMELINE_LANES,
     sources: PERSON_TIMELINE_SOURCES,
     held: heldOnce,
