@@ -11,6 +11,11 @@
  * them, and the name a new run opens on. A job whose boxes did not load says so, and the foot points at Print labels
  * and Scan a label. The words are `lib/materials/reserveStickersJobs.ts`, the reads `reserveStickersIo.ts`, the
  * shared pieces `WhichJobParts.tsx`.
+ *
+ * Since v2.7523 (the owner, 2026-11-16: *I can see stickers that were reserved, but I don't see any tools to print
+ * them*) the reserved line carries the press that prints them, one for each run that holds some
+ * (`ReservedPrintPresses.tsx`): it opens the stickers window on that run, which mints nothing. The line before
+ * **Print future stickers** then says that press reserves new ones.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -27,11 +32,13 @@ import { ptouchReadyLine, ptouchTapeFits } from '../../lib/materials/ptouchRaste
 import { connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
 import { fetchSitesOfJobs, fetchStickerRunsOfJobs } from '../../lib/materials/reserveStickersIo'
 import { RESERVE_ALREADY_IN, RESERVE_OPEN_JOB_LABEL, RESERVE_WHICH_JOB, boxCountAside, findStickerJobs, nextNameWords, runsSoFarWords, stickerJobsInOrder, type StickerJobsInput } from '../../lib/materials/reserveStickersJobs'
+import { reservedRunToPrint } from '../../lib/materials/reservedPrint'
 import { STICKER_PREVIEW_CODE_WORDS, previewStrip } from '../../lib/materials/stickerPreview'
 import { PRINT_STICKERS_LABEL, STICKERS_GUIDE, STICKERS_GUIDE_HEADING, STICKERS_GUIDE_QUESTION, stickerReserveWords } from '../../lib/materials/stickerRun'
 import { isTapeWidth, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
-import PrintStickersModal from './PrintStickersModal'
+import PrintStickersModal, { type StickerRunToPrint } from './PrintStickersModal'
+import ReservedPrintPresses from './ReservedPrintPresses'
 import { PRINT_LABELS_WINDOW_WIDTH } from './PrintLabelsWindow'
 import { NoUsbNote, TapeStripSample, WJ_ONE_COLUMN, WhichJobHead, useQuietPtouch, wjAmberBox, wjBtn, wjBtnPrimary, wjCard, wjCardFirst, wjMuted, wjQuietLink } from './WhichJobParts'
 
@@ -63,6 +70,8 @@ const dayWords = (iso: string) => formatWorkDateYmdMonthDayShort(calendarYmdInAp
 
 export default function PrintStickersWindow({ jobs, role, loading, failure, onAddFirst, onClose, onLabels, onScan, onOpenJob, onReadAgain, reads }: Props) {
   const [picked, setPicked] = useState<string | null>(null)
+  /** The run a reserved line's press picked with its job (v2.7523): the stickers window opens on it and mints nothing. */
+  const [pickedRun, setPickedRun] = useState<StickerRunToPrint | null>(null)
   const [prefWidth] = useState<TapeWidthMm>(() => readTapeWidth())
   const [query, setQuery] = useState('')
   const usbHere = useMemo(() => reads?.usbHere ?? ptouchUsbAvailable(), [reads?.usbHere])
@@ -92,10 +101,11 @@ export default function PrintStickersWindow({ jobs, role, loading, failure, onAd
 
   // The printer's own line, where the browser already has leave to use it: a wrong tape is seen before a job is picked.
   const { link, held, letGo } = useQuietPtouch(asking && usbHere, reads?.connect ?? connectPtouch)
-  const open = (id: string) => {
+  const open = (id: string, run: StickerRunToPrint | null = null) => {
     // The stickers window opens its own link to the printer, so this one is let go first.
-    if (!held()) { setPicked(id); return }
-    void letGo().then(() => setPicked(id))
+    const pick = () => { setPickedRun(run); setPicked(id) }
+    if (!held()) { pick(); return }
+    void letGo().then(pick)
   }
   const width: TapeWidthMm = link && isTapeWidth(link.status.tapeMm) ? link.status.tapeMm : prefWidth
 
@@ -103,7 +113,7 @@ export default function PrintStickersWindow({ jobs, role, loading, failure, onAd
   const shown = findStickerJobs(facts, query)
 
   if (job) {
-    return <PrintStickersModal jobId={job.jobId} jobLabel={job.label} role={role} onClose={onClose} />
+    return <PrintStickersModal jobId={job.jobId} jobLabel={job.label} role={role} run={pickedRun} onClose={onClose} />
   }
 
   /** The band's sticker: the name the first job's next run opens on, or a sticker with no name until that is read. */
@@ -150,7 +160,7 @@ export default function PrintStickersWindow({ jobs, role, loading, failure, onAd
             {shown.length === 0 ? <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query }), { onPress: () => setQuery('') })} /> : null}
             <div style={{ display: 'grid', gridTemplateColumns: WJ_ONE_COLUMN, gap: '0.6rem' }}>
               {shown.map((f) => {
-                const next = nextNameWords(f.nextName)
+                const next = nextNameWords(f.nextName, f.toPrint.length > 0)
                 const toJob = f.reserved.count > 0 && onOpenJob ? onOpenJob : null
                 return (
                   <div key={f.jobId} style={{ ...wjCard, ...(f.reserved.count > 0 ? wjCardFirst : {}) }} data-testid="print-stickers-card">
@@ -169,7 +179,13 @@ export default function PrintStickersWindow({ jobs, role, loading, failure, onAd
                       </div>
                     ) : null}
                     {f.soFar ? <div style={{ fontSize: '0.8rem', color: 'var(--text-700)' }} data-testid="print-stickers-job-runs">{runsSoFarWords(f.soFar)}</div> : null}
-                    {f.reservedWords ? <div role="note" style={{ ...wjAmberBox, borderRadius: 8, padding: '0.35rem 0.6rem', fontSize: '0.82rem', fontWeight: 600 }} data-testid="print-stickers-job-reserved">{f.reservedWords}</div> : null}
+                    {f.reservedWords ? (
+                      <div style={{ ...wjAmberBox, borderRadius: 8, padding: '0.35rem 0.6rem', fontSize: '0.82rem', fontWeight: 600, display: 'grid', gridTemplateColumns: WJ_ONE_COLUMN, gap: '0.4rem' }}>
+                        <div role="note" data-testid="print-stickers-job-reserved">{f.reservedWords}</div>
+                        {/* The press that prints them, right where they are named (v2.7523): the same stickers and links, nothing minted. */}
+                        <ReservedPrintPresses runs={f.toPrint} role={role} onPrint={(r) => open(f.jobId, reservedRunToPrint(r))} tid="print-stickers-reserved" pressStyle={{ ...wjBtn, whiteSpace: 'normal', padding: '0.3rem 0.75rem' }} noteStyle={{ color: 'var(--text-amber-800)' }} />
+                      </div>
+                    ) : null}
                     {next ? <div style={wjMuted} data-testid="print-stickers-job-next">{next}</div> : null}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                       <button type="button" style={toJob ? wjBtnPrimary : wjBtn} onClick={() => open(f.jobId)} data-testid="print-stickers-door-reserve">{PRINT_STICKERS_LABEL}<span aria-hidden>›</span></button>

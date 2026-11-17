@@ -1,3 +1,5 @@
+import { BidScheduleFields } from './BidScheduleSheet'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { ChangeEvent, CSSProperties, Dispatch, FocusEvent, FormEvent, SetStateAction } from 'react'
 import { LOSS_UNCATEGORIZED_NUDGE, suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
@@ -196,6 +198,8 @@ export function BidFormModal(props: BidFormModalProps) {
   const [serviceTypeSwitchOpen, setServiceTypeSwitchOpen] = useState(false)
   const [duplicatingToServiceTypeId, setDuplicatingToServiceTypeId] = useState<string | null>(null)
   const [dueTimeOpen, setDueTimeOpen] = useState(false)
+  // The Schedule row says what is missing only once the person has touched it.
+  const [scheduleTouched, setScheduleTouched] = useState(false)
   // While the Log-contact inline editor is open, a form Save would silently discard
   // the half-entered contact — gate both Save buttons on it.
   const [loggingContact, setLoggingContact] = useState(false)
@@ -367,6 +371,7 @@ export function BidFormModal(props: BidFormModalProps) {
     bidDueTime,
     estimatedJobStartDate,
     designDrawingPlanDate,
+    schedule,
     submittedTo,
     outcome,
     lossReason,
@@ -405,6 +410,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setBidDueTime,
     setEstimatedJobStartDate,
     setDesignDrawingPlanDate,
+    setSchedule,
     setSubmittedTo,
     setOutcome,
     setLossReason,
@@ -989,6 +995,22 @@ export function BidFormModal(props: BidFormModalProps) {
                       <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     )}
                   </div>
+                </div>
+                {/* The promised schedule (punch list #367): a start and an end a person types. The Development page's By date view draws it. */}
+                <div style={{ marginTop: '0.9rem', maxWidth: 520 }} data-testid="bid-form-schedule">
+                  <div style={{ marginBottom: '0.5rem', fontWeight: 500 }}>
+                    Schedule <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.85em' }}>the promised start and end; leave Start empty when the bid promises none</span>
+                  </div>
+                  <BidScheduleFields
+                    draft={schedule}
+                    onChange={(next) => {
+                      setScheduleTouched(true)
+                      setSchedule(next)
+                    }}
+                    today={todayYmdInAppTz()}
+                    showProblem={scheduleTouched}
+                    idPrefix="bid-form-schedule"
+                  />
                 </div>
                 <div style={{ marginTop: '0.9rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <div>

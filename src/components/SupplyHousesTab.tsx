@@ -98,10 +98,18 @@ import { isSupplyCredit } from '../lib/supplyHouseDocument'
 import { billDateWords, dueGroupKey } from '../lib/materials/supplyBillGroups'
 import { billMoveTrace, removedLately } from '../lib/materials/payments/supplyPaymentMove'
 import { interestByHouse, interestTitle } from '../lib/materials/payments/supplyInterest'
+import { supabaseSupplyFinishIo } from '../lib/materials/payments/supplyPaymentsFinishIo'
+import { SupplyPaymentsToFinish } from './materials/SupplyPaymentsToFinish'
+import { SupplyPaymentHowEditor } from './materials/SupplyPaymentHowEditor'
+import { SupplyBankUnclaimed } from './materials/SupplyBankUnclaimed'
+import { useSupplyHouseBank } from '../hooks/useSupplyHouseBank'
+import { supabaseSupplyBankIo } from '../lib/materials/payments/supplyPaymentBankIo'
+import { bankCandidatesFor, supplyBankLineWords } from '../lib/materials/payments/supplyPaymentBank'
+import type { SupplyPayChip } from '../lib/materials/payments/supplyPayment'
 import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
-import { billPaidBy, houseOnAccount, openAmount, paidByBill, partPaidWords, supplyBillOpen } from '../lib/materials/payments/supplyPayment'
+import { billPaidBy, houseOnAccount, lastMethodUsed, openAmount, paidByBill, partPaidWords, supplyBillOpen } from '../lib/materials/payments/supplyPayment'
 import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
 import { EmptyState } from './EmptyState'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
@@ -220,7 +228,7 @@ interface SupplyHousesTabProps {
   autoOpenHouseId?: string | null
   onAutoOpenHouseHandled?: () => void
   /** The Needs You line's door (v2.5723): `?list=movable` opens the move window's worked list once the book and its move data are read. */
-  openList?: 'movable' | null
+  openList?: 'movable' | 'finish' | null
   onOpenListHandled?: () => void
   /** The thread's *Record this bill* (punch list #179, v2.6095): the thread file to pick on the Add invoice window once the house is open. */
   openBill?: string | null
@@ -475,10 +483,20 @@ export function SupplyHousesTab({
   const [invoiceLateInvoiceId, setInvoiceLateInvoiceId] = useState('')
   /** `Interest and late fees in 2026: $61.20 · …`, under the Accounts payable total; empty in a year with none. */
   const [interestYearWords, setInterestYearWords] = useState('')
+  /** The finish-later list under Accounts payable: opened by the Needs You door, and read again when a payment changes. */
+  const [finishListOpen, setFinishListOpen] = useState(false)
+  const [finishReloadKey, setFinishReloadKey] = useState(0)
+  /** The payment whose "how it was sent" is being edited from its own window or a paid row. */
+  const [howEditId, setHowEditId] = useState<string | null>(null)
   /** The removed payment whose Put it back is saving. */
   const [puttingBackPaymentId, setPuttingBackPaymentId] = useState<string | null>(null)
   /** The bill in the Edit window is paid by a typed payment: its status follows that payment. */
   const editingTypedPaid = !!editingInvoice?.is_paid && billPaidBy(editingInvoice.id, housePayments.payments, housePayments.lines).typed.length > 0
+  /** The bank side (v2.7471): the feed's money out, the matches that stand, and the lines to a house nobody recorded. Supply houses only: a line to an insurer or a rental yard is not a bill's payment. */
+  const bankHouses = useMemo(() => supplyHousesList.filter((h: SupplyHouse) => (h.vendor_kind ?? 'supply_house') === 'supply_house').map((h: SupplyHouse) => ({ id: h.id, name: h.name })), [supplyHousesList])
+  const bankSide = useSupplyHouseBank(agingBookLoaded, supabaseSupplyBankIo, bankHouses)
+  /** Record a payment opened from a bank line: what to fill, and the line the recorded payment is matched to. */
+  const [recordStart, setRecordStart] = useState<{ lineId: string; amount: number; paidOn: string; chip: SupplyPayChip; words: string } | null>(null)
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
   // The three Accounts-payable toggles survive a refresh (v2.3568 — a May follow-up;
@@ -981,6 +999,14 @@ export function SupplyHousesTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openList, agingBookLoaded, agingMoveDataBook, agingUnpaidInvoices])
 
+  // The other Needs You door (v2.7469): `?list=finish` lands with the finish-later list open.
+  useEffect(() => {
+    if (openList !== 'finish') return
+    setFinishListOpen(true)
+    onOpenListHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openList])
+
   /** PR 3: email the house's job-accounts rep the move request for these invoices (one house per call). */
   async function sendMoveRequest(invoiceIds: string[], busyKey: string, includeAsked: boolean): Promise<void> {
     if (invoiceIds.length === 0) return
@@ -1458,6 +1484,7 @@ export function SupplyHousesTab({
       }),
     )
     if (pays) setHousePayments(pays)
+    setFinishReloadKey((k) => k + 1)
     void loadSupplyHouseSummary()
   }
 
@@ -1562,6 +1589,8 @@ export function SupplyHousesTab({
       })
       void loadSupplyHouseSummary()
       loadHousePayments(inv.supply_house_id)
+      // Mark paid made a payment with no method: the finish-later list counts it.
+      setFinishReloadKey((k) => k + 1)
     } finally {
       setPayingInvoiceId(null)
     }
@@ -1772,6 +1801,32 @@ export function SupplyHousesTab({
                 )}
               </div>
             </div>
+            {/* Mark paid stays one press; the payment it makes waits here until someone says how it was sent. */}
+            <SupplyPaymentsToFinish
+              io={supabaseSupplyFinishIo}
+              todayYmd={todayYmdInAppTz()}
+              reloadKey={finishReloadKey}
+              openAtStart={finishListOpen}
+              onChanged={() => {
+                bankSide.reload()
+                if (selectedSupplyHouseForDetail) void refreshHouseMoney(selectedSupplyHouseForDetail.id)
+              }}
+              bankFor={(p) => {
+                // Only a line whose payee reads like the house is offered here: this press fills the day and the method unasked.
+                const line = bankCandidatesFor(p, p.houseName, bankSide.lines, bankSide.taken).find((c) => c.isHouse)
+                return line ? { id: line.id, words: supplyBankLineWords(line, (ymd) => billDateWords(ymd, todayYmdInAppTz())) } : null
+              }}
+              onUseLine={(paymentId, bankLineId) => supabaseSupplyBankIo.match(paymentId, bankLineId, true)}
+            />
+            {/* The other direction: money the bank shows going to a house that no payment claims. */}
+            <SupplyBankUnclaimed
+              lines={bankSide.unclaimed}
+              todayYmd={todayYmdInAppTz()}
+              onSay={(u) => {
+                setRecordStart({ lineId: u.line.id, amount: u.line.amount, paidOn: u.line.ymd, chip: u.line.method, words: supplyBankLineWords(u.line, (ymd) => billDateWords(ymd, todayYmdInAppTz())) })
+                void openPaymentFromAgingCell(u.houseId)
+              }}
+            />
             <div style={{ marginBottom: '1.5rem' }}>
                 <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                   Unpaid dollars by days past due (from invoice due dates).
@@ -2128,7 +2183,7 @@ export function SupplyHousesTab({
                                         // Supply house bill lines (punch list #298 PR 1b): what was read off the PDF, and Look when there is a paper.
                                         const paper = papersByInvoice.get(inv.id) ?? null
                                         // What paid it: the payment's method and number, and how many bills it covered.
-                                        const paidBy = billPaidBy(inv.id, housePayments.payments, housePayments.lines)
+                                        const paidBy = billPaidBy(inv.id, housePayments.payments, housePayments.lines, { sayMissing: true })
                                         // A bill paid in part lists for what is left on it, and says what was paid.
                                         const paidOnIt = paidOnBills.get(inv.id) ?? 0
                                         return {
@@ -2143,6 +2198,7 @@ export function SupplyHousesTab({
                                           paidYmd: inv.paid_at ? calendarYmdInAppTzFromIso(inv.paid_at) : null,
                                           paidBy: inv.is_paid ? paidBy.words : '',
                                           seePayment: inv.is_paid && paidBy.typed.length > 0,
+                                          needsHow: inv.is_paid && paidBy.needsHowId != null,
                                           link: inv.link,
                                           payment_link: inv.payment_link ?? paidBy.receiptLink,
                                           on_job_account: inv.on_job_account,
@@ -2193,6 +2249,7 @@ export function SupplyHousesTab({
                                           }}
                                           removedPayments={removedLately(housePayments.payments, Date.now(), (ymd) => billDateWords(ymd, billToday), calendarYmdInAppTzFromIso).map((r) => ({ id: r.payment.id, words: r.words }))}
                                           puttingBackId={puttingBackPaymentId}
+                                          onFinish={(billId) => setHowEditId(billPaidBy(billId, housePayments.payments, housePayments.lines).needsHowId ?? null)}
                                           onPutBack={(paymentId) => {
                                             const houseId = selectedSupplyHouseForDetail.id
                                             setPuttingBackPaymentId(paymentId)
@@ -3503,11 +3560,23 @@ export function SupplyHousesTab({
           io={supabaseSupplyPaymentsIo}
           todayYmd={todayYmdInAppTz()}
           parts
-          onClose={() => setRecordPaymentOpen(false)}
-          onRecorded={(_result, words) => {
+          start={recordStart ?? undefined}
+          onClose={() => {
             setRecordPaymentOpen(false)
+            setRecordStart(null)
+          }}
+          onRecorded={(result, words) => {
+            const houseId = selectedSupplyHouseForDetail.id
+            const fromBank = recordStart
+            setRecordPaymentOpen(false)
+            setRecordStart(null)
             showToast(words, 'success')
-            void refreshHouseMoney(selectedSupplyHouseForDetail.id)
+            // Opened from a bank line: the payment it recorded is the one that line is.
+            const matched = fromBank && result.payment_id ? supabaseSupplyBankIo.match(result.payment_id, fromBank.lineId, false).catch((e: unknown) => showToast(formatErrorMessage(e, 'The payment is recorded. It was not matched to its bank line.'), 'error', 6000)) : Promise.resolve()
+            void matched.then(() => {
+              bankSide.reload()
+              return refreshHouseMoney(houseId)
+            })
           }}
         />
       )}
@@ -3546,6 +3615,44 @@ export function SupplyHousesTab({
             onUndoMove={async (eventId) => {
               await supabaseSupplyPaymentsIo.undoMove(eventId)
               showToast('The move is taken back.', 'success')
+              await refreshHouseMoney(house.id)
+            }}
+            onEditHow={() => setHowEditId(viewed.id)}
+            bank={{
+              matched: bankSide.lines.find((b) => b.id === bankSide.matchedByPayment.get(viewed.id)) ?? null,
+              hasMatch: bankSide.matchedByPayment.has(viewed.id),
+              candidates: bankSide.matchedByPayment.has(viewed.id) ? [] : bankCandidatesFor(viewed, house.name, bankSide.lines, bankSide.taken),
+              onMatch: async (bankLineId) => {
+                await supabaseSupplyBankIo.match(viewed.id, bankLineId, false)
+                showToast('The bank agrees with this payment.', 'success')
+                bankSide.reload()
+              },
+              onUnmatch: async () => {
+                await supabaseSupplyBankIo.unmatch(viewed.id)
+                showToast('The payment is off its bank line.', 'success')
+                bankSide.reload()
+              },
+            }}
+          />
+        )
+      })()}
+
+      {/* How a payment was sent, said after the fact: from a paid row's Finish…, or from the payment's own window. */}
+      {(() => {
+        const editing = howEditId ? housePayments.payments.find((p) => p.id === howEditId) : null
+        if (!editing || !selectedSupplyHouseForDetail) return null
+        const house = selectedSupplyHouseForDetail
+        const numbers = [...new Set(housePayments.lines.filter((l) => l.payment_id === editing.id).map((l) => supplyHouseInvoices.find((inv) => inv.id === l.invoice_id)?.invoice_number ?? ''))].filter(Boolean)
+        return (
+          <SupplyPaymentHowEditor
+            payment={editing}
+            title={[house.name.trim() || 'This house', numbers.length === 1 ? numbers[0] : numbers.length > 1 ? `${numbers.length} bills` : 'on account'].join(' · ')}
+            lastMethod={lastMethodUsed(housePayments.payments)}
+            onClose={() => setHowEditId(null)}
+            onSave={async (paymentId, patch, words) => {
+              await supabaseSupplyFinishIo.saveHowSent(paymentId, patch)
+              setHowEditId(null)
+              showToast(words, 'success')
               await refreshHouseMoney(house.id)
             }}
           />

@@ -113,6 +113,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'gc-architect-email', audience: 'owner', steps: [G('submittal-email'), G('rfi-email')] },
   // GC mode (P3-a): every email to a trade partner company, from one sender.
   { kind: 'sender', ref: 'gc-trade-email', audience: 'sub', steps: [S('gc-trade-email')] },
+  { kind: 'sender', ref: 'send-sub-paper-email', audience: 'sub', steps: [S('sub-papers-email')] },
   // GC mode (O4b): our emails to a GC project's customer and its architect, from one sender.
   { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email'), G('gc-certified-email'), G('gc-change-order-email'), G('gc-reminder-email'), G('gc-interest-bill-email'), G('gc-weekly-report-email'), G('gc-schedule-email'), G('gc-contract-email')] },
   // Messages (cut 3): an email from the reply box in a person's thread, to a customer, an architect or a trade partner.

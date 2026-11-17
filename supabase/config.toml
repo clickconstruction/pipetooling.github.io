@@ -549,6 +549,10 @@ verify_jwt = false
 [functions.send-lien-release-email]
 verify_jwt = false
 
+# Sub papers to a sub, PDFs attached (punch list #350): Resend email; JWT, the office roles and the roster's own address checked in the function.
+[functions.send-sub-paper-email]
+verify_jwt = false
+
 [functions.send-lien-filing-email]
 verify_jwt = false
 
@@ -842,6 +846,11 @@ verify_jwt = false
 # plan-set-files: one Drive subfolder per set of plans and the files in it (punch list #239, PR 5); the JWT is
 # checked in-function so a refusal has words, the set row read under the caller's RLS.
 [functions.plan-set-files]
+verify_jwt = false
+
+# bid-plan-set-files: a mail's files kept as a set of plans on a bid (punch list #368, PR 1); the JWT is checked
+# in-function so a refusal has words, the bid, the mail and the set read under the caller's RLS.
+[functions.bid-plan-set-files]
 verify_jwt = false
 
 # Public supply house quote page (RFQ Phase 2) — the RFQ token IS the credential

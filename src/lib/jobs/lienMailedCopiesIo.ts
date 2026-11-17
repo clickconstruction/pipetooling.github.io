@@ -6,7 +6,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { putJobFolderFile, type AddedFile } from './jobFolderAddFileIo'
-import { lienMailedCopiesWith, lienMailedCopyName, parseLienMailedCopies, type LienMailedCopy } from './lienMailedCopies'
+import { lienMailedCopiesWith, lienMailedCopiesWithout, lienMailedCopyName, parseLienMailedCopies, type LienMailedCopy, type LienMailedCopyPaper } from './lienMailedCopies'
 
 export type AddLienMailedCopyArgs = {
   itemId: string
@@ -16,6 +16,8 @@ export type AddLienMailedCopyArgs = {
   /** Today in the company's zone, for the file's name. */
   todayYmd: string
   userId: string | null
+  /** The paper in the envelope, for the file's name; a monthly notice when absent. */
+  paper?: LienMailedCopyPaper
 }
 
 export type LienMailedCopiesIo = {
@@ -40,11 +42,22 @@ export const supabaseLienMailedCopiesIo: LienMailedCopiesIo = {
 /** Put the file in the job's folder under a name that says what it is, then add it to the notice's list. Returns the list as written. */
 export async function addLienMailedCopy(args: AddLienMailedCopyArgs, io: LienMailedCopiesIo = supabaseLienMailedCopiesIo): Promise<LienMailedCopy[]> {
   const before = await io.read(args.itemId)
-  const name = lienMailedCopyName({ jobNumber: args.jobNumber, ymd: args.todayYmd, already: before.length, file: args.file })
+  const name = lienMailedCopyName({ jobNumber: args.jobNumber, ymd: args.todayYmd, already: before.length, file: args.file, paper: args.paper })
   const named = new File([args.file], name, { type: args.file.type || 'application/octet-stream' })
   const added = await io.put(args.jobId, named)
   // Read again: the upload takes a while, and someone else may have added a file to this notice meanwhile.
   const list = lienMailedCopiesWith(await io.read(args.itemId), { url: added.url, driveFileId: added.driveFileId, name, at: io.now(), by: args.userId })
+  await io.write(args.itemId, list)
+  return list
+}
+
+/**
+ * Take one file off the notice's list (v2.7525). The list is read fresh and written whole, as the add does, so a
+ * file someone else added meanwhile stays. The file itself is not touched: it stays in the job's Drive folder.
+ * Returns the list as written.
+ */
+export async function removeLienMailedCopy(args: { itemId: string; copy: Pick<LienMailedCopy, 'driveFileId' | 'url'> }, io: Pick<LienMailedCopiesIo, 'read' | 'write'> = supabaseLienMailedCopiesIo): Promise<LienMailedCopy[]> {
+  const list = lienMailedCopiesWithout(await io.read(args.itemId), args.copy)
   await io.write(args.itemId, list)
   return list
 }
