@@ -192,6 +192,9 @@ describe('Documents → Where files go', () => {
     expect(tree.textContent).toContain('Oak Hollow HOA')
     expect(tree.textContent).toContain('972 · Oak Hollow Bldg C')
     for (const leaf of ['Customer Pictures', 'Plans', 'Team only', 'Photos', 'Sent by us']) expect(tree.textContent).toContain(leaf)
+    // Punch list #377: the sixth folder, made the first time a signed contract is filed.
+    expect(tree.textContent).toContain('Contracts')
+    expect(screen.getByTestId('wfg-contracts-folder').textContent).toBe('Contracts is made inside Team only the first time a signed contract is filed.')
     expect((screen.getByLabelText('Make all of it when the job is made') as HTMLInputElement).checked).toBe(true)
 
     expect(screen.getByTestId('wfg-make-folders').textContent).toBe('Make the folders for 3 jobs without one · 1 has a link that is not a folder ▸')
