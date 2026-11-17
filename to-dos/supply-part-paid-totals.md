@@ -3,7 +3,7 @@ name: "Dashboard and Bridge: a part-paid supply house bill counts what is left"
 number: 374
 mockup: not required — the same cards and lines with the right amounts; no screen changes shape
 group: close
-status: built 2026-11-17 in one PR (v2.7562) · left: the redeploys check:edge-drift names after the merge, a read-only look on prod, and the owner's call on money kept on account
+status: built 2026-11-17 in one PR (v2.7562) · the owner's call the same day: money kept on account lowers what is owed only once it is on a bill · left: the redeploys check:edge-drift names after the merge and a read-only look on prod
 summary: >
   Since v2.7459 a supply house bill can be paid in part. Materials counts such a bill for what is
   left on it, but the Dashboard's money cards and the Bridge still add its whole amount. The
@@ -11,7 +11,7 @@ summary: >
   forecast and its net position history all overstate what is owed once a bill is paid in part.
   One small PR reads the open balance in each, plus the payment lines by their day for the money
   that went out.
-next: "After the merge: redeploy what check:edge-drift names (bridge-weekly-sheet and team-scores carry the figures), then compare the Dashboard card's Supply figure with Accounts payable on Materials at the same minute. Then the owner's call on money kept on account, and this card retires."
+next: "After the merge: redeploy what check:edge-drift names (bridge-weekly-sheet and team-scores carry the figures), then compare the Dashboard card's Supply figure with Accounts payable on Materials at the same minute. Then this card retires."
 size: S
 blocker: None.
 ver: v2.7562
@@ -48,7 +48,9 @@ One PR, as planned below. Two things the plan did not have:
 
 The second open call is answered: the payment lines are read under `is_office_staff()`, the Bridge is the owner's and a dev's, both pass it, and the edge reads as the service role. So no fallback was built.
 
-**Left:** the redeploys `check:edge-drift` names after the merge, the read-only look on prod under How to verify, and the first open call below, which is the owner's.
+The first open call is answered too. The owner, 2026-11-17, asked whether money kept on account should lower what is owed on the day it was sent: "Only once on a bill". That is what was built, so nothing changed.
+
+**Left:** the redeploys `check:edge-drift` names after the merge, and the read-only look on prod under How to verify.
 
 ## The plan: one PR (S)
 
@@ -65,6 +67,8 @@ The second open call is answered: the payment lines are read under `is_office_st
 No migration. `amount_paid` and the payment lines exist since v2.7450.
 
 ## Open calls
+
+Both are answered, under Built above. They stay here as they were asked.
 
 - **Money on account in the net position.** Step 4 counts what went on bills. Money kept on account left the bank but paid no bill yet. Should it lower AP on its day, or only once it is put on a bill? Counting lines alone is the plain reading of *what is owed*. Ask the owner if the history then reads wrong to him.
 - **Who can read the payment lines.** `supply_house_payment_lines` is read under `is_office_staff()` since v2.7450. Check that every role that sees the Bridge passes it. Make a refused read fall back to today's bill read, so a role without access never sees the history break.
