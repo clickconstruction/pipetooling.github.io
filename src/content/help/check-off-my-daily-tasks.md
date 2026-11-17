@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -144,6 +144,14 @@ Fix it up, reply on the thread if useful, and check it off again.
 ## After you complete
 
 Under your finished task a line says when you did it and who hears. It reads like *Done 12:22 PM. Imani hears it is done.* When that person signs off, the line reads *Signed off by Imani*. Nothing more is needed from you.
+
+## Add your own task
+
+Found something that needs doing? Press {{button:outline|＋ Add a task for me}} under today's tasks. The **New task** window opens with you picked and today lit. Type the task and send it. The task lands on your list.
+
+Finished a task and it turned up more work? Press **Follow-up** on the finished task. The window opens on that task's words, and you type what comes next. A task that had a place brings its place along. The person who gave you the first task hears when the follow-up is done.
+
+[Give someone a task](/help/give-someone-a-task) covers the rest of the window.
 
 ## Still open: older work that still needs doing
 

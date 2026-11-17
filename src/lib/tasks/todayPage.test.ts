@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { dayLabel } from '../checklistDueDates'
-import { doneLineWords, lateFirst, nextTaskId, notePressLabel, showMoreLabel, splitToday, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from './todayPage'
+import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, FOLLOW_UP_TITLE_MAX, doneLineWords, followUpTellsId, followUpTitle, lateFirst, nextTaskId, notePressLabel, showMoreLabel, splitToday, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from './todayPage'
 
 describe('todayHeadDate', () => {
   it('reads the weekday, the short month and the day', () => {
@@ -155,5 +155,28 @@ describe('lateFirst', () => {
   it('the words beside the label say the order', () => {
     expect(stillOpenOrderWords(true)).toBe('late first, then oldest')
     expect(stillOpenOrderWords(false)).toBe('oldest first')
+  })
+})
+
+describe('a follow-up', () => {
+  it('opens on the first task\'s words, with room after the colon', () => {
+    expect(followUpTitle('Check the truck fluids')).toBe('After Check the truck fluids: ')
+    expect(followUpTitle('  Sweep   the shop bays ')).toBe('After Sweep the shop bays: ')
+    expect(followUpTitle('')).toBe('')
+  })
+  it('cuts a long title so the new words have room', () => {
+    const long = 'Walk the whole north fence line and write down every post that leans or has rotted through'
+    const out = followUpTitle(long)
+    expect(out.endsWith('…: ')).toBe(true)
+    expect(out.length).toBeLessThanOrEqual('After '.length + FOLLOW_UP_TITLE_MAX + 2)
+  })
+  it('tells the first task\'s giver, unless the writer is the giver', () => {
+    expect(followUpTellsId('u-giver', 'u-me')).toBe('u-giver')
+    expect(followUpTellsId('u-me', 'u-me')).toBeNull()
+    expect(followUpTellsId(null, 'u-me')).toBeNull()
+  })
+  it('the two presses name what they do', () => {
+    expect(ADD_OWN_TASK_LABEL).toBe('＋ Add a task for me')
+    expect(FOLLOW_UP_LABEL).toBe('Follow-up')
   })
 })

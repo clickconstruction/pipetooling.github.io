@@ -44,4 +44,4 @@ Tap {{button:outline|Exit}} on the green **Task Mode** strip at the top of the p
 - The toggle is **per device and per account**. Turning it on at the shop tablet does not change your phone.
 - Task Mode only changes what this device shows. Your permissions stay the same. The office still sees your completed tasks in Review.
 - Anyone can use it, whatever their role.
-- The **＋ Task** button in the header and the home-screen **/task** shortcut keep working inside the mode. Adding a task never needs the full app.
+- The **＋ Task** button in the header and the home-screen **/task** shortcut keep working inside the mode. So does {{button:outline|＋ Add a task for me}} under today's tasks. Adding a task never needs the full app.
