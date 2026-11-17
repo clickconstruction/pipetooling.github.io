@@ -1,4 +1,6 @@
 import { cents } from '../aiaPayApplicationLines'
+import { formatYmdMonthDay } from '../jobs/billedExpectedPay'
+import { formatCurrency } from '../jobs/jobFormatting'
 import type { RetainageHeldInput } from './retainageHeld'
 import type { RetainageJobFacts } from './retainageHeldRows'
 
@@ -134,4 +136,9 @@ export function retainageUnrecordedWords(row: Pick<RetainageUnrecordedRow, 'sugg
   if (row.noteDay) parts.push(`a note of ${fmt.day(row.noteDay)} says retainage`)
   if (!row.suggestion) parts.push('no figure yet')
   return parts.join(' · ')
+}
+
+/** The row's reason as the Retainage list and To do print it: money to the cent, the note's day as *Sep 8*. */
+export function retainageUnrecordedWhy(row: Pick<RetainageUnrecordedRow, 'suggestion' | 'noteDay'>): string {
+  return retainageUnrecordedWords(row, { money: (n) => '$' + formatCurrency(n), day: formatYmdMonthDay })
 }

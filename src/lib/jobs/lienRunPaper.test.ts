@@ -173,3 +173,26 @@ describe('Today’s mail says by when (punch list #314, the notices)', () => {
     for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
   })
 })
+
+describe('an envelope with a parted notice inside prints nothing (v2.7517)', () => {
+  const parted = { parts: ['claim' as const], paperClaim: 18400, nowClaim: 6150, paperRetainage: 0, nowRetainage: 0, source: 'bills' as const }
+  const WHY = '878: The paper claims $18,400.00. The bills now come to $6,150.00, $12,250.00 less. It prints once the notice is redrawn from the bills.'
+
+  it('both of its envelopes are held with both figures, named by job, in plain words', () => {
+    const [envOwner, envGc] = runEnvelopes([notice({ parted })])
+    expect(runEnvelopeHold(envOwner!)).toBe(WHY)
+    expect(runEnvelopeHold(envGc!)).toBe(WHY)
+    expect(plainWordsFailures(WHY)).toEqual([])
+  })
+
+  it('the rest of the run goes out: only the parted notice is held', () => {
+    const m = runMailing(runEnvelopes([notice({ parted, recipients: [owner()] }), notice({ itemId: 'it2', jobId: 'j2', label: '898 · Relwyn', jobNumber: '898', amount: 4800, recipients: [owner({ name: 'EPC SPARTI LLC', address: '550 HERITAGE DR, AUSTIN, TX 78701' })] })]))
+    expect(m.mailed.map((e) => e.name)).toEqual(['EPC SPARTI LLC'])
+    expect(m.held.map((h) => h.why)).toEqual([WHY])
+  })
+
+  it('a missing address and a $0 claim say their own reason first, and a printed notice is not held for it', () => {
+    expect(runEnvelopeHold(runEnvelopes([notice({ parted, amount: 0, recipients: [owner()] })])[0]!)).toBe('Nothing to send: the claim is $0. The notice stays on the desk.')
+    expect(runEnvelopeHold(runEnvelopes([notice({ parted, printedAt: '2026-09-24T15:00:00Z', recipients: [owner()] })])[0]!)).toBeNull()
+  })
+})

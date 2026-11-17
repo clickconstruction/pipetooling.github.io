@@ -29,6 +29,10 @@ export type MemberBid = {
   estimated_job_start_date: string | null
   plans_link: string | null
   design_drawing_plan_date: string | null
+  /** The bid's promised schedule (punch list #367, `lib/bids/bidSchedule.ts`); absent on a read older than the columns. */
+  schedule_start?: string | null
+  schedule_end?: string | null
+  schedule_open_ended?: boolean | null
   gc_contact_name: string | null
   gc_contact_phone: string | null
   gc_contact_email: string | null

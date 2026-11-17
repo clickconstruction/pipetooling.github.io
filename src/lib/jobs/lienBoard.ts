@@ -147,6 +147,8 @@ export type LienBoardInput = {
   notices: ReadonlyArray<LienDeskEntry>
   affidavits: ReadonlyArray<LienAffidavitEntry>
   retainage: ReadonlyArray<LienRetainageEntry>
+  /** How many open jobs under a GC show retainage held with none recorded (`retainageSuggested.ts`); absent reads 0. */
+  retainageUnrecorded?: number
   todayYmd: string
   /** The job's number as the desk prints it: *JP650*. */
   jobNumber: (jobId: string) => string
@@ -422,9 +424,9 @@ function plural(n: number, one: string, many: string): string {
 }
 
 /** The retainage line under the notices: each pile with a job in it, in flow order; null when its desk is empty. */
-export function lienBoardRetainageLine(retainage: ReadonlyArray<LienRetainageEntry>): string | null {
+export function lienBoardRetainageLine(retainage: ReadonlyArray<LienRetainageEntry>, unrecorded = 0): string | null {
   const live = retainage.filter((e) => e.pile !== 'sent' && e.pile !== 'clock_not_started')
-  if (live.length === 0) return null
+  if (live.length === 0 && unrecorded <= 0) return null
   const count = (pile: LienRetainageEntry['pile']) => live.filter((e) => e.pile === pile).length
   const parts = [
     [count('needs_owner'), 'needs the owner', 'need the owner'],
@@ -433,6 +435,8 @@ export function lienBoardRetainageLine(retainage: ReadonlyArray<LienRetainageEnt
     [count('ready'), 'approved to mail', 'approved to mail'],
     [count('held'), 'held', 'held'],
     [count('missed'), 'missed', 'missed'],
+    // Retainage the bills or notes show and nobody recorded (fix A of the retainage clock check, PR 2): no clock runs on these yet.
+    [Math.max(0, unrecorded), 'looks held, not on the job', 'look held, not on the job'],
   ] as const
   const words = parts.filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${plural(n, one, many)}`)
   return `Retainage · ${words.join(' · ')}`
@@ -687,7 +691,7 @@ export function buildLienBoard(input: LienBoardInput): LienBoard {
     tiles: t.tiles,
     pairs,
     lit,
-    retainageLine: lienBoardRetainageLine(input.retainage),
+    retainageLine: lienBoardRetainageLine(input.retainage, input.retainageUnrecorded ?? 0),
     dayWords: t.dayWords,
     atRisk: t.atRisk,
     empty: notices.length === 0 && affidavits.length === 0,

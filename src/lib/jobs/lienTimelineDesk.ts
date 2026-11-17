@@ -3,7 +3,7 @@ import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow 
 import { monthFromBill, monthIsStandIn } from './lienDesk'
 import { lienStandInMonth, type LienBill } from './lienBillMonths'
 import { lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey } from './lienDeskAffidavits'
-import { lienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
+import { lienAffidavitNoticeStanding, lienAffidavitNoticeStandingOnDesk } from './lienAffidavitNoticeStanding'
 import { buildLienMonthHistory } from './lienMonthHistory'
 import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineAffidavitState, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
 import { parseCourtesyRecords } from './lienCourtesyNotice'
@@ -56,7 +56,7 @@ export function lienDemandLettersFromRows(rows: ReadonlyArray<JobDemandLetterRow
     .map((r) => ({ sentAt: r.sent_at!, deadlineDate: r.deadline_date, amount: Number(r.amount ?? 0), openRemaining: Math.min(Number(r.amount ?? 0), Math.max(0, openBalance)), debtorParty: r.debtor_party ?? '' }))
 }
 
-const GATE_SHORT: Record<string, string> = { owner: 'owner of record', public_owner: 'a private owner', legal: 'legal description', contractor: "the general contractor's address", notice: 'the notice', homestead: 'homestead', homestead_answer: 'the homestead answer' }
+const GATE_SHORT: Record<string, string> = { owner: 'owner of record', public_owner: 'a private owner', legal: 'legal description', contractor: "the general contractor's address", notice: 'a mailed notice', homestead: 'homestead', homestead_answer: 'the homestead answer' }
 
 function noticeStateOf(entry: Pick<LienDeskEntry, 'pile'> | null): LienTimelineNoticeState {
   if (!entry) return ''
@@ -338,7 +338,7 @@ export function buildLienTimelineFromWindow(src: {
       ? { deadline: '', filedAt: affidavitFiling.filed_at, recordingNumber: affidavitFiling.recording_number, county: affidavitFiling.county, servedAt: affidavitFiling.served_at, serveDue: affidavitFiling.serve_due, missingGates: [] }
       : src.deskAffidavit?.state
         ? // No filing yet: the desk's word alone. The last day stays the window's own (`deadline: ''` reads the last month's).
-          { deadline: '', filedAt: null, recordingNumber: '', county: '', servedAt: null, serveDue: null, missingGates: src.deskAffidavit.missing.map((k) => GATE_SHORT[k] ?? k), state: src.deskAffidavit.state, missingKeys: src.deskAffidavit.missing, holdUntil: src.deskAffidavit.holdUntil }
+          { deadline: '', filedAt: null, recordingNumber: '', county: '', servedAt: null, serveDue: null, missingGates: src.deskAffidavit.missing.map((k) => GATE_SHORT[k] ?? k), state: src.deskAffidavit.state, missingKeys: src.deskAffidavit.missing, holdUntil: src.deskAffidavit.holdUntil, noticeStanding: src.deskAffidavit.missing.includes('notice') ? lienAffidavitNoticeStandingOnDesk(src.deskNotice?.state) : null }
         : null,
     originalContractCompletedOn: null,
     releasedAt: releaseFiling ? (releaseFiling.filed_at ?? calendarYmdInAppTzFromIso(releaseFiling.created_at)) : null,

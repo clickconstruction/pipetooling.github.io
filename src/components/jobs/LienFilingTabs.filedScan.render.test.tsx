@@ -132,4 +132,12 @@ describe('LienFilingTabs · the scanned PDF of a filed affidavit', () => {
     fireEvent.click(screen.getByRole('button', { name: 'link the saved copy' }))
     expect(screen.queryByLabelText('Upload the scanned PDF')).toBeNull()
   })
+
+  it('under the single upload, a door to the desk’s window for several liens, in a new tab so the form keeps what is typed', () => {
+    renderWithProviders(<LienFilingTabs {...props({})} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Record filing…' }))
+    const door = screen.getByRole('link', { name: 'Scanned several liens at once? Add them on the Lien desk ›' }) as HTMLAnchorElement
+    expect(door.getAttribute('href')).toBe('/lien-desk?scans=1')
+    expect(door.getAttribute('target')).toBe('_blank')
+  })
 })

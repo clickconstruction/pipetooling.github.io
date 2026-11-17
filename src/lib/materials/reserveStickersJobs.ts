@@ -4,11 +4,15 @@
  * the job holds, the runs printed for it so far, the stickers reserved and not on a box yet with who printed them,
  * and the name a new run would open on. Pure: the jobs, the runs and the sites' names in, the words out. The window
  * is `PrintStickersWindow.tsx`, the reads `reserveStickersIo.ts`; the labels window's twin is `printLabelsJobs.ts`.
+ *
+ * Since v2.7523 a card with reserved stickers carries the presses that print them, one a run (`reservedPrint.ts`),
+ * and its line before **Print future stickers** says that press reserves new ones.
  */
 import { compareLabels } from './onSite'
 import { labelBoxes, type OnSiteFindJob } from './onSiteFind'
 import { labelPrintName, labelPrintNames } from './labels'
 import { kindCountsWords, nameSpan } from './printLabelsJobs'
+import { newRunBesideReservedWords, reservedRunsToPrint, type ReservedRunPrint } from './reservedPrint'
 import { nextNameToReserve } from './stickerNames'
 import { NO_RESERVED, notYetOnBoxWords, reservedByWords, reservedOfJob, type ReservedOfJob } from './stickerPlace'
 import type { SiteStickerNames, StickerRunWithStickers } from './stickerRunsIo'
@@ -40,8 +44,13 @@ export function runsSoFarWords(r: RunsSoFar): string {
   return parts.join(' · ')
 }
 
-/** *A new run opens on G201.* Empty when the site has no name to go by yet, and the next window asks for the first. */
-export function nextNameWords(name: string | null | undefined): string {
+/**
+ * *A new run opens on G201.* Empty when the site has no name to go by yet, and the next window asks for the first.
+ * On a card that has reserved stickers (v2.7523) the line first says what the other press does, *Print future stickers
+ * reserves new ones.*, so it is not read as the press that prints the reserved ones.
+ */
+export function nextNameWords(name: string | null | undefined, hasReserved = false): string {
+  if (hasReserved) return newRunBesideReservedWords(name)
   return name ? `A new run opens on ${name}.` : ''
 }
 
@@ -61,6 +70,8 @@ export type StickerJobFacts = {
   reserved: ReservedOfJob
   /** The sentence for them, with who printed them and when; empty at none. */
   reservedWords: string
+  /** The presses that print them, one for each run that holds some (v2.7523); none while unread. */
+  toPrint: ReservedRunPrint[]
   /** The name a new run opens on; undefined while the site is unread, null when the site has none to offer. */
   nextName: string | null | undefined
   /** Why the job's boxes are not here, when its read failed. */
@@ -97,6 +108,7 @@ export function stickerJobFacts(job: OnSiteFindJob, input: StickerJobsInput): St
     soFar: runs ? runsSoFar(runs) : null,
     reserved,
     reservedWords: head ? `${head}.${by ? ` ${by}` : ''}` : '',
+    toPrint: runs ? reservedRunsToPrint(runs) : [],
     nextName: site?.names ? nextNameToReserve(site.names.boxes, site.names.blankNames) : site ? null : undefined,
     failed: job.failed ?? null,
   }

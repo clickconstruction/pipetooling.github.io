@@ -1,7 +1,7 @@
 import { daysBetweenYmd, type LienPayRunway, type LienRunwayTone } from './lienPayRunway'
 import { filingDeadlineForMonth } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
-import { lienRunActLabel } from './lienRunWords'
+import { LIEN_RUN_STEP, lienRunActLabel } from './lienRunWords'
 
 /**
  * The Lien calendar (v2.4101, punch list #55 PR B): every billed or
@@ -192,7 +192,7 @@ export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: s
       key: `gc:${gcId}`,
       kind: 'gc',
       name: list[0]?.gcName?.trim() || 'GC',
-      sub: `GC · ${list.length} ${list.length === 1 ? 'job' : 'jobs'}${owed ? ` · ${owed} ${owed === 1 ? 'notice' : 'notices'} owed` : ''}${mailed ? ` · ${mailed} in the mail` : ''}${late ? ` · ${late} late ${late === 1 ? 'notice' : 'notices'}` : ''}${sharedPropertyNote(list) ? ` · ${sharedPropertyNote(list)}` : ''}`,
+      sub: `GC · ${list.length} ${list.length === 1 ? 'job' : 'jobs'}${owed ? ` · ${owed} ${owed === 1 ? 'notice' : 'notices'} owed` : ''}${mailed ? ` · ${mailed} to mail` : ''}${late ? ` · ${late} late ${late === 1 ? 'notice' : 'notices'}` : ''}${sharedPropertyNote(list) ? ` · ${sharedPropertyNote(list)}` : ''}`,
       jobs: list,
       total: list.reduce((s, j) => s + j.openBalance, 0),
       word,
@@ -460,9 +460,10 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
   { glyph: 'check', short: 'Notice on file', label: 'that month’s notice is on file', long: 'That month’s § 53.056 notice is recorded — sent from the desk or entered by hand. The lien for that month stays alive to its own flag.' },
   {
     glyph: 'mailed',
-    short: 'In the mail',
-    label: 'that month’s notice is printed and in the mail — its tracking number is still owed',
-    long: 'That month’s § 53.056 notice was printed from the desk and is on its way, but the certified number is not on record yet, so it is not on file. Press Enter mail numbers on the Lien desk and this mark becomes Notice on file. Until then the desk lists it under Approved · to mail.',
+    // The pile's own name since v2.7529 (*In the mail* until then, which said the envelope had left; a print does not prove that).
+    short: LIEN_RUN_STEP.toMail,
+    label: 'that month’s notice is printed and waits to mail — its tracking number is still owed',
+    long: 'That month’s § 53.056 notice was printed from the desk. Its certified number is not on record yet, so it is not on file. Press Enter mail numbers on the Lien desk and this mark becomes Notice on file. Until then the desk lists it under Approved · to mail.',
     door: 'record',
   },
   {

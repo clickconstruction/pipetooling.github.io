@@ -36,6 +36,8 @@ export type SupplyBillCardRow = {
   paidBy?: string
   /** On an unpaid bill a payment has taken part of: `$300.00 paid · $512.40 left of $812.40`. `amount` is then what is left. */
   partPaid?: string
+  /** The payment that paid it has no method yet: the row offers Finish…. */
+  needsHow?: boolean
   /** Interest or a late fee: the row's title, `Interest on S4398120` or `Interest or a late fee`. It is not a job cost. */
   interest?: string | null
   /** A typed payment stands behind this paid bill: the press opens that payment, since Mark unpaid would not unmake it. */
@@ -84,6 +86,7 @@ export function SupplyHouseBillsCard({
   removedPayments = [],
   puttingBackId = null,
   onPutBack,
+  onFinish,
 }: {
   /** The bills to list: the unpaid ones, the ones paid on this visit, and every paid one when the page shows them. */
   bills: ReadonlyArray<SupplyBillCardRow>
@@ -104,6 +107,8 @@ export function SupplyHouseBillsCard({
   removedPayments?: ReadonlyArray<{ id: string; words: string }>
   puttingBackId?: string | null
   onPutBack?: (paymentId: string) => void
+  /** Finish… on a paid row whose payment has no method yet: the host opens "how it was sent" for it. */
+  onFinish?: (billId: string) => void
 }) {
   const dayName = (ymd: string): string => billDayName(ymd, todayYmd)
   const stats = supplyBillSummary(
@@ -128,6 +133,14 @@ export function SupplyHouseBillsCard({
     if (paidNow) facts.push(<b key="paidnow">Paid today</b>)
     else if (b.is_paid && b.paidYmd) facts.push(<span key="paid">paid {billDateWords(b.paidYmd, todayYmd)}</span>)
     if (b.is_paid && b.paidBy) facts.push(<span key="paidby" data-testid="supply-bill-paid-by">{b.paidBy}</span>)
+    // Mark paid kept the day and the amount; how it was sent is one press away.
+    if (b.is_paid && b.needsHow && onFinish) {
+      facts.push(
+        <button key="finish" type="button" onClick={() => onFinish(b.id)} aria-label={`Finish ${b.invoice_number}`} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}>
+          Finish…
+        </button>,
+      )
+    }
     if (!b.is_paid && b.partPaid) facts.push(<b key="part" data-testid="supply-bill-part-paid">{b.partPaid}</b>)
     facts.push(<span key="inv">{b.invoice_number}</span>)
     if (b.interest) facts.push(<span key="nojob">not a job cost</span>)
