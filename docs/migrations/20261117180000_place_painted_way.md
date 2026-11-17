@@ -23,6 +23,8 @@ A place on a site can carry the way to it. Punch list #372, step 4 ([`to-dos/fin
 - **A direct caller changes the way and nothing else.** An update that changes any other column of a place is refused: *A place keeps its name and its job. Only the way to it can be set.* A direct caller is the `authenticated` or `anon` role. `on_site_carry_job`, inside the combine and the dev seat's move, still changes a place's job, since it runs inside a definer function.
 - **The way is a map the writer can open, on the place's own job or its development.** The guard reads `painted_maps` under the writer's own RLS, so a map they cannot open is not found: *That map cannot be the way to a place. It is not a map you can open.* A map on another job, or on no job, is refused: *The way to a place is a map of its own job or of its development.* This holds for every caller and for a new place made with a way.
 
+Each refusal carries the code `P0PWY`, so the app prints its words. It renders `42501`, the code of a row level security refusal, as one fixed sentence about access.
+
 A map on no job is read by its maker and the office only. A place never points at one, because the crew could not open it.
 
 ## The helper: `on_site_job_in_development(job, development)`

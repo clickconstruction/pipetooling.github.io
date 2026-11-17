@@ -25,6 +25,9 @@ SET lock_timeout = '3s';
 -- cannot open is not found. One small definer function answers whether a job is in a development, because a helper on
 -- a job's crew cannot read the ledger and the guard would otherwise turn a development's map away from them.
 --
+-- The guard's refusals carry their own code, P0PWY, so the app prints their words: it renders 42501, the code of a
+-- row level security refusal, as one fixed sentence about access.
+--
 -- The read-only blocks, the twin fence and the archived seal already stand on job_places (made with the table), and
 -- the read-only block covers UPDATE. No CREATE TABLE here, so no fence calls.
 --
@@ -71,7 +74,7 @@ BEGIN
     -- move, still changes a place's job: it runs inside a definer function, as its owner.
     IF current_user IN ('authenticated', 'anon')
        AND (to_jsonb(NEW) - 'painted_map_id') IS DISTINCT FROM (to_jsonb(OLD) - 'painted_map_id') THEN
-      RAISE EXCEPTION 'A place keeps its name and its job. Only the way to it can be set.' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'A place keeps its name and its job. Only the way to it can be set.' USING ERRCODE = 'P0PWY';
     END IF;
     IF NEW.painted_map_id IS NOT DISTINCT FROM OLD.painted_map_id THEN
       RETURN NEW;
@@ -83,10 +86,10 @@ BEGIN
   -- Read under the writer's own RLS: a map they cannot open is not found.
   SELECT m.job_id, m.development_id INTO v_map_job, v_map_development FROM public.painted_maps m WHERE m.id = NEW.painted_map_id;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'That map cannot be the way to a place. It is not a map you can open.' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'That map cannot be the way to a place. It is not a map you can open.' USING ERRCODE = 'P0PWY';
   END IF;
   IF v_map_job IS DISTINCT FROM NEW.job_id AND NOT public.on_site_job_in_development(NEW.job_id, v_map_development) THEN
-    RAISE EXCEPTION 'The way to a place is a map of its own job or of its development.' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'The way to a place is a map of its own job or of its development.' USING ERRCODE = 'P0PWY';
   END IF;
   RETURN NEW;
 END
