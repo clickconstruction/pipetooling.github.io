@@ -236,6 +236,29 @@ describe('useTaskDoerActs', () => {
     expect(screen.queryByRole('button', { name: /Hand it on/ })).toBeNull()
   })
 
+  it('Do first tells the page which task, with no sheet, and its undo clears it', () => {
+    function FirstHost({ target, onDoFirst }: { target: TaskDoerActsTarget; onDoFirst: (id: string | null) => void }) {
+      const doer = useTaskDoerActs({ authUserId: 'u-me', todayYmd: '2026-11-16', onChanged: () => {}, onDoFirst })
+      return (
+        <div>
+          {doer.morePress(target)}
+          {doer.sheets}
+        </div>
+      )
+    }
+    const onDoFirst = vi.fn()
+    const { unmount } = render(<FirstHost target={TASK} onDoFirst={onDoFirst} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /Do first/ }))
+    expect(onDoFirst).toHaveBeenCalledWith('inst-1')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    unmount()
+    render(<FirstHost target={{ ...TASK, first: true }} onDoFirst={onDoFirst} />)
+    fireEvent.click(screen.getByRole('button', { name: '⋯ More' }))
+    fireEvent.click(screen.getByRole('button', { name: /Stop doing it first/ }))
+    expect(onDoFirst).toHaveBeenLastCalledWith(null)
+  })
+
   describe('the pass', () => {
     const THREE: TaskDoerActsTarget[] = [
       { ...TASK, instanceId: 'i1', title: 'Give every tool a home', meta: 'given Thu, Aug 20 · 88 days' },

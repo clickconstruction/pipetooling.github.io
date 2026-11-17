@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, do first, what comes first, hand it on, give a task to someone else, forward, go through them, clear old tasks, stuck, cannot do it, need help, waiting on a part, no longer applies, close a task, not needed, not today, move a task, another day, more, map press, draw a line, leave a point, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -174,6 +174,12 @@ Found something that needs doing? Press {{button:outline|＋ Add a task for me}}
 Finished a task and it turned up more work? Press **Follow-up** on the finished task. The window opens on that task's words, and you type what comes next. A task that had a place brings its place along. The person who gave you the first task hears when the follow-up is done.
 
 [Give someone a task](/help/give-someone-a-task) covers the rest of the window.
+
+## Choose what to do first
+
+The **Next** card is the first open task in the order the office set. Want to start on another one? Press **⋯ More** on that task, then **Do first**. The task moves into **Next**, and a line under the label reads *You picked this to do first.*
+
+Your pick is kept on this phone or computer. Nobody else sees it. To go back to the list's own order, press **⋯ More** on the Next card, then **Stop doing it first**.
 
 ## Move a task to another day
 

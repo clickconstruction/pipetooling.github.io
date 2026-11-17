@@ -19,7 +19,7 @@ describe('a map from the person doing the task', () => {
 
 describe('More', () => {
   it('offers Not today first on an open one-time task, and nothing on a repeating or a done one', () => {
-    expect(taskMoreChoices({ once: true, done: false }).map((r) => r.key)[0]).toBe('move')
+    expect(taskMoreChoices({ once: true, done: false, next: true }).map((r) => r.key)[0]).toBe('move')
     expect(taskMoreChoices({ once: false, done: false }).some((r) => r.key === 'move')).toBe(false)
     expect(taskMoreChoices({ once: true, done: true })).toEqual([])
   })
@@ -142,8 +142,8 @@ describe('droppedReason', () => {
 
 describe("Can't do it", () => {
   it('is offered on any open task, and swaps to No longer stuck once the task is stuck', () => {
-    expect(taskMoreChoices({ once: false, done: false }).map((r) => r.key)).toEqual(['stuck', 'hand'])
-    expect(taskMoreChoices({ once: true, done: false, roadmap: true }).map((r) => r.key)).toEqual(['move', 'stuck'])
+    expect(taskMoreChoices({ once: false, done: false, next: true }).map((r) => r.key)).toEqual(['stuck', 'hand'])
+    expect(taskMoreChoices({ once: true, done: false, roadmap: true, next: true }).map((r) => r.key)).toEqual(['move', 'stuck'])
     expect(taskMoreChoices({ once: true, done: false, stuck: true }).map((r) => r.key)).toEqual(['move', 'unstuck', 'drop', 'hand'])
     expect(taskMoreChoices({ once: true, done: true })).toEqual([])
   })
@@ -251,5 +251,20 @@ describe('Hand it on', () => {
     expect(handPushToTaker('Theo', 'Sort the fittings wall', 'Wrong crew')).toEqual({ title: 'A task was handed to you', body: 'Theo handed you "Sort the fittings wall": Wrong crew' })
     expect(handPushToTaker('Theo', 'Sort the fittings wall', '').body).toBe('Theo handed you "Sort the fittings wall".')
     expect(handPushToGiver('Theo', 'Sort the fittings wall', 'Hal').body).toBe('Theo handed "Sort the fittings wall" to Hal.')
+  })
+})
+
+describe('Do first', () => {
+  it('leads More on an open task that is not Next already, and swaps to its undo once picked', () => {
+    expect(taskMoreChoices({ once: true, done: false }).map((r) => r.key)[0]).toBe('first')
+    expect(taskMoreChoices({ once: true, done: false, first: true }).map((r) => r.key)[0]).toBe('unfirst')
+    expect(taskMoreChoices({ once: true, done: false, next: true }).some((r) => r.key === 'first')).toBe(false)
+  })
+  it('is not offered on a stuck task, which is never Next, or on a done one', () => {
+    expect(taskMoreChoices({ once: true, done: false, stuck: true }).some((r) => r.key === 'first' || r.key === 'unfirst')).toBe(false)
+    expect(taskMoreChoices({ once: true, done: true })).toEqual([])
+  })
+  it('is not an answer of the pass', () => {
+    expect(passAnswers({ once: true, done: false }).map((r) => r.key)).toEqual(['done', 'move', 'stuck', 'drop', 'skip'])
   })
 })

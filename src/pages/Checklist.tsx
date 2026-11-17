@@ -81,6 +81,7 @@ import { taskPlaceDots, taskPlaceDraft, taskPlaceFarShort, taskTitlePlain } from
 import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, lateFirst, nextTaskId, splitToday, stillOpenIsLate, stillOpenMeta, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
+import { DO_FIRST_MARK, doFirstId, readDoFirst, writeDoFirst } from '../lib/tasks/doFirst'
 import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
 import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
@@ -501,6 +502,10 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     authUserId,
     todayYmd: todayYmdInAppTz(),
     onChanged: () => rereadDay(),
+    onDoFirst: (instanceId) => {
+      writeDoFirst(authUserId, instanceId)
+      setDoFirstPick(instanceId)
+    },
     // The pass's Done answer is the tick's own path, by the day row's id.
     markDone: async (instanceId) => {
       const inst = [...todayInstances, ...outstandingInstances].find((i) => i.id === instanceId)
@@ -508,6 +513,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       await toggleComplete(inst)
     },
   })
+  /** Do first (step D1): the task this person lifted into Next on this device. */
+  const [doFirstPick, setDoFirstPick] = useState<string | null>(() => readDoFirst(authUserId))
   /** Tasks finished in this visit (punch list #369, step B2): each one's done line offers the photo and the note once. */
   const [doneHere, setDoneHere] = useState<ReadonlySet<string>>(new Set())
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
@@ -929,7 +936,12 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   // Step C6: a stuck task waits under the ones that can be done, and is never Next.
   const isStuck = (i: ChecklistInstance) => stuckReason(eventsByInstance.get(i.id) ?? []) !== null
   const stuckRows = todayOpen.filter(isStuck)
-  const nextId = nextTaskId(todayOpen.filter((i) => !isStuck(i)), outstandingInstances.filter((i) => !isStuck(i)), sentBackIds)
+  const todayReady = todayOpen.filter((i) => !isStuck(i))
+  const olderReady = outstandingInstances.filter((i) => !isStuck(i))
+  // Step D1: the person's own pick is Next while it can be. Past that, the list's order stands.
+  const pickedFirst = doFirstId(doFirstPick, [...todayReady, ...olderReady])
+  const listNextId = nextTaskId(todayReady, olderReady, sentBackIds)
+  const nextId = pickedFirst ?? listNextId
   const nextInst = nextId ? (todayOpen.find((i) => i.id === nextId) ?? outstandingInstances.find((i) => i.id === nextId) ?? null) : null
   const thenRows = todayOpen.filter((i) => i.id !== nextId && !isStuck(i))
   const olderRows = outstandingInstances.filter((i) => i.id !== nextId)
@@ -970,6 +982,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       giverName: giverId ? (eventActorNameById[giverId] ?? null) : null,
       dueYmd: it?.due_date ?? null,
       stuck: isStuck(inst),
+      first: pickedFirst === inst.id,
+      next: listNextId === inst.id,
       meta: inst.scheduled_date < todayYmdInAppTz() ? stillOpenMeta(inst.scheduled_date, it?.due_date ?? null, todayYmdInAppTz()) : null,
     }
   }
@@ -1092,6 +1106,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
             {nextInst ? (
               <>
                 <h3 style={TODAY_PART_LABEL}>{todayPartLabel('next', 1)}</h3>
+                {pickedFirst ? (
+                  <p data-do-first-mark style={{ margin: '0 2px 0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {DO_FIRST_MARK}
+                  </p>
+                ) : null}
                 <ul style={TODAY_PART_LIST}>{renderTodayCard(nextInst, true)}</ul>
               </>
             ) : null}

@@ -32,6 +32,8 @@ type Input = {
   handOn?: typeof handOnTask
   /** Everyone who can take a task in the app, read when Hand it on first opens. */
   loadPeople?: () => Promise<{ people: HandPerson[]; error: string | null }>
+  /** Do first (step D1): the page keeps the pick; the hook only tells it. Null clears it. */
+  onDoFirst?: (instanceId: string | null) => void
   /** Mark a task done, the way its tick does. The pass's Done answer; left out, the pass offers no way to finish a task. */
   markDone?: (instanceId: string) => Promise<void>
   tellGiver?: typeof tellTaskGiver
@@ -64,7 +66,7 @@ export type TaskDoerActs = {
  * an act that lands tells whoever gave the task and has the page read its lists again. The card itself knows none of
  * it: the page hands the press in as one of the card's extras.
  */
-export function useTaskDoerActs({ authUserId, todayYmd, onChanged, moveDay = moveTaskDay, drop = dropTask, sayStuck = sayTaskStuck, handOn = handOnTask, loadPeople = loadHandPeople, markDone, tellGiver = tellTaskGiver, nameOf = getCurrentUserName }: Input): TaskDoerActs {
+export function useTaskDoerActs({ authUserId, todayYmd, onChanged, moveDay = moveTaskDay, drop = dropTask, sayStuck = sayTaskStuck, handOn = handOnTask, loadPeople = loadHandPeople, markDone, onDoFirst, tellGiver = tellTaskGiver, nameOf = getCurrentUserName }: Input): TaskDoerActs {
   const [target, setTarget] = useState<TaskDoerActsTarget | null>(null)
   const [act, setAct] = useState<TaskMoreKey | 'more' | null>(null)
   // Step C5: the pass holds its own list, taken when it starts, so a re-read under it cannot reorder what is being asked.
@@ -166,6 +168,13 @@ export function useTaskDoerActs({ authUserId, todayYmd, onChanged, moveDay = mov
   // No longer stuck takes no sheet: the press is the whole act, and a slip is undone by saying stuck again.
   const pick = useCallback(
     (key: TaskMoreKey) => {
+      // Do first and its undo are the press itself: no sheet, nothing saved to the task.
+      if (key === 'first' || key === 'unfirst') {
+        const t = target
+        close()
+        if (t) onDoFirst?.(key === 'first' ? t.instanceId : null)
+        return
+      }
       if (key !== 'unstuck') {
         setAct(key)
         return
@@ -175,7 +184,7 @@ export function useTaskDoerActs({ authUserId, todayYmd, onChanged, moveDay = mov
       if (!t || !authUserId) return
       void sayStuck({ instanceId: t.instanceId, userId: authUserId, kind: 'unstuck', words: '' }).then(() => onChanged())
     },
-    [authUserId, close, onChanged, sayStuck, target],
+    [authUserId, close, onChanged, onDoFirst, sayStuck, target],
   )
 
   // Step C7: the people who can take a task, read once, the first time Hand it on opens.

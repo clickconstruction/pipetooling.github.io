@@ -176,4 +176,21 @@ describe('Checklist → Today, the day in parts', () => {
     expect(screen.getByRole('dialog', { name: 'More for this task' }).textContent).toContain('Give every carpentry tool a home')
     expect(screen.getByRole('button', { name: /Not today/ })).toBeTruthy()
   })
+
+  it('Do first lifts a task into Next on this device, says so, and Stop doing it first gives Next back', async () => {
+    H.today = [row('a', 'Check the truck fluids'), row('b', 'Sweep the shop bays')]
+    renderWithProviders(<Checklist />)
+    await screen.findByText('Sweep the shop bays')
+    expect(document.querySelector('[data-fresh-lead]')?.textContent).toContain('Check the truck fluids')
+    // the task that is Next already is not offered Do first; the other is
+    fireEvent.click(document.querySelector('[data-task-instance="b"] [data-task-more]') as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: /Do first/ }))
+    await waitFor(() => expect(document.querySelector('[data-fresh-lead]')?.textContent).toContain('Sweep the shop bays'))
+    expect(document.querySelector('[data-do-first-mark]')?.textContent).toBe('You picked this to do first.')
+    expect(localStorage.getItem(`task_do_first_${SMOKE_AUTH_USER_ID}`)).toBe('b')
+    fireEvent.click(document.querySelector('[data-fresh-lead] [data-task-more]') as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: /Stop doing it first/ }))
+    await waitFor(() => expect(document.querySelector('[data-fresh-lead]')?.textContent).toContain('Check the truck fluids'))
+    expect(document.querySelector('[data-do-first-mark]')).toBeNull()
+  })
 })

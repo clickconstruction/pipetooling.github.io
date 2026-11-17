@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1 to C7 built (v2.7533, v2.7536, v2.7537, v2.7539, v2.7541, v2.7542, v2.7543, v2.7544, v2.7545, v2.7546, v2.7547, v2.7548) · C1's migration to push right after its merge · step D to build
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1 to C7 built (v2.7533, v2.7536, v2.7537, v2.7539, v2.7541, v2.7542, v2.7543, v2.7544, v2.7545, v2.7546, v2.7547, v2.7548) · D1, Do first, built (v2.7549) · C1's migration to push right after its merge · D2 and D3 to build
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -11,10 +11,10 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: Push the C1 migration right after its merge. Then D, the three small ones.
-size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: D (S · S · S)
+next: Push the C1 migration right after its merge. Then D2, Mark N done, and D3, Yesterday.
+size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: D2 and D3 (S · S)
 blocker: none
-ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548
+ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
 
@@ -108,7 +108,9 @@ One small PR per line, each with its guide, release note and fragment.
 | C5 | Tool 4: Go through the old ones. Built after C6 | none | S | built, v2.7547 |
 | C6 | Tool 2: Can't do it, with the stuck list on Review. Built ahead of C5 | uses C1 | M | built, v2.7546 |
 | C7 | Tool 7: Hand it on. Both of the page's Forward windows call the same function and keep the task whole. Dashboard's My Inbox has a third Forward, not touched | uses C1 | M | built, v2.7548 |
-| D | Do first, Mark 3 done, Yesterday | none | S each | |
+| D1 | Do first: a press under More that lifts one task into Next on this device | none | S | built, v2.7549 |
+| D2 | Mark N done: one press for a round of daily tasks | none | S | |
+| D3 | Yesterday: a missed repeating task asks once, did it or skipped | a small migration | S | |
 
 ## How to verify
 
