@@ -1858,7 +1858,7 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
 
-### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646; the prompt v2.7652; the database lock v2.7659, `20261118010000_job_papers_lock.sql`; the lists v2.7665)
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646; the prompt v2.7652; the database lock v2.7659, `20261118010000_job_papers_lock.sql`; the lists v2.7665; the sub's page v2.7675)
 
 **The database lock** closes a job to a helper, a subcontractor, a superintendent or an estimator who still owes it a paper.
 `job_shut_to_me(job)` is true for them and false for the prompt-only roles (`job_papers_prompt_only()`: dev, master technician, assistant, controller, primary), who meet the prompt alone.
@@ -1871,6 +1871,12 @@ A locked job is found by its number and never by its name, its address or its de
 The edge functions that read a job with the service key ask them through `_shared/jobPapersLock.ts`: `plan-set-files`, `drive-link`, the four push functions and `schedule-share-dispatch`.
 A person locked out of a job gets no push that names it, and their schedule email shows its number and time only.
 The guard fails open: a read that fails reads as not locked, so a notice on a job that requires nothing is never stopped.
+**A sub with no login** (v2.7675) has no row security behind them: their page is read and written with the service key behind a link, so `sub-portal` and `submit-sub-portal` are the lock for that person.
+Both ask `job_papers_for_person(job, person)` through `_shared/subPortalJobPapers.ts`, and a job is shut to the sub while one of its papers is not signed.
+For a shut job the page's read hands back the job's number, its days and the sub's own money, and holds back the address, the job's name, the scope lines, the notes, the payment memos and the plans link.
+Every press on a shut job's sheet or work order is refused in words, and `sign_job_paper` starts a paper only for a job the sub has work on.
+This guard fails closed: a job whose papers cannot be read is held shut on the sub's page, since nothing else stands behind it.
+A sheet with no job link belongs to no Pipeline job and is not held back.
 **The prompt** (`JobPapersGateModal` over `useJobsClosedToMe`) is drawn in place of the job window for anyone who owes a paper, every role, the office too.
 It shows the job's number and the papers' names and nothing else of the job.
 No clock starts on a job the caller owes a paper on: the picker, Job Mode's On my way and the job change all open the prompt instead.
