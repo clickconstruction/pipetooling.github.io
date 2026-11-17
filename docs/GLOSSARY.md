@@ -2470,6 +2470,16 @@ The view is `users.dashboard_view` through `set_dashboard_view`, pressed in Sett
 only a leader's or a dev's account takes one, and every account reads as **Full** until someone presses. → *Needs You card*;
 guide `use-the-short-dashboard`.
 
+### Waiting on card (the office's side of the short Dashboard)
+A card on an assistant's or a controller's Dashboard, under Needs you, named for the leader, like *Waiting on Marcus* (v2.7568, punch list #365, PR 2).
+The card is `DashboardWaitingOnLeaderCard.tsx`, and its rows and words are in `lib/dashboard/waitingOnLeader.ts`.
+It lists the lines the leader's **Short Dashboard** lists as his alone: lien notices to approve and to sign, lien waivers, tagged job notes and the weekly line budgets.
+A lien row has **Remind**, the Lien desk's own reminder sent through `sendLienReminder`.
+A waiver, a tagged note and the line budgets have no message yet, and the row says so.
+With a notice to sign, one press opens the desk's Ready pile, where a notice takes the leader's signing code.
+It reads under the office's own row-level security and is drawn only when something waits or a read failed. → *Short Dashboard*;
+guide `see-what-waits-on-the-leader`.
+
 ### Bring back (the person desk)
 A teammate whose employment ended comes back on the same account (v2.6523, punch list #256).
 On an archived desk whose roster row has an end date, **Bring back…** sits where Restore sat, on the Status row and in the header's ⋯ menu, and on People → Users → Archived's two lists;
