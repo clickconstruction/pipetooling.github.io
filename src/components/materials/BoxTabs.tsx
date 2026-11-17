@@ -74,7 +74,7 @@ type Props = {
   touch?: boolean
   onSaved: (words: string) => void
   /** The job's map facts, for the Where is it? tab (punch list #372). With none the tab is not drawn. */
-  where?: { jobCenter: LatLng | null; jobAddress: string; photos: ReadonlyArray<PhotoNote>; painted?: ReadonlyArray<PaintedLayerMap> }
+  where?: { jobCenter: LatLng | null; jobAddress: string; photos: ReadonlyArray<PhotoNote>; painted?: ReadonlyArray<PaintedLayerMap>; /** Opens the painted way to the box's place; the host closes this window first. */ onOpenWay?: (mapId: string) => void }
   /** The tab the window opens on; Cage by default. */
   startTab?: 'cage' | 'contents' | 'where'
 }
@@ -159,7 +159,7 @@ export default function BoxTabs({ container, containers, siteBoxes, places, line
       ) : tab === 'where' && where ? (
         <div role="tabpanel" aria-label={WHERE_IS_IT_PRESS}>
           {/* Move box, in this window, is the Cage tab's own place field. */}
-          <WhereIsBox container={container} containers={containers} places={places} moves={moves} movements={movements} photos={where.photos} jobCenter={where.jobCenter} jobAddress={where.jobAddress} painted={where.painted} byName={byName} touch={touch} onMoveBox={() => setTab('cage')} />
+          <WhereIsBox container={container} containers={containers} places={places} moves={moves} movements={movements} photos={where.photos} jobCenter={where.jobCenter} jobAddress={where.jobAddress} painted={where.painted} byName={byName} touch={touch} onMoveBox={() => setTab('cage')} onOpenWay={where.onOpenWay} />
         </div>
       ) : (
         <div role="tabpanel" aria-label="Contents" style={{ display: 'grid', gap: '0.6rem' }}>
