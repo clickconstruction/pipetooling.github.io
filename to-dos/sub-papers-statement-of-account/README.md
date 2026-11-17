@@ -13,7 +13,7 @@ summary: >
   sending that says how much went to each sheet and what stays open, and a statement of account
   for a period. It names them for what they are, marks six sentences for counsel, and stands on
   the hours statement's way of making a PDF. It builds on card #347's ledger and payment window.
-next: Taunya's go that names `send-sub-paper-email`, then its deploy, a boot check and one test paper to a test inbox for the test sub; then the Send press, built on `claude/350-send-press`; the portal tab waits on Taunya's go and counsel's words
+next: Taunya's go that names `send-sub-paper-email`, then its deploy, a boot check and one test paper to a test inbox for the test sub; then the Send press, built on `claude/350-send-press`; the portal tab is card #371 now
 size: L as a train of seven (S · S · M · S · M · M · M)
 blocker: none for PR 1, PR 2 and PR 4 (card #347's sendings and PR #7992's method are in prod); PR 3 is a migration; PR 5 and PR 6 are edge deploys; PR 7 waits on counsel's words
 opinion: build PR 1 now, it is the paper he asked for and reads rows the Pay view already holds; settle the names before PR 3 prints a number under one; do not let a paper say invoice, receipt or owed until counsel has read the six marked sentences
@@ -197,7 +197,7 @@ Cut each PR from fresh `origin/main`, in this order:
 3. **The numbers on the papers** (PR 3's other half). **Built, v2.7552.** Written, not cut: the snapshot never called the mint. Print and Download register the paper through `mint_sub_paper` first (`src/lib/subWorkOrders/subPaperRegister.ts`), then draw it under its number. A paper the register refuses is not made. Nobody has called the mint on prod yet. The window calls `mint_sub_paper`, only after that push.
 4. **The payment record** (PR 4). **Built, v2.7475**, ahead of step 3. A payment record prints its sending's own number (`PR-<n>`), since the names are kept. The after-payment window's press reads *Payment record…* and opens the paper; step 5 makes it *Send the payment record…*. *Payment record…* beside a payment on the sheet, and `AfterRecordPaymentWindow` after Record payment in `src/components/jobs/SubLaborPaymentModals.tsx`. Its tests in `SubLaborPaymentModals.sending.render.test.tsx` are rewritten.
 5. **Send** (PR 5). The function `send-sub-paper-email` alone first, deployed only on Taunya's go that names it. **The function is merged, v2.7506, and not deployed.** It sends as the company to the roster's own address and keeps each paper as a sent copy of its own. A texted link is not built, so the press offers email alone. Then the press, built on the pushed branch `claude/350-send-press` and opened once the function is deployed.
-6. **The portal tab** (PR 6, with PR 7's confirm left behind its switch, off). The `sub-portal` function first, then `src/components/subPortal/SubPortalStatementsTab.tsx`.
+6. **The portal tab** (PR 6, with PR 7's confirm left behind its switch, off). **Moved to card #371** (`to-dos/sub-portal-statements/`), with a mock-up and calls of its own. Not started. The `sub-portal` function first, then `src/components/subPortal/SubPortalStatementsTab.tsx`.
 
 Hard lines:
 

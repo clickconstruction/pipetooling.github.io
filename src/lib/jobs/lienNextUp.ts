@@ -25,6 +25,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_NOTICE_OWED_DOORS, lienNoticeOwedMonths, lienNoticeOwedWords } from './lienNoticeOwed'
 import { describeNoticeMonths } from './lienNoticeMonthWords'
 import { lienActFor } from './lienActWords'
+import { LIEN_JOB_PATH_DOOR } from './lienJobPathWindow'
 import { lienAffidavitNoticePile, lienAffidavitNoticeStanding, lienAffidavitNoticeWaits, lienAffidavitNoticeWords } from './lienAffidavitNoticeStanding'
 
 export type LienNextUpKind = 'notice' | 'affidavit' | 'retainage'
@@ -73,6 +74,8 @@ export type LienNextUpTarget =
   | { open: 'lien_window'; jobId: string; tab: 'affidavit' | 'notice'; openLastWork?: true }
   /** The recorded notice's months, corrected (punch list #353): the paper as mailed named these months too, so they join its record. */
   | { open: 'notice_record_months'; jobId: string; months: string[] }
+  /** The window that takes one job off the lien path, with a reason (v2.7526, `lienJobPathWindow.ts`). */
+  | { open: 'job_path'; jobId: string }
   /** The window that mails every filed lien's copies together (punch list #366): a folded row's press, and the Board's own. */
   | { open: 'serve_copies' }
 
@@ -416,6 +419,10 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     // a gate closed on after its approval: it sits in Held, the row still asks the one question, and says the approval stands.
     const pushHold = (approved: boolean) => {
       const stands = approved ? ' The approval stands.' : ''
+      // Not lienable… (v2.7526, the owner's pick of 2026-11-16): a paper a fact holds is where a job with no lien behind
+      // it shows up, so the office's row offers the door that takes the one job off the lien path, with a reason. A
+      // public owner's row has none: that answer is the property's, and its own window takes every job there.
+      const offPath = office ? { doors: [{ words: LIEN_JOB_PATH_DOOR, target: { open: 'job_path' as const, jobId: e.jobId } }] } : {}
       const lead = approved ? 'Affidavit approved, held · ' : 'Affidavit · '
       // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
       const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
@@ -435,17 +442,17 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
               : standing === 'late'
                 ? { button: office ? BUTTON.send_notice : null, target: pane }
                 : { button: canAct ? 'Open the notice' : null, target: pane }
-        push({ ...base, key, sub: `${lead}${words.sub}`, detail: `${words.detail}${stands}`, action: 'send_notice', ...press })
+        push({ ...base, key, sub: `${lead}${words.sub}`, detail: `${words.detail}${stands}`, action: 'send_notice', ...press, ...offPath })
       }
       // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
       // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
       else if (failing.includes('public_owner')) push({ ...base, key, sub: `${lead}public property, no lien attaches. Ask the attorney about the bond`, detail: 'Public property, no lien attaches. Ask the attorney about the bond.', action: 'fix_property', button: null })
-      else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: `${lead}the general contractor has no address on file`, detail: `The general contractor has no address on file.${stands}`, action: 'fix_property', button: canAct ? 'Add the address' : null })
+      else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead' || k === 'homestead_answer')) push({ ...base, key, sub: `${lead}the general contractor has no address on file`, detail: `The general contractor has no address on file.${stands}`, action: 'fix_property', button: canAct ? 'Add the address' : null, ...offPath })
       else {
         // The hold by name (v2.7372, punch list #362 step 3): the one fact the affidavit waits on, in `gateAct`'s words, on
         // the row and on its button. Until then every hold read *the property record is not complete*, whatever the gate.
         const hold = lienGateHoldWords(failing)
-        push({ ...base, key, sub: `${lead}${hold.sub}`, detail: `${hold.detail}${stands}`, action: 'fix_property', button: canAct ? hold.button : null })
+        push({ ...base, key, sub: `${lead}${hold.sub}`, detail: `${hold.detail}${stands}`, action: 'fix_property', button: canAct ? hold.button : null, ...offPath })
       }
     }
     switch (e.pile) {

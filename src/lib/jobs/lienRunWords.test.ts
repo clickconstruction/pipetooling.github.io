@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_MAIL, LIEN_RUN_NOW_TO_PRINT, LIEN_RUN_STEP, LIEN_RUN_THEN_TO_MAIL, LIEN_RUN_THEN_TO_PRINT, lienRunActFor, lienRunActLabel, lienRunWindowTitle } from './lienRunWords'
+import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_MAIL, LIEN_RUN_NOW_TO_PRINT, LIEN_RUN_STEP, LIEN_RUN_THEN_TO_MAIL, LIEN_RUN_THEN_TO_PRINT, lienRunActFor, lienRunActLabel, lienRunWhatWords, lienRunWindowTitle } from './lienRunWords'
 import { LIEN_DESK_PILES } from './lienDesk'
 import { runDoorWords } from './lienDeskRun'
 import { lienRunPill } from './lienRunChecklist'
@@ -105,5 +105,19 @@ describe('the kernels agree on the words (v2.7448): a step or a press reads one 
       const pill = lienRunPill({ toPrint, printed, mailed: 0 }).words
       expect(pill).toBe(toPrint + printed === 0 ? '' : lienRunActLabel(door.act, door.count))
     }
+  })
+})
+
+describe('lienRunWhatWords: the head says which paper the run holds, and what is not in it (v2.7489)', () => {
+  it('names the paper and the stage, and says a sent notice and a lien affidavit are not here', () => {
+    const w = lienRunWhatWords({ monthly: 15, retainage: 0 })
+    expect(w.line).toBe('Monthly notices (§ 53.056), approved and not yet mailed.')
+    expect(w.not).toBe('A job whose notice already went is not here. Lien affidavits are not here either.')
+    expect(w.more).toBe('Lien affidavits print from the Board, with Print N for notarization. Their copies to the owner and the original contractor go out after the filing.')
+  })
+  it('names a retainage notice when the run holds one, and says monthly for an empty run', () => {
+    expect(lienRunWhatWords({ monthly: 3, retainage: 1 }).line).toBe('Monthly notices (§ 53.056) and retainage notices (§ 53.057), approved and not yet mailed.')
+    expect(lienRunWhatWords({ monthly: 0, retainage: 2 }).line).toBe('Retainage notices (§ 53.057), approved and not yet mailed.')
+    expect(lienRunWhatWords({ monthly: 0, retainage: 0 }).line).toBe('Monthly notices (§ 53.056), approved and not yet mailed.')
   })
 })

@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { Container, ContainerLine } from './onSite'
 import type { OnSiteFindJob } from './onSiteFind'
-import { NO_PLACE_WORDS, addedLatelyIds, allDoorLabel, cassetteShareWords, emptyBoxCount, findLabelJobs, kindCountsWords, labelJobChips, labelJobFacts, labelJobsCountWords, labelJobsInOrder, nameSpan, placeCounts, printNeedWords, resumeWords, tapeLengthWords, type LabelJobsInput } from './printLabelsJobs'
+import { NO_PLACE_WORDS, allDoorLabel, cassetteShareWords, emptyBoxCount, findLabelJobs, kindCountsWords, labelJobChips, labelJobFacts, labelJobsCountWords, labelJobsInOrder, nameSpan, placeCounts, printNeedWords, resumeWords, tapeLengthWords, type LabelJobsInput } from './printLabelsJobs'
 
-const NOW = Date.parse('2026-11-16T15:00:00Z')
 const box = (id: string, label: string, over: Partial<Container> = {}): Container => ({ id, jobId: 'j1', label, kind: 'box', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-10-01T00:00:00Z', ...over })
 const line = (containerId: string, onHand: number): ContainerLine => ({ containerId, partName: '2 in 90', onHand } as ContainerLine)
-const input = (over: Partial<LabelJobsInput> = {}): LabelJobsInput => ({ nowMs: NOW, today: '2026-11-16', kept: null, format: 'tape', widthMm: 24, copies: 1, stickeredIds: null, ...over })
+const input = (over: Partial<LabelJobsInput> = {}): LabelJobsInput => ({ today: '2026-11-16', kept: null, format: 'tape', widthMm: 24, copies: 1, stickeredIds: null, ...over })
 const names = (n: number) => Array.from({ length: n }, (_, i) => `G${i + 1}`)
 
 describe('what a card says the labels are', () => {
@@ -32,20 +31,17 @@ describe('what a card says the labels are', () => {
 })
 
 describe('what changed', () => {
-  it('a box is new for seven days, and a day that cannot be read is not new', () => {
-    const boxes = [box('a', 'G1', { createdAt: '2026-11-15T12:00:00Z' }), box('b', 'G2', { createdAt: '2026-11-09T15:00:01Z' }), box('c', 'G3', { createdAt: '2026-11-09T14:59:00Z' }), box('d', 'G4', { createdAt: '' })]
-    expect(addedLatelyIds(boxes, NOW)).toEqual(['a', 'b'])
-  })
-
   it('a box is empty when no line has a part on hand', () => {
     expect(emptyBoxCount([{ id: 'a' }, { id: 'b' }, { id: 'c' }], [line('a', 4), line('b', 0)])).toBe(2)
   })
 
   it('the chips read in order and leave out what is nothing', () => {
-    expect(labelJobChips({ addedIds: ['a', 'b'], stickered: 1, empty: 3 })).toEqual([{ tone: 'green', words: '2 added this week' }, { tone: 'blue', words: '1 already wears a sticker' }, { tone: 'gray', words: '3 empty' }])
-    expect(labelJobChips({ addedIds: [], stickered: 23, empty: 0 })).toEqual([{ tone: 'blue', words: '23 already wear a sticker' }])
-    // The stickers were not read: the chip is left out, never a zero.
-    expect(labelJobChips({ addedIds: [], stickered: null, empty: 0 })).toEqual([])
+    expect(labelJobChips({ notPrintedIds: ['a', 'b'], allLabelled: false, stickered: 1, empty: 3 })).toEqual([{ tone: 'amber', words: '2 not printed yet' }, { tone: 'blue', words: '1 already wears a sticker' }, { tone: 'gray', words: '3 empty' }])
+    expect(labelJobChips({ notPrintedIds: [], allLabelled: false, stickered: 23, empty: 0 })).toEqual([{ tone: 'blue', words: '23 already wear a sticker' }])
+    // Every box is known to carry a code: the card says so.
+    expect(labelJobChips({ notPrintedIds: [], allLabelled: true, stickered: 0, empty: 0 })).toEqual([{ tone: 'green', words: 'Every box is labelled' }])
+    // The stickers were not read: both chips are left out, never a zero and never a guess.
+    expect(labelJobChips({ notPrintedIds: null, allLabelled: false, stickered: null, empty: 0 })).toEqual([])
   })
 })
 
@@ -78,7 +74,7 @@ describe('what the job takes to print', () => {
 })
 
 describe('a job’s card', () => {
-  const boxes = [box('g1', 'G1'), box('g2', 'G2 COPPER 90'), box('g3', 'G3', { kind: 'cage', createdAt: '2026-11-14T00:00:00Z' }), box('old', 'G0', { retiredAt: '2026-11-01T00:00:00Z' }), box('un', 'Unsorted', { kind: 'unsorted' })]
+  const boxes = [box('g1', 'G1'), box('g2', 'G2 COPPER 90'), box('g3', 'G3', { kind: 'cage', createdAt: '2026-11-18T15:00:00Z' }), box('old', 'G0', { retiredAt: '2026-11-01T00:00:00Z' }), box('un', 'Unsorted', { kind: 'unsorted' })]
   const job: OnSiteFindJob = { jobId: 'j1', label: '1042 · Oak Hollow, Building C', number: '1042', name: 'Oak Hollow, Building C', address: '410 Mill Road', containers: boxes, lines: [line('g1', 3)], places: [] }
 
   it('reads the live boxes alone, by name, with the short name a label prints', () => {
@@ -91,17 +87,37 @@ describe('a job’s card', () => {
     expect(f.name).toBe('Oak Hollow, Building C')
     expect(f.places).toEqual([{ name: NO_PLACE_WORDS, n: 3 }])
     expect(f.empty).toBe(2)
-    expect(f.addedIds).toEqual(['g3'])
+    // The stickers are unread: what waits for a label is not said yet.
+    expect(f.notPrintedIds).toBeNull()
+    expect(f.allLabelled).toBe(false)
     expect(f.stickered).toBeNull()
     expect(f.sample).toEqual({ id: 'g1', name: 'G1' })
     expect(f.need).toBe('3 strips · about 12 cm of 24 mm tape')
   })
 
-  it('offers the new boxes and every box, and one door when every box is new', () => {
-    expect(labelJobFacts(job, input())!.doors).toEqual([{ kind: 'new', label: 'The 1 new', ids: ['g3'] }, { kind: 'all', label: 'All 3', ids: ['g1', 'g2', 'g3'] }])
-    const fresh = { ...job, containers: [box('n1', 'T1', { createdAt: '2026-11-16T00:00:00Z' }), box('n2', 'T2', { createdAt: '2026-11-16T00:00:00Z' })] }
-    expect(labelJobFacts(fresh, input())!.doors).toEqual([{ kind: 'all', label: 'Both labels', ids: ['n1', 'n2'] }])
+  it('offers the boxes not printed yet and every box, and one door when every box waits', () => {
+    const read = input({ stickeredIds: new Set<string>() })
+    const f = labelJobFacts(job, read)!
+    // G1 and G2 were made before the app kept the mark: nothing is said of them.
+    expect(f.notPrintedIds).toEqual(['g3'])
+    expect(f.doors).toEqual([{ kind: 'unprinted', label: 'The 1 not printed yet', ids: ['g3'] }, { kind: 'all', label: 'All 3', ids: ['g1', 'g2', 'g3'] }])
+    // Until the stickers are read there is one door: a box with a sticker waits for nothing.
+    expect(labelJobFacts(job, input())!.doors).toEqual([{ kind: 'all', label: 'All 3', ids: ['g1', 'g2', 'g3'] }])
+    const fresh = { ...job, containers: [box('n1', 'T1', { createdAt: '2026-11-18T00:00:00Z' }), box('n2', 'T2', { createdAt: '2026-11-18T00:00:00Z' })] }
+    expect(labelJobFacts(fresh, read)!.doors).toEqual([{ kind: 'all', label: 'Both labels', ids: ['n1', 'n2'] }])
     expect(allDoorLabel(1)).toBe('The one label')
+  })
+
+  it('a printed label or a sticker takes a box off the waiting count, and a job with neither left says so', () => {
+    const printed = { ...job, containers: [box('g1', 'G1', { labelPrintedAt: '2026-11-18T16:00:00Z' }), box('g2', 'G2', { createdAt: '2026-11-18T15:00:00Z' }), box('g3', 'G3', { createdAt: '2026-11-18T15:00:00Z' })] }
+    const one = labelJobFacts(printed, input({ stickeredIds: new Set(['g3']) }))!
+    expect(one.notPrintedIds).toEqual(['g2'])
+    expect(one.allLabelled).toBe(false)
+    const done = { ...printed, containers: printed.containers.map((c) => (c.id === 'g2' ? { ...c, labelPrintedAt: '2026-11-18T17:00:00Z' } : c)) }
+    const all = labelJobFacts(done, input({ stickeredIds: new Set(['g3']) }))!
+    expect(all.notPrintedIds).toEqual([])
+    expect(all.allLabelled).toBe(true)
+    expect(all.doors).toEqual([{ kind: 'all', label: 'All 3', ids: ['g1', 'g2', 'g3'] }])
   })
 
   it('a run this computer stopped today is the first door, with what is left and where it picks up', () => {
@@ -134,14 +150,15 @@ describe('the list of jobs', () => {
   const jobs = [
     j('a', '1113 · ZZ Test Walk', [box('a1', 'T1', { jobId: 'a' })]),
     j('b', '224 · Phase 2', [box('b1', 'G1', { jobId: 'b' }), box('b2', 'G2', { jobId: 'b' })]),
-    j('c', '1077 · Ridgeway Medical', [box('c1', 'A1', { jobId: 'c' }), box('c2', 'A2', { jobId: 'c', createdAt: '2026-11-15T00:00:00Z' })]),
+    j('c', '1077 · Ridgeway Medical', [box('c1', 'A1', { jobId: 'c' }), box('c2', 'A2', { jobId: 'c', createdAt: '2026-11-18T00:00:00Z' })]),
     j('d', '1200 · No boxes', [box('un', 'Unsorted', { kind: 'unsorted', jobId: 'd' })]),
   ]
 
-  it('puts a run to finish first, then new boxes, then the job’s number, and leaves out a job with no box', () => {
+  it('puts a run to finish first, then boxes not printed yet, then the job’s number, and leaves out a job with no box', () => {
     const kept = { jobId: 'b', day: '2026-11-16', copies: 1, left: ['b1'], partial: null }
-    expect(labelJobsInOrder(jobs, input({ kept })).map((f) => f.jobId)).toEqual(['b', 'c', 'a'])
-    expect(labelJobsInOrder(jobs, input()).map((f) => f.jobId)).toEqual(['c', 'b', 'a'])
+    const stickeredIds = new Set<string>()
+    expect(labelJobsInOrder(jobs, input({ kept, stickeredIds })).map((f) => f.jobId)).toEqual(['b', 'c', 'a'])
+    expect(labelJobsInOrder(jobs, input({ stickeredIds })).map((f) => f.jobId)).toEqual(['c', 'b', 'a'])
   })
 
   it('a search takes every typed word, from the number, the name, the site or the street', () => {
