@@ -108,6 +108,7 @@ when_to_read:
    - [job-photos](#job-photos)
    - [bid-photos](#bid-photos)
    - [plan-set-files](#plan-set-files)
+   - [bid-plan-set-files](#bid-plan-set-files)
    - [gc-plan-question-email](#gc-plan-question-email)
    - [gc-architect-email](#gc-architect-email)
    - [gc-trade-portal](#gc-trade-portal)
@@ -1585,6 +1586,22 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Doors**: `src/lib/plans/planSetFilesIo.ts` (`folder`, `put`, `saveAttachment`, `attachmentsOf`) behind `JobPlansSection.tsx` (a new set or as-built on a job with no link gets its folder; the as-built's photos or PDF go up one by one, named `As-built · JP972 · 2026-11-02 · 1 of 3.jpg` by `src/lib/plans/planSetFiles.ts`; **File 1 file again** on a failure, **Add photos or a PDF** on an as-built, **Make its folder** on a set with no link) and `MailPaperDoor.tsx` (the mail's files follow the paper into its folder, with its own press to file again). Guides *keep the plans on a job* and *keep the papers with the plans*.
 
 **Status**: v2.6345, deployed after the merge (`supabase functions deploy plan-set-files`); the live check on a ZZ Test job passed on 2026-11-03 (an as-built's photos landed in its own folder under Plans, a later photo took the next name, a set with no link got its folder); a mail's file following its paper is still to be seen live.
+
+
+### bid-plan-set-files
+
+**Purpose**: A mail's files kept as a set of plans on a bid (punch list #368, PR 1, v2.7531). An addendum or a revised spec reaches a bid by mail; the press on that mail files what it carries into the **bid's own project folder under Plans › <set name>** and adds the set to the bid (`bid_plan_sets`), so the estimators and the robot find it where the bid's plans are. The job's leg is [plan-set-files](#plan-set-files); a bid has no plan part, so it has this one. The rules are `_shared/bidPlanSetFilesRun.ts`, tested with a fake from `src/lib/bids/bidPlanSetFilesRun.test.ts`.
+
+- `{ action: 'keep', bid_id, message_id, name, memo?, plan_date? }` → `{ set: { id, bid_id, name, link }, folderUrl, made, reused }`: the set's folder found or made and the set's row added by the caller's own insert, so the table's policy decides. The project folder follows the rule the bid's photos use ([bid-photos](#bid-photos)): the folder on `bids.drive_link`, else one found or made under the jobs root by the office's bid pattern, its link written on the bid where it is empty. A set of this bid that already points at the folder of that name is answered as it is (`reused`), so a second press, or a later mail of the same conversation, joins it; a folder another bid's set points at is stepped past (*name · 2*).
+- `{ action: 'save_attachment', set_id, attachment_id }` → `{ driveFileId, url, folderUrl, reused? }`: our copy of one of the mail's files (`message_attachments`, the `message-attachments` bucket) into the set's folder, then the file's own row marked with the set (`message_attachments.bid_plan_set_id`, written as the service role once the file is in the folder), which is how the mail reads as kept and the set as from a mail. The set's file columns are stamped from what the folder then holds (`bidSetFileFacts`); a failure there is not the file's. A second try finds the file again by its name and size; a different file of the same name takes the next name, *specs (2).pdf*. The set may be one the office added by hand, when its link is a Drive folder the app can add to.
+- Refused in words, with nothing made: a mail that is not an email or is not tied to the bid (409 `not_tied`), a file that stayed in Gmail (409), a project folder or a set's folder the app cannot file into (409 `folder_held`: a personal Drive, a folder not shared with the service account, a link that is no folder), no jobs root set, a name left empty or a date that is no day (400).
+- Everything an ask carries is checked before anything is made. A keep whose row did not save leaves its folder, and the next try takes that folder and saves the row. A read that fails answers 500 with its reason.
+
+**Endpoint**: `POST /functions/v1/bid-plan-set-files` · **Auth**: `verify_jwt = false` in `config.toml`; the JWT is checked in-body. The caller's role must be one `bid_plan_sets_insert` names (dev, the leaders, the assistants, the controller, the estimator; `BID_SET_WRITE_ROLES`, held to the migration by the test). The bid, the mail, the set and the file are read through the caller's client, so each table's own policies decide who sees them (404 otherwise). A training account and a digital twin change nothing (403). An archived caller is refused (`refuseArchivedCaller`). The Drive work runs as the service account.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**; `DRIVE_JOBS_FOLDER_ID` (the root's fallback while the setting is empty). Helpers from `_shared/driveUpload.ts`, `_shared/driveLink.ts`, `_shared/driveJobFolder.ts`, `_shared/fileIndexKernel.ts`, `_shared/driveSettings.ts` and `_shared/bidFolder.ts` (`readBidForFolder`, `bidFolderNameFor`, `seeBidFolder`).
+
+**Doors**: none in the app until PR 2 of punch list #368 (the press on the mail's window in Messages and in My email).
 
 ### gc-plan-question-email
 
