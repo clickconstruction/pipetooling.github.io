@@ -119,8 +119,8 @@ import EstimateResendLinkPanel from '../components/estimates/EstimateResendLinkP
 import EstimateOfferedOptions from '../components/estimates/EstimateOfferedOptions'
 import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
 import { postSendEstimate, sendEstimateAnswerFrom } from '../lib/estimates/sendEstimateIo'
+import { estimateRecipientEmail, estimateSendPlan } from '../lib/estimates/estimateSendPlan'
 import { recordNavClick } from '../lib/navClickTelemetry'
-import { GC_OFFICE_TEAM } from '../lib/gc/access'
 import { formatCurrency } from '../lib/format'
 import { TellCustomerSheet } from '../components/customers/TellCustomerSheet'
 import { EstimateWhatWent } from '../components/estimates/EstimateWhatWent'
@@ -198,7 +198,6 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'superintendent',
 ])
 
-const SEND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 
 function EstimateCustomerActivityDetails({
@@ -2020,7 +2019,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       computeEstimateDraftSteps({
         isCO,
         customerSelected: customerId != null,
-        customerEmailPresent: Boolean(crmEmailForSelected || sendEmailOverride.trim()),
+        customerEmailPresent: Boolean(estimateRecipientEmail(crmEmailForSelected, sendEmailOverride)),
         changeDescriptionFilled: coFields.description_of_change.trim() !== '',
         // Same rule as the list's send-gate (B18 / J17-F5): the seeded $0 stub is not a line.
         lineCount: countMeaningfulEstimateLines(lines),
@@ -2075,17 +2074,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (!customerId) return null
     const sel = customers.find((x) => x.id === customerId)
     const crm = sel ? extractContactFromCustomer(sel).email.trim() : ''
-    return crm || (sendEmailOverride.trim() || null)
+    return estimateRecipientEmail(crm, sendEmailOverride) || null
   }
 
   const previewEmailTo = useMemo(() => {
     if (!row) return '—'
     if (row.status === 'draft') {
-      if (!customerId) return sendEmailOverride.trim() || '—'
-      const sel = customers.find((x) => x.id === customerId)
+      const sel = customerId ? customers.find((x) => x.id === customerId) : undefined
       const crm = sel ? extractContactFromCustomer(sel).email.trim() : ''
-      if (crm) return crm
-      return sendEmailOverride.trim() || '—'
+      return estimateRecipientEmail(crm, sendEmailOverride) || '—'
     }
     const emailed = row.customer_email?.trim()
     if (emailed) return emailed
@@ -2817,31 +2814,28 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       showToast('Could not load the selected customer.', 'error')
       return
     }
-    const crm = extractContactFromCustomer(sel).email.trim()
-    const payloadEmail = crm || sendEmailOverride.trim()
-    if (!payloadEmail) {
-      showToast('This customer has no email on file. Enter a send-to email below.', 'error')
+    const plan = estimateSendPlan({
+      customerEmail: extractContactFromCustomer(sel).email.trim(),
+      override: sendEmailOverride,
+      isChangeOrder: isCO,
+      totalCents,
+      role,
+    })
+    if (plan.kind === 'refuse') {
+      showToast(plan.why, 'error')
       return
     }
-    if (!SEND_EMAIL_RE.test(payloadEmail)) {
-      showToast('Enter a valid email address.', 'error')
-      return
-    }
+    const payloadEmail = plan.email
     // Tier-2 #42 (J17-F4): one confirm that names the recipient — this emails a
     // real customer. Rail decision 1's $0 soft gate (schedule-only change
     // orders are legitimate, silent $0 sends are not) folds into the same ask.
     recordNavClick(user.id, role, 'discard_guard_shown', 'estimate_send')
     // Tell the customer (v2.5594): a normal estimate's send goes through the sheet, which emails it, texts the link, and shows the receipt with the call.
-    if (!isCO && totalCents > 0 && role && GC_OFFICE_TEAM.includes(role)) {
+    if (plan.kind === 'sheet') {
       setTellEstimate({ estimateId: row.id, customerId: sel.id, customerName: sel.name ?? null, email: payloadEmail, totalCents, number: row.estimate_number, title: (row.status === 'draft' ? title : row.title) ?? '', jobId: row.job_ledger_id ?? null })
       return
     }
-    const zeroNote = totalCents === 0 ? (isCO ? ' The net change to contract is $0.00.' : ' The total is $0.00.') : ''
-    const okSend = await confirmDialog({
-      title: isCO ? 'Send for signature?' : 'Send to customer?',
-      message: `Send to ${payloadEmail}?${zeroNote}`,
-      confirmLabel: totalCents === 0 ? 'Send anyway' : 'Send',
-    })
+    const okSend = await confirmDialog({ title: plan.title, message: plan.message, confirmLabel: plan.confirmLabel })
     if (!okSend) return
     await sendEstimateEmail(payloadEmail)
   }
