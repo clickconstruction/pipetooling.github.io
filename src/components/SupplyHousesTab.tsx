@@ -6,11 +6,11 @@ import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { saveSupplyInvoice, supabaseSupplyInvoiceDb } from '../lib/materials/supplyInvoiceWrite'
+import { saveSupplyInvoice, supabaseSupplyInvoiceDb, supplyInvoiceDraftFromForm } from '../lib/materials/supplyInvoiceWrite'
 import { useBillReadSwitch } from '../hooks/useBillReadSwitch'
 import { fileHref, fileUrl } from '../lib/files/fileRoute'
-import { applyPlan, billTint, emptyFields, fillCounts, planBillFill, settle, type BillFillPlan } from '../lib/materials/bills/billFill'
-import { billRowRead, field as billField, type BillFieldKey, type BillFields, type BillRead } from '../lib/materials/bills/billRead'
+import { billTint, emptyFields, fillCounts, noPdfPatch, planBillFill, planIntoForm, settle, type BillFillPlan, type BillFormPatch } from '../lib/materials/bills/billFill'
+import { billRowRead, type BillFieldKey, type BillFields, type BillRead } from '../lib/materials/bills/billRead'
 import { billCountsByHouse, billsForHouse, type BillCandidate } from '../lib/materials/bills/billsToRecord'
 import { fileToUpload, supabaseBillsIo, type BillReadAnswer, type BillsIo } from '../lib/materials/bills/billsToRecordIo'
 import { supabasePaperIo, type PaperIo } from '../lib/materials/lines/paperIo'
@@ -53,7 +53,6 @@ import {
   singleJobPairs,
   withEmailedAsks,
   type MoveAsk,
-  nextMonthlyPaymentDueYmd,
   type AgingBucketKey,
   type AgingCellKey,
 } from '../lib/supplyHouseAging'
@@ -68,8 +67,10 @@ import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPan
 import {
   addAllocation,
   allocationTotal,
+  blankInvoiceForm,
   dueDateHint,
   groupAllocationsByInvoice,
+  invoiceFormFromRow,
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
@@ -84,7 +85,8 @@ import {
   creditPairingLine,
   documentKindFromRow,
   documentWords,
-  typedAmountFromStored,
+  typedAmountCents,
+  type InvoiceFormValues,
   type PoGeneratorLedgerRow,
   type PoLedgerEntriesByCode,
   type SupplyDocumentKind,
@@ -1129,29 +1131,46 @@ export function SupplyHousesTab({
     if (poData?.id) handleNavigateToPO(poData.id)
   }
 
+  /** The form's fields into its state: a new bill's blanks, or a stored row's. */
+  function setInvoiceFormValues(v: InvoiceFormValues) {
+    setInvoiceNumber(v.number)
+    setInvoiceDate(v.dateYmd)
+    setInvoiceDueDate(v.dueDateYmd)
+    setInvoiceAmount(v.amountTyped)
+    setInvoiceDocumentKind(v.kind)
+    setInvoiceIsInterest(v.isInterest)
+    setInvoiceLateInvoiceId(v.lateInvoiceId)
+    setInvoiceCreditsInvoiceId(v.creditsInvoiceId)
+    setInvoiceLink(v.link)
+    setInvoiceIsPaid(v.isPaid)
+    setInvoicePaidOn(v.paidOnYmd)
+    setInvoiceOnJobAccount(v.onJobAccount)
+    setInvoicePurchaseOrderNumber(v.purchaseOrderNumber)
+    setInvoiceJobAllocations(v.allocations)
+  }
+
+  /** What a fill, or No PDF, may write into the form: only the keys the patch carries. */
+  function applyBillFormPatch(patch: BillFormPatch) {
+    if (patch.kind !== undefined) setInvoiceDocumentKind(patch.kind)
+    if (patch.number !== undefined) setInvoiceNumber(patch.number)
+    if (patch.dateYmd !== undefined) setInvoiceDate(patch.dateYmd)
+    if (patch.amountTyped !== undefined) setInvoiceAmount(patch.amountTyped)
+    if (patch.purchaseOrder !== undefined) setInvoicePurchaseOrderNumber(patch.purchaseOrder)
+    if (patch.dueYmd !== undefined) setInvoiceDueDate(patch.dueYmd)
+    if (patch.creditsInvoiceId !== undefined) setInvoiceCreditsInvoiceId(patch.creditsInvoiceId)
+    if (patch.link !== undefined) setInvoiceLink(patch.link)
+    if (patch.allocations !== undefined) setInvoiceJobAllocations(patch.allocations)
+    if (patch.onJobAccount !== undefined) setInvoiceOnJobAccount(patch.onJobAccount)
+  }
+
   function openAddInvoice() {
     resetBill()
     billInvoiceIdRef.current = crypto.randomUUID()
     invoiceOnJobAccountTouchedRef.current = false
     setInvoiceJobAccountKey(null)
     setEditingInvoice(null)
-    setInvoiceNumber('')
-    const todayYmd = todayYmdInAppTz()
-    setInvoiceDate(todayYmd)
-    // Prefill from the house's monthly payment day (next occurrence) — editable, just a default.
-    const paymentDay = selectedSupplyHouseForDetail?.monthly_payment_day
-    setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
-    setInvoiceAmount('')
-    setInvoiceDocumentKind('invoice')
-    setInvoiceIsInterest(false)
-    setInvoiceLateInvoiceId('')
-    setInvoiceCreditsInvoiceId('')
-    setInvoiceLink('')
-    setInvoiceIsPaid(false)
-    setInvoicePaidOn('')
-    setInvoiceOnJobAccount(false)
-    setInvoicePurchaseOrderNumber('')
-    setInvoiceJobAllocations([])
+    // The due day is prefilled from the house's monthly payment day (its next occurrence): editable, just a default.
+    setInvoiceFormValues(blankInvoiceForm(selectedSupplyHouseForDetail?.monthly_payment_day, todayYmdInAppTz()))
     setInvoiceJobSearchText('')
     setInvoiceFormOpen(true)
   }
@@ -1160,21 +1179,7 @@ export function SupplyHousesTab({
     invoiceOnJobAccountTouchedRef.current = true
     setInvoiceJobAccountKey(null)
     setEditingInvoice(inv)
-    setInvoiceNumber(inv.invoice_number)
-    setInvoiceDate(inv.invoice_date)
-    setInvoiceDueDate(inv.due_date ?? '')
-    setInvoiceAmount(typedAmountFromStored(inv.amount))
-    setInvoiceDocumentKind(documentKindFromRow(inv))
-    setInvoiceCreditsInvoiceId((inv as { credits_invoice_id?: string | null }).credits_invoice_id ?? '')
-    setInvoiceLink(inv.link ?? '')
-    setInvoiceIsPaid(inv.is_paid)
-    setInvoiceIsInterest(inv.is_interest === true)
-    setInvoiceLateInvoiceId(inv.late_invoice_id ?? '')
-    setInvoicePaidOn(inv.is_paid ? paidOnYmdFromIso(inv.paid_at) : '')
-    // === true: pre-migration rows fetched before the column existed read as undefined.
-    setInvoiceOnJobAccount(inv.on_job_account === true)
-    setInvoicePurchaseOrderNumber(inv.purchase_order_number ?? '')
-    setInvoiceJobAllocations((inv as SupplyHouseInvoiceWithAllocations).job_allocations ?? [])
+    setInvoiceFormValues(invoiceFormFromRow(inv))
     setInvoiceJobSearchText('')
     setInvoiceFormOpen(true)
   }
@@ -1218,29 +1223,11 @@ export function SupplyHousesTab({
 
   /** The plan into the form's state, every field the person typed left as it is. */
   function applyPlanToForm(plan: BillFillPlan): BillFields {
-    const typed = billTypedRef.current
-    if (!typed.has('kind')) setInvoiceDocumentKind(plan.kind)
-    if (!typed.has('number')) setInvoiceNumber(plan.number)
-    if (!typed.has('date') && plan.dateYmd) setInvoiceDate(plan.dateYmd)
-    if (!typed.has('amount')) setInvoiceAmount(plan.amountTyped)
-    if (!typed.has('purchaseOrder')) setInvoicePurchaseOrderNumber(plan.purchaseOrder)
-    if (!typed.has('dueDate')) setInvoiceDueDate(plan.dueYmd)
-    if (!typed.has('creditsInvoice')) setInvoiceCreditsInvoiceId(plan.creditsInvoiceId)
-    if (!typed.has('link') && !billDriveInstead) setInvoiceLink(plan.fields.link.value)
-    let fields = applyPlan(billFields, plan, typed)
-    if (!typed.has('job')) {
-      // A credit's job is the one on the invoice it credits, not a guess.
-      const paired = plan.kind === 'credit' && plan.pair ? supplyHouseInvoices.find((r) => r.id === plan.pair!.invoiceId) : null
-      const pairedJobs = (paired as SupplyHouseInvoiceWithAllocations | null | undefined)?.job_allocations ?? []
-      if (pairedJobs.length > 0) {
-        setInvoiceJobAllocations(pairedJobs.map((a) => ({ job_id: a.job_id, pct: a.pct })))
-        fields = { ...fields, job: billField(pairedJobs[0]!.job_id, 'read', 'from the invoice it credits') }
-      } else setInvoiceJobAllocations(plan.job ? [{ job_id: plan.job.jobId, pct: 100 }] : [])
-    }
-    if (!typed.has('onJobAccount')) {
-      invoiceOnJobAccountTouchedRef.current = false
-      setInvoiceOnJobAccount(plan.onJobAccount)
-    }
+    // The rules (never over a field the person typed, a credit's job from the invoice it credits) are `planIntoForm`.
+    const { patch, fields } = planIntoForm(billFields, plan, billTypedRef.current, { driveInstead: billDriveInstead, rows: supplyHouseInvoices })
+    // The fill set the job-account flag, so the open-account default may set it again.
+    if (patch.onJobAccount !== undefined) invoiceOnJobAccountTouchedRef.current = false
+    applyBillFormPatch(patch)
     setBillFields(fields)
     return fields
   }
@@ -1329,19 +1316,7 @@ export function SupplyHousesTab({
 
   /** No PDF, I will type it: the fields the fill wrote go back to blank; the ones the person typed stay. */
   function pickNoPdf() {
-    const typed = billTypedRef.current
-    const todayYmd = todayYmdInAppTz()
-    const paymentDay = selectedSupplyHouseForDetail?.monthly_payment_day
-    if (!typed.has('kind')) setInvoiceDocumentKind('invoice')
-    if (!typed.has('number')) setInvoiceNumber('')
-    if (!typed.has('date')) setInvoiceDate(todayYmd)
-    if (!typed.has('amount')) setInvoiceAmount('')
-    if (!typed.has('purchaseOrder')) setInvoicePurchaseOrderNumber('')
-    if (!typed.has('dueDate')) setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
-    if (!typed.has('creditsInvoice')) setInvoiceCreditsInvoiceId('')
-    if (!typed.has('link')) setInvoiceLink('')
-    if (!typed.has('job')) setInvoiceJobAllocations([])
-    if (!typed.has('onJobAccount')) setInvoiceOnJobAccount(false)
+    applyBillFormPatch(noPdfPatch(billTypedRef.current, { todayYmd: todayYmdInAppTz(), paymentDay: selectedSupplyHouseForDetail?.monthly_payment_day }))
     setBillRead(null)
     setBillPlan(null)
     setBillPane(null)
@@ -1428,34 +1403,32 @@ export function SupplyHousesTab({
     setError(null)
     // The one write (punch list #179, v2.6088): the payload rules and the three writes live in supplyInvoiceWrite.ts,
     // so a bill typed here and a bill filled from its PDF save through the same path.
-    const saved = await saveSupplyInvoice(
-      supabaseSupplyInvoiceDb,
-      {
-        supplyHouseId: selectedSupplyHouseForDetail.id,
-        kind: invoiceDocumentKind,
-        number: invoiceNumber,
-        dateYmd: invoiceDate,
-        dueDateYmd: invoiceDueDate,
-        amountTyped: invoiceAmount,
-        purchaseOrderNumber: invoicePurchaseOrderNumber,
-        link: invoiceLink,
-        isPaid: invoiceIsPaid,
-        paidOnYmd: invoicePaidOn,
-        onJobAccount: invoiceOnJobAccount,
-        allocations: invoiceJobAllocations,
-        creditsInvoiceId: invoiceCreditsInvoiceId,
-        interest: { on: invoiceIsInterest, lateInvoiceId: invoiceLateInvoiceId },
-        // Supply-house bill capture (punch list #179): the read the row keeps when the bill was filled from its PDF.
-        ...(billRead && billPlan
-          ? {
-              id: billRead.file.attachmentId ? undefined : billInvoiceIdRef.current,
-              billRead: billRowRead({ read: billRead.read, model: billRead.model, readAt: billRead.readAt, readId: billRead.readId, file: { path: billRead.file.path, name: billRead.file.name, mime: billRead.file.mime, attachmentId: billRead.file.attachmentId }, fields: billFields, checks: billPlan.checks }),
-              billAttachmentId: billRead.file.attachmentId,
-            }
-          : {}),
-      },
-      editingInvoice,
-    )
+    const form: InvoiceFormValues = {
+      number: invoiceNumber,
+      dateYmd: invoiceDate,
+      dueDateYmd: invoiceDueDate,
+      amountTyped: invoiceAmount,
+      kind: invoiceDocumentKind,
+      isInterest: invoiceIsInterest,
+      lateInvoiceId: invoiceLateInvoiceId,
+      creditsInvoiceId: invoiceCreditsInvoiceId,
+      link: invoiceLink,
+      isPaid: invoiceIsPaid,
+      paidOnYmd: invoicePaidOn,
+      onJobAccount: invoiceOnJobAccount,
+      purchaseOrderNumber: invoicePurchaseOrderNumber,
+      allocations: invoiceJobAllocations,
+    }
+    // Supply-house bill capture (punch list #179): the read the row keeps when the bill was filled from its PDF.
+    const bill =
+      billRead && billPlan
+        ? {
+            rowRead: billRowRead({ read: billRead.read, model: billRead.model, readAt: billRead.readAt, readId: billRead.readId, file: { path: billRead.file.path, name: billRead.file.name, mime: billRead.file.mime, attachmentId: billRead.file.attachmentId }, fields: billFields, checks: billPlan.checks }),
+            attachmentId: billRead.file.attachmentId,
+            newRowId: billInvoiceIdRef.current,
+          }
+        : null
+    const saved = await saveSupplyInvoice(supabaseSupplyInvoiceDb, supplyInvoiceDraftFromForm(selectedSupplyHouseForDetail.id, form, bill), editingInvoice)
     if (!saved.ok) {
       setError(saved.problem)
       setSavingInvoice(false)
@@ -1465,8 +1438,7 @@ export function SupplyHousesTab({
     if (billRead && billPlan && !editingInvoice) {
       // Supply house bill lines (punch list #298 PR 1b): the paper and its lines, checked against the amount just
       // saved, written beside the row. A refusal here never undoes the save; the row then reads *No lines yet*.
-      const amount = Number(invoiceAmount.replace(/[^0-9.]/g, ''))
-      const out = paperSaveFromBillRead({ read: billRead.read, rowAmountCents: Number.isFinite(amount) ? Math.round(amount * 100) : 0, filePath: billRead.file.path, readId: billRead.readId, readAt: billRead.readAt, model: billRead.model })
+      const out = paperSaveFromBillRead({ read: billRead.read, rowAmountCents: typedAmountCents(invoiceAmount), filePath: billRead.file.path, readId: billRead.readId, readAt: billRead.readAt, model: billRead.model })
       await paperIo.save(saved.id, out.paper, out.lines).catch((e) => showToast(formatErrorMessage(e, 'The bill saved, but its lines were not kept.'), 'error'))
     }
     if (billTicketRef.current) {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { PoLedgerEntriesByCode } from '../supplyHouseInvoiceForm'
-import { amountDigits, applyPlan, billTint, emptyFields, fillCounts, planBillFill, settle, type BillFillContext } from './billFill'
+import { amountDigits, applyPlan, billTint, emptyFields, fillCounts, noPdfPatch, planBillFill, planIntoForm, settle, type BillFillContext } from './billFill'
 import { readBillAnswer, type BillRead } from './billRead'
 
 const FIXTURES = resolve(__dirname, '../../../test/fixtures/bills')
@@ -92,5 +92,72 @@ describe('applyPlan, settle, the looks', () => {
     expect(amountDigits(95228)).toBe('952.28')
     expect(amountDigits(500)).toBe('5.00')
     expect(amountDigits(null)).toBe('')
+  })
+})
+
+describe('planIntoForm', () => {
+  const plan = planBillFill(readOf('ridgeway-S1183420'), ctx({ rows: [] }))
+  const none = new Set<never>()
+
+  it('writes every field of the plan into a form nobody has typed in', () => {
+    const { patch, fields } = planIntoForm(emptyFields(), plan, none, { driveInstead: false, rows: [] })
+    expect(patch).toEqual({
+      kind: 'invoice', number: 'S1183420', dateYmd: '2026-10-22', amountTyped: '952.28', purchaseOrder: '41207', dueYmd: '2026-11-21', creditsInvoiceId: '',
+      link: 'https://clicktooling.com/files/messages/att-1', allocations: [{ job_id: 'job-1042', pct: 100 }], onJobAccount: true,
+    })
+    expect(fields).toEqual(plan.fields)
+  })
+
+  it('never writes over a field the person typed, and keeps that field as theirs', () => {
+    const mine = settle(settle(emptyFields(), 'amount', '900.00'), 'job', 'job-7')
+    const { patch, fields } = planIntoForm(mine, plan, new Set(['amount', 'job', 'onJobAccount'] as const), { driveInstead: false, rows: [] })
+    expect('amountTyped' in patch).toBe(false)
+    expect('allocations' in patch).toBe(false)
+    expect('onJobAccount' in patch).toBe(false)
+    expect(patch.number).toBe('S1183420')
+    expect(fields.amount).toEqual({ value: '900.00', source: 'typed', why: null })
+    expect(fields.job).toEqual({ value: 'job-7', source: 'typed', why: null })
+  })
+
+  it('leaves the link alone once the person asked for a Drive link instead', () => {
+    expect('link' in planIntoForm(emptyFields(), plan, none, { driveInstead: true, rows: [] }).patch).toBe(false)
+  })
+
+  it('a paper with no date leaves the form\'s date as it is', () => {
+    expect('dateYmd' in planIntoForm(emptyFields(), { ...plan, dateYmd: '' }, none, { driveInstead: false, rows: [] }).patch).toBe(false)
+  })
+
+  it('a plan with no job guess clears the jobs', () => {
+    expect(planIntoForm(emptyFields(), { ...plan, job: null }, none, { driveInstead: false, rows: [] }).patch.allocations).toEqual([])
+  })
+
+  it('a credit takes its jobs from the invoice it credits, and says so', () => {
+    const credit = planBillFill(readOf('ridgeway-CM-20991'), ctx())
+    const rows = [{ id: 'inv-1', job_allocations: [{ job_id: 'job-a', pct: 60 }, { job_id: 'job-b', pct: 40 }] }]
+    const { patch, fields } = planIntoForm(emptyFields(), credit, none, { driveInstead: false, rows })
+    expect(patch.allocations).toEqual([{ job_id: 'job-a', pct: 60 }, { job_id: 'job-b', pct: 40 }])
+    expect(fields.job).toEqual({ value: 'job-a', source: 'read', why: 'from the invoice it credits' })
+    expect(patch.creditsInvoiceId).toBe('inv-1')
+  })
+
+  it('a credit whose invoice is on no job falls back to the plan\'s own guess', () => {
+    const credit = planBillFill(readOf('ridgeway-CM-20991'), ctx())
+    const { patch } = planIntoForm(emptyFields(), credit, none, { driveInstead: false, rows: [{ id: 'inv-1', job_allocations: [] }] })
+    expect(patch.allocations).toEqual(credit.job ? [{ job_id: credit.job.jobId, pct: 100 }] : [])
+  })
+})
+
+describe('noPdfPatch', () => {
+  it('puts every field the fill wrote back to a new bill\'s blanks', () => {
+    expect(noPdfPatch(new Set(), { todayYmd: '2026-10-29', paymentDay: 10 })).toEqual({
+      kind: 'invoice', number: '', dateYmd: '2026-10-29', amountTyped: '', purchaseOrder: '', dueYmd: '2026-11-10', creditsInvoiceId: '', link: '', allocations: [], onJobAccount: false,
+    })
+  })
+
+  it('keeps what the person typed, and leaves the due day blank for a house with no pay day', () => {
+    const patch = noPdfPatch(new Set(['number', 'job'] as const), { todayYmd: '2026-10-29', paymentDay: null })
+    expect('number' in patch).toBe(false)
+    expect('allocations' in patch).toBe(false)
+    expect(patch.dueYmd).toBe('')
   })
 })

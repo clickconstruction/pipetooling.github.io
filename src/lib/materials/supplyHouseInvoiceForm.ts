@@ -1,6 +1,7 @@
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../parsePoGeneratorCodeFromPurchaseOrderName'
 import { calendarYmdInAppTzFromIso, startOfYmdInAppTzMs } from '../../utils/dateUtils'
 import { DEFAULT_JOB_LEDGER_PREFIX, effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { nextMonthlyPaymentDueYmd } from '../supplyHouseAging'
 
 /**
  * Pure logic behind the Materials → Supply Houses Add / Edit Invoice form
@@ -539,4 +540,90 @@ export function creditsInvoicePatch(kind: SupplyDocumentKind, choice: string, be
   const next = kind === 'credit' ? choice || null : null
   const prior = before?.credits_invoice_id ?? null
   return next === prior ? {} : { credits_invoice_id: next }
+}
+
+// ---------- The form's fields ----------
+
+/** The Add / Edit invoice form's fields, as the form holds them: the boxes' text, never the stored row. */
+export type InvoiceFormValues = {
+  number: string
+  dateYmd: string
+  dueDateYmd: string
+  /** The amount box's positive digits; the kind applies the sign at Save. */
+  amountTyped: string
+  kind: SupplyDocumentKind
+  isInterest: boolean
+  /** The bill that ran late, '' for none. */
+  lateInvoiceId: string
+  /** The invoice a credit credits, '' for none. */
+  creditsInvoiceId: string
+  link: string
+  isPaid: boolean
+  /** The Paid on day, '' to let the database stamp now. */
+  paidOnYmd: string
+  onJobAccount: boolean
+  purchaseOrderNumber: string
+  allocations: InvoiceJobAllocation[]
+}
+
+/** A new bill's form: dated today, due on the house's next pay day when the house has one, everything else blank. */
+export function blankInvoiceForm(monthlyPaymentDay: number | null | undefined, todayYmd: string): InvoiceFormValues {
+  return {
+    number: '',
+    dateYmd: todayYmd,
+    dueDateYmd: monthlyPaymentDay ? nextMonthlyPaymentDueYmd(monthlyPaymentDay, todayYmd) : '',
+    amountTyped: '',
+    kind: 'invoice',
+    isInterest: false,
+    lateInvoiceId: '',
+    creditsInvoiceId: '',
+    link: '',
+    isPaid: false,
+    paidOnYmd: '',
+    onJobAccount: false,
+    purchaseOrderNumber: '',
+    allocations: [],
+  }
+}
+
+/** A stored row as the form's fields: the amount unsigned, the kind from the row, the Paid on day only on a paid row. */
+export function invoiceFormFromRow(row: {
+  invoice_number: string
+  invoice_date: string
+  due_date: string | null
+  amount: number | null
+  document_kind?: string | null
+  credits_invoice_id?: string | null
+  link: string | null
+  is_paid: boolean
+  is_interest?: boolean | null
+  late_invoice_id?: string | null
+  paid_at?: string | null
+  on_job_account?: boolean | null
+  purchase_order_number: string | null
+  job_allocations?: InvoiceJobAllocation[]
+}): InvoiceFormValues {
+  return {
+    number: row.invoice_number,
+    dateYmd: row.invoice_date,
+    dueDateYmd: row.due_date ?? '',
+    amountTyped: typedAmountFromStored(row.amount),
+    kind: documentKindFromRow(row),
+    isInterest: row.is_interest === true,
+    lateInvoiceId: row.late_invoice_id ?? '',
+    creditsInvoiceId: row.credits_invoice_id ?? '',
+    link: row.link ?? '',
+    isPaid: row.is_paid,
+    paidOnYmd: row.is_paid ? paidOnYmdFromIso(row.paid_at) : '',
+    // === true: a row fetched before the column existed reads as undefined.
+    onJobAccount: row.on_job_account === true,
+    purchaseOrderNumber: row.purchase_order_number ?? '',
+    allocations: row.job_allocations ?? [],
+  }
+}
+
+/** The amount box's text as cents, for the check of a bill's lines against it: digits and the point only, 0 when it is not a number. */
+export function typedAmountCents(typed: string): number {
+  const amount = Number(typed.replace(/[^0-9.]/g, ''))
+  return Number.isFinite(amount) ? Math.round(amount * 100) : 0
 }

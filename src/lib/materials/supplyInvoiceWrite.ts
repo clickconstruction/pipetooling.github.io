@@ -12,7 +12,7 @@
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import type { BillRowRead } from './bills/billRead'
-import { amountProblem, creditsInvoicePatch, paidAtPayload, signedAmountForSave, type InvoiceJobAllocation, type SupplyDocumentKind } from './supplyHouseInvoiceForm'
+import { amountProblem, creditsInvoicePatch, paidAtPayload, signedAmountForSave, type InvoiceFormValues, type InvoiceJobAllocation, type SupplyDocumentKind } from './supplyHouseInvoiceForm'
 
 /** The form's state at Save. */
 export interface SupplyInvoiceDraft {
@@ -38,6 +38,30 @@ export interface SupplyInvoiceDraft {
   billAttachmentId?: string | null
   /** Interest or a late fee (v2.7467), and the bill that ran late ('' for none). Undefined leaves both columns alone. */
   interest?: { on: boolean; lateInvoiceId: string }
+}
+
+/**
+ * The draft the form hands the save. `bill` is the read a bill filled from its PDF keeps: a file dropped on the form
+ * names its own row (`newRowId`), and a file from the house's thread lets the database pick one.
+ */
+export function supplyInvoiceDraftFromForm(supplyHouseId: string, form: InvoiceFormValues, bill: { rowRead: BillRowRead; attachmentId: string | null; newRowId: string } | null): SupplyInvoiceDraft {
+  return {
+    supplyHouseId,
+    kind: form.kind,
+    number: form.number,
+    dateYmd: form.dateYmd,
+    dueDateYmd: form.dueDateYmd,
+    amountTyped: form.amountTyped,
+    purchaseOrderNumber: form.purchaseOrderNumber,
+    link: form.link,
+    isPaid: form.isPaid,
+    paidOnYmd: form.paidOnYmd,
+    onJobAccount: form.onJobAccount,
+    allocations: form.allocations,
+    creditsInvoiceId: form.creditsInvoiceId,
+    interest: { on: form.isInterest, lateInvoiceId: form.lateInvoiceId },
+    ...(bill ? { id: bill.attachmentId ? undefined : bill.newRowId, billRead: bill.rowRead, billAttachmentId: bill.attachmentId } : {}),
+  }
 }
 
 /** The row being edited, as much of it as the payload rules read. Null for a new row. */

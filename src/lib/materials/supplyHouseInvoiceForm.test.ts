@@ -5,8 +5,10 @@ import {
   creditableInvoices,
   creditsInvoicePatch,
   allocationTotal,
+  blankInvoiceForm,
   dueDateHint,
   groupAllocationsByInvoice,
+  invoiceFormFromRow,
   invoiceSaveLabel,
   ordinalDay,
   paidAtIsoFromYmd,
@@ -28,6 +30,7 @@ import {
   documentKindFromRow,
   documentWords,
   signedAmountForSave,
+  typedAmountCents,
   typedAmountFromStored,
 } from './supplyHouseInvoiceForm'
 
@@ -469,5 +472,42 @@ describe('poLedgerEntriesFromRows', () => {
     expect(entries.size).toBe(2)
     expect(entries.get(10410)?.statedNeed).toBe('the later one')
     expect([...(poLedgerCodes(entries) ?? [])].sort()).toEqual([10410, 10440])
+  })
+})
+
+describe('the form\'s fields', () => {
+  it('a new bill is dated today, due on the house\'s next pay day, and blank everywhere else', () => {
+    expect(blankInvoiceForm(10, '2026-10-29')).toEqual({
+      number: '', dateYmd: '2026-10-29', dueDateYmd: '2026-11-10', amountTyped: '', kind: 'invoice', isInterest: false, lateInvoiceId: '', creditsInvoiceId: '',
+      link: '', isPaid: false, paidOnYmd: '', onJobAccount: false, purchaseOrderNumber: '', allocations: [],
+    })
+  })
+
+  it('a house with no pay day leaves the due day blank', () => {
+    expect(blankInvoiceForm(null, '2026-10-29').dueDateYmd).toBe('')
+    expect(blankInvoiceForm(undefined, '2026-10-29').dueDateYmd).toBe('')
+  })
+
+  // A made-up stored row.
+  const row = { invoice_number: 'S-1', invoice_date: '2026-10-22', due_date: null, amount: -138.99, document_kind: 'credit', credits_invoice_id: 'inv-1', link: null, is_paid: true, is_interest: false, late_invoice_id: null, paid_at: '2026-10-25T18:00:00Z', on_job_account: true, purchase_order_number: null, job_allocations: [{ job_id: 'j1', pct: 100 }] }
+
+  it('reads a stored row: the amount unsigned, the kind from the row, the paid day in company time', () => {
+    expect(invoiceFormFromRow(row)).toEqual({
+      number: 'S-1', dateYmd: '2026-10-22', dueDateYmd: '', amountTyped: '138.99', kind: 'credit', isInterest: false, lateInvoiceId: '', creditsInvoiceId: 'inv-1',
+      link: '', isPaid: true, paidOnYmd: '2026-10-25', onJobAccount: true, purchaseOrderNumber: '', allocations: [{ job_id: 'j1', pct: 100 }],
+    })
+  })
+
+  it('an unpaid row has no paid day, and a row read before a column existed reads it as off', () => {
+    const old = invoiceFormFromRow({ invoice_number: 'S-2', invoice_date: '2026-10-22', due_date: '2026-11-21', amount: 40, link: 'https://example.test/scan', is_paid: false, paid_at: '2026-10-25T18:00:00Z', purchase_order_number: '10410' })
+    expect(old).toMatchObject({ kind: 'invoice', amountTyped: '40', paidOnYmd: '', onJobAccount: false, isInterest: false, lateInvoiceId: '', creditsInvoiceId: '', allocations: [], dueDateYmd: '2026-11-21', link: 'https://example.test/scan', purchaseOrderNumber: '10410' })
+  })
+
+  it('reads the amount box as cents, digits and the point only', () => {
+    expect(typedAmountCents('952.28')).toBe(95228)
+    expect(typedAmountCents('$1,952.28')).toBe(195228)
+    expect(typedAmountCents('19.999')).toBe(2000)
+    expect(typedAmountCents('')).toBe(0)
+    expect(typedAmountCents('1.2.3')).toBe(0)
   })
 })

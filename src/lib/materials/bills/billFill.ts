@@ -5,6 +5,7 @@
  * so a re-pick keeps what was typed. The three looks the form draws come from the source alone (`billTint`): green
  * from the paper, amber a guess, plain yours to set. Pure.
  */
+import { nextMonthlyPaymentDueYmd } from '../../supplyHouseAging'
 import type { PairableSupplyRow, PoLedgerEntriesByCode, SupplyDocumentKind } from '../supplyHouseInvoiceForm'
 import { billChecks, checksToLook, type BillChecks } from './billChecks'
 import { creditPairGuess, dueGuess, jobAccountDefault, jobGuess, kindFromRead, type DueGuess, type JobGuess, type MatchableAccount, type MatchableJob } from './billMatch'
@@ -89,6 +90,69 @@ export function applyPlan(prev: BillFields | null, plan: BillFillPlan, typed: Re
   const out = { ...plan.fields }
   if (prev) for (const k of BILL_FIELD_KEYS) if (typed.has(k)) out[k] = prev[k]
   return out
+}
+
+/** The form fields a fill may write. A key that is absent stays as the form has it. */
+export type BillFormPatch = {
+  kind?: SupplyDocumentKind
+  number?: string
+  dateYmd?: string
+  amountTyped?: string
+  purchaseOrder?: string
+  dueYmd?: string
+  creditsInvoiceId?: string
+  link?: string
+  allocations?: { job_id: string; pct: number }[]
+  onJobAccount?: boolean
+}
+
+/**
+ * The plan into the form: what to write, and the fields' sources after it. A field the person typed is never
+ * written. The paper's date is written only when the paper has one, and the link only while the person has not
+ * asked for a Drive link instead. A credit's job is the one on the invoice it credits, not a guess.
+ */
+export function planIntoForm(
+  prev: BillFields | null,
+  plan: BillFillPlan,
+  typed: ReadonlySet<BillFieldKey>,
+  opts: { driveInstead: boolean; rows: ReadonlyArray<{ id: string; job_allocations?: ReadonlyArray<{ job_id: string; pct: number }> }> },
+): { patch: BillFormPatch; fields: BillFields } {
+  const patch: BillFormPatch = {}
+  if (!typed.has('kind')) patch.kind = plan.kind
+  if (!typed.has('number')) patch.number = plan.number
+  if (!typed.has('date') && plan.dateYmd) patch.dateYmd = plan.dateYmd
+  if (!typed.has('amount')) patch.amountTyped = plan.amountTyped
+  if (!typed.has('purchaseOrder')) patch.purchaseOrder = plan.purchaseOrder
+  if (!typed.has('dueDate')) patch.dueYmd = plan.dueYmd
+  if (!typed.has('creditsInvoice')) patch.creditsInvoiceId = plan.creditsInvoiceId
+  if (!typed.has('link') && !opts.driveInstead) patch.link = plan.fields.link.value
+  let fields = applyPlan(prev, plan, typed)
+  if (!typed.has('job')) {
+    const paired = plan.kind === 'credit' && plan.pair ? opts.rows.find((r) => r.id === plan.pair!.invoiceId) : null
+    const pairedJobs = paired?.job_allocations ?? []
+    if (pairedJobs.length > 0) {
+      patch.allocations = pairedJobs.map((a) => ({ job_id: a.job_id, pct: a.pct }))
+      fields = { ...fields, job: field(pairedJobs[0]!.job_id, 'read', 'from the invoice it credits') }
+    } else patch.allocations = plan.job ? [{ job_id: plan.job.jobId, pct: 100 }] : []
+  }
+  if (!typed.has('onJobAccount')) patch.onJobAccount = plan.onJobAccount
+  return { patch, fields }
+}
+
+/** No PDF, I will type it: the fields the fill wrote go back to a new bill's blanks, and the ones the person typed stay. */
+export function noPdfPatch(typed: ReadonlySet<BillFieldKey>, ctx: { todayYmd: string; paymentDay: number | null | undefined }): BillFormPatch {
+  const patch: BillFormPatch = {}
+  if (!typed.has('kind')) patch.kind = 'invoice'
+  if (!typed.has('number')) patch.number = ''
+  if (!typed.has('date')) patch.dateYmd = ctx.todayYmd
+  if (!typed.has('amount')) patch.amountTyped = ''
+  if (!typed.has('purchaseOrder')) patch.purchaseOrder = ''
+  if (!typed.has('dueDate')) patch.dueYmd = ctx.paymentDay ? nextMonthlyPaymentDueYmd(ctx.paymentDay, ctx.todayYmd) : ''
+  if (!typed.has('creditsInvoice')) patch.creditsInvoiceId = ''
+  if (!typed.has('link')) patch.link = ''
+  if (!typed.has('job')) patch.allocations = []
+  if (!typed.has('onJobAccount')) patch.onJobAccount = false
+  return patch
 }
 
 /** The fields with none, as the form starts with no PDF. */

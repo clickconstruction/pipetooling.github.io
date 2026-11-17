@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { allocationRows, saveSupplyInvoice, singleAllocatedJobId, supplyInvoicePayload, type SupplyInvoiceDb, type SupplyInvoiceDraft } from './supplyInvoiceWrite'
+import { allocationRows, saveSupplyInvoice, singleAllocatedJobId, supplyInvoiceDraftFromForm, supplyInvoicePayload, type SupplyInvoiceDb, type SupplyInvoiceDraft } from './supplyInvoiceWrite'
+import type { BillRowRead } from './bills/billRead'
+import { blankInvoiceForm } from './supplyHouseInvoiceForm'
 
 vi.mock('../supabase', () => ({ supabase: {} }))
 
@@ -154,5 +156,32 @@ describe('saveSupplyInvoice', () => {
     const db = fakeDb()
     expect(await saveSupplyInvoice(db, draft({ amountTyped: 'x' }), null)).toEqual({ ok: false, problem: 'Amount must be a number.' })
     expect(db.calls).toEqual([])
+  })
+})
+
+describe('supplyInvoiceDraftFromForm', () => {
+  const form = { ...blankInvoiceForm(10, '2026-10-29'), number: 'S1183420', amountTyped: '952.28', purchaseOrderNumber: '41207', onJobAccount: true, allocations: [{ job_id: 'job-1042', pct: 100 }], isInterest: true, lateInvoiceId: 'inv-late' }
+  const rowRead = { v: 1 } as unknown as BillRowRead
+
+  it('carries every field of the form into the draft, and no read for a typed bill', () => {
+    expect(supplyInvoiceDraftFromForm(HOUSE, form, null)).toEqual({
+      supplyHouseId: HOUSE, kind: 'invoice', number: 'S1183420', dateYmd: '2026-10-29', dueDateYmd: '2026-11-10', amountTyped: '952.28', purchaseOrderNumber: '41207', link: '',
+      isPaid: false, paidOnYmd: '', onJobAccount: true, allocations: [{ job_id: 'job-1042', pct: 100 }], creditsInvoiceId: '', interest: { on: true, lateInvoiceId: 'inv-late' },
+    })
+  })
+
+  it('a file dropped on the form names its own row', () => {
+    expect(supplyInvoiceDraftFromForm(HOUSE, form, { rowRead, attachmentId: null, newRowId: 'row-chosen' })).toMatchObject({ id: 'row-chosen', billRead: rowRead, billAttachmentId: null })
+  })
+
+  it('a file from the house\'s thread lets the database pick the row, and names its attachment', () => {
+    const d = supplyInvoiceDraftFromForm(HOUSE, form, { rowRead, attachmentId: 'att-1', newRowId: 'row-chosen' })
+    expect(d.id).toBeUndefined()
+    expect(d).toMatchObject({ billRead: rowRead, billAttachmentId: 'att-1' })
+  })
+
+  it('the draft it makes passes the payload rules', () => {
+    const out = supplyInvoicePayload(supplyInvoiceDraftFromForm(HOUSE, form, null), null)
+    expect(out.ok).toBe(true)
   })
 })
