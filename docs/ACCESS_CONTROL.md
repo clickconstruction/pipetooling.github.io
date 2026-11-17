@@ -3801,6 +3801,8 @@ the portal still serves it to a firm only once released.
 The desk's *Probably a subcontract* note (v2.5840, punch list #166) writes `jobs_ledger` through the same four roles' existing update policy: **Set the GC** sets `gc_customer_id` and lets the `jobs_ledger_customer_gc_distinct` trigger clear the customer slot;
 **Ours with the owner** stamps `owner_contract_confirmed_at / _by` (migration `20261025130000`).
 Since v2.7683 **Read** on a matter's text document carries copy presses (**Copy the letter**, a piece by its heading and **Copy everything as text**, over `src/lib/legal/letterCopyText.ts`) for whoever reads the row, the same four roles, with no new permission and no edit right needed, and a counsel-only paper has none.
+Since v2.7694 **Keep its words as text** on a row's ⋯ menu and a counted **Keep N as text** beside the filters (`src/lib/legal/keepAsText.ts`, `keepLegalMatterDocumentAsText`) turn a text file put on a matter before v2.6716 into a text document, for the same four roles where the matter takes edits, with no new permission and no policy.
+Its two writes are the ones a fresh text file already makes under `legal_office_can_read()`, the `documents` insert and the `legal_matter_documents` update.
 
 | Act | Who | Entry point |
 |---|---|---|

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../../types/database'
 import { checkSupabaseError } from '../../utils/errorHandling'
+import { keepAsTextProblem, legalDocumentCanKeepAsText } from './keepAsText'
 import { LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentIsText, legalDocumentMime, legalDocumentStoragePath, type LegalDocumentDraft, type LegalDocumentSentDraft, type LegalDocumentSentHow, type LegalDocumentWhose } from './legalMatterDocuments'
 
 /** The office's documents on a matter (v2.4810): list, add (upload then row), hold, release, retire. */
@@ -139,6 +140,42 @@ export async function addLegalMatterDocument(db: SupabaseClient<Database>, matte
     throw e
   }
   return id
+}
+
+/**
+ * **Keep its words as text**: a text file put on a matter before v2.6716 is a stored file alone, so its row has no
+ * **Read** and no copy press. This reads the stored file from the bucket, keeps its words in `documents` exactly as
+ * `addLegalMatterDocument` does for a fresh `.md` or `.txt` (the matter, the row's title, the words, the counsel-only
+ * mark), then points the Evidence row at them. The stored file stays as the original. Both writes go under the office's
+ * own policies, as the signed-in person; nothing here needs a migration.
+ *
+ * A second write that fails, or a row that got its words meanwhile, archives the `documents` row this made (the table
+ * has no delete, a document is archived), so nothing is left pointing nowhere. Returns the text document's id.
+ */
+export async function keepLegalMatterDocumentAsText(db: SupabaseClient<Database>, row: Pick<LegalMatterDocumentRow, 'id' | 'matter_id' | 'title' | 'storage_path' | 'mime' | 'text_document_id' | 'counsel_only'>): Promise<string> {
+  if (!legalDocumentCanKeepAsText(row)) throw new Error(row.text_document_id ? 'The paper’s words are already kept as text.' : 'Only a .md or .txt file has words to keep as text.')
+  const got = await db.storage.from(LEGAL_MATTER_DOCUMENTS_BUCKET).download(row.storage_path)
+  if (got.error || !got.data) throw new Error(`Could not read the stored file: ${got.error?.message ?? 'nothing came back'}`)
+  const words = await got.data.text()
+  const problem = keepAsTextProblem(words)
+  if (problem) throw new Error(problem)
+  const made = (await documentsTable(db).insert({ matter_id: row.matter_id, title: row.title.trim(), content: words, counsel_only: row.counsel_only === true }).select('id').single()) as { data: { id: string } | null; error: { message: string } | null }
+  if (made.error || !made.data) throw new Error(`Could not keep the text: ${made.error?.message ?? 'no row came back'}`)
+  const textDocumentId = made.data.id
+  const archive = () => documentsTable(db).update({ archived_at: new Date().toISOString() }).eq('id', textDocumentId)
+  // Only a row still without its words takes them: a second hand pressing at the same moment finds nothing to change.
+  const set = await table(db).update({ text_document_id: textDocumentId }).eq('id', row.id).is('text_document_id', null).select('id')
+  try {
+    checkSupabaseError(set, 'point the document at its text')
+  } catch (e) {
+    await archive()
+    throw e
+  }
+  if ((set.data ?? []).length === 0) {
+    await archive()
+    throw new Error('The paper’s words are already kept as text.')
+  }
+  return textDocumentId
 }
 
 export async function updateLegalMatterDocument(db: SupabaseClient<Database>, id: string, patch: Partial<LegalDocumentDraft> & { held_reason?: string }): Promise<void> {
