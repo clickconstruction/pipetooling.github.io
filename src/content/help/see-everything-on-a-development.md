@@ -204,7 +204,7 @@ Time runs from left to right. A dashed line marks today. Each row of the chart i
 
 The Bids lane shows a diamond on the day each bid was sent. A small open diamond marks the date of the plans it was priced from.
 
-Each part of the site has its own lane. A dot is a set of drawings, placed on the date printed on its sheets. The set the part builds from wears a ring and its name in bold. An open dot is a set with no date on its sheets. That dot sits on the day the set came. A square is one of our as-builts. Papers are left out. Sets too close to tell apart draw as one bar with their count. A dotted line between two lanes marks the day one design became two parts.
+Each part of the site has its own lane. A dot is a set of drawings, placed on the date printed on its sheets. The set the part builds from wears a ring and its name in bold. A long name is drawn short beside its mark. The date comes off, since the axis shows it. The card and the list keep the whole name. An open dot is a set with no date on its sheets. That dot sits on the day the set came. A square is one of our as-builts. Papers are left out. Sets too close to tell apart draw as one bar with their count. A dotted line between two lanes marks the day one design became two parts.
 
 The Crews on site lane shows a bar for the days the clock has on the site's jobs. A week with nobody on site ends a bar. A dashed open bar stands for a job with no clock days. The open bar runs from the job's first work day to its last.
 
@@ -230,9 +230,9 @@ Once a set has a count, a fifth figure appears, Sheets in hand. The figure adds 
 
 The item with an open card stands out on the chart and in the list at once.
 
-Under the chart, every mark reads again as a dated line, oldest first. A bid's line is tinted. A long list opens on its newest lines. Press {{button:outline|Show the 12 older lines}} to read the rest.
+Under the chart, the drawings and the bids read again as dated lines, oldest first. A bid's line is tinted. Press {{button:outline|Also show the 287 crew and History lines}} to list those too. A long list opens on its newest lines. Press {{button:outline|Show the 12 older lines}} to read the rest.
 
-Press {{button:outline|Print or save as PDF}} above the list. One landscape page opens with the figures, the chart and the list. A copy of the printed page is kept in Documents.
+Press {{button:outline|Print or save as PDF}} above the list. One landscape page opens with the figures, the chart and the list. The page lists what the screen lists. A copy of the printed page is kept in Documents.
 
 A bid with no sent day has no place on the chart. A quiet line under the chart names it. The page remembers the view you were in.
 

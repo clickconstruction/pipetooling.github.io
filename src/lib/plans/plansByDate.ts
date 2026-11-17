@@ -434,6 +434,42 @@ export function plansByDateSheets(
   return { now, atBid, uncounted }
 }
 
+/** The lines of the list that are a drawing or a bid: what the owner's chart listed under it, *every issue*. */
+const ISSUE_GLYPHS: ReadonlySet<PbdGlyph> = new Set(['set', 'current', 'undated', 'ours', 'bid', 'schedule', 'scheduleOver'])
+
+export type PlansByDateList = {
+  rows: PbdRow[]
+  /** The drawing and bid lines on the site. */
+  issues: number
+  /** The crew and History lines left out of `rows`; 0 when they are in. */
+  hidden: number
+  /** True when `rows` is the drawings and the bids alone. */
+  issuesOnly: boolean
+}
+
+/**
+ * The lines the list under the chart shows (punch list #367, from the first look at a real site, where most of the
+ * lines were kept emails and the drawing issues were buried among them). It opens on the drawings and the bids,
+ * as the owner's hand chart did; `withLog` adds the crews' days and the History lines. Today's line is always in.
+ * A site with no drawing or bid line lists everything, since there is nothing else to show.
+ */
+export function plansByDateListRows(rows: ReadonlyArray<PbdRow>, withLog: boolean): PlansByDateList {
+  const issues = rows.filter((r) => ISSUE_GLYPHS.has(r.glyph)).length
+  const issuesOnly = !withLog && issues > 0
+  if (!issuesOnly) return { rows: [...rows], issues, hidden: 0, issuesOnly }
+  const kept = rows.filter((r) => r.today || ISSUE_GLYPHS.has(r.glyph))
+  return { rows: kept, issues, hidden: rows.length - kept.length, issuesOnly }
+}
+
+/** The list's head: *The drawings and the bids · 18 lines*, or *Every dated line on the chart · 64 lines*. Today's line is not counted. */
+export function plansByDateListHead(list: Pick<PlansByDateList, 'rows' | 'issuesOnly'>): { title: string; count: string } {
+  const n = list.rows.filter((r) => !r.today).length
+  return { title: list.issuesOnly ? 'The drawings and the bids' : 'Every dated line on the chart', count: plural(n, 'line', 'lines') }
+}
+
+/** The print's line under the list when it leaves the log out. */
+export const PLANS_BY_DATE_PRINT_LIST_NOTE = 'The list shows the drawings and the bids. The crews’ days and the History lines are on the chart.'
+
 /** *2 bids have no sent day, so they are not on the chart: B12, B14.* Null when every bid has one. */
 export function plansByDateUnsentWords(labels: ReadonlyArray<string>): string | null {
   if (labels.length === 0) return null
@@ -467,14 +503,20 @@ export function plansByDateTicks(start: number, end: number, plotWidth: number):
 
 // ── Names that fit ────────────────────────────────────────────────────────────
 
-export type PbdLabelSpot = { cx: number; slot: 'above' | 'below' }
+export type PbdLabelSpot = { cx: number; slot: 'above' | 'below'; /** The name's left and right edges. */ l: number; r: number }
 
 /**
  * Which marks get their name drawn, and where: the highest priority first, above its mark, else below it,
  * else left to the hover and the list. A name is nudged inside the plot's edges, never clipped by them.
  */
-export function placePlansByDateLabels<T extends { x: number; label: string; strong: boolean; priority: number }>(items: ReadonlyArray<T>, x0: number, x1: number): Map<T, PbdLabelSpot> {
-  const taken: Array<{ l: number; r: number; slot: 'above' | 'below' }> = []
+export function placePlansByDateLabels<T extends { x: number; label: string; strong: boolean; priority: number }>(
+  items: ReadonlyArray<T>,
+  x0: number,
+  x1: number,
+  /** Names already drawn in the gap above this lane, under the lane before it: an *above* name may not stand on them. */
+  takenAbove: ReadonlyArray<{ l: number; r: number }> = [],
+): Map<T, PbdLabelSpot> {
+  const taken: Array<{ l: number; r: number; slot: 'above' | 'below' }> = takenAbove.map((t) => ({ l: t.l, r: t.r, slot: 'above' as const }))
   const out = new Map<T, PbdLabelSpot>()
   for (const it of [...items].sort((a, b) => b.priority - a.priority)) {
     const w = it.label.length * (it.strong ? 6.2 : 5.6) + 6
@@ -485,7 +527,7 @@ export function placePlansByDateLabels<T extends { x: number; label: string; str
       const r = cx + w / 2
       if (taken.some((t) => t.slot === slot && t.l < r + 4 && l < t.r + 4)) continue
       taken.push({ l, r, slot })
-      out.set(it, { cx, slot })
+      out.set(it, { cx, slot, l, r })
       break
     }
   }
@@ -527,6 +569,44 @@ export const PLANS_BY_DATE_CLUSTER_GAP = 7
 export const PLANS_BY_DATE_CLUSTER_MIN = 3
 /** A lane with more letters than this drops the word *Letter* from each flag. */
 export const PLANS_BY_DATE_LETTER_WORDS = 3
+/** The longest a set's name is drawn on the chart, in characters; the card, the list and the hover line keep the whole name. */
+export const PLANS_BY_DATE_NAME_MAX = 32
+export const PLANS_BY_DATE_NAME_MAX_PHONE = 24
+const SET_GLYPHS: ReadonlySet<PbdGlyph> = new Set(['set', 'current', 'undated', 'ours'])
+
+const SEPARATORS = /[\s\-–—,:;/|·]+$/
+/** What a cut name may not end on before its ellipsis: a separator, or the stop of an abbreviation (*Const.…*). */
+const CUT_END = /[\s\-–—,:;/|·.]+$/
+/**
+ * A set's name as the chart draws it beside its mark (punch list #367, from the first look at a real site, where
+ * names ran 32 to 65 characters and the longest, the set a part builds from, did not fit a phone at all). The date
+ * the mark stands on comes off, since the axis already says it: *Tower B - 44 Construction - 2026-09-14* reads
+ * *Tower B - 44 Construction*, and *(2026-03-02, ours)* reads *(ours)*. A date that differs from the mark's stays.
+ * Then a name longer than `max` is cut at the last whole word that fits, with an ellipsis, and never ends on a
+ * separator. A name that was only its date stays whole.
+ */
+export function plansByDateChartName(name: string, ymd: string, max: number): string {
+  const whole = name.replace(/\s+/g, ' ').trim()
+  let short = whole
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+    const d = ymd.replace(/-/g, '\\-')
+    short = short
+      .replace(new RegExp(`\\(\\s*${d}\\s*\\)|\\[\\s*${d}\\s*\\]`, 'g'), ' ')
+      .replace(new RegExp(`([(\\[])\\s*${d}\\s*[,;]\\s*`, 'g'), '$1')
+      .replace(new RegExp(`\\s*[,;]\\s*${d}\\s*([)\\]])`, 'g'), '$1')
+      .replace(new RegExp(`\\s*(?:[-–—:|/·]\\s*)?${d}(?=\\s|$|[\\[(])`, 'g'), ' ')
+      .replace(/\s+/g, ' ')
+      .replace(SEPARATORS, '')
+      .trim()
+    if (!short) short = whole
+  }
+  if (short.length <= max) return short
+  const room = short.slice(0, max)
+  const space = room.lastIndexOf(' ')
+  const cut = (space >= Math.floor(max / 2) ? room.slice(0, space) : short.slice(0, max - 1)).replace(CUT_END, '')
+  return `${cut}…`
+}
+
 /** The key's words for a burst of sets drawn as one bar. */
 export const PLANS_BY_DATE_CLUSTER_WORDS = 'several sets close together'
 
@@ -619,6 +699,8 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
   nameHits.push({ key: 'today', label: todayWords, x: px, y: 0, w: pillW, h: 15 })
 
   let clusters = 0
+  // The gap between two lanes holds one row of names: the names drawn under one lane stand in the way of the next lane's names above.
+  let belowLastLane: Array<{ l: number; r: number }> = []
   model.lanes.forEach((lane, i) => {
     const y = baseY(i)
     const xs = lane.marks.map((m) => x(m.day))
@@ -667,10 +749,13 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
     const named = [
       ...lane.marks
         .filter((m): m is PbdMark & { label: string } => m.label != null && !inCluster.has(m) && (m.glyph !== 'letter' || letters <= PLANS_BY_DATE_LETTER_WORDS) && (!phone || m.glyph === 'current' || m.glyph === 'bid' || m.glyph === 'letter'))
-        .map((m) => ({ x: x(m.day), label: m.label, strong: m.strong, priority: m.priority, glyph: m.glyph })),
+        // A set's name is drawn short: its own date comes off (the axis says it) and a long name is cut at a word.
+        .map((m) => ({ x: x(m.day), label: SET_GLYPHS.has(m.glyph) ? plansByDateChartName(m.label, ymdOfDay(m.day), phone ? PLANS_BY_DATE_NAME_MAX_PHONE : PLANS_BY_DATE_NAME_MAX) : m.label, strong: m.strong, priority: m.priority, glyph: m.glyph })),
       ...clusterNames,
     ]
-    for (const [it, spot] of placePlansByDateLabels(named, gutter, width - right)) {
+    const spots = placePlansByDateLabels(named, gutter, width - right, belowLastLane)
+    belowLastLane = [...spots.values()].filter((sp) => sp.slot === 'below').map((sp) => ({ l: sp.l, r: sp.r }))
+    for (const [it, spot] of spots) {
       labels.push({ t: 'text', cls: it.strong ? 'markWordStrong' : 'markWord', x: r1(spot.cx), y: spot.slot === 'above' ? y - (it.glyph === 'letter' ? 16 : 13) : y + 21, anchor: 'middle', text: it.label })
     }
   })
@@ -800,7 +885,7 @@ function paperGlyph(glyph: PbdGlyph): string {
  * The print page: one landscape sheet with the site, the four figures, the chart, the key and the dated list in
  * three columns; a long list runs onto a second page. Pure; `openHtmlPrintWindow` opens it.
  */
-export function plansByDatePrintHtml(input: { siteName: string; customerName: string | null; model: PlansByDateModel; notes: ReadonlyArray<string>; printedAt: string; printedBy: string | null }): string {
+export function plansByDatePrintHtml(input: { siteName: string; customerName: string | null; model: PlansByDateModel; notes: ReadonlyArray<string>; printedAt: string; printedBy: string | null; /** The list as the screen shows it: the crews' days and the History lines too, or not. Left out, the drawings and the bids alone, so the page stays one page. */ withLog?: boolean }): string {
   const { model } = input
   const layout = layoutPlansByDate(model, 'paper')
   const svg = plansByDatePaperSvg(layout)
@@ -808,7 +893,9 @@ export function plansByDatePrintHtml(input: { siteName: string; customerName: st
   const figures = model.figures.map((f) => `<div class="fig"><div class="k">${esc(f.label)}</div><div class="v"${f.over ? ' style="color:#b91c1c"' : ''}>${esc(f.value)}</div><div class="s">${esc(f.sub)}</div></div>`).join('')
   const keyItems = layout.clusters > 0 ? [...model.legend, { glyph: 'cluster' as const, words: PLANS_BY_DATE_CLUSTER_WORDS }] : model.legend
   const key = keyItems.map((l) => `<span>${paperGlyph(l.glyph)}${esc(l.words)}</span>`).join('')
-  const list = model.rows
+  const listed = plansByDateListRows(model.rows, input.withLog === true)
+  const notes = listed.hidden > 0 ? [...input.notes, PLANS_BY_DATE_PRINT_LIST_NOTE] : input.notes
+  const list = listed.rows
     .filter((r) => !r.today)
     .map((r) => `<div><span class="d">${esc(dayWords(r.ymd))}</span><span>${r.lane ? `${esc(r.lane)}: ` : ''}${esc(r.text)}${r.soft ? ` <em>· ${esc(r.soft)}</em>` : ''}</span></div>`)
     .join('\n')
@@ -839,7 +926,7 @@ h1 { font-size: 17px; margin: 0; }
 <div class="figs">${figures}</div>
 <div class="chart">${svg}</div>
 <div class="key">${key}</div>
-${input.notes.map((n) => `<p class="note">${esc(n)}</p>`).join('\n')}
+${notes.map((n) => `<p class="note">${esc(n)}</p>`).join('\n')}
 <div class="list">
 ${list}
 </div>
