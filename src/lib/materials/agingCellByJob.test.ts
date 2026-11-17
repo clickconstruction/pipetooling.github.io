@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AGING_CELL_NO_JOB_HEADING, AGING_MOVE_EMAIL_NO_ACCOUNT, agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, agingMoveNoAccountLine, agingMoveNoRepLine, groupAgingCellByJob, type AgingCellRowLike } from './agingCellByJob'
+import { AGING_CELL_NO_JOB_HEADING, AGING_MOVE_EMAIL_NO_ACCOUNT, agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, agingMoveNoAccountLine, agingMoveNoRepLine, formatYmdLocal, groupAgingCellByJob, type AgingCellRowLike } from './agingCellByJob'
 import type { JobSupplyHouseAccountRow } from './jobSupplyHouseAccounts'
 
 const HOUSE = 'house-moore'
@@ -129,5 +129,18 @@ describe('the window\'s standing words', () => {
     expect(agingMoveNoAccountLine(' Dana ')).toBe('No job account on record for this job — ask Dana to open one on the same call.')
     expect(agingMoveNoAccountLine(null)).toBe('No job account on record for this job — ask the house to open one on the same call.')
     expect(agingMoveNoAccountLine('  ')).toBe('No job account on record for this job — ask the house to open one on the same call.')
+  })
+})
+
+describe('formatYmdLocal', () => {
+  it('writes a date-only day as that day, not the day before', () => {
+    const noon = new Date('2026-07-10T12:00:00')
+    expect(formatYmdLocal('2026-07-10')).toBe(noon.toLocaleDateString())
+    expect(new Date('2026-07-10T12:00:00').getDate()).toBe(10)
+  })
+
+  it('hands back words that are no date as they came', () => {
+    expect(formatYmdLocal('soon')).toBe('soon')
+    expect(formatYmdLocal('')).toBe('')
   })
 })

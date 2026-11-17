@@ -207,3 +207,16 @@ export const AGING_MOVE_EMAIL_NO_ACCOUNT = 'No account on this job yet — pleas
 export function agingMoveNoRepLine(houseName: string): string {
   return `No job-accounts rep with an email on file for ${houseName} — add one on the house, or call.`
 }
+
+/** The teal "of which on a job account" words, on an aging cell and on a flagged bill's chip. */
+export const JOB_ACCOUNT_LINE_TITLE = "Of this, on the house's job account — the owner's debt to collect on, not Click's. The cell keeps the house's total."
+
+/**
+ * A DATE-only column (YYYY-MM-DD) as the reader's locale writes it. `new Date('2026-07-10')` parses as UTC midnight,
+ * which is the PREVIOUS day in US time zones, so the day is parsed at local noon. Anything else is handed to `Date`
+ * as it came, and words that are no date at all come back as they were.
+ */
+export function formatYmdLocal(ymd: string): string {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? new Date(ymd + 'T12:00:00') : new Date(ymd)
+  return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString()
+}

@@ -26,26 +26,13 @@ import {
 } from '../../lib/materials/supplyHouseInvoiceForm'
 import { MarkJobAccountOpenedModal } from './MarkJobAccountOpenedModal'
 import { openedViaPhrase } from '../../lib/materials/jobSupplyHouseAccounts'
-import { AGING_CELL_NO_JOB_HEADING, AGING_MOVE_EMAIL_NO_ACCOUNT, agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, agingMoveNoAccountLine, agingMoveNoRepLine, groupAgingCellByJob, type AgingCellJobGroup } from '../../lib/materials/agingCellByJob'
+import { AGING_CELL_NO_JOB_HEADING, AGING_MOVE_EMAIL_NO_ACCOUNT, JOB_ACCOUNT_LINE_TITLE, agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, agingMoveNoAccountLine, agingMoveNoRepLine, formatYmdLocal, groupAgingCellByJob, type AgingCellJobGroup } from '../../lib/materials/agingCellByJob'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { isSupplyCredit } from '../../lib/supplyHouseDocument'
 import { EmptyState } from '../EmptyState'
 import type { SupplyHouseAgingWindows } from './useSupplyHouseAgingWindows'
 import type { AgingInvoiceRow, SupplyHouseSummaryRow } from './useSupplyHouseAccountsPayable'
 import type { SupplyHouse } from './useSupplyHouseInvoiceForm'
-
-
-/**
- * Format a DATE-only column (YYYY-MM-DD) in the user's locale. `new Date('2026-07-10')` parses
- * as UTC midnight, which renders as the PREVIOUS day in US timezones — parse at local noon.
- */
-function formatYmdLocal(ymd: string): string {
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? new Date(ymd + 'T12:00:00') : new Date(ymd)
-  return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString()
-}
-
-/** The teal "of which on a job account" words, on an aging cell and on a flagged bill's chip. */
-export const JOB_ACCOUNT_LINE_TITLE = "Of this, on the house's job account — the owner's debt to collect on, not Click's. The cell keeps the house's total."
 
 export interface AgingCellWindowProps {
   /** The aging windows' engine, whole. */
