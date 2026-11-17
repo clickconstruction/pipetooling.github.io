@@ -111,6 +111,8 @@ import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHea
 import LienBoard from './LienBoard'
 import LienPublicPropertyWindow from './LienPublicPropertyWindow'
 import LienServeWindow from './LienServeWindow'
+import LienScanBatchWindow from './LienScanBatchWindow'
+import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
 import { lienServeDoorWords, lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
 import LienPublicPutBackWindow from './LienPublicPutBackWindow'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
@@ -308,6 +310,8 @@ export type LienDeskProps = {
   openRun?: { itemId: string; mail: boolean; key: number } | null
   /** The property card, opened over the desk by its address (v2.7488): `?property=<property record id>`; `key` re-opens it on the same record. */
   openProperty?: { addressId: string; key: number } | null
+  /** Add the stamped scans, opened over the desk by its address (punch list #366): `?scans=1`; `key` re-opens it. */
+  openScans?: { key: number } | null
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
   onPutGcOnNotice?: (gcId: string) => void
   /**
@@ -456,6 +460,7 @@ export default function LienDesk({
   aimKey,
   openRun,
   openProperty: openPropertyDoor,
+  openScans: openScansDoor,
   onPutGcOnNotice,
   onOpenCompanySettings,
   onOpenCustomerRecord,
@@ -900,6 +905,8 @@ export default function LienDesk({
   )
   // The same filings with where each envelope goes today, for the window that serves them together (punch list #366). No read of its own.
   const serveJobs = useMemo(() => (data ? lienServeJobsFromDesk(data) : []), [data])
+  // Every filed affidavit a scan can go to, for the window that takes several at once (punch list #366). No read of its own.
+  const scanTargets = useMemo(() => (data ? lienScanTargetsFromDesk(data) : []), [data])
   // The door to that window, as the Board's bin and the list's folded row say it: *Mail 12 liens’ copies ›*. '' with none.
   const serveDoor = useMemo(() => lienServeDoorWords(lienServePlan(serveJobs, { todayYmd, phone: issuer?.phone ?? '' })), [serveJobs, todayYmd, issuer?.phone])
   const nextUpRows = useMemo(() => {
@@ -976,6 +983,11 @@ export default function LienDesk({
   const [publicReview, setPublicReview] = useState<string[] | null>(null)
   // Serve the filed liens (punch list #366): one window prints every filed lien's copies and takes their mail numbers.
   const [serveOpen, setServeOpen] = useState(false)
+  // Add the stamped scans (punch list #366): several filed liens' scans in one sitting, each saved to its own job.
+  const [scansOpen, setScansOpen] = useState(false)
+  useEffect(() => {
+    if (openScansDoor) setScansOpen(true)
+  }, [openScansDoor])
   const [publicPutBack, setPublicPutBack] = useState<string | null>(null)
   const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
   // The leader's Board (v2.7334): a master opens on his two Awaiting Master approval bins alone, the jobs he leads, with one
@@ -4967,8 +4979,13 @@ export default function LienDesk({
               }}
               onChanged={onChanged}
               onClose={() => setServeOpen(false)}
+              onAddScans={() => {
+                setServeOpen(false)
+                setScansOpen(true)
+              }}
             />
           ) : null}
+          {scansOpen && data ? <LienScanBatchWindow targets={scanTargets} isMobile={isMobile} zIndex={805} onChanged={onChanged} onClose={() => setScansOpen(false)} /> : null}
           {publicReview?.[0] ? (
             <LienPublicPropertyWindow
               key={publicReview[0]}
