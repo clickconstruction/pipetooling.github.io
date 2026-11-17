@@ -8,15 +8,13 @@ import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
-import { MATERIALIZE_HORIZON_DAYS, materializeDates } from '../lib/checklistMaterialize'
-import { dayBeforeApplicable, scopeFromDaily } from '../lib/checklistReminderOptions'
-import { ymdAddDays } from '../utils/dateUtils'
 import { checklistJobLinks, composeChecklistJobTitle, type ChecklistJobPreset } from '../lib/checklistJobPreset'
 import { parseLines } from '../lib/taskCriteria'
 import { writeItemLines } from '../lib/taskLinesIo'
 import { asksForPhotoDefault } from '../lib/taskProgress'
-import { taskPlaceColumns, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
-import { sentenceWithMap, taskMapColumn, type TaskMapDraft } from '../lib/tasks/taskMapPick'
+import type { TaskPlaceDraft } from '../lib/tasks/taskPlace'
+import { sentenceWithMap, type TaskMapDraft } from '../lib/tasks/taskMapPick'
+import { newTaskAssigneeRows, newTaskSend } from '../lib/tasks/newTaskSend'
 import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
 import { newTaskSentence, taskPersonName, taskSendLabel, type TaskAddKey } from '../lib/tasks/newTaskWindow'
@@ -290,25 +288,9 @@ export default function ChecklistAddModal({
     }
   }, [modalContext?.isOpen, canManage])
 
-  async function generateInstances(itemId: string, item: typeof form) {
-    const assigneeIds = item.assigned_to_user_ids?.length ? item.assigned_to_user_ids : []
+  /** The day rows a new task gets at once (`newTaskInstanceDates`), each with its people. */
+  async function generateInstances(itemId: string, instanceDates: string[], assigneeIds: string[]) {
     if (assigneeIds.length === 0) return
-
-    // Shared kernel (v2.2055) — string-date math fixes the old UTC-anchor bug
-    // where a weekly item could materialize a day before its chosen start.
-    const instanceDates = materializeDates(
-      {
-        repeat_type: item.repeat_type,
-        repeat_days_of_week: item.repeat_days_of_week,
-        start_date: item.start_date,
-        repeat_end_date: item.repeat_end_date || null,
-      },
-      item.start_date,
-      // Rolling horizon (v2.2056): create only the near window; the nightly
-      // cron top-up keeps weekly items stocked ahead forever — no more
-      // two-year cliff, no more years of empty future rows.
-      ymdAddDays(item.start_date, MATERIALIZE_HORIZON_DAYS),
-    )
 
     for (const scheduledDate of instanceDates) {
       // Upsert against the (item, date) unique index — idempotent by construction.
@@ -333,71 +315,50 @@ export default function ChecklistAddModal({
     if (submitting) return
     setFormError(null)
     const trimmedTitle = form.title.trim()
-    if (!trimmedTitle) {
-      setFormError('Enter a title.')
-      return
-    }
     // The job bar stores the pre-v2.3751 shape — the token, the dash, the typed
     // text, the job as link [1] — so nothing downstream sees a change.
     const storedTitle = form.job ? composeChecklistJobTitle(form.job, trimmedTitle) : trimmedTitle
     const storedLinks = form.job ? checklistJobLinks(form.job, form.links) : form.links.filter(Boolean)
-    if (form.assigned_to_user_ids.length === 0) {
-      setFormError('Select at least one assignee.')
-      return
-    }
-    // The When control maps onto the stored repeat fields (v2.2058).
-    const effRepeatType: 'once' | 'day_of_week' | 'days_after_completion' =
-      when === 'repeat' ? (repeatMode === 'weekly' ? 'day_of_week' : 'days_after_completion') : 'once'
-    const effStartDate = when === 'today' ? toLocalDateString(new Date()) : form.start_date
-    // A due date implies staying on the list — a deadline is meaningless for a task that vanishes first (v2.2351).
-    const effDueDate = when !== 'repeat' && form.due_date ? form.due_date : null
-    const effShowUntil = when === 'repeat' ? false : effDueDate ? true : form.show_until_completed
-    if (when === 'date' && !form.start_date) {
-      setFormError('Pick a date.')
-      return
-    }
-    if (effDueDate && effDueDate < effStartDate) {
-      setFormError('The due date can’t be before the task starts.')
-      return
-    }
-    if (effRepeatType === 'day_of_week' && form.repeat_days_of_week.length === 0) {
-      setFormError('Pick at least one weekday.')
+    // The refusals, the row and the days are the send's own rules (v2.7584, `newTaskSend`): the dev seat's plan_task
+    // runs the same ones, so a task given there lands as one given here.
+    const send = newTaskSend(
+      {
+        typed: trimmedTitle,
+        title: storedTitle,
+        links: storedLinks,
+        assigneeIds: form.assigned_to_user_ids,
+        when,
+        repeatMode,
+        startDate: form.start_date,
+        repeatDaysOfWeek: form.repeat_days_of_week,
+        repeatDaysAfter: form.repeat_days_after,
+        repeatEndDate: form.repeat_end_date,
+        dueDate: form.due_date,
+        showUntilCompleted: form.show_until_completed,
+        notifyOnCompleteUserId: form.notify_on_complete_user_id,
+        notifyCreatorOnComplete: form.notify_creator_on_complete,
+        reminderTime: form.reminder_time,
+        reminderDaily: form.reminder_daily,
+        remindDayBefore: form.remind_day_before,
+        escalateEnabled: form.escalate_enabled,
+        escalateDays: form.escalate_days,
+        asksForPhoto,
+        place,
+        map: taskMap,
+      },
+      { userId: authUser.id },
+      { today: toLocalDateString(new Date()), now: new Date().toISOString() },
+    )
+    if (!send.ok) {
+      setFormError(send.error)
       return
     }
     setSubmitting(true)
     try {
-      const reminderCols = {
-        remind_day_before:
-          Boolean(form.reminder_time) && form.remind_day_before && dayBeforeApplicable(when, effStartDate, toLocalDateString(new Date())),
-        escalate_after_days: form.reminder_time && form.escalate_enabled ? Math.max(1, form.escalate_days) : null,
-      }
+      // Some columns are younger than the generated types, hence the cast.
       const { data, error } = await supabase
         .from('checklist_items')
-        .insert({
-          ...reminderCols,
-          title: storedTitle,
-          links: storedLinks,
-          // Task cards (#273, PR 4): the writer's switch; the column is younger than the generated types.
-          ...({ asks_for_photo: asksForPhoto } as Record<string, boolean>),
-          // A place (#328) is written only when one is set, so a task with none sends the row it always sent. The columns
-          // are younger than the generated types.
-          ...(place ? (taskPlaceColumns(place, authUser.id, new Date().toISOString()) as Record<string, unknown>) : {}),
-          // The task's map (#345) is the window's own: it overrides what a place chip carried, and a task with neither
-          // sends the row it always sent.
-          ...(place || taskMap ? taskMapColumn(taskMap) : {}),
-          created_by_user_id: authUser.id,
-          repeat_type: effRepeatType,
-          repeat_days_of_week: effRepeatType === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
-          repeat_days_after: effRepeatType === 'days_after_completion' ? form.repeat_days_after : null,
-          repeat_end_date: effRepeatType === 'day_of_week' ? form.repeat_end_date || null : null,
-          start_date: effStartDate,
-          due_date: effDueDate,
-          show_until_completed: effShowUntil,
-          notify_on_complete_user_id: form.notify_on_complete_user_id || null,
-          notify_creator_on_complete: form.notify_creator_on_complete,
-          reminder_time: form.reminder_time || null,
-          reminder_scope: form.reminder_time ? scopeFromDaily(form.reminder_daily) : null,
-        })
+        .insert(send.row as never)
         .select('id')
         .single()
       if (error) {
@@ -410,14 +371,8 @@ export default function ChecklistAddModal({
         // does not land: the page that made it then finds it by its link. The column is younger than the generated types.
         if (sourceTag) await supabase.from('checklist_items').update({ source_tag: sourceTag } as never).eq('id', newId)
         const nextOrders = await getNextDisplayOrders(form.assigned_to_user_ids)
-        await supabase.from('checklist_item_assignees').insert(
-          form.assigned_to_user_ids.map((uid) => ({
-            checklist_item_id: newId,
-            user_id: uid,
-            display_order: nextOrders.get(uid) ?? 1,
-          }))
-        )
-        await generateInstances(newId, { ...form, repeat_type: effRepeatType, start_date: effStartDate, repeat_end_date: effRepeatType === 'day_of_week' ? form.repeat_end_date : '' })
+        await supabase.from('checklist_item_assignees').insert(newTaskAssigneeRows(newId, form.assigned_to_user_ids, nextOrders))
+        await generateInstances(newId, send.instanceDates, form.assigned_to_user_ids)
         // The photo of the spot (#328, PR 6) is filed under the task's id, so it goes now. The task is sent either way; a
         // photo that did not land says so and leaves the dialog open, since sending again would make a second task.
         if (spotPhoto?.kind === 'new') {

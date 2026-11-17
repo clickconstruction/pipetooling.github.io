@@ -5,6 +5,9 @@
  *   added, each move, each rename, its retire.
  * - **Contents**: each part in it with how many, when it first came in and where the box stood then, and that
  *   part's history in this box under a fold.
+ * - **Where is it?** (v2.7575, punch list #372), when the host hands over the job's map facts: what the app knows
+ *   about where the box stands, the way to it and I found it (`WhereIsBox.tsx`). The office page does; the phone's
+ *   box screen has the same sheet behind its own chip.
  *
  * Since v2.7212 a typed part's name is fixed from its line on Contents: **Fix the name**, with what the rename
  * touches said before the press and **Undo the rename** after it (`partRename.ts`).
@@ -21,6 +24,11 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { linesOf, type Container, type ContainerLine, type Place } from '../../lib/materials/onSite'
+import type { LatLng } from '../../lib/materials/myLocation'
+import type { PhotoNote } from '../../lib/materials/photo'
+import type { PaintedLayerMap } from '../../lib/paintedMap/paintedMapLayer'
+import { WHERE_IS_IT_PRESS } from '../../lib/materials/whereIsBox'
+import WhereIsBox from './WhereIsBox'
 import { editBoxTitle } from '../../lib/materials/editBox'
 import { boxHistory, contentsTabWords, historyFoldWords, lineAdded, lineAddedWords, lineHistory, placeAt, type BoxNameChange, type HistoryEvent } from '../../lib/materials/boxHistory'
 import { fetchBoxNames } from '../../lib/materials/boxHistoryIo'
@@ -65,10 +73,14 @@ type Props = {
   byUserId: string | null
   touch?: boolean
   onSaved: (words: string) => void
+  /** The job's map facts, for the Where is it? tab (punch list #372). With none the tab is not drawn. */
+  where?: { jobCenter: LatLng | null; jobAddress: string; photos: ReadonlyArray<PhotoNote>; painted?: ReadonlyArray<PaintedLayerMap> }
+  /** The tab the window opens on; Cage by default. */
+  startTab?: 'cage' | 'contents' | 'where'
 }
 
-export default function BoxTabs({ container, containers, siteBoxes, places, lines, byName, byUserId, touch = false, onSaved }: Props) {
-  const [tab, setTab] = useState<'cage' | 'contents'>('cage')
+export default function BoxTabs({ container, containers, siteBoxes, places, lines, byName, byUserId, touch = false, onSaved, where, startTab = 'cage' }: Props) {
+  const [tab, setTab] = useState<'cage' | 'contents' | 'where'>(startTab === 'where' && !where ? 'cage' : startTab)
   const [names, setNames] = useState<BoxNameChange[]>([])
   const [failed, setFailed] = useState<unknown>(null)
   const readNames = useCallback(async () => {
@@ -128,6 +140,7 @@ export default function BoxTabs({ container, containers, siteBoxes, places, line
       <div role="tablist" aria-label="This box" style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid var(--border)' }}>
         <button type="button" role="tab" aria-selected={tab === 'cage'} style={tabStyle(tab === 'cage', h)} onClick={() => setTab('cage')}>Cage</button>
         <button type="button" role="tab" aria-selected={tab === 'contents'} style={tabStyle(tab === 'contents', h)} onClick={() => setTab('contents')}>{contentsTabWords(mine.length)}</button>
+        {where ? <button type="button" role="tab" aria-selected={tab === 'where'} style={tabStyle(tab === 'where', h)} onClick={() => setTab('where')}>{WHERE_IS_IT_PRESS}</button> : null}
       </div>
       {tab === 'cage' ? (
         <div role="tabpanel" aria-label="Cage" style={{ display: 'grid', gap: '1rem' }}>
@@ -142,6 +155,11 @@ export default function BoxTabs({ container, containers, siteBoxes, places, line
             <Events events={boxHistory(container, places, moves, names)} />
             <OfflineRetryPanel failure={failed ? recoveryFailureFromError(failed, 'The old names did not load.') : null} onRetry={readNames} surface="on-site-box-names" idempotent />
           </section>
+        </div>
+      ) : tab === 'where' && where ? (
+        <div role="tabpanel" aria-label={WHERE_IS_IT_PRESS}>
+          {/* Move box, in this window, is the Cage tab's own place field. */}
+          <WhereIsBox container={container} containers={containers} places={places} moves={moves} movements={movements} photos={where.photos} jobCenter={where.jobCenter} jobAddress={where.jobAddress} painted={where.painted} byName={byName} touch={touch} onMoveBox={() => setTab('cage')} />
         </div>
       ) : (
         <div role="tabpanel" aria-label="Contents" style={{ display: 'grid', gap: '0.6rem' }}>

@@ -89,7 +89,8 @@ import { TaskDayBar } from '../components/checklist/TaskDayBar'
 import { ChecklistStuckSection } from '../components/checklist/ChecklistStuckSection'
 import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerActs'
 import { handOnTask, tellForwardTaker } from '../lib/tasks/taskDoerActsIo'
-import { FORWARD_KEEPS_WORDS } from '../lib/tasks/taskDoerActs'
+import { forwardTakers } from '../lib/tasks/taskDoerActs'
+import { TaskForwardWindow } from '../components/checklist/TaskForwardWindow'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
@@ -257,9 +258,6 @@ function vehicleTaskChip(instanceId: string, onOpen: (instanceId: string) => voi
 }
 
 const tabStyle = pageTabStyle
-
-/** Under the task's words in the office's Forward window: one sentence, shared with My Inbox's window (v2.7563). */
-const FWD_KEEPS_WORDS = FORWARD_KEEPS_WORDS
 
 /** The small-caps label over a part of the day, the New task window's row label. */
 const TODAY_PART_LABEL: CSSProperties = { margin: '0.9rem 2px 0.4rem', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -610,17 +608,12 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the names read when the lists change, never when a name lands
   }, [todayInstances, outstandingInstances, authUserId])
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
-  const [fwdTitle, setFwdTitle] = useState('')
-  const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
+  /** Why the last Forward did not take, shown in the window in the database's words. */
+  const [fwdRefusal, setFwdRefusal] = useState<string | null>(null)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
   const [muteModalTitle, setMuteModalTitle] = useState('')
-
-  const fwdMissingFields: string[] = []
-  if (!fwdTitle.trim()) fwdMissingFields.push('Title')
-  if (!fwdAssigneeId) fwdMissingFields.push('Assignee')
-  const fwdCanSubmit = fwdMissingFields.length === 0
 
   /**
    * The day read again after something changed, without the page's loading line (punch list #369, step C5): a sheet
@@ -923,27 +916,28 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   }
 
   function openFwd(inst: ChecklistInstance) {
-    const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+    setFwdRefusal(null)
     setFwdInstance(inst)
-    setFwdTitle(title)
-    setFwdAssigneeId('')
   }
 
-  async function saveFwd() {
-    if (!fwdInstance || !authUserId || !fwdTitle.trim() || !fwdAssigneeId) return
+  async function saveFwd(toUserId: string) {
+    if (!fwdInstance || !authUserId || !toUserId || fwdSaving) return
     setFwdSaving(true)
-    setError(null)
+    setFwdRefusal(null)
     try {
       // Punch list #369, step C7: one person for another on the same task. The copy this made, and the delete of the
       // first day row with its thread, are gone: the task keeps its notes, place, lines and photos.
-      const refused = await handOnTask(fwdInstance.id, fwdAssigneeId, null, null)
-      if (refused) throw new Error(refused)
-      void tellForwardTaker({ byUserId: authUserId, toUserId: fwdAssigneeId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain(fwdTitle) })
+      const refused = await handOnTask(fwdInstance.id, toUserId, null, null)
+      if (refused) {
+        setFwdRefusal(refused)
+        return
+      }
+      void tellForwardTaker({ byUserId: authUserId, toUserId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain((fwdInstance.checklist_items as { title?: string } | null)?.title ?? 'Untitled') })
       setFwdInstance(null)
       await loadToday()
       await loadUpcoming()
     } catch (err: unknown) {
-      setError(formatErrorMessage(err, 'Failed to forward'))
+      setFwdRefusal(formatErrorMessage(err, 'The task was not forwarded.'))
     } finally {
       setFwdSaving(false)
     }
@@ -1423,87 +1417,14 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       ) : null}
 
       {fwdInstance && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
-          }}
-          onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              minWidth: 320,
-              maxWidth: 400,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Forward task</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
-                <div data-fwd-title style={{ fontSize: '0.9375rem', lineHeight: 1.35 }}>{taskTitlePlain(fwdTitle)}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{FWD_KEEPS_WORDS}</div>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
-                <select
-                  value={fwdAssigneeId}
-                  onChange={(e) => setFwdAssigneeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={saveFwd}
-                disabled={!fwdCanSubmit || fwdSaving}
-                title={!fwdCanSubmit ? `Required: ${fwdMissingFields.join(', ')}` : undefined}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: fwdCanSubmit && !fwdSaving ? 'pointer' : 'not-allowed',
-                  fontWeight: 500,
-                }}
-              >
-                {fwdSaving ? 'Saving…' : 'Forward'}
-              </button>
-              {!fwdCanSubmit && !fwdSaving && fwdMissingFields.length > 0 && (
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', marginLeft: '0.5rem', display: 'inline-block' }}>
-                <span style={{ display: 'block' }}>Required:</span>
-                {fwdMissingFields.map((f) => (
-                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
-                ))}
-              </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setFwdInstance(null)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+        <TaskForwardWindow
+          title={taskTitlePlain((fwdInstance.checklist_items as { title?: string } | null)?.title ?? 'Untitled')}
+          people={forwardTakers(users, authUserId ?? null)}
+          saving={fwdSaving}
+          refusal={fwdRefusal}
+          onForward={(toUserId) => void saveFwd(toUserId)}
+          onClose={() => setFwdInstance(null)}
+        />
       )}
 
       {doer.sheets}
@@ -2433,10 +2354,10 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
   const costEstimates = useChecklistCostEstimates(canSeeCosts)
   const { showToast } = useToastContext()
   const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
-  const [fwdTitle, setFwdTitle] = useState('')
   const [fwdFromUserId, setFwdFromUserId] = useState('')
-  const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
+  /** Why the last Forward did not take, shown in the window in the database's words. */
+  const [fwdRefusal, setFwdRefusal] = useState<string | null>(null)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [deletingInstanceId, setDeletingInstanceId] = useState<string | null>(null)
   const [completingInstanceId, setCompletingInstanceId] = useState<string | null>(null)
@@ -2459,11 +2380,6 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
   const outstandingBoardRef = useRef<HTMLDivElement | null>(null)
   const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
   const onOpenReqCount = useCallback((n: number) => setOpenReqCount(n), [])
-
-  const fwdMissingFields: string[] = []
-  if (!fwdTitle.trim()) fwdMissingFields.push('Title')
-  if (!fwdAssigneeId) fwdMissingFields.push('Assignee')
-  const fwdCanSubmit = fwdMissingFields.length === 0
 
   useEffect(() => {
     loadOutstanding()
@@ -2488,11 +2404,9 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
   }, [canActForOthers])
 
   function openFwd(inst: OutstandingInstance, rowUserId: string) {
-    const title = inst.checklist_items?.title ?? 'Untitled'
+    setFwdRefusal(null)
     setFwdInstance(inst)
-    setFwdTitle(title)
-    setFwdAssigneeId(rowUserId)
-    // Whose task it is now: the function swaps this person for the one picked.
+    // Whose task it is now: the function swaps this person for the one picked, so the list leaves them out.
     setFwdFromUserId(rowUserId)
   }
 
@@ -2622,20 +2536,23 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
     }
   }
 
-  async function saveFwd() {
-    if (!fwdInstance || !authUserId || !fwdTitle.trim() || !fwdAssigneeId) return
+  async function saveFwd(toUserId: string) {
+    if (!fwdInstance || !authUserId || !toUserId || fwdSaving) return
     setFwdSaving(true)
-    setError(null)
+    setFwdRefusal(null)
     try {
       // Punch list #369, step C7: one person for another on the same task. The copy this made, and the delete of the
       // first day row with its thread, are gone: the task keeps its notes, place, lines and photos.
-      const refused = await handOnTask(fwdInstance.id, fwdAssigneeId, null, fwdFromUserId || null)
-      if (refused) throw new Error(refused)
-      void tellForwardTaker({ byUserId: authUserId, toUserId: fwdAssigneeId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain(fwdTitle) })
+      const refused = await handOnTask(fwdInstance.id, toUserId, null, fwdFromUserId || null)
+      if (refused) {
+        setFwdRefusal(refused)
+        return
+      }
+      void tellForwardTaker({ byUserId: authUserId, toUserId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain(fwdInstance.checklist_items?.title ?? 'Untitled') })
       setFwdInstance(null)
       await loadOutstanding()
     } catch (err: unknown) {
-      setError(formatErrorMessage(err, 'Failed to forward'))
+      setFwdRefusal(formatErrorMessage(err, 'The task was not forwarded.'))
     } finally {
       setFwdSaving(false)
     }
@@ -3390,87 +3307,15 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
         </div>
       )}
       {fwdInstance && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
-          }}
-          onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              minWidth: 320,
-              maxWidth: 400,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Forward task</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
-                <div data-fwd-title style={{ fontSize: '0.9375rem', lineHeight: 1.35 }}>{taskTitlePlain(fwdTitle)}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{FWD_KEEPS_WORDS}</div>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
-                <select
-                  value={fwdAssigneeId}
-                  onChange={(e) => setFwdAssigneeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={saveFwd}
-                disabled={!fwdCanSubmit || fwdSaving}
-                title={!fwdCanSubmit ? `Required: ${fwdMissingFields.join(', ')}` : undefined}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: fwdCanSubmit && !fwdSaving ? 'pointer' : 'not-allowed',
-                  fontWeight: 500,
-                }}
-              >
-                {fwdSaving ? 'Saving…' : 'Forward'}
-              </button>
-              {!fwdCanSubmit && !fwdSaving && fwdMissingFields.length > 0 && (
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', marginLeft: '0.5rem', display: 'inline-block' }}>
-                <span style={{ display: 'block' }}>Required:</span>
-                {fwdMissingFields.map((f) => (
-                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
-                ))}
-              </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setFwdInstance(null)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+        <TaskForwardWindow
+          title={taskTitlePlain(fwdInstance.checklist_items?.title ?? 'Untitled')}
+          // The person the task leaves is not offered; the office may take it themselves.
+          people={forwardTakers(users, fwdFromUserId || null)}
+          saving={fwdSaving}
+          refusal={fwdRefusal}
+          onForward={(toUserId) => void saveFwd(toUserId)}
+          onClose={() => setFwdInstance(null)}
+        />
       )}
     </div>
   )

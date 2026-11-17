@@ -2,7 +2,7 @@
 name: "The sub's page: a Statements view with their work statements, payment records and statement of account"
 number: 371
 group: ready
-status: asked 2026-11-17 · the mock-up and this card the same day · the owner answered all seven calls 2026-11-17, each with the card's pick · step 1, the function, on branch `claude/371-sub-portal-papers`, not deployed · the list was drawn on made-up data in the sub labor spike and is not wired to the page
+status: asked 2026-11-17 · the mock-up and this card the same day · the owner answered all seven calls 2026-11-17, each with the card's pick · step 1, the function, live 2026-11-17 (v2.7569): its migration pushed and `sub-portal` deployed on the owner's go · the list was drawn on made-up data in the sub labor spike and is not wired to the page
 summary: >
   Card #350 gave the office three papers for a sub. A sub still cannot find them on their own page:
   the page shows open sheets and 90 days of payment lines, with no paid sheets, no numbers, no
@@ -12,9 +12,9 @@ summary: >
   office prints. A sub can mark a payment received or say a figure looks wrong. It was step 6 of
   card #350 and moves here with its own mock-up, because it puts papers in front of subs and has
   calls of its own.
-next: step 1's merge, its migration's push, then the owner's go that names `sub-portal` for the deploy; step 2, the switch and the list, follows the deploy
-size: M as a train of four (M · S · M · S)
-blocker: PR 1 is an edge deploy of `sub-portal`, on a go that names it; the owner reads the Spanish words before step 2 ships them (call 5); Confirm waits on counsel and is not in this card
+next: step 2, the switch and the list, cut from the spike's snapshot and fitted to the page; the owner reads its Spanish words before they ship
+size: M as a train of four (M · S · M · S); left: steps 2 to 4 (S · M · S)
+blocker: the owner reads the Spanish words before step 2 ships them (call 5); Confirm waits on counsel and is not in this card
 opinion: build it as a switch at the top, Today and Statements, so the page a sub knows does not change; never let the sub's page give out a number; ship Got it as a quiet chip and Something is wrong as the one thing that asks the office to act
 mockup: to-dos/sub-portal-statements/mockup.html
 ---
@@ -86,7 +86,7 @@ A payment record's answer hung on a paper in the register (`sub_paper_acks.paper
 
 ## Where it stands
 
-Step 1 is built on `claude/371-sub-portal-papers` and nothing is deployed. The page a sub opens today is unchanged until the deploy, and unchanged after it until step 2 reads the new block.
+Step 1 is live since 2026-11-17 (v2.7569). The page a sub opens is unchanged until step 2 reads the new block.
 
 - **The `papers` block.** `sub-portal` hands back every sheet that is the sub's alone, paid ones too, as the papers' kernel reads a sheet, with the letterhead, the answers already given and whether the set adds up. A set that does not add up hands back no figure. A failure in the block leaves the rest of the page as it is.
 - **The two answers.** A `POST` with `action: 'got_it'` or `action: 'something_wrong'` writes one row of `sub_paper_acks`. A second *Got it* on one payment changes nothing.
@@ -94,7 +94,15 @@ Step 1 is built on `claude/371-sub-portal-papers` and nothing is deployed. The p
 - **Whose a sheet is.** `sheetParties`, `teamSheetRule`, `rosterSub` and `laborJobPersonMatch` moved under `supabase/functions/_shared/`. Their old paths re-export them, so no screen's import changed.
 - **Left out of step 1.** An earlier copy of a changed statement (the mock-up's *Copy of Oct 29*) is not handed over. A memo the office hid after that copy was made would still be in it, so it needs a rule of its own before a sub can open it.
 
-The order from here: merge, `supabase db push` for the one migration, then the deploy of `sub-portal` on a go that names it.
+**Pushed and deployed 2026-11-17**, on the owner's go that named `sub-portal`. The migration went up by `supabase db push --include-all` from a checkout at `origin/main`: the dry run named this one file, and two later stamps were already on prod. `sub-portal` was deployed from the same checkout, and the deployed copy reads byte for byte as main's, 41 files.
+
+Checked live, with nothing written but one preview visit:
+
+- The function boots, and the sample page's read answers as before.
+- The new refusals answer: a sample page, an unknown link and an empty body.
+- The test sub's page, read as an office preview, carries `papers` with the letterhead from Settings and the office's phone.
+
+Not checked live: a person with sheets. The test sub has none today, so the sheets, the payments, the numbers and both answers were not exercised on prod. Every column the block reads was read through the dev seat and exists. Step 4's walk covers the rest on the test sub and a ZZ Test job.
 
 ## The calls
 

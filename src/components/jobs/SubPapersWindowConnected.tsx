@@ -13,9 +13,7 @@
  * Send is the card's next step, so the view is handed no `onSend`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
 import type { PaperCompany, PaperContext, StatementRange } from '../../../supabase/functions/_shared/subPapers'
-import { buildPaymentRecordPdf, buildStatementOfAccountPdf, buildWorkStatementPdf } from '../../../supabase/functions/_shared/subPapersPdf'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { fileSentCopy, printPdfAndFile } from '../../lib/sent/sentCopiesIo'
 import { saveBlobAs } from '../../lib/storageSave'
@@ -24,6 +22,7 @@ import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
 import { mintRefusal, mintSubPaperArgs, mintedFrom, numberedSubPaper, subPaperRegister, SUB_PAPER_ROW_COLUMNS, type SubPaperRow } from '../../lib/subWorkOrders/subPaperRegister'
 import { paperPreparedAt, paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
+import { drawSubPaperPdf } from '../../lib/subWorkOrders/subPaperPdfDraw'
 import { subPaperAttachmentName, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper } from '../../lib/subWorkOrders/subPaperSend'
 import type { TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
 import type { LaborJob } from '../../types/laborJob'
@@ -47,12 +46,6 @@ export type SubPapersWindowProps = {
 
 /** Nobody is sent a paper from this window yet, so it reads no address. */
 const NO_CONTACT: SubPaperContact = { email: null, phone: null, portalUrl: null }
-
-async function drawPdf(paper: SubPaper, range: StatementRange): Promise<Blob> {
-  const lib = (await import('pdf-lib')) as unknown as PdfLibLike
-  const bytes = paper.kind === 'statement_of_account' ? await buildStatementOfAccountPdf(lib, paper, range) : paper.kind === 'work_statement' ? await buildWorkStatementPdf(lib, paper) : await buildPaymentRecordPdf(lib, paper)
-  return new Blob([bytes as BlobPart], { type: 'application/pdf' })
-}
 
 export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobId, namesByJobId, roster, rule, onClose }: SubPapersWindowProps) {
   const { role } = useAuth()
@@ -133,7 +126,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
         void (async () => {
           try {
             const made = await make(paper, range)
-            const blob = await drawPdf(made, range)
+            const blob = await drawSubPaperPdf(made, range)
             const fileName = subPaperAttachmentName(made)
             saveBlobAs(blob, fileName)
             const filed = await fileSentCopy({ ...filingOf(made), how: 'download' }, { blob, fileName, contentType: 'application/pdf' })
@@ -156,7 +149,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
             try {
               const made = await make(paper, range)
               Object.assign(filing, filingOf(made))
-              return { blob: await drawPdf(made, range), fileName: subPaperAttachmentName(made) }
+              return { blob: await drawSubPaperPdf(made, range), fileName: subPaperAttachmentName(made) }
             } catch (e) {
               reason = formatErrorMessage(e, 'no reason was given')
               throw e

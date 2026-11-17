@@ -11,27 +11,35 @@
 import { andList } from '../gc/wordToTrades'
 import { ymdAddDays } from '../../utils/dateUtils'
 
-/** One person the list may offer on a job: someone who can open that job's notes. */
+/** One person the list may offer on a job or a task: someone who can open its notes. */
 export type TaggablePerson = {
   userId: string
   name: string
   role: string | null
   /** On the job's crew, as against the office. */
   onJob: boolean
+  /** One of a task's own people (punch list #375): whoever gave it, or whoever has it. */
+  onTask?: boolean
+  /** The person who gave the task. */
+  gave?: boolean
 }
 
-/** The list's three groups, in the order they are drawn. */
-export type TagGroup = 'asked' | 'job' | 'office'
+/** The list's groups, in the order they are drawn. */
+export type TagGroup = 'asked' | 'task' | 'job' | 'office'
 
 export type TagListRow = { person: TaggablePerson; group: TagGroup }
 
-export const TAG_GROUP_ORDER: readonly TagGroup[] = ['asked', 'job', 'office']
+export const TAG_GROUP_ORDER: readonly TagGroup[] = ['asked', 'task', 'job', 'office']
 
 export const TAG_GROUP_WORDS: Record<TagGroup, string> = {
   asked: 'Asked you',
+  task: 'On this task',
   job: 'On this job',
   office: 'Office',
 }
+
+/** A task's note box offers this many of its own people before a letter is typed. */
+export const TASK_OFFER_MAX = 3
 
 /** A tag turns amber once it has waited this many working days. */
 export const TAG_LATE_AFTER_WORKING_DAYS = 2
@@ -144,7 +152,7 @@ export function rankTaggable(
     seen.add(person.userId)
     if (picked.has(person.userId) || person.userId === opts.selfId) continue
     if (!nameMatchesQuery(person.name, query)) continue
-    const group: TagGroup = person.userId === opts.askerId ? 'asked' : person.onJob ? 'job' : 'office'
+    const group: TagGroup = person.userId === opts.askerId ? 'asked' : person.onTask ? 'task' : person.onJob ? 'job' : 'office'
     rows.push({ person, group })
   }
   return rows.sort(
@@ -401,6 +409,39 @@ export function noteTagMark(
     done.length > 0 ? `${andList(done)}: no reply needed` : '',
   ].filter(Boolean)
   return { names, mine, words: said.join(' · '), waiting: false, late: false }
+}
+
+/** What a name press says under the name: what the person is to this job or this task. */
+export function tagPersonSays(row: TagListRow): string {
+  if (row.group === 'asked') return 'asked you'
+  const person = row.person
+  if (person.gave) return 'gave this task'
+  if (person.onTask) return 'has this task'
+  const role = person.role === 'helpers' || person.role === 'primary' ? 'crew' : person.role === 'superintendent' ? 'superintendent' : 'office'
+  return person.onJob && role !== 'office' ? `${role} · on this job` : role
+}
+
+/**
+ * The names a task's note box offers before a letter is typed (punch list #375): the task's own
+ * people, whoever gave it first, three at most, without anyone already tagged.
+ */
+export function taskOffer(people: readonly TaggablePerson[], pickedIds: readonly string[] = []): TagListRow[] {
+  return rankTaggable(
+    people.filter((p) => p.onTask),
+    '',
+    { pickedIds },
+  )
+    .sort((a, b) => Number(b.person.gave === true) - Number(a.person.gave === true))
+    .slice(0, TASK_OFFER_MAX)
+}
+
+/**
+ * Who is offered the @ in a task's note box (punch list #375). Held to a dev until the count
+ * above Checklist and the Tagged task notes section land, so nobody is tagged where they would
+ * never see it. The server still decides task by task.
+ */
+export function canTagInTaskNotes(role: string | null | undefined): boolean {
+  return role === 'dev'
 }
 
 /** The roles job_note_people() lists (punch list #363): the office, and the roles a job's crew is made of. */

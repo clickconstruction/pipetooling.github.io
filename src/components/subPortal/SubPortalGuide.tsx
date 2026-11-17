@@ -198,6 +198,8 @@ export function SubPortalGuideSheet({ lang, open, onClose, phone }: { lang: SubP
 
             {section(g.deductions.title, g.deductions.sub, <p style={{ margin: 0, fontSize: 14 }}>{g.deductions.body}</p>)}
 
+            {section(g.statements.title, g.statements.sub, <p style={{ margin: 0, fontSize: 14 }}>{g.statements.body}</p>)}
+
             {section(
               g.comingSoon.title,
               g.comingSoon.sub,
