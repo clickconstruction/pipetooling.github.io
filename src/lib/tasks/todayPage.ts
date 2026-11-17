@@ -185,3 +185,30 @@ export function followUpTitle(plainTitle: string): string {
 export function followUpTellsId(giverId: string | null | undefined, writerId: string | null): string | null {
   return giverId && giverId !== writerId ? giverId : null
 }
+
+/** The card's photo press (punch list #369, step B2), and the words of the sheet it opens. */
+export const PHOTO_PRESS_LABEL = '📷 Photo'
+export const ADD_PHOTO_SHEET_TITLE = 'Add a photo'
+export const ADD_PHOTO_TILE_WORDS = 'A photo of the work'
+export const ADD_PHOTO_PRESS = 'Add the photo'
+
+/**
+ * What an open task says before the person starts: who hears when it is done, and whether a photo is asked for at the
+ * finish. A task nobody hears and that asks for nothing says nothing.
+ */
+export function beforeStartWords(hearsName: string | null, asksForPhoto: boolean): string | null {
+  const name = (hearsName ?? '').trim()
+  const parts: string[] = []
+  if (name) parts.push(`${name} hears when it is done.`)
+  if (asksForPhoto) parts.push('It asks for a photo at the finish.')
+  return parts.length > 0 ? parts.join(' ') : null
+}
+
+/**
+ * The nudge on a task finished in this visit, in place of a sheet on every Mark done: the task is already done, and
+ * the photo and the note are each one press beside these words.
+ */
+export function justDoneWords(hearsName: string | null): string {
+  const name = (hearsName ?? '').trim()
+  return name ? `Add a photo or a note for ${name} if it helps.` : 'Add a photo or a note if it helps.'
+}

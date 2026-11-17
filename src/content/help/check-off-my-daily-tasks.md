@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
+keywords: checklist, today, tasks, photo, proof, add a photo, who hears, add a task for me, my own task, follow-up, still open, outstanding, overdue, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, painted map, trench, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -20,6 +20,12 @@ The top of the page shows the date and one line that says where you stand. It re
 Press {{button:blue|Mark done}} on the **Next** card. On a task under **Then**, tap its checkbox. That's it. There is no save button. Want to say something about how it went, like "used the scrap ply, looks clean"? Tap **＋ Note** and post it. Once a task has notes, the press shows their count, like *2 notes*. Open it to read the thread or add another.
 
 A finished task moves under **Done today** as one struck line. Tapping its green check reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
+
+## Add a photo to a task
+
+Want to show the work? Press **📷 Photo** on the task. Take the photo, then press {{button:blue|Add the photo}}. The photo lands on the task's strip for whoever looks at it. Adding a photo does not finish the task.
+
+You can add a photo before the task is done or after. An open task may also say what is wanted before you start. It reads like *Imani hears when it is done. It asks for a photo at the finish.*
 
 ## Say how far along it is
 
@@ -144,6 +150,8 @@ Fix it up, reply on the thread if useful, and check it off again.
 ## After you complete
 
 Under your finished task a line says when you did it and who hears. It reads like *Done 12:22 PM. Imani hears it is done.* When that person signs off, the line reads *Signed off by Imani*. Nothing more is needed from you.
+
+Right after you finish a task, a green line reads *Add a photo or a note for Imani if it helps.* The two presses sit beside it. Skip them when there is nothing to add.
 
 ## Add your own task
 
