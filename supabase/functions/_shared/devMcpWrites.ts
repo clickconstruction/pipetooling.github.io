@@ -1468,10 +1468,12 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
  * and is refused by the wrapper once the source holds nothing; a count moved there, back, and there again is a
  * second act too. A box's edit and a part's rename (v2.7241) are refused the same way once they land — the box
  * already reads that way, no typed part carries the old name, the rename was already undone — and a name fixed,
- * undone and fixed again is a second act.
+ * undone and fixed again is a second act. The task verbs (v2.7589) are refused by their own state too: a task given is
+ * found by its words, its day and its person, and a place set is the place the task already has; a place set, taken
+ * off and set again, or a task given, deleted in the app and given again, is a second act the log would turn away.
  */
 export function stateGuarded(verb: string): boolean {
-  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename'
+  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename' || verb === 'apply_task' || verb === 'apply_task_place'
 }
 
 /**
@@ -1517,8 +1519,6 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_job_combine') return `Nothing written: this plan was already applied${when}. The source job is gone and its rows are on the target; get_job shows it.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
-  if (verb === 'apply_task_place') return `Nothing written: this plan was already applied${when}; get_task reads where the task's place stands now. To move it again, plan the new place.`
-  if (verb === 'apply_task') return `Nothing written: this plan was already applied${when}; the task is on their Checklist (find_task with the words, or get_task with the id the apply replied with). Giving it again would make a second task; if a second one is meant, plan it with allow_duplicate: true.`
   if (verb === 'apply_activity_note') return `Nothing written: this plan was already applied${when}; the line is on the thread (read_rows on jobs_ledger_thread_notes by job_id, or on bids_submission_entries by bid_id, newest first). A second line with the same words is a duplicate; if you mean another, change its words or its day and plan again.`
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`

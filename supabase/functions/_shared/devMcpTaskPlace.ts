@@ -29,8 +29,6 @@ import {
   recentTaskPlaces,
   taskPlaceColumns,
   taskPlaceDistanceWords,
-  taskPlaceDraft,
-  taskPlaceDraftChanged,
   taskPlaceFromRow,
   taskTitlePlain,
   type TaskPlace,
@@ -106,7 +104,8 @@ export function placeAskInput(src: Json): { ok: true; ask: PlaceAsk } | { ok: fa
 /** A geocoder that writes nothing: the Census's, in the function. */
 export type CensusGeocode = (address: string) => Promise<{ ok: true; lat: number; lng: number } | { ok: false; error: string; detail?: string }>
 
-export type PlaceFound = { ok: true; lat: number; lng: number; name: string; found_by: string } | { ok: false; refused: string }
+/** `mapId` is the painted map that leads to a place in use: a place taken by its name brings its way in, as the window's chip does. */
+export type PlaceFound = { ok: true; lat: number; lng: number; name: string; found_by: string; mapId?: string } | { ok: false; refused: string }
 
 /** The key `address_geocodes` holds an address under: `geocode-one`'s own normalizing. */
 export function geocodeKey(address: string): string {
@@ -159,14 +158,14 @@ export async function findPlace(reader: Reader, census: CensusGeocode, ask: Plac
   const exact = offered.filter((o) => o.name.toLowerCase() === want)
   const holds = offered.filter((o) => o.name.toLowerCase().includes(want))
   const pick = exact[0] ?? (holds.length === 1 ? holds[0]! : null)
-  if (pick) return { ok: true, lat: pick.lat, lng: pick.lng, name: pick.name, found_by: `the place "${pick.name}" another task already carries` }
+  if (pick) return { ok: true, lat: pick.lat, lng: pick.lng, name: pick.name, found_by: `the place "${pick.name}" another task already carries`, ...(pick.mapId ? { mapId: pick.mapId } : {}) }
   if (holds.length > 1) return { ok: false, refused: `"${ask.like}" matches ${holds.length} places — name one whole: ${holds.slice(0, 12).map((o) => o.name).join('; ')}.` }
   return { ok: false, refused: `No task carries a place named "${ask.like}". ${offered.length ? `The names in use: ${offered.slice(0, 20).map((o) => o.name).join('; ')}.` : 'No task carries a named place yet.'} Pass a point, an address or a job.` }
 }
 
 /** A found place as the window's draft: set from a map, never from a phone's reading, so it carries no margin. */
 export function placeDraft(found: Extract<PlaceFound, { ok: true }>): TaskPlaceDraft {
-  return { lat: found.lat, lng: found.lng, name: found.name, accuracyM: null }
+  return { lat: found.lat, lng: found.lng, name: found.name, accuracyM: null, ...(found.mapId ? { mapId: found.mapId } : {}) }
 }
 
 // ── plan_task_place / apply_task_place ───────────────────────────────────────────────────────────────────────────
@@ -223,8 +222,10 @@ export async function readTaskPlaceWorld(reader: Reader, census: CensusGeocode, 
   let home: PlaceHome = { table: 'checklist_items', rowId: ref.id, on: 'task' }
   let row: Row = item
   const roadmapTaskId = strOrNull(item.roadmap_group_task_id)
-  if (roadmapTaskId) {
-    // A task made from a roadmap comes and goes as stages unlock; its place stays on the roadmap task.
+  // A task made from a roadmap comes and goes as stages unlock, so its place stays on the roadmap task. But the card
+  // reads the task's own row first (`loadTaskWheresForItems`): where that row already holds a place, that is the place
+  // the person sees, and the one this verb moves or takes off.
+  if (roadmapTaskId && !taskPlaceFromRow(item as Partial<TaskPlaceColumns>)) {
     const task = (await reader.rows('checklist_tech_tree_group_tasks', { select: `id,${TASK_PLACE_SELECT}`, filters: by('id', roadmapTaskId), limit: 1 }))[0]
     if (!task) return { refused: `This task came from a roadmap, and its roadmap task ${roadmapTaskId} cannot be read, so its place cannot be set from here.` }
     home = { table: 'checklist_tech_tree_group_tasks', rowId: roadmapTaskId, on: 'roadmap task' }
@@ -241,11 +242,12 @@ export async function readTaskPlaceWorld(reader: Reader, census: CensusGeocode, 
 
 /**
  * The task's painted map after the place changes, as the task windows decide it (`taskMapDraftFromSaved` then
- * `taskMapAfterPlace` in src/lib/tasks/taskMapPick.ts, held equal by the test): a map on a task that has a place is
- * that place's way in, and leaves when the place moves or goes; a map on a task with no place is the giver's own
- * pick, and stays.
+ * `taskMapAfterPlace` in src/lib/tasks/taskMapPick.ts, held equal by the test): a place that brings a way in makes
+ * that the task's map; otherwise a map on a task that has a place is that place's way in, and leaves when the place
+ * moves or goes; and a map on a task with no place is the giver's own pick, and stays.
  */
-export function mapAfterPlaceChange(before: TaskPlace | null, mapBefore: string | null): string | null {
+export function mapAfterPlaceChange(before: TaskPlace | null, mapBefore: string | null, nextMapId: string | null = null): string | null {
+  if (nextMapId) return nextMapId
   return before ? null : mapBefore
 }
 
@@ -276,25 +278,29 @@ export function taskPlaceDryRun(p: TaskPlacePayload, world: TaskPlaceWorld, me: 
   if (!found) return { ok: false, refused: 'No place was read for this plan.' }
   if (!found.ok) return { ok: false, refused: found.refused }
   const draft = placeDraft(found)
-  // The same point under the same name is no change, whatever map leads to it.
-  const { mapId: _map, ...beforeBare } = taskPlaceDraft(before) ?? { lat: NaN, lng: NaN, name: '', accuracyM: null }
-  if (before && !taskPlaceDraftChanged(beforeBare, draft)) return { ok: false, refused: `"${world.task.words}" already has this place: "${before.name}" at ${before.lat}, ${before.lng}.` }
-  const mapAfter = mapAfterPlaceChange(before, world.mapBefore)
+  const name = cleanTaskPlaceName(found.name) || null
+  const samePoint = before != null && before.lat === found.lat && before.lng === found.lng
+  // The same point under the same name is no change. The windows' own test (`taskPlaceDraftChanged`) also reads the
+  // phone's margin, which a place set from here never carries: by that test a place a phone set would be "changed" by
+  // naming it again, and the write would drop its margin and its map for nothing.
+  if (before && samePoint && (cleanTaskPlaceName(before.name) || null) === (name ?? cleanTaskPlaceName(before.name))) {
+    return { ok: false, refused: `"${world.task.words}" already has this place: "${before.name}" at ${before.lat}, ${before.lng}.` }
+  }
+  const mapAfter = mapAfterPlaceChange(before, world.mapBefore, found.mapId ?? null)
   const { place_set_at: _stamp, ...columns } = { ...taskPlaceColumns(draft, me.userId, ''), painted_map_id: mapAfter }
   const patch = columns as Record<string, unknown>
-  const name = cleanTaskPlaceName(found.name) || null
   const moved = before ? taskPlaceDistanceWords(haversineMeters(before, found)) : null
   return {
     ok: true,
     patch,
     reply: {
       ...head,
-      reads: before ? `The place of "${world.task.words.slice(0, 120)}" moves ${moved} from "${before.name}" to ${name ? `"${name}"` : 'a place with no name'}.` : `"${world.task.words.slice(0, 120)}" gets a place: ${name ? `"${name}"` : 'one with no name'}.`,
+      reads: before && samePoint ? `The place of "${world.task.words.slice(0, 120)}" keeps its point and is named ${name ? `"${name}"` : 'nothing'} in place of "${before.name}".` : before ? `The place of "${world.task.words.slice(0, 120)}" moves ${moved} from "${before.name}" to ${name ? `"${name}"` : 'a place with no name'}.` : `"${world.task.words.slice(0, 120)}" gets a place: ${name ? `"${name}"` : 'one with no name'}.`,
       before: beforeOut,
       after: { ...placeWords({ name, lat: found.lat, lng: found.lng }), check_it_here: mapLink(found.lat, found.lng) },
       found_by: found.found_by,
       ...(name ? {} : { no_name: 'A place with no name reads "A place" on the card and is not offered as a chip. Pass name to say what it is.' }),
-      ...(before && world.mapBefore ? { painted_map: 'The painted map that led to the old place comes off, as in the Edit window: it was that place\'s way in.' } : world.mapBefore ? { painted_map: 'The task\'s painted map stays.' } : {}),
+      ...(found.mapId ? { painted_map: 'The place brings the painted map that leads to it, as its chip does in the window.' } : before && world.mapBefore ? { painted_map: 'The painted map that led to the old place comes off, as in the Edit window: it was that place\'s way in.' } : world.mapBefore ? { painted_map: 'The task\'s painted map stays.' } : {}),
       patch,
       stamped_at_apply: world.home.table === 'checklist_items' ? ['place_set_at', 'updated_at'] : ['place_set_at'],
       tells,

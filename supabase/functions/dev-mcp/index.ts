@@ -1109,7 +1109,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_task',
-    description: "One Checklist task whole (v2.7584): the task as written — its words, links, who it is for, who gave it, when, the due day, the repeat, the reminder, who is told when it is done — its Done when… lines, whether it asks for a finishing photo, its place (a named point, with a map link) and whether it carries a photo of the spot, then its newest fourteen days with each one's percent and note, the newest fifteen lines of their thread and their newest twenty photos. `task` is an id (find_task), or words that find exactly one task. Read as you, under RLS; nothing is written.",
+    description: "One Checklist task whole (v2.7584): the task as written — its words, links, who it is for, who gave it, when, the due day, the repeat, the reminder, who is told when it is done — its Done when… lines, whether it asks for a finishing photo, its place (a named point, with a map link) and whether it carries a photo of the spot, then the days around today (today and the days before it that have a row, ten at most, and the next four ahead) with each one's percent and note, the newest fifteen lines of their thread and their newest twenty photos. `task` is an id (find_task), or words that find exactly one task. Read as you, under RLS; nothing is written.",
     inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'a task id (find_task), or words that find one task' } }, required: ['task'] },
   },
   {
@@ -1978,7 +1978,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       // v2.7584: Checklist tasks by their words or their person, read as whoever asks (devMcpTasks.ts).
       return composite(await findTask(readerAs(await jwt()), { text: typeof args.text === 'string' ? args.text : '', for: typeof args.for === 'string' ? args.for : '' }), 'checklist_items')
     case 'get_task':
-      return composite(await getTask(readerAs(await jwt()), String(args.task ?? '')), 'checklist_items')
+      return composite(await getTask(readerAs(await jwt()), String(args.task ?? ''), todayYmdInAppTz()), 'checklist_items')
     case 'get_submittals':
       // v2.6804: the bid's submittals as Bids → Submittals reads them, through the tab's own kernels (devMcpSubmittals.ts).
       return composite(await getSubmittals(readerAs(await jwt()), String(args.bid ?? ''), todayYmdInAppTz()), 'bid_submittals')
@@ -4061,8 +4061,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const fresh = await planHash(name, p, dry.reply)
       if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
       if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
-      const prior = await hooks.priorApply(name, fresh)
-      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      // No look in the call log (stateGuarded): a replay is refused by the world itself, the task found by its words, its
+      // day and its person. The log would only turn away a real second act: given, deleted in the app, given again.
       // The row again, with the write's own clock: the plan's row left the place's stamp out.
       const send = newTaskSend(taskDraft(p, dry.people, dry.tell, today, dry.place), { userId: me.userId }, { today, now: new Date().toISOString() })
       if (!send.ok) return refused(`The New task window refuses this: ${send.error}`, { target: built.target })
@@ -4073,26 +4073,35 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const id = item.id
       const rows = taskFollowingRows(id, p, world, dry.people, me)
       const steps: TaskStep[] = [{ step: 'the task', ok: true, rows: 1 }]
-      const peopleRows = await restRows(session, 'POST', 'checklist_item_assignees', '', rows.assignees, 'return=minimal')
+      // From here the task exists, so a write that throws (a dropped connection) must be a named step, never a bare
+      // tool error that leaves a task with no people and no id in the reply.
+      const post = async (table: string, query: string, body: Record<string, unknown>[], prefer: string): Promise<{ ok: boolean; status: number; body: unknown }> => {
+        try {
+          return await restRows(session, 'POST', table, query, body, prefer)
+        } catch (e) {
+          return { ok: false, status: 0, body: { message: `the write did not reach the database: ${e instanceof Error ? e.message : String(e)}` } }
+        }
+      }
+      const peopleRows = await post('checklist_item_assignees', '', rows.assignees, 'return=minimal')
       if (!peopleRows.ok) {
         // A task with nobody on it shows on no one's list: take it back, and say whether that landed.
         const why = restError(peopleRows.status, peopleRows.body)
-        const back = await restDelete(session, 'checklist_items', `id=eq.${id}`)
+        const back = await restDelete(session, 'checklist_items', `id=eq.${id}`).catch(() => ({ ok: false, rows: 0 }))
         return errored(back.ok && back.rows > 0 ? `Nothing was given: the people's rows did not land (${why}), so the task was taken back.` : `The task ${id} was made, but the people's rows did not land (${why}) and it could not be taken back. It shows on nobody's list: delete it in Checklist → Manage.`, id)
       }
       steps.push({ step: 'the people', ok: true, rows: rows.assignees.length })
       // The day rows, as the window upserts them against (task, day), then each day's people.
-      const days = await restRows(session, 'POST', 'checklist_instances', 'on_conflict=checklist_item_id,scheduled_date&select=id', send.instanceDates.map((d) => ({ checklist_item_id: id, scheduled_date: d })), 'resolution=merge-duplicates,return=representation')
+      const days = await post('checklist_instances', 'on_conflict=checklist_item_id,scheduled_date&select=id', send.instanceDates.map((d) => ({ checklist_item_id: id, scheduled_date: d })), 'resolution=merge-duplicates,return=representation')
       const dayIds = days.ok && Array.isArray(days.body) ? (days.body as Array<{ id?: unknown }>).flatMap((r) => (typeof r.id === 'string' ? [r.id] : [])) : []
       if (!days.ok || dayIds.length === 0) {
         steps.push({ step: 'the day rows', ok: false, why: days.ok ? 'RLS let no row through' : restError(days.status, days.body) })
       } else {
         steps.push({ step: 'the day rows', ok: true, rows: dayIds.length })
-        const dayPeople = await restRows(session, 'POST', 'checklist_instance_assignees', '', dayIds.flatMap((d) => dry.people.map((x) => ({ checklist_instance_id: d, user_id: x.id }))), 'return=minimal')
+        const dayPeople = await post('checklist_instance_assignees', '', dayIds.flatMap((d) => dry.people.map((x) => ({ checklist_instance_id: d, user_id: x.id }))), 'return=minimal')
         steps.push(dayPeople.ok ? { step: 'the people on each day', ok: true, rows: dayIds.length * dry.people.length } : { step: 'the people on each day', ok: false, why: restError(dayPeople.status, dayPeople.body) })
       }
       if (rows.lines.length) {
-        const lines = await restRows(session, 'POST', 'task_criteria', '', rows.lines, 'return=minimal')
+        const lines = await post('task_criteria', '', rows.lines, 'return=minimal')
         steps.push(lines.ok ? { step: 'the Done when… lines', ok: true, rows: rows.lines.length } : { step: 'the Done when… lines', ok: false, why: restError(lines.status, lines.body) })
       }
       return ok(taskAppliedWords({ id, reads: String(dry.reply.reads ?? ''), steps }), { target: id })
@@ -4123,8 +4132,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const fresh = await planHash(name, p, dry.reply)
       if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target })
       if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target })
-      const prior = await hooks.priorApply(name, fresh)
-      if (prior) return refused(alreadyApplied(name, prior), { target })
+      // No look in the call log (stateGuarded): a replay finds the place already there, or no place to take off. The log
+      // would only turn away a real second act: a place set, taken off and set again.
       // The update asks for the row it changed: return=minimal says nothing about a row RLS kept.
       const wrote = await restRows(session, 'PATCH', world.home.table, `id=eq.${world.home.rowId}&select=id`, taskPlacePatch(p, dry.patch, world.home, new Date().toISOString()), 'return=representation')
       if (!wrote.ok) return errored(restError(wrote.status, wrote.body), target)

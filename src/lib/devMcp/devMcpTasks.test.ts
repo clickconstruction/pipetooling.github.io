@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { TASK_PEOPLE_MAX, TASK_TEXT_MAX, TASK_VERBS, isTaskVerb, notOfferedWhy, taskDraft, taskDryRun, taskInput, type TaskPayload, type TaskWorld } from '../../../supabase/functions/_shared/devMcpTasks'
 import { mapLink, type PlaceFound } from '../../../supabase/functions/_shared/devMcpTaskPlace'
-import { WRITE_VERBS, alreadyApplied, isWriteVerb, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { WRITE_VERBS, isWriteVerb, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 import { asksForPhotoDefault } from '../taskProgress'
 
@@ -78,8 +78,13 @@ describe('the task verbs are on the allowlist with no wrapper RPC', () => {
     }
   })
 
-  it('a replay is answered in the task\'s own words', () => {
-    expect(alreadyApplied('apply_task', { target: 'x', at: '2026-11-17T18:00:00Z' })).toContain('Giving it again would make a second task')
+  it('a replay is refused by the world, never by the call log: a task given, deleted and given again is a second act', () => {
+    expect(stateGuarded('apply_task')).toBe(true)
+    expect(stateGuarded('plan_task')).toBe(false)
+    const branch = SERVER.slice(SERVER.indexOf("    case 'plan_task':"), SERVER.indexOf("    case 'plan_task_place':"))
+    expect(branch).not.toContain('hooks.priorApply')
+    // After the task exists, every write goes through the helper that turns a throw into a named step.
+    expect(branch.match(/await post\('/g)?.length).toBe(4)
   })
 })
 

@@ -16,7 +16,7 @@ import {
   type TaskPlaceWorld,
 } from '../../../supabase/functions/_shared/devMcpTaskPlace'
 import type { Reader, Row, RowsQuery } from '../../../supabase/functions/_shared/devMcpComposites'
-import { WRITE_VERBS, alreadyApplied, isWriteVerb, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { WRITE_VERBS, isWriteVerb, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { taskMapAfterPlace, taskMapColumn, taskMapDraftFromSaved } from '../tasks/taskMapPick'
 import { taskPlaceColumns, type TaskPlace } from '../tasks/taskPlace'
 
@@ -58,7 +58,9 @@ describe('the place verbs are on the allowlist with no wrapper RPC', () => {
     expect(SERVER).toContain("const SERVER_VERSION = '0.96.0'")
     expect(SERVER).toContain('plan_task_place → apply_task_place')
     expect(README).toContain('`plan_task_place(place)`')
-    expect(alreadyApplied('apply_task_place', { target: TASK, at: null })).toContain('To move it again, plan the new place')
+    // A place set, taken off and set again is a second act: the world refuses a replay, the call log is not asked.
+    expect(stateGuarded('apply_task_place')).toBe(true)
+    expect(SERVER.slice(SERVER.indexOf("    case 'plan_task_place':"), SERVER.indexOf("    case 'plan_activity_note':"))).not.toContain('hooks.priorApply')
   })
 
   it('writes what the Edit window writes: the place kernel\'s columns, and the map by the window\'s rule', () => {
@@ -139,6 +141,9 @@ describe('the dry run and the map rule', () => {
       const saved = place ? { ...place, mapId: mapBefore } : null
       const windowMap = taskMapAfterPlace(taskMapDraftFromSaved(saved, saved ? null : mapBefore), next)
       expect(mapAfterPlaceChange(place, mapBefore), `${place ? 'a place' : 'no place'}, ${mapBefore ?? 'no map'}`).toBe(taskMapColumn(windowMap).painted_map_id)
+      // A place that brings its own way in, as a chip does, makes that the task's map whatever was there.
+      const chip = taskMapAfterPlace(taskMapDraftFromSaved(saved, saved ? null : mapBefore), { ...next, mapId: 'map-of-the-chip' })
+      expect(mapAfterPlaceChange(place, mapBefore, 'map-of-the-chip')).toBe(taskMapColumn(chip).painted_map_id)
       // And when the place goes.
       if (place) expect(mapAfterPlaceChange(place, mapBefore)).toBe(taskMapColumn(taskMapAfterPlace(taskMapDraftFromSaved(saved, null), null)).painted_map_id)
     }
@@ -163,9 +168,20 @@ describe('the dry run and the map rule', () => {
     expect(taskPlaceDryRun({ action: 'clear', task: TASK }, worldOf({ found: null }), ME)).toMatchObject({ ok: false, refused: expect.stringContaining('no place to take off') })
   })
 
-  it('the same point under the same name is no change, whatever map leads to it; a new name is', () => {
+  it('the same point under the same name is no change, whatever map leads to it or margin a phone left; a new name is a rename', () => {
     const same = { ok: true as const, lat: 30.2, lng: -97.7, name: 'ZZ gate', found_by: 'the point you gave' }
-    expect(taskPlaceDryRun({ action: 'set', task: TASK, ask: { how: 'point', lat: 30.2, lng: -97.7, name: 'ZZ gate' } }, worldOf({ before: { ...before, mapId: 'map-1' }, mapBefore: 'map-1', found: same }), ME)).toMatchObject({ ok: false, refused: expect.stringContaining('already has this place') })
-    expect(taskPlaceDryRun({ action: 'set', task: TASK, ask: { how: 'point', lat: 30.2, lng: -97.7, name: 'ZZ west gate' } }, worldOf({ before, found: { ...same, name: 'ZZ west gate' } }), ME).ok).toBe(true)
+    const ask = { action: 'set' as const, task: TASK, ask: { how: 'point' as const, lat: 30.2, lng: -97.7, name: 'ZZ gate' } }
+    expect(taskPlaceDryRun(ask, worldOf({ before: { ...before, mapId: 'map-1' }, mapBefore: 'map-1', found: same }), ME)).toMatchObject({ ok: false, refused: expect.stringContaining('already has this place') })
+    // A place a phone set carries its margin; naming it again must not drop the margin and the map for nothing.
+    expect(taskPlaceDryRun(ask, worldOf({ before: { ...before, accuracyM: 6, mapId: 'map-1' }, mapBefore: 'map-1', found: same }), ME)).toMatchObject({ ok: false, refused: expect.stringContaining('already has this place') })
+    expect(taskPlaceDryRun(ask, worldOf({ before, found: { ...same, name: '' } }), ME)).toMatchObject({ ok: false })
+    const renamed = taskPlaceDryRun(ask, worldOf({ before, found: { ...same, name: 'ZZ west gate' } }), ME)
+    expect(renamed.ok && renamed.reply.reads).toBe('The place of "ZZ walk the yard" keeps its point and is named "ZZ west gate" in place of "ZZ gate".')
+  })
+
+  it('a place taken by its name brings the painted map that leads to it, as its chip does', () => {
+    const dry = taskPlaceDryRun({ action: 'set', task: TASK, ask: { how: 'like', like: 'ZZ gate' } }, worldOf({ before: { ...before, lat: 31, name: 'ZZ far' }, mapBefore: 'map-old', found: { ok: true, lat: 30.2, lng: -97.7, name: 'ZZ gate', found_by: 'x', mapId: 'map-of-the-gate' } }), ME)
+    expect(dry.ok && dry.patch.painted_map_id).toBe('map-of-the-gate')
+    expect(dry.ok && String(dry.reply.painted_map)).toContain('brings the painted map')
   })
 })

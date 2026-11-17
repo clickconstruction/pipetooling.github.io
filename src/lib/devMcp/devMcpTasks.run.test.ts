@@ -34,6 +34,8 @@ const world = {
   log: [] as Row[],
   /** A table whose next POST is refused, with the words PostgREST would answer. */
   refuse: {} as Record<string, string>,
+  /** A table whose next POST never reaches the database: the fetch itself throws. */
+  drop: '' as string,
   made: 0,
   /** What the fake Census geocoder knows, by the address asked, and every address it was asked. */
   census: {} as Record<string, { x: number; y: number }>,
@@ -46,6 +48,8 @@ function matches(row: Row, key: string, expr: string): boolean {
   if (expr === 'is.false') return v === false
   if (expr.startsWith('eq.')) return String(v ?? '') === expr.slice(3)
   if (expr.startsWith('gte.')) return typeof v === 'number' && v >= Number(expr.slice(4))
+  if (expr.startsWith('lte.')) return typeof v === 'number' ? v <= Number(expr.slice(4)) : String(v ?? '') <= expr.slice(4)
+  if (expr.startsWith('gt.')) return String(v ?? '') > expr.slice(3)
   if (expr.startsWith('in.(')) return expr.slice(4, -1).split(',').map((s) => s.replace(/^"|"$/g, '')).includes(String(v ?? ''))
   if (expr.startsWith('ilike.')) return new RegExp(`^${expr.slice(6).split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`, 'i').test(String(v ?? ''))
   throw new Error(`fake REST: no filter "${expr}"`)
@@ -77,6 +81,7 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     const prefer = String((init?.headers as Record<string, string> | undefined)?.Prefer ?? '')
     world.writes.push({ method, table, query, body, prefer })
     if (method === 'POST') {
+      if (world.drop === table) throw new TypeError('fetch failed')
       if (world.refuse[table]) return json({ message: world.refuse[table] }, 403)
       const rows = (Array.isArray(body) ? body : [body]).map((r: Row) => ({ id: `made-${++world.made}`, created_at: '2026-11-17T18:00:00Z', ...r }))
       world.tables[table] = [...(world.tables[table] ?? []), ...rows]
@@ -194,6 +199,7 @@ beforeEach(() => {
   world.writes = []
   world.log = []
   world.refuse = {}
+  world.drop = ''
   world.made = 0
 })
 
@@ -496,5 +502,92 @@ describe('plan_task_place → apply_task_place', () => {
     const kept = await call('apply_task_place', { place, plan_hash: plan.body!.plan_hash })
     expect(kept.isError).toBe(true)
     expect(kept.text).toContain('RLS let no row through')
+  })
+})
+
+describe('what an independent review found (v2.7589)', () => {
+  it('a place set, taken off and set again is a second act, and the call log does not turn it away', async () => {
+    // No map on the task, so the world after the place comes off is the world before it went on.
+    ;(world.tables.checklist_items as Row[]).find((r) => r.id === BARE_TASK)!.painted_map_id = null
+    const set = { task: BARE_TASK, lat: 30.4, lng: -97.4, name: 'ZZ tank' }
+    const first = await call('plan_task_place', { place: set })
+    expect((await call('apply_task_place', { place: set, plan_hash: first.body!.plan_hash })).isError).toBe(false)
+    const off = await call('plan_task_place', { place: { task: BARE_TASK, clear: true } })
+    expect((await call('apply_task_place', { place: { task: BARE_TASK, clear: true }, plan_hash: off.body!.plan_hash })).isError).toBe(false)
+    const second = await call('plan_task_place', { place: set })
+    // The same world and the same call hash the same, and the apply still lands.
+    expect(second.body!.plan_hash).toBe(first.body!.plan_hash)
+    const again = await call('apply_task_place', { place: set, plan_hash: second.body!.plan_hash })
+    expect(again.isError).toBe(false)
+    expect(world.writes.filter((w) => w.method === 'PATCH')).toHaveLength(3)
+  })
+
+  it('a task given, deleted in the app and given again the same day is given', async () => {
+    const plan = await call('plan_task', { task: TASK })
+    const first = await call('apply_task', { task: TASK, plan_hash: plan.body!.plan_hash })
+    const id = first.body!.task_id
+    for (const [table, key] of [['checklist_items', 'id'], ['checklist_item_assignees', 'checklist_item_id'], ['checklist_instances', 'checklist_item_id'], ['task_criteria', 'checklist_item_id']] as const) {
+      world.tables[table] = (world.tables[table] as Row[]).filter((r) => r[key] !== id)
+    }
+    const again = await call('apply_task', { task: TASK, plan_hash: plan.body!.plan_hash })
+    expect(again.isError).toBe(false)
+    expect(again.body!.task_id).not.toBe(id)
+  })
+
+  it('a roadmap task whose own row holds a place has that place moved: it is the one the card reads', async () => {
+    const own = (world.tables.checklist_items as Row[]).find((r) => r.id === ROADMAP_ITEM)!
+    Object.assign(own, { place_name: 'ZZ own spot', place_lat: 30.7, place_lng: -97.3, place_accuracy_m: null, place_set_by: DEV, place_set_at: '2026-11-12T16:00:00Z', painted_map_id: null })
+    const clear = await call('plan_task_place', { place: { task: ROADMAP_ITEM, clear: true } })
+    expect(clear.body).toMatchObject({ on: 'task', before: { name: 'ZZ own spot' } })
+    const move = { task: ROADMAP_ITEM, lat: 30.8, lng: -97.3, name: 'ZZ own spot' }
+    const plan = await call('plan_task_place', { place: move })
+    expect(plan.body).toMatchObject({ on: 'task' })
+    await call('apply_task_place', { place: move, plan_hash: plan.body!.plan_hash })
+    expect(world.writes.map((w) => `${w.table} ${w.query}`)).toEqual([`checklist_items id=eq.${ROADMAP_ITEM}&select=id`])
+  })
+
+  it('a write that never reaches the database is a named step with the task\'s id, not a bare tool error', async () => {
+    const plan = await call('plan_task', { task: TASK })
+    world.drop = 'checklist_instances'
+    const out = await call('apply_task', { task: TASK, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(out.body!.task_id).toBeTruthy()
+    expect(String(out.body!.not_landed)).toMatch(/the day rows did not land \(.*the write did not reach the database: fetch failed\)/)
+    // The people's rows throwing takes the task back, as a refusal does.
+    world.tables.checklist_items = (world.tables.checklist_items as Row[]).filter((r) => r.id !== out.body!.task_id)
+    world.tables.checklist_item_assignees = (world.tables.checklist_item_assignees as Row[]).filter((r) => r.checklist_item_id !== out.body!.task_id)
+    world.drop = 'checklist_item_assignees'
+    const lost = await call('apply_task', { task: TASK, plan_hash: plan.body!.plan_hash })
+    expect(lost.isError).toBe(true)
+    expect(lost.text).toContain('Nothing was given')
+    expect((world.tables.checklist_items as Row[]).some((r) => r.title === TASK.text)).toBe(false)
+  })
+
+  it('get_task shows today\'s row of a weekly task, with its thread, and not only the weeks ahead', async () => {
+    const task = { for: ANA, text: 'ZZ daily round', repeat: { weekdays: [0, 1, 2, 3, 4, 5, 6] } }
+    const plan = await call('plan_task', { task })
+    const given = await call('apply_task', { task, plan_hash: plan.body!.plan_hash })
+    const id = given.body!.task_id as string
+    const todayRow = (world.tables.checklist_instances as Row[]).find((r) => r.checklist_item_id === id && r.scheduled_date === TODAY)!
+    Object.assign(todayRow, { completed_at: null, percent_complete: 25 })
+    ;(world.tables.checklist_instance_events as Row[]).push({ instance_id: todayRow.id, event_type: 'comment', actor_user_id: ANA, body: 'ZZ started', percent: null, created_at: '2026-11-17T17:00:00Z' })
+    // The fake's ids are not UUIDs, so the task is named by its words here.
+    const whole = await call('get_task', { task: 'ZZ daily round' })
+    const days = (whole.body!.days as Row[]).map((d) => d.day)
+    expect(days).toEqual(['2026-11-21', '2026-11-20', '2026-11-19', '2026-11-18', TODAY])
+    expect(whole.body!.thread).toEqual([expect.objectContaining({ text: 'ZZ started', day: TODAY })])
+    expect(String(whole.body!.reading)).toContain(`the next on ${TODAY}`)
+    // find_task counts each task's open days in a read of its own.
+    const found = await call('find_task', { text: 'daily round' })
+    expect((found.body!.matches as Row[])[0]).toMatchObject({ open_days: 36, next_open_day: TODAY })
+  })
+
+  it('a person is found by a short name though archived accounts and twins share it', async () => {
+    for (let i = 0; i < 25; i += 1) (world.tables.users as Row[]).push(person(`00000000-0000-4000-8000-0000000000${String(i).padStart(2, '0')}`, `ZZ Aa Gone ${i}`, { archived_at: '2026-01-01T00:00:00Z' }))
+    ;(world.tables.users as Row[]).push(person('00000000-0000-4000-8000-000000000099', 'ZZ Zed Live'))
+    const out = await call('plan_task', { task: { for: 'ZZ', text: 'ZZ a task' } })
+    // Three live people hold "ZZ"; the archived twenty-five never crowd them out of the read.
+    expect(out.text).toContain('matches 3 people')
+    expect((await call('plan_task', { task: { for: 'ZZ Gone Away', text: 'ZZ a task' } })).text).toContain('is archived')
   })
 })
