@@ -2,17 +2,17 @@
 name: "Plans by date"
 number: 367
 group: close
-status: design picked by the owner 2026-11-16 ("build it all") · PR 1, the view, built on branch claude/plans-by-date-view (v2.7494) · PRs 2 to 5 to build
+status: design picked by the owner 2026-11-16 ("build it all") · PR 1 the view (v2.7494), PR 2 the item card (v2.7499) and PR 3 the columns (its own PR, #8397) built · PRs 4 and 5 to build once the migration is pushed
 summary: >
   The owner had a one-page chart drawn by hand for one site: its drawings set against time, with the bid's
   schedule, the crews' days and a letter on the same axis, a dated list under it and four figures on top.
   The Development page's Plans look now offers it as a second view, By date. What is left is a card on
   every item with its details and its presses, a schedule on a bid with a typed start and end, and a sheet
   count on a set.
-next: PR 2, the item card. Then PR 3, the columns for the schedule and the sheet count, pushed right after its merge.
-size: M as a train of five (M · M · S · M · S); left: PRs 2 to 5 (M · S · M · S)
+next: Push migration 20261117070000 once PR 3 merges. Then PR 4, the schedule on screen, and PR 5, sheets in hand.
+size: M as a train of five (M · M · S · M · S); left: PRs 4 and 5 (M · S)
 blocker: none
-ver: v2.7494
+ver: v2.7499
 opinion: build — the first PR changes nothing until someone presses By date, and the two database changes are additive columns nothing reads until the PR after them
 ---
 
@@ -49,12 +49,12 @@ Three more asks came while the design was on the screen:
 
 1. **The view** (v2.7494, built). No migration. `lib/plans/plansByDate.ts`,
    `DevelopmentPlansByDate.tsx`, the switch on the Plans card. A mark shows one line on a hover.
-2. **The item card.** No migration. A card on every mark, bar, lane name, figure and list row with the
+2. **The item card** (v2.7499, built). No migration. A card on every mark, bar, lane name, figure and list row with the
    item's details and the presses the page already has: open the set's link, Build from this set, Change
    the link, ask the estimators, open the bid, open a job, read the whole History line, + New set, Keep
    what happened. It stays while the pointer is on it and a press pins it. On a phone a press opens it as
    a sheet. A press that writes asks first in a confirm window that names the act.
-3. **The columns.** One additive migration: `bids.schedule_start`, `bids.schedule_end`,
+3. **The columns** (built, PR #8397). One additive migration: `bids.schedule_start`, `bids.schedule_end`,
    `bids.schedule_open_ended` and `plan_sets.sheet_count`. Nothing reads them yet. Push right after the
    merge.
 4. **The schedule on screen.** The Start and End row on Edit Bid under Bid Date Sent, the Schedule lane,

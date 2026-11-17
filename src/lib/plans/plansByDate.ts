@@ -43,33 +43,35 @@ function monthStartAfter(day: number, n: number): number {
   return Math.round(Date.UTC(Number(ymd.slice(0, 4)), Number(ymd.slice(5, 7)) - 1 + n, 1) / DAY_MS)
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
-const clip = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s)
+export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+export const clip = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s)
 
 /** *J1050, J1051 and 2 more*: the jobs of a bar, three named. */
-function jobsWords(labels: ReadonlyArray<string>): string {
+export function jobsWords(labels: ReadonlyArray<string>): string {
   if (labels.length <= 3) return labels.join(', ')
   return `${labels.slice(0, 3).join(', ')} and ${labels.length - 3} more`
 }
 
 export type ToYmd = (raw: string | null | undefined) => string | null
 
-export type PlansByDateBid = { id: string; label: string; sent: string | null; plansDated: string | null; outcome: string | null; outcomeAt: string | null }
+export type PlansByDateBid = { id: string; label: string; sent: string | null; plansDated: string | null; outcome: string | null; outcomeAt: string | null; /** The bid's project name, for its card. */ name?: string | null }
 
 /** A job's days on site: the clock's days when the reader has them, and the job's own first and last work day. */
-export type PlansByDateJob = { id: string; label: string; days: ReadonlyArray<string> | null; firstWorkDay: string | null; lastWorkDay: string | null }
+export type PlansByDateJob = { id: string; label: string; days: ReadonlyArray<string> | null; firstWorkDay: string | null; lastWorkDay: string | null; /** The job's name and the part it builds from, for the cards. */ name?: string | null; partId?: string | null }
 
-export type PlansByDateHistory = { id: string; happenedAt: string; source: HistorySource; body: string }
+export type PlansByDateHistory = { id: string; happenedAt: string; source: HistorySource; body: string; /** Who kept it, what it is about and the whole body's length when `body` is only its head, for its card. */ byName?: string | null; about?: string | null; bodyChars?: number }
 
 /** How the clock's days came: read, still reading, failed, or closed to this reader (an estimator, a leader without payroll). */
 export type PlansByDateClock = 'read' | 'reading' | 'failed' | 'closed'
 
 export type PlansByDateInput = {
   parts: ReadonlyArray<Pick<PlanPartRow, 'id' | 'name' | 'position' | 'created_at' | 'current_set_id'>>
-  sets: ReadonlyArray<Pick<PlanSetRow, 'id' | 'part_id' | 'name' | 'kind' | 'source' | 'dated' | 'came_at' | 'replaces_set_id'>>
+  sets: ReadonlyArray<Pick<PlanSetRow, 'id' | 'part_id' | 'name' | 'kind' | 'source' | 'dated' | 'came_at' | 'replaces_set_id'> & Partial<Pick<PlanSetRow, 'memo' | 'changes' | 'link' | 'created_by'>>>
   bids: ReadonlyArray<PlansByDateBid>
   jobs: ReadonlyArray<PlansByDateJob>
   history: ReadonlyArray<PlansByDateHistory>
+  /** The people's names by user id, for *Added by* on a set's card. */
+  names?: Readonly<Record<string, string>>
   clock: PlansByDateClock
   /** Today as a civil day in the app's time zone. */
   today: string
@@ -120,7 +122,7 @@ export type PlansByDateModel = {
 /** A new bar starts when this many days pass with nobody on site: a weekend never breaks a bar, a week off does. */
 export const CREW_RUN_GAP_DAYS = 7
 
-export type CrewRun = { from: number; to: number; days: number; jobs: string[] }
+export type CrewRun = { from: number; to: number; days: number; jobs: string[]; /** Each job on the bar with its own days in it, most days first. */ byJob: Array<{ label: string; days: number }> }
 
 /** The clock's days on the site's jobs, joined into bars. A day two jobs share counts once. */
 export function crewRuns(jobs: ReadonlyArray<{ label: string; days: ReadonlyArray<string> | null }>, gap = CREW_RUN_GAP_DAYS): CrewRun[] {
@@ -137,34 +139,35 @@ export function crewRuns(jobs: ReadonlyArray<{ label: string; days: ReadonlyArra
   const days = [...byDay.keys()].sort((a, b) => a - b)
   const runs: CrewRun[] = []
   let run: CrewRun | null = null
-  let labels = new Set<string>()
+  let counts = new Map<string, number>()
   for (const d of days) {
     if (run && d - run.to <= gap) {
       run.to = d
       run.days += 1
     } else {
-      labels = new Set<string>()
-      run = { from: d, to: d, days: 1, jobs: [] }
+      counts = new Map<string, number>()
+      run = { from: d, to: d, days: 1, jobs: [], byJob: [] }
       runs.push(run)
     }
-    for (const l of byDay.get(d) ?? []) labels.add(l)
-    run.jobs = [...labels].sort((x, y) => x.localeCompare(y, undefined, { numeric: true }))
+    for (const l of byDay.get(d) ?? []) counts.set(l, (counts.get(l) ?? 0) + 1)
+    run.jobs = [...counts.keys()].sort((x, y) => x.localeCompare(y, undefined, { numeric: true }))
+    run.byJob = run.jobs.map((label) => ({ label, days: counts.get(label) ?? 0 })).sort((x, y) => y.days - x.days)
   }
   return runs
 }
 
 /** A set we made ourselves: an as-built or an assembled set. It is not something we were issued, so the counts leave it out. */
-function isOurs(s: Pick<PlanSetRow, 'kind' | 'source'>): boolean {
+export function isOurs(s: Pick<PlanSetRow, 'kind' | 'source'>): boolean {
   return s.source === 'ours' || PLAN_SET_KINDS.some((k) => k.kind === s.kind && k.ours)
 }
 
-const isWon = (outcome: string | null) => {
+export const isWon = (outcome: string | null) => {
   const o = (outcome ?? '').toLowerCase()
   return o === 'won' || o === 'started_or_complete'
 }
 
 /** *3 days ago*, *yesterday*, *today*. */
-function agoWords(days: number): string {
+export function agoWords(days: number): string {
   if (days <= 0) return 'today'
   if (days === 1) return 'yesterday'
   return `${days} days ago`
@@ -436,9 +439,9 @@ export type PbdPrim =
   | { t: 'text'; cls: PbdClass; x: number; y: number; anchor: 'start' | 'middle' | 'end'; text: string; tail?: string }
 
 /** One mark with its hover line; `cx` and `top` say where the hover line stands. */
-export type PbdMarkShape = { key: string; tip: string; prims: PbdPrim[]; hit: PbdPrim; cx: number; top: number }
+export type PbdMarkShape = { key: string; tip: string; prims: PbdPrim[]; hit: PbdPrim; cx: number; top: number; /** The marks a burst bar stands for. */ members?: string[] }
 
-export type PlansByDateLayout = { width: number; height: number; back: PbdPrim[]; marks: PbdMarkShape[]; labels: PbdPrim[]; summary: string; /** How many bursts of sets were drawn as one bar at this width, for the key. */ clusters: number }
+export type PlansByDateLayout = { width: number; height: number; back: PbdPrim[]; marks: PbdMarkShape[]; labels: PbdPrim[]; summary: string; /** How many bursts of sets were drawn as one bar at this width, for the key. */ clusters: number; /** Where a lane's name is, so it can take a pointer; `today` is the pill. */ nameHits: Array<{ key: string; label: string; x: number; y: number; w: number; h: number }> }
 
 export type PlansByDateVariant = 'desktop' | 'phone' | 'paper'
 
@@ -481,6 +484,7 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
   const back: PbdPrim[] = []
   const marks: PbdMarkShape[] = []
   const labels: PbdPrim[] = []
+  const nameHits: PlansByDateLayout['nameHits'] = []
 
   for (const t of plansByDateTicks(model.start, model.end, width - gutter - right)) {
     const tx = x(t.day)
@@ -493,6 +497,7 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
     const y = baseY(i)
     const top = axisH + i * laneH
     if (i > 0) back.push({ t: 'line', cls: 'rule', x1: 0, x2: width, y1: top, y2: top })
+    nameHits.push(phone ? { key: `lane-${lane.key}`, label: lane.label, x: 0, y: top + 1, w: width, h: 17 } : { key: `lane-${lane.key}`, label: lane.label, x: 0, y: top + 4, w: gutter - 4, h: laneH - 8 })
     if (phone) back.push({ t: 'text', cls: 'laneWord', x: gutter, y: top + 13, anchor: 'start', text: clip(lane.label, 30), tail: lane.sub })
     else {
       back.push({ t: 'text', cls: 'laneWord', x: 4, y: y - 1, anchor: 'start', text: clip(lane.label, 21) })
@@ -524,6 +529,7 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
   back.push({ t: 'line', cls: 'today', x1: tx, x2: tx, y1: 15, y2: height - 6 })
   back.push({ t: 'rect', cls: 'todayPill', x: px, y: 0, w: pillW, h: 15, rx: 7.5 })
   back.push({ t: 'text', cls: 'todayWord', x: px + pillW / 2, y: 11, anchor: 'middle', text: todayWords })
+  nameHits.push({ key: 'today', label: todayWords, x: px, y: 0, w: pillW, h: 15 })
 
   let clusters = 0
   model.lanes.forEach((lane, i) => {
@@ -545,7 +551,7 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
         clusters += 1
         const names = run.map((m) => m.label ?? '').filter(Boolean)
         const tip = `${run.length} sets · ${dayWords(ymdOfDay(first.day), ymdOfDay(first.day).slice(0, 4) !== ymdOfDay(last.day).slice(0, 4))} to ${dayWords(ymdOfDay(last.day))} · ${jobsWords(names)}`
-        marks.push({ key: `cluster-${first.key}`, tip, cx: r1((x1 + x2) / 2), top: y - 8, prims: [{ t: 'rect', cls: 'set', x: x1 - 5, y: y - 5, w: r1(x2 - x1 + 10), h: 10, rx: 5 }], hit: { t: 'rect', cls: 'hit', x: x1 - 7, y: y - 13, w: r1(x2 - x1 + 14), h: 26, rx: 0 } })
+        marks.push({ key: `cluster-${first.key}`, tip, cx: r1((x1 + x2) / 2), top: y - 8, members: run.map((m) => m.key), prims: [{ t: 'rect', cls: 'set', x: x1 - 5, y: y - 5, w: r1(x2 - x1 + 10), h: 10, rx: 5 }], hit: { t: 'rect', cls: 'hit', x: x1 - 7, y: y - 13, w: r1(x2 - x1 + 14), h: 26, rx: 0 } })
         clusterNames.push({ x: r1((x1 + x2) / 2), label: `${run.length} sets`, strong: false, priority: 1.9, glyph: 'set' })
       }
       a = b + 1
@@ -583,7 +589,7 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
   })
 
   const summary = `Plans by date: ${plural(model.lanes.length, 'lane', 'lanes')} from ${dayWords(ymdOfDay(model.start))} to ${dayWords(ymdOfDay(model.end))}. The list under the chart says the same in words.`
-  return { width, height, back, marks, labels, summary, clusters }
+  return { width, height, back, marks, labels, summary, clusters, nameHits }
 }
 
 // ── The paint ─────────────────────────────────────────────────────────────────
