@@ -651,6 +651,8 @@ interface MergeUsersRequest {
 
 ### notify-help-feedback
 
+> **v2.7679 — a went wrong note from the wrench (punch list #380)**: the row read gains `kind`, `page_key` and `context`. A note from a page has no guide: its push is titled *Tell the dev: something went wrong*, names the page from `context.page_label` (else `page_key`), says *Something went wrong. No words.* for a note with none, and opens `/dashboard`, where the inbox is. Only a guide's feedback and a `broken` note push; `want` and `confusing` answer 200 with `push_sent: 0` and wait for the day's read. It reads columns `20261117235000_help_feedback_page_notes.sql` adds, which is pushed. **Redeploy** once merged, before the client that calls it for a page note is live.
+
 > **v2.6217 — through each dev's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the inbox is on Help. The answer gains `held`. **Redeploy** once merged.
 
 **Purpose**: Push + inbox notification to devs when a user submits feedback on a /help guide (`help_feedback` table, migration `20260709150000`).
