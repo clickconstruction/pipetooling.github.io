@@ -272,6 +272,28 @@ describe('Estimates — a draft', () => {
   })
 })
 
+describe('Estimates — a draft’s options', () => {
+  it('＋ Option turns the estimate into two options, and Save draft writes both with the starred one’s total', async () => {
+    renderAt('/estimates/101', [estimate()])
+    const save = await screen.findByRole('button', { name: 'Save draft' })
+    await settle()
+    expect(screen.queryByLabelText('Option name')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '＋ Option' }))
+    // Two cards, the copy being edited.
+    expect((await screen.findByLabelText('Option name') as HTMLInputElement).value).toBe('Option 2')
+    expect(screen.getByTitle('Editing this option').textContent).toContain('Option 2')
+    expect(screen.getByTitle('Edit this option').textContent).toContain('Option 1')
+    fireEvent.click(save)
+    await waitFor(() => expect(world.writes.some((w) => w.table === 'estimates' && w.method === 'update')).toBe(true))
+    const payload = world.writes.find((w) => w.table === 'estimates' && w.method === 'update')!.payload as { options_snapshot: Array<{ name: string; recommended: boolean; line_items: unknown[] }>; total_cents: number }
+    expect(payload.options_snapshot.map((o) => [o.name, o.recommended, o.line_items.length])).toEqual([
+      ['Option 1', true, 1],
+      ['Option 2', false, 1],
+    ])
+    expect(payload.total_cents).toBe(90_000)
+  })
+})
+
 describe('Estimates — Customer experience', () => {
   it('previews the email, the acceptance page and the thank-you on a draft', async () => {
     renderAt('/estimates/101', [estimate()])
