@@ -108,9 +108,11 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
   it('a served paper keeps a door to add its receipts, opened on what it holds', async () => {
     const served = { ...filed, served_at: '2026-11-18', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '0000 0000 0001', sent_on: '2026-11-18' }] }
     renderWithProviders(<LienFilingTabs {...props({ filings: [notice, served] as never })} />)
-    // The Filings list shows the number already on record.
+    // The Filings list shows the number already on record, in What went out under the affidavit's row.
+    const went = document.querySelector('[data-lien-mail-proof="affidavit"] [data-lien-mail-proof-envelope="owner"]') as HTMLElement
+    expect(went.textContent).toContain('Owner of record')
+    expect(went.textContent).toContain('Certified mail 0000 0000 0001')
     const proof = document.querySelector('[data-lien-service-proof]') as HTMLElement
-    expect(proof.textContent).toContain('Owner of record 0000 0000 0001')
     expect(screen.queryByRole('button', { name: 'Record service…' })).toBeNull()
     fireEvent.click(within(proof).getByRole('button', { name: 'mail receipts' }))
     expect((within(box()).getByLabelText('Served on') as HTMLInputElement).value).toBe('2026-11-18')
