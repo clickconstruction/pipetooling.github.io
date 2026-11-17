@@ -6203,6 +6203,10 @@ export type Database = {
           lien_month_checked_by: string | null
           lien_month_checked_by_name: string
           lien_month_checked_month: string | null
+          lien_path_answer: string | null
+          lien_path_answered_at: string | null
+          lien_path_answered_by: string | null
+          lien_path_reason: string | null
           lien_payment_bond: string
           lien_retainage_held: number | null
           master_user_id: string
@@ -6286,6 +6290,10 @@ export type Database = {
           lien_month_checked_by?: string | null
           lien_month_checked_by_name?: string
           lien_month_checked_month?: string | null
+          lien_path_answer?: string | null
+          lien_path_answered_at?: string | null
+          lien_path_answered_by?: string | null
+          lien_path_reason?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id: string
@@ -6369,6 +6377,10 @@ export type Database = {
           lien_month_checked_by?: string | null
           lien_month_checked_by_name?: string
           lien_month_checked_month?: string | null
+          lien_path_answer?: string | null
+          lien_path_answered_at?: string | null
+          lien_path_answered_by?: string | null
+          lien_path_reason?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id?: string
@@ -6476,6 +6488,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_lien_month_checked_by_fkey"
             columns: ["lien_month_checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_lien_path_answered_by_fkey"
+            columns: ["lien_path_answered_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -9442,7 +9461,9 @@ export type Database = {
           id: string
           invoice_date: string
           invoice_number: string
+          is_interest: boolean
           is_paid: boolean
+          late_invoice_id: string | null
           link: string | null
           on_job_account: boolean
           paid_at: string | null
@@ -9463,7 +9484,9 @@ export type Database = {
           id?: string
           invoice_date: string
           invoice_number: string
+          is_interest?: boolean
           is_paid?: boolean
+          late_invoice_id?: string | null
           link?: string | null
           on_job_account?: boolean
           paid_at?: string | null
@@ -9484,7 +9507,9 @@ export type Database = {
           id?: string
           invoice_date?: string
           invoice_number?: string
+          is_interest?: boolean
           is_paid?: boolean
+          late_invoice_id?: string | null
           link?: string | null
           on_job_account?: boolean
           paid_at?: string | null
@@ -9504,6 +9529,13 @@ export type Database = {
           {
             foreignKeyName: "supply_house_invoices_credits_invoice_id_fkey"
             columns: ["credits_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoices_late_invoice_id_fkey"
+            columns: ["late_invoice_id"]
             isOneToOne: false
             referencedRelation: "supply_house_invoices"
             referencedColumns: ["id"]

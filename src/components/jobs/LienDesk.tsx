@@ -179,6 +179,7 @@ import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
+import { LienRetainageUnrecorded } from './LienRetainageUnrecorded'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
@@ -191,7 +192,7 @@ import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
 import LienDeskJobScreen from './LienDeskJobScreen'
 import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../../lib/jobs/lienDeskPhoneMore'
-import { LIEN_DESK_TITLE_BAR_ROW_GAP_PX, lienDeskPileLineFit, lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineFit, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
+import { LIEN_DESK_NAME, LIEN_DESK_TITLE_BAR_ROW_GAP_PX, lienDeskFirstTab, lienDeskPileLineFit, lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineFit, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
 import { DeskLegendCard } from '../help/LegendCard'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
@@ -207,6 +208,7 @@ import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
 import LienPropertyCard from './LienPropertyCard'
 import { buildLienProperties } from '../../lib/jobs/lienPropertyPapers'
+import type { LienBookGroup } from '../../lib/jobs/lienPropertyGroups'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
@@ -407,6 +409,8 @@ const PHONE_TAB: React.CSSProperties = LIEN_PHONE_TAB
 /** A press inside a pile's title on a phone: taller and in a size a thumb reads (punch list #352, PR 5). */
 const PHONE_PILE_PRESS: React.CSSProperties = { minHeight: 30, padding: '0 10px', fontSize: '0.8125rem' }
 const PHONE_CHIP: React.CSSProperties = { flex: 'none', minHeight: 40, padding: '2px 14px', fontSize: '0.875rem', whiteSpace: 'nowrap' }
+/** What the desk is for, as a hover hint: on the title on a phone, and on the first tab on a computer, where the tab is the title (v2.7465). */
+const LIEN_DESK_HINT = 'Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow.'
 const headDoor: React.CSSProperties = { height: 'calc(0.78rem * 1.5 + 6px)', boxSizing: 'border-box', paddingTop: 0, paddingBottom: 0, display: 'inline-flex', alignItems: 'center' }
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -660,6 +664,7 @@ export default function LienDesk({
   // A job's entry in the desk's own queues wins over the book's (`LienPropertyDesk`): the card says what the Board says.
   const bookProperties = useMemo(() => (book ? buildLienProperties(book.rows, { notices: data?.queue.entries, affidavits: data?.affidavits.entries }) : []), [book, data])
   const [propertyCard, setPropertyCard] = useState<{ addressId: string; fromJobId: string | null } | null>(null)
+  const [bookGroup, setBookGroup] = useState<LienBookGroup>('none')
   const openProperty = useCallback((addressId: string, fromJobId: string | null = null) => {
     setBookOpened(true)
     setPropertyCard({ addressId, fromJobId })
@@ -1777,11 +1782,12 @@ export default function LienDesk({
             contactPerson: noticeFields.contactPerson,
             phone: (issuer?.phone ?? '').trim(),
             extras: docExtras,
+            coverLetter: coverBlocks.length > 0,
             offer,
             lines: payLinesNow,
           })
         : [],
-    [selected, payPage, noticeFields, issuer, docExtras, offer, payLinesNow],
+    [selected, payPage, noticeFields, issuer, docExtras, offer, payLinesNow, coverBlocks.length],
   )
   const payMarks = useMemo(() => {
     const m: Record<string, FilingFieldMark> = {}
@@ -2400,6 +2406,8 @@ export default function LienDesk({
     }
     return () => ro.disconnect()
   }, [isMobile, recordsDoorShown, paperShown, gcNoticeShown, kind, titleLineFit])
+  // The first tab's words (v2.7465): on a computer the page's name and the count, on a phone *To do · N* under the title's own row.
+  const firstTab = lienDeskFirstTab({ isMobile, count: data ? lienNextUpCount(nextUpRows) : null })
   // The title bar's shape on this screen: where the tools and the door sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311).
   const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, recordsDoor: recordsDoorShown, paperShown, gcNotice: gcNoticeShown })
   const moreRun = runDoorShown ? { label: runDoor.label, count: runDoor.count, hint: runDoorHint } : null
@@ -3833,6 +3841,7 @@ export default function LienDesk({
   const retList = (
     <div ref={retHeads.listRef} onScroll={retHeads.onScroll} style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
       {pileStrip(retPileChips)}
+      {finding || retPile ? null : <LienRetainageUnrecorded office={office} onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')} onRecorded={onChanged} />}
       {retVisible.length === 0 ? (
         !loading && data != null && (finding || retPile) ? (
           <div data-lien-retainage-empty={finding ? 'find' : retPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
@@ -4714,15 +4723,20 @@ export default function LienDesk({
               <span aria-hidden="true">←</span> {paneOpenPhone.back}
             </button>
           ) : backDoor}
-          <h2
-            // On a phone the title shares its line with the way back and More (punch list #352, PR 1); the rows under it get the card's width.
-            style={{ margin: 0, fontSize: '1.125rem', ...(isMobile ? { flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}
-            title="Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow."
-          >
-            <button type="button" className="lienDeskTitleDoor" data-lien-desk-title aria-label="Lien desk: open To do at the Board" onClick={() => { setKind('next'); setBoardBring((n) => n + 1) }}>
-              ⏱ Lien desk
-            </button>
-          </h2>
+          {/* The title is the first tab on a computer (v2.7465, the owner's pick of 2026-11-16, "A, title is the tab"): the title and To do opened the same page, so the tab carries the page's name, the count and the way home. The heading stays for a screen reader and the page's outline, out of the line (`.lienDeskOutlineHeading`), with no press of its own. A phone keeps its title on its own row, with its press; so does a one-column desk with a paper open, whose tab rows hide (`data-lien-pane-open`), so the page is never without its name. */}
+          {isMobile || paneOpenPhone ? (
+            <h2
+              // On a phone the title shares its line with the way back and More (punch list #352, PR 1); the rows under it get the card's width.
+              style={{ margin: 0, fontSize: '1.125rem', ...(isMobile ? { flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}
+              title={LIEN_DESK_HINT}
+            >
+              <button type="button" className="lienDeskTitleDoor" data-lien-desk-title aria-label="Lien desk: open To do at the Board" onClick={() => { setKind('next'); setBoardBring((n) => n + 1) }}>
+                ⏱ {LIEN_DESK_NAME}
+              </button>
+            </h2>
+          ) : (
+            <h2 className="lienDeskOutlineHeading" data-lien-desk-heading="outline">{LIEN_DESK_NAME}</h2>
+          )}
           {isMobile ? (
             <button type="button" data-lien-desk-more="door" aria-haspopup="dialog" aria-expanded={moreOpen} aria-label={moreButton.label} onClick={() => setMoreOpen(true)} style={{ position: 'relative', flex: 'none', width: 44, height: 44, display: 'inline-grid', placeItems: 'center', border: 'none', borderRadius: 10, background: 'transparent', color: 'var(--text-700)', font: 'inherit', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer' }}>
               <span aria-hidden="true">⋯</span>
@@ -4734,9 +4748,17 @@ export default function LienDesk({
           <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: isMobile ? 'flex' : 'inline-flex', ...(isMobile ? { width: '100%' } : null), maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: isMobile ? 9 : 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
             {(['next', 'calendar', 'paper', 'timeline'] as const).map((v) => {
               const on = v === 'paper' ? paperShown : kind === v
+              if (v === 'next' && firstTab.titled) {
+                // The page's name as the first tab (v2.7465): a little larger and heavier than the other three, filled when To do is the view and in the heading's own colour when it is not, so the page keeps its name on every view. Its line is the other tabs' own (1.17rem, their 0.78rem at 1.5), so the row stays in step with the doors beside it (`headDoor`). The press is the title's: To do, and the Board brought back into view, on To do too.
+                return (
+                  <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} data-lien-desk-title onClick={() => { setKind('next'); setBoardBring((n) => n + 1) }} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-base)', fontSize: '0.9rem', lineHeight: '1.17rem', fontWeight: 700, cursor: 'pointer' }} title={`To do, at the Board. ${LIEN_DESK_HINT}`}>
+                    <span aria-hidden="true">⏱ </span>{firstTab.words}
+                  </button>
+                )
+              }
               return (
                 <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: isMobile ? '0.875rem' : '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={v === 'paper' ? 'Every monthly notice, lien affidavit and retainage notice by its state' : v === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
-                  {v === 'next' ? `To do${data ? ` · ${lienNextUpCount(nextUpRows)}` : ''}` : v === 'calendar' ? 'By date' : v === 'paper' ? 'By paper' : 'By job'}
+                  {v === 'next' ? firstTab.words : v === 'calendar' ? 'By date' : v === 'paper' ? 'By paper' : 'By job'}
                 </button>
               )
             })}
@@ -4988,6 +5010,8 @@ export default function LienDesk({
               onOpenJob={onOpenJob}
               properties={bookProperties}
               onOpenProperty={openProperty}
+              group={bookGroup}
+              onGroup={setBookGroup}
               onSetProperty={office ? (jobId) => (data?.jobsById[jobId] ? setPaneFix({ jobId, focus: 'owner' }) : onOpenEditJob(jobId, 'property-record')) : undefined}
               phone={isMobile}
               onPrint={(rows, title) => {

@@ -359,7 +359,8 @@ function noticeStateWords(state: LienTimelineNoticeState, holdUntil: string | nu
     case 'ready':
       return 'approved to print'
     case 'printed':
-      return 'in the mail · tracking owed'
+      // The desk's name for the step, as *approved to print* is for the one before it (v2.7522; *in the mail · tracking owed* until then).
+      return 'approved to mail'
     case 'held':
       return holdUntil ? `held · re-asks ${lienDateWords(holdUntil, todayYmd)}` : 'held'
     default:
