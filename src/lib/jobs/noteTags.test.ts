@@ -5,6 +5,7 @@ import {
   backspaceTag,
   backspacedTag,
   canTagInJobNotes,
+  canTagInTaskNotes,
   draftMarkParts,
   insertPick,
   liveTags,
@@ -20,9 +21,11 @@ import {
   tagAgeDays,
   tagAgeWords,
   tagIsLate,
+  tagPersonSays,
   tagNameQueryAtCaret,
   tagQueryAtCaret,
   tagTypingAtCaret,
+  taskOffer,
   tagsByNote,
   tagsNeed,
   waitingOnWords,
@@ -223,6 +226,41 @@ describe('insertPick', () => {
   it('leaves a query the list can no longer read', () => {
     const next = insertPick('@lu', 3, 'Luis Ortega')
     expect(tagQueryAtCaret(next.text, next.caret)).toBeNull()
+  })
+})
+
+describe('a task\'s own people (punch list #375)', () => {
+  const TASK: TaggablePerson[] = [
+    { userId: 'u-marcus', name: 'Marcus Hale', role: 'master_technician', onJob: false },
+    { userId: 'u-luis', name: 'Luis Ortega', role: 'superintendent', onJob: false, onTask: true },
+    { userId: 'u-dana', name: 'Dana Whitlock', role: 'assistant', onJob: false, onTask: true, gave: true },
+    { userId: 'u-ana', name: 'Ana Ruiz', role: 'helpers', onJob: false, onTask: true },
+    { userId: 'u-bo', name: 'Bo Tran', role: 'helpers', onJob: false, onTask: true },
+  ]
+
+  it('lists the task\'s people before the office', () => {
+    expect(names(rankTaggable(TASK, ''))).toEqual(['task:Ana Ruiz', 'task:Bo Tran', 'task:Dana Whitlock', 'task:Luis Ortega', 'office:Marcus Hale'])
+  })
+
+  it('says what each person is to the task', () => {
+    const says = Object.fromEntries(rankTaggable(TASK, '').map((r) => [r.person.name, tagPersonSays(r)]))
+    expect(says).toEqual({ 'Ana Ruiz': 'has this task', 'Bo Tran': 'has this task', 'Dana Whitlock': 'gave this task', 'Luis Ortega': 'has this task', 'Marcus Hale': 'office' })
+    // A job's rows read as they did.
+    expect(rankTaggable(PEOPLE, 'luis').map(tagPersonSays)).toEqual(['superintendent · on this job'])
+    expect(tagPersonSays({ person: PEOPLE[0]!, group: 'asked' })).toBe('asked you')
+  })
+
+  it('offers three of the task\'s own people before a letter is typed, whoever gave it first', () => {
+    expect(taskOffer(TASK).map((r) => r.person.name)).toEqual(['Dana Whitlock', 'Ana Ruiz', 'Bo Tran'])
+    // Someone already tagged is not offered again, and the office never is.
+    expect(taskOffer(TASK, ['u-dana', 'u-ana']).map((r) => r.person.name)).toEqual(['Bo Tran', 'Luis Ortega'])
+    expect(taskOffer(PEOPLE)).toEqual([])
+  })
+
+  it('holds the @ in a task\'s note box to a dev for now', () => {
+    expect(canTagInTaskNotes('dev')).toBe(true)
+    expect(canTagInTaskNotes('assistant')).toBe(false)
+    expect(canTagInTaskNotes(null)).toBe(false)
   })
 })
 
