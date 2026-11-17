@@ -30,6 +30,8 @@ vi.mock('../../hooks/useAuth', async () => (await import('../../test/renderSmoke
 const fetchBoxNames = vi.fn()
 vi.mock('../../lib/materials/boxHistoryIo', () => ({ fetchBoxNames: (id: string) => fetchBoxNames(id) }))
 
+vi.mock('./OnSiteMap', () => ({ default: () => <div data-testid="map" /> }))
+
 import BoxTabs, { BoxWindow } from './BoxTabs'
 
 afterEach(() => { cleanup(); fetchBoxNames.mockReset(); renamePart.mockReset(); undoPartRename.mockReset(); loadJob.mockClear() })
@@ -111,6 +113,28 @@ describe('Fix the name', () => {
     fireEvent.submit(screen.getByTestId('box-tabs-fix-name'))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('The name did not change: No typed part named Pex rolls is on this job.'))
     expect(screen.queryByTestId('box-tabs-renamed')).toBeNull()
+  })
+})
+
+describe('BoxTabs · Where is it? (punch list #372)', () => {
+  it('draws no third tab until the host hands over the job’s map facts', async () => {
+    fetchBoxNames.mockResolvedValue([])
+    renderWithProviders(<BoxTabs {...props} />)
+    expect(screen.queryByRole('tab', { name: 'Where is it?' })).toBeNull()
+    await waitFor(() => expect(fetchBoxNames).toHaveBeenCalled())
+  })
+
+  it('the third tab says what the app knows, and Move box goes to the Cage tab', async () => {
+    fetchBoxNames.mockResolvedValue([])
+    renderWithProviders(<BoxTabs {...props} where={{ jobCenter: null, jobAddress: '100 Made-up Way', photos: [] }} startTab="where" />)
+    const panel = screen.getByRole('tabpanel', { name: 'Where is it?' })
+    expect(panel.textContent).toContain('Nobody has pinned R70.')
+    expect(panel.textContent).toContain('It is at Yard.')
+    expect(panel.textContent).toContain('Priya put it there on Nov 5.')
+    expect(screen.getByRole('button', { name: 'I found it' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Cage' }))
+    expect(screen.getByRole('tabpanel', { name: 'Cage' })).toBeTruthy()
+    await waitFor(() => expect(fetchBoxNames).toHaveBeenCalled())
   })
 })
 

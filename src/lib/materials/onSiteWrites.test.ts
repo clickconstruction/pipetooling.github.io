@@ -48,6 +48,20 @@ describe('applyOnSiteWrites', () => {
     expect(back.containers[0]).toMatchObject({ retiredAt: null, locationId: 'p1', lat: 29.5 })
   })
 
+  it('a pin carries its day, its person and its margin, and taking it off takes them too (v2.7575)', () => {
+    const start = applyOnSiteWrites(empty(), [box], 'j1', AT)
+    const pinned = applyOnSiteWrites(start, [{ table: 'job_containers', op: 'update', id: 'a1', row: { lat: 29.5, lng: -98.4, pinned_at: AT, pin_accuracy_m: 6.5, pinned_by_name: 'Priya Nair' } }], 'j1', AT)
+    expect(pinned.containers[0]).toMatchObject({ lat: 29.5, lng: -98.4, pinnedAt: AT, pinAccuracyM: 6.5, pinnedByName: 'Priya Nair' })
+    // A pin dragged by hand sends no margin.
+    const dragged = applyOnSiteWrites(pinned, [{ table: 'job_containers', op: 'update', id: 'a1', row: { lat: 29.6, lng: -98.5, pinned_at: AT, pin_accuracy_m: null, pinned_by_name: 'Dana Whitfield' } }], 'j1', AT)
+    expect(dragged.containers[0]).toMatchObject({ lat: 29.6, pinAccuracyM: null, pinnedByName: 'Dana Whitfield' })
+    // An edit to the box leaves the pin's facts alone.
+    const noted = applyOnSiteWrites(dragged, [{ table: 'job_containers', op: 'update', id: 'a1', row: { where_note: 'by the gate' } }], 'j1', AT)
+    expect(noted.containers[0]).toMatchObject({ where: 'by the gate', pinnedAt: AT, pinnedByName: 'Dana Whitfield' })
+    const off = applyOnSiteWrites(noted, [{ table: 'job_containers', op: 'update', id: 'a1', row: { lat: null, lng: null } }], 'j1', AT)
+    expect(off.containers[0]).toMatchObject({ lat: null, lng: null, pinnedAt: null, pinnedByName: null, pinAccuracyM: null })
+  })
+
   it('an edit changes the name, the kind and the where line, each only when sent', () => {
     const start = applyOnSiteWrites(empty(), [box], 'j1', AT)
     const before = start.containers[0]!
