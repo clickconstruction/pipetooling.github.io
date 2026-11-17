@@ -2,7 +2,7 @@
 name: "Tag a teammate in a task note"
 number: 375
 group: ready
-status: asked 2026-11-16 · looked at and drawn the same day · the owner settled call 0 and liked the picks for the rest · building since 2026-11-17 · PR A, the easier box (v2.7566), PR 1, the ground (v2.7570, pushed 2026-11-17) PR 2, the @ in a task's note box (v2.7574) PR 3, where a tag lands (v2.7576, open to the team) and PR 4, the notice (v2.7577), shipped · PR 5 built, not merged
+status: asked 2026-11-16 · looked at and drawn the same day · the owner settled call 0 and liked the picks for the rest · building since 2026-11-17 · PR A, the easier box (v2.7566), PR 1, the ground (v2.7570, pushed 2026-11-17) PR 2, the @ in a task's note box (v2.7574) PR 3, where a tag lands (v2.7576, open to the team) PR 4, the notice (v2.7577) and PR 5, History's box and the Roadmap card's box (v2.7578), shipped · the whole train is built · not walked on the live app
 summary: >
   Tagging a teammate went live on job notes as #363. The owner asked for the same in task notes, and for
   the box to be easier on a phone. A task note tells nobody today: no notice, no count, no Dashboard line.
@@ -11,11 +11,11 @@ summary: >
   the one Needs you line that both kinds share. It sends the same phone notice. The box gets easier for job
   and task notes alike: the names show as big presses above the keyboard while you type, the tag is marked
   in your words, and one Backspace takes it off. A tag is still only a tap or Enter, never a typed name.
-next: Deploy `notify-note-tag`, if it is not out yet. Merge PR 5. Then the walk as two people on a phone.
-size: L as a train of six (M · M · M · M · S · S), PR A and PR 1 to PR 4 done
-blocker: None. The notice needs `supabase functions deploy notify-note-tag` after PR 4's merge.
+next: The walk as two people on a phone, on a ZZ test task and a ZZ Test job, which covers #363's unwalked screens on the tagged side too. Then retire the card.
+size: L as a train of six (M · M · M · M · S · S), all six done
+blocker: None. The walk needs a second account signed in on a phone.
 opinion: build — a task note reaches nobody today, and #363 already proved the rules on jobs; one new table, the rest reused
-ver: v2.7566 · 7570 · 7574 · 7576 · 7577 · builds on #363 (v2.7384 · v2.7385 · v2.7407 · v2.7410 · v2.7412)
+ver: v2.7566 · 7570 · 7574 · 7576 · 7577 · 7578 · builds on #363 (v2.7384 · v2.7385 · v2.7407 · v2.7410 · v2.7412)
 ---
 
 # Tag a teammate in a task note (#375)
@@ -321,6 +321,10 @@ Then a walk as two people, on a phone, which covers #363's unwalked screens on t
 - **PR 4, the notice, shipped as v2.7577** (2026-11-17): `notify-note-tag` takes a task note and a task tag,
   with its own reader of a task title's job token, held to the app's by a test. The tap lands on the
   Checklist for every role. It needs its function deployed after the merge.
-- PR 5: built and tested on a branch, going up after PR 4 merges.
+- **PR 5, the other two boxes, shipped as v2.7578** (2026-11-17): History's box, where Reopen's reason can
+  tag too, and the Roadmap task card's box. Both now send the notice when a note answers a tag. My Inbox's
+  Forward had moved to `task_hand_on` by then (v2.7563), so nothing was added there.
+- **Left:** the walk in *How to verify*, as two people, on an iPhone and an Android phone. Bid and estimate
+  notes are their own small train (call 4).
 
 The design and the working box are in [mockup.html](mockup.html).
