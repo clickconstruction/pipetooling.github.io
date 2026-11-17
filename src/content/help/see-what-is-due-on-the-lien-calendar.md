@@ -40,7 +40,7 @@ This month, by Oct 15 in 14 days. 24 notices across 9 GCs. 31 jobs.
 
 Inside a month, each job sits under its GC. The GC's name is one small line above its jobs. The line counts its jobs and the notices owed, and says how many to send. Jobs with no GC sit together under *Direct to owner*. Press a line to fold its jobs away.
 
-A notice the desk printed but has not recorded reads differently. The band counts it as *in the mail*. The GC's line says *enter mail numbers* when every notice it owes is printed.
+A notice the desk printed but has not recorded reads differently. The band counts it as *to mail*, like *2 to mail*. The GC's line says *enter mail numbers* when every notice it owes is printed.
 
 A job with no approved hours has a small amber chip beside its name, like *Sep · no hours*. That job's dates count from a stand-in month, not from clock hours. Rest the pointer on the chip to read why. Office users can press the chip to set the last day of work.
 
@@ -83,7 +83,7 @@ Press Esc to close a card, or move the pointer away. Pressing a mark still does 
 
 ## Read the key
 
-The key runs along the bottom of the By date tab. Press a mark to read what it means. Press it again or press Esc to close it. Three marks tell a month's notice apart. A hollow flag is a notice still owed. An amber circle with an envelope is a notice printed and in the mail, its tracking number still owed. A green check is a notice on file. The envelope sits right after the check in the key. Press the envelope on a row to open Record the mailing. An envelope whose date has passed stays on the row. When no other notice is owed, the row then reads its lien date.
+The key runs along the bottom of the By date tab. Press a mark to read what it means. Press it again or press Esc to close it. Three marks tell a month's notice apart. A hollow flag is a notice still owed. An amber circle with an envelope is a notice that printed and waits to mail. Its tracking number is still owed. The key calls it *Approved · to mail*, as the desk's pile does. A green check is a notice on file. The envelope sits right after the check in the key. Press the envelope on a row to open Record the mailing. An envelope whose date has passed stays on the row. When no other notice is owed, the row then reads its lien date.
 
 ## On a phone
 

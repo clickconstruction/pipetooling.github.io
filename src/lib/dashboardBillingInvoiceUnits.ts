@@ -284,3 +284,23 @@ export function buildBilledWaitingDashboardUnits(jobs: JobForDashboard[], invoic
   }
   return out
 }
+
+/**
+ * The plain job card's money line (v2.7532). A job with two or more billed bills gets this card and then a card per
+ * bill; the card read *Remaining:* as the job's price less payments, so a job billed one stage of three showed the
+ * stages never billed as money waiting. It now says what its billed bills still owe (the cards under it, summed), and
+ * names the rest of the price apart. A job with no billed bill, billed as one shell, keeps *Remaining:*: its price
+ * less payments is what is owed.
+ */
+export function dashboardJobCardMoney(
+  job: Pick<JobForDashboard, 'id' | 'revenue' | 'payments_made'>,
+  units: ReadonlyArray<BilledWaitingDashboardUnit>,
+): { bills: number; billedOpen: number; rest: number; words: string } {
+  const mine = units.filter((u): u is Extract<BilledWaitingDashboardUnit, { kind: 'invoice' }> => u.kind === 'invoice' && u.inv.job_id === job.id)
+  const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  const remaining = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+  if (mine.length === 0) return { bills: 0, billedOpen: remaining, rest: 0, words: `Remaining: ${usd(remaining)}` }
+  const billedOpen = Math.round(mine.reduce((s, u) => s + dashboardBilledInvoiceAmounts(u.inv).open, 0) * 100) / 100
+  const rest = Math.max(0, Math.round((remaining - billedOpen) * 100) / 100)
+  return { bills: mine.length, billedOpen, rest, words: `Billed and still open: ${usd(billedOpen)}${rest > 0.005 ? ` · ${usd(rest)} of the job is on no open bill` : ''}` }
+}

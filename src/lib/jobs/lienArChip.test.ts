@@ -127,8 +127,8 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     const held = lienArChipFor(input({ nextUp: [row({ sub: 'Held', action: 'review_hold', severity: 'quiet', group: 'coming' })], entry: entry({ pile: 'held', item: { hold_reason: 'promised', hold_until: '2026-10-12' } as never }) }))!
     expect(held.words).toBe('Held · they promised · asks again Oct 12')
     expect(held.tone).toBe('amber')
-    const printed = lienArChipFor(input({ nextUp: [row({ sub: 'In the mail · tracking owed', action: 'add_tracking', target: { open: 'notices', jobId: 'j273', pile: 'printed' } })], entry: entry({ pile: 'printed', item: { printed_at: '2026-10-09T16:00:00Z' } as never }) }))!
-    expect(printed).toMatchObject({ tone: 'blue', state: 'out', words: 'In the mail · tracking owed' })
+    const printed = lienArChipFor(input({ nextUp: [row({ sub: 'Approved · to mail', action: 'add_tracking', target: { open: 'notices', jobId: 'j273', pile: 'printed' } })], entry: entry({ pile: 'printed', item: { printed_at: '2026-10-09T16:00:00Z' } as never }) }))!
+    expect(printed).toMatchObject({ tone: 'blue', state: 'out', words: 'Approved · to mail' })
     expect(printed.sentence).toContain('printed Oct 9 · press Enter mail numbers on the Lien desk to record it')
     const late = lienArChipFor(input({ nextUp: [row({ sub: 'Late notice to draft · the window closed, the affidavit is still open', action: 'draft_late', dueOn: '2026-11-16', daysLeft: 34, severity: 'amber', group: 'coming' })], entry: entry({ pile: 'missed', dueMonths: [] }) }))!
     expect(late.words).toBe('Draft the late notice · by Nov 16 · 34d')
@@ -249,6 +249,13 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond' })] }))!.act).toMatchObject({ words: 'Public property, no lien', dated: false })
     expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · the general contractor has no address on file' })] }))!.act?.words).toBe('Add the GC’s address')
     expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'approve', sub: 'Affidavit · waiting on Robert · since Oct 7' })] }))!.act?.words).toBe('Waiting on Robert')
+    // An affidavit that waits on its notice (v2.7527): the act is the notice's own next step, from where the notice stands on the desk.
+    const waits = { ...(gates(['notice']) as object), isSub: true, pile: 'needs_notice' } as never
+    const sendNotice = row({ ...aff, action: 'send_notice', sub: 'Affidavit · its § 53.056 notice is approved and not mailed yet' })
+    expect(lienArChipFor(input({ nextUp: [sendNotice], affidavit: waits, entry: entry({ pile: 'ready' }) }))!.act).toMatchObject({ words: 'Print and mail the notice', why: 'The affidavit waits on its notice. The notice is approved and not mailed yet.' })
+    expect(lienArChipFor(input({ nextUp: [sendNotice], affidavit: waits, entry: entry({ pile: 'printed' }) }))!.act?.words).toBe('Enter mail numbers')
+    // No notice on the desk at all: the late notice, as before.
+    expect(lienArChipFor(input({ nextUp: [sendNotice], affidavit: waits, entry: null }))!.act?.words).toBe('Send the late notice')
     const hold = lienArChipFor(input({ nextUp: [row({ action: 'review_hold', sub: 'Held' })], entry: entry({ pile: 'held', item: { hold_reason: 'promised', hold_until: '2026-10-12' } as never }) }))!
     expect(hold.act).toMatchObject({ words: 'Review the hold', under: 'Held · they promised · asks again Oct 12' })
     expect(lienArChipFor(input({ jobId: 'j858', nextUp: [row({ key: 'letter-two:j858', jobId: 'j858', action: 'letter_two', sub: 'day 12 · the attorney’s letter', dueOn: null, daysLeft: null })], letterTwo: two({ state: 'due', day: 12 }) }))!.act).toBeNull()
@@ -272,5 +279,16 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(lienArLensMatch([red, null], 'due')).toBe(true)
     expect(lienArLensMatch([green], 'due')).toBe(false)
     expect(lienArLensMatch([green], 'out')).toBe(true)
+  })
+
+  it('retainage nobody recorded asks for the answer, with no day to race, and opens the desk’s retainage list', () => {
+    const chip = lienArChipFor(
+      input({
+        nextUp: [row({ key: 'retainage-unrecorded:j273', kind: 'retainage', sub: 'Retainage not on the job · $2,460.00 looks held · 3 bills paid at 90%', detail: '$2,460.00 looks held · 3 bills paid at 90%', action: 'record_retainage', severity: 'amber', dueOn: null, daysLeft: null, group: 'now', target: { open: 'retainage_unrecorded', jobId: 'j273' } })],
+      }),
+    )!
+    expect(chip.words).toBe('Record the retainage')
+    expect(chip.tone).toBe('amber')
+    expect(chip.door).toEqual({ to: 'desk', jobId: 'j273', kind: 'retainage', pile: null })
   })
 })

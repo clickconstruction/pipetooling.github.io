@@ -56,6 +56,8 @@ import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintStickersModal'
+import { reservedRunToPrint } from '../../lib/materials/reservedPrint'
+import ReservedPrintPresses from '../materials/ReservedPrintPresses'
 import StickerRunsFold from '../materials/StickerRunsFold'
 import StickersOnBoxes from '../materials/StickersOnBoxes'
 import { ON_BOXES_LABEL, onBoxesPrefill, onBoxesToast } from '../../lib/materials/stickersOnBoxes'
@@ -752,12 +754,16 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           </div>
           {/* The job's reserved stickers (punch list #329, PR 3; v2.7487 the names, who and when, and the press that fills them in): printed, on no box yet, with the Runs fold one press away. */}
           {jobStickers.blank > 0 ? (
-            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-stickers-blank">
+            <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="materials-stickers-blank">
+            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span>{[`${notYetOnBoxWords(jobStickers.blank, jobStickers.reserved)}.`, reservedByWords(jobStickers.reserved, jobStickers.reserved.printedAt ? formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(jobStickers.reserved.printedAt)) : ''), 'Scan one on the phone to say which box it is on.'].filter(Boolean).join(' ')}</span>
               {/* A named sticker needs no scan: These are on boxes opens on the reserved names when one run holds them, as the fold's own press does. */}
               {jobStickers.reserved.anyNamed ? <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} title="Put a range of the reserved stickers on their boxes in one press, with no scan" onClick={() => setOnBoxesOpen({ initial: onBoxesPrefill(jobStickers.reserved.names) })} data-testid="materials-stickers-on-boxes">{ON_BOXES_LABEL}</button> : null}
               <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
             </p>
+            {/* The press that prints them, right where they are named (v2.7523, the owner's ask): one a run, the same stickers and links, nothing minted. Dead with its reason for a role that may not print a run. */}
+            <ReservedPrintPresses runs={jobStickers.toPrint} role={role} onPrint={(r) => setStickersOpen({ run: reservedRunToPrint(r) })} tid="materials-stickers-print" pressStyle={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0.15rem 0.55rem', fontWeight: 500 }} />
+            </div>
           ) : null}
       {adding ? (
         <div style={{ ...sec, padding: '0.75rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'end', flexWrap: 'wrap' }}>

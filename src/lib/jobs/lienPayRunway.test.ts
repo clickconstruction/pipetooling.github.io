@@ -446,8 +446,8 @@ describe('a notice printed and in the mail (v2.5522)', () => {
     expect(r.noticeByYmd).toBe('2026-10-15')
     expect(r.noticeMonths).toEqual([{ key: '2026-08', ymd: '2026-10-15', state: 'mailed' }])
     expect(r.lines[1]).toBe('enter mail numbers · 17 d')
-    expect(r.chipLabel).toBe('in the mail · 17 d')
-    expect(r.title).toContain('printed and in the mail, its tracking number not yet recorded')
+    expect(r.chipLabel).toBe('to mail · 17 d')
+    expect(r.title).toContain('printed and waits to mail, its tracking number not yet recorded')
     // Once recorded it is sent, and a month recorded never reads as mailed.
     const sent = buildLienPayRunway(input({ isSub: true, lastWorkYmd: '2026-08-20', noticedMonths: ['2026-08'], mailedMonths: ['2026-08'] }))
     expect(sent.noticeMailed).toBe(false)
@@ -477,7 +477,7 @@ describe('a notice in the mail whose date has passed (v2.5529)', () => {
     expect(r.noticeMailed).toBe(false)
     expect(r.words).not.toMatch(/-\d+ d|record the mailing/)
     // The hover still says what is left to do before the lien.
-    expect(r.title).toContain('The § 53.056 notice for May 2026 is printed and in the mail but not recorded; press Enter mail numbers on the Lien desk before the lien is filed.')
+    expect(r.title).toContain('The § 53.056 notice for May 2026 is printed but not recorded; press Enter mail numbers on the Lien desk before the lien is filed.')
   })
 
   it('the only month, the day after its date: the mark stays and the lien date leads; on its date it still counts down', () => {
