@@ -58,6 +58,12 @@ The note carries the page, the open window, your name and role, and your screen.
 
 The owner and the dev read every note. Your name is on it, so they can answer you.
 
+## Read the answer
+
+The wrench shows a green dot when a note of yours has an answer. Press the wrench. The answer is under **Your notes**, below the box.
+
+Each note there says where it stands. **Sent** means it is waiting to be read. **Answered** means the dev wrote back.
+
 ## A lost signal is not a fault
 
 Your phone keeps a press made with no signal. It sends the press when the signal is back. You do not need to tell the dev about that. See [keep working when the signal drops](/help/keep-working-when-the-signal-drops).

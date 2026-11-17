@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 const sendDevNote = vi.hoisted(() => vi.fn(async (_args: Record<string, unknown>) => ({ id: 'note-1' })))
+const loadMyNotes = vi.hoisted(() => vi.fn(async (_userId: string): Promise<Record<string, unknown>[]> => []))
 const recordNavClick = vi.hoisted(() => vi.fn())
 
 vi.mock('../../hooks/useAuth', async () => {
@@ -11,6 +12,7 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 vi.mock('../../hooks/useIsDigitalTwin', () => ({ useIsDigitalTwin: () => false }))
 vi.mock('../../lib/tellTheDev/sendNote', () => ({ sendDevNote }))
+vi.mock('../../lib/tellTheDev/myNotesIo', () => ({ loadMyNotes }))
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick }))
 vi.mock('../../content/releaseNotes', () => ({ RELEASE_NOTES: [{ version: 'v2.0001' }] }))
 
@@ -20,6 +22,8 @@ import { TellTheDevHeaderButton, TellTheDevRoot } from './TellTheDevRoot'
 
 beforeEach(() => {
   sendDevNote.mockClear()
+  loadMyNotes.mockReset()
+  loadMyNotes.mockResolvedValue([])
   recordNavClick.mockClear()
   window.localStorage.clear()
   troubleMemory.clear()
@@ -120,4 +124,42 @@ describe('TellTheDevRoot', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('The server refused the note.'))
     expect((screen.getByLabelText('I want') as HTMLTextAreaElement).value).toBe('a bigger upload')
   })
+
+  it('asks for nothing on a device that has never sent a note', async () => {
+    renderWithProviders(<TellTheDevRoot isMobile={false} modes={[]} fixMode />, { route: '/dashboard' })
+    await settle()
+    expect(loadMyNotes).not.toHaveBeenCalled()
+  })
+
+  it('shows a dot while an answer is unread, lists it under Your notes, and clears the dot once listed', async () => {
+    const { SMOKE_AUTH_USER_ID } = await import('../../test/renderSmokeMocks')
+    window.localStorage.setItem(`pt_dev_notes_known_${SMOKE_AUTH_USER_ID}`, '1')
+    loadMyNotes.mockResolvedValue([
+      { id: 'a', kind: 'want', body: 'I want the PO number on the first line', status: 'closed', created_at: '2026-11-10T15:00:00Z', closed_at: '2026-11-12T15:00:00Z', closed_note: 'Shipped. It is under the bill’s code now.' },
+      { id: 'b', kind: 'confusing', body: '', status: 'open', created_at: '2026-11-14T15:00:00Z', closed_at: null, closed_note: null },
+    ])
+    renderWithProviders(
+      <>
+        <TellTheDevHeaderButton />
+        <TellTheDevRoot isMobile modes={[]} fixMode />
+      </>,
+      { route: '/dashboard' },
+    )
+    // The shell comes up and looks for an answer.
+    const wrench = await screen.findByRole('button', { name: 'Tell the dev. An answer is waiting.' })
+    fireEvent.click(wrench)
+    await settle()
+
+    const notes = screen.getByRole('region', { name: 'Your notes' })
+    expect(notes.textContent).toContain('I want the PO number on the first line')
+    expect(notes.textContent).toContain('Shipped. It is under the bill’s code now.')
+    expect(notes.textContent).toContain('No words. This page is confusing.')
+    expect(notes.textContent).toMatch(/Answered /)
+    expect(notes.textContent).toMatch(/Sent /)
+
+    // Listed is read: the dot is gone and stays gone.
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Tell the dev. An answer is waiting.' })).toBeNull())
+    expect(window.localStorage.getItem(`pt_dev_notes_seen_${SMOKE_AUTH_USER_ID}`)).toBeTruthy()
+  })
 })
+
