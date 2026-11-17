@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildWaitingOnLeader, type WaitingOnLeaderAsk, type WaitingOnLeaderCard } from '../lib/dashboard/waitingOnLeader'
 import { waitingOnLeaderIo, type WaitingOnLeaderIo, type WaitingOnLeaderPerson } from '../lib/dashboard/waitingOnLeaderIo'
 import { waitingOnLeaderLien, type WaitingOnLeaderDesk } from '../lib/dashboard/waitingOnLeaderLien'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { useLineBudgetsReview } from './useLineBudgetsReview'
 
 type Reads = { leaders: WaitingOnLeaderPerson[]; waivers: WaitingOnLeaderAsk[] | null; tags: WaitingOnLeaderAsk[] | null; notRead: string[] }
@@ -63,7 +64,7 @@ export function useWaitingOnLeader(
   const card = useMemo(
     () =>
       enabled && reads
-        ? buildWaitingOnLeader({ leaders: reads.leaders, lien, waivers: reads.waivers, tags: reads.tags, lineBudgets: review ? { lines: review.lines.length, projects: review.jobIds.length } : null })
+        ? buildWaitingOnLeader({ leaders: reads.leaders, lien, waivers: reads.waivers, tags: reads.tags, lineBudgets: review ? { lines: review.lines.length, projects: review.jobIds.length } : null, todayYmd: todayYmdInAppTz() })
         : null,
     [enabled, reads, lien, review],
   )

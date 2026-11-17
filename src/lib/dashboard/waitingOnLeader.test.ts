@@ -72,6 +72,14 @@ describe('buildWaitingOnLeader', () => {
     expect(card.code).toEqual({ label: 'Marcus is here, sign with the signing code', href: '/lien-desk?tab=notices&pile=ready' })
   })
 
+  it('a window that has passed reads closed, the day itself reads today, and no date given keeps closes (v2.7616)', () => {
+    const detail = (todayYmd: string | null) => buildWaitingOnLeader({ ...nothing, todayYmd, lien: { approve: [paper({ askedYmd: null, dueYmd: '2026-11-16' })], sign: [paper({ itemId: 'i9', askedYmd: null, dueYmd: '2026-11-16' })] } })!.rows.map((r) => r.detail)
+    expect(detail('2026-11-17')).toEqual(['First window closed Nov 16.', 'Approved. The run holds it until Marcus signs. First window closed Nov 16.'])
+    expect(detail('2026-11-16')[0]).toBe('First window closes today.')
+    expect(detail('2026-11-15')[0]).toBe('First window closes Nov 16.')
+    expect(detail(null)[0]).toBe('First window closes Nov 16.')
+  })
+
   it('a paper with no desk item stays out of the reminder with its reason', () => {
     const card = buildWaitingOnLeader({ ...nothing, lien: { approve: [paper({ itemId: null })], sign: [] } })!
     expect(card.rows[0]!.remind?.ready).toBe(0)

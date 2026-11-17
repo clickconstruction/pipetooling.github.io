@@ -10,6 +10,7 @@
  */
 import { andList } from '../gc/wordToTrades'
 import { ymdAddDays } from '../../utils/dateUtils'
+import { taskTitlePlain } from '../tasks/taskPlace'
 
 /** One person the list may offer on a job or a task: someone who can open its notes. */
 export type TaggablePerson = {
@@ -436,12 +437,12 @@ export function taskOffer(people: readonly TaggablePerson[], pickedIds: readonly
 }
 
 /**
- * Who is offered the @ in a task's note box (punch list #375). Held to a dev until the count
- * above Checklist and the Tagged task notes section land, so nobody is tagged where they would
- * never see it. The server still decides task by task.
+ * Who is offered the @ in a task's note box (punch list #375): the same seven roles as on a job.
+ * The server still decides task by task: only a task's own people and the office are on its list,
+ * and anyone else gets a plain box.
  */
 export function canTagInTaskNotes(role: string | null | undefined): boolean {
-  return role === 'dev'
+  return canTagInJobNotes(role)
 }
 
 /** The roles job_note_people() lists (punch list #363): the office, and the roles a job's crew is made of. */
@@ -456,10 +457,25 @@ export function canTagInJobNotes(role: string | null | undefined): boolean {
   return role != null && TAGGING_ROLES.includes(role)
 }
 
-/** One row of `job_note_tags_mine()`: a tag that waits on the reader, or one the reader made. */
+/** Which notes a list of tags holds: a job's, a task's, or both side by side. */
+export type TagKinds = 'job' | 'task' | 'both'
+
+/**
+ * One row of `note_tags_mine()`: a tag that waits on the reader, or one the reader made, in a job
+ * note or a task note. A job tag carries its job and a task tag its day row, task and title.
+ */
 export type MyTag = {
   tagId: string
   kind: 'waiting' | 'asked'
+  /** Where the note is (punch list #375). Left out, the tag is a job's. */
+  source?: 'job' | 'task'
+  /** A task tag's day row, its task, the task's title as written and the day row's date. */
+  instanceId?: string | null
+  itemId?: string | null
+  taskTitle?: string | null
+  taskDate?: string | null
+  /** The tagged person is archived: an open tag on them will never be answered. */
+  taggedLeft?: boolean
   noteId: string
   jobId: string
   jobName: string
@@ -491,6 +507,22 @@ export type MyTagsView = {
   count: number
 }
 
+/** True for a tag in a task note. */
+export function tagIsTask(t: Pick<MyTag, 'source'>): boolean {
+  return t.source === 'task'
+}
+
+/** The tags of one kind, or all of them. */
+export function tagsOfKind<T extends Pick<MyTag, 'source'>>(tags: readonly T[], kinds: TagKinds): T[] {
+  if (kinds === 'both') return [...tags]
+  return tags.filter((t) => tagIsTask(t) === (kinds === 'task'))
+}
+
+/** What a tag is about, as the lists name it: the job's name, or the task's title as plain words. */
+export function tagWhere(t: Pick<MyTag, 'source' | 'jobName' | 'taskTitle'>): string {
+  return tagIsTask(t) ? taskTitlePlain(t.taskTitle) : t.jobName.trim() || 'A job'
+}
+
 function askedRank(t: MyTag): number {
   if (t.clearedAt != null && t.askerSeenAt == null) return 0
   return t.clearedAt == null ? 1 : 2
@@ -507,6 +539,8 @@ export function myTagsView(tags: readonly MyTag[]): MyTagsView {
 
 /** What a You asked line says after the name: how the tag stands, and whether it is late. */
 export function askedLineWords(tag: MyTag, todayYmd: string, postedYmd: string): { words: string; tone: 'late' | 'waiting' | 'cleared' } {
+  // A tag on someone who has left waits forever, so the line says so in place of an age.
+  if (tag.clearedAt == null && tag.taggedLeft) return { words: 'has left', tone: 'late' }
   if (tag.clearedAt == null) {
     const age = tagAgeWords(postedYmd, todayYmd)
     return { words: `no answer yet${age ? ` · ${age}` : ''}`, tone: tagIsLate(postedYmd, todayYmd) ? 'late' : 'waiting' }
@@ -520,15 +554,21 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
-/** The Needs you line for tags (punch list #363): its title and the jobs under it. Null when nothing waits. */
+/**
+ * The Needs you line for tags (punch list #363, and task notes since #375): its title and the jobs
+ * and tasks under it, in the order they wait. Null when nothing waits.
+ */
 export function tagsNeed(view: Pick<MyTagsView, 'waiting' | 'unseen' | 'count'>): { count: number; title: string; detail: string } | null {
   if (view.count === 0) return null
+  const taskNotes = view.waiting.filter(tagIsTask).length
+  const jobNotes = view.waiting.length - taskNotes
   const parts = [
-    view.waiting.length > 0 ? `${plural(view.waiting.length, 'job note', 'job notes')} tagged you` : '',
+    jobNotes > 0 ? `${plural(jobNotes, 'job note', 'job notes')} tagged you` : '',
+    taskNotes > 0 ? `${plural(taskNotes, 'task note', 'task notes')} tagged you` : '',
     view.unseen > 0 ? `${plural(view.unseen, 'answer', 'answers')} to a note you tagged` : '',
   ].filter(Boolean)
-  const jobs = [...new Set(view.waiting.map((t) => t.jobName.trim()).filter(Boolean))]
-  const detail = jobs.length > 3 ? `${jobs.slice(0, 3).join(' · ')} and ${jobs.length - 3} more` : jobs.join(' · ')
+  const names = [...new Set(view.waiting.map((t) => (tagIsTask(t) || t.jobName.trim() ? tagWhere(t) : '')).filter(Boolean))]
+  const detail = names.length > 3 ? `${names.slice(0, 3).join(' · ')} and ${names.length - 3} more` : names.join(' · ')
   return { count: view.count, title: parts.join(' · '), detail }
 }
 
