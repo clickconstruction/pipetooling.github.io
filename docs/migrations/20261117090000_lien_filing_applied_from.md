@@ -20,3 +20,5 @@ A lien notice applied from a paper already on record: the columns, alone. No scr
 Starts with `SET lock_timeout = '3s';`. No new table, so no fence calls. Additive and idempotent: `ADD COLUMN IF NOT EXISTS`, the check added only when missing, `CREATE INDEX IF NOT EXISTS`. A foreign key to the same table on a column that is NULL on every row validates at once.
 
 **Order.** Push right after the merge. The route's client writes `applied_from`, so its PR merges only after this push.
+
+**Applied** to prod on 2026-11-16 by `supabase db push` from a checkout at `origin/main`: the dry run named this one file, and `supabase migration list` reads 20261117090000 on both sides. The types followed in their own PR.

@@ -149,7 +149,7 @@ function wordUnderBar(g: LienCalendarGroup, ymd: string | null): LienCalendarGro
   // v2.5522: the printed ones say so — "send 2 notices · 10 in the mail", or just "enter mail numbers · 10" (v2.7448; "record 10 mailings" until then).
   if (owed.length === 0) return { ...g, word: lienRunActLabel('record', mailed > 1 ? mailed : null).toLowerCase() }
   const send = owed.length === 1 ? 'send the notice' : `send ${owed.length} notices`
-  return { ...g, word: mailed ? `${send} · ${mailed} in the mail` : send }
+  return { ...g, word: mailed ? `${send} · ${mailed} to mail` : send }
 }
 
 function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd: string): LienCalendarBucket {
@@ -185,7 +185,7 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
       facts.push(`${plural(noticeJobs.length, 'notice', 'notices')}${to}`)
       // v2.5522: how many of them are printed and in the mail, their numbers still owed.
       const mailed = noticeJobs.filter((j) => j.runway.noticeMailed).length
-      if (mailed) facts.push(`${mailed} in the mail`)
+      if (mailed) facts.push(`${mailed} to mail`)
     }
     if (lateNotices) facts.push(plural(lateNotices, 'late notice', 'late notices'))
     if (liens) facts.push(`${plural(liens, 'lien', 'liens')} to file`)

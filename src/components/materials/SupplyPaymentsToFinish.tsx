@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { billDateWords } from '../../lib/materials/supplyBillGroups'
 import { usd } from '../../lib/materials/payments/supplyPayment'
 import { finishHeading, finishRows, type PaymentToFinish } from '../../lib/materials/payments/supplyPaymentsFinish'
@@ -18,6 +19,8 @@ export function SupplyPaymentsToFinish({
   reloadKey = 0,
   openAtStart = false,
   onChanged,
+  bankFor,
+  onUseLine,
 }: {
   io: SupplyFinishIo
   todayYmd: string
@@ -27,12 +30,17 @@ export function SupplyPaymentsToFinish({
   openAtStart?: boolean
   /** A payment was finished: whatever else shows payments reads again. */
   onChanged?: () => void
+  /** The bank line for the same money, when the feed holds one to this house: its words and its id. */
+  bankFor?: (payment: PaymentToFinish) => { id: string; words: string } | null
+  /** Use this line: the payment takes the line's day and its kind as the method, and is matched to it. */
+  onUseLine?: (paymentId: string, bankLineId: string) => Promise<void>
 }) {
   const { showToast } = useToastContext()
   const [payments, setPayments] = useState<PaymentToFinish[]>([])
   const [open, setOpen] = useState(openAtStart)
   const [finishing, setFinishing] = useState<PaymentToFinish | null>(null)
   const [localKey, setLocalKey] = useState(0)
+  const [usingId, setUsingId] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -78,6 +86,34 @@ export function SupplyPaymentsToFinish({
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{r.title}</div>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{r.sub}</div>
+                {(() => {
+                  const payment = payments.find((p) => p.id === r.id)
+                  const line = payment && bankFor ? bankFor(payment) : null
+                  if (!line || !onUseLine) return null
+                  return (
+                    <div data-testid="supply-payment-to-finish-bank" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 10px', marginTop: 2, fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>The bank has it: {line.words}</span>
+                      <button
+                        type="button"
+                        disabled={usingId != null}
+                        onClick={() => {
+                          setUsingId(r.id)
+                          onUseLine(r.id, line.id)
+                            .then(() => {
+                              showToast('The bank line filled the day and how it was sent.', 'success')
+                              setLocalKey((k) => k + 1)
+                              onChanged?.()
+                            })
+                            .catch((e: unknown) => showToast(formatErrorMessage(e, 'The bank line was not used.'), 'error', 6000))
+                            .finally(() => setUsingId(null))
+                        }}
+                        style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: usingId != null ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {usingId === r.id ? 'Using it…' : 'Use this line'}
+                      </button>
+                    </div>
+                  )
+                })()}
               </div>
               <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{usd(r.amount)}</div>
               <button type="button" onClick={() => setFinishing(payments.find((p) => p.id === r.id) ?? null)} aria-label={`Finish ${r.title}`} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.25rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>

@@ -142,8 +142,13 @@ const BUTTON: Record<LienNextUpAction, string> = {
  * The notices a run holds (v2.7442). Opened from a GC's To do row, or from its one notice, the run holds that GC's
  * approved notices alone, so *Print and mail 3* opens on three. The desk's own doors pass no GC and get every approved
  * and printed notice, as before.
+ *
+ * Opened from a ready notice's *Just this one* (v2.7512, `lienRunOne.ts`), the run holds that one notice, by its desk
+ * item. It is looked for in both piles, since the notice moves to the printed pile the moment its packet prints and
+ * the open window must still find it.
  */
-export function lienRunEntriesFor<E extends { gcCustomerId?: string | null }>(ready: ReadonlyArray<E>, printed: ReadonlyArray<E>, gcId: string | null): E[] {
+export function lienRunEntriesFor<E extends { gcCustomerId?: string | null; item?: { id: string } | null }>(ready: ReadonlyArray<E>, printed: ReadonlyArray<E>, gcId: string | null, onlyItemId?: string | null): E[] {
+  if (onlyItemId) return [...ready, ...printed].filter((e) => e.item?.id === onlyItemId)
   return gcId ? ready.filter((e) => e.gcCustomerId === gcId) : [...ready, ...printed]
 }
 

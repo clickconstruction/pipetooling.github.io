@@ -156,4 +156,16 @@ describe('LienServeWindow', () => {
     expect(print.textContent).toBe('Print ▸')
     expect(screen.getByText('Nothing is ready to print. Fix what is marked in red, then print.')).toBeTruthy()
   })
+
+  it('has a door to Add the stamped scans when the desk hands one', () => {
+    const onAddScans = vi.fn()
+    open({ onAddScans })
+    fireEvent.click(screen.getByRole('button', { name: 'Add the stamped scans ›' }))
+    expect(onAddScans).toHaveBeenCalledTimes(1)
+  })
+
+  it('draws no scans part without the door', () => {
+    open()
+    expect(document.querySelector('[data-lien-serve-scans-part]')).toBeNull()
+  })
 })
