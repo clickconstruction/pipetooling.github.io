@@ -286,4 +286,4 @@ Every page fit 390 wide with no sideways scroll.
 
 **What the walk did not cover.** A real camera reading a printed label. What Mail, Messages and the dialler do with each press: the walk read where each press points and pressed none, so the walk on a real phone still stands. A helper's session: the sign-in was the dev's, by the emailed-link door, with no password typed.
 
-**Seen on the way, both small.** Signed in, the retired pile's own label reads *did not open a box* over a line that the box may be retired or on a job the reader is not on, while the signed-out page names the pile and says it was retired. The Scan a label page's tab reads *ClickTooling*, where a box's page reads the box's name and the company's.
+**Seen on the way, both small, both fixed in v2.7630.** Signed in, the retired pile's own label read *did not open a box* over a line that the box may be retired or on a job the reader is not on, while the signed-out page names the pile and says it was retired. The Scan a label page's tab read *ClickTooling*, where a box's page reads the box's name and the company's.
