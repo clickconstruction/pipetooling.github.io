@@ -39,6 +39,7 @@ import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import { JobWindowCostMovePanel } from './JobWindowCostMovePanel'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import InKindChip from '../inKind/InKindChip'
+import { JobPapersChip } from './JobPapersChip'
 import { isOfficeRole } from '../../lib/doorRoles'
 import JobInKindStrip from '../inKind/JobInKindStrip'
 import { useInKindStandings } from '../../hooks/useInKindStandings'
@@ -505,6 +506,7 @@ export function JobWindowModal({
                   ))}
                   <JobKindChip read={jobKindOfRow(headJob)} size="sm" />
                   {headStanding ? <InKindChip standing={headStanding} form="short" plain /> : null}
+                  {isOfficeRole(authRole) ? <JobPapersChip jobId={headJob.id} /> : null}
                 </div>
               ) : null}
             </div>
@@ -559,6 +561,7 @@ export function JobWindowModal({
                     ))}
                     <JobKindChip read={jobKindOfRow(headJob)} size="sm" />
                     {headStanding ? <InKindChip standing={headStanding} form="short" plain /> : null}
+                    {isOfficeRole(authRole) ? <JobPapersChip jobId={headJob.id} /> : null}
                   </div>
                 ) : null}
               </div>
