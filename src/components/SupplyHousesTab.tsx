@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
-import { summarizeSupplyHouseBalances, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
+import { openSupplyBook, summarizeSupplyHouseBalances, supplyBookTotal, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
 import { SupplyHousePhoneScreen } from './materials/SupplyHousePhoneScreen'
 import { CreditPairPick } from './materials/CreditPairPick'
 import { telHrefFor } from '../lib/phoneContact'
@@ -109,7 +109,7 @@ import { SupplyHouseBillsCard } from './materials/SupplyHouseBillsCard'
 import { houseOnAccountTotal, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds } from '../lib/materials/supplyHouseBillRows'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
-import { billPaidBy, lastMethodUsed, openAmount } from '../lib/materials/payments/supplyPayment'
+import { billPaidBy, lastMethodUsed } from '../lib/materials/payments/supplyPayment'
 import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
 import { EmptyState } from './EmptyState'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
@@ -623,12 +623,10 @@ export function SupplyHousesTab({
     const invoices = (invoicesRes.data ?? []) as unknown as SummaryInvoice[]
     // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole, here
     // or in the aging table. `billed` keeps the bill's own amount for the row that says so.
-    const invoicesList = invoices.map((inv) =>
-      inv.is_paid ? inv : { ...inv, amount: openAmount(inv), billed: Number(inv.amount) },
-    )
+    const { book: invoicesList, unpaid } = openSupplyBook(invoices)
     // What paying late cost this year, by house: every interest bill billed in it, paid or not.
     setInterestYearWords(interestByHouse(invoices, housesList, todayYmdInAppTz().slice(0, 4)).words)
-    setAgingUnpaidInvoices(invoicesList.filter((inv) => !inv.is_paid))
+    setAgingUnpaidInvoices(unpaid)
     setAgingBookLoaded(true)
     // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
     const rows: SupplyHouseSummaryRow[] = summarizeSupplyHouseBalances(housesList, invoicesList)
@@ -1765,7 +1763,7 @@ export function SupplyHousesTab({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'start', marginBottom: '0.75rem' }}>
               <span aria-hidden="true" />
               <div style={{ fontSize: '1rem', fontWeight: 600, textAlign: 'center', alignSelf: 'center' }}>
-                Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
+                Supply Houses: ${formatCurrency(supplyBookTotal(supplyHouseSummary))}
                 {interestYearWords ? (
                   <div style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }} data-testid="supply-interest-year">
                     {interestYearWords}

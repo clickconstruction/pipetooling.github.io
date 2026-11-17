@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ordinalDay, summarizeSupplyHouseBalances, supplyHouseCardMoney, supplyHouseInvoiceTabCounts, supplyHousePhoneInvoiceRows, type SupplyHousePhoneInvoice } from './supplyHousePhone'
+import { openSupplyBook, ordinalDay, sumOpenSupplyBills, summarizeSupplyHouseBalances, supplyBookTotal, supplyHouseCardMoney, supplyHouseInvoiceTabCounts, supplyHousePhoneInvoiceRows, type SupplyHousePhoneInvoice } from './supplyHousePhone'
 import { buildSupplyHouseAgingMatrix } from '../supplyHouseAging'
 
 const houses = [
@@ -89,5 +89,49 @@ describe('v2.5035 · a credit and the invoice it credits name each other on the 
     const opts = { todayYmd: '2026-09-27', jobLabel: (id: string) => id, formatMoney: (n: number) => `$${n}` }
     expect(supplyHousePhoneInvoiceRows(list, 'unpaid', opts)[0]?.sub).toBe('due Oct 2 · credited by CM-4471 (−$150.00)')
     expect(supplyHousePhoneInvoiceRows(list, 'credits', opts)[0]?.sub).toBe('credits 88121')
+  })
+})
+
+describe('openSupplyBook', () => {
+  // Made-up bills: one paid in part, one untouched, one paid, one credit memo part used.
+  const bills = [
+    { id: 'part', supply_house_id: 'a', amount: 812.4, amount_paid: 300, is_paid: false, updated_at: null, paid_at: null },
+    { id: 'whole', supply_house_id: 'a', amount: 100, amount_paid: 0, is_paid: false, updated_at: null, paid_at: null },
+    { id: 'paid', supply_house_id: 'b', amount: 500, amount_paid: 500, is_paid: true, updated_at: null, paid_at: '2026-09-02T10:00:00Z' },
+    { id: 'credit', supply_house_id: 'b', amount: -212.4, amount_paid: -100, is_paid: false, updated_at: null, paid_at: null },
+  ]
+  const { book, unpaid } = openSupplyBook(bills)
+
+  it('counts an unpaid bill for what is left on it, and keeps its own amount as billed', () => {
+    expect(book.find((b) => b.id === 'part')).toMatchObject({ amount: 512.4, billed: 812.4 })
+    expect(book.find((b) => b.id === 'whole')).toMatchObject({ amount: 100, billed: 100 })
+    expect(book.find((b) => b.id === 'credit')).toMatchObject({ amount: -112.4, billed: -212.4 })
+  })
+
+  it('hands a paid bill back as it was, and leaves it out of the unpaid list', () => {
+    expect(book.find((b) => b.id === 'paid')).toBe(bills[2])
+    expect(unpaid.map((b) => b.id)).toEqual(['part', 'whole', 'credit'])
+  })
+
+  it('a bill read without the column counts whole', () => {
+    const { book: old } = openSupplyBook([{ id: 'x', amount: 40, is_paid: false }])
+    expect(old[0]).toMatchObject({ amount: 40, billed: 40 })
+  })
+
+  it('the header total is the rows added up, and agrees with the pins when every house is listed', () => {
+    const rows = summarizeSupplyHouseBalances(houses, book)
+    expect(supplyBookTotal(rows)).toBeCloseTo(512.4 + 100 - 112.4, 2)
+    expect(supplyBookTotal(rows)).toBeCloseTo(sumOpenSupplyBills(bills.filter((b) => !b.is_paid)), 2)
+  })
+
+  it('a bill on a house that is not listed is in the pins\' sum and not in the tab\'s', () => {
+    const stray = [...bills, { id: 'stray', supply_house_id: 'gone', amount: 75, amount_paid: 0, is_paid: false, updated_at: null, paid_at: null }]
+    const rows = summarizeSupplyHouseBalances(houses, openSupplyBook(stray).book)
+    expect(sumOpenSupplyBills(stray.filter((b) => !b.is_paid)) - supplyBookTotal(rows)).toBeCloseTo(75, 2)
+  })
+
+  it('an empty book totals zero', () => {
+    expect(supplyBookTotal([])).toBe(0)
+    expect(sumOpenSupplyBills([])).toBe(0)
   })
 })
