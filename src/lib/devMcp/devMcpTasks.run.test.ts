@@ -339,7 +339,8 @@ describe('plan_task → apply_task', () => {
   })
 
   it('keeps a long task\'s hash in the log, where the one-apply rule reads it', async () => {
-    const task = { for: ANA, text: `ZZ ${'long words '.repeat(170)}`.trim(), done_when: Array.from({ length: 12 }, (_, i) => `ZZ line ${i} ${'x'.repeat(180)}`) }
+    // Words that triple in a URL: the duplicate read must not carry them as a filter.
+    const task = { for: ANA, text: `ZZ ${'long, words (née) & more; '.repeat(74)}`.trim(), done_when: Array.from({ length: 12 }, (_, i) => `ZZ line ${i} ${'x'.repeat(180)}`) }
     const plan = await call('plan_task', { task })
     expect(plan.isError).toBe(false)
     const out = await call('apply_task', { task, plan_hash: plan.body!.plan_hash })

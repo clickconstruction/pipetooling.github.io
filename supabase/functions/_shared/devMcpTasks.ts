@@ -300,12 +300,14 @@ export async function readTaskWorld(reader: Reader, p: TaskPayload, me: { userId
     const rows = await reader.rows('checklist_item_assignees', { select: 'user_id,display_order', filters: by('user_id', id), order: [{ column: 'display_order', ascending: false }], limit: 1 })
     if (rows[0]) held.push({ user_id: id, display_order: typeof rows[0].display_order === 'number' ? rows[0].display_order : null })
   }
-  const same = await reader.rows('checklist_items', {
-    select: 'id,start_date,created_at',
-    filters: [{ column: 'title', op: 'eq', value: p.text }, { column: 'created_by_user_id', op: 'eq', value: me.userId }, { column: 'start_date', op: 'eq', value: p.on ?? today }],
+  // The words are compared here and never sent as a filter: a long task's words would not fit the door's URL.
+  const mine = await reader.rows('checklist_items', {
+    select: 'id,title,start_date,created_at',
+    filters: [{ column: 'created_by_user_id', op: 'eq', value: me.userId }, { column: 'start_date', op: 'eq', value: p.on ?? today }],
     order: [{ column: 'created_at', ascending: false }],
-    limit: 5,
+    limit: 200,
   })
+  const same = mine.filter((r) => str(r.title) === p.text).slice(0, 5)
   const already: TaskWorld['already'] = []
   if (same.length) {
     const who = await reader.rows('checklist_item_assignees', { select: 'checklist_item_id,user_id', filters: [{ column: 'checklist_item_id', op: 'in', value: same.map((r) => str(r.id)) }], limit: 200 })
