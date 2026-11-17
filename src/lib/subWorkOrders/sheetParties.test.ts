@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildSheetPartiesLookup, sheetParties } from './sheetParties'
+import { normalizePersonNameKey } from '../personNameKey'
+import { buildSheetPartiesLookup, sheetNameKey, sheetParties } from './sheetParties'
 
 const roster = [
   { id: 'behar', name: 'Behar Kraja', kind: 'sub', accountRole: 'subcontractor' },
@@ -56,5 +57,11 @@ describe('sheetParties', () => {
 
   it('a blank sheet is blank', () => {
     expect(sheetParties({ assigned_to_name: '' }, [], lookup)).toMatchObject({ label: '', key: '', crew: true, withLabel: null })
+  })
+})
+
+describe('sheetNameKey', () => {
+  it('is the app’s name key, restated on the edge (v2.7569)', () => {
+    for (const name of ['Behar Kraja', '  Texas Q & E Electrical LLC ', 'MALACHI', '', ' a | b ']) expect(sheetNameKey(name)).toBe(normalizePersonNameKey(name))
   })
 })

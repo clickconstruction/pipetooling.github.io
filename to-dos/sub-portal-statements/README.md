@@ -1,8 +1,8 @@
 ---
 name: "The sub's page: a Statements view with their work statements, payment records and statement of account"
 number: 371
-group: gated
-status: asked 2026-11-17 · the mock-up and this card the same day · nothing built for it · the list was drawn on made-up data in the sub labor spike and is not wired to the page
+group: ready
+status: asked 2026-11-17 · the mock-up and this card the same day · the owner answered all seven calls 2026-11-17, each with the card's pick · step 1, the function, on branch `claude/371-sub-portal-papers`, not deployed · the list was drawn on made-up data in the sub labor spike and is not wired to the page
 summary: >
   Card #350 gave the office three papers for a sub. A sub still cannot find them on their own page:
   the page shows open sheets and 90 days of payment lines, with no paid sheets, no numbers, no
@@ -12,9 +12,9 @@ summary: >
   office prints. A sub can mark a payment received or say a figure looks wrong. It was step 6 of
   card #350 and moves here with its own mock-up, because it puts papers in front of subs and has
   calls of its own.
-next: Taunya's look at the mock-up and her answers to calls 1 to 7; nothing is built before call 1 (a switch or a section) and call 2 (who gives a number)
+next: step 1's merge, its migration's push, then the owner's go that names `sub-portal` for the deploy; step 2, the switch and the list, follows the deploy
 size: M as a train of four (M · S · M · S)
-blocker: Taunya's calls 1 to 7; PR 1 is an edge deploy of `sub-portal`, on her go that names it; the Spanish words need a reader (call 5); Confirm waits on counsel and is not in this card
+blocker: PR 1 is an edge deploy of `sub-portal`, on a go that names it; the owner reads the Spanish words before step 2 ships them (call 5); Confirm waits on counsel and is not in this card
 opinion: build it as a switch at the top, Today and Statements, so the page a sub knows does not change; never let the sub's page give out a number; ship Got it as a quiet chip and Something is wrong as the one thing that asks the office to act
 mockup: to-dos/sub-portal-statements/mockup.html
 ---
@@ -75,7 +75,7 @@ Mock-up: `to-dos/sub-portal-statements/mockup.html` (on the dev server at `/to-d
 | The words | `subPortalI18n.ts`, English and Spanish | about twenty new strings, the Spanish read by a person first |
 | The office's side | the payment's line in `JobsSubLaborTab.tsx` | a chip from `sub_paper_acks`, and a flag for *something wrong* |
 
-A payment record's answer hangs on a paper in the register (`sub_paper_acks.paper_id`). A payment whose record the office has not made has no row to hang on. PR 1 settles how: the function registers the record as the page's own copy, or the answer is kept by sending until the office makes the paper. It is a design point, not a call.
+A payment record's answer hung on a paper in the register (`sub_paper_acks.paper_id`). A payment whose record the office has not made has no row to hang on, and neither has a sheet whose work statement the office has not made. **Settled in step 1: the answer is kept on the thing itself.** Migration `20261117150000_sub_paper_ack_targets.sql` lets an answer name its sheet, its sending or its lone payment, and its person. Where the office has made the paper, the answer names that paper and the revision the sub saw as well. The other way, the function registering the page's own copy, was dropped: a work statement registered from the page would hold the place the office's first number goes, which is the page giving out a number (call 2).
 
 ## The plan
 
@@ -84,17 +84,29 @@ A payment record's answer hangs on a paper in the register (`sub_paper_acks.pape
 3. **Got it and Something is wrong** (M). The two presses, their one-question sheets, the record, and the office's chip and flag.
 4. **The walk** (S). On the test sub and its ZZ Test job only: a paper saved, a payment marked received, a note sent, in English and in Spanish, on a phone. Every row the walk makes is deleted and named.
 
+## Where it stands
+
+Step 1 is built on `claude/371-sub-portal-papers` and nothing is deployed. The page a sub opens today is unchanged until the deploy, and unchanged after it until step 2 reads the new block.
+
+- **The `papers` block.** `sub-portal` hands back every sheet that is the sub's alone, paid ones too, as the papers' kernel reads a sheet, with the letterhead, the answers already given and whether the set adds up. A set that does not add up hands back no figure. A failure in the block leaves the rest of the page as it is.
+- **The two answers.** A `POST` with `action: 'got_it'` or `action: 'something_wrong'` writes one row of `sub_paper_acks`. A second *Got it* on one payment changes nothing.
+- **A number is read, never given.** The block reads a sheet's live number and revision from `sub_papers` and says whether today's figures are the ones the office issued (`numbers[sheet].asIssued`). Step 2 prints a revision's number only on a paper whose figures are as issued. A sheet that changed since reads its number, the day of the office's copy and *Saved from your page*.
+- **Whose a sheet is.** `sheetParties`, `teamSheetRule`, `rosterSub` and `laborJobPersonMatch` moved under `supabase/functions/_shared/`. Their old paths re-export them, so no screen's import changed.
+- **Left out of step 1.** An earlier copy of a changed statement (the mock-up's *Copy of Oct 29*) is not handed over. A memo the office hid after that copy was made would still be in it, so it needs a rule of its own before a sub can open it.
+
+The order from here: merge, `supabase db push` for the one migration, then the deploy of `sub-portal` on a go that names it.
+
 ## The calls
 
-Each puts something in front of a sub, so each is Taunya's. The pick is what the mock-up draws.
+Each puts something in front of a sub, so each was Taunya's. **The owner answered all seven himself on 2026-11-17**, in the build session, each with the pick the mock-up draws.
 
-1. **A switch, or one more section on the same page?** Pick: the switch. The other way is the mock-up's section 7.
-2. **Does the sub's page ever give out a number?** Pick: no. It shows a number the office gave, and a statement a sub saves takes none.
-3. **How far back?** Pick: every sheet and every payment, paid ones under open ones. The other way is the last 12 months.
-4. **Got it and Something is wrong.** Pick: both. Got it is a quiet chip for the office. Something is wrong flags the sheet and tells the office.
-5. **Spanish.** Who reads the draft words before they go on the page? The PDFs stay in English for now.
-6. **Does the Statements view say *Still open* where the page says *Owed to you*?** Pick: yes, so the view and the papers use one word. *Today* keeps its words.
-7. **Who is told a paper is there?** Pick: nobody, by itself. The office sends a paper when it wants a sub to look (card #350's Send).
+1. **A switch, or one more section on the same page?** Pick: the switch. The other way is the mock-up's section 7. **Answered 2026-11-17: the switch at the top, Today and Statements.**
+2. **Does the sub's page ever give out a number?** Pick: no. It shows a number the office gave, and a statement a sub saves takes none. **Answered 2026-11-17: never.**
+3. **How far back?** Pick: every sheet and every payment, paid ones under open ones. The other way is the last 12 months. **Answered 2026-11-17: everything.**
+4. **Got it and Something is wrong.** Pick: both. Got it is a quiet chip for the office. Something is wrong flags the sheet and tells the office. **Answered 2026-11-17: both.**
+5. **Spanish.** Who reads the draft words before they go on the page? The PDFs stay in English for now. **Answered 2026-11-17: the owner reads them himself.** Step 2 hands him the draft strings, and none goes on the page before he has read it.
+6. **Does the Statements view say *Still open* where the page says *Owed to you*?** Pick: yes, so the view and the papers use one word. *Today* keeps its words. **Answered 2026-11-17: yes, *Still open*.**
+7. **Who is told a paper is there?** Pick: nobody, by itself. The office sends a paper when it wants a sub to look (card #350's Send). **Answered 2026-11-17: nobody, by itself.**
 
 Not a call here: **Confirm** stays off until counsel has written what a confirm means (card #350, sentence 2).
 

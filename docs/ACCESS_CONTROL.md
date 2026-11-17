@@ -1321,6 +1321,9 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The counters have no policy and no grant.
   A row is written only by `mint_sub_paper` and voided only by `void_sub_paper`, both definer functions that refuse a caller outside the office, a training account, a digital twin and an archived account.
   A sub reads their own papers through the portal's function, which holds the service key.
+  Since v2.7569 (punch list #371) that function also writes what a sub answers into `sub_paper_acks`, each row naming its person and its sheet, sending or payment (`docs/migrations/20261117150000_sub_paper_ack_targets.md`).
+  It reads `sub_papers` and never writes it, so a number is given only by the office.
+  A signed-in teammate or a preview of a sub's page cannot answer for the sub.
 - **`sub_payment_sendings` · `sub_credit_entries`** (punch list #347, `docs/migrations/20261114020000_sub_credit_and_sendings.md`, v2.7235): one money movement to a sub, and the credit kept past what their sheets needed.
   **Read / insert** by the office (`is_office_staff()`), nothing else by policy: a credit entry goes with its payment row (`ON DELETE CASCADE`), and the functions do the rest.
   `record_sub_sending` and `apply_sub_credit` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the policies decide;

@@ -78,11 +78,7 @@ export function paperSheetsFor(
     .sort((a, b) => (a.day || '9999').localeCompare(b.day || '9999') || a.id.localeCompare(b.id))
 }
 
-/** `Nov 13, 2026 at 2:40 pm` in the app's zone, for a paper with no number yet. */
-export function paperPreparedAt(now: Date, timeZone: string): string {
-  const day = new Intl.DateTimeFormat('en-US', { timeZone, month: 'short', day: 'numeric', year: 'numeric' }).format(now)
-  const time = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' }).format(now).toLowerCase().replace(/\s/g, ' ')
-  return `${day} at ${time}`
-}
+// `paperPreparedAt` lives on the edge since v2.7569 (punch list #371): the sub's page reads it too.
+export { paperPreparedAt } from '../../../supabase/functions/_shared/subPaperMarks'
 
 export type { PaperContext }

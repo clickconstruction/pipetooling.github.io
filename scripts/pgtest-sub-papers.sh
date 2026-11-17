@@ -11,7 +11,9 @@
 # change is revision 2 under the same number; a deleted sheet's number and a voided paper's number are never given
 # to another; a sending's record carries the sending's number and a payment from before sendings has none; a
 # statement of account is always a new paper; the office reads the register, an estimator reads nothing and nobody
-# types a row by hand. It raises on its first failed assertion and ends with "sub_papers PASSED". PGTEST_KEEP=1
+# types a row by hand. It raises on its first failed assertion and ends with "sub_papers PASSED". A second scenario
+# (30_ack_targets.sql, punch list #371) holds what a sub answers from their page: an answer needs no paper, a payment
+# is marked received once, and only the service key writes. PGTEST_KEEP=1
 # leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that
 # touches a migration. Never touches prod.
 set -euo pipefail
@@ -20,7 +22,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55812}"
 NAME="pgtest-sub-papers"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_sub_papers.sql)"
+WRITES="$(ls supabase/migrations/*_sub_papers.sql supabase/migrations/*_sub_paper_ack_targets.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -38,8 +40,13 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 pgtest_migrate
 # A second run must change nothing: IF NOT EXISTS tables and indexes, policies dropped and made again, two functions replaced.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+for w in $WRITES; do
+  psql_as postgres -f - < "$w" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $w"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/sub_papers/20_scenario.sql 2>&1 || true)"
 if ! grep -q "sub_papers PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/sub_papers/30_ack_targets.sql 2>&1 || true)"
+if ! grep -q "sub_paper_ack_targets PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "sub-papers bed ok"

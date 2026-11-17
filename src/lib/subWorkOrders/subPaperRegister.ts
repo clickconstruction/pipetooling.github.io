@@ -15,6 +15,10 @@
 import { buildStatementOfAccount, buildWorkStatement, type PaperContext, type PaperSheet, type StatementRange } from '../../../supabase/functions/_shared/subPapers'
 import type { SubPaper } from './subPaperSend'
 import type { PaperRegisterRow } from './subPapersInputs'
+import { subPaperFingerprint } from '../../../supabase/functions/_shared/subPaperMarks'
+
+// The fingerprint lives on the edge since v2.7569 (punch list #371): the sub's page reads it too.
+export { subPaperFingerprint }
 
 /** One row of `sub_papers`, as the window reads it. */
 export type SubPaperRow = { kind: string; number: string; revision: number; labor_job_id: string | null; period_to: string | null; issued_at: string; replaced_by: string | null; voided_at: string | null }
@@ -50,20 +54,6 @@ export function subPaperRegister(rows: readonly SubPaperRow[], dayOf: (iso: stri
     }
   }
   return { bySheet, lastStatement: last ? { number: last.number, endedOn: last.endedOn } : null }
-}
-
-/**
- * A short text of a paper's figures. The register holds it to tell a change from a reprint, so it leaves out what
- * moves by itself: the number, the revision, the day it was issued and the time it was prepared.
- */
-export function subPaperFingerprint(p: SubPaper): string {
-  if (p.kind === 'work_statement') {
-    return JSON.stringify(['ws', p.sub.name, p.job.label, p.lines.map((l) => [l.label, l.amount]), p.backcharges.map((b) => [b.day, b.reason, b.amount]), p.payments.map((x) => [x.day, x.how, x.amount]), p.agreed, p.comesTo, p.paidSoFar, p.stillOpen, p.over])
-  }
-  if (p.kind === 'payment_record') {
-    return JSON.stringify(['pr', p.sub.name, p.sentOn, p.how, p.amountSent, p.applied.map((a) => [a.sheetId, a.openBefore, a.thisPayment, a.openAfter]), p.creditKept, p.stillOpenAfter, p.note])
-  }
-  return JSON.stringify(['sa', p.sub.name, p.period, p.closingDay, p.rows.map((r) => [r.sheetId, r.comesTo, r.paid, r.open]), p.paidInPeriod, [p.adds.opening, p.adds.newWork, p.adds.backcharges, p.adds.payments, p.adds.closing], p.credit, p.stillOpen])
 }
 
 /** The arguments `mint_sub_paper` takes for one paper. The snapshot is the paper as drawn, before its number. */
