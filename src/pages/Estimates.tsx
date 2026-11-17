@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { signedRecordId } from '../lib/signedRecordId'
 import { canOpenBillingNotifications } from '../lib/jobs/stagesRoleGates'
 import { defaultEstimateTitle, shouldReplaceTitleOnCustomerChange } from '../lib/estimates/estimateTitle'
 import { pickBidRoomForChangeOrder } from '../lib/estimates/changeOrderRoomPick'
@@ -46,7 +45,6 @@ import { countMeaningfulEstimateLines, computeLedgerTotals, ledgerRowPasses, typ
 import { estimateOpenState, groupEventsByEstimateId, type EstimateOpenState } from '../lib/estimateOpenState'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { withEstimatePreviewMarker } from '../lib/estimateViewPreview'
-import EstimateDownloadPdfButton from '../components/estimates/EstimateDownloadPdfButton'
 import { estimatePaperModel } from '../lib/estimates/estimatePaper'
 import { estimatePaperPdfBlob, loadEstimateBrandLogo } from '../lib/estimates/estimatePaperPdf'
 import { estimateTermsPageHref } from '../lib/estimateTermsPageHref'
@@ -72,11 +70,8 @@ import CustomerAcceptanceRecordModal from '../components/estimates/CustomerAccep
 import EstimateAcceptedNotifySettingsModal from '../components/estimates/EstimateAcceptedNotifySettingsModal'
 import { EmptyState } from '../components/EmptyState'
 import { estimateLaneEmptyWords, estimatesLedgerEmptyWords, estimatesListEmptyWords, estimatesSearchEmptyWords } from '../lib/estimates/estimatesEmptyWords'
-import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import {
-  acceptanceCxOmitKeys,
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
-  ESTIMATE_EXPERIENCE_FIELD_MAX_LEN,
   type EstimateCustomerExperienceResolved,
   type EstimateExperienceOverrideKey,
   mergeEstimateExperienceStrings,
@@ -96,7 +91,6 @@ import { CustomerSnapshotModal } from '../components/customers/CustomerSnapshotM
 import { AcceptHeaderBrandPicker } from '../components/estimates/AcceptHeaderBrandPicker'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
 import { EstimateLineItemsTable } from '../components/estimates/EstimateCustomerDocument'
-import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
 import EstimateOfferedOptions from '../components/estimates/EstimateOfferedOptions'
 import { postSendEstimate, sendEstimateAnswerFrom } from '../lib/estimates/sendEstimateIo'
 import { estimateRecipientEmail, estimateSendPlan } from '../lib/estimates/estimateSendPlan'
@@ -105,6 +99,7 @@ import { useEstimateSentActions } from '../hooks/useEstimateSentActions'
 import EstimateSentView, { ESTIMATE_JOB_SECTION_HASH } from '../components/estimates/EstimateSentView'
 import EstimateSupportingDocumentFieldset from '../components/estimates/EstimateSupportingDocumentFieldset'
 import EstimateDeliverySection from '../components/estimates/EstimateDeliverySection'
+import EstimateCustomerExperienceSection from '../components/estimates/EstimateCustomerExperienceSection'
 import { customerFieldsFromEstimate, defaultAcceptNotifyIds, estimateFormFromRow, estimateInitialTitle } from '../lib/estimates/estimateDetailHydration'
 import {
   addEstimateOptionToEditor,
@@ -182,74 +177,6 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'superintendent',
 ])
 
-
-
-const CX_FIELD_LABELS: Record<EstimateExperienceOverrideKey, string> = {
-  email_subject_template: 'Email subject template',
-  email_body_template: 'Email body template',
-  accept_section_title: 'Accept section title',
-  accept_instructions: 'Accept instructions',
-  accept_name_field_label: 'Name field label',
-  accept_checkbox_label: 'Agreement checkbox label',
-  accept_submit_label: 'Submit button label',
-  accept_submitting_label: 'Submitting button label',
-  thank_you_title: 'Thank you heading',
-  thank_you_body: 'Thank you body',
-  doc_title_fallback: 'Document title fallback (empty estimate title)',
-  doc_valid_through_prefix: '“Expires on” line prefix (before date)',
-  doc_line_items_heading: 'Line items heading',
-  doc_terms_heading: 'Terms heading',
-  doc_total_label: 'Total label (before amount)',
-  accept_page_footer: 'Acceptance page footer (below sign-off)',
-}
-
-type CxOverrideSectionConfig = {
-  title: string
-  description?: string
-  keys: EstimateExperienceOverrideKey[]
-}
-
-type CxDraftSectionFieldsOptions = {
-  omitKeys?: ReadonlySet<EstimateExperienceOverrideKey>
-}
-
-const CX_OVERRIDE_SECTIONS: [CxOverrideSectionConfig, CxOverrideSectionConfig, CxOverrideSectionConfig] = [
-  {
-    title: 'Email',
-    description:
-      'The body template may include {{title}} and {{estimate_number}}. Its first paragraph opens the email; the rest sign it off below the button (a paragraph holding {{accept_url}} is replaced by the button). The subject is built for you: "Estimate #N — title — total · company". Leave blank to use organization defaults (dev: Settings → Estimate customer experience defaults).',
-    keys: ['email_body_template'],
-  },
-  {
-    title: 'Acceptance page',
-    description:
-      'Quote document labels (title; line items, total, terms; accept form below)—same order customers see on the public page. The expiry date line (“Expires on” + date) appears only when Expires on is set on this estimate; the prefix field below appears only when Expires on is filled in above. The document title fallback applies only when the estimate title is empty; the fallback field below appears only when the estimate title above is empty.',
-    keys: [
-      'doc_title_fallback',
-      'doc_valid_through_prefix',
-      'doc_line_items_heading',
-      'doc_total_label',
-      'doc_terms_heading',
-      'accept_section_title',
-      'accept_instructions',
-      'accept_name_field_label',
-      'accept_checkbox_label',
-      'accept_submit_label',
-      'accept_submitting_label',
-      'accept_page_footer',
-    ],
-  },
-  {
-    title: 'Thank you',
-    description: 'Shown after submit or if the customer opens an already-used link.',
-    keys: ['thank_you_title', 'thank_you_body'],
-  },
-]
-
-function cxOverrideFieldRows(k: EstimateExperienceOverrideKey): number {
-  if (k === 'email_body_template' || k === 'thank_you_body' || k === 'accept_page_footer') return 7
-  return 2
-}
 
 
 /** Primary blue — detail Job section “Create job from estimate”. */
@@ -2010,138 +1937,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   function buildCustomerExperienceOverridesPayload(): Record<string, string> | null {
     const parsed = parseEstimateExperienceOverrides(cxOverrideFields)
     return Object.keys(parsed).length > 0 ? parsed : null
-  }
-
-  function renderCxDraftSectionFields(section: CxOverrideSectionConfig, options?: CxDraftSectionFieldsOptions) {
-    const keys =
-      options?.omitKeys?.size != null && options.omitKeys.size > 0
-        ? section.keys.filter((k) => !options.omitKeys!.has(k))
-        : section.keys
-    return (
-      <div
-        style={{
-          marginTop: '1rem',
-          padding: '0.75rem',
-          background: 'var(--bg-page)',
-          borderRadius: 8,
-          border: '1px solid var(--border)',
-        }}
-      >
-        <p style={{ fontSize: '0.85rem', fontWeight: 500, margin: '0 0 0.35rem', userSelect: 'none' }}>
-          Customize customer copy (optional)
-        </p>
-        {keys.map((k) =>
-          k === 'accept_page_footer' ? (
-            <div key={k} style={{ marginTop: '0.65rem' }}>
-              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                <input
-                  type="checkbox"
-                  checked={
-                    'accept_page_footer' in cxOverrideFields && cxOverrideFields.accept_page_footer === ''
-                  }
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setCxOverrideFields((prev) => ({ ...prev, accept_page_footer: '' }))
-                    } else {
-                      setCxOverrideFields((prev) => {
-                        if (!('accept_page_footer' in prev)) return prev
-                        const { accept_page_footer: _removed, ...rest } = prev
-                        return rest
-                      })
-                    }
-                  }}
-                />
-                <span style={{ fontSize: '0.85rem' }}>
-                  Hide company footer on this quote (acceptance page only)
-                </span>
-              </label>
-              <label style={{ display: 'block', marginTop: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{CX_FIELD_LABELS[k]}</span>
-                <textarea
-                  value={
-                    'accept_page_footer' in cxOverrideFields && cxOverrideFields.accept_page_footer === ''
-                      ? ''
-                      : (cxOverrideFields[k] ?? cxTemplateDefaults[k])
-                  }
-                  disabled={
-                    'accept_page_footer' in cxOverrideFields && cxOverrideFields.accept_page_footer === ''
-                  }
-                  onChange={(e) => {
-                    const next = e.target.value.slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN)
-                    const def = cxTemplateDefaults[k]
-                    setCxOverrideFields((prev) => {
-                      if (next.trim() === '' || next === def) {
-                        if (!(k in prev)) return prev
-                        const { [k]: _removed, ...rest } = prev
-                        return rest
-                      }
-                      return { ...prev, [k]: next }
-                    })
-                  }}
-                  rows={cxOverrideFieldRows(k)}
-                  style={{
-                    ...estInputBase,
-                    display: 'block',
-                    width: '100%',
-                    marginTop: '0.25rem',
-                    padding: '0.5rem',
-                    fontFamily: 'inherit',
-                    boxSizing: 'border-box',
-                    ...(('accept_page_footer' in cxOverrideFields &&
-                      cxOverrideFields.accept_page_footer === '') ?
-                      { opacity: 0.7 }
-                    : {}),
-                  }}
-                />
-              </label>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
-                Clear the textarea to use organization default. Check “Hide…” to omit the footer for this quote only
-                (saved as an empty override).
-              </p>
-            </div>
-          ) : (
-            <label key={k} style={{ display: 'block', marginTop: '0.65rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{CX_FIELD_LABELS[k]}</span>
-              <textarea
-                value={cxOverrideFields[k] ?? cxTemplateDefaults[k]}
-                onChange={(e) => {
-                  const next = e.target.value.slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN)
-                  const def = cxTemplateDefaults[k]
-                  setCxOverrideFields((prev) => {
-                    if (next.trim() === '' || next === def) {
-                      if (!(k in prev)) return prev
-                      const { [k]: _removed, ...rest } = prev
-                      return rest
-                    }
-                    return { ...prev, [k]: next }
-                  })
-                }}
-                rows={cxOverrideFieldRows(k)}
-                style={{
-                  ...estInputBase,
-                  display: 'block',
-                  width: '100%',
-                  marginTop: '0.25rem',
-                  padding: '0.5rem',
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </label>
-          ),
-        )}
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem', marginBottom: 0 }}>
-          Blank fields show organization defaults (built-in if unset in Settings). Only changes you make are saved as
-          overrides.
-        </p>
-        {section.description ? (
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>{section.description}</p>
-        ) : null}
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem', marginBottom: 0 }}>
-          Save the draft (Save draft or Send) to persist overrides.
-        </p>
-      </div>
-    )
   }
 
   function handleSelectCustomer(c: CustomerRow) {
@@ -3984,260 +3779,38 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       )}
 
       <EstimateDraftCustomerGate active={draftNeedsCustomer} onBlockedInteraction={requestCustomerFirst}>
-        <details
-          style={{
-            marginTop: '2rem',
-            paddingTop: '1rem',
-            borderTop: '1px solid var(--border)',
-          }}
-        >
-          <summary style={{ cursor: 'pointer', fontWeight: 600, userSelect: 'none' }}>Customer experience</summary>
-        <div style={{ marginTop: '1rem' }}>
-          {row.status !== 'sent' ? (
-            <EstimateCustomerAcceptLinkButtons
-              customerAcceptUrl={customerAcceptUrl}
-              isDraft={isDraft}
-              resendAvailable={sentActions.resendVerdict.ok}
-              onCopy={copyCustomerAcceptUrl}
-              onOpen={openCustomerAcceptUrl}
-              style={{ marginBottom: '1rem' }}
-            />
-          ) : null}
-          {row.status === 'customer_accepted' ? (
-            <EstimateDownloadPdfButton build={buildEstimatePdf} filing={estimatePdfFiling} disabled={loading} style={{ marginBottom: '1rem' }} />
-          ) : null}
-          {!isDraft && row.customer_experience_sent ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Shown below is the copy customers see — saved when this estimate was sent.
-            </p>
-          ) : null}
-          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            <button
-              type="button"
-              onClick={() => setCustomerPreviewTab('email')}
-              style={{
-                padding: '0.35rem 0.75rem',
-                borderRadius: 4,
-                border: '1px solid var(--border-strong)',
-                background: customerPreviewTab === 'email' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-                color: 'var(--text-700)',
-                fontWeight: customerPreviewTab === 'email' ? 600 : 500,
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-              }}
-            >
-              Email
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerPreviewTab('page')}
-              style={{
-                padding: '0.35rem 0.75rem',
-                borderRadius: 4,
-                border: '1px solid var(--border-strong)',
-                background: customerPreviewTab === 'page' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-                color: 'var(--text-700)',
-                fontWeight: customerPreviewTab === 'page' ? 600 : 500,
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-              }}
-            >
-              Acceptance page
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerPreviewTab('thankyou')}
-              style={{
-                padding: '0.35rem 0.75rem',
-                borderRadius: 4,
-                border: '1px solid var(--border-strong)',
-                background: customerPreviewTab === 'thankyou' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-                color: 'var(--text-700)',
-                fontWeight: customerPreviewTab === 'thankyou' ? 600 : 500,
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-              }}
-            >
-              Thank you
-            </button>
-          </div>
-
-          {customerPreviewTab === 'email' && customerEmailPreview && (
-            <>
-              <div
-                style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: '1rem',
-                  background: 'var(--bg-page)',
-                  fontSize: '0.9rem',
-                }}
-              >
-                <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
-                  <strong>From:</strong> {estimateEmailFrom(acceptanceDocHeaderBrand)}
-                  {customerEmailPreview.replyTo ? <> · <strong>Reply-To:</strong> {customerEmailPreview.replyTo}</> : null}
-                </p>
-                <p style={{ margin: '0 0 0.5rem' }}>
-                  <strong>To:</strong> {previewEmailTo}
-                </p>
-                <p style={{ margin: '0 0 0.5rem' }}>
-                  <strong>Subject:</strong> {customerEmailPreview.subject}
-                </p>
-                <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>What the customer sees</p>
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Built by the same code that sends it. The logo appears when an acceptance page logo is selected.
-                </p>
-                <iframe
-                  title="Estimate email preview"
-                  sandbox=""
-                  srcDoc={customerEmailPreview.html}
-                  style={{ width: '100%', height: 640, border: '1px solid var(--border)', borderRadius: 6 }}
-                />
-                <p style={{ margin: '0.75rem 0 0.35rem', fontWeight: 600 }}>Plain text</p>
-                <pre
-                  style={{
-                    margin: 0,
-                    whiteSpace: 'pre-wrap',
-                    fontFamily: 'inherit',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0.75rem',
-                  }}
-                >
-                  {customerEmailPreview.text}
-                </pre>
-              </div>
-              {isDraft ? renderCxDraftSectionFields(CX_OVERRIDE_SECTIONS[0]) : null}
-            </>
-          )}
-
-          {customerPreviewTab === 'page' && staffResolvedExperience && (
-            <>
-              <div
-                style={{
-                  fontFamily: 'system-ui, sans-serif',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: '1rem',
-                  background: 'var(--surface)',
-                  maxWidth: 'min(640px, 100%)',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <EstimateAcceptBody
-                  variant="staffPreview"
-                  previewBanner={
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '0.75rem',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span>Preview — customers use a secure link to accept.</span>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => openStaffAcceptCustomerPreview()}
-                          title="Opens authenticated staff preview in a new tab (same layout as the customer page). Does not submit acceptance."
-                          style={estSecondaryButton()}
-                        >
-                          Preview as customer
-                        </button>
-                      </div>
-                    </div>
-                  }
-                  estimate={{
-                    title: isDraft ? title.trim() || '' : row.title || '',
-                    for_line: acceptancePreviewForLine,
-                    valid_until: isDraft
-                      ? validUntil.trim()
-                        ? validUntil.trim()
-                        : null
-                      : row.valid_until ?? null,
-                    line_items_snapshot: isDraft ? lines : row.line_items_snapshot,
-                    terms_snapshot: isDraft ? terms : row.terms_snapshot ?? '',
-                    total_cents: isDraft ? totalCents : row.total_cents,
-                  }}
-                  options={isDraft ? syncedEstimateOptions : normalizeEstimateOptionsFromJson(row.options_snapshot)}
-                  selectedOptionKeys={previewSelectedOptionKeys}
-                  onToggleOption={(key) =>
-                    setPreviewSelectedOptionKeys((prev) =>
-                      toggleEstimateOptionSelection(isDraft ? syncedEstimateOptions : normalizeEstimateOptionsFromJson(row.options_snapshot), prev, key),
-                    )
-                  }
-                  experience={staffResolvedExperience}
-                  printedName={
-                    !isDraft && row.status === 'customer_accepted'
-                      ? row.acceptor_printed_name?.trim() ?? ''
-                      : ''
-                  }
-                  agreed={false}
-                  onPrintedNameChange={() => {}}
-                  onAgreedChange={() => {}}
-                  formError={null}
-                  submitting={false}
-                  onSubmit={() => undefined}
-                  headerBrand={acceptanceDocHeaderBrand}
-                  customerAttachment={customerAttachmentPreview}
-                  staffAcceptedRecord={
-                    !isDraft && row.status === 'customer_accepted'
-                      ? {
-                          printedName: row.acceptor_printed_name?.trim() ?? '',
-                          consentedAtIso: row.acceptor_consented_at,
-                          drawSignatureUrl: row.acceptor_signature_storage_path?.trim()
-                            ? acceptorSignatureSignedUrl
-                            : null,
-                          drawSignatureLoading:
-                            !!(row.acceptor_signature_storage_path?.trim()) &&
-                            !acceptorSignatureSignedUrl,
-                          ip: row.acceptor_ip,
-                          userAgent: row.acceptor_user_agent,
-                          recordId: signedRecordId('E', row.estimate_number, row.id),
-                          estimateRowId: row.id,
-                        }
-                      : null
-                  }
-                />
-              </div>
-              {isDraft
-                ? renderCxDraftSectionFields(CX_OVERRIDE_SECTIONS[1], {
-                    omitKeys: acceptanceCxOmitKeys(validUntil, title),
-                  })
-                : null}
-            </>
-          )}
-
-          {customerPreviewTab === 'thankyou' && staffResolvedExperience && (
-            <>
-              <div
-                style={{
-                  fontFamily: 'system-ui, sans-serif',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: 0,
-                  background: 'var(--surface)',
-                  maxWidth: 'min(640px, 100%)',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  overflow: 'hidden',
-                }}
-              >
-                <EstimateCustomerThankYou
-                  previewBanner="Preview — customers see this after submitting acceptance, or if they open the link after it was already used."
-                  title={staffResolvedExperience.thankYouTitle}
-                  body={staffResolvedExperience.thankYouBody}
-                />
-              </div>
-              {isDraft ? renderCxDraftSectionFields(CX_OVERRIDE_SECTIONS[2]) : null}
-            </>
-          )}
-        </div>
-        </details>
+        <EstimateCustomerExperienceSection
+          row={row}
+          isDraft={isDraft}
+          loading={loading}
+          customerAcceptUrl={customerAcceptUrl}
+          resendAvailable={sentActions.resendVerdict.ok}
+          copyCustomerAcceptUrl={copyCustomerAcceptUrl}
+          openCustomerAcceptUrl={openCustomerAcceptUrl}
+          buildEstimatePdf={buildEstimatePdf}
+          estimatePdfFiling={estimatePdfFiling}
+          customerPreviewTab={customerPreviewTab}
+          setCustomerPreviewTab={setCustomerPreviewTab}
+          customerEmailPreview={customerEmailPreview}
+          previewEmailTo={previewEmailTo}
+          staffResolvedExperience={staffResolvedExperience}
+          openStaffAcceptCustomerPreview={openStaffAcceptCustomerPreview}
+          title={title}
+          validUntil={validUntil}
+          lines={lines}
+          terms={terms}
+          totalCents={totalCents}
+          acceptancePreviewForLine={acceptancePreviewForLine}
+          syncedEstimateOptions={syncedEstimateOptions}
+          previewSelectedOptionKeys={previewSelectedOptionKeys}
+          setPreviewSelectedOptionKeys={setPreviewSelectedOptionKeys}
+          acceptanceDocHeaderBrand={acceptanceDocHeaderBrand}
+          customerAttachmentPreview={customerAttachmentPreview}
+          acceptorSignatureSignedUrl={acceptorSignatureSignedUrl}
+          cxOverrideFields={cxOverrideFields}
+          setCxOverrideFields={setCxOverrideFields}
+          cxTemplateDefaults={cxTemplateDefaults}
+        />
       </EstimateDraftCustomerGate>
 
       {createCustomerOpen && (

@@ -272,6 +272,49 @@ describe('Estimates — a draft', () => {
   })
 })
 
+describe('Estimates — Customer experience', () => {
+  it('previews the email, the acceptance page and the thank-you on a draft', async () => {
+    renderAt('/estimates/101', [estimate()])
+    await screen.findByRole('button', { name: 'Save draft' })
+    await settle()
+    // The email as the send builds it, to the customer's own address.
+    expect(await screen.findByText('What the customer sees')).toBeTruthy()
+    expect(screen.getByTitle('Estimate email preview')).toBeTruthy()
+    expect(screen.getAllByText('owner@customer.test', { exact: false }).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Acceptance page' }))
+    expect(await screen.findByRole('button', { name: 'Preview as customer' })).toBeTruthy()
+    expect(screen.queryByText('What the customer sees')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Thank you' }))
+    expect(await screen.findByLabelText('Thank you heading')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Preview as customer' })).toBeNull()
+  })
+
+  it('saves a changed line of customer copy with the draft', async () => {
+    renderAt('/estimates/101', [estimate()])
+    const save = await screen.findByRole('button', { name: 'Save draft' })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Thank you' }))
+    fireEvent.change(await screen.findByLabelText('Thank you heading'), { target: { value: 'ZZ thank you, neighbor' } })
+    fireEvent.click(save)
+    await waitFor(() => expect(world.writes.some((w) => w.table === 'estimates' && w.method === 'update')).toBe(true))
+    const write = world.writes.find((w) => w.table === 'estimates' && w.method === 'update')!
+    expect((write.payload as { customer_experience_overrides: unknown }).customer_experience_overrides).toEqual({ thank_you_title: 'ZZ thank you, neighbor' })
+    expect(write.filters).toEqual([
+      ['id', 'e-1'],
+      ['status', 'draft'],
+    ])
+  })
+
+  it('shows a sent estimate the copy as it went, with nothing to edit', async () => {
+    renderAt('/estimates/102', [sentRow()])
+    await screen.findByTestId('estimate-resend-link-panel')
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Thank you' }))
+    expect(await screen.findByText(/customers see this after submitting acceptance/)).toBeTruthy()
+    expect(screen.queryByLabelText('Thank you heading')).toBeNull()
+  })
+})
+
 describe('Estimates — a sent estimate', () => {
   it('shows the sent side: who is told, the paper, the link’s presses', async () => {
     renderAt('/estimates/102', [sentRow()])
