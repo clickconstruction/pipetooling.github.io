@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -19,6 +20,10 @@ import { fetchBidVersionNames } from '../../lib/bids/bidVersionNames'
 import { partMovedOnNotes, PRICED_ON_WORDS, pricedOnItem, pricedOnLine, type BidJobPlanState } from '../../lib/bids/bidPricedOn'
 import { supabaseBidPricedOnIo, type BidPricedOnIo } from '../../lib/bids/bidPricedOnIo'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { FROM_MAIL_CHIP, THE_MAIL_DOOR, THE_MAIL_DOOR_TIP, type SetMail } from '../../lib/bids/bidMailSet'
+import { supabaseBidMailSetIo, type BidMailSetIo } from '../../lib/bids/bidMailSetIo'
+import type { ContactKind } from '../../lib/contacts/kernel'
+import { threadHrefByKind } from '../../lib/messages/customerThread'
 
 /**
  * Edit Bid → Plans → Plan sets (v2.6169): one row per set of plans on the bid — its name, date, memo
@@ -45,6 +50,8 @@ export type BidPlanSetsFieldProps = {
    * The bid's Files window (punch list #306, PR 7) has no such field, so the words name the robot's set by its chip.
    */
   host?: 'form' | 'window'
+  /** The read behind a set's *From a mail* chip (punch list #368); a test hands in a fake. */
+  mailIo?: Pick<BidMailSetIo, 'mailOfSets'>
 }
 
 type Draft = { name: string; planDate: string; memo: string; link: string }
@@ -63,7 +70,7 @@ async function probeLink(link: string): Promise<ProbeAnswer | null> {
   }
 }
 
-export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnSetId = null, pricedOnIo = supabaseBidPricedOnIo, host = 'form' }: BidPlanSetsFieldProps) {
+export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnSetId = null, pricedOnIo = supabaseBidPricedOnIo, host = 'form', mailIo = supabaseBidMailSetIo }: BidPlanSetsFieldProps) {
   const inForm = host === 'form'
   const { user } = useAuth()
   const jobFormModal = useJobFormModal()
@@ -71,6 +78,8 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
   const [pricedOn, setPricedOn] = useState<string | null>(pricedOnSetId)
   const [jobStates, setJobStates] = useState<BidJobPlanState[]>([])
   const [versionNames, setVersionNames] = useState<ReadonlyMap<string, string>>(new Map())
+  // The mail a set's files came with (punch list #368): the chip and the door back to it. A courtesy read.
+  const [fromMail, setFromMail] = useState<ReadonlyMap<string, SetMail>>(new Map())
   const [loaded, setLoaded] = useState(false)
   const [gen, setGen] = useState(0)
   const [adding, setAdding] = useState(false)
@@ -89,6 +98,8 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
         if (cancelled) return
         setRows(((data ?? []) as BidPlanSetRow[]).sort(comparePlanSets))
         if ((data ?? []).some((r) => (r as BidPlanSetRow).bid_version_id)) setVersionNames(await fetchBidVersionNames(bidId))
+        const mails = await mailIo.mailOfSets(((data ?? []) as BidPlanSetRow[]).map((r) => r.id))
+        if (!cancelled) setFromMail(mails)
         // What the bid's jobs build from today, for the note when a part moved on; fail-soft, a courtesy.
         const states = await pricedOnIo.loadJobsPlanState(bidId)
         if (!cancelled) setJobStates(states)
@@ -101,7 +112,7 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
     return () => {
       cancelled = true
     }
-  }, [bidId, gen, pricedOnIo])
+  }, [bidId, gen, pricedOnIo, mailIo])
 
   /** Pin the set the price stands on (punch list #239, PR 4); a job opened from the bid starts building from it. */
   const pin = useCallback(
@@ -257,6 +268,11 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
                         {versionChipWords(versionNames.get(row.bid_version_id))}
                       </span>
                     ) : null}
+                    {fromMail.has(row.id) ? (
+                      <span data-testid="bid-plan-set-from-mail" title="These files came by mail and were kept on the bid from that mail" style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', color: 'var(--text-blue-800)' }}>
+                        {FROM_MAIL_CHIP}
+                      </span>
+                    ) : null}
                     {robotReads ? (
                       <span data-testid="bid-plan-set-robot" style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', color: 'var(--text-blue-800)' }}>
                         Robot reads this
@@ -306,6 +322,11 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
                   <button type="button" onClick={() => openInExternalBrowser(row.link)} title={row.link} style={btn}>
                     Open ↗
                   </button>
+                  {fromMail.has(row.id) ? (
+                    <Link to={threadHrefByKind((fromMail.get(row.id)!.contactKind ?? 'customer') as ContactKind, fromMail.get(row.id)!.contactId, fromMail.get(row.id)!.messageId)} title={THE_MAIL_DOOR_TIP} data-testid="bid-plan-set-mail-door" style={{ ...btn, textDecoration: 'none' }}>
+                      {THE_MAIL_DOOR}
+                    </Link>
+                  ) : null}
                   <button type="button" disabled={rowBusy} onClick={() => void check(row)} title="Read the file name and size behind the link again" style={btn}>
                     {rowBusy && pendingRemove !== row.id ? 'Reading…' : 'Check the link'}
                   </button>
