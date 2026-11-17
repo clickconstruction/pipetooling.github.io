@@ -101,5 +101,6 @@ It loads once the card scrolls into view. It remembers the numbers for an hour. 
 ## Good to know
 
 - Row taps behave the same everywhere. Jobs open **Job Detail**. Supply bills open the **bill view** with the invoice facts and attachment.
+- A supply bill paid in part counts what is left on it. A line under the row says what was paid and what is left.
 - The aging chip counts from the date shown on the row. That is the billed date for receivables, the due date for payables and the last work date for unbilled jobs.
 - Collections money is listed in its own section. It stays **out of** the Accounts Receivable headline total. The estimated upcoming payroll is **in** the Accounts Payable total, marked as an estimate.

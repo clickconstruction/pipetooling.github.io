@@ -2,8 +2,8 @@
 name: "Dashboard and Bridge: a part-paid supply house bill counts what is left"
 number: 374
 mockup: not required — the same cards and lines with the right amounts; no screen changes shape
-group: ready
-status: written 2026-11-17 from the supply house payments build session · nothing built
+group: close
+status: built 2026-11-17 in one PR (v2.7562) · left: the redeploys check:edge-drift names after the merge, a read-only look on prod, and the owner's call on money kept on account
 summary: >
   Since v2.7459 a supply house bill can be paid in part. Materials counts such a bill for what is
   left on it, but the Dashboard's money cards and the Bridge still add its whole amount. The
@@ -11,11 +11,11 @@ summary: >
   forecast and its net position history all overstate what is owed once a bill is paid in part.
   One small PR reads the open balance in each, plus the payment lines by their day for the money
   that went out.
-next: "One PR: buildApBucket and the Bridge's due bills count openAmount, the Bridge's paid-by-day reads the payment lines by their payment's day; then regenerate the kernel copy and redeploy what check:edge-drift names."
+next: "After the merge: redeploy what check:edge-drift names (bridge-weekly-sheet and team-scores carry the figures), then compare the Dashboard card's Supply figure with Accounts payable on Materials at the same minute. Then the owner's call on money kept on account, and this card retires."
 size: S
 blocker: None.
-ver: v2.7459
-opinion: build — one small PR; the numbers are still right today, since no bill on prod is paid in part yet, and they drift from the first one Taunya pays in part.
+ver: v2.7562
+opinion: built — the numbers were still right on the day it shipped, since no bill on prod was paid in part yet.
 ---
 
 # Dashboard and Bridge: a part-paid supply house bill counts what is left
@@ -38,6 +38,17 @@ Four readers still take the whole amount. Take a made-up $812.40 bill with $300.
 4. **The Bridge's net position history.** `supplyPaidByDay` reads `amount, paid_at` from the bills. A part payment shows nowhere until the bill is paid in full. Then the whole bill lands on the day the last part was paid. `truthCheck.ts` reads the same map. Money kept on account never shows at all, since it sits on no bill.
 
 Left as it is, on purpose: the Bridge's materials read (bills by invoice date, through their job allocations) and `supplyDatedByDay`. A bill's cost and the debt it adds are its whole amount on its date, however it is paid later. Interest bills carry no job allocation since v2.7467, so they stay out of the materials read.
+
+## Built, 2026-11-17 (v2.7562)
+
+One PR, as planned below. Two things the plan did not have:
+
+- **A credit memo marked used by hand has no payment line.** Nothing was sent, and the backfill made a payment "from before" only for bills above zero. Read from the lines alone it would have left the net position's history, where the old read counted it on its paid day. So the loader also reads the paid bills below zero, and `supplyPaidByDayFromLines` adds what each one's lines do not cover on the day it was marked.
+- **A fifth reader.** The bills behind the Bridge's *Ask the supply houses for more days* summed each bill's whole amount in `Bridge.tsx`. They sum what is left now.
+
+The second open call is answered: the payment lines are read under `is_office_staff()`, the Bridge is the owner's and a dev's, both pass it, and the edge reads as the service role. So no fallback was built.
+
+**Left:** the redeploys `check:edge-drift` names after the merge, the read-only look on prod under How to verify, and the first open call below, which is the owner's.
 
 ## The plan: one PR (S)
 
