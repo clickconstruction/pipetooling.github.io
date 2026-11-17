@@ -64,10 +64,12 @@ import {
   addAllocation,
   allocationTotal,
   dueDateHint,
+  groupAllocationsByInvoice,
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
   poLedgerCodes,
+  poLedgerEntriesFromRows,
   poLedgerEntryCard,
   poLedgerEntryJobMismatch,
   poLedgerJobMatches,
@@ -78,8 +80,8 @@ import {
   documentKindFromRow,
   documentWords,
   typedAmountFromStored,
+  type PoGeneratorLedgerRow,
   type PoLedgerEntriesByCode,
-  type PoLedgerEntry,
   type SupplyDocumentKind,
 } from '../lib/materials/supplyHouseInvoiceForm'
 import { ariaSortFor, nextSupplyHouseSummarySort, parseSupplyHouseSummarySort, serializeSupplyHouseSummarySort, sortSupplyHouseSummary, type SupplyHouseSummarySort, type SupplyHouseSummarySortKey } from '../lib/materials/supplyHouseSummarySort'
@@ -106,7 +108,7 @@ import { supabaseSupplyBankIo } from '../lib/materials/payments/supplyPaymentBan
 import { bankCandidatesFor, supplyBankLineWords } from '../lib/materials/payments/supplyPaymentBank'
 import type { SupplyPayChip } from '../lib/materials/payments/supplyPayment'
 import { SupplyHouseBillsCard } from './materials/SupplyHouseBillsCard'
-import { houseOnAccountTotal, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds } from '../lib/materials/supplyHouseBillRows'
+import { houseOnAccountTotal, jobsLedgerNames, jobsLedgerNamesWithAddress, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds, type JobsLedgerNameRow } from '../lib/materials/supplyHouseBillRows'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
 import { billPaidBy, lastMethodUsed } from '../lib/materials/payments/supplyPayment'
@@ -596,13 +598,6 @@ export function SupplyHousesTab({
     setFirstServiceTypeId(first?.id ?? null)
   }
 
-  function formatOrdinal(n: number): string {
-    const s = ['th', 'st', 'nd', 'rd'] as const
-    const v = n % 100
-    const ord = v >= 11 && v <= 13 ? 'th' : (s[v % 10] ?? 'th')
-    return n + ord
-  }
-
   async function loadSupplyHouseSummary() {
     setSupplyHouseSummaryLoading(true)
     let housesList: { id: string; name: string; monthly_payment_day: number | null }[]
@@ -660,15 +655,10 @@ export function SupplyHousesTab({
     ])
     const invoices = (invRes.data as SupplyHouseInvoice[]) ?? []
     const allocations = (allocRes.data as { invoice_id: string; job_id: string; pct: number }[]) ?? []
-    const byInvoice = new Map<string, InvoiceJobAllocation[]>()
-    for (const a of allocations) {
-      const list = byInvoice.get(a.invoice_id) ?? []
-      list.push({ job_id: a.job_id, pct: Number(a.pct) })
-      byInvoice.set(a.invoice_id, list)
-    }
+    const byInvoice = groupAllocationsByInvoice(allocations)
     const invoicesWithAllocations: SupplyHouseInvoiceWithAllocations[] = invoices.map((inv) => ({
       ...inv,
-      job_allocations: byInvoice.get(inv.id) ?? [],
+      job_allocations: byInvoice[inv.id] ?? [],
     }))
     setSupplyHouseInvoices(invoicesWithAllocations)
     void loadPapersFor(invoicesWithAllocations)
@@ -676,11 +666,7 @@ export function SupplyHousesTab({
     const jobIds = [...new Set(allocations.map((a) => a.job_id))]
     if (jobIds.length > 0) {
       supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
-        const map: Record<string, { hcp_number: string; click_number?: string; job_name: string }> = {}
-        for (const r of (data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string }[]) {
-          map[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '' }
-        }
-        setSupplyHouseJobDetailsMap(map)
+        setSupplyHouseJobDetailsMap(jobsLedgerNames((data ?? []) as JobsLedgerNameRow[]))
       })
     } else {
       setSupplyHouseJobDetailsMap({})
@@ -707,31 +693,7 @@ export function SupplyHousesTab({
     if (genRes.error) {
       setPoGeneratorEntriesForSelectedHouse(null)
     } else {
-      type GenRow = {
-        po_code: number
-        notes: string | null
-        created_at: string | null
-        job_ledger_id: string | null
-        jobs_ledger: { hcp_number: string | null; click_number: string | null; job_name: string | null } | null
-        for_user: { name: string | null; email: string | null } | null
-        created_by_user: { name: string | null; email: string | null } | null
-      }
-      const genRows = (genRes.data ?? []) as unknown as GenRow[]
-      const byCode = new Map<number, PoLedgerEntry>()
-      for (const r of genRows) {
-        const code = Number(r.po_code)
-        const jl = r.jobs_ledger
-        byCode.set(code, {
-          code,
-          jobLabel: `${DEFAULT_JOB_LEDGER_PREFIX}${effectiveJobLedgerNumber(jl?.hcp_number, jl?.click_number) || '—'} · ${jl?.job_name?.trim() || '—'}`,
-          jobLedgerId: r.job_ledger_id ?? null,
-          personName: r.for_user?.name?.trim() || r.for_user?.email?.trim() || '—',
-          createdAt: r.created_at,
-          createdBy: r.created_by_user?.name?.trim() || r.created_by_user?.email?.trim() || null,
-          statedNeed: r.notes,
-        })
-      }
-      setPoGeneratorEntriesForSelectedHouse(byCode)
+      setPoGeneratorEntriesForSelectedHouse(poLedgerEntriesFromRows((genRes.data ?? []) as unknown as PoGeneratorLedgerRow[]))
     }
     setSupplyHouseDetailLoading(false)
     return invoicesWithAllocations
@@ -862,10 +824,7 @@ export function SupplyHousesTab({
         .select('invoice_id, job_id, pct')
         .in('invoice_id', ids)
       if (cancelled) return
-      const allocations: Record<string, InvoiceJobAllocation[]> = {}
-      for (const a of (data ?? []) as { invoice_id: string; job_id: string; pct: number }[]) {
-        ;(allocations[a.invoice_id] ??= []).push({ job_id: a.job_id, pct: Number(a.pct) })
-      }
+      const allocations = groupAllocationsByInvoice((data ?? []) as { invoice_id: string; job_id: string; pct: number }[])
       const jobIds = [...new Set(Object.values(allocations).flat().map((a) => a.job_id))]
       // PR 2: the chips need the (job, house) account rows — only the single-job pairs can
       // carry the flag — and each involved house's job-accounts reps for the Mark opened sheet.
@@ -895,10 +854,7 @@ export function SupplyHousesTab({
           : Promise.resolve({ data: [] }),
       ])
       if (cancelled) return
-      const jobs: Record<string, { hcp_number: string; click_number?: string; job_name: string }> = {}
-      for (const r of (jobRes.data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string }[]) {
-        jobs[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '' }
-      }
+      const jobs = jobsLedgerNames((jobRes.data ?? []) as JobsLedgerNameRow[])
       const accounts: Record<string, JobSupplyHouseAccountRow | null> = {}
       for (const p of pairs) accounts[`${p.jobId}:${p.houseId}`] = null
       for (const row of (accRes.data ?? []) as JobSupplyHouseAccountRow[]) {
@@ -957,10 +913,7 @@ export function SupplyHousesTab({
           .is('confirmed_at', null),
       ])
       if (cancelled) return
-      const allocations: Record<string, InvoiceJobAllocation[]> = {}
-      for (const a of (allocRes.data ?? []) as { invoice_id: string; job_id: string; pct: number }[]) {
-        ;(allocations[a.invoice_id] ??= []).push({ job_id: a.job_id, pct: Number(a.pct) })
-      }
+      const allocations = groupAllocationsByInvoice((allocRes.data ?? []) as { invoice_id: string; job_id: string; pct: number }[])
       const asks: Record<string, MoveAskRow> = {}
       // askRes.error: the table may not be pushed yet — the strip still works, with no asks.
       for (const r of (askRes.error ? [] : askRes.data ?? []) as MoveAskRow[]) asks[r.invoice_id] = r
@@ -1088,10 +1041,7 @@ export function SupplyHousesTab({
     const jobIds = invoiceJobAllocations.map((a) => a.job_id).filter((id) => !invoiceJobDetailsMap[id])
     if (jobIds.length === 0) return
     supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
-      const map: Record<string, { hcp_number: string; click_number?: string; job_name: string; job_address: string }> = {}
-      for (const r of (data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string; job_address: string }[]) {
-        map[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
-      }
+      const map = jobsLedgerNamesWithAddress((data ?? []) as JobsLedgerNameRow[])
       setInvoiceJobDetailsMap((prev) => ({ ...prev, ...map }))
     })
   }, [invoiceJobAllocations, invoiceJobDetailsMap])
@@ -2091,7 +2041,7 @@ export function SupplyHousesTab({
                           ${formatCurrency(row.outstanding)}
                         </td>
                         <td style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                          {row.monthlyPaymentDay ? formatOrdinal(row.monthlyPaymentDay) : '—'}
+                          {row.monthlyPaymentDay ? ordinalDay(row.monthlyPaymentDay) : '—'}
                         </td>
                         <td style={{ padding: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                           {row.lastInvoiceUpdatedAt ? longTimeAgoPhrase(row.lastInvoiceUpdatedAt) : '—'}

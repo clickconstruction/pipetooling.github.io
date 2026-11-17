@@ -20,6 +20,23 @@ import { creditPairingLine } from './supplyHouseInvoiceForm'
 /** The jobs a house's bills are put to, by job id, as the tab reads them from `get_jobs_ledger_by_ids`. */
 export type SupplyBillJobNames = Readonly<Record<string, { hcp_number: string; click_number?: string; job_name: string } | undefined>>
 
+/** A `get_jobs_ledger_by_ids` row, as far as the supply house windows read it. */
+export type JobsLedgerNameRow = { id: string; hcp_number?: string | null; click_number?: string | null; job_name?: string | null; job_address?: string | null }
+
+/** The jobs by id, every missing word an empty string. The tab wrote this map three times. */
+export function jobsLedgerNames(rows: ReadonlyArray<JobsLedgerNameRow>): Record<string, { hcp_number: string; click_number: string; job_name: string }> {
+  const map: Record<string, { hcp_number: string; click_number: string; job_name: string }> = {}
+  for (const r of rows) map[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '' }
+  return map
+}
+
+/** The same map with each job's address, for the invoice form's job cards. */
+export function jobsLedgerNamesWithAddress(rows: ReadonlyArray<JobsLedgerNameRow>): Record<string, { hcp_number: string; click_number: string; job_name: string; job_address: string }> {
+  const map: Record<string, { hcp_number: string; click_number: string; job_name: string; job_address: string }> = {}
+  for (const r of rows) map[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
+  return map
+}
+
 /** A house's payments as the tab holds them (`HousePayments`). */
 export type SupplyBillPayments = { payments: ReadonlyArray<SupplyPayment>; lines: ReadonlyArray<SupplyPaymentLine>; events?: ReadonlyArray<SupplyPaymentEvent> }
 

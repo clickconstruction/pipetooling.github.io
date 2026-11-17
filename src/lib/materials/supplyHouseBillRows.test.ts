@@ -3,6 +3,8 @@ import type { SupplyPayment, SupplyPaymentLine } from './payments/supplyPayment'
 import {
   allocationJobLabel,
   houseOnAccountTotal,
+  jobsLedgerNames,
+  jobsLedgerNamesWithAddress,
   paymentWindowBills,
   recordPaymentBills,
   supplyBillCardRows,
@@ -170,5 +172,24 @@ describe('the payment windows’ bills', () => {
 
   it("a payment's own window leaves the title empty for a bill on no job", () => {
     expect(paymentWindowBills(all, jobs).map((b) => b.title)).toEqual(['1017 · Elm Street', 'Interest on S-a', '', ''])
+  })
+})
+
+describe('jobsLedgerNames', () => {
+  const rows = [{ id: 'j1', hcp_number: '1017', click_number: null, job_name: 'Elm Street', job_address: '1 Elm St' }, { id: 'j2', hcp_number: null, click_number: '988', job_name: null }]
+
+  it('keys the jobs by id, every missing word an empty string', () => {
+    expect(jobsLedgerNames(rows)).toEqual({ j1: { hcp_number: '1017', click_number: '', job_name: 'Elm Street' }, j2: { hcp_number: '', click_number: '988', job_name: '' } })
+  })
+
+  it('carries the address for the invoice form\'s job cards', () => {
+    expect(jobsLedgerNamesWithAddress(rows)).toEqual({
+      j1: { hcp_number: '1017', click_number: '', job_name: 'Elm Street', job_address: '1 Elm St' },
+      j2: { hcp_number: '', click_number: '988', job_name: '', job_address: '' },
+    })
+  })
+
+  it('the names feed the job label', () => {
+    expect(allocationJobLabel('j2', jobsLedgerNames(rows))).toBe('988 · ')
   })
 })
