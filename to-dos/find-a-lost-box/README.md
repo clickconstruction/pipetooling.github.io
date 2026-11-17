@@ -2,11 +2,11 @@
 name: "Find a lost box: show where a cage or box was last put, and draw the way to it"
 number: 372
 group: gated
-status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17, steps 1 and 2 at phone width first · the nine calls put to the owner the same day, call 1 first and alone · nothing built · no call answered yet
+status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17, steps 1 and 2 at phone width first · the nine calls put to the owner the same day, call 1 first and alone · call 1 answered the same day (*Yes, cage or box*) · calls 2 to 11 open · nothing built
 summary: >
   The owner wants the app to show someone where their crate is when it is lost, and to draw a path
   to where they can find it. The app has no crate: this card takes it to mean a cage or a box from
-  Materials on site, and asks him to confirm. Read against what is live, the path has nowhere to
+  Materials on site, and he confirmed that on 2026-11-17. Read against what is live, the path has nowhere to
   end today. A box can carry a pin on the site map, and of the 96 live cages and boxes read on
   2026-11-16 none has one. So the first job is the spot, not the line. The card proposes a sheet on
   the box, Where is it?, that says everything the app knows (the place, the where note, the newest
@@ -14,9 +14,9 @@ summary: >
   honest distance, and ends with I found it, which pins the box where the finder stands. A way
   painted once to each place where boxes stand (#345) is the path that knows about gates and
   fences, and a task carries it to someone who is not on the crew.
-next: The owner answers call 1 first (what a crate is, and who is looking for it), since the rest hang on it, with the mock-up in front of him. No session should build any of it before that. A try that costs nothing can run now, on presses that are live. Pin five boxes on the test job with Use my location, some outdoors and some inside, and look at where the dots land.
+next: The owner says whether to build step 1 (the pin remembers), now that call 1 is answered, and answers calls 2 to 11 with the mock-up in front of him. No session should build any of it before he says build. A try that costs nothing can run now, on presses that are live. Pin five boxes on the test job with Use my location, some outdoors and some inside, and look at where the dots land.
 size: L as a train of five (S · M · S · M · S), on the card's picks; the first two are the smallest version worth building
-blocker: The owner's answers. He gave one sentence and has answered no design question. Nothing in Paint a map (#345) has been tried on a real phone, and this stands on it.
+blocker: The owner's word to build, and his answers to calls 2 to 11. He has answered call 1 and no other. Nothing in Paint a map (#345) has been tried on a real phone, and this stands on it.
 opinion: your call — worth building as far as step 2, and only if crews will pin boxes. A path to a box nobody pinned is a line to nowhere, so step 3 is what decides whether it is used.
 ---
 
@@ -45,7 +45,7 @@ was drawn on 2026-11-17, while the calls were put to him.
   last put, by whom and on what day.
 - **A path is a line on the view from above,** from where the person stands to the box.
 
-Each is a guess. Call 1 puts the other readings to him.
+The first was confirmed by the owner on 2026-11-17 (call 1). The other three are still guesses.
 
 ## What the app knows about where a box is, today
 
@@ -270,13 +270,16 @@ with words and a photo, and why step 0 is a try on a real phone before any code.
 ## The owner's calls
 
 Each has my pick first. All nine were put to the owner in the session on 2026-11-17, call 1 first
-and alone, then the other eight in one message, each as one sentence with its pick. None is
-answered yet. His answers go here, on the call's own line, as they come.
+and alone, then the other eight in one message, each as one sentence with its pick. Call 1 is
+answered and the rest are open. His answers go here, on the call's own line, as they come.
 
 1. **What is a crate, and who is looking for it?** My pick: a cage or a box from Materials on
    site, looked for by the job's crew or the office. Or: a box that has left the site, where the
    app can show only where it was last seen. Or: something the app does not hold yet, such as a
    supplier's or a customer's crate, which is a different card.
+   **Answered 2026-11-17: *Yes, cage or box*.** A crate is a cage or a box from Materials on
+   site. The call as put to him named the job's crew or the office as the ones looking, and he
+   raised no other reading.
 2. **What should the path be?** My pick: a straight line with a distance first (step 2), then a
    way painted once to each place (step 4). Or the painted way only. Or a route the app works
    out, which is much larger and waits.
@@ -340,3 +343,7 @@ standing at the boxes: on the test job, stand at five boxes, some outdoors and s
 **Pin on map**, **Use my location** and **Put A1 here** on each, then open **Map** on the On site
 tab and look at where the dots land. Nobody has done it yet. Step 1 is built only on his answer to
 call 1 and his word to build.
+
+2026-11-17, later: the owner answered call 1, *Yes, cage or box*. He has not said build, and
+calls 2 to 11 are open. Step 1 hangs on none of them: a pin that keeps its day, its person and its
+margin is wanted under every answer but a tag on the box (call 9).
