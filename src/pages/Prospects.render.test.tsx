@@ -85,6 +85,8 @@ vi.mock('../lib/supabase', () => {
         return list(world.jobs.filter((j) => j.id === filters.id))
       }
       if (table === 'prospect_jobs' && m === 'delete') world.jobs = world.jobs.filter((j) => j.id !== filters.id)
+      if (table === 'prospect_calling_locks' && m === 'upsert') world.locks = [...world.locks.filter((l) => l.prospect_id !== (payload as Row).prospect_id), payload as Row]
+      if (table === 'prospect_calling_locks' && m === 'delete') world.locks = world.locks.filter((l) => !(l.prospect_id === filters.prospect_id && l.user_id === filters.user_id))
       return { data: null, error: null }
     }
     switch (table) {
@@ -481,9 +483,9 @@ describe('the deck', () => {
     await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
     expect(where()).toBe('/prospects?tab=follow-up&prospect_id=cu-2')
     expect(writesTo('prospect_timer_events', 'insert').map((w) => (w.payload as Row).button_name)).toEqual(['next_prospect'])
-    // The lock's release is written `void supabase…delete()` and never awaited, and the client sends a query only
-    // when it is awaited, so no release is sent (the map's quirk 36). The stand-in is lazy the same way.
-    expect(writesTo('prospect_calling_locks', 'delete')).toHaveLength(0)
+    // Next releases the caller's own lock on the card they leave. The stand-in is lazy the way the real client is:
+    // it records a write only when the write is awaited, so this fails if the release is built and dropped.
+    expect(writesTo('prospect_calling_locks', 'delete').map((w) => w.filters)).toEqual([{ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1' }])
   })
 
   it('Next Prospect on the last card wraps to the first', async () => {
@@ -1144,6 +1146,56 @@ describe('the calling lock', () => {
     press('Set callback')
     await waitFor(() => expect(lockUpserts()).toHaveLength(2))
     expect(lockUpserts()[1]?.payload).toMatchObject({ prospect_id: 'cu-2' })
+  })
+
+  const lockReleases = () => writesTo('prospect_calling_locks', 'delete').map((w) => w.filters)
+  const mine = (prospectId: string) => ({ prospect_id: prospectId, user_id: 'smoke-auth-user-1' })
+
+  it('moving to another card releases the lock this tab took', async () => {
+    await deck('/prospects')
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    expect(world.locks).toHaveLength(1)
+    fireEvent.click(screen.getByText('Charlie Group'))
+    await waitFor(() => expect(onCard()).toContain('Charlie Group'))
+    await waitFor(() => expect(lockReleases()).toEqual([mine('cu-1')]))
+    expect(world.locks).toHaveLength(0)
+  })
+
+  it('leaving the deck for another tab releases it too', async () => {
+    await deck('/prospects')
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    press('Prospect List')
+    await screen.findByText('Never called (2)')
+    await waitFor(() => expect(lockReleases()).toEqual([mine('cu-1')]))
+  })
+
+  it('a card nobody locked is not released when the caller only looks and moves on by the queue', async () => {
+    await deck('/prospects')
+    fireEvent.click(screen.getByText('Charlie Group'))
+    await waitFor(() => expect(onCard()).toContain('Charlie Group'))
+    await settle()
+    expect(lockReleases()).toEqual([])
+  })
+
+  it('an outcome that takes the card off the deck releases the caller’s lock on it', async () => {
+    await deck('/prospects')
+    press('Not a fit')
+    await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
+    expect(lockReleases()).toContainEqual(mine('cu-1'))
+    press('Can\'t reach')
+    await waitFor(() => expect(onCard()).toContain('Charlie Group'))
+    expect(lockReleases()).toContainEqual(mine('cu-2'))
+  })
+
+  it('Didn’t Answer and Answered keep the lock: the caller is still on the card', async () => {
+    await deck('/prospects')
+    press('Didn\'t Answer')
+    await waitFor(() => expect(writesTo('prospect_comments', 'insert')).toHaveLength(1))
+    await settle()
+    expect(lockUpserts()).toHaveLength(1)
+    expect(lockReleases()).toEqual([])
   })
 
   it('a colleague’s live lock keeps its prospect off the deck', async () => {

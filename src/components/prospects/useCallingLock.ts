@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { callingLockDecision, type CallingLockRow, type CallingLockTrigger } from '../../lib/prospects/callingLock'
+import { releaseCallingLock } from '../../lib/prospects/callingLockIo'
 
 /**
  * The advisory calling lock of the Follow Up deck (v2.2850 — journey-map #14(b)): taken on INTENT, never on view.
@@ -39,7 +40,7 @@ export function useCallingLock({
       setLockHeldBy((prev) => (prev?.prospectId === prospectId ? null : prev))
       if (lockTakenForRef.current !== prospectId) return
       lockTakenForRef.current = null
-      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', lockedBy)
+      releaseCallingLock(prospectId, lockedBy)
     }
   }, [onDeck, currentProspectId, userId])
 

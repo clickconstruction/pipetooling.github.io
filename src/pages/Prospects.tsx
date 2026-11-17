@@ -78,6 +78,7 @@ import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { releaseCallingLock } from '../lib/prospects/callingLockIo'
 import { type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
 
 type ProspectsTopTab = 'customers' | 'team' | 'research'
@@ -785,7 +786,7 @@ export default function Prospects() {
       return
     }
     await saveTimerEvent('no_longer_fit')
-    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser.id)
+    releaseCallingLock(prospectId, authUser.id)
     loadMyTimeToday()
     noteRunOutcome(prospectId, 'not_a_fit')
     await supabase.from('prospect_comments').insert({
@@ -815,7 +816,7 @@ export default function Prospects() {
       return
     }
     await saveTimerEvent('cant_reach')
-    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser.id)
+    releaseCallingLock(prospectId, authUser.id)
     loadMyTimeToday()
     noteRunOutcome(prospectId, 'cant_reach')
     const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
@@ -854,7 +855,7 @@ export default function Prospects() {
         // saveTimerEvent closes over this render's prospect + timer seconds —
         // the values as of the click, which is what the ledger wants.
         void saveTimerEvent('converted')
-        void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
+        releaseCallingLock(prospect.id, authUser.id)
         loadMyTimeToday()
         const updated = { ...prospect, prospect_fit_status: 'converted' as const }
         setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
@@ -923,7 +924,7 @@ export default function Prospects() {
       // keeps its card, so the list never jumps to Follow Up.
       const onDeck = currentProspect?.id === prospect.id
       if (onDeck) void saveTimerEvent('converted')
-      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
+      releaseCallingLock(prospect.id, authUser.id)
       loadMyTimeToday()
       const updated = { ...prospect, prospect_fit_status: 'converted' as const, converted_gc_company_id: companyId }
       setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
@@ -952,7 +953,7 @@ export default function Prospects() {
   function leaveQueueAsLanded(prospect: Prospect, patch: Partial<Prospect>) {
     if (!authUser?.id) return
     void saveTimerEvent('converted')
-    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
+    releaseCallingLock(prospect.id, authUser.id)
     loadMyTimeToday()
     const updated = { ...prospect, prospect_fit_status: 'converted' as const, ...patch }
     setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
@@ -1209,7 +1210,7 @@ export default function Prospects() {
       // The run's last card (v2.5808): the receipt, never a wrap back to the first.
       if (!skipTimerEvent && currentProspect && authUser?.id) {
         await saveTimerEvent('next_prospect')
-        void supabase.from('prospect_calling_locks').delete().eq('prospect_id', currentProspect.id).eq('user_id', authUser.id)
+        releaseCallingLock(currentProspect.id, authUser.id)
         loadMyTimeToday()
       }
       setRunDone(true)
@@ -1218,7 +1219,7 @@ export default function Prospects() {
     if (followUpProspects.length <= 1) return
     if (!skipTimerEvent && currentProspect && authUser?.id) {
       await saveTimerEvent('next_prospect')
-      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', currentProspect.id).eq('user_id', authUser.id)
+      releaseCallingLock(currentProspect.id, authUser.id)
       loadMyTimeToday()
     }
     const nextIdx = (currentProspectIndex + 1) % followUpProspects.length
