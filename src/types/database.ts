@@ -37093,40 +37093,80 @@ export type Database = {
           created_at: string
           id: string
           kind: string
+          labor_job_id: string | null
           note: string | null
-          paper_id: string
-          revision: number
+          paper_id: string | null
+          payment_id: string | null
+          person_id: string | null
+          revision: number | null
           said_by_name: string | null
           said_from: string | null
+          sending_id: string | null
         }
         Insert: {
           amount?: number | null
           created_at?: string
           id?: string
           kind: string
+          labor_job_id?: string | null
           note?: string | null
-          paper_id: string
-          revision: number
+          paper_id?: string | null
+          payment_id?: string | null
+          person_id?: string | null
+          revision?: number | null
           said_by_name?: string | null
           said_from?: string | null
+          sending_id?: string | null
         }
         Update: {
           amount?: number | null
           created_at?: string
           id?: string
           kind?: string
+          labor_job_id?: string | null
           note?: string | null
-          paper_id?: string
-          revision?: number
+          paper_id?: string | null
+          payment_id?: string | null
+          person_id?: string | null
+          revision?: number | null
           said_by_name?: string | null
           said_from?: string | null
+          sending_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sub_paper_acks_labor_job_id_fkey"
+            columns: ["labor_job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sub_paper_acks_paper_id_fkey"
             columns: ["paper_id"]
             isOneToOne: false
             referencedRelation: "sub_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_paper_acks_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_job_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_paper_acks_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_paper_acks_sending_id_fkey"
+            columns: ["sending_id"]
+            isOneToOne: false
+            referencedRelation: "sub_payment_sendings"
             referencedColumns: ["id"]
           },
         ]
