@@ -202,7 +202,7 @@ import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
 import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
-import LienNoticeByHandPane from './LienNoticeByHandPane'
+import LienNoticeAlreadyWent from './LienNoticeAlreadyWent'
 import LienPenSignaturePane from './LienPenSignaturePane'
 import { buildLienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
@@ -4003,7 +4003,17 @@ export default function LienDesk({
     ) : null
   const byHandPane =
     selected && byHandOpen ? (
-      <LienNoticeByHandPane
+      <LienNoticeAlreadyWent
+        // v2.7508: when the property holds a notice on record, the door first asks which paper went and applies it to this job.
+        apply={{
+          gcCustomerId: job?.gc_customer_id ?? null,
+          jobNumber: effectiveJobLedgerNumber(job?.hcp_number, job?.click_number) || selected.jobId.slice(0, 8),
+          months: monthsList,
+          propertyKind: selected.propertyKind ?? '',
+          lastWorkYmd: job?.lien_last_work_on ?? null,
+          userName: authName,
+          item: selected.item && selected.item.status !== 'sent' && selected.item.status !== 'missed' ? { id: selected.item.id, fields: selected.item.fields, months: selected.item.months ?? [] } : null,
+        }}
         job={{
           id: selected.jobId,
           label: jobLabel(job, selected.jobId),
