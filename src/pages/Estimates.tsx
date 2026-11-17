@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
 import { canOpenBillingNotifications } from '../lib/jobs/stagesRoleGates'
-import { defaultEstimateTitle, isGenericEstimateTitle, shouldReplaceTitleOnCustomerChange } from '../lib/estimates/estimateTitle'
+import { defaultEstimateTitle, shouldReplaceTitleOnCustomerChange } from '../lib/estimates/estimateTitle'
 import { pickBidRoomForChangeOrder } from '../lib/estimates/changeOrderRoomPick'
 import { EstimateLineItemCatalogModal } from '../components/estimates/EstimateLineItemCatalogModal'
 import { estDangerOutlineButton, estInputBase, estInputBlock, estPrimaryButton, estSecondaryButton, estSendButton, estSmallPrimaryButton, estSmallSecondaryButton } from '../components/estimates/estimatesPageStyles'
@@ -38,7 +38,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { resolveEstimateMasterUserId as resolveMasterUserId } from '../lib/estimateMasterUser'
 import { EstimateFieldPhotosStrip } from '../components/estimates/EstimateFieldPhotosStrip'
 import { EstimateFirstLookStrip } from '../components/firstLook/EstimateFirstLookStrip'
-import { EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS, formatSignedCentsUsd, isChangeOrderDocKind, isLegacyChangeOrderTitledEstimate, parseEstimateChangeOrderFields, type EstimateChangeOrderFields } from '../lib/estimateChangeOrder'
+import { EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS, formatSignedCentsUsd, isChangeOrderDocKind, isLegacyChangeOrderTitledEstimate, type EstimateChangeOrderFields } from '../lib/estimateChangeOrder'
 import { bridgedCostImpactText } from '../lib/bidDocuments/changeOrderBridge'
 import { CO_CREDIT_LABEL_PREFIX, isCoCreditLine, type CoCostPromptMode } from '../lib/coCostLinePrompt'
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
@@ -120,6 +120,7 @@ import EstimateOfferedOptions from '../components/estimates/EstimateOfferedOptio
 import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
 import { postSendEstimate, sendEstimateAnswerFrom } from '../lib/estimates/sendEstimateIo'
 import { estimateRecipientEmail, estimateSendPlan } from '../lib/estimates/estimateSendPlan'
+import { customerFieldsFromEstimate, defaultAcceptNotifyIds, estimateFormFromRow, estimateInitialTitle } from '../lib/estimates/estimateDetailHydration'
 import {
   addEstimateOptionToEditor,
   patchEstimateOption,
@@ -186,7 +187,6 @@ import {
   defaultEstimateSelection,
   estimateOptionTotalCents,
   normalizeEstimateOptionsFromJson,
-  recommendedEstimateOption,
   setEstimateAddOnPreticked,
   setRecommendedEstimateOption,
   toggleEstimateOptionSelection,
@@ -524,10 +524,6 @@ const coPromptPanelStyle: CSSProperties = {
   background: 'var(--bg-subtle)',
   borderRadius: 8,
   padding: '0.85rem 0.95rem',
-}
-
-function lineItemsFromJson(raw: unknown, allowNegative?: boolean): LineItem[] {
-  return normalizeEstimateLineItemsFromJson(raw, { allowNegative })
 }
 
 function sumLineItems(lines: LineItem[]): number {
@@ -1577,21 +1573,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   }, [catalogLineItems.length, canManageEstimateCatalog])
 
   function hydrateCustomerFieldsFromEstimate(r: EstimateDetailRow, custList: CustomerRow[]) {
-    if (!r.customer_id) {
-      setCustomerSearch('')
-      setSendEmailOverride('')
-      return
-    }
-    const c = custList.find((x) => x.id === r.customer_id)
-    if (c) {
-      setCustomerSearch(getCustomerDisplay(c))
-      const crm = extractContactFromCustomer(c).email.trim()
-      if (crm) setSendEmailOverride('')
-      else setSendEmailOverride(r.customer_email ?? '')
-    } else {
-      setCustomerSearch('')
-      setSendEmailOverride(r.customer_email ?? '')
-    }
+    const fields = customerFieldsFromEstimate(r, custList)
+    setCustomerSearch(fields.customerSearch)
+    setSendEmailOverride(fields.sendEmailOverride)
   }
 
   const load = useCallback(async (opts?: { refresh?: boolean }) => {
@@ -1638,97 +1622,54 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
       if (locationFreshDraftRef.current && r.status === 'draft') freshDraftRowIdRef.current = r.id
       setRow(r)
-      setAcceptHeaderBrand(parseAcceptHeaderBrand(r.accept_header_brand))
-      setTerms(r.terms_snapshot ?? '')
-      const rowIsCO = isChangeOrderDocKind(r.doc_kind)
-      const parsedLines = lineItemsFromJson(r.line_items_snapshot, rowIsCO)
-      const parsedOptions = rowIsCO ? [] : normalizeEstimateOptionsFromJson(r.options_snapshot)
-      setEstimateOptions(parsedOptions)
-      const hydratedViewed = recommendedEstimateOption(parsedOptions)
-      setViewedOptionKey(hydratedViewed?.key ?? null)
-      setPreviewSelectedOptionKeys(defaultEstimateSelection(parsedOptions))
-      setLines(
-        // With options, the editor shows the recommended option's lines; otherwise the legacy
-        // snapshot. CO drafts stay empty so Impact on cost opens with the guided prompt.
-        hydratedViewed
-          ? hydratedViewed.line_items
-          : r.status === 'draft' && parsedLines.length === 0 && !rowIsCO
-            ? [defaultDraftFirstLine()]
-            : parsedLines,
-      )
-      setCoFields(parseEstimateChangeOrderFields(r.change_order_fields))
-      setCustomerId(r.customer_id ?? null)
-      const vu = (r.valid_until ?? '').trim()
-      if (r.status === 'draft') {
-        if (!vu) {
-          setValidUntil(addCalendarDaysYmd(30))
-          setValidUntilPreset(30)
-        } else {
-          setValidUntil(vu)
-          setValidUntilPreset(presetMatchingTodayOffset(vu))
+      // What the row opens as (`lib/estimates/estimateDetailHydration`, v2.7607); the reads and their order stay here.
+      const form = estimateFormFromRow(r)
+      setAcceptHeaderBrand(form.acceptHeaderBrand)
+      setTerms(form.terms)
+      setEstimateOptions(form.options)
+      setViewedOptionKey(form.viewedOptionKey)
+      setPreviewSelectedOptionKeys(form.previewSelectedOptionKeys)
+      setLines(form.lines)
+      setCoFields(form.coFields)
+      setCustomerId(form.customerId)
+      setValidUntil(form.validUntil)
+      setValidUntilPreset(form.validUntilPreset)
+      setForAddress(form.forAddress)
+      setLinkedProjectId(form.linkedProjectId)
+      setInternalNotes(form.internalNotes)
+      if (form.acceptNotifyIds !== 'draft-default') {
+        setAcceptNotifyUserIds(form.acceptNotifyIds)
+      } else if (user?.id) {
+        try {
+          const masterRows =
+            (await withSupabaseRetry(
+              async () =>
+                await supabase.from('users').select('id').eq('role', 'master_technician'),
+              'load estimate default notify master technicians',
+            )) ?? []
+          setAcceptNotifyUserIds(defaultAcceptNotifyIds(user.id, masterRows.map((row) => row.id)))
+        } catch {
+          setAcceptNotifyUserIds([user.id])
         }
       } else {
-        setValidUntil(r.valid_until ?? '')
-        setValidUntilPreset(null)
+        setAcceptNotifyUserIds([])
       }
-      setForAddress(r.for_address ?? '')
-      setLinkedProjectId(r.project_id ?? '')
-      setInternalNotes(r.internal_notes ?? '')
-      {
-        const raw = r.accept_notify_user_ids
-        if (raw === null || raw === undefined) {
-          if (r.status === 'draft' && user?.id) {
-            try {
-              const masterRows =
-                (await withSupabaseRetry(
-                  async () =>
-                    await supabase.from('users').select('id').eq('role', 'master_technician'),
-                  'load estimate default notify master technicians',
-                )) ?? []
-              const masterIds = masterRows
-                .map((row) => row.id)
-                .filter((id): id is string => typeof id === 'string' && id.length > 0)
-              setAcceptNotifyUserIds([...new Set([user.id, ...masterIds])])
-            } catch {
-              setAcceptNotifyUserIds([user.id])
-            }
-          } else {
-            setAcceptNotifyUserIds([])
-          }
-        } else {
-          setAcceptNotifyUserIds(
-            raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
+      if (form.acceptNotifyDisplayIds.length > 0) {
+        try {
+          const nu = await withSupabaseRetry(
+            async () =>
+              await supabase.from('users').select('id, name, email').in('id', form.acceptNotifyDisplayIds),
+            'load estimate notify display users',
           )
-        }
-      }
-      {
-        const ids =
-          Array.isArray(r.accept_notify_user_ids) ?
-            r.accept_notify_user_ids.filter((x): x is string => typeof x === 'string' && x.length > 0)
-          : []
-        if (r.status !== 'draft' && ids.length > 0) {
-          try {
-            const nu = await withSupabaseRetry(
-              async () =>
-                await supabase.from('users').select('id, name, email').in('id', ids),
-              'load estimate notify display users',
-            )
-            setAcceptNotifyResolvedUsers((nu ?? []) as EstimateNotifyUserOption[])
-          } catch {
-            setAcceptNotifyResolvedUsers([])
-          }
-        } else {
+          setAcceptNotifyResolvedUsers((nu ?? []) as EstimateNotifyUserOption[])
+        } catch {
           setAcceptNotifyResolvedUsers([])
         }
-      }
-      if (r.status === 'draft') {
-        setCustomerAttachmentUrl(r.customer_attachment_url ?? '')
-        setCustomerAttachmentLabel(r.customer_attachment_label ?? '')
       } else {
-        const attFrozen = parseCustomerAttachmentSent(r.customer_attachment_sent)
-        setCustomerAttachmentUrl(attFrozen?.url ?? '')
-        setCustomerAttachmentLabel(attFrozen?.label ?? '')
+        setAcceptNotifyResolvedUsers([])
       }
+      setCustomerAttachmentUrl(form.attachmentUrl)
+      setCustomerAttachmentLabel(form.attachmentLabel)
       if (r.status === 'sent' || r.status === 'customer_accepted') {
         const stored = readStoredEstimateAcceptUrl(r.id)
         if (stored) setLastAcceptUrl(stored)
@@ -1751,16 +1692,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           'load customers for estimate',
         )
         const list = (cust ?? []) as CustomerRow[]
-        let initialTitle = r.title ?? ''
-        if (
-          r.status === 'draft' &&
-          r.customer_id &&
-          isGenericEstimateTitle(initialTitle)
-        ) {
-          const matchCust = list.find((x) => x.id === r.customer_id)
-          if (matchCust?.name?.trim()) initialTitle = defaultEstimateTitle(matchCust.name, isChangeOrderDocKind(r.doc_kind))
-        }
-        setTitle(initialTitle)
+        setTitle(estimateInitialTitle(r, list))
         setCustomers(list)
         hydrateCustomerFieldsFromEstimate(r, list)
       } catch {
