@@ -1950,13 +1950,13 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(screen.getByRole('button', { name: 'Needs the property facts · 1' })).toBeTruthy()
     // The row's gates as five marks on its chip line (v2.7335): on a computer the strip stands in for the *missing …* words, which live in its title and the marks' titles.
     const strip = document.querySelector('[data-lien-gate-marks]') as HTMLElement
-    expect(strip.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, notice')
+    expect(strip.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, a mailed notice')
     expect(Array.from(strip.querySelectorAll('[data-lien-gate-mark]')).map((m) => `${m.getAttribute('data-lien-gate-mark')}:${m.getAttribute('data-state')}`)).toEqual(['owner:open', 'legal:open', 'contractor:ok', 'notice:open', 'homestead:ok'])
     expect(strip.querySelector('[data-lien-gate-mark="owner"]')?.getAttribute('title')).toBe('owner — Missing owner')
-    expect(screen.queryByText(/missing owner, legal, notice/)).toBeNull()
+    expect(screen.queryByText(/missing owner, legal, a mailed notice/)).toBeNull()
     const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
     // v2.7187: the desk's own timeline names the step the paper is on, as its To do row does (*the property record is not complete*).
-    expect(timeline.textContent).toContain('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, the notice missing.')
+    expect(timeline.textContent).toContain('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, a mailed notice missing.')
     // Whose move and for what rides in the band's press (v2.7321), which opens the one gate that holds the paper.
     expect(timeline.querySelector('[data-lien-timeline-act="gate:owner"]')?.getAttribute('title')).toBe('Waiting on us — the property record to be completed')
     expect(timeline.querySelector('[data-lien-timeline-act]')?.textContent).toBe('Find the owner ›')
@@ -2022,8 +2022,8 @@ describe('LienDesk affidavits (v2.3412)', () => {
     try {
       renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
       await settle()
-      expect(document.querySelector('[data-lien-gate-marks]')?.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, notice')
-      expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
+      expect(document.querySelector('[data-lien-gate-marks]')?.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, a mailed notice')
+      expect(screen.getByText(/missing owner, legal, a mailed notice/)).toBeTruthy()
     } finally {
       window.matchMedia = before
     }
@@ -4720,7 +4720,7 @@ describe('LienDesk · the affidavit and retainage panes under grey heads (v2.732
     const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
     expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'owner', 'paper'])
     expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this affidavit is', 'Before it can be generated', "The owner's answers", 'The paper'])
-    expect(heads[0]!.querySelector('[data-lien-pane-head-fact]')!.textContent).toBe('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, the notice missing')
+    expect(heads[0]!.querySelector('[data-lien-pane-head-fact]')!.textContent).toBe('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, a mailed notice missing')
     expect(heads[1]!.textContent).toBe('Before it can be generated✗ 3 missing · owner of record missing · county or legal description missing · no § 53.056 notice on the job')
     expect(heads[2]!.textContent).toBe("The owner's answersno call yet · bond unknown")
     expect(heads[3]!.textContent).toBe('The papershort form · Robert Douglas, Master Plumber')

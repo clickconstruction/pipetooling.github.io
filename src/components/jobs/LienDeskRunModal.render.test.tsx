@@ -1874,6 +1874,82 @@ describe('LienDeskRunModal · what was mailed (the owner’s ask of 2026-11-16)'
     expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
   })
 
+  it('Take off (v2.7525): the notice forgets the file after the ask, the row stops listing it, the words say it is still in Drive, and the desk is told', async () => {
+    cleanup()
+    const removed: Array<{ itemId: string; driveFileId: string }> = []
+    const onRecorded = vi.fn()
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z', mailedCopies: [kept] })]}
+        issuer={null}
+        todayYmd="2026-10-09"
+        userId="u1"
+        onClose={() => {}}
+        onRecorded={onRecorded}
+        removeMailedCopy={async (a) => {
+          removed.push({ itemId: a.itemId, driveFileId: a.copy.driveFileId })
+          return []
+        }}
+      />,
+    )
+    await settle()
+    fireEvent.click(screen.getByTestId('run-check-copy-off-it1-0'))
+    expect(removed).toEqual([])
+    fireEvent.click(screen.getByTestId('run-check-copy-off-yes-it1'))
+    await waitFor(() => expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).toBeNull())
+    expect(removed).toEqual([{ itemId: 'it1', driveFileId: 'f1' }])
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
+    expect(document.body.textContent).toContain(`Took ${kept.name} off this notice. The file is still in the job’s Drive folder.`)
+    expect(onRecorded).toHaveBeenCalledTimes(1)
+  })
+
+  it('a take-off that fails says why and the file stays listed', async () => {
+    cleanup()
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z', mailedCopies: [kept] })]}
+        issuer={null}
+        todayYmd="2026-10-09"
+        userId="u1"
+        onClose={() => {}}
+        onRecorded={() => {}}
+        removeMailedCopy={async () => {
+          throw new Error('The notice could not be reached.')
+        }}
+      />,
+    )
+    await settle()
+    fireEvent.click(screen.getByTestId('run-check-copy-off-it1-0'))
+    fireEvent.click(screen.getByTestId('run-check-copy-off-yes-it1'))
+    await waitFor(() => expect(document.body.textContent).toContain('The notice could not be reached.'))
+    expect(screen.getByTestId('run-check-copies-it1').querySelector('a')!.getAttribute('href')).toBe(kept.url)
+  })
+
+  it('a retainage notice’s row has the press too, and its file is named for the retainage notice (v2.7525)', async () => {
+    cleanup()
+    const papers: Array<string | undefined> = []
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ kind: 'retainage_53_057', months: [], printedAt: '2026-10-07T15:00:00.000Z' })]}
+        issuer={null}
+        todayYmd="2026-10-08"
+        userId="u1"
+        onClose={() => {}}
+        onRecorded={() => {}}
+        addMailedCopy={async (a) => {
+          papers.push(a.paper)
+          return [{ ...kept, name: 'Retainage notice as mailed · 650 · 2026-10-08.pdf' }]
+        }}
+      />,
+    )
+    await settle()
+    expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
+    fireEvent.change(screen.getByTestId('run-check-copy-file-it1'), { target: { files: [scan()] } })
+    await waitFor(() => expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).not.toBeNull())
+    expect(papers).toEqual(['retainage'])
+    expect(screen.getByTestId('run-check-copies-it1').querySelector('a')!.textContent).toBe('✓ Retainage notice as mailed · 650 · 2026-10-08.pdf ›')
+  })
+
   it('a notice that already has its file shows it when the run opens again, on a printed row and with the press reading Add another', async () => {
     cleanup()
     renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z', mailedCopies: [kept] })]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
