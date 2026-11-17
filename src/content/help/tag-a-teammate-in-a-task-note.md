@@ -34,6 +34,12 @@ A tag is the name you pressed. A name you only typed is plain words. So a note l
 
 Press Backspace right after a shaded name to take the tag off.
 
+## Tag from History or a Roadmap task
+
+The note box on **History** has the same **@** button. So does the note box on a Roadmap task's card.
+
+On History, **Reopen** uses the same box. A name you tagged in the reason is tagged.
+
 ## Who you can tag
 
 You can tag only people who can already open the task.

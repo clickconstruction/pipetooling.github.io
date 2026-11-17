@@ -7,6 +7,13 @@ import type { BridgeChip, BridgeState } from '../../lib/roadmapBridge'
 import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
 import AutoGrowTextarea from '../AutoGrowTextarea'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { useOptionalAuth } from '../../hooks/useAuth'
+import { useTaskNoteTags } from '../../hooks/useTaskNoteTags'
+import { canTagInTaskNotes } from '../../lib/jobs/noteTags'
+import { noteTagsChanged, notifyNoteTag, postTaggedTaskNote } from '../../lib/jobs/noteTagsIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { useNoteTagBox } from '../jobs/NoteTagBox'
+import { TaggedNoteBody } from '../jobs/TaggedNoteBody'
 
 type UserRow = { id: string; name: string; email: string }
 
@@ -132,6 +139,13 @@ export function ChecklistTechTreeTaskCardModal({
   const threadRef = useRef<HTMLDivElement | null>(null)
 
   const instanceId = bridge?.instanceId ?? null
+  // Tagging a teammate in the card's note box (punch list #375): the names of the day row the note lands on.
+  const draftRef = useRef<HTMLInputElement | null>(null)
+  const viewerRole = useOptionalAuth()?.role ?? null
+  // Why a tagged note did not post, said at the box: the card is drawn in places with no toast.
+  const [postError, setPostError] = useState<string | null>(null)
+  const tagBox = useNoteTagBox({ jobId: '', taskInstanceId: open ? instanceId : null, draft, setDraft, inputRef: draftRef, enabled: open && !!instanceId && !!currentUserId && canTagInTaskNotes(viewerRole), place: 'above', bigAt: true })
+  const tagsByNote = useTaskNoteTags(null, events.length, open ? instanceId : null)
   const taskId = task?.id ?? null
 
   // Reset per card, not per task-prop identity — the prop refreshes after
@@ -229,11 +243,26 @@ export function ChecklistTechTreeTaskCardModal({
     if (!instanceId) return
     const body = draft.trim()
     if (!body || posting) return
+    const tagged = tagBox.taggedIds(body)
     setPosting(true)
+    setPostError(null)
     try {
-      const ok = await postComment(instanceId, body)
+      let ok = false
+      if (tagged.length > 0) {
+        // A note that tags someone posts with its tags in one call, or not at all (punch list #375).
+        try {
+          notifyNoteTag({ taskEventId: await postTaggedTaskNote(instanceId, body, tagged) })
+          noteTagsChanged()
+          ok = true
+        } catch (e: unknown) {
+          setPostError(formatErrorMessage(e, 'The note was not posted'))
+        }
+      } else {
+        ok = await postComment(instanceId, body)
+      }
       if (ok) {
         setDraft('')
+        tagBox.reset()
         setEvents(await loadEvents(instanceId))
       }
     } finally {
@@ -695,7 +724,9 @@ export function ChecklistTechTreeTaskCardModal({
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span>{' '}
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{stripStamp(e.created_at)}</span>
                       </div>
-                      <div style={{ fontSize: 13.5, color: 'var(--text-700)', lineHeight: 1.45 }}>{e.body}</div>
+                      <div style={{ fontSize: 13.5, color: 'var(--text-700)', lineHeight: 1.45 }}>
+                        <TaggedNoteBody body={e.body ?? ''} tags={tagsByNote.get(e.id)} postedIso={e.created_at} viewerId={currentUserId} />
+                      </div>
                     </div>
                   )
                 }
@@ -761,27 +792,45 @@ export function ChecklistTechTreeTaskCardModal({
 
         {/* composer */}
         {instanceId ? (
+          // The names offered and picked sit above the box, and the row of names opens above them (punch list #375).
+          <div style={{ position: 'relative', borderTop: '1px solid var(--border)', flex: 'none', padding: tagBox.chips ? '8px 12px 0' : 0 }}>
+          {tagBox.list}
+          {tagBox.chips}
+          {postError ? (
+            <p role="alert" style={{ margin: 0, padding: '8px 16px 0', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+              {postError}
+            </p>
+          ) : null}
           <form
             className="roadmap-task-composer"
             onSubmit={(e) => {
               e.preventDefault()
               void post()
             }}
-            style={{ display: 'flex', gap: 8, padding: '10px 16px 12px', borderTop: '1px solid var(--border)', flex: 'none' }}
+            style={{ display: 'flex', gap: 8, padding: tagBox.chips ? '2px 4px 12px' : '10px 16px 12px' }}
           >
+            {/* The mark in the words is drawn under the box, so the box is see-through and this holds its background. */}
+            <span style={{ position: 'relative', display: 'flex', flex: 1, minWidth: 0, background: 'var(--bg-slate-tint)', borderRadius: 999 }}>
+            {tagBox.mark}
             <input
+              ref={draftRef}
               type="text"
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => tagBox.onText(e.target.value, e.target.selectionStart)}
+              onClick={(e) => tagBox.onText(e.currentTarget.value, e.currentTarget.selectionStart)}
               onKeyDown={(e) => {
+                // The row of names takes its own keys first: Enter picks a name and Escape shuts the row.
+                if (tagBox.onKeyDown(e)) return
                 if (e.key === 'Enter') {
                   e.preventDefault()
                   void post()
                 }
               }}
               placeholder="Add a note…"
+              aria-label="Add a note"
               disabled={posting}
               style={{
+                position: 'relative',
                 flex: 1,
                 minWidth: 0,
                 height: 44,
@@ -790,9 +839,12 @@ export function ChecklistTechTreeTaskCardModal({
                 fontSize: '0.9375rem',
                 border: '1px solid var(--border-strong)',
                 borderRadius: 999,
-                background: 'var(--bg-slate-tint)',
+                background: 'transparent',
+                color: 'var(--text-strong)',
               }}
             />
+            </span>
+            {tagBox.atButton}
             <button
               type="submit"
               disabled={posting || !draft.trim()}
@@ -812,6 +864,7 @@ export function ChecklistTechTreeTaskCardModal({
               {posting ? '…' : '➤'}
             </button>
           </form>
+          </div>
         ) : null}
 
         {/* thumb dock (v2.2303): everything you press, at the bottom on both
