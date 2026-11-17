@@ -182,7 +182,7 @@ describe('LienServeWindow', () => {
     expect(keep).toHaveBeenCalledTimes(1)
     // The desk reads again once on the way out.
     expect(props.onChanged).not.toHaveBeenCalled()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).at(-1)!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).slice(-1)[0]!)
     expect(props.onChanged).toHaveBeenCalledTimes(1)
     expect(props.onClose).toHaveBeenCalledTimes(1)
   })
