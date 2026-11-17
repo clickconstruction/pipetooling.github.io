@@ -23,3 +23,5 @@ Starts with `SET lock_timeout = '3s';`. No new table, so no fence calls. Idempot
 **Verify**, read-only on prod after the push:
 
 - `select pg_get_constraintdef(oid) from pg_constraint where conname = 'checklist_instance_events_event_type_check'` names thirteen kinds, `skipped` among them.
+
+**Applied** to prod on 2026-11-17 by `supabase db push` from a checkout at `origin/main` (e5333b5618, the merge of #8462): the push named this one file, and `check:migration-drift` reads 1,345 versions on both sides. The check names the thirteen kinds with `skipped` among them, and the insert policy *Insert own comments on visible instances* lets `skipped` through. The types did not change.
