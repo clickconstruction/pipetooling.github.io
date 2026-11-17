@@ -6,6 +6,8 @@ import {
   LIEN_SERVICE_PROOF_WORDS,
   heldServiceWords,
   lienReceiptPhotoName,
+  noticeSendsWithReceipts,
+  receiptReadWords,
   serviceCopyDraft,
   serviceProofLines,
   serviceProofMissing,
@@ -63,6 +65,7 @@ describe('the mail receipts of a filed affidavit’s copies', () => {
     expect(lienReceiptPhotoName('owner', '650', '2026-11-18')).toBe('Lien affidavit, Job 650, mail receipt, owner, 2026-11-18.jpg')
     expect(lienReceiptPhotoName('original_contractor', '650', '2026-11-18', 'HEIC')).toBe('Lien affidavit, Job 650, mail receipt, original contractor, 2026-11-18.heic')
     expect(lienReceiptPhotoName('clerk', '', '', '')).toBe('Lien affidavit, the clerk’s stamped page.jpg')
+    expect(lienReceiptPhotoName('owner', '650', '2026-11-18', 'jpg', 'notice')).toBe('Lien notice, Job 650, mail receipt, owner, 2026-11-18.jpg')
   })
 
   it('the toast says whether the receipts are in', () => {
@@ -78,5 +81,30 @@ describe('the mail receipts of a filed affidavit’s copies', () => {
       expect(plainWordsFailures(s), s).toEqual([])
     }
     expect(heldServiceWords('November 21, 2026')).toContain('by November 21, 2026')
+  })
+})
+
+describe('noticeSendsWithReceipts', () => {
+  const sends = [
+    { recipient: 'owner', method: 'certified_mail', tracking: '9407 1000', sent_on: '2026-11-18' },
+    { recipient: 'original_contractor', method: 'certified_mail', tracking: '', sent_on: '2026-11-18' },
+  ]
+  it('puts each photo on its own copy and leaves a copy with none as it was', () => {
+    expect(noticeSendsWithReceipts(sends, { owner: 'https://drive.example/r1', original_contractor: '  ' })).toEqual([
+      { ...sends[0], receipt_url: 'https://drive.example/r1' },
+      { ...sends[1] },
+    ])
+  })
+  it('writes no key at all when nothing was photographed', () => {
+    expect(noticeSendsWithReceipts(sends, {}).every((s) => !('receipt_url' in s))).toBe(true)
+  })
+})
+
+describe('receiptReadWords', () => {
+  it('says what was read, or that nothing was, in plain words', () => {
+    expect(receiptReadWords('9407111899562345678901')).toBe('Read 9407111899562345678901 off the photo. Check it against the receipt.')
+    expect(receiptReadWords('')).toBe('No number was read off the photo. Type it in the box.')
+    expect(plainWordsFailures(receiptReadWords('9407'))).toEqual([])
+    expect(plainWordsFailures(receiptReadWords(''))).toEqual([])
   })
 })

@@ -1982,3 +1982,203 @@ describe('LienDeskRunModal · what was mailed (the owner’s ask of 2026-11-16)'
     expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add another')
   })
 })
+
+describe('LienDeskRunModal · un-print one notice from its own row (v2.7481)', () => {
+  const at = '2026-11-16T15:00:00Z'
+  const four = () =>
+    [372, 373, 374, 375].map((num, i) =>
+      notice({
+        itemId: `u${num}`,
+        jobId: `ju${num}`,
+        label: `${num} · ZZ Test Lot ${i + 1}`,
+        jobNumber: String(num),
+        printedAt: at,
+        printedBy: 'ZZ Office',
+        recipients: [
+          { key: 'owner', label: 'Owner of record', name: `ZZ Test Owner ${num} LLC`, address: `${num} Sample Rd, Sampleton, TX 78000`, email: '', method: 'certified_mail', tracking: '' },
+          { key: 'original_contractor', label: 'Original contractor', name: 'ZZ Test Builders', address: '100 Example Pkwy, Sampleton, TX 78000', email: '', method: 'certified_mail', tracking: '' },
+        ],
+      }),
+    )
+
+  it('the Printed tick is a press that asks first, takes back that notice alone, and the count, the journey and the press follow', async () => {
+    const taken: string[][] = []
+    renderWithProviders(<LienDeskRunModal notices={four()} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    await settle()
+    expect(screen.getByTestId('run-parts').textContent).toBe('4 printed=4 owe a number')
+    // Her row had its numbers typed. The contractor's is the shared envelope's, so every printed row shows it.
+    fireEvent.change(screen.getByLabelText('372 · ZZ Test Lot 1 — owner tracking'), { target: { value: NUMBER } })
+    fireEvent.change(screen.getByLabelText('372 · ZZ Test Lot 1 — GC tracking'), { target: { value: '9407 1118 9876 5432 1111' } })
+    // The tick keeps its words and is a press now.
+    expect(screen.getByTestId('run-check-printed-u372').textContent).toBe('✓ Nov 16 · ZZ Office')
+    const tick = screen.getByTestId('run-check-unprint-u372') as HTMLButtonElement
+    expect(tick.textContent).toBe('✓ Nov 16 · ZZ Office · Undo…')
+    fireEvent.click(tick)
+    const confirm = screen.getByTestId('run-take-back-one-confirm')
+    expect(confirm.textContent).toContain('Put 372 back in Approved · to print?')
+    expect(confirm.textContent).toContain('372 · ZZ Test Lot 1. Use this when it did not print, or was not mailed.')
+    expect(confirm.textContent).toContain('The notice goes back to Approved · to print. The approval stands.')
+    expect(confirm.textContent).toContain('A copy that printed here Nov 16 stays in the job’s Documents, filed as printed.')
+    expect(confirm.textContent).toContain('The 2 tracking numbers typed on this row are not saved.')
+    expect(confirm.textContent).toContain('The other notices in this run stay as they are.')
+    // Asking writes nothing, and Esc or Keep it printed closes the question alone.
+    expect(taken).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it printed' }))
+    expect(screen.queryByTestId('run-take-back-one-confirm')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-check-unprint-u372'))
+    expect(screen.getByTestId('run-take-back-one-yes').textContent).toBe('Put 372 back in Approved · to print')
+    fireEvent.click(screen.getByTestId('run-take-back-one-yes'))
+    await settle()
+    // One id, not the four the run's own take-back would have taken.
+    expect(taken).toEqual([['u372']])
+    expect(screen.queryByTestId('run-take-back-one-confirm')).toBeNull()
+    expect(screen.getByTestId('run-taken-back').textContent).toBe('Taken back. 372 is in Approved · to print again. Its approval stands.')
+    // It is back in the ready part, in the same sitting: the count line, the journey and the one press say so.
+    expect(screen.getByTestId('run-parts').textContent).toBe('4 notices=1 ready3 printed')
+    expect(screen.getByTestId('run-journey-2').textContent).toBe('2Print3 of 4 printed')
+    expect(screen.getByTestId('run-journey-2').getAttribute('data-state')).toBe('now')
+    expect(screen.getByTestId('run-group-ready').contains(screen.getByTestId('run-check-u372'))).toBe(true)
+    expect(screen.getByTestId('run-check-line-u372').textContent).toBe('not printed')
+    expect(screen.getByTestId('run-check-mark-printed-u372').textContent).toBe('Printed ▸')
+    expect(onePress().textContent).toBe('Print 1 notice')
+    expect(screen.getByRole('heading', { name: 'Print and mail · 4 notices' })).toBeTruthy()
+    // Its numbers are dropped; the three still printed keep the contractor's.
+    expect((screen.getByLabelText('372 · ZZ Test Lot 1 — owner tracking') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('372 · ZZ Test Lot 1 — GC tracking') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('373 · ZZ Test Lot 2 — GC tracking') as HTMLInputElement).value).toBe('9407 1118 9876 5432 1111')
+    expect(screen.getByTestId('run-check-unprint-u373')).toBeTruthy()
+    // The run's own take-back is still under More, for the three that printed.
+    fireEvent.click(more('run-take-back'))
+    expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('Take back the 3 notices that printed?')
+  })
+
+  it('Printed ▸ pressed by accident: a short Undo follows, waits for the desk’s stamp, and takes back that row alone', async () => {
+    const calls: string[] = []
+    let land: () => void = () => {}
+    const stamped = new Promise<void>((resolve) => { land = resolve })
+    const two = four().slice(0, 2).map((n) => ({ ...n, printedAt: null, printedBy: null }))
+    renderWithProviders(
+      <LienDeskRunModal notices={two} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { calls.push(`printed ${ids.join(',')}`); return stamped }} onTakeBack={async (ids) => { calls.push(`back ${ids.join(',')}`); return ids.length }} />,
+    )
+    await settle()
+    expect(screen.queryByTestId('run-marked-undo')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-check-mark-printed-u372'))
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 notices=1 ready1 printed')
+    const strip = screen.getByTestId('run-marked-undo')
+    expect(strip.textContent).toContain('372 is marked printed. Pressed it by mistake?')
+    expect(screen.getByTestId('run-marked-undo-go').textContent).toBe('Undo the Printed mark')
+    fireEvent.click(screen.getByTestId('run-marked-undo-go'))
+    await settle()
+    // The mark's stamp is still on its way to the desk: the take-back waits, so it does not find the row unprinted.
+    expect(calls).toEqual(['printed u372'])
+    await act(async () => { land() })
+    await waitFor(() => expect(calls).toEqual(['printed u372', 'back u372']))
+    await waitFor(() => expect(screen.queryByTestId('run-marked-undo')).toBeNull())
+    expect(screen.getByTestId('run-parts').textContent).toBe('2 notices=2 ready')
+    expect(screen.getByTestId('run-check-mark-printed-u372').textContent).toBe('Printed ▸')
+    expect(onePress().textContent).toBe('Print 2 notices')
+  })
+
+  it('a signed notice: the confirm says its signature comes off, and after the take-back the row waits on the signature again', async () => {
+    const taken: string[][] = []
+    const sam = { userId: 'u-sam', name: 'Sam' }
+    const sig = { mode: 'type', printedName: 'Sam Sample', pngDataUrl: null, signedAtIso: '2026-11-12T19:14:00Z' } as unknown as RunNotice['signature']
+    const signedFour = four().map((n) => ({ ...n, signature: sig, leader: sam }))
+    renderWithProviders(<LienDeskRunModal notices={signedFour} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    await settle()
+    expect(screen.getByTestId('run-check-signed-u372').textContent).toBe('✓ typed · Nov 12')
+    fireEvent.click(screen.getByTestId('run-check-unprint-u372'))
+    const lines = [...screen.getByTestId('run-take-back-one-confirm').querySelectorAll('li')].map((li) => li.textContent)
+    expect(lines).toEqual([
+      'The notice goes back to Approved · to print. The approval stands.',
+      'Its signature comes off. The leader signs it again before it prints.',
+      'A copy that printed here Nov 16 stays in the job’s Documents, filed as printed.',
+      'The other notices in this run stay as they are.',
+    ])
+    fireEvent.click(screen.getByTestId('run-take-back-one-yes'))
+    await settle()
+    expect(taken).toEqual([['u372']])
+    expect(screen.getByTestId('run-taken-back').textContent).toBe('Taken back. 372 is in Approved · to print again. The leader signs it again. Then print the packet.')
+    // The window drops the signature with the desk: the row is not ready, it waits on the signature, and nothing can print.
+    expect(screen.getByTestId('run-parts').textContent).toBe('3 printed=3 owe a number')
+    expect(screen.getByTestId('run-journey-1').textContent).toBe('✓Get them right3 of 4 were ready')
+    fireEvent.click(screen.getByTestId('run-group-head-wait'))
+    expect(screen.getByTestId('run-group-wait').contains(screen.getByTestId('run-check-u372'))).toBe(true)
+    expect(screen.getByTestId('run-check-sign-u372').textContent).toBe('Signed ▸')
+    expect(onePress().getAttribute('data-act')).toBe('record')
+    // The three still printed keep their signatures.
+    expect(screen.getByTestId('run-check-signed-u373').textContent).toBe('✓ typed · Nov 12')
+  })
+
+  it('Printed ▸ by accident on a signed notice: the Undo asks first, because the signature comes off', async () => {
+    const taken: string[][] = []
+    const sig = { mode: 'type', printedName: 'Sam Sample', pngDataUrl: null, signedAtIso: '2026-11-12T19:14:00Z' } as unknown as RunNotice['signature']
+    const two = four().slice(0, 2).map((n) => ({ ...n, printedAt: null, printedBy: null, signature: sig, leader: { userId: 'u-sam', name: 'Sam' } }))
+    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-check-mark-printed-u372'))
+    expect(screen.getByTestId('run-marked-undo-go').textContent).toBe('Undo the Printed mark…')
+    fireEvent.click(screen.getByTestId('run-marked-undo-go'))
+    // One press does not take a signature off: the question comes up, and nothing is written yet.
+    expect(taken).toEqual([])
+    expect(screen.getByTestId('run-take-back-one-confirm').textContent).toContain('Its signature comes off. The leader signs it again before it prints.')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it printed' }))
+    expect(taken).toEqual([])
+    expect(screen.getByTestId('run-check-printed-u372')).toBeTruthy()
+  })
+
+  it('the Undo goes once a number is typed on the row, and the row’s own press still asks; a host with no take-back offers neither', async () => {
+    const two = () => four().slice(0, 2).map((n) => ({ ...n, printedAt: null, printedBy: null }))
+    const view = renderWithProviders(<LienDeskRunModal notices={two()} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => ids.length} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-check-mark-printed-u372'))
+    expect(screen.getByTestId('run-marked-undo')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('372 · ZZ Test Lot 1 — owner tracking'), { target: { value: NUMBER } })
+    expect(screen.queryByTestId('run-marked-undo')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-check-unprint-u372'))
+    expect(screen.getByTestId('run-take-back-one-confirm').textContent).toContain('The tracking number typed on this row is not saved.')
+    // Esc closes the question, not the run.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('run-take-back-one-confirm')).toBeNull()
+    view.unmount()
+    renderWithProviders(<LienDeskRunModal notices={two()} issuer={null} todayYmd="2026-11-16" userId="u1" viewer={{ userId: 'u-office', name: 'ZZ Office' }} onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-check-mark-printed-u372'))
+    expect(screen.queryByTestId('run-marked-undo')).toBeNull()
+    expect(screen.queryByTestId('run-check-unprint-u372')).toBeNull()
+    expect(screen.getByTestId('run-check-printed-u372').textContent).toMatch(/^✓ \w{3} \d{1,2} · ZZ Office$/)
+  })
+})
+
+describe('LienDeskRunModal · which paper the run holds, and the street beside a job’s name (v2.7489)', () => {
+  it('the head names the paper and the stage and says what is not here; the ? says where the affidavits print', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-what').textContent).toBe('Monthly notices (§ 53.056), approved and not yet mailed. A job whose notice already went is not here. Lien affidavits are not here either.')
+    expect(screen.queryByTestId('run-explainer')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'What the packet is' }))
+    expect(screen.getByTestId('run-explainer').textContent).toContain('Lien affidavits print from the Board, with Print N for notarization. Their copies to the owner and the original contractor go out after the filing.')
+  })
+
+  it('a retainage notice in the run is named beside the monthly ones', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[notice(), notice({ itemId: 'r1', jobId: 'j700', label: '700 · ZZ Test Tower', jobNumber: '700', kind: 'retainage_53_057' })]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-what').textContent).toContain('Monthly notices (§ 53.056) and retainage notices (§ 53.057), approved and not yet mailed.')
+  })
+
+  it('two jobs at one address read as two at that address: the street shows on the row and on the envelope’s copy line, and not where the name says it', async () => {
+    const gc = { key: 'original_contractor' as const, label: 'Original contractor', name: 'ZZ Test Builders', address: '100 Example Pkwy, Sampleton, TX 78000', email: '', method: 'certified_mail' as const, tracking: '' }
+    const owner = { key: 'owner' as const, label: 'Owner of record', name: 'ZZ Test Kettle LLC', address: '9 Owner Way, Sampleton, TX 78000', email: '', method: 'certified_mail' as const, tracking: '' }
+    const a = notice({ itemId: 'k1', jobId: 'jk1', label: '401 · ZZ Test Kettle shop', jobNumber: '401', propertyId: 'p1', street: '212 Kettle Dr', recipients: [owner, gc] })
+    const b = notice({ itemId: 'k2', jobId: 'jk2', label: '402 · ZZ Test 212 Kettle Dr, phase 2', jobNumber: '402', propertyId: 'p1', street: '', recipients: [owner, gc] })
+    renderRun(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-11-16" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-check-street-k1').textContent).toBe(' · 212 Kettle Dr')
+    expect(screen.getByTestId('run-check-k1').querySelector('b')!.textContent).toBe('401 · ZZ Test Kettle shop · 212 Kettle Dr')
+    expect(screen.queryByTestId('run-check-street-k2')).toBeNull()
+    // The contractor's envelope lists both jobs, the first with its street.
+    expect(screen.getByTestId('run-row-jk1-original_contractor').textContent).toContain('401 · ZZ Test Kettle shop · 212 Kettle Dr')
+    expect(screen.getByTestId('run-row-jk2-original_contractor').textContent).toContain('402 · ZZ Test 212 Kettle Dr, phase 2')
+    expect(screen.getByTestId('run-row-jk2-original_contractor').textContent).not.toContain('phase 2 · 212 Kettle Dr')
+  })
+})

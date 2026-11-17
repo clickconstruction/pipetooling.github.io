@@ -42,6 +42,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'lien_notice_sent',
   'lien_courtesy_sent',
   'lien_notice_closed_paid',
+  'lien_path_change',
   'invoice_resent',
   'sub_stage_change',
   'sub_progress',
@@ -114,6 +115,19 @@ describe('a lien notice closed because the job was paid (v2.7359)', () => {
     // The record the trigger reads is the one the run's press keeps on the item.
     expect(sql).toContain("it.fields -> 'runClosedPaid'")
     for (const key of ['at', 'byName', 'printedAt', 'paperClaim']) expect(sql, key).toContain(`v_rec ->> '${key}'`)
+  })
+})
+
+describe('a job taken off the lien path, or put back (v2.7504)', () => {
+  it('shows under Billing as ours, and is the type the migration writes, word for word', async () => {
+    expect(eventRenderMeta('lien_path_change')).toMatchObject({ tag: 'Lien path', bucket: 'billing' })
+    const { isCustomerEvent } = await import('./jobActivityEvent')
+    expect(isCustomerEvent('lien_path_change')).toBe(false)
+    const sql = readFileSync(resolve(__dirname, '../..', 'supabase/migrations/20261117080000_job_lien_path_answer.sql'), 'utf8')
+    const written = [...new Set([...sql.matchAll(/'(lien_path_[a-z_]+)',\n/g)].map((m) => m[1]!))]
+    expect(written).toEqual(['lien_path_change'])
+    expect(sql).toContain("'Taken off the lien path — '")
+    expect(sql).toContain("'Put back on the lien path — '")
   })
 })
 

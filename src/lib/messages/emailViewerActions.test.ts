@@ -28,6 +28,18 @@ describe('viewerPresses: which presses the email viewer’s row offers (v2.6509)
     expect(viewerPresses(email({ jobId: 'bid:b-512', channel: 'text' }))).toEqual(['open_bid'])
   })
 
+  it('an email on a bid that carries a file also offers Keep its files on the bid (punch list #368)', () => {
+    expect(viewerPresses(email({ jobId: 'bid:b-512', files: 2 }))).toEqual(['open_bid', 'keep_on_bid'])
+    expect(viewerPresses(email({ jobId: 'bid:b-512', files: 1, direction: 'out' }))).toEqual(['open_bid', 'keep_on_bid'])
+    // No file, no press: the mail is already on the bid's history. A text's picture is not a set of plans.
+    expect(viewerPresses(email({ jobId: 'bid:b-512', files: 0 }))).toEqual(['open_bid'])
+    expect(viewerPresses(email({ jobId: 'bid:b-512', files: 3, channel: 'text' }))).toEqual(['open_bid'])
+    // A file on a mail that is on no bid offers nothing of the kind.
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 2 }))).toEqual([])
+    expect(viewerPresses(email({ jobId: 'bid:b-512', files: 2, role: 'superintendent' }))).toEqual([])
+    expect(VIEWER_PRESS_WORDS.keep_on_bid.label).toBe('Keep its files on the bid…')
+  })
+
   it('offers nothing to someone off the office team, nor on a note or an event', () => {
     expect(viewerPresses(email({ role: 'superintendent', invitation: true }))).toEqual([])
     expect(viewerPresses(email({ role: null }))).toEqual([])

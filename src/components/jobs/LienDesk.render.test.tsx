@@ -87,7 +87,9 @@ const jobPromiseMock = vi.fn()
 vi.mock('../../lib/jobs/paymentChaseIo', () => ({ addJobPaymentPromise: (...args: unknown[]) => jobPromiseMock(...args) }))
 // Is this public property? (v2.7443): the window's read and the one write.
 const readPublicPropertyMock = vi.fn()
+const readJobPathMock = vi.fn()
 vi.mock('../../lib/jobs/lienPublicPropertyIo', () => ({ readLienPublicProperty: (...args: unknown[]) => readPublicPropertyMock(...args), setLienPublicAnswer: vi.fn(async () => ({ answer: 'public', jobs: [] })) }))
+vi.mock('../../lib/jobs/lienJobPathIo', () => ({ readLienJobPath: (...args: unknown[]) => readJobPathMock(...args), setJobLienPathAnswer: vi.fn(async () => ({ answer: null, changed: true, onAttorneyList: false, alreadyOnList: false, held: null })) }))
 const clearPrintedMock = vi.fn()
 const saveDraftMock = vi.fn(async () => 'it-new')
 const redrawOneMock = vi.fn(async (..._args: unknown[]) => undefined)
@@ -114,11 +116,14 @@ const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async (..._args: unknown[]): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 // An affidavit sent for approval tells the leader too (punch list #305, v2.7180): one call for every paper of one press.
 const tellAffMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>, _opts?: { remind?: boolean }): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
+// Redraw from the bills (v2.7520): the write behind the band's press and behind a signing press whose stored paper is not the one shown.
+const redrawNoticeMock = vi.fn()
+const redrawNoticeState = { ok: true }
 // The notices that wait on his signature (v2.7491): one call for the lot, from the Board's line or To do's waiting head.
-const tellSignMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
+const tellSignMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null; textSent?: number; textSaid?: string | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, approveLienDeskItem: (id: string) => approveLotMock(id), redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>, opts?: { remind?: boolean }) => (opts ? tellAffMock(papers, opts) : tellAffMock(papers)), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])), tellLeaderOfLienSignatures: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellSignMock(papers) }
+  return { ...actual, redrawLienDeskItem: async (itemId: string, fields: Record<string, unknown>) => { redrawNoticeMock(itemId, fields); return redrawNoticeState.ok }, approveLienDeskItem: (id: string) => approveLotMock(id), redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>, opts?: { remind?: boolean }) => (opts ? tellAffMock(papers, opts) : tellAffMock(papers)), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])), tellLeaderOfLienSignatures: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellSignMock(papers) }
 })
 // Sign it again (v2.7502): the clear is a seam; its guard has its own tests.
 const signAgainMock = vi.fn(async (..._args: unknown[]): Promise<{ ok: true } | { ok: false; message: string }> => ({ ok: true }))
@@ -628,6 +633,32 @@ describe('LienDesk', () => {
     expect(readPublicPropertyMock).toHaveBeenCalledWith('addr-650')
   })
 
+  it('off the lien path (v2.7526): the jobs a person took off sit in a bin of their own with the reason, and Put it back… opens that job’s window', async () => {
+    readJobPathMock.mockReturnValue(new Promise(() => {}))
+    const off = { jobId: 'j977', number: '977', name: 'ZZ Test Trip Charges', gcName: 'Lowbeck Contracting', unpaid: 1050, reason: 'The bill is for trips to pick up checks.', since: '2026-09-10T15:00:00Z', byUserId: 'u1', byName: 'Dana', attorneySince: null, status: 'billed', papers: [] }
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
+    await settle()
+    const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
+    expect(bin.textContent).toContain('Off the lien path')
+    expect(bin.textContent).toContain('977 · ZZ Test Trip Charges')
+    expect(bin.textContent).toContain('Lowbeck Contracting · off since Sep 10, by Dana · not on the attorney’s list')
+    expect(bin.textContent).toContain('The bill is for trips to pick up checks.')
+    expect((document.querySelector('[data-lien-board-column="affidavit"]') as HTMLElement).contains(bin)).toBe(true)
+    // The job is on no list: no chip and no row of its own.
+    expect(document.querySelector('[data-lien-board-chip="j977"]')).toBeNull()
+    fireEvent.click(within(bin).getByRole('button', { name: 'Put it back…' }))
+    expect(await screen.findByTestId('lien-job-path-window')).toBeTruthy()
+    expect(readJobPathMock).toHaveBeenCalledWith('j977')
+  })
+
+  it('off the lien path: a reader who is not the lien office sees the bin and no press', async () => {
+    const off = { jobId: 'j977', number: '977', name: 'ZZ Test Trip Charges', gcName: '', unpaid: 1050, reason: 'Not for work on the property.', since: null, byUserId: null, attorneySince: null, status: 'billed', papers: [] }
+    renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
+    await settle()
+    expect(document.querySelector('[data-lien-off-path-bin]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-off-path-bin-back]')).toBeNull()
+  })
+
   it('the office: a notice waiting on the leader closes To do under his name and leaves the tab’s count (punch list #101 PR 3)', async () => {
     const awaiting = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z' } as unknown as LienDeskItemRow
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [awaiting], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
@@ -773,6 +804,29 @@ describe('LienDesk', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650, [unsigned], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
     await settle()
     expect(document.querySelector('[data-lien-board-remind]')).toBeNull()
+  })
+
+  it('a reminder says whether its text went: *A text went too.*, or in amber why none did, with the leader still reminded (v2.7495)', async () => {
+    const unsigned = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z', approved_by: 'u-taunya', approved_at: '2026-09-12T15:00:00Z', approval_mode: 'word', word_note: 'He said to send it', word_channel: 'phone' } as unknown as LienDeskItemRow
+    const remind = async () => {
+      const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [unsigned], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
+      await settle()
+      fireEvent.click(document.querySelector('[data-lien-board-remind]') as HTMLButtonElement)
+      // The window says a text goes too, before anything is sent.
+      expect(await screen.findByText(/A text with the link goes too\./)).toBeTruthy()
+      const confirms = screen.getAllByRole('button', { name: 'Remind Sam' })
+      fireEvent.click(confirms[confirms.length - 1]!)
+      return view
+    }
+    tellSignMock.mockResolvedValueOnce({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Sam', told: 1, textSent: 1, textSaid: null } })
+    const went = await remind()
+    expect(await screen.findByText('Sam was reminded of 1 paper. A text went too.')).toBeTruthy()
+    went.unmount()
+    tellSignMock.mockResolvedValueOnce({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Sam', told: 1, textSent: 0, textSaid: 'there is no mobile number on the account' } })
+    await remind()
+    expect(await screen.findByText('Sam was reminded of 1 paper. No text went: there is no mobile number on the account.')).toBeTruthy()
+    // He was reminded, so the press reads when and is dead, as after any reminder that went.
+    await waitFor(() => expect((document.querySelector('[data-lien-board-remind]') as HTMLButtonElement).disabled).toBe(true))
   })
 
   it('a chip on the Board, pointed at, says which job it is before any press: its name, address, customer and GC, and where its notice stands (v2.7381)', async () => {
@@ -3039,7 +3093,7 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(field('claimantName').getAttribute('data-door')).toBe('company')
     expect(field('claimAmount').getAttribute('data-door')).toBe('claim')
     expect(field('noticeDate').getAttribute('data-door')).toBeNull()
-    expect(field('noticeDate').getAttribute('title')).toBe('The day it is drafted or sent — nothing to change')
+    expect(field('noticeDate').getAttribute('title')).toBe('The day it is signed — nothing to change')
     fireEvent.click(field('claimantAddress').querySelector('[data-field-text]') as HTMLElement)
     expect(onOpenCompanySettings).toHaveBeenCalledWith('addressText')
     // The claim amount's door is the desk's own claim box: it opens.
@@ -5067,5 +5121,100 @@ describe('LienDesk · add the stamped scans (punch list #366)', () => {
     fireEvent.click(within(screen.getByTestId('lien-serve-window')).getByRole('button', { name: 'Add the stamped scans ›' }))
     expect(screen.queryByTestId('lien-serve-window')).toBeNull()
     expect(screen.getByTestId('lien-scan-batch-window')).toBeTruthy()
+  })
+})
+
+describe('LienDesk · a notice whose stored paper and bills have parted (v2.7520)', () => {
+  // The paper as it was sent for approval, when the desk claimed the whole job: $51,000.00. The bills now owe $33,500.00.
+  const stored = { noticeDate: '2026-08-01', projectDescription: 'AXO Schertz — 1204 Elwick Rd, Schertz, TX', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Lowbeck Contracting', contractedWithIfDifferent: '', claimAmount: '51000.00', contactPerson: 'Sam Rowe, Master Plumber', claimantAddress: '' }
+  const base = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-08-01T14:00:00Z', submitted_at: '2026-08-01T14:10:00Z', word_note: '', word_channel: '', hold_reason: '', hold_until: null, sent_at: null, held_by: null, held_at: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, voided_at: null }
+  const rows = J650.map((r) => ({ ...r, has_owner: true }))
+  const fieldsOf = (claimAmount: string, noticeDate = '2026-08-01') => ({ notice: { ...stored, claimAmount, noticeDate }, gcEmail: '' })
+  const approvedSigned = (fields: Record<string, unknown>, over: Record<string, unknown> = {}) =>
+    ({ ...base, status: 'approved', approval_mode: 'leader', approved_by: 'u-sam', approved_at: '2026-09-12T15:00:00Z', fields, signed_by: 'u-sam', signed_at: '2026-09-12T15:00:00Z', signer_printed_name: 'Sam Rowe', signer_signature_mode: 'type', signed_fields_hash: lienFieldsHash(fields), ...over }) as unknown as LienDeskItemRow
+  const awaiting = (fields: Record<string, unknown>) => ({ ...base, status: 'awaiting_approval', approval_mode: null, approved_by: null, approved_at: null, fields }) as unknown as LienDeskItemRow
+
+  beforeEach(() => {
+    redrawNoticeMock.mockClear()
+    signMock.mockClear()
+    redrawNoticeState.ok = true
+  })
+
+  it('a signed notice: the band says both figures and that the run holds it, and Redraw asks first, then writes today’s paper', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(rows, [approvedSigned(fieldsOf('51000.00'))], true)} initialJobId="j650" initialKind="notice" leaderNameFor={() => 'Sam Rowe'} />)
+    await settle()
+    const band = document.querySelector('[data-lien-desk-parted]') as HTMLElement
+    expect(band.getAttribute('data-lien-desk-parted')).toBe('signed')
+    expect(band.textContent).toContain('The signed paper and the bills no longer agree.')
+    expect(band.textContent).toContain('The paper claims $51,000.00. The bills now come to $33,500.00, $17,500.00 less.')
+    expect(band.textContent).toContain('The run holds it. Redraw it from the bills and Sam signs it again.')
+    fireEvent.click(within(band).getByRole('button', { name: 'Redraw from the bills ▸' }))
+    const confirm = await screen.findByRole('button', { name: 'Redraw the notice' })
+    expect(document.body.textContent).toContain('Redraw this notice from the bills?')
+    expect(document.body.textContent).toContain('The signature comes off, and Sam signs it again before it prints.')
+    expect(redrawNoticeMock).not.toHaveBeenCalled()
+    fireEvent.click(confirm)
+    await waitFor(() => expect(redrawNoticeMock).toHaveBeenCalledTimes(1))
+    const [itemId, fields] = redrawNoticeMock.mock.calls[0] as [string, { notice: Record<string, unknown>; gcEmail: string; redrawn: Record<string, unknown> }]
+    expect(itemId).toBe('it1')
+    expect(fields.notice.claimAmount).toBe('33500.00')
+    expect(fields.notice.noticeDate).toBe(TODAY)
+    // The wording and the other keys of the row stay.
+    expect(fields.notice.contactPerson).toBe('Sam Rowe, Master Plumber')
+    expect(fields.gcEmail).toBe('')
+    expect(fields.redrawn).toMatchObject({ byName: 'Taunya', wasClaim: '51000.00', wasDate: '2026-08-01' })
+  })
+
+  it('a signed notice that agrees with the bills has no band, and keeps the date it was signed with', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(rows, [approvedSigned(fieldsOf('33500.00'))], true)} initialJobId="j650" initialKind="notice" />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-parted]')).toBeNull()
+    expect((document.querySelector('[data-lien-desk-paper] [data-field="noticeDate"]') as HTMLElement).textContent).toContain('August 1, 2026')
+  })
+
+  it('a printed notice says to check it and has no Redraw: it is taken back first', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(rows, [approvedSigned(fieldsOf('51000.00'), { printed_at: '2026-09-13T15:00:00Z' })], true)} initialJobId="j650" initialKind="notice" />)
+    await settle()
+    const band = document.querySelector('[data-lien-desk-parted]') as HTMLElement
+    expect(band.getAttribute('data-lien-desk-parted')).toBe('printed')
+    expect(band.textContent).toContain('Check it before it is mailed.')
+    expect(within(band).queryByRole('button', { name: 'Redraw from the bills ▸' })).toBeNull()
+  })
+
+  it('the leader’s Sign and approve signs the paper the pane shows: the row is rewritten with today’s claim and date first, then signed', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" authUserId="u-sam" authName="Sam Rowe" data={data(rows, [awaiting(fieldsOf('51000.00'))], true)} initialJobId="j650" initialKind="notice" leaderNameFor={() => 'Sam Rowe'} />)
+    await settle()
+    const band = document.querySelector('[data-lien-desk-parted]') as HTMLElement
+    expect(band.getAttribute('data-lien-desk-parted')).toBe('unsigned')
+    expect(band.textContent).toContain('This screen shows today’s figures. Sam signs those.')
+    // The pane dates an unsigned paper today.
+    expect((document.querySelector('[data-lien-desk-paper] [data-field="noticeDate"]') as HTMLElement).textContent).toContain('September 14, 2026')
+    fireEvent.click(screen.getByRole('button', { name: /Sign and approve & next/ }))
+    await waitFor(() => expect(signMock).toHaveBeenCalledTimes(1))
+    expect(redrawNoticeMock).toHaveBeenCalledTimes(1)
+    expect(redrawNoticeMock.mock.invocationCallOrder[0]!).toBeLessThan(signMock.mock.invocationCallOrder[0]!)
+    const [, fields] = redrawNoticeMock.mock.calls[0] as [string, { notice: Record<string, unknown>; redrawn: Record<string, unknown> }]
+    expect(fields.notice.claimAmount).toBe('33500.00')
+    expect(fields.notice.noticeDate).toBe(TODAY)
+    expect(fields.redrawn).toMatchObject({ wasClaim: '51000.00' })
+  })
+
+  it('a row that moved on is not signed: the press says so and nothing is placed', async () => {
+    redrawNoticeState.ok = false
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" authUserId="u-sam" authName="Sam Rowe" data={data(rows, [awaiting(fieldsOf('51000.00'))], true)} initialJobId="j650" initialKind="notice" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Sign and approve & next/ }))
+    await waitFor(() => expect(redrawNoticeMock).toHaveBeenCalledTimes(1))
+    await settle()
+    expect(signMock).not.toHaveBeenCalled()
+  })
+
+  it('a paper already the one shown is signed as it stands: nothing is rewritten', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" authUserId="u-sam" authName="Sam Rowe" data={data(rows, [awaiting(fieldsOf('33500.00', TODAY))], true)} initialJobId="j650" initialKind="notice" signerNameFor={() => 'Sam Rowe, Master Plumber'} />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-parted]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Sign and approve & next/ }))
+    await waitFor(() => expect(signMock).toHaveBeenCalledTimes(1))
+    expect(redrawNoticeMock).not.toHaveBeenCalled()
   })
 })

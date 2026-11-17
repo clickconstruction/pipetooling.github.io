@@ -1,3 +1,4 @@
+import { lienRunStreetBeside } from './lienRunStreet'
 import { buildLienNoticeBlocks, FILING_PRINT_TIGHT_LEADING, FILING_SIGNATURE_FONT_LINK, filingDocHtml, filingHtmlHasTypedSignature, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields, type LienNoticeInstrument } from '../jobsDocuments/lienFilingDocuments'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
 import { claimSplit, claimSplitWords, correctedClaim } from './lienClaimCorrection'
@@ -121,6 +122,10 @@ export type RunNotice = {
   mailBy?: string | null
   /** The scans or photos of what went in the envelope (`job_lien_desk_items.mailed_copies`, `lienMailedCopies.ts`); absent or empty = none added. */
   mailedCopies?: LienMailedCopy[]
+  /** The property record the job points at (v2.7489, `jobs_ledger.customer_address_id`): what *the same property* means on the desk. Absent or null = the job points at none. */
+  propertyId?: string | null
+  /** The property's street to show beside the job's name (v2.7489, `lienRunStreetBeside`): the record's own, and only when the name does not already say it. Absent or '' = none. */
+  street?: string | null
   /**
    * The stored paper and the bills have parted (v2.7517, `lienNoticeParted.ts`): the claim, its retainage or its split
    * as the draft keeps them is not what the desk would draw today. The run holds the notice out of the print. Null or
@@ -147,33 +152,6 @@ export function runDoorWords(counts: { ready: number; printed: number; retReady:
   return { act, label: LIEN_RUN_ACT[act], count }
 }
 
-
-/**
- * The door on the desk as a pill (Run-5): the run's bar — green for what is printed and to mail,
- * amber for what the leader has yet to sign, grey for what can print now — and the count of each, so
- * nobody opens the run to find out. `ready` includes the unsigned; `waits` is how many of them are
- * (`lienItemUnsigned`, the rule the Board's second tile counts *to sign* by, so the two agree).
- * Since v2.7448 the parts read *4 to mail · 8 to print · 7 for Sam to sign* (*sealed*, *ready* and *wait on* until then).
- */
-export type RunDoorPill = { sealedPct: number; waitPct: number; words: string }
-
-/**
- * The pill's words after the door's own count (v2.6569): *Enter mail numbers · 7*, never *· 7 · 7 to mail*.
- * When the words are only the count the door already says, they go; words that say more stay whole.
- */
-export function runDoorTail(count: number, words: string): string {
-  return words === `${count} to mail` || words === `${count} to print` ? '' : words
-}
-
-export function runDoorPill(counts: { ready: number; printed: number; retReady: number; waits: number }, leaderName?: string | null): RunDoorPill {
-  const total = counts.ready + counts.printed + counts.retReady
-  const waits = Math.min(counts.waits, counts.ready + counts.retReady)
-  const readyNow = counts.ready + counts.retReady - waits
-  const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100))
-  const leader = (leaderName ?? '').trim() || 'the leader'
-  const parts = [counts.printed ? `${counts.printed} to mail` : null, readyNow ? `${readyNow} to print` : null, waits ? `${waits} for ${leader} to sign` : null].filter(Boolean)
-  return { sealedPct: pct(counts.printed), waitPct: pct(waits), words: parts.join(' · ') }
-}
 
 /** The signature's inputs the run builders take (v2.5077): the drawn inks by item id, and the name of whoever's screen a drawn one was made on. */
 export type RunBuildOpts = {
@@ -256,6 +234,8 @@ export function buildLienDeskRun(
       jobId: e.jobId,
       kind: 'notice_53_056',
       mailBy: e.earliestDeadline,
+      propertyId: job?.customer_address_id ?? null,
+      street: lienRunStreetBeside(job?.job_name, address?.address),
       printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
       printedBy: runPrintedBy(item, opts),
       mailedCopies: parseLienMailedCopies((item as { mailed_copies?: unknown }).mailed_copies),
@@ -342,6 +322,8 @@ export function buildLienRetainageRun(
       // What was mailed (v2.7525): the retainage notice keeps its scans as the monthly notice does.
       mailedCopies: parseLienMailedCopies((item as { mailed_copies?: unknown }).mailed_copies),
       mailBy: e.deadline,
+      propertyId: job?.customer_address_id ?? null,
+      street: lienRunStreetBeside(job?.job_name, address?.address),
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,

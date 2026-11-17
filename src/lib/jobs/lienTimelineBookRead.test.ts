@@ -22,10 +22,10 @@ const month = (job_id: string, work_month: string, deadline: string, gc = 'gc-1'
 const window_ = (job_id: string, deadline: string): LienAffidavitRow => ({ job_id, last_month: '2026-07', deadline, is_sub: true, noticed: true, filed: false, open_balance: 900, customer_id: 'c1', gc_customer_id: 'gc-2', property_kind: 'residential', has_owner: true }) as unknown as LienAffidavitRow
 const job = (id: string, name: string, over: Partial<LienBookRawJob> = {}): LienBookRawJob => ({ id, hcp_number: id, click_number: null, job_name: name, job_address: `${id} Main St`, gc_customer_id: 'gc-1', customer_address_id: `addr-${id}`, revenue: 9_000, payments_made: 4_000, last_work_date: '2026-08-20', lien_payment_bond: null, lien_contract_ended_on: null, customer_name: 'Ann Lee', in_kind_arrangement_id: null, ...over })
 
-/** A is plain, B is on the affidavit path only, K is paid in kind, Z is a ZZ test job. */
-const MONTHS = [month('A', '2026-08', '2026-10-15'), month('A', '2026-09', '2026-11-15'), month('K', '2026-08', '2026-10-15'), month('Z', '2026-08', '2026-10-15', 'gc-3')]
+/** A is plain, B is on the affidavit path only, K is paid in kind, P was taken off the lien path by a person, Z is a ZZ test job. */
+const MONTHS = [month('A', '2026-08', '2026-10-15'), month('A', '2026-09', '2026-11-15'), month('K', '2026-08', '2026-10-15'), month('P', '2026-08', '2026-10-15'), month('Z', '2026-08', '2026-10-15', 'gc-3')]
 const WINDOWS = [window_('B', '2026-11-16'), window_('K', '2026-11-16')]
-const JOBS = [job('A', '101 Hill Street'), job('B', 'Marrow Lane', { gc_customer_id: 'gc-2', customer_address_id: null }), job('K', 'Tannery Row', { in_kind_arrangement_id: 'deal-1' }), job('Z', 'ZZ TEST lien', { gc_customer_id: 'gc-3' })]
+const JOBS = [job('A', '101 Hill Street'), job('B', 'Marrow Lane', { gc_customer_id: 'gc-2', customer_address_id: null }), job('K', 'Tannery Row', { in_kind_arrangement_id: 'deal-1' }), job('P', 'Parrow Court', { lien_path_answer: 'off_path' }), job('Z', 'ZZ TEST lien', { gc_customer_id: 'gc-3' })]
 const GCS: LienBookRawGc[] = [
   { id: 'gc-1', name: 'Kestrin Builders', lien_notice_policy: 'ask' },
   { id: 'gc-2', name: 'Lowbeck Contracting', lien_notice_policy: null },
@@ -120,7 +120,7 @@ describe('readLienBookRows', () => {
     expect(got.jobs.map((j) => j.id)).toEqual(['A', 'B'])
     expect(jobIdsIn(got.rows)).toEqual(['A'])
     expect(jobIdsIn(got.affidavitRows)).toEqual(['B'])
-    // K is paid in kind and Z is a ZZ test job: the owner, the filing and the letter read for them are not handed on.
+    // K is paid in kind, P is off the lien path (v2.7521) and Z is a ZZ test job: the owner, the filing and the letter read for them are not handed on.
     expect(jobIdsIn(got.owners)).toEqual(['A'])
     expect(jobIdsIn(got.filings)).toEqual(['B'])
     expect(jobIdsIn(got.demandLetters)).toEqual(['A'])

@@ -172,7 +172,7 @@ export function DevelopmentPlansByDate({
 
   return (
     <div data-testid="plans-by-date" style={{ minWidth: 0 }}>
-      <div data-testid="pbd-figures" style={{ display: 'grid', gridTemplateColumns: `repeat(${narrow ? 2 : 4}, minmax(0, 1fr))`, gap: 8, marginBottom: 10 }}>
+      <div data-testid="pbd-figures" style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8, marginBottom: 10 }}>
         {model.figures.map((f) => (
           <div key={f.key} role="button" tabIndex={0} {...item.bind(`figure-${f.key}`)} data-testid={`pbd-figure-${f.key}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', background: 'var(--bg-subtle)', minWidth: 0, cursor: 'pointer' }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</div>

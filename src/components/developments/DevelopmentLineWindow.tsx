@@ -7,18 +7,20 @@
  * line's first words only (punch list #280, v2.6735): when `line.detailIsHead`, the window reads the
  * whole by `readWhole` on open, shows the head with *Reading the rest…* until it lands, and names the
  * reason with the head when the read fails. A tied mail (v2.7479) shows its subject over its words and
- * carries its door, *Open in Messages*, at the foot.
+ * carries its door, *Open in Messages*, at the foot. A bid's mail that carries files (punch list #368) also
+ * draws **Keep its files on the bid…** under its words (`BidMailSetDoor`), for a reader the page says may keep them.
  */
 import { useEffect, useState } from 'react'
 import { MAIL_DOOR_WORDS } from '../../lib/developments/history'
 import type { ChangeLine } from '../../lib/developments/whatChanged'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { LinkButton, shortDay, SmallButton, timeOfDay } from './developmentPageBits'
+import { BidMailSetDoor } from '../bids/BidMailSetDoor'
 import { JobChip } from './JobChip'
 
 type WholeRead = { entryId: string; state: 'reading' } | { entryId: string; state: 'read'; text: string } | { entryId: string; state: 'failed'; reason: string }
 
-export function DevelopmentLineWindow({ line, onClose, openAbout, readWhole, onOpenThread }: { line: ChangeLine | null; onClose: () => void; openAbout: (about: ChangeLine['about']) => void; readWhole?: (entryId: string) => Promise<string>; onOpenThread?: (href: string) => void }) {
+export function DevelopmentLineWindow({ line, onClose, openAbout, readWhole, onOpenThread, onKeptFiles }: { line: ChangeLine | null; onClose: () => void; openAbout: (about: ChangeLine['about']) => void; readWhole?: (entryId: string) => Promise<string>; onOpenThread?: (href: string) => void; onKeptFiles?: () => void }) {
   const [whole, setWhole] = useState<WholeRead | null>(null)
   useEffect(() => {
     if (!line) return
@@ -98,6 +100,11 @@ export function DevelopmentLineWindow({ line, onClose, openAbout, readWhole, onO
             </span>
           ) : null}
         </div>
+        {line.mail && onKeptFiles ? (
+          <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }} data-testid="history-line-window-keep">
+            <BidMailSetDoor bidId={line.mail.bidId} bidLabel={line.mail.bidLabel} messageId={line.mail.messageId} mail={{ subject: line.subject ?? null, who: line.by, at: line.at }} onKept={onKeptFiles} />
+          </div>
+        ) : null}
         <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           {line.threadHref && onOpenThread ? (
             <SmallButton onClick={() => onOpenThread(line.threadHref!)} title="This mail in its thread, in Messages">

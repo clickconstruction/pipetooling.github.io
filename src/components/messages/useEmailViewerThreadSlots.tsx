@@ -1,7 +1,7 @@
 /**
  * Messages, the email viewer's action row (v2.6509): the message window's first slot (`threadSlots.tsx`'s
  * `messageWindowFirst`), after cut 4b's change order, with the presses the kernel offers for the line
- * (`emailViewerActions.ts`: Start a bid, Put it on a bid…, Open the bid). The change order itself stays cut 4b's;
+ * (`emailViewerActions.ts`: Start a bid, Put it on a bid…, Open the bid, and Keep its files on the bid…). The change order itself stays cut 4b's;
  * both hooks ask the same kernel, so one place decides the row. Each press writes through the New lane's *Bid it?* io or
  * the Tied to row's own writer, says what it did and asks the window to read the thread again (`useMessagesReread`).
  */
@@ -47,7 +47,8 @@ export function useEmailViewerThreadSlots(io?: EmailViewerIo): Pick<ThreadSlots,
         ? {
             messageWindowFirst: (m) => {
               const inv = lineInvitation({ channel: m.channel, direction: m.direction, subject: m.subject, body: m.body, at: m.at, invitation: m.invitation })
-              const presses = viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role }).filter(
+              const files = (m.files ?? []).filter((f) => f.kept !== 'link').length
+              const presses = viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role, files }).filter(
                 (p): p is Exclude<ViewerPress, 'change_order'> => p !== 'change_order',
               )
               if (presses.length === 0) return null

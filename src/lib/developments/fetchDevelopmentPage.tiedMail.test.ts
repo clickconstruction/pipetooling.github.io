@@ -50,15 +50,16 @@ beforeEach(() => {
 
 describe('readTiedMail: the emails tied to the site’s bids and jobs', () => {
   it('asks for nothing when the site has no bid and no job', async () => {
-    expect(await readTiedMail([], [])).toEqual({ rows: [], contacts: [], error: null })
+    expect(await readTiedMail([], [])).toEqual({ rows: [], contacts: [], files: [], error: null })
     expect(state.calls).toEqual([])
   })
 
   it('reads emails alone, by the bids and by the jobs, then the people they are with', async () => {
     state.answer = (call) => {
       if (call.table === 'contacts') return { data: [{ id: 'c1', kind: 'customer', name: 'Dana Whitfield', goes_by: null }], error: null }
+      if (call.table === 'message_attachments') return { data: [{ message_id: 'm-bid', kind: 'file', bucket_path: 'gm/a.pdf', bid_plan_set_id: null }], error: null }
       const [column] = step(call, 'in')[0] as [string]
-      return { data: [{ id: column === 'bid_id' ? 'm-bid' : 'm-job', contact_id: 'c1' }], error: null }
+      return { data: [column === 'bid_id' ? { id: 'm-bid', contact_id: 'c1', bid_id: 'b1' } : { id: 'm-job', contact_id: 'c1', bid_id: null }], error: null }
     }
     const got = await readTiedMail(['b1'], ['j1', 'j2'])
     expect(got.error).toBeNull()
@@ -75,6 +76,9 @@ describe('readTiedMail: the emails tied to the site’s bids and jobs', () => {
       ['bid_id', ['b1']],
       ['jobs_ledger_id', ['j1', 'j2']],
     ])
+    // The files are asked for on the bids' mail alone (punch list #368): a job's mail keeps a paper, not a bid's set.
+    expect(got.files).toEqual([{ message_id: 'm-bid', kind: 'file', bucket_path: 'gm/a.pdf', bid_plan_set_id: null }])
+    expect(state.calls.filter((c) => c.table === 'message_attachments').map((c) => step(c, 'in')[0])).toEqual([['message_id', ['m-bid']]])
     // The people are asked for once, by id, whoever many mails they wrote.
     expect(state.calls.filter((c) => c.table === 'contacts').map((c) => step(c, 'in')[0])).toEqual([['id', ['c1']]])
   })
@@ -98,6 +102,27 @@ describe('readTiedMail: the emails tied to the site’s bids and jobs', () => {
     const got = await readTiedMail(['b1'], [])
     expect(got.rows.map((r) => r.id)).toEqual(['m1'])
     expect(got.contacts).toEqual([])
+    expect(got.error).toBeNull()
+  })
+
+  it('the files read again without the kept mark when the database does not have its column yet', async () => {
+    state.answer = (call) => {
+      if (call.table === 'message_attachments') {
+        const cols = String(step(call, 'select')[0]![0])
+        return cols.includes('bid_plan_set_id') ? { data: null, error: { message: 'column message_attachments.bid_plan_set_id does not exist', code: '42703' } } : { data: [{ message_id: 'm1', kind: 'file', bucket_path: 'gm/a.pdf' }], error: null }
+      }
+      return call.table === 'contacts' ? { data: [], error: null } : { data: [{ id: 'm1', contact_id: 'c1', bid_id: 'b1' }], error: null }
+    }
+    const got = await readTiedMail(['b1'], [])
+    expect(got.files).toEqual([{ message_id: 'm1', kind: 'file', bucket_path: 'gm/a.pdf' }])
+    expect(state.calls.filter((c) => c.table === 'message_attachments')).toHaveLength(2)
+  })
+
+  it('the mail still comes when its files do not', async () => {
+    state.answer = (call) => (call.table === 'message_attachments' ? { data: null, error: { message: 'permission denied', code: '42501' } } : call.table === 'contacts' ? { data: [], error: null } : { data: [{ id: 'm1', contact_id: 'c1', bid_id: 'b1' }], error: null })
+    const got = await readTiedMail(['b1'], [])
+    expect(got.rows.map((r) => r.id)).toEqual(['m1'])
+    expect(got.files).toEqual([])
     expect(got.error).toBeNull()
   })
 })

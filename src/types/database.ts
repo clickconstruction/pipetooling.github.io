@@ -20775,6 +20775,7 @@ export type Database = {
           job_id: string
           kind: string
           label: string
+          label_printed_at: string | null
           lat: number | null
           lng: number | null
           place_id: string | null
@@ -20790,6 +20791,7 @@ export type Database = {
           job_id: string
           kind: string
           label: string
+          label_printed_at?: string | null
           lat?: number | null
           lng?: number | null
           place_id?: string | null
@@ -20805,6 +20807,7 @@ export type Database = {
           job_id?: string
           kind?: string
           label?: string
+          label_printed_at?: string | null
           lat?: number | null
           lng?: number | null
           place_id?: string | null
@@ -28479,6 +28482,7 @@ export type Database = {
       }
       message_attachments: {
         Row: {
+          bid_plan_set_id: string | null
           bucket_path: string | null
           created_at: string
           drive_file_id: string | null
@@ -28501,6 +28505,7 @@ export type Database = {
           url: string | null
         }
         Insert: {
+          bid_plan_set_id?: string | null
           bucket_path?: string | null
           created_at?: string
           drive_file_id?: string | null
@@ -28523,6 +28528,7 @@ export type Database = {
           url?: string | null
         }
         Update: {
+          bid_plan_set_id?: string | null
           bucket_path?: string | null
           created_at?: string
           drive_file_id?: string | null
@@ -28545,6 +28551,13 @@ export type Database = {
           url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "message_attachments_bid_plan_set_fk"
+            columns: ["bid_plan_set_id"]
+            isOneToOne: false
+            referencedRelation: "bid_plan_sets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "message_attachments_drive_link_id_fkey"
             columns: ["drive_link_id"]
@@ -38187,11 +38200,15 @@ export type Database = {
       supply_house_payments: {
         Row: {
           amount: number
+          bank_matched_at: string | null
+          bank_matched_by: string | null
+          bank_matched_by_name: string | null
           created_at: string
           created_by: string | null
           created_by_name: string | null
           id: string
           memo: string | null
+          mercury_transaction_id: string | null
           method: string | null
           method_ref: string | null
           paid_on: string
@@ -38206,11 +38223,15 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bank_matched_at?: string | null
+          bank_matched_by?: string | null
+          bank_matched_by_name?: string | null
           created_at?: string
           created_by?: string | null
           created_by_name?: string | null
           id?: string
           memo?: string | null
+          mercury_transaction_id?: string | null
           method?: string | null
           method_ref?: string | null
           paid_on: string
@@ -38225,11 +38246,15 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_matched_at?: string | null
+          bank_matched_by?: string | null
+          bank_matched_by_name?: string | null
           created_at?: string
           created_by?: string | null
           created_by_name?: string | null
           id?: string
           memo?: string | null
+          mercury_transaction_id?: string | null
           method?: string | null
           method_ref?: string | null
           paid_on?: string
@@ -38244,10 +38269,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "supply_house_payments_bank_matched_by_fkey"
+            columns: ["bank_matched_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "supply_house_payments_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payments_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
             referencedColumns: ["id"]
           },
           {
@@ -44352,6 +44391,7 @@ export type Database = {
           job_id: string
           kind: string
           label: string
+          label_printed_at: string | null
           lat: number | null
           lng: number | null
           place_id: string | null
@@ -47999,6 +48039,14 @@ export type Database = {
         Args: { p_payment_id: string; p_transaction_id: string }
         Returns: number
       }
+      match_supply_house_payment: {
+        Args: {
+          p_fill?: boolean
+          p_payment_id: string
+          p_transaction_id: string
+        }
+        Returns: undefined
+      }
       materialize_bid_version: {
         Args: { p_bid_id: string; p_name: string }
         Returns: string
@@ -50159,6 +50207,10 @@ export type Database = {
       unhighlight: { Args: { p_highlight_id: string }; Returns: undefined }
       unmark_notice: { Args: { p_contact_id: string }; Returns: undefined }
       unmatch_sub_payment: { Args: { p_payment_id: string }; Returns: number }
+      unmatch_supply_house_payment: {
+        Args: { p_payment_id: string }
+        Returns: undefined
+      }
       unresolve_noncard_transaction_attribution: {
         Args: { p_mercury_transaction_id: string }
         Returns: undefined
